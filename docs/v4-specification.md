@@ -655,14 +655,237 @@ For on-demand features (DOM queries, accessibility audit), the extension needs t
 - **DOM queries**: Only run on the active tab, only return text/attributes (no JS execution).
 - **axe-core**: Runs entirely client-side, no external calls.
 
-### Performance Budget
+### Performance & SLOs
 
-| Feature | Overhead (idle) | Overhead (active) |
-|---------|-----------------|-------------------|
-| WebSocket monitoring | ~0.1ms per message | Negligible |
-| Network bodies | ~2ms per request (clone + read) | Up to 50ms for large responses |
-| DOM queries | Zero (on-demand only) | 10-100ms depending on selector complexity |
-| Accessibility audit | Zero (on-demand only) | 1-5s for full page audit |
+Gasoline MUST NOT degrade the user's browsing experience. The extension runs in the same process as the user's application, so every millisecond of overhead is directly stealing from their app's frame budget.
+
+#### SLO Targets
+
+| Metric | Target | Hard Limit | Action on Violation |
+|--------|--------|------------|---------------------|
+| **Page load impact** | < 20ms | 50ms | Defer interception to after `load` event |
+| **Main thread block (per intercept)** | < 1ms | 5ms | Move to async / Web Worker |
+| **Main thread block (DOM query)** | < 50ms | 200ms | Abort and return partial results |
+| **Main thread block (a11y audit)** | < 3s | 10s | Abort with timeout error |
+| **Memory usage (extension total)** | < 20MB | 50MB | Evict oldest buffers, disable network bodies |
+| **fetch() wrapper overhead** | < 0.5ms sync | 2ms sync | Disable body capture for that request |
+| **WebSocket handler overhead** | < 0.1ms per msg | 0.5ms per msg | Increase sampling rate |
+| **Background → Server POST** | < 50ms | 200ms | Increase batch interval |
+| **Server MCP tool response** | < 200ms | 2s | Return cached/partial data |
+| **Server memory usage** | < 30MB | 100MB | Evict oldest entries, reject new bodies |
+| **Log file write latency** | < 5ms | 50ms | Buffer writes, async flush |
+
+#### Extension Performance Guardrails
+
+**1. Async-Only Body Reading**
+
+The `fetch()` wrapper must NEVER block on reading the response body synchronously. The interception itself (wrapping the call) is sync and fast, but body reading happens in a microtask after the response is returned to the caller:
+
+```javascript
+window.fetch = async function(input, init) {
+  // Sync: just start timing (~0.1ms overhead)
+  const startTime = performance.now();
+
+  // Call original fetch — user gets their response immediately
+  const response = await origFetch.apply(this, arguments);
+
+  // Async: read body in background WITHOUT blocking the caller
+  // Schedule body capture as a low-priority task
+  if (captureEnabled && shouldCaptureUrl(url)) {
+    queueMicrotask(() => captureBody(response.clone(), url, method, startTime));
+  }
+
+  return response; // User gets response with zero additional latency
+};
+```
+
+**2. WebSocket Handler Budget**
+
+Each WebSocket message handler has a **0.1ms budget**. The handler only increments counters and checks the sampling flag — no string processing, no truncation, no serialization on the hot path:
+
+```javascript
+// HOT PATH — must complete in < 0.1ms
+ws.addEventListener('message', (e) => {
+  conn.stats.incoming.count++;        // Increment counter
+  conn.stats.incoming.lastAt = now(); // Store timestamp
+
+  if (conn.sampleCounter++ % conn.sampleRate === 0) {
+    // COLD PATH — runs only for sampled messages
+    // Deferred to requestIdleCallback or setTimeout(0)
+    scheduleCapture(id, 'incoming', e.data);
+  }
+});
+```
+
+**3. Deferred Serialization**
+
+Message payloads are NOT serialized (JSON.stringify, truncate, format) on the main thread during the intercept. Instead:
+
+1. Raw reference stored in a pending queue
+2. `requestIdleCallback` (or `setTimeout(0)` fallback) processes the queue
+3. Serialized entries batched and sent to background service worker
+
+This ensures the user's app never pays for Gasoline's serialization work during a frame.
+
+**4. Memory Pressure Detection**
+
+The extension monitors its own memory usage via `performance.memory` (Chrome-only) or by tracking buffer sizes:
+
+```javascript
+const memoryCheck = () => {
+  const usage = estimateMemoryUsage();
+
+  if (usage > MEMORY_SOFT_LIMIT) {   // 20MB
+    // Reduce buffer sizes by 50%
+    wsBuffer.resize(wsBuffer.capacity / 2);
+    networkBuffer.resize(networkBuffer.capacity / 2);
+    console.debug('[gasoline] Memory pressure: reduced buffers');
+  }
+
+  if (usage > MEMORY_HARD_LIMIT) {   // 50MB
+    // Disable network body capture entirely
+    networkBodiesEnabled = false;
+    networkBuffer.clear();
+    console.debug('[gasoline] Memory critical: disabled network bodies');
+  }
+};
+
+// Check every 30 seconds
+setInterval(memoryCheck, 30000);
+```
+
+**5. Page Load Deferral**
+
+v4 intercepts (WebSocket constructor, fetch body capture) are NOT installed during initial page load. They are deferred until after the `load` event fires:
+
+```javascript
+// Content script entry point
+if (document.readyState === 'complete') {
+  installV4Intercepts();
+} else {
+  window.addEventListener('load', () => {
+    // Additional 100ms delay to avoid competing with app initialization
+    setTimeout(installV4Intercepts, 100);
+  });
+}
+
+// v1-v3 intercepts (console, basic network errors, exceptions) still install immediately
+// since they are lightweight and don't clone bodies or wrap constructors
+```
+
+This ensures Gasoline adds **zero milliseconds** to the page's Time to Interactive (TTI).
+
+**6. Per-Request Body Capture Budget**
+
+If reading a response body takes longer than 5ms (large JSON, slow clone), abort the capture:
+
+```javascript
+async function captureBody(clone, url, method, fetchStart) {
+  const captureStart = performance.now();
+
+  try {
+    const text = await Promise.race([
+      clone.text(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('body_timeout')), 5)
+      )
+    ]);
+
+    // Only store if we got it fast enough
+    emit('network:body', { url, method, responseBody: truncate(text) });
+  } catch (e) {
+    if (e.message === 'body_timeout') {
+      // Log that we skipped this one
+      emit('network:body', { url, method, responseBody: '[Skipped: body read exceeded 5ms]' });
+    }
+  }
+}
+```
+
+#### Server Performance Guardrails
+
+**1. Memory-Bounded Buffers**
+
+All server-side buffers have hard memory caps, not just entry counts:
+
+| Buffer | Max Entries | Max Memory | Eviction |
+|--------|------------|------------|----------|
+| WebSocket events | 500 | 4MB | Oldest first |
+| Network bodies | 100 | 8MB | Oldest first |
+| Pending queries | 5 | 1KB | Oldest first (stale queries) |
+| Connection tracker | 20 active + 10 closed | 2MB | Oldest closed first |
+
+When a buffer hits its memory cap (not just entry count), entries are evicted starting from the oldest regardless of how many entries remain.
+
+**2. Disk Write Batching**
+
+Network body entries are NOT written to the JSONL log file individually. Instead:
+
+- Buffer up to 10 entries or 1 second (whichever comes first)
+- Write batch in a single `write()` syscall
+- Use `O_APPEND` flag — no file locking needed
+- If write takes >50ms, skip writing bodies to disk (keep in memory only)
+
+**3. Server Circuit Breaker**
+
+If the extension floods the server (e.g., a page opens 100 WebSocket connections each sending at 1000 msg/s):
+
+| Condition | Action |
+|-----------|--------|
+| > 1000 events/second received | Respond with `429 Too Many Requests` |
+| > 50MB memory usage | Reject new network body POSTs |
+| > 100MB memory usage | Clear all buffers, restart in minimal mode |
+| Pending query not picked up in 10s | Delete it, return timeout to MCP caller |
+
+**4. Extension → Server Failure Handling**
+
+```
+Retry budget: 3 attempts per batch
+Backoff: 100ms → 500ms → 2000ms
+Circuit breaker: After 5 consecutive failures, pause sending for 30 seconds
+Recovery: Single successful POST resets the circuit breaker
+Server down: Extension keeps buffering locally (up to memory cap), drains on reconnect
+```
+
+The extension NEVER retries indefinitely. If the server is down, the extension silently buffers what it can and discards the rest.
+
+#### Performance Monitoring
+
+The extension exposes its own performance metrics via the existing debug log:
+
+```json
+{
+  "type": "gasoline:perf",
+  "ts": "2024-01-15T10:30:00.000Z",
+  "metrics": {
+    "memoryUsageMB": 12.4,
+    "wsEventsBuffered": 342,
+    "networkBodiesBuffered": 67,
+    "droppedEvents": 0,
+    "samplingActive": true,
+    "avgInterceptLatencyMs": 0.08,
+    "serverPostSuccessRate": 1.0,
+    "circuitBreakerState": "closed"
+  }
+}
+```
+
+This is logged every 60 seconds when debug mode is enabled, and accessible via the existing `Export Debug Log` button.
+
+#### Performance Testing
+
+v4 must include performance SLO tests (extending the existing v3 benchmark suite):
+
+| Test | Method | Pass Criteria |
+|------|--------|---------------|
+| fetch wrapper overhead | Measure 1000 fetch() calls with/without extension | < 1ms avg added latency |
+| WS message throughput | Send 10,000 messages at 1000/s, measure frame drops | 0 dropped frames |
+| Memory under load | 20 WS connections × 100 msg/s for 5 min | < 50MB extension memory |
+| Page load impact | Lighthouse before/after on reference app | < 50ms TTI difference |
+| Body capture large response | fetch() 1MB JSON response | < 10ms sync overhead |
+| DOM query on complex page | querySelectorAll('*') on 10,000-node page | < 200ms response |
+| a11y audit on complex page | axe.run() on 10,000-node page | < 10s total |
+| Server memory under load | 1000 network body POSTs with 16KB each | < 50MB server RSS |
 
 ### New MCP Tools Summary
 
