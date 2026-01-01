@@ -1,0 +1,38 @@
+{
+  "name": "gasoline-mcp",
+  "version": "3.0.2",
+  "description": "Adding fuel to the AI fire. Captures browser console logs, errors, and context for your AI coding assistant via MCP.",
+  "license": "MIT",
+  "bin": {
+    "gasoline": "bin/gasoline-cli"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "optionalDependencies": {
+    "@brennhill/gasoline-darwin-arm64": "3.0.2",
+    "@brennhill/gasoline-darwin-x64": "3.0.2",
+    "@brennhill/gasoline-linux-arm64": "3.0.2",
+    "@brennhill/gasoline-linux-x64": "3.0.2",
+    "@brennhill/gasoline-win32-x64": "3.0.2"
+  },
+  "keywords": [
+    "mcp",
+    "browser",
+    "console",
+    "debugging",
+    "ai",
+    "claude",
+    "cursor",
+    "dev-tools",
+    "model-context-protocol"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anthropic/gasoline"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

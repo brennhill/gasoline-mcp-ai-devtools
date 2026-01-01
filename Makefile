@@ -1,0 +1,57 @@
+# Gasoline Build Makefile
+
+VERSION := 3.0.0
+BINARY_NAME := gasoline
+BUILD_DIR := dist
+
+# Build targets
+PLATFORMS := \
+	darwin-amd64 \
+	darwin-arm64 \
+	linux-amd64 \
+	linux-arm64 \
+	windows-amd64
+
+.PHONY: all clean build test $(PLATFORMS)
+
+all: clean build
+
+clean:
+	rm -rf $(BUILD_DIR)
+
+test:
+	CGO_ENABLED=0 go test -v ./cmd/dev-console/...
+
+build: $(PLATFORMS)
+
+darwin-amd64:
+	@mkdir -p $(BUILD_DIR)
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 ./cmd/dev-console
+
+darwin-arm64:
+	@mkdir -p $(BUILD_DIR)
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./cmd/dev-console
+
+linux-amd64:
+	@mkdir -p $(BUILD_DIR)
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 ./cmd/dev-console
+
+linux-arm64:
+	@mkdir -p $(BUILD_DIR)
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 ./cmd/dev-console
+
+windows-amd64:
+	@mkdir -p $(BUILD_DIR)
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe ./cmd/dev-console
+
+# Build for current platform only (for development)
+dev:
+	CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/dev-console
+
+# Run the server locally
+run:
+	CGO_ENABLED=0 go run ./cmd/dev-console
+
+# Create checksums
+checksums:
+	cd $(BUILD_DIR) && shasum -a 256 * > checksums.txt

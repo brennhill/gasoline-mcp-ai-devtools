@@ -1,0 +1,6 @@
+# Built binaries (copied from dist/ during publish)
+darwin-arm64/bin/gasoline
+darwin-x64/bin/gasoline
+linux-arm64/bin/gasoline
+linux-x64/bin/gasoline
+win32-x64/bin/gasoline.exe

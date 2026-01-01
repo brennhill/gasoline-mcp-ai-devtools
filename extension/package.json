@@ -1,0 +1,14 @@
+{
+  "name": "dev-console-extension",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser extension for Dev Console",
+  "scripts": {
+    "test": "node --test __tests__/*.test.js"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

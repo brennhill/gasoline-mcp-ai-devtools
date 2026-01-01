@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gasoline Options</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        padding: 16px;
+        width: 320px;
+      }
+
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #58a6ff;
+        text-decoration: none;
+        font-size: 12px;
+        margin-bottom: 12px;
+      }
+
+      .back-link:hover {
+        text-decoration: underline;
+      }
+
+      .back-link svg {
+        width: 12px;
+        height: 12px;
+      }
+
+      h1 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .subtitle {
+        color: #888;
+        font-size: 12px;
+        margin-bottom: 16px;
+      }
+
+      .section {
+        margin-bottom: 16px;
+      }
+
+      .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+      }
+
+      .section-description {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 12px;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 100px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-family: ui-monospace, monospace;
+        background: #252525;
+        border: 1px solid #333;
+        border-radius: 6px;
+        color: #e0e0e0;
+        resize: vertical;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: #58a6ff;
+      }
+
+      input[type='text'] {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-family: ui-monospace, monospace;
+        background: #252525;
+        border: 1px solid #333;
+        border-radius: 6px;
+        color: #e0e0e0;
+      }
+
+      input[type='text']:focus {
+        outline: none;
+        border-color: #58a6ff;
+      }
+
+      .help-text {
+        font-size: 11px;
+        color: #666;
+        margin-top: 6px;
+      }
+
+      .help-text code {
+        background: #252525;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-family: ui-monospace, monospace;
+        font-size: 10px;
+      }
+
+      button {
+        width: 100%;
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        background: #238636;
+        border: none;
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      button:hover {
+        background: #2ea043;
+      }
+
+      button:active {
+        background: #238636;
+      }
+
+      .saved-message {
+        display: block;
+        text-align: center;
+        margin-top: 8px;
+        color: #3fb950;
+        font-size: 12px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .saved-message.show {
+        opacity: 1;
+      }
+
+      .toggle-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #333;
+      }
+
+      .toggle-row:last-child {
+        border-bottom: none;
+      }
+
+      .toggle-info {
+        flex: 1;
+      }
+
+      .toggle-label {
+        font-size: 13px;
+        color: #e0e0e0;
+        display: block;
+      }
+
+      .toggle-description {
+        font-size: 11px;
+        color: #666;
+        margin-top: 2px;
+      }
+
+      .toggle {
+        position: relative;
+        width: 40px;
+        height: 22px;
+        flex-shrink: 0;
+        margin-left: 12px;
+        background: #333;
+        border-radius: 22px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .toggle.active {
+        background: #238636;
+      }
+
+      .toggle::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 16px;
+        height: 16px;
+        background: #666;
+        border-radius: 50%;
+        transition: all 0.2s;
+      }
+
+      .toggle.active::after {
+        transform: translateX(18px);
+        background: #fff;
+      }
+
+      .examples {
+        margin-top: 12px;
+        padding: 8px 12px;
+        background: #252525;
+        border-radius: 6px;
+      }
+
+      .examples h4 {
+        font-size: 10px;
+        font-weight: 600;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+      }
+
+      .examples ul {
+        list-style: none;
+        font-size: 11px;
+      }
+
+      .examples li {
+        padding: 2px 0;
+        font-family: ui-monospace, monospace;
+      }
+
+      .examples li span {
+        color: #666;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        display: block;
+        font-size: 10px;
+        margin-top: 1px;
+      }
+
+      .feature-section {
+        background: #252525;
+        border-radius: 6px;
+        padding: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="popup.html" class="back-link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+        <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+      </svg>
+      Back to Gasoline
+    </a>
+
+    <h1>Options</h1>
+    <p class="subtitle">Configure your Gasoline extension</p>
+
+    <div class="section">
+      <div class="section-title">Server Connection</div>
+      <div class="section-description">
+        Configure the Gasoline server URL. Change the port if you're running the server on a different port.
+      </div>
+
+      <input type="text" id="server-url-input" placeholder="http://localhost:7890" value="http://localhost:7890" />
+
+      <div class="help-text">
+        Default: <code>http://localhost:7890</code>. Use <code>--port</code> flag when starting the server to use a different port.
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Domain Filters</div>
+      <div class="section-description">
+        Enter domain patterns to capture logs from, one per line. Leave empty to capture from all
+        domains.
+      </div>
+
+      <textarea id="domain-filters" placeholder="localhost:*&#10;*.myapp.com&#10;staging.example.com"></textarea>
+
+      <div class="help-text">
+        Use <code>*</code> as a wildcard. For example, <code>*.localhost</code> matches all
+        localhost subdomains.
+      </div>
+
+      <div class="examples">
+        <h4>Examples</h4>
+        <ul>
+          <li>localhost:* <span>- All localhost ports</span></li>
+          <li>*.myapp.com <span>- All subdomains of myapp.com</span></li>
+          <li>127.0.0.1:3000 <span>- Specific host and port</span></li>
+          <li>*.local <span>- All .local domains</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Advanced Settings</div>
+      <div class="feature-section">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Screenshot on Error</span>
+            <span class="toggle-description">Capture page screenshot automatically</span>
+          </div>
+          <div id="screenshot-toggle" class="toggle"></div>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Source Maps</span>
+            <span class="toggle-description">Resolve minified stack traces</span>
+          </div>
+          <div id="sourcemap-toggle" class="toggle"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <button id="save-btn">Save Options</button>
+      <span id="saved-message" class="saved-message">Saved!</span>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>
