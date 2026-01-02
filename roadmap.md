@@ -2,6 +2,11 @@
 
 ## In Progress
 
+### GitHub Pages Documentation Site
+- **Branch:** `feature/github-pages-site`
+- **Status:** Being handled by agent
+- **Summary:** SEO-optimized documentation site for cookwithgasoline.com using Jekyll minimal-mistakes theme. Splits monolithic README into targeted pages for search discoverability.
+
 ### Performance Budget Monitor (`check_performance`)
 - **Branch:** `feature/performance-budget-monitor`
 - **Status:** Being handled by agent
