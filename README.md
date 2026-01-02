@@ -1,18 +1,9 @@
 <div align="center">
 
-```
-     ██████╗  █████╗ ███████╗ ██████╗ ██╗     ██╗███╗   ██╗███████╗
-    ██╔════╝ ██╔══██╗██╔════╝██╔═══██╗██║     ██║████╗  ██║██╔════╝
-    ██║  ███╗███████║███████╗██║   ██║██║     ██║██╔██╗ ██║█████╗
-    ██║   ██║██╔══██║╚════██║██║   ██║██║     ██║██║╚██╗██║██╔══╝
-    ╚██████╔╝██║  ██║███████║╚██████╔╝███████╗██║██║ ╚████║███████╗
-     ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝╚══════╝
-```
+<img src="chrome_store_files/readme-banner.png" alt="Gasoline - Fuel for the AI Fire" width="100%" />
 
-**Adding fuel to the AI fire**
-
-[![License](https://img.shields.io/badge/license-PolyForm%20Internal%20Use-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.0-green.svg)](https://github.com/brennhill/gasoline/releases)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-3.5.0-green.svg)](https://github.com/brennhill/gasoline/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline)
@@ -24,6 +15,7 @@
 
 [Quick Start](#quick-start) •
 [Features](#what-gets-captured) •
+[Alternatives](#alternatives) •
 [Privacy](#privacy--security) •
 [Roadmap](#features-roadmap) •
 [Development](#development)
@@ -32,7 +24,7 @@
 
 ---
 
-**Stop copy-pasting browser errors.** Gasoline captures console logs, network errors, and exceptions from your browser and writes them to a local file that your AI coding assistant (Claude Code, Cursor, etc.) can read.
+**Stop copy-pasting browser errors.** Gasoline captures console logs, network errors, exceptions, WebSocket events, and more from your browser and makes them available to your AI coding assistant (Claude Code, Cursor, etc.) via MCP.
 
 ## Quick Start
 
@@ -51,7 +43,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -69,7 +61,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -82,7 +74,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -98,7 +90,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -112,7 +104,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
     "gasoline": {
       "command": {
         "path": "npx",
-        "args": ["gasoline-cli", "--mcp"]
+        "args": ["gasoline-mcp", "--mcp"]
       }
     }
   }
@@ -129,7 +121,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
         "transport": {
           "type": "stdio",
           "command": "npx",
-          "args": ["gasoline-cli", "--mcp"]
+          "args": ["gasoline-mcp", "--mcp"]
         }
       }
     ]
@@ -143,15 +135,18 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
 
 ### 2. Install the browser extension
 
-**Chrome Web Store** (coming soon)
+**Chrome Web Store** — search for "Gasoline" or install from the [Chrome Web Store listing](https://chromewebstore.google.com)
 
-**Load unpacked** (works now):
+<details>
+<summary>Load unpacked (for development)</summary>
 
 1. Download or clone this repository
 2. Open `chrome://extensions` in Chrome
 3. Enable **Developer mode** (top right toggle)
 4. Click **Load unpacked**
 5. Select the `extension/` folder
+
+</details>
 
 ### 3. Verify it's working
 
@@ -161,18 +156,24 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
 
 Your AI assistant now has access to these tools:
 
-| Tool                 | What it does                                            |
-| -------------------- | ------------------------------------------------------- |
-| `get_browser_errors` | Recent console errors, network failures, and exceptions |
-| `get_browser_logs`   | All logs (errors + warnings + info)                     |
-| `clear_browser_logs` | Clears the log file                                     |
+| Tool                      | What it does                                            |
+| ------------------------- | ------------------------------------------------------- |
+| `get_browser_errors`      | Recent console errors, network failures, and exceptions |
+| `get_browser_logs`        | All logs (errors + warnings + info)                     |
+| `clear_browser_logs`      | Clears the log file                                     |
+| `get_websocket_events`    | Captured WebSocket messages and lifecycle events        |
+| `get_websocket_status`    | Active WebSocket connection states and rates            |
+| `get_network_bodies`      | Captured request/response payloads                      |
+| `query_dom`               | Query the live DOM with a CSS selector                  |
+| `get_page_info`           | Current page URL, title, and viewport                   |
+| `run_accessibility_audit` | Run an accessibility audit on the page                  |
 
 ### Alternative: Manual server mode (no MCP)
 
 If your AI tool doesn't support MCP, run the server standalone and point your AI at the log file:
 
 ```bash
-npx gasoline-cli
+npx gasoline-mcp
 ```
 
 The server will listen on `http://localhost:7890` and write logs to `~/gasoline-logs.jsonl`.
@@ -181,7 +182,11 @@ The server will listen on `http://localhost:7890` and write logs to `~/gasoline-
 
 - **Console logs** - `console.log()`, `.warn()`, `.error()`, `.info()`, `.debug()` with full arguments
 - **Network errors** - Failed API calls (4xx, 5xx) with URL, method, status, and response body
+- **Network bodies** - Request/response payloads for API debugging (on-demand)
 - **Exceptions** - Uncaught errors and unhandled promise rejections with full stack traces
+- **WebSocket events** - Connection lifecycle (open/close) and message payloads with adaptive sampling
+- **User actions** - Clicks, inputs, scrolls, and keyboard events with multi-strategy selectors
+- **Screenshots** - Auto-capture on error with configurable rate limiting
 
 ## Log Format
 
@@ -342,7 +347,7 @@ const context = window.__gasoline.getContext()
 | `getNetworkWaterfall(options)` | Get current network waterfall data            |
 | `getMarks(options)`            | Get performance marks                         |
 | `getMeasures(options)`         | Get performance measures                      |
-| `version`                      | API version (currently "3.0.0")               |
+| `version`                      | API version (currently "3.5.0")               |
 
 ### Example: Add Context in React
 
@@ -370,7 +375,7 @@ function CheckoutPage() {
 ## Server Options
 
 ```bash
-npx gasoline-cli [options]
+npx gasoline-mcp [options]
 
 Options:
   --port <number>        Port to listen on (default: 7890)
@@ -407,14 +412,14 @@ A fully-enriched error = ~5 entries, so 1000 entries ≈ **200 fully-enriched er
 
 ```bash
 # Increase to 5000 entries for verbose logging
-npx gasoline-cli --max-entries 5000
+npx gasoline-mcp --max-entries 5000
 ```
 
 **When to decrease:** If disk space is constrained or you only need the most recent errors:
 
 ```bash
 # Keep only the last 200 entries
-npx gasoline-cli --max-entries 200
+npx gasoline-mcp --max-entries 200
 ```
 
 ### MCP Mode
@@ -439,7 +444,7 @@ Add to `~/.claude/settings.json`:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -457,7 +462,7 @@ Add to your Claude Desktop config file:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -471,7 +476,7 @@ Add to Cursor's MCP settings (Settings → MCP Servers → Add Server):
 {
   "gasoline": {
     "command": "npx",
-    "args": ["gasoline-cli", "--mcp"]
+    "args": ["gasoline-mcp", "--mcp"]
   }
 }
 ```
@@ -483,7 +488,7 @@ Or add directly to `~/.cursor/mcp.json`:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -498,7 +503,7 @@ Add to Windsurf's MCP configuration (`~/.codeium/windsurf/mcp_config.json`):
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -516,7 +521,7 @@ Add to Continue's config (`~/.continue/config.json`):
         "transport": {
           "type": "stdio",
           "command": "npx",
-          "args": ["gasoline-cli", "--mcp"]
+          "args": ["gasoline-mcp", "--mcp"]
         }
       }
     ]
@@ -534,7 +539,7 @@ Add to your Zed settings (`~/.config/zed/settings.json`):
     "gasoline": {
       "command": {
         "path": "npx",
-        "args": ["gasoline-cli", "--mcp"]
+        "args": ["gasoline-mcp", "--mcp"]
       }
     }
   }
@@ -550,7 +555,7 @@ If you need to run Gasoline on a different port, add the `--port` flag:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp", "--port", "7891"]
+      "args": ["gasoline-mcp", "--mcp", "--port", "7891"]
     }
   }
 }
@@ -560,11 +565,17 @@ If you need to run Gasoline on a different port, add the `--port` flag:
 
 Once connected, your AI assistant has access to these tools:
 
-| Tool                 | Description                                                              |
-| -------------------- | ------------------------------------------------------------------------ |
-| `get_browser_errors` | Get recent browser errors (console errors, network failures, exceptions) |
-| `get_browser_logs`   | Get all browser logs (errors, warnings, info)                            |
-| `clear_browser_logs` | Clear the log file                                                       |
+| Tool                      | Description                                                              |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `get_browser_errors`      | Get recent browser errors (console errors, network failures, exceptions) |
+| `get_browser_logs`        | Get all browser logs (errors, warnings, info)                            |
+| `clear_browser_logs`      | Clear the log file                                                       |
+| `get_websocket_events`    | Get captured WebSocket events (messages, lifecycle). Filter by URL, connection ID, or direction |
+| `get_websocket_status`    | Get current WebSocket connection states, message rates, and schemas      |
+| `get_network_bodies`      | Get captured network request/response bodies. Filter by URL, method, or status code |
+| `query_dom`               | Query the live DOM in the browser using a CSS selector                    |
+| `get_page_info`           | Get information about the current page (URL, title, viewport)            |
+| `run_accessibility_audit` | Run an accessibility audit on the current page or a scoped element       |
 
 ### Verifying MCP Connection
 
@@ -579,12 +590,13 @@ After configuring, verify the connection:
 
 Click the extension icon to:
 
-- View connection status
+- View connection status and log entry count
 - Set capture level (Errors Only, Warnings+, All Logs)
-- Toggle advanced capture features (DOM snapshots, network waterfall, etc.)
+- Toggle advanced capture features (screenshots, network waterfall, performance marks, user action replay)
+- Configure WebSocket capture (off, lifecycle only, or full messages)
 - Clear all logs
 
-In Options, you can configure domain filters to only capture logs from specific sites.
+In Options, you can configure the server URL and domain filters to only capture logs from specific sites.
 
 ## Privacy & Security
 
@@ -615,6 +627,24 @@ Browser Page                Extension                 Server              AI Ass
 4. The service worker batches logs and POSTs them to the **local server**
 5. The server appends each log entry to the JSONL file
 6. Your **AI assistant** can read the file to help debug issues
+
+## Alternatives
+
+Other tools that give AI coding assistants access to browser state via MCP:
+
+| Tool | Architecture | Approach | Dependencies |
+|------|-------------|----------|--------------|
+| **Gasoline** | Extension + Go binary | Passive capture (observes without controlling) | None (single binary) |
+| [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) | Puppeteer-based server | Active control (agent drives the browser) | Node.js 22+, Chrome launched with debug port |
+| [BrowserTools MCP](https://github.com/AgentDeskAI/browser-tools-mcp) | Extension + Node server + MCP server | Passive capture + Lighthouse audits | Node.js |
+| [Cursor MCP Extension](https://github.com/sirvenis/cursor-mcp-extension) | Extension + MCP server | Passive capture (console + network) | Node.js |
+
+**Key differences:**
+
+- **Vendor neutral** — Gasoline is independent and open-source. It works with any MCP-compatible AI tool (Claude Code, Cursor, Windsurf, Zed, Continue, etc.) without favoring any vendor. Chrome DevTools MCP is maintained by Google; Cursor MCP Extension is Cursor-specific.
+- **Passive vs. active** — Gasoline and BrowserTools observe what happens in the browser without interfering. Chrome DevTools MCP takes control of the browser via Puppeteer, which is more powerful but requires a separate Chrome instance and can't observe your normal browsing session.
+- **Zero dependencies** — Gasoline ships as a single Go binary with no runtime dependencies. The others require Node.js.
+- **Performance overhead** — Gasoline enforces strict SLOs (< 0.1ms per console intercept). The extension never blocks the main thread.
 
 ## Performance SLOs
 
@@ -657,7 +687,6 @@ Built-in limits prevent runaway resource usage:
 
 ```bash
 # Run performance benchmark tests
-cd apps/dev-console
 node --test extension-tests/performance.test.js
 ```
 
@@ -672,7 +701,7 @@ node --test extension-tests/performance.test.js
 - [x] Domain filtering
 - [x] Log rotation
 
-### v2 (Current)
+### v2 (Complete)
 
 - [x] **Screenshot capture** - Auto-capture on error (configurable)
 - [x] **DOM snapshot** - Capture relevant DOM subtree on error
@@ -691,6 +720,26 @@ node --test extension-tests/performance.test.js
 - [x] **Configurable server URL** - Change port in extension Options
 - [x] **Performance benchmarks** - SLO tests for all critical paths
 - [x] **Debug log export** - Download JSON with recent extension activity
+
+### v4 (Complete)
+
+- [x] **WebSocket monitoring** - Connection lifecycle, message payloads, adaptive sampling for high-frequency streams
+- [x] **Network response bodies** - Capture request/response payloads for API debugging
+- [x] **Live DOM queries** - On-demand DOM state inspection via MCP tool
+- [x] **Accessibility audit** - Run axe-core and surface violations as actionable findings
+
+### v5 (Current)
+
+- [x] **AI context enrichment** - Enrich errors with component ancestry (React/Vue/Svelte) and relevant app state for complete diagnosis
+- [x] **Reproduction scripts** - Convert captured user actions into runnable Playwright tests with robust multi-strategy selectors (data-testid > aria > role > CSS path)
+- [x] **Enhanced action recording** - Click, input, scroll, keyboard, and select events with multi-strategy selector computation
+
+### v6 (Planned)
+
+- [ ] **Visual context at error time** - Capture a screenshot and annotated DOM region when errors occur, giving the AI visual context alongside stack traces
+- [ ] **State timeline** - Record Redux/Zustand action log with timestamps, showing how app state evolved leading up to a bug
+- [ ] **Fix verification feedback** - After a fix is applied and the page reloads, diff the error buffer to confirm the error is resolved or flag new regressions
+- [ ] **API type inference** - Generate TypeScript interfaces from observed network request/response payloads, so the AI knows the real API shape
 
 ## Troubleshooting
 
@@ -764,7 +813,7 @@ If you encounter a bug, please [open an issue](https://github.com/brennhill/gaso
 5. **Extension popup screenshot**: Shows connection status and settings
 6. **Debug log export**: Click "Export Debug Log" in the popup and attach the JSON file
 7. **Browser console errors**: Right-click extension icon → Inspect → Console tab
-8. **Server output**: Any errors from `npx gasoline-cli`
+8. **Server output**: Any errors from `npx gasoline-mcp`
 
 For log format or enrichment questions, include a sample log entry (redact sensitive data).
 
@@ -781,19 +830,26 @@ make build
 # Run server locally
 make run
 
-# Run extension tests
-node --experimental-vm-modules --test extension-tests/*.test.js
+# Run Go server tests
+make test
+
+# Run extension unit tests
+node --test extension-tests/*.test.js
+
+# Run e2e tests (requires built binary)
+make dev
+cd e2e-tests && npm test
 ```
 
 ## Publishing (npm)
 
-Gasoline is distributed as an npm package (`gasoline-cli`) with platform-specific binaries, similar to how esbuild works.
+Gasoline is distributed as an npm package (`gasoline-mcp`) with platform-specific binaries, similar to how esbuild works.
 
 ### Package Structure
 
 ```
 npm/
-├── gasoline-cli/               # Main package (bin entry point)
+├── gasoline-cli/               # Main package (gasoline-mcp on npm)
 ├── darwin-arm64/               # @brennhill/gasoline-darwin-arm64
 ├── darwin-x64/                 # @brennhill/gasoline-darwin-x64
 ├── linux-arm64/                # @brennhill/gasoline-linux-arm64
@@ -801,7 +857,7 @@ npm/
 └── win32-x64/                  # @brennhill/gasoline-win32-x64
 ```
 
-When a user runs `npm install gasoline-cli`, npm installs only the platform-specific optional dependency matching their OS/architecture. The main package's bin script detects the platform and runs the correct binary.
+When a user runs `npm install gasoline-mcp`, npm installs only the platform-specific optional dependency matching their OS/architecture. The main package's bin script detects the platform and runs the correct binary.
 
 ### Publishing a New Version
 
@@ -820,7 +876,7 @@ The script will:
 1. Build Go binaries for all platforms (`make build`)
 2. Copy binaries into the correct npm package directories
 3. Publish each `@brennhill/gasoline-*` platform package
-4. Publish the main `gasoline-cli` package
+4. Publish the main `gasoline-mcp` package
 
 ### Supported Platforms
 
@@ -834,12 +890,29 @@ The script will:
 
 ## Requirements
 
-- **Server**: Go 1.21+ (or use `npx gasoline-cli` for pre-built binary)
+- **Server**: Go 1.21+ (or use `npx gasoline-mcp` for pre-built binary)
 - **Extension**: Chrome/Chromium-based browser (Manifest V3)
 
-## License
+## ⚖️ License & Commercial Use
 
-PolyForm Internal Use License 1.0.0 - see [LICENSE](LICENSE)
+**Gasoline** is free and open-source software licensed under the **GNU Affero General Public License v3.0 (AGPL v3)**.
+
+### What this means for you:
+
+* ✅ **Personal Use:** You can use Gasoline locally, modify it, and hack on it as much as you like.
+* ✅ **Internal Company Use:** You are free to use Gasoline inside your company to debug, test, and develop your own applications.
+* ✅ **Contributing:** Pull requests are welcome!
+
+### What this restricts:
+
+* ❌ **Closed-Source Distribution:** If you fork Gasoline, modify it, and make it available to others (either as a download or a hosted service), **you must open-source your modifications** under the same AGPL v3 license.
+* ❌ **Proprietary Wrappers:** You cannot take this code, wrap it in a proprietary product, and sell it without releasing the source code.
+
+### 💼 Commercial Licensing
+
+We chose AGPL to ensure that Gasoline remains a community-driven tool and to prevent proprietary vendor lock-in.
+
+However, if you wish to integrate Gasoline's technology into a proprietary commercial product **without** open-sourcing your code, we offer a separate commercial license.
 
 ---
 

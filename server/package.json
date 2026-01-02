@@ -1,6 +1,6 @@
 {
   "name": "gasoline-cli",
-  "version": "2.0.0",
+  "version": "3.5.0",
   "description": "Adding fuel to the AI fire - browser log capture for AI coding assistants",
   "keywords": [
     "browser",
@@ -22,7 +22,7 @@
     "type": "git",
     "url": "git+https://github.com/brennhill/gasoline.git"
   },
-  "license": "PolyForm-Internal-Use-1.0.0",
+  "license": "AGPL-3.0-only",
   "author": "Brenn Hill",
   "bin": {
     "gasoline": "bin/gasoline"

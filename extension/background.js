@@ -47,6 +47,75 @@ const screenshotTimestamps = new Map() // tabId -> [timestamps]
 const sourceMapCache = new Map() // scriptUrl -> { mappings, sources, names, sourceRoot }
 let sourceMapEnabled = false // Source map resolution (off by default)
 
+// Context annotation monitoring state
+const CONTEXT_SIZE_THRESHOLD = 20 * 1024 // 20KB threshold
+const CONTEXT_WARNING_WINDOW_MS = 60000 // 60-second window
+const CONTEXT_WARNING_COUNT = 3 // Entries needed to trigger warning
+let contextExcessiveTimestamps = [] // Timestamps of excessive entries
+let contextWarningState = null // { sizeKB, count, triggeredAt }
+
+/**
+ * Measure the serialized byte size of _context in a log entry
+ * @param {Object} entry - The log entry
+ * @returns {number} Approximate byte size of _context
+ */
+export function measureContextSize(entry) {
+  if (!entry._context || typeof entry._context !== 'object') return 0
+  const keys = Object.keys(entry._context)
+  if (keys.length === 0) return 0
+  return JSON.stringify(entry._context).length
+}
+
+/**
+ * Check a batch of entries for excessive context annotation usage.
+ * Triggers a warning if 3+ entries exceed 20KB within 60 seconds.
+ * @param {Array} entries - Batch of log entries to check
+ */
+export function checkContextAnnotations(entries) {
+  const now = Date.now()
+
+  for (const entry of entries) {
+    const size = measureContextSize(entry)
+    if (size > CONTEXT_SIZE_THRESHOLD) {
+      contextExcessiveTimestamps.push({ ts: now, size })
+    }
+  }
+
+  // Prune timestamps outside the 60s window
+  contextExcessiveTimestamps = contextExcessiveTimestamps.filter(
+    (t) => now - t.ts < CONTEXT_WARNING_WINDOW_MS
+  )
+
+  // Check if we've hit the threshold
+  if (contextExcessiveTimestamps.length >= CONTEXT_WARNING_COUNT) {
+    const avgSize = contextExcessiveTimestamps.reduce((sum, t) => sum + t.size, 0) / contextExcessiveTimestamps.length
+    contextWarningState = {
+      sizeKB: Math.round(avgSize / 1024),
+      count: contextExcessiveTimestamps.length,
+      triggeredAt: now,
+    }
+  } else if (contextWarningState && contextExcessiveTimestamps.length === 0) {
+    // Clear warning if no excessive entries in the window
+    contextWarningState = null
+  }
+}
+
+/**
+ * Get the current context annotation warning state
+ * @returns {Object|null} Warning info or null if no warning
+ */
+export function getContextWarning() {
+  return contextWarningState
+}
+
+/**
+ * Reset the context annotation warning (for testing)
+ */
+export function resetContextWarning() {
+  contextExcessiveTimestamps = []
+  contextWarningState = null
+}
+
 // =============================================================================
 // DEBUG LOGGING
 // =============================================================================
@@ -119,7 +188,7 @@ export function clearDebugLog() {
 export function exportDebugLog() {
   return JSON.stringify({
     exportedAt: new Date().toISOString(),
-    version: '3.0.0',
+    version: '3.5.0',
     debugMode,
     connectionStatus,
     settings: {
@@ -221,6 +290,53 @@ export async function sendLogsToServer(entries) {
   const result = await response.json()
   debugLog(DebugCategory.CONNECTION, `Server accepted entries, total: ${result.entries}`)
   return result
+}
+
+/**
+ * Send WebSocket events to the server
+ */
+export async function sendWSEventsToServer(events) {
+  debugLog(DebugCategory.CONNECTION, `Sending ${events.length} WS events to server`)
+
+  const response = await fetch(`${serverUrl}/websocket-events`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ events }),
+  })
+
+  if (!response.ok) {
+    const error = `Server error (WS): ${response.status} ${response.statusText}`
+    debugLog(DebugCategory.ERROR, error)
+    throw new Error(error)
+  }
+
+  debugLog(DebugCategory.CONNECTION, `Server accepted ${events.length} WS events`)
+}
+
+/**
+ * Send enhanced actions to server
+ * @param {Array} actions - Array of enhanced action objects
+ */
+export async function sendEnhancedActionsToServer(actions) {
+  debugLog(DebugCategory.CONNECTION, `Sending ${actions.length} enhanced actions to server`)
+
+  const response = await fetch(`${serverUrl}/enhanced-actions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ actions }),
+  })
+
+  if (!response.ok) {
+    const error = `Server error (enhanced actions): ${response.status} ${response.statusText}`
+    debugLog(DebugCategory.ERROR, error)
+    throw new Error(error)
+  }
+
+  debugLog(DebugCategory.CONNECTION, `Server accepted ${actions.length} enhanced actions`)
 }
 
 /**
@@ -516,7 +632,7 @@ export function recordScreenshot(tabId) {
  * @param {string} relatedErrorId - Optional error ID to link screenshot to
  * @returns {Promise<{success: boolean, dataUrl?: string, error?: string}>}
  */
-export async function captureScreenshot(tabId, relatedErrorId) {
+export async function captureScreenshot(tabId, relatedErrorId, errorType) {
   // Check rate limiting
   const rateCheck = canTakeScreenshot(tabId)
   if (!rateCheck.allowed) {
@@ -535,26 +651,41 @@ export async function captureScreenshot(tabId, relatedErrorId) {
     // Get the tab's window ID
     const tab = await chrome.tabs.get(tabId)
 
-    // Capture the visible tab
+    // Capture as JPEG for smaller file size
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
-      format: 'png',
+      format: 'jpeg',
       quality: 80,
     })
 
     // Record the screenshot for rate limiting
     recordScreenshot(tabId)
 
-    const sizeBytes = Math.round((dataUrl.length * 3) / 4)
+    // POST screenshot to server, which saves to disk and returns filename
+    const response = await fetch(`${serverUrl}/screenshots`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dataUrl,
+        url: tab.url,
+        errorId: relatedErrorId || '',
+        errorType: errorType || '',
+      }),
+    })
 
-    // Create screenshot entry
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}`)
+    }
+
+    const result = await response.json()
+
+    // Create log entry with filename reference only (no base64 data)
     const screenshotEntry = {
       ts: new Date().toISOString(),
       type: 'screenshot',
       level: 'info',
       url: tab.url,
       _enrichments: ['screenshot'],
-      dataUrl,
-      sizeBytes,
+      screenshotFile: result.filename,
       trigger: relatedErrorId ? 'error' : 'manual',
     }
 
@@ -562,7 +693,7 @@ export async function captureScreenshot(tabId, relatedErrorId) {
       screenshotEntry.relatedErrorId = relatedErrorId
     }
 
-    debugLog(DebugCategory.CAPTURE, `Screenshot captured: ${Math.round(sizeBytes / 1024)}KB`, {
+    debugLog(DebugCategory.CAPTURE, `Screenshot saved: ${result.filename}`, {
       trigger: screenshotEntry.trigger,
       relatedErrorId,
     })
@@ -927,7 +1058,7 @@ async function maybeAutoScreenshot(errorEntry, sender) {
   const errorId = `err_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   errorEntry._errorId = errorId
 
-  const result = await captureScreenshot(sender.tab.id, errorId)
+  const result = await captureScreenshot(sender.tab.id, errorId, errorEntry.type)
 
   if (result.success && result.entry) {
     logBatcher.add(result.entry)
@@ -938,7 +1069,11 @@ async function maybeAutoScreenshot(errorEntry, sender) {
 if (typeof chrome !== 'undefined' && chrome.runtime) {
   // Message handler
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'log') {
+    if (message.type === 'ws_event') {
+      wsBatcher.add(message.payload)
+    } else if (message.type === 'enhanced_action') {
+      enhancedActionBatcher.add(message.payload)
+    } else if (message.type === 'log') {
       handleLogMessage(message.payload, sender)
     } else if (message.type === 'getStatus') {
       sendResponse({
@@ -947,6 +1082,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
         screenshotOnError,
         sourceMapEnabled,
         debugMode,
+        contextWarning: getContextWarning(),
       })
     } else if (message.type === 'clearLogs') {
       handleClearLogs().then(sendResponse)
@@ -980,10 +1116,11 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       }
       sendResponse({ success: true })
     } else if (
-      message.type === 'setDOMSnapshotEnabled' ||
       message.type === 'setNetworkWaterfallEnabled' ||
       message.type === 'setPerformanceMarksEnabled' ||
-      message.type === 'setActionReplayEnabled'
+      message.type === 'setActionReplayEnabled' ||
+      message.type === 'setWebSocketCaptureEnabled' ||
+      message.type === 'setWebSocketCaptureMode'
     ) {
       // Forward to all content scripts
       debugLog(DebugCategory.SETTINGS, `Setting ${message.type}: ${message.enabled}`)
@@ -1018,13 +1155,15 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   })
 
   // Reconnect alarm
-  chrome.alarms.create('reconnect', { periodInMinutes: RECONNECT_INTERVAL / 60000 })
+  if (chrome.alarms) {
+    chrome.alarms.create('reconnect', { periodInMinutes: RECONNECT_INTERVAL / 60000 })
 
-  chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === 'reconnect') {
-      checkConnectionAndUpdate()
-    }
-  })
+    chrome.alarms.onAlarm.addListener((alarm) => {
+      if (alarm.name === 'reconnect') {
+        checkConnectionAndUpdate()
+      }
+    })
+  }
 
   // Initial connection check
   checkConnectionAndUpdate()
@@ -1054,13 +1193,18 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   }, ERROR_GROUP_FLUSH_MS)
 
   // Clean up screenshot rate limits when tabs are closed
-  chrome.tabs.onRemoved.addListener((tabId) => {
-    screenshotTimestamps.delete(tabId)
-  })
+  if (chrome.tabs && chrome.tabs.onRemoved) {
+    chrome.tabs.onRemoved.addListener((tabId) => {
+      screenshotTimestamps.delete(tabId)
+    })
+  }
 }
 
 // Log batcher instance
 const logBatcher = createLogBatcher(async (entries) => {
+  // Monitor context annotation sizes
+  checkContextAnnotations(entries)
+
   try {
     const result = await sendLogsToServer(entries)
     connectionStatus.entries = result.entries || connectionStatus.entries + entries.length
@@ -1072,6 +1216,28 @@ const logBatcher = createLogBatcher(async (entries) => {
     updateBadge(connectionStatus)
   }
 })
+
+// WebSocket event batcher instance
+const wsBatcher = createLogBatcher(async (events) => {
+  try {
+    await sendWSEventsToServer(events)
+    connectionStatus.connected = true
+  } catch {
+    connectionStatus.connected = false
+    updateBadge(connectionStatus)
+  }
+}, { debounceMs: 200, maxBatchSize: 100 })
+
+// Enhanced action batcher instance
+const enhancedActionBatcher = createLogBatcher(async (actions) => {
+  try {
+    await sendEnhancedActionsToServer(actions)
+    connectionStatus.connected = true
+  } catch {
+    connectionStatus.connected = false
+    updateBadge(connectionStatus)
+  }
+}, { debounceMs: 200, maxBatchSize: 50 })
 
 async function handleLogMessage(payload, sender) {
   if (!shouldCaptureLog(payload.level, currentLogLevel, payload.type)) {
@@ -1157,5 +1323,93 @@ async function checkConnectionAndUpdate() {
     chrome.runtime.sendMessage({ type: 'statusUpdate', status: connectionStatus }).catch(() => {
       // Popup not open, ignore
     })
+  }
+}
+
+// =============================================================================
+// ON-DEMAND QUERY POLLING (v4)
+// =============================================================================
+
+let queryPollingInterval = null
+
+/**
+ * Poll the server for pending queries (DOM queries, a11y audits)
+ * @param {string} serverUrl - The server base URL
+ */
+export async function pollPendingQueries(serverUrl) {
+  try {
+    const response = await fetch(`${serverUrl}/pending-queries`)
+    if (!response.ok) return
+
+    const data = await response.json()
+    if (!data.queries || data.queries.length === 0) return
+
+    for (const query of data.queries) {
+      await handlePendingQuery(query, serverUrl)
+    }
+  } catch {
+    // Server unavailable, silently ignore
+  }
+}
+
+/**
+ * Handle a single pending query by dispatching to the active tab
+ * @param {Object} query - { id, type, params }
+ * @param {string} serverUrl - The server base URL
+ */
+export async function handlePendingQuery(query, serverUrl) {
+  try {
+    const tabs = await new Promise(resolve => {
+      chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+    })
+
+    if (!tabs || tabs.length === 0) return
+
+    const tabId = tabs[0].id
+    const messageType = query.type === 'a11y' ? 'GASOLINE_A11Y_AUDIT' : 'GASOLINE_DOM_QUERY'
+
+    await chrome.tabs.sendMessage(tabId, {
+      type: messageType,
+      queryId: query.id,
+      params: query.params,
+    })
+  } catch {
+    // Tab communication failed
+  }
+}
+
+/**
+ * Post query results back to the server
+ * @param {string} serverUrl - The server base URL
+ * @param {string} queryId - The query ID
+ * @param {string} type - Query type ('dom' or 'a11y')
+ * @param {Object} result - The query result
+ */
+export async function postQueryResult(serverUrl, queryId, type, result) {
+  const endpoint = type === 'a11y' ? '/a11y-result' : '/dom-result'
+
+  await fetch(`${serverUrl}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: queryId, result }),
+  })
+}
+
+/**
+ * Start polling for pending queries at 1-second intervals
+ * @param {string} serverUrl - The server base URL
+ */
+export function startQueryPolling(serverUrl) {
+  stopQueryPolling()
+  queryPollingInterval = setInterval(() => pollPendingQueries(serverUrl), 1000)
+}
+
+/**
+ * Stop polling for pending queries
+ */
+export function stopQueryPolling() {
+  if (queryPollingInterval) {
+    clearInterval(queryPollingInterval)
+    queryPollingInterval = null
   }
 }

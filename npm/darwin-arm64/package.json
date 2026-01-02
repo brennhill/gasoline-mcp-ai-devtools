@@ -1,8 +1,8 @@
 {
   "name": "@brennhill/gasoline-darwin-arm64",
-  "version": "3.0.2",
+  "version": "3.5.0",
   "description": "Gasoline binary for macOS ARM64 (Apple Silicon)",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "os": [
     "darwin"
   ],

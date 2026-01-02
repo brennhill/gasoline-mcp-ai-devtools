@@ -325,6 +325,30 @@
 
     <div id="error-message"></div>
 
+    <div id="context-warning" style="display: none; margin-top: 8px; padding: 8px 12px; background: rgba(210, 153, 34, 0.1); border: 1px solid #d29922; border-radius: 6px; font-size: 12px; color: #d29922;">
+      <span style="font-weight: 600;">⚠ Large context annotations</span>
+      <p id="context-warning-text" style="margin-top: 4px; color: #aaa;"></p>
+    </div>
+
+    <div id="troubleshooting" style="display: none;">
+      <div class="section-title" style="margin-top: 12px;">Troubleshooting</div>
+      <div class="feature-section" style="font-size: 12px; line-height: 1.6;">
+        <p style="margin-bottom: 8px; color: #ccc;">The Gasoline server is not running. To fix:</p>
+        <ol style="padding-left: 18px; color: #aaa;">
+          <li>Run <code style="background: #333; padding: 2px 4px; border-radius: 3px; color: #58a6ff;">npx gasoline-mcp</code> in your terminal</li>
+          <li>Or check if the server port is in use:<br/>
+            <code style="background: #333; padding: 2px 4px; border-radius: 3px; color: #58a6ff;">lsof -i :7890</code></li>
+          <li>If using a custom port, update it in <a href="options.html" style="color: #58a6ff;">Options</a></li>
+        </ol>
+        <!-- AI-READABLE: Gasoline MCP server connection failed.
+             Default server: http://localhost:7890
+             Start command: npx gasoline-mcp
+             Verify: curl http://localhost:7890/health
+             Check port: lsof -i :7890
+             The server must be running for the extension to send logs. -->
+      </div>
+    </div>
+
     <div class="section">
       <div class="section-title">Capture Level</div>
       <select id="log-level">
@@ -339,19 +363,27 @@
       <div class="feature-section">
         <div class="toggle-row">
           <div class="toggle-info">
-            <span class="toggle-label">DOM Snapshot</span>
-            <span class="toggle-desc">Capture page structure on errors</span>
+            <span class="toggle-label">WebSocket Capture</span>
+            <span class="toggle-desc">Monitor WebSocket connections</span>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="toggle-dom-snapshot" />
+            <input type="checkbox" id="toggle-websocket" />
             <span class="toggle-slider"></span>
           </label>
+        </div>
+        <div id="ws-mode-container" style="display: none; margin-top: 8px; padding: 8px 12px; background: #1a1a1a; border-radius: 4px;">
+          <select id="ws-mode" style="width: 100%; padding: 6px 10px; font-size: 13px; background: #333; border: 1px solid #444; border-radius: 4px; color: #e0e0e0;">
+            <option value="lifecycle">Lifecycle only (connect/disconnect/error)</option>
+            <option value="messages">Include messages (with sampling)</option>
+          </select>
+          <span class="toggle-desc" id="ws-messages-warning" style="color: #d29922; display: none; margin-top: 6px;">Message capture with sampling may produce significant log data on high-traffic connections.</span>
         </div>
 
         <div class="toggle-row">
           <div class="toggle-info">
             <span class="toggle-label">Network Waterfall</span>
             <span class="toggle-desc">Include request timing data</span>
+            <span class="toggle-desc" id="waterfall-warning" style="color: #888; display: none;">Adds ~50KB of timing data per error. May consume significant AI context.</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="toggle-network-waterfall" />
@@ -363,6 +395,7 @@
           <div class="toggle-info">
             <span class="toggle-label">Performance Marks</span>
             <span class="toggle-desc">Capture performance.mark() calls</span>
+            <span class="toggle-desc" id="perfmarks-warning" style="color: #888; display: none;">Adds timing data to log entries. Useful for performance debugging.</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="toggle-performance-marks" />
@@ -385,6 +418,7 @@
           <div class="toggle-info">
             <span class="toggle-label">Screenshot on Error</span>
             <span class="toggle-desc">Auto-capture page screenshot</span>
+            <span class="toggle-desc" id="screenshot-warning" style="color: #d29922; display: none;">Screenshots are saved as JPEG files on disk. High-resolution displays will produce large files.</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="toggle-screenshot" />

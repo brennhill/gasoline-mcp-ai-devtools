@@ -15,13 +15,6 @@ const MAX_ACTION_BUFFER_SIZE = 20 // Max number of recent actions to keep
 const SCROLL_THROTTLE_MS = 250 // Throttle scroll events
 const SENSITIVE_INPUT_TYPES = ['password', 'credit-card', 'cc-number', 'cc-exp', 'cc-csc']
 
-// DOM Snapshot settings
-export const MAX_SNAPSHOT_DEPTH = 5 // Max depth of DOM tree to capture
-export const MAX_SNAPSHOT_NODES = 100 // Max total nodes to capture
-export const MAX_TEXT_LENGTH = 500 // Max text content length per node
-const DOM_SNAPSHOT_RATE_LIMIT_MS = 5000 // Min time between snapshots
-const EXCLUDED_TAGS = ['script', 'style', 'noscript', 'svg', 'path']
-
 // Network Waterfall settings
 export const MAX_WATERFALL_ENTRIES = 50 // Max network entries to capture
 const WATERFALL_TIME_WINDOW_MS = 30000 // Only capture last 30 seconds
@@ -46,10 +39,8 @@ let actionCaptureEnabled = true
 let clickHandler = null
 let inputHandler = null
 let scrollHandler = null
-
-// DOM Snapshot state
-let domSnapshotEnabled = false
-let lastDOMSnapshotTime = 0
+let keydownHandler = null
+let changeHandler = null
 
 // Network Waterfall state
 let networkWaterfallEnabled = false
@@ -314,6 +305,7 @@ export function handleClick(event) {
   }
 
   recordAction(action)
+  recordEnhancedAction('click', target)
 }
 
 /**
@@ -341,6 +333,7 @@ export function handleInput(event) {
   }
 
   recordAction(action)
+  recordEnhancedAction('input', target, { value: action.value })
 }
 
 /**
@@ -358,6 +351,41 @@ export function handleScroll(event) {
     scrollY: Math.round(window.scrollY),
     target: event.target === document ? 'document' : getElementSelector(event.target),
   })
+  recordEnhancedAction('scroll', null, { scrollY: Math.round(window.scrollY) })
+}
+
+/**
+ * Actionable keys that are worth recording (navigation/submission keys)
+ */
+const ACTIONABLE_KEYS = new Set([
+  'Enter', 'Escape', 'Tab',
+  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+  'Backspace', 'Delete',
+])
+
+/**
+ * Handle keydown events - only records actionable keys
+ * @param {KeyboardEvent} event - The keydown event
+ */
+export function handleKeydown(event) {
+  if (!ACTIONABLE_KEYS.has(event.key)) return
+  const target = event.target
+  recordEnhancedAction('keypress', target, { key: event.key })
+}
+
+/**
+ * Handle change events on select elements
+ * @param {Event} event - The change event
+ */
+export function handleChange(event) {
+  const target = event.target
+  if (!target || !target.tagName || target.tagName.toUpperCase() !== 'SELECT') return
+
+  const selectedOption = target.options && target.options[target.selectedIndex]
+  const selectedValue = target.value || ''
+  const selectedText = selectedOption ? selectedOption.text || '' : ''
+
+  recordEnhancedAction('select', target, { selectedValue, selectedText })
 }
 
 /**
@@ -365,13 +393,18 @@ export function handleScroll(event) {
  */
 export function installActionCapture() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
+  if (typeof document.addEventListener !== 'function') return
 
   clickHandler = handleClick
   inputHandler = handleInput
   scrollHandler = handleScroll
+  keydownHandler = handleKeydown
+  changeHandler = handleChange
 
   document.addEventListener('click', clickHandler, { capture: true, passive: true })
   document.addEventListener('input', inputHandler, { capture: true, passive: true })
+  document.addEventListener('keydown', keydownHandler, { capture: true, passive: true })
+  document.addEventListener('change', changeHandler, { capture: true, passive: true })
   window.addEventListener('scroll', scrollHandler, { capture: true, passive: true })
 }
 
@@ -386,6 +419,14 @@ export function uninstallActionCapture() {
   if (inputHandler) {
     document.removeEventListener('input', inputHandler, { capture: true })
     inputHandler = null
+  }
+  if (keydownHandler) {
+    document.removeEventListener('keydown', keydownHandler, { capture: true })
+    keydownHandler = null
+  }
+  if (changeHandler) {
+    document.removeEventListener('change', changeHandler, { capture: true })
+    changeHandler = null
   }
   if (scrollHandler) {
     window.removeEventListener('scroll', scrollHandler, { capture: true })
@@ -406,205 +447,73 @@ export function setActionCaptureEnabled(enabled) {
 }
 
 // =============================================================================
-// DOM SNAPSHOT
+// NAVIGATION CAPTURE (v5)
 // =============================================================================
 
+let navigationPopstateHandler = null
+let originalPushState = null
+let originalReplaceState = null
+
 /**
- * Serialize a DOM element to a plain object
- * @param {Node} node - The DOM node to serialize
- * @param {number} depth - Current depth
- * @param {Object} state - Tracking state for node count
- * @returns {Object|null} Serialized element or null
+ * Install navigation capture to record enhanced actions on navigation events
  */
-export function serializeElement(node, depth = 0, state = { nodeCount: 0 }) {
-  if (!node) return null
+export function installNavigationCapture() {
+  if (typeof window === 'undefined') return
 
-  // Skip comment nodes
-  if (node.nodeType === 8) return null
+  // Track current URL for fromUrl
+  let lastUrl = window.location.href
 
-  // Check node limit
-  if (state.nodeCount >= MAX_SNAPSHOT_NODES) return null
-  state.nodeCount++
+  // Popstate handler (back/forward)
+  navigationPopstateHandler = function () {
+    const toUrl = window.location.href
+    recordEnhancedAction('navigate', null, { fromUrl: lastUrl, toUrl })
+    lastUrl = toUrl
+  }
+  window.addEventListener('popstate', navigationPopstateHandler)
 
-  // Handle text nodes
-  if (node.nodeType === 3) {
-    const text = (node.textContent || '').trim()
-    if (!text) return null
-    return {
-      type: 'text',
-      textContent: text.length > MAX_TEXT_LENGTH ? text.slice(0, MAX_TEXT_LENGTH) + ' [truncated]' : text,
+  // Patch pushState
+  if (window.history && window.history.pushState) {
+    originalPushState = window.history.pushState
+    window.history.pushState = function (state, title, url) {
+      const fromUrl = lastUrl
+      const result = originalPushState.call(this, state, title, url)
+      const toUrl = url || window.location.href
+      recordEnhancedAction('navigate', null, { fromUrl, toUrl: String(toUrl) })
+      lastUrl = window.location.href
+      return result
     }
   }
 
-  // Only handle element nodes
-  if (node.nodeType !== 1) return null
-
-  const tagName = (node.tagName || '').toLowerCase()
-
-  // Skip excluded tags
-  if (EXCLUDED_TAGS.includes(tagName)) return null
-
-  const result = {
-    tagName,
-  }
-
-  // Add id if present
-  if (node.id) {
-    result.id = node.id
-  }
-
-  // Add className if present
-  if (node.className && typeof node.className === 'string') {
-    result.className = node.className
-  }
-
-  // Add important attributes
-  const attrs = {}
-  if (node.attributes) {
-    for (const attr of node.attributes) {
-      // Skip style attribute (too verbose) and event handlers
-      if (attr.name === 'style' || attr.name.startsWith('on')) continue
-
-      // Redact sensitive input values
-      if (attr.name === 'value' && isSensitiveInput(node)) {
-        attrs[attr.name] = '[redacted]'
-      } else {
-        attrs[attr.name] = attr.value?.slice(0, 200) || ''
-      }
-    }
-    if (Object.keys(attrs).length > 0) {
-      result.attributes = attrs
+  // Patch replaceState
+  if (window.history && window.history.replaceState) {
+    originalReplaceState = window.history.replaceState
+    window.history.replaceState = function (state, title, url) {
+      const fromUrl = lastUrl
+      const result = originalReplaceState.call(this, state, title, url)
+      const toUrl = url || window.location.href
+      recordEnhancedAction('navigate', null, { fromUrl, toUrl: String(toUrl) })
+      lastUrl = window.location.href
+      return result
     }
   }
-
-  // Add text content for leaf nodes
-  if (node.childNodes?.length === 0 || (node.childNodes?.length === 1 && node.childNodes[0].nodeType === 3)) {
-    const text = (node.textContent || '').trim()
-    if (text) {
-      result.textContent = text.length > MAX_TEXT_LENGTH ? text.slice(0, MAX_TEXT_LENGTH) + ' [truncated]' : text
-    }
-  }
-
-  // Serialize children if not at max depth
-  if (depth < MAX_SNAPSHOT_DEPTH && node.childNodes?.length > 0) {
-    const children = []
-    for (const child of node.childNodes) {
-      if (state.nodeCount >= MAX_SNAPSHOT_NODES) break
-      const serialized = serializeElement(child, depth + 1, state)
-      if (serialized) {
-        children.push(serialized)
-      }
-    }
-    if (children.length > 0) {
-      result.children = children
-    }
-  }
-
-  return result
 }
 
 /**
- * Capture a DOM snapshot starting from an element
- * @param {Element} element - The root element to capture from
- * @param {Object} options - Options for capture
- * @returns {Object|null} The DOM snapshot
+ * Uninstall navigation capture
  */
-export function captureDOMSnapshot(element, options = {}) {
-  // Fall back to document body if no element provided
-  const root = element || (typeof document !== 'undefined' ? document.body : null)
-
-  if (!root) return null
-
-  const state = { nodeCount: 0 }
-  const snapshot = serializeElement(root, 0, state)
-
-  if (!snapshot) return null
-
-  // Include ancestors if requested
-  if (options.includeAncestors && element && element.parentElement) {
-    const ancestors = []
-    let parent = element.parentElement
-    let ancestorDepth = 0
-
-    while (parent && ancestorDepth < 3) {
-      ancestors.unshift({
-        tagName: parent.tagName?.toLowerCase(),
-        id: parent.id || undefined,
-        className: typeof parent.className === 'string' ? parent.className : undefined,
-      })
-      parent = parent.parentElement
-      ancestorDepth++
-    }
-
-    if (ancestors.length > 0) {
-      snapshot.ancestors = ancestors
-    }
+export function uninstallNavigationCapture() {
+  if (navigationPopstateHandler) {
+    window.removeEventListener('popstate', navigationPopstateHandler)
+    navigationPopstateHandler = null
   }
-
-  return snapshot
-}
-
-/**
- * Get a DOM snapshot entry for an error
- * @param {Object} errorEntry - The error entry
- * @returns {Promise<Object|null>} The snapshot entry
- */
-export async function getDOMSnapshotForError(errorEntry) {
-  if (!domSnapshotEnabled) return null
-
-  // Rate limiting
-  const now = Date.now()
-  if (now - lastDOMSnapshotTime < DOM_SNAPSHOT_RATE_LIMIT_MS) {
-    return null
+  if (originalPushState && window.history) {
+    window.history.pushState = originalPushState
+    originalPushState = null
   }
-  lastDOMSnapshotTime = now
-
-  const root = typeof document !== 'undefined' ? document.body : null
-  if (!root) return null
-
-  const snapshot = captureDOMSnapshot(root)
-  if (!snapshot) return null
-
-  const entry = {
-    type: 'dom_snapshot',
-    ts: new Date().toISOString(),
-    _enrichments: ['domSnapshot'],
-    _errorTs: errorEntry.ts,
-    snapshot,
+  if (originalReplaceState && window.history) {
+    window.history.replaceState = originalReplaceState
+    originalReplaceState = null
   }
-
-  // Include viewport info
-  if (typeof window !== 'undefined') {
-    entry.viewport = {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    }
-  }
-
-  return entry
-}
-
-/**
- * Set whether DOM snapshot is enabled
- * @param {boolean} enabled - Whether to enable DOM snapshot
- */
-export function setDOMSnapshotEnabled(enabled) {
-  domSnapshotEnabled = enabled
-}
-
-/**
- * Check if DOM snapshot is enabled
- * @returns {boolean} Whether DOM snapshot is enabled
- */
-export function isDOMSnapshotEnabled() {
-  return domSnapshotEnabled
-}
-
-/**
- * Reset DOM snapshot rate limit (for testing)
- */
-export function resetDOMSnapshotRateLimit() {
-  lastDOMSnapshotTime = 0
 }
 
 // =============================================================================
@@ -1183,7 +1092,7 @@ export function installExceptionCapture() {
   originalOnerror = window.onerror
 
   window.onerror = function (message, filename, lineno, colno, error) {
-    postLog({
+    const entry = {
       level: 'error',
       type: 'exception',
       message: String(message),
@@ -1191,7 +1100,17 @@ export function installExceptionCapture() {
       lineno: lineno || 0,
       colno: colno || 0,
       stack: error?.stack || '',
-    })
+    }
+
+    // Enrich with AI context then post (async, fire-and-forget)
+    ;(async () => {
+      try {
+        const enriched = await enrichErrorWithAiContext(entry)
+        postLog(enriched)
+      } catch {
+        postLog(entry)
+      }
+    })()
 
     // Call original if exists
     if (originalOnerror) {
@@ -1215,12 +1134,22 @@ export function installExceptionCapture() {
       message = String(error)
     }
 
-    postLog({
+    const entry = {
       level: 'error',
       type: 'exception',
       message: `Unhandled Promise Rejection: ${message}`,
       stack,
-    })
+    }
+
+    // Enrich with AI context then post (async, fire-and-forget)
+    ;(async () => {
+      try {
+        const enriched = await enrichErrorWithAiContext(entry)
+        postLog(enriched)
+      } catch {
+        postLog(entry)
+      }
+    })()
   }
 
   window.addEventListener('unhandledrejection', unhandledrejectionHandler)
@@ -1249,6 +1178,8 @@ export function install() {
   installFetchCapture()
   installExceptionCapture()
   installActionCapture()
+  installNavigationCapture()
+  installWebSocketCapture()
 }
 
 /**
@@ -1259,6 +1190,8 @@ export function uninstall() {
   uninstallFetchCapture()
   uninstallExceptionCapture()
   uninstallActionCapture()
+  uninstallNavigationCapture()
+  uninstallWebSocketCapture()
 }
 
 /**
@@ -1326,14 +1259,6 @@ export function installGasolineAPI() {
     },
 
     /**
-     * Enable or disable DOM snapshot capture
-     * @param {boolean} enabled - Whether to capture DOM snapshots on errors
-     */
-    setDOMSnapshot(enabled) {
-      setDOMSnapshotEnabled(enabled)
-    },
-
-    /**
      * Enable or disable network waterfall capture
      * @param {boolean} enabled - Whether to capture network waterfall
      */
@@ -1376,10 +1301,83 @@ export function installGasolineAPI() {
       return getPerformanceMeasures(options)
     },
 
+    // === v5: AI Context ===
+
+    /**
+     * Enrich an error entry with AI context
+     * @param {Object} error - Error entry to enrich
+     * @returns {Promise<Object>} Enriched error entry
+     */
+    enrichError(error) {
+      return enrichErrorWithAiContext(error)
+    },
+
+    /**
+     * Enable or disable AI context enrichment
+     * @param {boolean} enabled
+     */
+    setAiContext(enabled) {
+      setAiContextEnabled(enabled)
+    },
+
+    /**
+     * Enable or disable state snapshot in AI context
+     * @param {boolean} enabled
+     */
+    setStateSnapshot(enabled) {
+      setAiContextStateSnapshot(enabled)
+    },
+
+    // === v5: Reproduction Scripts ===
+
+    /**
+     * Record an enhanced action (for testing)
+     * @param {string} type - Action type
+     * @param {Element} element - Target element
+     * @param {Object} opts - Options
+     */
+    recordAction(type, element, opts) {
+      return recordEnhancedAction(type, element, opts)
+    },
+
+    /**
+     * Get the enhanced action buffer
+     * @returns {Array}
+     */
+    getEnhancedActions() {
+      return getEnhancedActionBuffer()
+    },
+
+    /**
+     * Clear the enhanced action buffer
+     */
+    clearEnhancedActions() {
+      clearEnhancedActionBuffer()
+    },
+
+    /**
+     * Generate a Playwright reproduction script
+     * @param {Array} actions - Actions to convert
+     * @param {Object} opts - Generation options
+     * @returns {string} Playwright test script
+     */
+    generateScript(actions, opts) {
+      return generatePlaywrightScript(actions || getEnhancedActionBuffer(), opts)
+    },
+
+    /**
+     * Compute multi-strategy selectors for an element
+     * @param {Element} element
+     * @returns {Object}
+     */
+    getSelectors(element) {
+      return computeSelectors(element)
+    },
+
     /**
      * Version of the Gasoline API
      */
-    version: '3.0.0',
+    version: '3.5.0',
   }
 }
 
@@ -1392,6 +1390,1718 @@ export function uninstallGasolineAPI() {
   }
 }
 
+// =============================================================================
+// WEBSOCKET CAPTURE (v4)
+// =============================================================================
+
+const WS_MAX_BODY_SIZE = 4096 // 4KB truncation limit
+const WS_PREVIEW_LIMIT = 200 // Preview character limit
+
+// WebSocket capture state
+let originalWebSocket = null
+let webSocketCaptureEnabled = false
+let webSocketCaptureMode = 'lifecycle' // 'lifecycle' or 'messages'
+
+/**
+ * Get the byte size of a WebSocket message
+ * @param {string|ArrayBuffer|Blob|Object} data - The message data
+ * @returns {number} Size in bytes
+ */
+export function getSize(data) {
+  if (typeof data === 'string') return data.length
+  if (data instanceof ArrayBuffer) return data.byteLength
+  if (data && typeof data === 'object' && 'size' in data) return data.size
+  return 0
+}
+
+/**
+ * Format a WebSocket payload for logging
+ * @param {string|ArrayBuffer|Blob|Object} data - The message data
+ * @returns {string} Formatted payload string
+ */
+export function formatPayload(data) {
+  if (typeof data === 'string') return data
+
+  if (data instanceof ArrayBuffer) {
+    const bytes = new Uint8Array(data)
+    if (data.byteLength < 256) {
+      // Small binary: hex preview
+      let hex = ''
+      for (let i = 0; i < bytes.length; i++) {
+        hex += bytes[i].toString(16).padStart(2, '0')
+      }
+      return `[Binary: ${data.byteLength}B] ${hex}`
+    } else {
+      // Large binary: size + magic bytes (first 4 bytes)
+      let magic = ''
+      for (let i = 0; i < Math.min(4, bytes.length); i++) {
+        magic += bytes[i].toString(16).padStart(2, '0')
+      }
+      return `[Binary: ${data.byteLength}B, magic:${magic}]`
+    }
+  }
+
+  // Blob or Blob-like
+  if (data && typeof data === 'object' && 'size' in data) {
+    return `[Binary: ${data.size}B]`
+  }
+
+  return String(data)
+}
+
+/**
+ * Truncate a WebSocket message to the size limit
+ * @param {string} message - The message to truncate
+ * @returns {{data: string, truncated: boolean}} Truncation result
+ */
+export function truncateWsMessage(message) {
+  if (typeof message === 'string' && message.length > WS_MAX_BODY_SIZE) {
+    return { data: message.slice(0, WS_MAX_BODY_SIZE), truncated: true }
+  }
+  return { data: message, truncated: false }
+}
+
+/**
+ * Create a connection tracker for adaptive sampling and schema detection
+ * @param {string} id - Connection ID
+ * @param {string} url - WebSocket URL
+ * @returns {Object} Connection tracker instance
+ */
+export function createConnectionTracker(id, url) {
+  const tracker = {
+    id,
+    url,
+    messageCount: 0,
+    _sampleCounter: 0,
+    _messageRate: 0,
+    _messageTimestamps: [],
+    _schemaKeys: [],
+    _schemaVariants: new Map(),
+    _schemaConsistent: true,
+    _schemaDetected: false,
+
+    stats: {
+      incoming: { count: 0, bytes: 0, lastPreview: null, lastAt: null },
+      outgoing: { count: 0, bytes: 0, lastPreview: null, lastAt: null },
+    },
+
+    /**
+     * Record a message for stats and schema detection
+     */
+    recordMessage(direction, data) {
+      this.messageCount++
+      const size = data ? (typeof data === 'string' ? data.length : getSize(data)) : 0
+      const now = Date.now()
+
+      this.stats[direction].count++
+      this.stats[direction].bytes += size
+      this.stats[direction].lastAt = now
+
+      if (data && typeof data === 'string') {
+        this.stats[direction].lastPreview = data.length > WS_PREVIEW_LIMIT
+          ? data.slice(0, WS_PREVIEW_LIMIT)
+          : data
+      }
+
+      // Track timestamps for rate calculation
+      this._messageTimestamps.push(now)
+      // Keep only last 5 seconds
+      const cutoff = now - 5000
+      this._messageTimestamps = this._messageTimestamps.filter(t => t >= cutoff)
+
+      // Schema detection from first 5 incoming JSON messages
+      if (direction === 'incoming' && data && typeof data === 'string' && this._schemaKeys.length < 5) {
+        try {
+          const parsed = JSON.parse(data)
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            const keys = Object.keys(parsed).sort()
+            const keyStr = keys.join(',')
+            this._schemaKeys.push(keyStr)
+
+            // Track variants
+            this._schemaVariants.set(keyStr, (this._schemaVariants.get(keyStr) || 0) + 1)
+
+            // Check consistency after 2+ messages
+            if (this._schemaKeys.length >= 2) {
+              const first = this._schemaKeys[0]
+              this._schemaConsistent = this._schemaKeys.every(k => k === first)
+            }
+
+            if (this._schemaKeys.length >= 5) {
+              this._schemaDetected = true
+            }
+          }
+        } catch {
+          // Not JSON, no schema
+        }
+      }
+
+      // Track variants for messages beyond the first 5
+      if (direction === 'incoming' && data && typeof data === 'string' && this._schemaDetected) {
+        try {
+          const parsed = JSON.parse(data)
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            const keys = Object.keys(parsed).sort()
+            const keyStr = keys.join(',')
+            this._schemaVariants.set(keyStr, (this._schemaVariants.get(keyStr) || 0) + 1)
+          }
+        } catch {
+          // Not JSON
+        }
+      }
+    },
+
+    /**
+     * Determine if a message should be sampled (logged)
+     */
+    shouldSample(direction) {
+      this._sampleCounter++
+
+      // Always log first 5 messages on a connection
+      if (this.messageCount > 0 && this.messageCount <= 5) return true
+
+      const rate = this._messageRate || this.getMessageRate()
+
+      if (rate < 10) return true
+      if (rate < 50) {
+        // Target ~10 msg/s
+        const n = Math.max(1, Math.round(rate / 10))
+        return (this._sampleCounter % n) === 0
+      }
+      if (rate < 200) {
+        // Target ~5 msg/s
+        const n = Math.max(1, Math.round(rate / 5))
+        return (this._sampleCounter % n) === 0
+      }
+      // > 200: target ~2 msg/s
+      const n = Math.max(1, Math.round(rate / 2))
+      return (this._sampleCounter % n) === 0
+    },
+
+    /**
+     * Lifecycle events should always be logged
+     */
+    shouldLogLifecycle() {
+      return true
+    },
+
+    /**
+     * Get sampling info
+     */
+    getSamplingInfo() {
+      const rate = this._messageRate || this.getMessageRate()
+      let targetRate = rate
+      if (rate >= 10 && rate < 50) targetRate = 10
+      else if (rate >= 50 && rate < 200) targetRate = 5
+      else if (rate >= 200) targetRate = 2
+
+      return {
+        rate: `${rate}/s`,
+        logged: `${targetRate}/${Math.round(rate)}`,
+        window: '5s',
+      }
+    },
+
+    /**
+     * Get the current message rate (messages per second)
+     */
+    getMessageRate() {
+      if (this._messageTimestamps.length < 2) return this._messageTimestamps.length
+      const window = (this._messageTimestamps[this._messageTimestamps.length - 1] - this._messageTimestamps[0]) / 1000
+      return window > 0 ? this._messageTimestamps.length / window : this._messageTimestamps.length
+    },
+
+    /**
+     * Set the message rate manually (for testing)
+     */
+    setMessageRate(rate) {
+      this._messageRate = rate
+    },
+
+    /**
+     * Get the detected schema info
+     */
+    getSchema() {
+      if (this._schemaKeys.length === 0) {
+        return { detectedKeys: null, consistent: true }
+      }
+
+      // Check if all recorded schemas are non-JSON
+      const hasKeys = this._schemaKeys.length > 0
+      if (!hasKeys) {
+        return { detectedKeys: null, consistent: true }
+      }
+
+      // Get union of all detected keys
+      const allKeys = new Set()
+      for (const keyStr of this._schemaKeys) {
+        for (const k of keyStr.split(',')) {
+          if (k) allKeys.add(k)
+        }
+      }
+
+      // Build variants list
+      const variants = []
+      for (const [keyStr, count] of this._schemaVariants) {
+        if (count > 0) variants.push(keyStr)
+      }
+
+      return {
+        detectedKeys: allKeys.size > 0 ? Array.from(allKeys).sort() : null,
+        consistent: this._schemaConsistent,
+        variants: variants.length > 1 ? variants : undefined,
+      }
+    },
+
+    /**
+     * Check if a message represents a schema change
+     */
+    isSchemaChange(data) {
+      if (!this._schemaDetected || !data || typeof data !== 'string') return false
+      try {
+        const parsed = JSON.parse(data)
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
+        const keys = Object.keys(parsed).sort().join(',')
+        // It's a change if none of the first 5 schemas match
+        return !this._schemaKeys.includes(keys)
+      } catch {
+        return false
+      }
+    },
+  }
+
+  return tracker
+}
+
+/**
+ * Install WebSocket capture by wrapping the WebSocket constructor
+ */
+export function installWebSocketCapture() {
+  if (typeof window === 'undefined') return
+  if (!window.WebSocket) return // No WebSocket support
+  if (originalWebSocket) return // Already installed
+
+  originalWebSocket = window.WebSocket
+
+  const OriginalWS = window.WebSocket
+
+  function GasolineWebSocket(url, protocols) {
+    const ws = new OriginalWS(url, protocols)
+    const connectionId = crypto.randomUUID()
+
+    ws.addEventListener('open', () => {
+      if (!webSocketCaptureEnabled) return
+      window.postMessage({
+        type: 'GASOLINE_WS',
+        payload: { event: 'open', id: connectionId, url, ts: new Date().toISOString() },
+      }, '*')
+    })
+
+    ws.addEventListener('close', (event) => {
+      if (!webSocketCaptureEnabled) return
+      window.postMessage({
+        type: 'GASOLINE_WS',
+        payload: {
+          event: 'close', id: connectionId, url,
+          code: event.code, reason: event.reason,
+          ts: new Date().toISOString(),
+        },
+      }, '*')
+    })
+
+    ws.addEventListener('error', () => {
+      if (!webSocketCaptureEnabled) return
+      window.postMessage({
+        type: 'GASOLINE_WS',
+        payload: { event: 'error', id: connectionId, url, ts: new Date().toISOString() },
+      }, '*')
+    })
+
+    ws.addEventListener('message', (event) => {
+      if (!webSocketCaptureEnabled) return
+      if (webSocketCaptureMode !== 'messages') return
+
+      const data = event.data
+      const size = getSize(data)
+      const formatted = formatPayload(data)
+      const { data: truncatedData, truncated } = truncateWsMessage(formatted)
+
+      window.postMessage({
+        type: 'GASOLINE_WS',
+        payload: {
+          event: 'message', id: connectionId, url,
+          direction: 'incoming', data: truncatedData,
+          size, truncated: truncated || undefined,
+          ts: new Date().toISOString(),
+        },
+      }, '*')
+    })
+
+    // Wrap send() to capture outgoing messages
+    const originalSend = ws.send.bind(ws)
+    ws.send = function (data) {
+      if (webSocketCaptureEnabled && webSocketCaptureMode === 'messages') {
+        const size = getSize(data)
+        const formatted = formatPayload(data)
+        const { data: truncatedData, truncated } = truncateWsMessage(formatted)
+
+        window.postMessage({
+          type: 'GASOLINE_WS',
+          payload: {
+            event: 'message', id: connectionId, url,
+            direction: 'outgoing', data: truncatedData,
+            size, truncated: truncated || undefined,
+            ts: new Date().toISOString(),
+          },
+        }, '*')
+      }
+
+      return originalSend(data)
+    }
+
+    return ws
+  }
+
+  GasolineWebSocket.prototype = OriginalWS.prototype
+  GasolineWebSocket.CONNECTING = OriginalWS.CONNECTING
+  GasolineWebSocket.OPEN = OriginalWS.OPEN
+  GasolineWebSocket.CLOSING = OriginalWS.CLOSING
+  GasolineWebSocket.CLOSED = OriginalWS.CLOSED
+
+  window.WebSocket = GasolineWebSocket
+}
+
+/**
+ * Set the WebSocket capture mode
+ * @param {string} mode - 'lifecycle' or 'messages'
+ */
+export function setWebSocketCaptureMode(mode) {
+  webSocketCaptureMode = mode
+}
+
+/**
+ * Set WebSocket capture enabled state
+ * @param {boolean} enabled - Whether WebSocket capture is enabled
+ */
+export function setWebSocketCaptureEnabled(enabled) {
+  webSocketCaptureEnabled = enabled
+}
+
+/**
+ * Get the current WebSocket capture mode
+ * @returns {string} 'lifecycle' or 'messages'
+ */
+export function getWebSocketCaptureMode() {
+  return webSocketCaptureMode
+}
+
+/**
+ * Uninstall WebSocket capture, restoring the original constructor
+ */
+export function uninstallWebSocketCapture() {
+  if (typeof window === 'undefined') return
+  if (originalWebSocket) {
+    window.WebSocket = originalWebSocket
+    originalWebSocket = null
+  }
+}
+
+// =============================================================================
+// NETWORK BODY CAPTURE (v4)
+// =============================================================================
+
+const REQUEST_BODY_MAX = 8192 // 8KB
+const RESPONSE_BODY_MAX = 16384 // 16KB
+const BODY_READ_TIMEOUT_MS = 5
+const SENSITIVE_HEADER_PATTERNS = /^(authorization|cookie|set-cookie|x-api-key|x-auth-token|x-secret|x-password|.*token.*|.*secret.*|.*key.*|.*password.*)$/i
+const BINARY_CONTENT_TYPES = /^(image|video|audio|font)\/|^application\/(wasm|octet-stream|zip|gzip|pdf)/
+const TEXT_CONTENT_TYPES = /^(text\/|application\/json|application\/xml|application\/javascript|application\/x-www-form-urlencoded)/
+
+/**
+ * Check if a URL should be captured (not gasoline server or extension)
+ * @param {string} url - The URL to check
+ * @returns {boolean} True if the URL should be captured
+ */
+export function shouldCaptureUrl(url) {
+  if (!url) return true
+  if (url.includes('localhost:7890') || url.includes('127.0.0.1:7890')) return false
+  if (url.startsWith('chrome-extension://')) return false
+  return true
+}
+
+/**
+ * Sanitize headers by removing sensitive ones
+ * @param {Object|Map|Headers|null} headers - Headers to sanitize
+ * @returns {Object} Sanitized headers object
+ */
+export function sanitizeHeaders(headers) {
+  if (!headers) return {}
+
+  const result = {}
+
+  if (typeof headers.forEach === 'function') {
+    // Headers object or Map
+    headers.forEach((value, key) => {
+      if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+        result[key] = value
+      }
+    })
+  } else if (typeof headers.entries === 'function') {
+    for (const [key, value] of headers.entries()) {
+      if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+        result[key] = value
+      }
+    }
+  } else if (typeof headers === 'object') {
+    for (const [key, value] of Object.entries(headers)) {
+      if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+        result[key] = value
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * Truncate request body at 8KB limit
+ * @param {string|null} body - The request body
+ * @returns {{ body: string|null, truncated: boolean }}
+ */
+export function truncateRequestBody(body) {
+  if (body === null || body === undefined) return { body: null, truncated: false }
+  if (body.length <= REQUEST_BODY_MAX) return { body, truncated: false }
+  return { body: body.slice(0, REQUEST_BODY_MAX), truncated: true }
+}
+
+/**
+ * Truncate response body at 16KB limit
+ * @param {string|null} body - The response body
+ * @returns {{ body: string|null, truncated: boolean }}
+ */
+export function truncateResponseBody(body) {
+  if (body === null || body === undefined) return { body: null, truncated: false }
+  if (body.length <= RESPONSE_BODY_MAX) return { body, truncated: false }
+  return { body: body.slice(0, RESPONSE_BODY_MAX), truncated: true }
+}
+
+/**
+ * Read a response body, returning text for text types and size info for binary
+ * @param {Object} response - The cloned response object
+ * @returns {Promise<string>} The body content or binary size placeholder
+ */
+export async function readResponseBody(response) {
+  const contentType = response.headers?.get?.('content-type') || ''
+
+  if (BINARY_CONTENT_TYPES.test(contentType)) {
+    const blob = await response.blob()
+    return `[Binary: ${blob.size} bytes, ${contentType}]`
+  }
+
+  // Text-like or unknown content type: try reading as text
+  return await response.text()
+}
+
+/**
+ * Read response body with a timeout
+ * @param {Object} response - The cloned response object
+ * @param {number} timeoutMs - Timeout in milliseconds
+ * @returns {Promise<string>} The body or timeout message
+ */
+export async function readResponseBodyWithTimeout(response, timeoutMs = BODY_READ_TIMEOUT_MS) {
+  return Promise.race([
+    readResponseBody(response),
+    new Promise(resolve => setTimeout(() => resolve('[Skipped: body read timeout]'), timeoutMs))
+  ])
+}
+
+/**
+ * Wrap a fetch function to capture request/response bodies
+ * @param {Function} fetchFn - The original fetch function
+ * @returns {Function} Wrapped fetch that captures bodies
+ */
+export function wrapFetchWithBodies(fetchFn) {
+  return async function (input, init) {
+    const startTime = Date.now()
+
+    // Extract URL and method
+    let url = ''
+    let method = 'GET'
+    let requestBody = null
+
+    if (typeof input === 'string') {
+      url = input
+    } else if (input && input.url) {
+      url = input.url
+      method = input.method || 'GET'
+    }
+
+    if (init) {
+      method = init.method || method
+      requestBody = init.body || null
+    }
+
+    // Skip gasoline server requests
+    if (!shouldCaptureUrl(url)) {
+      return fetchFn(input, init)
+    }
+
+    // Call original fetch
+    const response = await fetchFn(input, init)
+    const duration = Date.now() - startTime
+
+    // Capture body asynchronously (don't block return)
+    const contentType = response.headers?.get?.('content-type') || ''
+    const cloned = response.clone ? response.clone() : null
+    // Capture window reference now so deferred callback posts to correct target
+    const win = typeof window !== 'undefined' ? window : null
+
+    Promise.resolve().then(async () => {
+      try {
+        let responseBody = ''
+        if (cloned) {
+          if (BINARY_CONTENT_TYPES.test(contentType)) {
+            const blob = await cloned.blob()
+            responseBody = `[Binary: ${blob.size} bytes, ${contentType}]`
+          } else {
+            responseBody = await cloned.text()
+          }
+        }
+
+        const { body: truncResp } = truncateResponseBody(responseBody)
+        const { body: truncReq } = truncateRequestBody(typeof requestBody === 'string' ? requestBody : null)
+
+        if (win) {
+          win.postMessage({
+            type: 'GASOLINE_NETWORK_BODY',
+            payload: {
+              url,
+              method,
+              status: response.status,
+              contentType,
+              requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
+              responseBody: truncResp || responseBody,
+              duration,
+            },
+          }, '*')
+        }
+      } catch {
+        // Body capture failure should not affect user code
+      }
+    })
+
+    return response
+  }
+}
+
+// =============================================================================
+// ON-DEMAND DOM QUERIES (v4)
+// =============================================================================
+
+const DOM_QUERY_MAX_ELEMENTS = 50
+const DOM_QUERY_MAX_TEXT = 500
+const DOM_QUERY_MAX_DEPTH = 5
+const DOM_QUERY_MAX_HTML = 200
+const A11Y_MAX_NODES_PER_VIOLATION = 10
+const A11Y_AUDIT_TIMEOUT_MS = 30000
+
+/**
+ * Execute a DOM query and return structured results
+ * @param {Object} params - { selector, include_styles, properties, include_children, max_depth }
+ * @returns {Object} Query results
+ */
+export async function executeDOMQuery(params) {
+  const { selector, include_styles, properties, include_children, max_depth } = params
+
+  const elements = document.querySelectorAll(selector)
+  const matchCount = elements.length
+  const cappedDepth = Math.min(max_depth || 3, DOM_QUERY_MAX_DEPTH)
+
+  const matches = []
+  for (let i = 0; i < Math.min(elements.length, DOM_QUERY_MAX_ELEMENTS); i++) {
+    const el = elements[i]
+    const entry = serializeDOMElement(el, include_styles, properties, include_children, cappedDepth, 0)
+    matches.push(entry)
+  }
+
+  return {
+    url: window.location.href,
+    title: document.title,
+    matchCount,
+    returnedCount: matches.length,
+    matches,
+  }
+}
+
+/**
+ * Serialize a DOM element to a plain object
+ */
+function serializeDOMElement(el, includeStyles, styleProps, includeChildren, maxDepth, currentDepth) {
+  const entry = {
+    tag: el.tagName ? el.tagName.toLowerCase() : '',
+    text: (el.textContent || '').slice(0, DOM_QUERY_MAX_TEXT),
+    visible: el.offsetParent !== null || (el.getBoundingClientRect && el.getBoundingClientRect().width > 0),
+  }
+
+  // Attributes
+  if (el.attributes && el.attributes.length > 0) {
+    entry.attributes = {}
+    for (const attr of el.attributes) {
+      entry.attributes[attr.name] = attr.value
+    }
+  }
+
+  // Bounding box
+  if (el.getBoundingClientRect) {
+    const rect = el.getBoundingClientRect()
+    entry.boundingBox = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+  }
+
+  // Computed styles
+  if (includeStyles && typeof window.getComputedStyle === 'function') {
+    const computed = window.getComputedStyle(el)
+    entry.styles = {}
+    if (styleProps && styleProps.length > 0) {
+      for (const prop of styleProps) {
+        entry.styles[prop] = computed[prop]
+      }
+    } else {
+      entry.styles = { display: computed.display, color: computed.color, position: computed.position }
+    }
+  }
+
+  // Children
+  if (includeChildren && currentDepth < maxDepth && el.children && el.children.length > 0) {
+    entry.children = []
+    for (const child of el.children) {
+      entry.children.push(serializeDOMElement(child, false, null, true, maxDepth, currentDepth + 1))
+    }
+  }
+
+  return entry
+}
+
+/**
+ * Get comprehensive page info
+ * @returns {Object} Page metadata
+ */
+export async function getPageInfo() {
+  const headings = []
+  const headingEls = document.querySelectorAll('h1,h2,h3,h4,h5,h6')
+  for (const h of headingEls) {
+    headings.push(h.textContent)
+  }
+
+  const forms = []
+  const formEls = document.querySelectorAll('form')
+  for (const form of formEls) {
+    const fields = []
+    const inputs = form.querySelectorAll('input,select,textarea')
+    for (const input of inputs) {
+      if (input.name) fields.push(input.name)
+    }
+    forms.push({
+      id: form.id || undefined,
+      action: form.action || undefined,
+      fields,
+    })
+  }
+
+  return {
+    url: window.location.href,
+    title: document.title,
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    scroll: { x: window.scrollX, y: window.scrollY },
+    documentHeight: document.documentElement.scrollHeight,
+    headings,
+    links: document.querySelectorAll('a').length,
+    images: document.querySelectorAll('img').length,
+    interactiveElements: document.querySelectorAll('button,input,select,textarea,a[href]').length,
+    forms,
+  }
+}
+
+/**
+ * Load axe-core dynamically if not already present
+ * @returns {Promise<void>}
+ */
+function loadAxeCore() {
+  return new Promise((resolve, reject) => {
+    if (window.axe) {
+      resolve()
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = typeof chrome !== 'undefined' && chrome.runtime
+      ? chrome.runtime.getURL('lib/axe.min.js')
+      : 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.8.4/axe.min.js'
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load axe-core'))
+    document.head.appendChild(script)
+  })
+}
+
+/**
+ * Run an accessibility audit using axe-core
+ * @param {Object} params - { scope, tags, include_passes }
+ * @returns {Promise<Object>} Formatted audit results
+ */
+export async function runAxeAudit(params) {
+  await loadAxeCore()
+
+  const context = params.scope ? { include: [params.scope] } : document
+  const config = {}
+
+  if (params.tags && params.tags.length > 0) {
+    config.runOnly = params.tags
+  }
+
+  if (params.include_passes) {
+    config.resultTypes = ['violations', 'passes', 'incomplete', 'inapplicable']
+  } else {
+    config.resultTypes = ['violations', 'incomplete']
+  }
+
+  const results = await window.axe.run(context, config)
+  return formatAxeResults(results)
+}
+
+/**
+ * Run axe audit with a timeout
+ * @param {Object} params - Audit parameters
+ * @param {number} timeoutMs - Timeout in milliseconds
+ * @returns {Promise<Object>} Results or error
+ */
+export async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIMEOUT_MS) {
+  return Promise.race([
+    runAxeAudit(params),
+    new Promise(resolve => setTimeout(() => resolve({ error: 'Accessibility audit timeout' }), timeoutMs))
+  ])
+}
+
+/**
+ * Format axe-core results into a compact representation
+ * @param {Object} axeResult - Raw axe-core results
+ * @returns {Object} Formatted results with summary
+ */
+export function formatAxeResults(axeResult) {
+  const formatViolation = (v) => {
+    const formatted = {
+      id: v.id,
+      impact: v.impact,
+      description: v.description,
+      helpUrl: v.helpUrl,
+    }
+
+    // Extract WCAG tags
+    if (v.tags) {
+      formatted.wcag = v.tags.filter(t => t.startsWith('wcag'))
+    }
+
+    // Format nodes (cap at 10)
+    formatted.nodes = (v.nodes || []).slice(0, A11Y_MAX_NODES_PER_VIOLATION).map(node => ({
+      selector: Array.isArray(node.target) ? node.target[0] : node.target,
+      html: (node.html || '').slice(0, DOM_QUERY_MAX_HTML),
+      failureSummary: node.failureSummary,
+    }))
+
+    if (v.nodes && v.nodes.length > A11Y_MAX_NODES_PER_VIOLATION) {
+      formatted.nodeCount = v.nodes.length
+    }
+
+    return formatted
+  }
+
+  return {
+    violations: (axeResult.violations || []).map(formatViolation),
+    summary: {
+      violations: (axeResult.violations || []).length,
+      passes: (axeResult.passes || []).length,
+      incomplete: (axeResult.incomplete || []).length,
+      inapplicable: (axeResult.inapplicable || []).length,
+    },
+  }
+}
+
+// =============================================================================
+// V4 LIFECYCLE & MEMORY (v4)
+// =============================================================================
+
+const MEMORY_SOFT_LIMIT_MB = 20
+const MEMORY_HARD_LIMIT_MB = 50
+
+/**
+ * Check if v4 intercepts should be deferred until page load
+ * @returns {boolean} True if page is still loading
+ */
+export function shouldDeferV4Intercepts() {
+  if (typeof document === 'undefined') return false
+  return document.readyState === 'loading'
+}
+
+/**
+ * Check if v3 intercepts should be deferred (never)
+ * @returns {boolean} Always false - v3 installs immediately
+ */
+export function shouldDeferV3Intercepts() {
+  return false
+}
+
+/**
+ * Check memory pressure and adjust buffer capacities
+ * @param {Object} state - Current buffer state
+ * @returns {Object} Adjusted state
+ */
+export function checkMemoryPressure(state) {
+  const result = { ...state }
+
+  if (state.memoryUsageMB >= MEMORY_HARD_LIMIT_MB) {
+    // Hard limit: disable network bodies
+    result.networkBodiesEnabled = false
+    result.wsBufferCapacity = Math.floor(state.wsBufferCapacity * 0.25)
+    result.networkBufferCapacity = Math.floor(state.networkBufferCapacity * 0.25)
+  } else if (state.memoryUsageMB >= MEMORY_SOFT_LIMIT_MB) {
+    // Soft limit: reduce buffers
+    result.wsBufferCapacity = Math.floor(state.wsBufferCapacity * 0.5)
+    result.networkBufferCapacity = Math.floor(state.networkBufferCapacity * 0.5)
+  }
+
+  return result
+}
+
+// =============================================================================
+// AI-PREPROCESSED ERRORS (v5)
+// =============================================================================
+
+const AI_CONTEXT_SNIPPET_LINES = 5 // Lines before and after error
+const AI_CONTEXT_MAX_LINE_LENGTH = 200 // Truncate lines
+const AI_CONTEXT_MAX_SNIPPETS_SIZE = 10240 // 10KB total snippets
+const AI_CONTEXT_MAX_ANCESTRY_DEPTH = 10
+const AI_CONTEXT_MAX_PROP_KEYS = 20
+const AI_CONTEXT_MAX_STATE_KEYS = 10
+const AI_CONTEXT_MAX_RELEVANT_SLICE = 10
+const AI_CONTEXT_MAX_VALUE_LENGTH = 200
+const AI_CONTEXT_SOURCE_MAP_CACHE_SIZE = 20
+const AI_CONTEXT_PIPELINE_TIMEOUT_MS = 3000
+
+// AI Context state
+let aiContextEnabled = true
+let aiContextStateSnapshotEnabled = false
+const sourceMapCache = new Map()
+
+/**
+ * Parse stack trace into structured frames
+ * Supports Chrome and Firefox formats
+ * @param {string} stack - The stack trace string
+ * @returns {Array} Array of frame objects { functionName, filename, lineno, colno }
+ */
+export function parseStackFrames(stack) {
+  if (!stack) return []
+
+  const frames = []
+  const lines = stack.split('\n')
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+
+    // Chrome format: "    at functionName (url:line:col)"
+    // or "    at url:line:col"
+    const chromeMatch = trimmed.match(/^at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?$/)
+    if (chromeMatch) {
+      const filename = chromeMatch[2]
+      if (filename.includes('<anonymous>')) continue
+      frames.push({
+        functionName: chromeMatch[1] || null,
+        filename,
+        lineno: parseInt(chromeMatch[3], 10),
+        colno: parseInt(chromeMatch[4], 10)
+      })
+      continue
+    }
+
+    // Firefox format: "functionName@url:line:col"
+    const firefoxMatch = trimmed.match(/^(.+?)@(.+?):(\d+):(\d+)$/)
+    if (firefoxMatch) {
+      const filename = firefoxMatch[2]
+      if (filename.includes('<anonymous>')) continue
+      frames.push({
+        functionName: firefoxMatch[1] || null,
+        filename,
+        lineno: parseInt(firefoxMatch[3], 10),
+        colno: parseInt(firefoxMatch[4], 10)
+      })
+      continue
+    }
+  }
+
+  return frames
+}
+
+/**
+ * Parse an inline base64 source map data URL
+ * @param {string} dataUrl - The data: URL containing the source map
+ * @returns {Object|null} Parsed source map or null
+ */
+export function parseSourceMap(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string') return null
+  if (!dataUrl.startsWith('data:')) return null
+
+  try {
+    // Extract base64 content after the last comma
+    const base64Match = dataUrl.match(/;base64,(.+)$/)
+    if (!base64Match) return null
+
+    const decoded = atob(base64Match[1])
+    const parsed = JSON.parse(decoded)
+
+    // Only useful if it has sourcesContent
+    if (!parsed.sourcesContent || parsed.sourcesContent.length === 0) return null
+
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Extract a code snippet around a given line number
+ * @param {string} sourceContent - The full source file content
+ * @param {number} line - The 1-based line number of the error
+ * @returns {Array|null} Array of { line, text, isError? } or null
+ */
+export function extractSnippet(sourceContent, line) {
+  if (!sourceContent || typeof sourceContent !== 'string') return null
+  if (!line || line < 1) return null
+
+  const lines = sourceContent.split('\n')
+  if (line > lines.length) return null
+
+  const start = Math.max(0, line - 1 - AI_CONTEXT_SNIPPET_LINES)
+  const end = Math.min(lines.length, line + AI_CONTEXT_SNIPPET_LINES)
+
+  const snippet = []
+  for (let i = start; i < end; i++) {
+    let text = lines[i]
+    if (text.length > AI_CONTEXT_MAX_LINE_LENGTH) {
+      text = text.slice(0, AI_CONTEXT_MAX_LINE_LENGTH)
+    }
+    const entry = { line: i + 1, text }
+    if (i + 1 === line) entry.isError = true
+    snippet.push(entry)
+  }
+
+  return snippet
+}
+
+/**
+ * Extract source snippets for multiple stack frames
+ * @param {Array} frames - Parsed stack frames
+ * @param {Object} mockSourceMaps - Map of filename to parsed source map
+ * @returns {Promise<Array>} Array of snippet objects
+ */
+export async function extractSourceSnippets(frames, mockSourceMaps) {
+  const snippets = []
+  let totalSize = 0
+
+  for (const frame of frames.slice(0, 3)) {
+    if (totalSize >= AI_CONTEXT_MAX_SNIPPETS_SIZE) break
+
+    const sourceMap = mockSourceMaps[frame.filename]
+    if (!sourceMap || !sourceMap.sourcesContent || !sourceMap.sourcesContent[0]) continue
+
+    const snippet = extractSnippet(sourceMap.sourcesContent[0], frame.lineno)
+    if (!snippet) continue
+
+    const snippetObj = { file: frame.filename, line: frame.lineno, snippet }
+    const snippetSize = JSON.stringify(snippetObj).length
+
+    if (totalSize + snippetSize > AI_CONTEXT_MAX_SNIPPETS_SIZE) break
+
+    totalSize += snippetSize
+    snippets.push(snippetObj)
+  }
+
+  return snippets
+}
+
+/**
+ * Detect which UI framework an element belongs to
+ * @param {Object} element - The DOM element (or element-like object)
+ * @returns {Object|null} { framework, key? } or null
+ */
+export function detectFramework(element) {
+  if (!element || typeof element !== 'object') return null
+
+  // React: __reactFiber$ or __reactInternalInstance$
+  const keys = Object.keys(element)
+  const reactKey = keys.find(k =>
+    k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$')
+  )
+  if (reactKey) return { framework: 'react', key: reactKey }
+
+  // Vue 3: __vueParentComponent or __vue_app__
+  if (element.__vueParentComponent || element.__vue_app__) {
+    return { framework: 'vue' }
+  }
+
+  // Svelte: __svelte_meta
+  if (element.__svelte_meta) {
+    return { framework: 'svelte' }
+  }
+
+  return null
+}
+
+/**
+ * Walk a React fiber tree to extract component ancestry
+ * @param {Object} fiber - The React fiber node
+ * @returns {Array|null} Array of { name, propKeys?, hasState?, stateKeys? } in root-first order
+ */
+export function getReactComponentAncestry(fiber) {
+  if (!fiber) return null
+
+  const ancestry = []
+  let current = fiber
+  let depth = 0
+
+  while (current && depth < AI_CONTEXT_MAX_ANCESTRY_DEPTH) {
+    depth++
+
+    // Only include component fibers (type is function/object), skip host elements (type is string)
+    if (current.type && typeof current.type !== 'string') {
+      const name = current.type.displayName || current.type.name || 'Anonymous'
+      const entry = { name }
+
+      // Extract prop keys (excluding children)
+      if (current.memoizedProps && typeof current.memoizedProps === 'object') {
+        entry.propKeys = Object.keys(current.memoizedProps)
+          .filter(k => k !== 'children')
+          .slice(0, AI_CONTEXT_MAX_PROP_KEYS)
+      }
+
+      // Extract state keys
+      if (current.memoizedState && typeof current.memoizedState === 'object' && !Array.isArray(current.memoizedState)) {
+        entry.hasState = true
+        entry.stateKeys = Object.keys(current.memoizedState).slice(0, AI_CONTEXT_MAX_STATE_KEYS)
+      }
+
+      ancestry.push(entry)
+    }
+
+    current = current.return
+  }
+
+  return ancestry.reverse() // Root-first order
+}
+
+/**
+ * Capture application state snapshot from known store patterns
+ * @param {string} errorMessage - The error message for keyword matching
+ * @returns {Object|null} State snapshot or null
+ */
+export function captureStateSnapshot(errorMessage) {
+  if (typeof window === 'undefined') return null
+
+  try {
+    // Try Redux store
+    const store = window.__REDUX_STORE__
+    if (!store || typeof store.getState !== 'function') return null
+
+    const state = store.getState()
+    if (!state || typeof state !== 'object') return null
+
+    // Build keys with types
+    const keys = {}
+    for (const [key, value] of Object.entries(state)) {
+      if (Array.isArray(value)) {
+        keys[key] = { type: 'array' }
+      } else if (value === null) {
+        keys[key] = { type: 'null' }
+      } else {
+        keys[key] = { type: typeof value }
+      }
+    }
+
+    // Build relevant slice
+    const relevantSlice = {}
+    let sliceCount = 0
+
+    const errorWords = (errorMessage || '').toLowerCase().split(/\W+/).filter(w => w.length > 2)
+
+    for (const [key, value] of Object.entries(state)) {
+      if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE) break
+
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        for (const [subKey, subValue] of Object.entries(value)) {
+          if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE) break
+
+          const isRelevantKey = ['error', 'loading', 'status', 'failed'].some(k =>
+            subKey.toLowerCase().includes(k)
+          )
+          const isKeywordMatch = errorWords.some(w => key.toLowerCase().includes(w))
+
+          if (isRelevantKey || isKeywordMatch) {
+            let val = subValue
+            if (typeof val === 'string' && val.length > AI_CONTEXT_MAX_VALUE_LENGTH) {
+              val = val.slice(0, AI_CONTEXT_MAX_VALUE_LENGTH)
+            }
+            relevantSlice[`${key}.${subKey}`] = val
+            sliceCount++
+          }
+        }
+      }
+    }
+
+    return {
+      source: 'redux',
+      keys,
+      relevantSlice
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Generate a template-based AI summary from enrichment data
+ * @param {Object} data - { errorType, message, file, line, componentAncestry, stateSnapshot }
+ * @returns {string} Summary string
+ */
+export function generateAiSummary(data) {
+  const parts = []
+
+  // Error type and location
+  if (data.file && data.line) {
+    parts.push(`${data.errorType} in ${data.file}:${data.line} — ${data.message}`)
+  } else {
+    parts.push(`${data.errorType}: ${data.message}`)
+  }
+
+  // Component context
+  if (data.componentAncestry && data.componentAncestry.components) {
+    const path = data.componentAncestry.components.map(c => c.name).join(' > ')
+    parts.push(`Component tree: ${path}.`)
+  }
+
+  // State context
+  if (data.stateSnapshot && data.stateSnapshot.relevantSlice) {
+    const sliceKeys = Object.keys(data.stateSnapshot.relevantSlice)
+    if (sliceKeys.length > 0) {
+      const stateInfo = sliceKeys.map(k => `${k}=${JSON.stringify(data.stateSnapshot.relevantSlice[k])}`).join(', ')
+      parts.push(`State: ${stateInfo}.`)
+    }
+  }
+
+  return parts.join(' ')
+}
+
+/**
+ * Full error enrichment pipeline
+ * @param {Object} error - The error entry to enrich
+ * @returns {Promise<Object>} The enriched error entry
+ */
+export async function enrichErrorWithAiContext(error) {
+  if (!aiContextEnabled) return error
+
+  const enriched = { ...error }
+
+  try {
+    // Race the entire pipeline against a timeout
+    const context = await Promise.race([
+      (async () => {
+        const result = {}
+
+        // Parse stack frames
+        const frames = parseStackFrames(error.stack)
+        const topFrame = frames[0]
+
+        // Source snippets (from cache)
+        if (topFrame) {
+          const cached = getSourceMapCache(topFrame.filename)
+          if (cached) {
+            const snippets = await extractSourceSnippets(frames, { [topFrame.filename]: cached })
+            if (snippets.length > 0) result.sourceSnippets = snippets
+          }
+        }
+
+        // Component ancestry from activeElement
+        if (typeof document !== 'undefined' && document.activeElement) {
+          const framework = detectFramework(document.activeElement)
+          if (framework && framework.framework === 'react' && framework.key) {
+            const fiber = document.activeElement[framework.key]
+            const components = getReactComponentAncestry(fiber)
+            if (components && components.length > 0) {
+              result.componentAncestry = { framework: 'react', components }
+            }
+          }
+        }
+
+        // State snapshot (if enabled)
+        if (aiContextStateSnapshotEnabled) {
+          const snapshot = captureStateSnapshot(error.message || '')
+          if (snapshot) result.stateSnapshot = snapshot
+        }
+
+        // Generate summary
+        result.summary = generateAiSummary({
+          errorType: error.message?.split(':')[0] || 'Error',
+          message: error.message || '',
+          file: topFrame?.filename || null,
+          line: topFrame?.lineno || null,
+          componentAncestry: result.componentAncestry || null,
+          stateSnapshot: result.stateSnapshot || null
+        })
+
+        return result
+      })(),
+      new Promise(resolve => setTimeout(() => resolve({ summary: `${error.message || 'Error'}` }), AI_CONTEXT_PIPELINE_TIMEOUT_MS))
+    ])
+
+    enriched._aiContext = context
+    if (!enriched._enrichments) enriched._enrichments = []
+    enriched._enrichments.push('aiContext')
+  } catch {
+    // Pipeline failed, add minimal context
+    enriched._aiContext = { summary: error.message || 'Unknown error' }
+    if (!enriched._enrichments) enriched._enrichments = []
+    enriched._enrichments.push('aiContext')
+  }
+
+  return enriched
+}
+
+/**
+ * Enable or disable AI context enrichment
+ * @param {boolean} enabled
+ */
+export function setAiContextEnabled(enabled) {
+  aiContextEnabled = enabled
+}
+
+/**
+ * Enable or disable state snapshot in AI context
+ * @param {boolean} enabled
+ */
+export function setAiContextStateSnapshot(enabled) {
+  aiContextStateSnapshotEnabled = enabled
+}
+
+/**
+ * Cache a parsed source map for a URL
+ * @param {string} url - The script URL
+ * @param {Object} map - The parsed source map
+ */
+export function setSourceMapCache(url, map) {
+  // Evict oldest if at capacity
+  if (!sourceMapCache.has(url) && sourceMapCache.size >= AI_CONTEXT_SOURCE_MAP_CACHE_SIZE) {
+    const firstKey = sourceMapCache.keys().next().value
+    sourceMapCache.delete(firstKey)
+  }
+  sourceMapCache.set(url, map)
+}
+
+/**
+ * Get a cached source map
+ * @param {string} url - The script URL
+ * @returns {Object|null} The cached source map or null
+ */
+export function getSourceMapCache(url) {
+  return sourceMapCache.get(url) || null
+}
+
+/**
+ * Get the number of cached source maps
+ * @returns {number}
+ */
+export function getSourceMapCacheSize() {
+  return sourceMapCache.size
+}
+
+// =============================================================================
+// REPRODUCTION SCRIPTS (v5)
+// =============================================================================
+
+const ENHANCED_ACTION_BUFFER_SIZE = 50
+const CSS_PATH_MAX_DEPTH = 5
+const SELECTOR_TEXT_MAX_LENGTH = 50
+const SCRIPT_MAX_SIZE = 51200 // 50KB
+
+// Enhanced action buffer (separate from v3 action buffer)
+let enhancedActionBuffer = []
+
+// Clickable elements for text extraction
+const CLICKABLE_TAGS = new Set(['BUTTON', 'A', 'SUMMARY'])
+
+/**
+ * Get the implicit ARIA role for an element
+ * @param {Object} element - The DOM element
+ * @returns {string|null} The implicit role or null
+ */
+export function getImplicitRole(element) {
+  if (!element || !element.tagName) return null
+
+  const tag = element.tagName.toLowerCase()
+  const type = element.getAttribute ? element.getAttribute('type') : null
+
+  switch (tag) {
+    case 'button': return 'button'
+    case 'a': return element.getAttribute && element.getAttribute('href') !== null ? 'link' : null
+    case 'textarea': return 'textbox'
+    case 'select': return 'combobox'
+    case 'nav': return 'navigation'
+    case 'main': return 'main'
+    case 'header': return 'banner'
+    case 'footer': return 'contentinfo'
+    case 'input': {
+      const inputType = type || 'text'
+      switch (inputType) {
+        case 'text':
+        case 'email':
+        case 'password':
+        case 'tel':
+        case 'url': return 'textbox'
+        case 'checkbox': return 'checkbox'
+        case 'radio': return 'radio'
+        case 'search': return 'searchbox'
+        case 'number': return 'spinbutton'
+        case 'range': return 'slider'
+        default: return 'textbox'
+      }
+    }
+    default: return null
+  }
+}
+
+/**
+ * Detect if a CSS class name is dynamically generated (CSS-in-JS)
+ * @param {string} className - The class name to check
+ * @returns {boolean} True if the class is likely dynamic
+ */
+export function isDynamicClass(className) {
+  if (!className) return false
+  // Known CSS-in-JS prefixes
+  if (/^(css|sc|emotion|styled|chakra)-/.test(className)) return true
+  // Random hash classes: 5-8 lowercase-only chars
+  if (/^[a-z]{5,8}$/.test(className)) return true
+  return false
+}
+
+/**
+ * Compute a CSS path for an element
+ * @param {Object} element - The DOM element
+ * @returns {string} The CSS path
+ */
+export function computeCssPath(element) {
+  if (!element) return ''
+
+  const parts = []
+  let current = element
+
+  while (current && parts.length < CSS_PATH_MAX_DEPTH) {
+    let selector = current.tagName ? current.tagName.toLowerCase() : ''
+
+    // Stop at element with ID
+    if (current.id) {
+      selector = `#${current.id}`
+      parts.unshift(selector)
+      break
+    }
+
+    // Add non-dynamic classes (max 2)
+    const classList = current.className && typeof current.className === 'string'
+      ? current.className.trim().split(/\s+/).filter(c => c && !isDynamicClass(c))
+      : []
+    if (classList.length > 0) {
+      selector += '.' + classList.slice(0, 2).join('.')
+    }
+
+    parts.unshift(selector)
+    current = current.parentElement
+  }
+
+  return parts.join(' > ')
+}
+
+/**
+ * Compute multi-strategy selectors for an element
+ * @param {Object} element - The DOM element
+ * @returns {Object} Selector strategies
+ */
+export function computeSelectors(element) {
+  if (!element) return { cssPath: '' }
+
+  const selectors = {}
+
+  // Priority 1: Test ID
+  const testId = (element.getAttribute && (
+    element.getAttribute('data-testid') ||
+    element.getAttribute('data-test-id') ||
+    element.getAttribute('data-cy')
+  )) || undefined
+  if (testId) selectors.testId = testId
+
+  // Priority 2: ARIA label
+  const ariaLabel = element.getAttribute && element.getAttribute('aria-label')
+  if (ariaLabel) selectors.ariaLabel = ariaLabel
+
+  // Priority 3: Role + accessible name
+  const explicitRole = element.getAttribute && element.getAttribute('role')
+  const role = explicitRole || getImplicitRole(element)
+  const name = ariaLabel || (element.textContent && element.textContent.trim().slice(0, SELECTOR_TEXT_MAX_LENGTH))
+  if (role && name) {
+    selectors.role = { role, name: ariaLabel || name }
+  }
+
+  // Priority 4: ID
+  if (element.id) selectors.id = element.id
+
+  // Priority 5: Text content (for clickable elements only)
+  if (element.tagName && CLICKABLE_TAGS.has(element.tagName.toUpperCase())) {
+    const text = (element.textContent || element.innerText || '').trim()
+    if (text && text.length > 0) {
+      selectors.text = text.slice(0, SELECTOR_TEXT_MAX_LENGTH)
+    }
+  } else if (element.getAttribute && element.getAttribute('role') === 'button') {
+    const text = (element.textContent || element.innerText || '').trim()
+    if (text && text.length > 0) {
+      selectors.text = text.slice(0, SELECTOR_TEXT_MAX_LENGTH)
+    }
+  }
+
+  // Priority 6: CSS path (always computed as fallback)
+  selectors.cssPath = computeCssPath(element)
+
+  return selectors
+}
+
+/**
+ * Record an enhanced action with multi-strategy selectors
+ * @param {string} type - Action type (click, input, keypress, navigate, select, scroll)
+ * @param {Object|null} element - The target DOM element
+ * @param {Object} opts - Additional options (value, key, fromUrl, toUrl, etc.)
+ * @returns {Object} The recorded action
+ */
+export function recordEnhancedAction(type, element, opts = {}) {
+  const action = {
+    type,
+    timestamp: Date.now(),
+    url: (typeof window !== 'undefined' && window.location) ? window.location.href : ''
+  }
+
+  // Compute selectors for element (if provided)
+  if (element) {
+    action.selectors = computeSelectors(element)
+  }
+
+  // Type-specific data
+  switch (type) {
+    case 'input': {
+      const inputType = element && element.getAttribute ? element.getAttribute('type') : 'text'
+      action.inputType = inputType || 'text'
+      // Redact sensitive values
+      if (inputType === 'password' || (element && isSensitiveInput(element))) {
+        action.value = '[redacted]'
+      } else {
+        action.value = opts.value || ''
+      }
+      break
+    }
+    case 'keypress':
+      action.key = opts.key || ''
+      break
+    case 'navigate':
+      action.fromUrl = opts.fromUrl || ''
+      action.toUrl = opts.toUrl || ''
+      break
+    case 'select':
+      action.selectedValue = opts.selectedValue || ''
+      action.selectedText = opts.selectedText || ''
+      break
+    case 'scroll':
+      action.scrollY = opts.scrollY || 0
+      break
+  }
+
+  // Add to buffer
+  enhancedActionBuffer.push(action)
+  if (enhancedActionBuffer.length > ENHANCED_ACTION_BUFFER_SIZE) {
+    enhancedActionBuffer.shift()
+  }
+
+  // Emit to content script for server relay
+  if (typeof window !== 'undefined' && window.postMessage) {
+    window.postMessage({ type: 'GASOLINE_ENHANCED_ACTION', payload: action }, '*')
+  }
+
+  return action
+}
+
+/**
+ * Get the enhanced action buffer
+ * @returns {Array} Copy of the enhanced action buffer
+ */
+export function getEnhancedActionBuffer() {
+  return [...enhancedActionBuffer]
+}
+
+/**
+ * Clear the enhanced action buffer
+ */
+export function clearEnhancedActionBuffer() {
+  enhancedActionBuffer = []
+}
+
+/**
+ * Generate a Playwright test script from captured actions
+ * @param {Array} actions - Array of enhanced action objects
+ * @param {Object} opts - Options: { errorMessage, baseUrl, lastNActions }
+ * @returns {string} Complete Playwright test script
+ */
+export function generatePlaywrightScript(actions, opts = {}) {
+  const { errorMessage, baseUrl, lastNActions } = opts
+
+  // Apply lastNActions filter
+  let filteredActions = actions
+  if (lastNActions && lastNActions > 0 && actions.length > lastNActions) {
+    filteredActions = actions.slice(-lastNActions)
+  }
+
+  // Determine start URL
+  let startUrl = ''
+  if (filteredActions.length > 0) {
+    startUrl = filteredActions[0].url || ''
+  }
+  if (baseUrl && startUrl) {
+    try {
+      const parsed = new URL(startUrl)
+      startUrl = baseUrl + parsed.pathname
+    } catch {
+      startUrl = baseUrl
+    }
+  }
+
+  // Build test name
+  const testName = errorMessage
+    ? `reproduction: ${errorMessage.slice(0, 80)}`
+    : 'reproduction: captured user actions'
+
+  // Generate step code
+  const steps = []
+  let prevTimestamp = null
+
+  for (const action of filteredActions) {
+    // Add pause comment for long gaps
+    if (prevTimestamp && action.timestamp - prevTimestamp > 2000) {
+      const gap = Math.round((action.timestamp - prevTimestamp) / 1000)
+      steps.push(`  // [${gap}s pause]`)
+    }
+    prevTimestamp = action.timestamp
+
+    const locator = getPlaywrightLocator(action.selectors || {}, baseUrl)
+
+    switch (action.type) {
+      case 'click':
+        if (locator) {
+          steps.push(`  await page.${locator}.click();`)
+        } else {
+          steps.push(`  // click action - no selector available`)
+        }
+        break
+      case 'input': {
+        const value = action.value === '[redacted]' ? '[user-provided]' : (action.value || '')
+        if (locator) {
+          steps.push(`  await page.${locator}.fill('${escapeString(value)}');`)
+        }
+        break
+      }
+      case 'keypress':
+        steps.push(`  await page.keyboard.press('${escapeString(action.key || '')}');`)
+        break
+      case 'navigate': {
+        let toUrl = action.toUrl || ''
+        if (baseUrl && toUrl) {
+          try {
+            const parsed = new URL(toUrl)
+            toUrl = baseUrl + parsed.pathname
+          } catch { /* use as-is */ }
+        }
+        steps.push(`  await page.waitForURL('${escapeString(toUrl)}');`)
+        break
+      }
+      case 'select':
+        if (locator) {
+          steps.push(`  await page.${locator}.selectOption('${escapeString(action.selectedValue || '')}');`)
+        }
+        break
+      case 'scroll':
+        steps.push(`  // User scrolled to y=${action.scrollY || 0}`)
+        break
+    }
+  }
+
+  // Assemble script
+  let script = `import { test, expect } from '@playwright/test';\n\n`
+  script += `test('${escapeString(testName)}', async ({ page }) => {\n`
+  if (startUrl) {
+    script += `  await page.goto('${escapeString(startUrl)}');\n\n`
+  }
+  script += steps.join('\n')
+  if (steps.length > 0) script += '\n'
+  if (errorMessage) {
+    script += `\n  // Error occurred here: ${errorMessage}\n`
+  }
+  script += `});\n`
+
+  // Cap output size
+  if (script.length > SCRIPT_MAX_SIZE) {
+    script = script.slice(0, SCRIPT_MAX_SIZE)
+  }
+
+  return script
+}
+
+/**
+ * Get the best Playwright locator for a set of selectors
+ * Priority: testId > role > ariaLabel > text > id > cssPath
+ * @param {Object} selectors - The selector strategies
+ * @returns {string} The Playwright locator expression
+ */
+function getPlaywrightLocator(selectors) {
+  if (selectors.testId) {
+    return `getByTestId('${escapeString(selectors.testId)}')`
+  }
+  if (selectors.role && selectors.role.role) {
+    if (selectors.role.name) {
+      return `getByRole('${escapeString(selectors.role.role)}', { name: '${escapeString(selectors.role.name)}' })`
+    }
+    return `getByRole('${escapeString(selectors.role.role)}')`
+  }
+  if (selectors.ariaLabel) {
+    return `getByLabel('${escapeString(selectors.ariaLabel)}')`
+  }
+  if (selectors.text) {
+    return `getByText('${escapeString(selectors.text)}')`
+  }
+  if (selectors.id) {
+    return `locator('#${escapeString(selectors.id)}')`
+  }
+  if (selectors.cssPath) {
+    return `locator('${escapeString(selectors.cssPath)}')`
+  }
+  return null
+}
+
+/**
+ * Escape a string for use in JavaScript string literals
+ * @param {string} str - The string to escape
+ * @returns {string} Escaped string
+ */
+function escapeString(str) {
+  if (!str) return ''
+  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')
+}
+
 // Listen for settings changes from content script
 if (typeof window !== 'undefined') {
   window.addEventListener('message', (event) => {
@@ -1401,9 +3111,6 @@ if (typeof window !== 'undefined') {
     // Handle settings messages from content script
     if (event.data?.type === 'DEV_CONSOLE_SETTING') {
       switch (event.data.setting) {
-        case 'setDOMSnapshotEnabled':
-          setDOMSnapshotEnabled(event.data.enabled)
-          break
         case 'setNetworkWaterfallEnabled':
           setNetworkWaterfallEnabled(event.data.enabled)
           break
@@ -1417,6 +3124,17 @@ if (typeof window !== 'undefined') {
           break
         case 'setActionReplayEnabled':
           setActionCaptureEnabled(event.data.enabled)
+          break
+        case 'setWebSocketCaptureEnabled':
+          webSocketCaptureEnabled = event.data.enabled
+          if (event.data.enabled) {
+            installWebSocketCapture()
+          } else {
+            uninstallWebSocketCapture()
+          }
+          break
+        case 'setWebSocketCaptureMode':
+          webSocketCaptureMode = event.data.mode || 'lifecycle'
           break
       }
     }

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -796,5 +797,137 @@ func TestMCPGetBrowserErrorsEmpty(t *testing.T) {
 				t.Errorf("Expected 0 entries or 'No browser errors found' message")
 			}
 		}
+	}
+}
+
+func TestScreenshotEndpoint(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
+
+	server, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Small valid JPEG-like data (just testing the flow, not actual image validity)
+	jpegData := strings.Repeat("A", 1000) // base64 content
+
+	body := map[string]string{
+		"dataUrl":  "data:image/jpeg;base64," + jpegData,
+		"url":      "https://example.com/page",
+		"errorId":  "err_123_abc",
+		"errorType": "console",
+	}
+	bodyJSON, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/screenshots", bytes.NewReader(bodyJSON))
+	w := httptest.NewRecorder()
+
+	server.handleScreenshot(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected 200, got %d", resp.StatusCode)
+	}
+
+	var result map[string]string
+	json.NewDecoder(resp.Body).Decode(&result)
+
+	filename := result["filename"]
+	if filename == "" {
+		t.Fatal("Expected filename in response")
+	}
+
+	// Verify file was saved
+	savedPath := filepath.Join(tmpDir, filename)
+	if _, err := os.Stat(savedPath); os.IsNotExist(err) {
+		t.Fatalf("Screenshot file not saved at %s", savedPath)
+	}
+
+	// Verify filename follows convention: [website]-[timestamp]-[errortype]-[errorid].jpg
+	if !strings.HasPrefix(filename, "example.com-") {
+		t.Errorf("Filename should start with hostname, got: %s", filename)
+	}
+	if !strings.HasSuffix(filename, ".jpg") {
+		t.Errorf("Filename should end with .jpg, got: %s", filename)
+	}
+	if !strings.Contains(filename, "console") {
+		t.Errorf("Filename should contain error type, got: %s", filename)
+	}
+	if !strings.Contains(filename, "err_123_abc") {
+		t.Errorf("Filename should contain error ID, got: %s", filename)
+	}
+}
+
+func TestScreenshotEndpointInvalidMethod(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
+
+	server, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/screenshots", nil)
+	w := httptest.NewRecorder()
+
+	server.handleScreenshot(w, req)
+
+	if w.Result().StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Expected 405, got %d", w.Result().StatusCode)
+	}
+}
+
+func TestScreenshotEndpointMissingDataUrl(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
+
+	server, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	body := map[string]string{"url": "https://example.com"}
+	bodyJSON, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/screenshots", bytes.NewReader(bodyJSON))
+	w := httptest.NewRecorder()
+
+	server.handleScreenshot(w, req)
+
+	if w.Result().StatusCode != http.StatusBadRequest {
+		t.Errorf("Expected 400, got %d", w.Result().StatusCode)
+	}
+}
+
+func TestLoadEntriesLargeEntry(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
+
+	// Create a log entry larger than bufio.Scanner's default 64KB buffer
+	largeData := strings.Repeat("x", 100*1024) // 100KB
+	entry := LogEntry{"level": "error", "type": "console", "screenshot": largeData}
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("Failed to marshal large entry: %v", err)
+	}
+
+	// Write the large entry plus a normal entry to the log file
+	normalEntry := LogEntry{"level": "warn", "msg": "normal"}
+	normalData, _ := json.Marshal(normalEntry)
+
+	content := string(data) + "\n" + string(normalData) + "\n"
+	if err := os.WriteFile(logFile, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to write log file: %v", err)
+	}
+
+	// NewServer should load both entries without error
+	server, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer failed on large entry: %v", err)
+	}
+
+	if len(server.entries) != 2 {
+		t.Errorf("Expected 2 entries, got %d", len(server.entries))
 	}
 }

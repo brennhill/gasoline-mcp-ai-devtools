@@ -328,6 +328,91 @@ describe('Status Updates', () => {
   })
 })
 
+describe('Context Annotation Warning', () => {
+  beforeEach(() => {
+    mock.reset()
+    mockDocument = createMockDocument()
+    globalThis.document = mockDocument
+  })
+
+  test('should show context warning when status has contextWarning', async () => {
+    const { updateConnectionStatus } = await import('../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: true,
+      entries: 10,
+      contextWarning: {
+        sizeKB: 25,
+        count: 4,
+        triggeredAt: Date.now(),
+      },
+    })
+
+    const warningEl = mockDocument.getElementById('context-warning')
+    assert.strictEqual(warningEl.style.display, 'block')
+  })
+
+  test('should populate warning text with size and count info', async () => {
+    const { updateConnectionStatus } = await import('../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: true,
+      entries: 10,
+      contextWarning: {
+        sizeKB: 30,
+        count: 5,
+        triggeredAt: Date.now(),
+      },
+    })
+
+    const warningTextEl = mockDocument.getElementById('context-warning-text')
+    assert.ok(warningTextEl.textContent.includes('30'))
+    assert.ok(warningTextEl.textContent.includes('5'))
+  })
+
+  test('should hide context warning when contextWarning is null', async () => {
+    const { updateConnectionStatus } = await import('../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: true,
+      entries: 10,
+      contextWarning: null,
+    })
+
+    const warningEl = mockDocument.getElementById('context-warning')
+    assert.strictEqual(warningEl.style.display, 'none')
+  })
+
+  test('should hide context warning when contextWarning is undefined', async () => {
+    const { updateConnectionStatus } = await import('../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: true,
+      entries: 10,
+    })
+
+    const warningEl = mockDocument.getElementById('context-warning')
+    assert.strictEqual(warningEl.style.display, 'none')
+  })
+
+  test('should hide context warning when disconnected even if warning exists', async () => {
+    const { updateConnectionStatus } = await import('../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: false,
+      error: 'Connection refused',
+      contextWarning: {
+        sizeKB: 25,
+        count: 3,
+        triggeredAt: Date.now(),
+      },
+    })
+
+    const warningEl = mockDocument.getElementById('context-warning')
+    assert.strictEqual(warningEl.style.display, 'none')
+  })
+})
+
 describe('Quick Actions', () => {
   beforeEach(() => {
     mock.reset()
@@ -384,6 +469,108 @@ describe('Server URL Display', () => {
 
     const logFileEl = mockDocument.getElementById('log-file-path')
     assert.ok(logFileEl.textContent.includes('dev-console-logs.jsonl'))
+  })
+})
+
+describe('WebSocket Toggle', () => {
+  beforeEach(() => {
+    mock.reset()
+    mockDocument = createMockDocument()
+    globalThis.document = mockDocument
+    mockChrome.runtime.sendMessage.mock.resetCalls()
+    mockChrome.storage.local.set.mock.resetCalls()
+  })
+
+  test('should load saved WebSocket capture state on init', async () => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({ webSocketCaptureEnabled: true, webSocketCaptureMode: 'messages' })
+    })
+
+    const { initFeatureToggles } = await import('../extension/popup.js')
+
+    await initFeatureToggles()
+
+    const wsToggle = mockDocument.getElementById('toggle-websocket')
+    assert.strictEqual(wsToggle.checked, true)
+  })
+
+  test('should default WebSocket capture to OFF', async () => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({}) // No saved value
+    })
+
+    const { initFeatureToggles } = await import('../extension/popup.js')
+
+    await initFeatureToggles()
+
+    const wsToggle = mockDocument.getElementById('toggle-websocket')
+    assert.strictEqual(wsToggle.checked, false)
+  })
+
+  test('should save WebSocket state when toggled', async () => {
+    const { handleFeatureToggle } = await import('../extension/popup.js')
+
+    handleFeatureToggle('webSocketCaptureEnabled', 'setWebSocketCaptureEnabled', true)
+
+    assert.ok(mockChrome.storage.local.set.mock.calls.some(
+      (c) => c.arguments[0].webSocketCaptureEnabled === true
+    ))
+  })
+
+  test('should send message to background when WebSocket toggled', async () => {
+    const { handleFeatureToggle } = await import('../extension/popup.js')
+
+    handleFeatureToggle('webSocketCaptureEnabled', 'setWebSocketCaptureEnabled', true)
+
+    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some(
+      (c) => c.arguments[0].type === 'setWebSocketCaptureEnabled' && c.arguments[0].enabled === true
+    ))
+  })
+
+  test('should save WebSocket mode when changed', async () => {
+    const { handleWebSocketModeChange } = await import('../extension/popup.js')
+
+    handleWebSocketModeChange('messages')
+
+    assert.ok(mockChrome.storage.local.set.mock.calls.some(
+      (c) => c.arguments[0].webSocketCaptureMode === 'messages'
+    ))
+  })
+
+  test('should send mode change message to background', async () => {
+    const { handleWebSocketModeChange } = await import('../extension/popup.js')
+
+    handleWebSocketModeChange('messages')
+
+    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some(
+      (c) => c.arguments[0].type === 'setWebSocketCaptureMode' && c.arguments[0].mode === 'messages'
+    ))
+  })
+
+  test('should default mode to lifecycle', async () => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({}) // No saved value
+    })
+
+    const { initWebSocketModeSelector } = await import('../extension/popup.js')
+
+    await initWebSocketModeSelector()
+
+    const modeSelect = mockDocument.getElementById('ws-mode')
+    assert.strictEqual(modeSelect.value, 'lifecycle')
+  })
+
+  test('should load saved mode on init', async () => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({ webSocketCaptureMode: 'messages' })
+    })
+
+    const { initWebSocketModeSelector } = await import('../extension/popup.js')
+
+    await initWebSocketModeSelector()
+
+    const modeSelect = mockDocument.getElementById('ws-mode')
+    assert.strictEqual(modeSelect.value, 'messages')
   })
 })
 

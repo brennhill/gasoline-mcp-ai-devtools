@@ -39,7 +39,7 @@ const mockChrome = {
     ),
     captureVisibleTab: mock.fn(() =>
       Promise.resolve(
-        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+        'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS'
       )
     ),
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1 }])),
@@ -56,6 +56,7 @@ globalThis.chrome = mockChrome
 import {
   createLogBatcher,
   sendLogsToServer,
+  sendEnhancedActionsToServer,
   checkServerHealth,
   updateBadge,
   formatLogEntry,
@@ -66,6 +67,10 @@ import {
   canTakeScreenshot,
   recordScreenshot,
   captureScreenshot,
+  measureContextSize,
+  checkContextAnnotations,
+  getContextWarning,
+  resetContextWarning,
 } from '../extension/background.js'
 
 describe('Log Batcher', () => {
@@ -619,12 +624,22 @@ describe('recordScreenshot', () => {
 })
 
 describe('captureScreenshot', () => {
+  let originalFetch
+
   beforeEach(() => {
     mockChrome.tabs.get.mock.resetCalls()
     mockChrome.tabs.captureVisibleTab.mock.resetCalls()
+    originalFetch = globalThis.fetch
+    // Mock fetch to simulate /screenshots endpoint
+    globalThis.fetch = mock.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ filename: 'localhost_3000-20260123-150405-console-err_123.jpg' }),
+      })
+    )
   })
 
-  test('should capture screenshot successfully', async () => {
+  test('should capture screenshot and save via server', async () => {
     const tabId = 3000
 
     const result = await captureScreenshot(tabId)
@@ -632,15 +647,30 @@ describe('captureScreenshot', () => {
     assert.strictEqual(result.success, true)
     assert.ok(result.entry)
     assert.strictEqual(result.entry.type, 'screenshot')
-    assert.ok(result.entry.dataUrl.startsWith('data:image/png'))
+    assert.strictEqual(result.entry.screenshotFile, 'localhost_3000-20260123-150405-console-err_123.jpg')
+    assert.strictEqual(result.entry.dataUrl, undefined, 'should not embed base64 data')
     assert.ok(result.entry.ts)
-    assert.ok(result.entry.sizeBytes > 0)
+  })
+
+  test('should POST screenshot data to server', async () => {
+    const tabId = 3010
+
+    await captureScreenshot(tabId, 'err_456', 'exception')
+
+    assert.strictEqual(globalThis.fetch.mock.calls.length, 1)
+    const [url, opts] = globalThis.fetch.mock.calls[0].arguments
+    assert.ok(url.endsWith('/screenshots'))
+    assert.strictEqual(opts.method, 'POST')
+    const body = JSON.parse(opts.body)
+    assert.ok(body.dataUrl.startsWith('data:image/'))
+    assert.strictEqual(body.errorId, 'err_456')
+    assert.strictEqual(body.errorType, 'exception')
   })
 
   test('should link screenshot to error when relatedErrorId provided', async () => {
     const tabId = 3001
 
-    const result = await captureScreenshot(tabId, 'err_123')
+    const result = await captureScreenshot(tabId, 'err_123', 'console')
 
     assert.strictEqual(result.success, true)
     assert.strictEqual(result.entry.relatedErrorId, 'err_123')
@@ -683,9 +713,22 @@ describe('captureScreenshot', () => {
     // Restore mock
     mockChrome.tabs.captureVisibleTab = mock.fn(() =>
       Promise.resolve(
-        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+        'data:image/jpeg;base64,/9j/4AAQSkZJRg=='
       )
     )
+  })
+
+  test('should handle server error gracefully', async () => {
+    const tabId = 3005
+
+    globalThis.fetch = mock.fn(() =>
+      Promise.resolve({ ok: false, status: 500, statusText: 'Internal Server Error' })
+    )
+
+    const result = await captureScreenshot(tabId)
+
+    assert.strictEqual(result.success, false)
+    assert.ok(result.error.includes('500'))
   })
 })
 
@@ -963,7 +1006,7 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
-    assert.strictEqual(parsed.version, '3.0.0')
+    assert.strictEqual(parsed.version, '3.5.0')
     assert.ok(Array.isArray(parsed.entries))
   })
 
@@ -996,5 +1039,235 @@ describe('Debug Logging', () => {
     const entries = getDebugLog()
     // Should be capped at 200
     assert.ok(entries.length <= 200)
+  })
+})
+
+describe('Context Annotation Monitoring', () => {
+  beforeEach(() => {
+    resetContextWarning()
+  })
+
+  describe('measureContextSize', () => {
+    test('should return 0 for entries without _context', () => {
+      const entry = { level: 'error', type: 'console', args: ['test'] }
+      assert.strictEqual(measureContextSize(entry), 0)
+    })
+
+    test('should return 0 for entries with empty _context', () => {
+      const entry = { level: 'error', _context: {} }
+      assert.strictEqual(measureContextSize(entry), 0)
+    })
+
+    test('should return approximate byte size of _context', () => {
+      const entry = {
+        level: 'error',
+        _context: {
+          user: { id: 123, name: 'test' },
+          page: { route: '/checkout' },
+        },
+      }
+      const size = measureContextSize(entry)
+      assert.ok(size > 0)
+      assert.ok(size < 200) // Small context should be well under 200 bytes
+    })
+
+    test('should measure large context correctly', () => {
+      const largeValue = 'x'.repeat(4000)
+      const entry = {
+        level: 'error',
+        _context: {
+          key1: largeValue,
+          key2: largeValue,
+          key3: largeValue,
+          key4: largeValue,
+          key5: largeValue,
+          key6: largeValue, // 6 × 4000 = ~24KB, over threshold
+        },
+      }
+      const size = measureContextSize(entry)
+      assert.ok(size > 20 * 1024, `Expected > 20KB, got ${size}`)
+    })
+  })
+
+  describe('checkContextAnnotations', () => {
+    test('should not warn for entries with small context', () => {
+      const entries = [
+        { level: 'error', _context: { user: { id: 1 } } },
+        { level: 'error', _context: { page: '/home' } },
+      ]
+      checkContextAnnotations(entries)
+      assert.strictEqual(getContextWarning(), null)
+    })
+
+    test('should not warn for entries without context', () => {
+      const entries = [
+        { level: 'error', args: ['test'] },
+        { level: 'warn', msg: 'hello' },
+      ]
+      checkContextAnnotations(entries)
+      assert.strictEqual(getContextWarning(), null)
+    })
+
+    test('should not warn for fewer than 3 excessive entries', () => {
+      const largeContext = {}
+      for (let i = 0; i < 6; i++) {
+        largeContext[`key${i}`] = 'x'.repeat(4000)
+      }
+
+      // Only 2 excessive entries
+      checkContextAnnotations([{ level: 'error', _context: largeContext }])
+      checkContextAnnotations([{ level: 'error', _context: largeContext }])
+
+      assert.strictEqual(getContextWarning(), null)
+    })
+
+    test('should warn after 3 excessive entries within 60s', () => {
+      const largeContext = {}
+      for (let i = 0; i < 6; i++) {
+        largeContext[`key${i}`] = 'x'.repeat(4000)
+      }
+
+      checkContextAnnotations([{ level: 'error', _context: largeContext }])
+      checkContextAnnotations([{ level: 'error', _context: largeContext }])
+      checkContextAnnotations([{ level: 'error', _context: largeContext }])
+
+      const warning = getContextWarning()
+      assert.ok(warning !== null, 'Expected warning to be set')
+      assert.ok(warning.sizeKB > 20, `Expected > 20KB, got ${warning.sizeKB}KB`)
+      assert.ok(warning.count >= 3, `Expected count >= 3, got ${warning.count}`)
+    })
+
+    test('should include average size in warning', () => {
+      const largeContext = {}
+      for (let i = 0; i < 10; i++) {
+        largeContext[`key${i}`] = 'x'.repeat(4000)
+      }
+
+      for (let i = 0; i < 3; i++) {
+        checkContextAnnotations([{ level: 'error', _context: largeContext }])
+      }
+
+      const warning = getContextWarning()
+      assert.ok(warning.sizeKB > 30) // 10 × 4000 = ~40KB
+    })
+
+    test('should handle batch with mix of large and small entries', () => {
+      const largeContext = {}
+      for (let i = 0; i < 6; i++) {
+        largeContext[`key${i}`] = 'x'.repeat(4000)
+      }
+
+      // 3 batches, each with one large entry mixed with small ones
+      for (let i = 0; i < 3; i++) {
+        checkContextAnnotations([
+          { level: 'error', _context: { small: 'val' } },
+          { level: 'error', _context: largeContext },
+          { level: 'warn', msg: 'no context' },
+        ])
+      }
+
+      const warning = getContextWarning()
+      assert.ok(warning !== null, 'Expected warning from large entries in mixed batches')
+    })
+  })
+
+  describe('resetContextWarning', () => {
+    test('should clear the warning state', () => {
+      const largeContext = {}
+      for (let i = 0; i < 6; i++) {
+        largeContext[`key${i}`] = 'x'.repeat(4000)
+      }
+
+      for (let i = 0; i < 3; i++) {
+        checkContextAnnotations([{ level: 'error', _context: largeContext }])
+      }
+
+      assert.ok(getContextWarning() !== null)
+      resetContextWarning()
+      assert.strictEqual(getContextWarning(), null)
+    })
+  })
+})
+
+// =============================================================================
+// V5: Enhanced Actions Server Communication
+// =============================================================================
+
+describe('Enhanced Actions Server Communication', () => {
+  beforeEach(() => {
+    globalThis.fetch = mock.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ received: 1 }),
+      })
+    )
+  })
+
+  test('sendEnhancedActionsToServer should POST actions to /enhanced-actions', async () => {
+    const actions = [
+      { type: 'click', timestamp: 1705312200000, url: 'http://localhost:3000', selectors: { testId: 'btn' } },
+      { type: 'input', timestamp: 1705312201000, url: 'http://localhost:3000', selectors: { id: 'email' }, value: 'test@test.com', inputType: 'email' },
+    ]
+
+    await sendEnhancedActionsToServer(actions)
+
+    assert.strictEqual(globalThis.fetch.mock.calls.length, 1)
+    const [url, opts] = globalThis.fetch.mock.calls[0].arguments
+    assert.ok(url.endsWith('/enhanced-actions'))
+    assert.strictEqual(opts.method, 'POST')
+    assert.strictEqual(opts.headers['Content-Type'], 'application/json')
+
+    const body = JSON.parse(opts.body)
+    assert.ok(Array.isArray(body.actions))
+    assert.strictEqual(body.actions.length, 2)
+    assert.strictEqual(body.actions[0].type, 'click')
+    assert.strictEqual(body.actions[1].type, 'input')
+  })
+
+  test('sendEnhancedActionsToServer should throw on non-ok response', async () => {
+    globalThis.fetch = mock.fn(() =>
+      Promise.resolve({ ok: false, status: 500 })
+    )
+
+    const actions = [{ type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: {} }]
+
+    await assert.rejects(
+      () => sendEnhancedActionsToServer(actions),
+      (err) => err.message.includes('500')
+    )
+  })
+
+  test('enhanced action batcher should batch and send actions', async () => {
+    const flushFn = mock.fn()
+    const batcher = createLogBatcher(flushFn, { debounceMs: 50, maxBatchSize: 50 })
+
+    const action1 = { type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: { id: 'btn' } }
+    const action2 = { type: 'input', timestamp: 1001, url: 'http://localhost:3000', selectors: { id: 'input' }, value: 'hi' }
+
+    batcher.add(action1)
+    batcher.add(action2)
+
+    // Wait for debounce
+    await new Promise((r) => setTimeout(r, 100))
+
+    assert.strictEqual(flushFn.mock.calls.length, 1)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 2)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].type, 'click')
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0][1].type, 'input')
+  })
+
+  test('message handler should process enhanced_action messages via batcher', async () => {
+    // Simulate what the message handler does - adds to batcher
+    const flushFn = mock.fn()
+    const actionBatcher = createLogBatcher(flushFn, { debounceMs: 50, maxBatchSize: 50 })
+
+    // Simulate receiving enhanced_action messages
+    const payload = { type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: { testId: 'btn' } }
+    actionBatcher.add(payload)
+
+    await new Promise((r) => setTimeout(r, 100))
+
+    assert.strictEqual(flushFn.mock.calls.length, 1)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].type, 'click')
   })
 })
