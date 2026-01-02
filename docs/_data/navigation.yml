@@ -1,0 +1,53 @@
+docs:
+  - title: "Getting Started"
+    children:
+      - title: "Quick Start"
+        url: /getting-started/
+      - title: "Features"
+        url: /features/
+
+  - title: "MCP Integration"
+    children:
+      - title: "Overview"
+        url: /mcp-integration/
+      - title: "Claude Code"
+        url: /mcp-integration/claude-code/
+      - title: "Cursor"
+        url: /mcp-integration/cursor/
+      - title: "Windsurf"
+        url: /mcp-integration/windsurf/
+      - title: "Claude Desktop"
+        url: /mcp-integration/claude-desktop/
+      - title: "Zed"
+        url: /mcp-integration/zed/
+
+  - title: "Capabilities"
+    children:
+      - title: "WebSocket Monitoring"
+        url: /websocket-monitoring/
+      - title: "Network Bodies"
+        url: /network-bodies/
+      - title: "DOM Queries"
+        url: /dom-queries/
+      - title: "Accessibility Audit"
+        url: /accessibility-audit/
+
+  - title: "Reference"
+    children:
+      - title: "Developer API"
+        url: /developer-api/
+      - title: "Log Format"
+        url: /log-format/
+      - title: "Configuration"
+        url: /configuration/
+      - title: "Performance SLOs"
+        url: /performance-slos/
+
+  - title: "More"
+    children:
+      - title: "Alternatives"
+        url: /alternatives/
+      - title: "Privacy & Security"
+        url: /privacy/
+      - title: "Troubleshooting"
+        url: /troubleshooting/
