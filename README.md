@@ -621,10 +621,10 @@ Other tools that give AI coding assistants access to browser state via MCP:
 
 **Key differences:**
 
+- **Vendor neutral** — Gasoline is independent and open-source. It works with any MCP-compatible AI tool (Claude Code, Cursor, Windsurf, Zed, Continue, etc.) without favoring any vendor. Chrome DevTools MCP is maintained by Google; Cursor MCP Extension is Cursor-specific.
 - **Passive vs. active** — Gasoline and BrowserTools observe what happens in the browser without interfering. Chrome DevTools MCP takes control of the browser via Puppeteer, which is more powerful but requires a separate Chrome instance and can't observe your normal browsing session.
 - **Zero dependencies** — Gasoline ships as a single Go binary with no runtime dependencies. The others require Node.js.
-- **WebSocket capture** — Gasoline captures real-time WebSocket traffic (messages, lifecycle events). This is unique among the alternatives.
-- **Performance overhead** — Gasoline enforces strict SLOs (< 0.1ms per console intercept, < 0.1ms per WebSocket message). The extension never blocks the main thread.
+- **Performance overhead** — Gasoline enforces strict SLOs (< 0.1ms per console intercept). The extension never blocks the main thread.
 
 ## Performance SLOs
 
@@ -704,14 +704,15 @@ node --test extension-tests/performance.test.js
 
 ### v4 (Planned)
 
-- [ ] **WebSocket monitoring** - Connection lifecycle, message payloads, reconnection events
+- [ ] **WebSocket monitoring** - Connection lifecycle, message payloads, adaptive sampling for high-frequency streams
 - [ ] **Network response bodies** - Capture request/response payloads for API debugging
 - [ ] **Live DOM queries** - On-demand DOM state inspection via MCP tool
 - [ ] **Accessibility audit** - Run axe-core and surface violations as actionable findings
-- [ ] **Performance metrics** - Core Web Vitals (LCP, FID, CLS), long tasks, memory pressure
-- [ ] **Component state inspection** - React/Vue/Svelte DevTools-level state and props
-- [ ] **Storage inspection** - localStorage, sessionStorage, IndexedDB, cookies
-- [ ] **Full network waterfall** - Request timing breakdown (DNS, TLS, TTFB, download)
+
+### v5 (Planned)
+
+- [ ] **AI-preprocessed errors** - Enrich errors with source code snippets, component ancestry (React/Vue/Svelte), and relevant app state — gives the AI a complete diagnosis without extra tool calls
+- [ ] **Reproduction scripts** - Convert captured user actions into runnable Playwright tests with robust selectors (data-testid > aria > role > CSS path) that reproduce the bug
 
 ## Troubleshooting
 
