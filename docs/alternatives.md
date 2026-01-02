@@ -3,13 +3,17 @@ title: "Gasoline vs Alternatives"
 description: "Compare Gasoline with Chrome DevTools MCP, BrowserTools MCP, and Cursor MCP Extension. Architecture, dependencies, and approach differences."
 keywords: "gasoline vs browsertools, MCP browser tools comparison, chrome devtools mcp alternative, browser debugging mcp comparison"
 permalink: /alternatives/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "See how Gasoline stacks up against the competition."
 toc: true
 toc_sticky: true
 ---
 
 Other tools that give AI coding assistants access to browser state via MCP:
 
-## Comparison Table
+## <i class="fas fa-balance-scale"></i> Comparison Table
 
 | Tool | Architecture | Approach | Dependencies |
 |------|-------------|----------|--------------|
@@ -18,7 +22,7 @@ Other tools that give AI coding assistants access to browser state via MCP:
 | [BrowserTools MCP](https://github.com/nicholasgasior/browser-tools-mcp) | Extension + Node server + MCP server | Passive capture + Lighthouse | Node.js |
 | [Cursor MCP Extension](https://github.com/nicholasgasior/cursor-mcp-extension) | Extension + MCP server | Passive capture | Node.js |
 
-## Key Differences
+## <i class="fas fa-not-equal"></i> Key Differences
 
 ### Vendor Neutral
 
@@ -57,7 +61,7 @@ Gasoline is **100% local**:
 - Auth headers automatically stripped
 - Open source — audit the code
 
-## When to Choose What
+## <i class="fas fa-compass"></i> When to Choose What
 
 | Use Case | Best Tool |
 |----------|-----------|

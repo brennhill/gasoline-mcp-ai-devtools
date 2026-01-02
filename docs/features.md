@@ -3,102 +3,111 @@ title: "What Gasoline Captures"
 description: "Gasoline captures console logs, network errors, exceptions, WebSocket events, network request/response bodies, user actions, and screenshots from your browser."
 keywords: "browser log capture, console error monitoring, network error capture, exception tracking, WebSocket monitoring, screenshot on error"
 permalink: /features/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Every signal your browser emits. Captured. Organized. Fed to your AI."
 toc: true
 toc_sticky: true
 ---
 
-Gasoline passively observes your browser and captures everything an AI coding assistant needs to debug issues.
+Gasoline passively observes your browser and collects everything an AI needs to diagnose issues.
 
-## Console Logs
+## <i class="fas fa-terminal"></i> Console Logs
 
-All `console` API calls are captured with full arguments:
+All `console` API calls captured with full argument serialization:
 
-- `console.log()` — general output
-- `console.warn()` — warnings
-- `console.error()` — errors
-- `console.info()` — informational
-- `console.debug()` — debug output
+| Method | Level |
+|--------|-------|
+| `console.error()` | error |
+| `console.warn()` | warn |
+| `console.log()` | info |
+| `console.info()` | info |
+| `console.debug()` | debug |
 
-Arguments are serialized including objects, arrays, and Error instances.
+Objects, arrays, and Error instances are fully serialized — not just `[Object object]`.
 
-## Network Errors
+## <i class="fas fa-wifi"></i> Network Errors
 
-Failed API calls (4xx and 5xx responses) are captured with:
+Failed API calls (4xx and 5xx) captured with:
 
 - HTTP method and URL
 - Response status code
-- Response body (for debugging API errors)
-- Request duration
+- Response body (the actual error payload)
+- Request duration (ms)
 
-## Exceptions
+Your AI sees _why_ the API call failed, not just _that_ it failed.
 
-Uncaught errors and unhandled promise rejections are captured with:
+## <i class="fas fa-bomb"></i> Exceptions
+
+Uncaught errors and unhandled promise rejections with:
 
 - Error message
 - Full stack trace
 - Source file, line, and column
-- Source map resolution (when enabled)
+- Source map resolution (minified → original)
 
-## WebSocket Events
+## <i class="fas fa-plug"></i> WebSocket Events
 
 [Full details →](/websocket-monitoring/)
 
 - Connection lifecycle (open, close, error)
 - Message payloads (sent and received)
 - Adaptive sampling for high-frequency streams
-- Per-connection message rates and schemas
+- Per-connection rates and schemas
 
-## Network Bodies
+## <i class="fas fa-exchange-alt"></i> Network Bodies
 
 [Full details →](/network-bodies/)
 
-- Request payloads (POST/PUT/PATCH bodies)
-- Response payloads for API debugging
-- On-demand capture (doesn't record everything)
+- Request payloads (POST/PUT/PATCH)
+- Response payloads for debugging
+- On-demand — doesn't record everything
 
-## User Actions
+## <i class="fas fa-mouse-pointer"></i> User Actions
 
-Recent user interactions are buffered and attached to errors:
+Recent interactions buffered and attached to errors:
 
-- Click events with target element selectors
-- Input events (values redacted by default)
-- Scroll events (throttled)
-- Keyboard events
-- Multi-strategy selectors (data-testid, aria, role, CSS path)
+- <i class="fas fa-hand-pointer"></i> Click events with element selectors
+- <i class="fas fa-keyboard"></i> Input events (values redacted by default)
+- <i class="fas fa-arrows-alt-v"></i> Scroll events (throttled)
+- Multi-strategy selectors (data-testid > aria > role > CSS path)
 
-## Screenshots
+## <i class="fas fa-camera"></i> Screenshots
 
-Auto-captured on error, saved as JPEG files on disk:
+Auto-captured on error as JPEG:
 
-- Rate limited (5s between captures, 10 per session max)
-- Configurable quality (JPEG 80%)
+- Rate limited: 5s between captures, 10/session max
+- JPEG quality 80%
 - Triggered by exceptions and console errors
 
-## AI Context Enrichment
+## <i class="fas fa-brain"></i> AI Context Enrichment
 
-Errors can be enriched with framework-aware context:
+Errors enriched with framework-aware context:
 
 - Component ancestry (React, Vue, Svelte)
 - Relevant app state snapshots
-- Custom annotations via `window.__gasoline.annotate()`
+- Custom annotations via [`window.__gasoline.annotate()`](/developer-api/)
 
-## Reproduction Scripts
+## <i class="fas fa-play-circle"></i> Reproduction Scripts
 
-Captured user actions can be converted to runnable Playwright tests:
+User actions → runnable Playwright tests:
 
-- Multi-strategy selectors (data-testid > aria > role > CSS path)
-- Click, input, scroll, keyboard, and select events
-- Generated via `window.__gasoline.generateScript()`
+- Multi-strategy selectors (data-testid > aria > role > CSS)
+- Click, input, scroll, keyboard, select events
+- Generated via [`window.__gasoline.generateScript()`](/developer-api/)
 
-## Extension Settings
+## <i class="fas fa-sliders-h"></i> Extension Controls
 
-The extension popup lets you control what gets captured:
+The popup lets you dial the heat:
 
-- **Capture level** — Errors Only, Warnings+, or All Logs
-- **WebSocket monitoring** — lifecycle only or include messages
-- **Network waterfall** — timing data for all requests
-- **Performance marks** — `performance.mark()` and `measure()`
-- **User actions** — click/input/scroll buffer
-- **Screenshot on error** — auto-capture on exceptions
-- **Source maps** — resolve minified stack traces
-- **Domain filters** — only capture from specific sites
+| Setting | Options |
+|---------|---------|
+| **Capture level** | Errors Only · Warnings+ · All Logs |
+| **WebSocket** | Lifecycle only · Include messages |
+| **Network waterfall** | On / Off |
+| **Performance marks** | On / Off |
+| **User actions** | On / Off |
+| **Screenshot on error** | On / Off |
+| **Source maps** | On / Off |
+| **Domain filters** | Allowlist specific sites |

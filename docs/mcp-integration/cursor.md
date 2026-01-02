@@ -1,15 +1,17 @@
 ---
-title: "Gasoline + Cursor Setup"
+title: "Gasoline + Cursor"
 description: "Configure Gasoline as an MCP server for Cursor IDE. Give Cursor's AI real-time access to browser console logs, network errors, and exceptions."
 keywords: "Cursor MCP server, Cursor browser debugging, Cursor AI browser logs, Cursor MCP extension"
 permalink: /mcp-integration/cursor/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Fuel Cursor's AI with live browser data."
 toc: true
 toc_sticky: true
 ---
 
-Cursor is an AI-powered code editor. Gasoline connects to Cursor via MCP, letting its AI see your browser errors in real time.
-
-## Configuration
+## <i class="fas fa-file-code"></i> Configuration
 
 Add to `~/.cursor/mcp.json`:
 
@@ -24,7 +26,7 @@ Add to `~/.cursor/mcp.json`:
 }
 ```
 
-Or use Cursor's UI: **Settings → MCP Servers → Add Server** and paste:
+Or use Cursor's UI: **Settings → MCP Servers → Add Server**:
 
 ```json
 {
@@ -35,20 +37,20 @@ Or use Cursor's UI: **Settings → MCP Servers → Add Server** and paste:
 }
 ```
 
-## Usage
+## <i class="fas fa-fire-alt"></i> Usage
 
 After restarting Cursor, the AI can:
 
-- See console errors and warnings from your app
-- Inspect failed network requests with response bodies
-- Query the live DOM with CSS selectors
-- Check WebSocket connection states
-- Run accessibility audits
+- <i class="fas fa-exclamation-triangle"></i> See console errors and warnings
+- <i class="fas fa-wifi"></i> Inspect failed network requests with response bodies
+- <i class="fas fa-code"></i> Query the live DOM with CSS selectors
+- <i class="fas fa-plug"></i> Check WebSocket connection states
+- <i class="fas fa-universal-access"></i> Run accessibility audits
 
-Ask Cursor's AI: _"What browser errors are happening?"_ and it will query Gasoline automatically.
+Ask: _"What browser errors are happening?"_ — Cursor queries Gasoline automatically.
 
-## Troubleshooting
+## <i class="fas fa-wrench"></i> Troubleshooting
 
-1. **Restart Cursor** after adding the config
-2. **Check MCP status** in Cursor's settings panel
-3. **Verify the extension** shows "Connected" in the popup
+1. **Restart Cursor** after adding config
+2. **Check MCP status** in settings panel
+3. **Verify extension** shows "Connected" in popup

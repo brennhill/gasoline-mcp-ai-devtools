@@ -3,49 +3,53 @@ title: "Accessibility Audit"
 description: "Run accessibility audits on your web app via MCP. AI assistants can identify WCAG violations, missing alt text, contrast issues, and ARIA problems."
 keywords: "accessibility audit MCP, axe-core MCP tool, WCAG violations, accessibility testing AI, a11y audit browser"
 permalink: /accessibility-audit/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Surface accessibility violations. Let your AI fix them."
 toc: true
 toc_sticky: true
 ---
 
-Gasoline's `run_accessibility_audit` MCP tool lets AI assistants run accessibility audits on the current page or a scoped element, surfacing WCAG violations as actionable findings.
+Gasoline's `run_accessibility_audit` tool surfaces WCAG violations as actionable findings your AI can fix.
 
-## How It Works
+## <i class="fas fa-cogs"></i> How It Works
 
-1. Your AI calls `run_accessibility_audit`
-2. The extension runs an accessibility check against the live page
-3. Violations are returned with severity, affected elements, and fix suggestions
+1. <i class="fas fa-terminal"></i> Your AI calls `run_accessibility_audit`
+2. <i class="fas fa-search"></i> Extension audits the live page
+3. <i class="fas fa-list"></i> Violations returned with severity, elements, and fixes
 
-## MCP Tool: `run_accessibility_audit`
+## <i class="fas fa-universal-access"></i> Scope Options
 
-Run a full-page audit or scope to a specific element:
+- **Full page** — audit everything (no arguments)
+- **Scoped** — pass a CSS selector to audit just one section
 
-- Full page audit (no arguments)
-- Scoped audit (pass a CSS selector to limit scope)
-
-## What's Reported
+## <i class="fas fa-clipboard-list"></i> What's Reported
 
 Each violation includes:
 
-- **Rule ID** — the accessibility rule that was violated
-- **Severity** — critical, serious, moderate, or minor
-- **Description** — what the issue is
-- **Affected elements** — which DOM elements have the problem
-- **Fix suggestion** — how to resolve the violation
+| Field | Description |
+|-------|-------------|
+| <i class="fas fa-tag"></i> Rule ID | The accessibility rule violated |
+| <i class="fas fa-exclamation-circle"></i> Severity | Critical, serious, moderate, or minor |
+| <i class="fas fa-align-left"></i> Description | What the issue is |
+| <i class="fas fa-code"></i> Affected elements | Which DOM elements have the problem |
+| <i class="fas fa-check"></i> Fix suggestion | How to resolve the violation |
 
-## Common Findings
+## <i class="fas fa-search"></i> Common Findings
 
 | Category | Examples |
 |----------|---------|
-| Images | Missing alt text, decorative images not marked |
-| Color | Insufficient contrast ratio |
-| Forms | Missing labels, unlabeled inputs |
-| ARIA | Invalid roles, missing required attributes |
-| Structure | Missing landmarks, heading order issues |
-| Keyboard | Elements not focusable, missing focus indicators |
+| <i class="fas fa-image"></i> Images | Missing alt text, decorative images not marked |
+| <i class="fas fa-palette"></i> Color | Insufficient contrast ratio |
+| <i class="fas fa-edit"></i> Forms | Missing labels, unlabeled inputs |
+| <i class="fas fa-project-diagram"></i> ARIA | Invalid roles, missing required attributes |
+| <i class="fas fa-sitemap"></i> Structure | Missing landmarks, heading order |
+| <i class="fas fa-keyboard"></i> Keyboard | Not focusable, missing focus indicators |
 
-## Use Cases
+## <i class="fas fa-fire-alt"></i> Use Cases
 
-- Catch accessibility issues during development before code review
-- Let AI assistants suggest ARIA fixes alongside functional code
-- Audit after UI changes to prevent accessibility regressions
-- Scope audits to specific components ("Audit just the login form")
+- Catch a11y issues during development (before code review)
+- Let AI suggest ARIA fixes alongside functional code
+- Audit after UI changes to prevent regressions
+- Scope to components: _"Audit just the login form"_

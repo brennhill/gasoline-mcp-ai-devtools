@@ -1,41 +1,44 @@
 ---
-title: "Getting Started with Gasoline"
+title: "Fire It Up"
 description: "Install and configure Gasoline in under 2 minutes. Start capturing browser logs for your AI coding assistant with a single command."
 keywords: "install gasoline, gasoline mcp setup, npx gasoline-mcp, browser extension install, MCP server setup"
 permalink: /getting-started/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "One command. Two minutes. Your AI sees your browser."
 toc: true
 toc_sticky: true
 ---
 
-Gasoline has two parts: a **local server** (receives browser data) and a **browser extension** (captures it). Your AI assistant connects to the server via [MCP](https://modelcontextprotocol.io/).
-
-## 1. Start the Server
+## <i class="fas fa-fire"></i> 1. Ignite the Server
 
 ```bash
 npx gasoline-mcp
 ```
 
-You should see: `Gasoline server listening on http://localhost:7890`
+You'll see: `Gasoline server listening on http://localhost:7890`
 
-Leave this running in the background. No global install needed — `npx` handles it.
+Leave this burning. No global install — `npx` handles everything.
 
-## 2. Install the Browser Extension
+## <i class="fas fa-puzzle-piece"></i> 2. Install the Extension
 
-Install from the [Chrome Web Store](https://chromewebstore.google.com) (search "Gasoline"), then click the Gasoline icon in your toolbar — it should show **Connected**.
+Grab it from the [Chrome Web Store](https://chromewebstore.google.com) (search "Gasoline"). Click the icon in your toolbar — it should show **Connected**.
 
-### Load Unpacked (Development)
+<details>
+<summary><i class="fas fa-wrench"></i> Load Unpacked (Development)</summary>
 
-1. Download or clone the [repository](https://github.com/brennhill/gasoline)
-2. Open `chrome://extensions` in Chrome
-3. Enable **Developer mode** (top right toggle)
-4. Click **Load unpacked**
-5. Select the `extension/` folder
+1. Clone the [repository](https://github.com/brennhill/gasoline)
+2. Open `chrome://extensions` → enable **Developer mode**
+3. Click **Load unpacked** → select the `extension/` folder
 
-## 3. Connect Your AI Tool
+</details>
 
-Add MCP config so your AI tool starts Gasoline automatically:
+## <i class="fas fa-plug"></i> 3. Connect Your AI Tool
 
-**Claude Code** — create `.mcp.json` in your project root:
+Drop this config and your AI tool fires up Gasoline automatically:
+
+**Claude Code** — `.mcp.json` in your project root:
 
 ```json
 {
@@ -48,40 +51,46 @@ Add MCP config so your AI tool starts Gasoline automatically:
 }
 ```
 
-See the [MCP Integration](/mcp-integration/) section for Cursor, Windsurf, Claude Desktop, Zed, and more.
+<i class="fas fa-fire-alt"></i> See [MCP Integration](/mcp-integration/) for Cursor, Windsurf, Claude Desktop, Zed, and more.
 
-**Restart your AI tool after adding the config.** From now on, the server starts automatically.
+**Restart your AI tool.** From now on, the server ignites automatically.
 
-## Verify It's Working
+## <i class="fas fa-check-circle"></i> Verify the Flame
 
-Open your web app, trigger an error (e.g., `console.error("test")`), and ask your AI: _"What browser errors do you see?"_
+Open your web app. Trigger an error:
 
-Your AI assistant now has access to these tools:
+```javascript
+console.error("Gasoline test — is the fire lit?")
+```
+
+Ask your AI: _"What browser errors do you see?"_
+
+## <i class="fas fa-tools"></i> Available Tools
+
+Your AI now has these at its disposal:
 
 | Tool | What it does |
 |------|-------------|
-| `get_browser_errors` | Recent console errors, network failures, and exceptions |
-| `get_browser_logs` | All logs (errors + warnings + info) |
-| `clear_browser_logs` | Clears the log file |
-| `get_websocket_events` | Captured WebSocket messages and lifecycle events |
-| `get_websocket_status` | Active WebSocket connection states and rates |
-| `get_network_bodies` | Captured request/response payloads |
-| `query_dom` | Query the live DOM with a CSS selector |
-| `get_page_info` | Current page URL, title, and viewport |
-| `run_accessibility_audit` | Run an accessibility audit on the page |
+| `get_browser_errors` | <i class="fas fa-exclamation-triangle"></i> Console errors, network failures, exceptions |
+| `get_browser_logs` | <i class="fas fa-list"></i> All logs (errors + warnings + info) |
+| `clear_browser_logs` | <i class="fas fa-eraser"></i> Clear the log file |
+| `get_websocket_events` | <i class="fas fa-plug"></i> WebSocket messages and lifecycle |
+| `get_websocket_status` | <i class="fas fa-signal"></i> Connection states and rates |
+| `get_network_bodies` | <i class="fas fa-exchange-alt"></i> Request/response payloads |
+| `query_dom` | <i class="fas fa-code"></i> Live DOM query with CSS selectors |
+| `get_page_info` | <i class="fas fa-info-circle"></i> Page URL, title, viewport |
+| `run_accessibility_audit` | <i class="fas fa-universal-access"></i> Accessibility violations |
 
-## Alternative: Manual Server Mode (No MCP)
+## <i class="fas fa-file-alt"></i> No MCP? No Problem.
 
-If your AI tool doesn't support MCP, run the server standalone and point your AI at the log file:
+Run standalone — Gasoline writes to `~/gasoline-logs.jsonl`. Point your AI at the file.
 
 ```bash
 npx gasoline-mcp
 ```
 
-The server writes logs to `~/gasoline-logs.jsonl`. Point your AI assistant at this file for manual debugging.
-
 ## Next Steps
 
-- [Configure server options](/configuration/) (port, log rotation, log file path)
-- [Set up MCP integration](/mcp-integration/) for your specific AI tool
-- [Explore all captured data](/features/) (WebSocket, network bodies, DOM queries)
+- <i class="fas fa-sliders-h"></i> [Configure the server](/configuration/) — port, log rotation, file path
+- <i class="fas fa-plug"></i> [MCP Integration](/mcp-integration/) — setup for your specific tool
+- <i class="fas fa-fire-alt"></i> [All capabilities](/features/) — everything Gasoline captures

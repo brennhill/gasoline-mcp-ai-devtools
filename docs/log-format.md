@@ -3,13 +3,17 @@ title: "Log Format Reference"
 description: "Gasoline log format documentation. JSONL structured logs with enrichments for console errors, network failures, exceptions, screenshots, and more."
 keywords: "browser log format, JSONL structured logs, browser error format, log enrichments, error grouping"
 permalink: /log-format/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Structured fuel — every log entry, decoded."
 toc: true
 toc_sticky: true
 ---
 
 Logs are stored in [JSONL format](https://jsonlines.org/) (one JSON object per line). Each entry includes an `_enrichments` array that lists what additional data is attached.
 
-## Basic Log Entries
+## <i class="fas fa-stream"></i> Basic Log Entries
 
 ```jsonl
 {"ts":"2024-01-22T10:30:00.000Z","level":"error","type":"console","args":["Error message"],"url":"http://localhost:3000/app"}
@@ -17,7 +21,7 @@ Logs are stored in [JSONL format](https://jsonlines.org/) (one JSON object per l
 {"ts":"2024-01-22T10:30:02.000Z","level":"error","type":"exception","message":"Cannot read property 'x' of undefined","stack":"...","filename":"app.js","lineno":42}
 ```
 
-## Entry Types
+## <i class="fas fa-th-list"></i> Entry Types
 
 | Type | Description | Key Fields |
 |------|-------------|------------|
@@ -28,7 +32,7 @@ Logs are stored in [JSONL format](https://jsonlines.org/) (one JSON object per l
 | `network_waterfall` | Network timing data | `entries`, `pending` |
 | `performance` | Performance marks/measures | `marks`, `measures`, `navigation` |
 
-## Enrichments
+## <i class="fas fa-plus-circle"></i> Enrichments
 
 The `_enrichments` array tells you what additional data is attached to an entry:
 
@@ -45,7 +49,7 @@ The `_enrichments` array tells you what additional data is attached to an entry:
 | `performanceMarks` | Performance marks/measures | Performance entry |
 | `aiContext` | Component ancestry and app state | AI context enrichment enabled |
 
-## Enriched Error Example
+## <i class="fas fa-bug"></i> Enriched Error Example
 
 ```json
 {
@@ -80,7 +84,7 @@ The `_enrichments` array tells you what additional data is attached to an entry:
 }
 ```
 
-## Linked Enrichment Entries
+## <i class="fas fa-link"></i> Linked Enrichment Entries
 
 Some enrichments are sent as separate entries linked by `_errorTs` or `relatedErrorId`:
 
@@ -90,7 +94,7 @@ Some enrichments are sent as separate entries linked by `_errorTs` or `relatedEr
 {"type":"screenshot","ts":"2024-01-22T10:30:00.200Z","level":"info","_enrichments":["screenshot"],"relatedErrorId":"err_1705921800000_abc123","screenshotFile":"localhost-20240122-103000-exception-err_1705921800000_abc123.jpg","trigger":"error"}
 ```
 
-## Error Grouping
+## <i class="fas fa-layer-group"></i> Error Grouping
 
 Repeated errors within 5 seconds are deduplicated. Grouped entries include:
 
@@ -103,7 +107,7 @@ Repeated errors within 5 seconds are deduplicated. Grouped entries include:
 }
 ```
 
-## Rate Limiting
+## <i class="fas fa-tachometer-alt"></i> Rate Limiting
 
 When errors cascade rapidly (e.g., a render loop), Gasoline prevents log flooding:
 

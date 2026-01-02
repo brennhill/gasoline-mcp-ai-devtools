@@ -3,13 +3,17 @@ title: "Performance SLOs"
 description: "Gasoline's performance guarantees. Less than 0.1ms per console intercept, 20MB memory cap, and zero main thread blocking."
 keywords: "browser extension performance, zero overhead debugging, extension performance SLO, browser extension memory usage"
 permalink: /performance-slos/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Burns clean — zero overhead, enforced by benchmarks."
 toc: true
 toc_sticky: true
 ---
 
 Gasoline is designed to have minimal impact on page performance. These Service Level Objectives (SLOs) are enforced by benchmark tests.
 
-## Latency Targets
+## <i class="fas fa-stopwatch"></i> Latency Targets
 
 | Operation | Target | Description |
 |-----------|--------|-------------|
@@ -22,7 +26,7 @@ Gasoline is designed to have minimal impact on page performance. These Service L
 | Network waterfall (50 req) | < 5ms | Collecting timing data for 50 requests |
 | Full error path | < 5ms | Total time from error to queued for server |
 
-## Memory Safeguards
+## <i class="fas fa-memory"></i> Memory Safeguards
 
 | Safeguard | Limit | Purpose |
 |-----------|-------|---------|
@@ -38,7 +42,7 @@ Gasoline is designed to have minimal impact on page performance. These Service L
 | Network bodies buffer | 8MB | Per-buffer memory cap |
 | Global hard limit | 50MB | Total extension memory ceiling |
 
-## Design Principles
+## <i class="fas fa-drafting-compass"></i> Design Principles
 
 - **Never block the main thread** — all capture is synchronous but < 0.1ms
 - **Deferred setup** — WebSocket and network intercepts wait until after `load` event
@@ -46,7 +50,7 @@ Gasoline is designed to have minimal impact on page performance. These Service L
 - **FIFO eviction** — when buffers fill, oldest entries are dropped
 - **Circuit breaker** — if the server is down, the extension backs off exponentially
 
-## Running Benchmarks
+## <i class="fas fa-flask"></i> Running Benchmarks
 
 ```bash
 node --test extension-tests/performance.test.js
