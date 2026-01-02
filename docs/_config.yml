@@ -55,7 +55,10 @@ exclude:
   - product-description.md
   - performance-budget-spec.md
   - generate-test-v2.md
+  - generate-test-specification.md
+  - competitive-analysis.md
   - features/
+  - ai-first/
   - Gemfile
   - Gemfile.lock
   - node_modules

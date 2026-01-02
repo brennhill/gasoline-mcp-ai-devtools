@@ -23,6 +23,8 @@ docs:
 
   - title: "Capabilities"
     children:
+      - title: "Test Generation"
+        url: /generate-test/
       - title: "WebSocket Monitoring"
         url: /websocket-monitoring/
       - title: "Network Bodies"
@@ -45,6 +47,10 @@ docs:
 
   - title: "More"
     children:
+      - title: "Roadmap"
+        url: /roadmap/
+      - title: "Blog"
+        url: /blog/
       - title: "Security"
         url: /security/
       - title: "Privacy"
