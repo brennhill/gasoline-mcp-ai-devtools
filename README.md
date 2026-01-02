@@ -28,13 +28,38 @@
 
 ## Quick Start
 
-Gasoline has two parts: a **local server** (receives and stores logs) and a **browser extension** (captures logs from your pages). Your AI assistant connects to the server via [MCP](https://modelcontextprotocol.io/) (Model Context Protocol) — a standard that lets AI tools talk to external services.
+Gasoline has two parts: a **local server** (receives browser data) and a **browser extension** (captures it). Your AI assistant connects to the server via [MCP](https://modelcontextprotocol.io/) (Model Context Protocol).
 
-No global install required — `npx` handles everything.
+Three steps — takes about 2 minutes:
 
-### 1. Add the MCP server to your AI tool
+### 1. Start the server
 
-Pick your tool below. This config tells your AI tool to start Gasoline automatically:
+```bash
+npx gasoline-mcp
+```
+
+You should see: `Gasoline server listening on http://localhost:7890`
+
+Leave this running in the background. No global install needed — `npx` handles it.
+
+### 2. Install the browser extension
+
+Install from the [Chrome Web Store](https://chromewebstore.google.com) (search "Gasoline"), then click the Gasoline icon in your toolbar — it should show **Connected**.
+
+<details>
+<summary>Load unpacked (for development)</summary>
+
+1. Download or clone this repository
+2. Open `chrome://extensions` in Chrome
+3. Enable **Developer mode** (top right toggle)
+4. Click **Load unpacked**
+5. Select the `extension/` folder
+
+</details>
+
+### 3. Connect your AI tool
+
+Add this MCP config so your AI tool starts Gasoline automatically (you won't need step 1 after this):
 
 **Claude Code** — create `.mcp.json` in your project root:
 
@@ -48,8 +73,6 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
   }
 }
 ```
-
-> Alternatively, add to `~/.claude/settings.json` to enable globally across all projects.
 
 <details>
 <summary>Other AI tools (Cursor, Windsurf, Claude Desktop, Zed, Continue)</summary>
@@ -131,28 +154,11 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
 
 </details>
 
-**After adding the config, restart your AI tool.** The server starts automatically when the tool launches.
+**Restart your AI tool after adding the config.** From now on, the server starts automatically.
 
-### 2. Install the browser extension
+### Verify it's working
 
-**Chrome Web Store** — search for "Gasoline" or install from the [Chrome Web Store listing](https://chromewebstore.google.com)
-
-<details>
-<summary>Load unpacked (for development)</summary>
-
-1. Download or clone this repository
-2. Open `chrome://extensions` in Chrome
-3. Enable **Developer mode** (top right toggle)
-4. Click **Load unpacked**
-5. Select the `extension/` folder
-
-</details>
-
-### 3. Verify it's working
-
-1. **Check your AI tool** — in Claude Code, run `/mcp` and confirm "gasoline" is listed
-2. **Check the extension** — click the Gasoline icon in your browser toolbar; it should show "Connected"
-3. **Test it** — open your web app, trigger an error (e.g., `console.error("test")`), then ask your AI: _"What browser errors do you see?"_
+Open your web app, trigger an error (e.g., `console.error("test")`), and ask your AI: _"What browser errors do you see?"_
 
 Your AI assistant now has access to these tools:
 
