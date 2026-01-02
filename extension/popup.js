@@ -78,6 +78,7 @@ export function updateConnectionStatus(status) {
  * Feature toggle configuration
  */
 const FEATURE_TOGGLES = [
+  { id: 'toggle-websocket', storageKey: 'webSocketCaptureEnabled', messageType: 'setWebSocketCaptureEnabled', default: false },
   { id: 'toggle-network-waterfall', storageKey: 'networkWaterfallEnabled', messageType: 'setNetworkWaterfallEnabled', default: false },
   { id: 'toggle-performance-marks', storageKey: 'performanceMarksEnabled', messageType: 'setPerformanceMarksEnabled', default: false },
   { id: 'toggle-action-replay', storageKey: 'actionReplayEnabled', messageType: 'setActionReplayEnabled', default: true },
@@ -122,6 +123,29 @@ export function handleFeatureToggle(storageKey, messageType, enabled) {
 
   // Send message to background
   chrome.runtime.sendMessage({ type: messageType, enabled })
+}
+
+/**
+ * Handle WebSocket mode change
+ */
+export function handleWebSocketModeChange(mode) {
+  chrome.storage.local.set({ webSocketCaptureMode: mode })
+  chrome.runtime.sendMessage({ type: 'setWebSocketCaptureMode', mode })
+}
+
+/**
+ * Initialize the WebSocket mode selector
+ */
+export async function initWebSocketModeSelector() {
+  const modeSelect = document.getElementById('ws-mode')
+  if (!modeSelect) return
+
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['webSocketCaptureMode'], (result) => {
+      modeSelect.value = result.webSocketCaptureMode || 'lifecycle'
+      resolve()
+    })
+  })
 }
 
 /**
@@ -250,6 +274,36 @@ export async function initPopup() {
 
   // Initialize feature toggles
   await initFeatureToggles()
+
+  // Initialize WebSocket mode selector
+  await initWebSocketModeSelector()
+
+  // Show/hide WebSocket mode selector based on toggle
+  const wsToggle = document.getElementById('toggle-websocket')
+  const wsModeContainer = document.getElementById('ws-mode-container')
+  if (wsToggle && wsModeContainer) {
+    wsModeContainer.style.display = wsToggle.checked ? 'block' : 'none'
+    wsToggle.addEventListener('change', () => {
+      wsModeContainer.style.display = wsToggle.checked ? 'block' : 'none'
+    })
+  }
+
+  // Set up WebSocket mode change handler
+  const wsModeSelect = document.getElementById('ws-mode')
+  if (wsModeSelect) {
+    wsModeSelect.addEventListener('change', (e) => {
+      handleWebSocketModeChange(e.target.value)
+    })
+  }
+
+  // Show/hide WebSocket messages warning based on mode
+  const wsMessagesWarning = document.getElementById('ws-messages-warning')
+  if (wsModeSelect && wsMessagesWarning) {
+    wsMessagesWarning.style.display = wsModeSelect.value === 'messages' ? 'block' : 'none'
+    wsModeSelect.addEventListener('change', () => {
+      wsMessagesWarning.style.display = wsModeSelect.value === 'messages' ? 'block' : 'none'
+    })
+  }
 
   // Show/hide toggle warnings when features are enabled
   const toggleWarnings = [

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gasoline E2E Test Page</title>
+</head>
+<body>
+  <h1>E2E Test Page</h1>
+  <p id="status">Ready</p>
+
+  <button id="trigger-error" onclick="triggerError()">Trigger Error</button>
+  <button id="trigger-warn" onclick="triggerWarn()">Trigger Warning</button>
+  <button id="trigger-uncaught" onclick="triggerUncaught()">Trigger Uncaught Exception</button>
+  <button id="trigger-rejection" onclick="triggerRejection()">Trigger Unhandled Rejection</button>
+  <button id="trigger-network-error" onclick="triggerNetworkError()">Trigger Network Error</button>
+
+  <script>
+    function triggerError() {
+      console.error('Test error message', { detail: 'from e2e test' })
+      document.getElementById('status').textContent = 'Error triggered'
+    }
+
+    function triggerWarn() {
+      console.warn('Test warning message')
+      document.getElementById('status').textContent = 'Warning triggered'
+    }
+
+    function triggerUncaught() {
+      throw new Error('Uncaught test exception')
+    }
+
+    function triggerRejection() {
+      Promise.reject(new Error('Unhandled rejection test'))
+    }
+
+    function triggerNetworkError() {
+      fetch('http://localhost:99999/nonexistent')
+        .catch(() => {
+          document.getElementById('status').textContent = 'Network error triggered'
+        })
+    }
+  </script>
+</body>
+</html>

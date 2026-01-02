@@ -1180,6 +1180,8 @@ const WS_PREVIEW_LIMIT = 200 // Preview character limit
 
 // WebSocket capture state
 let originalWebSocket = null
+let webSocketCaptureEnabled = false
+let webSocketCaptureMode = 'lifecycle' // 'lifecycle' or 'messages'
 
 /**
  * Get the byte size of a WebSocket message
@@ -1493,6 +1495,8 @@ export function installWebSocketCapture() {
     })
 
     ws.addEventListener('message', (event) => {
+      if (webSocketCaptureMode !== 'messages') return
+
       const data = event.data
       const size = getSize(data)
       const formatted = formatPayload(data)
@@ -1512,19 +1516,21 @@ export function installWebSocketCapture() {
     // Wrap send() to capture outgoing messages
     const originalSend = ws.send.bind(ws)
     ws.send = function (data) {
-      const size = getSize(data)
-      const formatted = formatPayload(data)
-      const { data: truncatedData, truncated } = truncateWsMessage(formatted)
+      if (webSocketCaptureMode === 'messages') {
+        const size = getSize(data)
+        const formatted = formatPayload(data)
+        const { data: truncatedData, truncated } = truncateWsMessage(formatted)
 
-      window.postMessage({
-        type: 'GASOLINE_WS',
-        payload: {
-          event: 'message', id: connectionId, url,
-          direction: 'outgoing', data: truncatedData,
-          size, truncated: truncated || undefined,
-          ts: new Date().toISOString(),
-        },
-      }, '*')
+        window.postMessage({
+          type: 'GASOLINE_WS',
+          payload: {
+            event: 'message', id: connectionId, url,
+            direction: 'outgoing', data: truncatedData,
+            size, truncated: truncated || undefined,
+            ts: new Date().toISOString(),
+          },
+        }, '*')
+      }
 
       return originalSend(data)
     }
@@ -1535,6 +1541,22 @@ export function installWebSocketCapture() {
   GasolineWebSocket.prototype = OriginalWS.prototype
 
   window.WebSocket = GasolineWebSocket
+}
+
+/**
+ * Set the WebSocket capture mode
+ * @param {string} mode - 'lifecycle' or 'messages'
+ */
+export function setWebSocketCaptureMode(mode) {
+  webSocketCaptureMode = mode
+}
+
+/**
+ * Get the current WebSocket capture mode
+ * @returns {string} 'lifecycle' or 'messages'
+ */
+export function getWebSocketCaptureMode() {
+  return webSocketCaptureMode
 }
 
 /**
@@ -1570,6 +1592,17 @@ if (typeof window !== 'undefined') {
           break
         case 'setActionReplayEnabled':
           setActionCaptureEnabled(event.data.enabled)
+          break
+        case 'setWebSocketCaptureEnabled':
+          webSocketCaptureEnabled = event.data.enabled
+          if (event.data.enabled) {
+            installWebSocketCapture()
+          } else {
+            uninstallWebSocketCapture()
+          }
+          break
+        case 'setWebSocketCaptureMode':
+          webSocketCaptureMode = event.data.mode || 'lifecycle'
           break
       }
     }

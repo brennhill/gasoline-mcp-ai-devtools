@@ -1,0 +1,71 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1280" height="640" fill="#141b24"/>
+
+  <!-- Subtle radial glow behind flame -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="45%" r="35%">
+      <stop offset="0%" style="stop-color:#f97316;stop-opacity:0.08"/>
+      <stop offset="100%" style="stop-color:#141b24;stop-opacity:0"/>
+    </radialGradient>
+    <linearGradient id="flame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="50%" style="stop-color:#fb923c"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="innerFlame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#fef3c7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Glow effect -->
+  <rect width="1280" height="640" fill="url(#glow)"/>
+
+  <!-- Flame icon (centered, scaled up) -->
+  <g transform="translate(540, 100) scale(1.5)">
+    <!-- Background circle -->
+    <circle cx="64" cy="64" r="60" fill="#1e2a38"/>
+    <!-- Outer flame -->
+    <path d="M64 16 C40 40, 28 60, 28 80 C28 100, 44 116, 64 116 C84 116, 100 100, 100 80 C100 60, 88 40, 64 16 Z" fill="url(#flame)"/>
+    <!-- Inner flame -->
+    <path d="M64 48 C52 60, 44 72, 44 84 C44 96, 52 104, 64 104 C76 104, 84 96, 84 84 C84 72, 76 60, 64 48 Z" fill="url(#innerFlame)"/>
+  </g>
+
+  <!-- Title -->
+  <text x="640" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#ffffff" text-anchor="middle">Gasoline</text>
+
+  <!-- Tagline -->
+  <text x="640" y="430" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#8b949e" text-anchor="middle">Fuel for the AI Fire</text>
+
+  <!-- Description -->
+  <text x="640" y="490" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" font-weight="300" fill="#6e7681" text-anchor="middle">Browser DevTools for AI coding assistants via MCP</text>
+
+  <!-- Flow pills -->
+  <g transform="translate(310, 530)">
+    <!-- Browser pill -->
+    <rect x="0" y="0" width="120" height="40" rx="20" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+    <text x="60" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#c9d1d9" text-anchor="middle">Browser</text>
+
+    <!-- Arrow 1 -->
+    <text x="145" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" fill="#484f58" text-anchor="middle">&rarr;</text>
+
+    <!-- Extension pill -->
+    <rect x="170" y="0" width="130" height="40" rx="20" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+    <text x="235" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#c9d1d9" text-anchor="middle">Extension</text>
+
+    <!-- Arrow 2 -->
+    <text x="325" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" fill="#484f58" text-anchor="middle">&rarr;</text>
+
+    <!-- Local Server pill -->
+    <rect x="350" y="0" width="140" height="40" rx="20" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+    <text x="420" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#c9d1d9" text-anchor="middle">Local Server</text>
+
+    <!-- Arrow 3 -->
+    <text x="515" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" fill="#484f58" text-anchor="middle">&rarr;</text>
+
+    <!-- AI pill (highlighted) -->
+    <rect x="540" y="0" width="120" height="40" rx="20" fill="#2d1a0e" stroke="#f97316" stroke-width="1"/>
+    <text x="600" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#fb923c" text-anchor="middle">AI</text>
+  </g>
+</svg>

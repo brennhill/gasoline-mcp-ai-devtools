@@ -314,7 +314,38 @@ The hex preview allows developers to identify protobuf messages, MessagePack, or
 
 ### Extension Settings
 
-New toggle in popup: **"Capture WebSockets"** (default: ON).
+#### Popup UI
+
+Toggle in popup: **"WebSocket Capture"** (default: OFF).
+
+When enabled, a secondary mode selector appears:
+
+| Mode | Description | Data Cost |
+|------|-------------|-----------|
+| **Lifecycle only** | Connect/disconnect/error events only | ~1KB per connection |
+| **Include messages** | Messages with adaptive sampling | ~50KB+ depending on traffic |
+
+The mode selector defaults to "Lifecycle only" (lightweight).
+
+When "Include messages" is selected, a warning displays:
+> "Message capture with sampling may produce significant log data on high-traffic connections."
+
+#### Options Page (URL Filtering)
+
+The Options page includes a **WebSocket URL filter** section:
+
+- **Capture filter**: A list of URL patterns to include/exclude
+- Default: capture all WebSocket connections
+- Pattern syntax: substring match (e.g., `api.example.com` matches `wss://api.example.com/ws`)
+- Use case: exclude noisy third-party WebSocket connections (analytics, ads) while keeping app-specific ones
+
+#### Storage Keys
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `webSocketCaptureEnabled` | boolean | false | Master toggle |
+| `webSocketCaptureMode` | string | `"lifecycle"` | `"lifecycle"` or `"messages"` |
+| `webSocketUrlFilters` | string[] | [] | URL patterns to exclude |
 
 ---
 
