@@ -24,7 +24,7 @@ import (
 const (
 	defaultPort       = 7890
 	defaultMaxEntries = 1000
-	version           = "3.0.0"
+	version           = "3.0.2"
 )
 
 // LogEntry represents a single log entry
@@ -478,6 +478,15 @@ func (s *Server) getEntryCount() int {
 	return len(s.entries)
 }
 
+// getEntries returns a copy of all entries
+func (s *Server) getEntries() []LogEntry {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make([]LogEntry, len(s.entries))
+	copy(result, s.entries)
+	return result
+}
+
 // CORS middleware
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -656,10 +665,12 @@ func setupHTTPRoutes(server *Server, v4 *V4Server) {
 	// V4 routes
 	if v4 != nil {
 		http.HandleFunc("/websocket-events", corsMiddleware(v4.HandleWebSocketEvents))
+		http.HandleFunc("/websocket-status", corsMiddleware(v4.HandleWebSocketStatus))
 		http.HandleFunc("/network-bodies", corsMiddleware(v4.HandleNetworkBodies))
 		http.HandleFunc("/pending-queries", corsMiddleware(v4.HandlePendingQueries))
 		http.HandleFunc("/dom-result", corsMiddleware(v4.HandleDOMResult))
 		http.HandleFunc("/a11y-result", corsMiddleware(v4.HandleA11yResult))
+		http.HandleFunc("/enhanced-actions", corsMiddleware(v4.HandleEnhancedActions))
 	}
 
 	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -678,6 +689,13 @@ func setupHTTPRoutes(server *Server, v4 *V4Server) {
 
 	http.HandleFunc("/logs", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
+		case "GET":
+			entries := server.getEntries()
+			jsonResponse(w, http.StatusOK, map[string]interface{}{
+				"entries": entries,
+				"count":   len(entries),
+			})
+
 		case "POST":
 			var body struct {
 				Entries []LogEntry `json:"entries"`

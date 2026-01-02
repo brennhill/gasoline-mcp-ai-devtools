@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gasoline Toggle Test Page</title>
+</head>
+<body>
+  <h1>Toggle Test Page</h1>
+  <p id="status">Ready</p>
+
+  <!-- Console level testing -->
+  <button id="trigger-log" onclick="triggerLog()">console.log</button>
+  <button id="trigger-info" onclick="triggerInfo()">console.info</button>
+  <button id="trigger-warn" onclick="triggerWarn()">console.warn</button>
+  <button id="trigger-error" onclick="triggerError()">console.error</button>
+
+  <!-- Network error testing -->
+  <button id="trigger-network-error" onclick="triggerNetworkError()">Network Error</button>
+  <button id="trigger-fetch-404" onclick="triggerFetch404()">Fetch 404</button>
+
+  <!-- Action replay testing -->
+  <button id="action-btn-1" onclick="actionClick(1)">Action Button 1</button>
+  <button id="action-btn-2" onclick="actionClick(2)">Action Button 2</button>
+  <input id="action-input" type="text" placeholder="Type here for action" oninput="actionInput()" />
+  <button id="trigger-error-after-actions" onclick="triggerErrorAfterActions()">Error After Actions</button>
+
+  <!-- Performance marks testing -->
+  <button id="trigger-perf-mark" onclick="triggerPerfMark()">performance.mark()</button>
+  <button id="trigger-perf-measure" onclick="triggerPerfMeasure()">performance.measure()</button>
+
+  <!-- Exception for screenshot testing -->
+  <button id="trigger-exception" onclick="triggerException()">Throw Exception</button>
+
+  <script>
+    const params = new URLSearchParams(window.location.search)
+    const serverUrl = params.get('serverUrl') || ''
+
+    function triggerLog() {
+      console.log('E2E log message', { source: 'toggle-test' })
+      document.getElementById('status').textContent = 'Log triggered'
+    }
+
+    function triggerInfo() {
+      console.info('E2E info message', { source: 'toggle-test' })
+      document.getElementById('status').textContent = 'Info triggered'
+    }
+
+    function triggerWarn() {
+      console.warn('E2E warn message', { source: 'toggle-test' })
+      document.getElementById('status').textContent = 'Warn triggered'
+    }
+
+    function triggerError() {
+      console.error('E2E error message', { source: 'toggle-test' })
+      document.getElementById('status').textContent = 'Error triggered'
+    }
+
+    function triggerNetworkError() {
+      fetch('http://127.0.0.1:1/connection-refused')
+        .catch(() => {
+          document.getElementById('status').textContent = 'Network error triggered'
+        })
+    }
+
+    function triggerFetch404() {
+      if (!serverUrl) {
+        document.getElementById('status').textContent = 'No serverUrl param'
+        return
+      }
+      fetch(serverUrl + '/nonexistent-path-e2e-test')
+        .then(() => {
+          document.getElementById('status').textContent = 'Fetch 404 triggered'
+        })
+        .catch(() => {
+          document.getElementById('status').textContent = 'Fetch 404 triggered'
+        })
+    }
+
+    function actionClick(n) {
+      document.getElementById('status').textContent = `Action ${n} clicked`
+    }
+
+    function actionInput() {
+      document.getElementById('status').textContent = 'Input received'
+    }
+
+    function triggerErrorAfterActions() {
+      console.error('Error after user actions', { source: 'action-test' })
+      document.getElementById('status').textContent = 'Error after actions triggered'
+    }
+
+    function triggerPerfMark() {
+      performance.mark('e2e-test-mark')
+      document.getElementById('status').textContent = 'Perf mark created'
+    }
+
+    function triggerPerfMeasure() {
+      performance.mark('e2e-measure-start')
+      performance.mark('e2e-measure-end')
+      performance.measure('e2e-test-measure', 'e2e-measure-start', 'e2e-measure-end')
+      document.getElementById('status').textContent = 'Perf measure created'
+    }
+
+    function triggerException() {
+      throw new Error('E2E exception for screenshot test')
+    }
+  </script>
+</body>
+</html>

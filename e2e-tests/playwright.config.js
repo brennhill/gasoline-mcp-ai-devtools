@@ -12,9 +12,8 @@ export default defineConfig({
   workers: 1, // Extensions require sequential execution (shared server)
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    // Chrome extension testing requires a persistent context,
-    // configured per-test via the custom fixture in helpers/extension.js
-    headless: false, // Extensions don't work in headless mode
+    // Chrome extension testing uses persistent context with --headless=new
+    // (new Chrome headless mode supports extensions). Configured in helpers/extension.js
     viewport: { width: 1280, height: 720 },
   },
   // Global setup: build the server binary before tests

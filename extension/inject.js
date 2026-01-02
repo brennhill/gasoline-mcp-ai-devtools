@@ -39,6 +39,8 @@ let actionCaptureEnabled = true
 let clickHandler = null
 let inputHandler = null
 let scrollHandler = null
+let keydownHandler = null
+let changeHandler = null
 
 // Network Waterfall state
 let networkWaterfallEnabled = false
@@ -303,6 +305,7 @@ export function handleClick(event) {
   }
 
   recordAction(action)
+  recordEnhancedAction('click', target)
 }
 
 /**
@@ -330,6 +333,7 @@ export function handleInput(event) {
   }
 
   recordAction(action)
+  recordEnhancedAction('input', target, { value: action.value })
 }
 
 /**
@@ -347,6 +351,41 @@ export function handleScroll(event) {
     scrollY: Math.round(window.scrollY),
     target: event.target === document ? 'document' : getElementSelector(event.target),
   })
+  recordEnhancedAction('scroll', null, { scrollY: Math.round(window.scrollY) })
+}
+
+/**
+ * Actionable keys that are worth recording (navigation/submission keys)
+ */
+const ACTIONABLE_KEYS = new Set([
+  'Enter', 'Escape', 'Tab',
+  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+  'Backspace', 'Delete',
+])
+
+/**
+ * Handle keydown events - only records actionable keys
+ * @param {KeyboardEvent} event - The keydown event
+ */
+export function handleKeydown(event) {
+  if (!ACTIONABLE_KEYS.has(event.key)) return
+  const target = event.target
+  recordEnhancedAction('keypress', target, { key: event.key })
+}
+
+/**
+ * Handle change events on select elements
+ * @param {Event} event - The change event
+ */
+export function handleChange(event) {
+  const target = event.target
+  if (!target || !target.tagName || target.tagName.toUpperCase() !== 'SELECT') return
+
+  const selectedOption = target.options && target.options[target.selectedIndex]
+  const selectedValue = target.value || ''
+  const selectedText = selectedOption ? selectedOption.text || '' : ''
+
+  recordEnhancedAction('select', target, { selectedValue, selectedText })
 }
 
 /**
@@ -354,13 +393,18 @@ export function handleScroll(event) {
  */
 export function installActionCapture() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
+  if (typeof document.addEventListener !== 'function') return
 
   clickHandler = handleClick
   inputHandler = handleInput
   scrollHandler = handleScroll
+  keydownHandler = handleKeydown
+  changeHandler = handleChange
 
   document.addEventListener('click', clickHandler, { capture: true, passive: true })
   document.addEventListener('input', inputHandler, { capture: true, passive: true })
+  document.addEventListener('keydown', keydownHandler, { capture: true, passive: true })
+  document.addEventListener('change', changeHandler, { capture: true, passive: true })
   window.addEventListener('scroll', scrollHandler, { capture: true, passive: true })
 }
 
@@ -375,6 +419,14 @@ export function uninstallActionCapture() {
   if (inputHandler) {
     document.removeEventListener('input', inputHandler, { capture: true })
     inputHandler = null
+  }
+  if (keydownHandler) {
+    document.removeEventListener('keydown', keydownHandler, { capture: true })
+    keydownHandler = null
+  }
+  if (changeHandler) {
+    document.removeEventListener('change', changeHandler, { capture: true })
+    changeHandler = null
   }
   if (scrollHandler) {
     window.removeEventListener('scroll', scrollHandler, { capture: true })
@@ -391,6 +443,76 @@ export function setActionCaptureEnabled(enabled) {
   actionCaptureEnabled = enabled
   if (!enabled) {
     clearActionBuffer()
+  }
+}
+
+// =============================================================================
+// NAVIGATION CAPTURE (v5)
+// =============================================================================
+
+let navigationPopstateHandler = null
+let originalPushState = null
+let originalReplaceState = null
+
+/**
+ * Install navigation capture to record enhanced actions on navigation events
+ */
+export function installNavigationCapture() {
+  if (typeof window === 'undefined') return
+
+  // Track current URL for fromUrl
+  let lastUrl = window.location.href
+
+  // Popstate handler (back/forward)
+  navigationPopstateHandler = function () {
+    const toUrl = window.location.href
+    recordEnhancedAction('navigate', null, { fromUrl: lastUrl, toUrl })
+    lastUrl = toUrl
+  }
+  window.addEventListener('popstate', navigationPopstateHandler)
+
+  // Patch pushState
+  if (window.history && window.history.pushState) {
+    originalPushState = window.history.pushState
+    window.history.pushState = function (state, title, url) {
+      const fromUrl = lastUrl
+      const result = originalPushState.call(this, state, title, url)
+      const toUrl = url || window.location.href
+      recordEnhancedAction('navigate', null, { fromUrl, toUrl: String(toUrl) })
+      lastUrl = window.location.href
+      return result
+    }
+  }
+
+  // Patch replaceState
+  if (window.history && window.history.replaceState) {
+    originalReplaceState = window.history.replaceState
+    window.history.replaceState = function (state, title, url) {
+      const fromUrl = lastUrl
+      const result = originalReplaceState.call(this, state, title, url)
+      const toUrl = url || window.location.href
+      recordEnhancedAction('navigate', null, { fromUrl, toUrl: String(toUrl) })
+      lastUrl = window.location.href
+      return result
+    }
+  }
+}
+
+/**
+ * Uninstall navigation capture
+ */
+export function uninstallNavigationCapture() {
+  if (navigationPopstateHandler) {
+    window.removeEventListener('popstate', navigationPopstateHandler)
+    navigationPopstateHandler = null
+  }
+  if (originalPushState && window.history) {
+    window.history.pushState = originalPushState
+    originalPushState = null
+  }
+  if (originalReplaceState && window.history) {
+    window.history.replaceState = originalReplaceState
+    originalReplaceState = null
   }
 }
 
@@ -970,7 +1092,7 @@ export function installExceptionCapture() {
   originalOnerror = window.onerror
 
   window.onerror = function (message, filename, lineno, colno, error) {
-    postLog({
+    const entry = {
       level: 'error',
       type: 'exception',
       message: String(message),
@@ -978,7 +1100,17 @@ export function installExceptionCapture() {
       lineno: lineno || 0,
       colno: colno || 0,
       stack: error?.stack || '',
-    })
+    }
+
+    // Enrich with AI context then post (async, fire-and-forget)
+    ;(async () => {
+      try {
+        const enriched = await enrichErrorWithAiContext(entry)
+        postLog(enriched)
+      } catch {
+        postLog(entry)
+      }
+    })()
 
     // Call original if exists
     if (originalOnerror) {
@@ -1002,12 +1134,22 @@ export function installExceptionCapture() {
       message = String(error)
     }
 
-    postLog({
+    const entry = {
       level: 'error',
       type: 'exception',
       message: `Unhandled Promise Rejection: ${message}`,
       stack,
-    })
+    }
+
+    // Enrich with AI context then post (async, fire-and-forget)
+    ;(async () => {
+      try {
+        const enriched = await enrichErrorWithAiContext(entry)
+        postLog(enriched)
+      } catch {
+        postLog(entry)
+      }
+    })()
   }
 
   window.addEventListener('unhandledrejection', unhandledrejectionHandler)
@@ -1036,6 +1178,8 @@ export function install() {
   installFetchCapture()
   installExceptionCapture()
   installActionCapture()
+  installNavigationCapture()
+  installWebSocketCapture()
 }
 
 /**
@@ -1046,6 +1190,8 @@ export function uninstall() {
   uninstallFetchCapture()
   uninstallExceptionCapture()
   uninstallActionCapture()
+  uninstallNavigationCapture()
+  uninstallWebSocketCapture()
 }
 
 /**
@@ -1231,7 +1377,7 @@ export function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: '5.0.0',
+    version: '3.0.2',
   }
 }
 
@@ -1532,6 +1678,7 @@ export function createConnectionTracker(id, url) {
  */
 export function installWebSocketCapture() {
   if (typeof window === 'undefined') return
+  if (!window.WebSocket) return // No WebSocket support
   if (originalWebSocket) return // Already installed
 
   originalWebSocket = window.WebSocket
@@ -1543,6 +1690,7 @@ export function installWebSocketCapture() {
     const connectionId = crypto.randomUUID()
 
     ws.addEventListener('open', () => {
+      if (!webSocketCaptureEnabled) return
       window.postMessage({
         type: 'GASOLINE_WS',
         payload: { event: 'open', id: connectionId, url, ts: new Date().toISOString() },
@@ -1550,6 +1698,7 @@ export function installWebSocketCapture() {
     })
 
     ws.addEventListener('close', (event) => {
+      if (!webSocketCaptureEnabled) return
       window.postMessage({
         type: 'GASOLINE_WS',
         payload: {
@@ -1561,6 +1710,7 @@ export function installWebSocketCapture() {
     })
 
     ws.addEventListener('error', () => {
+      if (!webSocketCaptureEnabled) return
       window.postMessage({
         type: 'GASOLINE_WS',
         payload: { event: 'error', id: connectionId, url, ts: new Date().toISOString() },
@@ -1568,6 +1718,7 @@ export function installWebSocketCapture() {
     })
 
     ws.addEventListener('message', (event) => {
+      if (!webSocketCaptureEnabled) return
       if (webSocketCaptureMode !== 'messages') return
 
       const data = event.data
@@ -1589,7 +1740,7 @@ export function installWebSocketCapture() {
     // Wrap send() to capture outgoing messages
     const originalSend = ws.send.bind(ws)
     ws.send = function (data) {
-      if (webSocketCaptureMode === 'messages') {
+      if (webSocketCaptureEnabled && webSocketCaptureMode === 'messages') {
         const size = getSize(data)
         const formatted = formatPayload(data)
         const { data: truncatedData, truncated } = truncateWsMessage(formatted)
@@ -1629,6 +1780,14 @@ export function setWebSocketCaptureMode(mode) {
 }
 
 /**
+ * Set WebSocket capture enabled state
+ * @param {boolean} enabled - Whether WebSocket capture is enabled
+ */
+export function setWebSocketCaptureEnabled(enabled) {
+  webSocketCaptureEnabled = enabled
+}
+
+/**
  * Get the current WebSocket capture mode
  * @returns {string} 'lifecycle' or 'messages'
  */
@@ -1645,6 +1804,470 @@ export function uninstallWebSocketCapture() {
     window.WebSocket = originalWebSocket
     originalWebSocket = null
   }
+}
+
+// =============================================================================
+// NETWORK BODY CAPTURE (v4)
+// =============================================================================
+
+const REQUEST_BODY_MAX = 8192 // 8KB
+const RESPONSE_BODY_MAX = 16384 // 16KB
+const BODY_READ_TIMEOUT_MS = 5
+const SENSITIVE_HEADER_PATTERNS = /^(authorization|cookie|set-cookie|x-api-key|x-auth-token|x-secret|x-password|.*token.*|.*secret.*|.*key.*|.*password.*)$/i
+const BINARY_CONTENT_TYPES = /^(image|video|audio|font)\/|^application\/(wasm|octet-stream|zip|gzip|pdf)/
+const TEXT_CONTENT_TYPES = /^(text\/|application\/json|application\/xml|application\/javascript|application\/x-www-form-urlencoded)/
+
+/**
+ * Check if a URL should be captured (not gasoline server or extension)
+ * @param {string} url - The URL to check
+ * @returns {boolean} True if the URL should be captured
+ */
+export function shouldCaptureUrl(url) {
+  if (!url) return true
+  if (url.includes('localhost:7890') || url.includes('127.0.0.1:7890')) return false
+  if (url.startsWith('chrome-extension://')) return false
+  return true
+}
+
+/**
+ * Sanitize headers by removing sensitive ones
+ * @param {Object|Map|Headers|null} headers - Headers to sanitize
+ * @returns {Object} Sanitized headers object
+ */
+export function sanitizeHeaders(headers) {
+  if (!headers) return {}
+
+  const result = {}
+
+  if (typeof headers.forEach === 'function') {
+    // Headers object or Map
+    headers.forEach((value, key) => {
+      if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+        result[key] = value
+      }
+    })
+  } else if (typeof headers.entries === 'function') {
+    for (const [key, value] of headers.entries()) {
+      if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+        result[key] = value
+      }
+    }
+  } else if (typeof headers === 'object') {
+    for (const [key, value] of Object.entries(headers)) {
+      if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+        result[key] = value
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * Truncate request body at 8KB limit
+ * @param {string|null} body - The request body
+ * @returns {{ body: string|null, truncated: boolean }}
+ */
+export function truncateRequestBody(body) {
+  if (body === null || body === undefined) return { body: null, truncated: false }
+  if (body.length <= REQUEST_BODY_MAX) return { body, truncated: false }
+  return { body: body.slice(0, REQUEST_BODY_MAX), truncated: true }
+}
+
+/**
+ * Truncate response body at 16KB limit
+ * @param {string|null} body - The response body
+ * @returns {{ body: string|null, truncated: boolean }}
+ */
+export function truncateResponseBody(body) {
+  if (body === null || body === undefined) return { body: null, truncated: false }
+  if (body.length <= RESPONSE_BODY_MAX) return { body, truncated: false }
+  return { body: body.slice(0, RESPONSE_BODY_MAX), truncated: true }
+}
+
+/**
+ * Read a response body, returning text for text types and size info for binary
+ * @param {Object} response - The cloned response object
+ * @returns {Promise<string>} The body content or binary size placeholder
+ */
+export async function readResponseBody(response) {
+  const contentType = response.headers?.get?.('content-type') || ''
+
+  if (BINARY_CONTENT_TYPES.test(contentType)) {
+    const blob = await response.blob()
+    return `[Binary: ${blob.size} bytes, ${contentType}]`
+  }
+
+  // Text-like or unknown content type: try reading as text
+  return await response.text()
+}
+
+/**
+ * Read response body with a timeout
+ * @param {Object} response - The cloned response object
+ * @param {number} timeoutMs - Timeout in milliseconds
+ * @returns {Promise<string>} The body or timeout message
+ */
+export async function readResponseBodyWithTimeout(response, timeoutMs = BODY_READ_TIMEOUT_MS) {
+  return Promise.race([
+    readResponseBody(response),
+    new Promise(resolve => setTimeout(() => resolve('[Skipped: body read timeout]'), timeoutMs))
+  ])
+}
+
+/**
+ * Wrap a fetch function to capture request/response bodies
+ * @param {Function} fetchFn - The original fetch function
+ * @returns {Function} Wrapped fetch that captures bodies
+ */
+export function wrapFetchWithBodies(fetchFn) {
+  return async function (input, init) {
+    const startTime = Date.now()
+
+    // Extract URL and method
+    let url = ''
+    let method = 'GET'
+    let requestBody = null
+
+    if (typeof input === 'string') {
+      url = input
+    } else if (input && input.url) {
+      url = input.url
+      method = input.method || 'GET'
+    }
+
+    if (init) {
+      method = init.method || method
+      requestBody = init.body || null
+    }
+
+    // Skip gasoline server requests
+    if (!shouldCaptureUrl(url)) {
+      return fetchFn(input, init)
+    }
+
+    // Call original fetch
+    const response = await fetchFn(input, init)
+    const duration = Date.now() - startTime
+
+    // Capture body asynchronously (don't block return)
+    const contentType = response.headers?.get?.('content-type') || ''
+    const cloned = response.clone ? response.clone() : null
+    // Capture window reference now so deferred callback posts to correct target
+    const win = typeof window !== 'undefined' ? window : null
+
+    Promise.resolve().then(async () => {
+      try {
+        let responseBody = ''
+        if (cloned) {
+          if (BINARY_CONTENT_TYPES.test(contentType)) {
+            const blob = await cloned.blob()
+            responseBody = `[Binary: ${blob.size} bytes, ${contentType}]`
+          } else {
+            responseBody = await cloned.text()
+          }
+        }
+
+        const { body: truncResp } = truncateResponseBody(responseBody)
+        const { body: truncReq } = truncateRequestBody(typeof requestBody === 'string' ? requestBody : null)
+
+        if (win) {
+          win.postMessage({
+            type: 'GASOLINE_NETWORK_BODY',
+            payload: {
+              url,
+              method,
+              status: response.status,
+              contentType,
+              requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
+              responseBody: truncResp || responseBody,
+              duration,
+            },
+          }, '*')
+        }
+      } catch {
+        // Body capture failure should not affect user code
+      }
+    })
+
+    return response
+  }
+}
+
+// =============================================================================
+// ON-DEMAND DOM QUERIES (v4)
+// =============================================================================
+
+const DOM_QUERY_MAX_ELEMENTS = 50
+const DOM_QUERY_MAX_TEXT = 500
+const DOM_QUERY_MAX_DEPTH = 5
+const DOM_QUERY_MAX_HTML = 200
+const A11Y_MAX_NODES_PER_VIOLATION = 10
+const A11Y_AUDIT_TIMEOUT_MS = 30000
+
+/**
+ * Execute a DOM query and return structured results
+ * @param {Object} params - { selector, include_styles, properties, include_children, max_depth }
+ * @returns {Object} Query results
+ */
+export async function executeDOMQuery(params) {
+  const { selector, include_styles, properties, include_children, max_depth } = params
+
+  const elements = document.querySelectorAll(selector)
+  const matchCount = elements.length
+  const cappedDepth = Math.min(max_depth || 3, DOM_QUERY_MAX_DEPTH)
+
+  const matches = []
+  for (let i = 0; i < Math.min(elements.length, DOM_QUERY_MAX_ELEMENTS); i++) {
+    const el = elements[i]
+    const entry = serializeDOMElement(el, include_styles, properties, include_children, cappedDepth, 0)
+    matches.push(entry)
+  }
+
+  return {
+    url: window.location.href,
+    title: document.title,
+    matchCount,
+    returnedCount: matches.length,
+    matches,
+  }
+}
+
+/**
+ * Serialize a DOM element to a plain object
+ */
+function serializeDOMElement(el, includeStyles, styleProps, includeChildren, maxDepth, currentDepth) {
+  const entry = {
+    tag: el.tagName ? el.tagName.toLowerCase() : '',
+    text: (el.textContent || '').slice(0, DOM_QUERY_MAX_TEXT),
+    visible: el.offsetParent !== null || (el.getBoundingClientRect && el.getBoundingClientRect().width > 0),
+  }
+
+  // Attributes
+  if (el.attributes && el.attributes.length > 0) {
+    entry.attributes = {}
+    for (const attr of el.attributes) {
+      entry.attributes[attr.name] = attr.value
+    }
+  }
+
+  // Bounding box
+  if (el.getBoundingClientRect) {
+    const rect = el.getBoundingClientRect()
+    entry.boundingBox = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+  }
+
+  // Computed styles
+  if (includeStyles && typeof window.getComputedStyle === 'function') {
+    const computed = window.getComputedStyle(el)
+    entry.styles = {}
+    if (styleProps && styleProps.length > 0) {
+      for (const prop of styleProps) {
+        entry.styles[prop] = computed[prop]
+      }
+    } else {
+      entry.styles = { display: computed.display, color: computed.color, position: computed.position }
+    }
+  }
+
+  // Children
+  if (includeChildren && currentDepth < maxDepth && el.children && el.children.length > 0) {
+    entry.children = []
+    for (const child of el.children) {
+      entry.children.push(serializeDOMElement(child, false, null, true, maxDepth, currentDepth + 1))
+    }
+  }
+
+  return entry
+}
+
+/**
+ * Get comprehensive page info
+ * @returns {Object} Page metadata
+ */
+export async function getPageInfo() {
+  const headings = []
+  const headingEls = document.querySelectorAll('h1,h2,h3,h4,h5,h6')
+  for (const h of headingEls) {
+    headings.push(h.textContent)
+  }
+
+  const forms = []
+  const formEls = document.querySelectorAll('form')
+  for (const form of formEls) {
+    const fields = []
+    const inputs = form.querySelectorAll('input,select,textarea')
+    for (const input of inputs) {
+      if (input.name) fields.push(input.name)
+    }
+    forms.push({
+      id: form.id || undefined,
+      action: form.action || undefined,
+      fields,
+    })
+  }
+
+  return {
+    url: window.location.href,
+    title: document.title,
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    scroll: { x: window.scrollX, y: window.scrollY },
+    documentHeight: document.documentElement.scrollHeight,
+    headings,
+    links: document.querySelectorAll('a').length,
+    images: document.querySelectorAll('img').length,
+    interactiveElements: document.querySelectorAll('button,input,select,textarea,a[href]').length,
+    forms,
+  }
+}
+
+/**
+ * Load axe-core dynamically if not already present
+ * @returns {Promise<void>}
+ */
+function loadAxeCore() {
+  return new Promise((resolve, reject) => {
+    if (window.axe) {
+      resolve()
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = typeof chrome !== 'undefined' && chrome.runtime
+      ? chrome.runtime.getURL('lib/axe.min.js')
+      : 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.8.4/axe.min.js'
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load axe-core'))
+    document.head.appendChild(script)
+  })
+}
+
+/**
+ * Run an accessibility audit using axe-core
+ * @param {Object} params - { scope, tags, include_passes }
+ * @returns {Promise<Object>} Formatted audit results
+ */
+export async function runAxeAudit(params) {
+  await loadAxeCore()
+
+  const context = params.scope ? { include: [params.scope] } : document
+  const config = {}
+
+  if (params.tags && params.tags.length > 0) {
+    config.runOnly = params.tags
+  }
+
+  if (params.include_passes) {
+    config.resultTypes = ['violations', 'passes', 'incomplete', 'inapplicable']
+  } else {
+    config.resultTypes = ['violations', 'incomplete']
+  }
+
+  const results = await window.axe.run(context, config)
+  return formatAxeResults(results)
+}
+
+/**
+ * Run axe audit with a timeout
+ * @param {Object} params - Audit parameters
+ * @param {number} timeoutMs - Timeout in milliseconds
+ * @returns {Promise<Object>} Results or error
+ */
+export async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIMEOUT_MS) {
+  return Promise.race([
+    runAxeAudit(params),
+    new Promise(resolve => setTimeout(() => resolve({ error: 'Accessibility audit timeout' }), timeoutMs))
+  ])
+}
+
+/**
+ * Format axe-core results into a compact representation
+ * @param {Object} axeResult - Raw axe-core results
+ * @returns {Object} Formatted results with summary
+ */
+export function formatAxeResults(axeResult) {
+  const formatViolation = (v) => {
+    const formatted = {
+      id: v.id,
+      impact: v.impact,
+      description: v.description,
+      helpUrl: v.helpUrl,
+    }
+
+    // Extract WCAG tags
+    if (v.tags) {
+      formatted.wcag = v.tags.filter(t => t.startsWith('wcag'))
+    }
+
+    // Format nodes (cap at 10)
+    formatted.nodes = (v.nodes || []).slice(0, A11Y_MAX_NODES_PER_VIOLATION).map(node => ({
+      selector: Array.isArray(node.target) ? node.target[0] : node.target,
+      html: (node.html || '').slice(0, DOM_QUERY_MAX_HTML),
+      failureSummary: node.failureSummary,
+    }))
+
+    if (v.nodes && v.nodes.length > A11Y_MAX_NODES_PER_VIOLATION) {
+      formatted.nodeCount = v.nodes.length
+    }
+
+    return formatted
+  }
+
+  return {
+    violations: (axeResult.violations || []).map(formatViolation),
+    summary: {
+      violations: (axeResult.violations || []).length,
+      passes: (axeResult.passes || []).length,
+      incomplete: (axeResult.incomplete || []).length,
+      inapplicable: (axeResult.inapplicable || []).length,
+    },
+  }
+}
+
+// =============================================================================
+// V4 LIFECYCLE & MEMORY (v4)
+// =============================================================================
+
+const MEMORY_SOFT_LIMIT_MB = 20
+const MEMORY_HARD_LIMIT_MB = 50
+
+/**
+ * Check if v4 intercepts should be deferred until page load
+ * @returns {boolean} True if page is still loading
+ */
+export function shouldDeferV4Intercepts() {
+  if (typeof document === 'undefined') return false
+  return document.readyState === 'loading'
+}
+
+/**
+ * Check if v3 intercepts should be deferred (never)
+ * @returns {boolean} Always false - v3 installs immediately
+ */
+export function shouldDeferV3Intercepts() {
+  return false
+}
+
+/**
+ * Check memory pressure and adjust buffer capacities
+ * @param {Object} state - Current buffer state
+ * @returns {Object} Adjusted state
+ */
+export function checkMemoryPressure(state) {
+  const result = { ...state }
+
+  if (state.memoryUsageMB >= MEMORY_HARD_LIMIT_MB) {
+    // Hard limit: disable network bodies
+    result.networkBodiesEnabled = false
+    result.wsBufferCapacity = Math.floor(state.wsBufferCapacity * 0.25)
+    result.networkBufferCapacity = Math.floor(state.networkBufferCapacity * 0.25)
+  } else if (state.memoryUsageMB >= MEMORY_SOFT_LIMIT_MB) {
+    // Soft limit: reduce buffers
+    result.wsBufferCapacity = Math.floor(state.wsBufferCapacity * 0.5)
+    result.networkBufferCapacity = Math.floor(state.networkBufferCapacity * 0.5)
+  }
+
+  return result
 }
 
 // =============================================================================
@@ -2304,6 +2927,11 @@ export function recordEnhancedAction(type, element, opts = {}) {
   enhancedActionBuffer.push(action)
   if (enhancedActionBuffer.length > ENHANCED_ACTION_BUFFER_SIZE) {
     enhancedActionBuffer.shift()
+  }
+
+  // Emit to content script for server relay
+  if (typeof window !== 'undefined' && window.postMessage) {
+    window.postMessage({ type: 'GASOLINE_ENHANCED_ACTION', payload: action }, '*')
   }
 
   return action

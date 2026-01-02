@@ -7,10 +7,8 @@ import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 
 // Mock window and crypto for browser environment
-const createMockWindow = () => ({
-  postMessage: mock.fn(),
-  addEventListener: mock.fn(),
-  WebSocket: class MockWebSocket {
+const createMockWindow = () => {
+  class MockWebSocket {
     constructor(url, protocols) {
       this.url = url
       this.protocols = protocols
@@ -30,7 +28,17 @@ const createMockWindow = () => ({
       }
     }
   }
-})
+  MockWebSocket.CONNECTING = 0
+  MockWebSocket.OPEN = 1
+  MockWebSocket.CLOSING = 2
+  MockWebSocket.CLOSED = 3
+
+  return {
+    postMessage: mock.fn(),
+    addEventListener: mock.fn(),
+    WebSocket: MockWebSocket,
+  }
+}
 
 const createMockCrypto = () => ({
   randomUUID: mock.fn(() => 'test-uuid-' + Math.random().toString(36).slice(2))
@@ -44,9 +52,10 @@ describe('WebSocket Interception', () => {
     originalCrypto = globalThis.crypto
     globalThis.window = createMockWindow()
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
-    // Reset mode to lifecycle (default)
-    const { setWebSocketCaptureMode } = await import('../extension/inject.js')
+    // Reset mode to lifecycle (default) and enable capture
+    const { setWebSocketCaptureMode, setWebSocketCaptureEnabled } = await import('../extension/inject.js')
     setWebSocketCaptureMode('lifecycle')
+    setWebSocketCaptureEnabled(true)
   })
 
   afterEach(() => {
@@ -73,6 +82,19 @@ describe('WebSocket Interception', () => {
     installWebSocketCapture()
 
     assert.strictEqual(globalThis.window.WebSocket.prototype, OriginalWS.prototype)
+
+    uninstallWebSocketCapture()
+  })
+
+  test('should preserve WebSocket static constants (CONNECTING, OPEN, CLOSING, CLOSED)', async () => {
+    const { installWebSocketCapture, uninstallWebSocketCapture } = await import('../extension/inject.js')
+
+    installWebSocketCapture()
+
+    assert.strictEqual(globalThis.window.WebSocket.CONNECTING, 0)
+    assert.strictEqual(globalThis.window.WebSocket.OPEN, 1)
+    assert.strictEqual(globalThis.window.WebSocket.CLOSING, 2)
+    assert.strictEqual(globalThis.window.WebSocket.CLOSED, 3)
 
     uninstallWebSocketCapture()
   })

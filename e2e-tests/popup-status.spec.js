@@ -26,7 +26,10 @@ test.describe('Popup Connection Status', () => {
     await popupPage.close()
   })
 
-  test('should show disconnected status when server is stopped', async ({ context, extensionId, server }) => {
+  test('should show disconnected status when server is stopped', async ({ context, extensionId, server, serverPort }) => {
+    // Give the extension time to initially connect
+    await new Promise((r) => setTimeout(r, 2000))
+
     // Kill the server
     server.kill('SIGTERM')
     await new Promise((resolve) => {
@@ -34,8 +37,20 @@ test.describe('Popup Connection Status', () => {
       setTimeout(resolve, 2000)
     })
 
-    // Wait for extension to detect disconnection (health check interval)
-    await new Promise((r) => setTimeout(r, 5000))
+    // Trigger a health re-check by sending setServerUrl (this calls checkConnectionAndUpdate)
+    const triggerPage = await context.newPage()
+    await triggerPage.goto(`chrome-extension://${extensionId}/options.html`)
+    await triggerPage.evaluate((port) => {
+      return new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+          { type: 'setServerUrl', url: `http://127.0.0.1:${port}` },
+          () => resolve()
+        )
+      })
+    }, serverPort)
+    // Wait for the health check to complete (and fail)
+    await triggerPage.waitForTimeout(2000)
+    await triggerPage.close()
 
     // Open the popup
     const popupPage = await context.newPage()
@@ -49,7 +64,7 @@ test.describe('Popup Connection Status', () => {
     await popupPage.close()
   })
 
-  test('should display server URL in popup', async ({ context, extensionId, serverUrl }) => {
+  test('should display server URL in popup', async ({ context, extensionId, serverUrl, serverPort }) => {
     await new Promise((r) => setTimeout(r, 3000))
 
     const popupPage = await context.newPage()
@@ -57,7 +72,7 @@ test.describe('Popup Connection Status', () => {
     await popupPage.waitForTimeout(2000)
 
     const serverUrlEl = popupPage.locator('#server-url')
-    await expect(serverUrlEl).toContainText('127.0.0.1')
+    await expect(serverUrlEl).toContainText(`127.0.0.1:${serverPort}`)
 
     await popupPage.close()
   })
@@ -124,8 +139,12 @@ test.describe('Popup Connection Status', () => {
     // Mode container should be hidden
     await expect(wsModeContainer).toBeHidden()
 
-    // Enable WebSocket capture
-    await wsToggle.check()
+    // Enable WebSocket capture via JS (element may be outside viewport in popup)
+    await popupPage.evaluate(() => {
+      const el = document.getElementById('toggle-websocket')
+      el.checked = true
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    })
     await popupPage.waitForTimeout(500)
 
     // Mode container should now be visible
@@ -143,18 +162,25 @@ test.describe('Popup Connection Status', () => {
     await popupPage.goto(`chrome-extension://${extensionId}/popup.html`)
     await popupPage.waitForTimeout(1000)
 
-    const wsToggle = popupPage.locator('#toggle-websocket')
-    const modeSelect = popupPage.locator('#ws-mode')
+    const wsModeContainer = popupPage.locator('#ws-mode-container')
     const warning = popupPage.locator('#ws-messages-warning')
 
-    // Enable WebSocket
-    await wsToggle.check()
+    // Enable WebSocket via JS (element may be outside viewport in popup)
+    await popupPage.evaluate(() => {
+      const el = document.getElementById('toggle-websocket')
+      el.checked = true
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    })
     await popupPage.waitForTimeout(500)
+
+    // Mode container should be visible
+    await expect(wsModeContainer).toBeVisible()
 
     // Warning should be hidden in lifecycle mode
     await expect(warning).toBeHidden()
 
     // Switch to messages mode
+    const modeSelect = popupPage.locator('#ws-mode')
     await modeSelect.selectOption('messages')
     await popupPage.waitForTimeout(500)
 

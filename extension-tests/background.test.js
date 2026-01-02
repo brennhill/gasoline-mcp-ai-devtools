@@ -56,6 +56,7 @@ globalThis.chrome = mockChrome
 import {
   createLogBatcher,
   sendLogsToServer,
+  sendEnhancedActionsToServer,
   checkServerHealth,
   updateBadge,
   formatLogEntry,
@@ -1005,7 +1006,7 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
-    assert.strictEqual(parsed.version, '3.0.0')
+    assert.strictEqual(parsed.version, '3.0.2')
     assert.ok(Array.isArray(parsed.entries))
   })
 
@@ -1185,5 +1186,88 @@ describe('Context Annotation Monitoring', () => {
       resetContextWarning()
       assert.strictEqual(getContextWarning(), null)
     })
+  })
+})
+
+// =============================================================================
+// V5: Enhanced Actions Server Communication
+// =============================================================================
+
+describe('Enhanced Actions Server Communication', () => {
+  beforeEach(() => {
+    globalThis.fetch = mock.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ received: 1 }),
+      })
+    )
+  })
+
+  test('sendEnhancedActionsToServer should POST actions to /enhanced-actions', async () => {
+    const actions = [
+      { type: 'click', timestamp: 1705312200000, url: 'http://localhost:3000', selectors: { testId: 'btn' } },
+      { type: 'input', timestamp: 1705312201000, url: 'http://localhost:3000', selectors: { id: 'email' }, value: 'test@test.com', inputType: 'email' },
+    ]
+
+    await sendEnhancedActionsToServer(actions)
+
+    assert.strictEqual(globalThis.fetch.mock.calls.length, 1)
+    const [url, opts] = globalThis.fetch.mock.calls[0].arguments
+    assert.ok(url.endsWith('/enhanced-actions'))
+    assert.strictEqual(opts.method, 'POST')
+    assert.strictEqual(opts.headers['Content-Type'], 'application/json')
+
+    const body = JSON.parse(opts.body)
+    assert.ok(Array.isArray(body.actions))
+    assert.strictEqual(body.actions.length, 2)
+    assert.strictEqual(body.actions[0].type, 'click')
+    assert.strictEqual(body.actions[1].type, 'input')
+  })
+
+  test('sendEnhancedActionsToServer should throw on non-ok response', async () => {
+    globalThis.fetch = mock.fn(() =>
+      Promise.resolve({ ok: false, status: 500 })
+    )
+
+    const actions = [{ type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: {} }]
+
+    await assert.rejects(
+      () => sendEnhancedActionsToServer(actions),
+      (err) => err.message.includes('500')
+    )
+  })
+
+  test('enhanced action batcher should batch and send actions', async () => {
+    const flushFn = mock.fn()
+    const batcher = createLogBatcher(flushFn, { debounceMs: 50, maxBatchSize: 50 })
+
+    const action1 = { type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: { id: 'btn' } }
+    const action2 = { type: 'input', timestamp: 1001, url: 'http://localhost:3000', selectors: { id: 'input' }, value: 'hi' }
+
+    batcher.add(action1)
+    batcher.add(action2)
+
+    // Wait for debounce
+    await new Promise((r) => setTimeout(r, 100))
+
+    assert.strictEqual(flushFn.mock.calls.length, 1)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 2)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].type, 'click')
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0][1].type, 'input')
+  })
+
+  test('message handler should process enhanced_action messages via batcher', async () => {
+    // Simulate what the message handler does - adds to batcher
+    const flushFn = mock.fn()
+    const actionBatcher = createLogBatcher(flushFn, { debounceMs: 50, maxBatchSize: 50 })
+
+    // Simulate receiving enhanced_action messages
+    const payload = { type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: { testId: 'btn' } }
+    actionBatcher.add(payload)
+
+    await new Promise((r) => setTimeout(r, 100))
+
+    assert.strictEqual(flushFn.mock.calls.length, 1)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].type, 'click')
   })
 })

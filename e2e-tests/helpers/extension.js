@@ -127,33 +127,45 @@ export const test = base.extend({
    */
   context: async ({ serverPort, server }, use) => {
     const userDataDir = path.join(projectRoot, 'e2e-tests', '.tmp', `chrome-profile-${Date.now()}`)
+    const isReview = !!process.env.REVIEW
+
+    const args = [
+      `--disable-extensions-except=${extensionPath}`,
+      `--load-extension=${extensionPath}`,
+      '--no-first-run',
+      '--disable-default-apps',
+      '--disable-popup-blocking',
+      '--disable-translate',
+      '--no-default-browser-check',
+    ]
+    if (!isReview) {
+      args.unshift('--headless=new')
+    }
 
     const context = await chromium.launchPersistentContext(userDataDir, {
       headless: false,
-      args: [
-        `--disable-extensions-except=${extensionPath}`,
-        `--load-extension=${extensionPath}`,
-        '--no-first-run',
-        '--disable-default-apps',
-        '--disable-popup-blocking',
-        '--disable-translate',
-        '--no-default-browser-check',
-      ],
+      args,
     })
 
-    // Set the server URL in extension storage so background.js connects to our test server
-    // We do this by navigating to the extension's options page and setting storage
+    // Set the server URL and notify background service worker
     const extensionId = await getExtensionId(context)
     const setupPage = await context.newPage()
     await setupPage.goto(`chrome-extension://${extensionId}/options.html`)
 
-    // Set server URL directly via chrome.storage
+    // Set server URL in storage AND send message to background to apply it immediately
     await setupPage.evaluate((port) => {
       return new Promise((resolve) => {
-        chrome.storage.local.set({ serverUrl: `http://127.0.0.1:${port}` }, resolve)
+        const url = `http://127.0.0.1:${port}`
+        chrome.storage.local.set({ serverUrl: url }, () => {
+          chrome.runtime.sendMessage({ type: 'setServerUrl', url }, () => {
+            resolve()
+          })
+        })
       })
     }, serverPort)
 
+    // Wait for the background to connect to the new server
+    await setupPage.waitForTimeout(1000)
     await setupPage.close()
 
     await use(context)
@@ -172,11 +184,15 @@ export const test = base.extend({
   },
 
   /**
-   * A page from the context (convenience)
+   * A page from the context (convenience).
+   * In review mode (REVIEW=1), pauses after each test for human inspection.
    */
   page: async ({ context }, use) => {
     const page = await context.newPage()
     await use(page)
+    if (process.env.REVIEW) {
+      await page.pause()
+    }
     await page.close()
   },
 

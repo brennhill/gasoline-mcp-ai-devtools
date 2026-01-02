@@ -6,6 +6,7 @@
   "scripts": {
     "test": "npx playwright test",
     "test:headed": "npx playwright test --headed",
+    "test:review": "REVIEW=1 npx playwright test --timeout=0",
     "test:debug": "npx playwright test --debug",
     "server:build": "cd .. && make dev"
   },

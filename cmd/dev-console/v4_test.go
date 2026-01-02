@@ -1474,3 +1474,1102 @@ func TestMCPGetNetworkBodiesEmpty(t *testing.T) {
 		}
 	}
 }
+
+// ============================================
+// v5 Enhanced Actions Buffer Tests
+// ============================================
+
+func TestV5EnhancedActionsBuffer(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	actions := []EnhancedAction{
+		{
+			Type:      "click",
+			Timestamp: 1705312200000,
+			URL:       "http://localhost:3000/login",
+			Selectors: map[string]interface{}{
+				"testId":  "login-btn",
+				"cssPath": "form > button.primary",
+			},
+		},
+		{
+			Type:      "input",
+			Timestamp: 1705312201000,
+			URL:       "http://localhost:3000/login",
+			Selectors: map[string]interface{}{
+				"ariaLabel": "Email address",
+				"cssPath":   "#email",
+			},
+			Value:     "user@example.com",
+			InputType: "email",
+		},
+	}
+
+	v4.AddEnhancedActions(actions)
+
+	if v4.GetEnhancedActionCount() != 2 {
+		t.Errorf("Expected 2 actions, got %d", v4.GetEnhancedActionCount())
+	}
+}
+
+func TestV5EnhancedActionsBufferRotation(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Add more than max (50) actions
+	actions := make([]EnhancedAction, 60)
+	for i := range actions {
+		actions[i] = EnhancedAction{
+			Type:      "click",
+			Timestamp: int64(1705312200000 + i*1000),
+			URL:       "http://localhost:3000/page",
+			Selectors: map[string]interface{}{"cssPath": "button"},
+		}
+	}
+
+	v4.AddEnhancedActions(actions)
+
+	if v4.GetEnhancedActionCount() != 50 {
+		t.Errorf("Expected 50 actions after rotation, got %d", v4.GetEnhancedActionCount())
+	}
+}
+
+func TestV5EnhancedActionsGetAll(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	v4.AddEnhancedActions([]EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/a"},
+		{Type: "input", Timestamp: 2000, URL: "http://localhost:3000/b"},
+		{Type: "navigate", Timestamp: 3000, URL: "http://localhost:3000/c"},
+	})
+
+	actions := v4.GetEnhancedActions(EnhancedActionFilter{})
+	if len(actions) != 3 {
+		t.Errorf("Expected 3 actions, got %d", len(actions))
+	}
+}
+
+func TestV5EnhancedActionsFilterByLastN(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	for i := 0; i < 10; i++ {
+		v4.AddEnhancedActions([]EnhancedAction{
+			{Type: "click", Timestamp: int64(i * 1000), URL: "http://localhost:3000"},
+		})
+	}
+
+	actions := v4.GetEnhancedActions(EnhancedActionFilter{LastN: 3})
+	if len(actions) != 3 {
+		t.Errorf("Expected 3 actions with lastN filter, got %d", len(actions))
+	}
+
+	// Should return the most recent 3
+	if actions[0].Timestamp != 7000 {
+		t.Errorf("Expected oldest of last 3 to be timestamp 7000, got %d", actions[0].Timestamp)
+	}
+}
+
+func TestV5EnhancedActionsFilterByURL(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	v4.AddEnhancedActions([]EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login"},
+		{Type: "input", Timestamp: 2000, URL: "http://localhost:3000/dashboard"},
+		{Type: "click", Timestamp: 3000, URL: "http://localhost:3000/login"},
+	})
+
+	actions := v4.GetEnhancedActions(EnhancedActionFilter{URLFilter: "login"})
+	if len(actions) != 2 {
+		t.Errorf("Expected 2 actions matching 'login', got %d", len(actions))
+	}
+}
+
+func TestV5EnhancedActionsNewestLast(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	v4.AddEnhancedActions([]EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000"},
+		{Type: "input", Timestamp: 3000, URL: "http://localhost:3000"},
+		{Type: "click", Timestamp: 2000, URL: "http://localhost:3000"},
+	})
+
+	actions := v4.GetEnhancedActions(EnhancedActionFilter{})
+	// Actions should preserve insertion order (chronological from extension)
+	if actions[0].Timestamp != 1000 || actions[2].Timestamp != 2000 {
+		t.Error("Expected actions in insertion order")
+	}
+}
+
+func TestV5EnhancedActionsPasswordRedaction(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	v4.AddEnhancedActions([]EnhancedAction{
+		{Type: "input", Timestamp: 1000, URL: "http://localhost:3000", InputType: "password", Value: "secret123"},
+	})
+
+	actions := v4.GetEnhancedActions(EnhancedActionFilter{})
+	// Server should preserve what extension sent (extension already redacts)
+	// But server should also redact if inputType is password
+	if actions[0].Value != "[redacted]" {
+		t.Errorf("Expected password value to be redacted, got %s", actions[0].Value)
+	}
+}
+
+// ============================================
+// v5 Enhanced Actions HTTP Endpoint Tests
+// ============================================
+
+func TestV5PostEnhancedActionsEndpoint(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	body := `{"actions":[{"type":"click","timestamp":1705312200000,"url":"http://localhost:3000/login","selectors":{"testId":"login-btn","cssPath":"button.primary"}}]}`
+	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	v4.HandleEnhancedActions(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+
+	if v4.GetEnhancedActionCount() != 1 {
+		t.Errorf("Expected 1 action stored, got %d", v4.GetEnhancedActionCount())
+	}
+}
+
+func TestV5PostEnhancedActionsMultiple(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	body := `{"actions":[
+		{"type":"click","timestamp":1000,"url":"http://localhost:3000","selectors":{"cssPath":"button"}},
+		{"type":"input","timestamp":2000,"url":"http://localhost:3000","selectors":{"ariaLabel":"Email"},"value":"test@example.com","inputType":"email"},
+		{"type":"keypress","timestamp":3000,"url":"http://localhost:3000","key":"Enter"}
+	]}`
+	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	v4.HandleEnhancedActions(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+
+	if v4.GetEnhancedActionCount() != 3 {
+		t.Errorf("Expected 3 actions stored, got %d", v4.GetEnhancedActionCount())
+	}
+}
+
+func TestV5PostEnhancedActionsInvalidJSON(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	v4.HandleEnhancedActions(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400, got %d", rec.Code)
+	}
+}
+
+func TestV5PostEnhancedActionsPasswordRedaction(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	body := `{"actions":[{"type":"input","timestamp":1000,"url":"http://localhost:3000","selectors":{},"inputType":"password","value":"mysecret"}]}`
+	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	v4.HandleEnhancedActions(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+
+	actions := v4.GetEnhancedActions(EnhancedActionFilter{})
+	if actions[0].Value != "[redacted]" {
+		t.Errorf("Expected password to be redacted on ingest, got %s", actions[0].Value)
+	}
+}
+
+// ============================================
+// v5 MCP get_enhanced_actions Tool Tests
+// ============================================
+
+func TestMCPGetEnhancedActions(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	v4.AddEnhancedActions([]EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "login-btn"}},
+		{Type: "input", Timestamp: 2000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"ariaLabel": "Email"}, Value: "user@test.com", InputType: "email"},
+	})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_enhanced_actions","arguments":{}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	if len(result.Content) == 0 {
+		t.Fatal("Expected content in response")
+	}
+
+	var actions []EnhancedAction
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &actions); err != nil {
+		t.Fatalf("Expected valid JSON actions, got error: %v", err)
+	}
+
+	if len(actions) != 2 {
+		t.Errorf("Expected 2 actions, got %d", len(actions))
+	}
+}
+
+func TestMCPGetEnhancedActionsWithLastN(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	for i := 0; i < 10; i++ {
+		v4.AddEnhancedActions([]EnhancedAction{
+			{Type: "click", Timestamp: int64(i * 1000), URL: "http://localhost:3000"},
+		})
+	}
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_enhanced_actions","arguments":{"last_n":5}}`),
+	})
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	var actions []EnhancedAction
+	json.Unmarshal([]byte(result.Content[0].Text), &actions)
+
+	if len(actions) != 5 {
+		t.Errorf("Expected 5 actions with last_n filter, got %d", len(actions))
+	}
+}
+
+func TestMCPGetEnhancedActionsEmpty(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_enhanced_actions","arguments":{}}`),
+	})
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	if result.Content[0].Text != "No enhanced actions captured" {
+		t.Errorf("Expected empty message, got: %s", result.Content[0].Text)
+	}
+}
+
+// ============================================
+// v5 MCP get_reproduction_script Tool Tests
+// ============================================
+
+func TestMCPGetReproductionScript(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	v4.AddEnhancedActions([]EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "login-btn"}},
+		{Type: "input", Timestamp: 2000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"ariaLabel": "Email"}, Value: "user@test.com", InputType: "email"},
+	})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	script := result.Content[0].Text
+
+	// Should contain Playwright test structure
+	if !strings.Contains(script, "import { test, expect } from '@playwright/test'") {
+		t.Error("Expected Playwright import in script")
+	}
+	if !strings.Contains(script, "test(") {
+		t.Error("Expected test() in script")
+	}
+	if !strings.Contains(script, "page.goto") {
+		t.Error("Expected page.goto in script")
+	}
+}
+
+func TestMCPGetReproductionScriptWithErrorMessage(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	v4.AddEnhancedActions([]EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "submit-btn"}},
+	})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{"error_message":"Cannot read property 'user' of undefined"}}`),
+	})
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	script := result.Content[0].Text
+
+	if !strings.Contains(script, "Cannot read property") {
+		t.Error("Expected error message in script")
+	}
+}
+
+func TestMCPGetReproductionScriptWithLastN(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	for i := 0; i < 10; i++ {
+		v4.AddEnhancedActions([]EnhancedAction{
+			{Type: "click", Timestamp: int64(i * 1000), URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "btn-" + string(rune('a'+i))}},
+		})
+	}
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{"last_n_actions":3}}`),
+	})
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	script := result.Content[0].Text
+
+	// Should only have 3 click actions in the script
+	clickCount := strings.Count(script, ".click()")
+	if clickCount != 3 {
+		t.Errorf("Expected 3 click actions in script with last_n_actions=3, got %d", clickCount)
+	}
+}
+
+func TestMCPGetReproductionScriptWithBaseURL(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	v4.AddEnhancedActions([]EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
+		{Type: "navigate", Timestamp: 2000, URL: "http://localhost:3000/dashboard", FromURL: "http://localhost:3000/login", ToURL: "http://localhost:3000/dashboard"},
+	})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{"base_url":"https://staging.example.com"}}`),
+	})
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	script := result.Content[0].Text
+
+	// goto should use base_url + path
+	if !strings.Contains(script, "staging.example.com/login") {
+		t.Errorf("Expected base_url to be applied to goto, got script:\n%s", script)
+	}
+}
+
+func TestMCPGetReproductionScriptEmpty(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{}}`),
+	})
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	if result.Content[0].Text != "No enhanced actions captured to generate script" {
+		t.Errorf("Expected empty message, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestMCPGetReproductionScriptSelectorPriority(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	v4.AddEnhancedActions([]EnhancedAction{
+		{
+			Type: "click", Timestamp: 1000, URL: "http://localhost:3000",
+			Selectors: map[string]interface{}{
+				"testId":    "submit-btn",
+				"ariaLabel": "Submit form",
+				"cssPath":   "form > button",
+			},
+		},
+		{
+			Type: "click", Timestamp: 2000, URL: "http://localhost:3000",
+			Selectors: map[string]interface{}{
+				"role":    map[string]interface{}{"role": "button", "name": "Save"},
+				"cssPath": "div > button",
+			},
+		},
+		{
+			Type: "click", Timestamp: 3000, URL: "http://localhost:3000",
+			Selectors: map[string]interface{}{
+				"cssPath": "div.card > button.action",
+			},
+		},
+	})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{}}`),
+	})
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	script := result.Content[0].Text
+
+	// testId should produce getByTestId
+	if !strings.Contains(script, "getByTestId('submit-btn')") {
+		t.Errorf("Expected getByTestId for first action, got:\n%s", script)
+	}
+
+	// role should produce getByRole
+	if !strings.Contains(script, "getByRole('button', { name: 'Save' })") {
+		t.Errorf("Expected getByRole for second action, got:\n%s", script)
+	}
+
+	// cssPath fallback should produce locator()
+	if !strings.Contains(script, "locator('div.card > button.action')") {
+		t.Errorf("Expected locator() for third action, got:\n%s", script)
+	}
+}
+
+func TestMCPGetReproductionScriptInputActions(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	v4.AddEnhancedActions([]EnhancedAction{
+		{Type: "input", Timestamp: 1000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "email-input"}, Value: "user@test.com", InputType: "email"},
+		{Type: "input", Timestamp: 2000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "password-input"}, Value: "[redacted]", InputType: "password"},
+		{Type: "select", Timestamp: 3000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "country-select"}, SelectedValue: "us"},
+		{Type: "keypress", Timestamp: 4000, URL: "http://localhost:3000", Key: "Enter"},
+	})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{}}`),
+	})
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	script := result.Content[0].Text
+
+	// fill() for input
+	if !strings.Contains(script, ".fill('user@test.com')") {
+		t.Errorf("Expected fill for email input, got:\n%s", script)
+	}
+
+	// Redacted password should use placeholder
+	if !strings.Contains(script, ".fill('[user-provided]')") {
+		t.Errorf("Expected [user-provided] for redacted password, got:\n%s", script)
+	}
+
+	// selectOption for select
+	if !strings.Contains(script, ".selectOption('us')") {
+		t.Errorf("Expected selectOption for select, got:\n%s", script)
+	}
+
+	// keyboard.press for keypress
+	if !strings.Contains(script, "page.keyboard.press('Enter')") {
+		t.Errorf("Expected keyboard.press for keypress, got:\n%s", script)
+	}
+}
+
+func TestMCPGetReproductionScriptPauseComments(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	v4.AddEnhancedActions([]EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "btn1"}},
+		{Type: "click", Timestamp: 6000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "btn2"}}, // 5 seconds later
+	})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{}}`),
+	})
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	script := result.Content[0].Text
+
+	// Should contain a pause comment for the 5s gap
+	if !strings.Contains(script, "// [5s pause]") {
+		t.Errorf("Expected pause comment for 5s gap, got:\n%s", script)
+	}
+}
+
+// ============================================
+// v5 _aiContext Passthrough Tests
+// ============================================
+
+func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	// Add a log entry with _aiContext field (as extension would send)
+	entry := LogEntry{
+		"level":   "error",
+		"message": "Cannot read property 'user' of undefined",
+		"stack":   "TypeError: Cannot read property 'user' of undefined\n    at UserProfile.render (app.js:42:15)",
+		"_aiContext": map[string]interface{}{
+			"summary": "TypeError in UserProfile.render at app.js:42. React component: UserProfile > App.",
+			"componentAncestry": map[string]interface{}{
+				"framework":  "react",
+				"components": []interface{}{"UserProfile", "App"},
+			},
+			"stateSnapshot": map[string]interface{}{
+				"relevantSlice": map[string]interface{}{
+					"auth": map[string]interface{}{"user": nil, "loading": false},
+				},
+			},
+		},
+		"_enrichments": []interface{}{"aiContext"},
+	}
+	server.addEntries([]LogEntry{entry})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_browser_errors","arguments":{}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	var result struct {
+		Content []struct{ Text string `json:"text"` } `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	if len(result.Content) == 0 {
+		t.Fatal("Expected content in response")
+	}
+
+	// The _aiContext should be preserved in the output
+	responseText := result.Content[0].Text
+	if !strings.Contains(responseText, "_aiContext") {
+		t.Error("Expected _aiContext field to be preserved in get_browser_errors output")
+	}
+	if !strings.Contains(responseText, "componentAncestry") {
+		t.Error("Expected componentAncestry in _aiContext to be preserved")
+	}
+	if !strings.Contains(responseText, "UserProfile") {
+		t.Error("Expected component name to be preserved in _aiContext")
+	}
+}
+
+// ============================================
+// v5 MCP Tools List Tests
+// ============================================
+
+// ============================================
+// v5 Roadmap Item 1: Query Result Cleanup
+// ============================================
+
+func TestV4QueryResultDeletedAfterRetrieval(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	id := v4.CreatePendingQuery(PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":"h1"}`),
+	})
+
+	v4.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
+
+	// First retrieval should succeed
+	result, found := v4.GetQueryResult(id)
+	if !found {
+		t.Fatal("Expected result to be found on first read")
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result on first read")
+	}
+
+	// Second retrieval should fail (result deleted after read)
+	_, found2 := v4.GetQueryResult(id)
+	if found2 {
+		t.Error("Expected result to be deleted after first retrieval")
+	}
+}
+
+func TestV4QueryResultDeletedAfterWaitForResult(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	id := v4.CreatePendingQuery(PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":"h1"}`),
+	})
+
+	// Set result in background
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		v4.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
+	}()
+
+	// WaitForResult should succeed
+	result, err := v4.WaitForResult(id, time.Second)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+
+	// Result should be cleaned up after WaitForResult returns
+	_, found := v4.GetQueryResult(id)
+	if found {
+		t.Error("Expected result to be cleaned up after WaitForResult")
+	}
+}
+
+func TestV4QueryResultMapDoesNotGrowUnbounded(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Create and resolve 20 queries
+	for i := 0; i < 20; i++ {
+		id := v4.CreatePendingQuery(PendingQuery{
+			Type:   "dom",
+			Params: json.RawMessage(`{"selector":"h1"}`),
+		})
+		v4.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
+		// Read the result (should delete it)
+		v4.GetQueryResult(id)
+	}
+
+	// queryResults map should be empty
+	v4.mu.RLock()
+	mapSize := len(v4.queryResults)
+	v4.mu.RUnlock()
+
+	if mapSize != 0 {
+		t.Errorf("Expected queryResults map to be empty after all reads, got %d entries", mapSize)
+	}
+}
+
+// ============================================
+// v5 Roadmap Item 2: Connection Duration
+// ============================================
+
+func TestV4ConnectionDurationFormatted(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	openedAt := time.Now().Add(-5*time.Minute - 2*time.Second)
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{
+			Timestamp: openedAt.Format(time.RFC3339Nano),
+			ID:        "uuid-1",
+			Event:     "open",
+			URL:       "wss://example.com/ws",
+		},
+	})
+
+	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	if len(status.Connections) != 1 {
+		t.Fatalf("Expected 1 connection, got %d", len(status.Connections))
+	}
+
+	conn := status.Connections[0]
+	if conn.Duration == "" {
+		t.Fatal("Expected Duration to be set for active connection")
+	}
+
+	// Duration should be approximately "5m02s" (give or take a second)
+	if !strings.Contains(conn.Duration, "m") {
+		t.Errorf("Expected duration to contain 'm' for minutes, got: %s", conn.Duration)
+	}
+}
+
+func TestV4ConnectionDurationShortFormat(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	openedAt := time.Now().Add(-3 * time.Second)
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{
+			Timestamp: openedAt.Format(time.RFC3339Nano),
+			ID:        "uuid-1",
+			Event:     "open",
+			URL:       "wss://example.com/ws",
+		},
+	})
+
+	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	conn := status.Connections[0]
+
+	// Should be "3s" or "4s" (within test timing tolerance)
+	if !strings.HasSuffix(conn.Duration, "s") {
+		t.Errorf("Expected short duration ending in 's', got: %s", conn.Duration)
+	}
+}
+
+func TestV4ConnectionDurationHourFormat(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	openedAt := time.Now().Add(-1*time.Hour - 15*time.Minute)
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{
+			Timestamp: openedAt.Format(time.RFC3339Nano),
+			ID:        "uuid-1",
+			Event:     "open",
+			URL:       "wss://example.com/ws",
+		},
+	})
+
+	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	conn := status.Connections[0]
+
+	if !strings.Contains(conn.Duration, "h") {
+		t.Errorf("Expected duration with 'h' for hours, got: %s", conn.Duration)
+	}
+}
+
+// ============================================
+// v5 Roadmap Item 3: Message Rate Calculation
+// ============================================
+
+func TestV4MessageRateCalculation(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Open connection
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{Timestamp: time.Now().Add(-10 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
+	})
+
+	// Send 10 messages over the last 5 seconds (2 per second)
+	now := time.Now()
+	for i := 0; i < 10; i++ {
+		ts := now.Add(-5*time.Second + time.Duration(i)*500*time.Millisecond)
+		v4.AddWebSocketEvents([]WebSocketEvent{
+			{Timestamp: ts.Format(time.RFC3339Nano), ID: "uuid-1", Event: "message", Direction: "incoming", Size: 100},
+		})
+	}
+
+	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	if len(status.Connections) != 1 {
+		t.Fatalf("Expected 1 connection, got %d", len(status.Connections))
+	}
+
+	conn := status.Connections[0]
+	// Rate should be approximately 2.0 msg/s (10 messages in 5 seconds)
+	if conn.MessageRate.Incoming.PerSecond < 1.0 {
+		t.Errorf("Expected incoming rate >= 1.0 msg/s, got %.2f", conn.MessageRate.Incoming.PerSecond)
+	}
+	if conn.MessageRate.Incoming.PerSecond > 5.0 {
+		t.Errorf("Expected incoming rate <= 5.0 msg/s, got %.2f", conn.MessageRate.Incoming.PerSecond)
+	}
+}
+
+func TestV4MessageRateZeroWhenNoRecentMessages(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Open connection long ago
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{Timestamp: time.Now().Add(-60 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
+	})
+
+	// Send messages long ago (outside 5-second window)
+	oldTime := time.Now().Add(-30 * time.Second)
+	for i := 0; i < 5; i++ {
+		v4.AddWebSocketEvents([]WebSocketEvent{
+			{Timestamp: oldTime.Add(time.Duration(i) * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "message", Direction: "incoming", Size: 50},
+		})
+	}
+
+	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	conn := status.Connections[0]
+
+	// Rate should be 0 since all messages are outside the 5-second window
+	if conn.MessageRate.Incoming.PerSecond != 0.0 {
+		t.Errorf("Expected incoming rate 0 for old messages, got %.2f", conn.MessageRate.Incoming.PerSecond)
+	}
+}
+
+func TestV4MessageRateOutgoing(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{Timestamp: time.Now().Add(-10 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
+	})
+
+	// Send 5 outgoing messages in last 5 seconds
+	now := time.Now()
+	for i := 0; i < 5; i++ {
+		ts := now.Add(-4*time.Second + time.Duration(i)*time.Second)
+		v4.AddWebSocketEvents([]WebSocketEvent{
+			{Timestamp: ts.Format(time.RFC3339Nano), ID: "uuid-1", Event: "message", Direction: "outgoing", Size: 200},
+		})
+	}
+
+	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	conn := status.Connections[0]
+
+	if conn.MessageRate.Outgoing.PerSecond < 0.5 {
+		t.Errorf("Expected outgoing rate >= 0.5 msg/s, got %.2f", conn.MessageRate.Outgoing.PerSecond)
+	}
+}
+
+// ============================================
+// v5 Roadmap Item 4: Age Formatting
+// ============================================
+
+func TestV4LastMessageAgeFormatted(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Open connection
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{Timestamp: time.Now().Add(-60 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
+	})
+
+	// Last message 3 seconds ago
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{
+			Timestamp: time.Now().Add(-3 * time.Second).Format(time.RFC3339Nano),
+			ID:        "uuid-1",
+			Event:     "message",
+			Direction: "incoming",
+			Data:      `{"type":"ping"}`,
+			Size:      15,
+		},
+	})
+
+	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	conn := status.Connections[0]
+
+	if conn.LastMessage.Incoming == nil {
+		t.Fatal("Expected incoming last message to be set")
+	}
+
+	age := conn.LastMessage.Incoming.Age
+	if age == "" {
+		t.Fatal("Expected Age to be set on last message preview")
+	}
+
+	// Should be approximately "3s" or "3.Xs"
+	if !strings.HasSuffix(age, "s") {
+		t.Errorf("Expected age ending in 's', got: %s", age)
+	}
+}
+
+func TestV4LastMessageAgeMinutesFormat(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{Timestamp: time.Now().Add(-600 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
+	})
+
+	// Last message 2 minutes 30 seconds ago
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{
+			Timestamp: time.Now().Add(-150 * time.Second).Format(time.RFC3339Nano),
+			ID:        "uuid-1",
+			Event:     "message",
+			Direction: "outgoing",
+			Data:      `{"type":"update"}`,
+			Size:      20,
+		},
+	})
+
+	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	conn := status.Connections[0]
+
+	if conn.LastMessage.Outgoing == nil {
+		t.Fatal("Expected outgoing last message to be set")
+	}
+
+	age := conn.LastMessage.Outgoing.Age
+	if !strings.Contains(age, "m") {
+		t.Errorf("Expected age with 'm' for minutes, got: %s", age)
+	}
+}
+
+func TestV4LastMessageAgeSubSecond(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{Timestamp: time.Now().Add(-10 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
+	})
+
+	// Last message just now (< 1 second ago)
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{
+			Timestamp: time.Now().Add(-200 * time.Millisecond).Format(time.RFC3339Nano),
+			ID:        "uuid-1",
+			Event:     "message",
+			Direction: "incoming",
+			Data:      `{"type":"heartbeat"}`,
+			Size:      20,
+		},
+	})
+
+	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	conn := status.Connections[0]
+
+	age := conn.LastMessage.Incoming.Age
+	if age == "" {
+		t.Fatal("Expected age to be set for sub-second message")
+	}
+
+	// Should show fractional seconds like "0.2s"
+	if !strings.HasSuffix(age, "s") {
+		t.Errorf("Expected sub-second age ending in 's', got: %s", age)
+	}
+}
+
+func TestMCPToolsListIncludesV5Tools(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/list",
+	})
+
+	var result struct {
+		Tools []struct{ Name string `json:"name"` } `json:"tools"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	toolNames := make(map[string]bool)
+	for _, tool := range result.Tools {
+		toolNames[tool.Name] = true
+	}
+
+	v5Tools := []string{
+		"get_enhanced_actions",
+		"get_reproduction_script",
+	}
+
+	for _, name := range v5Tools {
+		if !toolNames[name] {
+			t.Errorf("Expected v5 tool '%s' in tools list", name)
+		}
+	}
+}
