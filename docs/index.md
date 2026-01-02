@@ -5,8 +5,7 @@ keywords: "browser debugging, MCP server, AI coding assistant, console log captu
 layout: splash
 permalink: /
 header:
-  overlay_image: /assets/images/hero-banner.png
-  overlay_filter: 0.7
+  overlay_color: "#1a1f2e"
   actions:
     - label: "Fire It Up"
       url: /getting-started/
