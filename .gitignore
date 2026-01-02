@@ -24,6 +24,5 @@ e2e-tests/.tmp/
 e2e-tests/test-results/
 e2e-tests/playwright-report/
 
-# Claude Code instructions (local only)
-CLAUDE.md
-.claude/
+# Claude Code local state (not instructions)
+.claude/sessions/
