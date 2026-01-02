@@ -18,20 +18,25 @@ window.addEventListener('message', (event) => {
   if (event.source !== window) return
 
   // Only handle our messages
-  if (event.data?.type !== 'DEV_CONSOLE_LOG') return
-
-  // Forward to background service worker
-  chrome.runtime.sendMessage({
-    type: 'log',
-    payload: event.data.payload,
-  })
+  if (event.data?.type === 'DEV_CONSOLE_LOG') {
+    // Forward to background service worker
+    chrome.runtime.sendMessage({
+      type: 'log',
+      payload: event.data.payload,
+    })
+  } else if (event.data?.type === 'GASOLINE_WS') {
+    // Forward WebSocket events to background service worker
+    chrome.runtime.sendMessage({
+      type: 'ws_event',
+      payload: event.data.payload,
+    })
+  }
 })
 
 // Listen for feature toggle messages from background
 chrome.runtime.onMessage.addListener((message) => {
   // Forward feature toggle messages to inject.js via postMessage
   if (
-    message.type === 'setDOMSnapshotEnabled' ||
     message.type === 'setNetworkWaterfallEnabled' ||
     message.type === 'setPerformanceMarksEnabled' ||
     message.type === 'setActionReplayEnabled'

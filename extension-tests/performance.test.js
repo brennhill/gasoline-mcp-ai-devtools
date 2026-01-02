@@ -209,50 +209,6 @@ describe('Performance Benchmarks', () => {
     })
   })
 
-  describe('DOM Snapshot Performance', () => {
-    test('should capture simple DOM under 5ms', async () => {
-      const { captureDOMSnapshot } = await import('../extension/inject.js')
-
-      // Create a simple mock DOM tree
-      const mockElement = createMockDOMTree(3, 5) // depth 3, 5 children per node
-
-      const avgTime = measureTime(() => captureDOMSnapshot(mockElement), 100)
-
-      console.log(`  Simple DOM snapshot (depth=3, children=5): ${avgTime.toFixed(4)}ms`)
-      assert.ok(avgTime < 5, `DOM snapshot took ${avgTime}ms, expected < 5ms`)
-    })
-
-    test('should capture complex DOM under 50ms', async () => {
-      const { captureDOMSnapshot } = await import('../extension/inject.js')
-
-      // Create a complex mock DOM tree (will be limited by MAX_SNAPSHOT_NODES=100)
-      const mockElement = createMockDOMTree(5, 10) // depth 5, 10 children per node
-
-      const avgTime = measureTime(() => captureDOMSnapshot(mockElement), 50)
-
-      console.log(`  Complex DOM snapshot (depth=5, children=10): ${avgTime.toFixed(4)}ms`)
-      assert.ok(avgTime < 50, `DOM snapshot took ${avgTime}ms, expected < 50ms`)
-    })
-
-    test('should enforce node limit for huge DOMs', async () => {
-      const { captureDOMSnapshot } = await import('../extension/inject.js')
-
-      // Create a large DOM tree (6^4 = 1296 nodes, but limited to 100)
-      const mockElement = createMockDOMTree(4, 6)
-
-      const start = performance.now()
-      const snapshot = captureDOMSnapshot(mockElement)
-      const elapsed = performance.now() - start
-
-      console.log(`  Large DOM snapshot (with limits): ${elapsed.toFixed(4)}ms`)
-      assert.ok(elapsed < 100, `Large DOM took ${elapsed}ms, expected < 100ms`)
-
-      // Should be limited to MAX_SNAPSHOT_NODES (100)
-      const nodeCount = countSnapshotNodes(snapshot)
-      assert.ok(nodeCount <= 100, `Snapshot has ${nodeCount} nodes, expected <= 100`)
-    })
-  })
-
   describe('Log Entry Formatting Performance', () => {
     test('should format log entry under 0.1ms', async () => {
       const { formatLogEntry } = await import('../extension/background.js')
@@ -501,51 +457,3 @@ describe('Performance Benchmarks', () => {
   })
 })
 
-// Helper to create mock DOM tree
-function createMockDOMTree(depth, childrenPerNode) {
-  function createNode(currentDepth) {
-    const node = {
-      nodeType: 1, // ELEMENT_NODE
-      tagName: 'DIV',
-      id: `node-${currentDepth}-${Math.random().toString(36).substr(2, 9)}`,
-      className: 'test-node',
-      children: [],
-      childNodes: [],
-      attributes: [
-        { name: 'class', value: 'test-node' },
-        { name: 'data-depth', value: String(currentDepth) },
-      ],
-      textContent: currentDepth === depth ? 'Leaf node content' : '',
-      getAttribute: function(name) {
-        const attr = this.attributes.find(a => a.name === name)
-        return attr ? attr.value : null
-      },
-      parentElement: null,
-    }
-
-    if (currentDepth < depth) {
-      for (let i = 0; i < childrenPerNode; i++) {
-        const child = createNode(currentDepth + 1)
-        child.parentElement = node
-        node.children.push(child)
-        node.childNodes.push(child)
-      }
-    }
-
-    return node
-  }
-
-  return createNode(0)
-}
-
-// Helper to count nodes in snapshot
-function countSnapshotNodes(snapshot) {
-  if (!snapshot) return 0
-  let count = 1
-  if (snapshot.children) {
-    for (const child of snapshot.children) {
-      count += countSnapshotNodes(child)
-    }
-  }
-  return count
-}

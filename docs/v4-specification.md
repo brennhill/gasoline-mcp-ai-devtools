@@ -887,6 +887,65 @@ v4 must include performance SLO tests (extending the existing v3 benchmark suite
 | a11y audit on complex page | axe.run() on 10,000-node page | < 10s total |
 | Server memory under load | 1000 network body POSTs with 16KB each | < 50MB server RSS |
 
+### Removed: DOM Snapshot Enrichment
+
+The DOM snapshot enrichment (`_enrichments: ['domSnapshot']`) has been removed. Rationale:
+
+- **Poor signal-to-noise ratio**: A serialized DOM tree (up to 100 nodes, 100KB) consumes significant LLM context window for minimal debugging value
+- **Redundant with `query_dom`**: The on-demand DOM query tool provides targeted, relevant DOM state when needed
+- **Context window cost**: 100KB of serialized DOM leaves little room for the actual error context in LLM interactions
+
+The `query_dom` MCP tool remains available for targeted DOM inspection.
+
+### Feature Size Awareness
+
+Features that add significant data to log entries should communicate their cost:
+
+| Feature | Default | Data Cost | Warning |
+|---------|---------|-----------|---------|
+| Screenshot on Error | OFF | JPEG file on disk | "High-resolution displays will produce large files" |
+| Network Waterfall | OFF | ~50KB per error | "Adds ~50KB of timing data per error" |
+| Performance Marks | OFF | 2-10KB per error | "Adds timing data to log entries" |
+| User Actions | ON | ~2KB per error | No warning (small) |
+| Source Maps | OFF | Minimal | No warning |
+
+All large-data features default to OFF and show an explanatory note when enabled.
+
+### Context Annotation Monitoring
+
+#### Purpose
+
+Context annotations (`window.__gasoline.annotate(key, value)`) allow developers to attach arbitrary metadata to error entries. While individual values are capped at 4KB, heavy usage (up to 50 keys × 4KB = 200KB per entry) can silently bloat log entries and consume LLM context.
+
+#### Monitoring Behavior
+
+The extension should track the cumulative size of context annotations and warn when usage is excessive:
+
+1. **Measurement**: On each error entry, calculate the total serialized size of all `_context` data included
+2. **Threshold**: If total context size exceeds **20KB** in any single entry, flag as excessive
+3. **Frequency tracking**: If 3 or more entries in a 60-second window exceed the threshold, trigger a persistent warning
+
+#### Warning UI
+
+When excessive context usage is detected:
+
+1. The "User Actions" or a new "Context Annotations" indicator in the popup should:
+   - Highlight in **orange** (`#d29922`)
+   - Show a "!" icon next to the label
+   - Display a tooltip: "Context annotations are adding [X]KB per error entry. This may consume significant AI context window. Consider reducing annotation keys or values."
+
+2. The warning should:
+   - Persist until the next popup open (re-evaluated on each status check)
+   - Clear automatically if usage drops below threshold for 60 seconds
+   - Be dismissible by the user
+
+#### Implementation Notes
+
+- Monitoring runs in the background service worker (not inject.js) to avoid page performance impact
+- Size calculation happens when entries are batched, not on each `annotate()` call
+- The warning is informational only — annotations are never silently dropped or truncated beyond the existing per-value 4KB cap
+- Badge color does not change for this warning (reserved for connection status)
+
 ### New MCP Tools Summary
 
 | Tool | Type | Description |

@@ -15,13 +15,6 @@ const MAX_ACTION_BUFFER_SIZE = 20 // Max number of recent actions to keep
 const SCROLL_THROTTLE_MS = 250 // Throttle scroll events
 const SENSITIVE_INPUT_TYPES = ['password', 'credit-card', 'cc-number', 'cc-exp', 'cc-csc']
 
-// DOM Snapshot settings
-export const MAX_SNAPSHOT_DEPTH = 5 // Max depth of DOM tree to capture
-export const MAX_SNAPSHOT_NODES = 100 // Max total nodes to capture
-export const MAX_TEXT_LENGTH = 500 // Max text content length per node
-const DOM_SNAPSHOT_RATE_LIMIT_MS = 5000 // Min time between snapshots
-const EXCLUDED_TAGS = ['script', 'style', 'noscript', 'svg', 'path']
-
 // Network Waterfall settings
 export const MAX_WATERFALL_ENTRIES = 50 // Max network entries to capture
 const WATERFALL_TIME_WINDOW_MS = 30000 // Only capture last 30 seconds
@@ -46,10 +39,6 @@ let actionCaptureEnabled = true
 let clickHandler = null
 let inputHandler = null
 let scrollHandler = null
-
-// DOM Snapshot state
-let domSnapshotEnabled = false
-let lastDOMSnapshotTime = 0
 
 // Network Waterfall state
 let networkWaterfallEnabled = false
@@ -403,208 +392,6 @@ export function setActionCaptureEnabled(enabled) {
   if (!enabled) {
     clearActionBuffer()
   }
-}
-
-// =============================================================================
-// DOM SNAPSHOT
-// =============================================================================
-
-/**
- * Serialize a DOM element to a plain object
- * @param {Node} node - The DOM node to serialize
- * @param {number} depth - Current depth
- * @param {Object} state - Tracking state for node count
- * @returns {Object|null} Serialized element or null
- */
-export function serializeElement(node, depth = 0, state = { nodeCount: 0 }) {
-  if (!node) return null
-
-  // Skip comment nodes
-  if (node.nodeType === 8) return null
-
-  // Check node limit
-  if (state.nodeCount >= MAX_SNAPSHOT_NODES) return null
-  state.nodeCount++
-
-  // Handle text nodes
-  if (node.nodeType === 3) {
-    const text = (node.textContent || '').trim()
-    if (!text) return null
-    return {
-      type: 'text',
-      textContent: text.length > MAX_TEXT_LENGTH ? text.slice(0, MAX_TEXT_LENGTH) + ' [truncated]' : text,
-    }
-  }
-
-  // Only handle element nodes
-  if (node.nodeType !== 1) return null
-
-  const tagName = (node.tagName || '').toLowerCase()
-
-  // Skip excluded tags
-  if (EXCLUDED_TAGS.includes(tagName)) return null
-
-  const result = {
-    tagName,
-  }
-
-  // Add id if present
-  if (node.id) {
-    result.id = node.id
-  }
-
-  // Add className if present
-  if (node.className && typeof node.className === 'string') {
-    result.className = node.className
-  }
-
-  // Add important attributes
-  const attrs = {}
-  if (node.attributes) {
-    for (const attr of node.attributes) {
-      // Skip style attribute (too verbose) and event handlers
-      if (attr.name === 'style' || attr.name.startsWith('on')) continue
-
-      // Redact sensitive input values
-      if (attr.name === 'value' && isSensitiveInput(node)) {
-        attrs[attr.name] = '[redacted]'
-      } else {
-        attrs[attr.name] = attr.value?.slice(0, 200) || ''
-      }
-    }
-    if (Object.keys(attrs).length > 0) {
-      result.attributes = attrs
-    }
-  }
-
-  // Add text content for leaf nodes
-  if (node.childNodes?.length === 0 || (node.childNodes?.length === 1 && node.childNodes[0].nodeType === 3)) {
-    const text = (node.textContent || '').trim()
-    if (text) {
-      result.textContent = text.length > MAX_TEXT_LENGTH ? text.slice(0, MAX_TEXT_LENGTH) + ' [truncated]' : text
-    }
-  }
-
-  // Serialize children if not at max depth
-  if (depth < MAX_SNAPSHOT_DEPTH && node.childNodes?.length > 0) {
-    const children = []
-    for (const child of node.childNodes) {
-      if (state.nodeCount >= MAX_SNAPSHOT_NODES) break
-      const serialized = serializeElement(child, depth + 1, state)
-      if (serialized) {
-        children.push(serialized)
-      }
-    }
-    if (children.length > 0) {
-      result.children = children
-    }
-  }
-
-  return result
-}
-
-/**
- * Capture a DOM snapshot starting from an element
- * @param {Element} element - The root element to capture from
- * @param {Object} options - Options for capture
- * @returns {Object|null} The DOM snapshot
- */
-export function captureDOMSnapshot(element, options = {}) {
-  // Fall back to document body if no element provided
-  const root = element || (typeof document !== 'undefined' ? document.body : null)
-
-  if (!root) return null
-
-  const state = { nodeCount: 0 }
-  const snapshot = serializeElement(root, 0, state)
-
-  if (!snapshot) return null
-
-  // Include ancestors if requested
-  if (options.includeAncestors && element && element.parentElement) {
-    const ancestors = []
-    let parent = element.parentElement
-    let ancestorDepth = 0
-
-    while (parent && ancestorDepth < 3) {
-      ancestors.unshift({
-        tagName: parent.tagName?.toLowerCase(),
-        id: parent.id || undefined,
-        className: typeof parent.className === 'string' ? parent.className : undefined,
-      })
-      parent = parent.parentElement
-      ancestorDepth++
-    }
-
-    if (ancestors.length > 0) {
-      snapshot.ancestors = ancestors
-    }
-  }
-
-  return snapshot
-}
-
-/**
- * Get a DOM snapshot entry for an error
- * @param {Object} errorEntry - The error entry
- * @returns {Promise<Object|null>} The snapshot entry
- */
-export async function getDOMSnapshotForError(errorEntry) {
-  if (!domSnapshotEnabled) return null
-
-  // Rate limiting
-  const now = Date.now()
-  if (now - lastDOMSnapshotTime < DOM_SNAPSHOT_RATE_LIMIT_MS) {
-    return null
-  }
-  lastDOMSnapshotTime = now
-
-  const root = typeof document !== 'undefined' ? document.body : null
-  if (!root) return null
-
-  const snapshot = captureDOMSnapshot(root)
-  if (!snapshot) return null
-
-  const entry = {
-    type: 'dom_snapshot',
-    ts: new Date().toISOString(),
-    _enrichments: ['domSnapshot'],
-    _errorTs: errorEntry.ts,
-    snapshot,
-  }
-
-  // Include viewport info
-  if (typeof window !== 'undefined') {
-    entry.viewport = {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    }
-  }
-
-  return entry
-}
-
-/**
- * Set whether DOM snapshot is enabled
- * @param {boolean} enabled - Whether to enable DOM snapshot
- */
-export function setDOMSnapshotEnabled(enabled) {
-  domSnapshotEnabled = enabled
-}
-
-/**
- * Check if DOM snapshot is enabled
- * @returns {boolean} Whether DOM snapshot is enabled
- */
-export function isDOMSnapshotEnabled() {
-  return domSnapshotEnabled
-}
-
-/**
- * Reset DOM snapshot rate limit (for testing)
- */
-export function resetDOMSnapshotRateLimit() {
-  lastDOMSnapshotTime = 0
 }
 
 // =============================================================================
@@ -1326,14 +1113,6 @@ export function installGasolineAPI() {
     },
 
     /**
-     * Enable or disable DOM snapshot capture
-     * @param {boolean} enabled - Whether to capture DOM snapshots on errors
-     */
-    setDOMSnapshot(enabled) {
-      setDOMSnapshotEnabled(enabled)
-    },
-
-    /**
      * Enable or disable network waterfall capture
      * @param {boolean} enabled - Whether to capture network waterfall
      */
@@ -1392,6 +1171,383 @@ export function uninstallGasolineAPI() {
   }
 }
 
+// =============================================================================
+// WEBSOCKET CAPTURE (v4)
+// =============================================================================
+
+const WS_MAX_BODY_SIZE = 4096 // 4KB truncation limit
+const WS_PREVIEW_LIMIT = 200 // Preview character limit
+
+// WebSocket capture state
+let originalWebSocket = null
+
+/**
+ * Get the byte size of a WebSocket message
+ * @param {string|ArrayBuffer|Blob|Object} data - The message data
+ * @returns {number} Size in bytes
+ */
+export function getSize(data) {
+  if (typeof data === 'string') return data.length
+  if (data instanceof ArrayBuffer) return data.byteLength
+  if (data && typeof data === 'object' && 'size' in data) return data.size
+  return 0
+}
+
+/**
+ * Format a WebSocket payload for logging
+ * @param {string|ArrayBuffer|Blob|Object} data - The message data
+ * @returns {string} Formatted payload string
+ */
+export function formatPayload(data) {
+  if (typeof data === 'string') return data
+
+  if (data instanceof ArrayBuffer) {
+    const bytes = new Uint8Array(data)
+    if (data.byteLength < 256) {
+      // Small binary: hex preview
+      let hex = ''
+      for (let i = 0; i < bytes.length; i++) {
+        hex += bytes[i].toString(16).padStart(2, '0')
+      }
+      return `[Binary: ${data.byteLength}B] ${hex}`
+    } else {
+      // Large binary: size + magic bytes (first 4 bytes)
+      let magic = ''
+      for (let i = 0; i < Math.min(4, bytes.length); i++) {
+        magic += bytes[i].toString(16).padStart(2, '0')
+      }
+      return `[Binary: ${data.byteLength}B, magic:${magic}]`
+    }
+  }
+
+  // Blob or Blob-like
+  if (data && typeof data === 'object' && 'size' in data) {
+    return `[Binary: ${data.size}B]`
+  }
+
+  return String(data)
+}
+
+/**
+ * Truncate a WebSocket message to the size limit
+ * @param {string} message - The message to truncate
+ * @returns {{data: string, truncated: boolean}} Truncation result
+ */
+export function truncateWsMessage(message) {
+  if (typeof message === 'string' && message.length > WS_MAX_BODY_SIZE) {
+    return { data: message.slice(0, WS_MAX_BODY_SIZE), truncated: true }
+  }
+  return { data: message, truncated: false }
+}
+
+/**
+ * Create a connection tracker for adaptive sampling and schema detection
+ * @param {string} id - Connection ID
+ * @param {string} url - WebSocket URL
+ * @returns {Object} Connection tracker instance
+ */
+export function createConnectionTracker(id, url) {
+  const tracker = {
+    id,
+    url,
+    messageCount: 0,
+    _sampleCounter: 0,
+    _messageRate: 0,
+    _messageTimestamps: [],
+    _schemaKeys: [],
+    _schemaVariants: new Map(),
+    _schemaConsistent: true,
+    _schemaDetected: false,
+
+    stats: {
+      incoming: { count: 0, bytes: 0, lastPreview: null, lastAt: null },
+      outgoing: { count: 0, bytes: 0, lastPreview: null, lastAt: null },
+    },
+
+    /**
+     * Record a message for stats and schema detection
+     */
+    recordMessage(direction, data) {
+      this.messageCount++
+      const size = data ? (typeof data === 'string' ? data.length : getSize(data)) : 0
+      const now = Date.now()
+
+      this.stats[direction].count++
+      this.stats[direction].bytes += size
+      this.stats[direction].lastAt = now
+
+      if (data && typeof data === 'string') {
+        this.stats[direction].lastPreview = data.length > WS_PREVIEW_LIMIT
+          ? data.slice(0, WS_PREVIEW_LIMIT)
+          : data
+      }
+
+      // Track timestamps for rate calculation
+      this._messageTimestamps.push(now)
+      // Keep only last 5 seconds
+      const cutoff = now - 5000
+      this._messageTimestamps = this._messageTimestamps.filter(t => t >= cutoff)
+
+      // Schema detection from first 5 incoming JSON messages
+      if (direction === 'incoming' && data && typeof data === 'string' && this._schemaKeys.length < 5) {
+        try {
+          const parsed = JSON.parse(data)
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            const keys = Object.keys(parsed).sort()
+            const keyStr = keys.join(',')
+            this._schemaKeys.push(keyStr)
+
+            // Track variants
+            this._schemaVariants.set(keyStr, (this._schemaVariants.get(keyStr) || 0) + 1)
+
+            // Check consistency after 2+ messages
+            if (this._schemaKeys.length >= 2) {
+              const first = this._schemaKeys[0]
+              this._schemaConsistent = this._schemaKeys.every(k => k === first)
+            }
+
+            if (this._schemaKeys.length >= 5) {
+              this._schemaDetected = true
+            }
+          }
+        } catch {
+          // Not JSON, no schema
+        }
+      }
+
+      // Track variants for messages beyond the first 5
+      if (direction === 'incoming' && data && typeof data === 'string' && this._schemaDetected) {
+        try {
+          const parsed = JSON.parse(data)
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            const keys = Object.keys(parsed).sort()
+            const keyStr = keys.join(',')
+            this._schemaVariants.set(keyStr, (this._schemaVariants.get(keyStr) || 0) + 1)
+          }
+        } catch {
+          // Not JSON
+        }
+      }
+    },
+
+    /**
+     * Determine if a message should be sampled (logged)
+     */
+    shouldSample(direction) {
+      this._sampleCounter++
+
+      // Always log first 5 messages on a connection
+      if (this.messageCount > 0 && this.messageCount <= 5) return true
+
+      const rate = this._messageRate || this.getMessageRate()
+
+      if (rate < 10) return true
+      if (rate < 50) {
+        // Target ~10 msg/s
+        const n = Math.max(1, Math.round(rate / 10))
+        return (this._sampleCounter % n) === 0
+      }
+      if (rate < 200) {
+        // Target ~5 msg/s
+        const n = Math.max(1, Math.round(rate / 5))
+        return (this._sampleCounter % n) === 0
+      }
+      // > 200: target ~2 msg/s
+      const n = Math.max(1, Math.round(rate / 2))
+      return (this._sampleCounter % n) === 0
+    },
+
+    /**
+     * Lifecycle events should always be logged
+     */
+    shouldLogLifecycle() {
+      return true
+    },
+
+    /**
+     * Get sampling info
+     */
+    getSamplingInfo() {
+      const rate = this._messageRate || this.getMessageRate()
+      let targetRate = rate
+      if (rate >= 10 && rate < 50) targetRate = 10
+      else if (rate >= 50 && rate < 200) targetRate = 5
+      else if (rate >= 200) targetRate = 2
+
+      return {
+        rate: `${rate}/s`,
+        logged: `${targetRate}/${Math.round(rate)}`,
+        window: '5s',
+      }
+    },
+
+    /**
+     * Get the current message rate (messages per second)
+     */
+    getMessageRate() {
+      if (this._messageTimestamps.length < 2) return this._messageTimestamps.length
+      const window = (this._messageTimestamps[this._messageTimestamps.length - 1] - this._messageTimestamps[0]) / 1000
+      return window > 0 ? this._messageTimestamps.length / window : this._messageTimestamps.length
+    },
+
+    /**
+     * Set the message rate manually (for testing)
+     */
+    setMessageRate(rate) {
+      this._messageRate = rate
+    },
+
+    /**
+     * Get the detected schema info
+     */
+    getSchema() {
+      if (this._schemaKeys.length === 0) {
+        return { detectedKeys: null, consistent: true }
+      }
+
+      // Check if all recorded schemas are non-JSON
+      const hasKeys = this._schemaKeys.length > 0
+      if (!hasKeys) {
+        return { detectedKeys: null, consistent: true }
+      }
+
+      // Get union of all detected keys
+      const allKeys = new Set()
+      for (const keyStr of this._schemaKeys) {
+        for (const k of keyStr.split(',')) {
+          if (k) allKeys.add(k)
+        }
+      }
+
+      // Build variants list
+      const variants = []
+      for (const [keyStr, count] of this._schemaVariants) {
+        if (count > 0) variants.push(keyStr)
+      }
+
+      return {
+        detectedKeys: allKeys.size > 0 ? Array.from(allKeys).sort() : null,
+        consistent: this._schemaConsistent,
+        variants: variants.length > 1 ? variants : undefined,
+      }
+    },
+
+    /**
+     * Check if a message represents a schema change
+     */
+    isSchemaChange(data) {
+      if (!this._schemaDetected || !data || typeof data !== 'string') return false
+      try {
+        const parsed = JSON.parse(data)
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
+        const keys = Object.keys(parsed).sort().join(',')
+        // It's a change if none of the first 5 schemas match
+        return !this._schemaKeys.includes(keys)
+      } catch {
+        return false
+      }
+    },
+  }
+
+  return tracker
+}
+
+/**
+ * Install WebSocket capture by wrapping the WebSocket constructor
+ */
+export function installWebSocketCapture() {
+  if (typeof window === 'undefined') return
+  if (originalWebSocket) return // Already installed
+
+  originalWebSocket = window.WebSocket
+
+  const OriginalWS = window.WebSocket
+
+  function GasolineWebSocket(url, protocols) {
+    const ws = new OriginalWS(url, protocols)
+    const connectionId = crypto.randomUUID()
+
+    ws.addEventListener('open', () => {
+      window.postMessage({
+        type: 'GASOLINE_WS',
+        payload: { event: 'open', id: connectionId, url, ts: new Date().toISOString() },
+      }, '*')
+    })
+
+    ws.addEventListener('close', (event) => {
+      window.postMessage({
+        type: 'GASOLINE_WS',
+        payload: {
+          event: 'close', id: connectionId, url,
+          code: event.code, reason: event.reason,
+          ts: new Date().toISOString(),
+        },
+      }, '*')
+    })
+
+    ws.addEventListener('error', () => {
+      window.postMessage({
+        type: 'GASOLINE_WS',
+        payload: { event: 'error', id: connectionId, url, ts: new Date().toISOString() },
+      }, '*')
+    })
+
+    ws.addEventListener('message', (event) => {
+      const data = event.data
+      const size = getSize(data)
+      const formatted = formatPayload(data)
+      const { data: truncatedData, truncated } = truncateWsMessage(formatted)
+
+      window.postMessage({
+        type: 'GASOLINE_WS',
+        payload: {
+          event: 'message', id: connectionId, url,
+          direction: 'incoming', data: truncatedData,
+          size, truncated: truncated || undefined,
+          ts: new Date().toISOString(),
+        },
+      }, '*')
+    })
+
+    // Wrap send() to capture outgoing messages
+    const originalSend = ws.send.bind(ws)
+    ws.send = function (data) {
+      const size = getSize(data)
+      const formatted = formatPayload(data)
+      const { data: truncatedData, truncated } = truncateWsMessage(formatted)
+
+      window.postMessage({
+        type: 'GASOLINE_WS',
+        payload: {
+          event: 'message', id: connectionId, url,
+          direction: 'outgoing', data: truncatedData,
+          size, truncated: truncated || undefined,
+          ts: new Date().toISOString(),
+        },
+      }, '*')
+
+      return originalSend(data)
+    }
+
+    return ws
+  }
+
+  GasolineWebSocket.prototype = OriginalWS.prototype
+
+  window.WebSocket = GasolineWebSocket
+}
+
+/**
+ * Uninstall WebSocket capture, restoring the original constructor
+ */
+export function uninstallWebSocketCapture() {
+  if (typeof window === 'undefined') return
+  if (originalWebSocket) {
+    window.WebSocket = originalWebSocket
+    originalWebSocket = null
+  }
+}
+
 // Listen for settings changes from content script
 if (typeof window !== 'undefined') {
   window.addEventListener('message', (event) => {
@@ -1401,9 +1557,6 @@ if (typeof window !== 'undefined') {
     // Handle settings messages from content script
     if (event.data?.type === 'DEV_CONSOLE_SETTING') {
       switch (event.data.setting) {
-        case 'setDOMSnapshotEnabled':
-          setDOMSnapshotEnabled(event.data.enabled)
-          break
         case 'setNetworkWaterfallEnabled':
           setNetworkWaterfallEnabled(event.data.enabled)
           break

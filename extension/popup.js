@@ -14,6 +14,7 @@ export function updateConnectionStatus(status) {
   const serverUrlEl = document.getElementById('server-url')
   const logFileEl = document.getElementById('log-file-path')
   const errorCountEl = document.getElementById('error-count')
+  const troubleshootingEl = document.getElementById('troubleshooting')
 
   if (status.connected) {
     statusEl.textContent = 'Connected'
@@ -27,6 +28,9 @@ export function updateConnectionStatus(status) {
     if (errorEl) {
       errorEl.textContent = ''
     }
+    if (troubleshootingEl) {
+      troubleshootingEl.style.display = 'none'
+    }
   } else {
     statusEl.textContent = 'Disconnected'
     statusEl.classList.remove('connected')
@@ -34,6 +38,9 @@ export function updateConnectionStatus(status) {
 
     if (errorEl && status.error) {
       errorEl.textContent = status.error
+    }
+    if (troubleshootingEl) {
+      troubleshootingEl.style.display = 'block'
     }
   }
 
@@ -48,13 +55,29 @@ export function updateConnectionStatus(status) {
   if (errorCountEl && status.errorCount !== undefined) {
     errorCountEl.textContent = String(status.errorCount)
   }
+
+  // Context annotation warning
+  const contextWarningEl = document.getElementById('context-warning')
+  const contextWarningTextEl = document.getElementById('context-warning-text')
+  if (contextWarningEl) {
+    if (status.connected && status.contextWarning) {
+      contextWarningEl.style.display = 'block'
+      if (contextWarningTextEl) {
+        contextWarningTextEl.textContent = `${status.contextWarning.count} recent entries have context annotations averaging ${status.contextWarning.sizeKB}KB. This may consume significant AI context window space.`
+      }
+    } else {
+      contextWarningEl.style.display = 'none'
+      if (contextWarningTextEl) {
+        contextWarningTextEl.textContent = ''
+      }
+    }
+  }
 }
 
 /**
  * Feature toggle configuration
  */
 const FEATURE_TOGGLES = [
-  { id: 'toggle-dom-snapshot', storageKey: 'domSnapshotEnabled', messageType: 'setDOMSnapshotEnabled', default: false },
   { id: 'toggle-network-waterfall', storageKey: 'networkWaterfallEnabled', messageType: 'setNetworkWaterfallEnabled', default: false },
   { id: 'toggle-performance-marks', storageKey: 'performanceMarksEnabled', messageType: 'setPerformanceMarksEnabled', default: false },
   { id: 'toggle-action-replay', storageKey: 'actionReplayEnabled', messageType: 'setActionReplayEnabled', default: true },
@@ -227,6 +250,23 @@ export async function initPopup() {
 
   // Initialize feature toggles
   await initFeatureToggles()
+
+  // Show/hide toggle warnings when features are enabled
+  const toggleWarnings = [
+    { toggleId: 'toggle-screenshot', warningId: 'screenshot-warning' },
+    { toggleId: 'toggle-network-waterfall', warningId: 'waterfall-warning' },
+    { toggleId: 'toggle-performance-marks', warningId: 'perfmarks-warning' },
+  ]
+  for (const { toggleId, warningId } of toggleWarnings) {
+    const toggle = document.getElementById(toggleId)
+    const warning = document.getElementById(warningId)
+    if (toggle && warning) {
+      warning.style.display = toggle.checked ? 'block' : 'none'
+      toggle.addEventListener('change', () => {
+        warning.style.display = toggle.checked ? 'block' : 'none'
+      })
+    }
+  }
 
   // Set up log level change handler
   const levelSelect = document.getElementById('log-level')
