@@ -16,6 +16,8 @@
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 
+let originalWindow
+
 // Mock DOM elements
 function createElement(tag, attrs = {}, opts = {}) {
   const el = {
