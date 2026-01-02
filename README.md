@@ -186,7 +186,7 @@ The server will listen on `http://localhost:7890` and write logs to `~/gasoline-
 - **Exceptions** - Uncaught errors and unhandled promise rejections with full stack traces
 - **WebSocket events** - Connection lifecycle (open/close) and message payloads with adaptive sampling
 - **User actions** - Clicks, inputs, scrolls, and keyboard events with multi-strategy selectors
-- **Screenshots** - Auto-capture on error with configurable rate limiting
+- **Screenshots** - Auto-capture on error, saved as JPEG files on disk with configurable rate limiting
 
 ## Log Format
 
@@ -207,8 +207,7 @@ Logs are stored in [JSONL format](https://jsonlines.org/) (one JSON object per l
 | `console`           | Console API calls                    | `level`, `args`                                   |
 | `network`           | Failed HTTP requests (4xx, 5xx)      | `method`, `url`, `status`, `response`, `duration` |
 | `exception`         | Uncaught errors & promise rejections | `message`, `stack`, `filename`, `lineno`, `colno` |
-| `screenshot`        | Page screenshot (PNG base64)         | `dataUrl`, `sizeBytes`, `trigger`                 |
-| `dom_snapshot`      | DOM tree snapshot                    | `snapshot`, `viewport`                            |
+| `screenshot`        | Page screenshot (saved as JPEG file) | `screenshotFile`, `trigger`, `url`                |
 | `network_waterfall` | Network timing data                  | `entries`, `pending`                              |
 | `performance`       | Performance marks/measures           | `marks`, `measures`, `navigation`                 |
 
@@ -225,10 +224,9 @@ The `_enrichments` array tells you what additional data is attached to an entry:
 | `context`          | Developer-set annotations via `__gasoline.annotate()` | Error has context annotations              |
 | `userActions`      | Recent clicks, inputs, scrolls before error           | Error entry with action buffer             |
 | `sourceMap`        | Stack trace resolved via source maps                  | Source map resolution enabled & successful |
-| `domSnapshot`      | DOM tree captured on error                            | DOM snapshot entry                         |
 | `networkWaterfall` | Network timing data                                   | Network waterfall entry                    |
 | `performanceMarks` | Performance marks/measures                            | Performance entry                          |
-| `screenshot`       | Page screenshot                                       | Screenshot entry                           |
+| `aiContext`        | Component ancestry and app state                      | AI context enrichment enabled              |
 
 ### Enriched Error Example
 
@@ -270,10 +268,9 @@ The `_enrichments` array tells you what additional data is attached to an entry:
 Some enrichments are sent as separate entries linked by `_errorTs`:
 
 ```jsonl
-{"type":"exception","ts":"2024-01-22T10:30:00.000Z","level":"error","message":"..."}
-{"type":"dom_snapshot","ts":"2024-01-22T10:30:00.100Z","_enrichments":["domSnapshot"],"_errorTs":"2024-01-22T10:30:00.000Z","snapshot":{...}}
+{"type":"exception","ts":"2024-01-22T10:30:00.000Z","level":"error","message":"...","_errorId":"err_1705921800000_abc123"}
 {"type":"network_waterfall","ts":"2024-01-22T10:30:00.100Z","_enrichments":["networkWaterfall"],"_errorTs":"2024-01-22T10:30:00.000Z","entries":[...]}
-{"type":"screenshot","ts":"2024-01-22T10:30:00.200Z","_enrichments":["screenshot"],"relatedErrorId":"err_1705921800000_abc123","dataUrl":"data:image/png;base64,..."}
+{"type":"screenshot","ts":"2024-01-22T10:30:00.200Z","level":"info","_enrichments":["screenshot"],"relatedErrorId":"err_1705921800000_abc123","screenshotFile":"localhost-20240122-103000-exception-err_1705921800000_abc123.jpg","trigger":"error"}
 ```
 
 ### Error Grouping
@@ -303,8 +300,7 @@ When errors cascade rapidly (e.g., a render loop throwing repeatedly), Gasoline 
 
 | Feature           | Limit                            | Reason                           |
 | ----------------- | -------------------------------- | -------------------------------- |
-| Screenshots       | 5s between, 10/session max       | Large payload size (~500KB each) |
-| DOM Snapshots     | 5s between                       | DOM traversal cost               |
+| Screenshots       | 5s between, 10/session max       | Large file size (~100-500KB each)|
 | Network Waterfall | 50 entries, 30s window           | Reads existing browser data      |
 | Performance Marks | 50 entries, 60s window           | Reads existing browser data      |
 | User Actions      | 20 item buffer, scroll throttled | Just metadata, very lightweight  |
@@ -341,12 +337,19 @@ const context = window.__gasoline.getContext()
 | `getActions()`                 | Get recent user actions buffer                |
 | `clearActions()`               | Clear the action buffer                       |
 | `setActionCapture(enabled)`    | Enable/disable user action capture            |
-| `setDOMSnapshot(enabled)`      | Enable/disable DOM snapshots                  |
 | `setNetworkWaterfall(enabled)` | Enable/disable network waterfall              |
-| `setPerformanceMarks(enabled)` | Enable/disable performance marks              |
 | `getNetworkWaterfall(options)` | Get current network waterfall data            |
+| `setPerformanceMarks(enabled)` | Enable/disable performance marks              |
 | `getMarks(options)`            | Get performance marks                         |
 | `getMeasures(options)`         | Get performance measures                      |
+| `enrichError(error)`           | Enrich an error with AI context (component ancestry, state) |
+| `setAiContext(enabled)`        | Enable/disable AI context enrichment          |
+| `setStateSnapshot(enabled)`    | Enable/disable state snapshot in AI context   |
+| `recordAction(type, el, opts)` | Record an enhanced action for reproduction    |
+| `getEnhancedActions()`         | Get the enhanced action buffer                |
+| `clearEnhancedActions()`       | Clear the enhanced action buffer              |
+| `generateScript(actions, opts)`| Generate a Playwright reproduction script     |
+| `getSelectors(element)`        | Compute multi-strategy selectors for element  |
 | `version`                      | API version (currently "3.5.0")               |
 
 ### Example: Add Context in React
@@ -398,15 +401,14 @@ The default limit is **1000 entries**. When this limit is reached, the oldest en
 | Entry Type        | Per Error | Typical Size |
 | ----------------- | --------- | ------------ |
 | Error/exception   | 1         | ~1-2 KB      |
-| DOM snapshot      | 1         | ~5-20 KB     |
 | Network waterfall | 1         | ~10-30 KB    |
 | Performance marks | 1         | ~5-10 KB     |
-| Screenshot        | 1         | ~300-500 KB  |
+| Screenshot        | 1         | ~0.1 KB (filename reference) |
 | User actions      | included  | ~1-2 KB      |
 
-A fully-enriched error = ~5 entries, so 1000 entries ≈ **200 fully-enriched errors**. For a typical debugging session (10-50 errors), this provides ample history.
+A fully-enriched error = ~4 entries, so 1000 entries ≈ **250 fully-enriched errors**. For a typical debugging session (10-50 errors), this provides ample history.
 
-**File size considerations:** Screenshots are the largest payload. With 10 screenshots (session max), the file can reach ~5 MB. Without screenshots, 1000 entries typically stays under 1 MB.
+**File size considerations:** Screenshots are saved as separate JPEG files in the same directory as the log file (not embedded in the log). The log file itself typically stays under 1 MB with 1000 entries. Screenshot files are ~100-500 KB each (JPEG quality 80).
 
 **When to increase:** If you set capture level to "All Logs" on a chatty application, routine `console.log` calls may push out errors. In that case, either increase the limit or use "Errors Only" capture level:
 
@@ -592,9 +594,10 @@ Click the extension icon to:
 
 - View connection status and log entry count
 - Set capture level (Errors Only, Warnings+, All Logs)
-- Toggle advanced capture features (screenshots, network waterfall, performance marks, user action replay)
-- Configure WebSocket capture (off, lifecycle only, or full messages)
+- Toggle advanced capture features (WebSocket monitoring, network waterfall, performance marks, user actions, screenshot on error, source maps)
+- Configure WebSocket capture mode (lifecycle only, or include messages with sampling)
 - Clear all logs
+- Export debug logs for troubleshooting
 
 In Options, you can configure the server URL and domain filters to only capture logs from specific sites.
 
@@ -661,8 +664,6 @@ Gasoline is designed to have minimal impact on page performance. These are the S
 | Error group processing      | < 0.2ms | Deduplication and grouping logic           |
 | User action recording       | < 0.1ms | Recording a click/input event              |
 | Network waterfall (50 req)  | < 5ms   | Collecting timing data for 50 requests     |
-| DOM snapshot (simple)       | < 5ms   | Capturing small DOM subtree                |
-| DOM snapshot (complex)      | < 50ms  | Capturing large DOM with node limits       |
 | Full error path             | < 5ms   | Total time from error to queued for server |
 
 ### Safeguards
@@ -671,11 +672,8 @@ Built-in limits prevent runaway resource usage:
 
 | Safeguard            | Limit               | Purpose                        |
 | -------------------- | ------------------- | ------------------------------ |
-| DOM snapshot nodes   | 100 max             | Prevent huge snapshots         |
-| DOM snapshot depth   | 5 levels            | Limit tree traversal           |
 | String truncation    | 10KB                | Cap large log arguments        |
 | Screenshots          | 5s rate, 10/session | Prevent capture flood          |
-| DOM snapshots        | 5s rate             | Prevent capture flood          |
 | Network waterfall    | 50 entries          | Limit data collection          |
 | Performance marks    | 50 entries          | Limit data collection          |
 | User action buffer   | 20 items            | Rolling buffer, oldest dropped |
@@ -703,10 +701,9 @@ node --test extension-tests/performance.test.js
 
 ### v2 (Complete)
 
-- [x] **Screenshot capture** - Auto-capture on error (configurable)
-- [x] **DOM snapshot** - Capture relevant DOM subtree on error
+- [x] **Screenshot capture** - Auto-capture on error, saved as JPEG files on disk
 - [x] **Error grouping** - Deduplicate repeated errors
-- [x] **Rate limiting** - Prevent screenshot/snapshot flood
+- [x] **Rate limiting** - Prevent screenshot flood
 - [x] **Context annotations** - `window.__gasoline.annotate()` API for semantic context
 - [x] **User action replay** - Buffer of recent clicks/inputs before error
 - [x] **Source map support** - Resolve minified stack traces
@@ -728,7 +725,7 @@ node --test extension-tests/performance.test.js
 - [x] **Live DOM queries** - On-demand DOM state inspection via MCP tool
 - [x] **Accessibility audit** - Run axe-core and surface violations as actionable findings
 
-### v5 (Current)
+### v5 (Complete)
 
 - [x] **AI context enrichment** - Enrich errors with component ancestry (React/Vue/Svelte) and relevant app state for complete diagnosis
 - [x] **Reproduction scripts** - Convert captured user actions into runnable Playwright tests with robust multi-strategy selectors (data-testid > aria > role > CSS path)
@@ -736,7 +733,6 @@ node --test extension-tests/performance.test.js
 
 ### v6 (Planned)
 
-- [ ] **Visual context at error time** - Capture a screenshot and annotated DOM region when errors occur, giving the AI visual context alongside stack traces
 - [ ] **State timeline** - Record Redux/Zustand action log with timestamps, showing how app state evolved leading up to a bug
 - [ ] **Fix verification feedback** - After a fix is applied and the page reloads, diff the error buffer to confirm the error is resolved or flag new regressions
 - [ ] **API type inference** - Generate TypeScript interfaces from observed network request/response payloads, so the AI knows the real API shape
