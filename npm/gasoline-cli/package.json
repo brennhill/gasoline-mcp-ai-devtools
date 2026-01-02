@@ -2,7 +2,7 @@
   "name": "gasoline-mcp",
   "version": "3.0.2",
   "description": "Adding fuel to the AI fire. Captures browser console logs, errors, and context for your AI coding assistant via MCP.",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "bin": {
     "gasoline-mcp": "bin/gasoline-cli"
   },
