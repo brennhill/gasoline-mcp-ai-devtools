@@ -1,0 +1,57 @@
+<svg width="1280" height="280" viewBox="0 0 1280 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1280" height="280" rx="12" fill="#141b24"/>
+
+  <defs>
+    <radialGradient id="glow" cx="15%" cy="50%" r="25%">
+      <stop offset="0%" style="stop-color:#f97316;stop-opacity:0.1"/>
+      <stop offset="100%" style="stop-color:#141b24;stop-opacity:0"/>
+    </radialGradient>
+    <linearGradient id="flame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="50%" style="stop-color:#fb923c"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="innerFlame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#fef3c7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Glow -->
+  <rect width="1280" height="280" rx="12" fill="url(#glow)"/>
+
+  <!-- Flame icon -->
+  <g transform="translate(100, 50) scale(1.4)">
+    <circle cx="64" cy="64" r="60" fill="#1e2a38"/>
+    <path d="M64 16 C40 40, 28 60, 28 80 C28 100, 44 116, 64 116 C84 116, 100 100, 100 80 C100 60, 88 40, 64 16 Z" fill="url(#flame)"/>
+    <path d="M64 48 C52 60, 44 72, 44 84 C44 96, 52 104, 64 104 C76 104, 84 96, 84 84 C84 72, 76 60, 64 48 Z" fill="url(#innerFlame)"/>
+  </g>
+
+  <!-- Title -->
+  <text x="360" y="120" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="64" font-weight="600" fill="#ffffff">Gasoline</text>
+
+  <!-- Tagline -->
+  <text x="360" y="165" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#8b949e">Fuel for the AI Fire</text>
+
+  <!-- Flow pills -->
+  <g transform="translate(360, 200)">
+    <rect x="0" y="0" width="100" height="34" rx="17" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+    <text x="50" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#c9d1d9" text-anchor="middle">Browser</text>
+
+    <path d="M114 17 L126 17 M121 12 L127 17 L121 22" stroke="#484f58" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="144" y="0" width="110" height="34" rx="17" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+    <text x="199" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#c9d1d9" text-anchor="middle">Extension</text>
+
+    <path d="M268 17 L280 17 M275 12 L281 17 L275 22" stroke="#484f58" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="298" y="0" width="120" height="34" rx="17" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+    <text x="358" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#c9d1d9" text-anchor="middle">Local Server</text>
+
+    <path d="M432 17 L444 17 M439 12 L445 17 L439 22" stroke="#484f58" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="462" y="0" width="100" height="34" rx="17" fill="#2d1a0e" stroke="#f97316" stroke-width="1"/>
+    <text x="512" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#fb923c" text-anchor="middle">AI</text>
+  </g>
+</svg>

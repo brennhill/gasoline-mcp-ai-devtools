@@ -48,21 +48,21 @@
     <text x="60" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#c9d1d9" text-anchor="middle">Browser</text>
 
     <!-- Arrow 1 -->
-    <text x="145" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" fill="#484f58" text-anchor="middle">&rarr;</text>
+    <path d="M137 20 L151 20 M146 14 L153 20 L146 26" stroke="#484f58" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 
     <!-- Extension pill -->
     <rect x="170" y="0" width="130" height="40" rx="20" fill="#21262d" stroke="#30363d" stroke-width="1"/>
     <text x="235" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#c9d1d9" text-anchor="middle">Extension</text>
 
     <!-- Arrow 2 -->
-    <text x="325" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" fill="#484f58" text-anchor="middle">&rarr;</text>
+    <path d="M317 20 L331 20 M326 14 L333 20 L326 26" stroke="#484f58" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 
     <!-- Local Server pill -->
     <rect x="350" y="0" width="140" height="40" rx="20" fill="#21262d" stroke="#30363d" stroke-width="1"/>
     <text x="420" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#c9d1d9" text-anchor="middle">Local Server</text>
 
     <!-- Arrow 3 -->
-    <text x="515" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" fill="#484f58" text-anchor="middle">&rarr;</text>
+    <path d="M507 20 L521 20 M516 14 L523 20 L516 26" stroke="#484f58" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 
     <!-- AI pill (highlighted) -->
     <rect x="540" y="0" width="120" height="40" rx="20" fill="#2d1a0e" stroke="#f97316" stroke-width="1"/>

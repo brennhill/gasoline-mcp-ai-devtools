@@ -1,15 +1,6 @@
 <div align="center">
 
-```
-     ██████╗  █████╗ ███████╗ ██████╗ ██╗     ██╗███╗   ██╗███████╗
-    ██╔════╝ ██╔══██╗██╔════╝██╔═══██╗██║     ██║████╗  ██║██╔════╝
-    ██║  ███╗███████║███████╗██║   ██║██║     ██║██╔██╗ ██║█████╗
-    ██║   ██║██╔══██║╚════██║██║   ██║██║     ██║██║╚██╗██║██╔══╝
-    ╚██████╔╝██║  ██║███████║╚██████╔╝███████╗██║██║ ╚████║███████╗
-     ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝╚══════╝
-```
-
-**Adding fuel to the AI fire**
+<img src="chrome_store_files/readme-banner.png" alt="Gasoline - Fuel for the AI Fire" width="100%" />
 
 [![License](https://img.shields.io/badge/license-PolyForm%20Internal%20Use-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-3.0.0-green.svg)](https://github.com/brennhill/gasoline/releases)
