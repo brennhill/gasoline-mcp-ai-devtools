@@ -23,7 +23,7 @@ import (
 const (
 	defaultPort       = 7890
 	defaultMaxEntries = 1000
-	version           = "3.0.2"
+	version           = "3.5.0"
 )
 
 // LogEntry represents a single log entry
