@@ -42,11 +42,11 @@ async function setBackgroundToggle(context, extensionId, messageType, enabled) {
 }
 
 /**
- * Helper: Enable/disable a feature on a page via DEV_CONSOLE_SETTING postMessage
+ * Helper: Enable/disable a feature on a page via GASOLINE_SETTING postMessage
  */
 async function setPageFeature(page, setting, enabled) {
   await page.evaluate(({ setting, enabled }) => {
-    window.postMessage({ type: 'DEV_CONSOLE_SETTING', setting, enabled }, '*')
+    window.postMessage({ type: 'GASOLINE_SETTING', setting, enabled }, '*')
   }, { setting, enabled })
   await page.waitForTimeout(500)
 }

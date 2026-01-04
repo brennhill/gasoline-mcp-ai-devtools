@@ -1,30 +1,26 @@
+// @ts-nocheck
 /**
- * @fileoverview Tests for network response body capture, header sanitization, and truncation
- * TDD: These tests are written BEFORE implementation (v4 feature)
+ * @fileoverview network-bodies.test.js — Tests for network response body capture.
+ * Covers fetch response cloning, body size truncation, header sanitization
+ * (stripping auth/cookie headers), content-type detection, and the
+ * GASOLINE_NETWORK_BODY message format posted to the content script.
  */
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
-
-const createMockWindow = () => ({
-  postMessage: mock.fn(),
-  addEventListener: mock.fn(),
-  fetch: mock.fn(),
-})
+import { createMockWindow } from './helpers.js'
 
 const createMockResponse = (options = {}) => ({
   ok: options.ok !== undefined ? options.ok : true,
   status: options.status || 200,
   statusText: options.statusText || 'OK',
-  headers: new Map([
-    ['content-type', options.contentType || 'application/json'],
-    ...(options.headers || []),
-  ]),
-  clone: function() {
+  headers: new Map([['content-type', options.contentType || 'application/json'], ...(options.headers || [])]),
+  clone: function () {
     return {
       ...this,
       text: () => Promise.resolve(options.body || '{}'),
-      blob: () => Promise.resolve({ size: (options.body || '{}').length, type: options.contentType || 'application/json' }),
+      blob: () =>
+        Promise.resolve({ size: (options.body || '{}').length, type: options.contentType || 'application/json' }),
     }
   },
 })
@@ -34,9 +30,15 @@ class MockHeaders {
   constructor(init) {
     this._map = new Map(Object.entries(init || {}))
   }
-  get(name) { return this._map.get(name.toLowerCase()) || null }
-  entries() { return this._map.entries() }
-  forEach(fn) { this._map.forEach((v, k) => fn(v, k)) }
+  get(name) {
+    return this._map.get(name.toLowerCase()) || null
+  }
+  entries() {
+    return this._map.entries()
+  }
+  forEach(fn) {
+    this._map.forEach((v, k) => fn(v, k))
+  }
 }
 
 let originalWindow
@@ -44,12 +46,37 @@ let originalWindow
 describe('Network Body Capture - Fetch Wrapper', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ withFetch: true })
     globalThis.Headers = MockHeaders
   })
 
   afterEach(() => {
     globalThis.window = originalWindow
+  })
+
+  test('network body event has spec-compliant shape', async () => {
+    const { wrapFetchWithBodies } = await import('../extension/inject.js')
+
+    const mockResponse = createMockResponse({ body: '{"id":1}', contentType: 'application/json', status: 201 })
+    const originalFetch = mock.fn(() => Promise.resolve(mockResponse))
+
+    const wrappedFetch = wrapFetchWithBodies(originalFetch)
+    await wrappedFetch('/api/users', { method: 'POST', body: '{"name":"Alice"}' })
+    await new Promise((r) => setTimeout(r, 10))
+
+    const calls = globalThis.window.postMessage.mock.calls
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
+    assert.ok(bodyEvent, 'Expected network body event')
+    const payload = bodyEvent.arguments[0].payload
+
+    // Shape from spec: method, url, status, requestBody, responseBody, contentType, duration
+    assert.ok('method' in payload, 'missing: method')
+    assert.ok('url' in payload, 'missing: url')
+    assert.ok('status' in payload, 'missing: status')
+    assert.ok('requestBody' in payload, 'missing: requestBody')
+    assert.ok('responseBody' in payload, 'missing: responseBody')
+    assert.ok('contentType' in payload, 'missing: contentType')
+    assert.ok('duration' in payload, 'missing: duration')
   })
 
   test('should capture response body for JSON responses', async () => {
@@ -63,10 +90,10 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     await wrappedFetch('/api/users/1')
 
     // Wait for async body capture
-    await new Promise(r => setTimeout(r, 10))
+    await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find(c => {
+    const bodyEvent = calls.find((c) => {
       const msg = c.arguments[0]
       return msg.type === 'GASOLINE_NETWORK_BODY'
     })
@@ -90,10 +117,10 @@ describe('Network Body Capture - Fetch Wrapper', () => {
       headers: { 'Content-Type': 'application/json' },
     })
 
-    await new Promise(r => setTimeout(r, 10))
+    await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find(c => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
 
     assert.ok(bodyEvent, 'Expected network body event')
     assert.strictEqual(bodyEvent.arguments[0].payload.requestBody, requestBody)
@@ -122,7 +149,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
       status: 200,
       headers: new Map([['content-type', 'application/json']]),
       clone: () => ({
-        text: () => new Promise(resolve => setTimeout(() => resolve('slow'), 100)),
+        text: () => new Promise((resolve) => setTimeout(() => resolve('slow'), 100)),
       }),
     }
 
@@ -146,10 +173,10 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     const wrappedFetch = wrapFetchWithBodies(originalFetch)
     await wrappedFetch('/page')
 
-    await new Promise(r => setTimeout(r, 10))
+    await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find(c => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
 
     assert.strictEqual(bodyEvent.arguments[0].payload.contentType, 'text/html')
   })
@@ -163,10 +190,10 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     const wrappedFetch = wrapFetchWithBodies(originalFetch)
     await wrappedFetch('/api/test', { method: 'PUT', body: '{}' })
 
-    await new Promise(r => setTimeout(r, 10))
+    await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find(c => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
 
     assert.strictEqual(bodyEvent.arguments[0].payload.method, 'PUT')
   })
@@ -180,10 +207,10 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     const wrappedFetch = wrapFetchWithBodies(originalFetch)
     await wrappedFetch('/api/test')
 
-    await new Promise(r => setTimeout(r, 10))
+    await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find(c => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
 
     assert.strictEqual(bodyEvent.arguments[0].payload.method, 'GET')
   })
@@ -198,10 +225,10 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     const request = { url: '/api/data', method: 'PATCH' }
     await wrappedFetch(request)
 
-    await new Promise(r => setTimeout(r, 10))
+    await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find(c => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
 
     assert.strictEqual(bodyEvent.arguments[0].payload.url, '/api/data')
   })
@@ -220,15 +247,15 @@ describe('Network Body Capture - Fetch Wrapper', () => {
       const wrappedFetch = wrapFetchWithBodies(originalFetch)
       await wrappedFetch('/asset')
 
-      await new Promise(r => setTimeout(r, 10))
+      await new Promise((r) => setTimeout(r, 10))
 
       const calls = globalThis.window.postMessage.mock.calls
-      const bodyEvent = calls.find(c => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
+      const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
 
       if (bodyEvent) {
         assert.ok(
           bodyEvent.arguments[0].payload.responseBody.includes('[Binary:'),
-          `Expected binary placeholder for ${type}, got: ${bodyEvent.arguments[0].payload.responseBody}`
+          `Expected binary placeholder for ${type}, got: ${bodyEvent.arguments[0].payload.responseBody}`,
         )
       }
     }
@@ -243,10 +270,10 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     const wrappedFetch = wrapFetchWithBodies(originalFetch)
     await wrappedFetch('http://localhost:7890/logs')
 
-    await new Promise(r => setTimeout(r, 10))
+    await new Promise((r) => setTimeout(r, 10))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find(c => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
 
     assert.ok(!bodyEvent, 'Should not capture requests to gasoline server')
   })
@@ -255,17 +282,20 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     const { wrapFetchWithBodies } = await import('../extension/inject.js')
 
     const mockResponse = createMockResponse({ body: '{}' })
-    const originalFetch = mock.fn(() => new Promise(resolve => {
-      setTimeout(() => resolve(mockResponse), 20)
-    }))
+    const originalFetch = mock.fn(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve(mockResponse), 20)
+        }),
+    )
 
     const wrappedFetch = wrapFetchWithBodies(originalFetch)
     await wrappedFetch('/api/slow')
 
-    await new Promise(r => setTimeout(r, 30))
+    await new Promise((r) => setTimeout(r, 30))
 
     const calls = globalThis.window.postMessage.mock.calls
-    const bodyEvent = calls.find(c => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
+    const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
 
     assert.ok(bodyEvent.arguments[0].payload.duration >= 15, 'Expected duration >= 15ms')
   })
@@ -276,9 +306,9 @@ describe('Header Sanitization', () => {
     const { sanitizeHeaders } = await import('../extension/inject.js')
 
     const headers = {
-      'Authorization': 'Bearer secret-token-123',
+      Authorization: 'Bearer secret-token-123',
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      Accept: 'application/json',
     }
 
     const sanitized = sanitizeHeaders(headers)
@@ -291,7 +321,7 @@ describe('Header Sanitization', () => {
     const { sanitizeHeaders } = await import('../extension/inject.js')
 
     const headers = {
-      'Cookie': 'session=abc123; token=xyz',
+      Cookie: 'session=abc123; token=xyz',
       'Content-Type': 'text/html',
     }
 
@@ -349,7 +379,7 @@ describe('Header Sanitization', () => {
     const headers = {
       'x-auth-TOKEN': 'value',
       'X-SECRET-key': 'value',
-      'authorization': 'Bearer xyz',
+      authorization: 'Bearer xyz',
     }
 
     const sanitized = sanitizeHeaders(headers)
@@ -370,7 +400,7 @@ describe('Header Sanitization', () => {
     const { sanitizeHeaders } = await import('../extension/inject.js')
 
     const headers = new MockHeaders({
-      'authorization': 'Bearer token',
+      authorization: 'Bearer token',
       'content-type': 'application/json',
     })
 
@@ -486,7 +516,7 @@ describe('Body Reading', () => {
 
     const response = {
       headers: new Map([['content-type', 'application/json']]),
-      text: () => new Promise(resolve => setTimeout(() => resolve('{}'), 50)),
+      text: () => new Promise((resolve) => setTimeout(() => resolve('{}'), 50)),
     }
 
     const body = await readResponseBodyWithTimeout(response, 5)

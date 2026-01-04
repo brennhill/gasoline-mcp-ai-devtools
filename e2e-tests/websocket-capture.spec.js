@@ -63,8 +63,8 @@ async function createWsEchoServer() {
 async function enableWebSocketCapture(page, mode = 'lifecycle') {
   // Post settings directly to the page (same as content.js would)
   await page.evaluate((m) => {
-    window.postMessage({ type: 'DEV_CONSOLE_SETTING', setting: 'setWebSocketCaptureEnabled', enabled: true }, '*')
-    window.postMessage({ type: 'DEV_CONSOLE_SETTING', setting: 'setWebSocketCaptureMode', mode: m }, '*')
+    window.postMessage({ type: 'GASOLINE_SETTING', setting: 'setWebSocketCaptureEnabled', enabled: true }, '*')
+    window.postMessage({ type: 'GASOLINE_SETTING', setting: 'setWebSocketCaptureMode', mode: m }, '*')
   }, mode)
   // Wait for inject.js to process the messages
   await page.waitForTimeout(500)

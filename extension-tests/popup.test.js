@@ -1,6 +1,8 @@
+// @ts-nocheck
 /**
- * @fileoverview Tests for popup UI functionality
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview popup.test.js — Tests for the extension popup UI.
+ * Covers connection status display, entry count formatting, error messaging,
+ * log level selector, clear-logs button, and troubleshooting hint visibility.
  */
 
 import { test, describe, mock, beforeEach } from 'node:test'
@@ -20,7 +22,7 @@ const mockChrome = {
         callback({
           logLevel: 'error',
           domainFilters: [],
-        })
+        }),
       ),
       set: mock.fn((data, callback) => callback && callback()),
     },
@@ -125,9 +127,7 @@ describe('Popup State Display', () => {
     await initPopup()
 
     // Should have sent getStatus message
-    assert.ok(
-      mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'getStatus')
-    )
+    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'getStatus'))
   })
 })
 
@@ -157,9 +157,7 @@ describe('Log Level Selector', () => {
 
     await handleLogLevelChange('error')
 
-    assert.ok(
-      mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0]?.logLevel === 'error')
-    )
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0]?.logLevel === 'error'))
   })
 
   test('should notify background when level changes', async () => {
@@ -169,8 +167,8 @@ describe('Log Level Selector', () => {
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0]?.type === 'setLogLevel' && c.arguments[0]?.level === 'all'
-      )
+        (c) => c.arguments[0]?.type === 'setLogLevel' && c.arguments[0]?.level === 'all',
+      ),
     )
   })
 
@@ -205,9 +203,7 @@ describe('Clear Logs Button', () => {
 
     await handleClearLogs()
 
-    assert.ok(
-      mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'clearLogs')
-    )
+    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'clearLogs'))
   })
 
   test('should update UI after clearing logs', async () => {
@@ -512,9 +508,7 @@ describe('WebSocket Toggle', () => {
 
     handleFeatureToggle('webSocketCaptureEnabled', 'setWebSocketCaptureEnabled', true)
 
-    assert.ok(mockChrome.storage.local.set.mock.calls.some(
-      (c) => c.arguments[0].webSocketCaptureEnabled === true
-    ))
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].webSocketCaptureEnabled === true))
   })
 
   test('should send message to background when WebSocket toggled', async () => {
@@ -522,9 +516,11 @@ describe('WebSocket Toggle', () => {
 
     handleFeatureToggle('webSocketCaptureEnabled', 'setWebSocketCaptureEnabled', true)
 
-    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some(
-      (c) => c.arguments[0].type === 'setWebSocketCaptureEnabled' && c.arguments[0].enabled === true
-    ))
+    assert.ok(
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setWebSocketCaptureEnabled' && c.arguments[0].enabled === true,
+      ),
+    )
   })
 
   test('should save WebSocket mode when changed', async () => {
@@ -532,9 +528,7 @@ describe('WebSocket Toggle', () => {
 
     handleWebSocketModeChange('messages')
 
-    assert.ok(mockChrome.storage.local.set.mock.calls.some(
-      (c) => c.arguments[0].webSocketCaptureMode === 'messages'
-    ))
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].webSocketCaptureMode === 'messages'))
   })
 
   test('should send mode change message to background', async () => {
@@ -542,9 +536,11 @@ describe('WebSocket Toggle', () => {
 
     handleWebSocketModeChange('messages')
 
-    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some(
-      (c) => c.arguments[0].type === 'setWebSocketCaptureMode' && c.arguments[0].mode === 'messages'
-    ))
+    assert.ok(
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setWebSocketCaptureMode' && c.arguments[0].mode === 'messages',
+      ),
+    )
   })
 
   test('should default mode to lifecycle', async () => {
@@ -589,7 +585,7 @@ describe('Debug Logging', () => {
         callback({
           log: JSON.stringify({
             exportedAt: '2024-01-22T12:00:00Z',
-            version: '2.0.0',
+            version: '4.7.0',
             entries: [{ ts: '2024-01-22T12:00:00Z', category: 'lifecycle', message: 'Test' }],
           }),
         })
@@ -662,7 +658,223 @@ describe('Debug Logging', () => {
 
     // Should have sent message to background
     assert.ok(
-      mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0].type === 'setDebugMode' && c.arguments[0].enabled === true)
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setDebugMode' && c.arguments[0].enabled === true,
+      ),
     )
+  })
+})
+
+describe('Health Indicators', () => {
+  beforeEach(() => {
+    mock.reset()
+    mockDocument = createMockDocument()
+    globalThis.document = mockDocument
+  })
+
+  describe('Circuit Breaker Status', () => {
+    test('should hide circuit breaker indicator when state is "closed"', async () => {
+      const { updateConnectionStatus } = await import('../extension/popup.js')
+
+      updateConnectionStatus({
+        connected: true,
+        entries: 5,
+        circuitBreakerState: 'closed',
+        memoryPressure: { memoryPressureLevel: 'normal' },
+      })
+
+      const cbEl = mockDocument.getElementById('health-circuit-breaker')
+      assert.strictEqual(cbEl.style.display, 'none')
+    })
+
+    test('should display circuit breaker "open" with error styling', async () => {
+      const { updateConnectionStatus } = await import('../extension/popup.js')
+
+      updateConnectionStatus({
+        connected: true,
+        entries: 5,
+        circuitBreakerState: 'open',
+        memoryPressure: { memoryPressureLevel: 'normal' },
+      })
+
+      const cbEl = mockDocument.getElementById('health-circuit-breaker')
+      assert.notStrictEqual(cbEl.style.display, 'none')
+      assert.ok(cbEl.classList.add.mock.calls.some((c) => c.arguments[0] === 'health-error'))
+      assert.ok(cbEl.textContent.includes('open'))
+    })
+
+    test('should display circuit breaker "half-open" with warning styling', async () => {
+      const { updateConnectionStatus } = await import('../extension/popup.js')
+
+      updateConnectionStatus({
+        connected: true,
+        entries: 5,
+        circuitBreakerState: 'half-open',
+        memoryPressure: { memoryPressureLevel: 'normal' },
+      })
+
+      const cbEl = mockDocument.getElementById('health-circuit-breaker')
+      assert.notStrictEqual(cbEl.style.display, 'none')
+      assert.ok(cbEl.classList.add.mock.calls.some((c) => c.arguments[0] === 'health-warning'))
+      assert.ok(cbEl.textContent.includes('half-open'))
+    })
+  })
+
+  describe('Memory Pressure Status', () => {
+    test('should hide memory pressure indicator when level is "normal"', async () => {
+      const { updateConnectionStatus } = await import('../extension/popup.js')
+
+      updateConnectionStatus({
+        connected: true,
+        entries: 5,
+        circuitBreakerState: 'closed',
+        memoryPressure: { memoryPressureLevel: 'normal' },
+      })
+
+      const mpEl = mockDocument.getElementById('health-memory-pressure')
+      assert.strictEqual(mpEl.style.display, 'none')
+    })
+
+    test('should display memory pressure "soft" with warning styling', async () => {
+      const { updateConnectionStatus } = await import('../extension/popup.js')
+
+      updateConnectionStatus({
+        connected: true,
+        entries: 5,
+        circuitBreakerState: 'closed',
+        memoryPressure: { memoryPressureLevel: 'soft', reducedCapacities: true },
+      })
+
+      const mpEl = mockDocument.getElementById('health-memory-pressure')
+      assert.notStrictEqual(mpEl.style.display, 'none')
+      assert.ok(mpEl.classList.add.mock.calls.some((c) => c.arguments[0] === 'health-warning'))
+      assert.ok(mpEl.textContent.includes('elevated'))
+    })
+
+    test('should display memory pressure "hard" with error styling', async () => {
+      const { updateConnectionStatus } = await import('../extension/popup.js')
+
+      updateConnectionStatus({
+        connected: true,
+        entries: 5,
+        circuitBreakerState: 'closed',
+        memoryPressure: { memoryPressureLevel: 'hard', networkBodyCaptureDisabled: true },
+      })
+
+      const mpEl = mockDocument.getElementById('health-memory-pressure')
+      assert.notStrictEqual(mpEl.style.display, 'none')
+      assert.ok(mpEl.classList.add.mock.calls.some((c) => c.arguments[0] === 'health-error'))
+      assert.ok(mpEl.textContent.includes('critical'))
+    })
+  })
+
+  describe('Section Visibility', () => {
+    test('should hide health section when all indicators are healthy', async () => {
+      const { updateConnectionStatus } = await import('../extension/popup.js')
+
+      updateConnectionStatus({
+        connected: true,
+        entries: 5,
+        circuitBreakerState: 'closed',
+        memoryPressure: { memoryPressureLevel: 'normal' },
+      })
+
+      const sectionEl = mockDocument.getElementById('health-indicators')
+      assert.strictEqual(sectionEl.style.display, 'none')
+    })
+
+    test('should show health section when circuit breaker is unhealthy', async () => {
+      const { updateConnectionStatus } = await import('../extension/popup.js')
+
+      updateConnectionStatus({
+        connected: true,
+        entries: 5,
+        circuitBreakerState: 'open',
+        memoryPressure: { memoryPressureLevel: 'normal' },
+      })
+
+      const sectionEl = mockDocument.getElementById('health-indicators')
+      assert.notStrictEqual(sectionEl.style.display, 'none')
+    })
+
+    test('should show health section when memory pressure is elevated', async () => {
+      const { updateConnectionStatus } = await import('../extension/popup.js')
+
+      updateConnectionStatus({
+        connected: true,
+        entries: 5,
+        circuitBreakerState: 'closed',
+        memoryPressure: { memoryPressureLevel: 'soft' },
+      })
+
+      const sectionEl = mockDocument.getElementById('health-indicators')
+      assert.notStrictEqual(sectionEl.style.display, 'none')
+    })
+
+    test('should hide health indicators when disconnected', async () => {
+      const { updateConnectionStatus } = await import('../extension/popup.js')
+
+      updateConnectionStatus({
+        connected: false,
+        error: 'Connection refused',
+        circuitBreakerState: 'open',
+        memoryPressure: { memoryPressureLevel: 'hard' },
+      })
+
+      const sectionEl = mockDocument.getElementById('health-indicators')
+      assert.strictEqual(sectionEl.style.display, 'none')
+    })
+
+    test('should handle missing health data gracefully', async () => {
+      const { updateConnectionStatus } = await import('../extension/popup.js')
+
+      // No circuitBreakerState or memoryPressure in status
+      assert.doesNotThrow(() => {
+        updateConnectionStatus({
+          connected: true,
+          entries: 10,
+        })
+      })
+    })
+  })
+})
+
+describe('Network Body Capture Toggle', () => {
+  beforeEach(() => {
+    mock.reset()
+    mockDocument = createMockDocument()
+    globalThis.document = mockDocument
+    mockChrome.runtime.sendMessage.mock.resetCalls()
+    mockChrome.storage.local.set.mock.resetCalls()
+  })
+
+  test('should include network body capture in FEATURE_TOGGLES', async () => {
+    const { FEATURE_TOGGLES } = await import('../extension/popup.js')
+
+    const toggle = FEATURE_TOGGLES.find((t) => t.id === 'toggle-network-body-capture')
+    assert.ok(toggle, 'Network body capture toggle should exist in FEATURE_TOGGLES')
+    assert.strictEqual(toggle.storageKey, 'networkBodyCaptureEnabled')
+    assert.strictEqual(toggle.messageType, 'setNetworkBodyCaptureEnabled')
+    assert.strictEqual(toggle.default, true)
+  })
+
+  test('should send setNetworkBodyCaptureEnabled message when toggled', async () => {
+    const { handleFeatureToggle } = await import('../extension/popup.js')
+
+    handleFeatureToggle('networkBodyCaptureEnabled', 'setNetworkBodyCaptureEnabled', false)
+
+    assert.ok(
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setNetworkBodyCaptureEnabled' && c.arguments[0].enabled === false,
+      ),
+    )
+  })
+
+  test('should save networkBodyCaptureEnabled to storage', async () => {
+    const { handleFeatureToggle } = await import('../extension/popup.js')
+
+    handleFeatureToggle('networkBodyCaptureEnabled', 'setNetworkBodyCaptureEnabled', true)
+
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].networkBodyCaptureEnabled === true))
   })
 })

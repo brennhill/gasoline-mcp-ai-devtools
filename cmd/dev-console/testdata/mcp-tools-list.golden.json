@@ -1,0 +1,529 @@
+{
+  "tools": [
+    {
+      "name": "observe",
+      "description": "Observe browser state: errors, logs, network traffic, WebSocket events, user actions, web vitals, or page info. Use the 'what' parameter to select what to observe.",
+      "inputSchema": {
+        "properties": {
+          "connection_id": {
+            "description": "Filter by WebSocket connection ID (applies to websocket_events, websocket_status)",
+            "type": "string"
+          },
+          "direction": {
+            "description": "Filter by direction (applies to websocket_events)",
+            "enum": [
+              "incoming",
+              "outgoing"
+            ],
+            "type": "string"
+          },
+          "last_n": {
+            "description": "Return only the last N items (applies to actions)",
+            "type": "number"
+          },
+          "limit": {
+            "description": "Maximum entries to return (applies to logs, network, websocket_events, actions)",
+            "type": "number"
+          },
+          "method": {
+            "description": "Filter by HTTP method (applies to network)",
+            "type": "string"
+          },
+          "status_max": {
+            "description": "Maximum status code (applies to network)",
+            "type": "number"
+          },
+          "status_min": {
+            "description": "Minimum status code (applies to network)",
+            "type": "number"
+          },
+          "url": {
+            "description": "Filter by URL substring (applies to network, websocket_events, websocket_status, actions)",
+            "type": "string"
+          },
+          "what": {
+            "description": "What to observe",
+            "enum": [
+              "errors",
+              "logs",
+              "network",
+              "websocket_events",
+              "websocket_status",
+              "actions",
+              "vitals",
+              "page"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "what"
+        ],
+        "type": "object"
+      },
+      "_meta": {
+        "data_counts": {
+          "actions": 0,
+          "errors": 0,
+          "logs": 0,
+          "network": 0,
+          "vitals": 0,
+          "websocket_events": 0,
+          "websocket_status": 0
+        }
+      }
+    },
+    {
+      "name": "analyze",
+      "description": "Analyze browser data: performance metrics, API schema, accessibility audit, changes since checkpoint, or session timeline.",
+      "inputSchema": {
+        "properties": {
+          "checkpoint": {
+            "description": "Named checkpoint or ISO 8601 timestamp (applies to changes)",
+            "type": "string"
+          },
+          "force_refresh": {
+            "description": "Bypass cache and re-run (applies to accessibility)",
+            "type": "boolean"
+          },
+          "format": {
+            "description": "Output format for API schema: gasoline or openapi_stub (applies to api)",
+            "enum": [
+              "gasoline",
+              "openapi_stub"
+            ],
+            "type": "string"
+          },
+          "include": {
+            "description": "Categories to include (applies to changes, timeline)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "last_n_actions": {
+            "description": "Only include the last N actions (applies to timeline)",
+            "type": "number"
+          },
+          "min_observations": {
+            "description": "Minimum times an endpoint must be observed (applies to api)",
+            "type": "number"
+          },
+          "scope": {
+            "description": "CSS selector to scope the audit (applies to accessibility)",
+            "type": "string"
+          },
+          "severity": {
+            "description": "Minimum severity: all, warnings, errors_only (applies to changes)",
+            "enum": [
+              "all",
+              "warnings",
+              "errors_only"
+            ],
+            "type": "string"
+          },
+          "tags": {
+            "description": "WCAG tags to test (applies to accessibility)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "target": {
+            "description": "What to analyze",
+            "enum": [
+              "performance",
+              "api",
+              "accessibility",
+              "changes",
+              "timeline"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "description": "URL path to check (applies to performance)",
+            "type": "string"
+          },
+          "url_filter": {
+            "description": "Filter by URL substring (applies to api, timeline)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target"
+        ],
+        "type": "object"
+      },
+      "_meta": {
+        "data_counts": {
+          "api": 0,
+          "performance": 0,
+          "timeline": 0
+        }
+      }
+    },
+    {
+      "name": "generate",
+      "description": "Generate artifacts from captured data: reproduction scripts, Playwright tests, PR summaries, SARIF reports, or HAR archives.",
+      "inputSchema": {
+        "properties": {
+          "assert_network": {
+            "description": "Include network response assertions (applies to test)",
+            "type": "boolean"
+          },
+          "assert_no_errors": {
+            "description": "Assert no console errors occurred (applies to test)",
+            "type": "boolean"
+          },
+          "assert_response_shape": {
+            "description": "Assert response body shape matches (applies to test)",
+            "type": "boolean"
+          },
+          "base_url": {
+            "description": "Replace origin in URLs (applies to reproduction, test)",
+            "type": "string"
+          },
+          "error_message": {
+            "description": "Error message for context (applies to reproduction)",
+            "type": "string"
+          },
+          "format": {
+            "description": "What to generate",
+            "enum": [
+              "reproduction",
+              "test",
+              "pr_summary",
+              "sarif",
+              "har"
+            ],
+            "type": "string"
+          },
+          "include_passes": {
+            "description": "Include passing rules (applies to sarif)",
+            "type": "boolean"
+          },
+          "last_n_actions": {
+            "description": "Use only the last N actions (applies to reproduction)",
+            "type": "number"
+          },
+          "method": {
+            "description": "Filter by HTTP method (applies to har)",
+            "type": "string"
+          },
+          "save_to": {
+            "description": "File path to save output (applies to sarif, har)",
+            "type": "string"
+          },
+          "scope": {
+            "description": "CSS selector to scope (applies to sarif)",
+            "type": "string"
+          },
+          "status_max": {
+            "description": "Maximum status code (applies to har)",
+            "type": "number"
+          },
+          "status_min": {
+            "description": "Minimum status code (applies to har)",
+            "type": "number"
+          },
+          "test_name": {
+            "description": "Name for the generated test (applies to test)",
+            "type": "string"
+          },
+          "url": {
+            "description": "Filter by URL substring (applies to har)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format"
+        ],
+        "type": "object"
+      },
+      "_meta": {
+        "data_counts": {
+          "har": 0,
+          "reproduction": 0,
+          "test": 0
+        }
+      }
+    },
+    {
+      "name": "configure",
+      "description": "Configure the session: store/load persistent data, manage noise filtering rules, dismiss noise patterns, or clear browser logs.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "Configuration action to perform",
+            "enum": [
+              "store",
+              "load",
+              "noise_rule",
+              "dismiss",
+              "clear"
+            ],
+            "type": "string"
+          },
+          "category": {
+            "description": "Buffer category (applies to dismiss)",
+            "enum": [
+              "console",
+              "network",
+              "websocket"
+            ],
+            "type": "string"
+          },
+          "data": {
+            "description": "JSON data to persist (applies to store)",
+            "type": "object"
+          },
+          "key": {
+            "description": "Storage key (applies to store)",
+            "type": "string"
+          },
+          "namespace": {
+            "description": "Logical grouping for store (applies to store)",
+            "type": "string"
+          },
+          "noise_action": {
+            "description": "Noise sub-action: add, remove, list, reset, auto_detect (applies to noise_rule)",
+            "enum": [
+              "add",
+              "remove",
+              "list",
+              "reset",
+              "auto_detect"
+            ],
+            "type": "string"
+          },
+          "pattern": {
+            "description": "Regex pattern to dismiss (applies to dismiss)",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why this is noise (applies to dismiss)",
+            "type": "string"
+          },
+          "rule_id": {
+            "description": "ID of rule to remove (applies to noise_rule)",
+            "type": "string"
+          },
+          "rules": {
+            "description": "Noise rules to add (applies to noise_rule)",
+            "items": {
+              "properties": {
+                "category": {
+                  "enum": [
+                    "console",
+                    "network",
+                    "websocket"
+                  ],
+                  "type": "string"
+                },
+                "classification": {
+                  "type": "string"
+                },
+                "matchSpec": {
+                  "properties": {
+                    "level": {
+                      "type": "string"
+                    },
+                    "messageRegex": {
+                      "type": "string"
+                    },
+                    "method": {
+                      "type": "string"
+                    },
+                    "sourceRegex": {
+                      "type": "string"
+                    },
+                    "statusMax": {
+                      "type": "number"
+                    },
+                    "statusMin": {
+                      "type": "number"
+                    },
+                    "urlRegex": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "store_action": {
+            "description": "Store sub-action: save, load, list, delete, stats (applies to store)",
+            "enum": [
+              "save",
+              "load",
+              "list",
+              "delete",
+              "stats"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "query_dom",
+      "description": "Query the live DOM in the browser using a CSS selector. Returns matching elements.",
+      "inputSchema": {
+        "properties": {
+          "selector": {
+            "description": "CSS selector to query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "selector"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "generate_csp",
+      "description": "Generate a Content-Security-Policy header from observed network origins. Accumulates origins over time and produces a CSP with confidence scoring.",
+      "inputSchema": {
+        "properties": {
+          "exclude_origins": {
+            "description": "Origins to exclude from the generated CSP",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "include_report_uri": {
+            "description": "Include report-uri directive in the generated CSP",
+            "type": "boolean"
+          },
+          "mode": {
+            "description": "CSP strictness mode",
+            "enum": [
+              "strict",
+              "moderate",
+              "report_only"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "security_audit",
+      "description": "Scan captured network traffic and console logs for security issues: exposed credentials, PII leakage, missing security headers, insecure cookies, transport security, and auth patterns.",
+      "inputSchema": {
+        "properties": {
+          "checks": {
+            "description": "Which checks to run (default: all)",
+            "items": {
+              "enum": [
+                "credentials",
+                "pii",
+                "headers",
+                "cookies",
+                "transport",
+                "auth"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "severity_min": {
+            "description": "Minimum severity to report",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "info"
+            ],
+            "type": "string"
+          },
+          "url_filter": {
+            "description": "Only scan requests matching this URL substring",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "_meta": {
+        "data_counts": {
+          "console_logs": 0,
+          "network_bodies": 0
+        }
+      }
+    },
+    {
+      "name": "get_audit_log",
+      "description": "Query the enterprise audit trail of MCP tool invocations. Returns entries filtered by session, tool name, or time range.",
+      "inputSchema": {
+        "properties": {
+          "limit": {
+            "description": "Maximum number of entries to return (default: 100)",
+            "type": "number"
+          },
+          "session_id": {
+            "description": "Filter by MCP session ID",
+            "type": "string"
+          },
+          "since": {
+            "description": "Only return entries after this ISO 8601 timestamp",
+            "type": "string"
+          },
+          "tool_name": {
+            "description": "Filter by tool name",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "diff_sessions",
+      "description": "Capture browser state snapshots and compare them to detect regressions. Supports capture, compare, list, and delete actions.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "Action to perform",
+            "enum": [
+              "capture",
+              "compare",
+              "list",
+              "delete"
+            ],
+            "type": "string"
+          },
+          "compare_a": {
+            "description": "First snapshot name for comparison",
+            "type": "string"
+          },
+          "compare_b": {
+            "description": "Second snapshot name for comparison",
+            "type": "string"
+          },
+          "name": {
+            "description": "Snapshot name (required for capture and delete)",
+            "type": "string"
+          },
+          "url_filter": {
+            "description": "Only include network requests matching this URL substring",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

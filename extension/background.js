@@ -1,6 +1,13 @@
+// @ts-nocheck
 /**
- * @fileoverview Background service worker for Dev Console extension
- * Handles log batching, server communication, and badge updates
+ * @fileoverview background.js — Service worker managing server communication and state.
+ * Receives captured events from content scripts, batches them with debouncing,
+ * and posts to the Go server. Handles error deduplication/grouping, connection
+ * status, badge updates, screenshot capture, source map resolution, and
+ * on-demand query polling (DOM, a11y, performance snapshots).
+ * Design: Debounced batching (100ms default, max 50 per batch) prevents flooding.
+ * Circuit breaker with exponential backoff protects against server unavailability.
+ * Rate-limited screenshots (5s cooldown, 10/session max). LRU source map cache (50 entries).
  */
 
 const DEFAULT_SERVER_URL = 'http://localhost:7890'
@@ -38,7 +45,6 @@ let screenshotOnError = false // Auto-capture screenshot on error (off by defaul
 
 // Error grouping state
 const errorGroups = new Map() // signature -> { entry, count, firstSeen, lastSeen }
-let errorGroupFlushTimer = null
 
 // Rate limiting state
 const screenshotTimestamps = new Map() // tabId -> [timestamps]
@@ -46,6 +52,25 @@ const screenshotTimestamps = new Map() // tabId -> [timestamps]
 // Source map state
 const sourceMapCache = new Map() // scriptUrl -> { mappings, sources, names, sourceRoot }
 let sourceMapEnabled = false // Source map resolution (off by default)
+
+// Memory enforcement constants
+export const MEMORY_SOFT_LIMIT = 20 * 1024 * 1024 // 20MB
+export const MEMORY_HARD_LIMIT = 50 * 1024 * 1024 // 50MB
+export const MEMORY_CHECK_INTERVAL_MS = 30000 // 30 seconds
+export const MEMORY_AVG_LOG_ENTRY_SIZE = 500 // ~500 bytes per log entry
+export const MEMORY_AVG_WS_EVENT_SIZE = 300 // ~300 bytes per WS event + data length
+export const MEMORY_AVG_NETWORK_BODY_SIZE = 1000 // ~1000 bytes per network body + body lengths
+export const MEMORY_AVG_ACTION_SIZE = 400 // ~400 bytes per enhanced action
+
+// Memory enforcement state
+let memoryPressureLevel = 'normal' // 'normal' | 'soft' | 'hard'
+let lastMemoryCheck = 0
+let networkBodyCaptureDisabled = false
+let reducedCapacities = false
+
+// AI capture control state
+let captureOverrides = {} // Current AI-set overrides from /settings
+let aiControlled = false // Whether AI has active overrides
 
 // Context annotation monitoring state
 const CONTEXT_SIZE_THRESHOLD = 20 * 1024 // 20KB threshold
@@ -82,9 +107,7 @@ export function checkContextAnnotations(entries) {
   }
 
   // Prune timestamps outside the 60s window
-  contextExcessiveTimestamps = contextExcessiveTimestamps.filter(
-    (t) => now - t.ts < CONTEXT_WARNING_WINDOW_MS
-  )
+  contextExcessiveTimestamps = contextExcessiveTimestamps.filter((t) => now - t.ts < CONTEXT_WARNING_WINDOW_MS)
 
   // Check if we've hit the threshold
   if (contextExcessiveTimestamps.length >= CONTEXT_WARNING_COUNT) {
@@ -186,18 +209,22 @@ export function clearDebugLog() {
  * @returns {string} JSON formatted debug log with metadata
  */
 export function exportDebugLog() {
-  return JSON.stringify({
-    exportedAt: new Date().toISOString(),
-    version: '3.5.0',
-    debugMode,
-    connectionStatus,
-    settings: {
-      logLevel: currentLogLevel,
-      screenshotOnError,
-      sourceMapEnabled,
+  return JSON.stringify(
+    {
+      exportedAt: new Date().toISOString(),
+      version: '4.7.0',
+      debugMode,
+      connectionStatus,
+      settings: {
+        logLevel: currentLogLevel,
+        screenshotOnError,
+        sourceMapEnabled,
+      },
+      entries: debugLogBuffer,
     },
-    entries: debugLogBuffer,
-  }, null, 2)
+    null,
+    2,
+  )
 }
 
 /**
@@ -212,12 +239,347 @@ export function setDebugMode(enabled) {
 /**
  * Create a log batcher that debounces and batches log entries
  */
-export function createLogBatcher(flushFn, options = {}) {
+/**
+ * Circuit breaker with exponential backoff for server communication.
+ * Prevents the extension from hammering a down/slow server.
+ *
+ * States:
+ * - closed: Normal operation, requests pass through
+ * - open: Circuit tripped, requests rejected immediately
+ * - half-open: Testing with a single probe request
+ */
+export function createCircuitBreaker(sendFn, options = {}) {
+  const maxFailures = options.maxFailures ?? 5
+  const resetTimeout = options.resetTimeout ?? 30000
+  const initialBackoff = options.initialBackoff ?? 1000
+  const maxBackoff = options.maxBackoff ?? 30000
+
+  let state = 'closed'
+  let consecutiveFailures = 0
+  let totalFailures = 0
+  let totalSuccesses = 0
+  let currentBackoff = 0
+  let lastFailureTime = 0
+  let probeInFlight = false
+
+  function getState() {
+    if (state === 'open' && Date.now() - lastFailureTime >= resetTimeout) {
+      state = 'half-open'
+    }
+    return state
+  }
+
+  function getStats() {
+    return {
+      state: getState(),
+      consecutiveFailures,
+      totalFailures,
+      totalSuccesses,
+      currentBackoff,
+    }
+  }
+
+  function reset() {
+    state = 'closed'
+    consecutiveFailures = 0
+    currentBackoff = 0
+    probeInFlight = false
+  }
+
+  function onSuccess() {
+    consecutiveFailures = 0
+    currentBackoff = 0
+    totalSuccesses++
+    state = 'closed'
+    probeInFlight = false
+  }
+
+  function onFailure() {
+    consecutiveFailures++
+    totalFailures++
+    lastFailureTime = Date.now()
+    probeInFlight = false
+
+    if (consecutiveFailures >= maxFailures) {
+      state = 'open'
+    }
+
+    // Calculate next backoff (exponential: initialBackoff * 2^(failures-1))
+    if (consecutiveFailures > 1) {
+      currentBackoff = Math.min(initialBackoff * Math.pow(2, consecutiveFailures - 2), maxBackoff)
+    } else {
+      currentBackoff = 0
+    }
+  }
+
+  async function execute(args) {
+    const currentState = getState()
+
+    if (currentState === 'open') {
+      throw new Error('Circuit breaker is open')
+    }
+
+    if (currentState === 'half-open') {
+      if (probeInFlight) {
+        throw new Error('Circuit breaker is open')
+      }
+      probeInFlight = true
+    }
+
+    // Apply backoff delay
+    if (currentBackoff > 0) {
+      await new Promise((r) => {
+        setTimeout(r, currentBackoff)
+      })
+    }
+
+    try {
+      const result = await sendFn(args)
+      onSuccess()
+      return result
+    } catch (err) {
+      onFailure()
+      throw err
+    }
+  }
+
+  return { execute, getState, getStats, reset }
+}
+
+/**
+ * Rate limit configuration matching the spec:
+ * - Backoff schedule: 100ms, 500ms, 2000ms
+ * - Circuit opens after 5 consecutive failures
+ * - 30-second pause when circuit opens
+ * - Retry budget of 3 per batch
+ */
+export const RATE_LIMIT_CONFIG = {
+  maxFailures: 5,
+  resetTimeout: 30000,
+  backoffSchedule: [100, 500, 2000],
+  retryBudget: 3,
+}
+
+/**
+ * Creates a batcher wired with circuit breaker logic for rate limiting.
+ *
+ * The circuit breaker manages state transitions (closed/open/half-open)
+ * while the wrapper applies schedule-based backoff delays matching the spec.
+ *
+ * When the circuit is open, data continues to buffer locally (add() still works)
+ * but no POSTs are sent until the circuit transitions to half-open for a probe.
+ *
+ * @param {Function} sendFn - The async function to send a batch of entries
+ * @param {Object} options - Configuration options
+ * @param {number} options.debounceMs - Debounce interval (default 100)
+ * @param {number} options.maxBatchSize - Max batch size (default 50)
+ * @param {number} options.retryBudget - Max retries per batch (default 3)
+ * @param {number} options.maxFailures - Failures to open circuit (default 5)
+ * @param {number} options.resetTimeout - Time before half-open probe (default 30000)
+ * @param {Object} options.sharedCircuitBreaker - Optional shared circuit breaker instance
+ * @returns {{ batcher, circuitBreaker, getConnectionStatus }}
+ */
+export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
   const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS
   const maxBatchSize = options.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE
+  const retryBudget = options.retryBudget ?? RATE_LIMIT_CONFIG.retryBudget
+  const maxFailures = options.maxFailures ?? RATE_LIMIT_CONFIG.maxFailures
+  const resetTimeout = options.resetTimeout ?? RATE_LIMIT_CONFIG.resetTimeout
+  const backoffSchedule = RATE_LIMIT_CONFIG.backoffSchedule
+
+  // Track connection status locally
+  const localConnectionStatus = { connected: true }
+
+  const isSharedCB = !!options.sharedCircuitBreaker
+
+  // Create a circuit breaker that wraps the sendFn.
+  // initialBackoff and maxBackoff are set to 0 because we apply our own
+  // schedule-based backoff externally (the CB still tracks state/failures).
+  const cb =
+    options.sharedCircuitBreaker ||
+    createCircuitBreaker(sendFn, { maxFailures, resetTimeout, initialBackoff: 0, maxBackoff: 0 })
+
+  // Schedule-based backoff: returns delay based on consecutive failures
+  function getScheduledBackoff(failures) {
+    if (failures <= 0) return 0
+    const idx = Math.min(failures - 1, backoffSchedule.length - 1)
+    return backoffSchedule[idx]
+  }
+
+  // Wrapped circuit breaker facade that exposes schedule-based backoff
+  const wrappedCircuitBreaker = {
+    getState: () => cb.getState(),
+    getStats: () => {
+      const stats = cb.getStats()
+      return {
+        ...stats,
+        currentBackoff: getScheduledBackoff(stats.consecutiveFailures),
+      }
+    },
+    reset: () => cb.reset(),
+  }
+
+  // Attempt to send entries through the circuit breaker.
+  // For a dedicated (non-shared) CB, we use cb.execute() directly since
+  // it wraps our sendFn. For a shared CB, we call sendFn directly and
+  // record the outcome on the shared CB separately.
+  async function attemptSend(entries) {
+    if (!isSharedCB) {
+      // Dedicated CB wraps sendFn - execute handles everything
+      return await cb.execute(entries)
+    }
+
+    // Shared CB: check state first, then call sendFn directly
+    const state = cb.getState()
+    if (state === 'open') {
+      throw new Error('Circuit breaker is open')
+    }
+
+    try {
+      const result = await sendFn(entries)
+      // Record success on shared CB
+      cb.reset()
+      return result
+    } catch (err) {
+      // Record failure on shared CB by calling execute (its sendFn will fail too,
+      // which correctly increments the failure counter)
+      try {
+        await cb.execute(entries)
+      } catch {
+        /* expected - records the failure */
+      }
+      throw err
+    }
+  }
 
   let pending = []
   let timeoutId = null
+
+  async function flushWithCircuitBreaker() {
+    if (pending.length === 0) return
+
+    const entries = pending
+    pending = []
+
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+      timeoutId = null
+    }
+
+    const currentState = cb.getState()
+
+    // If circuit is open, put entries back into pending buffer
+    if (currentState === 'open') {
+      pending = entries.concat(pending)
+      return
+    }
+
+    // Each flush attempt records one success/failure on the circuit breaker.
+    // The retry budget controls how many times we attempt this batch.
+    try {
+      await attemptSend(entries)
+      localConnectionStatus.connected = true
+    } catch {
+      localConnectionStatus.connected = false
+
+      // If circuit opened, buffer the entries for later draining
+      if (cb.getState() === 'open') {
+        pending = entries.concat(pending)
+        return
+      }
+
+      // Retry with budget: attempt remaining retries for this batch
+      let retriesLeft = retryBudget - 1 // Already used one attempt above
+      while (retriesLeft > 0) {
+        retriesLeft--
+
+        // Apply schedule-based backoff delay before retry
+        const stats = cb.getStats()
+        const backoff = getScheduledBackoff(stats.consecutiveFailures)
+        if (backoff > 0) {
+          await new Promise((r) => {
+            setTimeout(r, backoff)
+          })
+        }
+
+        try {
+          await attemptSend(entries)
+          localConnectionStatus.connected = true
+          return
+        } catch {
+          localConnectionStatus.connected = false
+
+          // If circuit opened during retry, buffer entries
+          if (cb.getState() === 'open') {
+            pending = entries.concat(pending)
+            return
+          }
+        }
+      }
+
+      // Retry budget exhausted - abandon batch (don't put back in pending)
+    }
+  }
+
+  const scheduleFlush = () => {
+    if (timeoutId) return
+    timeoutId = setTimeout(() => {
+      timeoutId = null
+      flushWithCircuitBreaker()
+    }, debounceMs)
+  }
+
+  const batcher = {
+    add(entry) {
+      pending.push(entry)
+      if (pending.length >= maxBatchSize) {
+        flushWithCircuitBreaker()
+      } else {
+        scheduleFlush()
+      }
+    },
+
+    async flush() {
+      await flushWithCircuitBreaker()
+    },
+
+    clear() {
+      pending = []
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+        timeoutId = null
+      }
+    },
+
+    getPending() {
+      return [...pending]
+    },
+  }
+
+  return {
+    batcher,
+    circuitBreaker: wrappedCircuitBreaker,
+    getConnectionStatus: () => ({ ...localConnectionStatus }),
+  }
+}
+
+export function createLogBatcher(flushFn, options = {}) {
+  const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS
+  const maxBatchSize = options.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE
+  const memoryPressureGetter = options.memoryPressureGetter ?? null
+
+  let pending = []
+  let timeoutId = null
+
+  const getEffectiveMaxBatchSize = () => {
+    if (memoryPressureGetter) {
+      const state = memoryPressureGetter()
+      if (state.reducedCapacities) {
+        return Math.floor(maxBatchSize / 2)
+      }
+    }
+    return maxBatchSize
+  }
 
   const flush = () => {
     if (pending.length === 0) return
@@ -246,7 +608,8 @@ export function createLogBatcher(flushFn, options = {}) {
     add(entry) {
       pending.push(entry)
 
-      if (pending.length >= maxBatchSize) {
+      const effectiveMax = getEffectiveMaxBatchSize()
+      if (pending.length >= effectiveMax) {
         flush()
       } else {
         scheduleFlush()
@@ -316,6 +679,29 @@ export async function sendWSEventsToServer(events) {
 }
 
 /**
+ * Send network bodies to the server
+ */
+export async function sendNetworkBodiesToServer(bodies) {
+  debugLog(DebugCategory.CONNECTION, `Sending ${bodies.length} network bodies to server`)
+
+  const response = await fetch(`${serverUrl}/network-bodies`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ bodies }),
+  })
+
+  if (!response.ok) {
+    const error = `Server error (network bodies): ${response.status} ${response.statusText}`
+    debugLog(DebugCategory.ERROR, error)
+    throw new Error(error)
+  }
+
+  debugLog(DebugCategory.CONNECTION, `Server accepted ${bodies.length} network bodies`)
+}
+
+/**
  * Send enhanced actions to server
  * @param {Array} actions - Array of enhanced action objects
  */
@@ -337,6 +723,25 @@ export async function sendEnhancedActionsToServer(actions) {
   }
 
   debugLog(DebugCategory.CONNECTION, `Server accepted ${actions.length} enhanced actions`)
+}
+
+/**
+ * Send performance snapshot to server
+ * @param {Object} snapshot - Performance snapshot object
+ */
+export async function sendPerformanceSnapshotToServer(snapshot) {
+  try {
+    const response = await fetch(`${serverUrl}/performance-snapshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(snapshot),
+    })
+    if (!response.ok) {
+      debugLog(DebugCategory.ERROR, `Server error (performance snapshot): ${response.status}`)
+    }
+  } catch (err) {
+    debugLog(DebugCategory.ERROR, `Failed to send performance snapshot: ${err.message}`)
+  }
 }
 
 /**
@@ -419,7 +824,7 @@ function truncateArg(arg, maxSize = 10240) {
       if (typeof arg === 'string') {
         return arg.slice(0, maxSize) + '... [truncated]'
       }
-      return JSON.parse(serialized.slice(0, maxSize - 50) + '"} [truncated]')
+      return serialized.slice(0, maxSize) + '...[truncated]'
     }
     return arg
   } catch {
@@ -1022,7 +1427,9 @@ export async function resolveStackTrace(stack) {
         const lineNum = resolved.originalLineNumber
         const colNum = resolved.originalColumnNumber
 
-        resolvedLines.push(`    at ${funcName} (${fileName}:${lineNum}:${colNum}) [resolved from ${resolved.fileName}:${resolved.lineNumber}:${resolved.columnNumber}]`)
+        resolvedLines.push(
+          `    at ${funcName} (${fileName}:${lineNum}:${colNum}) [resolved from ${resolved.fileName}:${resolved.lineNumber}:${resolved.columnNumber}]`,
+        )
       } else {
         resolvedLines.push(line)
       }
@@ -1039,6 +1446,127 @@ export async function resolveStackTrace(stack) {
  */
 export function clearSourceMapCache() {
   sourceMapCache.clear()
+}
+
+// =============================================================================
+// MEMORY ENFORCEMENT
+// =============================================================================
+
+/**
+ * Estimate total buffer memory usage from buffer contents.
+ * Uses count * average entry size + variable data lengths.
+ *
+ * @param {Object} buffers - Object containing buffer arrays
+ * @param {Array} buffers.logEntries - Log entry buffer
+ * @param {Array} buffers.wsEvents - WebSocket event buffer
+ * @param {Array} buffers.networkBodies - Network body buffer
+ * @param {Array} buffers.enhancedActions - Enhanced action buffer
+ * @returns {number} Estimated memory usage in bytes
+ */
+export function estimateBufferMemory(buffers) {
+  let total = 0
+
+  // Log entries: count * avg size
+  total += buffers.logEntries.length * MEMORY_AVG_LOG_ENTRY_SIZE
+
+  // WebSocket events: count * avg size + data lengths
+  for (const event of buffers.wsEvents) {
+    total += MEMORY_AVG_WS_EVENT_SIZE
+    if (event.data && typeof event.data === 'string') {
+      total += event.data.length
+    }
+  }
+
+  // Network bodies: count * avg size + request/response body lengths
+  for (const body of buffers.networkBodies) {
+    total += MEMORY_AVG_NETWORK_BODY_SIZE
+    if (body.requestBody && typeof body.requestBody === 'string') {
+      total += body.requestBody.length
+    }
+    if (body.responseBody && typeof body.responseBody === 'string') {
+      total += body.responseBody.length
+    }
+  }
+
+  // Enhanced actions: count * avg size
+  total += buffers.enhancedActions.length * MEMORY_AVG_ACTION_SIZE
+
+  return total
+}
+
+/**
+ * Check memory pressure and take appropriate action.
+ * Updates the memory pressure state based on estimated memory usage.
+ *
+ * @param {Object} buffers - Buffer contents to estimate memory from
+ * @returns {Object} Result with level, action, estimatedMemory, and alreadyApplied
+ */
+export function checkMemoryPressure(buffers) {
+  const estimatedMemory = estimateBufferMemory(buffers)
+  lastMemoryCheck = Date.now()
+
+  if (estimatedMemory >= MEMORY_HARD_LIMIT) {
+    const alreadyApplied = memoryPressureLevel === 'hard'
+    memoryPressureLevel = 'hard'
+    networkBodyCaptureDisabled = true
+    reducedCapacities = true
+    return {
+      level: 'hard',
+      action: 'disable_network_capture',
+      estimatedMemory,
+      alreadyApplied,
+    }
+  }
+
+  if (estimatedMemory >= MEMORY_SOFT_LIMIT) {
+    const alreadyApplied = memoryPressureLevel === 'soft' || memoryPressureLevel === 'hard'
+    memoryPressureLevel = 'soft'
+    reducedCapacities = true
+    // If we were at hard and dropped to soft, re-enable network capture
+    if (networkBodyCaptureDisabled && estimatedMemory < MEMORY_HARD_LIMIT) {
+      networkBodyCaptureDisabled = false
+    }
+    return {
+      level: 'soft',
+      action: 'reduce_capacities',
+      estimatedMemory,
+      alreadyApplied,
+    }
+  }
+
+  // Below soft limit - recover to normal
+  memoryPressureLevel = 'normal'
+  reducedCapacities = false
+  networkBodyCaptureDisabled = false
+  return {
+    level: 'normal',
+    action: 'none',
+    estimatedMemory,
+    alreadyApplied: false,
+  }
+}
+
+/**
+ * Get the current memory pressure state.
+ * @returns {Object} Current memory pressure state
+ */
+export function getMemoryPressureState() {
+  return {
+    memoryPressureLevel,
+    lastMemoryCheck,
+    networkBodyCaptureDisabled,
+    reducedCapacities,
+  }
+}
+
+/**
+ * Reset memory pressure state to initial values (for testing).
+ */
+export function resetMemoryPressureState() {
+  memoryPressureLevel = 'normal'
+  lastMemoryCheck = 0
+  networkBodyCaptureDisabled = false
+  reducedCapacities = false
 }
 
 /**
@@ -1073,6 +1601,10 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       wsBatcher.add(message.payload)
     } else if (message.type === 'enhanced_action') {
       enhancedActionBatcher.add(message.payload)
+    } else if (message.type === 'network_body') {
+      networkBodyBatcher.add(message.payload)
+    } else if (message.type === 'performance_snapshot') {
+      sendPerformanceSnapshotToServer(message.payload)
     } else if (message.type === 'log') {
       handleLogMessage(message.payload, sender)
     } else if (message.type === 'getStatus') {
@@ -1083,6 +1615,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
         sourceMapEnabled,
         debugMode,
         contextWarning: getContextWarning(),
+        circuitBreakerState: sharedServerCircuitBreaker.getState(),
+        memoryPressure: getMemoryPressureState(),
       })
     } else if (message.type === 'clearLogs') {
       handleClearLogs().then(sendResponse)
@@ -1120,7 +1654,10 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       message.type === 'setPerformanceMarksEnabled' ||
       message.type === 'setActionReplayEnabled' ||
       message.type === 'setWebSocketCaptureEnabled' ||
-      message.type === 'setWebSocketCaptureMode'
+      message.type === 'setWebSocketCaptureMode' ||
+      message.type === 'setPerformanceSnapshotEnabled' ||
+      message.type === 'setDeferralEnabled' ||
+      message.type === 'setNetworkBodyCaptureEnabled'
     ) {
       // Forward to all content scripts
       debugLog(DebugCategory.SETTINGS, `Setting ${message.type}: ${message.enabled}`)
@@ -1154,13 +1691,25 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
     }
   })
 
-  // Reconnect alarm
+  // Set up chrome.alarms for periodic tasks (reliable across service worker restarts)
   if (chrome.alarms) {
     chrome.alarms.create('reconnect', { periodInMinutes: RECONNECT_INTERVAL / 60000 })
+    chrome.alarms.create('errorGroupFlush', { periodInMinutes: 0.5 })
+    chrome.alarms.create('memoryCheck', { periodInMinutes: MEMORY_CHECK_INTERVAL_MS / 60000 })
 
     chrome.alarms.onAlarm.addListener((alarm) => {
       if (alarm.name === 'reconnect') {
         checkConnectionAndUpdate()
+      } else if (alarm.name === 'errorGroupFlush') {
+        const aggregatedEntries = flushErrorGroups()
+        if (aggregatedEntries.length > 0) {
+          aggregatedEntries.forEach((entry) => logBatcher.add(entry))
+        }
+      } else if (alarm.name === 'memoryCheck') {
+        // Memory pressure check runs every 30 seconds
+        // In production, this would collect buffer sizes from the batchers
+        // The checkMemoryPressure function is the main entry point
+        debugLog(DebugCategory.LIFECYCLE, 'Memory check alarm fired')
       }
     })
   }
@@ -1169,28 +1718,23 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   checkConnectionAndUpdate()
 
   // Load saved settings
-  chrome.storage.local.get(['serverUrl', 'logLevel', 'screenshotOnError', 'sourceMapEnabled', 'debugMode'], (result) => {
-    serverUrl = result.serverUrl || DEFAULT_SERVER_URL
-    currentLogLevel = result.logLevel || 'error'
-    screenshotOnError = result.screenshotOnError || false
-    sourceMapEnabled = result.sourceMapEnabled || false
-    debugMode = result.debugMode || false
-    debugLog(DebugCategory.LIFECYCLE, 'Extension initialized', {
-      serverUrl,
-      logLevel: currentLogLevel,
-      screenshotOnError,
-      sourceMapEnabled,
-      debugMode,
-    })
-  })
-
-  // Start error group flush timer
-  errorGroupFlushTimer = setInterval(() => {
-    const aggregatedEntries = flushErrorGroups()
-    if (aggregatedEntries.length > 0) {
-      aggregatedEntries.forEach((entry) => logBatcher.add(entry))
-    }
-  }, ERROR_GROUP_FLUSH_MS)
+  chrome.storage.local.get(
+    ['serverUrl', 'logLevel', 'screenshotOnError', 'sourceMapEnabled', 'debugMode'],
+    (result) => {
+      serverUrl = result.serverUrl || DEFAULT_SERVER_URL
+      currentLogLevel = result.logLevel || 'error'
+      screenshotOnError = result.screenshotOnError || false
+      sourceMapEnabled = result.sourceMapEnabled || false
+      debugMode = result.debugMode || false
+      debugLog(DebugCategory.LIFECYCLE, 'Extension initialized', {
+        serverUrl,
+        logLevel: currentLogLevel,
+        screenshotOnError,
+        sourceMapEnabled,
+        debugMode,
+      })
+    },
+  )
 
   // Clean up screenshot rate limits when tabs are closed
   if (chrome.tabs && chrome.tabs.onRemoved) {
@@ -1200,44 +1744,73 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   }
 }
 
-// Log batcher instance
-const logBatcher = createLogBatcher(async (entries) => {
-  // Monitor context annotation sizes
-  checkContextAnnotations(entries)
-
-  try {
-    const result = await sendLogsToServer(entries)
-    connectionStatus.entries = result.entries || connectionStatus.entries + entries.length
-    connectionStatus.connected = true
-    connectionStatus.errorCount += entries.filter((e) => e.level === 'error').length
-    updateBadge(connectionStatus)
-  } catch {
-    connectionStatus.connected = false
-    updateBadge(connectionStatus)
-  }
+// Shared circuit breaker instance for all batchers (global rate limit per spec).
+// All ingest batchers share this single circuit breaker so that failures from
+// any endpoint (logs, WS, actions, network bodies) contribute to the same
+// consecutive failure count and circuit state.
+const sharedServerCircuitBreaker = createCircuitBreaker(() => Promise.reject(new Error('shared circuit breaker')), {
+  maxFailures: RATE_LIMIT_CONFIG.maxFailures,
+  resetTimeout: RATE_LIMIT_CONFIG.resetTimeout,
+  initialBackoff: 0,
+  maxBackoff: 0,
 })
 
-// WebSocket event batcher instance
-const wsBatcher = createLogBatcher(async (events) => {
-  try {
-    await sendWSEventsToServer(events)
-    connectionStatus.connected = true
-  } catch {
-    connectionStatus.connected = false
-    updateBadge(connectionStatus)
+// Helper to create a send function that updates global connectionStatus on failure
+function withConnectionStatus(sendFn, onSuccess) {
+  return async (entries) => {
+    try {
+      const result = await sendFn(entries)
+      connectionStatus.connected = true
+      if (onSuccess) onSuccess(entries, result)
+      updateBadge(connectionStatus)
+      return result
+    } catch (err) {
+      connectionStatus.connected = false
+      updateBadge(connectionStatus)
+      throw err
+    }
   }
-}, { debounceMs: 200, maxBatchSize: 100 })
+}
 
-// Enhanced action batcher instance
-const enhancedActionBatcher = createLogBatcher(async (actions) => {
-  try {
-    await sendEnhancedActionsToServer(actions)
-    connectionStatus.connected = true
-  } catch {
-    connectionStatus.connected = false
-    updateBadge(connectionStatus)
-  }
-}, { debounceMs: 200, maxBatchSize: 50 })
+// Log batcher instance with circuit breaker
+const logBatcherWithCB = createBatcherWithCircuitBreaker(
+  withConnectionStatus(
+    (entries) => {
+      checkContextAnnotations(entries)
+      return sendLogsToServer(entries)
+    },
+    (entries, result) => {
+      connectionStatus.entries = result.entries || connectionStatus.entries + entries.length
+      connectionStatus.errorCount += entries.filter((e) => e.level === 'error').length
+    },
+  ),
+  { sharedCircuitBreaker: sharedServerCircuitBreaker },
+)
+const logBatcher = logBatcherWithCB.batcher
+
+// WebSocket event batcher instance with circuit breaker
+const wsBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(sendWSEventsToServer), {
+  debounceMs: 200,
+  maxBatchSize: 100,
+  sharedCircuitBreaker: sharedServerCircuitBreaker,
+})
+const wsBatcher = wsBatcherWithCB.batcher
+
+// Enhanced action batcher instance with circuit breaker
+const enhancedActionBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(sendEnhancedActionsToServer), {
+  debounceMs: 200,
+  maxBatchSize: 50,
+  sharedCircuitBreaker: sharedServerCircuitBreaker,
+})
+const enhancedActionBatcher = enhancedActionBatcherWithCB.batcher
+
+// Network body batcher instance with circuit breaker
+const networkBodyBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(sendNetworkBodiesToServer), {
+  debounceMs: 200,
+  maxBatchSize: 50,
+  sharedCircuitBreaker: sharedServerCircuitBreaker,
+})
+const networkBodyBatcher = networkBodyBatcherWithCB.batcher
 
 async function handleLogMessage(payload, sender) {
   if (!shouldCaptureLog(payload.level, currentLogLevel, payload.type)) {
@@ -1318,11 +1891,57 @@ async function checkConnectionAndUpdate() {
     })
   }
 
+  // Poll capture settings when connected
+  if (health.connected) {
+    const overrides = await pollCaptureSettings(serverUrl)
+    if (overrides !== null) {
+      applyCaptureOverrides(overrides)
+    }
+  }
+
   // Notify popup if open
   if (typeof chrome !== 'undefined' && chrome.runtime) {
-    chrome.runtime.sendMessage({ type: 'statusUpdate', status: connectionStatus }).catch(() => {
+    chrome.runtime.sendMessage({
+      type: 'statusUpdate',
+      status: { ...connectionStatus, aiControlled },
+    }).catch(() => {
       // Popup not open, ignore
     })
+  }
+}
+
+/**
+ * Poll the server's /settings endpoint for AI capture overrides.
+ * @param {string} url - Server base URL
+ * @returns {Promise<Object|null>} Overrides map or null on error
+ */
+export async function pollCaptureSettings(url) {
+  try {
+    const response = await fetch(`${url}/settings`)
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.capture_overrides || {}
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Apply AI capture overrides to the extension's settings.
+ * @param {Object} overrides - Map of setting name to value
+ */
+export function applyCaptureOverrides(overrides) {
+  captureOverrides = overrides
+  aiControlled = Object.keys(overrides).length > 0
+
+  if (overrides.log_level !== undefined) {
+    currentLogLevel = overrides.log_level
+  }
+  if (overrides.network_bodies !== undefined) {
+    networkBodyCaptureDisabled = overrides.network_bodies === 'false'
+  }
+  if (overrides.screenshot_on_error !== undefined) {
+    screenshotOnError = overrides.screenshot_on_error === 'true'
   }
 }
 
@@ -1357,9 +1976,9 @@ export async function pollPendingQueries(serverUrl) {
  * @param {Object} query - { id, type, params }
  * @param {string} serverUrl - The server base URL
  */
-export async function handlePendingQuery(query, serverUrl) {
+export async function handlePendingQuery(query, _serverUrl) {
   try {
-    const tabs = await new Promise(resolve => {
+    const tabs = await new Promise((resolve) => {
       chrome.tabs.query({ active: true, currentWindow: true }, resolve)
     })
 

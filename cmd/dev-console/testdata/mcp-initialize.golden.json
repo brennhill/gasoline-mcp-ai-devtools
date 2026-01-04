@@ -1,0 +1,10 @@
+{
+  "protocolVersion": "2024-11-05",
+  "serverInfo": {
+    "name": "gasoline",
+    "version": "4.7.0"
+  },
+  "capabilities": {
+    "tools": {}
+  }
+}

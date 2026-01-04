@@ -257,7 +257,10 @@
   <body>
     <a href="popup.html" class="back-link">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
-        <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+        <path
+          fill-rule="evenodd"
+          d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"
+        />
       </svg>
       Back to Gasoline
     </a>
@@ -274,22 +277,21 @@
       <input type="text" id="server-url-input" placeholder="http://localhost:7890" value="http://localhost:7890" />
 
       <div class="help-text">
-        Default: <code>http://localhost:7890</code>. Use <code>--port</code> flag when starting the server to use a different port.
+        Default: <code>http://localhost:7890</code>. Use <code>--port</code> flag when starting the server to use a
+        different port.
       </div>
     </div>
 
     <div class="section">
       <div class="section-title">Domain Filters</div>
       <div class="section-description">
-        Enter domain patterns to capture logs from, one per line. Leave empty to capture from all
-        domains.
+        Enter domain patterns to capture logs from, one per line. Leave empty to capture from all domains.
       </div>
 
       <textarea id="domain-filters" placeholder="localhost:*&#10;*.myapp.com&#10;staging.example.com"></textarea>
 
       <div class="help-text">
-        Use <code>*</code> as a wildcard. For example, <code>*.localhost</code> matches all
-        localhost subdomains.
+        Use <code>*</code> as a wildcard. For example, <code>*.localhost</code> matches all localhost subdomains.
       </div>
 
       <div class="examples">
@@ -321,6 +323,14 @@
           </div>
           <div id="sourcemap-toggle" class="toggle"></div>
         </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Defer Heavy Interceptors</span>
+            <span class="toggle-description">Delays console/fetch/WS/error interception until after page load</span>
+          </div>
+          <div id="deferral-toggle" class="toggle"></div>
+        </div>
       </div>
     </div>
 
@@ -329,6 +339,6 @@
       <span id="saved-message" class="saved-message">Saved!</span>
     </div>
 
-    <script src="options.js"></script>
+    <script src="options.js" type="module"></script>
   </body>
 </html>

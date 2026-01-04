@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Phase 4 E2E Test Page</title>
+</head>
+<body>
+  <h1>Phase 4 Test Page</h1>
+  <p id="status">Ready</p>
+
+  <button id="trigger-similar-errors" onclick="triggerSimilarErrors()">Trigger Similar Errors</button>
+  <button id="trigger-single-error" onclick="triggerSingleError()">Trigger Single Error</button>
+
+  <script>
+    function triggerSimilarErrors() {
+      // Three errors with the same stack shape and similar messages — should cluster
+      try { throwFromRender('user-123') } catch(e) { console.error(e) }
+      try { throwFromRender('user-456') } catch(e) { console.error(e) }
+      try { throwFromRender('user-789') } catch(e) { console.error(e) }
+      document.getElementById('status').textContent = 'Similar errors triggered'
+    }
+
+    function throwFromRender(userId) {
+      renderProfile(userId)
+    }
+
+    function renderProfile(userId) {
+      throw new TypeError("Cannot read properties of undefined (reading 'name') for user " + userId)
+    }
+
+    function triggerSingleError() {
+      console.error('Single isolated error for testing')
+      document.getElementById('status').textContent = 'Single error triggered'
+    }
+  </script>
+</body>
+</html>

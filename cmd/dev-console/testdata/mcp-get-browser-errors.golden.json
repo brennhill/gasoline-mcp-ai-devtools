@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "[{\"level\":\"error\",\"message\":\"ReferenceError: foo is not defined\",\"ts\":\"2024-01-22T10:00:00Z\",\"type\":\"exception\"},{\"level\":\"error\",\"message\":\"GET /api/data 500\",\"status\":500,\"ts\":\"2024-01-22T10:00:02Z\",\"type\":\"network\"}]"
+    }
+  ]
+}

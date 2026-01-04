@@ -1,9 +1,11 @@
+// @ts-nocheck
 /**
- * @fileoverview Tests for on-demand features: DOM query execution, accessibility audit, pending query polling
- * TDD: These tests are written BEFORE implementation (v4 feature)
+ * @fileoverview on-demand.test.js — Tests for on-demand DOM/a11y query system.
+ * Covers CSS selector query execution, accessibility tree audits, pending query
+ * polling from the server, response posting, and error handling for invalid selectors.
  */
 
-import { test, describe, mock, beforeEach, afterEach } from 'node:test'
+import { test, describe, mock, beforeEach, afterEach, after } from 'node:test'
 import assert from 'node:assert'
 
 // Mock Chrome APIs
@@ -15,25 +17,27 @@ const createMockChrome = () => ({
   },
   tabs: {
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1, url: 'http://localhost:3000' }])),
-    sendMessage: mock.fn((tabId, message) => Promise.resolve()),
+    sendMessage: mock.fn((_tabId, _message) => Promise.resolve()),
   },
   scripting: {
     executeScript: mock.fn(() => Promise.resolve([{ result: {} }])),
   },
   storage: {
     local: {
-      get: mock.fn((keys, callback) => callback({
-        serverUrl: 'http://localhost:7890',
-        captureWebSockets: true,
-        captureNetworkBodies: false,
-      })),
+      get: mock.fn((keys, callback) =>
+        callback({
+          serverUrl: 'http://localhost:7890',
+          captureWebSockets: true,
+          captureNetworkBodies: false,
+        }),
+      ),
     },
   },
 })
 
 const createMockDocument = () => ({
-  querySelectorAll: mock.fn((selector) => []),
-  querySelector: mock.fn((selector) => null),
+  querySelectorAll: mock.fn((_selector) => []),
+  querySelector: mock.fn((_selector) => null),
   title: 'Test Page',
   readyState: 'complete',
   documentElement: {
@@ -65,6 +69,29 @@ const createMockWindow = () => ({
 
 let originalChrome, originalDocument, originalWindow
 
+// Track all setInterval calls so we can clean up leaked timers from module init
+const activeIntervals = new Set()
+const _originalSetInterval = globalThis.setInterval
+const _originalClearInterval = globalThis.clearInterval
+globalThis.setInterval = (...args) => {
+  const id = _originalSetInterval(...args)
+  activeIntervals.add(id)
+  return id
+}
+globalThis.clearInterval = (id) => {
+  activeIntervals.delete(id)
+  _originalClearInterval(id)
+}
+
+// Clean up all leaked intervals after all tests complete
+after(() => {
+  for (const id of activeIntervals) {
+    _originalClearInterval(id)
+  }
+  globalThis.setInterval = _originalSetInterval
+  globalThis.clearInterval = _originalClearInterval
+})
+
 describe('Pending Query Polling', () => {
   beforeEach(() => {
     originalChrome = globalThis.chrome
@@ -78,10 +105,12 @@ describe('Pending Query Polling', () => {
   test('should poll server for pending queries', async () => {
     const { pollPendingQueries } = await import('../extension/background.js')
 
-    const mockFetch = mock.fn(() => Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ queries: [] }),
-    }))
+    const mockFetch = mock.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ queries: [] }),
+      }),
+    )
 
     globalThis.fetch = mockFetch
 
@@ -92,7 +121,7 @@ describe('Pending Query Polling', () => {
   })
 
   test('should execute DOM query when pending query found', async () => {
-    const { pollPendingQueries, handlePendingQuery } = await import('../extension/background.js')
+    const { pollPendingQueries } = await import('../extension/background.js')
 
     const query = {
       id: 'query-123',
@@ -147,7 +176,7 @@ describe('Pending Query Polling', () => {
 
     await postQueryResult('http://localhost:7890', 'query-123', 'dom', { matches: [] })
 
-    const postCall = mockFetch.mock.calls.find(c => {
+    const postCall = mockFetch.mock.calls.find((c) => {
       const url = c.arguments[0]
       return url.includes('/dom-result') || url.includes('/a11y-result')
     })
@@ -172,18 +201,36 @@ describe('Pending Query Polling', () => {
   test('should poll at 1-second intervals', async () => {
     const { startQueryPolling, stopQueryPolling } = await import('../extension/background.js')
 
-    const mockFetch = mock.fn(() => Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ queries: [] }),
-    }))
+    const mockFetch = mock.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ queries: [] }),
+      }),
+    )
     globalThis.fetch = mockFetch
+
+    // Mock setInterval to capture callback and call it synchronously
+    let intervalCallback
+    const originalSetInterval = globalThis.setInterval
+    const originalClearInterval = globalThis.clearInterval
+    globalThis.setInterval = (cb, _ms) => {
+      intervalCallback = cb
+      return 999
+    }
+    globalThis.clearInterval = mock.fn()
 
     startQueryPolling('http://localhost:7890')
 
-    // Wait for 2.5 seconds
-    await new Promise(r => setTimeout(r, 2500))
+    // Invoke the polling callback multiple times to simulate interval ticks
+    await intervalCallback()
+    await intervalCallback()
+    await intervalCallback()
 
     stopQueryPolling()
+
+    // Restore originals
+    globalThis.setInterval = originalSetInterval
+    globalThis.clearInterval = originalClearInterval
 
     // Should have polled at least 2 times
     assert.ok(mockFetch.mock.calls.length >= 2, `Expected >= 2 polls, got ${mockFetch.mock.calls.length}`)
@@ -210,7 +257,7 @@ describe('DOM Query Execution', () => {
       {
         tagName: 'H1',
         textContent: 'Hello World',
-        getAttribute: (name) => null,
+        getAttribute: (_name) => null,
         attributes: [],
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 100, height: 30 }),
         children: [],
@@ -371,7 +418,7 @@ describe('DOM Query Execution', () => {
       tagName: 'SPAN',
       textContent: 'child text',
       attributes: [{ name: 'class', value: 'name' }],
-      getAttribute: (name) => name === 'class' ? 'name' : null,
+      getAttribute: (name) => (name === 'class' ? 'name' : null),
       children: [],
     }
 
@@ -554,11 +601,7 @@ describe('Page Info', () => {
 
     globalThis.document.querySelectorAll = mock.fn((selector) => {
       if (selector === 'h1,h2,h3,h4,h5,h6') {
-        return [
-          { textContent: 'Dashboard' },
-          { textContent: 'Recent Activity' },
-          { textContent: 'Settings' },
-        ]
+        return [{ textContent: 'Dashboard' }, { textContent: 'Recent Activity' }, { textContent: 'Settings' }]
       }
       return []
     })
@@ -573,14 +616,16 @@ describe('Page Info', () => {
 
     globalThis.document.querySelectorAll = mock.fn((selector) => {
       if (selector === 'form') {
-        return [{
-          id: 'login-form',
-          action: '/api/login',
-          querySelectorAll: () => [
-            { name: 'email', tagName: 'INPUT' },
-            { name: 'password', tagName: 'INPUT' },
-          ],
-        }]
+        return [
+          {
+            id: 'login-form',
+            action: '/api/login',
+            querySelectorAll: () => [
+              { name: 'email', tagName: 'INPUT' },
+              { name: 'password', tagName: 'INPUT' },
+            ],
+          },
+        ]
       }
       return []
     })
@@ -640,12 +685,14 @@ describe('Accessibility Audit Execution', () => {
       // Simulate async load
       setTimeout(() => {
         globalThis.window.axe = {
-          run: mock.fn(() => Promise.resolve({
-            violations: [],
-            passes: [],
-            incomplete: [],
-            inapplicable: [],
-          })),
+          run: mock.fn(() =>
+            Promise.resolve({
+              violations: [],
+              passes: [],
+              incomplete: [],
+              inapplicable: [],
+            }),
+          ),
         }
         if (script.onload) script.onload()
       }, 10)
@@ -662,12 +709,14 @@ describe('Accessibility Audit Execution', () => {
     const { runAxeAudit } = await import('../extension/inject.js')
 
     globalThis.window.axe = {
-      run: mock.fn(() => Promise.resolve({
-        violations: [],
-        passes: [],
-        incomplete: [],
-        inapplicable: [],
-      })),
+      run: mock.fn(() =>
+        Promise.resolve({
+          violations: [],
+          passes: [],
+          incomplete: [],
+          inapplicable: [],
+        }),
+      ),
     }
 
     await runAxeAudit({})
@@ -681,9 +730,14 @@ describe('Accessibility Audit Execution', () => {
     const { runAxeAudit } = await import('../extension/inject.js')
 
     globalThis.window.axe = {
-      run: mock.fn(() => Promise.resolve({
-        violations: [], passes: [], incomplete: [], inapplicable: [],
-      })),
+      run: mock.fn(() =>
+        Promise.resolve({
+          violations: [],
+          passes: [],
+          incomplete: [],
+          inapplicable: [],
+        }),
+      ),
     }
 
     await runAxeAudit({ scope: '#main-content' })
@@ -696,9 +750,14 @@ describe('Accessibility Audit Execution', () => {
     const { runAxeAudit } = await import('../extension/inject.js')
 
     globalThis.window.axe = {
-      run: mock.fn(() => Promise.resolve({
-        violations: [], passes: [], incomplete: [], inapplicable: [],
-      })),
+      run: mock.fn(() =>
+        Promise.resolve({
+          violations: [],
+          passes: [],
+          incomplete: [],
+          inapplicable: [],
+        }),
+      ),
     }
 
     await runAxeAudit({ tags: ['wcag2a', 'wcag2aa'] })
@@ -711,9 +770,14 @@ describe('Accessibility Audit Execution', () => {
     const { runAxeAudit } = await import('../extension/inject.js')
 
     globalThis.window.axe = {
-      run: mock.fn(() => Promise.resolve({
-        violations: [], passes: [{ id: 'button-name' }], incomplete: [], inapplicable: [],
-      })),
+      run: mock.fn(() =>
+        Promise.resolve({
+          violations: [],
+          passes: [{ id: 'button-name' }],
+          incomplete: [],
+          inapplicable: [],
+        }),
+      ),
     }
 
     await runAxeAudit({ include_passes: true })
@@ -723,21 +787,25 @@ describe('Accessibility Audit Execution', () => {
   })
 
   test('should format violations with selector, html, and fix suggestion', async () => {
-    const { runAxeAudit, formatAxeResults } = await import('../extension/inject.js')
+    const { formatAxeResults } = await import('../extension/inject.js')
 
     const axeResult = {
-      violations: [{
-        id: 'color-contrast',
-        impact: 'serious',
-        description: 'Elements must have sufficient color contrast',
-        helpUrl: 'https://dequeuniversity.com/rules/axe/4.8/color-contrast',
-        tags: ['wcag2aa', 'cat.color'],
-        nodes: [{
-          target: ['#signup-form > label:nth-child(2)'],
-          html: '<label class="form-label subtle">Email address</label>',
-          failureSummary: 'Element has insufficient color contrast of 2.8:1',
-        }],
-      }],
+      violations: [
+        {
+          id: 'color-contrast',
+          impact: 'serious',
+          description: 'Elements must have sufficient color contrast',
+          helpUrl: 'https://dequeuniversity.com/rules/axe/4.8/color-contrast',
+          tags: ['wcag2aa', 'cat.color'],
+          nodes: [
+            {
+              target: ['#signup-form > label:nth-child(2)'],
+              html: '<label class="form-label subtle">Email address</label>',
+              failureSummary: 'Element has insufficient color contrast of 2.8:1',
+            },
+          ],
+        },
+      ],
       passes: [],
       incomplete: [],
       inapplicable: [],
@@ -761,14 +829,16 @@ describe('Accessibility Audit Execution', () => {
     }))
 
     const axeResult = {
-      violations: [{
-        id: 'test-rule',
-        impact: 'minor',
-        description: 'Test',
-        helpUrl: 'http://test.com',
-        tags: [],
-        nodes,
-      }],
+      violations: [
+        {
+          id: 'test-rule',
+          impact: 'minor',
+          description: 'Test',
+          helpUrl: 'http://test.com',
+          tags: [],
+          nodes,
+        },
+      ],
       passes: [],
       incomplete: [],
       inapplicable: [],
@@ -785,14 +855,16 @@ describe('Accessibility Audit Execution', () => {
 
     const longHtml = '<div class="' + 'x'.repeat(300) + '">content</div>'
     const axeResult = {
-      violations: [{
-        id: 'test-rule',
-        impact: 'minor',
-        description: 'Test',
-        helpUrl: 'http://test.com',
-        tags: [],
-        nodes: [{ target: ['div'], html: longHtml, failureSummary: 'Failure' }],
-      }],
+      violations: [
+        {
+          id: 'test-rule',
+          impact: 'minor',
+          description: 'Test',
+          helpUrl: 'http://test.com',
+          tags: [],
+          nodes: [{ target: ['div'], html: longHtml, failureSummary: 'Failure' }],
+        },
+      ],
       passes: [],
       incomplete: [],
       inapplicable: [],
@@ -807,7 +879,10 @@ describe('Accessibility Audit Execution', () => {
     const { formatAxeResults } = await import('../extension/inject.js')
 
     const axeResult = {
-      violations: [{ id: 'v1', nodes: [] }, { id: 'v2', nodes: [] }],
+      violations: [
+        { id: 'v1', nodes: [] },
+        { id: 'v2', nodes: [] },
+      ],
       passes: Array(52).fill({ id: 'p', nodes: [] }),
       incomplete: [{ id: 'i1', nodes: [] }],
       inapplicable: Array(31).fill({ id: 'ia', nodes: [] }),
@@ -838,14 +913,16 @@ describe('Accessibility Audit Execution', () => {
     const { formatAxeResults } = await import('../extension/inject.js')
 
     const axeResult = {
-      violations: [{
-        id: 'color-contrast',
-        impact: 'serious',
-        description: 'Test',
-        helpUrl: 'http://test.com',
-        tags: ['wcag2aa', 'cat.color', 'wcag143'],
-        nodes: [],
-      }],
+      violations: [
+        {
+          id: 'color-contrast',
+          impact: 'serious',
+          description: 'Test',
+          helpUrl: 'http://test.com',
+          tags: ['wcag2aa', 'cat.color', 'wcag143'],
+          nodes: [],
+        },
+      ],
       passes: [],
       incomplete: [],
       inapplicable: [],

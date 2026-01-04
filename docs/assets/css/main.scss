@@ -1,0 +1,250 @@
+---
+# Only the main Sass file needs front matter (the dashes are enough)
+---
+
+@charset "utf-8";
+
+// Gasoline Brand Colors
+$gasoline-bg:          #1a1f2e;
+$gasoline-bg-light:    #232a3b;
+$gasoline-bg-card:     #2a3244;
+$gasoline-flame-outer: #e67e22;
+$gasoline-flame-mid:   #f39c12;
+$gasoline-flame-inner: #f5c842;
+$gasoline-text:        #e8e8e8;
+$gasoline-text-muted:  #9ba3b0;
+$gasoline-border:      #3a4556;
+$gasoline-code-bg:     #151a26;
+
+// Override minimal-mistakes skin variables
+$background-color:     $gasoline-bg !default;
+$text-color:           $gasoline-text !default;
+$primary-color:        $gasoline-flame-outer !default;
+$link-color:           $gasoline-flame-mid !default;
+$link-color-hover:     $gasoline-flame-inner !default;
+$masthead-link-color:  $gasoline-text !default;
+$footer-background-color: darken($gasoline-bg, 3%) !default;
+
+@import "minimal-mistakes/skins/dark";
+@import "minimal-mistakes";
+
+// === GLOBAL OVERRIDES ===
+
+body {
+  background-color: $gasoline-bg;
+  color: $gasoline-text;
+}
+
+// Masthead / top nav
+.masthead {
+  background-color: darken($gasoline-bg, 2%);
+  border-bottom: 1px solid $gasoline-border;
+}
+
+.greedy-nav {
+  background: transparent;
+
+  .site-logo img {
+    max-height: 2.5rem;
+    width: auto;
+  }
+}
+
+.site-title {
+  color: $gasoline-text !important;
+  font-weight: 700;
+}
+
+// Sidebar navigation
+.nav__list .nav__items {
+  a {
+    color: $gasoline-text-muted;
+    &:hover {
+      color: $gasoline-flame-mid;
+    }
+    &.active {
+      color: $gasoline-flame-outer;
+      border-left: 3px solid $gasoline-flame-outer;
+    }
+  }
+}
+
+// Links
+a {
+  color: $gasoline-flame-mid;
+  &:hover {
+    color: $gasoline-flame-inner;
+  }
+}
+
+// Code blocks
+div.highlighter-rouge,
+figure.highlight {
+  background-color: $gasoline-code-bg;
+  border: 1px solid $gasoline-border;
+  border-radius: 6px;
+}
+
+code.highlighter-rouge {
+  background-color: $gasoline-bg-light;
+  color: $gasoline-flame-mid;
+  border-radius: 3px;
+  padding: 0.15em 0.4em;
+}
+
+// Tables
+.page__content table,
+table {
+  width: 100% !important;
+  background-color: $gasoline-bg-light;
+  border: 1px solid $gasoline-border;
+
+  th {
+    background-color: $gasoline-bg-card;
+    color: $gasoline-text;
+    border-bottom: 2px solid $gasoline-flame-outer;
+  }
+
+  td {
+    border-bottom: 1px solid $gasoline-border;
+  }
+}
+
+// Buttons - fire accent
+.btn--primary {
+  background-color: $gasoline-flame-outer;
+  color: #1a1f2e;
+  border-radius: 24px;
+  font-weight: 600;
+  border: none;
+
+  &:hover {
+    background-color: $gasoline-flame-mid;
+    color: #1a1f2e;
+  }
+}
+
+.btn--large {
+  padding: 0.75em 2em;
+}
+
+// Page hero / splash
+.page__hero--overlay {
+  background: linear-gradient(135deg, $gasoline-bg 0%, $gasoline-bg-light 50%, rgba($gasoline-flame-outer, 0.12) 100%) !important;
+
+  .page__title {
+    color: #ffffff;
+    text-shadow: none;
+  }
+
+  .page__lead {
+    color: $gasoline-text-muted;
+  }
+}
+
+// TOC
+.toc {
+  background-color: $gasoline-bg-light;
+  border: 1px solid $gasoline-border;
+  border-radius: 6px;
+
+  .nav__title {
+    background-color: $gasoline-bg-card;
+    color: $gasoline-text;
+  }
+
+  a {
+    color: $gasoline-text-muted;
+    &:hover {
+      color: $gasoline-flame-mid;
+    }
+  }
+}
+
+// Footer
+.page__footer {
+  background-color: darken($gasoline-bg, 3%);
+  border-top: 1px solid $gasoline-border;
+  color: $gasoline-text-muted;
+}
+
+// Blockquotes - fire accent bar
+blockquote {
+  border-left: 4px solid $gasoline-flame-outer;
+  background-color: $gasoline-bg-light;
+  padding: 1em;
+  border-radius: 0 6px 6px 0;
+  color: $gasoline-text-muted;
+}
+
+// Headings
+h1, h2, h3, h4, h5, h6 {
+  color: #ffffff;
+
+  // Static "@" symbol instead of hoverable permalink
+  .header-link {
+    opacity: 1;
+    transition: none;
+    font-size: 0;
+    color: $gasoline-text-muted;
+    text-decoration: none;
+
+    &::after {
+      content: "@";
+      font-size: 0.55rem;
+      vertical-align: super;
+      margin-left: 0.3em;
+    }
+
+    // Hide any icon the theme inserts
+    * {
+      display: none;
+    }
+  }
+
+  &:hover .header-link {
+    opacity: 1;
+    color: $gasoline-text-muted;
+  }
+}
+
+h2 {
+  border-bottom: 1px solid $gasoline-border;
+  padding-bottom: 0.3em;
+}
+
+// Feature rows (splash page)
+.feature__wrapper {
+  border-bottom: 1px solid $gasoline-border;
+}
+
+// Archive items
+.archive__item-title {
+  color: #ffffff;
+}
+
+// Notices/alerts
+.notice--primary {
+  background-color: rgba($gasoline-flame-outer, 0.1);
+  border-left: 4px solid $gasoline-flame-outer;
+  color: $gasoline-text;
+}
+
+// Scrollbar (webkit)
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: $gasoline-bg;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $gasoline-border;
+  border-radius: 4px;
+
+  &:hover {
+    background: $gasoline-flame-outer;
+  }
+}

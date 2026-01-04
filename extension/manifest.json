@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Gasoline",
-  "version": "3.5.0",
-  "description": "Captures browser console logs, network errors, and exceptions for AI coding assistants (Claude, Cursor, etc.)",
+  "version": "4.7.0",
+  "description": "Browser observability for AI coding agents - autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
@@ -35,7 +35,23 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["inject.js"],
+      "resources": [
+        "inject.js",
+        "lib/constants.js",
+        "lib/serialize.js",
+        "lib/context.js",
+        "lib/reproduction.js",
+        "lib/actions.js",
+        "lib/network.js",
+        "lib/performance.js",
+        "lib/bridge.js",
+        "lib/console.js",
+        "lib/ai-context.js",
+        "lib/exceptions.js",
+        "lib/websocket.js",
+        "lib/dom-queries.js",
+        "lib/perf-snapshot.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "[gasoline] Running CI checks before push..."
+make ci-local

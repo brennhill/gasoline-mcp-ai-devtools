@@ -1,25 +1,21 @@
+// @ts-nocheck
 /**
- * @fileoverview Tests for content script message forwarding
- * TDD: Tests for v5 GASOLINE_NETWORK_BODY forwarding
+ * @fileoverview content.test.js — Tests for content script message bridge.
+ * Verifies that window.postMessage events (GASOLINE_LOG, GASOLINE_WS,
+ * GASOLINE_NETWORK_BODY, GASOLINE_ENHANCED_ACTION, GASOLINE_PERF_SNAPSHOT)
+ * are correctly forwarded to chrome.runtime.sendMessage with proper payloads.
  */
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
+import { createMockChrome } from './helpers.js'
 
 describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
   let messageHandler
   let mockChrome
 
   beforeEach(() => {
-    mockChrome = {
-      runtime: {
-        getURL: mock.fn((path) => `chrome-extension://abc123/${path}`),
-        sendMessage: mock.fn(),
-        onMessage: {
-          addListener: mock.fn(),
-        },
-      },
-    }
+    mockChrome = createMockChrome()
     globalThis.chrome = mockChrome
 
     // Capture the message handler that content.js registers
@@ -33,7 +29,9 @@ describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
     globalThis.document = {
       createElement: mock.fn(() => ({
         remove: mock.fn(),
-        set onload(fn) { fn() },
+        set onload(fn) {
+          fn()
+        },
       })),
       head: { appendChild: mock.fn() },
       documentElement: { appendChild: mock.fn() },
@@ -45,7 +43,7 @@ describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
     // We'll simulate the handler behavior directly
     messageHandler = (event) => {
       if (event.source !== globalThis.window) return
-      if (event.data?.type === 'DEV_CONSOLE_LOG') {
+      if (event.data?.type === 'GASOLINE_LOG') {
         mockChrome.runtime.sendMessage({
           type: 'log',
           payload: event.data.payload,
@@ -123,10 +121,10 @@ describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
     assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 0)
   })
 
-  test('should still forward DEV_CONSOLE_LOG messages', () => {
+  test('should still forward GASOLINE_LOG messages', () => {
     messageHandler({
       source: globalThis.window,
-      data: { type: 'DEV_CONSOLE_LOG', payload: { level: 'error', message: 'test' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'test' } },
     })
 
     assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 1)
@@ -167,9 +165,23 @@ describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
   test('should forward GASOLINE_ENHANCED_ACTION with all action types', () => {
     const actions = [
       { type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: { id: 'btn' } },
-      { type: 'input', timestamp: 1001, url: 'http://localhost:3000', selectors: { id: 'input' }, value: 'hello', inputType: 'text' },
+      {
+        type: 'input',
+        timestamp: 1001,
+        url: 'http://localhost:3000',
+        selectors: { id: 'input' },
+        value: 'hello',
+        inputType: 'text',
+      },
       { type: 'keypress', timestamp: 1002, url: 'http://localhost:3000', selectors: { id: 'input' }, key: 'Enter' },
-      { type: 'select', timestamp: 1003, url: 'http://localhost:3000', selectors: { id: 'dropdown' }, selectedValue: 'us', selectedText: 'United States' },
+      {
+        type: 'select',
+        timestamp: 1003,
+        url: 'http://localhost:3000',
+        selectors: { id: 'dropdown' },
+        selectedValue: 'us',
+        selectedText: 'United States',
+      },
       { type: 'scroll', timestamp: 1004, url: 'http://localhost:3000', scrollY: 500 },
       { type: 'navigate', timestamp: 1005, url: 'http://localhost:3000', fromUrl: '/home', toUrl: '/about' },
     ]
@@ -181,8 +193,7 @@ describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
         data: { type: 'GASOLINE_ENHANCED_ACTION', payload },
       })
 
-      assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 1,
-        `Should forward ${payload.type} action`)
+      assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 1, `Should forward ${payload.type} action`)
       const sentMessage = mockChrome.runtime.sendMessage.mock.calls[0].arguments[0]
       assert.strictEqual(sentMessage.type, 'enhanced_action')
       assert.strictEqual(sentMessage.payload.type, payload.type)

@@ -1,6 +1,9 @@
+// @ts-nocheck
 /**
- * @fileoverview Tests for background service worker
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview background.test.js — Tests for the background service worker.
+ * Covers log batching/debouncing, server communication, error deduplication,
+ * connection status management, badge updates, debug export, screenshot capture,
+ * source map resolution, and on-demand query dispatch.
  */
 
 import { test, describe, mock, beforeEach } from 'node:test'
@@ -34,13 +37,9 @@ const mockChrome = {
     },
   },
   tabs: {
-    get: mock.fn((tabId) =>
-      Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })
-    ),
+    get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
     captureVisibleTab: mock.fn(() =>
-      Promise.resolve(
-        'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS'
-      )
+      Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS'),
     ),
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1 }])),
     onRemoved: {
@@ -155,7 +154,7 @@ describe('sendLogsToServer', () => {
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ received: 2 }),
-      })
+      }),
     )
     globalThis.fetch = mockFetch
 
@@ -183,7 +182,7 @@ describe('sendLogsToServer', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-      })
+      }),
     )
 
     await assert.rejects(() => sendLogsToServer([{ msg: 'test' }]), {
@@ -215,7 +214,7 @@ describe('checkServerHealth', () => {
             entries: 42,
             maxEntries: 1000,
           }),
-      })
+      }),
     )
 
     const health = await checkServerHealth()
@@ -239,7 +238,7 @@ describe('checkServerHealth', () => {
       Promise.resolve({
         ok: false,
         status: 500,
-      })
+      }),
     )
 
     const health = await checkServerHealth()
@@ -624,18 +623,18 @@ describe('recordScreenshot', () => {
 })
 
 describe('captureScreenshot', () => {
-  let originalFetch
+  let _originalFetch
 
   beforeEach(() => {
     mockChrome.tabs.get.mock.resetCalls()
     mockChrome.tabs.captureVisibleTab.mock.resetCalls()
-    originalFetch = globalThis.fetch
+    _originalFetch = globalThis.fetch
     // Mock fetch to simulate /screenshots endpoint
     globalThis.fetch = mock.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ filename: 'localhost_3000-20260123-150405-console-err_123.jpg' }),
-      })
+      }),
     )
   })
 
@@ -711,19 +710,13 @@ describe('captureScreenshot', () => {
     assert.ok(result.error.includes('Tab not visible'))
 
     // Restore mock
-    mockChrome.tabs.captureVisibleTab = mock.fn(() =>
-      Promise.resolve(
-        'data:image/jpeg;base64,/9j/4AAQSkZJRg=='
-      )
-    )
+    mockChrome.tabs.captureVisibleTab = mock.fn(() => Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRg=='))
   })
 
   test('should handle server error gracefully', async () => {
     const tabId = 3005
 
-    globalThis.fetch = mock.fn(() =>
-      Promise.resolve({ ok: false, status: 500, statusText: 'Internal Server Error' })
-    )
+    globalThis.fetch = mock.fn(() => Promise.resolve({ ok: false, status: 500, statusText: 'Internal Server Error' }))
 
     const result = await captureScreenshot(tabId)
 
@@ -1006,7 +999,7 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
-    assert.strictEqual(parsed.version, '3.5.0')
+    assert.strictEqual(parsed.version, '4.7.0')
     assert.ok(Array.isArray(parsed.entries))
   })
 
@@ -1199,14 +1192,21 @@ describe('Enhanced Actions Server Communication', () => {
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ received: 1 }),
-      })
+      }),
     )
   })
 
   test('sendEnhancedActionsToServer should POST actions to /enhanced-actions', async () => {
     const actions = [
       { type: 'click', timestamp: 1705312200000, url: 'http://localhost:3000', selectors: { testId: 'btn' } },
-      { type: 'input', timestamp: 1705312201000, url: 'http://localhost:3000', selectors: { id: 'email' }, value: 'test@test.com', inputType: 'email' },
+      {
+        type: 'input',
+        timestamp: 1705312201000,
+        url: 'http://localhost:3000',
+        selectors: { id: 'email' },
+        value: 'test@test.com',
+        inputType: 'email',
+      },
     ]
 
     await sendEnhancedActionsToServer(actions)
@@ -1225,15 +1225,13 @@ describe('Enhanced Actions Server Communication', () => {
   })
 
   test('sendEnhancedActionsToServer should throw on non-ok response', async () => {
-    globalThis.fetch = mock.fn(() =>
-      Promise.resolve({ ok: false, status: 500 })
-    )
+    globalThis.fetch = mock.fn(() => Promise.resolve({ ok: false, status: 500 }))
 
     const actions = [{ type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: {} }]
 
     await assert.rejects(
       () => sendEnhancedActionsToServer(actions),
-      (err) => err.message.includes('500')
+      (err) => err.message.includes('500'),
     )
   })
 
@@ -1242,7 +1240,13 @@ describe('Enhanced Actions Server Communication', () => {
     const batcher = createLogBatcher(flushFn, { debounceMs: 50, maxBatchSize: 50 })
 
     const action1 = { type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: { id: 'btn' } }
-    const action2 = { type: 'input', timestamp: 1001, url: 'http://localhost:3000', selectors: { id: 'input' }, value: 'hi' }
+    const action2 = {
+      type: 'input',
+      timestamp: 1001,
+      url: 'http://localhost:3000',
+      selectors: { id: 'input' },
+      value: 'hi',
+    }
 
     batcher.add(action1)
     batcher.add(action2)

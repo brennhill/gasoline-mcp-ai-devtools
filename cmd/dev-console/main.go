@@ -1,6 +1,6 @@
-// Gasoline - Adding fuel to the AI fire
+// Gasoline - Browser observability for AI coding agents
 // A zero-dependency server that receives logs from the browser extension
-// and writes them to a JSONL file for your AI coding assistant.
+// and streams them to your AI coding agent via MCP.
 package main
 
 import (
@@ -23,7 +23,7 @@ import (
 const (
 	defaultPort       = 7890
 	defaultMaxEntries = 1000
-	version           = "3.5.0"
+	version           = "4.7.0"
 )
 
 // LogEntry represents a single log entry
@@ -60,21 +60,47 @@ type MCPTool struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
 	InputSchema map[string]interface{} `json:"inputSchema"`
+	Meta        map[string]interface{} `json:"_meta,omitempty"`
 }
 
 // MCPHandler handles MCP protocol messages
 type MCPHandler struct {
 	server      *Server
-	initialized bool
-	v4Handler   *MCPHandlerV4
+	toolHandler *ToolHandler
 }
 
 // NewMCPHandler creates a new MCP handler
 func NewMCPHandler(server *Server) *MCPHandler {
 	return &MCPHandler{
-		server:      server,
-		initialized: false,
+		server: server,
 	}
+}
+
+// HandleHTTP handles MCP requests over HTTP (POST /mcp)
+func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	var req JSONRPCRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		resp := JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      nil,
+			Error: &JSONRPCError{
+				Code:    -32700,
+				Message: "Parse error: " + err.Error(),
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	resp := h.HandleRequest(req)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // HandleRequest processes an MCP request and returns a response
@@ -102,16 +128,14 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
-	h.initialized = true
-
-	result := map[string]interface{}{
-		"protocolVersion": "2024-11-05",
-		"serverInfo": map[string]string{
-			"name":    "gasoline",
-			"version": version,
+	result := MCPInitializeResult{
+		ProtocolVersion: "2024-11-05",
+		ServerInfo: MCPServerInfo{
+			Name:    "gasoline",
+			Version: version,
 		},
-		"capabilities": map[string]interface{}{
-			"tools": map[string]interface{}{},
+		Capabilities: MCPCapabilities{
+			Tools: MCPToolsCapability{},
 		},
 	}
 
@@ -120,44 +144,12 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
-	tools := []MCPTool{
-		{
-			Name:        "get_browser_errors",
-			Description: "Get recent browser errors (console errors, network failures, exceptions) from the Gasoline log. Useful for debugging web application issues.",
-			InputSchema: map[string]interface{}{
-				"type":       "object",
-				"properties": map[string]interface{}{},
-			},
-		},
-		{
-			Name:        "get_browser_logs",
-			Description: "Get all browser logs from the Gasoline log, including errors, warnings, and info messages.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"limit": map[string]interface{}{
-						"type":        "number",
-						"description": "Maximum number of log entries to return (default: all)",
-					},
-				},
-			},
-		},
-		{
-			Name:        "clear_browser_logs",
-			Description: "Clear all browser logs from the Gasoline log file.",
-			InputSchema: map[string]interface{}{
-				"type":       "object",
-				"properties": map[string]interface{}{},
-			},
-		},
+	var tools []MCPTool
+	if h.toolHandler != nil {
+		tools = h.toolHandler.toolsList()
 	}
 
-	// Add v4 tools if available
-	if h.v4Handler != nil {
-		tools = append(tools, h.v4Handler.v4ToolsList()...)
-	}
-
-	result := map[string]interface{}{"tools": tools}
+	result := MCPToolsListResult{Tools: tools}
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
@@ -179,115 +171,31 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	switch params.Name {
-	case "get_browser_errors":
-		return h.toolGetBrowserErrors(req, params.Arguments)
-	case "get_browser_logs":
-		return h.toolGetBrowserLogs(req, params.Arguments)
-	case "clear_browser_logs":
-		return h.toolClearBrowserLogs(req)
-	default:
-		// Try v4 handler
-		if h.v4Handler != nil {
-			if resp, handled := h.v4Handler.handleV4ToolCall(req, params.Name, params.Arguments); handled {
-				return resp
-			}
-		}
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error: &JSONRPCError{
-				Code:    -32601,
-				Message: "Unknown tool: " + params.Name,
-			},
-		}
-	}
-}
-
-func (h *MCPHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	h.server.mu.RLock()
-	defer h.server.mu.RUnlock()
-
-	// Filter for error-level entries only
-	var errors []LogEntry
-	for _, entry := range h.server.entries {
-		if level, ok := entry["level"].(string); ok && level == "error" {
-			errors = append(errors, entry)
+	if h.toolHandler != nil {
+		if resp, handled := h.toolHandler.handleToolCall(req, params.Name, params.Arguments); handled {
+			return resp
 		}
 	}
 
-	var contentText string
-	if len(errors) == 0 {
-		contentText = "No browser errors found"
-	} else {
-		errorsJSON, _ := json.Marshal(errors)
-		contentText = string(errorsJSON)
-	}
-
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": contentText},
+	return JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Error: &JSONRPCError{
+			Code:    -32601,
+			Message: "Unknown tool: " + params.Name,
 		},
 	}
-
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
-}
-
-func (h *MCPHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var arguments struct {
-		Limit int `json:"limit"`
-	}
-	json.Unmarshal(args, &arguments)
-
-	h.server.mu.RLock()
-	defer h.server.mu.RUnlock()
-
-	entries := h.server.entries
-
-	// Apply limit if specified
-	if arguments.Limit > 0 && arguments.Limit < len(entries) {
-		// Return the most recent entries
-		entries = entries[len(entries)-arguments.Limit:]
-	}
-
-	var contentText string
-	if len(entries) == 0 {
-		contentText = "No browser logs found"
-	} else {
-		entriesJSON, _ := json.Marshal(entries)
-		contentText = string(entriesJSON)
-	}
-
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": contentText},
-		},
-	}
-
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
-}
-
-func (h *MCPHandler) toolClearBrowserLogs(req JSONRPCRequest) JSONRPCResponse {
-	h.server.clearEntries()
-
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": "Browser logs cleared successfully"},
-		},
-	}
-
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
 // Server holds the server state
 type Server struct {
-	logFile    string
-	maxEntries int
-	entries    []LogEntry
-	mu         sync.RWMutex
+	logFile       string
+	maxEntries    int
+	entries       []LogEntry
+	logAddedAt    []time.Time // parallel slice: when each entry was added
+	mu            sync.RWMutex
+	logTotalAdded int64 // monotonic counter of total entries ever added
+	onEntries     func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
 }
 
 // NewServer creates a new server instance
@@ -300,7 +208,7 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 
 	// Ensure log directory exists
 	dir := filepath.Dir(logFile)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // G301: 0o755 is appropriate for log directory
 		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
@@ -321,7 +229,7 @@ func (s *Server) loadEntries() error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck // deferred close
 
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024) // Allow up to 10MB per line (screenshots can be large)
@@ -338,6 +246,11 @@ func (s *Server) loadEntries() error {
 		s.entries = append(s.entries, entry)
 	}
 
+	// Bound entries (file may have more from append-only writes between rotations)
+	if len(s.entries) > s.maxEntries {
+		s.entries = s.entries[len(s.entries)-s.maxEntries:]
+	}
+
 	return scanner.Err()
 }
 
@@ -347,15 +260,19 @@ func (s *Server) saveEntries() error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck // deferred close
 
 	for _, entry := range s.entries {
 		data, err := json.Marshal(entry)
 		if err != nil {
 			continue
 		}
-		file.Write(data)
-		file.WriteString("\n")
+		if _, err := file.Write(data); err != nil {
+			return err
+		}
+		if _, err := file.WriteString("\n"); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -379,8 +296,9 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	var body struct {
-		DataUrl   string `json:"dataUrl"`
+		DataURL   string `json:"dataUrl"`
 		URL       string `json:"url"`
 		ErrorID   string `json:"errorId"`
 		ErrorType string `json:"errorType"`
@@ -391,13 +309,13 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if body.DataUrl == "" {
+	if body.DataURL == "" {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing dataUrl"})
 		return
 	}
 
 	// Extract base64 data from data URL
-	parts := strings.SplitN(body.DataUrl, ",", 2)
+	parts := strings.SplitN(body.DataURL, ",", 2)
 	if len(parts) != 2 {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid dataUrl format"})
 		return
@@ -434,7 +352,7 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	dir := filepath.Dir(s.logFile)
 	savePath := filepath.Join(dir, filename)
 
-	if err := os.WriteFile(savePath, imageData, 0644); err != nil {
+	if err := os.WriteFile(savePath, imageData, 0o644); err != nil { //nolint:gosec // G306: 0o644 is appropriate for screenshot files
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "Failed to save screenshot"})
 		return
 	}
@@ -448,17 +366,63 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 // addEntries adds new entries and rotates if needed
 func (s *Server) addEntries(newEntries []LogEntry) int {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
+	s.logTotalAdded += int64(len(newEntries))
+	now := time.Now()
+	for range newEntries {
+		s.logAddedAt = append(s.logAddedAt, now)
+	}
 	s.entries = append(s.entries, newEntries...)
 
-	// Rotate if needed
-	if len(s.entries) > s.maxEntries {
+	// Rotate if needed — requires full rewrite
+	rotated := len(s.entries) > s.maxEntries
+	if rotated {
 		s.entries = s.entries[len(s.entries)-s.maxEntries:]
+		s.logAddedAt = s.logAddedAt[len(s.logAddedAt)-s.maxEntries:]
 	}
 
-	s.saveEntries()
+	var err error
+	if rotated {
+		err = s.saveEntries()
+	} else {
+		err = s.appendToFile(newEntries)
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
+	}
+
+	cb := s.onEntries
+	s.mu.Unlock()
+
+	// Notify listeners outside the lock (e.g., cluster manager)
+	if cb != nil {
+		cb(newEntries)
+	}
+
 	return len(newEntries)
+}
+
+// appendToFile writes only the new entries to the file (append-only, no rewrite)
+func (s *Server) appendToFile(entries []LogEntry) error {
+	f, err := os.OpenFile(s.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G304: logFile is set at startup, not from user input
+	if err != nil {
+		return err
+	}
+	defer f.Close() //nolint:errcheck // deferred close
+
+	for _, entry := range entries {
+		data, err := json.Marshal(entry)
+		if err != nil {
+			continue
+		}
+		if _, err := f.Write(data); err != nil {
+			return err
+		}
+		if _, err := f.WriteString("\n"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // clearEntries removes all entries
@@ -467,7 +431,9 @@ func (s *Server) clearEntries() {
 	defer s.mu.Unlock()
 
 	s.entries = make([]LogEntry, 0)
-	s.saveEntries()
+	if err := s.saveEntries(); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
+	}
 }
 
 // getEntryCount returns current entry count
@@ -484,6 +450,60 @@ func (s *Server) getEntries() []LogEntry {
 	result := make([]LogEntry, len(s.entries))
 	copy(result, s.entries)
 	return result
+}
+
+// validLogLevels defines accepted log level values.
+var validLogLevels = map[string]bool{
+	"error": true,
+	"warn":  true,
+	"info":  true,
+	"debug": true,
+	"log":   true,
+}
+
+// maxEntrySize is the maximum serialized size of a single log entry (1MB).
+const maxEntrySize = 1024 * 1024
+
+// validateLogEntry checks if a log entry meets the contract requirements.
+// Returns true if the entry is valid, false otherwise.
+func validateLogEntry(entry LogEntry) bool {
+	// Required: level field must exist and be a known value
+	level, ok := entry["level"].(string)
+	if !ok || !validLogLevels[level] {
+		return false
+	}
+
+	// Fast path: if total string content is under half the limit,
+	// the entry can't exceed maxEntrySize even with JSON escaping overhead
+	var stringBytes int
+	for _, v := range entry {
+		if s, ok := v.(string); ok {
+			stringBytes += len(s)
+		}
+	}
+	if stringBytes < maxEntrySize/2 {
+		return true
+	}
+
+	// Slow path: might be large — check precisely via marshal
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return false
+	}
+	return len(data) <= maxEntrySize
+}
+
+// validateLogEntries filters entries, returning only valid ones and a count of rejected.
+func validateLogEntries(entries []LogEntry) (valid []LogEntry, rejected int) {
+	valid = make([]LogEntry, 0, len(entries))
+	for _, entry := range entries {
+		if validateLogEntry(entry) {
+			valid = append(valid, entry)
+		} else {
+			rejected++
+		}
+	}
+	return valid, rejected
 }
 
 // CORS middleware
@@ -506,7 +526,9 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 func jsonResponse(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Error encoding JSON response: %v\n", err)
+	}
 }
 
 func main() {
@@ -559,7 +581,7 @@ func main() {
 		if isTTY {
 			// User ran "gasoline" directly - start server as background process
 			exe, _ := os.Executable()
-			cmd := exec.Command(exe, "--server", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries))
+			cmd := exec.Command(exe, "--server", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)) //nolint:gosec,noctx // G204: exe is our own binary path; no context needed for daemon fork
 			cmd.Stdout = nil
 			cmd.Stderr = nil
 			cmd.Stdin = nil
@@ -580,27 +602,30 @@ func main() {
 
 	// HTTP-only server mode (--server)
 	// Setup routes
-	v4 := NewV4Server()
-	setupHTTPRoutes(server, v4)
+	capture := NewCapture()
+	setupHTTPRoutes(server, capture)
 
 	// Print banner
 	fmt.Println()
-	fmt.Println("╔═══════════════════════════════════════════════════════════╗")
-	fmt.Println("║                       Gasoline                             ║")
-	fmt.Println("║              Adding fuel to the AI fire                   ║")
-	fmt.Println("╚═══════════════════════════════════════════════════════════╝")
+	fmt.Printf("  Gasoline v%s\n", version)
+	fmt.Println("  Browser observability for AI coding agents")
 	fmt.Println()
-	fmt.Printf("✓ Server listening on http://127.0.0.1:%d\n", *port)
-	fmt.Printf("✓ Writing logs to %s\n", *logFile)
-	fmt.Printf("✓ Max entries: %d\n", *maxEntries)
+	fmt.Printf("  Server:  http://127.0.0.1:%d\n", *port)
+	fmt.Printf("  Logs:    %s\n", *logFile)
+	fmt.Printf("  Max:     %d entries\n", *maxEntries)
 	fmt.Println()
-	fmt.Println("Ready to receive logs from browser extension.")
-	fmt.Println("Press Ctrl+C to stop.")
+	fmt.Println("  Ready. Press Ctrl+C to stop.")
 	fmt.Println()
 
 	// Start server (localhost only for security)
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	srv := &http.Server{
+		Addr:         addr,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting server: %v\n", err)
 		os.Exit(1)
 	}
@@ -612,18 +637,20 @@ func main() {
 func runMCPMode(server *Server, port int) {
 	fmt.Fprintf(os.Stderr, "[gasoline] Starting MCP server, HTTP on port %d, log file: %s\n", port, server.logFile)
 
-	// Create v4 server for WebSocket/network body capture
-	v4 := NewV4Server()
+	// Create capture buffers for WebSocket, network, and actions
+	capture := NewCapture()
 
 	// Start HTTP server in background for browser extension
 	go func() {
-		setupHTTPRoutes(server, v4)
+		setupHTTPRoutes(server, capture)
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
-		http.ListenAndServe(addr, nil)
+		if err := http.ListenAndServe(addr, nil); err != nil { //nolint:gosec // G114: MCP mode background server
+			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
+		}
 	}()
 
-	// Run MCP protocol over stdin/stdout (with v4 tools)
-	mcp := NewMCPHandlerV4(server, v4)
+	// Run MCP protocol over stdin/stdout
+	mcp := NewToolHandler(server, capture)
 	scanner := bufio.NewScanner(os.Stdin)
 
 	// Increase scanner buffer for large messages
@@ -660,16 +687,39 @@ func runMCPMode(server *Server, port int) {
 }
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
-func setupHTTPRoutes(server *Server, v4 *V4Server) {
+func setupHTTPRoutes(server *Server, capture *Capture) {
 	// V4 routes
-	if v4 != nil {
-		http.HandleFunc("/websocket-events", corsMiddleware(v4.HandleWebSocketEvents))
-		http.HandleFunc("/websocket-status", corsMiddleware(v4.HandleWebSocketStatus))
-		http.HandleFunc("/network-bodies", corsMiddleware(v4.HandleNetworkBodies))
-		http.HandleFunc("/pending-queries", corsMiddleware(v4.HandlePendingQueries))
-		http.HandleFunc("/dom-result", corsMiddleware(v4.HandleDOMResult))
-		http.HandleFunc("/a11y-result", corsMiddleware(v4.HandleA11yResult))
-		http.HandleFunc("/enhanced-actions", corsMiddleware(v4.HandleEnhancedActions))
+	if capture != nil {
+		http.HandleFunc("/websocket-events", corsMiddleware(capture.HandleWebSocketEvents))
+		http.HandleFunc("/websocket-status", corsMiddleware(capture.HandleWebSocketStatus))
+		http.HandleFunc("/network-bodies", corsMiddleware(capture.HandleNetworkBodies))
+		http.HandleFunc("/pending-queries", corsMiddleware(capture.HandlePendingQueries))
+		http.HandleFunc("/dom-result", corsMiddleware(capture.HandleDOMResult))
+		http.HandleFunc("/a11y-result", corsMiddleware(capture.HandleA11yResult))
+		http.HandleFunc("/enhanced-actions", corsMiddleware(capture.HandleEnhancedActions))
+		http.HandleFunc("/performance-snapshot", corsMiddleware(capture.HandlePerformanceSnapshot))
+	}
+
+	// MCP over HTTP endpoint
+	mcp := NewToolHandler(server, capture)
+	http.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
+
+	// CI/CD webhook endpoint for push-based alerts
+	if mcp.toolHandler != nil {
+		http.HandleFunc("/ci-result", corsMiddleware(mcp.toolHandler.handleCIWebhook))
+	}
+
+	// Settings endpoint for extension polling (capture overrides)
+	if mcp.toolHandler != nil && mcp.toolHandler.captureOverrides != nil {
+		overrides := mcp.toolHandler.captureOverrides
+		http.HandleFunc("/settings", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != "GET" {
+				jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+				return
+			}
+			resp := buildSettingsResponse(overrides)
+			jsonResponse(w, http.StatusOK, resp)
+		}))
 	}
 
 	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -678,12 +728,36 @@ func setupHTTPRoutes(server *Server, v4 *V4Server) {
 			return
 		}
 
-		jsonResponse(w, http.StatusOK, map[string]interface{}{
-			"status":     "ok",
-			"entries":    server.getEntryCount(),
-			"maxEntries": server.maxEntries,
-			"logFile":    server.logFile,
-		})
+		resp := map[string]interface{}{
+			"status":  "ok",
+			"version": version,
+			"logs": map[string]interface{}{
+				"entries":    server.getEntryCount(),
+				"maxEntries": server.maxEntries,
+				"logFile":    server.logFile,
+			},
+		}
+
+		if capture != nil {
+			health := capture.GetHealthStatus()
+			capture.mu.RLock()
+			resp["buffers"] = map[string]interface{}{
+				"websocket_events": len(capture.wsEvents),
+				"network_bodies":   len(capture.networkBodies),
+				"actions":          len(capture.enhancedActions),
+				"connections":      len(capture.connections),
+			}
+			capture.mu.RUnlock()
+			resp["circuit"] = map[string]interface{}{
+				"open":         health.CircuitOpen,
+				"current_rate": health.CurrentRate,
+				"memory_bytes": health.MemoryBytes,
+				"reason":       health.Reason,
+				"opened_at":    health.OpenedAt,
+			}
+		}
+
+		jsonResponse(w, http.StatusOK, resp)
 	}))
 
 	http.HandleFunc("/logs", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -696,6 +770,7 @@ func setupHTTPRoutes(server *Server, v4 *V4Server) {
 			})
 
 		case "POST":
+			r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 			var body struct {
 				Entries []LogEntry `json:"entries"`
 			}
@@ -710,8 +785,9 @@ func setupHTTPRoutes(server *Server, v4 *V4Server) {
 				return
 			}
 
-			received := server.addEntries(body.Entries)
-			jsonResponse(w, http.StatusOK, map[string]int{"received": received})
+			valid, rejected := validateLogEntries(body.Entries)
+			received := server.addEntries(valid)
+			jsonResponse(w, http.StatusOK, map[string]int{"received": received, "rejected": rejected})
 
 		case "DELETE":
 			server.clearEntries()
@@ -740,7 +816,7 @@ func setupHTTPRoutes(server *Server, v4 *V4Server) {
 
 func printHelp() {
 	fmt.Print(`
-Gasoline - Adding fuel to the AI fire
+Gasoline - Browser observability for AI coding agents
 
 Usage: gasoline [options]
 

@@ -1,28 +1,13 @@
+// @ts-nocheck
 /**
- * @fileoverview Tests for inject script (page capture logic)
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview inject.test.js — Tests for page-level capture (inject.js).
+ * Verifies console interception, fetch/XHR wrapping, error/rejection handlers,
+ * user action recording, context annotations, and the window.__gasoline API.
  */
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
-
-// Mock window and document for browser environment
-const createMockWindow = () => ({
-  postMessage: mock.fn(),
-  addEventListener: mock.fn(),
-  removeEventListener: mock.fn(),
-  location: { href: 'http://localhost:3000/test' },
-  onerror: null,
-  onunhandledrejection: null,
-})
-
-const createMockConsole = () => ({
-  log: mock.fn(),
-  warn: mock.fn(),
-  error: mock.fn(),
-  info: mock.fn(),
-  debug: mock.fn(),
-})
+import { createMockWindow, createMockConsole, createMockDocument } from './helpers.js'
 
 // Store original
 let originalWindow
@@ -32,7 +17,7 @@ describe('Console Capture', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     originalConsole = globalThis.console
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
     globalThis.console = createMockConsole()
   })
 
@@ -55,7 +40,7 @@ describe('Console Capture', () => {
     assert.strictEqual(globalThis.window.postMessage.mock.calls.length, 1)
 
     const [message] = globalThis.window.postMessage.mock.calls[0].arguments
-    assert.strictEqual(message.type, 'DEV_CONSOLE_LOG')
+    assert.strictEqual(message.type, 'GASOLINE_LOG')
     assert.strictEqual(message.payload.level, 'log')
     assert.deepStrictEqual(message.payload.args, ['test message', { data: 123 }])
 
@@ -144,7 +129,7 @@ describe('Console Capture', () => {
 describe('Network Capture', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
   })
 
   afterEach(() => {
@@ -166,7 +151,7 @@ describe('Network Capture', () => {
     const originalFetch = mock.fn(() => Promise.resolve(mockResponse))
     const wrappedFetch = wrapFetch(originalFetch)
 
-    const startTime = Date.now()
+    const _startTime = Date.now()
     await wrappedFetch('http://localhost:8789/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'test@test.com' }),
@@ -176,7 +161,7 @@ describe('Network Capture', () => {
     assert.strictEqual(globalThis.window.postMessage.mock.calls.length, 1)
 
     const [message] = globalThis.window.postMessage.mock.calls[0].arguments
-    assert.strictEqual(message.type, 'DEV_CONSOLE_LOG')
+    assert.strictEqual(message.type, 'GASOLINE_LOG')
     assert.strictEqual(message.payload.type, 'network')
     assert.strictEqual(message.payload.level, 'error')
     assert.strictEqual(message.payload.status, 401)
@@ -296,7 +281,7 @@ describe('Network Capture', () => {
 describe('Exception Capture', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
   })
 
   afterEach(() => {
@@ -312,11 +297,11 @@ describe('Exception Capture', () => {
     globalThis.window.onerror("Cannot read property 'x' of undefined", 'app.js', 42, 15, new Error())
 
     // Wait for async enrichment
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     const calls = globalThis.window.postMessage.mock.calls
     const message = calls[calls.length - 1].arguments[0]
-    assert.strictEqual(message.type, 'DEV_CONSOLE_LOG')
+    assert.strictEqual(message.type, 'GASOLINE_LOG')
     assert.strictEqual(message.payload.type, 'exception')
     assert.strictEqual(message.payload.level, 'error')
     assert.strictEqual(message.payload.message, "Cannot read property 'x' of undefined")
@@ -334,9 +319,7 @@ describe('Exception Capture', () => {
 
     // Get the handler that was registered
     const addListenerCalls = globalThis.window.addEventListener.mock.calls
-    const rejectionHandler = addListenerCalls.find(
-      (call) => call.arguments[0] === 'unhandledrejection'
-    )
+    const rejectionHandler = addListenerCalls.find((call) => call.arguments[0] === 'unhandledrejection')
 
     assert.ok(rejectionHandler, 'Should have registered unhandledrejection handler')
 
@@ -347,7 +330,7 @@ describe('Exception Capture', () => {
     })
 
     // Wait for async enrichment
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     const calls = globalThis.window.postMessage.mock.calls
     const message = calls[calls.length - 1].arguments[0]
@@ -369,7 +352,7 @@ describe('Exception Capture', () => {
     globalThis.window.onerror('Test error', 'app.js', 42, 1, error)
 
     // Wait for async enrichment
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     const calls = globalThis.window.postMessage.mock.calls
     const message = calls[calls.length - 1].arguments[0]
@@ -388,7 +371,7 @@ describe('Exception Capture', () => {
     globalThis.window.onerror('Script error', '', 0, 0, null)
 
     // Wait for async enrichment
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     const calls = globalThis.window.postMessage.mock.calls
     const message = calls[calls.length - 1].arguments[0]
@@ -493,7 +476,7 @@ describe('Context Annotations', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     originalConsole = globalThis.console
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
     globalThis.console = createMockConsole()
   })
 
@@ -503,11 +486,8 @@ describe('Context Annotations', () => {
   })
 
   test('should set and get context annotation', async () => {
-    const {
-      setContextAnnotation,
-      getContextAnnotations,
-      clearContextAnnotations,
-    } = await import('../extension/inject.js')
+    const { setContextAnnotation, getContextAnnotations, clearContextAnnotations } =
+      await import('../extension/inject.js')
 
     clearContextAnnotations()
 
@@ -522,12 +502,8 @@ describe('Context Annotations', () => {
   })
 
   test('should remove context annotation', async () => {
-    const {
-      setContextAnnotation,
-      removeContextAnnotation,
-      getContextAnnotations,
-      clearContextAnnotations,
-    } = await import('../extension/inject.js')
+    const { setContextAnnotation, removeContextAnnotation, getContextAnnotations, clearContextAnnotations } =
+      await import('../extension/inject.js')
 
     clearContextAnnotations()
 
@@ -542,11 +518,8 @@ describe('Context Annotations', () => {
   })
 
   test('should clear all annotations', async () => {
-    const {
-      setContextAnnotation,
-      clearContextAnnotations,
-      getContextAnnotations,
-    } = await import('../extension/inject.js')
+    const { setContextAnnotation, clearContextAnnotations, getContextAnnotations } =
+      await import('../extension/inject.js')
 
     setContextAnnotation('a', 1)
     setContextAnnotation('b', 2)
@@ -586,9 +559,8 @@ describe('Context Annotations', () => {
   })
 
   test('should truncate large values', async () => {
-    const { setContextAnnotation, getContextAnnotations, clearContextAnnotations } = await import(
-      '../extension/inject.js'
-    )
+    const { setContextAnnotation, getContextAnnotations, clearContextAnnotations } =
+      await import('../extension/inject.js')
 
     clearContextAnnotations()
 
@@ -602,12 +574,8 @@ describe('Context Annotations', () => {
   })
 
   test('should include context in error logs', async () => {
-    const {
-      installConsoleCapture,
-      uninstallConsoleCapture,
-      setContextAnnotation,
-      clearContextAnnotations,
-    } = await import('../extension/inject.js')
+    const { installConsoleCapture, uninstallConsoleCapture, setContextAnnotation, clearContextAnnotations } =
+      await import('../extension/inject.js')
 
     clearContextAnnotations()
     setContextAnnotation('checkout', { step: 'payment' })
@@ -625,12 +593,8 @@ describe('Context Annotations', () => {
   })
 
   test('should not include context in non-error logs', async () => {
-    const {
-      installConsoleCapture,
-      uninstallConsoleCapture,
-      setContextAnnotation,
-      clearContextAnnotations,
-    } = await import('../extension/inject.js')
+    const { installConsoleCapture, uninstallConsoleCapture, setContextAnnotation, clearContextAnnotations } =
+      await import('../extension/inject.js')
 
     clearContextAnnotations()
     setContextAnnotation('checkout', { step: 'payment' })
@@ -650,7 +614,7 @@ describe('Context Annotations', () => {
 describe('Gasoline API', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
   })
 
   afterEach(() => {
@@ -683,9 +647,7 @@ describe('Gasoline API', () => {
   })
 
   test('__gasoline.annotate should work', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI, clearContextAnnotations } = await import(
-      '../extension/inject.js'
-    )
+    const { installGasolineAPI, uninstallGasolineAPI, clearContextAnnotations } = await import('../extension/inject.js')
 
     clearContextAnnotations()
     installGasolineAPI()
@@ -701,9 +663,8 @@ describe('Gasoline API', () => {
   })
 
   test('__gasoline.getActions should work', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI, recordAction, clearActionBuffer } = await import(
-      '../extension/inject.js'
-    )
+    const { installGasolineAPI, uninstallGasolineAPI, recordAction, clearActionBuffer } =
+      await import('../extension/inject.js')
 
     clearActionBuffer()
     installGasolineAPI()
@@ -719,9 +680,8 @@ describe('Gasoline API', () => {
   })
 
   test('__gasoline.clearActions should work', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI, recordAction, getActionBuffer } = await import(
-      '../extension/inject.js'
-    )
+    const { installGasolineAPI, uninstallGasolineAPI, recordAction, getActionBuffer } =
+      await import('../extension/inject.js')
 
     installGasolineAPI()
 
@@ -763,12 +723,9 @@ describe('User Action Replay', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     originalConsole = globalThis.console
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
     globalThis.console = createMockConsole()
-    globalThis.document = {
-      addEventListener: mock.fn(),
-      removeEventListener: mock.fn(),
-    }
+    globalThis.document = createMockDocument()
   })
 
   afterEach(() => {
@@ -1033,13 +990,8 @@ describe('User Action Replay', () => {
   })
 
   test('should include actions in error logs', async () => {
-    const {
-      installConsoleCapture,
-      uninstallConsoleCapture,
-      recordAction,
-      clearActionBuffer,
-      setActionCaptureEnabled,
-    } = await import('../extension/inject.js')
+    const { installConsoleCapture, uninstallConsoleCapture, recordAction, clearActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
 
     clearActionBuffer()
     setActionCaptureEnabled(true)
@@ -1062,13 +1014,8 @@ describe('User Action Replay', () => {
   })
 
   test('should not include actions in non-error logs', async () => {
-    const {
-      installConsoleCapture,
-      uninstallConsoleCapture,
-      recordAction,
-      clearActionBuffer,
-      setActionCaptureEnabled,
-    } = await import('../extension/inject.js')
+    const { installConsoleCapture, uninstallConsoleCapture, recordAction, clearActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
 
     clearActionBuffer()
     setActionCaptureEnabled(true)
@@ -1143,12 +1090,8 @@ describe('User Action Replay', () => {
 describe('V5 Wiring: Exception handler enrichment', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
-    globalThis.document = {
-      activeElement: null,
-      addEventListener: mock.fn(),
-      removeEventListener: mock.fn(),
-    }
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
+    globalThis.document = createMockDocument({ activeElement: null })
   })
 
   afterEach(() => {
@@ -1168,7 +1111,7 @@ describe('V5 Wiring: Exception handler enrichment', () => {
     globalThis.window.onerror('TypeError: x is undefined', 'http://localhost:3000/main.js', 10, 5, error)
 
     // enrichErrorWithAiContext is async, wait for it
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     // The posted message should include _aiContext
     const calls = globalThis.window.postMessage.mock.calls
@@ -1176,7 +1119,7 @@ describe('V5 Wiring: Exception handler enrichment', () => {
 
     const lastCall = calls[calls.length - 1]
     const message = lastCall.arguments[0]
-    assert.strictEqual(message.type, 'DEV_CONSOLE_LOG')
+    assert.strictEqual(message.type, 'GASOLINE_LOG')
     assert.strictEqual(message.payload.type, 'exception')
     assert.ok(message.payload._aiContext, 'Should have _aiContext field')
     assert.ok(message.payload._aiContext.summary, 'Should have summary in _aiContext')
@@ -1193,16 +1136,14 @@ describe('V5 Wiring: Exception handler enrichment', () => {
 
     // Get the rejection handler
     const addListenerCalls = globalThis.window.addEventListener.mock.calls
-    const rejectionHandler = addListenerCalls.find(
-      (call) => call.arguments[0] === 'unhandledrejection'
-    )
+    const rejectionHandler = addListenerCalls.find((call) => call.arguments[0] === 'unhandledrejection')
     assert.ok(rejectionHandler)
 
     const handler = rejectionHandler.arguments[1]
     handler({ reason: new Error('Async failure') })
 
     // Wait for async enrichment
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     const calls = globalThis.window.postMessage.mock.calls
     assert.ok(calls.length >= 1)
@@ -1224,7 +1165,7 @@ describe('V5 Wiring: Exception handler enrichment', () => {
     globalThis.window.onerror('Test error', 'app.js', 1, 1, new Error('Test'))
 
     // Wait for async path
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     const calls = globalThis.window.postMessage.mock.calls
     assert.ok(calls.length >= 1)
@@ -1245,11 +1186,8 @@ describe('V5 Wiring: Exception handler enrichment', () => {
 describe('V5 Wiring: Enhanced action recording in handlers', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
-    globalThis.document = {
-      addEventListener: mock.fn(),
-      removeEventListener: mock.fn(),
-    }
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
+    globalThis.document = createMockDocument()
   })
 
   afterEach(() => {
@@ -1374,7 +1312,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     setActionCaptureEnabled(true)
 
     // Wait for scroll throttle to expire (250ms)
-    await new Promise(r => setTimeout(r, 300))
+    await new Promise((r) => setTimeout(r, 300))
 
     globalThis.window.scrollX = 0
     globalThis.window.scrollY = 750
@@ -1386,7 +1324,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     handleScroll(mockEvent)
 
     const enhanced = getEnhancedActionBuffer()
-    const scrollAction = enhanced.find(a => a.type === 'scroll')
+    const scrollAction = enhanced.find((a) => a.type === 'scroll')
     assert.ok(scrollAction, 'handleScroll should record enhanced action')
     assert.strictEqual(scrollAction.scrollY, 750)
     assert.strictEqual(scrollAction.type, 'scroll')
@@ -1406,7 +1344,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
       id: 'search-input',
       className: '',
       textContent: '',
-      getAttribute: (name) => null,
+      getAttribute: (_name) => null,
       hasAttribute: () => false,
       parentElement: null,
       children: [],
@@ -1421,7 +1359,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     handleKeydown(mockEvent)
 
     const enhanced = getEnhancedActionBuffer()
-    const keyAction = enhanced.find(a => a.type === 'keypress')
+    const keyAction = enhanced.find((a) => a.type === 'keypress')
     assert.ok(keyAction, 'keydown handler should record enhanced action')
     assert.strictEqual(keyAction.key, 'Enter')
     assert.ok(keyAction.selectors, 'Should have selectors')
@@ -1454,8 +1392,11 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     handleKeydown({ target: mockElement, key: ' ' })
 
     const enhanced = getEnhancedActionBuffer()
-    assert.strictEqual(enhanced.filter(a => a.type === 'keypress').length, 0,
-      'Regular character keys should not be recorded')
+    assert.strictEqual(
+      enhanced.filter((a) => a.type === 'keypress').length,
+      0,
+      'Regular character keys should not be recorded',
+    )
 
     // Actionable keys SHOULD be recorded
     handleKeydown({ target: mockElement, key: 'Enter' })
@@ -1464,8 +1405,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     handleKeydown({ target: mockElement, key: 'ArrowDown' })
 
     const enhanced2 = getEnhancedActionBuffer()
-    assert.strictEqual(enhanced2.filter(a => a.type === 'keypress').length, 4,
-      'Actionable keys should be recorded')
+    assert.strictEqual(enhanced2.filter((a) => a.type === 'keypress').length, 4, 'Actionable keys should be recorded')
 
     clearEnhancedActionBuffer()
   })
@@ -1483,7 +1423,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
       className: '',
       textContent: '',
       value: 'us',
-      getAttribute: (name) => null,
+      getAttribute: (_name) => null,
       hasAttribute: () => false,
       parentElement: null,
       children: [],
@@ -1498,7 +1438,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     handleChange({ target: mockElement })
 
     const enhanced = getEnhancedActionBuffer()
-    const selectAction = enhanced.find(a => a.type === 'select')
+    const selectAction = enhanced.find((a) => a.type === 'select')
     assert.ok(selectAction, 'change handler on select should record enhanced action')
     assert.strictEqual(selectAction.selectedValue, 'us')
     assert.strictEqual(selectAction.selectedText, 'United States')
@@ -1530,26 +1470,28 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     handleChange({ target: mockElement })
 
     const enhanced = getEnhancedActionBuffer()
-    assert.strictEqual(enhanced.filter(a => a.type === 'select').length, 0,
-      'change handler should not record for non-select elements')
+    assert.strictEqual(
+      enhanced.filter((a) => a.type === 'select').length,
+      0,
+      'change handler should not record for non-select elements',
+    )
 
     clearEnhancedActionBuffer()
   })
 
   test('installActionCapture should register keydown and change listeners', async () => {
-    const { installActionCapture, uninstallActionCapture } =
-      await import('../extension/inject.js')
+    const { installActionCapture, uninstallActionCapture } = await import('../extension/inject.js')
 
     installActionCapture()
 
     // Check document.addEventListener was called with keydown
     const docCalls = globalThis.document.addEventListener.mock.calls
-    const keydownCall = docCalls.find(c => c.arguments[0] === 'keydown')
+    const keydownCall = docCalls.find((c) => c.arguments[0] === 'keydown')
     assert.ok(keydownCall, 'installActionCapture should register keydown listener')
     assert.deepStrictEqual(keydownCall.arguments[2], { capture: true, passive: true })
 
     // Check document.addEventListener was called with change
-    const changeCall = docCalls.find(c => c.arguments[0] === 'change')
+    const changeCall = docCalls.find((c) => c.arguments[0] === 'change')
     assert.ok(changeCall, 'installActionCapture should register change listener')
     assert.deepStrictEqual(changeCall.arguments[2], { capture: true, passive: true })
 
@@ -1564,16 +1506,52 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
 describe('V5 Wiring: Enhanced action postMessage emission', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
-    globalThis.document = {
-      addEventListener: mock.fn(),
-      removeEventListener: mock.fn(),
-      activeElement: null,
-    }
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
+    globalThis.document = createMockDocument({ activeElement: null })
   })
 
   afterEach(() => {
     globalThis.window = originalWindow
+  })
+
+  test('enhanced action payload has spec-compliant base shape', async () => {
+    const { recordEnhancedAction, clearEnhancedActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+    setActionCaptureEnabled(true)
+
+    const mockElement = {
+      tagName: 'BUTTON',
+      id: 'submit',
+      className: 'btn',
+      textContent: 'Submit',
+      innerText: 'Submit',
+      getAttribute: (name) => (name === 'data-testid' ? 'submit-btn' : null),
+      hasAttribute: (name) => name === 'data-testid',
+      parentElement: null,
+      children: [],
+      childNodes: [],
+    }
+
+    recordEnhancedAction('click', mockElement)
+
+    const postCalls = globalThis.window.postMessage.mock.calls
+    const enhancedCall = postCalls.find((c) => c.arguments[0]?.type === 'GASOLINE_ENHANCED_ACTION')
+    assert.ok(enhancedCall, 'Expected GASOLINE_ENHANCED_ACTION message')
+    const payload = enhancedCall.arguments[0].payload
+
+    // Base shape: type, timestamp, url, selectors
+    assert.ok('type' in payload, 'missing: type')
+    assert.ok('timestamp' in payload, 'missing: timestamp')
+    assert.ok('url' in payload, 'missing: url')
+    assert.ok('selectors' in payload, 'missing: selectors')
+    assert.strictEqual(typeof payload.timestamp, 'number')
+
+    // Selectors shape
+    assert.strictEqual(typeof payload.selectors, 'object')
+
+    clearEnhancedActionBuffer()
   })
 
   test('recordEnhancedAction should emit GASOLINE_ENHANCED_ACTION via postMessage', async () => {
@@ -1603,7 +1581,7 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
 
     // Should have posted GASOLINE_ENHANCED_ACTION message
     const postCalls = globalThis.window.postMessage.mock.calls
-    const enhancedCall = postCalls.find(c => c.arguments[0]?.type === 'GASOLINE_ENHANCED_ACTION')
+    const enhancedCall = postCalls.find((c) => c.arguments[0]?.type === 'GASOLINE_ENHANCED_ACTION')
     assert.ok(enhancedCall, 'recordEnhancedAction should emit GASOLINE_ENHANCED_ACTION')
     assert.strictEqual(enhancedCall.arguments[0].payload.type, 'click')
     assert.ok(enhancedCall.arguments[0].payload.selectors, 'Payload should include selectors')
@@ -1639,7 +1617,7 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
     recordEnhancedAction('input', mockElement, { value: 'test@example.com' })
 
     const postCalls = globalThis.window.postMessage.mock.calls
-    const enhancedCall = postCalls.find(c => c.arguments[0]?.type === 'GASOLINE_ENHANCED_ACTION')
+    const enhancedCall = postCalls.find((c) => c.arguments[0]?.type === 'GASOLINE_ENHANCED_ACTION')
     assert.ok(enhancedCall)
     assert.strictEqual(enhancedCall.arguments[0].payload.inputType, 'email')
     assert.strictEqual(enhancedCall.arguments[0].payload.value, 'test@example.com')
@@ -1655,17 +1633,17 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
 describe('V5 Wiring: Navigation event recording', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = {
-      ...createMockWindow(),
-      history: {
-        pushState: mock.fn(),
-        replaceState: mock.fn(),
+    globalThis.window = createMockWindow({
+      href: 'http://localhost:3000/test',
+      withOnerror: true,
+      overrides: {
+        history: {
+          pushState: mock.fn(),
+          replaceState: mock.fn(),
+        },
       },
-    }
-    globalThis.document = {
-      addEventListener: mock.fn(),
-      removeEventListener: mock.fn(),
-    }
+    })
+    globalThis.document = createMockDocument()
   })
 
   afterEach(() => {
@@ -1682,9 +1660,7 @@ describe('V5 Wiring: Navigation event recording', () => {
 
     // Find the popstate handler
     const addListenerCalls = globalThis.window.addEventListener.mock.calls
-    const popstateHandler = addListenerCalls.find(
-      (call) => call.arguments[0] === 'popstate'
-    )
+    const popstateHandler = addListenerCalls.find((call) => call.arguments[0] === 'popstate')
     assert.ok(popstateHandler, 'Should have registered popstate handler')
 
     // Simulate popstate
@@ -1692,7 +1668,7 @@ describe('V5 Wiring: Navigation event recording', () => {
     popstateHandler.arguments[1]({ state: {} })
 
     const enhanced = getEnhancedActionBuffer()
-    const navAction = enhanced.find(a => a.type === 'navigate')
+    const navAction = enhanced.find((a) => a.type === 'navigate')
     assert.ok(navAction, 'Should have navigate action')
     assert.ok(navAction.toUrl, 'Should have toUrl')
 
@@ -1706,7 +1682,7 @@ describe('V5 Wiring: Navigation event recording', () => {
 
     clearEnhancedActionBuffer()
 
-    const originalPushState = globalThis.window.history.pushState
+    const _originalPushState = globalThis.window.history.pushState
 
     installNavigationCapture()
 
@@ -1714,7 +1690,7 @@ describe('V5 Wiring: Navigation event recording', () => {
     globalThis.window.history.pushState({}, '', '/dashboard')
 
     const enhanced = getEnhancedActionBuffer()
-    const navAction = enhanced.find(a => a.type === 'navigate')
+    const navAction = enhanced.find((a) => a.type === 'navigate')
     assert.ok(navAction, 'pushState should trigger navigate action')
     assert.strictEqual(navAction.toUrl, '/dashboard')
 
@@ -1734,7 +1710,7 @@ describe('V5 Wiring: Navigation event recording', () => {
     globalThis.window.history.replaceState({}, '', '/login')
 
     const enhanced = getEnhancedActionBuffer()
-    const navAction = enhanced.find(a => a.type === 'navigate')
+    const navAction = enhanced.find((a) => a.type === 'navigate')
     assert.ok(navAction, 'replaceState should trigger navigate action')
     assert.strictEqual(navAction.toUrl, '/login')
 
@@ -1755,7 +1731,7 @@ describe('V5 Wiring: Navigation event recording', () => {
     globalThis.window.history.pushState({}, '', '/about')
 
     const enhanced = getEnhancedActionBuffer()
-    const navAction = enhanced.find(a => a.type === 'navigate')
+    const navAction = enhanced.find((a) => a.type === 'navigate')
     assert.ok(navAction)
     assert.strictEqual(navAction.fromUrl, 'http://localhost:3000/home')
 

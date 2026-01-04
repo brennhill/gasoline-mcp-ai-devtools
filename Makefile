@@ -1,6 +1,6 @@
 # Gasoline Build Makefile
 
-VERSION := 3.0.0
+VERSION := 4.6.0
 BINARY_NAME := gasoline
 BUILD_DIR := dist
 
@@ -12,7 +12,12 @@ PLATFORMS := \
 	linux-arm64 \
 	windows-amd64
 
-.PHONY: all clean build test $(PLATFORMS)
+.PHONY: all clean build test test-race test-cover test-bench test-fuzz \
+	dev run checksums verify-zero-deps verify-imports verify-size \
+	lint lint-go lint-js format format-fix typecheck check ci \
+	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
+	release-check install-hooks bench-baseline \
+	$(PLATFORMS)
 
 all: clean build
 
@@ -21,6 +26,37 @@ clean:
 
 test:
 	CGO_ENABLED=0 go test -v ./cmd/dev-console/...
+
+test-race:
+	go test -race -v ./cmd/dev-console/...
+
+test-cover:
+	go test -coverprofile=coverage.out ./cmd/dev-console/...
+	@go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//' | \
+		awk '{if ($$1 < 95) {print "FAIL: Coverage " $$1 "% is below 95% threshold"; exit 1} else {print "OK: Coverage " $$1 "%"}}'
+
+test-bench:
+	go test -bench=. -benchmem -count=3 ./cmd/dev-console/...
+
+test-fuzz:
+	go test -fuzz=. -fuzztime=10s ./cmd/dev-console/...
+
+verify-zero-deps:
+	@if grep -q '^require' go.mod; then echo "FAIL: go.mod contains external dependencies"; exit 1; fi
+	@if [ -f go.sum ]; then echo "FAIL: go.sum exists (implies external dependencies)"; exit 1; fi
+	@echo "OK: Zero external dependencies verified"
+
+verify-imports:
+	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' ./cmd/dev-console/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/dev-console/dev-console'); \
+	if [ -n "$$VIOLATIONS" ]; then echo "FAIL: Non-stdlib imports found:"; echo "$$VIOLATIONS"; exit 1; fi
+	@echo "OK: All imports are stdlib or internal"
+
+verify-size:
+	@make dev 2>/dev/null
+	@SIZE=$$(wc -c < dist/gasoline | tr -d ' '); \
+	MAX=15000000; \
+	if [ $$SIZE -gt $$MAX ]; then echo "FAIL: Binary size $${SIZE} bytes exceeds $${MAX} byte limit"; exit 1; \
+	else echo "OK: Binary size $${SIZE} bytes (limit: $${MAX})"; fi
 
 build: $(PLATFORMS)
 
@@ -55,3 +91,121 @@ run:
 # Create checksums
 checksums:
 	cd $(BUILD_DIR) && shasum -a 256 * > checksums.txt
+
+# --- Code Quality ---
+
+lint: lint-go lint-js
+
+lint-go:
+	go vet ./cmd/dev-console/
+	golangci-lint run ./cmd/dev-console/
+
+lint-js:
+	npx eslint extension/ extension-tests/
+
+format:
+	@echo "Checking Go formatting..."
+	@test -z "$$(gofmt -l ./cmd/dev-console/)" || (gofmt -l ./cmd/dev-console/ && exit 1)
+	npx prettier --check .
+
+format-fix:
+	gofmt -w ./cmd/dev-console/
+	npx prettier --write .
+
+typecheck:
+	npx tsc --noEmit
+
+check: lint format typecheck
+
+ci: check test
+	node --test extension-tests/*.test.js
+
+# --- Local CI (mirrors GitHub Actions) ---
+
+ci-local: ci-go ci-js ci-security
+	@echo "All CI checks passed locally"
+
+ci-e2e:
+	cd e2e-tests && npm ci && npx playwright install chromium --with-deps && npx playwright test
+
+extension-zip:
+	@mkdir -p $(BUILD_DIR)
+	@rm -f $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip
+	cd extension && zip -r ../$(BUILD_DIR)/gasoline-extension-v$(VERSION).zip \
+		manifest.json background.js content.js inject.js \
+		popup.html popup.js options.html options.js \
+		icons/ lib/ \
+		-x "*.DS_Store" "package.json"
+	@echo "Built $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip"
+	@ls -lh $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip
+
+release-check: ci-local ci-e2e
+	@echo "All release checks passed (CI + E2E)"
+
+ci-go:
+	go vet ./cmd/dev-console/
+	@command -v govulncheck >/dev/null 2>&1 || { echo "govulncheck not found. Install: go install golang.org/x/vuln/cmd/govulncheck@latest"; exit 1; }
+	govulncheck ./cmd/dev-console/
+	make test-race
+	make test-cover
+	golangci-lint run ./cmd/dev-console/
+	make build
+	make verify-zero-deps
+	make verify-imports
+
+ci-js:
+	npm run lint
+	npm run format
+	npm run typecheck
+	npm run test:ext
+
+ci-security:
+	@command -v gosec >/dev/null 2>&1 || { echo "gosec not found. Install: go install github.com/securego/gosec/v2/cmd/gosec@latest"; exit 1; }
+	gosec -exclude=G104,G114,G204,G301,G304,G306 ./cmd/dev-console/
+
+ci-bench:
+	@command -v benchstat >/dev/null 2>&1 || { echo "benchstat not found. Install: go install golang.org/x/perf/cmd/benchstat@latest"; exit 1; }
+	@test -f benchmarks/baseline.txt || { echo "FAIL: No baseline. Run 'make bench-baseline' first."; exit 1; }
+	go test -bench=. -benchmem -count=6 -run=^$$ ./cmd/dev-console/ > /tmp/gasoline-bench-current.txt
+	benchstat benchmarks/baseline.txt /tmp/gasoline-bench-current.txt
+
+ci-fuzz:
+	go test -fuzz=FuzzPostLogs -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzMCPRequest -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzNetworkBodies -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzWebSocketEvents -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzEnhancedActions -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzValidateLogEntry -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzScreenshotEndpoint -fuzztime=30s ./cmd/dev-console/
+
+bench-baseline:
+	@mkdir -p benchmarks
+	go test -bench=. -benchmem -count=6 -run=^$$ ./cmd/dev-console/ > benchmarks/baseline.txt
+	@echo "Baseline saved to benchmarks/baseline.txt"
+
+install-hooks:
+	@cp scripts/hooks/pre-push .git/hooks/pre-push
+	@chmod +x .git/hooks/pre-push
+	@echo "Git hooks installed."
+
+context-size:
+	@echo "=== Claude Code Initial Context Size ==="
+	@echo ""
+	@total=0; \
+	for f in CLAUDE.md $$(find .claude -name "*.md" -not -path "*commands*" -type f 2>/dev/null); do \
+		chars=$$(wc -c < "$$f"); \
+		tokens=$$((chars / 4)); \
+		total=$$((total + chars)); \
+		printf "%6d tokens  %s\n" "$$tokens" "$$f"; \
+	done; \
+	echo ""; \
+	printf "%6d tokens  TOTAL (always loaded)\n" "$$((total / 4))"; \
+	echo ""; \
+	cmd_total=0; \
+	for f in $$(find .claude/commands -name "*.md" -type f 2>/dev/null); do \
+		chars=$$(wc -c < "$$f"); \
+		cmd_total=$$((cmd_total + chars)); \
+	done; \
+	printf "%6d tokens  Commands (loaded on invoke only)\n" "$$((cmd_total / 4))"; \
+	echo ""; \
+	echo "Budget: <5K lean | 5-15K normal | 15-30K heavy | >30K too large"

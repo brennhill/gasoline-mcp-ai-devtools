@@ -1,0 +1,16 @@
+node_modules/
+dist/
+e2e-tests/
+npm/
+server/
+chrome_store_files/
+docs/
+demo/
+.github/
+*.go
+go.mod
+go.sum
+*.md
+package-lock.json
+cmd/dev-console/testdata/
+.golangci.yml

@@ -1,6 +1,7 @@
 # Build artifacts
 dist/
 /dev-console
+*.test
 *.zip
 
 # Local config
@@ -24,6 +25,19 @@ e2e-tests/.tmp/
 e2e-tests/test-results/
 e2e-tests/playwright-report/
 
-# Claude Code instructions (local only)
-CLAUDE.md
-.claude/
+# Lint/build caches
+.eslintcache
+*.tsbuildinfo
+
+# Agent lock file (advisory, per-machine)
+.agent-locks.json
+
+# Claude Code sessions (ephemeral, not backed up)
+.claude/sessions/
+coverage.out
+
+# Benchmark intermediate files (only latest-benchmark.md is tracked)
+benchmarks/*.txt
+
+# Runtime state
+.gasoline/

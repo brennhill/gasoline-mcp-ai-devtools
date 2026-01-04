@@ -1,7 +1,7 @@
 {
   "name": "gasoline-cli",
-  "version": "3.5.0",
-  "description": "Adding fuel to the AI fire - browser log capture for AI coding assistants",
+  "version": "4.7.0",
+  "description": "Browser observability for AI coding agents - autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
   "keywords": [
     "browser",
     "logs",
