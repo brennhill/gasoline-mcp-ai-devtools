@@ -7,11 +7,11 @@ import (
 )
 
 // ============================================
-// Composite Tool Surface Tests (Phase 1: 24 → 5)
+// Composite Tool Surface Tests
 // ============================================
 
 // TestCompositeToolsListReturnsAllTools verifies that tools/list
-// returns the 5 composite tools plus the 4 v6 tools.
+// returns all composite and security tools.
 func TestCompositeToolsListReturnsAllTools(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -32,23 +32,30 @@ func TestCompositeToolsListReturnsAllTools(t *testing.T) {
 	}
 
 	expected := map[string]bool{
-		"observe":        true,
-		"analyze":        true,
-		"generate":       true,
-		"configure":      true,
-		"query_dom":      true,
-		"generate_csp":   true,
-		"security_audit": true,
-		"get_audit_log":  true,
-		"diff_sessions":  true,
+		"observe":              true,
+		"analyze":              true,
+		"generate":             true,
+		"configure":            true,
+		"query_dom":            true,
+		"generate_csp":         true,
+		"security_audit":       true,
+		"audit_third_parties":  true,
+		"diff_security":        true,
+		"get_audit_log":        true,
+		"diff_sessions":        true,
+		// AI Web Pilot tools
+		"highlight_element":    true,
+		"manage_state":         true,
+		"execute_javascript":   true,
+		"browser_action":       true,
 	}
 
-	if len(result.Tools) != 9 {
+	if len(result.Tools) != 15 {
 		names := make([]string, len(result.Tools))
 		for i, tool := range result.Tools {
 			names[i] = tool.Name
 		}
-		t.Fatalf("Expected exactly 9 tools, got %d: %v", len(result.Tools), names)
+		t.Fatalf("Expected exactly 15 tools, got %d: %v", len(result.Tools), names)
 	}
 
 	for _, tool := range result.Tools {
@@ -949,7 +956,7 @@ func TestLegacyToolNamesRejected(t *testing.T) {
 }
 
 // ============================================
-// Phase 2: _meta Data Counts Tests
+// _meta Data Counts Tests
 // ============================================
 
 // TestToolsListMetaFieldPresent verifies that observe, analyze, and generate
@@ -1138,13 +1145,13 @@ func TestToolsListGoldenMatchesWithMeta(t *testing.T) {
 		JSONRPC: "2.0", ID: 2, Method: "tools/list",
 	})
 
-	// Verify it returns 9 tools with proper structure (5 composite + 4 v6)
+	// Verify it returns 15 tools with proper structure (11 core + 4 pilot tools)
 	var result MCPToolsListResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("Failed to parse tools list: %v", err)
 	}
-	if len(result.Tools) != 9 {
-		t.Fatalf("Expected 9 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 15 {
+		t.Fatalf("Expected 15 tools, got %d", len(result.Tools))
 	}
 
 	// Verify _meta doesn't break standard MCPTool parsing
@@ -1162,7 +1169,7 @@ func TestToolsListGoldenMatchesWithMeta(t *testing.T) {
 }
 
 // ============================================
-// Phase 2 Helpers
+// Meta Helpers
 // ============================================
 
 func extractToolMeta(t *testing.T, resp JSONRPCResponse, toolName string) map[string]interface{} {
@@ -1217,4 +1224,190 @@ func extractMCPText(t *testing.T, resp JSONRPCResponse) string {
 		return ""
 	}
 	return result.Content[0].Text
+}
+
+// ============================================
+// Security & CSP Tool Dispatch Tests
+// ============================================
+
+func TestToolGenerateCSP(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Record some origins
+	mcp.toolHandler.cspGenerator.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
+	mcp.toolHandler.cspGenerator.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/page2")
+	mcp.toolHandler.cspGenerator.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/page3")
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"generate_csp","arguments":{"mode":"moderate"}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	text := extractMCPText(t, resp)
+	if !strings.Contains(text, "csp_header") {
+		t.Error("Expected csp_header in response")
+	}
+	if !strings.Contains(text, "cdn.example.com") {
+		t.Error("Expected cdn.example.com origin in CSP")
+	}
+}
+
+func TestToolSecurityAudit(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	capture.AddNetworkBodies([]NetworkBody{
+		{URL: "https://app.com/api?api_key=supersecretvalue123", ContentType: "application/json", Status: 200},
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"security_audit","arguments":{}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	text := extractMCPText(t, resp)
+	if !strings.Contains(text, "findings") {
+		t.Error("Expected findings in security audit response")
+	}
+}
+
+func TestToolAuditThirdParties(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add network bodies with third-party resources
+	capture.AddNetworkBodies([]NetworkBody{
+		{URL: "https://myapp.com/page", ContentType: "text/html", Status: 200},
+		{URL: "https://cdn.jsdelivr.net/npm/lib.js", ContentType: "application/javascript", Status: 200},
+		{URL: "https://evil.xyz/track.js", ContentType: "application/javascript", Status: 200},
+	})
+
+	// Record page in CSP generator so pageURLs are available
+	mcp.toolHandler.cspGenerator.RecordOrigin("https://myapp.com", "connect", "https://myapp.com/page")
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"audit_third_parties","arguments":{"first_party_origins":["https://myapp.com"]}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	text := extractMCPText(t, resp)
+	if !strings.Contains(text, "third_parties") {
+		t.Error("Expected third_parties in response")
+	}
+}
+
+func TestToolDiffSecuritySnapshot(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add network bodies
+	capture.AddNetworkBodies([]NetworkBody{
+		{URL: "https://app.com/", ContentType: "text/html", Status: 200,
+			ResponseHeaders: map[string]string{
+				"X-Frame-Options": "DENY",
+			}},
+	})
+
+	// Take a snapshot
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"diff_security","arguments":{"action":"snapshot","name":"test1"}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	text := extractMCPText(t, resp)
+	if !strings.Contains(text, "test1") {
+		t.Error("Expected snapshot name in response")
+	}
+}
+
+func TestToolDiffSecurityList(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	capture.AddNetworkBodies([]NetworkBody{
+		{URL: "https://app.com/", ContentType: "text/html", Status: 200},
+	})
+
+	// Take a snapshot first
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"diff_security","arguments":{"action":"snapshot","name":"s1"}}`),
+	})
+
+	// List snapshots
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"diff_security","arguments":{"action":"list"}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	text := extractMCPText(t, resp)
+	if !strings.Contains(text, "s1") {
+		t.Error("Expected snapshot name in list response")
+	}
+}
+
+func TestToolDiffSecurityCompare(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	capture.AddNetworkBodies([]NetworkBody{
+		{URL: "https://app.com/", ContentType: "text/html", Status: 200,
+			ResponseHeaders: map[string]string{"X-Frame-Options": "DENY"}},
+	})
+
+	// Take baseline
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"diff_security","arguments":{"action":"snapshot","name":"before"}}`),
+	})
+
+	// Update bodies (remove header)
+	capture.mu.Lock()
+	capture.networkBodies = []NetworkBody{
+		{URL: "https://app.com/", ContentType: "text/html", Status: 200,
+			ResponseHeaders: map[string]string{}},
+	}
+	capture.mu.Unlock()
+
+	// Compare
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"diff_security","arguments":{"action":"compare","compare_from":"before","compare_to":"current"}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	text := extractMCPText(t, resp)
+	if !strings.Contains(text, "regressions") {
+		t.Error("Expected regressions in compare response")
+	}
 }

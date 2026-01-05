@@ -479,6 +479,57 @@ func (g *CSPGenerator) entryPages(entry *OriginEntry) []string {
 }
 
 // ============================================
+// Network Body Integration
+// ============================================
+
+// RecordOriginFromBody extracts origin and resource type from a NetworkBody
+// and records it in the origin accumulator. Called from the network ingestion path.
+func (g *CSPGenerator) RecordOriginFromBody(body NetworkBody, pageURL string) {
+	origin := extractOriginFromURL(body.URL)
+	if origin == "" {
+		return
+	}
+	resourceType := contentTypeToResourceType(body.ContentType)
+	g.RecordOrigin(origin, resourceType, pageURL)
+}
+
+// extractOriginFromURL extracts scheme://host[:port] from a URL string.
+func extractOriginFromURL(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Host == "" {
+		return ""
+	}
+	return parsed.Scheme + "://" + parsed.Host
+}
+
+// contentTypeToResourceType maps HTTP Content-Type to CSP resource category.
+func contentTypeToResourceType(ct string) string {
+	ct = strings.ToLower(ct)
+
+	// Strip parameters (e.g., "text/html; charset=utf-8" → "text/html")
+	if idx := strings.IndexByte(ct, ';'); idx >= 0 {
+		ct = ct[:idx]
+	}
+	ct = strings.TrimSpace(ct)
+
+	switch {
+	case strings.Contains(ct, "javascript"):
+		return "script"
+	case ct == "text/css":
+		return "style"
+	case strings.HasPrefix(ct, "font/") || strings.Contains(ct, "application/font") || ct == "application/x-font-ttf" || ct == "application/x-font-woff":
+		return "font"
+	case strings.HasPrefix(ct, "image/"):
+		return "img"
+	case strings.HasPrefix(ct, "audio/") || strings.HasPrefix(ct, "video/"):
+		return "media"
+	default:
+		// API calls, JSON, etc. → connect-src
+		return "connect"
+	}
+}
+
+// ============================================
 // MCP Tool Handler
 // ============================================
 

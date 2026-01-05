@@ -1,7 +1,8 @@
 // tools.go — MCP tool definitions, dispatch, and response helpers.
-// Defines 5 composite tools (observe, analyze, generate, configure, query_dom)
-// that replace the original 24 granular tools, reducing AI decision space by 79%.
-// Each tool has a mode parameter that selects the sub-operation.
+// Defines composite tools (observe, analyze, generate, configure, query_dom)
+// plus security tools (generate_csp, security_audit, audit_third_parties,
+// diff_security, get_audit_log, diff_sessions).
+// Each composite tool has a mode parameter that selects the sub-operation.
 // Design: Tool schemas include live data_counts in _meta so the AI knows what
 // data is available before calling. Dispatch is a single switch on tool name +
 // mode parameter, keeping the handler flat and predictable.
@@ -100,11 +101,16 @@ type ToolHandler struct {
 	temporalGraph    *TemporalGraph
 	AlertBuffer      // Embedded alert state for push-based notifications
 
-	// v6 tools
-	cspGenerator    *CSPGenerator
-	securityScanner *SecurityScanner
-	auditTrail      *AuditTrail
-	sessionManager  *SessionManager
+	// Security and observability tools
+	cspGenerator      *CSPGenerator
+	securityScanner   *SecurityScanner
+	thirdPartyAuditor *ThirdPartyAuditor
+	securityDiffMgr   *SecurityDiffManager
+	auditTrail        *AuditTrail
+	sessionManager    *SessionManager
+
+	// Redaction engine for scrubbing sensitive data from tool responses
+	redactionEngine *RedactionEngine
 }
 
 // NewToolHandler creates an MCP handler with composite tool capabilities
@@ -138,9 +144,15 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 		}
 	}
 
-	// Initialize v6 tools
+	// Initialize redaction engine (always active with built-in patterns).
+	// Custom patterns loaded from server.redactionConfigPath if set.
+	handler.redactionEngine = NewRedactionEngine(server.redactionConfigPath)
+
 	handler.cspGenerator = NewCSPGenerator()
+	capture.cspGen = handler.cspGenerator
 	handler.securityScanner = NewSecurityScanner()
+	handler.thirdPartyAuditor = NewThirdPartyAuditor()
+	handler.securityDiffMgr = NewSecurityDiffManager()
 	handler.auditTrail = NewAuditTrail(AuditConfig{MaxEntries: 10000, Enabled: true, RedactParams: true})
 	handler.sessionManager = NewSessionManager(10, &captureStateAdapter{capture: capture, server: server})
 
@@ -289,8 +301,7 @@ func (h *ToolHandler) computeDataCounts() (errorCount, logCount, networkCount, w
 	return
 }
 
-// toolsList returns the list of composite tools (5 tools replacing the 24 granular ones).
-// This design reduces AI decision space by 79%, improving tool selection accuracy.
+// toolsList returns all MCP tool definitions.
 // Each data-dependent tool includes a _meta field with current data_counts.
 func (h *ToolHandler) toolsList() []MCPTool {
 	errorCount, logCount, networkCount, wsEventCount, wsStatusCount, actionCount, vitalCount, apiCount := h.computeDataCounts()
@@ -454,6 +465,18 @@ func (h *ToolHandler) toolsList() []MCPTool {
 					"base_url": map[string]interface{}{
 						"type":        "string",
 						"description": "Replace origin in URLs (applies to reproduction, test)",
+					},
+					"include_screenshots": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Insert page.screenshot() calls at key points (applies to reproduction, default: false)",
+					},
+					"generate_fixtures": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Generate fixtures/api-responses.json from captured network data (applies to reproduction, default: false)",
+					},
+					"visual_assertions": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Add toHaveScreenshot() assertions at key checkpoints (applies to reproduction, default: false)",
 					},
 					"test_name": map[string]interface{}{
 						"type":        "string",
@@ -650,6 +673,70 @@ func (h *ToolHandler) toolsList() []MCPTool {
 			},
 		},
 		{
+			Name:        "audit_third_parties",
+			Description: "Audit third-party origins in captured network traffic. Classifies risk levels (critical/high/medium/low), detects data exfiltration, suspicious domains (DGA, abuse TLDs), and provides recommendations.",
+			Meta: map[string]interface{}{
+				"data_counts": map[string]interface{}{
+					"network_bodies": networkCount,
+				},
+			},
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"first_party_origins": map[string]interface{}{
+						"type":        "array",
+						"description": "Origins to consider first-party (auto-detected from page URLs if omitted)",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+					"include_static": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Include low-risk static-only origins (images, fonts) in results (default: true)",
+					},
+					"custom_lists": map[string]interface{}{
+						"type":        "object",
+						"description": "Custom allowed/blocked/internal domain lists",
+						"properties": map[string]interface{}{
+							"allowed":  map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+							"blocked":  map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+							"internal": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+						},
+					},
+				},
+			},
+		},
+		{
+			Name:        "diff_security",
+			Description: "Detect security regressions by comparing security posture snapshots. Captures headers, cookies, auth, and transport state; compares two snapshots to find regressions and improvements.",
+			Meta: map[string]interface{}{
+				"data_counts": map[string]interface{}{
+					"network_bodies": networkCount,
+				},
+			},
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "Action to perform",
+						"enum":        []string{"snapshot", "compare", "list"},
+					},
+					"name": map[string]interface{}{
+						"type":        "string",
+						"description": "Snapshot name (required for 'snapshot' action)",
+					},
+					"compare_from": map[string]interface{}{
+						"type":        "string",
+						"description": "Baseline snapshot name (required for 'compare' action)",
+					},
+					"compare_to": map[string]interface{}{
+						"type":        "string",
+						"description": "Target snapshot name to compare against (omit to use current live state)",
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
+		{
 			Name:        "get_audit_log",
 			Description: "Query the enterprise audit trail of MCP tool invocations. Returns entries filtered by session, tool name, or time range.",
 			InputSchema: map[string]interface{}{
@@ -705,6 +792,81 @@ func (h *ToolHandler) toolsList() []MCPTool {
 				"required": []string{"action"},
 			},
 		},
+		// AI Web Pilot tools (Phase 1: stubs only)
+		{
+			Name:        "highlight_element",
+			Description: "Highlight a DOM element on the page. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"selector": map[string]interface{}{
+						"type":        "string",
+						"description": "CSS selector for the element to highlight",
+					},
+					"duration_ms": map[string]interface{}{
+						"type":        "number",
+						"description": "How long to show the highlight in milliseconds (default: 5000)",
+					},
+				},
+				"required": []string{"selector"},
+			},
+		},
+		{
+			Name:        "manage_state",
+			Description: "Capture, save, load, list, or delete page state snapshots. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "Action to perform",
+						"enum":        []string{"capture", "save", "load", "list", "delete"},
+					},
+					"snapshot_name": map[string]interface{}{
+						"type":        "string",
+						"description": "Name of the snapshot (required for save, load, delete)",
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
+		{
+			Name:        "execute_javascript",
+			Description: "Execute arbitrary JavaScript in the page context and return the result. Can access DOM, globals, and page state. SECURITY: Requires 'AI Web Pilot' toggle enabled. Only use for debugging on trusted pages.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"script": map[string]interface{}{
+						"type":        "string",
+						"description": "JavaScript code to execute",
+					},
+					"timeout_ms": map[string]interface{}{
+						"type":        "number",
+						"description": "Execution timeout in milliseconds (default: 5000)",
+					},
+				},
+				"required": []string{"script"},
+			},
+		},
+		{
+			Name:        "browser_action",
+			Description: "Perform browser navigation actions: refresh the page, navigate to URL, go back, or go forward. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "Browser action to perform",
+						"enum":        []string{"refresh", "navigate", "back", "forward"},
+					},
+					"url": map[string]interface{}{
+						"type":        "string",
+						"description": "URL to navigate to (required for 'navigate' action)",
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
 	}
 }
 
@@ -725,10 +887,23 @@ func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.
 		return h.toolGenerateCSP(req, args), true
 	case "security_audit":
 		return h.toolSecurityAudit(req, args), true
+	case "audit_third_parties":
+		return h.toolAuditThirdParties(req, args), true
+	case "diff_security":
+		return h.toolDiffSecurity(req, args), true
 	case "get_audit_log":
 		return h.toolGetAuditLog(req, args), true
 	case "diff_sessions":
 		return h.toolDiffSessions(req, args), true
+	// AI Web Pilot tools
+	case "highlight_element":
+		return h.handlePilotHighlight(req, args), true
+	case "manage_state":
+		return h.handlePilotManageState(req, args), true
+	case "execute_javascript":
+		return h.handlePilotExecuteJS(req, args), true
+	case "browser_action":
+		return h.handleBrowserAction(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -1265,6 +1440,46 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 
 func (h *ToolHandler) toolDiffSessions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	result, err := h.sessionManager.HandleTool(args)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(err.Error())}
+	}
+	respJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+}
+
+func (h *ToolHandler) toolAuditThirdParties(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params ThirdPartyParams
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &params)
+	}
+
+	// Extract network bodies from capture
+	h.capture.mu.RLock()
+	bodies := make([]NetworkBody, len(h.capture.networkBodies))
+	copy(bodies, h.capture.networkBodies)
+	h.capture.mu.RUnlock()
+
+	// Extract page URLs from CSP generator
+	h.cspGenerator.mu.RLock()
+	pageURLs := make([]string, 0, len(h.cspGenerator.pages))
+	for u := range h.cspGenerator.pages {
+		pageURLs = append(pageURLs, u)
+	}
+	h.cspGenerator.mu.RUnlock()
+
+	result := h.thirdPartyAuditor.Audit(bodies, pageURLs, params)
+	respJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+}
+
+func (h *ToolHandler) toolDiffSecurity(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	// Extract network bodies from capture
+	h.capture.mu.RLock()
+	bodies := make([]NetworkBody, len(h.capture.networkBodies))
+	copy(bodies, h.capture.networkBodies)
+	h.capture.mu.RUnlock()
+
+	result, err := h.securityDiffMgr.HandleDiffSecurity(args, bodies)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(err.Error())}
 	}

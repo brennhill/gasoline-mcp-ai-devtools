@@ -8,6 +8,18 @@ Full specification: [v6-specification.md](v6-specification.md)
 
 ## Features
 
+### Phase 0: Autonomous Tab Control
+
+- [ ] **0. Tab Targeting (`tab_id` parameter)** — All AI Web Pilot tools accept optional `tab_id` to target specific tabs, enabling autonomous testing without requiring user to stay on the page
+  - Branch: `feature/tab-targeting`
+  - Status: Proposed
+  - Changes:
+    - Add `observe {what: "tabs"}` to list all tabs with IDs, URLs, titles
+    - Add `browser_action {action: "open", url: "..."}` to open new tab, returns `tab_id`
+    - Add optional `tab_id` param to: `execute_javascript`, `highlight_element`, `manage_state`, `browser_action`, `query_dom`
+    - Extension targets specified tab or falls back to active tab
+    - Enables: "Test example.com" workflow where AI opens tab, runs tests, user continues working elsewhere
+
 ### Phase 1: Analysis Layer
 
 - [ ] **1. Security Scanner (`security_audit`)** — Detect exposed credentials, missing auth, PII leaks, insecure transport, missing security headers (incl. CSP analysis), insecure cookies
@@ -165,6 +177,30 @@ Enterprise-readiness features that provide auditability, data governance, and op
   - Branch: `feature/tool-allowlist`
   - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 4.3
   - Status: Specified
+
+### Phase 7: Developer Experience & Self-Testing
+
+Features that improve the development workflow, enable automated testing, and reduce manual verification during UAT.
+
+- [ ] **27. Test Fixture Page** — Built-in HTML test page (`/test-page`) with buttons, forms, WebSocket demo, and error triggers for manual and automated testing
+  - Branch: `feature/test-fixture-page`
+  - Status: Proposed
+
+- [ ] **28. CLI Test Mode (`--test`)** — Run predefined test scenarios (console capture, network capture, action recording) and report pass/fail without browser interaction
+  - Branch: `feature/cli-test-mode`
+  - Status: Proposed
+
+- [ ] **29. Mock Extension Client** — Go package that simulates extension HTTP calls for integration testing without a real browser
+  - Branch: `feature/mock-extension`
+  - Status: Proposed
+
+- [ ] **30. Event Timestamps in Diagnostics** — Add `received_at` timestamps to `/diagnostics` last_events for verifying recency
+  - Branch: `feature/diagnostics-timestamps`
+  - Status: Proposed
+
+- [ ] **31. MCP Test Harness** — Utility to send MCP commands and verify responses from CLI, enabling scripted UAT
+  - Branch: `feature/mcp-test-harness`
+  - Status: Proposed
 
 ## Dependencies
 

@@ -26,6 +26,8 @@ By then, the offending commit is buried under dozens of changes. Gasoline catche
 
 ## <i class="fas fa-chart-line"></i> How Baselines Work
 
+<img src="/assets/images/sparky/features/sparky-magnifying-glass-web.webp" alt="Sparky investigating performance with magnifying glass" style="float: right; width: 140px; margin: 0 0 20px 20px; border-radius: 6px;" />
+
 Gasoline maintains a **running average baseline** for each URL you visit:
 
 1. **First visit** — The snapshot becomes the initial baseline

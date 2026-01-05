@@ -19,6 +19,7 @@ const mockChrome = {
       addListener: mock.fn(),
     },
     sendMessage: mock.fn(() => Promise.resolve()),
+    getManifest: () => ({ version: '5.0.0' }),
   },
   action: {
     setBadgeText: mock.fn(),
@@ -27,6 +28,10 @@ const mockChrome = {
   storage: {
     local: {
       get: mock.fn((keys, callback) => callback({ logLevel: 'error' })),
+      set: mock.fn((data, callback) => callback && callback()),
+    },
+    sync: {
+      get: mock.fn((keys, callback) => callback({})),
       set: mock.fn((data, callback) => callback && callback()),
     },
   },
@@ -999,7 +1004,7 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
-    assert.strictEqual(parsed.version, '4.7.0')
+    assert.strictEqual(parsed.version, '5.0.0')
     assert.ok(Array.isArray(parsed.entries))
   })
 

@@ -37,6 +37,13 @@ func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
 			bodies[i].ResponseBody = bodies[i].ResponseBody[:maxResponseBodySize] //nolint:gosec // G602: i is bounded by range
 			bodies[i].ResponseTruncated = true
 		}
+		// Detect binary format in response body
+		if bodies[i].BinaryFormat == "" && len(bodies[i].ResponseBody) > 0 {
+			if format := DetectBinaryFormat([]byte(bodies[i].ResponseBody)); format != nil {
+				bodies[i].BinaryFormat = format.Name
+				bodies[i].FormatConfidence = format.Confidence
+			}
+		}
 		v.networkBodies = append(v.networkBodies, bodies[i])
 		v.networkAddedAt = append(v.networkAddedAt, now)
 	}
@@ -52,14 +59,26 @@ func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	v.evictNBForMemory()
 
 	// Notify schema inference (non-blocking, separate lock)
-	if v.schemaStore != nil {
+	if v.schemaStore != nil || v.cspGen != nil {
 		bodiesCopy := make([]NetworkBody, len(bodies))
 		copy(bodiesCopy, bodies)
-		go func() {
-			for _, b := range bodiesCopy {
-				v.schemaStore.Observe(b)
-			}
-		}()
+		if v.schemaStore != nil {
+			go func() {
+				for _, b := range bodiesCopy {
+					v.schemaStore.Observe(b)
+				}
+			}()
+		}
+		// Feed CSP origin accumulator (non-blocking, separate lock)
+		if v.cspGen != nil {
+			go func() {
+				for _, b := range bodiesCopy {
+					// Use the request URL's origin as pageURL for non-HTML;
+					// for HTML responses (the page itself), use the request URL
+					v.cspGen.RecordOriginFromBody(b, b.URL)
+				}
+			}()
+		}
 	}
 }
 
@@ -99,7 +118,11 @@ func (v *Capture) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
 	}
 
 	var filtered []NetworkBody
-	for _, b := range v.networkBodies {
+	for i, b := range v.networkBodies {
+		// TTL filtering: skip entries older than TTL
+		if v.TTL > 0 && i < len(v.networkAddedAt) && isExpiredByTTL(v.networkAddedAt[i], v.TTL) {
+			continue
+		}
 		if filter.URLFilter != "" && !strings.Contains(b.URL, filter.URLFilter) {
 			continue
 		}

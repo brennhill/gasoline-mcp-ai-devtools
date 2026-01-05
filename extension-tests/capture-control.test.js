@@ -42,7 +42,7 @@ describe('pollCaptureSettings', () => {
             connected: true,
             capture_overrides: { ws_mode: 'messages', log_level: 'all' },
           }),
-      })
+      }),
     )
 
     const { pollCaptureSettings } = await loadModule()
@@ -56,7 +56,7 @@ describe('pollCaptureSettings', () => {
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ connected: true, capture_overrides: {} }),
-      })
+      }),
     )
 
     const { pollCaptureSettings } = await loadModule()
@@ -79,7 +79,7 @@ describe('pollCaptureSettings', () => {
       Promise.resolve({
         ok: false,
         status: 404,
-      })
+      }),
     )
 
     const { pollCaptureSettings } = await loadModule()

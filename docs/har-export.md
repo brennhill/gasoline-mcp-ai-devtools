@@ -62,7 +62,7 @@ The exported file follows the [HAR 1.2 specification](http://www.softwareishard.
 {
   "log": {
     "version": "1.2",
-    "creator": { "name": "Gasoline", "version": "4.7.0" },
+    "creator": { "name": "Gasoline", "version": "4.8.0" },
     "entries": [
       {
         "startedDateTime": "2024-01-15T10:30:00.000Z",

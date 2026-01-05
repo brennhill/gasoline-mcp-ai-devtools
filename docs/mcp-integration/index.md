@@ -26,7 +26,7 @@ Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io
 
 ## <i class="fas fa-fire"></i> How MCP Mode Works
 
-With `--mcp`, Gasoline runs as a dual-mode server:
+Gasoline runs as a dual-mode server by default:
 
 - <i class="fas fa-server"></i> **HTTP server** — background process for the browser extension
 - <i class="fas fa-exchange-alt"></i> **MCP protocol** — stdio channel for your AI tool
@@ -103,7 +103,7 @@ If port 7890 is occupied:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--mcp", "--port", "7891"]
+      "args": ["gasoline-mcp", "--port", "7891"]
     }
   }
 }
@@ -123,7 +123,7 @@ Add to `~/.continue/config.json`:
         "transport": {
           "type": "stdio",
           "command": "npx",
-          "args": ["gasoline-mcp", "--mcp"]
+          "args": ["gasoline-mcp"]
         }
       }
     ]

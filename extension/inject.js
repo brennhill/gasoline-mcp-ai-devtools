@@ -12,31 +12,169 @@
 
 // Re-exports (barrel pattern — tests and consumers import from inject.js)
 export { safeSerialize, getElementSelector, isSensitiveInput } from './lib/serialize.js'
-export { getContextAnnotations, setContextAnnotation, removeContextAnnotation, clearContextAnnotations } from './lib/context.js'
-export { getImplicitRole, isDynamicClass, computeCssPath, computeSelectors, recordEnhancedAction, getEnhancedActionBuffer, clearEnhancedActionBuffer, generatePlaywrightScript } from './lib/reproduction.js'
-export { recordAction, getActionBuffer, clearActionBuffer, handleClick, handleInput, handleScroll, handleKeydown, handleChange, installActionCapture, uninstallActionCapture, setActionCaptureEnabled, installNavigationCapture, uninstallNavigationCapture } from './lib/actions.js'
-export { parseResourceTiming, getNetworkWaterfall, trackPendingRequest, completePendingRequest, getPendingRequests, clearPendingRequests, getNetworkWaterfallForError, setNetworkWaterfallEnabled, isNetworkWaterfallEnabled, setNetworkBodyCaptureEnabled, isNetworkBodyCaptureEnabled, shouldCaptureUrl, sanitizeHeaders, truncateRequestBody, truncateResponseBody, readResponseBody, readResponseBodyWithTimeout, wrapFetchWithBodies } from './lib/network.js'
-export { getPerformanceMarks, getPerformanceMeasures, getCapturedMarks, getCapturedMeasures, installPerformanceCapture, uninstallPerformanceCapture, isPerformanceCaptureActive, getPerformanceSnapshotForError, setPerformanceMarksEnabled, isPerformanceMarksEnabled } from './lib/performance.js'
+export {
+  getContextAnnotations,
+  setContextAnnotation,
+  removeContextAnnotation,
+  clearContextAnnotations,
+} from './lib/context.js'
+export {
+  getImplicitRole,
+  isDynamicClass,
+  computeCssPath,
+  computeSelectors,
+  recordEnhancedAction,
+  getEnhancedActionBuffer,
+  clearEnhancedActionBuffer,
+  generatePlaywrightScript,
+} from './lib/reproduction.js'
+export {
+  recordAction,
+  getActionBuffer,
+  clearActionBuffer,
+  handleClick,
+  handleInput,
+  handleScroll,
+  handleKeydown,
+  handleChange,
+  installActionCapture,
+  uninstallActionCapture,
+  setActionCaptureEnabled,
+  installNavigationCapture,
+  uninstallNavigationCapture,
+} from './lib/actions.js'
+export {
+  parseResourceTiming,
+  getNetworkWaterfall,
+  trackPendingRequest,
+  completePendingRequest,
+  getPendingRequests,
+  clearPendingRequests,
+  getNetworkWaterfallForError,
+  setNetworkWaterfallEnabled,
+  isNetworkWaterfallEnabled,
+  setNetworkBodyCaptureEnabled,
+  isNetworkBodyCaptureEnabled,
+  shouldCaptureUrl,
+  sanitizeHeaders,
+  truncateRequestBody,
+  truncateResponseBody,
+  readResponseBody,
+  readResponseBodyWithTimeout,
+  wrapFetchWithBodies,
+} from './lib/network.js'
+export {
+  getPerformanceMarks,
+  getPerformanceMeasures,
+  getCapturedMarks,
+  getCapturedMeasures,
+  installPerformanceCapture,
+  uninstallPerformanceCapture,
+  isPerformanceCaptureActive,
+  getPerformanceSnapshotForError,
+  setPerformanceMarksEnabled,
+  isPerformanceMarksEnabled,
+} from './lib/performance.js'
 export { postLog } from './lib/bridge.js'
 export { installConsoleCapture, uninstallConsoleCapture } from './lib/console.js'
-export { parseStackFrames, parseSourceMap, extractSnippet, extractSourceSnippets, detectFramework, getReactComponentAncestry, captureStateSnapshot, generateAiSummary, enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot, setSourceMapCache, getSourceMapCache, getSourceMapCacheSize } from './lib/ai-context.js'
+export {
+  parseStackFrames,
+  parseSourceMap,
+  extractSnippet,
+  extractSourceSnippets,
+  detectFramework,
+  getReactComponentAncestry,
+  captureStateSnapshot,
+  generateAiSummary,
+  enrichErrorWithAiContext,
+  setAiContextEnabled,
+  setAiContextStateSnapshot,
+  setSourceMapCache,
+  getSourceMapCache,
+  getSourceMapCacheSize,
+} from './lib/ai-context.js'
 export { installExceptionCapture, uninstallExceptionCapture } from './lib/exceptions.js'
-export { getSize, formatPayload, truncateWsMessage, createConnectionTracker, installWebSocketCapture, setWebSocketCaptureMode, setWebSocketCaptureEnabled, getWebSocketCaptureMode, uninstallWebSocketCapture } from './lib/websocket.js'
-export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from './lib/dom-queries.js'
-export { mapInitiatorType, aggregateResourceTiming, capturePerformanceSnapshot, installPerfObservers, uninstallPerfObservers, getLongTaskMetrics, getFCP, getLCP, getCLS, getINP, sendPerformanceSnapshot, isPerformanceSnapshotEnabled, setPerformanceSnapshotEnabled } from './lib/perf-snapshot.js'
+export {
+  getSize,
+  formatPayload,
+  truncateWsMessage,
+  createConnectionTracker,
+  installWebSocketCapture,
+  setWebSocketCaptureMode,
+  setWebSocketCaptureEnabled,
+  getWebSocketCaptureMode,
+  uninstallWebSocketCapture,
+} from './lib/websocket.js'
+export {
+  executeDOMQuery,
+  getPageInfo,
+  runAxeAudit,
+  runAxeAuditWithTimeout,
+  formatAxeResults,
+} from './lib/dom-queries.js'
+export {
+  mapInitiatorType,
+  aggregateResourceTiming,
+  capturePerformanceSnapshot,
+  installPerfObservers,
+  uninstallPerfObservers,
+  getLongTaskMetrics,
+  getFCP,
+  getLCP,
+  getCLS,
+  getINP,
+  sendPerformanceSnapshot,
+  isPerformanceSnapshotEnabled,
+  setPerformanceSnapshotEnabled,
+} from './lib/perf-snapshot.js'
 
 // Imports used directly in this file's orchestration code
-import { getContextAnnotations, setContextAnnotation, removeContextAnnotation, clearContextAnnotations } from './lib/context.js'
-import { computeSelectors, recordEnhancedAction, getEnhancedActionBuffer, clearEnhancedActionBuffer, generatePlaywrightScript } from './lib/reproduction.js'
-import { getActionBuffer, clearActionBuffer, installActionCapture, uninstallActionCapture, setActionCaptureEnabled, installNavigationCapture, uninstallNavigationCapture } from './lib/actions.js'
+import {
+  getContextAnnotations,
+  setContextAnnotation,
+  removeContextAnnotation,
+  clearContextAnnotations,
+} from './lib/context.js'
+import {
+  computeSelectors,
+  recordEnhancedAction,
+  getEnhancedActionBuffer,
+  clearEnhancedActionBuffer,
+  generatePlaywrightScript,
+} from './lib/reproduction.js'
+import {
+  getActionBuffer,
+  clearActionBuffer,
+  installActionCapture,
+  uninstallActionCapture,
+  setActionCaptureEnabled,
+  installNavigationCapture,
+  uninstallNavigationCapture,
+} from './lib/actions.js'
 import { getNetworkWaterfall, setNetworkWaterfallEnabled, setNetworkBodyCaptureEnabled } from './lib/network.js'
-import { getPerformanceMarks, getPerformanceMeasures, installPerformanceCapture, uninstallPerformanceCapture, setPerformanceMarksEnabled } from './lib/performance.js'
+import {
+  getPerformanceMarks,
+  getPerformanceMeasures,
+  installPerformanceCapture,
+  uninstallPerformanceCapture,
+  setPerformanceMarksEnabled,
+} from './lib/performance.js'
 import { postLog } from './lib/bridge.js'
 import { installConsoleCapture, uninstallConsoleCapture } from './lib/console.js'
 import { enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot } from './lib/ai-context.js'
 import { installExceptionCapture, uninstallExceptionCapture } from './lib/exceptions.js'
-import { installWebSocketCapture, setWebSocketCaptureMode, setWebSocketCaptureEnabled, uninstallWebSocketCapture } from './lib/websocket.js'
-import { installPerfObservers, uninstallPerfObservers, sendPerformanceSnapshot, setPerformanceSnapshotEnabled } from './lib/perf-snapshot.js'
+import {
+  installWebSocketCapture,
+  setWebSocketCaptureMode,
+  setWebSocketCaptureEnabled,
+  uninstallWebSocketCapture,
+} from './lib/websocket.js'
+import {
+  installPerfObservers,
+  uninstallPerfObservers,
+  sendPerformanceSnapshot,
+  setPerformanceSnapshotEnabled,
+} from './lib/perf-snapshot.js'
 
 // Constants used by wrapFetch (still in this file)
 const MAX_RESPONSE_LENGTH = 5120 // 5KB
@@ -48,13 +186,11 @@ export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES } from './lib/constants.
 // Store original methods
 let originalFetch = null
 
-
 // Interception deferral state (Phase 1/Phase 2 split)
 let deferralEnabled = true // Default: defer heavy interceptors
 let phase2Installed = false // Whether Phase 2 (heavy interceptors) has fired
 let injectionTimestamp = 0 // performance.now() at Phase 1
 let phase2Timestamp = 0 // performance.now() at Phase 2
-
 
 /**
  * Wrap fetch to capture network errors
@@ -350,7 +486,7 @@ export function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: '4.7.0',
+    version: '5.0.0',
   }
 }
 
@@ -364,6 +500,164 @@ export function uninstallGasolineAPI() {
 }
 
 // =============================================================================
+// AI WEB PILOT: EXECUTE JAVASCRIPT
+// =============================================================================
+
+/**
+ * Safe serialization for complex objects returned from executeJavaScript.
+ * Handles circular references, DOM nodes, functions, and large objects.
+ * @param {any} value - Value to serialize
+ * @param {number} depth - Current recursion depth
+ * @param {WeakSet} seen - Set of already-seen objects for circular detection
+ * @returns {any} Serialized value
+ */
+export function safeSerializeForExecute(value, depth = 0, seen = new WeakSet()) {
+  if (depth > 10) return '[max depth exceeded]'
+  if (value === null) return null
+  if (value === undefined) return undefined
+
+  const type = typeof value
+  if (type === 'string' || type === 'number' || type === 'boolean') {
+    return value
+  }
+
+  if (type === 'function') {
+    return `[Function: ${value.name || 'anonymous'}]`
+  }
+
+  if (type === 'symbol') {
+    return value.toString()
+  }
+
+  if (type === 'object') {
+    if (seen.has(value)) return '[Circular]'
+    seen.add(value)
+
+    if (Array.isArray(value)) {
+      return value.slice(0, 100).map((v) => safeSerializeForExecute(v, depth + 1, seen))
+    }
+
+    if (value instanceof Error) {
+      return { error: value.message, stack: value.stack }
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString()
+    }
+
+    if (value instanceof RegExp) {
+      return value.toString()
+    }
+
+    // DOM nodes
+    if (typeof Node !== 'undefined' && value instanceof Node) {
+      return `[${value.nodeName}${value.id ? '#' + value.id : ''}]`
+    }
+
+    // Plain objects
+    const result = {}
+    const keys = Object.keys(value).slice(0, 50)
+    for (const key of keys) {
+      try {
+        result[key] = safeSerializeForExecute(value[key], depth + 1, seen)
+      } catch {
+        result[key] = '[unserializable]'
+      }
+    }
+    if (Object.keys(value).length > 50) {
+      result['...'] = `[${Object.keys(value).length - 50} more keys]`
+    }
+    return result
+  }
+
+  return String(value)
+}
+
+/**
+ * Execute arbitrary JavaScript in the page context with timeout handling.
+ * Used by the AI Web Pilot execute_javascript tool.
+ * @param {string} script - JavaScript expression to evaluate
+ * @param {number} timeoutMs - Timeout in milliseconds (default 5000)
+ * @returns {Promise<Object>} Result with success/result or error details
+ */
+export function executeJavaScript(script, timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      resolve({
+        success: false,
+        error: 'execution_timeout',
+        message: `Script exceeded ${timeoutMs}ms timeout`,
+      })
+    }, timeoutMs)
+
+    try {
+      // Use Function constructor to execute in global scope
+      // This runs in page context (inject.js), not extension context
+      let cleanScript = script.trim()
+
+      // Detect if this is a multi-statement script (contains semicolons or already has return)
+      const hasMultipleStatements = cleanScript.includes(';')
+      const hasExplicitReturn = /\breturn\b/.test(cleanScript)
+
+      let fnBody
+      if (hasMultipleStatements || hasExplicitReturn) {
+        // Multi-statement or explicit return: use script as-is
+        // User must provide their own return statement
+        fnBody = `"use strict"; ${cleanScript}`
+      } else {
+        // Single expression: wrap in return
+        fnBody = `"use strict"; return (${cleanScript});`
+      }
+
+      const fn = new Function(fnBody)
+
+      const result = fn()
+
+      // Handle promises - keep timeout active until promise settles
+      if (result && typeof result.then === 'function') {
+        result
+          .then((value) => {
+            clearTimeout(timeoutId)
+            resolve({ success: true, result: safeSerializeForExecute(value) })
+          })
+          .catch((err) => {
+            clearTimeout(timeoutId)
+            resolve({
+              success: false,
+              error: 'promise_rejected',
+              message: err.message,
+              stack: err.stack,
+            })
+          })
+      } else {
+        // Synchronous result - clear timeout immediately
+        clearTimeout(timeoutId)
+        resolve({ success: true, result: safeSerializeForExecute(result) })
+      }
+    } catch (err) {
+      clearTimeout(timeoutId)
+
+      // Detect CSP blocking eval
+      if (err.message && (err.message.includes('Content Security Policy') || err.message.includes('unsafe-eval'))) {
+        resolve({
+          success: false,
+          error: 'csp_blocked',
+          message: 'This page has a Content Security Policy that blocks script execution. Try on a different page (e.g., localhost, about:blank, or a page without strict CSP).',
+          original_error: err.message,
+        })
+      } else {
+        resolve({
+          success: false,
+          error: 'execution_error',
+          message: err.message,
+          stack: err.stack,
+        })
+      }
+    }
+  })
+}
+
+// =============================================================================
 // LIFECYCLE & MEMORY
 // =============================================================================
 
@@ -371,20 +665,12 @@ const MEMORY_SOFT_LIMIT_MB = 20
 const MEMORY_HARD_LIMIT_MB = 50
 
 /**
- * Check if v4 intercepts should be deferred until page load
+ * Check if heavy intercepts should be deferred until page load
  * @returns {boolean} True if page is still loading
  */
-export function shouldDeferV4Intercepts() {
+export function shouldDeferIntercepts() {
   if (typeof document === 'undefined') return false
   return document.readyState === 'loading'
-}
-
-/**
- * Check if v3 intercepts should be deferred (never)
- * @returns {boolean} Always false - v3 installs immediately
- */
-export function shouldDeferV3Intercepts() {
-  return false
 }
 
 /**
@@ -408,7 +694,6 @@ export function checkMemoryPressure(state) {
 
   return result
 }
-
 
 // Listen for settings changes from content script
 if (typeof window !== 'undefined') {
@@ -454,6 +739,51 @@ if (typeof window !== 'undefined') {
           setNetworkBodyCaptureEnabled(event.data.enabled)
           break
       }
+    }
+
+    // Handle state management commands from content script
+    if (event.data?.type === 'GASOLINE_STATE_COMMAND') {
+      const { messageId, action } = event.data
+      let result
+
+      try {
+        if (action === 'capture') {
+          result = captureState()
+        } else if (action === 'restore') {
+          const state = event.data.state
+          const includeUrl = event.data.include_url !== false
+          result = restoreState(state, includeUrl)
+        } else {
+          result = { error: `Unknown action: ${action}` }
+        }
+      } catch (err) {
+        result = { error: err.message }
+      }
+
+      // Send response back to content script
+      window.postMessage(
+        {
+          type: 'GASOLINE_STATE_RESPONSE',
+          messageId,
+          result,
+        },
+        '*',
+      )
+    }
+
+    // Handle GASOLINE_EXECUTE_JS from content script
+    if (event.data?.type === 'GASOLINE_EXECUTE_JS') {
+      const { requestId, script, timeoutMs } = event.data
+      executeJavaScript(script, timeoutMs).then((result) => {
+        window.postMessage(
+          {
+            type: 'GASOLINE_EXECUTE_JS_RESULT',
+            requestId,
+            result,
+          },
+          '*',
+        )
+      })
     }
   })
 }
@@ -537,6 +867,196 @@ export function getDeferralState() {
  */
 export function setDeferralEnabled(enabled) {
   deferralEnabled = enabled
+}
+
+// ============================================================================
+// AI WEB PILOT: HIGHLIGHT
+// ============================================================================
+
+let gasolineHighlighter = null
+
+/**
+ * Highlight a DOM element by injecting a red overlay div.
+ * @param {string} selector - CSS selector for the element to highlight
+ * @param {number} durationMs - How long to show the highlight (default 5000ms)
+ * @returns {Object} Result with success, bounds, or error
+ */
+export function highlightElement(selector, durationMs = 5000) {
+  // Remove existing highlight
+  if (gasolineHighlighter) {
+    gasolineHighlighter.remove()
+    gasolineHighlighter = null
+  }
+
+  const element = document.querySelector(selector)
+  if (!element) {
+    return { success: false, error: 'element_not_found', selector }
+  }
+
+  const rect = element.getBoundingClientRect()
+
+  gasolineHighlighter = document.createElement('div')
+  gasolineHighlighter.id = 'gasoline-highlighter'
+  gasolineHighlighter.dataset.selector = selector
+  Object.assign(gasolineHighlighter.style, {
+    position: 'fixed',
+    top: `${rect.top}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    border: '4px solid red',
+    borderRadius: '4px',
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    zIndex: '2147483647',
+    pointerEvents: 'none',
+    boxSizing: 'border-box',
+  })
+
+  document.body.appendChild(gasolineHighlighter)
+
+  setTimeout(() => {
+    if (gasolineHighlighter) {
+      gasolineHighlighter.remove()
+      gasolineHighlighter = null
+    }
+  }, durationMs)
+
+  return {
+    success: true,
+    selector,
+    bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+  }
+}
+
+/**
+ * Clear any existing highlight
+ */
+export function clearHighlight() {
+  if (gasolineHighlighter) {
+    gasolineHighlighter.remove()
+    gasolineHighlighter = null
+  }
+}
+
+// Handle scroll — update highlight position
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (gasolineHighlighter) {
+        const selector = gasolineHighlighter.dataset.selector
+        if (selector) {
+          const el = document.querySelector(selector)
+          if (el) {
+            const rect = el.getBoundingClientRect()
+            gasolineHighlighter.style.top = `${rect.top}px`
+            gasolineHighlighter.style.left = `${rect.left}px`
+          }
+        }
+      }
+    },
+    { passive: true },
+  )
+}
+
+// Handle GASOLINE_HIGHLIGHT_REQUEST messages from content script
+if (typeof window !== 'undefined') {
+  window.addEventListener('message', (event) => {
+    if (event.source !== window) return
+    if (event.data?.type === 'GASOLINE_HIGHLIGHT_REQUEST') {
+      const { selector, duration_ms } = event.data.params || {}
+      const result = highlightElement(selector, duration_ms)
+      // Post result back to content script
+      window.postMessage(
+        {
+          type: 'GASOLINE_HIGHLIGHT_RESPONSE',
+          result,
+        },
+        '*',
+      )
+    }
+  })
+}
+
+// ============================================================================
+// AI WEB PILOT: STATE MANAGEMENT
+// ============================================================================
+
+/**
+ * Capture browser state (localStorage, sessionStorage, cookies).
+ * Returns a snapshot that can be restored later.
+ * @returns {Object} State snapshot with url, timestamp, localStorage, sessionStorage, cookies
+ */
+export function captureState() {
+  const state = {
+    url: window.location.href,
+    timestamp: Date.now(),
+    localStorage: {},
+    sessionStorage: {},
+    cookies: document.cookie,
+  }
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    state.localStorage[key] = localStorage.getItem(key)
+  }
+
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i)
+    state.sessionStorage[key] = sessionStorage.getItem(key)
+  }
+
+  return state
+}
+
+/**
+ * Restore browser state from a snapshot.
+ * Clears existing state before restoring.
+ * @param {Object} state - State snapshot from captureState()
+ * @param {boolean} includeUrl - Whether to navigate to the saved URL (default true)
+ * @returns {Object} Result with success and restored counts
+ */
+export function restoreState(state, includeUrl = true) {
+  // Clear existing
+  localStorage.clear()
+  sessionStorage.clear()
+
+  // Restore localStorage
+  for (const [key, value] of Object.entries(state.localStorage || {})) {
+    localStorage.setItem(key, value)
+  }
+
+  // Restore sessionStorage
+  for (const [key, value] of Object.entries(state.sessionStorage || {})) {
+    sessionStorage.setItem(key, value)
+  }
+
+  // Restore cookies (clear then set)
+  document.cookie.split(';').forEach((c) => {
+    const name = c.split('=')[0].trim()
+    if (name) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+    }
+  })
+
+  if (state.cookies) {
+    state.cookies.split(';').forEach((c) => {
+      document.cookie = c.trim()
+    })
+  }
+
+  const restored = {
+    localStorage: Object.keys(state.localStorage || {}).length,
+    sessionStorage: Object.keys(state.sessionStorage || {}).length,
+    cookies: (state.cookies || '').split(';').filter((c) => c.trim()).length,
+  }
+
+  // Navigate if requested
+  if (includeUrl && state.url && state.url !== window.location.href) {
+    window.location.href = state.url
+  }
+
+  return { success: true, restored }
 }
 
 // Auto-install when loaded in browser

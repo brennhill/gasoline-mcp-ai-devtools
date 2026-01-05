@@ -5,25 +5,36 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
+
+// version is set at build time via -ldflags "-X main.version=..."
+// Fallback used for `go run` and `make dev` (no ldflags).
+var version = "5.0.0"
+
+// startTime tracks when the server started for uptime calculation
+var startTime = time.Now()
 
 const (
 	defaultPort       = 7890
 	defaultMaxEntries = 1000
-	version           = "4.7.0"
 )
 
 // LogEntry represents a single log entry
@@ -173,6 +184,10 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 
 	if h.toolHandler != nil {
 		if resp, handled := h.toolHandler.handleToolCall(req, params.Name, params.Arguments); handled {
+			// Apply redaction to tool response before returning to AI client
+			if h.toolHandler.redactionEngine != nil && resp.Result != nil {
+				resp.Result = h.toolHandler.redactionEngine.RedactJSON(resp.Result)
+			}
 			return resp
 		}
 	}
@@ -196,6 +211,8 @@ type Server struct {
 	mu            sync.RWMutex
 	logTotalAdded int64 // monotonic counter of total entries ever added
 	onEntries     func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
+	TTL                 time.Duration // TTL for read-time filtering (0 means unlimited)
+	redactionConfigPath string        // path to redaction config JSON file (optional)
 }
 
 // NewServer creates a new server instance
@@ -511,7 +528,7 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Gasoline-Key")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusNoContent)
@@ -532,6 +549,49 @@ func jsonResponse(w http.ResponseWriter, status int, data interface{}) {
 }
 
 func main() {
+	// Install panic recovery with diagnostic logging
+	defer func() {
+		if r := recover(); r != nil {
+			// Get stack trace
+			stack := make([]byte, 4096)
+			n := runtime.Stack(stack, false)
+			stack = stack[:n]
+
+			// Log to stderr
+			fmt.Fprintf(os.Stderr, "\n[gasoline] FATAL PANIC: %v\n", r)
+			fmt.Fprintf(os.Stderr, "[gasoline] Stack trace:\n%s\n", stack)
+
+			// Try to log to file
+			home, _ := os.UserHomeDir()
+			logFile := filepath.Join(home, "gasoline-logs.jsonl")
+			entry := map[string]interface{}{
+				"type":       "lifecycle",
+				"event":      "crash",
+				"reason":     fmt.Sprintf("%v", r),
+				"stack":      string(stack),
+				"timestamp":  time.Now().UTC().Format(time.RFC3339),
+				"go_version": runtime.Version(),
+				"os":         runtime.GOOS,
+				"arch":       runtime.GOARCH,
+			}
+			if data, err := json.Marshal(entry); err == nil {
+				if f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644); err == nil {
+					f.Write(append(data, '\n'))
+					f.Close()
+				}
+			}
+
+			// Also write to a dedicated crash file for easy discovery
+			crashFile := filepath.Join(home, "gasoline-crash.log")
+			crashContent := fmt.Sprintf("GASOLINE CRASH at %s\nPanic: %v\nStack:\n%s\n",
+				time.Now().Format(time.RFC3339), r, stack)
+			os.WriteFile(crashFile, []byte(crashContent), 0644)
+
+			fmt.Fprintf(os.Stderr, "[gasoline] Crash details written to: %s\n", crashFile)
+			os.Exit(1)
+		}
+	}()
+
 	// Parse flags
 	port := flag.Int("port", defaultPort, "Port to listen on")
 	logFile := flag.String("log-file", "", "Path to log file (default: ~/gasoline-logs.jsonl)")
@@ -539,6 +599,7 @@ func main() {
 	showVersion := flag.Bool("version", false, "Show version")
 	showHelp := flag.Bool("help", false, "Show help")
 	serverOnly := flag.Bool("server", false, "Run in HTTP-only mode (no MCP)")
+	apiKey := flag.String("api-key", "", "API key for HTTP authentication (optional)")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 
 	flag.Parse()
@@ -577,11 +638,27 @@ func main() {
 	if !*serverOnly {
 		stat, _ := os.Stdin.Stat()
 		isTTY := (stat.Mode() & os.ModeCharDevice) != 0
+		stdinMode := stat.Mode()
+
+		// Log mode detection for diagnostics
+		_ = server.appendToFile([]LogEntry{{
+			"type":       "lifecycle",
+			"event":      "mode_detection",
+			"is_tty":     isTTY,
+			"stdin_mode": fmt.Sprintf("%v", stdinMode),
+			"server_flag": *serverOnly,
+			"pid":        os.Getpid(),
+			"timestamp":  time.Now().UTC().Format(time.RFC3339),
+		}})
 
 		if isTTY {
 			// User ran "gasoline" directly - start server as background process
 			exe, _ := os.Executable()
-			cmd := exec.Command(exe, "--server", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)) //nolint:gosec,noctx // G204: exe is our own binary path; no context needed for daemon fork
+			args := []string{"--server", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)}
+			if *apiKey != "" {
+				args = append(args, "--api-key", *apiKey)
+			}
+			cmd := exec.Command(exe, args...) //nolint:gosec,noctx // G204: exe is our own binary path; no context needed for daemon fork
 			cmd.Stdout = nil
 			cmd.Stderr = nil
 			cmd.Stdin = nil
@@ -595,10 +672,21 @@ func main() {
 			os.Exit(0)
 		}
 
-		// stdin is piped → MCP mode
-		runMCPMode(server, *port)
+		// stdin is piped → MCP mode (will shut down when stdin closes)
+		fmt.Fprintf(os.Stderr, "[gasoline] Starting in MCP mode (stdin is pipe, will exit when MCP client disconnects)\n")
+		runMCPMode(server, *port, *apiKey)
 		return
 	}
+
+	// Log that we're starting in server-only mode
+	_ = server.appendToFile([]LogEntry{{
+		"type":      "lifecycle",
+		"event":     "mode_detection",
+		"mode":      "http_only",
+		"server_flag": true,
+		"pid":       os.Getpid(),
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}})
 
 	// HTTP-only server mode (--server)
 	// Setup routes
@@ -607,7 +695,7 @@ func main() {
 
 	// Print banner
 	fmt.Println()
-	fmt.Printf("  Gasoline v%s\n", version)
+	fmt.Printf("  Gasoline v%s (pid %d)\n", version, os.Getpid())
 	fmt.Println("  Browser observability for AI coding agents")
 	fmt.Println()
 	fmt.Printf("  Server:  http://127.0.0.1:%d\n", *port)
@@ -617,6 +705,21 @@ func main() {
 	fmt.Println("  Ready. Press Ctrl+C to stop.")
 	fmt.Println()
 
+	// Log startup
+	_ = server.appendToFile([]LogEntry{{
+		"type":      "lifecycle",
+		"event":     "startup",
+		"mode":      "http_only",
+		"version":   version,
+		"port":      *port,
+		"pid":       os.Getpid(),
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}})
+
+	// Setup graceful shutdown on signals
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+
 	// Start server (localhost only for security)
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
 	srv := &http.Server{
@@ -624,9 +727,43 @@ func main() {
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
+		Handler:      AuthMiddleware(*apiKey)(http.DefaultServeMux),
 	}
-	if err := srv.ListenAndServe(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error starting server: %v\n", err)
+
+	// Run server in goroutine
+	serverErr := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			serverErr <- err
+		}
+	}()
+
+	// Wait for signal or server error
+	select {
+	case s := <-sig:
+		fmt.Fprintf(os.Stderr, "\n[gasoline] Received %s, shutting down gracefully...\n", s)
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "shutdown",
+			"reason":    s.String(),
+			"mode":      "http_only",
+			"pid":       os.Getpid(),
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		srv.Shutdown(ctx)
+		fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
+	case err := <-serverErr:
+		fmt.Fprintf(os.Stderr, "[gasoline] Server error: %v\n", err)
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "crash",
+			"reason":    err.Error(),
+			"mode":      "http_only",
+			"pid":       os.Getpid(),
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
 		os.Exit(1)
 	}
 }
@@ -634,20 +771,34 @@ func main() {
 // runMCPMode runs the server in MCP mode:
 // - HTTP server runs in a goroutine (for browser extension)
 // - MCP protocol runs over stdin/stdout (for Claude Code)
-func runMCPMode(server *Server, port int) {
-	fmt.Fprintf(os.Stderr, "[gasoline] Starting MCP server, HTTP on port %d, log file: %s\n", port, server.logFile)
-
+// If stdin closes (EOF), the HTTP server keeps running until killed.
+func runMCPMode(server *Server, port int, apiKey string) {
 	// Create capture buffers for WebSocket, network, and actions
 	capture := NewCapture()
 
 	// Start HTTP server in background for browser extension
+	httpReady := make(chan error, 1)
 	go func() {
 		setupHTTPRoutes(server, capture)
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
-		if err := http.ListenAndServe(addr, nil); err != nil { //nolint:gosec // G114: MCP mode background server
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			httpReady <- err
+			return
+		}
+		httpReady <- nil
+		if err := http.Serve(ln, AuthMiddleware(apiKey)(http.DefaultServeMux)); err != nil { //nolint:gosec // G114: MCP mode background server
 			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
 		}
 	}()
+
+	// Wait for HTTP server to bind before proceeding
+	if err := <-httpReady; err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Fatal: cannot bind port %d: %v\n", port, err)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stderr, "[gasoline] v%s — HTTP on port %d, log: %s\n", version, port, server.logFile)
+	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "startup", "version": version, "port": port, "timestamp": time.Now().UTC().Format(time.RFC3339)}})
 
 	// Run MCP protocol over stdin/stdout
 	mcp := NewToolHandler(server, capture)
@@ -684,6 +835,24 @@ func runMCPMode(server *Server, port int) {
 		respJSON, _ := json.Marshal(resp)
 		fmt.Println(string(respJSON))
 	}
+
+	// stdin closed (MCP client disconnected) — exit after grace period
+	// This frees the port so the next AI session can spawn a fresh process.
+	// The extension will auto-reconnect to the new instance.
+	fmt.Fprintf(os.Stderr, "[gasoline] MCP disconnected, shutting down in 2s (port %d will be freed)\n", port)
+	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "mcp_disconnect", "timestamp": time.Now().UTC().Format(time.RFC3339), "port": port}})
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+
+	select {
+	case s := <-sig:
+		fmt.Fprintf(os.Stderr, "[gasoline] Received %s, shutting down\n", s)
+		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
+	case <-time.After(2 * time.Second):
+		fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
+		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": "mcp_disconnect_grace", "timestamp": time.Now().UTC().Format(time.RFC3339)}})
+	}
 }
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
@@ -696,6 +865,9 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 		http.HandleFunc("/pending-queries", corsMiddleware(capture.HandlePendingQueries))
 		http.HandleFunc("/dom-result", corsMiddleware(capture.HandleDOMResult))
 		http.HandleFunc("/a11y-result", corsMiddleware(capture.HandleA11yResult))
+		http.HandleFunc("/state-result", corsMiddleware(capture.HandleStateResult))
+		http.HandleFunc("/execute-result", corsMiddleware(capture.HandleExecuteResult))
+		http.HandleFunc("/highlight-result", corsMiddleware(capture.HandleHighlightResult))
 		http.HandleFunc("/enhanced-actions", corsMiddleware(capture.HandleEnhancedActions))
 		http.HandleFunc("/performance-snapshot", corsMiddleware(capture.HandlePerformanceSnapshot))
 	}
@@ -747,7 +919,39 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 				"actions":          len(capture.enhancedActions),
 				"connections":      len(capture.connections),
 			}
+			lastPoll := capture.lastPollAt
+			extSession := capture.extensionSession
+			sessionChangedAt := capture.sessionChangedAt
 			capture.mu.RUnlock()
+
+			// Extension connection status (critical for debugging)
+			if lastPoll.IsZero() {
+				resp["extension"] = map[string]interface{}{
+					"connected": false,
+					"status":    "not_polled",
+					"message":   "Extension has not connected. Reload extension or refresh page.",
+				}
+			} else {
+				sincePoll := time.Since(lastPoll)
+				connected := sincePoll < 3*time.Second
+				capture.mu.RLock()
+				pilotEnabled := capture.pilotEnabled
+				capture.mu.RUnlock()
+				extInfo := map[string]interface{}{
+					"connected":     connected,
+					"status":        map[bool]string{true: "connected", false: "stale"}[connected],
+					"last_poll_ms":  int(sincePoll.Milliseconds()),
+					"pilot_enabled": pilotEnabled,
+				}
+				if extSession != "" {
+					extInfo["session_id"] = extSession
+					if !sessionChangedAt.IsZero() {
+						extInfo["session_started"] = sessionChangedAt.Format(time.RFC3339)
+					}
+				}
+				resp["extension"] = extInfo
+			}
+
 			resp["circuit"] = map[string]interface{}{
 				"open":         health.CircuitOpen,
 				"current_rate": health.CurrentRate,
@@ -756,6 +960,156 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 				"opened_at":    health.OpenedAt,
 			}
 		}
+
+		jsonResponse(w, http.StatusOK, resp)
+	}))
+
+	// Diagnostics endpoint for bug reports - comprehensive server state dump
+	http.HandleFunc("/diagnostics", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+			return
+		}
+
+		now := time.Now()
+		resp := map[string]interface{}{
+			"generated_at":   now.Format(time.RFC3339),
+			"version":        version,
+			"uptime_seconds": int(now.Sub(startTime).Seconds()),
+			"system": map[string]interface{}{
+				"os":         runtime.GOOS,
+				"arch":       runtime.GOARCH,
+				"go_version": runtime.Version(),
+				"goroutines": runtime.NumGoroutine(),
+			},
+			"logs": map[string]interface{}{
+				"entries":     server.getEntryCount(),
+				"max_entries": server.maxEntries,
+				"log_file":    server.logFile,
+			},
+		}
+
+		if capture != nil {
+			health := capture.GetHealthStatus()
+
+			// Buffer counts
+			capture.mu.RLock()
+			resp["buffers"] = map[string]interface{}{
+				"websocket_events": len(capture.wsEvents),
+				"network_bodies":   len(capture.networkBodies),
+				"actions":          len(capture.enhancedActions),
+				"pending_queries":  len(capture.pendingQueries),
+				"query_results":    len(capture.queryResults),
+			}
+
+			// WebSocket connection info (sanitized - no sensitive data)
+			wsConnections := make([]map[string]interface{}, 0, len(capture.connections))
+			for connID, conn := range capture.connections {
+				wsConnections = append(wsConnections, map[string]interface{}{
+					"id":    connID,
+					"url":   conn.url,
+					"state": conn.state,
+				})
+			}
+			resp["websocket_connections"] = wsConnections
+
+			// Query timeout config
+			resp["config"] = map[string]interface{}{
+				"query_timeout": capture.queryTimeout.String(),
+			}
+
+			// Extension polling info
+			lastPoll := capture.lastPollAt
+			capture.mu.RUnlock()
+
+			// Extension status for debugging
+			if lastPoll.IsZero() {
+				resp["extension"] = map[string]interface{}{
+					"polling":      false,
+					"last_poll_at": nil,
+					"status":       "Extension has not polled /pending-queries yet. Reload extension and refresh page.",
+				}
+			} else {
+				sincePoll := time.Since(lastPoll)
+				polling := sincePoll < 3*time.Second // Should poll every 1s
+				capture.mu.RLock()
+				pilotEnabled := capture.pilotEnabled
+				capture.mu.RUnlock()
+				resp["extension"] = map[string]interface{}{
+					"polling":       polling,
+					"last_poll_at":  lastPoll.Format(time.RFC3339),
+					"seconds_ago":   int(sincePoll.Seconds()),
+					"status":        map[bool]string{true: "connected", false: "stale - extension may have disconnected"}[polling],
+					"pilot_enabled": pilotEnabled,
+				}
+			}
+
+			// Circuit breaker state
+			resp["circuit"] = map[string]interface{}{
+				"open":         health.CircuitOpen,
+				"current_rate": health.CurrentRate,
+				"memory_bytes": health.MemoryBytes,
+				"reason":       health.Reason,
+			}
+		}
+
+		// Last events - for verifying data flow without manual inspection
+		lastEvents := map[string]interface{}{}
+
+		// Last console log/error
+		server.mu.RLock()
+		if len(server.entries) > 0 {
+			last := server.entries[len(server.entries)-1]
+			// Truncate args for display
+			args := last["args"]
+			if argsSlice, ok := args.([]interface{}); ok && len(argsSlice) > 0 {
+				if s, ok := argsSlice[0].(string); ok && len(s) > 100 {
+					args = s[:100] + "..."
+				} else {
+					args = argsSlice[0]
+				}
+			}
+			lastEvents["console"] = map[string]interface{}{
+				"level":   last["level"],
+				"message": args,
+				"ts":      last["ts"],
+			}
+		}
+		server.mu.RUnlock()
+
+		// Last network request, action, websocket
+		if capture != nil {
+			capture.mu.RLock()
+			if len(capture.networkBodies) > 0 {
+				last := capture.networkBodies[len(capture.networkBodies)-1]
+				// Truncate URL for display
+				url := last.URL
+				if len(url) > 80 {
+					url = url[:80] + "..."
+				}
+				lastEvents["network"] = map[string]interface{}{
+					"method": last.Method,
+					"url":    url,
+					"status": last.Status,
+				}
+			}
+			if len(capture.enhancedActions) > 0 {
+				last := capture.enhancedActions[len(capture.enhancedActions)-1]
+				lastEvents["action"] = map[string]interface{}{
+					"type": last.Type,
+					"ts":   last.Timestamp,
+				}
+			}
+			if len(capture.wsEvents) > 0 {
+				last := capture.wsEvents[len(capture.wsEvents)-1]
+				lastEvents["websocket"] = map[string]interface{}{
+					"type":      last.Type,
+					"direction": last.Direction,
+				}
+			}
+			capture.mu.RUnlock()
+		}
+		resp["last_events"] = lastEvents
 
 		jsonResponse(w, http.StatusOK, resp)
 	}))
@@ -843,7 +1197,7 @@ MCP Configuration:
     "mcpServers": {
       "gasoline": {
         "command": "npx",
-        "args": ["gasoline-cli"]
+        "args": ["gasoline-mcp"]
       }
     }
   }

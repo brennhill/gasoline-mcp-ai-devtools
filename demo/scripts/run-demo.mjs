@@ -5,6 +5,8 @@
 //   node scripts/run-demo.mjs users-500
 //   node scripts/run-demo.mjs --all
 
+import { clearGasoline } from "./utils/setup.mjs";
+
 const scenes = {
   "dashboard-cls": () => import("./scenes/dashboard-cls.mjs"),
   "users-500": () => import("./scenes/users-500.mjs"),
@@ -46,6 +48,8 @@ Prerequisites:
   if (args.includes("--all")) {
     console.log("🎬 Running ALL demo scenes\n");
     for (const [name, loader] of Object.entries(scenes)) {
+      console.clear();
+      await clearGasoline();
       console.log(`\n${"=".repeat(50)}`);
       console.log(`  Scene: ${name}`);
       console.log("=".repeat(50));
@@ -66,6 +70,8 @@ Prerequisites:
       process.exit(1);
     }
 
+    console.clear();
+    await clearGasoline();
     try {
       const mod = await scenes[sceneName]();
       await mod.run();

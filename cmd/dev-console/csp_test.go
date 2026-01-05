@@ -898,3 +898,166 @@ func assertNotContains(t *testing.T, slice []string, value string) {
 		}
 	}
 }
+
+// --- RecordOriginFromBody Tests ---
+
+func TestCSPRecordOriginFromBody(t *testing.T) {
+	gen := NewCSPGenerator()
+
+	// JavaScript resource → script-src
+	gen.RecordOriginFromBody(NetworkBody{
+		URL:         "https://cdn.example.com/app.js",
+		ContentType: "application/javascript",
+	}, "https://myapp.com/")
+
+	// CSS resource → style-src
+	gen.RecordOriginFromBody(NetworkBody{
+		URL:         "https://cdn.example.com/style.css",
+		ContentType: "text/css",
+	}, "https://myapp.com/")
+
+	// Font resource → font-src
+	gen.RecordOriginFromBody(NetworkBody{
+		URL:         "https://fonts.gstatic.com/font.woff2",
+		ContentType: "font/woff2",
+	}, "https://myapp.com/")
+
+	// Image resource → img-src
+	gen.RecordOriginFromBody(NetworkBody{
+		URL:         "https://images.example.com/logo.png",
+		ContentType: "image/png",
+	}, "https://myapp.com/")
+
+	// API call → connect-src
+	gen.RecordOriginFromBody(NetworkBody{
+		URL:         "https://api.example.com/data",
+		ContentType: "application/json",
+	}, "https://myapp.com/")
+
+	gen.mu.RLock()
+	defer gen.mu.RUnlock()
+
+	// Verify origins are recorded with correct resource types
+	if gen.origins["https://cdn.example.com|script"] == nil {
+		t.Error("expected script origin for cdn.example.com")
+	}
+	if gen.origins["https://cdn.example.com|style"] == nil {
+		t.Error("expected style origin for cdn.example.com")
+	}
+	if gen.origins["https://fonts.gstatic.com|font"] == nil {
+		t.Error("expected font origin for fonts.gstatic.com")
+	}
+	if gen.origins["https://images.example.com|img"] == nil {
+		t.Error("expected img origin for images.example.com")
+	}
+	if gen.origins["https://api.example.com|connect"] == nil {
+		t.Error("expected connect origin for api.example.com")
+	}
+
+	// Verify page was recorded
+	if !gen.pages["https://myapp.com/"] {
+		t.Error("expected page to be recorded")
+	}
+}
+
+func TestContentTypeToResourceType(t *testing.T) {
+	tests := []struct {
+		contentType string
+		want        string
+	}{
+		{"application/javascript", "script"},
+		{"text/javascript", "script"},
+		{"application/javascript; charset=utf-8", "script"},
+		{"text/css", "style"},
+		{"text/css; charset=utf-8", "style"},
+		{"font/woff2", "font"},
+		{"font/woff", "font"},
+		{"font/ttf", "font"},
+		{"application/font-woff", "font"},
+		{"application/x-font-ttf", "font"},
+		{"application/x-font-woff", "font"},
+		{"image/png", "img"},
+		{"image/jpeg", "img"},
+		{"image/svg+xml", "img"},
+		{"image/webp", "img"},
+		{"audio/mpeg", "media"},
+		{"video/mp4", "media"},
+		{"application/json", "connect"},
+		{"text/html", "connect"},
+		{"text/plain", "connect"},
+		{"application/xml", "connect"},
+		{"", "connect"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.contentType, func(t *testing.T) {
+			got := contentTypeToResourceType(tc.contentType)
+			if got != tc.want {
+				t.Errorf("contentTypeToResourceType(%q) = %q, want %q", tc.contentType, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCSPRecordOriginFromBodyInvalidURL(t *testing.T) {
+	gen := NewCSPGenerator()
+
+	// Empty URL should not panic
+	gen.RecordOriginFromBody(NetworkBody{
+		URL:         "",
+		ContentType: "application/javascript",
+	}, "https://myapp.com/")
+
+	// Invalid URL should not panic
+	gen.RecordOriginFromBody(NetworkBody{
+		URL:         "://invalid",
+		ContentType: "application/javascript",
+	}, "https://myapp.com/")
+
+	gen.mu.RLock()
+	defer gen.mu.RUnlock()
+
+	if len(gen.origins) != 0 {
+		t.Errorf("expected no origins recorded for invalid URLs, got %d", len(gen.origins))
+	}
+}
+
+func TestHandleGenerateCSPInvalidParams(t *testing.T) {
+	gen := NewCSPGenerator()
+
+	// Invalid JSON params should return error
+	_, err := gen.HandleGenerateCSP(json.RawMessage(`{invalid}`))
+	if err == nil {
+		t.Error("expected error for invalid JSON params")
+	}
+
+	// Valid empty params should work
+	resp, err := gen.HandleGenerateCSP(json.RawMessage(`{}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp == nil {
+		t.Error("expected non-nil response")
+	}
+
+	// Nil params should work (defaults)
+	resp, err = gen.HandleGenerateCSP(nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp == nil {
+		t.Error("expected non-nil response")
+	}
+}
+
+func TestCSPExtractPageOriginsInvalidURL(t *testing.T) {
+	gen := NewCSPGenerator()
+	gen.pages["://invalid-url"] = true
+	gen.pages["https://valid.com/path"] = true
+
+	origins := gen.extractPageOrigins()
+	// Invalid URL should be skipped, valid should be included
+	if !origins["https://valid.com"] {
+		t.Error("expected valid origin to be extracted")
+	}
+}

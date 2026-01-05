@@ -20,7 +20,7 @@ Pick your tool and add the config:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--mcp"]
+      "args": ["gasoline-mcp"]
     }
   }
 }
@@ -33,7 +33,7 @@ Pick your tool and add the config:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--mcp"]
+      "args": ["gasoline-mcp"]
     }
   }
 }
@@ -56,7 +56,7 @@ Edit your config file:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--mcp"]
+      "args": ["gasoline-mcp"]
     }
   }
 }
@@ -76,7 +76,7 @@ Go to Settings → MCP Servers → Add Server, or add to `~/.cursor/mcp.json`:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--mcp"]
+      "args": ["gasoline-mcp"]
     }
   }
 }
@@ -96,7 +96,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--mcp"]
+      "args": ["gasoline-mcp"]
     }
   }
 }
@@ -119,7 +119,7 @@ Add to `~/.continue/config.json`:
         "transport": {
           "type": "stdio",
           "command": "npx",
-          "args": ["gasoline-mcp", "--mcp"]
+          "args": ["gasoline-mcp"]
         }
       }
     ]
@@ -140,7 +140,7 @@ Add to `~/.config/zed/settings.json`:
     "gasoline": {
       "command": {
         "path": "npx",
-        "args": ["gasoline-mcp", "--mcp"]
+        "args": ["gasoline-mcp"]
       }
     }
   }
@@ -163,13 +163,15 @@ Once installed, you'll see the Gasoline icon in your browser toolbar. Click it t
 
 ### That's It!
 
-Your AI assistant now has access to three tools:
+Your AI assistant now has access to 5 composite tools:
 
-| Tool                 | What it does                                                    |
-| -------------------- | --------------------------------------------------------------- |
-| `get_browser_errors` | Fetches recent console errors, network failures, and exceptions |
-| `get_browser_logs`   | Fetches all logs (errors + warnings + info)                     |
-| `clear_browser_logs` | Clears the log file                                             |
+| Tool | What it does |
+| ---- | ------------ |
+| `observe` | Real-time browser state (errors, logs, network, websocket, actions, vitals, page) |
+| `analyze` | Data analysis and insights (performance, api, accessibility, changes, timeline) |
+| `generate` | Code generation from captured data (reproduction, test, pr_summary, sarif, har) |
+| `configure` | Session and noise management (store, noise_rule, dismiss, clear) |
+| `query_dom` | Live DOM inspection via CSS selectors |
 
 Try it: open your web app, trigger an error, then ask your AI assistant _"What browser errors do you see?"_
 
@@ -202,7 +204,7 @@ gasoline-mcp [options]
   --port <number>        Port to listen on (default: 7890)
   --log-file <path>      Path to log file (default: ~/gasoline-logs.jsonl)
   --max-entries <number> Max log entries before rotation (default: 1000)
-  --mcp                  Run in MCP mode for AI tool integration
+  --mcp                  No-op (MCP mode is the default)
   --version              Show version
   --help                 Show help
 ```

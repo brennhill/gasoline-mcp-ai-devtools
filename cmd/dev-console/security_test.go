@@ -1144,3 +1144,98 @@ func findFindingByTitle(findings []SecurityFinding, titleSubstr string) *Securit
 	}
 	return nil
 }
+
+// FuzzSecurityPatterns exercises all security scanner regex patterns with
+// arbitrary inputs to ensure no panics, hangs, or invalid output structures.
+func FuzzSecurityPatterns(f *testing.F) {
+	// Seed corpus: strings that exercise each regex pattern category
+	seeds := []string{
+		// AWS key pattern
+		"AKIA1234567890ABCDEF",
+		// GitHub token
+		"ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij",
+		// Stripe key (constructed to avoid push protection)
+		"sk_" + "test_" + "abcdefghijklmnopqrstuvwx",
+		// JWT
+		"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature_here",
+		// Private key header
+		"-----BEGIN RSA PRIVATE KEY-----",
+		// API key in URL
+		"https://api.example.com/v1?api_key=supersecretvalue123",
+		// Bearer token
+		"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+		// API key in JSON body
+		`{"apiKey": "my_secret_api_key_value_here"}`,
+		// Generic secret in URL
+		"https://example.com/callback?secret=longvaluehere123",
+		// Email PII
+		"user@example.com",
+		// Phone PII
+		"+1 (555) 123-4567",
+		// SSN PII
+		"123-45-6789",
+		// Credit card PII
+		"4111 1111 1111 1111",
+		// PII field name in JSON
+		`{"email": "test@test.com", "ssn": "000-00-0000"}`,
+		// Empty and edge cases
+		"",
+		"\x00\xff\xfe",
+		strings.Repeat("a", 100000),
+		strings.Repeat("?&key=", 1000),
+		`{"` + strings.Repeat(`"`, 5000) + `}`,
+	}
+
+	for _, s := range seeds {
+		f.Add(s, s)
+	}
+
+	scanner := NewSecurityScanner()
+
+	f.Fuzz(func(t *testing.T, urlData, bodyData string) {
+		// Exercise credential + PII patterns via network bodies
+		input := SecurityScanInput{
+			NetworkBodies: []NetworkBody{
+				{
+					URL:             urlData,
+					RequestBody:     bodyData,
+					ResponseBody:    bodyData,
+					ContentType:     "application/json",
+					Status:          200,
+					ResponseHeaders: map[string]string{"Set-Cookie": bodyData},
+				},
+			},
+			ConsoleEntries: []LogEntry{
+				{"level": "error", "msg": bodyData},
+			},
+			PageURLs: []string{urlData},
+		}
+
+		// Must not panic
+		result := scanner.Scan(input)
+
+		// Result must be structurally valid
+		if result.Summary.TotalFindings < 0 {
+			t.Error("Negative finding count")
+		}
+		if result.Summary.TotalFindings != len(result.Findings) {
+			t.Errorf("Summary count %d != findings length %d",
+				result.Summary.TotalFindings, len(result.Findings))
+		}
+
+		// All findings must have required fields
+		for _, finding := range result.Findings {
+			if finding.Check == "" {
+				t.Error("Finding with empty check")
+			}
+			if finding.Severity == "" {
+				t.Error("Finding with empty severity")
+			}
+		}
+
+		// Must serialize without error
+		if _, err := json.Marshal(result); err != nil {
+			t.Errorf("Result not serializable: %v", err)
+		}
+	})
+}

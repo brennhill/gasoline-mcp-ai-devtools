@@ -3,7 +3,7 @@
 <img src="chrome_store_files/readme-banner.png" alt="Gasoline - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-4.7.0-green.svg)](https://github.com/brennhill/gasoline/releases)
+[![Version](https://img.shields.io/badge/version-5.0.0-green.svg)](https://github.com/brennhill/gasoline/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline)
@@ -23,23 +23,40 @@
 
 ---
 
+
 ## Quick Start
 
+**Until the Chrome Web Store listing is approved, install manually:**
+
 ```bash
-# 1. Start the server
-npx gasoline-mcp
+# 1. Clone the repo
+git clone https://github.com/brennhill/gasoline.git
+cd gasoline
 
-# 2. Install the Chrome extension from the Chrome Web Store
+# 2. Start the server
+go run ./cmd/dev-console
 
-# 3. Add to your AI tool (.mcp.json in project root)
+# 3. Load the extension manually:
+#    - Open chrome://extensions
+#    - Enable Developer mode
+#    - Click "Load unpacked" and select the `extension/` folder in this repo
 ```
+
+**Once the Chrome extension is approved:**
+
+```bash
+npx gasoline-mcp
+# Then install from the Chrome Web Store
+```
+
+**MCP config example:**
 
 ```json
 {
   "mcpServers": {
     "gasoline": {
-      "command": "npx",
-      "args": ["gasoline-mcp", "--mcp"]
+      "command": "go",
+      "args": ["run", "./cmd/dev-console"]
     }
   }
 }
@@ -120,7 +137,7 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 See [latest benchmarks](benchmarks/latest-benchmark.md) for current performance data.
 
-Last benchmarked: 2026-01-24 on darwin/arm64 (v4.7.0)
+Last benchmarked: 2026-01-24 on darwin/arm64 (v5.0.0)
 
 ## Development
 

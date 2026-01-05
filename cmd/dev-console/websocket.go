@@ -28,6 +28,14 @@ func (v *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	v.wsTotalAdded += int64(len(events))
 	now := time.Now()
 	for i := range events {
+		// Detect binary format in message data
+		if events[i].Event == "message" && events[i].BinaryFormat == "" && len(events[i].Data) > 0 {
+			if format := DetectBinaryFormat([]byte(events[i].Data)); format != nil {
+				events[i].BinaryFormat = format.Name
+				events[i].FormatConfidence = format.Confidence
+			}
+		}
+
 		// Track connection state
 		v.trackConnection(events[i])
 
@@ -85,6 +93,10 @@ func (v *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 	// Filter events
 	var filtered []WebSocketEvent
 	for i := range v.wsEvents {
+		// TTL filtering: skip entries older than TTL
+		if v.TTL > 0 && i < len(v.wsAddedAt) && isExpiredByTTL(v.wsAddedAt[i], v.TTL) {
+			continue
+		}
 		if filter.ConnectionID != "" && v.wsEvents[i].ID != filter.ConnectionID {
 			continue
 		}

@@ -12,7 +12,10 @@ import assert from 'node:assert'
 globalThis.chrome = {
   runtime: { onMessage: { addListener: mock.fn() }, sendMessage: mock.fn(() => Promise.resolve()) },
   action: { setBadgeText: mock.fn(), setBadgeBackgroundColor: mock.fn() },
-  storage: { local: { get: mock.fn((k, cb) => cb({})), set: mock.fn() } },
+  storage: {
+    local: { get: mock.fn((k, cb) => cb({})), set: mock.fn() },
+    sync: { get: mock.fn((k, cb) => cb({})), set: mock.fn() },
+  },
   alarms: { create: mock.fn(), onAlarm: { addListener: mock.fn() } },
   tabs: { get: mock.fn(), query: mock.fn(), onRemoved: { addListener: mock.fn() } },
 }

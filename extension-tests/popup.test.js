@@ -11,7 +11,7 @@ import assert from 'node:assert'
 // Mock Chrome APIs
 const mockChrome = {
   runtime: {
-    sendMessage: mock.fn(),
+    sendMessage: mock.fn(() => Promise.resolve()),
     onMessage: {
       addListener: mock.fn(),
     },
@@ -24,6 +24,10 @@ const mockChrome = {
           domainFilters: [],
         }),
       ),
+      set: mock.fn((data, callback) => callback && callback()),
+    },
+    sync: {
+      get: mock.fn((keys, callback) => callback({})),
       set: mock.fn((data, callback) => callback && callback()),
     },
   },
@@ -74,8 +78,11 @@ describe('Popup State Display', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
-    mockChrome.runtime.sendMessage.mock.resetCalls()
-    mockChrome.storage.local.get.mock.resetCalls()
+    // Restore default mock implementations after reset
+    mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
+      callback({ logLevel: 'error', domainFilters: [] }),
+    )
   })
 
   test('should display connected status when server is up', async () => {
@@ -136,7 +143,11 @@ describe('Log Level Selector', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
-    mockChrome.storage.local.set.mock.resetCalls()
+    // Restore default mock implementations after reset
+    mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
+      callback({ logLevel: 'error', domainFilters: [] }),
+    )
   })
 
   test('should load saved log level on init', async () => {
@@ -191,11 +202,14 @@ describe('Clear Logs Button', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
-    mockChrome.runtime.sendMessage.mock.resetCalls()
-    // Default mock that calls callback
+    // Default mock that calls callback and returns Promise
     mockChrome.runtime.sendMessage.mock.mockImplementation((msg, callback) => {
       if (callback) callback({ success: true })
+      return Promise.resolve()
     })
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
+      callback({ logLevel: 'error', domainFilters: [] }),
+    )
   })
 
   test('should send clearLogs message when clicked', async () => {
@@ -271,6 +285,11 @@ describe('Status Updates', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
+    // Restore default mock implementations after reset
+    mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
+      callback({ logLevel: 'error', domainFilters: [] }),
+    )
   })
 
   test('should listen for status updates from background', async () => {
@@ -329,6 +348,11 @@ describe('Context Annotation Warning', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
+    // Restore default mock implementations after reset
+    mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
+      callback({ logLevel: 'error', domainFilters: [] }),
+    )
   })
 
   test('should show context warning when status has contextWarning', async () => {
@@ -414,7 +438,11 @@ describe('Quick Actions', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
-    mockChrome.runtime.sendMessage.mock.resetCalls()
+    // Restore default mock implementations after reset
+    mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
+      callback({ logLevel: 'error', domainFilters: [] }),
+    )
   })
 
   test('should have link to open log file', async () => {
@@ -441,6 +469,11 @@ describe('Server URL Display', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
+    // Restore default mock implementations after reset
+    mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
+      callback({ logLevel: 'error', domainFilters: [] }),
+    )
   })
 
   test('should display server URL', async () => {
@@ -473,8 +506,12 @@ describe('WebSocket Toggle', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
-    mockChrome.runtime.sendMessage.mock.resetCalls()
-    mockChrome.storage.local.set.mock.resetCalls()
+    // Restore default mock implementations after reset
+    mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
+      callback({ logLevel: 'error', domainFilters: [] }),
+    )
+    mockChrome.storage.local.set.mock.mockImplementation((data, callback) => callback && callback())
   })
 
   test('should load saved WebSocket capture state on init', async () => {
@@ -575,7 +612,12 @@ describe('Debug Logging', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
-    mockChrome.runtime.sendMessage.mock.resetCalls()
+    // Restore default mock implementations after reset
+    mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
+      callback({ logLevel: 'error', domainFilters: [] }),
+    )
+    mockChrome.storage.local.set.mock.mockImplementation((data, callback) => callback && callback())
   })
 
   test('should export debug log when button clicked', async () => {
@@ -585,7 +627,7 @@ describe('Debug Logging', () => {
         callback({
           log: JSON.stringify({
             exportedAt: '2024-01-22T12:00:00Z',
-            version: '4.7.0',
+            version: '5.0.0',
             entries: [{ ts: '2024-01-22T12:00:00Z', category: 'lifecycle', message: 'Test' }],
           }),
         })
@@ -670,6 +712,11 @@ describe('Health Indicators', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
+    // Restore default mock implementations after reset
+    mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
+      callback({ logLevel: 'error', domainFilters: [] }),
+    )
   })
 
   describe('Circuit Breaker Status', () => {
@@ -844,8 +891,12 @@ describe('Network Body Capture Toggle', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
-    mockChrome.runtime.sendMessage.mock.resetCalls()
-    mockChrome.storage.local.set.mock.resetCalls()
+    // Restore default mock implementations after reset
+    mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
+      callback({ logLevel: 'error', domainFilters: [] }),
+    )
+    mockChrome.storage.local.set.mock.mockImplementation((data, callback) => callback && callback())
   })
 
   test('should include network body capture in FEATURE_TOGGLES', async () => {

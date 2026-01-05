@@ -15,6 +15,8 @@ Gasoline passively observes your browser, analyzes performance, and generates co
 
 ## <i class="fas fa-terminal"></i> Console Logs
 
+<img src="/assets/images/sparky/features/sparky-confused-dizzy-web.webp" alt="Sparky looking overwhelmed by stack traces" style="float: right; width: 160px; margin: 0 0 20px 20px; border-radius: 8px;" />
+
 All `console` API calls captured with full argument serialization:
 
 | Method | Level |
@@ -29,6 +31,8 @@ Objects, arrays, and Error instances are fully serialized — not just `[Object 
 
 ## <i class="fas fa-wifi"></i> Network Errors
 
+<img src="/assets/images/sparky/features/sparky-fighting-bugs-web.webp" alt="Sparky fighting network bugs" style="float: left; width: 160px; margin: 0 20px 20px 0; border-radius: 8px;" />
+
 Failed API calls (4xx and 5xx) captured with:
 
 - HTTP method and URL
@@ -38,6 +42,8 @@ Failed API calls (4xx and 5xx) captured with:
 
 Your AI sees _why_ the API call failed, not just _that_ it failed.
 
+<img src="/assets/images/sparky/features/sparky-firefighter-tough-web.webp" alt="Sparky as firefighter ready for action" style="float: right; width: 160px; margin: 0 0 20px 20px; border-radius: 8px;" />
+
 ## <i class="fas fa-bomb"></i> Exceptions
 
 Uncaught errors and unhandled promise rejections with:
@@ -46,6 +52,8 @@ Uncaught errors and unhandled promise rejections with:
 - Full stack trace
 - Source file, line, and column
 - Source map resolution (minified → original)
+
+<img src="/assets/images/sparky/features/sparky-digital-surfing-web.webp" alt="Sparky riding WebSocket waves" style="float: left; width: 160px; margin: 0 20px 20px 0; border-radius: 8px;" />
 
 ## <i class="fas fa-plug"></i> WebSocket Events
 

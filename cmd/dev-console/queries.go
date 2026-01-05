@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -119,6 +120,13 @@ func (v *Capture) GetQueryResult(id string) (json.RawMessage, bool) {
 	return result, found
 }
 
+// GetLastPollAt returns when the extension last polled /pending-queries
+func (v *Capture) GetLastPollAt() time.Time {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return v.lastPollAt
+}
+
 // WaitForResult blocks until a result is available or timeout, then deletes it
 func (v *Capture) WaitForResult(id string, timeout time.Duration) (json.RawMessage, error) {
 	deadline := time.Now().Add(timeout)
@@ -151,6 +159,27 @@ func (v *Capture) SetQueryTimeout(timeout time.Duration) {
 }
 
 func (v *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
+	now := time.Now()
+	sessionID := r.Header.Get("X-Gasoline-Session")
+	pilotHeader := r.Header.Get("X-Gasoline-Pilot")
+
+	// Track when extension last polled and detect session changes (reloads)
+	v.mu.Lock()
+	v.lastPollAt = now
+	v.pilotEnabled = pilotHeader == "1"
+	if sessionID != "" && sessionID != v.extensionSession {
+		if v.extensionSession != "" {
+			// Session changed - extension was reloaded
+			fmt.Fprintf(os.Stderr, "[gasoline] Extension reloaded: %s -> %s\n", v.extensionSession, sessionID)
+		} else {
+			// First connection
+			fmt.Fprintf(os.Stderr, "[gasoline] Extension connected: %s\n", sessionID)
+		}
+		v.extensionSession = sessionID
+		v.sessionChangedAt = now
+	}
+	v.mu.Unlock()
+
 	queries := v.GetPendingQueries()
 	if queries == nil {
 		queries = make([]PendingQueryResponse, 0)
@@ -172,6 +201,21 @@ func (v *Capture) HandleDOMResult(w http.ResponseWriter, r *http.Request) {
 
 // HandleA11yResult handles POST /a11y-result
 func (v *Capture) HandleA11yResult(w http.ResponseWriter, r *http.Request) {
+	v.handleQueryResult(w, r)
+}
+
+// HandleStateResult handles POST /state-result (pilot state management)
+func (v *Capture) HandleStateResult(w http.ResponseWriter, r *http.Request) {
+	v.handleQueryResult(w, r)
+}
+
+// HandleExecuteResult handles POST /execute-result
+func (v *Capture) HandleExecuteResult(w http.ResponseWriter, r *http.Request) {
+	v.handleQueryResult(w, r)
+}
+
+// HandleHighlightResult handles POST /highlight-result (pilot highlight commands)
+func (v *Capture) HandleHighlightResult(w http.ResponseWriter, r *http.Request) {
 	v.handleQueryResult(w, r)
 }
 

@@ -31,6 +31,14 @@ const createMockChrome = () => ({
           captureNetworkBodies: false,
         }),
       ),
+      set: mock.fn((data, callback) => callback && callback()),
+    },
+    sync: {
+      get: mock.fn((keys, callback) => callback({})),
+      set: mock.fn((data, callback) => callback && callback()),
+    },
+    onChanged: {
+      addListener: mock.fn(),
     },
   },
 })
@@ -949,26 +957,18 @@ describe('Page Load Deferral', () => {
     globalThis.window = originalWindow
   })
 
-  test('should install v4 intercepts after page load', async () => {
-    const { shouldDeferV4Intercepts } = await import('../extension/inject.js')
+  test('should defer intercepts while page is loading', async () => {
+    const { shouldDeferIntercepts } = await import('../extension/inject.js')
 
     globalThis.document.readyState = 'loading'
-    assert.strictEqual(shouldDeferV4Intercepts(), true)
+    assert.strictEqual(shouldDeferIntercepts(), true)
   })
 
-  test('should install immediately if page already loaded', async () => {
-    const { shouldDeferV4Intercepts } = await import('../extension/inject.js')
+  test('should not defer if page already loaded', async () => {
+    const { shouldDeferIntercepts } = await import('../extension/inject.js')
 
     globalThis.document.readyState = 'complete'
-    assert.strictEqual(shouldDeferV4Intercepts(), false)
-  })
-
-  test('should not defer v1-v3 intercepts', async () => {
-    const { shouldDeferV3Intercepts } = await import('../extension/inject.js')
-
-    // v3 intercepts (console, basic network errors) should always install immediately
-    globalThis.document.readyState = 'loading'
-    assert.strictEqual(shouldDeferV3Intercepts(), false)
+    assert.strictEqual(shouldDeferIntercepts(), false)
   })
 })
 

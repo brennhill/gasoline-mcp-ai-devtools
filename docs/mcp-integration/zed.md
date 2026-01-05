@@ -21,7 +21,7 @@ Add to `~/.config/zed/settings.json`:
     "gasoline": {
       "command": {
         "path": "npx",
-        "args": ["gasoline-mcp", "--mcp"]
+        "args": ["gasoline-mcp"]
       }
     }
   }

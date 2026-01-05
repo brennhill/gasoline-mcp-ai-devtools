@@ -77,6 +77,14 @@ export async function setExtensionSetting(context, settings) {
   await new Promise((r) => setTimeout(r, 100));
 }
 
+export async function clearGasoline(port = 7890) {
+  try {
+    await fetch(`http://localhost:${port}/logs`, { method: "DELETE" });
+  } catch {
+    // Server might not be running — non-fatal
+  }
+}
+
 export async function typeNaturally(page, selector, text) {
   await page.fill(selector, "");
   for (const char of text) {

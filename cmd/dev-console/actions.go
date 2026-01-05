@@ -57,6 +57,10 @@ func (v *Capture) GetEnhancedActions(filter EnhancedActionFilter) []EnhancedActi
 
 	var filtered []EnhancedAction
 	for i := range v.enhancedActions {
+		// TTL filtering: skip entries older than TTL
+		if v.TTL > 0 && i < len(v.actionAddedAt) && isExpiredByTTL(v.actionAddedAt[i], v.TTL) {
+			continue
+		}
 		if filter.URLFilter != "" && !strings.Contains(v.enhancedActions[i].URL, filter.URLFilter) {
 			continue
 		}

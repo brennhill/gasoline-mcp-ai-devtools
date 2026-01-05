@@ -198,8 +198,16 @@
             ],
             "type": "string"
           },
+          "generate_fixtures": {
+            "description": "Generate fixtures/api-responses.json from captured network data (applies to reproduction, default: false)",
+            "type": "boolean"
+          },
           "include_passes": {
             "description": "Include passing rules (applies to sarif)",
+            "type": "boolean"
+          },
+          "include_screenshots": {
+            "description": "Insert page.screenshot() calls at key points (applies to reproduction, default: false)",
             "type": "boolean"
           },
           "last_n_actions": {
@@ -233,6 +241,10 @@
           "url": {
             "description": "Filter by URL substring (applies to har)",
             "type": "string"
+          },
+          "visual_assertions": {
+            "description": "Add toHaveScreenshot() assertions at key checkpoints (applies to reproduction, default: false)",
+            "type": "boolean"
           }
         },
         "required": [
@@ -463,6 +475,93 @@
       }
     },
     {
+      "name": "audit_third_parties",
+      "description": "Audit third-party origins in captured network traffic. Classifies risk levels (critical/high/medium/low), detects data exfiltration, suspicious domains (DGA, abuse TLDs), and provides recommendations.",
+      "inputSchema": {
+        "properties": {
+          "custom_lists": {
+            "description": "Custom allowed/blocked/internal domain lists",
+            "properties": {
+              "allowed": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "blocked": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "internal": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "first_party_origins": {
+            "description": "Origins to consider first-party (auto-detected from page URLs if omitted)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "include_static": {
+            "description": "Include low-risk static-only origins (images, fonts) in results (default: true)",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "_meta": {
+        "data_counts": {
+          "network_bodies": 0
+        }
+      }
+    },
+    {
+      "name": "diff_security",
+      "description": "Detect security regressions by comparing security posture snapshots. Captures headers, cookies, auth, and transport state; compares two snapshots to find regressions and improvements.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "Action to perform",
+            "enum": [
+              "snapshot",
+              "compare",
+              "list"
+            ],
+            "type": "string"
+          },
+          "compare_from": {
+            "description": "Baseline snapshot name (required for 'compare' action)",
+            "type": "string"
+          },
+          "compare_to": {
+            "description": "Target snapshot name to compare against (omit to use current live state)",
+            "type": "string"
+          },
+          "name": {
+            "description": "Snapshot name (required for 'snapshot' action)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "_meta": {
+        "data_counts": {
+          "network_bodies": 0
+        }
+      }
+    },
+    {
       "name": "get_audit_log",
       "description": "Query the enterprise audit trail of MCP tool invocations. Returns entries filtered by session, tool name, or time range.",
       "inputSchema": {
@@ -516,6 +615,99 @@
           },
           "url_filter": {
             "description": "Only include network requests matching this URL substring",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "highlight_element",
+      "description": "Highlight a DOM element on the page. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+      "inputSchema": {
+        "properties": {
+          "duration_ms": {
+            "description": "How long to show the highlight in milliseconds (default: 5000)",
+            "type": "number"
+          },
+          "selector": {
+            "description": "CSS selector for the element to highlight",
+            "type": "string"
+          }
+        },
+        "required": [
+          "selector"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "manage_state",
+      "description": "Capture, save, load, list, or delete page state snapshots. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "Action to perform",
+            "enum": [
+              "capture",
+              "save",
+              "load",
+              "list",
+              "delete"
+            ],
+            "type": "string"
+          },
+          "snapshot_name": {
+            "description": "Name of the snapshot (required for save, load, delete)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "execute_javascript",
+      "description": "Execute arbitrary JavaScript in the page context and return the result. Can access DOM, globals, and page state. SECURITY: Requires 'AI Web Pilot' toggle enabled. Only use for debugging on trusted pages.",
+      "inputSchema": {
+        "properties": {
+          "script": {
+            "description": "JavaScript code to execute",
+            "type": "string"
+          },
+          "timeout_ms": {
+            "description": "Execution timeout in milliseconds (default: 5000)",
+            "type": "number"
+          }
+        },
+        "required": [
+          "script"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "browser_action",
+      "description": "Perform browser navigation actions: refresh the page, navigate to URL, go back, or go forward. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "Browser action to perform",
+            "enum": [
+              "refresh",
+              "navigate",
+              "back",
+              "forward"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "description": "URL to navigate to (required for 'navigate' action)",
             "type": "string"
           }
         },

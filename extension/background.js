@@ -13,6 +13,48 @@
 const DEFAULT_SERVER_URL = 'http://localhost:7890'
 let serverUrl = DEFAULT_SERVER_URL
 const RECONNECT_INTERVAL = 5000 // 5 seconds
+
+// Session ID for detecting extension reloads - generated fresh each time service worker starts
+const EXTENSION_SESSION_ID = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+// Startup verification (always logs, regardless of debug mode)
+console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`);
+
+// AI Web Pilot toggle cache (survives service worker restarts via startup init and messages)
+// Declared here (before storage callbacks) to avoid temporal dead zone in tests
+let _aiWebPilotEnabledCache = null
+
+// Initialize AI Web Pilot toggle cache on startup - create a promise that resolves when ready
+let _aiWebPilotInitResolve
+const _aiWebPilotInitPromise = new Promise((resolve) => {
+  _aiWebPilotInitResolve = resolve
+})
+
+// Try local storage first (more reliable), then sync
+// Guard against test environment where chrome may not be defined
+if (typeof chrome !== 'undefined' && chrome.storage) {
+  chrome.storage.local.get(['aiWebPilotEnabled'], (localResult) => {
+    if (localResult.aiWebPilotEnabled !== undefined) {
+      const enabled = localResult.aiWebPilotEnabled === true
+      globalThis._aiWebPilotStartupValue = enabled
+      _aiWebPilotEnabledCache = enabled // Set cache immediately
+      console.log('[Gasoline] AI Web Pilot startup cache (local):', enabled)
+      _aiWebPilotInitResolve(enabled)
+      return
+    }
+    // Fall back to sync storage
+    chrome.storage.sync.get(['aiWebPilotEnabled'], (syncResult) => {
+      const enabled = syncResult.aiWebPilotEnabled === true
+      globalThis._aiWebPilotStartupValue = enabled
+      _aiWebPilotEnabledCache = enabled // Set cache immediately
+      console.log('[Gasoline] AI Web Pilot startup cache (sync):', enabled)
+      _aiWebPilotInitResolve(enabled)
+    })
+  })
+} else {
+  // Test environment: resolve immediately with false
+  _aiWebPilotInitResolve(false)
+}
 const DEFAULT_DEBOUNCE_MS = 100
 const DEFAULT_MAX_BATCH_SIZE = 50
 
@@ -69,7 +111,7 @@ let networkBodyCaptureDisabled = false
 let reducedCapacities = false
 
 // AI capture control state
-let captureOverrides = {} // Current AI-set overrides from /settings
+let _captureOverrides = {} // Current AI-set overrides from /settings
 let aiControlled = false // Whether AI has active overrides
 
 // Context annotation monitoring state
@@ -212,7 +254,7 @@ export function exportDebugLog() {
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      version: '4.7.0',
+      version: chrome.runtime.getManifest().version,
       debugMode,
       connectionStatus,
       settings: {
@@ -441,12 +483,11 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
       cb.reset()
       return result
     } catch (err) {
-      // Record failure on shared CB by calling execute (its sendFn will fail too,
-      // which correctly increments the failure counter)
+      // Trigger shared circuit breaker's failure counter
       try {
         await cb.execute(entries)
       } catch {
-        /* expected - records the failure */
+        /* expected */
       }
       throw err
     }
@@ -755,7 +796,16 @@ export async function checkServerHealth() {
       return { connected: false, error: `HTTP ${response.status}` }
     }
 
-    const data = await response.json()
+    let data
+    try {
+      data = await response.json()
+    } catch {
+      // Server returned non-JSON response (possibly wrong endpoint or proxy)
+      return {
+        connected: false,
+        error: 'Server returned invalid response - check Server URL in options',
+      }
+    }
     return {
       ...data,
       connected: true,
@@ -1106,6 +1156,17 @@ export async function captureScreenshot(tabId, relatedErrorId, errorType) {
     return { success: true, entry: screenshotEntry }
   } catch (error) {
     debugLog(DebugCategory.ERROR, 'Screenshot capture failed', { error: error.message })
+    // Log screenshot failure to server so it's visible in the JSONL log
+    const failureEntry = {
+      ts: new Date().toISOString(),
+      type: 'screenshot',
+      level: 'warning',
+      _screenshotFailed: true,
+      error: error.message,
+      trigger: relatedErrorId ? 'error' : 'manual',
+      relatedErrorId: relatedErrorId || undefined,
+    }
+    logBatcher.add(failureEntry)
     return { success: false, error: error.message }
   }
 }
@@ -1263,8 +1324,22 @@ export async function fetchSourceMap(scriptUrl) {
     if (sourceMapUrl.startsWith('data:')) {
       const base64Match = sourceMapUrl.match(/^data:application\/json;base64,(.+)$/)
       if (base64Match) {
-        const jsonStr = atob(base64Match[1])
-        const sourceMap = JSON.parse(jsonStr)
+        let jsonStr
+        try {
+          jsonStr = atob(base64Match[1])
+        } catch {
+          debugLog(DebugCategory.SOURCEMAP, 'Invalid base64 in inline source map', { scriptUrl })
+          sourceMapCache.set(scriptUrl, null)
+          return null
+        }
+        let sourceMap
+        try {
+          sourceMap = JSON.parse(jsonStr)
+        } catch {
+          debugLog(DebugCategory.SOURCEMAP, 'Invalid JSON in inline source map', { scriptUrl })
+          sourceMapCache.set(scriptUrl, null)
+          return null
+        }
         const parsed = parseSourceMapData(sourceMap)
         sourceMapCache.set(scriptUrl, parsed)
         return parsed
@@ -1291,11 +1366,26 @@ export async function fetchSourceMap(scriptUrl) {
       return null
     }
 
-    const sourceMap = await mapResponse.json()
+    let sourceMap
+    try {
+      sourceMap = await mapResponse.json()
+    } catch {
+      debugLog(DebugCategory.SOURCEMAP, 'Invalid JSON in external source map', {
+        scriptUrl,
+        sourceMapUrl,
+      })
+      sourceMapCache.set(scriptUrl, null)
+      return null
+    }
     const parsed = parseSourceMapData(sourceMap)
     sourceMapCache.set(scriptUrl, parsed)
     return parsed
-  } catch {
+  } catch (err) {
+    // Network errors, timeouts, or other fetch failures
+    debugLog(DebugCategory.SOURCEMAP, 'Source map fetch failed', {
+      scriptUrl,
+      error: err.message,
+    })
     sourceMapCache.set(scriptUrl, null)
     return null
   }
@@ -1628,6 +1718,15 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       screenshotOnError = message.enabled
       chrome.storage.local.set({ screenshotOnError: message.enabled })
       sendResponse({ success: true })
+    } else if (message.type === 'setAiWebPilotEnabled') {
+      // Update the AI Web Pilot cache immediately
+      _aiWebPilotEnabledCache = message.enabled === true
+      globalThis._aiWebPilotStartupValue = _aiWebPilotEnabledCache
+      // Persist to all storage types for maximum reliability
+      chrome.storage.session.set({ aiWebPilotEnabled: _aiWebPilotEnabledCache })
+      chrome.storage.local.set({ aiWebPilotEnabled: _aiWebPilotEnabledCache })
+      console.log('[Gasoline] AI Web Pilot toggle set via message:', _aiWebPilotEnabledCache)
+      sendResponse({ success: true })
     } else if (message.type === 'captureScreenshot') {
       // Manual screenshot capture
       chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
@@ -1664,8 +1763,18 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.tabs.query({}, (tabs) => {
         for (const tab of tabs) {
           if (tab.id) {
-            chrome.tabs.sendMessage(tab.id, message).catch(() => {
-              // Tab may not have content script, ignore
+            chrome.tabs.sendMessage(tab.id, message).catch((err) => {
+              // Expected: tabs without content scripts (chrome://, edge://, file://, etc.)
+              // Log unexpected errors for debugging
+              if (
+                !err.message?.includes('Receiving end does not exist') &&
+                !err.message?.includes('Could not establish connection')
+              ) {
+                debugLog(DebugCategory.ERROR, 'Unexpected error forwarding setting to tab', {
+                  tabId: tab.id,
+                  error: err.message,
+                })
+              }
             })
           }
         }
@@ -1706,9 +1815,6 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
           aggregatedEntries.forEach((entry) => logBatcher.add(entry))
         }
       } else if (alarm.name === 'memoryCheck') {
-        // Memory pressure check runs every 30 seconds
-        // In production, this would collect buffer sizes from the batchers
-        // The checkMemoryPressure function is the main entry point
         debugLog(DebugCategory.LIFECYCLE, 'Memory check alarm fired')
       }
     })
@@ -1721,6 +1827,11 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   chrome.storage.local.get(
     ['serverUrl', 'logLevel', 'screenshotOnError', 'sourceMapEnabled', 'debugMode'],
     (result) => {
+      if (chrome.runtime.lastError) {
+        console.warn('[Gasoline] Could not load saved settings:', chrome.runtime.lastError.message, '- using defaults')
+        // Continue with defaults already set at module level
+        return
+      }
       serverUrl = result.serverUrl || DEFAULT_SERVER_URL
       currentLogLevel = result.logLevel || 'error'
       screenshotOnError = result.screenshotOnError || false
@@ -1897,16 +2008,23 @@ async function checkConnectionAndUpdate() {
     if (overrides !== null) {
       applyCaptureOverrides(overrides)
     }
+    // Start polling for pending queries (execute_javascript, highlight, etc.)
+    startQueryPolling(serverUrl)
+  } else {
+    // Stop polling when disconnected
+    stopQueryPolling()
   }
 
   // Notify popup if open
   if (typeof chrome !== 'undefined' && chrome.runtime) {
-    chrome.runtime.sendMessage({
-      type: 'statusUpdate',
-      status: { ...connectionStatus, aiControlled },
-    }).catch(() => {
-      // Popup not open, ignore
-    })
+    chrome.runtime
+      .sendMessage({
+        type: 'statusUpdate',
+        status: { ...connectionStatus, aiControlled },
+      })
+      .catch(() => {
+        // Popup not open, ignore
+      })
   }
 }
 
@@ -1931,7 +2049,7 @@ export async function pollCaptureSettings(url) {
  * @param {Object} overrides - Map of setting name to value
  */
 export function applyCaptureOverrides(overrides) {
-  captureOverrides = overrides
+  _captureOverrides = overrides
   aiControlled = Object.keys(overrides).length > 0
 
   if (overrides.log_level !== undefined) {
@@ -1946,10 +2064,12 @@ export function applyCaptureOverrides(overrides) {
 }
 
 // =============================================================================
-// ON-DEMAND QUERY POLLING (v4)
+// ON-DEMAND QUERY POLLING
 // =============================================================================
 
 let queryPollingInterval = null
+// Track queries currently being processed to prevent duplicate processing
+const _processingQueries = new Set()
 
 /**
  * Poll the server for pending queries (DOM queries, a11y audits)
@@ -1957,17 +2077,196 @@ let queryPollingInterval = null
  */
 export async function pollPendingQueries(serverUrl) {
   try {
-    const response = await fetch(`${serverUrl}/pending-queries`)
-    if (!response.ok) return
+    const response = await fetch(`${serverUrl}/pending-queries`, {
+      headers: {
+        'X-Gasoline-Session': EXTENSION_SESSION_ID,
+        'X-Gasoline-Pilot': _aiWebPilotEnabledCache === true ? '1' : '0',
+      },
+    })
+    if (!response.ok) {
+      debugLog(DebugCategory.CONNECTION, 'Poll pending-queries failed', { status: response.status })
+      return
+    }
 
     const data = await response.json()
     if (!data.queries || data.queries.length === 0) return
 
+    debugLog(DebugCategory.CONNECTION, 'Got pending queries', { count: data.queries.length })
     for (const query of data.queries) {
-      await handlePendingQuery(query, serverUrl)
+      // Skip queries already being processed
+      if (_processingQueries.has(query.id)) {
+        debugLog(DebugCategory.CONNECTION, 'Skipping already processing query', { id: query.id })
+        continue
+      }
+      // Mark as processing
+      _processingQueries.add(query.id)
+      try {
+        await handlePendingQuery(query, serverUrl)
+      } finally {
+        // Remove from processing set when done
+        _processingQueries.delete(query.id)
+      }
     }
+  } catch (err) {
+    debugLog(DebugCategory.CONNECTION, 'Poll pending-queries error', { error: err.message })
+  }
+}
+
+/**
+ * Ping content script to check if it's loaded
+ * @param {number} tabId - The tab ID to ping
+ * @param {number} timeoutMs - Timeout in milliseconds
+ * @returns {Promise<boolean>} True if content script responds
+ */
+async function pingContentScript(tabId, timeoutMs = 500) {
+  try {
+    const response = await Promise.race([
+      chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+    ])
+    return response?.status === 'alive'
   } catch {
-    // Server unavailable, silently ignore
+    return false
+  }
+}
+
+/**
+ * Wait for tab to finish loading
+ * @param {number} tabId - The tab ID to wait for
+ * @param {number} timeoutMs - Maximum wait time
+ * @returns {Promise<boolean>} True if tab loaded successfully
+ */
+async function waitForTabLoad(tabId, timeoutMs = 5000) {
+  const startTime = Date.now()
+  while (Date.now() - startTime < timeoutMs) {
+    try {
+      const tab = await chrome.tabs.get(tabId)
+      if (tab.status === 'complete') return true
+    } catch {
+      return false
+    }
+    await new Promise((r) => setTimeout(r, 100))
+  }
+  return false
+}
+
+/**
+ * Handle browser action commands (refresh, navigate, go back/forward).
+ * These run in the background script and don't require content scripts.
+ * For navigate: auto-detects if content script is loaded and refreshes if needed.
+ * @param {number} tabId - The tab ID to act on
+ * @param {Object} params - { action, url? }
+ * @returns {Promise<Object>} Result with success/error
+ */
+async function handleBrowserAction(tabId, params) {
+  const { action, url } = params || {}
+
+  // Check AI Web Pilot toggle for safety
+  const enabled = await isAiWebPilotEnabled()
+  if (!enabled) {
+    return { success: false, error: 'ai_web_pilot_disabled', message: 'AI Web Pilot is not enabled' }
+  }
+
+  try {
+    switch (action) {
+      case 'refresh':
+        await chrome.tabs.reload(tabId)
+        await waitForTabLoad(tabId)
+        return { success: true, action: 'refresh' }
+
+      case 'navigate': {
+        if (!url) {
+          return { success: false, error: 'missing_url', message: 'URL required for navigate action' }
+        }
+
+        // Check for restricted URLs
+        if (url.startsWith('chrome://') || url.startsWith('chrome-extension://')) {
+          return {
+            success: false,
+            error: 'restricted_url',
+            message: 'Cannot navigate to Chrome internal pages',
+          }
+        }
+
+        // Navigate to the URL
+        await chrome.tabs.update(tabId, { url })
+
+        // Wait for page to load
+        await waitForTabLoad(tabId)
+
+        // Brief delay for content script initialization
+        await new Promise((r) => setTimeout(r, 500))
+
+        // Check if content script is loaded
+        const contentScriptLoaded = await pingContentScript(tabId)
+
+        if (contentScriptLoaded) {
+          return {
+            success: true,
+            action: 'navigate',
+            url,
+            content_script_status: 'loaded',
+            message: 'Content script ready',
+          }
+        }
+
+        // Content script not loaded - check if it's a file:// URL
+        const tab = await chrome.tabs.get(tabId)
+        if (tab.url?.startsWith('file://')) {
+          return {
+            success: true,
+            action: 'navigate',
+            url,
+            content_script_status: 'unavailable',
+            message:
+              'Content script cannot load on file:// URLs. Enable "Allow access to file URLs" in extension settings (chrome://extensions).',
+          }
+        }
+
+        // Auto-refresh to inject content script
+        debugLog(DebugCategory.CAPTURE, 'Content script not loaded after navigate, refreshing', { tabId, url })
+        await chrome.tabs.reload(tabId)
+        await waitForTabLoad(tabId)
+
+        // Wait for content script after refresh
+        await new Promise((r) => setTimeout(r, 1000))
+
+        // Check again
+        const loadedAfterRefresh = await pingContentScript(tabId)
+
+        if (loadedAfterRefresh) {
+          return {
+            success: true,
+            action: 'navigate',
+            url,
+            content_script_status: 'refreshed',
+            message: 'Page refreshed to load content script',
+          }
+        }
+
+        // Still not loaded - return with warning
+        return {
+          success: true,
+          action: 'navigate',
+          url,
+          content_script_status: 'failed',
+          message: 'Navigation complete but content script could not be loaded. AI Web Pilot tools may not work.',
+        }
+      }
+
+      case 'back':
+        await chrome.tabs.goBack(tabId)
+        return { success: true, action: 'back' }
+
+      case 'forward':
+        await chrome.tabs.goForward(tabId)
+        return { success: true, action: 'forward' }
+
+      default:
+        return { success: false, error: 'unknown_action', message: `Unknown action: ${action}` }
+    }
+  } catch (err) {
+    return { success: false, error: 'browser_action_failed', message: err.message }
   }
 }
 
@@ -1976,8 +2275,14 @@ export async function pollPendingQueries(serverUrl) {
  * @param {Object} query - { id, type, params }
  * @param {string} serverUrl - The server base URL
  */
-export async function handlePendingQuery(query, _serverUrl) {
+export async function handlePendingQuery(query, serverUrl) {
   try {
+    // Handle state management queries locally (in background script)
+    if (query.type.startsWith('state_')) {
+      await handleStateQuery(query, serverUrl)
+      return
+    }
+
     const tabs = await new Promise((resolve) => {
       chrome.tabs.query({ active: true, currentWindow: true }, resolve)
     })
@@ -1985,15 +2290,207 @@ export async function handlePendingQuery(query, _serverUrl) {
     if (!tabs || tabs.length === 0) return
 
     const tabId = tabs[0].id
-    const messageType = query.type === 'a11y' ? 'GASOLINE_A11Y_AUDIT' : 'GASOLINE_DOM_QUERY'
 
-    await chrome.tabs.sendMessage(tabId, {
+    // Handle browser action queries (refresh, navigate, etc.)
+    if (query.type === 'browser_action') {
+      const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      const result = await handleBrowserAction(tabId, params)
+      await postQueryResult(serverUrl, query.id, 'browser_action', result)
+      return
+    }
+
+    // Handle highlight queries via the pilot command system
+    if (query.type === 'highlight') {
+      const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params)
+      // Post result back to server
+      await postQueryResult(serverUrl, query.id, 'highlight', result)
+      return
+    }
+
+    // Handle page_info queries - get page info from tab
+    if (query.type === 'page_info') {
+      const tab = tabs[0]
+      const result = {
+        url: tab.url,
+        title: tab.title,
+        favicon: tab.favIconUrl,
+        status: tab.status,
+        viewport: {
+          width: tab.width,
+          height: tab.height,
+        },
+      }
+      await postQueryResult(serverUrl, query.id, 'page_info', result)
+      return
+    }
+
+    // Determine message type based on query type
+    let messageType
+    if (query.type === 'a11y') {
+      messageType = 'GASOLINE_A11Y_AUDIT'
+    } else if (query.type === 'execute') {
+      messageType = 'GASOLINE_EXECUTE_QUERY'
+    } else {
+      messageType = 'GASOLINE_DOM_QUERY'
+    }
+
+    // For execute queries, check AI Web Pilot toggle first
+    if (query.type === 'execute') {
+      const enabled = await isAiWebPilotEnabled()
+      if (!enabled) {
+        // Post error result back to server
+        await postQueryResult(serverUrl, query.id, 'execute', {
+          success: false,
+          error: 'ai_web_pilot_disabled',
+          message: 'AI Web Pilot is not enabled in the extension popup',
+        })
+        return
+      }
+    }
+
+    // Send to content script and wait for result
+    const result = await chrome.tabs.sendMessage(tabId, {
       type: messageType,
       queryId: query.id,
       params: query.params,
     })
-  } catch {
-    // Tab communication failed
+
+    // For execute queries, post the result back to the server
+    if (query.type === 'execute' && result) {
+      await postQueryResult(serverUrl, query.id, 'execute', result)
+    }
+  } catch (err) {
+    // Tab communication failed - for execute queries, report error
+    if (query.type === 'execute') {
+      // Provide helpful error message for common issues
+      let message = err.message || 'Tab communication failed'
+      if (message.includes('Receiving end does not exist')) {
+        message = 'Content script not loaded. Please refresh the page to enable AI Web Pilot.'
+      }
+      await postQueryResult(serverUrl, query.id, 'execute', {
+        success: false,
+        error: 'content_script_not_loaded',
+        message,
+      })
+    }
+  }
+}
+
+/**
+ * Handle state management queries (save, load, list, delete).
+ * These queries manage browser state snapshots.
+ * @param {Object} query - { id, type, params }
+ * @param {string} serverUrl - The server base URL
+ */
+async function handleStateQuery(query, serverUrl) {
+  // Check if AI Web Pilot is enabled
+  const enabled = await isAiWebPilotEnabled()
+  if (!enabled) {
+    await postQueryResult(serverUrl, query.id, 'state', { error: 'ai_web_pilot_disabled' })
+    return
+  }
+
+  const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+  const action = params.action
+
+  try {
+    let result
+
+    switch (action) {
+      case 'capture': {
+        // Capture current state from the active tab without saving
+        const tabs = await new Promise((resolve) => {
+          chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+        })
+
+        if (!tabs || tabs.length === 0) {
+          await postQueryResult(serverUrl, query.id, 'state', { error: 'no_active_tab' })
+          return
+        }
+
+        // Forward to content script to capture state
+        const captureResult = await chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'GASOLINE_MANAGE_STATE',
+          params: { action: 'capture' },
+        })
+
+        result = captureResult
+        break
+      }
+
+      case 'save': {
+        // First capture state from the active tab
+        const tabs = await new Promise((resolve) => {
+          chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+        })
+
+        if (!tabs || tabs.length === 0) {
+          await postQueryResult(serverUrl, query.id, 'state', { error: 'no_active_tab' })
+          return
+        }
+
+        // Forward to content script to capture state
+        const captureResult = await chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'GASOLINE_MANAGE_STATE',
+          params: { action: 'capture' },
+        })
+
+        if (captureResult.error) {
+          await postQueryResult(serverUrl, query.id, 'state', { error: captureResult.error })
+          return
+        }
+
+        // Save the captured state
+        result = await saveStateSnapshot(params.name, captureResult)
+        break
+      }
+
+      case 'load': {
+        const snapshot = await loadStateSnapshot(params.name)
+        if (!snapshot) {
+          await postQueryResult(serverUrl, query.id, 'state', { error: `Snapshot '${params.name}' not found` })
+          return
+        }
+
+        // Forward to content script to restore state
+        const tabs = await new Promise((resolve) => {
+          chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+        })
+
+        if (!tabs || tabs.length === 0) {
+          await postQueryResult(serverUrl, query.id, 'state', { error: 'no_active_tab' })
+          return
+        }
+
+        const restoreResult = await chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'GASOLINE_MANAGE_STATE',
+          params: {
+            action: 'restore',
+            state: snapshot,
+            include_url: params.include_url !== false,
+          },
+        })
+
+        result = restoreResult
+        break
+      }
+
+      case 'list':
+        result = { snapshots: await listStateSnapshots() }
+        break
+
+      case 'delete':
+        result = await deleteStateSnapshot(params.name)
+        break
+
+      default:
+        result = { error: `Unknown action: ${action}` }
+    }
+
+    await postQueryResult(serverUrl, query.id, 'state', result)
+  } catch (err) {
+    await postQueryResult(serverUrl, query.id, 'state', { error: err.message })
   }
 }
 
@@ -2001,11 +2498,22 @@ export async function handlePendingQuery(query, _serverUrl) {
  * Post query results back to the server
  * @param {string} serverUrl - The server base URL
  * @param {string} queryId - The query ID
- * @param {string} type - Query type ('dom' or 'a11y')
+ * @param {string} type - Query type ('dom', 'a11y', 'highlight', 'state', or 'execute')
  * @param {Object} result - The query result
  */
 export async function postQueryResult(serverUrl, queryId, type, result) {
-  const endpoint = type === 'a11y' ? '/a11y-result' : '/dom-result'
+  let endpoint
+  if (type === 'a11y') {
+    endpoint = '/a11y-result'
+  } else if (type === 'state') {
+    endpoint = '/state-result'
+  } else if (type === 'highlight') {
+    endpoint = '/highlight-result'
+  } else if (type === 'execute') {
+    endpoint = '/execute-result'
+  } else {
+    endpoint = '/dom-result'
+  }
 
   await fetch(`${serverUrl}${endpoint}`, {
     method: 'POST',
@@ -2020,6 +2528,7 @@ export async function postQueryResult(serverUrl, queryId, type, result) {
  */
 export function startQueryPolling(serverUrl) {
   stopQueryPolling()
+  debugLog(DebugCategory.CONNECTION, 'Starting query polling', { serverUrl })
   queryPollingInterval = setInterval(() => pollPendingQueries(serverUrl), 1000)
 }
 
@@ -2031,4 +2540,170 @@ export function stopQueryPolling() {
     clearInterval(queryPollingInterval)
     queryPollingInterval = null
   }
+}
+
+// =============================================================================
+// AI WEB PILOT SAFETY GATE
+// =============================================================================
+
+// Listen for storage changes to update cache immediately (session, local, and sync)
+// Guard against test environment where chrome may not be defined
+if (typeof chrome !== 'undefined' && chrome.storage) {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if ((areaName === 'sync' || areaName === 'local' || areaName === 'session') && changes.aiWebPilotEnabled) {
+      _aiWebPilotEnabledCache = changes.aiWebPilotEnabled.newValue === true
+      console.log('[Gasoline] aiWebPilotEnabled cache updated from', areaName, ':', _aiWebPilotEnabledCache)
+    }
+  })
+}
+
+/**
+ * Check if AI Web Pilot is enabled in the extension popup.
+ * Waits for startup init to complete, then uses cached values.
+ * @returns {Promise<boolean>} True if AI Web Pilot is enabled
+ */
+export async function isAiWebPilotEnabled() {
+  // If we have a cached value in memory, use it
+  if (_aiWebPilotEnabledCache !== null) {
+    console.log('[Gasoline] ▶▶▶ isAiWebPilotEnabled returning CACHED:', _aiWebPilotEnabledCache)
+    return _aiWebPilotEnabledCache
+  }
+
+  // Wait for startup init to complete (set by chrome.storage read at module load)
+  const startupValue = await _aiWebPilotInitPromise
+  _aiWebPilotEnabledCache = startupValue
+  console.log('[Gasoline] ▶▶▶ isAiWebPilotEnabled returning STARTUP:', startupValue)
+  return startupValue
+}
+
+/**
+ * Handle pilot commands (GASOLINE_HIGHLIGHT, GASOLINE_MANAGE_STATE, GASOLINE_EXECUTE_JS).
+ * Checks the AI Web Pilot toggle before forwarding to content scripts.
+ * @param {string} command - The pilot command type
+ * @param {Object} params - Command parameters
+ * @returns {Promise<Object>} Result or error response
+ */
+export async function handlePilotCommand(command, params) {
+  // Check if AI Web Pilot is enabled with fallback to direct storage read
+  let enabled = await isAiWebPilotEnabled()
+
+  // Fail-safe: if initial check returns false, verify directly with storage
+  if (!enabled) {
+    const localResult = await new Promise((resolve) => chrome.storage.local.get(['aiWebPilotEnabled'], resolve))
+    if (localResult.aiWebPilotEnabled === true) {
+      // Storage says true but cache said false - fix the cache and proceed
+      _aiWebPilotEnabledCache = true
+      enabled = true
+    }
+  }
+
+  if (!enabled) {
+    return { error: 'ai_web_pilot_disabled' }
+  }
+
+  // Phase 1: Stub - just acknowledge the command is accepted
+  // Phase 2 will implement actual forwarding to content scripts
+  try {
+    const tabs = await new Promise((resolve) => {
+      chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+    })
+
+    if (!tabs || tabs.length === 0) {
+      return { error: 'no_active_tab' }
+    }
+
+    const tabId = tabs[0].id
+
+    // Forward command to content script
+    const result = await chrome.tabs.sendMessage(tabId, {
+      type: command,
+      params,
+    })
+
+    return result || { success: true }
+  } catch (err) {
+    return { error: err.message || 'command_failed' }
+  }
+}
+
+// =============================================================================
+// AI WEB PILOT: STATE SNAPSHOT STORAGE
+// =============================================================================
+
+const SNAPSHOT_KEY = 'gasoline_state_snapshots'
+
+/**
+ * Save a state snapshot to chrome.storage.local.
+ * @param {string} name - Snapshot name
+ * @param {Object} state - State object from captureState()
+ * @returns {Promise<Object>} Result with success, snapshot_name, size_bytes
+ */
+export async function saveStateSnapshot(name, state) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      snapshots[name] = {
+        ...state,
+        name,
+        size_bytes: JSON.stringify(state).length,
+      }
+      chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
+        resolve({
+          success: true,
+          snapshot_name: name,
+          size_bytes: snapshots[name].size_bytes,
+        })
+      })
+    })
+  })
+}
+
+/**
+ * Load a state snapshot from chrome.storage.local.
+ * @param {string} name - Snapshot name
+ * @returns {Promise<Object|null>} Snapshot or null if not found
+ */
+export async function loadStateSnapshot(name) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      resolve(snapshots[name] || null)
+    })
+  })
+}
+
+/**
+ * List all state snapshots with metadata.
+ * @returns {Promise<Array>} Array of snapshot metadata objects
+ */
+export async function listStateSnapshots() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      const list = Object.values(snapshots).map((s) => ({
+        name: s.name,
+        url: s.url,
+        timestamp: s.timestamp,
+        size_bytes: s.size_bytes,
+      }))
+      resolve(list)
+    })
+  })
+}
+
+/**
+ * Delete a state snapshot from chrome.storage.local.
+ * @param {string} name - Snapshot name
+ * @returns {Promise<Object>} Result with success and deleted name
+ */
+export async function deleteStateSnapshot(name) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      delete snapshots[name]
+      chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
+        resolve({ success: true, deleted: name })
+      })
+    })
+  })
 }

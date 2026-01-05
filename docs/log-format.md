@@ -31,6 +31,30 @@ Logs are stored in [JSONL format](https://jsonlines.org/) (one JSON object per l
 | `screenshot` | Page screenshot (saved as JPEG file) | `screenshotFile`, `trigger`, `url` |
 | `network_waterfall` | Network timing data | `entries`, `pending` |
 | `performance` | Performance marks/measures | `marks`, `measures`, `navigation` |
+| `lifecycle` | Server startup, disconnect, shutdown | `event`, `version`, `port`, `reason` |
+
+## <i class="fas fa-heartbeat"></i> Lifecycle Events
+
+The server logs lifecycle events to the JSONL file for debugging and auditing:
+
+```jsonl
+{"type":"lifecycle","event":"startup","version":"4.8.0","port":7890,"timestamp":"2024-01-22T10:30:00Z"}
+{"type":"lifecycle","event":"mcp_disconnect","port":7890,"timestamp":"2024-01-22T11:45:00Z"}
+{"type":"lifecycle","event":"shutdown","reason":"mcp_disconnect_grace","timestamp":"2024-01-22T11:45:02Z"}
+```
+
+| Event | When | Additional Fields |
+|-------|------|-------------------|
+| `startup` | Server binds HTTP port successfully | `version`, `port` |
+| `mcp_disconnect` | MCP client closes stdin | `port` |
+| `shutdown` | Server process exits | `reason` |
+
+### Shutdown Reasons
+
+| Reason | Meaning |
+|--------|---------|
+| `mcp_disconnect_grace` | Normal exit 2s after MCP client disconnected |
+| `interrupt` | SIGINT received (Ctrl+C) |
 
 ## <i class="fas fa-plus-circle"></i> Enrichments
 
