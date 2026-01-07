@@ -56,6 +56,7 @@ export {
   setNetworkBodyCaptureEnabled,
   isNetworkBodyCaptureEnabled,
   shouldCaptureUrl,
+  setServerUrl,
   sanitizeHeaders,
   truncateRequestBody,
   truncateResponseBody,
@@ -151,7 +152,12 @@ import {
   installNavigationCapture,
   uninstallNavigationCapture,
 } from './lib/actions.js'
-import { getNetworkWaterfall, setNetworkWaterfallEnabled, setNetworkBodyCaptureEnabled } from './lib/network.js'
+import {
+  getNetworkWaterfall,
+  setNetworkWaterfallEnabled,
+  setNetworkBodyCaptureEnabled,
+  setServerUrl,
+} from './lib/network.js'
 import {
   getPerformanceMarks,
   getPerformanceMeasures,
@@ -176,12 +182,11 @@ import {
   setPerformanceSnapshotEnabled,
 } from './lib/perf-snapshot.js'
 
-// Constants used by wrapFetch (still in this file)
-const MAX_RESPONSE_LENGTH = 5120 // 5KB
-const SENSITIVE_HEADERS = ['authorization', 'cookie', 'set-cookie', 'x-auth-token']
+// Import constants used by wrapFetch and memory checks from the single source of truth
+import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from './lib/constants.js'
 
 // Re-export constants that tests import from inject.js
-export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES } from './lib/constants.js'
+export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from './lib/constants.js'
 
 // Store original methods
 let originalFetch = null
@@ -218,10 +223,11 @@ export function wrapFetch(originalFetchFn) {
           responseBody = '[Could not read response]'
         }
 
-        // Filter sensitive headers
+        // Filter sensitive headers (check both init.headers and Request object headers)
         const safeHeaders = {}
-        if (init?.headers) {
-          const headers = init.headers instanceof Headers ? Object.fromEntries(init.headers) : init.headers
+        const rawHeaders = init?.headers || (typeof input === 'object' && input?.headers) || null
+        if (rawHeaders) {
+          const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders
           Object.keys(headers).forEach((key) => {
             if (!SENSITIVE_HEADERS.includes(key.toLowerCase())) {
               safeHeaders[key] = headers[key]
@@ -238,12 +244,25 @@ export function wrapFetch(originalFetchFn) {
           statusText: response.statusText,
           duration,
           response: responseBody,
+          ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}),
         })
       }
 
       return response
     } catch (error) {
       const duration = Date.now() - startTime
+
+      // Filter sensitive headers for the error path
+      const safeHeaders = {}
+      const rawHeaders = init?.headers || (typeof input === 'object' && input?.headers) || null
+      if (rawHeaders) {
+        const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders
+        Object.keys(headers).forEach((key) => {
+          if (!SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+            safeHeaders[key] = headers[key]
+          }
+        })
+      }
 
       postLog({
         level: 'error',
@@ -252,6 +271,7 @@ export function wrapFetch(originalFetchFn) {
         url,
         error: error.message,
         duration,
+        ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}),
       })
 
       throw error
@@ -486,7 +506,7 @@ export function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: '5.0.0',
+    version: '5.1.0',
   }
 }
 
@@ -586,16 +606,26 @@ export function executeJavaScript(script, timeoutMs = 5000) {
       resolve({
         success: false,
         error: 'execution_timeout',
-        message: `Script exceeded ${timeoutMs}ms timeout`,
+        message: `Script exceeded ${timeoutMs}ms timeout. RECOMMENDED ACTIONS:
+
+1. Check for infinite loops or blocking operations in your script
+2. Break the task into smaller pieces (< 2s execution time works best)
+3. Verify the script logic - test with simpler operations first
+
+Tip: Run small test scripts to isolate the issue, then build up complexity.`,
       })
     }, timeoutMs)
 
     try {
       // Use Function constructor to execute in global scope
       // This runs in page context (inject.js), not extension context
-      let cleanScript = script.trim()
+      const cleanScript = script.trim()
 
-      // Detect if this is a multi-statement script (contains semicolons or already has return)
+      // Detect if this is a multi-statement script (contains semicolons or already has return).
+      // Known limitation: semicolons inside string literals (e.g., 'a;b') will cause the
+      // script to be treated as multi-statement, requiring the user to add an explicit
+      // return statement. A robust fix would require a full JS parser, which is not
+      // warranted for this heuristic.
       const hasMultipleStatements = cleanScript.includes(';')
       const hasExplicitReturn = /\breturn\b/.test(cleanScript)
 
@@ -609,6 +639,7 @@ export function executeJavaScript(script, timeoutMs = 5000) {
         fnBody = `"use strict"; return (${cleanScript});`
       }
 
+      // eslint-disable-next-line no-new-func -- Intentional: execute_js runs user-provided scripts in page context
       const fn = new Function(fnBody)
 
       const result = fn()
@@ -642,7 +673,8 @@ export function executeJavaScript(script, timeoutMs = 5000) {
         resolve({
           success: false,
           error: 'csp_blocked',
-          message: 'This page has a Content Security Policy that blocks script execution. Try on a different page (e.g., localhost, about:blank, or a page without strict CSP).',
+          message:
+            'This page has a Content Security Policy that blocks script execution. Try on a different page (e.g., localhost, about:blank, or a page without strict CSP).',
           original_error: err.message,
         })
       } else {
@@ -660,9 +692,6 @@ export function executeJavaScript(script, timeoutMs = 5000) {
 // =============================================================================
 // LIFECYCLE & MEMORY
 // =============================================================================
-
-const MEMORY_SOFT_LIMIT_MB = 20
-const MEMORY_HARD_LIMIT_MB = 50
 
 /**
  * Check if heavy intercepts should be deferred until page load
@@ -695,6 +724,21 @@ export function checkMemoryPressure(state) {
   return result
 }
 
+// Valid setting names from content script
+const VALID_SETTINGS = new Set([
+  'setNetworkWaterfallEnabled',
+  'setPerformanceMarksEnabled',
+  'setActionReplayEnabled',
+  'setWebSocketCaptureEnabled',
+  'setWebSocketCaptureMode',
+  'setPerformanceSnapshotEnabled',
+  'setDeferralEnabled',
+  'setNetworkBodyCaptureEnabled',
+  'setServerUrl',
+])
+
+const VALID_STATE_ACTIONS = new Set(['capture', 'restore'])
+
 // Listen for settings changes from content script
 if (typeof window !== 'undefined') {
   window.addEventListener('message', (event) => {
@@ -703,6 +747,31 @@ if (typeof window !== 'undefined') {
 
     // Handle settings messages from content script
     if (event.data?.type === 'GASOLINE_SETTING') {
+      // Validate setting name
+      if (!VALID_SETTINGS.has(event.data.setting)) {
+        console.warn('[Gasoline] Invalid setting:', event.data.setting)
+        return
+      }
+
+      // Validate parameter types based on setting
+      if (event.data.setting === 'setWebSocketCaptureMode') {
+        if (typeof event.data.mode !== 'string') {
+          console.warn('[Gasoline] Invalid mode type for setWebSocketCaptureMode')
+          return
+        }
+      } else if (event.data.setting === 'setServerUrl') {
+        if (typeof event.data.url !== 'string') {
+          console.warn('[Gasoline] Invalid url type for setServerUrl')
+          return
+        }
+      } else {
+        // Boolean settings
+        if (typeof event.data.enabled !== 'boolean') {
+          console.warn('[Gasoline] Invalid enabled value type')
+          return
+        }
+      }
+
       switch (event.data.setting) {
         case 'setNetworkWaterfallEnabled':
           setNetworkWaterfallEnabled(event.data.enabled)
@@ -738,19 +807,50 @@ if (typeof window !== 'undefined') {
         case 'setNetworkBodyCaptureEnabled':
           setNetworkBodyCaptureEnabled(event.data.enabled)
           break
+        case 'setServerUrl':
+          setServerUrl(event.data.url)
+          break
       }
     }
 
     // Handle state management commands from content script
     if (event.data?.type === 'GASOLINE_STATE_COMMAND') {
-      const { messageId, action } = event.data
+      const { messageId, action, state } = event.data
+
+      // Validate action
+      if (!VALID_STATE_ACTIONS.has(action)) {
+        console.warn('[Gasoline] Invalid state action:', action)
+        window.postMessage(
+          {
+            type: 'GASOLINE_STATE_RESPONSE',
+            messageId,
+            result: { error: `Invalid action: ${action}` },
+          },
+          window.location.origin,
+        )
+        return
+      }
+
+      // Validate state object for restore action
+      if (action === 'restore' && (!state || typeof state !== 'object')) {
+        console.warn('[Gasoline] Invalid state object for restore')
+        window.postMessage(
+          {
+            type: 'GASOLINE_STATE_RESPONSE',
+            messageId,
+            result: { error: 'Invalid state object' },
+          },
+          window.location.origin,
+        )
+        return
+      }
+
       let result
 
       try {
         if (action === 'capture') {
           result = captureState()
         } else if (action === 'restore') {
-          const state = event.data.state
           const includeUrl = event.data.include_url !== false
           result = restoreState(state, includeUrl)
         } else {
@@ -767,23 +867,128 @@ if (typeof window !== 'undefined') {
           messageId,
           result,
         },
-        '*',
+        window.location.origin,
       )
     }
 
     // Handle GASOLINE_EXECUTE_JS from content script
     if (event.data?.type === 'GASOLINE_EXECUTE_JS') {
       const { requestId, script, timeoutMs } = event.data
-      executeJavaScript(script, timeoutMs).then((result) => {
+
+      // Validate parameters
+      if (typeof script !== 'string') {
+        console.warn('[Gasoline] Script must be a string')
         window.postMessage(
           {
             type: 'GASOLINE_EXECUTE_JS_RESULT',
             requestId,
-            result,
+            result: { success: false, error: 'invalid_script', message: 'Script must be a string' },
           },
-          '*',
+          window.location.origin,
         )
-      })
+        return
+      }
+
+      if (typeof requestId !== 'number' && typeof requestId !== 'string') {
+        console.warn('[Gasoline] Invalid requestId type')
+        return
+      }
+
+      executeJavaScript(script, timeoutMs)
+        .then((result) => {
+          window.postMessage(
+            {
+              type: 'GASOLINE_EXECUTE_JS_RESULT',
+              requestId,
+              result,
+            },
+            window.location.origin,
+          )
+        })
+        .catch((err) => {
+          console.error('[Gasoline] Failed to execute JS:', err)
+          // Attempt to notify requester of failure
+          window.postMessage(
+            {
+              type: 'GASOLINE_EXECUTE_JS_RESULT',
+              requestId,
+              result: { success: false, error: 'execution_failed', message: err.message },
+            },
+            window.location.origin,
+          )
+        })
+    }
+
+    // Handle GASOLINE_A11Y_QUERY from content script (accessibility audit)
+    if (event.data?.type === 'GASOLINE_A11Y_QUERY') {
+      const { requestId, params } = event.data
+
+      try {
+        runAxeAuditWithTimeout(params || {})
+          .then((result) => {
+            // Send response back to content script
+            window.postMessage(
+              {
+                type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+                requestId,
+                result,
+              },
+              window.location.origin,
+            )
+          })
+          .catch((err) => {
+            console.error('[Gasoline] Accessibility audit error:', err)
+            window.postMessage(
+              {
+                type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+                requestId,
+                result: { error: err.message || 'Accessibility audit failed' },
+              },
+              window.location.origin,
+            )
+          })
+      } catch (err) {
+        console.error('[Gasoline] Failed to run accessibility audit:', err)
+        window.postMessage(
+          {
+            type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+            requestId,
+            result: { error: err.message || 'Failed to run accessibility audit' },
+          },
+          window.location.origin,
+        )
+      }
+    }
+
+    // Handle GASOLINE_GET_WATERFALL from content script (collect network timing data)
+    if (event.data?.type === 'GASOLINE_GET_WATERFALL') {
+      const { requestId } = event.data
+
+      try {
+        // Get all network waterfall entries (no time filtering - get everything)
+        const entries = getNetworkWaterfall({})
+
+        // Send response back to content script
+        window.postMessage(
+          {
+            type: 'GASOLINE_WATERFALL_RESPONSE',
+            requestId,
+            entries: entries || [],
+          },
+          window.location.origin,
+        )
+      } catch (err) {
+        console.error('[Gasoline] Failed to get network waterfall:', err)
+        // Send empty response on error
+        window.postMessage(
+          {
+            type: 'GASOLINE_WATERFALL_RESPONSE',
+            requestId,
+            entries: [],
+          },
+          window.location.origin,
+        )
+      }
     }
   })
 }
@@ -797,6 +1002,7 @@ if (typeof window !== 'undefined') {
  * - Triggers Phase 2 based on deferral settings
  */
 export function installPhase1() {
+  console.log('[Gasoline] Phase 1 installing (lightweight API + perf observers)')
   injectionTimestamp = performance.now()
   phase2Installed = false
   phase2Timestamp = 0
@@ -842,6 +1048,7 @@ export function installPhase2() {
   // test teardown or edge cases where the environment is destroyed)
   if (typeof window === 'undefined' || typeof document === 'undefined') return
 
+  console.log('[Gasoline] Phase 2 installing (heavy interceptors: console, fetch, WS, errors, actions)')
   phase2Timestamp = performance.now()
   phase2Installed = true
 
@@ -912,7 +1119,13 @@ export function highlightElement(selector, durationMs = 5000) {
     boxSizing: 'border-box',
   })
 
-  document.body.appendChild(gasolineHighlighter)
+  const targetElement = document.body || document.documentElement
+  if (targetElement) {
+    targetElement.appendChild(gasolineHighlighter)
+  } else {
+    console.warn('[Gasoline] No document body available for highlighter injection')
+    return
+  }
 
   setTimeout(() => {
     if (gasolineHighlighter) {
@@ -964,12 +1177,14 @@ if (typeof window !== 'undefined') {
   window.addEventListener('message', (event) => {
     if (event.source !== window) return
     if (event.data?.type === 'GASOLINE_HIGHLIGHT_REQUEST') {
-      const { selector, duration_ms } = event.data.params || {}
+      const { requestId, params } = event.data
+      const { selector, duration_ms } = params || {}
       const result = highlightElement(selector, duration_ms)
-      // Post result back to content script
+      // Post result back to content script with requestId
       window.postMessage(
         {
           type: 'GASOLINE_HIGHLIGHT_RESPONSE',
+          requestId,
           result,
         },
         '*',

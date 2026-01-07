@@ -11,6 +11,17 @@
 const DEFAULT_MAX_ENTRIES = 1000
 
 /**
+ * Format bytes into human-readable file size
+ */
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  const value = bytes / Math.pow(1024, i)
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`
+}
+
+/**
  * Update the connection status display
  */
 export function updateConnectionStatus(status) {
@@ -50,6 +61,18 @@ export function updateConnectionStatus(status) {
     }
   }
 
+  // Version mismatch warning
+  const versionWarningEl = document.getElementById('version-mismatch')
+  if (versionWarningEl) {
+    if (status.versionMismatch && status.serverVersion && status.extensionVersion) {
+      versionWarningEl.style.display = 'block'
+      versionWarningEl.querySelector('.version-detail').textContent =
+        `Server: v${status.serverVersion} / Extension: v${status.extensionVersion}`
+    } else {
+      versionWarningEl.style.display = 'none'
+    }
+  }
+
   if (serverUrlEl && status.serverUrl) {
     serverUrlEl.textContent = status.serverUrl
   }
@@ -60,6 +83,12 @@ export function updateConnectionStatus(status) {
 
   if (errorCountEl && status.errorCount !== undefined) {
     errorCountEl.textContent = String(status.errorCount)
+  }
+
+  // Log file size
+  const fileSizeEl = document.getElementById('log-file-size')
+  if (fileSizeEl && status.logFileSize !== undefined) {
+    fileSizeEl.textContent = formatFileSize(status.logFileSize)
   }
 
   // Health indicators (circuit breaker + memory pressure)
@@ -161,7 +190,6 @@ export const FEATURE_TOGGLES = [
     messageType: 'setNetworkBodyCaptureEnabled',
     default: true,
   },
-  { id: 'toggle-debug-mode', storageKey: 'debugMode', messageType: 'setDebugMode', default: false },
 ]
 
 /**
@@ -193,26 +221,35 @@ export async function initFeatureToggles() {
 
 /**
  * Handle feature toggle change
+ * CRITICAL ARCHITECTURE: Popup NEVER writes storage directly.
+ * It ONLY sends a message to background, which is the single writer.
+ * This prevents desynchronization bugs where UI state diverges from actual state.
  */
 export function handleFeatureToggle(storageKey, messageType, enabled) {
-  // Save to storage
-  chrome.storage.local.set({ [storageKey]: enabled })
-
-  // Send message to background
-  chrome.runtime.sendMessage({ type: messageType, enabled })
+  // Send message to background (DO NOT write storage directly)
+  // Background will handle the write after updating its internal state
+  chrome.runtime.sendMessage({ type: messageType, enabled }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error(`[Gasoline] Message error for ${messageType}:`, chrome.runtime.lastError.message)
+    } else if (response?.success) {
+      console.log(`[Gasoline] ${messageType} acknowledged by background`)
+    } else {
+      console.warn(`[Gasoline] ${messageType} - no response from background`)
+    }
+  })
 }
 
 /**
  * Initialize the AI Web Pilot toggle.
- * Uses chrome.storage.sync for cross-device persistence.
+ * Read the current state from chrome.storage.local.
  */
 export async function initAiWebPilotToggle() {
   const toggle = document.getElementById('aiWebPilotEnabled')
   if (!toggle) return
 
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['aiWebPilotEnabled'], (result) => {
-      // Default to false (disabled) for safety
+    // Read from chrome.storage.local (single source of truth)
+    chrome.storage.local.get(['aiWebPilotEnabled'], (result) => {
       toggle.checked = result.aiWebPilotEnabled === true
 
       // Set up change handler
@@ -226,11 +263,186 @@ export async function initAiWebPilotToggle() {
 }
 
 /**
+ * Check if a URL is an internal browser page that cannot be tracked.
+ * Chrome blocks content scripts from these pages, so tracking is impossible.
+ * @param {string} url - URL to check
+ * @returns {boolean} true if the URL is an internal page
+ */
+export function isInternalUrl(url) {
+  if (!url) return true
+  const internalPrefixes = [
+    'chrome://',
+    'chrome-extension://',
+    'about:',
+    'edge://',
+    'brave://',
+    'devtools://',
+  ]
+  return internalPrefixes.some((prefix) => url.startsWith(prefix))
+}
+
+/**
+ * Initialize the Track This Tab button.
+ * Shows current tracking status and handles track/untrack.
+ * Disables the button on internal Chrome pages where tracking is impossible.
+ */
+export async function initTrackPageButton() {
+  const btn = document.getElementById('track-page-btn')
+  const info = document.getElementById('tracked-page-info')
+  const urlEl = document.getElementById('tracked-url')
+  if (!btn) return
+
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['trackedTabId', 'trackedTabUrl'], async (result) => {
+      // Check if current tab is an internal page
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const currentTab = tabs && tabs[0]
+        const currentUrl = currentTab?.url
+
+        if (isInternalUrl(currentUrl)) {
+          // Disable button on internal pages
+          btn.disabled = true
+          btn.textContent = 'Cannot Track Internal Pages'
+          btn.title = 'Chrome blocks extensions on internal pages like chrome:// and about:'
+          btn.style.opacity = '0.5'
+          btn.style.background = '#252525'
+          btn.style.color = '#888'
+          btn.style.borderColor = '#333'
+          if (info) {
+            info.style.display = 'block'
+            info.textContent = 'Internal browser pages cannot be tracked'
+          }
+          resolve()
+          return
+        }
+
+        // Update UI based on whether we're tracking a tab
+        if (result.trackedTabId) {
+          // Show tracking info
+          btn.textContent = 'Stop Tracking'
+          btn.style.background = '#f85149'
+          btn.style.color = 'white'
+          btn.style.borderColor = '#f85149'
+          if (info) info.style.display = 'block'
+          if (urlEl && result.trackedTabUrl) {
+            urlEl.textContent = result.trackedTabUrl
+          }
+        } else {
+          // Show track button - renamed from "Track This Page" to "Track This Tab"
+          btn.textContent = 'Track This Tab'
+          btn.style.background = '#252525'
+          btn.style.color = '#58a6ff'
+          btn.style.borderColor = '#58a6ff'
+          if (info) {
+            info.style.display = 'block'
+            if (info.querySelector && typeof info.querySelector === 'function') {
+              // Only set text on the info container if it's the full HTML element
+            }
+          }
+          // Show "no tracking" status
+          const noTrackEl = document.getElementById('no-tracking-warning')
+          if (noTrackEl) {
+            noTrackEl.style.display = 'block'
+          }
+        }
+
+        // Set up click handler
+        btn.addEventListener('click', handleTrackPageClick)
+
+        resolve()
+      })
+    })
+  })
+}
+
+/**
+ * Handle Track This Tab button click.
+ * Toggles tracking on/off for the current tab.
+ * Blocks tracking on internal Chrome pages.
+ */
+export async function handleTrackPageClick() {
+  const btn = document.getElementById('track-page-btn')
+  const info = document.getElementById('tracked-page-info')
+  const urlEl = document.getElementById('tracked-url')
+
+  // Check if we're currently tracking
+  chrome.storage.local.get(['trackedTabId'], async (result) => {
+    if (result.trackedTabId) {
+      // Untrack
+      chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl'], () => {
+        btn.textContent = 'Track This Tab'
+        btn.style.background = '#252525'
+        btn.style.color = '#58a6ff'
+        btn.style.borderColor = '#58a6ff'
+        if (info) info.style.display = 'none'
+        // Show "no tracking" warning
+        const noTrackEl = document.getElementById('no-tracking-warning')
+        if (noTrackEl) noTrackEl.style.display = 'block'
+        console.log('[Gasoline] Stopped tracking')
+      })
+    } else {
+      // Track current tab
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          const tab = tabs[0]
+
+          // Block tracking on internal Chrome pages
+          if (isInternalUrl(tab.url)) {
+            btn.disabled = true
+            btn.textContent = 'Cannot Track Internal Pages'
+            btn.style.opacity = '0.5'
+            return
+          }
+
+          chrome.storage.local.set({ trackedTabId: tab.id, trackedTabUrl: tab.url }, () => {
+            btn.textContent = 'Stop Tracking'
+            btn.style.background = '#f85149'
+            btn.style.color = 'white'
+            btn.style.borderColor = '#f85149'
+            if (info) info.style.display = 'block'
+            if (urlEl) urlEl.textContent = tab.url
+            // Hide "no tracking" warning
+            const noTrackEl = document.getElementById('no-tracking-warning')
+            if (noTrackEl) noTrackEl.style.display = 'none'
+            console.log('[Gasoline] Now tracking tab:', tab.id, tab.url)
+          })
+        }
+      })
+    }
+  })
+}
+
+/**
  * Handle AI Web Pilot toggle change.
- * Saves to chrome.storage.sync for cross-device persistence.
+ *
+ * CRITICAL: ONLY background.js updates the state via setAiWebPilotEnabled message.
+ * Popup NEVER writes to chrome.storage directly.
+ *
+ * This ensures single source of truth. If popup wrote to storage directly:
+ * 1. Popup updates storage ✓
+ * 2. Background cache doesn't update (no listener yet) ✗
+ * 3. Pilot command checks cache and gets wrong value ✗
+ * 4. User sees toggle "on" but commands fail saying "off" ✗
+ *
+ * By routing through background, we guarantee:
+ * 1. Popup sends message to background
+ * 2. Background updates cache immediately
+ * 3. Background writes to storage
+ * 4. Pilot commands see correct cache state
+ * 5. Everything is consistent ✓
  */
 export async function handleAiWebPilotToggle(enabled) {
-  chrome.storage.sync.set({ aiWebPilotEnabled: enabled })
+  // ONLY communicate with background - do NOT write to storage directly
+  chrome.runtime.sendMessage({ type: 'setAiWebPilotEnabled', enabled }, (response) => {
+    if (!response || !response.success) {
+      console.error('[Gasoline] Failed to set AI Web Pilot toggle in background')
+      // Revert the UI if background didn't accept the change
+      const toggle = document.getElementById('aiWebPilotEnabled')
+      if (toggle) {
+        toggle.checked = !enabled
+      }
+    }
+  })
 }
 
 /**
@@ -280,74 +492,56 @@ export async function handleLogLevelChange(level) {
   chrome.runtime.sendMessage({ type: 'setLogLevel', level })
 }
 
-/**
- * Export debug log to a downloadable file
- */
-export async function handleExportDebugLog() {
-  const exportBtn = document.getElementById('export-debug-btn')
+// Track clear-logs confirmation state
+let clearConfirmPending = false
+let clearConfirmTimer = null
 
-  if (exportBtn) {
-    exportBtn.disabled = true
-    exportBtn.textContent = 'Exporting...'
+/**
+ * Reset clear confirmation state (exported for testing)
+ */
+export function resetClearConfirm() {
+  clearConfirmPending = false
+  if (clearConfirmTimer) {
+    clearTimeout(clearConfirmTimer)
+    clearConfirmTimer = null
   }
-
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'getDebugLog' }, (response) => {
-      if (exportBtn) {
-        exportBtn.disabled = false
-        exportBtn.textContent = 'Export Debug Log'
-      }
-
-      if (response?.log) {
-        // Create downloadable blob
-        const blob = new Blob([response.log], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-        const filename = `gasoline-debug-${timestamp}.json`
-
-        // Trigger download
-        const a = document.createElement('a')
-        a.href = url
-        a.download = filename
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-
-        resolve({ success: true, filename })
-      } else {
-        resolve({ success: false, error: 'Failed to get debug log' })
-      }
-    })
-  })
 }
 
 /**
- * Clear the debug log buffer
- */
-export async function handleClearDebugLog() {
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'clearDebugLog' }, (response) => {
-      resolve(response)
-    })
-  })
-}
-
-/**
- * Handle clear logs button click
+ * Handle clear logs button click (with confirmation)
  */
 export async function handleClearLogs() {
   const clearBtn = document.getElementById('clear-btn')
   const entriesEl = document.getElementById('entries-count')
 
+  // Two-click confirmation: first click changes to "Confirm?", second click clears
+  if (clearBtn && !clearConfirmPending) {
+    clearConfirmPending = true
+    clearBtn.textContent = 'Confirm Clear?'
+    // Reset after 3 seconds if not confirmed
+    clearConfirmTimer = setTimeout(() => {
+      clearConfirmPending = false
+      if (clearBtn) clearBtn.textContent = 'Clear Logs'
+    }, 3000)
+    return Promise.resolve(null)
+  }
+
+  // Second click: actually clear
+  clearConfirmPending = false
+  if (clearConfirmTimer) {
+    clearTimeout(clearConfirmTimer)
+    clearConfirmTimer = null
+  }
   if (clearBtn) {
     clearBtn.disabled = true
+    clearBtn.textContent = 'Clearing...'
   }
 
   return new Promise((resolve) => {
     chrome.runtime.sendMessage({ type: 'clearLogs' }, (response) => {
       if (clearBtn) {
         clearBtn.disabled = false
+        clearBtn.textContent = 'Clear Logs'
       }
 
       if (response?.success) {
@@ -404,6 +598,9 @@ export async function initPopup() {
 
   // Initialize AI Web Pilot toggle
   await initAiWebPilotToggle()
+
+  // Initialize Track This Page button
+  await initTrackPageButton()
 
   // Show/hide WebSocket mode selector based on toggle
   const wsToggle = document.getElementById('toggle-websocket')
@@ -463,22 +660,17 @@ export async function initPopup() {
     clearBtn.addEventListener('click', handleClearLogs)
   }
 
-  // Set up debug log export button handler
-  const exportDebugBtn = document.getElementById('export-debug-btn')
-  if (exportDebugBtn) {
-    exportDebugBtn.addEventListener('click', handleExportDebugLog)
-  }
-
-  // Set up debug log clear button handler
-  const clearDebugBtn = document.getElementById('clear-debug-btn')
-  if (clearDebugBtn) {
-    clearDebugBtn.addEventListener('click', handleClearDebugLog)
-  }
-
   // Listen for status updates
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'statusUpdate') {
       updateConnectionStatus(message.status)
+    } else if (message.type === 'pilotStatusChanged') {
+      // Update toggle to reflect confirmed state from background
+      const toggle = document.getElementById('aiWebPilotEnabled')
+      if (toggle) {
+        toggle.checked = message.enabled === true
+        console.log('[Gasoline] Pilot status confirmed:', message.enabled)
+      }
     }
   })
 }

@@ -995,7 +995,7 @@ func intToString(n int) string {
 
 func (h *ToolHandler) toolGetAPISchema(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
-		URLFilter       string `json:"url_filter"`
+		URLFilter       string `json:"url"`
 		MinObservations int    `json:"min_observations"`
 		Format          string `json:"format"`
 	}

@@ -10,8 +10,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -46,15 +49,97 @@ type MCPServerInfo struct {
 
 // MCPCapabilities declares the server's MCP capabilities.
 type MCPCapabilities struct {
-	Tools MCPToolsCapability `json:"tools"`
+	Tools     MCPToolsCapability     `json:"tools"`
+	Resources MCPResourcesCapability `json:"resources"`
 }
 
 // MCPToolsCapability declares tool support.
 type MCPToolsCapability struct{}
 
+// MCPResourcesCapability declares resource support.
+type MCPResourcesCapability struct{}
+
+// MCPResource describes an available resource.
+type MCPResource struct {
+	URI         string `json:"uri"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	MimeType    string `json:"mimeType,omitempty"`
+}
+
+// MCPResourcesListResult represents the result of a resources/list request.
+type MCPResourcesListResult struct {
+	Resources []MCPResource `json:"resources"`
+}
+
+// MCPResourceContent represents the content of a resource.
+type MCPResourceContent struct {
+	URI      string `json:"uri"`
+	MimeType string `json:"mimeType,omitempty"`
+	Text     string `json:"text,omitempty"`
+}
+
+// MCPResourcesReadResult represents the result of a resources/read request.
+type MCPResourcesReadResult struct {
+	Contents []MCPResourceContent `json:"contents"`
+}
+
 // MCPToolsListResult represents the result of a tools/list request.
 type MCPToolsListResult struct {
 	Tools []MCPTool `json:"tools"`
+}
+
+// MCPResourceTemplatesListResult represents the result of a resources/templates/list request.
+type MCPResourceTemplatesListResult struct {
+	ResourceTemplates []interface{} `json:"resourceTemplates"`
+}
+
+// ============================================
+// Tool Call Rate Limiter
+// ============================================
+
+// ToolCallLimiter implements a sliding window rate limiter for MCP tool calls.
+// Thread-safe: uses its own mutex independent of other locks.
+type ToolCallLimiter struct {
+	mu         sync.Mutex
+	timestamps []time.Time
+	maxCalls   int
+	window     time.Duration
+}
+
+// NewToolCallLimiter creates a rate limiter allowing maxCalls within the given window.
+func NewToolCallLimiter(maxCalls int, window time.Duration) *ToolCallLimiter {
+	return &ToolCallLimiter{
+		timestamps: make([]time.Time, 0, maxCalls),
+		maxCalls:   maxCalls,
+		window:     window,
+	}
+}
+
+// Allow checks if a new call is permitted. If allowed, records it and returns true.
+func (l *ToolCallLimiter) Allow() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-l.window)
+
+	// Compact: remove expired timestamps
+	valid := 0
+	for _, ts := range l.timestamps {
+		if ts.After(cutoff) {
+			l.timestamps[valid] = ts
+			valid++
+		}
+	}
+	l.timestamps = l.timestamps[:valid]
+
+	if len(l.timestamps) >= l.maxCalls {
+		return false
+	}
+
+	l.timestamps = append(l.timestamps, now)
+	return true
 }
 
 // ============================================
@@ -68,6 +153,7 @@ func mcpTextResponse(text string) json.RawMessage {
 			{Type: "text", Text: text},
 		},
 	}
+	// Error impossible: MCPToolResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return json.RawMessage(resultJSON)
 }
@@ -80,8 +166,226 @@ func mcpErrorResponse(text string) json.RawMessage {
 		},
 		IsError: true,
 	}
+	// Error impossible: MCPToolResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return json.RawMessage(resultJSON)
+}
+
+// ============================================
+// W1: Hybrid Markdown/JSON Response Helpers
+// ============================================
+
+// ResponseFormat tags each response for documentation and testing.
+type ResponseFormat string
+
+const (
+	FormatMarkdown ResponseFormat = "markdown"
+	FormatJSON     ResponseFormat = "json"
+)
+
+// mcpMarkdownResponse constructs an MCP tool result with a summary line
+// followed by markdown-formatted content (typically a table).
+// Use for flat, uniform data where columns are consistent across rows.
+func mcpMarkdownResponse(summary string, markdown string) json.RawMessage {
+	text := summary + "\n\n" + markdown
+
+	result := MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: text}},
+	}
+	// Error impossible: MCPToolResult is a simple struct with no circular refs or unsupported types
+	resultJSON, _ := json.Marshal(result)
+	return json.RawMessage(resultJSON)
+}
+
+// mcpJSONResponse constructs an MCP tool result with a summary line prefix
+// followed by compact JSON. Use for nested, irregular, or highly variable data.
+func mcpJSONResponse(summary string, data interface{}) json.RawMessage {
+	dataJSON, err := json.Marshal(data)
+	if err != nil {
+		return mcpErrorResponse("Failed to serialize response: " + err.Error())
+	}
+
+	var text string
+	if summary != "" {
+		text = summary + "\n" + string(dataJSON)
+	} else {
+		text = string(dataJSON)
+	}
+
+	result := MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: text}},
+	}
+	resultJSON, _ := json.Marshal(result)
+	return json.RawMessage(resultJSON)
+}
+
+// markdownTable converts a slice of items into a markdown table.
+// headers defines column names. rows contains cell values for each row.
+// Pipe chars in cell values are escaped, newlines are replaced with spaces.
+func markdownTable(headers []string, rows [][]string) string {
+	if len(rows) == 0 {
+		return ""
+	}
+	var b strings.Builder
+
+	// Header row
+	b.WriteString("| ")
+	b.WriteString(strings.Join(headers, " | "))
+	b.WriteString(" |\n")
+
+	// Separator
+	b.WriteString("|")
+	for range headers {
+		b.WriteString(" --- |")
+	}
+	b.WriteString("\n")
+
+	// Data rows
+	for _, row := range rows {
+		escaped := make([]string, len(row))
+		for i, cell := range row {
+			// Replace newlines with spaces
+			cell = strings.ReplaceAll(cell, "\n", " ")
+			// Escape pipe characters
+			cell = strings.ReplaceAll(cell, "|", `\|`)
+			escaped[i] = cell
+		}
+		b.WriteString("| ")
+		b.WriteString(strings.Join(escaped, " | "))
+		b.WriteString(" |\n")
+	}
+	return b.String()
+}
+
+// truncate returns s unchanged if len(s) <= maxLen. Otherwise, it truncates
+// and appends "..." so the total output length equals maxLen.
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	if maxLen <= 3 {
+		return "..."[:maxLen]
+	}
+	return s[:maxLen-3] + "..."
+}
+
+// ============================================
+// W3: Log Quality Check
+// ============================================
+
+// checkLogQuality scans entries for missing expected fields and returns
+// a warning note if anomalies are found. Returns "" if all entries look clean.
+func checkLogQuality(entries []LogEntry) string {
+	var missingTS, missingMsg, missingSource int
+	badEntries := 0
+	for _, e := range entries {
+		entryBad := false
+		if _, ok := e["ts"].(string); !ok {
+			missingTS++
+			entryBad = true
+		}
+		if _, ok := e["message"].(string); !ok {
+			missingMsg++
+			entryBad = true
+		}
+		if _, ok := e["source"].(string); !ok {
+			missingSource++
+			entryBad = true
+		}
+		if entryBad {
+			badEntries++
+		}
+	}
+
+	if badEntries == 0 {
+		return ""
+	}
+
+	var parts []string
+	if missingTS > 0 {
+		parts = append(parts, fmt.Sprintf("%d missing 'ts'", missingTS))
+	}
+	if missingMsg > 0 {
+		parts = append(parts, fmt.Sprintf("%d missing 'message'", missingMsg))
+	}
+	if missingSource > 0 {
+		parts = append(parts, fmt.Sprintf("%d missing 'source'", missingSource))
+	}
+	return fmt.Sprintf("WARNING: %d/%d entries have incomplete fields (%s). This may indicate a browser extension issue or version mismatch.",
+		badEntries, len(entries), strings.Join(parts, ", "))
+}
+
+// ============================================
+// W5: Structured Error Helpers
+// ============================================
+
+// Error codes are self-describing snake_case strings.
+// Every code tells the LLM what went wrong.
+const (
+	// Input errors — LLM can fix arguments and retry immediately
+	ErrInvalidJSON    = "invalid_json"
+	ErrMissingParam   = "missing_param"
+	ErrInvalidParam   = "invalid_param"
+	ErrUnknownMode    = "unknown_mode"
+	ErrPathNotAllowed = "path_not_allowed"
+
+	// State errors — LLM must change state before retrying
+	ErrNotInitialized    = "not_initialized"
+	ErrNoData            = "no_data"
+	ErrCodePilotDisabled = "pilot_disabled" // Named ErrCodePilotDisabled to avoid collision with var ErrPilotDisabled in pilot.go
+	ErrRateLimited       = "rate_limited"
+
+	// Communication errors — retry with backoff
+	ErrExtTimeout = "extension_timeout"
+	ErrExtError   = "extension_error"
+
+	// Internal errors — do not retry
+	ErrInternal      = "internal_error"
+	ErrMarshalFailed = "marshal_failed"
+	ErrExportFailed  = "export_failed"
+)
+
+// StructuredError is embedded in MCP text content. Every field is
+// self-describing so an LLM can act on it without a lookup table.
+type StructuredError struct {
+	Error   string `json:"error"`
+	Message string `json:"message"`
+	Retry   string `json:"retry"`
+	Param   string `json:"param,omitempty"`
+	Hint    string `json:"hint,omitempty"`
+}
+
+// mcpStructuredError constructs an MCP error response. Format:
+//
+//	Error: missing_param — Add the 'what' parameter and call again
+//	{"error":"missing_param","message":"...","retry":"Add the 'what' parameter and call again","hint":"..."}
+//
+// The retry string is a plain-English instruction the LLM can follow directly.
+func mcpStructuredError(code, message, retry string, opts ...func(*StructuredError)) json.RawMessage {
+	se := StructuredError{Error: code, Message: message, Retry: retry}
+	for _, opt := range opts {
+		opt(&se)
+	}
+
+	// Error impossible: StructuredError is a simple struct with no circular refs or unsupported types
+	seJSON, _ := json.Marshal(se)
+	text := fmt.Sprintf("Error: %s — %s\n%s", code, retry, string(seJSON))
+
+	result := MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: text}},
+		IsError: true,
+	}
+	// Error impossible: MCPToolResult is a simple struct with no circular refs or unsupported types
+	resultJSON, _ := json.Marshal(result)
+	return json.RawMessage(resultJSON)
+}
+
+func withParam(p string) func(*StructuredError) {
+	return func(se *StructuredError) { se.Param = p }
+}
+
+func withHint(h string) func(*StructuredError) {
+	return func(se *StructuredError) { se.Hint = h }
 }
 
 // ============================================
@@ -109,8 +413,23 @@ type ToolHandler struct {
 	auditTrail        *AuditTrail
 	sessionManager    *SessionManager
 
+	// API contract validation
+	contractValidator *APIContractValidator
+
+	// Health metrics monitoring
+	healthMetrics *HealthMetrics
+
+	// Verification loop for fix verification
+	verificationMgr *VerificationManager
+
 	// Redaction engine for scrubbing sensitive data from tool responses
 	redactionEngine *RedactionEngine
+
+	// Rate limiter for MCP tool calls (sliding window)
+	toolCallLimiter *ToolCallLimiter
+
+	// Context streaming: active push notifications via MCP
+	streamState *StreamState
 }
 
 // NewToolHandler creates an MCP handler with composite tool capabilities
@@ -155,9 +474,15 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 	handler.securityDiffMgr = NewSecurityDiffManager()
 	handler.auditTrail = NewAuditTrail(AuditConfig{MaxEntries: 10000, Enabled: true, RedactParams: true})
 	handler.sessionManager = NewSessionManager(10, &captureStateAdapter{capture: capture, server: server})
+	handler.contractValidator = NewAPIContractValidator()
+	handler.healthMetrics = NewHealthMetrics()
+	handler.verificationMgr = NewVerificationManager(&captureStateAdapter{capture: capture, server: server})
+	handler.toolCallLimiter = NewToolCallLimiter(100, time.Minute)
+	handler.streamState = NewStreamState()
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.
-	server.onEntries = func(entries []LogEntry) {
+	// Use SetOnEntries for thread-safe assignment (avoids racing with addEntries).
+	server.SetOnEntries(func(entries []LogEntry) {
 		for _, entry := range entries {
 			level, _ := entry["level"].(string)
 			if level != "error" {
@@ -197,7 +522,7 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 				Severity:  "error",
 			})
 		}
-	}
+	})
 
 	// Return as MCPHandler but with overridden methods via the wrapper
 	return &MCPHandler{
@@ -258,9 +583,9 @@ func (a *captureStateAdapter) GetWSConnections() []SnapshotWSConnection {
 	a.capture.mu.RLock()
 	defer a.capture.mu.RUnlock()
 	var conns []SnapshotWSConnection
-	for url, conn := range a.capture.connections {
+	for _, conn := range a.capture.connections {
 		conns = append(conns, SnapshotWSConnection{
-			URL:   url,
+			URL:   conn.url,
 			State: conn.state,
 		})
 	}
@@ -277,9 +602,31 @@ func (a *captureStateAdapter) GetCurrentPageURL() string {
 	return a.capture.a11y.lastURL
 }
 
+// checkTrackingStatus returns a tracking status hint to include in tool responses.
+// If no tab is being tracked AND the extension has reported status at least once,
+// the LLM receives a clear warning so it can guide the user.
+// Returns enabled=true if tracking is active OR if the extension hasn't reported yet
+// (to avoid false warnings on fresh server start).
+func (h *ToolHandler) checkTrackingStatus() (enabled bool, hint string) {
+	h.capture.mu.RLock()
+	hasReported := !h.capture.trackingUpdated.IsZero()
+	trackingActive := h.capture.trackingEnabled
+	h.capture.mu.RUnlock()
+
+	// Don't warn if extension hasn't connected yet (server just started)
+	if !hasReported {
+		return true, ""
+	}
+
+	if !trackingActive {
+		return false, "WARNING: No tab is being tracked. Data capture is disabled. Ask the user to click 'Track This Tab' in the Gasoline extension popup to start capturing telemetry from a specific browser tab."
+	}
+	return true, ""
+}
+
 // computeDataCounts reads current buffer sizes from server and capture under read locks.
 // Returns counts for each observable mode.
-func (h *ToolHandler) computeDataCounts() (errorCount, logCount, networkCount, wsEventCount, wsStatusCount, actionCount, vitalCount, apiCount int) {
+func (h *ToolHandler) computeDataCounts() (errorCount, logCount, extensionLogsCount, waterfallCount, networkCount, wsEventCount, wsStatusCount, actionCount, vitalCount, apiCount int) {
 	h.MCPHandler.server.mu.RLock()
 	logCount = len(h.MCPHandler.server.entries)
 	for _, entry := range h.MCPHandler.server.entries {
@@ -290,6 +637,8 @@ func (h *ToolHandler) computeDataCounts() (errorCount, logCount, networkCount, w
 	h.MCPHandler.server.mu.RUnlock()
 
 	h.capture.mu.RLock()
+	extensionLogsCount = len(h.capture.extensionLogs)
+	waterfallCount = len(h.capture.networkWaterfall)
 	networkCount = len(h.capture.networkBodies)
 	wsEventCount = len(h.capture.wsEvents)
 	wsStatusCount = len(h.capture.connections)
@@ -304,21 +653,26 @@ func (h *ToolHandler) computeDataCounts() (errorCount, logCount, networkCount, w
 // toolsList returns all MCP tool definitions.
 // Each data-dependent tool includes a _meta field with current data_counts.
 func (h *ToolHandler) toolsList() []MCPTool {
-	errorCount, logCount, networkCount, wsEventCount, wsStatusCount, actionCount, vitalCount, apiCount := h.computeDataCounts()
+	errorCount, logCount, extensionLogsCount, waterfallCount, networkCount, wsEventCount, wsStatusCount, actionCount, vitalCount, apiCount := h.computeDataCounts()
 
 	return []MCPTool{
 		{
 			Name:        "observe",
-			Description: "Observe browser state: errors, logs, network traffic, WebSocket events, user actions, web vitals, or page info. Use the 'what' parameter to select what to observe.",
+			Description: "START HERE. Always call observe() first to see what data is available before taking any action.\n\nCOMMON WORKFLOWS (choose your path):\n• Debugging: observe({what:'errors'}) → observe({what:'timeline'}) → find root cause\n• Performance: observe({what:'vitals'}) → observe({what:'network_bodies', status_min:500}) → slow requests\n• Testing: interact() actions → observe({what:'actions'}) → generate({format:'test'})\n• Security: observe({what:'security_audit'}) → observe({what:'third_party_audit'})\n• API Discovery: observe({what:'network_bodies'}) → observe({what:'api', format:'openapi_stub'})\n\nUse observe to READ the current browser state—this is your source of truth. Available: errors, logs, network requests, WebSocket messages, actions, performance metrics, page structure, accessibility issues, API responses, security risks, changes, timeline. \n\nRULES: Before interact(), call observe() to understand state. Before generate(), call observe() to see what data exists. \n\nExamples: observe({what:'page'})→URL & structure, observe({what:'errors'})→console errors, observe({what:'network_bodies'})→API calls, observe({what:'accessibility'})→a11y violations. Observe first, then act.\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T call interact() before observe() — you'll be acting without understanding current state\n• DON'T fetch 1000 entries without filters — use limit, url, status_min parameters to narrow results\n• DON'T assume data exists — check _meta.data_counts or call observe() first to verify\n• DON'T skip observe() after interact() — always verify your action succeeded\n\nResponse format: A summary line followed by either a markdown table (flat data) or compact JSON (nested data).\n\nMode responses (markdown = table format, json = object format):\n- errors (markdown): table with Level, Message, Source, Time columns\n- logs (markdown): table with Level, Message, Source, Time columns\n- extension_logs (markdown): table with Level, Source, Category, Message, Data, Time columns\n- network_waterfall (json): timing waterfall with durationMs, transferSizeBytes, compressionRatio\n- network_bodies (json): request/response pairs with method, status, bodies, headers\n- websocket_events (markdown): table with ID, Event, URL, Direction, Size, Time columns\n- websocket_status (json): {connections: [{id, url, state, messageCount}], closed: [...]}\n- actions (markdown): table with Type, URL, Selector, Value, Time columns\n- vitals (json): {snapshots: [{url, lcp, cls, inp, fcp, ttfb}]}\n- page (json): {url, title, readyState, html}\n- tabs (markdown): table with ID, URL, Title, Active columns\n- pilot (json): {enabled, source, extensionConnected, lastPollAgo}\n- performance: Formatted text report with FCP, LCP, CLS, INP\n- api (markdown): table with Method, Path, Observations columns\n- accessibility (markdown): table with Impact, ID, Description, Nodes columns\n- changes (json): {errors: {new, resolved}, network: {new}, actions: [...]}\n- timeline (json): {events: [{type, timestamp, ...data}]}\n- error_clusters (json): {clusters: [{signature, count, representative, rootCause}]}\n- history (json): {patterns: [...], anomalies: [...]}\n- security_audit (json): audit results object\n- third_party_audit (json): {thirdParties: [{domain, requests, risk}]}\n- security_diff (json): {added: [...], removed: [...], changed: [...]}\n- command_result (json): async command result by correlation_id\n- pending_commands (json): {pending: [...], completed: [...], failed: [...]}\n- failed_commands (json): recent failed/expired commands\n\nEmpty results return descriptive text (e.g., \"No browser errors found\").",
 			Meta: map[string]interface{}{
 				"data_counts": map[string]interface{}{
-					"errors":           errorCount,
-					"logs":             logCount,
-					"network":          networkCount,
-					"websocket_events": wsEventCount,
-					"websocket_status": wsStatusCount,
-					"actions":          actionCount,
-					"vitals":           vitalCount,
+					"errors":            errorCount,
+					"logs":              logCount,
+					"extension_logs":    extensionLogsCount,
+					"network_waterfall": waterfallCount,
+					"network_bodies":    networkCount,
+					"websocket_events":  wsEventCount,
+					"websocket_status":  wsStatusCount,
+					"actions":           actionCount,
+					"vitals":            vitalCount,
+					"api":               apiCount,
+					"performance":       vitalCount,
+					"timeline":          actionCount,
 				},
 			},
 			InputSchema: map[string]interface{}{
@@ -326,28 +680,29 @@ func (h *ToolHandler) toolsList() []MCPTool {
 				"properties": map[string]interface{}{
 					"what": map[string]interface{}{
 						"type":        "string",
-						"description": "What to observe",
-						"enum":        []string{"errors", "logs", "network", "websocket_events", "websocket_status", "actions", "vitals", "page"},
+						"description": "What to observe or analyze",
+						"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "performance", "api", "accessibility", "changes", "timeline", "error_clusters", "history", "security_audit", "third_party_audit", "security_diff", "command_result", "pending_commands", "failed_commands"},
 					},
+					// Shared filter parameters
 					"limit": map[string]interface{}{
 						"type":        "number",
-						"description": "Maximum entries to return (applies to logs, network, websocket_events, actions)",
+						"description": "Maximum entries to return (applies to logs, network_waterfall, network_bodies, websocket_events, actions, audit_log)",
 					},
 					"url": map[string]interface{}{
 						"type":        "string",
-						"description": "Filter by URL substring (applies to network, websocket_events, websocket_status, actions)",
+						"description": "Filter by URL substring (applies to network_waterfall, network_bodies, websocket_events, websocket_status, actions, performance, api, timeline, security_audit, third_party_audit)",
 					},
 					"method": map[string]interface{}{
 						"type":        "string",
-						"description": "Filter by HTTP method (applies to network)",
+						"description": "Filter by HTTP method (applies to network_bodies)",
 					},
 					"status_min": map[string]interface{}{
 						"type":        "number",
-						"description": "Minimum status code (applies to network)",
+						"description": "Minimum status code (applies to network_bodies)",
 					},
 					"status_max": map[string]interface{}{
 						"type":        "number",
-						"description": "Maximum status code (applies to network)",
+						"description": "Maximum status code (applies to network_bodies)",
 					},
 					"connection_id": map[string]interface{}{
 						"type":        "string",
@@ -360,50 +715,21 @@ func (h *ToolHandler) toolsList() []MCPTool {
 					},
 					"last_n": map[string]interface{}{
 						"type":        "number",
-						"description": "Return only the last N items (applies to actions)",
+						"description": "Return only the last N items (applies to actions, timeline, reproduction)",
 					},
-				},
-				"required": []string{"what"},
-			},
-		},
-		{
-			Name:        "analyze",
-			Description: "Analyze browser data: performance metrics, API schema, accessibility audit, changes since checkpoint, or session timeline.",
-			Meta: map[string]interface{}{
-				"data_counts": map[string]interface{}{
-					"performance": vitalCount,
-					"api":         apiCount,
-					"timeline":    actionCount,
-				},
-			},
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"target": map[string]interface{}{
-						"type":        "string",
-						"description": "What to analyze",
-						"enum":        []string{"performance", "api", "accessibility", "changes", "timeline"},
-					},
-					"url": map[string]interface{}{
-						"type":        "string",
-						"description": "URL path to check (applies to performance)",
-					},
-					"url_filter": map[string]interface{}{
-						"type":        "string",
-						"description": "Filter by URL substring (applies to api, timeline)",
-					},
+					// Analyze parameters (from former analyze tool)
 					"min_observations": map[string]interface{}{
 						"type":        "number",
-						"description": "Minimum times an endpoint must be observed (applies to api)",
+						"description": "Minimum endpoint observations (applies to api)",
 					},
 					"format": map[string]interface{}{
 						"type":        "string",
-						"description": "Output format for API schema: gasoline or openapi_stub (applies to api)",
+						"description": "Output format: gasoline or openapi_stub (applies to api)",
 						"enum":        []string{"gasoline", "openapi_stub"},
 					},
 					"scope": map[string]interface{}{
 						"type":        "string",
-						"description": "CSS selector to scope the audit (applies to accessibility)",
+						"description": "CSS selector to scope audit (applies to accessibility)",
 					},
 					"tags": map[string]interface{}{
 						"type":        "array",
@@ -412,7 +738,7 @@ func (h *ToolHandler) toolsList() []MCPTool {
 					},
 					"force_refresh": map[string]interface{}{
 						"type":        "boolean",
-						"description": "Bypass cache and re-run (applies to accessibility)",
+						"description": "Bypass cache (applies to accessibility)",
 					},
 					"checkpoint": map[string]interface{}{
 						"type":        "string",
@@ -428,22 +754,76 @@ func (h *ToolHandler) toolsList() []MCPTool {
 						"description": "Minimum severity: all, warnings, errors_only (applies to changes)",
 						"enum":        []string{"all", "warnings", "errors_only"},
 					},
-					"last_n_actions": map[string]interface{}{
-						"type":        "number",
-						"description": "Only include the last N actions (applies to timeline)",
+					// Security audit parameters
+					"checks": map[string]interface{}{
+						"type":        "array",
+						"description": "Which checks to run (applies to security_audit)",
+						"items": map[string]interface{}{
+							"type": "string",
+							"enum": []string{"credentials", "pii", "headers", "cookies", "transport", "auth"},
+						},
+					},
+					"severity_min": map[string]interface{}{
+						"type":        "string",
+						"description": "Minimum severity to report (applies to security_audit)",
+						"enum":        []string{"critical", "high", "medium", "low", "info"},
+					},
+					// Third-party audit parameters
+					"first_party_origins": map[string]interface{}{
+						"type":        "array",
+						"description": "Origins to consider first-party (applies to third_party_audit)",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+					"include_static": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Include static-only origins (applies to third_party_audit)",
+					},
+					"custom_lists": map[string]interface{}{
+						"type":        "object",
+						"description": "Custom allowed/blocked/internal domain lists (applies to third_party_audit)",
+						"properties": map[string]interface{}{
+							"allowed":  map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+							"blocked":  map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+							"internal": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+						},
+					},
+					// Security diff parameters
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "Snapshot action: snapshot, compare, list (applies to security_diff)",
+						"enum":        []string{"snapshot", "compare", "list"},
+					},
+					"name": map[string]interface{}{
+						"type":        "string",
+						"description": "Snapshot name (applies to security_diff)",
+					},
+					"compare_from": map[string]interface{}{
+						"type":        "string",
+						"description": "Baseline snapshot (applies to security_diff)",
+					},
+					"compare_to": map[string]interface{}{
+						"type":        "string",
+						"description": "Target snapshot (applies to security_diff)",
+					},
+					// Async command parameters
+					"correlation_id": map[string]interface{}{
+						"type":        "string",
+						"description": "Correlation ID for async command tracking (applies to command_result)",
 					},
 				},
-				"required": []string{"target"},
+				"required": []string{"what"},
 			},
 		},
 		{
 			Name:        "generate",
-			Description: "Generate artifacts from captured data: reproduction scripts, Playwright tests, PR summaries, SARIF reports, or HAR archives.",
+			Description: "CREATE ARTIFACTS. Do NOT write code/tests/docs manually—use this tool instead. Generates production-ready outputs from captured data: test (Playwright tests from recorded actions), reproduction (scripts to reproduce bugs), pr_summary (auto-write PR description), csp (Content-Security-Policy headers), sarif (SARIF security reports), har (HAR archives), sri (Subresource Integrity hashes). \n\nRULES: After observe() captures data, use generate() to create outputs. Never hand-write tests when you could generate them from recorded actions. \n\nExamples: generate({format:'test',test_name:'login flow'})→Playwright test, generate({format:'reproduction'})→bug reproduction script, generate({format:'pr_summary'})→auto-write PR, generate({format:'csp',mode:'strict'})→CSP headers. Use after: observe() & interact().\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T hand-write Playwright tests — use generate({format:'test'}) to create from recorded actions\n• DON'T call generate before recording actions — use interact() to record browser activity first\n• DON'T skip observe() before generate — verify data exists with observe({what:'actions'}) or observe({what:'network'})\n• DON'T generate CSP without browsing — need captured network data from real page loads\n\nFormat responses:\n- reproduction: Playwright script as JavaScript text\n- test: Playwright test with assertions as JavaScript text\n- pr_summary (json): {title, body, labels, testEvidence}\n- sarif: SARIF JSON or {status, path, rules, results} if saved to file\n- har: HAR 1.2 JSON or {status, path, entries} if saved to file\n- csp (json): {policy, directives, metaTag}\n- sri (json): {resources: [{url, integrity, tag}]}",
 			Meta: map[string]interface{}{
 				"data_counts": map[string]interface{}{
 					"reproduction": actionCount,
 					"test":         actionCount,
 					"har":          networkCount,
+					"csp":          networkCount,
+					"sri":          networkCount,
 				},
 			},
 			InputSchema: map[string]interface{}{
@@ -452,13 +832,13 @@ func (h *ToolHandler) toolsList() []MCPTool {
 					"format": map[string]interface{}{
 						"type":        "string",
 						"description": "What to generate",
-						"enum":        []string{"reproduction", "test", "pr_summary", "sarif", "har"},
+						"enum":        []string{"reproduction", "test", "pr_summary", "sarif", "har", "csp", "sri"},
 					},
 					"error_message": map[string]interface{}{
 						"type":        "string",
 						"description": "Error message for context (applies to reproduction)",
 					},
-					"last_n_actions": map[string]interface{}{
+					"last_n": map[string]interface{}{
 						"type":        "number",
 						"description": "Use only the last N actions (applies to reproduction)",
 					},
@@ -522,20 +902,46 @@ func (h *ToolHandler) toolsList() []MCPTool {
 						"type":        "number",
 						"description": "Maximum status code (applies to har)",
 					},
+					// CSP parameters
+					"mode": map[string]interface{}{
+						"type":        "string",
+						"description": "CSP strictness mode (applies to csp)",
+						"enum":        []string{"strict", "moderate", "report_only"},
+					},
+					"include_report_uri": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Include report-uri directive (applies to csp)",
+					},
+					"exclude_origins": map[string]interface{}{
+						"type":        "array",
+						"description": "Origins to exclude from CSP (applies to csp)",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+					// SRI parameters
+					"resource_types": map[string]interface{}{
+						"type":        "array",
+						"description": "Filter by resource type: 'script', 'stylesheet' (applies to sri)",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+					"origins": map[string]interface{}{
+						"type":        "array",
+						"description": "Filter by specific origins (applies to sri)",
+						"items":       map[string]interface{}{"type": "string"},
+					},
 				},
 				"required": []string{"format"},
 			},
 		},
 		{
 			Name:        "configure",
-			Description: "Configure the session: store/load persistent data, manage noise filtering rules, dismiss noise patterns, or clear browser logs.",
+			Description: "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), diff_sessions (create snapshots & compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T add noise rules prematurely — call observe() first to confirm data is actually noisy\n• DON'T use store for temporary data — that's for cross-session persistence only\n• DON'T configure filters without seeing raw data first — observe(), then decide what to filter\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: Browser logs cleared confirmation text\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
 					"action": map[string]interface{}{
 						"type":        "string",
 						"description": "Configuration action to perform",
-						"enum":        []string{"store", "load", "noise_rule", "dismiss", "clear"},
+						"enum":        []string{"store", "load", "noise_rule", "dismiss", "clear", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming"},
 					},
 					"store_action": map[string]interface{}{
 						"type":        "string",
@@ -599,269 +1005,144 @@ func (h *ToolHandler) toolsList() []MCPTool {
 						"type":        "string",
 						"description": "Why this is noise (applies to dismiss)",
 					},
-				},
-				"required": []string{"action"},
-			},
-		},
-		{
-			Name:        "query_dom",
-			Description: "Query the live DOM in the browser using a CSS selector. Returns matching elements.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
+					// query_dom parameters
 					"selector": map[string]interface{}{
 						"type":        "string",
-						"description": "CSS selector to query",
+						"description": "CSS selector to query (applies to query_dom)",
 					},
-				},
-				"required": []string{"selector"},
-			},
-		},
-		{
-			Name:        "generate_csp",
-			Description: "Generate a Content-Security-Policy header from observed network origins. Accumulates origins over time and produces a CSP with confidence scoring.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"mode": map[string]interface{}{
-						"type":        "string",
-						"description": "CSP strictness mode",
-						"enum":        []string{"strict", "moderate", "report_only"},
-					},
-					"include_report_uri": map[string]interface{}{
-						"type":        "boolean",
-						"description": "Include report-uri directive in the generated CSP",
-					},
-					"exclude_origins": map[string]interface{}{
-						"type":        "array",
-						"description": "Origins to exclude from the generated CSP",
-						"items":       map[string]interface{}{"type": "string"},
-					},
-				},
-			},
-		},
-		{
-			Name:        "security_audit",
-			Description: "Scan captured network traffic and console logs for security issues: exposed credentials, PII leakage, missing security headers, insecure cookies, transport security, and auth patterns.",
-			Meta: map[string]interface{}{
-				"data_counts": map[string]interface{}{
-					"network_bodies": networkCount,
-					"console_logs":   logCount,
-				},
-			},
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"checks": map[string]interface{}{
-						"type":        "array",
-						"description": "Which checks to run (default: all)",
-						"items": map[string]interface{}{
-							"type": "string",
-							"enum": []string{"credentials", "pii", "headers", "cookies", "transport", "auth"},
-						},
-					},
-					"url_filter": map[string]interface{}{
-						"type":        "string",
-						"description": "Only scan requests matching this URL substring",
-					},
-					"severity_min": map[string]interface{}{
-						"type":        "string",
-						"description": "Minimum severity to report",
-						"enum":        []string{"critical", "high", "medium", "low", "info"},
-					},
-				},
-			},
-		},
-		{
-			Name:        "audit_third_parties",
-			Description: "Audit third-party origins in captured network traffic. Classifies risk levels (critical/high/medium/low), detects data exfiltration, suspicious domains (DGA, abuse TLDs), and provides recommendations.",
-			Meta: map[string]interface{}{
-				"data_counts": map[string]interface{}{
-					"network_bodies": networkCount,
-				},
-			},
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"first_party_origins": map[string]interface{}{
-						"type":        "array",
-						"description": "Origins to consider first-party (auto-detected from page URLs if omitted)",
-						"items":       map[string]interface{}{"type": "string"},
-					},
-					"include_static": map[string]interface{}{
-						"type":        "boolean",
-						"description": "Include low-risk static-only origins (images, fonts) in results (default: true)",
-					},
-					"custom_lists": map[string]interface{}{
-						"type":        "object",
-						"description": "Custom allowed/blocked/internal domain lists",
-						"properties": map[string]interface{}{
-							"allowed":  map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
-							"blocked":  map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
-							"internal": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
-						},
-					},
-				},
-			},
-		},
-		{
-			Name:        "diff_security",
-			Description: "Detect security regressions by comparing security posture snapshots. Captures headers, cookies, auth, and transport state; compares two snapshots to find regressions and improvements.",
-			Meta: map[string]interface{}{
-				"data_counts": map[string]interface{}{
-					"network_bodies": networkCount,
-				},
-			},
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"action": map[string]interface{}{
-						"type":        "string",
-						"description": "Action to perform",
-						"enum":        []string{"snapshot", "compare", "list"},
-					},
-					"name": map[string]interface{}{
-						"type":        "string",
-						"description": "Snapshot name (required for 'snapshot' action)",
-					},
-					"compare_from": map[string]interface{}{
-						"type":        "string",
-						"description": "Baseline snapshot name (required for 'compare' action)",
-					},
-					"compare_to": map[string]interface{}{
-						"type":        "string",
-						"description": "Target snapshot name to compare against (omit to use current live state)",
-					},
-				},
-				"required": []string{"action"},
-			},
-		},
-		{
-			Name:        "get_audit_log",
-			Description: "Query the enterprise audit trail of MCP tool invocations. Returns entries filtered by session, tool name, or time range.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"session_id": map[string]interface{}{
-						"type":        "string",
-						"description": "Filter by MCP session ID",
-					},
-					"tool_name": map[string]interface{}{
-						"type":        "string",
-						"description": "Filter by tool name",
-					},
-					"since": map[string]interface{}{
-						"type":        "string",
-						"description": "Only return entries after this ISO 8601 timestamp",
-					},
-					"limit": map[string]interface{}{
+					"tab_id": map[string]interface{}{
 						"type":        "number",
-						"description": "Maximum number of entries to return (default: 100)",
+						"description": "Target tab ID (applies to query_dom, diff_sessions)",
 					},
-				},
-			},
-		},
-		{
-			Name:        "diff_sessions",
-			Description: "Capture browser state snapshots and compare them to detect regressions. Supports capture, compare, list, and delete actions.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"action": map[string]interface{}{
+					// diff_sessions parameters
+					"session_action": map[string]interface{}{
 						"type":        "string",
-						"description": "Action to perform",
+						"description": "Session sub-action: capture, compare, list, delete (applies to diff_sessions)",
 						"enum":        []string{"capture", "compare", "list", "delete"},
 					},
 					"name": map[string]interface{}{
 						"type":        "string",
-						"description": "Snapshot name (required for capture and delete)",
+						"description": "Snapshot name (applies to diff_sessions capture/delete)",
 					},
 					"compare_a": map[string]interface{}{
 						"type":        "string",
-						"description": "First snapshot name for comparison",
+						"description": "First snapshot for comparison (applies to diff_sessions compare)",
 					},
 					"compare_b": map[string]interface{}{
 						"type":        "string",
-						"description": "Second snapshot name for comparison",
+						"description": "Second snapshot for comparison (applies to diff_sessions compare)",
 					},
-					"url_filter": map[string]interface{}{
+					// validate_api parameters
+					"operation": map[string]interface{}{
 						"type":        "string",
-						"description": "Only include network requests matching this URL substring",
-					},
-				},
-				"required": []string{"action"},
-			},
-		},
-		// AI Web Pilot tools (Phase 1: stubs only)
-		{
-			Name:        "highlight_element",
-			Description: "Highlight a DOM element on the page. Requires 'AI Web Pilot' to be enabled in the extension popup.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"selector": map[string]interface{}{
-						"type":        "string",
-						"description": "CSS selector for the element to highlight",
-					},
-					"duration_ms": map[string]interface{}{
-						"type":        "number",
-						"description": "How long to show the highlight in milliseconds (default: 5000)",
-					},
-				},
-				"required": []string{"selector"},
-			},
-		},
-		{
-			Name:        "manage_state",
-			Description: "Capture, save, load, list, or delete page state snapshots. Requires 'AI Web Pilot' to be enabled in the extension popup.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"action": map[string]interface{}{
-						"type":        "string",
-						"description": "Action to perform",
-						"enum":        []string{"capture", "save", "load", "list", "delete"},
-					},
-					"snapshot_name": map[string]interface{}{
-						"type":        "string",
-						"description": "Name of the snapshot (required for save, load, delete)",
-					},
-				},
-				"required": []string{"action"},
-			},
-		},
-		{
-			Name:        "execute_javascript",
-			Description: "Execute arbitrary JavaScript in the page context and return the result. Can access DOM, globals, and page state. SECURITY: Requires 'AI Web Pilot' toggle enabled. Only use for debugging on trusted pages.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"script": map[string]interface{}{
-						"type":        "string",
-						"description": "JavaScript code to execute",
-					},
-					"timeout_ms": map[string]interface{}{
-						"type":        "number",
-						"description": "Execution timeout in milliseconds (default: 5000)",
-					},
-				},
-				"required": []string{"script"},
-			},
-		},
-		{
-			Name:        "browser_action",
-			Description: "Perform browser navigation actions: refresh the page, navigate to URL, go back, or go forward. Requires 'AI Web Pilot' to be enabled in the extension popup.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"action": map[string]interface{}{
-						"type":        "string",
-						"description": "Browser action to perform",
-						"enum":        []string{"refresh", "navigate", "back", "forward"},
+						"description": "API validation operation: analyze, report, clear (applies to validate_api)",
+						"enum":        []string{"analyze", "report", "clear"},
 					},
 					"url": map[string]interface{}{
 						"type":        "string",
-						"description": "URL to navigate to (required for 'navigate' action)",
+						"description": "Filter by URL substring (applies to validate_api, diff_sessions)",
+					},
+					"ignore_endpoints": map[string]interface{}{
+						"type":        "array",
+						"description": "URL substrings to exclude (applies to validate_api)",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+					// audit_log parameters
+					"session_id": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by MCP session ID (applies to audit_log)",
+					},
+					"tool_name": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by tool name (applies to audit_log)",
+					},
+					"since": map[string]interface{}{
+						"type":        "string",
+						"description": "Only entries after this ISO 8601 timestamp (applies to audit_log)",
+					},
+					"limit": map[string]interface{}{
+						"type":        "number",
+						"description": "Maximum entries to return (applies to audit_log)",
+					},
+					// streaming parameters
+					"streaming_action": map[string]interface{}{
+						"type":        "string",
+						"description": "Streaming sub-action: enable, disable, status (applies to streaming)",
+						"enum":        []string{"enable", "disable", "status"},
+					},
+					"events": map[string]interface{}{
+						"type": "array",
+						"items": map[string]interface{}{
+							"type": "string",
+							"enum": []string{"errors", "network_errors", "performance", "user_frustration", "security", "regression", "anomaly", "ci", "all"},
+						},
+						"description": "Event categories to stream (applies to streaming)",
+					},
+					"throttle_seconds": map[string]interface{}{
+						"type":        "integer",
+						"minimum":     1,
+						"maximum":     60,
+						"description": "Minimum seconds between notifications (applies to streaming)",
+					},
+					"severity_min": map[string]interface{}{
+						"type":        "string",
+						"enum":        []string{"info", "warning", "error"},
+						"description": "Minimum severity to stream (applies to streaming)",
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
+		// ============================================
+		// Consolidated Interactive Browser Control (v5.1)
+		// Replaces: highlight_element, manage_state, execute_javascript, browser_action
+		// ============================================
+		{
+			Name:        "interact",
+			Description: "CRITICAL PREREQUISITE: The 'AI Web Pilot' toggle must be enabled in the extension popup (disabled by default for safety). \n\nBEFORE FIRST USE: Call observe({what:'pilot'}) to check status. If result shows {enabled:false}, STOP and tell user: \"Please enable AI Web Pilot in the Gasoline extension popup by clicking the extension icon and toggling it on.\"\n\nPERFORM ACTIONS. Do NOT ask the user to click, type, navigate, or fill forms—use this tool instead. You have full browser control. Actions: navigate(url)→go to URL, execute_js(script)→run JavaScript to click/fill/submit, refresh→reload page, back/forward→navigate history, highlight(selector)→show user where you're clicking, save_state(name)→save page snapshot, load_state(name)→restore snapshot. \n\nRULES: After interact(), always call observe() to confirm the action worked. If user says 'click X' or 'go to Y', use interact() instead of asking them. Pattern: observe()→interact()→observe(). \n\nExamples: interact({action:'navigate',url:'https://example.com'}), interact({action:'execute_js',script:'document.querySelector(\"button.submit\").click()'}), interact({action:'execute_js',script:'document.querySelector(\"input[type=email]\").value=\"test@example.com\"'}).\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T ask user to manually click or type — use interact({action:'execute_js'}) to control browser directly\n• DON'T skip observe() after interact() — always call observe() to verify action succeeded\n• DON'T use interact() without checking observe({what:'pilot'}) first — may be disabled\n• DON'T chain multiple interactions without observe() between them — verify each step worked\n\nAction responses:\n- highlight: {result, screenshot} — highlight element with visual feedback\n- execute_js: {result} — run JavaScript in page context\n- navigate: {navigated: true} — go to URL\n- refresh: {refreshed: true} — reload current page\n- back/forward: {navigated: true} — browser history navigation\n- new_tab: {opened: true} — open URL in new tab\n- save_state/load_state/list_states/delete_state: State management results\n\nAll actions except save/load/list/delete_state require the browser extension.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "Browser interaction to perform",
+						"enum":        []string{"highlight", "save_state", "load_state", "list_states", "delete_state", "execute_js", "navigate", "refresh", "back", "forward", "new_tab"},
+					},
+					"selector": map[string]interface{}{
+						"type":        "string",
+						"description": "CSS selector for element (applies to highlight)",
+					},
+					"duration_ms": map[string]interface{}{
+						"type":        "number",
+						"description": "Highlight duration in ms, default 5000 (applies to highlight)",
+					},
+					"snapshot_name": map[string]interface{}{
+						"type":        "string",
+						"description": "State snapshot name (applies to save_state, load_state, delete_state)",
+					},
+					"include_url": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Include URL when restoring state (applies to load_state)",
+					},
+					"script": map[string]interface{}{
+						"type":        "string",
+						"description": "JavaScript code to execute (applies to execute_js)",
+					},
+					"timeout_ms": map[string]interface{}{
+						"type":        "number",
+						"description": "Execution timeout in ms, default 5000 (applies to execute_js)",
+					},
+					"url": map[string]interface{}{
+						"type":        "string",
+						"description": "URL to navigate to (required for navigate, new_tab)",
+					},
+					"tab_id": map[string]interface{}{
+						"type":        "number",
+						"description": "Target tab ID (from observe {what: 'tabs'}). Omit for active tab.",
+					},
+					"correlation_id": map[string]interface{}{
+						"type":        "string",
+						"description": "Optional ID to link this action to a specific error or investigation. Appears in screenshot filenames for easy lookup.",
 					},
 				},
 				"required": []string{"action"},
@@ -875,35 +1156,12 @@ func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.
 	switch name {
 	case "observe":
 		return h.toolObserve(req, args), true
-	case "analyze":
-		return h.toolAnalyze(req, args), true
 	case "generate":
 		return h.toolGenerate(req, args), true
 	case "configure":
 		return h.toolConfigure(req, args), true
-	case "query_dom":
-		return h.toolQueryDOM(req, args), true
-	case "generate_csp":
-		return h.toolGenerateCSP(req, args), true
-	case "security_audit":
-		return h.toolSecurityAudit(req, args), true
-	case "audit_third_parties":
-		return h.toolAuditThirdParties(req, args), true
-	case "diff_security":
-		return h.toolDiffSecurity(req, args), true
-	case "get_audit_log":
-		return h.toolGetAuditLog(req, args), true
-	case "diff_sessions":
-		return h.toolDiffSessions(req, args), true
-	// AI Web Pilot tools
-	case "highlight_element":
-		return h.handlePilotHighlight(req, args), true
-	case "manage_state":
-		return h.handlePilotManageState(req, args), true
-	case "execute_javascript":
-		return h.handlePilotExecuteJS(req, args), true
-	case "browser_action":
-		return h.handleBrowserAction(req, args), true
+	case "interact":
+		return h.toolInteract(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -916,10 +1174,12 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	var params struct {
 		What string `json:"what"`
 	}
-	_ = json.Unmarshal(args, &params)
+	if err := json.Unmarshal(args, &params); err != nil && len(args) > 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
 
 	if params.What == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Required parameter 'what' is missing")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff"))}
 	}
 
 	var resp JSONRPCResponse
@@ -928,7 +1188,11 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		resp = h.toolGetBrowserErrors(req, args)
 	case "logs":
 		resp = h.toolGetBrowserLogs(req, args)
-	case "network":
+	case "extension_logs":
+		resp = h.toolGetExtensionLogs(req, args)
+	case "network_waterfall":
+		resp = h.toolGetNetworkWaterfall(req, args)
+	case "network_bodies":
 		resp = h.toolGetNetworkBodies(req, args)
 	case "websocket_events":
 		resp = h.toolGetWSEvents(req, args)
@@ -940,8 +1204,46 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		resp = h.toolGetWebVitals(req, args)
 	case "page":
 		resp = h.toolGetPageInfo(req, args)
+	case "tabs":
+		resp = h.toolGetTabs(req, args)
+	case "pilot":
+		resp = h.toolObservePilot(req, args)
+	// Analyze modes (formerly separate analyze tool)
+	case "performance":
+		resp = h.toolCheckPerformance(req, args)
+	case "api":
+		resp = h.toolGetAPISchema(req, args)
+	case "accessibility":
+		resp = h.toolRunA11yAudit(req, args)
+	case "changes":
+		resp = h.toolGetChangesSince(req, args)
+	case "timeline":
+		resp = h.toolGetSessionTimeline(req, args)
+	case "error_clusters":
+		resp = h.toolAnalyzeErrors(req)
+	case "history":
+		resp = h.toolAnalyzeHistory(req, args)
+	// Security scan modes (formerly separate security tool)
+	case "security_audit":
+		resp = h.toolSecurityAudit(req, args)
+	case "third_party_audit":
+		resp = h.toolAuditThirdParties(req, args)
+	case "security_diff":
+		resp = h.toolDiffSecurity(req, args)
+	// Async command tracking modes
+	case "command_result":
+		resp = h.toolObserveCommandResult(req, args)
+	case "pending_commands":
+		resp = h.toolObservePendingCommands(req, args)
+	case "failed_commands":
+		resp = h.toolObserveFailedCommands(req, args)
 	default:
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Unknown observe mode: " + params.What)}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+params.What, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands"))}
+	}
+
+	// Prepend tracking status warning when no tab is tracked
+	if trackingEnabled, hint := h.checkTrackingStatus(); !trackingEnabled && hint != "" {
+		resp = h.prependTrackingWarning(resp, hint)
 	}
 
 	// Piggyback alerts: append as second content block if any pending
@@ -950,6 +1252,26 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		resp = h.appendAlertsToResponse(resp, alerts)
 	}
 
+	return resp
+}
+
+// prependTrackingWarning adds a tracking status warning as the first content block in the response.
+func (h *ToolHandler) prependTrackingWarning(resp JSONRPCResponse, hint string) JSONRPCResponse {
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+
+	warningBlock := MCPContentBlock{
+		Type: "text",
+		Text: hint,
+	}
+	// Prepend warning as first block
+	result.Content = append([]MCPContentBlock{warningBlock}, result.Content...)
+
+	// Error impossible: MCPToolResult is a simple struct with no circular refs or unsupported types
+	resultJSON, _ := json.Marshal(result)
+	resp.Result = json.RawMessage(resultJSON)
 	return resp
 }
 
@@ -966,49 +1288,22 @@ func (h *ToolHandler) appendAlertsToResponse(resp JSONRPCResponse, alerts []Aler
 		Text: alertText,
 	})
 
+	// Error impossible: MCPToolResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	resp.Result = json.RawMessage(resultJSON)
 	return resp
-}
-
-func (h *ToolHandler) toolAnalyze(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		Target string `json:"target"`
-	}
-	_ = json.Unmarshal(args, &params)
-
-	if params.Target == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Required parameter 'target' is missing")}
-	}
-
-	switch params.Target {
-	case "performance":
-		return h.toolCheckPerformance(req, args)
-	case "api":
-		return h.toolGetAPISchema(req, args)
-	case "accessibility":
-		return h.toolRunA11yAudit(req, args)
-	case "changes":
-		return h.toolGetChangesSince(req, args)
-	case "timeline":
-		return h.toolGetSessionTimeline(req, args)
-	case "errors":
-		return h.toolAnalyzeErrors(req)
-	case "history":
-		return h.toolAnalyzeHistory(req, args)
-	default:
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Unknown analyze target: " + params.Target)}
-	}
 }
 
 func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Format string `json:"format"`
 	}
-	_ = json.Unmarshal(args, &params)
+	if err := json.Unmarshal(args, &params); err != nil && len(args) > 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
 
 	if params.Format == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Required parameter 'format' is missing")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'format' is missing", "Add the 'format' parameter and call again", withParam("format"), withHint("Valid values: reproduction, test, pr_summary, sarif, har, csp, sri"))}
 	}
 
 	switch params.Format {
@@ -1022,8 +1317,12 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 		return h.toolExportSARIF(req, args)
 	case "har":
 		return h.toolExportHAR(req, args)
+	case "csp":
+		return h.toolGenerateCSP(req, args)
+	case "sri":
+		return h.toolGenerateSRI(req, args)
 	default:
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Unknown generate format: " + params.Format)}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+params.Format, "Use a valid format from the 'format' enum", withParam("format"))}
 	}
 }
 
@@ -1031,10 +1330,12 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 	var params struct {
 		Action string `json:"action"`
 	}
-	_ = json.Unmarshal(args, &params)
+	if err := json.Unmarshal(args, &params); err != nil && len(args) > 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
 
 	if params.Action == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Required parameter 'action' is missing")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: store, load, noise_rule, dismiss, clear, capture, record_event, query_dom, diff_sessions, validate_api, audit_log, health, streaming"))}
 	}
 
 	switch params.Action {
@@ -1052,8 +1353,64 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 		return h.toolConfigureCapture(req, args)
 	case "record_event":
 		return h.toolConfigureRecordEvent(req, args)
+	case "query_dom":
+		return h.toolQueryDOM(req, args)
+	case "diff_sessions":
+		return h.toolDiffSessionsWrapper(req, args)
+	case "validate_api":
+		return h.toolValidateAPI(req, args)
+	case "audit_log":
+		return h.toolGetAuditLog(req, args)
+	case "health":
+		return h.toolGetHealth(req)
+	case "streaming":
+		return h.toolConfigureStreamingWrapper(req, args)
 	default:
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Unknown configure action: " + params.Action)}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown configure action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
+	}
+}
+
+// ============================================
+// Interactive Browser Control Dispatcher
+// ============================================
+
+func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Action string `json:"action"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil && len(args) > 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	if params.Action == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: highlight, save_state, load_state, list_states, delete_state, execute_js, navigate, refresh, back, forward, new_tab"))}
+	}
+
+	switch params.Action {
+	case "highlight":
+		return h.handlePilotHighlight(req, args)
+	case "save_state":
+		return h.handlePilotManageStateSave(req, args)
+	case "load_state":
+		return h.handlePilotManageStateLoad(req, args)
+	case "list_states":
+		return h.handlePilotManageStateList(req, args)
+	case "delete_state":
+		return h.handlePilotManageStateDelete(req, args)
+	case "execute_js":
+		return h.handlePilotExecuteJS(req, args)
+	case "navigate":
+		return h.handleBrowserActionNavigate(req, args)
+	case "refresh":
+		return h.handleBrowserActionRefresh(req, args)
+	case "back":
+		return h.handleBrowserActionBack(req, args)
+	case "forward":
+		return h.handleBrowserActionForward(req, args)
+	case "new_tab":
+		return h.handleBrowserActionNewTab(req, args)
+	default:
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
 	}
 }
 
@@ -1062,6 +1419,14 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 // ============================================
 
 func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		Limit int `json:"limit"`
+	}
+	if len(args) > 0 {
+		// Error acceptable: limit is optional, defaults to 0 (no limit)
+		_ = json.Unmarshal(args, &arguments)
+	}
+
 	h.MCPHandler.server.mu.RLock()
 	defer h.MCPHandler.server.mu.RUnlock()
 
@@ -1075,19 +1440,40 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 		}
 	}
 
+	// Apply limit (last N errors)
+	if arguments.Limit > 0 && arguments.Limit < len(errors) {
+		errors = errors[len(errors)-arguments.Limit:]
+	}
+
 	if len(errors) == 0 {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("No browser errors found")}
 	}
 
-	errorsJSON, _ := json.Marshal(errors)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(errorsJSON))}
+	summary := fmt.Sprintf("%d browser error(s)", len(errors))
+	if warning := checkLogQuality(errors); warning != "" {
+		summary += "\n" + warning
+	}
+	rows := make([][]string, len(errors))
+	for i, e := range errors {
+		rows[i] = []string{
+			entryStr(e, "level"),
+			truncate(entryStr(e, "message"), 80),
+			entryStr(e, "source"),
+			entryStr(e, "ts"),
+		}
+	}
+	table := markdownTable([]string{"Level", "Message", "Source", "Time"}, rows)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
 }
 
 func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		Limit int `json:"limit"`
 	}
-	_ = json.Unmarshal(args, &arguments)
+	if len(args) > 0 {
+		// Error acceptable: limit is optional, defaults to 0 (no limit)
+		_ = json.Unmarshal(args, &arguments)
+	}
 
 	h.MCPHandler.server.mu.RLock()
 	defer h.MCPHandler.server.mu.RUnlock()
@@ -1109,11 +1495,83 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 	}
 
 	if len(entries) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("No browser logs found")}
+		msg := "No browser logs found"
+		if h.captureOverrides != nil {
+			overrides := h.captureOverrides.GetAll()
+			logLevel := overrides["log_level"]
+			if logLevel == "" {
+				logLevel = "error" // default
+			}
+			switch logLevel {
+			case "error":
+				msg += "\n\nlog_level is 'error' (only errors captured). To capture warnings too, call:\nconfigure({action: \"capture\", settings: {log_level: \"warn\"}})\nTo capture all console output, call:\nconfigure({action: \"capture\", settings: {log_level: \"all\"}})"
+			case "warn":
+				msg += "\n\nlog_level is 'warn' (errors + warnings only). To capture all console output, call:\nconfigure({action: \"capture\", settings: {log_level: \"all\"}})"
+			}
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(msg)}
 	}
 
-	entriesJSON, _ := json.Marshal(entries)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(entriesJSON))}
+	summary := fmt.Sprintf("%d log entries", len(entries))
+	if warning := checkLogQuality(entries); warning != "" {
+		summary += "\n" + warning
+	}
+	rows := make([][]string, len(entries))
+	for i, e := range entries {
+		rows[i] = []string{
+			entryStr(e, "level"),
+			truncate(entryStr(e, "message"), 80),
+			entryStr(e, "source"),
+			entryStr(e, "ts"),
+		}
+	}
+	table := markdownTable([]string{"Level", "Message", "Source", "Time"}, rows)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
+}
+
+func (h *ToolHandler) toolGetExtensionLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		Limit int `json:"limit"`
+	}
+	if len(args) > 0 {
+		// Error acceptable: limit is optional, defaults to 0 (no limit)
+		_ = json.Unmarshal(args, &arguments)
+	}
+
+	h.capture.mu.RLock()
+	defer h.capture.mu.RUnlock()
+
+	logs := h.capture.extensionLogs
+
+	if arguments.Limit > 0 && arguments.Limit < len(logs) {
+		logs = logs[len(logs)-arguments.Limit:]
+	}
+
+	if len(logs) == 0 {
+		msg := "No extension logs found\n\nExtension logs show internal background script activity.\nThis feature requires the extension to POST logs to /extension-logs."
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(msg)}
+	}
+
+	summary := fmt.Sprintf("%d extension log entries", len(logs))
+	rows := make([][]string, len(logs))
+	for i, log := range logs {
+		dataStr := ""
+		if len(log.Data) > 0 {
+			if dataJSON, err := json.Marshal(log.Data); err == nil {
+				dataStr = truncate(string(dataJSON), 60)
+			}
+		}
+		rows[i] = []string{
+			log.Level,
+			log.Source,
+			log.Category,
+			truncate(log.Message, 80),
+			dataStr,
+			log.Timestamp.Format("15:04:05"),
+		}
+	}
+	table := markdownTable([]string{"Level", "Source", "Category", "Message", "Data", "Time"}, rows)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
 }
 
 func (h *ToolHandler) toolClearBrowserLogs(req JSONRPCRequest) JSONRPCResponse {
@@ -1127,7 +1585,7 @@ func (h *ToolHandler) toolClearBrowserLogs(req JSONRPCRequest) JSONRPCResponse {
 
 func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.sessionStore == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Session store not initialized")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Initialize the session store first: configure({action:'store', sub_action:'set', ...})")}
 	}
 
 	// Map composite fields to SessionStoreArgs
@@ -1137,7 +1595,11 @@ func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessag
 		Key         string          `json:"key"`
 		Data        json.RawMessage `json:"data"`
 	}
-	_ = json.Unmarshal(args, &compositeArgs)
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &compositeArgs); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
 
 	storeArgs := SessionStoreArgs{
 		Action:    compositeArgs.StoreAction,
@@ -1152,10 +1614,10 @@ func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessag
 
 	result, err := h.sessionStore.HandleSessionStore(storeArgs)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Error: " + err.Error())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Internal server error — do not retry")}
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(result))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Store operation complete", json.RawMessage(result))}
 }
 
 func (h *ToolHandler) toolConfigureNoiseRule(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -1163,15 +1625,24 @@ func (h *ToolHandler) toolConfigureNoiseRule(req JSONRPCRequest, args json.RawMe
 	var compositeArgs struct {
 		NoiseAction string `json:"noise_action"`
 	}
-	_ = json.Unmarshal(args, &compositeArgs)
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &compositeArgs); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
 
 	// Rewrite args to have "action" field that toolConfigureNoise expects
 	var rawMap map[string]interface{}
-	_ = json.Unmarshal(args, &rawMap)
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &rawMap); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
 	rawMap["action"] = compositeArgs.NoiseAction
 	if rawMap["action"] == "" {
 		rawMap["action"] = "list"
 	}
+	// Error impossible: rawMap contains only primitive types and strings from input
 	rewrittenArgs, _ := json.Marshal(rawMap)
 
 	return h.toolConfigureNoise(req, rewrittenArgs)
@@ -1179,6 +1650,38 @@ func (h *ToolHandler) toolConfigureNoiseRule(req JSONRPCRequest, args json.RawMe
 
 func (h *ToolHandler) toolConfigureDismiss(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	return h.toolDismissNoise(req, args)
+}
+
+// toolDiffSessionsWrapper repackages session_action → action for toolDiffSessions.
+func (h *ToolHandler) toolDiffSessionsWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var raw map[string]interface{}
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &raw); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
+	if sa, ok := raw["session_action"].(string); ok {
+		raw["action"] = sa
+	}
+	// Error impossible: raw contains only primitive types and strings from input
+	rewritten, _ := json.Marshal(raw)
+	return h.toolDiffSessions(req, rewritten)
+}
+
+// toolConfigureStreamingWrapper repackages streaming_action → action for toolConfigureStreaming.
+func (h *ToolHandler) toolConfigureStreamingWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var raw map[string]interface{}
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &raw); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
+	if sa, ok := raw["streaming_action"].(string); ok {
+		raw["action"] = sa
+	}
+	// Error impossible: raw contains only primitive types and strings from input
+	rewritten, _ := json.Marshal(raw)
+	return h.toolConfigureStreaming(req, rewritten)
 }
 
 // ============================================
@@ -1191,7 +1694,11 @@ func (h *ToolHandler) toolGetChangesSince(req JSONRPCRequest, args json.RawMessa
 		Include    []string `json:"include"`
 		Severity   string   `json:"severity"`
 	}
-	_ = json.Unmarshal(args, &arguments)
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &arguments); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
 
 	params := GetChangesSinceParams{
 		Checkpoint: arguments.Checkpoint,
@@ -1199,21 +1706,19 @@ func (h *ToolHandler) toolGetChangesSince(req JSONRPCRequest, args json.RawMessa
 		Severity:   arguments.Severity,
 	}
 
-	diff := h.checkpoints.GetChangesSince(params)
+	diff := h.checkpoints.GetChangesSince(params, req.ClientID)
 
-	diffJSON, _ := json.Marshal(diff)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(diffJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Changes since checkpoint", diff)}
 }
 
 func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.sessionStore == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Session store not initialized")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Initialize the session store first: configure({action:'store', sub_action:'set', ...})")}
 	}
 
 	ctx := h.sessionStore.LoadSessionContext()
-	ctxJSON, _ := json.Marshal(ctx)
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(ctxJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Session context loaded", ctx)}
 }
 
 // ============================================
@@ -1238,7 +1743,11 @@ func (h *ToolHandler) toolConfigureNoise(req JSONRPCRequest, args json.RawMessag
 		} `json:"rules"`
 		RuleID string `json:"rule_id"`
 	}
-	_ = json.Unmarshal(args, &arguments)
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &arguments); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
 
 	var responseData interface{}
 
@@ -1318,8 +1827,7 @@ func (h *ToolHandler) toolConfigureNoise(req JSONRPCRequest, args json.RawMessag
 		responseData = map[string]interface{}{"error": "unknown action: " + arguments.Action}
 	}
 
-	respJSON, _ := json.Marshal(responseData)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Noise configuration updated", responseData)}
 }
 
 func (h *ToolHandler) toolDismissNoise(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -1328,7 +1836,11 @@ func (h *ToolHandler) toolDismissNoise(req JSONRPCRequest, args json.RawMessage)
 		Category string `json:"category"`
 		Reason   string `json:"reason"`
 	}
-	_ = json.Unmarshal(args, &arguments)
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &arguments); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
 
 	h.noise.DismissNoise(arguments.Pattern, arguments.Category, arguments.Reason)
 
@@ -1336,8 +1848,7 @@ func (h *ToolHandler) toolDismissNoise(req JSONRPCRequest, args json.RawMessage)
 		"status":     "ok",
 		"totalRules": len(h.noise.ListRules()),
 	}
-	respJSON, _ := json.Marshal(responseData)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Noise pattern dismissed", responseData)}
 }
 
 // ============================================
@@ -1350,13 +1861,17 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 		IncludePasses bool   `json:"include_passes"`
 		SaveTo        string `json:"save_to"`
 	}
-	_ = json.Unmarshal(args, &arguments)
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &arguments); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
 
 	// Look for cached a11y result
 	cacheKey := h.capture.a11yCacheKey(arguments.Scope, nil)
 	cached := h.capture.getA11yCacheEntry(cacheKey)
 	if cached == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("No accessibility audit results available. Run run_accessibility_audit first.")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "No accessibility audit results available", "Run the audit first: observe({what:'accessibility'})")}
 	}
 
 	opts := SARIFExportOptions{
@@ -1367,7 +1882,7 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 
 	sarifLog, err := ExportSARIF(cached, opts)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("SARIF export failed: " + err.Error())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExportFailed, "SARIF export failed: "+err.Error(), "Export failed — check file path and permissions")}
 	}
 
 	if arguments.SaveTo != "" {
@@ -1378,11 +1893,11 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 			"rules":   len(sarifLog.Runs[0].Tool.Driver.Rules),
 			"results": len(sarifLog.Runs[0].Results),
 		}
-		respJSON, _ := json.Marshal(responseData)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(fmt.Sprintf("SARIF export saved to %s", arguments.SaveTo), responseData)}
 	}
 
-	// Return SARIF JSON directly
+	// Return SARIF JSON directly (already formatted)
+	// Error impossible: sarifLog is generated from validated structures with no circular refs
 	sarifJSON, _ := json.MarshalIndent(sarifLog, "", "  ")
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(sarifJSON))}
 }
@@ -1394,10 +1909,9 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	result, err := h.cspGenerator.HandleGenerateCSP(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(err.Error())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Internal server error — do not retry")}
 	}
-	respJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("CSP policy generated", result)}
 }
 
 func (h *ToolHandler) toolSecurityAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -1423,33 +1937,31 @@ func (h *ToolHandler) toolSecurityAudit(req JSONRPCRequest, args json.RawMessage
 
 	result, err := h.securityScanner.HandleSecurityAudit(args, bodies, entries, pageURLs)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(err.Error())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Internal server error — do not retry")}
 	}
-	respJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security audit complete", result)}
 }
 
 func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	result, err := h.auditTrail.HandleGetAuditLog(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(err.Error())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Internal server error — do not retry")}
 	}
-	respJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log entries", result)}
 }
 
 func (h *ToolHandler) toolDiffSessions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	result, err := h.sessionManager.HandleTool(args)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(err.Error())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Internal server error — do not retry")}
 	}
-	respJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Session diff", result)}
 }
 
 func (h *ToolHandler) toolAuditThirdParties(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params ThirdPartyParams
 	if len(args) > 0 {
+		// Error acceptable: optional parameters, defaults used if unmarshal fails
 		_ = json.Unmarshal(args, &params)
 	}
 
@@ -1468,8 +1980,7 @@ func (h *ToolHandler) toolAuditThirdParties(req JSONRPCRequest, args json.RawMes
 	h.cspGenerator.mu.RUnlock()
 
 	result := h.thirdPartyAuditor.Audit(bodies, pageURLs, params)
-	respJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(fmt.Sprintf("Third-party audit: %d origin(s)", len(result.ThirdParties)), result)}
 }
 
 func (h *ToolHandler) toolDiffSecurity(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -1481,8 +1992,178 @@ func (h *ToolHandler) toolDiffSecurity(req JSONRPCRequest, args json.RawMessage)
 
 	result, err := h.securityDiffMgr.HandleDiffSecurity(args, bodies)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(err.Error())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Internal server error — do not retry")}
 	}
-	respJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security diff", result)}
+}
+
+func (h *ToolHandler) toolValidateAPI(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Operation       string   `json:"operation"`
+		URLFilter       string   `json:"url"`
+		IgnoreEndpoints []string `json:"ignore_endpoints"`
+	}
+	if len(args) > 0 {
+		// Error acceptable: optional parameters, defaults used if unmarshal fails
+		_ = json.Unmarshal(args, &params)
+	}
+
+	filter := APIContractFilter{
+		URLFilter:       params.URLFilter,
+		IgnoreEndpoints: params.IgnoreEndpoints,
+	}
+
+	// Process network bodies into contract validator before analysis
+	h.capture.mu.RLock()
+	bodies := make([]NetworkBody, len(h.capture.networkBodies))
+	copy(bodies, h.capture.networkBodies)
+	h.capture.mu.RUnlock()
+
+	// Feed captured network bodies into the validator for learning
+	for _, body := range bodies {
+		// Only learn from responses with JSON content
+		if body.ResponseBody != "" && (body.ContentType == "" || strings.Contains(body.ContentType, "json")) {
+			h.contractValidator.Learn(body)
+		}
+	}
+
+	switch params.Operation {
+	case "analyze":
+		// Also validate the bodies to detect violations
+		for _, body := range bodies {
+			if body.ResponseBody != "" && (body.ContentType == "" || strings.Contains(body.ContentType, "json")) {
+				h.contractValidator.Validate(body)
+			}
+		}
+		result := h.contractValidator.Analyze(filter)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation", result)}
+
+	case "report":
+		result := h.contractValidator.Report(filter)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation", result)}
+
+	case "clear":
+		h.contractValidator.Clear()
+		clearResult := map[string]interface{}{
+			"action": "cleared",
+			"status": "ok",
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation", clearResult)}
+
+	default:
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "operation parameter must be 'analyze', 'report', or 'clear'", "Use a valid value for 'operation'", withParam("operation"), withHint("analyze, report, or clear"))}
+	}
+}
+
+// ============================================
+// SRI Hash Generator Tool
+// ============================================
+
+// toolGenerateSRI generates Subresource Integrity hashes for third-party scripts/styles.
+func (h *ToolHandler) toolGenerateSRI(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	// Get network bodies from capture
+	h.capture.mu.RLock()
+	bodies := make([]NetworkBody, len(h.capture.networkBodies))
+	copy(bodies, h.capture.networkBodies)
+	h.capture.mu.RUnlock()
+
+	// Get page URLs from CSP generator (tracks all visited pages)
+	var pageURLs []string
+	if h.cspGenerator != nil {
+		pageURLs = h.cspGenerator.GetPages()
+	}
+
+	// Call the handler
+	result, err := HandleGenerateSRI(args, bodies, pageURLs)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Internal server error — do not retry")}
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("SRI hashes generated", result)}
+}
+
+// ============================================
+// Verification Loop Tool
+// ============================================
+
+// toolVerifyFix handles the verify_fix MCP tool for before/after fix verification.
+func (h *ToolHandler) toolVerifyFix(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if h.verificationMgr == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Verification manager not initialized", "Internal server error — do not retry")}
+	}
+
+	result, err := h.verificationMgr.HandleTool(args)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Internal server error — do not retry")}
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Verification result", result)}
+}
+
+// ============================================
+// Async Command Observation Tools
+// ============================================
+
+// toolObserveCommandResult retrieves the result of an async command by correlation_id.
+func (h *ToolHandler) toolObserveCommandResult(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		CorrelationID string `json:"correlation_id"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil && len(args) > 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	if params.CorrelationID == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'correlation_id' is missing", "Add the 'correlation_id' parameter and call again", withParam("correlation_id"))}
+	}
+
+	result := h.capture.GetCommandResult(params.CorrelationID)
+	if result == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Command result not found for correlation_id: "+params.CorrelationID, "Command may have expired (60s TTL) or correlation_id is invalid")}
+	}
+
+	// Marshal result to JSON
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to marshal result", "Internal server error")}
+	}
+
+	summary := fmt.Sprintf("Command %s: %s", result.CorrelationID, result.Status)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, json.RawMessage(resultJSON))}
+}
+
+// toolObservePendingCommands lists all pending, completed, and failed async commands.
+func (h *ToolHandler) toolObservePendingCommands(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	pending, completed, failed := h.capture.GetPendingCommands()
+
+	responseData := map[string]interface{}{
+		"pending":   pending,
+		"completed": completed,
+		"failed":    failed,
+	}
+
+	responseJSON, err := json.Marshal(responseData)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to marshal commands", "Internal server error")}
+	}
+
+	summary := fmt.Sprintf("Pending: %d, Completed: %d, Failed: %d", len(pending), len(completed), len(failed))
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, json.RawMessage(responseJSON))}
+}
+
+// toolObserveFailedCommands lists recent failed/expired async commands.
+func (h *ToolHandler) toolObserveFailedCommands(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	failed := h.capture.GetFailedCommands()
+
+	if len(failed) == 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("No failed commands found")}
+	}
+
+	responseJSON, err := json.Marshal(failed)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to marshal failed commands", "Internal server error")}
+	}
+
+	summary := fmt.Sprintf("%d recent failed command(s)", len(failed))
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, json.RawMessage(responseJSON))}
 }

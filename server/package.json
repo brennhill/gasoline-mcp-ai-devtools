@@ -1,6 +1,6 @@
 {
-  "name": "gasoline-cli",
-  "version": "5.0.0",
+  "name": "gasoline-mcp",
+  "version": "5.1.0",
   "description": "Browser observability for AI coding agents - autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
   "keywords": [
     "browser",
@@ -14,13 +14,13 @@
     "console",
     "gasoline"
   ],
-  "homepage": "https://github.com/brennhill/gasoline",
+  "homepage": "https://cookwithgasoline.com",
   "bugs": {
-    "url": "https://github.com/brennhill/gasoline/issues"
+    "url": "https://github.com/brennhill/gasoline-mcp-ai-devtools/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/brennhill/gasoline.git"
+    "url": "git+https://github.com/brennhill/gasoline-mcp-ai-devtools.git"
   },
   "license": "AGPL-3.0-only",
   "author": "Brenn Hill",

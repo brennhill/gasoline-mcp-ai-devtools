@@ -9,31 +9,38 @@ Browser extension + MCP server: captures real-time browser telemetry (logs, netw
 ```bash
 make test                              # Go tests
 go vet ./cmd/dev-console/              # Static analysis
-node --test extension-tests/*.test.js  # Extension tests
+node --test tests/extension/*.test.js  # Extension tests
 make dev                               # Build current platform
+.claude/check-token-budget.sh          # Check doc token budget (keep < 1000 lines)
 ```
 
 ## Rules
 
-1. **TDD** — Write tests FIRST. Read spec → tests → confirm fail → implement → confirm pass → commit
-2. **Zero deps** — Go server: stdlib only. Extension: no frameworks, no build tools
-3. **Performance** — Extension must not degrade browsing. WS < 0.1ms, fetch < 0.5ms, never block main thread
-4. **Privacy** — Sensitive data never leaves localhost. Strip auth headers, body capture opt-in
-5. **Quality gates** — `go vet` + `make test` + `node --test` must pass before every commit
+1. **Spec Review** — MANDATORY: Every feature spec must be reviewed by a principal engineer agent before implementation. See [spec-review.md](.claude/docs/spec-review.md)
+2. **TDD** — Write tests FIRST. Read spec → tests → confirm fail → implement → confirm pass → commit
+3. **Zero deps** — Go server: stdlib only. Extension: no frameworks, no build tools
+4. **4-Tool Maximum** — STRICTLY ENFORCED: Gasoline exposes exactly 4 MCP tools: `observe`, `generate`, `configure`, `interact`. NEVER create a 5th tool. New features MUST be added as a new mode/action under one of these 4. See [architecture.md](.claude/docs/architecture.md)
+5. **Performance** — Extension must not degrade browsing. WS < 0.1ms, fetch < 0.5ms, never block main thread
+6. **Privacy** — Sensitive data never leaves localhost. Strip auth headers, body capture opt-in
+7. **Quality gates** — `go vet` + `make test` + `node --test` must pass before every commit
 
 ## Git
 
 - **`main`** — stable releases only. **`next`** — active development
-- **Subrepos** (DO NOT delete/recreate): `.claude/` and `docs/marketing/` are independent repos
+- **Subrepos** (DO NOT delete/recreate): `.claude/` is an independent repo
+- **Marketing site**: Separate repo at `~/dev/gasoline-site` (Astro, blog posts in `src/content/docs/blog/`)
 - Before push to `next`: `/squash` to combine commits
 
 ## Docs
 
-| Document | Topic |
-|----------|-------|
-| [testing.md](.claude/docs/testing.md) | TDD workflow, test requirements, quality gates |
-| [architecture.md](.claude/docs/architecture.md) | System diagram, data flows, memory, security |
-| [code-style.md](.claude/docs/code-style.md) | File headers, comment hygiene, Go/JS patterns |
-| [version-management.md](.claude/docs/version-management.md) | Version sync across 14 locations |
-| [branching.md](.claude/docs/branching.md) | Branch model, parallel agents, worktrees |
-| [product-philosophy.md](.claude/docs/product-philosophy.md) | Feature evaluation: capture vs interpret |
+See `.claude/docs/` for:
+- **Spec Review** — MANDATORY principal engineer review before implementation
+- **Architecture** — 4-tool constraint, data flows, security, concurrency
+- **Development** — TDD workflow, testing, code style
+- **Git & Releases** — Branch model, worktrees, parallel agents, version sync, release process
+- **Product** — Feature evaluation: capture vs interpret
+
+## UAT
+
+**FOR UAT, USE THIS CHECKLIST:** [docs/core/UAT-TEST-PLAN.md](docs/core/UAT-TEST-PLAN.md)
+- Use this whenever the user asks for doing UAT or asking for next steps in doing UAT.

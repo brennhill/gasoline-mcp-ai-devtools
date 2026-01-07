@@ -75,6 +75,21 @@
         background: #f85149;
       }
 
+      #status.disconnected::after {
+        content: '!';
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        margin-left: 4px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #f85149;
+        background: rgba(248, 81, 73, 0.15);
+        border-radius: 3px;
+      }
+
       .section {
         margin-bottom: 16px;
       }
@@ -323,6 +338,114 @@
       <span id="status" class="status-value disconnected">Disconnected</span>
     </div>
 
+    <div class="section" style="margin-top: 12px">
+      <div class="section-title">Tab Tracking</div>
+      <button id="track-page-btn" style="background: #252525; color: #58a6ff; border-color: #58a6ff"
+        title="Start capturing telemetry from this browser tab only">
+        Track This Tab
+      </button>
+      <div
+        id="no-tracking-warning"
+        style="
+          display: none;
+          margin-top: 8px;
+          padding: 8px 12px;
+          background: rgba(248, 81, 73, 0.1);
+          border: 1px solid rgba(248, 81, 73, 0.3);
+          border-radius: 6px;
+          font-size: 12px;
+          color: #f85149;
+        "
+      >
+        No tab tracked - data capture disabled
+      </div>
+      <div
+        id="tracked-page-info"
+        style="
+          display: none;
+          margin-top: 8px;
+          padding: 8px 12px;
+          background: rgba(88, 166, 255, 0.1);
+          border: 1px solid #58a6ff;
+          border-radius: 6px;
+          font-size: 12px;
+        "
+      >
+        <div style="color: #58a6ff; font-weight: 600; margin-bottom: 4px">Tracking Active</div>
+        <div id="tracked-url" style="color: #aaa; word-break: break-all"></div>
+      </div>
+    </div>
+
+    <!-- Inline troubleshooting - shows immediately when disconnected -->
+    <div id="troubleshooting" style="display: none; margin-bottom: 12px">
+      <div
+        style="
+          padding: 12px;
+          background: rgba(248, 81, 73, 0.1);
+          border: 1px solid #f85149;
+          border-radius: 6px;
+          font-size: 12px;
+          line-height: 1.6;
+        "
+      >
+        <p style="margin-bottom: 8px; color: #f85149; font-weight: 600">Server not running</p>
+        <p style="color: #ccc; margin-bottom: 8px">
+          Run in terminal:
+          <code
+            style="
+              background: #333;
+              padding: 2px 6px;
+              border-radius: 3px;
+              color: #58a6ff;
+              display: inline-block;
+              margin-top: 4px;
+            "
+            >npx gasoline-mcp</code
+          >
+        </p>
+        <p style="color: #888; font-size: 11px">
+          Port in use?
+          <code style="background: #333; padding: 1px 4px; border-radius: 2px; color: #aaa"
+            >lsof -ti :7890 | xargs kill</code
+          >
+        </p>
+        <p style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #333">
+          <a
+            href="https://github.com/brennhill/gasoline-mcp-ai-devtools#quick-start"
+            target="_blank"
+            style="color: #58a6ff; text-decoration: none; font-size: 11px"
+            >Setup guide →</a
+          >
+          <span style="color: #444; margin: 0 6px">|</span>
+          <a href="options.html" style="color: #58a6ff; text-decoration: none; font-size: 11px">Custom port →</a>
+        </p>
+        <!-- AI-READABLE: Gasoline MCP server connection failed.
+             Default server: http://localhost:7890
+             Start command: npx gasoline-mcp
+             Verify: curl http://localhost:7890/health
+             Check port: lsof -i :7890
+             The server must be running for the extension to send logs. -->
+      </div>
+    </div>
+
+    <div
+      id="version-mismatch"
+      style="
+        display: none;
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background: rgba(210, 153, 34, 0.1);
+        border: 1px solid #d29922;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #d29922;
+      "
+    >
+      <span style="font-weight: 600">Version mismatch</span>
+      <p class="version-detail" style="margin-top: 4px; color: #aaa"></p>
+      <p style="margin-top: 4px; color: #888; font-size: 11px">Update both to the same major version.</p>
+    </div>
+
     <div class="status-row">
       <span class="status-label">Log Entries</span>
       <span id="entries-count" class="status-value">0 / 1000</span>
@@ -352,39 +475,6 @@
       <p id="context-warning-text" style="margin-top: 4px; color: #aaa"></p>
     </div>
 
-    <div id="troubleshooting" style="display: none">
-      <div class="section-title" style="margin-top: 12px">Not Connected</div>
-      <div class="feature-section" style="font-size: 12px; line-height: 1.6">
-        <p style="margin-bottom: 8px; color: #ccc">The Gasoline server is not running. To fix:</p>
-        <ol style="padding-left: 18px; color: #aaa">
-          <li>
-            Run
-            <code style="background: #333; padding: 2px 4px; border-radius: 3px; color: #58a6ff">npx gasoline-mcp</code>
-            in your terminal
-          </li>
-          <li>
-            Or check if the server port is in use:<br />
-            <code style="background: #333; padding: 2px 4px; border-radius: 3px; color: #58a6ff">lsof -i :7890</code>
-          </li>
-          <li>If using a custom port, update it in <a href="options.html" style="color: #58a6ff">Options</a></li>
-        </ol>
-        <p style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #333">
-          <a
-            href="https://github.com/brennhill/gasoline#quick-start"
-            target="_blank"
-            style="color: #58a6ff; text-decoration: none"
-            >View full setup guide →</a
-          >
-        </p>
-        <!-- AI-READABLE: Gasoline MCP server connection failed.
-             Default server: http://localhost:7890
-             Start command: npx gasoline-mcp
-             Verify: curl http://localhost:7890/health
-             Check port: lsof -i :7890
-             The server must be running for the extension to send logs. -->
-      </div>
-    </div>
-
     <div id="health-indicators" style="display: none; margin-bottom: 12px">
       <div
         id="health-circuit-breaker"
@@ -411,7 +501,7 @@
         <div class="toggle-row">
           <div class="toggle-info">
             <span class="toggle-label">Enable AI Control</span>
-            <span class="toggle-desc" style="color: #d29922">Allows AI to interact with page</span>
+            <span class="toggle-desc" style="color: #d29922">Can take a few seconds to reflect on the server</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="aiWebPilotEnabled" />
@@ -475,7 +565,7 @@
         <div class="toggle-row">
           <div class="toggle-info">
             <span class="toggle-label">Network Bodies</span>
-            <span class="toggle-desc">Capture request/response bodies</span>
+            <span class="toggle-desc">Capture request/response bodies for API debugging</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="toggle-network-body-capture" checked />
@@ -500,7 +590,7 @@
         <div class="toggle-row">
           <div class="toggle-info">
             <span class="toggle-label">User Actions</span>
-            <span class="toggle-desc">Record clicks/inputs before errors</span>
+            <span class="toggle-desc">Record clicks and inputs to reproduce errors</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="toggle-action-replay" checked />
@@ -525,7 +615,7 @@
         <div class="toggle-row">
           <div class="toggle-info">
             <span class="toggle-label">Source Maps</span>
-            <span class="toggle-desc">Resolve minified stack traces</span>
+            <span class="toggle-desc">Resolve minified stack traces to original source</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="toggle-source-maps" />
@@ -540,28 +630,6 @@
     </div>
 
     <div class="section">
-      <div class="section-title">Debugging</div>
-      <div class="feature-section">
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label">Debug Mode</span>
-            <span class="toggle-desc">Log extension activity to console</span>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="toggle-debug-mode" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div style="margin-top: 12px; display: flex; gap: 8px">
-          <button id="export-debug-btn" style="flex: 1">Export Debug Log</button>
-          <button id="clear-debug-btn" style="flex: 0 0 auto; width: auto; padding: 10px 12px" title="Clear debug log">
-            ✕
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
       <div class="section-title">Server Info</div>
       <div class="info-row">
         <span class="info-label">URL</span>
@@ -570,6 +638,10 @@
       <div class="info-row">
         <span class="info-label">Log File</span>
         <span id="log-file-path" class="info-value">~/gasoline-logs.jsonl</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">File Size</span>
+        <span id="log-file-size" class="info-value">-</span>
       </div>
     </div>
 

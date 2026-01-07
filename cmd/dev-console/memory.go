@@ -6,6 +6,7 @@
 package main
 
 import (
+	"math"
 	"time"
 )
 
@@ -44,13 +45,13 @@ type MemoryStatus struct {
 }
 
 // GetMemoryStatus returns the current memory enforcement state
-func (v *Capture) GetMemoryStatus() MemoryStatus {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+func (c *Capture) GetMemoryStatus() MemoryStatus {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	wsMem := v.calcWSMemory()
-	nbMem := v.calcNBMemory()
-	actionMem := v.calcActionMemory()
+	wsMem := c.calcWSMemory()
+	nbMem := c.calcNBMemory()
+	actionMem := c.calcActionMemory()
 
 	return MemoryStatus{
 		TotalBytes:     wsMem + nbMem + actionMem,
@@ -60,9 +61,9 @@ func (v *Capture) GetMemoryStatus() MemoryStatus {
 		SoftLimit:      memorySoftLimit,
 		HardLimit:      memoryHardLimit,
 		CriticalLimit:  memoryCriticalLimit,
-		MinimalMode:    v.mem.minimalMode,
-		TotalEvictions: v.mem.totalEvictions,
-		EvictedEntries: v.mem.evictedEntries,
+		MinimalMode:    c.mem.minimalMode,
+		TotalEvictions: c.mem.totalEvictions,
+		EvictedEntries: c.mem.evictedEntries,
 	}
 }
 
@@ -71,31 +72,41 @@ func (v *Capture) GetMemoryStatus() MemoryStatus {
 // ============================================
 
 // calcTotalMemory returns total memory across all buffers (caller must hold lock)
-func (v *Capture) calcTotalMemory() int64 {
-	return v.calcWSMemory() + v.calcNBMemory() + v.calcActionMemory()
+func (c *Capture) calcTotalMemory() int64 {
+	return c.calcWSMemory() + c.calcNBMemory() + c.calcActionMemory()
 }
 
 // calcWSMemory approximates memory usage of WS buffer (caller must hold lock)
-func (v *Capture) calcWSMemory() int64 {
+func (c *Capture) calcWSMemory() int64 {
 	var total int64
-	for i := range v.wsEvents {
-		total += int64(len(v.wsEvents[i].Data)) + wsEventOverhead
+	for i := range c.wsEvents {
+		size := int64(len(c.wsEvents[i].Data)) + wsEventOverhead
+		// Cap at max int64 to prevent overflow
+		if total > math.MaxInt64-size {
+			return math.MaxInt64
+		}
+		total += size
 	}
 	return total
 }
 
 // calcNBMemory approximates memory usage of network bodies buffer (caller must hold lock)
-func (v *Capture) calcNBMemory() int64 {
+func (c *Capture) calcNBMemory() int64 {
 	var total int64
-	for i := range v.networkBodies {
-		total += int64(len(v.networkBodies[i].RequestBody)+len(v.networkBodies[i].ResponseBody)) + networkBodyOverhead
+	for i := range c.networkBodies {
+		size := int64(len(c.networkBodies[i].RequestBody)+len(c.networkBodies[i].ResponseBody)) + networkBodyOverhead
+		// Cap at max int64 to prevent overflow
+		if total > math.MaxInt64-size {
+			return math.MaxInt64
+		}
+		total += size
 	}
 	return total
 }
 
 // calcActionMemory approximates memory usage of enhanced actions buffer (caller must hold lock)
-func (v *Capture) calcActionMemory() int64 {
-	return int64(len(v.enhancedActions)) * actionMemoryFixed
+func (c *Capture) calcActionMemory() int64 {
+	return int64(len(c.enhancedActions)) * actionMemoryFixed
 }
 
 // ============================================
@@ -104,8 +115,8 @@ func (v *Capture) calcActionMemory() int64 {
 
 // effectiveWSCapacity returns the current WS buffer capacity (halved in minimal mode)
 // caller must hold lock
-func (v *Capture) effectiveWSCapacity() int {
-	if v.mem.minimalMode {
+func (c *Capture) effectiveWSCapacity() int {
+	if c.mem.minimalMode {
 		return maxWSEvents / 2
 	}
 	return maxWSEvents
@@ -113,8 +124,8 @@ func (v *Capture) effectiveWSCapacity() int {
 
 // effectiveNBCapacity returns the current network body buffer capacity (halved in minimal mode)
 // caller must hold lock
-func (v *Capture) effectiveNBCapacity() int {
-	if v.mem.minimalMode {
+func (c *Capture) effectiveNBCapacity() int {
+	if c.mem.minimalMode {
 		return maxNetworkBodies / 2
 	}
 	return maxNetworkBodies
@@ -122,8 +133,8 @@ func (v *Capture) effectiveNBCapacity() int {
 
 // effectiveActionCapacity returns the current action buffer capacity (halved in minimal mode)
 // caller must hold lock
-func (v *Capture) effectiveActionCapacity() int {
-	if v.mem.minimalMode {
+func (c *Capture) effectiveActionCapacity() int {
+	if c.mem.minimalMode {
 		return maxEnhancedActions / 2
 	}
 	return maxEnhancedActions
@@ -135,90 +146,131 @@ func (v *Capture) effectiveActionCapacity() int {
 
 // enforceMemory checks memory thresholds and evicts as needed (caller must hold lock).
 // This is the primary enforcement point, called on every ingest operation.
-func (v *Capture) enforceMemory() {
+func (c *Capture) enforceMemory() {
 	// Respect cooldown
-	if !v.mem.lastEvictionTime.IsZero() && time.Since(v.mem.lastEvictionTime) < evictionCooldown {
+	if !c.mem.lastEvictionTime.IsZero() && time.Since(c.mem.lastEvictionTime) < evictionCooldown {
 		return
 	}
 
-	totalMem := v.calcTotalMemory()
+	totalMem := c.calcTotalMemory()
 
 	// Check critical limit first (100MB)
 	if totalMem > memoryCriticalLimit {
-		v.evictCritical()
+		c.evictCritical()
 		return
 	}
 
 	// Check hard limit (50MB)
 	if totalMem > memoryHardLimit {
-		v.evictHard()
+		c.evictHard()
 		return
 	}
 
 	// Check soft limit (20MB)
 	if totalMem > memorySoftLimit {
-		v.evictSoft()
+		c.evictSoft()
 		return
 	}
 }
 
 // evictSoft removes oldest 25% from each buffer (prioritizing network bodies)
-func (v *Capture) evictSoft() {
-	v.evictBuffers(4, memorySoftLimit)
+func (c *Capture) evictSoft() {
+	c.evictBuffers(4, memorySoftLimit)
 }
 
 // evictHard removes oldest 50% from each buffer (prioritizing network bodies)
-func (v *Capture) evictHard() {
-	v.evictBuffers(2, memoryHardLimit)
+func (c *Capture) evictHard() {
+	c.evictBuffers(2, memoryHardLimit)
 }
 
 // evictBuffers removes oldest 1/denominator entries from each buffer in priority order
 // (network bodies → WS events → actions), stopping early if memory drops below limit.
-func (v *Capture) evictBuffers(denominator int, limit int64) {
+// Survivors are copied to new slices so the GC can reclaim the old backing arrays.
+func (c *Capture) evictBuffers(denominator int, limit int64) {
 	var evicted int
 
 	// Network bodies first (largest per entry)
-	if len(v.networkBodies) > 0 {
-		n := max(len(v.networkBodies)/denominator, 1)
-		v.networkBodies = v.networkBodies[n:]
-		v.networkAddedAt = v.networkAddedAt[n:]
+	if len(c.networkBodies) > 0 {
+		n := max(len(c.networkBodies)/denominator, 1)
+		// Clamp n to actual array length to prevent panic
+		if n > len(c.networkBodies) {
+			n = len(c.networkBodies)
+		}
+		surviving := make([]NetworkBody, len(c.networkBodies)-n)
+		copy(surviving, c.networkBodies[n:])
+		c.networkBodies = surviving
+		// Keep networkAddedAt and networkBodies in sync
+		nAt := n
+		if nAt > len(c.networkAddedAt) {
+			nAt = len(c.networkAddedAt)
+		}
+		survivingAt := make([]time.Time, len(c.networkAddedAt)-nAt)
+		copy(survivingAt, c.networkAddedAt[nAt:])
+		c.networkAddedAt = survivingAt
 		evicted += n
 	}
 
-	if v.calcTotalMemory() > limit && len(v.wsEvents) > 0 {
-		n := max(len(v.wsEvents)/denominator, 1)
-		v.wsEvents = v.wsEvents[n:]
-		v.wsAddedAt = v.wsAddedAt[n:]
+	if c.calcTotalMemory() > limit && len(c.wsEvents) > 0 {
+		n := max(len(c.wsEvents)/denominator, 1)
+		// Clamp n to actual array length to prevent panic
+		if n > len(c.wsEvents) {
+			n = len(c.wsEvents)
+		}
+		surviving := make([]WebSocketEvent, len(c.wsEvents)-n)
+		copy(surviving, c.wsEvents[n:])
+		c.wsEvents = surviving
+		// Keep wsAddedAt and wsEvents in sync
+		nAt := n
+		if nAt > len(c.wsAddedAt) {
+			nAt = len(c.wsAddedAt)
+		}
+		survivingAt := make([]time.Time, len(c.wsAddedAt)-nAt)
+		copy(survivingAt, c.wsAddedAt[nAt:])
+		c.wsAddedAt = survivingAt
 		evicted += n
 	}
 
-	if v.calcTotalMemory() > limit && len(v.enhancedActions) > 0 {
-		n := max(len(v.enhancedActions)/denominator, 1)
-		v.enhancedActions = v.enhancedActions[n:]
-		v.actionAddedAt = v.actionAddedAt[n:]
+	if c.calcTotalMemory() > limit && len(c.enhancedActions) > 0 {
+		n := max(len(c.enhancedActions)/denominator, 1)
+		// Clamp n to actual array length to prevent panic
+		if n > len(c.enhancedActions) {
+			n = len(c.enhancedActions)
+		}
+		surviving := make([]EnhancedAction, len(c.enhancedActions)-n)
+		copy(surviving, c.enhancedActions[n:])
+		c.enhancedActions = surviving
+		// Keep actionAddedAt and enhancedActions in sync
+		nAt := n
+		if nAt > len(c.actionAddedAt) {
+			nAt = len(c.actionAddedAt)
+		}
+		survivingAt := make([]time.Time, len(c.actionAddedAt)-nAt)
+		copy(survivingAt, c.actionAddedAt[nAt:])
+		c.actionAddedAt = survivingAt
 		evicted += n
 	}
 
-	v.mem.lastEvictionTime = time.Now()
-	v.mem.totalEvictions++
-	v.mem.evictedEntries += evicted
+	c.mem.lastEvictionTime = time.Now()
+	c.mem.totalEvictions++
+	c.mem.evictedEntries += evicted
 }
 
-// evictCritical clears ALL buffers and enters minimal mode
-func (v *Capture) evictCritical() {
-	evicted := len(v.wsEvents) + len(v.networkBodies) + len(v.enhancedActions)
+// evictCritical clears ALL buffers and enters minimal mode.
+// Uses nil assignment instead of [:0] reslicing so the GC can reclaim backing arrays.
+func (c *Capture) evictCritical() {
+	evicted := len(c.wsEvents) + len(c.networkBodies) + len(c.enhancedActions)
 
-	v.wsEvents = v.wsEvents[:0]
-	v.wsAddedAt = v.wsAddedAt[:0]
-	v.networkBodies = v.networkBodies[:0]
-	v.networkAddedAt = v.networkAddedAt[:0]
-	v.enhancedActions = v.enhancedActions[:0]
-	v.actionAddedAt = v.actionAddedAt[:0]
+	c.wsEvents = nil
+	c.wsAddedAt = nil
+	c.networkBodies = nil
+	c.networkAddedAt = nil
+	c.enhancedActions = nil
+	c.actionAddedAt = nil
 
-	v.mem.minimalMode = true
-	v.mem.lastEvictionTime = time.Now()
-	v.mem.totalEvictions++
-	v.mem.evictedEntries += evicted
+	c.mem.minimalMode = true
+	c.mem.lastEvictionTime = time.Now()
+	c.mem.totalEvictions++
+	c.mem.evictedEntries += evicted
 }
 
 // ============================================
@@ -227,18 +279,18 @@ func (v *Capture) evictCritical() {
 
 // IsMemoryExceeded checks if memory is over the hard limit (acquires lock).
 // Uses simulated memory if set (for testing), otherwise checks real buffer memory.
-func (v *Capture) IsMemoryExceeded() bool {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	return v.isMemoryExceeded()
+func (c *Capture) IsMemoryExceeded() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.isMemoryExceeded()
 }
 
 // isMemoryExceeded is the internal version (caller must hold lock)
-func (v *Capture) isMemoryExceeded() bool {
-	if v.mem.simulatedMemory > 0 {
-		return v.mem.simulatedMemory > memoryHardLimit
+func (c *Capture) isMemoryExceeded() bool {
+	if c.mem.simulatedMemory > 0 {
+		return c.mem.simulatedMemory > memoryHardLimit
 	}
-	return v.calcTotalMemory() > memoryHardLimit
+	return c.calcTotalMemory() > memoryHardLimit
 }
 
 // ============================================
@@ -246,24 +298,24 @@ func (v *Capture) isMemoryExceeded() bool {
 // ============================================
 
 // GetTotalBufferMemory returns the sum of all buffer memory usage
-func (v *Capture) GetTotalBufferMemory() int64 {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	return v.calcTotalMemory()
+func (c *Capture) GetTotalBufferMemory() int64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.calcTotalMemory()
 }
 
 // GetWebSocketBufferMemory returns approximate memory usage of WS buffer
-func (v *Capture) GetWebSocketBufferMemory() int64 {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	return v.calcWSMemory()
+func (c *Capture) GetWebSocketBufferMemory() int64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.calcWSMemory()
 }
 
 // GetNetworkBodiesBufferMemory returns approximate memory usage of network bodies buffer
-func (v *Capture) GetNetworkBodiesBufferMemory() int64 {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	return v.calcNBMemory()
+func (c *Capture) GetNetworkBodiesBufferMemory() int64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.calcNBMemory()
 }
 
 // ============================================
@@ -272,15 +324,15 @@ func (v *Capture) GetNetworkBodiesBufferMemory() int64 {
 
 // checkMemoryAndEvict runs the memory check and eviction (called periodically).
 // This is a safety net - the primary enforcement happens on ingest.
-func (v *Capture) checkMemoryAndEvict() {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-	v.enforceMemory()
+func (c *Capture) checkMemoryAndEvict() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.enforceMemory()
 }
 
 // StartMemoryEnforcement starts the background goroutine that periodically checks memory.
 // Returns a stop function that can be called to terminate the goroutine.
-func (v *Capture) StartMemoryEnforcement() func() {
+func (c *Capture) StartMemoryEnforcement() func() {
 	stop := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(memoryCheckInterval)
@@ -288,7 +340,7 @@ func (v *Capture) StartMemoryEnforcement() func() {
 		for {
 			select {
 			case <-ticker.C:
-				v.checkMemoryAndEvict()
+				c.checkMemoryAndEvict()
 			case <-stop:
 				return
 			}
@@ -298,8 +350,8 @@ func (v *Capture) StartMemoryEnforcement() func() {
 }
 
 // SetMemoryUsage sets simulated memory usage for testing
-func (v *Capture) SetMemoryUsage(bytes int64) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-	v.mem.simulatedMemory = bytes
+func (c *Capture) SetMemoryUsage(bytes int64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.mem.simulatedMemory = bytes
 }

@@ -15,6 +15,9 @@ import {
   BINARY_CONTENT_TYPES,
 } from './constants.js'
 
+// Configured server URL for filtering (updated via setServerUrl)
+let configuredServerUrl = ''
+
 // Network Waterfall state
 let networkWaterfallEnabled = false
 const pendingRequests = new Map() // requestId -> { url, method, startTime }
@@ -150,7 +153,6 @@ export async function getNetworkWaterfallForError(errorEntry) {
   return {
     type: 'network_waterfall',
     ts: new Date().toISOString(),
-    _enrichments: ['networkWaterfall'],
     _errorTs: errorEntry.ts,
     entries,
     pending,
@@ -194,12 +196,32 @@ export function isNetworkBodyCaptureEnabled() {
 }
 
 /**
+ * Set the configured server URL for capture filtering.
+ * Called when the server URL is loaded from settings.
+ * @param {string} url - The server URL (e.g., 'http://localhost:7890')
+ */
+export function setServerUrl(url) {
+  configuredServerUrl = url || ''
+}
+
+/**
  * Check if a URL should be captured (not gasoline server or extension)
  * @param {string} url - The URL to check
  * @returns {boolean} True if the URL should be captured
  */
 export function shouldCaptureUrl(url) {
   if (!url) return true
+  // Filter against the configured server URL if set
+  if (configuredServerUrl) {
+    try {
+      const serverParsed = new URL(configuredServerUrl)
+      const hostPort = serverParsed.host // e.g., 'localhost:7890'
+      if (url.includes(hostPort)) return false
+    } catch {
+      // Fall through to hardcoded defaults
+    }
+  }
+  // Hardcoded fallback for default server URL
   if (url.includes('localhost:7890') || url.includes('127.0.0.1:7890')) return false
   if (url.startsWith('chrome-extension://')) return false
   return true
@@ -334,42 +356,47 @@ export function wrapFetchWithBodies(fetchFn) {
     // Capture window reference now so deferred callback posts to correct target
     const win = typeof window !== 'undefined' ? window : null
 
-    Promise.resolve().then(async () => {
-      try {
-        let responseBody = ''
-        if (cloned) {
-          if (BINARY_CONTENT_TYPES.test(contentType)) {
-            const blob = await cloned.blob()
-            responseBody = `[Binary: ${blob.size} bytes, ${contentType}]`
-          } else {
-            responseBody = await cloned.text()
+    Promise.resolve()
+      .then(async () => {
+        try {
+          let responseBody = ''
+          if (cloned) {
+            if (BINARY_CONTENT_TYPES.test(contentType)) {
+              const blob = await cloned.blob()
+              responseBody = `[Binary: ${blob.size} bytes, ${contentType}]`
+            } else {
+              responseBody = await readResponseBodyWithTimeout(cloned)
+            }
           }
-        }
 
-        const { body: truncResp } = truncateResponseBody(responseBody)
-        const { body: truncReq } = truncateRequestBody(typeof requestBody === 'string' ? requestBody : null)
+          const { body: truncResp } = truncateResponseBody(responseBody)
+          const { body: truncReq } = truncateRequestBody(typeof requestBody === 'string' ? requestBody : null)
 
-        if (win && networkBodyCaptureEnabled) {
-          win.postMessage(
-            {
-              type: 'GASOLINE_NETWORK_BODY',
-              payload: {
-                url,
-                method,
-                status: response.status,
-                contentType,
-                requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
-                responseBody: truncResp || responseBody,
-                duration,
+          if (win && networkBodyCaptureEnabled) {
+            win.postMessage(
+              {
+                type: 'GASOLINE_NETWORK_BODY',
+                payload: {
+                  url,
+                  method,
+                  status: response.status,
+                  contentType,
+                  requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
+                  responseBody: truncResp || responseBody,
+                  duration,
+                },
               },
-            },
-            '*',
-          )
+              '*',
+            )
+          }
+        } catch {
+          // Body capture failure should not affect user code
         }
-      } catch {
-        // Body capture failure should not affect user code
-      }
-    })
+      })
+      .catch((err) => {
+        // Log but don't throw - body capture is best-effort
+        console.debug('[Gasoline] Network body capture error:', err)
+      })
 
     return response
   }

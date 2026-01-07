@@ -79,11 +79,12 @@ function serializeDOMElement(el, includeStyles, styleProps, includeChildren, max
     }
   }
 
-  // Children
+  // Children (capped to avoid unbounded serialization)
   if (includeChildren && currentDepth < maxDepth && el.children && el.children.length > 0) {
     entry.children = []
-    for (const child of el.children) {
-      entry.children.push(serializeDOMElement(child, false, null, true, maxDepth, currentDepth + 1))
+    const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS)
+    for (let i = 0; i < maxChildren; i++) {
+      entry.children.push(serializeDOMElement(el.children[i], false, null, true, maxDepth, currentDepth + 1))
     }
   }
 
@@ -98,7 +99,7 @@ export async function getPageInfo() {
   const headings = []
   const headingEls = document.querySelectorAll('h1,h2,h3,h4,h5,h6')
   for (const h of headingEls) {
-    headings.push(h.textContent)
+    headings.push((h.textContent || '').slice(0, DOM_QUERY_MAX_TEXT))
   }
 
   const forms = []
@@ -148,7 +149,12 @@ function loadAxeCore() {
         : 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.8.4/axe.min.js'
     script.onload = () => resolve()
     script.onerror = () => reject(new Error('Failed to load axe-core'))
-    document.head.appendChild(script)
+    const targetElement = document.head || document.body || document.documentElement
+    if (targetElement) {
+      targetElement.appendChild(script)
+    } else {
+      reject(new Error('No document element available for axe-core injection'))
+    }
   })
 }
 

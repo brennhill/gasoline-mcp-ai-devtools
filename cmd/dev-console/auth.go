@@ -1,3 +1,6 @@
+// auth.go — API key authentication middleware for HTTP endpoints.
+// Uses constant-time comparison to prevent timing attacks. When no key
+// is configured, authentication is disabled (pass-through).
 package main
 
 import (
@@ -29,7 +32,7 @@ func AuthMiddleware(expectedKey string) func(http.Handler) http.Handler {
 			if subtle.ConstantTimeCompare(expectedBytes, providedBytes) != 1 {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
-				json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+				_ = json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"}) // #nosec G104 -- best-effort error response
 				return
 			}
 

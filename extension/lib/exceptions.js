@@ -23,6 +23,7 @@ export function installExceptionCapture() {
       level: 'error',
       type: 'exception',
       message: String(message),
+      source: filename ? `${filename}:${lineno || 0}` : '',
       filename: filename || '',
       lineno: lineno || 0,
       colno: colno || 0,
@@ -37,7 +38,15 @@ export function installExceptionCapture() {
       } catch {
         postLog(entry)
       }
-    })()
+    })().catch((err) => {
+      console.error('[Gasoline] Exception enrichment error:', err)
+      // Fallback: ensure entry is logged even if something fails
+      try {
+        postLog(entry)
+      } catch (postErr) {
+        console.error('[Gasoline] Failed to log entry:', postErr)
+      }
+    })
 
     // Call original if exists
     if (originalOnerror) {
@@ -76,7 +85,15 @@ export function installExceptionCapture() {
       } catch {
         postLog(entry)
       }
-    })()
+    })().catch((err) => {
+      console.error('[Gasoline] Exception enrichment error:', err)
+      // Fallback: ensure entry is logged even if something fails
+      try {
+        postLog(entry)
+      } catch (postErr) {
+        console.error('[Gasoline] Failed to log entry:', postErr)
+      }
+    })
   }
 
   window.addEventListener('unhandledrejection', unhandledrejectionHandler)

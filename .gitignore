@@ -21,9 +21,9 @@ Thumbs.db
 *.swo
 
 # E2E test artifacts
-e2e-tests/.tmp/
-e2e-tests/test-results/
-e2e-tests/playwright-report/
+tests/e2e/.tmp/
+tests/e2e/test-results/
+tests/e2e/playwright-report/
 
 # Lint/build caches
 .eslintcache
@@ -36,8 +36,13 @@ e2e-tests/playwright-report/
 .claude/sessions/
 coverage.out
 
+# Hugo/Jekyll (no longer used)
+docs/.hugo_build.lock
+docs/Gemfile
+docs/Gemfile.lock
+
 # Benchmark intermediate files (only latest-benchmark.md is tracked)
-benchmarks/*.txt
+docs/benchmarks/*.txt
 
 # Runtime state
 .gasoline/

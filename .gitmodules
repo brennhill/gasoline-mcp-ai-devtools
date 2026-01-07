@@ -1,6 +1,3 @@
-[submodule "docs/marketing"]
-	path = docs/marketing
-	url = git@github.com:brennhill/gasoline-marketing.git
 [submodule ".claude"]
 	path = .claude
 	url = https://github.com/brennhill/gasoline-claude.git

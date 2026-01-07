@@ -33,7 +33,7 @@ func addLogEntries(server *Server, entries ...LogEntry) {
 func TestCheckpointEmptyServer(t *testing.T) {
 	cm, _, _ := setupCheckpointTest(t)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Severity != "clean" {
 		t.Errorf("Expected severity 'clean', got '%s'", resp.Severity)
@@ -63,7 +63,7 @@ func TestCheckpointNewConsoleErrors(t *testing.T) {
 	cm, server, _ := setupCheckpointTest(t)
 
 	// First call establishes the auto-checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add 3 error logs after checkpoint
 	addLogEntries(server,
@@ -72,7 +72,7 @@ func TestCheckpointNewConsoleErrors(t *testing.T) {
 		LogEntry{"level": "error", "msg": "Network request failed", "source": "api.js:99"},
 	)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Severity != "error" {
 		t.Errorf("Expected severity 'error', got '%s'", resp.Severity)
@@ -96,7 +96,7 @@ func TestCheckpointMessageDeduplication(t *testing.T) {
 	cm, server, _ := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add same error 5 times (with different UUIDs that should normalize)
 	addLogEntries(server,
@@ -107,7 +107,7 @@ func TestCheckpointMessageDeduplication(t *testing.T) {
 		LogEntry{"level": "error", "msg": "Error loading user 99999999-8888-7777-6666-555544443333", "source": "user.js:15"},
 	)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Console == nil {
 		t.Fatal("Expected Console diff")
@@ -133,14 +133,14 @@ func TestCheckpointNetworkFailure(t *testing.T) {
 	})
 
 	// Establish checkpoint (which records known endpoint status)
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Now the endpoint fails
 	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/users?page=2", Status: 500, Method: "GET"},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Severity != "error" {
 		t.Errorf("Expected severity 'error', got '%s'", resp.Severity)
@@ -174,14 +174,14 @@ func TestCheckpointNewEndpoint(t *testing.T) {
 	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/users", Status: 200, Method: "GET"},
 	})
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// New endpoint appears
 	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/orders?limit=10", Status: 200, Method: "GET"},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Network == nil {
 		t.Fatal("Expected Network diff")
@@ -202,14 +202,14 @@ func TestCheckpointWebSocketDisconnection(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// WebSocket close event after checkpoint
 	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Event: "close", ID: "ws-1", URL: "wss://chat.example.com/ws", CloseCode: 1006, CloseReason: "abnormal"},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Severity != "warning" {
 		t.Errorf("Expected severity 'warning', got '%s'", resp.Severity)
@@ -239,13 +239,13 @@ func TestCheckpointAutoAdvancement(t *testing.T) {
 	addLogEntries(server, LogEntry{"level": "error", "msg": "first error"})
 
 	// First call sees the error
-	resp1 := cm.GetChangesSince(GetChangesSinceParams{})
+	resp1 := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if resp1.Severity != "error" {
 		t.Errorf("First call: expected severity 'error', got '%s'", resp1.Severity)
 	}
 
 	// Second call with no new events sees nothing
-	resp2 := cm.GetChangesSince(GetChangesSinceParams{})
+	resp2 := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if resp2.Severity != "clean" {
 		t.Errorf("Second call: expected severity 'clean', got '%s'", resp2.Severity)
 	}
@@ -265,13 +265,13 @@ func TestCheckpointNamedStability(t *testing.T) {
 	addLogEntries(server, LogEntry{"level": "error", "msg": "initial error"})
 
 	// Create named checkpoint
-	cm.CreateCheckpoint("before_refactor")
+	cm.CreateCheckpoint("before_refactor", "")
 
 	// Add more errors after the named checkpoint
 	addLogEntries(server, LogEntry{"level": "error", "msg": "post-checkpoint error"})
 
 	// Query the named checkpoint - should see the post-checkpoint error
-	resp1 := cm.GetChangesSince(GetChangesSinceParams{Checkpoint: "before_refactor"})
+	resp1 := cm.GetChangesSince(GetChangesSinceParams{Checkpoint: "before_refactor"}, "")
 	if resp1.Console == nil || len(resp1.Console.Errors) != 1 {
 		t.Fatal("Expected 1 error from named checkpoint query")
 	}
@@ -280,14 +280,14 @@ func TestCheckpointNamedStability(t *testing.T) {
 	addLogEntries(server, LogEntry{"level": "error", "msg": "another error"})
 
 	// Query same named checkpoint again - should see BOTH post-checkpoint errors
-	resp2 := cm.GetChangesSince(GetChangesSinceParams{Checkpoint: "before_refactor"})
+	resp2 := cm.GetChangesSince(GetChangesSinceParams{Checkpoint: "before_refactor"}, "")
 	if resp2.Console == nil || len(resp2.Console.Errors) != 2 {
 		t.Errorf("Expected 2 errors from named checkpoint, got %d", len(resp2.Console.Errors))
 	}
 
 	// Named checkpoint queries should NOT advance auto-checkpoint
 	// Calling auto should still see changes from the beginning
-	resp3 := cm.GetChangesSince(GetChangesSinceParams{})
+	resp3 := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if resp3.Console == nil {
 		t.Error("Auto-checkpoint should not have been advanced by named checkpoint query")
 	}
@@ -301,7 +301,7 @@ func TestCheckpointSeverityFilterErrorsOnly(t *testing.T) {
 	cm, server, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add a mix of warnings and errors
 	addLogEntries(server,
@@ -313,7 +313,7 @@ func TestCheckpointSeverityFilterErrorsOnly(t *testing.T) {
 		{Event: "close", ID: "ws-1", URL: "wss://example.com", CloseCode: 1000},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{Severity: "errors_only"})
+	resp := cm.GetChangesSince(GetChangesSinceParams{Severity: "errors_only"}, "")
 
 	// Should only include error-level items
 	if resp.Console != nil && len(resp.Console.Warnings) > 0 {
@@ -335,7 +335,7 @@ func TestCheckpointIncludeFiltering(t *testing.T) {
 	cm, server, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add data in all categories
 	addLogEntries(server, LogEntry{"level": "error", "msg": "error"})
@@ -346,7 +346,7 @@ func TestCheckpointIncludeFiltering(t *testing.T) {
 	// Only include console and network
 	resp := cm.GetChangesSince(GetChangesSinceParams{
 		Include: []string{"console", "network"},
-	})
+	}, "")
 
 	if resp.Console == nil {
 		t.Error("Expected Console to be included")
@@ -371,7 +371,7 @@ func TestCheckpointBufferOverflow(t *testing.T) {
 
 	// Add some entries and establish checkpoint
 	addLogEntries(server, LogEntry{"level": "info", "msg": "old entry"})
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Now flood the buffer past its max to cause rotation
 	// Server maxEntries is 1000, so add more than that
@@ -383,7 +383,7 @@ func TestCheckpointBufferOverflow(t *testing.T) {
 
 	// The checkpoint index is now invalid (entries rotated past it)
 	// Should fall back to returning all available entries, not panic
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Severity != "error" {
 		t.Errorf("Expected severity 'error' after overflow, got '%s'", resp.Severity)
@@ -414,7 +414,7 @@ func TestCheckpointTimestampReference(t *testing.T) {
 	// Query using the timestamp
 	resp := cm.GetChangesSince(GetChangesSinceParams{
 		Checkpoint: refTime.Format(time.RFC3339Nano),
-	})
+	}, "")
 
 	if resp.Console == nil {
 		t.Fatal("Expected Console diff")
@@ -432,10 +432,10 @@ func TestCheckpointTimestampReference(t *testing.T) {
 func TestCheckpointTokenCount(t *testing.T) {
 	cm, server, _ := setupCheckpointTest(t)
 
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 	addLogEntries(server, LogEntry{"level": "error", "msg": "test error message"})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Marshal response to JSON to check size
 	jsonBytes, err := json.Marshal(resp)
@@ -458,7 +458,7 @@ func TestCheckpointMaxEntriesCap(t *testing.T) {
 	cm, server, _ := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add 100 different errors (all unique to avoid dedup)
 	entries := make([]LogEntry, 100)
@@ -467,7 +467,7 @@ func TestCheckpointMaxEntriesCap(t *testing.T) {
 	}
 	addLogEntries(server, entries...)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Console == nil {
 		t.Fatal("Expected Console diff")
@@ -511,9 +511,9 @@ func TestCheckpointConcurrency(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < iterations; j++ {
-				cm.GetChangesSince(GetChangesSinceParams{})
+				cm.GetChangesSince(GetChangesSinceParams{}, "")
 				if j%10 == 0 {
-					cm.CreateCheckpoint(fmt.Sprintf("test_%d_%d", id, j))
+					cm.CreateCheckpoint(fmt.Sprintf("test_%d_%d", id, j), "")
 				}
 			}
 		}(i)
@@ -578,7 +578,7 @@ func TestCheckpointFingerprintNormalization(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cm, server, _ := setupCheckpointTest(t)
-			cm.GetChangesSince(GetChangesSinceParams{})
+			cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 			entries := make([]LogEntry, len(tt.messages))
 			for i, msg := range tt.messages {
@@ -586,7 +586,7 @@ func TestCheckpointFingerprintNormalization(t *testing.T) {
 			}
 			addLogEntries(server, entries...)
 
-			resp := cm.GetChangesSince(GetChangesSinceParams{})
+			resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 			if resp.Console == nil {
 				t.Fatal("Expected Console diff")
 			}
@@ -608,14 +608,14 @@ func TestCheckpointURLPathExtraction(t *testing.T) {
 	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/users?page=1&limit=10", Status: 200, Method: "GET"},
 	})
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Same endpoint with different query params now fails
 	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/users?page=2&limit=20", Status: 500, Method: "GET"},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Network == nil {
 		t.Fatal("Expected Network diff")
@@ -637,14 +637,14 @@ func TestCheckpointSeverityHierarchy(t *testing.T) {
 
 	t.Run("error beats warning", func(t *testing.T) {
 		cm, server, capture := setupCheckpointTest(t)
-		cm.GetChangesSince(GetChangesSinceParams{})
+		cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 		// Add both a warning and an error
 		addLogEntries(server, LogEntry{"level": "warn", "msg": "warning"})
 		addLogEntries(server, LogEntry{"level": "error", "msg": "error"})
 		capture.AddWebSocketEvents([]WebSocketEvent{{Event: "close", ID: "ws-1", URL: "wss://x.com", CloseCode: 1006}})
 
-		resp := cm.GetChangesSince(GetChangesSinceParams{})
+		resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 		if resp.Severity != "error" {
 			t.Errorf("Expected 'error' severity, got '%s'", resp.Severity)
 		}
@@ -652,11 +652,11 @@ func TestCheckpointSeverityHierarchy(t *testing.T) {
 
 	t.Run("warning when no errors", func(t *testing.T) {
 		cm, server, _ := setupCheckpointTest(t)
-		cm.GetChangesSince(GetChangesSinceParams{})
+		cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 		addLogEntries(server, LogEntry{"level": "warn", "msg": "just a warning"})
 
-		resp := cm.GetChangesSince(GetChangesSinceParams{})
+		resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 		if resp.Severity != "warning" {
 			t.Errorf("Expected 'warning' severity, got '%s'", resp.Severity)
 		}
@@ -664,11 +664,11 @@ func TestCheckpointSeverityHierarchy(t *testing.T) {
 
 	t.Run("websocket disconnection is warning", func(t *testing.T) {
 		cm, _, capture := setupCheckpointTest(t)
-		cm.GetChangesSince(GetChangesSinceParams{})
+		cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 		capture.AddWebSocketEvents([]WebSocketEvent{{Event: "close", ID: "ws-1", URL: "wss://x.com", CloseCode: 1006}})
 
-		resp := cm.GetChangesSince(GetChangesSinceParams{})
+		resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 		if resp.Severity != "warning" {
 			t.Errorf("Expected 'warning' severity for WS disconnect, got '%s'", resp.Severity)
 		}
@@ -677,11 +677,11 @@ func TestCheckpointSeverityHierarchy(t *testing.T) {
 	t.Run("network failure is error", func(t *testing.T) {
 		cm, _, capture := setupCheckpointTest(t)
 		capture.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/test", Status: 200, Method: "GET"}})
-		cm.GetChangesSince(GetChangesSinceParams{})
+		cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 		capture.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/test", Status: 500, Method: "GET"}})
 
-		resp := cm.GetChangesSince(GetChangesSinceParams{})
+		resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 		if resp.Severity != "error" {
 			t.Errorf("Expected 'error' severity for network failure, got '%s'", resp.Severity)
 		}
@@ -689,12 +689,12 @@ func TestCheckpointSeverityHierarchy(t *testing.T) {
 
 	t.Run("clean when nothing notable", func(t *testing.T) {
 		cm, server, _ := setupCheckpointTest(t)
-		cm.GetChangesSince(GetChangesSinceParams{})
+		cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 		// Add only info-level entries (not errors or warnings)
 		addLogEntries(server, LogEntry{"level": "info", "msg": "just info"})
 
-		resp := cm.GetChangesSince(GetChangesSinceParams{})
+		resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 		if resp.Severity != "clean" {
 			t.Errorf("Expected 'clean' severity for info-only, got '%s'", resp.Severity)
 		}
@@ -709,7 +709,7 @@ func TestCheckpointSummaryFormatting(t *testing.T) {
 	t.Run("console errors and network failures", func(t *testing.T) {
 		cm, server, capture := setupCheckpointTest(t)
 		capture.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/a", Status: 200, Method: "GET"}})
-		cm.GetChangesSince(GetChangesSinceParams{})
+		cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 		addLogEntries(server,
 			LogEntry{"level": "error", "msg": "err1"},
@@ -717,7 +717,7 @@ func TestCheckpointSummaryFormatting(t *testing.T) {
 		)
 		capture.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/a", Status: 500, Method: "GET"}})
 
-		resp := cm.GetChangesSince(GetChangesSinceParams{})
+		resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 		if resp.Summary != "2 new console error(s), 1 network failure(s)" {
 			t.Errorf("Unexpected summary: '%s'", resp.Summary)
 		}
@@ -725,7 +725,7 @@ func TestCheckpointSummaryFormatting(t *testing.T) {
 
 	t.Run("warnings only", func(t *testing.T) {
 		cm, server, _ := setupCheckpointTest(t)
-		cm.GetChangesSince(GetChangesSinceParams{})
+		cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 		addLogEntries(server,
 			LogEntry{"level": "warn", "msg": "warn1"},
@@ -733,7 +733,7 @@ func TestCheckpointSummaryFormatting(t *testing.T) {
 			LogEntry{"level": "warn", "msg": "warn3"},
 		)
 
-		resp := cm.GetChangesSince(GetChangesSinceParams{})
+		resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 		if resp.Summary != "3 new console warning(s)" {
 			t.Errorf("Unexpected summary: '%s'", resp.Summary)
 		}
@@ -741,14 +741,14 @@ func TestCheckpointSummaryFormatting(t *testing.T) {
 
 	t.Run("disconnections", func(t *testing.T) {
 		cm, _, capture := setupCheckpointTest(t)
-		cm.GetChangesSince(GetChangesSinceParams{})
+		cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 		capture.AddWebSocketEvents([]WebSocketEvent{
 			{Event: "close", ID: "ws-1", URL: "wss://a.com", CloseCode: 1006},
 			{Event: "close", ID: "ws-2", URL: "wss://b.com", CloseCode: 1001},
 		})
 
-		resp := cm.GetChangesSince(GetChangesSinceParams{})
+		resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 		if resp.Summary != "2 websocket disconnection(s)" {
 			t.Errorf("Unexpected summary: '%s'", resp.Summary)
 		}
@@ -764,7 +764,7 @@ func TestCheckpointNamedLimit(t *testing.T) {
 
 	// Create 25 named checkpoints (limit is 20)
 	for i := 0; i < 25; i++ {
-		cm.CreateCheckpoint(fmt.Sprintf("checkpoint_%d", i))
+		cm.CreateCheckpoint(fmt.Sprintf("checkpoint_%d", i), "")
 	}
 
 	// Should only have 20 named checkpoints
@@ -778,21 +778,21 @@ func TestCheckpointNamingValidation(t *testing.T) {
 	cm, _, _ := setupCheckpointTest(t)
 
 	// Valid names
-	if err := cm.CreateCheckpoint("session_start"); err != nil {
+	if err := cm.CreateCheckpoint("session_start", ""); err != nil {
 		t.Errorf("Expected valid name to succeed: %v", err)
 	}
-	if err := cm.CreateCheckpoint("before_refactor"); err != nil {
+	if err := cm.CreateCheckpoint("before_refactor", ""); err != nil {
 		t.Errorf("Expected valid name to succeed: %v", err)
 	}
 
 	// Name too long (>50 chars)
 	longName := "this_is_a_really_long_checkpoint_name_that_exceeds_fifty_characters_total"
-	if err := cm.CreateCheckpoint(longName); err == nil {
+	if err := cm.CreateCheckpoint(longName, ""); err == nil {
 		t.Error("Expected error for name > 50 chars")
 	}
 
 	// Empty name
-	if err := cm.CreateCheckpoint(""); err == nil {
+	if err := cm.CreateCheckpoint("", ""); err == nil {
 		t.Error("Expected error for empty name")
 	}
 }
@@ -803,7 +803,7 @@ func TestCheckpointNamingValidation(t *testing.T) {
 
 func TestCheckpointMessageTruncation(t *testing.T) {
 	cm, server, _ := setupCheckpointTest(t)
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add an error with a very long message (>200 chars)
 	longMsg := ""
@@ -812,7 +812,7 @@ func TestCheckpointMessageTruncation(t *testing.T) {
 	}
 	addLogEntries(server, LogEntry{"level": "error", "msg": longMsg, "source": "test.js:1"})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Console == nil || len(resp.Console.Errors) == 0 {
 		t.Fatal("Expected console error")
@@ -830,12 +830,12 @@ func TestCheckpointDiffTimestamps(t *testing.T) {
 	cm, server, _ := setupCheckpointTest(t)
 
 	// First call sets the from timestamp
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 	time.Sleep(10 * time.Millisecond)
 
 	addLogEntries(server, LogEntry{"level": "error", "msg": "test"})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.From.IsZero() {
 		t.Error("Expected From timestamp to be set")
@@ -857,13 +857,13 @@ func TestCheckpointDiffTimestamps(t *testing.T) {
 
 func TestCheckpointWebSocketNewConnections(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Event: "open", ID: "ws-new", URL: "wss://realtime.example.com/feed"},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.WebSocket == nil {
 		t.Fatal("Expected WebSocket diff")
@@ -882,7 +882,7 @@ func TestCheckpointWebSocketNewConnections(t *testing.T) {
 
 func TestCheckpointActionsDiff(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	now := time.Now().UnixMilli()
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -891,7 +891,7 @@ func TestCheckpointActionsDiff(t *testing.T) {
 		{Type: "input", Timestamp: now + 200, URL: "http://localhost/other"},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Actions == nil {
 		t.Fatal("Expected Actions diff")
@@ -915,14 +915,14 @@ func TestCheckpointDegradedEndpoint(t *testing.T) {
 	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/data", Status: 200, Method: "GET", Duration: 50},
 	})
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Same endpoint now takes >3x longer (200ms > 3*50ms)
 	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/data", Status: 200, Method: "GET", Duration: 200},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Network == nil {
 		t.Fatal("Expected Network diff")
@@ -952,7 +952,7 @@ func TestCheckpointFirstCallReturnsEverything(t *testing.T) {
 	})
 
 	// First call should return everything in the buffers
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Console == nil {
 		t.Fatal("First call should include existing console entries")
@@ -971,7 +971,7 @@ func TestCheckpointFirstCallReturnsEverything(t *testing.T) {
 
 func TestCheckpointSeverityFilterWarnings(t *testing.T) {
 	cm, server, _ := setupCheckpointTest(t)
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	addLogEntries(server,
 		LogEntry{"level": "info", "msg": "just info"},
@@ -979,7 +979,7 @@ func TestCheckpointSeverityFilterWarnings(t *testing.T) {
 		LogEntry{"level": "error", "msg": "an error"},
 	)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{Severity: "warnings"})
+	resp := cm.GetChangesSince(GetChangesSinceParams{Severity: "warnings"}, "")
 
 	// "warnings" filter should include warnings and errors, but not info
 	if resp.Console == nil {
@@ -999,13 +999,13 @@ func TestCheckpointSeverityFilterWarnings(t *testing.T) {
 
 func TestCheckpointWebSocketErrors(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Event: "error", ID: "ws-1", URL: "wss://example.com/ws", Data: "connection refused"},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.WebSocket == nil {
 		t.Fatal("Expected WebSocket diff")
@@ -1024,14 +1024,14 @@ func TestCheckpointWebSocketErrors(t *testing.T) {
 
 func TestCheckpointNewEndpointWithFailure(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// New endpoint that immediately fails (never seen before returning success)
 	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/new-thing", Status: 404, Method: "GET"},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Network == nil {
 		t.Fatal("Expected Network diff")
@@ -1048,7 +1048,7 @@ func TestCheckpointNewEndpointWithFailure(t *testing.T) {
 
 func TestCheckpointWebSocketTotalCount(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add various WS events
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -1058,7 +1058,7 @@ func TestCheckpointWebSocketTotalCount(t *testing.T) {
 		{Event: "close", ID: "ws-1", URL: "wss://a.com", CloseCode: 1000},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.WebSocket == nil {
 		t.Fatal("Expected WebSocket diff")
@@ -1188,7 +1188,7 @@ func TestPushRegression_WithinThreshold_NoAlert(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, withinThreshold)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if resp.PerformanceAlerts != nil && len(resp.PerformanceAlerts) > 0 {
 		t.Errorf("Expected no performance alerts for within-threshold snapshot, got %d", len(resp.PerformanceAlerts))
 	}
@@ -1217,7 +1217,7 @@ func TestPushRegression_LoadTimeRegression_AlertGenerated(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, regressing)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if resp.PerformanceAlerts == nil || len(resp.PerformanceAlerts) == 0 {
 		t.Fatal("Expected performance alert for load time regression")
 	}
@@ -1265,7 +1265,7 @@ func TestPushRegression_AlertInResponse(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, regressing)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	respJSON, err := json.Marshal(resp)
 	if err != nil {
 		t.Fatal(err)
@@ -1297,12 +1297,12 @@ func TestPushRegression_AlertNotRepeated(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, regressing)
 
-	resp1 := cm.GetChangesSince(GetChangesSinceParams{})
+	resp1 := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp1.PerformanceAlerts) == 0 {
 		t.Fatal("Expected alert on first call")
 	}
 
-	resp2 := cm.GetChangesSince(GetChangesSinceParams{})
+	resp2 := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp2.PerformanceAlerts) > 0 {
 		t.Errorf("Expected no alerts on second call, got %d", len(resp2.PerformanceAlerts))
 	}
@@ -1336,7 +1336,7 @@ func TestPushRegression_MultipleAlerts(t *testing.T) {
 	addSnapshotAndDetect(cm, capture, snapshotA)
 	addSnapshotAndDetect(cm, capture, snapshotB)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp.PerformanceAlerts) < 2 {
 		t.Errorf("Expected at least 2 alerts, got %d", len(resp.PerformanceAlerts))
 	}
@@ -1365,7 +1365,7 @@ func TestPushRegression_MaxAlertsCapped(t *testing.T) {
 		addSnapshotAndDetect(cm, capture, snapshot)
 	}
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp.PerformanceAlerts) > 10 {
 		t.Errorf("Expected max 10 alerts, got %d", len(resp.PerformanceAlerts))
 	}
@@ -1416,7 +1416,7 @@ func TestPushRegression_RegressionResolved(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, resolved)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	for _, alert := range resp.PerformanceAlerts {
 		if alert.URL == "/dashboard" {
 			t.Error("Expected resolved regression alert to be cleared")
@@ -1439,7 +1439,7 @@ func TestPushRegression_NoBaseline_NoAlert(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, snapshot)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp.PerformanceAlerts) > 0 {
 		t.Errorf("Expected no alerts for first snapshot (no baseline), got %d", len(resp.PerformanceAlerts))
 	}
@@ -1462,7 +1462,7 @@ func TestPushRegression_OnlyRegressedMetrics(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, regressing)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp.PerformanceAlerts) == 0 {
 		t.Fatal("Expected alert for load regression")
 	}
@@ -1502,7 +1502,7 @@ func TestPushRegression_RecommendationField(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, regressing)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp.PerformanceAlerts) == 0 {
 		t.Fatal("Expected alert")
 	}
@@ -1516,7 +1516,7 @@ func TestPushRegression_CheckpointTracking_Included(t *testing.T) {
 	cm, server, capture := setupCheckpointTest(t)
 
 	addLogEntries(server, LogEntry{"level": "info", "msg": "setup"})
-	cm.CreateCheckpoint("before")
+	cm.CreateCheckpoint("before", "")
 
 	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
 
@@ -1531,7 +1531,7 @@ func TestPushRegression_CheckpointTracking_Included(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, regressing)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{Checkpoint: "before"})
+	resp := cm.GetChangesSince(GetChangesSinceParams{Checkpoint: "before"}, "")
 	if len(resp.PerformanceAlerts) == 0 {
 		t.Error("Expected alert when querying from earlier checkpoint")
 	}
@@ -1554,14 +1554,14 @@ func TestPushRegression_CheckpointTracking_NotIncluded(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, regressing)
 
-	resp1 := cm.GetChangesSince(GetChangesSinceParams{})
+	resp1 := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp1.PerformanceAlerts) == 0 {
 		t.Fatal("Expected alert on first call")
 	}
 
-	cm.CreateCheckpoint("after")
+	cm.CreateCheckpoint("after", "")
 
-	resp2 := cm.GetChangesSince(GetChangesSinceParams{Checkpoint: "after"})
+	resp2 := cm.GetChangesSince(GetChangesSinceParams{Checkpoint: "after"}, "")
 	if len(resp2.PerformanceAlerts) > 0 {
 		t.Errorf("Expected no alerts from checkpoint after alert, got %d", len(resp2.PerformanceAlerts))
 	}
@@ -1585,7 +1585,7 @@ func TestPushRegression_CLSRegression(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, regressing)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp.PerformanceAlerts) == 0 {
 		t.Fatal("Expected alert for CLS regression")
 	}
@@ -1616,7 +1616,7 @@ func TestPushRegression_TTFBUnderThreshold_NoAlert(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, regressing)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	for _, alert := range resp.PerformanceAlerts {
 		if _, ok := alert.Metrics["ttfb"]; ok {
 			t.Error("Expected no TTFB alert for under-50% regression")
@@ -1641,7 +1641,7 @@ func TestPushRegression_SummaryField(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, regressing)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp.PerformanceAlerts) == 0 {
 		t.Fatal("Expected alert")
 	}
@@ -1667,7 +1667,7 @@ func TestPushRegression_TransferSizeRegression(t *testing.T) {
 	}
 	addSnapshotAndDetect(cm, capture, regressing)
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp.PerformanceAlerts) == 0 {
 		t.Fatal("Expected alert for transfer size regression")
 	}
@@ -1708,7 +1708,7 @@ func TestPushRegression_ConcurrentAccess(t *testing.T) {
 		}(i)
 		go func() {
 			defer wg.Done()
-			cm.GetChangesSince(GetChangesSinceParams{})
+			cm.GetChangesSince(GetChangesSinceParams{}, "")
 		}()
 	}
 	wg.Wait()
@@ -1735,7 +1735,7 @@ func TestPushRegression_DetectedAtTimestamp(t *testing.T) {
 
 	after := time.Now()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 	if len(resp.PerformanceAlerts) == 0 {
 		t.Fatal("Expected alert")
 	}
@@ -1841,7 +1841,7 @@ func TestComputeWebSocketDiff_DirectionFilter(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Create checkpoint before adding events
-	cm.CreateCheckpoint("ws-test")
+	cm.CreateCheckpoint("ws-test", "")
 
 	// Add WS events with different event types
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -1853,7 +1853,7 @@ func TestComputeWebSocketDiff_DirectionFilter(t *testing.T) {
 	resp := cm.GetChangesSince(GetChangesSinceParams{
 		Checkpoint: "ws-test",
 		Include:    []string{"websocket"},
-	})
+	}, "")
 
 	if resp.WebSocket == nil {
 		t.Fatal("Expected WebSocket diff to be non-nil")
@@ -1888,7 +1888,7 @@ func TestComputeWebSocketDiff_DirectionFilter(t *testing.T) {
 func TestComputeWebSocketDiff_ErrorsOnly(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
-	cm.CreateCheckpoint("ws-errors")
+	cm.CreateCheckpoint("ws-errors", "")
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Event: "close", URL: "ws://example.com/ws", ID: "conn-1", CloseCode: 1006},
@@ -1899,7 +1899,7 @@ func TestComputeWebSocketDiff_ErrorsOnly(t *testing.T) {
 		Checkpoint: "ws-errors",
 		Include:    []string{"websocket"},
 		Severity:   "errors_only",
-	})
+	}, "")
 
 	if resp.WebSocket == nil {
 		t.Fatal("Expected WebSocket diff because there are errors")
@@ -1933,7 +1933,7 @@ func TestComputeNetworkDiff_ResponseBodies(t *testing.T) {
 		{Method: "POST", URL: "http://example.com/api/new-endpoint", Status: 201, ResponseBody: `{"id":1}`},
 	})
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{Include: []string{"network"}})
+	resp := cm.GetChangesSince(GetChangesSinceParams{Include: []string{"network"}}, "")
 
 	if resp.Network == nil {
 		t.Fatal("Expected Network diff to be non-nil")
@@ -1954,7 +1954,7 @@ func TestComputeNetworkDiff_ResponseBodies(t *testing.T) {
 func TestComputeActionsDiff_DifferentTypes(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
-	cm.CreateCheckpoint("actions-test")
+	cm.CreateCheckpoint("actions-test", "")
 
 	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://example.com/page1"},
@@ -1966,7 +1966,7 @@ func TestComputeActionsDiff_DifferentTypes(t *testing.T) {
 	resp := cm.GetChangesSince(GetChangesSinceParams{
 		Checkpoint: "actions-test",
 		Include:    []string{"actions"},
-	})
+	}, "")
 
 	if resp.Actions == nil {
 		t.Fatal("Expected Actions diff to be non-nil")
@@ -2065,7 +2065,7 @@ func TestComputeWebSocketDiff_OpenEvents(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add WebSocket open events
 	capture.mu.Lock()
@@ -2077,7 +2077,7 @@ func TestComputeWebSocketDiff_OpenEvents(t *testing.T) {
 	capture.wsTotalAdded = 1
 	capture.mu.Unlock()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.WebSocket == nil {
 		t.Fatal("Expected WebSocket diff to be non-nil")
@@ -2100,7 +2100,7 @@ func TestComputeWebSocketDiff_ErrorEvents(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add WebSocket error events
 	capture.mu.Lock()
@@ -2112,7 +2112,7 @@ func TestComputeWebSocketDiff_ErrorEvents(t *testing.T) {
 	capture.wsTotalAdded = 1
 	capture.mu.Unlock()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.WebSocket == nil {
 		t.Fatal("Expected WebSocket diff to be non-nil")
@@ -2132,7 +2132,7 @@ func TestComputeWebSocketDiff_CloseEvents(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add WebSocket close events
 	capture.mu.Lock()
@@ -2146,7 +2146,7 @@ func TestComputeWebSocketDiff_CloseEvents(t *testing.T) {
 	capture.mu.Unlock()
 
 	// Default severity (not errors_only) should include disconnections
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.WebSocket == nil {
 		t.Fatal("Expected WebSocket diff to be non-nil")
@@ -2163,7 +2163,7 @@ func TestComputeWebSocketDiff_CapsConnections(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add more than maxDiffEntriesPerCat (50) open events
 	capture.mu.Lock()
@@ -2177,7 +2177,7 @@ func TestComputeWebSocketDiff_CapsConnections(t *testing.T) {
 	capture.wsTotalAdded = 60
 	capture.mu.Unlock()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.WebSocket == nil {
 		t.Fatal("Expected WebSocket diff to be non-nil")
@@ -2191,7 +2191,7 @@ func TestComputeWebSocketDiff_CapsErrors(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add more than maxDiffEntriesPerCat (50) error events
 	capture.mu.Lock()
@@ -2205,7 +2205,7 @@ func TestComputeWebSocketDiff_CapsErrors(t *testing.T) {
 	capture.wsTotalAdded = 55
 	capture.mu.Unlock()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.WebSocket == nil {
 		t.Fatal("Expected WebSocket diff to be non-nil")
@@ -2219,7 +2219,7 @@ func TestComputeWebSocketDiff_CapsDisconnections(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add more than maxDiffEntriesPerCat (50) close events
 	capture.mu.Lock()
@@ -2233,7 +2233,7 @@ func TestComputeWebSocketDiff_CapsDisconnections(t *testing.T) {
 	capture.wsTotalAdded = 55
 	capture.mu.Unlock()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.WebSocket == nil {
 		t.Fatal("Expected WebSocket diff to be non-nil")
@@ -2251,7 +2251,7 @@ func TestComputeActionsDiff_VariousActionTypes(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add actions of various types
 	capture.mu.Lock()
@@ -2265,7 +2265,7 @@ func TestComputeActionsDiff_VariousActionTypes(t *testing.T) {
 	capture.actionTotalAdded = 5
 	capture.mu.Unlock()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Actions == nil {
 		t.Fatal("Expected Actions diff to be non-nil")
@@ -2290,7 +2290,7 @@ func TestComputeActionsDiff_CapsAtMax(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add more than maxDiffEntriesPerCat (50) actions
 	capture.mu.Lock()
@@ -2302,7 +2302,7 @@ func TestComputeActionsDiff_CapsAtMax(t *testing.T) {
 	capture.actionTotalAdded = 60
 	capture.mu.Unlock()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Actions == nil {
 		t.Fatal("Expected Actions diff to be non-nil")
@@ -2627,7 +2627,7 @@ func TestComputeNetworkDiff_CapsFailures(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add more than 50 network failures (all new endpoints with status >= 400)
 	capture.mu.Lock()
@@ -2640,7 +2640,7 @@ func TestComputeNetworkDiff_CapsFailures(t *testing.T) {
 	capture.networkTotalAdded = 55
 	capture.mu.Unlock()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Network == nil {
 		t.Fatal("Expected Network diff to be non-nil")
@@ -2654,7 +2654,7 @@ func TestComputeNetworkDiff_CapsNewEndpoints(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Add more than 50 new successful endpoints
 	capture.mu.Lock()
@@ -2667,7 +2667,7 @@ func TestComputeNetworkDiff_CapsNewEndpoints(t *testing.T) {
 	capture.networkTotalAdded = 55
 	capture.mu.Unlock()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Network == nil {
 		t.Fatal("Expected Network diff to be non-nil")
@@ -2693,11 +2693,11 @@ func TestComputeNetworkDiff_CapsDegraded(t *testing.T) {
 	capture.mu.Unlock()
 
 	// Get changes to establish checkpoint with known endpoints
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Now add the same endpoints but much slower (>2x baseline)
 	capture.mu.Lock()
-	capture.networkBodies = capture.networkBodies[:0]
+	capture.networkBodies = nil
 	for i := 0; i < 55; i++ {
 		capture.networkBodies = append(capture.networkBodies, NetworkBody{
 			URL:      fmt.Sprintf("https://example.com/api/slow-%d", i),
@@ -2708,7 +2708,7 @@ func TestComputeNetworkDiff_CapsDegraded(t *testing.T) {
 	capture.networkTotalAdded = 110
 	capture.mu.Unlock()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Network == nil {
 		t.Fatal("Expected Network diff to be non-nil")
@@ -2726,7 +2726,7 @@ func TestComputeNetworkDiff_ToReadExceedsAvailable(t *testing.T) {
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
-	cm.GetChangesSince(GetChangesSinceParams{})
+	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	// Set networkTotalAdded high but only have a few bodies in the buffer
 	// This simulates ring buffer eviction
@@ -2738,7 +2738,7 @@ func TestComputeNetworkDiff_ToReadExceedsAvailable(t *testing.T) {
 	capture.networkTotalAdded = 100 // Says 100 were added, but only 1 in buffer
 	capture.mu.Unlock()
 
-	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
 
 	if resp.Network == nil {
 		t.Fatal("Expected Network diff to be non-nil")

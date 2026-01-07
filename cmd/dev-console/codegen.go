@@ -254,14 +254,14 @@ func normalizeTimestamp(ts string) int64 {
 }
 
 // GetSessionTimeline merges actions, network, and console entries into a sorted timeline
-func (v *Capture) GetSessionTimeline(filter TimelineFilter, logEntries []LogEntry) TimelineResponse {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+func (c *Capture) GetSessionTimeline(filter TimelineFilter, logEntries []LogEntry) TimelineResponse {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	var entries []TimelineEntry
 
 	// Determine action subset
-	actions := v.enhancedActions
+	actions := c.enhancedActions
 	if filter.LastNActions > 0 && len(actions) > filter.LastNActions {
 		actions = actions[len(actions)-filter.LastNActions:]
 	}
@@ -305,7 +305,7 @@ func (v *Capture) GetSessionTimeline(filter TimelineFilter, logEntries []LogEntr
 
 	// Add network bodies
 	if shouldInclude("network") {
-		for _, nb := range v.networkBodies {
+		for _, nb := range c.networkBodies {
 			ts := normalizeTimestamp(nb.Timestamp)
 			if minTimestamp > 0 && ts < minTimestamp {
 				continue
@@ -549,7 +549,7 @@ func extractShape(val interface{}, depth int) interface{} {
 func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		ErrorMessage       string `json:"error_message"`
-		LastNActions       int    `json:"last_n_actions"`
+		LastNActions       int    `json:"last_n"`
 		BaseURL            string `json:"base_url"`
 		IncludeScreenshots bool   `json:"include_screenshots"`
 		GenerateFixtures   bool   `json:"generate_fixtures"`
@@ -613,8 +613,8 @@ func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.Ra
 
 func (h *ToolHandler) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
-		LastNActions int      `json:"last_n_actions"`
-		URLFilter    string   `json:"url_filter"`
+		LastNActions int      `json:"last_n"`
+		URLFilter    string   `json:"url"`
 		Include      []string `json:"include"`
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
@@ -673,68 +673,68 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 
 // TrackPerformanceSnapshot records a performance snapshot with session tracking.
 // It wraps AddPerformanceSnapshot to also record the first snapshot per URL for delta computation.
-func (v *Capture) TrackPerformanceSnapshot(snapshot PerformanceSnapshot) {
-	v.mu.Lock()
-	if _, exists := v.session.firstSnapshots[snapshot.URL]; !exists {
-		v.session.firstSnapshots[snapshot.URL] = snapshot
+func (c *Capture) TrackPerformanceSnapshot(snapshot PerformanceSnapshot) {
+	c.mu.Lock()
+	if _, exists := c.session.firstSnapshots[snapshot.URL]; !exists {
+		c.session.firstSnapshots[snapshot.URL] = snapshot
 	}
-	v.session.snapshotCount++
-	v.mu.Unlock()
+	c.session.snapshotCount++
+	c.mu.Unlock()
 
-	v.AddPerformanceSnapshot(snapshot)
+	c.AddPerformanceSnapshot(snapshot)
 }
 
 // GenerateSessionSummary compiles a session summary from performance snapshots and actions.
-func (v *Capture) GenerateSessionSummary() SessionSummary {
-	return v.GenerateSessionSummaryWithEntries(nil)
+func (c *Capture) GenerateSessionSummary() SessionSummary {
+	return c.GenerateSessionSummaryWithEntries(nil)
 }
 
 // GenerateSessionSummaryWithEntries compiles a session summary including console error analysis.
-func (v *Capture) GenerateSessionSummaryWithEntries(entries []LogEntry) SessionSummary {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+func (c *Capture) GenerateSessionSummaryWithEntries(entries []LogEntry) SessionSummary {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	summary := SessionSummary{
 		Status: "ok",
 	}
 
 	// Compute metadata from enhanced actions
-	if len(v.enhancedActions) > 0 {
-		first := v.enhancedActions[0].Timestamp
-		last := v.enhancedActions[len(v.enhancedActions)-1].Timestamp
+	if len(c.enhancedActions) > 0 {
+		first := c.enhancedActions[0].Timestamp
+		last := c.enhancedActions[len(c.enhancedActions)-1].Timestamp
 		summary.Metadata.DurationMs = last - first
 
-		for i := range v.enhancedActions {
-			if v.enhancedActions[i].Type == "navigate" {
+		for i := range c.enhancedActions {
+			if c.enhancedActions[i].Type == "navigate" {
 				summary.Metadata.ReloadCount++
 			}
 		}
 	}
 
 	// Performance delta computation
-	snapshotCount := len(v.perf.snapshotOrder)
+	snapshotCount := len(c.perf.snapshotOrder)
 	if snapshotCount == 0 {
 		summary.Status = "no_performance_data"
 		return summary
 	}
-	if v.session.snapshotCount == 1 || (v.session.snapshotCount == 0 && snapshotCount == 1) {
+	if c.session.snapshotCount == 1 || (c.session.snapshotCount == 0 && snapshotCount == 1) {
 		summary.Status = "insufficient_data"
 		return summary
 	}
 
-	summary.Metadata.PerformanceCheckCount = v.session.snapshotCount
+	summary.Metadata.PerformanceCheckCount = c.session.snapshotCount
 	if summary.Metadata.PerformanceCheckCount == 0 {
 		summary.Metadata.PerformanceCheckCount = snapshotCount
 	}
 
 	// Get latest snapshot
-	latestURL := v.perf.snapshotOrder[len(v.perf.snapshotOrder)-1]
-	latestSnapshot := v.perf.snapshots[latestURL]
+	latestURL := c.perf.snapshotOrder[len(c.perf.snapshotOrder)-1]
+	latestSnapshot := c.perf.snapshots[latestURL]
 
 	// Get first snapshot (session-tracked or baseline fallback)
-	firstSnapshot, hasFirst := v.session.firstSnapshots[latestURL]
+	firstSnapshot, hasFirst := c.session.firstSnapshots[latestURL]
 	if !hasFirst {
-		baseline, hasBaseline := v.perf.baselines[latestURL]
+		baseline, hasBaseline := c.perf.baselines[latestURL]
 		if hasBaseline && baseline.SampleCount >= 2 {
 			firstSnapshot = PerformanceSnapshot{
 				URL: latestURL,
@@ -809,13 +809,13 @@ func (v *Capture) GenerateSessionSummaryWithEntries(entries []LogEntry) SessionS
 }
 
 // GeneratePRSummary generates a markdown-formatted performance summary for PR descriptions.
-func (v *Capture) GeneratePRSummary(errors []SessionError) string {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+func (c *Capture) GeneratePRSummary(errors []SessionError) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	var sb strings.Builder
 
-	snapshotCount := len(v.perf.snapshotOrder)
+	snapshotCount := len(c.perf.snapshotOrder)
 	if snapshotCount == 0 {
 		sb.WriteString("## Performance Impact\n\n")
 		sb.WriteString("No performance data collected during this session.\n\n")
@@ -824,12 +824,12 @@ func (v *Capture) GeneratePRSummary(errors []SessionError) string {
 	}
 
 	// Get latest snapshot and first snapshot
-	latestURL := v.perf.snapshotOrder[len(v.perf.snapshotOrder)-1]
-	latestSnapshot := v.perf.snapshots[latestURL]
+	latestURL := c.perf.snapshotOrder[len(c.perf.snapshotOrder)-1]
+	latestSnapshot := c.perf.snapshots[latestURL]
 
-	firstSnapshot, hasFirst := v.session.firstSnapshots[latestURL]
+	firstSnapshot, hasFirst := c.session.firstSnapshots[latestURL]
 	if !hasFirst {
-		baseline, hasBaseline := v.perf.baselines[latestURL]
+		baseline, hasBaseline := c.perf.baselines[latestURL]
 		if hasBaseline && baseline.SampleCount >= 2 {
 			firstSnapshot = PerformanceSnapshot{
 				URL: latestURL,
@@ -849,7 +849,7 @@ func (v *Capture) GeneratePRSummary(errors []SessionError) string {
 
 	sb.WriteString("## Performance Impact\n\n")
 
-	if !hasFirst || (v.session.snapshotCount < 2 && snapshotCount < 2) {
+	if !hasFirst || (c.session.snapshotCount < 2 && snapshotCount < 2) {
 		sb.WriteString("No performance data collected during this session.\n\n")
 		sb.WriteString("---\n*Generated by Gasoline*\n")
 		return sb.String()
@@ -950,7 +950,7 @@ func (v *Capture) GeneratePRSummary(errors []SessionError) string {
 	}
 
 	sb.WriteString("---\n")
-	totalSamples := v.session.snapshotCount
+	totalSamples := c.session.snapshotCount
 	if totalSamples == 0 {
 		totalSamples = snapshotCount
 	}
@@ -960,22 +960,22 @@ func (v *Capture) GeneratePRSummary(errors []SessionError) string {
 }
 
 // GenerateOneLiner generates a compact one-liner summary for git hook annotations.
-func (v *Capture) GenerateOneLiner(errors []SessionError) string {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+func (c *Capture) GenerateOneLiner(errors []SessionError) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	var parts []string
 
-	snapshotCount := len(v.perf.snapshotOrder)
-	if v.session.snapshotCount < 2 && snapshotCount < 2 {
+	snapshotCount := len(c.perf.snapshotOrder)
+	if c.session.snapshotCount < 2 && snapshotCount < 2 {
 		parts = append(parts, "no perf data")
 	} else {
-		latestURL := v.perf.snapshotOrder[len(v.perf.snapshotOrder)-1]
-		latestSnapshot := v.perf.snapshots[latestURL]
+		latestURL := c.perf.snapshotOrder[len(c.perf.snapshotOrder)-1]
+		latestSnapshot := c.perf.snapshots[latestURL]
 
-		firstSnapshot, hasFirst := v.session.firstSnapshots[latestURL]
+		firstSnapshot, hasFirst := c.session.firstSnapshots[latestURL]
 		if !hasFirst {
-			baseline, hasBaseline := v.perf.baselines[latestURL]
+			baseline, hasBaseline := c.perf.baselines[latestURL]
 			if hasBaseline && baseline.SampleCount >= 2 {
 				firstSnapshot = PerformanceSnapshot{
 					Timing:  PerformanceTiming{Load: baseline.Timing.Load},
@@ -1098,7 +1098,7 @@ func (h *ToolHandler) toolGeneratePRSummary(req JSONRPCRequest, args json.RawMes
 		}
 	}
 
-	markdown := h.capture.GeneratePRSummary(errors)
+	markdownText := h.capture.GeneratePRSummary(errors)
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(markdown)}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse("PR summary", markdownText)}
 }

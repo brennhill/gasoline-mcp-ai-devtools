@@ -167,6 +167,7 @@ func TestHealthEndpoint(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("GET", "/health", http.NoBody)
+	req.Host = "localhost:7890"
 	rec := httptest.NewRecorder()
 
 	handler(rec, req)
@@ -206,11 +207,15 @@ func TestPostLogsEndpoint(t *testing.T) {
 		}
 
 		received := server.addEntries(body.Entries)
-		jsonResponse(w, http.StatusOK, map[string]int{"received": received})
+		jsonResponse(w, http.StatusOK, map[string]int{
+			"received": received,
+			"entries":  server.getEntryCount(),
+		})
 	})
 
 	body := `{"entries":[{"level":"error","msg":"test1"},{"level":"warn","msg":"test2"}]}`
 	req := httptest.NewRequest("POST", "/logs", bytes.NewBufferString(body))
+	req.Host = "localhost:7890"
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -225,6 +230,10 @@ func TestPostLogsEndpoint(t *testing.T) {
 
 	if resp["received"] != 2 {
 		t.Errorf("Expected received 2, got %d", resp["received"])
+	}
+
+	if resp["entries"] != 2 {
+		t.Errorf("Expected entries 2 in response, got %d", resp["entries"])
 	}
 
 	if server.getEntryCount() != 2 {
@@ -247,6 +256,7 @@ func TestPostLogsInvalidJSON(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("POST", "/logs", bytes.NewBufferString("not json"))
+	req.Host = "localhost:7890"
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -277,6 +287,7 @@ func TestPostLogsMissingEntries(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("POST", "/logs", bytes.NewBufferString(`{"foo":"bar"}`))
+	req.Host = "localhost:7890"
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -298,6 +309,7 @@ func TestDeleteLogsEndpoint(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("DELETE", "/logs", http.NoBody)
+	req.Host = "localhost:7890"
 	rec := httptest.NewRecorder()
 
 	handler(rec, req)
@@ -317,13 +329,206 @@ func TestCORSHeaders(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("GET", "/health", http.NoBody)
+	req.Host = "localhost:7890"
 	req.Header.Set("Origin", "chrome-extension://abc123")
 	rec := httptest.NewRecorder()
 
 	handler(rec, req)
 
-	if rec.Header().Get("Access-Control-Allow-Origin") != "*" {
-		t.Errorf("Expected CORS header '*', got %s", rec.Header().Get("Access-Control-Allow-Origin"))
+	// CORS should echo back the specific allowed origin, not wildcard "*"
+	got := rec.Header().Get("Access-Control-Allow-Origin")
+	if got != "chrome-extension://abc123" {
+		t.Errorf("Expected CORS header to echo origin 'chrome-extension://abc123', got %q", got)
+	}
+}
+
+// TestCORSOriginEcho verifies that valid origins are echoed back (not wildcard)
+func TestCORSOriginEcho(t *testing.T) {
+	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	tests := []struct {
+		name           string
+		origin         string
+		expectedOrigin string // what Access-Control-Allow-Origin should be
+	}{
+		{"chrome extension", "chrome-extension://abc123", "chrome-extension://abc123"},
+		{"moz extension", "moz-extension://def456", "moz-extension://def456"},
+		{"localhost", "http://localhost:3000", "http://localhost:3000"},
+		{"localhost no port", "http://localhost", "http://localhost"},
+		{"127.0.0.1", "http://127.0.0.1:8080", "http://127.0.0.1:8080"},
+		{"127.0.0.1 no port", "http://127.0.0.1", "http://127.0.0.1"},
+		{"ipv6 loopback", "http://[::1]:3000", "http://[::1]:3000"},
+		{"no origin header", "", ""}, // no origin = no ACAO header
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/health", http.NoBody)
+			req.Host = "localhost:7890"
+			if tt.origin != "" {
+				req.Header.Set("Origin", tt.origin)
+			}
+			rec := httptest.NewRecorder()
+			handler(rec, req)
+
+			got := rec.Header().Get("Access-Control-Allow-Origin")
+			if got != tt.expectedOrigin {
+				t.Errorf("Origin %q: expected ACAO %q, got %q", tt.origin, tt.expectedOrigin, got)
+			}
+		})
+	}
+}
+
+// TestCORSNoWildcard verifies that Access-Control-Allow-Origin: * is never returned
+func TestCORSNoWildcard(t *testing.T) {
+	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	origins := []string{
+		"chrome-extension://abc123",
+		"moz-extension://def456",
+		"http://localhost:3000",
+		"http://127.0.0.1:8080",
+		"http://[::1]:3000",
+		"", // no origin
+	}
+
+	for _, origin := range origins {
+		req := httptest.NewRequest("GET", "/health", http.NoBody)
+		req.Host = "localhost:7890"
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+		rec := httptest.NewRecorder()
+		handler(rec, req)
+
+		got := rec.Header().Get("Access-Control-Allow-Origin")
+		if got == "*" {
+			t.Errorf("Origin %q: CORS wildcard '*' must never be returned (DNS rebinding risk)", origin)
+		}
+	}
+}
+
+// TestCORSBlockedOriginNoHeader verifies that blocked origins get 403 and no ACAO header
+func TestCORSBlockedOriginNoHeader(t *testing.T) {
+	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	blockedOrigins := []string{
+		"http://evil.com",
+		"https://attacker.example.com",
+		"http://127.0.0.1.evil.com",
+	}
+
+	for _, origin := range blockedOrigins {
+		req := httptest.NewRequest("GET", "/health", http.NoBody)
+		req.Host = "localhost:7890"
+		req.Header.Set("Origin", origin)
+		rec := httptest.NewRecorder()
+		handler(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("Origin %q: expected 403, got %d", origin, rec.Code)
+		}
+		// Should not set ACAO header for blocked origins
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+			t.Errorf("Origin %q: blocked origin should not have ACAO header, got %q", origin, got)
+		}
+	}
+}
+
+// ============================================
+// Host Header Validation Tests (DNS Rebinding Protection)
+// ============================================
+
+// TestHostHeaderValidation verifies that the Host header is checked against
+// an allowlist of localhost variants to prevent DNS rebinding attacks.
+func TestHostHeaderValidation(t *testing.T) {
+	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	tests := []struct {
+		name           string
+		host           string
+		expectedStatus int
+	}{
+		// Allowed hosts
+		{"localhost with port", "localhost:7890", http.StatusOK},
+		{"localhost no port", "localhost", http.StatusOK},
+		{"127.0.0.1 with port", "127.0.0.1:7890", http.StatusOK},
+		{"127.0.0.1 no port", "127.0.0.1", http.StatusOK},
+		{"ipv6 loopback with port", "[::1]:7890", http.StatusOK},
+		{"ipv6 loopback no port", "[::1]", http.StatusOK},
+		{"localhost different port", "localhost:8080", http.StatusOK},
+		{"127.0.0.1 different port", "127.0.0.1:3000", http.StatusOK},
+		{"empty host", "", http.StatusOK}, // HTTP/1.0 clients
+
+		// Blocked hosts (DNS rebinding attacks)
+		{"external domain", "evil.com", http.StatusForbidden},
+		{"external domain with port", "evil.com:7890", http.StatusForbidden},
+		{"dns rebinding", "127.0.0.1.evil.com", http.StatusForbidden},
+		{"dns rebinding with port", "127.0.0.1.evil.com:7890", http.StatusForbidden},
+		{"localhost subdomain attack", "localhost.evil.com", http.StatusForbidden},
+		{"ip address not loopback", "192.168.1.1:7890", http.StatusForbidden},
+		{"attacker domain", "attacker.example.com:7890", http.StatusForbidden},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/health", http.NoBody)
+			req.Host = tt.host
+			rec := httptest.NewRecorder()
+			handler(rec, req)
+
+			if rec.Code != tt.expectedStatus {
+				t.Errorf("Host %q: expected status %d, got %d", tt.host, tt.expectedStatus, rec.Code)
+			}
+		})
+	}
+}
+
+// TestHostHeaderValidation_Body verifies that blocked Host headers return the
+// expected error body text.
+func TestHostHeaderValidation_Body(t *testing.T) {
+	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("GET", "/health", http.NoBody)
+	req.Host = "evil.com"
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("Expected 403, got %d", rec.Code)
+	}
+
+	body := strings.TrimSpace(rec.Body.String())
+	if body != "Invalid Host header" {
+		t.Errorf("Expected body 'Invalid Host header', got %q", body)
+	}
+}
+
+// TestHostHeaderValidation_OPTIONS verifies that OPTIONS preflight with
+// invalid Host is also rejected.
+func TestHostHeaderValidation_OPTIONS(t *testing.T) {
+	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest("OPTIONS", "/logs", nil)
+	req.Host = "evil.com"
+	req.Header.Set("Origin", "chrome-extension://abc123")
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("Expected 403 for OPTIONS with invalid Host, got %d", rec.Code)
 	}
 }
 
@@ -333,6 +538,7 @@ func TestOPTIONSPreflight(t *testing.T) {
 	})
 
 	req := httptest.NewRequest("OPTIONS", "/logs", nil)
+	req.Host = "localhost:7890"
 	req.Header.Set("Origin", "chrome-extension://abc123")
 	req.Header.Set("Access-Control-Request-Method", "POST")
 	rec := httptest.NewRecorder()
@@ -477,6 +683,127 @@ func TestMCPToolsList(t *testing.T) {
 	}
 }
 
+func TestMCPResourcesList(t *testing.T) {
+	server, _ := setupTestServer(t)
+	mcp := NewMCPHandler(server)
+
+	// Initialize first
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "initialize",
+		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	req := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      2,
+		Method:  "resources/list",
+	}
+
+	resp := mcp.HandleRequest(req)
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	var result MCPResourcesListResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to unmarshal result: %v", err)
+	}
+
+	if len(result.Resources) != 1 {
+		t.Fatalf("Expected 1 resource, got %d", len(result.Resources))
+	}
+
+	resource := result.Resources[0]
+	if resource.URI != "gasoline://guide" {
+		t.Errorf("Expected URI 'gasoline://guide', got %s", resource.URI)
+	}
+	if resource.Name != "Gasoline Usage Guide" {
+		t.Errorf("Expected name 'Gasoline Usage Guide', got %s", resource.Name)
+	}
+	if resource.MimeType != "text/markdown" {
+		t.Errorf("Expected mimeType 'text/markdown', got %s", resource.MimeType)
+	}
+}
+
+func TestMCPResourcesRead(t *testing.T) {
+	server, _ := setupTestServer(t)
+	mcp := NewMCPHandler(server)
+
+	// Initialize first
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "initialize",
+		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	req := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      2,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://guide"}`),
+	}
+
+	resp := mcp.HandleRequest(req)
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	var result MCPResourcesReadResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to unmarshal result: %v", err)
+	}
+
+	if len(result.Contents) != 1 {
+		t.Fatalf("Expected 1 content, got %d", len(result.Contents))
+	}
+
+	content := result.Contents[0]
+	if content.URI != "gasoline://guide" {
+		t.Errorf("Expected URI 'gasoline://guide', got %s", content.URI)
+	}
+	if content.MimeType != "text/markdown" {
+		t.Errorf("Expected mimeType 'text/markdown', got %s", content.MimeType)
+	}
+	if !strings.Contains(content.Text, "# Gasoline MCP Tools") {
+		t.Error("Expected guide to contain '# Gasoline MCP Tools'")
+	}
+	if !strings.Contains(content.Text, "observe") {
+		t.Error("Expected guide to mention 'observe' tool")
+	}
+	if !strings.Contains(content.Text, "interact") {
+		t.Error("Expected guide to mention 'interact' tool")
+	}
+}
+
+func TestMCPResourcesReadNotFound(t *testing.T) {
+	server, _ := setupTestServer(t)
+	mcp := NewMCPHandler(server)
+
+	req := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://nonexistent"}`),
+	}
+
+	resp := mcp.HandleRequest(req)
+
+	if resp.Error == nil {
+		t.Fatal("Expected error for nonexistent resource")
+	}
+	if !strings.Contains(resp.Error.Message, "not found") {
+		t.Errorf("Expected 'not found' in error message, got: %s", resp.Error.Message)
+	}
+	if resp.Error.Code != -32002 {
+		t.Errorf("Expected error code -32002 (resource not found), got %d", resp.Error.Code)
+	}
+}
+
 func TestMCPGetBrowserErrors(t *testing.T) {
 	server, _ := setupTestServer(t)
 
@@ -528,20 +855,13 @@ func TestMCPGetBrowserErrors(t *testing.T) {
 		t.Fatal("Expected at least one content item")
 	}
 
-	// Parse the text content - should only contain errors
-	var entries []LogEntry
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &entries); err != nil {
-		t.Fatalf("Failed to parse entries from content: %v", err)
+	// New format: summary line + markdown table
+	text := result.Content[0].Text
+	if !strings.Contains(text, "2 browser error(s)") {
+		t.Errorf("Expected summary with '2 browser error(s)', got: %s", text)
 	}
-
-	if len(entries) != 2 {
-		t.Errorf("Expected 2 error entries, got %d", len(entries))
-	}
-
-	for _, entry := range entries {
-		if entry["level"] != "error" {
-			t.Errorf("Expected only error level entries, got %v", entry["level"])
-		}
+	if !strings.Contains(text, "error") {
+		t.Error("Expected table to contain error level entries")
 	}
 }
 
@@ -591,14 +911,19 @@ func TestMCPGetBrowserLogs(t *testing.T) {
 		t.Fatalf("Failed to unmarshal result: %v", err)
 	}
 
-	// Parse the text content - should contain all logs
-	var entries []LogEntry
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &entries); err != nil {
-		t.Fatalf("Failed to parse entries from content: %v", err)
+	// New format: summary line + markdown table via mcpMarkdownResponse
+	text := result.Content[0].Text
+	if !strings.Contains(text, "3 log entries") {
+		t.Errorf("Expected summary with '3 log entries', got: %s", text)
 	}
-
-	if len(entries) != 3 {
-		t.Errorf("Expected 3 entries (all logs), got %d", len(entries))
+	if !strings.Contains(text, "Test error") {
+		t.Error("Expected 'Test error' in markdown table")
+	}
+	if !strings.Contains(text, "Test warning") {
+		t.Error("Expected 'Test warning' in markdown table")
+	}
+	if !strings.Contains(text, "Test info") {
+		t.Error("Expected 'Test info' in markdown table")
 	}
 }
 
@@ -648,13 +973,14 @@ func TestMCPGetBrowserLogsWithLimit(t *testing.T) {
 		t.Fatalf("Failed to unmarshal result: %v", err)
 	}
 
-	var entries []LogEntry
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &entries); err != nil {
-		t.Fatalf("Failed to parse entries from content: %v", err)
+	// New format: summary line + markdown table via mcpMarkdownResponse
+	text := result.Content[0].Text
+	if !strings.Contains(text, "5 log entries") {
+		t.Errorf("Expected summary with '5 log entries', got: %s", text)
 	}
-
-	if len(entries) != 5 {
-		t.Errorf("Expected 5 entries with limit, got %d", len(entries))
+	// Verify it's a markdown table (has header separator)
+	if !strings.Contains(text, "| --- |") {
+		t.Error("Expected markdown table format in response")
 	}
 }
 
@@ -849,10 +1175,9 @@ func TestScreenshotEndpoint(t *testing.T) {
 	jpegData := strings.Repeat("A", 1000) // base64 content
 
 	body := map[string]string{
-		"dataUrl":   "data:image/jpeg;base64," + jpegData,
-		"url":       "https://example.com/page",
-		"errorId":   "err_123_abc",
-		"errorType": "console",
+		"dataUrl":       "data:image/jpeg;base64," + jpegData,
+		"url":           "https://example.com/page",
+		"correlationId": "console-err_123_abc",
 	}
 	bodyJSON, _ := json.Marshal(body)
 
@@ -880,18 +1205,18 @@ func TestScreenshotEndpoint(t *testing.T) {
 		t.Fatalf("Screenshot file not saved at %s", savedPath)
 	}
 
-	// Verify filename follows convention: [website]-[timestamp]-[errortype]-[errorid].jpg
+	// Verify filename follows convention: [website]-[timestamp]-[correlationId].jpg
 	if !strings.HasPrefix(filename, "example.com-") {
 		t.Errorf("Filename should start with hostname, got: %s", filename)
 	}
 	if !strings.HasSuffix(filename, ".jpg") {
 		t.Errorf("Filename should end with .jpg, got: %s", filename)
 	}
-	if !strings.Contains(filename, "console") {
-		t.Errorf("Filename should contain error type, got: %s", filename)
+	if !strings.Contains(filename, "console-err_123_abc") {
+		t.Errorf("Filename should contain correlation ID, got: %s", filename)
 	}
-	if !strings.Contains(filename, "err_123_abc") {
-		t.Errorf("Filename should contain error ID, got: %s", filename)
+	if result["correlation_id"] != "console-err_123_abc" {
+		t.Errorf("Response should echo correlation_id, got: %s", result["correlation_id"])
 	}
 }
 
@@ -1121,6 +1446,7 @@ func FuzzPostLogs(f *testing.F) {
 		})
 
 		req := httptest.NewRequest("POST", "/logs", bytes.NewReader(data))
+		req.Host = "localhost:7890"
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 
@@ -1166,7 +1492,7 @@ func FuzzMCPRequest(f *testing.F) {
 
 // FuzzScreenshotEndpoint fuzzes the screenshot upload handler.
 func FuzzScreenshotEndpoint(f *testing.F) {
-	f.Add([]byte(`{"dataUrl":"data:image/jpeg;base64,AAAA","url":"https://example.com","errorId":"err1","errorType":"console"}`))
+	f.Add([]byte(`{"dataUrl":"data:image/jpeg;base64,AAAA","url":"https://example.com","correlationId":"console-err1"}`))
 	f.Add([]byte(`{"dataUrl":"","url":""}`))
 	f.Add([]byte(`{}`))
 	f.Add([]byte(`not json`))
@@ -1406,6 +1732,7 @@ func BenchmarkPostLogsHTTP(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		req := httptest.NewRequest("POST", "/logs", bytes.NewReader(payload))
+		req.Host = "localhost:7890"
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		handler(rec, req)
@@ -1732,6 +2059,332 @@ func TestClearEntries_SaveError(t *testing.T) {
 }
 
 // TestSaveEntries_WriteError tests saveEntries when the file cannot be written
+// ============================================
+// MCP Spec Correctness Tests
+// ============================================
+
+// L-8: ping MUST return {}
+func TestMCPPing(t *testing.T) {
+	server, _ := setupTestServer(t)
+	mcp := NewMCPHandler(server)
+
+	req := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      42,
+		Method:  "ping",
+	}
+
+	resp := mcp.HandleRequest(req)
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error for ping, got: %v", resp.Error)
+	}
+	if resp.ID != 42 {
+		t.Errorf("Expected ID 42, got %v", resp.ID)
+	}
+	if string(resp.Result) != "{}" {
+		t.Errorf("Expected empty object result, got: %s", string(resp.Result))
+	}
+}
+
+// C-3: resources/templates/list MUST return empty array
+func TestMCPResourcesTemplatesList(t *testing.T) {
+	server, _ := setupTestServer(t)
+	mcp := NewMCPHandler(server)
+
+	req := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "resources/templates/list",
+	}
+
+	resp := mcp.HandleRequest(req)
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	var result struct {
+		ResourceTemplates []interface{} `json:"resourceTemplates"`
+	}
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to unmarshal result: %v", err)
+	}
+
+	if result.ResourceTemplates == nil {
+		t.Fatal("Expected resourceTemplates array, got nil")
+	}
+	if len(result.ResourceTemplates) != 0 {
+		t.Errorf("Expected 0 resource templates, got %d", len(result.ResourceTemplates))
+	}
+}
+
+// L-5: Protocol version negotiation
+func TestMCPInitializeVersionNegotiation(t *testing.T) {
+	tests := []struct {
+		name            string
+		params          string
+		expectedVersion string
+	}{
+		{
+			name:            "matching version echoed back",
+			params:          `{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`,
+			expectedVersion: "2024-11-05",
+		},
+		{
+			name:            "unknown version falls back to server latest",
+			params:          `{"protocolVersion":"2099-01-01","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`,
+			expectedVersion: "2024-11-05",
+		},
+		{
+			name:            "missing version falls back to server latest",
+			params:          `{"capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`,
+			expectedVersion: "2024-11-05",
+		},
+		{
+			name:            "empty params",
+			params:          `{}`,
+			expectedVersion: "2024-11-05",
+		},
+		{
+			name:            "nil params",
+			params:          ``,
+			expectedVersion: "2024-11-05",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server, _ := setupTestServer(t)
+			mcp := NewMCPHandler(server)
+
+			var params json.RawMessage
+			if tt.params != "" {
+				params = json.RawMessage(tt.params)
+			}
+
+			req := JSONRPCRequest{
+				JSONRPC: "2.0",
+				ID:      1,
+				Method:  "initialize",
+				Params:  params,
+			}
+
+			resp := mcp.HandleRequest(req)
+
+			if resp.Error != nil {
+				t.Fatalf("Expected no error, got: %v", resp.Error)
+			}
+
+			var result struct {
+				ProtocolVersion string `json:"protocolVersion"`
+			}
+			if err := json.Unmarshal(resp.Result, &result); err != nil {
+				t.Fatalf("Failed to unmarshal: %v", err)
+			}
+
+			if result.ProtocolVersion != tt.expectedVersion {
+				t.Errorf("Expected protocol version %s, got %s", tt.expectedVersion, result.ProtocolVersion)
+			}
+		})
+	}
+}
+
+// ============================================
+// isAllowedHost Unit Tests
+// ============================================
+
+func TestIsAllowedHost(t *testing.T) {
+	tests := []struct {
+		name string
+		host string
+		want bool
+	}{
+		// Allowed
+		{"empty host", "", true},
+		{"localhost", "localhost", true},
+		{"localhost with port", "localhost:7890", true},
+		{"localhost any port", "localhost:9999", true},
+		{"127.0.0.1", "127.0.0.1", true},
+		{"127.0.0.1 with port", "127.0.0.1:7890", true},
+		{"ipv6 loopback", "[::1]", true},
+		{"ipv6 loopback with port", "[::1]:7890", true},
+
+		// Blocked
+		{"external domain", "evil.com", false},
+		{"external with port", "evil.com:7890", false},
+		{"subdomain attack", "localhost.evil.com", false},
+		{"ip suffix attack", "127.0.0.1.evil.com", false},
+		{"ip suffix with port", "127.0.0.1.evil.com:7890", false},
+		{"other ip", "192.168.1.1", false},
+		{"other ip with port", "192.168.1.1:7890", false},
+		{"0.0.0.0", "0.0.0.0", false},
+		{"public ip", "8.8.8.8:7890", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isAllowedHost(tt.host); got != tt.want {
+				t.Errorf("isAllowedHost(%q) = %v, want %v", tt.host, got, tt.want)
+			}
+		})
+	}
+}
+
+// H-2/H-3: Origin header validation
+func TestOriginValidation(t *testing.T) {
+	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	tests := []struct {
+		name           string
+		origin         string
+		expectedStatus int
+	}{
+		{"no origin header", "", http.StatusOK},
+		{"localhost origin", "http://localhost:3000", http.StatusOK},
+		{"127.0.0.1 origin", "http://127.0.0.1:8080", http.StatusOK},
+		{"ipv6 loopback", "http://[::1]:3000", http.StatusOK},
+		{"chrome extension", "chrome-extension://abcdef123456", http.StatusOK},
+		{"moz extension", "moz-extension://abcdef123456", http.StatusOK},
+		{"localhost no port", "http://localhost", http.StatusOK},
+		{"127.0.0.1 no port", "http://127.0.0.1", http.StatusOK},
+		{"external origin blocked", "http://evil.com", http.StatusForbidden},
+		{"https external blocked", "https://attacker.example.com", http.StatusForbidden},
+		{"dns rebinding blocked", "http://127.0.0.1.evil.com", http.StatusForbidden},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/health", http.NoBody)
+			req.Host = "localhost:7890"
+			if tt.origin != "" {
+				req.Header.Set("Origin", tt.origin)
+			}
+			rec := httptest.NewRecorder()
+			handler(rec, req)
+
+			if rec.Code != tt.expectedStatus {
+				t.Errorf("Origin %q: expected status %d, got %d", tt.origin, tt.expectedStatus, rec.Code)
+			}
+		})
+	}
+}
+
+func TestOriginValidation_OPTIONSPreflight(t *testing.T) {
+	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// Valid preflight
+	req := httptest.NewRequest("OPTIONS", "/logs", nil)
+	req.Host = "localhost:7890"
+	req.Header.Set("Origin", "chrome-extension://abc123")
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Errorf("Expected 204 for valid OPTIONS, got %d", rec.Code)
+	}
+
+	// Invalid origin preflight
+	req = httptest.NewRequest("OPTIONS", "/logs", nil)
+	req.Host = "localhost:7890"
+	req.Header.Set("Origin", "http://evil.com")
+	rec = httptest.NewRecorder()
+	handler(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("Expected 403 for invalid origin OPTIONS, got %d", rec.Code)
+	}
+}
+
+// T-8: Tool call rate limiting
+func TestMCPToolCallRateLimit(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Fire calls up to the limit — all should succeed
+	for i := 0; i < 100; i++ {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0",
+			ID:      i,
+			Method:  "tools/call",
+			Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
+		})
+		if resp.Error != nil {
+			t.Fatalf("Call %d: expected success, got error: %s", i, resp.Error.Message)
+		}
+	}
+
+	// Next call should be rate limited
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      101,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
+	})
+	if resp.Error == nil {
+		t.Fatal("Expected rate limit error after 100 calls")
+	}
+	if resp.Error.Code != -32603 {
+		t.Errorf("Expected error code -32603, got %d", resp.Error.Code)
+	}
+	if !strings.Contains(resp.Error.Message, "rate limit") {
+		t.Errorf("Expected 'rate limit' in error message, got: %s", resp.Error.Message)
+	}
+}
+
+func TestMCPToolCallRateLimitWindowExpiry(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Override limiter with short window
+	if mcp.toolHandler == nil {
+		t.Fatal("Expected toolHandler to be set")
+	}
+	mcp.toolHandler.toolCallLimiter = NewToolCallLimiter(5, 100*time.Millisecond)
+
+	// Fire 5 calls (fills the window)
+	for i := 0; i < 5; i++ {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0",
+			ID:      i,
+			Method:  "tools/call",
+			Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
+		})
+		if resp.Error != nil {
+			t.Fatalf("Call %d: expected success, got error: %s", i, resp.Error.Message)
+		}
+	}
+
+	// 6th call should be rate limited
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      6,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
+	})
+	if resp.Error == nil {
+		t.Fatal("Expected rate limit error")
+	}
+
+	// Wait for window to expire
+	time.Sleep(150 * time.Millisecond)
+
+	// Should succeed again
+	resp = mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      7,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
+	})
+	if resp.Error != nil {
+		t.Fatalf("Expected success after window expiry, got error: %s", resp.Error.Message)
+	}
+}
+
 func TestSaveEntries_WriteError(t *testing.T) {
 	tmpDir := t.TempDir()
 	// Use a path inside a non-existent directory to trigger create error

@@ -274,7 +274,36 @@
         Configure the Gasoline server URL. Change the port if you're running the server on a different port.
       </div>
 
-      <input type="text" id="server-url-input" placeholder="http://localhost:7890" value="http://localhost:7890" />
+      <div style="display: flex; gap: 8px; align-items: stretch">
+        <input
+          type="text"
+          id="server-url-input"
+          placeholder="http://localhost:7890"
+          value="http://localhost:7890"
+          style="flex: 1"
+        />
+        <button
+          id="test-connection-btn"
+          type="button"
+          style="
+            width: auto;
+            padding: 8px 12px;
+            font-size: 12px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #e0e0e0;
+            cursor: pointer;
+            white-space: nowrap;
+          "
+        >
+          Test
+        </button>
+      </div>
+      <div
+        id="test-result"
+        style="display: none; font-size: 12px; margin-top: 6px; padding: 6px 8px; border-radius: 4px"
+      ></div>
 
       <div class="help-text">
         Default: <code>http://localhost:7890</code>. Use <code>--port</code> flag when starting the server to use a
@@ -331,12 +360,51 @@
           </div>
           <div id="deferral-toggle" class="toggle"></div>
         </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Extension Diagnostics</span>
+            <span class="toggle-description">Enable detailed logging for debugging extension issues</span>
+          </div>
+          <div id="debug-mode-toggle" class="toggle"></div>
+        </div>
       </div>
     </div>
 
     <div class="section">
       <button id="save-btn">Save Options</button>
       <span id="saved-message" class="saved-message">Saved!</span>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Debug Log</div>
+      <div style="display: flex; gap: 8px">
+        <button
+          id="export-debug-btn"
+          style="
+            flex: 1;
+            background: #252525;
+            border: 1px solid #333;
+            color: #e0e0e0;
+          "
+        >
+          Export Debug Log
+        </button>
+        <button
+          id="clear-debug-btn"
+          style="
+            flex: 0 0 auto;
+            width: auto;
+            padding: 10px 12px;
+            background: #252525;
+            border: 1px solid #333;
+            color: #e0e0e0;
+          "
+          title="Clear debug log"
+        >
+          ✕
+        </button>
+      </div>
     </div>
 
     <script src="options.js" type="module"></script>

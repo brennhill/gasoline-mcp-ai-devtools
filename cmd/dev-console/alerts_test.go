@@ -610,6 +610,89 @@ func TestCIWebhookBodySizeLimit(t *testing.T) {
 // Alert Test Helpers
 // ============================================
 
+// TestCIWebhookMissingStatus verifies that a valid JSON body with empty status
+// returns 400. (Coverage hole CH1)
+func TestCIWebhookMissingStatus(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+	th := mcp.toolHandler
+
+	body := `{"source":"github-actions","commit":"abc123","summary":"test"}`
+	req := httptest.NewRequest("POST", "/ci-result", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	th.handleCIWebhook(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("Expected 400 for missing status, got %d", resp.StatusCode)
+	}
+	respBody, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(respBody), "missing required field: status") {
+		t.Errorf("Expected error about missing status, got: %s", string(respBody))
+	}
+
+	th.alertMu.Lock()
+	alertCount := len(th.alerts)
+	th.alertMu.Unlock()
+	if alertCount != 0 {
+		t.Errorf("No alert should be generated for missing status, got %d", alertCount)
+	}
+}
+
+// TestCIWebhookMissingSource verifies that a valid JSON body with empty source
+// returns 400. (Coverage hole CH2)
+func TestCIWebhookMissingSource(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+	th := mcp.toolHandler
+
+	body := `{"status":"failure","commit":"abc123","summary":"test"}`
+	req := httptest.NewRequest("POST", "/ci-result", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	th.handleCIWebhook(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("Expected 400 for missing source, got %d", resp.StatusCode)
+	}
+	respBody, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(respBody), "missing required field: source") {
+		t.Errorf("Expected error about missing source, got: %s", string(respBody))
+	}
+
+	th.alertMu.Lock()
+	alertCount := len(th.alerts)
+	th.alertMu.Unlock()
+	if alertCount != 0 {
+		t.Errorf("No alert should be generated for missing source, got %d", alertCount)
+	}
+}
+
+// TestCIWebhookMethodNotAllowed verifies that non-POST methods are rejected. (CH3)
+func TestCIWebhookMethodNotAllowed(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+	th := mcp.toolHandler
+
+	for _, method := range []string{"GET", "PUT", "DELETE"} {
+		req := httptest.NewRequest(method, "/ci-result", nil)
+		w := httptest.NewRecorder()
+		th.handleCIWebhook(w, req)
+
+		resp := w.Result()
+		if resp.StatusCode != http.StatusMethodNotAllowed {
+			t.Errorf("%s: expected 405 Method Not Allowed, got %d", method, resp.StatusCode)
+		}
+	}
+}
+
 func extractAlertsFromBlock(t *testing.T, block string) []Alert {
 	t.Helper()
 	// Format: "--- ALERTS (N) ---\n[optional summary]\n[JSON array]"

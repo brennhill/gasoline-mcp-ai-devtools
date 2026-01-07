@@ -19,14 +19,15 @@ Create `.mcp.json` in your project root:
 {
   "mcpServers": {
     "gasoline": {
+      "type": "stdio",
       "command": "npx",
-      "args": ["gasoline-mcp"]
+      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
     }
   }
 }
 ```
 
-Gasoline only fires up when you're in this project.
+Gasoline only fires up when you're in this project. The single process handles both the HTTP server (for extension) and MCP stdio (for Claude Code).
 
 ## <i class="fas fa-globe"></i> Global Config
 
@@ -36,8 +37,9 @@ Available in all projects — add to `~/.claude/settings.json`:
 {
   "mcpServers": {
     "gasoline": {
+      "type": "stdio",
       "command": "npx",
-      "args": ["gasoline-mcp"]
+      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
     }
   }
 }
@@ -61,3 +63,13 @@ Claude uses the right MCP tool and returns actionable debugging info.
 2. **Check extension popup** — should show "Connected"
 3. **Verify tools**: Ask _"What MCP tools do you have?"_
 4. **Check logs**: Look for MCP connection errors in output
+
+**Port conflict ("bind: address already in use")?**
+
+Kill any manually-started Gasoline instances:
+
+```bash
+pkill -f gasoline
+```
+
+Then reload the MCP connection. Do NOT manually start Gasoline when using MCP mode — let Claude Code spawn and manage the process.

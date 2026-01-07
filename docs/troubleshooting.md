@@ -33,21 +33,64 @@ toc_sticky: true
 3. **Check for JSON errors**: Invalid JSON in config will silently fail
 4. **Verify with AI**: Ask _"What MCP tools do you have?"_ — Gasoline tools should appear
 
+## <i class="fas fa-layer-group"></i> MCP Config Conflicts (User vs Project)
+
+**Symptom**: You added `.mcp.json` to your project but Gasoline uses wrong settings (different port, old path, etc.)
+
+**Cause**: Claude Code has two config levels:
+- **User-level**: `~/.claude.json` → `mcpServers` section (applies globally)
+- **Project-level**: `.mcp.json` in project root (applies to that project)
+
+**User-level config takes precedence.** If both define `"gasoline"`, the user-level wins silently.
+
+**To diagnose**:
+```bash
+# Check for user-level gasoline config
+grep -A5 '"gasoline"' ~/.claude.json
+```
+
+**To fix**:
+1. Edit `~/.claude.json` and remove the `gasoline` entry from `mcpServers`
+2. Or update the user-level config to match your desired settings
+3. Restart Claude Code to pick up changes
+
+**Best practice**: Use project-level `.mcp.json` for Gasoline. This keeps the config with the project and avoids conflicts when working on multiple projects.
+
+## <i class="fas fa-times-circle"></i> MCP Server Shows "Failed"
+
+**Symptom**: `/mcp` shows gasoline as "failed" even though the config looks correct.
+
+**Common cause**: A stale gasoline process is holding the port from a previous session.
+
+**To diagnose**:
+```bash
+# Check if something is using the port
+lsof -i :7890
+```
+
+**To fix**:
+```bash
+# Kill the stale process
+lsof -ti :7890 | xargs kill
+```
+
+Then retry `/mcp` — Claude Code will spawn a fresh instance.
+
 ## <i class="fas fa-sync-alt"></i> MCP Disconnected — Recovery
 
-When the AI client disconnects (closes its session), Gasoline logs the disconnect and exits after a 2-second grace period. This is by design — it frees the port so the next AI session can spawn a fresh process.
+When the AI client disconnects (closes its session), Gasoline logs the disconnect and exits after a brief grace period. This is by design — it frees the port so the next AI session can spawn a fresh process.
 
 **What you'll see on stderr:**
 ```
-[gasoline] MCP disconnected, shutting down in 2s (port 7890 will be freed)
+[gasoline] MCP disconnected, shutting down in 100ms (port 7890 will be freed)
 [gasoline] Shutdown complete
 ```
 
-**What's logged to JSONL:**
-```jsonl
-{"type":"lifecycle","event":"mcp_disconnect","port":7890,"timestamp":"..."}
-{"type":"lifecycle","event":"shutdown","reason":"mcp_disconnect_grace","timestamp":"..."}
+**Want to keep the server running?** Use `--persist`:
+```bash
+npx gasoline-mcp --persist
 ```
+This keeps the HTTP server running after MCP disconnect so the extension stays connected between AI sessions. Press Ctrl+C to stop.
 
 **To recover:** Simply start a new AI session. Your AI tool will spawn a fresh Gasoline process automatically. The extension reconnects to the new instance on its next poll.
 
@@ -71,6 +114,28 @@ Then update the extension:
 3. Change **Server URL** to `http://localhost:7891`
 4. Click "Save Options"
 
+## <i class="fas fa-check-circle"></i> Verifying Your Setup
+
+Run the built-in setup check:
+```bash
+npx gasoline-mcp --check
+```
+
+This verifies port availability, log file directory, and prints next steps. You can also test from the extension: go to **Options** and click the **Test** button next to the Server URL.
+
+## <i class="fas fa-exclamation-triangle"></i> Version Mismatch Warning
+
+**Symptom**: Extension popup shows a yellow "Version mismatch" banner.
+
+**Cause**: The extension and server have different major versions (e.g., extension v4.x, server v5.x).
+
+**To fix**:
+1. Update the server: `npx gasoline-mcp@latest`
+2. Update the extension: pull latest from GitHub and reload in chrome://extensions
+3. Both should show the same major version
+
+Minor/patch version differences are fine and won't trigger the warning.
+
 ## <i class="fas fa-bug"></i> Using Debug Mode
 
 The extension has built-in debug logging for troubleshooting:
@@ -93,7 +158,7 @@ The debug buffer holds 200 entries (circular — oldest are dropped). Logs are s
 
 ## <i class="fas fa-flag"></i> Reporting Issues
 
-[Open an issue](https://github.com/brennhill/gasoline/issues/new) with:
+[Open an issue](https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/new) with:
 
 1. **Environment**: OS, Chrome version, Gasoline version (`window.__gasoline.version`)
 2. **Steps to reproduce**

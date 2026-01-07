@@ -1,35 +1,25 @@
 title: "Gasoline"
-subtitle: "Browser observability for AI coding agents - autonomously debug and fix issues in real time"
-description: "Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready."
+description: "Browser observability for AI coding agents. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant."
 url: "https://cookwithgasoline.com"
 baseurl: ""
 
-remote_theme: "mmistakes/minimal-mistakes@4.26.2"
-
+# No theme - using custom layouts
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
   - jekyll-sitemap
-  - jekyll-include-cache
 
 # SEO
 twitter:
   username: brennhill
-og_image: /assets/images/og-default.png
 logo: /assets/images/logo.png
 
-# Site Author
+# Author
 author:
   name: "Brenn Hill"
-  links:
-    - label: "GitHub"
-      icon: "fab fa-fw fa-github"
-      url: "https://github.com/brennhill/gasoline"
 
-analytics:
-  provider: "google-gtag"
-  google:
-    tracking_id: "G-BDRZ2Z24M7"
+# Analytics
+google_analytics: G-BDRZ2Z24M7
 
 # Defaults
 defaults:
@@ -37,13 +27,14 @@ defaults:
       path: ""
       type: "pages"
     values:
-      layout: "single"
-      sidebar:
-        nav: "docs"
-      toc: true
-      toc_sticky: true
+      layout: "page"
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
 
-# Exclude internal spec files from the site build
+# Exclude
 exclude:
   - .claude
   - specification.md
@@ -61,23 +52,19 @@ exclude:
   - gasoline-ci-specification.md
   - features/
   - ai-first/
+  - agents/
+  - specs/
+  - mcp-integration/
   - Gemfile
   - Gemfile.lock
   - node_modules
   - vendor
-
-# Collections (if needed later)
-# collections:
-#   guides:
-#     output: true
-#     permalink: /guides/:path/
+  - mm.zip
+  - minimal-mistakes-4.26.2
+  - ugly-site.png
 
 # Markdown
 markdown: kramdown
 kramdown:
   input: GFM
   syntax_highlighter: rouge
-
-# Pagination (if blog added later)
-# paginate: 10
-# paginate_path: "/blog/page:num/"

@@ -573,7 +573,7 @@ func appendUnique(slice []string, val string) []string {
 
 // loadCustomListsFile reads and parses a CustomLists JSON file.
 func loadCustomListsFile(path string) *CustomLists {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is from trusted config location
 	if err != nil {
 		return nil
 	}

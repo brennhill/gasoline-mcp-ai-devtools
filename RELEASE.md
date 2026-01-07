@@ -28,7 +28,7 @@ Every feature must pass all gates before merging to `next`. All gates must be gr
 
 ```bash
 make test                              # Go server tests
-node --test extension-tests/*.test.js  # Extension tests
+node --test tests/extension/*.test.js  # Extension tests
 ```
 
 No code is merged with failing tests.
@@ -106,7 +106,7 @@ When `next` is stable and ready for release:
 ```bash
 # Full test suite
 make test
-node --test extension-tests/*.test.js
+node --test tests/extension/*.test.js
 
 # Static analysis
 go vet ./cmd/dev-console/
@@ -131,12 +131,15 @@ All locations must be updated together (use `/bump-version`):
 | `extension/package.json` | `"version"` |
 | `cmd/dev-console/main.go` | `version` constant |
 | `server/package.json` | `"version"` |
-| `npm/gasoline-cli/package.json` | `"version"` + `optionalDependencies` |
+| `npm/gasoline-mcp/package.json` | `"version"` + `optionalDependencies` |
 | `npm/darwin-arm64/package.json` | `"version"` |
 | `npm/darwin-x64/package.json` | `"version"` |
 | `npm/linux-arm64/package.json` | `"version"` |
 | `npm/linux-x64/package.json` | `"version"` |
 | `npm/win32-x64/package.json` | `"version"` |
+| `pypi/gasoline-mcp/pyproject.toml` | `version` + optional deps |
+| `pypi/gasoline-mcp-*/pyproject.toml` | `version` (5 platform packages) |
+| `pypi/gasoline-mcp*/__init__.py` | `__version__` (6 packages) |
 | `README.md` | Version badge |
 
 Verify: `grep -r "OLD_VERSION" --include="*.json" --include="*.js" --include="*.go" --include="*.md" .` should return zero results.
@@ -160,16 +163,29 @@ git push origin main --follow-tags
 ```bash
 # Cross-platform binaries
 make build
+```
 
-# Publish npm packages
-cd npm/gasoline-cli && npm publish
-cd npm/darwin-arm64 && npm publish
-cd npm/darwin-x64 && npm publish
-cd npm/linux-arm64 && npm publish
-cd npm/linux-x64 && npm publish
-cd npm/win32-x64 && npm publish
+**NPM:**
+```bash
+cd npm && ./publish.sh
+```
 
-# Chrome Web Store
+**PyPI:**
+```bash
+# Build all PyPI packages
+make pypi-build
+
+# Test PyPI first (recommended)
+make pypi-test-publish
+
+# Production PyPI
+make pypi-publish
+```
+
+See `docs/pypi-distribution.md` for detailed PyPI publishing instructions.
+
+**Chrome Web Store:**
+```bash
 # Upload extension/ directory via Chrome Developer Dashboard
 ```
 
@@ -181,12 +197,11 @@ git merge main
 git push origin next
 ```
 
-### 7. Update Submodules
+### 7. Update Marketing Site
 
-```bash
-# If marketing or claude config changed
-/update-marketing
-```
+The marketing site is a separate repo at `~/dev/gasoline-site` (Astro).
+Blog posts go in `src/content/docs/blog/`. Update version numbers and
+add release blog post there after tagging.
 
 ## Hotfix Process
 

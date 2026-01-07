@@ -244,7 +244,7 @@ func TestMCPGetNetworkBodies(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network_bodies"}}`),
 	})
 
 	if resp.Error != nil {
@@ -258,11 +258,13 @@ func TestMCPGetNetworkBodies(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
-	var bodies []NetworkBody
-	json.Unmarshal([]byte(result.Content[0].Text), &bodies)
-
-	if len(bodies) != 2 {
-		t.Errorf("Expected 2 bodies, got %d", len(bodies))
+	// New format: summary line + markdown table
+	text := result.Content[0].Text
+	if !strings.Contains(text, "2 network request-response pair(s)") {
+		t.Errorf("Expected summary with '2 network request-response pair(s)', got: %s", text)
+	}
+	if !strings.Contains(text, "/api/users") {
+		t.Errorf("Expected table to contain /api/users, got: %s", text)
 	}
 }
 
@@ -283,7 +285,7 @@ func TestMCPGetNetworkBodiesWithFilter(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network","status_min":400}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network_bodies","status_min":400}}`),
 	})
 
 	var result struct {
@@ -293,11 +295,10 @@ func TestMCPGetNetworkBodiesWithFilter(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
-	var bodies []NetworkBody
-	json.Unmarshal([]byte(result.Content[0].Text), &bodies)
-
-	if len(bodies) != 1 {
-		t.Errorf("Expected 1 error body, got %d", len(bodies))
+	// New format: summary line + markdown table
+	text := result.Content[0].Text
+	if !strings.Contains(text, "1 network request-response pair(s)") {
+		t.Errorf("Expected summary with '1 network request-response pair(s)', got: %s", text)
 	}
 }
 
@@ -313,7 +314,7 @@ func TestMCPGetNetworkBodiesEmpty(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network_bodies"}}`),
 	})
 
 	var result struct {
@@ -323,13 +324,15 @@ func TestMCPGetNetworkBodiesEmpty(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
-	if result.Content[0].Text != "No network bodies captured" {
-		var bodies []NetworkBody
-		if err := json.Unmarshal([]byte(result.Content[0].Text), &bodies); err == nil {
-			if len(bodies) != 0 {
-				t.Error("Expected empty bodies or message")
-			}
-		}
+	// Parse JSON response
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &data); err != nil {
+		t.Fatalf("Expected JSON response, got: %s", result.Content[0].Text)
+	}
+
+	// Verify empty state
+	if count, ok := data["count"].(float64); !ok || count != 0 {
+		t.Errorf("Expected count=0, got: %v", data["count"])
 	}
 }
 

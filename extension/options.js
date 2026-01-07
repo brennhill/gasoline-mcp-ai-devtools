@@ -14,7 +14,7 @@ const DEFAULT_SERVER_URL = 'http://localhost:7890'
 // Load saved options
 export function loadOptions() {
   chrome.storage.local.get(
-    ['serverUrl', 'domainFilters', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled'],
+    ['serverUrl', 'domainFilters', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled', 'debugMode'],
     (result) => {
       // Set server URL
       document.getElementById('server-url-input').value = result.serverUrl || DEFAULT_SERVER_URL
@@ -39,11 +39,26 @@ export function loadOptions() {
       if (result.deferralEnabled !== false) {
         deferralToggle.classList.add('active')
       }
+
+      // Set debug mode toggle state
+      // IMPORTANT: Uses 'debugMode' key (unified with popup and background)
+      // This controls diagnostic logging output (_aiWebPilotInitPromise logs, extDebugLog, etc)
+      const debugToggle = document.getElementById('debug-mode-toggle')
+      if (result.debugMode) {
+        debugToggle.classList.add('active')
+      }
     },
   )
 }
 
-// Save options
+/**
+ * Save options to storage and notify background
+ * ARCHITECTURE: Options page writes to storage directly (for immediate persistence),
+ * then sends messages to background so it can update its internal state.
+ * Background is the authoritative source of truth for actual behavior.
+ * Example: debugMode=true in storage enables logging immediately, AND background
+ * updates its debugMode variable so new logs use the new setting.
+ */
 export function saveOptions() {
   const serverUrl = document.getElementById('server-url-input').value.trim() || DEFAULT_SERVER_URL
 
@@ -56,20 +71,22 @@ export function saveOptions() {
   const screenshotOnError = document.getElementById('screenshot-toggle').classList.contains('active')
   const sourceMapEnabled = document.getElementById('sourcemap-toggle').classList.contains('active')
   const deferralEnabled = document.getElementById('deferral-toggle').classList.contains('active')
+  const debugMode = document.getElementById('debug-mode-toggle').classList.contains('active')
 
   chrome.storage.local.set(
-    { serverUrl, domainFilters: filters, screenshotOnError, sourceMapEnabled, deferralEnabled },
+    { serverUrl, domainFilters: filters, screenshotOnError, sourceMapEnabled, deferralEnabled, debugMode },
     () => {
       // Show saved message
       const message = document.getElementById('saved-message')
       message.classList.add('show')
 
-      // Notify background
+      // Notify background of changes so it can update its in-memory state
       chrome.runtime.sendMessage({ type: 'setServerUrl', url: serverUrl })
       chrome.runtime.sendMessage({ type: 'setDomainFilters', filters })
       chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
       chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
       chrome.runtime.sendMessage({ type: 'setDeferralEnabled', enabled: deferralEnabled })
+      chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode })
 
       // Hide message after 2 seconds
       setTimeout(() => {
@@ -97,6 +114,97 @@ export function toggleDeferral() {
   toggle.classList.toggle('active')
 }
 
+// Toggle debug mode setting
+export function toggleDebugMode() {
+  const toggle = document.getElementById('debug-mode-toggle')
+  toggle.classList.toggle('active')
+}
+
+// Test connection to server
+export async function testConnection() {
+  const btn = document.getElementById('test-connection-btn')
+  const resultEl = document.getElementById('test-result')
+  const serverUrl = document.getElementById('server-url-input').value.trim() || DEFAULT_SERVER_URL
+
+  btn.disabled = true
+  btn.textContent = '...'
+  resultEl.style.display = 'block'
+  resultEl.style.background = 'rgba(88, 166, 255, 0.1)'
+  resultEl.style.color = '#58a6ff'
+  resultEl.textContent = 'Connecting...'
+
+  try {
+    const resp = await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) })
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`)
+    }
+    const data = await resp.json()
+    resultEl.style.background = 'rgba(63, 185, 80, 0.1)'
+    resultEl.style.color = '#3fb950'
+    resultEl.textContent = `Connected — v${data.version}, ${data.logs?.entries ?? 0} entries`
+  } catch {
+    resultEl.style.background = 'rgba(248, 81, 73, 0.1)'
+    resultEl.style.color = '#f85149'
+    resultEl.textContent = 'Failed — is the server running? Run: npx gasoline-mcp'
+  } finally {
+    btn.disabled = false
+    btn.textContent = 'Test'
+  }
+}
+
+/**
+ * Export debug log to a downloadable file
+ */
+export async function handleExportDebugLog() {
+  const exportBtn = document.getElementById('export-debug-btn')
+
+  if (exportBtn) {
+    exportBtn.disabled = true
+    exportBtn.textContent = 'Exporting...'
+  }
+
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: 'getDebugLog' }, (response) => {
+      if (exportBtn) {
+        exportBtn.disabled = false
+        exportBtn.textContent = 'Export Debug Log'
+      }
+
+      if (response?.log) {
+        // Create downloadable blob
+        const blob = new Blob([response.log], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+        const filename = `gasoline-debug-${timestamp}.json`
+
+        // Trigger download
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        resolve({ success: true, filename })
+      } else {
+        resolve({ success: false, error: 'Failed to get debug log' })
+      }
+    })
+  })
+}
+
+/**
+ * Clear the debug log buffer
+ */
+export async function handleClearDebugLog() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: 'clearDebugLog' }, (response) => {
+      resolve(response)
+    })
+  })
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   loadOptions()
@@ -104,4 +212,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('screenshot-toggle').addEventListener('click', toggleScreenshot)
   document.getElementById('sourcemap-toggle').addEventListener('click', toggleSourceMap)
   document.getElementById('deferral-toggle').addEventListener('click', toggleDeferral)
+  document.getElementById('debug-mode-toggle').addEventListener('click', toggleDebugMode)
+  document.getElementById('test-connection-btn').addEventListener('click', testConnection)
+
+  // Debug log buttons
+  const exportDebugBtn = document.getElementById('export-debug-btn')
+  if (exportDebugBtn) {
+    exportDebugBtn.addEventListener('click', handleExportDebugLog)
+  }
+
+  const clearDebugBtn = document.getElementById('clear-debug-btn')
+  if (clearDebugBtn) {
+    clearDebugBtn.addEventListener('click', handleClearDebugLog)
+  }
 })

@@ -37,7 +37,7 @@ type AuditEntry struct {
 
 // AuditTrail is an append-only, bounded, concurrent-safe audit log.
 type AuditTrail struct {
-	mu              sync.Mutex
+	mu              sync.RWMutex
 	entries         []AuditEntry
 	maxSize         int
 	sessions        map[string]*SessionInfo
@@ -155,7 +155,9 @@ func (at *AuditTrail) Record(entry AuditEntry) {
 
 	// FIFO eviction when full
 	if len(at.entries) >= at.maxSize {
-		at.entries = at.entries[1:]
+		newEntries := make([]AuditEntry, len(at.entries)-1)
+		copy(newEntries, at.entries[1:])
+		at.entries = newEntries
 	}
 
 	at.entries = append(at.entries, entry)
@@ -177,7 +179,9 @@ func (at *AuditTrail) RecordRedaction(event RedactionEvent) {
 
 	// Bounded: use same max size for redaction events
 	if len(at.redactions) >= at.maxSize {
-		at.redactions = at.redactions[1:]
+		newRedactions := make([]RedactionEvent, len(at.redactions)-1)
+		copy(newRedactions, at.redactions[1:])
+		at.redactions = newRedactions
 	}
 
 	at.redactions = append(at.redactions, event)
@@ -191,8 +195,8 @@ func (at *AuditTrail) RecordRedaction(event RedactionEvent) {
 // Results are returned in reverse chronological order (newest first).
 // If no limit is specified, defaults to 100.
 func (at *AuditTrail) Query(filter AuditFilter) []AuditEntry {
-	at.mu.Lock()
-	defer at.mu.Unlock()
+	at.mu.RLock()
+	defer at.mu.RUnlock()
 
 	limit := filter.Limit
 	if limit <= 0 {
@@ -222,8 +226,8 @@ func (at *AuditTrail) Query(filter AuditFilter) []AuditEntry {
 
 // QueryRedactions returns redaction events matching the given filter.
 func (at *AuditTrail) QueryRedactions(filter AuditFilter) []RedactionEvent {
-	at.mu.Lock()
-	defer at.mu.Unlock()
+	at.mu.RLock()
+	defer at.mu.RUnlock()
 
 	limit := filter.Limit
 	if limit <= 0 {
@@ -296,8 +300,8 @@ func (at *AuditTrail) CreateSession(client ClientIdentifier) *SessionInfo {
 
 // GetSession returns session info for the given ID, or nil if not found.
 func (at *AuditTrail) GetSession(id string) *SessionInfo {
-	at.mu.Lock()
-	defer at.mu.Unlock()
+	at.mu.RLock()
+	defer at.mu.RUnlock()
 
 	return at.sessions[id]
 }
@@ -392,13 +396,13 @@ func compileRedactionPatterns() []*redactionPattern {
 // generateAuditID creates a unique audit entry ID (16 hex chars).
 func generateAuditID() string {
 	b := make([]byte, 8)
-	rand.Read(b)
+	_, _ = rand.Read(b) // #nosec G104 -- best-effort randomness for non-security audit ID
 	return hex.EncodeToString(b)
 }
 
 // generateSessionID creates a unique session ID (32 hex chars from 16 random bytes).
 func generateSessionID() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	_, _ = rand.Read(b) // #nosec G104 -- best-effort randomness for non-security session ID
 	return hex.EncodeToString(b)
 }

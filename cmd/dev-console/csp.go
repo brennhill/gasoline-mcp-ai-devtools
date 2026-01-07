@@ -40,22 +40,25 @@ type CSPGenerator struct {
 
 // CSPParams defines the input parameters for CSP generation.
 type CSPParams struct {
-	Mode            string   `json:"mode"`             // strict, moderate, report_only
-	IncludeReportURI bool    `json:"include_report_uri"`
-	ExcludeOrigins  []string `json:"exclude_origins"`
+	Mode              string   `json:"mode"`                       // strict, moderate, report_only
+	IncludeReportURI  bool     `json:"include_report_uri"`
+	ExcludeOrigins    []string `json:"exclude_origins"`
+	WhitelistOverride []string `json:"whitelist_override,omitempty"` // SESSION-ONLY temporary whitelist (not persisted)
+	SuppressFlags     []string `json:"suppress_flags,omitempty"`     // SESSION-ONLY flag suppression (not persisted)
 }
 
 // CSPResponse is the full response from GenerateCSP.
 type CSPResponse struct {
-	CSPHeader         string                       `json:"csp_header"`
-	HeaderName        string                       `json:"header_name"`
-	MetaTag           string                       `json:"meta_tag"`
-	Directives        map[string][]string          `json:"directives"`
-	OriginDetails     []OriginDetail               `json:"origin_details"`
-	FilteredOrigins   []FilteredOrigin             `json:"filtered_origins"`
-	Observations      CSPObservations              `json:"observations"`
-	Warnings          []string                     `json:"warnings"`
-	RecommendedNextStep string                     `json:"recommended_next_step"`
+	CSPHeader           string                       `json:"csp_header"`
+	HeaderName          string                       `json:"header_name"`
+	MetaTag             string                       `json:"meta_tag"`
+	Directives          map[string][]string          `json:"directives"`
+	OriginDetails       []OriginDetail               `json:"origin_details"`
+	FilteredOrigins     []FilteredOrigin             `json:"filtered_origins"`
+	Observations        CSPObservations              `json:"observations"`
+	Warnings            []string                     `json:"warnings"`
+	RecommendedNextStep string                       `json:"recommended_next_step"`
+	Audit               *CSPAudit                    `json:"audit,omitempty"` // Security boundary audit info
 }
 
 // OriginDetail provides per-origin confidence and inclusion info.
@@ -124,9 +127,28 @@ func (g *CSPGenerator) RecordOrigin(origin, resourceType, pageURL string) {
 
 	entry.Count++
 	entry.LastSeen = now
-	entry.Pages[pageURL] = true
+	if len(entry.Pages) < 1000 {
+		entry.Pages[pageURL] = true
+	}
 
-	g.pages[pageURL] = true
+	if len(g.pages) < 1000 {
+		g.pages[pageURL] = true
+	}
+
+	// Cap origins map at 10000 entries (evict oldest)
+	if len(g.origins) > 10000 {
+		var oldestKey string
+		var oldestTime time.Time
+		for k, v := range g.origins {
+			if oldestKey == "" || v.FirstSeen.Before(oldestTime) {
+				oldestKey = k
+				oldestTime = v.FirstSeen
+			}
+		}
+		if oldestKey != "" {
+			delete(g.origins, oldestKey)
+		}
+	}
 }
 
 // Reset clears the origin accumulator (called on session reset).
@@ -136,6 +158,18 @@ func (g *CSPGenerator) Reset() {
 
 	g.origins = make(map[string]*OriginEntry)
 	g.pages = make(map[string]bool)
+}
+
+// GetPages returns a copy of all observed page URLs.
+func (g *CSPGenerator) GetPages() []string {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	pages := make([]string, 0, len(g.pages))
+	for p := range g.pages {
+		pages = append(pages, p)
+	}
+	return pages
 }
 
 // ============================================
@@ -278,7 +312,7 @@ func (g *CSPGenerator) GenerateCSP(params CSPParams) CSPResponse {
 	// Recommended next step
 	recommendedNextStep := "Deploy as Content-Security-Policy-Report-Only first. Browse all pages again and check for violations via Gasoline's console error capture. Once no violations occur, switch to enforcing mode."
 
-	return CSPResponse{
+	response := CSPResponse{
 		CSPHeader:           cspHeader,
 		HeaderName:          headerName,
 		MetaTag:             metaTag,
@@ -289,6 +323,55 @@ func (g *CSPGenerator) GenerateCSP(params CSPParams) CSPResponse {
 		Warnings:            warnings,
 		RecommendedNextStep: recommendedNextStep,
 	}
+
+	// Handle session-only whitelist overrides (security boundary)
+	if len(params.WhitelistOverride) > 0 {
+		// Add origins to directives (default-src for now)
+		if response.Directives["default-src"] == nil {
+			response.Directives["default-src"] = []string{"'self'"}
+		}
+		response.Directives["default-src"] = append(response.Directives["default-src"], params.WhitelistOverride...)
+
+		// Rebuild CSP header with overrides
+		response.CSPHeader = g.buildCSPHeader(response.Directives)
+		response.MetaTag = fmt.Sprintf(`<meta http-equiv="Content-Security-Policy" content="%s">`, response.CSPHeader)
+
+		// Add warning about session-only override
+		for _, origin := range params.WhitelistOverride {
+			response.Warnings = append(response.Warnings, fmt.Sprintf(
+				"⚠️  SECURITY: Temporary whitelist override applied (SESSION-ONLY)\n"+
+					"   Origin: %s\n"+
+					"   Source: MCP tool parameter\n"+
+					"   Action: Review origin legitimacy before permanent whitelist\n"+
+					"\n"+
+					"💡 To permanently whitelist (after human review):\n"+
+					"   1. Verify origin is legitimate and trusted\n"+
+					"   2. Edit ~/.gasoline/security.json manually\n"+
+					"   3. Add to 'whitelisted_origins' array",
+				origin,
+			))
+		}
+
+		// Add audit information
+		response.Audit = &CSPAudit{
+			SessionOverrides:    params.WhitelistOverride,
+			PersistentWhitelist: []string{},
+			OverrideSource:      "mcp_tool_parameter",
+		}
+
+		// Log security events
+		for _, origin := range params.WhitelistOverride {
+			LogSecurityEvent(SecurityAuditEvent{
+				Action:     "whitelist_override",
+				Origin:     origin,
+				Reason:     "CSP generation with session-only override",
+				Persistent: false,
+				Source:     "mcp",
+			})
+		}
+	}
+
+	return response
 }
 
 // ============================================

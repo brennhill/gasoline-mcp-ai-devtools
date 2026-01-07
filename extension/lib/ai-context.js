@@ -347,6 +347,9 @@ export async function enrichErrorWithAiContext(error) {
 
         // Parse stack frames
         const frames = parseStackFrames(error.stack)
+        if (frames.length === 0) {
+          return result
+        }
         const topFrame = frames[0]
 
         // Source snippets (from cache)
@@ -428,11 +431,14 @@ export function setAiContextStateSnapshot(enabled) {
  * @param {Object} map - The parsed source map
  */
 export function setSourceMapCache(url, map) {
-  // Evict oldest if at capacity
+  // Evict oldest if adding new entry and at capacity
   if (!aiSourceMapCache.has(url) && aiSourceMapCache.size >= AI_CONTEXT_SOURCE_MAP_CACHE_SIZE) {
     const firstKey = aiSourceMapCache.keys().next().value
     aiSourceMapCache.delete(firstKey)
   }
+  // Move to end (LRU): delete first if exists, then add
+  // This ensures recently accessed/updated entries are kept longest
+  aiSourceMapCache.delete(url)
   aiSourceMapCache.set(url, map)
 }
 

@@ -197,7 +197,7 @@ func parseQueryString(rawURL string) []HARQuery {
 // ExportHAR builds a complete HAR log from filtered network bodies.
 // Unlike GetNetworkBodies which returns newest-first, ExportHAR returns
 // entries in chronological order (oldest first) as required by HAR spec.
-func (v *Capture) ExportHAR(filter NetworkBodyFilter) HARLog {
+func (c *Capture) ExportHAR(filter NetworkBodyFilter) HARLog {
 	// Use a high limit to get all bodies for export
 	exportFilter := NetworkBodyFilter{
 		URLFilter: filter.URLFilter,
@@ -207,7 +207,7 @@ func (v *Capture) ExportHAR(filter NetworkBodyFilter) HARLog {
 		Limit:     10000, // High limit to get all entries
 	}
 
-	bodies := v.GetNetworkBodies(exportFilter)
+	bodies := c.GetNetworkBodies(exportFilter)
 
 	// GetNetworkBodies returns newest-first; reverse for chronological order
 	reverseSlice(bodies)
@@ -230,18 +230,19 @@ func (v *Capture) ExportHAR(filter NetworkBodyFilter) HARLog {
 }
 
 // ExportHARToFile exports HAR to a file and returns the result summary
-func (v *Capture) ExportHARToFile(filter NetworkBodyFilter, path string) (HARExportResult, error) {
+func (c *Capture) ExportHARToFile(filter NetworkBodyFilter, path string) (HARExportResult, error) {
 	if !isPathSafe(path) {
 		return HARExportResult{}, fmt.Errorf("path not allowed: %s", path)
 	}
 
-	harLog := v.ExportHAR(filter)
+	harLog := c.ExportHAR(filter)
 
 	data, err := json.MarshalIndent(harLog, "", "  ")
 	if err != nil {
 		return HARExportResult{}, fmt.Errorf("failed to marshal HAR: %w", err)
 	}
 
+	// #nosec G306 -- export files are intentionally world-readable
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return HARExportResult{}, fmt.Errorf("failed to write file: %w", err)
 	}
@@ -301,24 +302,25 @@ func (h *ToolHandler) toolExportHAR(req JSONRPCRequest, args json.RawMessage) JS
 	if arguments.SaveTo != "" {
 		// Save to file
 		if !isPathSafe(arguments.SaveTo) {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Path not allowed: " + arguments.SaveTo)}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrPathNotAllowed, "Path not allowed: "+arguments.SaveTo, "Use an allowed file path")}
 		}
 
 		result, err := h.capture.ExportHARToFile(filter, arguments.SaveTo)
 		if err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Failed to save HAR file: " + err.Error())}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExportFailed, "HAR export failed: "+err.Error(), "Export failed — check file path and permissions")}
 		}
 
-		resultJSON, _ := json.Marshal(result)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(resultJSON))}
+		summary := fmt.Sprintf("HAR export saved to %s", arguments.SaveTo)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
 	}
 
 	// Return HAR JSON directly
 	harLog := h.capture.ExportHAR(filter)
 	harJSON, err := json.Marshal(harLog)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Failed to marshal HAR: " + err.Error())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExportFailed, "Failed to marshal HAR: "+err.Error(), "Export failed — check file path and permissions")}
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(harJSON))}
+	summary := fmt.Sprintf("HAR archive: %d entries", len(harLog.Log.Entries))
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, json.RawMessage(harJSON))}
 }

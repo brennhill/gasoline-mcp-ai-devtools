@@ -15,6 +15,29 @@ import (
 // Types
 // ============================================
 
+// NetworkWaterfallEntry represents a single network resource timing entry
+// from the browser's PerformanceResourceTiming API
+type NetworkWaterfallEntry struct {
+	Name            string    `json:"name"`              // Full URL
+	URL             string    `json:"url"`               // Same as name
+	InitiatorType   string    `json:"initiatorType"`     // "script", "stylesheet", "img", etc.
+	Duration        float64   `json:"duration"`          // Total duration in ms
+	StartTime       float64   `json:"startTime"`         // Relative to navigationStart
+	FetchStart      float64   `json:"fetchStart"`        // When fetch began
+	ResponseEnd     float64   `json:"responseEnd"`       // When response completed
+	TransferSize    int       `json:"transferSize"`      // Bytes transferred (0 if cached)
+	DecodedBodySize int       `json:"decodedBodySize"`   // Decompressed size
+	EncodedBodySize int       `json:"encodedBodySize"`   // Compressed size
+	PageURL         string    `json:"pageURL,omitempty"` // Page that loaded this resource
+	Timestamp       time.Time `json:"timestamp,omitempty"` // Server-side timestamp
+}
+
+// NetworkWaterfallPayload is POSTed by the extension
+type NetworkWaterfallPayload struct {
+	Entries []NetworkWaterfallEntry `json:"entries"`
+	PageURL string                  `json:"pageURL"`
+}
+
 // WebSocketEvent represents a captured WebSocket event
 type WebSocketEvent struct {
 	Timestamp        string        `json:"ts,omitempty"`
@@ -37,6 +60,42 @@ type SamplingInfo struct {
 	Rate   string `json:"rate"`
 	Logged string `json:"logged"`
 	Window string `json:"window"`
+}
+
+// ExtensionLog represents a log entry from the extension's background or content scripts
+type ExtensionLog struct {
+	Timestamp time.Time              `json:"timestamp"`
+	Level     string                 `json:"level"`    // "debug", "info", "warn", "error"
+	Message   string                 `json:"message"`  // Log message
+	Source    string                 `json:"source"`   // "background", "content", "inject"
+	Category  string                 `json:"category,omitempty"` // DebugCategory (CONNECTION, CAPTURE, etc.)
+	Data      map[string]interface{} `json:"data,omitempty"`     // Additional structured data
+}
+
+// PollingLogEntry tracks a single polling request (GET /pending-queries or POST /settings)
+type PollingLogEntry struct {
+	Timestamp    time.Time `json:"timestamp"`
+	Endpoint     string    `json:"endpoint"` // "pending-queries" or "settings"
+	Method       string    `json:"method"`   // "GET" or "POST"
+	SessionID    string    `json:"session_id,omitempty"`
+	PilotEnabled *bool     `json:"pilot_enabled,omitempty"` // Only for POST /settings
+	PilotHeader  string    `json:"pilot_header,omitempty"`  // Only for GET with X-Gasoline-Pilot header
+	QueryCount   int       `json:"query_count,omitempty"`   // Number of pending queries returned
+}
+
+// HTTPDebugEntry tracks detailed request/response data for debugging
+type HTTPDebugEntry struct {
+	Timestamp       time.Time         `json:"timestamp"`
+	Endpoint        string            `json:"endpoint"`        // URL path
+	Method          string            `json:"method"`          // HTTP method
+	SessionID       string            `json:"session_id,omitempty"`
+	ClientID        string            `json:"client_id,omitempty"`
+	Headers         map[string]string `json:"headers,omitempty"`         // Request headers (redacted auth)
+	RequestBody     string            `json:"request_body,omitempty"`    // First 1KB of request body
+	ResponseStatus  int               `json:"response_status,omitempty"` // HTTP status code
+	ResponseBody    string            `json:"response_body,omitempty"`   // First 1KB of response body
+	DurationMs      int64             `json:"duration_ms"`               // Request processing duration
+	Error           string            `json:"error,omitempty"`           // Error message if any
 }
 
 // WebSocketEventFilter defines filtering criteria for events
@@ -157,15 +216,29 @@ type NetworkBodyFilter struct {
 
 // PendingQuery represents a query waiting for extension response
 type PendingQuery struct {
-	Type   string          `json:"type"`
-	Params json.RawMessage `json:"params"`
+	Type          string          `json:"type"`
+	Params        json.RawMessage `json:"params"`
+	TabID         int             `json:"tab_id,omitempty"`         // Target tab ID (0 = active tab)
+	CorrelationID string          `json:"correlation_id,omitempty"` // LLM-facing tracking ID for async commands
 }
 
 // PendingQueryResponse is the response format for pending queries
 type PendingQueryResponse struct {
-	ID     string          `json:"id"`
-	Type   string          `json:"type"`
-	Params json.RawMessage `json:"params"`
+	ID            string          `json:"id"`
+	Type          string          `json:"type"`
+	Params        json.RawMessage `json:"params"`
+	TabID         int             `json:"tab_id,omitempty"`         // Target tab ID (0 = active tab)
+	CorrelationID string          `json:"correlation_id,omitempty"` // LLM-facing tracking ID for async commands
+}
+
+// CommandResult represents the result of an async command execution
+type CommandResult struct {
+	CorrelationID string          `json:"correlation_id"`
+	Status        string          `json:"status"` // "pending", "complete", "timeout", "expired"
+	Result        json.RawMessage `json:"result,omitempty"`
+	Error         string          `json:"error,omitempty"`
+	CompletedAt   time.Time       `json:"completed_at,omitempty"`
+	CreatedAt     time.Time       `json:"created_at"`
 }
 
 // EnhancedAction represents a captured user action with multi-strategy selectors
@@ -308,8 +381,16 @@ type directionStats struct {
 
 // pendingQueryEntry tracks a pending query with timeout
 type pendingQueryEntry struct {
-	query   PendingQueryResponse
-	expires time.Time
+	query    PendingQueryResponse
+	expires  time.Time
+	clientID string // owning client for multi-client isolation
+}
+
+// queryResultEntry stores a query result with client ownership
+type queryResultEntry struct {
+	result    json.RawMessage
+	clientID  string // owning client for multi-client isolation
+	createdAt time.Time
 }
 
 // ============================================
@@ -319,10 +400,16 @@ type pendingQueryEntry struct {
 const (
 	maxWSEvents             = 500
 	maxNetworkBodies        = 100
+	maxExtensionLogs        = 500
 	maxEnhancedActions      = 50
 	maxActiveConns          = 20
 	maxClosedConns          = 10
 	maxPendingQueries       = 5
+
+	// Network waterfall capacity configuration
+	DefaultNetworkWaterfallCapacity = 1000
+	MinNetworkWaterfallCapacity     = 100
+	MaxNetworkWaterfallCapacity     = 10000
 	maxPerfSnapshots        = 20
 	maxPerfBaselines        = 20
 	defaultWSLimit          = 50
@@ -337,7 +424,7 @@ const (
 	circuitOpenStreakCount  = 5                // consecutive seconds over threshold to open circuit
 	circuitCloseSeconds     = 10               // seconds below threshold to close circuit
 	circuitCloseMemoryLimit = 30 * 1024 * 1024 // 30MB - memory must be below this to close circuit
-	defaultQueryTimeout     = 10 * time.Second
+	defaultQueryTimeout     = 2 * time.Second // Extension polls every 1-2s, fast timeout prevents MCP hangs
 	rateWindow              = 5 * time.Second // rolling window for msg/s calculation
 )
 
@@ -413,14 +500,25 @@ type Capture struct {
 	actionAddedAt    []time.Time // parallel: when each action was added
 	actionTotalAdded int64       // monotonic counter
 
+	// Network waterfall ring buffer (PerformanceResourceTiming data)
+	networkWaterfall         []NetworkWaterfallEntry // Complete network request timing data
+	networkWaterfallCapacity int                     // Configurable capacity (default 1000)
+
+	// Security flags ring buffer (detected threats from network waterfall)
+	securityFlags []SecurityFlag // Ring buffer of detected security issues (max 1000)
+
+	// Extension logs ring buffer (background/content script logs)
+	extensionLogs []ExtensionLog // Ring buffer of extension internal logs (max 500)
+
 	// Connection tracker
 	connections map[string]*connectionState
+	observeSem  chan struct{} // bounds concurrent observer goroutines
 	closedConns []WebSocketClosedConnection
 	connOrder   []string // Track insertion order for eviction
 
 	// Pending queries
 	pendingQueries []pendingQueryEntry
-	queryResults   map[string]json.RawMessage
+	queryResults   map[string]queryResultEntry
 	queryCond      *sync.Cond
 	queryIDCounter int
 
@@ -436,11 +534,32 @@ type Capture struct {
 	// Query timeout
 	queryTimeout time.Duration
 
-	// Extension polling tracking
-	lastPollAt        time.Time // When extension last polled /pending-queries
+	// Async command tracking (correlation_id → result)
+	completedResults map[string]*CommandResult // Completed async commands (60s TTL)
+	failedCommands   []*CommandResult          // Failed/expired commands (circular buffer, max 100)
+	resultsMu        sync.RWMutex              // Separate lock for async result operations
+
+	// Extension communication tracking
+	lastPollAt        time.Time // When extension last polled GET /pending-queries (command polling)
 	extensionSession  string    // Current extension session ID (for reload detection)
 	sessionChangedAt  time.Time // When session ID last changed (extension reload)
 	pilotEnabled      bool      // AI Web Pilot toggle state from extension
+	pilotUpdatedAt    time.Time // When pilotEnabled was last updated (from POST /settings)
+	currentTestID     string    // Current test ID for CI test-boundary correlation
+
+	// Tab tracking status (from extension status pings)
+	trackingEnabled bool      // Whether tab tracking is active
+	trackedTabID    int       // The tracked tab's ID (0 = none)
+	trackedTabURL   string    // The tracked tab's URL
+	trackingUpdated time.Time // When tracking status was last updated
+
+	// Polling activity log (rotating buffer of 50 most recent GET /pending-queries and POST /settings calls)
+	pollingLog      []PollingLogEntry // Circular buffer, size 50
+	pollingLogIndex int               // Next write position (wraps at 50)
+
+	// HTTP debug log (rotating buffer of 50 most recent HTTP requests/responses)
+	httpDebugLog      []HTTPDebugEntry // Circular buffer, size 50
+	httpDebugLogIndex int              // Next write position (wraps at 50)
 
 	// Composed sub-structs
 	a11y        A11yCache
@@ -449,23 +568,31 @@ type Capture struct {
 	mem         MemoryState
 	schemaStore *SchemaStore
 	cspGen      *CSPGenerator
+
+	// Multi-client support
+	clientRegistry *ClientRegistry
 }
 
 // NewCapture creates a new Capture instance with initialized buffers
 func NewCapture() *Capture {
 	now := time.Now()
 	c := &Capture{
-		wsEvents:             make([]WebSocketEvent, 0, maxWSEvents),
-		networkBodies:        make([]NetworkBody, 0, maxNetworkBodies),
-		enhancedActions:      make([]EnhancedAction, 0, maxEnhancedActions),
-		connections:          make(map[string]*connectionState),
-		closedConns:          make([]WebSocketClosedConnection, 0),
-		connOrder:            make([]string, 0),
-		pendingQueries:       make([]pendingQueryEntry, 0),
-		queryResults:         make(map[string]json.RawMessage),
-		rateWindowStart:      now,
-		lastBelowThresholdAt: now,
-		queryTimeout:         defaultQueryTimeout,
+		wsEvents:                 make([]WebSocketEvent, 0, maxWSEvents),
+		networkBodies:            make([]NetworkBody, 0, maxNetworkBodies),
+		extensionLogs:            make([]ExtensionLog, 0, maxExtensionLogs),
+		enhancedActions:          make([]EnhancedAction, 0, maxEnhancedActions),
+		networkWaterfall:         make([]NetworkWaterfallEntry, 0, DefaultNetworkWaterfallCapacity),
+		networkWaterfallCapacity: DefaultNetworkWaterfallCapacity,
+		connections:              make(map[string]*connectionState),
+		closedConns:              make([]WebSocketClosedConnection, 0),
+		connOrder:                make([]string, 0),
+		pendingQueries:           make([]pendingQueryEntry, 0),
+		queryResults:             make(map[string]queryResultEntry),
+		rateWindowStart:          now,
+		lastBelowThresholdAt:     now,
+		queryTimeout:             defaultQueryTimeout,
+		completedResults:         make(map[string]*CommandResult),
+		failedCommands:           make([]*CommandResult, 0, 100), // Pre-allocate for 100 failed commands
 		perf: PerformanceStore{
 			snapshots:     make(map[string]PerformanceSnapshot),
 			snapshotOrder: make([]string, 0),
@@ -480,9 +607,14 @@ func NewCapture() *Capture {
 			cacheOrder: make([]string, 0),
 			inflight:   make(map[string]*a11yInflightEntry),
 		},
+		pollingLog:   make([]PollingLogEntry, 50),  // Pre-allocate 50-entry circular buffer
+		httpDebugLog: make([]HTTPDebugEntry, 50), // Pre-allocate 50-entry circular buffer for HTTP debug
 	}
+	c.observeSem = make(chan struct{}, 4)
 	c.queryCond = sync.NewCond(&c.mu)
 	c.schemaStore = NewSchemaStore()
+	c.clientRegistry = NewClientRegistry()
+	c.cspGen = NewCSPGenerator()
 	return c
 }
 

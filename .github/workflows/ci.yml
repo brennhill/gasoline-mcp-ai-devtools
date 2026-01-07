@@ -39,7 +39,7 @@ jobs:
       - name: Go security scan
         uses: securego/gosec@master
         with:
-          args: -exclude=G104,G114,G204,G301,G304,G306 ./cmd/dev-console/
+          args: ./cmd/dev-console/
 
       - name: JS security lint
         run: |
