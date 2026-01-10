@@ -173,7 +173,7 @@ describe('W3 Exceptions: source field', () => {
   })
 
   test('exception entries include source field with filename:lineno format', async () => {
-    const { installExceptionCapture, uninstallExceptionCapture } = await import('../../extension/inject.js')
+    const { installExceptionCapture, uninstallExceptionCapture: _uninstallExceptionCapture } = await import('../../extension/inject.js')
 
     installExceptionCapture()
 

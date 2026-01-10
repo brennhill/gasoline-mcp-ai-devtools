@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // ============================================
@@ -15,6 +16,7 @@ import (
 // ============================================
 
 func TestMcpMarkdownResponse_IncludesSummary(t *testing.T) {
+	t.Parallel()
 	summary := "3 browser error(s)"
 	md := "| Level | Message |\n| --- | --- |\n| error | test |\n"
 	raw := mcpMarkdownResponse(summary, md)
@@ -35,6 +37,7 @@ func TestMcpMarkdownResponse_IncludesSummary(t *testing.T) {
 }
 
 func TestMcpMarkdownResponse_HasTable(t *testing.T) {
+	t.Parallel()
 	headers := []string{"Level", "Message"}
 	rows := [][]string{{"error", "test error"}}
 	table := markdownTable(headers, rows)
@@ -53,6 +56,7 @@ func TestMcpMarkdownResponse_HasTable(t *testing.T) {
 }
 
 func TestMcpJSONResponse_IncludesSummary(t *testing.T) {
+	t.Parallel()
 	summary := "WebSocket connection status"
 	data := map[string]interface{}{"connections": []interface{}{}}
 	raw := mcpJSONResponse(summary, data)
@@ -76,6 +80,7 @@ func TestMcpJSONResponse_IncludesSummary(t *testing.T) {
 }
 
 func TestMcpJSONResponse_CompactJSON(t *testing.T) {
+	t.Parallel()
 	data := map[string]interface{}{"key": "value", "nested": map[string]interface{}{"a": 1}}
 	raw := mcpJSONResponse("summary", data)
 
@@ -93,6 +98,7 @@ func TestMcpJSONResponse_CompactJSON(t *testing.T) {
 }
 
 func TestMcpJSONResponse_EmptySummary(t *testing.T) {
+	t.Parallel()
 	data := map[string]interface{}{"status": "ok"}
 	raw := mcpJSONResponse("", data)
 
@@ -107,6 +113,7 @@ func TestMcpJSONResponse_EmptySummary(t *testing.T) {
 }
 
 func TestMcpJSONResponse_NilData(t *testing.T) {
+	t.Parallel()
 	raw := mcpJSONResponse("summary", nil)
 
 	var result MCPToolResult
@@ -123,6 +130,7 @@ func TestMcpJSONResponse_NilData(t *testing.T) {
 }
 
 func TestMcpJSONResponse_MarshalError(t *testing.T) {
+	t.Parallel()
 	// channels cannot be marshaled to JSON
 	ch := make(chan int)
 	raw := mcpJSONResponse("summary", ch)
@@ -144,6 +152,7 @@ func TestMcpJSONResponse_MarshalError(t *testing.T) {
 // ============================================
 
 func TestMarkdownTable_Empty(t *testing.T) {
+	t.Parallel()
 	result := markdownTable([]string{"A", "B"}, nil)
 	if result != "" {
 		t.Errorf("Expected empty string for empty rows, got: %q", result)
@@ -151,6 +160,7 @@ func TestMarkdownTable_Empty(t *testing.T) {
 }
 
 func TestMarkdownTable_SingleRow(t *testing.T) {
+	t.Parallel()
 	headers := []string{"Name", "Value"}
 	rows := [][]string{{"foo", "bar"}}
 	result := markdownTable(headers, rows)
@@ -177,6 +187,7 @@ func TestMarkdownTable_SingleRow(t *testing.T) {
 }
 
 func TestMarkdownTable_EscapesPipes(t *testing.T) {
+	t.Parallel()
 	headers := []string{"Message"}
 	rows := [][]string{{"value with | pipe char"}}
 	result := markdownTable(headers, rows)
@@ -194,6 +205,7 @@ func TestMarkdownTable_EscapesPipes(t *testing.T) {
 }
 
 func TestMarkdownTable_EscapesNewlines(t *testing.T) {
+	t.Parallel()
 	headers := []string{"Message"}
 	rows := [][]string{{"line1\nline2"}}
 	result := markdownTable(headers, rows)
@@ -211,6 +223,7 @@ func TestMarkdownTable_EscapesNewlines(t *testing.T) {
 }
 
 func TestMarkdownTable_SpecialChars(t *testing.T) {
+	t.Parallel()
 	headers := []string{"Content"}
 	rows := [][]string{
 		{`<script>alert("xss")</script>`},
@@ -235,6 +248,7 @@ func TestMarkdownTable_SpecialChars(t *testing.T) {
 }
 
 func TestMarkdownTable_LargeTable(t *testing.T) {
+	t.Parallel()
 	headers := []string{"ID", "Name", "Status"}
 	rows := make([][]string, 500)
 	for i := range rows {
@@ -264,6 +278,7 @@ func TestMarkdownTable_LargeTable(t *testing.T) {
 // ============================================
 
 func TestTruncate_ShortString(t *testing.T) {
+	t.Parallel()
 	result := truncate("hello", 10)
 	if result != "hello" {
 		t.Errorf("Expected %q, got %q", "hello", result)
@@ -271,6 +286,7 @@ func TestTruncate_ShortString(t *testing.T) {
 }
 
 func TestTruncate_ExactLimit(t *testing.T) {
+	t.Parallel()
 	result := truncate("12345", 5)
 	if result != "12345" {
 		t.Errorf("Expected %q, got %q", "12345", result)
@@ -278,6 +294,7 @@ func TestTruncate_ExactLimit(t *testing.T) {
 }
 
 func TestTruncate_LongString(t *testing.T) {
+	t.Parallel()
 	result := truncate("this is a long string that should be truncated", 10)
 	if len(result) != 10 {
 		t.Errorf("Expected length 10, got %d: %q", len(result), result)
@@ -292,6 +309,7 @@ func TestTruncate_LongString(t *testing.T) {
 }
 
 func TestTruncate_EmptyString(t *testing.T) {
+	t.Parallel()
 	result := truncate("", 10)
 	if result != "" {
 		t.Errorf("Expected empty string, got %q", result)
@@ -303,6 +321,7 @@ func TestTruncate_EmptyString(t *testing.T) {
 // ============================================
 
 func TestMcpStructuredError_Format(t *testing.T) {
+	t.Parallel()
 	raw := mcpStructuredError(ErrMissingParam, "Parameter 'what' is missing",
 		"Add the 'what' parameter and call again")
 
@@ -328,6 +347,7 @@ func TestMcpStructuredError_Format(t *testing.T) {
 }
 
 func TestMcpStructuredError_IsError(t *testing.T) {
+	t.Parallel()
 	raw := mcpStructuredError(ErrInvalidJSON, "bad json", "Fix JSON syntax and call again")
 
 	var result MCPToolResult
@@ -339,6 +359,7 @@ func TestMcpStructuredError_IsError(t *testing.T) {
 }
 
 func TestMcpStructuredError_SelfDescribingCode(t *testing.T) {
+	t.Parallel()
 	raw := mcpStructuredError(ErrUnknownMode, "Unknown mode: foo",
 		"Use a valid mode from the 'what' enum")
 
@@ -360,6 +381,7 @@ func TestMcpStructuredError_SelfDescribingCode(t *testing.T) {
 }
 
 func TestMcpStructuredError_RetryIsInstruction(t *testing.T) {
+	t.Parallel()
 	retry := "Fix JSON syntax and call again"
 	raw := mcpStructuredError(ErrInvalidJSON, "bad json", retry)
 
@@ -382,6 +404,7 @@ func TestMcpStructuredError_RetryIsInstruction(t *testing.T) {
 }
 
 func TestMcpStructuredError_WithParam(t *testing.T) {
+	t.Parallel()
 	raw := mcpStructuredError(ErrMissingParam, "Missing 'what'",
 		"Add the 'what' parameter and call again",
 		withParam("what"))
@@ -400,6 +423,7 @@ func TestMcpStructuredError_WithParam(t *testing.T) {
 }
 
 func TestMcpStructuredError_WithHint(t *testing.T) {
+	t.Parallel()
 	hint := "Valid values: errors, logs, network"
 	raw := mcpStructuredError(ErrMissingParam, "Missing 'what'",
 		"Add the 'what' parameter and call again",
@@ -419,6 +443,7 @@ func TestMcpStructuredError_WithHint(t *testing.T) {
 }
 
 func TestMcpStructuredError_Parseable(t *testing.T) {
+	t.Parallel()
 	raw := mcpStructuredError(ErrExtTimeout, "Timeout waiting for page info",
 		"Browser extension didn't respond — wait a moment and retry",
 		withParam("page"), withHint("Check that the extension is connected"))
@@ -452,6 +477,7 @@ func TestMcpStructuredError_Parseable(t *testing.T) {
 }
 
 func TestMcpStructuredError_PrefixMatchesBody(t *testing.T) {
+	t.Parallel()
 	code := ErrMissingParam
 	retry := "Add the 'what' parameter and call again"
 	raw := mcpStructuredError(code, "Missing 'what'", retry, withParam("what"))
@@ -478,6 +504,7 @@ func TestMcpStructuredError_PrefixMatchesBody(t *testing.T) {
 }
 
 func TestMcpStructuredError_SpecialCharsInMessage(t *testing.T) {
+	t.Parallel()
 	message := `Error at "line 5": unexpected 'token' with unicode \u00e9 and newline
 second line`
 	raw := mcpStructuredError(ErrInvalidJSON, message, "Fix JSON syntax and call again")
@@ -514,6 +541,7 @@ second line`
 // ============================================
 
 func TestErrorCodeConstants_AreSnakeCase(t *testing.T) {
+	t.Parallel()
 	codes := []string{
 		ErrInvalidJSON, ErrMissingParam, ErrInvalidParam, ErrUnknownMode,
 		ErrPathNotAllowed, ErrNotInitialized, ErrNoData, ErrCodePilotDisabled,
@@ -544,6 +572,7 @@ func TestErrorCodeConstants_AreSnakeCase(t *testing.T) {
 // After migration, no handler code should call mcpErrorResponse directly.
 // The function definition and test helpers may still reference it.
 func TestNoRawMcpErrorResponse(t *testing.T) {
+	t.Parallel()
 	src, err := os.ReadFile("tools.go")
 	if err != nil {
 		t.Fatalf("Failed to read tools.go: %v", err)
@@ -593,6 +622,7 @@ func TestNoRawMcpErrorResponse(t *testing.T) {
 // TestAllErrorCodes_UsedInHandlers verifies that each ErrXxx constant appears
 // in at least one mcpStructuredError call across the source files.
 func TestAllErrorCodes_UsedInHandlers(t *testing.T) {
+	t.Parallel()
 	// Read all Go source files in the package
 	entries, err := os.ReadDir(".")
 	if err != nil {
@@ -632,6 +662,7 @@ func TestAllErrorCodes_UsedInHandlers(t *testing.T) {
 
 // TestEntryStr_Helper verifies the entryStr helper for safe LogEntry field extraction.
 func TestEntryStr_Helper(t *testing.T) {
+	t.Parallel()
 	entry := LogEntry{
 		"level":   "error",
 		"message": "test message",
@@ -657,6 +688,7 @@ func TestEntryStr_Helper(t *testing.T) {
 
 // TestBrowserErrors_MarkdownFormat verifies toolGetBrowserErrors returns markdown table format.
 func TestBrowserErrors_MarkdownFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -698,6 +730,7 @@ func TestBrowserErrors_MarkdownFormat(t *testing.T) {
 
 // TestBrowserLogs_MarkdownFormat verifies toolGetBrowserLogs returns markdown table format.
 func TestBrowserLogs_MarkdownFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -722,8 +755,93 @@ func TestBrowserLogs_MarkdownFormat(t *testing.T) {
 	}
 }
 
+// TestBrowserLogs_IncludesTabId verifies toolGetBrowserLogs includes tabId in response.
+func TestBrowserLogs_IncludesTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "test error", "source": "app.js:10", "ts": "2024-01-01T00:00:00Z", "tabId": float64(42)},
+		{"level": "log", "message": "info msg", "source": "main.js:1", "ts": "2024-01-01T00:00:01Z", "tabId": float64(99)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetBrowserLogs(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain Tab column header
+	if !strings.Contains(text, "Tab") {
+		t.Error("Expected 'Tab' column header in markdown table")
+	}
+	// Should contain tab IDs
+	if !strings.Contains(text, "42") {
+		t.Error("Expected tabId 42 in table")
+	}
+	if !strings.Contains(text, "99") {
+		t.Error("Expected tabId 99 in table")
+	}
+}
+
+// TestBrowserErrors_IncludesTabId verifies toolGetBrowserErrors includes tabId in response.
+func TestBrowserErrors_IncludesTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "TypeError: foo", "source": "app.js:10", "ts": "2024-01-01T00:00:00Z", "tabId": float64(42)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetBrowserErrors(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain Tab column header
+	if !strings.Contains(text, "Tab") {
+		t.Error("Expected 'Tab' column header in markdown table")
+	}
+	// Should contain tab ID
+	if !strings.Contains(text, "42") {
+		t.Error("Expected tabId 42 in table")
+	}
+}
+
+// TestBrowserLogs_NoTabId verifies logs without tabId still work (backward compat).
+func TestBrowserLogs_NoTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "old entry", "source": "app.js:10", "ts": "2024-01-01T00:00:00Z"},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetBrowserLogs(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should still render correctly without tabId
+	if !strings.Contains(text, "old entry") {
+		t.Error("Expected log message in table")
+	}
+}
+
 // TestConfigureStore_JSONFormat verifies toolConfigureStore returns JSON format with summary.
 func TestConfigureStore_JSONFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -747,6 +865,7 @@ func TestConfigureStore_JSONFormat(t *testing.T) {
 
 // TestConfigureNoise_JSONFormat verifies toolConfigureNoise returns JSON format with summary.
 func TestConfigureNoise_JSONFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -767,6 +886,7 @@ func TestConfigureNoise_JSONFormat(t *testing.T) {
 
 // TestDismissNoise_JSONFormat verifies toolDismissNoise returns JSON format with summary.
 func TestDismissNoise_JSONFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -787,6 +907,7 @@ func TestDismissNoise_JSONFormat(t *testing.T) {
 
 // TestObserveDispatcher_StructuredErrors verifies dispatcher errors use structured format.
 func TestObserveDispatcher_StructuredErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -852,6 +973,7 @@ func TestObserveDispatcher_StructuredErrors(t *testing.T) {
 
 // TestGenerateDispatcher_StructuredErrors verifies generate dispatcher errors use structured format.
 func TestGenerateDispatcher_StructuredErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -882,6 +1004,7 @@ func TestGenerateDispatcher_StructuredErrors(t *testing.T) {
 
 // TestConfigureDispatcher_StructuredErrors verifies configure dispatcher errors use structured format.
 func TestConfigureDispatcher_StructuredErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -912,6 +1035,7 @@ func TestConfigureDispatcher_StructuredErrors(t *testing.T) {
 
 // TestInteractDispatcher_StructuredErrors verifies interact dispatcher errors use structured format.
 func TestInteractDispatcher_StructuredErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -942,6 +1066,7 @@ func TestInteractDispatcher_StructuredErrors(t *testing.T) {
 
 // TestConfigureStoreNil_StructuredError verifies nil session store returns structured error.
 func TestConfigureStoreNil_StructuredError(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -963,6 +1088,7 @@ func TestConfigureStoreNil_StructuredError(t *testing.T) {
 
 // TestVerifyFix_StructuredError verifies verification manager nil returns structured error.
 func TestVerifyFix_StructuredError(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -984,6 +1110,7 @@ func TestVerifyFix_StructuredError(t *testing.T) {
 
 // TestChanges_JSONFormat verifies toolGetChangesSince returns JSON format with summary.
 func TestChanges_JSONFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1003,6 +1130,7 @@ func TestChanges_JSONFormat(t *testing.T) {
 
 // TestLoadSessionContext_JSONFormat verifies toolLoadSessionContext returns JSON format.
 func TestLoadSessionContext_JSONFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1017,5 +1145,293 @@ func TestLoadSessionContext_JSONFormat(t *testing.T) {
 	lines := strings.SplitN(text, "\n", 2)
 	if lines[0] != "Session context loaded" {
 		t.Errorf("Expected summary 'Session context loaded', got: %q", lines[0])
+	}
+}
+
+// ============================================
+// Bug #6: Missing tabId in MCP Responses - TDD Tests
+// ============================================
+
+// TestNetworkBodies_IncludesTabId verifies toolGetNetworkBodies includes tabId in response entries.
+func TestNetworkBodies_IncludesTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add network bodies with tabId
+	capture.mu.Lock()
+	capture.networkBodies = []NetworkBody{
+		{URL: "https://api.example.com/users", Method: "GET", Status: 200, TabId: 42},
+		{URL: "https://api.example.com/posts", Method: "POST", Status: 201, TabId: 99},
+	}
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetNetworkBodies(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain tab_id in JSON response
+	if !strings.Contains(text, `"tab_id":42`) && !strings.Contains(text, `"tab_id": 42`) {
+		t.Errorf("Expected tab_id 42 in response, got: %s", text)
+	}
+	if !strings.Contains(text, `"tab_id":99`) && !strings.Contains(text, `"tab_id": 99`) {
+		t.Errorf("Expected tab_id 99 in response, got: %s", text)
+	}
+}
+
+// TestNetworkBodies_NoTabId verifies backward compatibility when tabId is missing.
+func TestNetworkBodies_NoTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add network body without tabId (TabId=0 means not set)
+	capture.mu.Lock()
+	capture.networkBodies = []NetworkBody{
+		{URL: "https://api.example.com/legacy", Method: "GET", Status: 200, TabId: 0},
+	}
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetNetworkBodies(req, json.RawMessage(`{}`))
+
+	// Should not crash and should return valid response
+	if resp.Error != nil {
+		t.Errorf("Expected no error, got: %v", resp.Error)
+	}
+}
+
+// TestWebSocketEvents_IncludesTabId verifies toolGetWSEvents includes tabId in response entries.
+func TestWebSocketEvents_IncludesTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add WebSocket events with tabId
+	capture.mu.Lock()
+	capture.wsEvents = []WebSocketEvent{
+		{ID: "conn1", Event: "message", Direction: "incoming", Data: "hello", TabId: 42},
+		{ID: "conn2", Event: "message", Direction: "outgoing", Data: "world", TabId: 99},
+	}
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetWSEvents(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain Tab column header and tab values in markdown table
+	if !strings.Contains(text, "| Tab |") {
+		t.Errorf("Expected 'Tab' column header in response, got: %s", text)
+	}
+	if !strings.Contains(text, "| 42 |") {
+		t.Errorf("Expected tabId 42 in markdown table, got: %s", text)
+	}
+	if !strings.Contains(text, "| 99 |") {
+		t.Errorf("Expected tabId 99 in markdown table, got: %s", text)
+	}
+}
+
+// TestEnhancedActions_IncludesTabId verifies toolGetEnhancedActions includes tabId in response entries.
+func TestEnhancedActions_IncludesTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add enhanced actions with tabId
+	capture.mu.Lock()
+	capture.enhancedActions = []EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "https://example.com", TabId: 42},
+		{Type: "input", Timestamp: 2000, URL: "https://example.com", TabId: 99},
+	}
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetEnhancedActions(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain Tab column header and tab values in markdown table
+	if !strings.Contains(text, "| Tab |") {
+		t.Errorf("Expected 'Tab' column header in response, got: %s", text)
+	}
+	if !strings.Contains(text, "| 42 |") {
+		t.Errorf("Expected tabId 42 in markdown table, got: %s", text)
+	}
+	if !strings.Contains(text, "| 99 |") {
+		t.Errorf("Expected tabId 99 in markdown table, got: %s", text)
+	}
+}
+
+// TestObserveLogs_FilterByTabId verifies observe logs can filter by tab_id parameter.
+func TestObserveLogs_FilterByTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add log entries from different tabs
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "error from tab 42", "tabId": float64(42)},
+		{"level": "error", "message": "error from tab 99", "tabId": float64(99)},
+		{"level": "log", "message": "log from tab 42", "tabId": float64(42)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	// Filter by tab_id: 42
+	resp := mcp.toolHandler.toolObserve(req, json.RawMessage(`{"what":"logs","tab_id":42}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain entries from tab 42
+	if !strings.Contains(text, "error from tab 42") {
+		t.Error("Expected 'error from tab 42' in filtered results")
+	}
+	if !strings.Contains(text, "log from tab 42") {
+		t.Error("Expected 'log from tab 42' in filtered results")
+	}
+	// Should NOT contain entries from tab 99
+	if strings.Contains(text, "error from tab 99") {
+		t.Error("Should NOT contain 'error from tab 99' when filtering by tab_id 42")
+	}
+}
+
+// TestObserveErrors_FilterByTabId verifies observe errors can filter by tab_id parameter.
+func TestObserveErrors_FilterByTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add error entries from different tabs
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "error from tab 42", "tabId": float64(42)},
+		{"level": "error", "message": "error from tab 99", "tabId": float64(99)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	// Filter by tab_id: 99
+	resp := mcp.toolHandler.toolObserve(req, json.RawMessage(`{"what":"errors","tab_id":99}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain entries from tab 99 only
+	if !strings.Contains(text, "error from tab 99") {
+		t.Error("Expected 'error from tab 99' in filtered results")
+	}
+	// Should NOT contain entries from tab 42
+	if strings.Contains(text, "error from tab 42") {
+		t.Error("Should NOT contain 'error from tab 42' when filtering by tab_id 99")
+	}
+}
+
+// TestObserveNetworkBodies_FilterByTabId verifies observe network_bodies can filter by tab_id.
+func TestObserveNetworkBodies_FilterByTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add network bodies from different tabs
+	capture.mu.Lock()
+	capture.networkBodies = []NetworkBody{
+		{URL: "https://api.example.com/tab42", Method: "GET", Status: 200, TabId: 42},
+		{URL: "https://api.example.com/tab99", Method: "GET", Status: 200, TabId: 99},
+	}
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	// Filter by tab_id: 42
+	resp := mcp.toolHandler.toolObserve(req, json.RawMessage(`{"what":"network_bodies","tab_id":42}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain entries from tab 42 only
+	if !strings.Contains(text, "tab42") {
+		t.Error("Expected URL with 'tab42' in filtered results")
+	}
+	// Should NOT contain entries from tab 99
+	if strings.Contains(text, "tab99") {
+		t.Error("Should NOT contain URL with 'tab99' when filtering by tab_id 42")
+	}
+}
+
+// TestObserve_FilterByTabId_EmptyResults verifies empty array returned when no entries match filter.
+func TestObserve_FilterByTabId_EmptyResults(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add log entries from tab 42 only
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "error from tab 42", "tabId": float64(42)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	// Filter by non-existent tab_id: 999
+	resp := mcp.toolHandler.toolObserve(req, json.RawMessage(`{"what":"logs","tab_id":999}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should not crash and should indicate no matching entries
+	if resp.Error != nil {
+		t.Errorf("Expected no error, got: %v", resp.Error)
+	}
+	// Response should indicate empty results or no entries
+	if !strings.Contains(text, "0") && !strings.Contains(text, "No") && !strings.Contains(text, "no") {
+		t.Logf("Response text: %s", text)
+	}
+}
+
+// TestObserve_IncludesCurrentlyTrackedTab verifies observe responses include currently_tracked_tab metadata.
+func TestObserve_IncludesCurrentlyTrackedTab(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Set tracking state
+	capture.mu.Lock()
+	capture.trackingEnabled = true
+	capture.trackedTabID = 42
+	capture.trackingUpdated = time.Now()
+	capture.mu.Unlock()
+
+	// Add some logs
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "test error", "tabId": float64(42)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolObserve(req, json.RawMessage(`{"what":"errors"}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain currently_tracked_tab info (either in text or as metadata)
+	// The implementation can include this in the summary or as a separate field
+	if !strings.Contains(text, "42") {
+		t.Logf("Response may include tracking info in metadata. Text: %s", text)
 	}
 }

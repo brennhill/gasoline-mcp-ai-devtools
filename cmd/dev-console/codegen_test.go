@@ -7,6 +7,7 @@ import (
 )
 
 func TestMCPGetReproductionScript(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -52,6 +53,7 @@ func TestMCPGetReproductionScript(t *testing.T) {
 }
 
 func TestMCPGetReproductionScriptWithErrorMessage(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -85,6 +87,7 @@ func TestMCPGetReproductionScriptWithErrorMessage(t *testing.T) {
 }
 
 func TestMCPGetReproductionScriptWithLastN(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -122,6 +125,7 @@ func TestMCPGetReproductionScriptWithLastN(t *testing.T) {
 }
 
 func TestMCPGetReproductionScriptWithBaseURL(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -157,6 +161,7 @@ func TestMCPGetReproductionScriptWithBaseURL(t *testing.T) {
 }
 
 func TestMCPGetReproductionScriptEmpty(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -184,6 +189,7 @@ func TestMCPGetReproductionScriptEmpty(t *testing.T) {
 }
 
 func TestMCPGetReproductionScriptSelectorPriority(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -248,6 +254,7 @@ func TestMCPGetReproductionScriptSelectorPriority(t *testing.T) {
 }
 
 func TestMCPGetReproductionScriptInputActions(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -300,6 +307,7 @@ func TestMCPGetReproductionScriptInputActions(t *testing.T) {
 }
 
 func TestMCPGetReproductionScriptPauseComments(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -335,6 +343,7 @@ func TestMCPGetReproductionScriptPauseComments(t *testing.T) {
 }
 
 func TestExtractResponseShapeObject(t *testing.T) {
+	t.Parallel()
 	shape := extractResponseShape(`{"token":"abc123","user":{"id":5,"name":"Bob"}}`)
 
 	shapeMap, ok := shape.(map[string]interface{})
@@ -357,6 +366,7 @@ func TestExtractResponseShapeObject(t *testing.T) {
 }
 
 func TestExtractResponseShapeArray(t *testing.T) {
+	t.Parallel()
 	shape := extractResponseShape(`[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]`)
 
 	shapeArr, ok := shape.([]interface{})
@@ -376,6 +386,7 @@ func TestExtractResponseShapeArray(t *testing.T) {
 }
 
 func TestExtractResponseShapePrimitives(t *testing.T) {
+	t.Parallel()
 	if extractResponseShape(`"hello"`) != "string" {
 		t.Error("Expected string for string literal")
 	}
@@ -391,6 +402,7 @@ func TestExtractResponseShapePrimitives(t *testing.T) {
 }
 
 func TestExtractResponseShapeInvalidJSON(t *testing.T) {
+	t.Parallel()
 	shape := extractResponseShape(`not valid json`)
 	if shape != nil {
 		t.Errorf("Expected nil for invalid JSON, got %v", shape)
@@ -398,6 +410,7 @@ func TestExtractResponseShapeInvalidJSON(t *testing.T) {
 }
 
 func TestExtractResponseShapeEmptyObject(t *testing.T) {
+	t.Parallel()
 	shape := extractResponseShape(`{}`)
 	shapeMap, ok := shape.(map[string]interface{})
 	if !ok {
@@ -409,6 +422,7 @@ func TestExtractResponseShapeEmptyObject(t *testing.T) {
 }
 
 func TestExtractResponseShapeEmptyArray(t *testing.T) {
+	t.Parallel()
 	shape := extractResponseShape(`[]`)
 	shapeArr, ok := shape.([]interface{})
 	if !ok {
@@ -420,6 +434,7 @@ func TestExtractResponseShapeEmptyArray(t *testing.T) {
 }
 
 func TestExtractResponseShapeDepthLimit(t *testing.T) {
+	t.Parallel()
 	// Nested 5 levels deep - should cap at depth 3
 	shape := extractResponseShape(`{"a":{"b":{"c":{"d":{"e":"deep"}}}}}`)
 	shapeMap := shape.(map[string]interface{})
@@ -433,6 +448,7 @@ func TestExtractResponseShapeDepthLimit(t *testing.T) {
 }
 
 func TestNormalizeTimestampRFC3339(t *testing.T) {
+	t.Parallel()
 	ts := normalizeTimestamp("2024-01-15T10:30:00.000Z")
 	expected := int64(1705314600000)
 	if ts != expected {
@@ -441,6 +457,7 @@ func TestNormalizeTimestampRFC3339(t *testing.T) {
 }
 
 func TestNormalizeTimestampRFC3339Nano(t *testing.T) {
+	t.Parallel()
 	ts := normalizeTimestamp("2024-01-15T10:30:00.123456789Z")
 	// Should be 1705314600123 (truncated to ms)
 	expected := int64(1705314600123)
@@ -450,6 +467,7 @@ func TestNormalizeTimestampRFC3339Nano(t *testing.T) {
 }
 
 func TestNormalizeTimestampInvalidString(t *testing.T) {
+	t.Parallel()
 	ts := normalizeTimestamp("not a timestamp")
 	if ts != 0 {
 		t.Errorf("Expected 0 for invalid timestamp, got %d", ts)
@@ -457,6 +475,7 @@ func TestNormalizeTimestampInvalidString(t *testing.T) {
 }
 
 func TestNormalizeTimestampEmpty(t *testing.T) {
+	t.Parallel()
 	ts := normalizeTimestamp("")
 	if ts != 0 {
 		t.Errorf("Expected 0 for empty string, got %d", ts)
@@ -464,6 +483,7 @@ func TestNormalizeTimestampEmpty(t *testing.T) {
 }
 
 func TestGetSessionTimelineEmpty(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	resp := capture.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
@@ -477,6 +497,7 @@ func TestGetSessionTimelineEmpty(t *testing.T) {
 }
 
 func TestGetSessionTimelineActionsOnly(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -501,6 +522,7 @@ func TestGetSessionTimelineActionsOnly(t *testing.T) {
 }
 
 func TestGetSessionTimelineNetworkOnly(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddNetworkBodies([]NetworkBody{
@@ -527,6 +549,7 @@ func TestGetSessionTimelineNetworkOnly(t *testing.T) {
 }
 
 func TestGetSessionTimelineNetworkResponseShape(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddNetworkBodies([]NetworkBody{
@@ -550,6 +573,7 @@ func TestGetSessionTimelineNetworkResponseShape(t *testing.T) {
 }
 
 func TestGetSessionTimelineNetworkNonJSONNoShape(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddNetworkBodies([]NetworkBody{
@@ -565,6 +589,7 @@ func TestGetSessionTimelineNetworkNonJSONNoShape(t *testing.T) {
 }
 
 func TestGetSessionTimelineConsoleEntries(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	entries := []LogEntry{
@@ -587,6 +612,7 @@ func TestGetSessionTimelineConsoleEntries(t *testing.T) {
 }
 
 func TestGetSessionTimelineMergedAndSorted(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -623,6 +649,7 @@ func TestGetSessionTimelineMergedAndSorted(t *testing.T) {
 }
 
 func TestGetSessionTimelineLastNActions(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -654,6 +681,7 @@ func TestGetSessionTimelineLastNActions(t *testing.T) {
 }
 
 func TestGetSessionTimelineURLFilter(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -678,6 +706,7 @@ func TestGetSessionTimelineURLFilter(t *testing.T) {
 }
 
 func TestGetSessionTimelineIncludeFilter(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -701,6 +730,7 @@ func TestGetSessionTimelineIncludeFilter(t *testing.T) {
 }
 
 func TestGetSessionTimelineMaxEntries(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add 50 actions (max buffer) -- timeline cap is 200
@@ -718,6 +748,7 @@ func TestGetSessionTimelineMaxEntries(t *testing.T) {
 }
 
 func TestGetSessionTimelineDurationMs(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -733,6 +764,7 @@ func TestGetSessionTimelineDurationMs(t *testing.T) {
 }
 
 func TestGenerateTestScriptBasicStructure(t *testing.T) {
+	t.Parallel()
 	timeline := []TimelineEntry{
 		{Timestamp: 1000, Kind: "action", Type: "click", URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
 	}
@@ -761,6 +793,7 @@ func TestGenerateTestScriptBasicStructure(t *testing.T) {
 }
 
 func TestGenerateTestScriptNetworkAssertions(t *testing.T) {
+	t.Parallel()
 	timeline := []TimelineEntry{
 		{Timestamp: 1000, Kind: "action", Type: "click", URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "login-btn"}},
 		{Timestamp: 1150, Kind: "network", Method: "POST", URL: "/api/login", Status: 200, ContentType: "application/json"},
@@ -784,6 +817,7 @@ func TestGenerateTestScriptNetworkAssertions(t *testing.T) {
 }
 
 func TestGenerateTestScriptNavigationAssertion(t *testing.T) {
+	t.Parallel()
 	timeline := []TimelineEntry{
 		{Timestamp: 1000, Kind: "action", Type: "click", URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
 		{Timestamp: 1300, Kind: "action", Type: "navigate", ToURL: "/dashboard"},
@@ -800,6 +834,7 @@ func TestGenerateTestScriptNavigationAssertion(t *testing.T) {
 }
 
 func TestGenerateTestScriptNoErrorsWithCapturedErrors(t *testing.T) {
+	t.Parallel()
 	timeline := []TimelineEntry{
 		{Timestamp: 1000, Kind: "action", Type: "click", URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "btn"}},
 		{Timestamp: 1500, Kind: "console", Level: "error", Message: "Widget failed to load"},
@@ -817,6 +852,7 @@ func TestGenerateTestScriptNoErrorsWithCapturedErrors(t *testing.T) {
 }
 
 func TestGenerateTestScriptResponseShapeAssertions(t *testing.T) {
+	t.Parallel()
 	timeline := []TimelineEntry{
 		{Timestamp: 1000, Kind: "action", Type: "click", URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "btn"}},
 		{Timestamp: 1150, Kind: "network", Method: "GET", URL: "/api/users", Status: 200, ContentType: "application/json",
@@ -834,6 +870,7 @@ func TestGenerateTestScriptResponseShapeAssertions(t *testing.T) {
 }
 
 func TestGenerateTestScriptResponseShapeDisabled(t *testing.T) {
+	t.Parallel()
 	timeline := []TimelineEntry{
 		{Timestamp: 1000, Kind: "action", Type: "click", URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "btn"}},
 		{Timestamp: 1150, Kind: "network", Method: "GET", URL: "/api/users", Status: 200, ContentType: "application/json",
@@ -848,6 +885,7 @@ func TestGenerateTestScriptResponseShapeDisabled(t *testing.T) {
 }
 
 func TestGenerateTestScriptBaseURL(t *testing.T) {
+	t.Parallel()
 	timeline := []TimelineEntry{
 		{Timestamp: 1000, Kind: "action", Type: "click", URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
 	}
@@ -863,6 +901,7 @@ func TestGenerateTestScriptBaseURL(t *testing.T) {
 }
 
 func TestGenerateTestScriptMultipleNetworkPerAction(t *testing.T) {
+	t.Parallel()
 	timeline := []TimelineEntry{
 		{Timestamp: 1000, Kind: "action", Type: "click", URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "submit"}},
 		{Timestamp: 1050, Kind: "network", Method: "POST", URL: "/api/submit", Status: 200, ContentType: "application/json"},
@@ -881,6 +920,7 @@ func TestGenerateTestScriptMultipleNetworkPerAction(t *testing.T) {
 }
 
 func TestGenerateTestScriptAssertNetworkDisabled(t *testing.T) {
+	t.Parallel()
 	timeline := []TimelineEntry{
 		{Timestamp: 1000, Kind: "action", Type: "click", URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "btn"}},
 		{Timestamp: 1150, Kind: "network", Method: "POST", URL: "/api/login", Status: 200, ContentType: "application/json"},
@@ -894,6 +934,7 @@ func TestGenerateTestScriptAssertNetworkDisabled(t *testing.T) {
 }
 
 func TestGenerateTestScriptPasswordRedacted(t *testing.T) {
+	t.Parallel()
 	timeline := []TimelineEntry{
 		{Timestamp: 1000, Kind: "action", Type: "input", URL: "http://localhost:3000",
 			Selectors: map[string]interface{}{"testId": "password"}, Value: "[redacted]"},
@@ -907,6 +948,7 @@ func TestGenerateTestScriptPasswordRedacted(t *testing.T) {
 }
 
 func TestGenerateTestScriptDefaultTestName(t *testing.T) {
+	t.Parallel()
 	timeline := []TimelineEntry{
 		{Timestamp: 1000, Kind: "action", Type: "click", URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
 		{Timestamp: 1300, Kind: "action", Type: "navigate", URL: "http://localhost:3000/dashboard", ToURL: "/dashboard"},
@@ -921,6 +963,7 @@ func TestGenerateTestScriptDefaultTestName(t *testing.T) {
 }
 
 func TestGenerateTestScriptEmpty(t *testing.T) {
+	t.Parallel()
 	script := generateTestScript([]TimelineEntry{}, TestGenerationOptions{TestName: "empty"})
 
 	if !strings.Contains(script, "import") {
@@ -929,6 +972,7 @@ func TestGenerateTestScriptEmpty(t *testing.T) {
 }
 
 func TestMCPGetSessionTimeline(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -989,6 +1033,7 @@ func TestMCPGetSessionTimeline(t *testing.T) {
 }
 
 func TestMCPGetSessionTimelineWithLastN(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1025,6 +1070,7 @@ func TestMCPGetSessionTimelineWithLastN(t *testing.T) {
 }
 
 func TestMCPGetSessionTimelineEmpty(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1052,6 +1098,7 @@ func TestMCPGetSessionTimelineEmpty(t *testing.T) {
 }
 
 func TestMCPGenerateTest(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1105,6 +1152,7 @@ func TestMCPGenerateTest(t *testing.T) {
 }
 
 func TestMCPGenerateTestWithBaseURL(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1140,6 +1188,7 @@ func TestMCPGenerateTestWithBaseURL(t *testing.T) {
 }
 
 func TestMCPGenerateTestEmpty(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1167,6 +1216,7 @@ func TestMCPGenerateTestEmpty(t *testing.T) {
 }
 
 func TestMCPGenerateTestToolInToolsList(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1211,6 +1261,7 @@ func TestMCPGenerateTestToolInToolsList(t *testing.T) {
 // ============================================
 
 func TestSessionSummaryWithTwoSnapshots(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	fcp1 := 800.0
@@ -1278,6 +1329,7 @@ func TestSessionSummaryWithTwoSnapshots(t *testing.T) {
 }
 
 func TestSessionSummaryNoSnapshots(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 	summary := capture.GenerateSessionSummary()
 
@@ -1290,6 +1342,7 @@ func TestSessionSummaryNoSnapshots(t *testing.T) {
 }
 
 func TestSessionSummarySingleSnapshot(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	fcp := 800.0
@@ -1308,6 +1361,7 @@ func TestSessionSummarySingleSnapshot(t *testing.T) {
 }
 
 func TestSessionSummaryWithErrors(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	entries := []LogEntry{
@@ -1334,6 +1388,7 @@ func TestSessionSummaryWithErrors(t *testing.T) {
 }
 
 func TestSessionSummaryReloadCount(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -1351,6 +1406,7 @@ func TestSessionSummaryReloadCount(t *testing.T) {
 }
 
 func TestSessionSummaryDuration(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -1366,6 +1422,7 @@ func TestSessionSummaryDuration(t *testing.T) {
 }
 
 func TestGeneratePRSummaryMarkdownTable(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	fcp1 := 800.0
@@ -1420,6 +1477,7 @@ func TestGeneratePRSummaryMarkdownTable(t *testing.T) {
 }
 
 func TestGeneratePRSummaryNoPerformanceData(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 	markdown := capture.GeneratePRSummary(nil)
 
@@ -1429,6 +1487,7 @@ func TestGeneratePRSummaryNoPerformanceData(t *testing.T) {
 }
 
 func TestGeneratePRSummaryWithErrors(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
@@ -1456,6 +1515,7 @@ func TestGeneratePRSummaryWithErrors(t *testing.T) {
 }
 
 func TestGeneratePRSummaryWithNoErrors(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
@@ -1475,6 +1535,7 @@ func TestGeneratePRSummaryWithNoErrors(t *testing.T) {
 }
 
 func TestOneLinerFormat(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	fcp1 := 800.0
@@ -1517,6 +1578,7 @@ func TestOneLinerFormat(t *testing.T) {
 }
 
 func TestOneLinerNoPerformanceData(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 	oneliner := capture.GenerateOneLiner(nil)
 
@@ -1526,6 +1588,7 @@ func TestOneLinerNoPerformanceData(t *testing.T) {
 }
 
 func TestMCPGeneratePRSummaryTool(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1574,6 +1637,7 @@ func TestMCPGeneratePRSummaryTool(t *testing.T) {
 }
 
 func TestMCPGeneratePRSummaryToolInToolsList(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1606,6 +1670,7 @@ func TestMCPGeneratePRSummaryToolInToolsList(t *testing.T) {
 }
 
 func TestSessionSummaryMultipleURLs(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
@@ -1629,6 +1694,7 @@ func TestSessionSummaryMultipleURLs(t *testing.T) {
 }
 
 func TestSessionSummaryPerformanceCheckCount(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
@@ -1652,6 +1718,7 @@ func TestSessionSummaryPerformanceCheckCount(t *testing.T) {
 }
 
 func TestSessionSummaryBundleSizeDelta(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
@@ -1675,6 +1742,7 @@ func TestSessionSummaryBundleSizeDelta(t *testing.T) {
 }
 
 func TestHTTPSessionSummaryEndpoint(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	fcp1 := 800.0
@@ -1708,6 +1776,7 @@ func TestHTTPSessionSummaryEndpoint(t *testing.T) {
 }
 
 func TestGeneratePRSummaryGeneratedByLine(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	fcp1 := 800.0
@@ -1731,6 +1800,7 @@ func TestGeneratePRSummaryGeneratedByLine(t *testing.T) {
 }
 
 func TestSessionSummaryCLSDelta(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	cls1 := 0.02
@@ -1761,6 +1831,7 @@ func TestSessionSummaryCLSDelta(t *testing.T) {
 // ============================================
 
 func TestFormatDeltaMsNegative(t *testing.T) {
+	t.Parallel()
 	result := formatDeltaMs(-150, -12.5)
 	if result != "-150ms (-12%)" {
 		t.Errorf("Expected '-150ms (-12%%)', got: %s", result)
@@ -1768,6 +1839,7 @@ func TestFormatDeltaMsNegative(t *testing.T) {
 }
 
 func TestFormatDeltaMsPositive(t *testing.T) {
+	t.Parallel()
 	result := formatDeltaMs(200, 25.0)
 	if result != "+200ms (+25%)" {
 		t.Errorf("Expected '+200ms (+25%%)', got: %s", result)
@@ -1775,6 +1847,7 @@ func TestFormatDeltaMsPositive(t *testing.T) {
 }
 
 func TestFormatDeltaMsZero(t *testing.T) {
+	t.Parallel()
 	result := formatDeltaMs(0, 0)
 	if result != "—" {
 		t.Errorf("Expected '—', got: %s", result)
@@ -1786,6 +1859,7 @@ func TestFormatDeltaMsZero(t *testing.T) {
 // ============================================
 
 func TestFormatDeltaBytesNegative(t *testing.T) {
+	t.Parallel()
 	// -512 bytes, -10%
 	result := formatDeltaBytes(-512, -10.0)
 	if result != "512B (-10%)" {
@@ -1794,6 +1868,7 @@ func TestFormatDeltaBytesNegative(t *testing.T) {
 }
 
 func TestFormatDeltaBytesPositive(t *testing.T) {
+	t.Parallel()
 	result := formatDeltaBytes(2048, 15.0)
 	if result != "+2.0KB (+15%)" {
 		t.Errorf("Expected '+2.0KB (+15%%)', got: %s", result)
@@ -1801,6 +1876,7 @@ func TestFormatDeltaBytesPositive(t *testing.T) {
 }
 
 func TestFormatDeltaBytesZero(t *testing.T) {
+	t.Parallel()
 	result := formatDeltaBytes(0, 0)
 	if result != "—" {
 		t.Errorf("Expected '—', got: %s", result)
@@ -1812,6 +1888,7 @@ func TestFormatDeltaBytesZero(t *testing.T) {
 // ============================================
 
 func TestFormatSignedBytesPositiveSmall(t *testing.T) {
+	t.Parallel()
 	result := formatSignedBytes(100)
 	if result != "+100B" {
 		t.Errorf("Expected '+100B', got: %s", result)
@@ -1819,6 +1896,7 @@ func TestFormatSignedBytesPositiveSmall(t *testing.T) {
 }
 
 func TestFormatSignedBytesNegativeSmall(t *testing.T) {
+	t.Parallel()
 	result := formatSignedBytes(-200)
 	if result != "-200B" {
 		t.Errorf("Expected '-200B', got: %s", result)
@@ -1826,6 +1904,7 @@ func TestFormatSignedBytesNegativeSmall(t *testing.T) {
 }
 
 func TestFormatSignedBytesKB(t *testing.T) {
+	t.Parallel()
 	result := formatSignedBytes(2048) // 2.0KB
 	if result != "+2.0KB" {
 		t.Errorf("Expected '+2.0KB', got: %s", result)
@@ -1833,6 +1912,7 @@ func TestFormatSignedBytesKB(t *testing.T) {
 }
 
 func TestFormatSignedBytesNegativeKB(t *testing.T) {
+	t.Parallel()
 	result := formatSignedBytes(-3072) // -3.0KB
 	if result != "-3.0KB" {
 		t.Errorf("Expected '-3.0KB', got: %s", result)
@@ -1840,6 +1920,7 @@ func TestFormatSignedBytesNegativeKB(t *testing.T) {
 }
 
 func TestFormatSignedBytesMB(t *testing.T) {
+	t.Parallel()
 	result := formatSignedBytes(2 * 1024 * 1024) // 2.0MB
 	if result != "+2.0MB" {
 		t.Errorf("Expected '+2.0MB', got: %s", result)
@@ -1847,6 +1928,7 @@ func TestFormatSignedBytesMB(t *testing.T) {
 }
 
 func TestFormatSignedBytesNegativeMB(t *testing.T) {
+	t.Parallel()
 	result := formatSignedBytes(-5 * 1024 * 1024) // -5.0MB
 	if result != "-5.0MB" {
 		t.Errorf("Expected '-5.0MB', got: %s", result)
@@ -1858,18 +1940,21 @@ func TestFormatSignedBytesNegativeMB(t *testing.T) {
 // ============================================
 
 func TestAbs64Negative(t *testing.T) {
+	t.Parallel()
 	if abs64(-42) != 42 {
 		t.Error("Expected abs64(-42) == 42")
 	}
 }
 
 func TestAbs64Positive(t *testing.T) {
+	t.Parallel()
 	if abs64(99) != 99 {
 		t.Error("Expected abs64(99) == 99")
 	}
 }
 
 func TestAbs64Zero(t *testing.T) {
+	t.Parallel()
 	if abs64(0) != 0 {
 		t.Error("Expected abs64(0) == 0")
 	}
@@ -1880,6 +1965,7 @@ func TestAbs64Zero(t *testing.T) {
 // ============================================
 
 func TestGeneratePRSummaryWithResolvedAndNewErrors(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add two snapshots for performance delta
@@ -1926,6 +2012,7 @@ func TestGeneratePRSummaryWithResolvedAndNewErrors(t *testing.T) {
 }
 
 func TestGeneratePRSummaryEmptyErrors(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add two snapshots
@@ -1952,6 +2039,7 @@ func TestGeneratePRSummaryEmptyErrors(t *testing.T) {
 }
 
 func TestGeneratePRSummaryAllFixed(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
@@ -1984,6 +2072,7 @@ func TestGeneratePRSummaryAllFixed(t *testing.T) {
 }
 
 func TestGeneratePRSummaryNegativeDelta(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Improvement: after is faster than before
@@ -2013,6 +2102,7 @@ func TestGeneratePRSummaryNegativeDelta(t *testing.T) {
 // ============================================
 
 func TestGetPlaywrightLocatorRoleWithName(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{
 		"role": map[string]interface{}{
 			"role": "button",
@@ -2027,6 +2117,7 @@ func TestGetPlaywrightLocatorRoleWithName(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorRoleWithoutName(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{
 		"role": map[string]interface{}{
 			"role": "navigation",
@@ -2040,6 +2131,7 @@ func TestGetPlaywrightLocatorRoleWithoutName(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorRoleEmptyRole(t *testing.T) {
+	t.Parallel()
 	// role map exists but role key is empty string - should fall through
 	selectors := map[string]interface{}{
 		"role": map[string]interface{}{
@@ -2055,6 +2147,7 @@ func TestGetPlaywrightLocatorRoleEmptyRole(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorTextBased(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{
 		"text": "Click me",
 	}
@@ -2066,6 +2159,7 @@ func TestGetPlaywrightLocatorTextBased(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorAriaLabel(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{
 		"ariaLabel": "Email address",
 	}
@@ -2077,6 +2171,7 @@ func TestGetPlaywrightLocatorAriaLabel(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorById(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{
 		"id": "main-form",
 	}
@@ -2088,6 +2183,7 @@ func TestGetPlaywrightLocatorById(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorByCssPath(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{
 		"cssPath": "div.container > form > input",
 	}
@@ -2099,6 +2195,7 @@ func TestGetPlaywrightLocatorByCssPath(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorNilSelectors(t *testing.T) {
+	t.Parallel()
 	result := getPlaywrightLocator(nil)
 	if result != "" {
 		t.Errorf("Expected empty string for nil selectors, got %q", result)
@@ -2106,6 +2203,7 @@ func TestGetPlaywrightLocatorNilSelectors(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorEmptyMap(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{}
 	result := getPlaywrightLocator(selectors)
 	if result != "" {
@@ -2114,6 +2212,7 @@ func TestGetPlaywrightLocatorEmptyMap(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorPriority(t *testing.T) {
+	t.Parallel()
 	// testId should take priority over everything else
 	selectors := map[string]interface{}{
 		"testId":    "login-btn",
@@ -2133,6 +2232,7 @@ func TestGetPlaywrightLocatorPriority(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorRolePriorityOverAriaLabel(t *testing.T) {
+	t.Parallel()
 	// role should take priority over ariaLabel
 	selectors := map[string]interface{}{
 		"ariaLabel": "Submit form",
@@ -2150,6 +2250,7 @@ func TestGetPlaywrightLocatorRolePriorityOverAriaLabel(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorRoleNotAMap(t *testing.T) {
+	t.Parallel()
 	// role is present but not a map - should fall through
 	selectors := map[string]interface{}{
 		"role": "button",
@@ -2164,6 +2265,7 @@ func TestGetPlaywrightLocatorRoleNotAMap(t *testing.T) {
 }
 
 func TestGetPlaywrightLocatorSpecialCharacters(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{
 		"text": "It's a test\nwith newlines",
 	}
@@ -2175,6 +2277,7 @@ func TestGetPlaywrightLocatorSpecialCharacters(t *testing.T) {
 }
 
 func TestReplaceOriginBasic(t *testing.T) {
+	t.Parallel()
 	result := replaceOrigin("http://localhost:3000/login", "http://example.com")
 	expected := "http://example.com/login"
 	if result != expected {
@@ -2183,6 +2286,7 @@ func TestReplaceOriginBasic(t *testing.T) {
 }
 
 func TestReplaceOriginWithPort(t *testing.T) {
+	t.Parallel()
 	result := replaceOrigin("http://localhost:8080/api/users", "https://prod.example.com")
 	expected := "https://prod.example.com/api/users"
 	if result != expected {
@@ -2191,6 +2295,7 @@ func TestReplaceOriginWithPort(t *testing.T) {
 }
 
 func TestReplaceOriginNoPath(t *testing.T) {
+	t.Parallel()
 	// URL has scheme://host but no path
 	result := replaceOrigin("http://localhost:3000", "http://example.com")
 	expected := "http://example.com"
@@ -2200,6 +2305,7 @@ func TestReplaceOriginNoPath(t *testing.T) {
 }
 
 func TestReplaceOriginWithoutScheme(t *testing.T) {
+	t.Parallel()
 	// URL without :// scheme separator
 	result := replaceOrigin("/path/to/page", "http://example.com")
 	expected := "http://example.com/path/to/page"
@@ -2209,6 +2315,7 @@ func TestReplaceOriginWithoutScheme(t *testing.T) {
 }
 
 func TestReplaceOriginEmptyBaseURL(t *testing.T) {
+	t.Parallel()
 	result := replaceOrigin("http://localhost:3000/login", "")
 	expected := "/login"
 	if result != expected {
@@ -2217,6 +2324,7 @@ func TestReplaceOriginEmptyBaseURL(t *testing.T) {
 }
 
 func TestReplaceOriginBaseURLWithTrailingSlash(t *testing.T) {
+	t.Parallel()
 	result := replaceOrigin("http://localhost:3000/login", "http://example.com/")
 	expected := "http://example.com/login"
 	if result != expected {
@@ -2225,6 +2333,7 @@ func TestReplaceOriginBaseURLWithTrailingSlash(t *testing.T) {
 }
 
 func TestReplaceOriginDeepPath(t *testing.T) {
+	t.Parallel()
 	result := replaceOrigin("https://dev.local:9000/app/settings/profile?tab=2", "https://prod.com")
 	expected := "https://prod.com/app/settings/profile?tab=2"
 	if result != expected {
@@ -2233,6 +2342,7 @@ func TestReplaceOriginDeepPath(t *testing.T) {
 }
 
 func TestGetSelectorFromMapTestId(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{
 		"testId": "submit-btn",
 	}
@@ -2244,6 +2354,7 @@ func TestGetSelectorFromMapTestId(t *testing.T) {
 }
 
 func TestGetSelectorFromMapRole(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{
 		"role": "button",
 	}
@@ -2255,6 +2366,7 @@ func TestGetSelectorFromMapRole(t *testing.T) {
 }
 
 func TestGetSelectorFromMapUnknownFallback(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{
 		"cssPath": "div > span",
 	}
@@ -2265,6 +2377,7 @@ func TestGetSelectorFromMapUnknownFallback(t *testing.T) {
 }
 
 func TestGetSelectorFromMapTestIdPriority(t *testing.T) {
+	t.Parallel()
 	// testId should take priority over role
 	selectors := map[string]interface{}{
 		"testId": "my-button",
@@ -2278,6 +2391,7 @@ func TestGetSelectorFromMapTestIdPriority(t *testing.T) {
 }
 
 func TestGetSelectorFromMapEmptyMap(t *testing.T) {
+	t.Parallel()
 	selectors := map[string]interface{}{}
 	result := getSelectorFromMap(selectors)
 	if result != "unknown" {
@@ -2286,6 +2400,7 @@ func TestGetSelectorFromMapEmptyMap(t *testing.T) {
 }
 
 func TestGenerateOneLinerNoPerformanceData(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	result := capture.GenerateOneLiner(nil)
@@ -2295,6 +2410,7 @@ func TestGenerateOneLinerNoPerformanceData(t *testing.T) {
 }
 
 func TestGenerateOneLinerWithErrors(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	errors := []SessionError{
@@ -2313,6 +2429,7 @@ func TestGenerateOneLinerWithErrors(t *testing.T) {
 }
 
 func TestGenerateOneLinerAllErrorsResolved(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	errors := []SessionError{
@@ -2330,6 +2447,7 @@ func TestGenerateOneLinerAllErrorsResolved(t *testing.T) {
 }
 
 func TestGenerateOneLinerEmptyErrors(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	errors := []SessionError{}
@@ -2341,6 +2459,7 @@ func TestGenerateOneLinerEmptyErrors(t *testing.T) {
 }
 
 func TestGenerateOneLinerPerfImprovement(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add two snapshots to get a delta
@@ -2368,6 +2487,7 @@ func TestGenerateOneLinerPerfImprovement(t *testing.T) {
 }
 
 func TestGenerateOneLinerPerfRegression(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
@@ -2396,6 +2516,7 @@ func TestGenerateOneLinerPerfRegression(t *testing.T) {
 }
 
 func TestGenerateOneLinerNoChange(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
@@ -2418,6 +2539,7 @@ func TestGenerateOneLinerNoChange(t *testing.T) {
 }
 
 func TestGenerateOneLinerBaselineFallback(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add baseline directly (simulating a pre-existing baseline with enough samples)
@@ -2450,6 +2572,7 @@ func TestGenerateOneLinerBaselineFallback(t *testing.T) {
 }
 
 func TestGenerateSessionSummaryWithEntriesConsoleErrors(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Set up performance data so it doesn't return early
@@ -2490,6 +2613,7 @@ func TestGenerateSessionSummaryWithEntriesConsoleErrors(t *testing.T) {
 }
 
 func TestGenerateSessionSummaryWithEntriesNoPerformanceData(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	summary := capture.GenerateSessionSummaryWithEntries(nil)
@@ -2500,6 +2624,7 @@ func TestGenerateSessionSummaryWithEntriesNoPerformanceData(t *testing.T) {
 }
 
 func TestGenerateSessionSummaryWithEntriesInsufficientData(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Only one snapshot - insufficient
@@ -2517,6 +2642,7 @@ func TestGenerateSessionSummaryWithEntriesInsufficientData(t *testing.T) {
 }
 
 func TestGenerateSessionSummaryWithEntriesFCPAndLCPDeltas(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	fcp1 := 500.0
@@ -2559,6 +2685,7 @@ func TestGenerateSessionSummaryWithEntriesFCPAndLCPDeltas(t *testing.T) {
 }
 
 func TestGenerateSessionSummaryWithEntriesCLSDelta(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	cls1 := 0.05
@@ -2591,6 +2718,7 @@ func TestGenerateSessionSummaryWithEntriesCLSDelta(t *testing.T) {
 }
 
 func TestGenerateSessionSummaryWithEntriesNavigateCount(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add navigations as enhanced actions
@@ -2632,6 +2760,7 @@ func TestGenerateSessionSummaryWithEntriesNavigateCount(t *testing.T) {
 // ============================================
 
 func TestGeneratePlaywrightScriptInputAction(t *testing.T) {
+	t.Parallel()
 	actions := []EnhancedAction{
 		{
 			Type:      "input",
@@ -2654,6 +2783,7 @@ func TestGeneratePlaywrightScriptInputAction(t *testing.T) {
 }
 
 func TestGeneratePlaywrightScriptInputRedacted(t *testing.T) {
+	t.Parallel()
 	actions := []EnhancedAction{
 		{
 			Type:      "input",
@@ -2673,6 +2803,7 @@ func TestGeneratePlaywrightScriptInputRedacted(t *testing.T) {
 }
 
 func TestGeneratePlaywrightScriptScrollAction(t *testing.T) {
+	t.Parallel()
 	actions := []EnhancedAction{
 		{
 			Type:      "click",
@@ -2696,6 +2827,7 @@ func TestGeneratePlaywrightScriptScrollAction(t *testing.T) {
 }
 
 func TestGeneratePlaywrightScriptNavigateAction(t *testing.T) {
+	t.Parallel()
 	actions := []EnhancedAction{
 		{
 			Type:      "click",
@@ -2719,6 +2851,7 @@ func TestGeneratePlaywrightScriptNavigateAction(t *testing.T) {
 }
 
 func TestGeneratePlaywrightScriptNavigateWithBaseURL(t *testing.T) {
+	t.Parallel()
 	actions := []EnhancedAction{
 		{
 			Type:      "navigate",
@@ -2736,6 +2869,7 @@ func TestGeneratePlaywrightScriptNavigateWithBaseURL(t *testing.T) {
 }
 
 func TestGeneratePlaywrightScriptKeypressAction(t *testing.T) {
+	t.Parallel()
 	actions := []EnhancedAction{
 		{
 			Type:      "click",
@@ -2763,6 +2897,7 @@ func TestGeneratePlaywrightScriptKeypressAction(t *testing.T) {
 // ============================================
 
 func TestExtractShapeNestedObjects(t *testing.T) {
+	t.Parallel()
 	jsonStr := `{"user": {"name": "Alice", "address": {"city": "NYC", "zip": 10001}}}`
 	result := extractResponseShape(jsonStr)
 
@@ -2794,6 +2929,7 @@ func TestExtractShapeNestedObjects(t *testing.T) {
 }
 
 func TestExtractShapeArrayValues(t *testing.T) {
+	t.Parallel()
 	jsonStr := `{"items": [{"id": 1, "name": "test"}], "tags": ["foo", "bar"]}`
 	result := extractResponseShape(jsonStr)
 
@@ -2834,6 +2970,7 @@ func TestExtractShapeArrayValues(t *testing.T) {
 }
 
 func TestExtractShapeNullValues(t *testing.T) {
+	t.Parallel()
 	jsonStr := `{"name": "Alice", "email": null, "active": true}`
 	result := extractResponseShape(jsonStr)
 
@@ -2854,6 +2991,7 @@ func TestExtractShapeNullValues(t *testing.T) {
 }
 
 func TestExtractShapeEmptyArray(t *testing.T) {
+	t.Parallel()
 	jsonStr := `{"items": []}`
 	result := extractResponseShape(jsonStr)
 
@@ -2876,6 +3014,7 @@ func TestExtractShapeEmptyArray(t *testing.T) {
 // ============================================
 
 func TestGenerateSessionSummaryImprovedPerformance(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Track a first snapshot with slow load
@@ -2919,6 +3058,7 @@ func TestGenerateSessionSummaryImprovedPerformance(t *testing.T) {
 }
 
 func TestGenerateSessionSummaryMultipleNavigateActions(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add multiple navigate actions
@@ -2958,6 +3098,7 @@ func TestGenerateSessionSummaryMultipleNavigateActions(t *testing.T) {
 }
 
 func TestGenerateSessionSummaryNetworkErrors(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add performance snapshots
@@ -3010,6 +3151,7 @@ func TestGenerateSessionSummaryNetworkErrors(t *testing.T) {
 // ============================================
 
 func TestGeneratePRSummaryNewAndFixedErrorAnnotations(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Setup performance data
@@ -3054,6 +3196,7 @@ func TestGeneratePRSummaryNewAndFixedErrorAnnotations(t *testing.T) {
 }
 
 func TestGeneratePRSummaryWithBaseline(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	fcp1 := 300.0
@@ -3112,6 +3255,7 @@ func TestGeneratePRSummaryWithBaseline(t *testing.T) {
 }
 
 func TestGeneratePRSummaryEmptyErrorsList(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
@@ -3139,6 +3283,7 @@ func TestGeneratePRSummaryEmptyErrorsList(t *testing.T) {
 }
 
 func TestGeneratePRSummaryAllErrorsResolved(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
@@ -3175,6 +3320,7 @@ func TestGeneratePRSummaryAllErrorsResolved(t *testing.T) {
 // ============================================
 
 func TestCodegenPlaywrightScriptLongErrorMessageTruncation(t *testing.T) {
+	t.Parallel()
 	// Line 29: name = name[:80] — errorMessage longer than 80 chars causes truncation
 	longMessage := strings.Repeat("a", 100) // 100 chars
 	actions := []EnhancedAction{
@@ -3195,6 +3341,7 @@ func TestCodegenPlaywrightScriptLongErrorMessageTruncation(t *testing.T) {
 }
 
 func TestCodegenPlaywrightScriptOutputCappedAt51200(t *testing.T) {
+	t.Parallel()
 	// Line 98: script = script[:51200] — Script output exceeding 50KB is capped
 	// Generate enough actions to produce a script > 51200 bytes
 	actions := make([]EnhancedAction, 0, 2000)
@@ -3239,6 +3386,7 @@ func TestCodegenPlaywrightScriptOutputCappedAt51200(t *testing.T) {
 }
 
 func TestCodegenTimelineMinTimestampFiltering(t *testing.T) {
+	t.Parallel()
 	// Line 334: if minTimestamp > 0 && ts < minTimestamp { continue }
 	// Network and console entries with timestamps before the first action should be excluded
 	capture := NewCapture()
@@ -3296,6 +3444,7 @@ func TestCodegenTimelineMinTimestampFiltering(t *testing.T) {
 }
 
 func TestCodegenTimelineCappedAt200(t *testing.T) {
+	t.Parallel()
 	// Line 355: entries = entries[:200] — Timeline capped at 200 entries
 	capture := NewCapture()
 
@@ -3316,6 +3465,7 @@ func TestCodegenTimelineCappedAt200(t *testing.T) {
 }
 
 func TestCodegenTestScriptNavigateEmptyToURL(t *testing.T) {
+	t.Parallel()
 	// Lines 449-451: navigate action with empty ToURL falls back to URL
 	timeline := []TimelineEntry{
 		{Kind: "action", Type: "navigate", Timestamp: 1000, URL: "http://example.com/page", ToURL: ""},
@@ -3329,6 +3479,7 @@ func TestCodegenTestScriptNavigateEmptyToURL(t *testing.T) {
 }
 
 func TestCodegenTestScriptNavigateWithBaseURL(t *testing.T) {
+	t.Parallel()
 	// Lines 452-454: navigate action with ToURL and BaseURL replacement
 	timeline := []TimelineEntry{
 		{Kind: "action", Type: "navigate", Timestamp: 1000, ToURL: "http://old.com/path/to/page", URL: "http://old.com"},
@@ -3348,6 +3499,7 @@ func TestCodegenTestScriptNavigateWithBaseURL(t *testing.T) {
 }
 
 func TestCodegenTestScriptNetworkWithBaseURL(t *testing.T) {
+	t.Parallel()
 	// Lines 459-462: network action with BaseURL replacement
 	timeline := []TimelineEntry{
 		{Kind: "action", Type: "click", Timestamp: 1000, URL: "http://old.com/app",
@@ -3368,6 +3520,7 @@ func TestCodegenTestScriptNetworkWithBaseURL(t *testing.T) {
 }
 
 func TestCodegenExtractShapeUnknownType(t *testing.T) {
+	t.Parallel()
 	// Line 538: default: return "unknown" in extractShape type switch
 	// Pass a value that doesn't match any known JSON type (int is not produced by json.Unmarshal, but can be passed directly)
 	result := extractShape(42, 0)
@@ -3384,6 +3537,7 @@ func TestCodegenExtractShapeUnknownType(t *testing.T) {
 }
 
 func TestCodegenSessionSummarySnapshotCountFallback(t *testing.T) {
+	t.Parallel()
 	// Line 679: summary.Metadata.PerformanceCheckCount == 0 path
 	// session.snapshotCount == 0, but snapshotOrder has >=2 entries
 	capture := NewCapture()
@@ -3413,6 +3567,7 @@ func TestCodegenSessionSummarySnapshotCountFallback(t *testing.T) {
 }
 
 func TestCodegenSessionSummaryBaselineFallback(t *testing.T) {
+	t.Parallel()
 	// Lines 689-708: baseline fallback path — no firstSnapshots, but baselines exist with SampleCount >= 2
 	capture := NewCapture()
 
@@ -3449,6 +3604,7 @@ func TestCodegenSessionSummaryBaselineFallback(t *testing.T) {
 }
 
 func TestCodegenSessionSummaryNoFirstNoBaseline(t *testing.T) {
+	t.Parallel()
 	// Lines 712-714: !hasFirst path — no firstSnapshot, no baseline → returns "insufficient_data"
 	capture := NewCapture()
 
@@ -3472,6 +3628,7 @@ func TestCodegenSessionSummaryNoFirstNoBaseline(t *testing.T) {
 }
 
 func TestCodegenPRSummaryNoFirstNoBaseline(t *testing.T) {
+	t.Parallel()
 	// Lines 786-810: In GeneratePRSummary — no firstSnapshots, no baselines path
 	capture := NewCapture()
 
@@ -3494,6 +3651,7 @@ func TestCodegenPRSummaryNoFirstNoBaseline(t *testing.T) {
 }
 
 func TestCodegenPRSummaryBaselineFallback(t *testing.T) {
+	t.Parallel()
 	// Lines 786-810: In GeneratePRSummary — baseline fallback renders performance table
 	capture := NewCapture()
 
@@ -3523,6 +3681,7 @@ func TestCodegenPRSummaryBaselineFallback(t *testing.T) {
 }
 
 func TestCodegenPRSummaryTotalSamplesFallback(t *testing.T) {
+	t.Parallel()
 	// Line 909: if totalSamples == 0 { totalSamples = snapshotCount }
 	capture := NewCapture()
 
@@ -3548,6 +3707,7 @@ func TestCodegenPRSummaryTotalSamplesFallback(t *testing.T) {
 }
 
 func TestCodegenOneLinerNoPerfDataWhenNoFirstAndNoBaseline(t *testing.T) {
+	t.Parallel()
 	// Line 960: else { parts = append(parts, "no perf data") } when hasFirst is false
 	capture := NewCapture()
 

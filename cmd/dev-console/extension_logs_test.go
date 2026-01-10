@@ -21,6 +21,7 @@ import (
 // ============================================
 
 func TestHandleExtensionLogs_AcceptsValidPayload(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	payload := map[string]interface{}{
@@ -59,6 +60,7 @@ func TestHandleExtensionLogs_AcceptsValidPayload(t *testing.T) {
 }
 
 func TestHandleExtensionLogs_RejectsMalformedJSON(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	req := httptest.NewRequest("POST", "/extension-logs", strings.NewReader("{invalid json"))
@@ -72,6 +74,7 @@ func TestHandleExtensionLogs_RejectsMalformedJSON(t *testing.T) {
 }
 
 func TestHandleExtensionLogs_RejectsNonPOST(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	req := httptest.NewRequest("GET", "/extension-logs", nil)
@@ -85,6 +88,7 @@ func TestHandleExtensionLogs_RejectsNonPOST(t *testing.T) {
 }
 
 func TestHandleExtensionLogs_StoresTimestamp(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	payload := map[string]interface{}{
@@ -116,6 +120,7 @@ func TestHandleExtensionLogs_StoresTimestamp(t *testing.T) {
 }
 
 func TestHandleExtensionLogs_PreservesProvidedTimestamp(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	providedTime := time.Now().Add(-5 * time.Minute)
@@ -147,6 +152,7 @@ func TestHandleExtensionLogs_PreservesProvidedTimestamp(t *testing.T) {
 }
 
 func TestHandleExtensionLogs_ReturnsCorrectResponse(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	payload := map[string]interface{}{
@@ -184,6 +190,7 @@ func TestHandleExtensionLogs_ReturnsCorrectResponse(t *testing.T) {
 }
 
 func TestHandleExtensionLogs_RejectsOversizedPayload(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Create a payload larger than maxPostBodySize (5MB)
@@ -214,6 +221,7 @@ func TestHandleExtensionLogs_RejectsOversizedPayload(t *testing.T) {
 // ============================================
 
 func TestExtensionLogs_RingBufferEviction(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Add maxExtensionLogs + 10 entries (should keep only last maxExtensionLogs)
@@ -247,6 +255,7 @@ func TestExtensionLogs_RingBufferEviction(t *testing.T) {
 }
 
 func TestExtensionLogs_MultipleEntriesInSinglePayload(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	payload := map[string]interface{}{
@@ -288,6 +297,7 @@ func TestExtensionLogs_MultipleEntriesInSinglePayload(t *testing.T) {
 }
 
 func TestExtensionLogs_PreallocatedBuffer(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Verify buffer was pre-allocated
@@ -305,6 +315,7 @@ func TestExtensionLogs_PreallocatedBuffer(t *testing.T) {
 // ============================================
 
 func TestToolGetExtensionLogs_EmptyBuffer(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -335,6 +346,7 @@ func TestToolGetExtensionLogs_EmptyBuffer(t *testing.T) {
 }
 
 func TestToolGetExtensionLogs_PopulatedBuffer(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -394,6 +406,7 @@ func TestToolGetExtensionLogs_PopulatedBuffer(t *testing.T) {
 }
 
 func TestToolGetExtensionLogs_LimitParameter(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -440,6 +453,7 @@ func TestToolGetExtensionLogs_LimitParameter(t *testing.T) {
 // ============================================
 
 func TestComputeDataCounts_IncludesExtensionLogs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -465,6 +479,7 @@ func TestComputeDataCounts_IncludesExtensionLogs(t *testing.T) {
 // ============================================
 
 func TestExtensionLogs_ConcurrentWrites(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Write 100 entries concurrently

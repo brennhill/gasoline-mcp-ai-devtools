@@ -16,6 +16,7 @@ import (
 // ============================================
 
 func TestHealthMetrics_InitialState(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 
 	if hm.startTime.IsZero() {
@@ -32,6 +33,7 @@ func TestHealthMetrics_InitialState(t *testing.T) {
 }
 
 func TestHealthMetrics_IncrementRequest(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 
 	hm.IncrementRequest("observe")
@@ -52,6 +54,7 @@ func TestHealthMetrics_IncrementRequest(t *testing.T) {
 }
 
 func TestHealthMetrics_IncrementError(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 
 	hm.IncrementError("observe")
@@ -68,6 +71,7 @@ func TestHealthMetrics_IncrementError(t *testing.T) {
 }
 
 func TestHealthMetrics_TotalRequests(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 
 	hm.IncrementRequest("observe")
@@ -80,6 +84,7 @@ func TestHealthMetrics_TotalRequests(t *testing.T) {
 }
 
 func TestHealthMetrics_TotalErrors(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 
 	hm.IncrementError("observe")
@@ -91,6 +96,7 @@ func TestHealthMetrics_TotalErrors(t *testing.T) {
 }
 
 func TestHealthMetrics_Uptime(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 
 	// Uptime should be at least 0
@@ -108,6 +114,7 @@ func TestHealthMetrics_Uptime(t *testing.T) {
 }
 
 func TestHealthMetrics_ThreadSafety(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 
 	var wg sync.WaitGroup
@@ -165,6 +172,7 @@ func TestHealthMetrics_ThreadSafety(t *testing.T) {
 // ============================================
 
 func TestGetHealth_ResponseStructure(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 
 	// Simulate some activity
@@ -233,6 +241,7 @@ func TestGetHealth_ResponseStructure(t *testing.T) {
 }
 
 func TestGetHealth_MemoryStats(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 	capture := NewCapture()
 
@@ -251,6 +260,7 @@ func TestGetHealth_MemoryStats(t *testing.T) {
 }
 
 func TestGetHealth_BufferUtilization(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 	capture := NewCapture()
 
@@ -275,6 +285,7 @@ func TestGetHealth_BufferUtilization(t *testing.T) {
 }
 
 func TestGetHealth_RateLimiting(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 	capture := NewCapture()
 
@@ -289,6 +300,7 @@ func TestGetHealth_RateLimiting(t *testing.T) {
 }
 
 func TestGetHealth_ErrorRate(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 	capture := NewCapture()
 
@@ -308,6 +320,7 @@ func TestGetHealth_ErrorRate(t *testing.T) {
 }
 
 func TestGetHealth_ZeroDivision(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 	capture := NewCapture()
 
@@ -320,6 +333,7 @@ func TestGetHealth_ZeroDivision(t *testing.T) {
 }
 
 func TestGetHealth_JSONSerialization(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 	capture := NewCapture()
 
@@ -348,6 +362,7 @@ func TestGetHealth_JSONSerialization(t *testing.T) {
 // ============================================
 
 func TestToolHandler_GetHealthTool(t *testing.T) {
+	t.Parallel()
 	// Create a minimal server setup
 	server := &Server{
 		maxEntries: defaultMaxEntries,
@@ -412,6 +427,7 @@ func TestToolHandler_GetHealthTool(t *testing.T) {
 // ============================================
 
 func TestHealthMetrics_RequestCountOverflow(t *testing.T) {
+	t.Parallel()
 	// This tests that we handle large counts without issues
 	// In practice, int64 won't overflow during normal operation
 	hm := NewHealthMetrics()
@@ -427,6 +443,7 @@ func TestHealthMetrics_RequestCountOverflow(t *testing.T) {
 }
 
 func TestHealthMetrics_ManyTools(t *testing.T) {
+	t.Parallel()
 	hm := NewHealthMetrics()
 
 	tools := []string{

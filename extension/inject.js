@@ -157,6 +157,7 @@ import {
   setNetworkWaterfallEnabled,
   setNetworkBodyCaptureEnabled,
   setServerUrl,
+  wrapFetchWithBodies,
 } from './lib/network.js'
 import {
   getPerformanceMarks,
@@ -181,6 +182,7 @@ import {
   sendPerformanceSnapshot,
   setPerformanceSnapshotEnabled,
 } from './lib/perf-snapshot.js'
+import { executeDOMQuery, runAxeAuditWithTimeout } from './lib/dom-queries.js'
 
 // Import constants used by wrapFetch and memory checks from the single source of truth
 import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from './lib/constants.js'
@@ -230,6 +232,7 @@ export function wrapFetch(originalFetchFn) {
           const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders
           Object.keys(headers).forEach((key) => {
             if (!SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+              // eslint-disable-next-line security/detect-object-injection -- key from Object.keys iteration, headers from request
               safeHeaders[key] = headers[key]
             }
           })
@@ -259,6 +262,7 @@ export function wrapFetch(originalFetchFn) {
         const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders
         Object.keys(headers).forEach((key) => {
           if (!SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+            // eslint-disable-next-line security/detect-object-injection -- key from Object.keys iteration, headers from request
             safeHeaders[key] = headers[key]
           }
         })
@@ -280,11 +284,16 @@ export function wrapFetch(originalFetchFn) {
 }
 
 /**
- * Install fetch capture
+ * Install fetch capture.
+ * Uses wrapFetchWithBodies to capture request/response bodies for all requests,
+ * then wraps that with wrapFetch to also capture error details for 4xx/5xx responses.
+ * This ensures both body capture (GASOLINE_NETWORK_BODY) and error logging work together.
  */
 export function installFetchCapture() {
   originalFetch = window.fetch
-  window.fetch = wrapFetch(originalFetch)
+  // Layer 1: wrapFetchWithBodies captures request/response bodies for ALL requests
+  // Layer 2: wrapFetch captures detailed error logging for 4xx/5xx responses
+  window.fetch = wrapFetch(wrapFetchWithBodies(originalFetch))
 }
 
 /**
@@ -506,7 +515,7 @@ export function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: '5.1.0',
+    version: '5.2.0',
   }
 }
 
@@ -579,8 +588,10 @@ export function safeSerializeForExecute(value, depth = 0, seen = new WeakSet()) 
     const keys = Object.keys(value).slice(0, 50)
     for (const key of keys) {
       try {
+        // eslint-disable-next-line security/detect-object-injection -- key from Object.keys iteration on value being serialized
         result[key] = safeSerializeForExecute(value[key], depth + 1, seen)
       } catch {
+        // eslint-disable-next-line security/detect-object-injection -- key from Object.keys iteration
         result[key] = '[unserializable]'
       }
     }
@@ -923,6 +934,23 @@ if (typeof window !== 'undefined') {
     if (event.data?.type === 'GASOLINE_A11Y_QUERY') {
       const { requestId, params } = event.data
 
+      // Defensive check: Chrome extension caching can cause module-level
+      // bindings to be undefined after updates. Return a clear error instead
+      // of crashing with "runAxeAuditWithTimeout is not defined".
+      if (typeof runAxeAuditWithTimeout !== 'function') {
+        window.postMessage(
+          {
+            type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+            requestId,
+            result: {
+              error: 'runAxeAuditWithTimeout not available — try reloading the extension',
+            },
+          },
+          window.location.origin,
+        )
+        return
+      }
+
       try {
         runAxeAuditWithTimeout(params || {})
           .then((result) => {
@@ -954,6 +982,64 @@ if (typeof window !== 'undefined') {
             type: 'GASOLINE_A11Y_QUERY_RESPONSE',
             requestId,
             result: { error: err.message || 'Failed to run accessibility audit' },
+          },
+          window.location.origin,
+        )
+      }
+    }
+
+    // Handle GASOLINE_DOM_QUERY from content script (CSS selector query)
+    if (event.data?.type === 'GASOLINE_DOM_QUERY') {
+      const { requestId, params } = event.data
+
+      // Defensive check: Chrome extension caching can cause module-level
+      // bindings to be undefined after updates. Return a clear error instead
+      // of crashing with "executeDOMQuery is not defined".
+      if (typeof executeDOMQuery !== 'function') {
+        window.postMessage(
+          {
+            type: 'GASOLINE_DOM_QUERY_RESPONSE',
+            requestId,
+            result: {
+              error: 'executeDOMQuery not available — try reloading the extension',
+            },
+          },
+          window.location.origin,
+        )
+        return
+      }
+
+      try {
+        executeDOMQuery(params || {})
+          .then((result) => {
+            // Send response back to content script
+            window.postMessage(
+              {
+                type: 'GASOLINE_DOM_QUERY_RESPONSE',
+                requestId,
+                result,
+              },
+              window.location.origin,
+            )
+          })
+          .catch((err) => {
+            console.error('[Gasoline] DOM query error:', err)
+            window.postMessage(
+              {
+                type: 'GASOLINE_DOM_QUERY_RESPONSE',
+                requestId,
+                result: { error: err.message || 'DOM query failed' },
+              },
+              window.location.origin,
+            )
+          })
+      } catch (err) {
+        console.error('[Gasoline] Failed to run DOM query:', err)
+        window.postMessage(
+          {
+            type: 'GASOLINE_DOM_QUERY_RESPONSE',
+            requestId,
+            result: { error: err.message || 'Failed to run DOM query' },
           },
           window.location.origin,
         )
@@ -1187,7 +1273,7 @@ if (typeof window !== 'undefined') {
           requestId,
           result,
         },
-        '*',
+        window.location.origin,
       )
     }
   })
@@ -1213,11 +1299,13 @@ export function captureState() {
 
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)
+    // eslint-disable-next-line security/detect-object-injection -- key from localStorage.key() API
     state.localStorage[key] = localStorage.getItem(key)
   }
 
   for (let i = 0; i < sessionStorage.length; i++) {
     const key = sessionStorage.key(i)
+    // eslint-disable-next-line security/detect-object-injection -- key from sessionStorage.key() API
     state.sessionStorage[key] = sessionStorage.getItem(key)
   }
 
@@ -1231,18 +1319,60 @@ export function captureState() {
  * @param {boolean} includeUrl - Whether to navigate to the saved URL (default true)
  * @returns {Object} Result with success and restored counts
  */
+// Validates a storage key to prevent prototype pollution and other attacks
+function isValidStorageKey(key) {
+  if (typeof key !== 'string') return false
+  if (key.length === 0 || key.length > 256) return false
+
+  // Reject prototype pollution vectors
+  const dangerous = ['__proto__', 'constructor', 'prototype']
+  const lowerKey = key.toLowerCase()
+  for (const pattern of dangerous) {
+    if (lowerKey.includes(pattern)) return false
+  }
+
+  return true
+}
+
 export function restoreState(state, includeUrl = true) {
+  // Validate state object
+  if (!state || typeof state !== 'object') {
+    return { success: false, error: 'Invalid state object' }
+  }
+
   // Clear existing
   localStorage.clear()
   sessionStorage.clear()
 
-  // Restore localStorage
+  // Restore localStorage with validation
+  let skipped = 0
   for (const [key, value] of Object.entries(state.localStorage || {})) {
+    if (!isValidStorageKey(key)) {
+      skipped++
+      console.warn('[gasoline] Skipped localStorage key with invalid pattern:', key)
+      continue
+    }
+    // Limit value size (10MB max per item)
+    if (typeof value === 'string' && value.length > 10 * 1024 * 1024) {
+      skipped++
+      console.warn('[gasoline] Skipped localStorage value exceeding 10MB:', key)
+      continue
+    }
     localStorage.setItem(key, value)
   }
 
-  // Restore sessionStorage
+  // Restore sessionStorage with validation
   for (const [key, value] of Object.entries(state.sessionStorage || {})) {
+    if (!isValidStorageKey(key)) {
+      skipped++
+      console.warn('[gasoline] Skipped sessionStorage key with invalid pattern:', key)
+      continue
+    }
+    if (typeof value === 'string' && value.length > 10 * 1024 * 1024) {
+      skipped++
+      console.warn('[gasoline] Skipped sessionStorage value exceeding 10MB:', key)
+      continue
+    }
     sessionStorage.setItem(key, value)
   }
 
@@ -1261,14 +1391,29 @@ export function restoreState(state, includeUrl = true) {
   }
 
   const restored = {
-    localStorage: Object.keys(state.localStorage || {}).length,
+    localStorage: Object.keys(state.localStorage || {}).length - skipped,
     sessionStorage: Object.keys(state.sessionStorage || {}).length,
     cookies: (state.cookies || '').split(';').filter((c) => c.trim()).length,
+    skipped,
   }
 
-  // Navigate if requested
+  // Navigate if requested (with basic URL validation)
   if (includeUrl && state.url && state.url !== window.location.href) {
-    window.location.href = state.url
+    // Basic URL validation: must be http/https
+    try {
+      const url = new URL(state.url)
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        window.location.href = state.url
+      } else {
+        console.warn('[gasoline] Skipped navigation to non-HTTP(S) URL:', state.url)
+      }
+    } catch (e) {
+      console.warn('[gasoline] Invalid URL for navigation:', state.url, e)
+    }
+  }
+
+  if (skipped > 0) {
+    console.warn(`[gasoline] restoreState completed with ${skipped} skipped item(s)`)
   }
 
   return { success: true, restored }

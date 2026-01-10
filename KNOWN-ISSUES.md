@@ -1,5 +1,66 @@
 # Known Issues & Roadmap
 
+## v5.2.0 — In Progress
+
+### Fixed in v5.2
+
+| # | Fix | Details |
+|---|-----|---------|
+| 3 | Accessibility audit defensive check | Added `typeof` guard for `runAxeAuditWithTimeout` in inject.js. Returns structured error instead of crashing. |
+| 4 | `network_bodies` capture enforcement | Enforced `networkBodyCaptureDisabled` flag in message handler. Added tab-tracking hint when capture is on but no bodies found. |
+| 5 | Extension timeout cascade | Added `await` to `handleAsyncBrowserAction` call — missing `await` caused premature cleanup and duplicate processing. |
+| 6 | tabId in observe responses | Added Tab column to `observe({what: "errors"})` and `observe({what: "logs"})`. Extension now passes `tabId` through `handleLogMessage`. |
+| 2 | `query_dom` implementation | Completed message forwarding chain: background.js → content.js → inject.js. Calls existing `executeDOMQuery()`. 20 new extension tests. |
+
+### Remaining Issues
+
+All known issues have been resolved in v5.2.
+
+### v5.2 Planned Improvements (Specs Written)
+
+- ~~**query_dom implementation** (Issue #2) — Complete the message forwarding chain.~~ **DONE**
+- **Tab Tracking UX** — Badge indicator, switch confirmation dialog, tab close recovery. Spec: `docs/features/feature/tab-tracking-ux/PRODUCT_SPEC.md`
+
+---
+
+## v6.0 Roadmap (Specs In Progress)
+
+### Priority 1: Agentic CI/CD (Thesis Validation)
+
+| Feature | Status | Spec |
+|---------|--------|------|
+| Self-Healing Tests | Spec written | `docs/features/feature/self-healing-tests/PRODUCT_SPEC.md` |
+| Gasoline CI Infrastructure | Spec written | `docs/features/feature/gasoline-ci/PRODUCT_SPEC.md` |
+| Context Streaming | Spec written | `docs/features/feature/context-streaming/PRODUCT_SPEC.md` |
+| PR Preview Exploration | Spec written | `docs/features/feature/pr-preview-exploration/PRODUCT_SPEC.md` |
+| Agentic E2E Repair | Spec written | `docs/features/feature/agentic-e2e-repair/PRODUCT_SPEC.md` |
+| Deployment Watchdog | Spec written | `docs/features/feature/deployment-watchdog/PRODUCT_SPEC.md` |
+| Configuration Profiles | Spec written | `docs/features/feature/config-profiles/PRODUCT_SPEC.md` |
+
+### Priority 2: Competitive Parity
+
+| Feature | Status | Spec |
+|---------|--------|------|
+| SEO Audit | Spec written | `docs/features/feature/seo-audit/PRODUCT_SPEC.md` |
+| Performance Audit | Spec written | `docs/features/feature/performance-audit/PRODUCT_SPEC.md` |
+| Best Practices Audit | Spec written | `docs/features/feature/best-practices-audit/PRODUCT_SPEC.md` |
+| Enhanced WCAG Audit | Spec written | `docs/features/feature/enhanced-wcag-audit/PRODUCT_SPEC.md` |
+| Auto-Paste Screenshots | Spec written | `docs/features/feature/auto-paste-screenshots/PRODUCT_SPEC.md` |
+| Annotated Screenshots | Spec written | `docs/features/feature/annotated-screenshots/PRODUCT_SPEC.md` |
+| Form Filling Automation | Spec written | `docs/features/feature/form-filling/PRODUCT_SPEC.md` |
+| E2E Testing Integration | Spec written | `docs/features/feature/e2e-testing-integration/PRODUCT_SPEC.md` |
+| CPU/Network Emulation | Spec written | `docs/features/feature/cpu-network-emulation/PRODUCT_SPEC.md` |
+| Dialog Handling | Spec written | `docs/features/feature/dialog-handling/PRODUCT_SPEC.md` |
+| Drag & Drop Automation | Spec written | `docs/features/feature/drag-drop-automation/PRODUCT_SPEC.md` |
+| A11y Tree Snapshots | Spec written | `docs/features/feature/a11y-tree-snapshots/PRODUCT_SPEC.md` |
+| Local Web Scraping | Spec written | `docs/features/feature/local-web-scraping/PRODUCT_SPEC.md` |
+
+### Code Health
+
+See [docs/core/ARCHITECT-REVIEW.md](docs/core/ARCHITECT-REVIEW.md) for the principal architect code review with 12 prioritized recommendations.
+
+---
+
 ## v5.1.0 — Current Release
 
 ### What's New
@@ -10,30 +71,6 @@
 - **Browser restart handling** — Tracking state cleared on browser restart.
 - **validate_api parameter fix** — Renamed conflicting parameter to `operation`.
 - **Network schema improvements** — Unit suffixes, compression ratios, timestamps on waterfall/bodies.
-
-### Known Issues (Targeted for v5.2)
-
-| # | Severity | Issue | Description |
-|---|----------|-------|-------------|
-| 2 | High | `query_dom` not implemented | MCP schema advertises the feature, but background.js returns `not_implemented`. Needs message forwarding from background → content → inject. |
-| 3 | High | Accessibility audit runtime error | `runAxeAuditWithTimeout` reports "not defined" at runtime despite being imported. Likely Chrome caching issue — clean reinstall may resolve. |
-| 4 | Medium | `network_bodies` returns no data | Multiple page loads return empty arrays. Body capture may be disabled by default or URL filtering too aggressive. Investigation needed. |
-| 5 | Medium | Extension timeouts after several operations | After 5-6 navigate commands, extension starts timing out. Pilot still shows connected. Possible message queue backup or memory leak. |
-| 6 | Medium | `observe()` missing tabId in responses | LLM cannot detect which tab data came from. content.js attaches tabId but server doesn't surface it in MCP responses. |
-
-### v5.2 Roadmap
-
-**Priority fixes:**
-1. Fix `network_bodies` capture (Issue #4) — Core feature, blocks body inspection
-2. Implement `query_dom` (Issue #2) — Or remove from schema until ready
-3. Fix accessibility audit (Issue #3) — Clean extension reinstall + defensive check
-4. Fix extension timeouts (Issue #5) — Investigate message queue / memory
-5. Add tabId to observe responses (Issue #6) — Enable LLM tab-switch detection
-
-**Planned improvements:**
-- Visual indicator on tracked tab (extension badge icon)
-- Confirmation dialog when switching tracked tab
-- Tab switch suggestion when tracked tab closes
 
 ### Full Issue Details
 

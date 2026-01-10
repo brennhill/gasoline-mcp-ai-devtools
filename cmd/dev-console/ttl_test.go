@@ -10,6 +10,7 @@ import (
 // ============================================
 
 func TestTTLParseDuration(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -46,6 +47,7 @@ func TestTTLParseDuration(t *testing.T) {
 }
 
 func TestTTLMinimumEnforcement(t *testing.T) {
+	t.Parallel()
 	// TTL values below 1 minute should be rejected
 	tests := []struct {
 		name    string
@@ -79,6 +81,7 @@ func TestTTLMinimumEnforcement(t *testing.T) {
 // ============================================
 
 func TestTTLZeroMeansUnlimited(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.TTL = 0 // unlimited
 
@@ -105,6 +108,7 @@ func TestTTLZeroMeansUnlimited(t *testing.T) {
 // ============================================
 
 func TestTTLFiltersOldWSEvents(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.TTL = 1 * time.Minute
 
@@ -135,6 +139,7 @@ func TestTTLFiltersOldWSEvents(t *testing.T) {
 }
 
 func TestTTLFiltersOldNetworkBodies(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.TTL = 1 * time.Minute
 
@@ -163,6 +168,7 @@ func TestTTLFiltersOldNetworkBodies(t *testing.T) {
 }
 
 func TestTTLFiltersOldActions(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.TTL = 1 * time.Minute
 
@@ -189,6 +195,7 @@ func TestTTLFiltersOldActions(t *testing.T) {
 }
 
 func TestTTLFiltersOldConsoleLogs(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
 	if err != nil {
 		t.Fatalf("failed to create server: %v", err)
@@ -221,6 +228,7 @@ func TestTTLFiltersOldConsoleLogs(t *testing.T) {
 // ============================================
 
 func TestTTLReturnsFreshEntries(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.TTL = 1 * time.Hour
 
@@ -242,6 +250,7 @@ func TestTTLReturnsFreshEntries(t *testing.T) {
 // ============================================
 
 func TestTTLBoundaryExactlyAtTTL(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.TTL = 1 * time.Minute
 
@@ -267,6 +276,7 @@ func TestTTLBoundaryExactlyAtTTL(t *testing.T) {
 // ============================================
 
 func TestTTLDoesNotAffectWrites(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.TTL = 1 * time.Second // Very short TTL (below minimum for real use, but tests internal behavior)
 
@@ -288,6 +298,7 @@ func TestTTLDoesNotAffectWrites(t *testing.T) {
 }
 
 func TestTTLRingBufferStillWorks(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.TTL = 1 * time.Hour
 
@@ -312,6 +323,7 @@ func TestTTLRingBufferStillWorks(t *testing.T) {
 // ============================================
 
 func TestTTLSetTTL(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	capture.SetTTL(15 * time.Minute)
@@ -326,6 +338,7 @@ func TestTTLSetTTL(t *testing.T) {
 }
 
 func TestTTLServerSetTTL(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
 	if err != nil {
 		t.Fatalf("failed to create server: %v", err)
@@ -342,6 +355,7 @@ func TestTTLServerSetTTL(t *testing.T) {
 // ============================================
 
 func TestTTLAppliesConsistently(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.TTL = 5 * time.Minute
 
@@ -382,6 +396,7 @@ func TestTTLAppliesConsistently(t *testing.T) {
 // ============================================
 
 func TestTTLCombinesWithOtherFilters(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.TTL = 5 * time.Minute
 
@@ -417,6 +432,7 @@ func TestTTLCombinesWithOtherFilters(t *testing.T) {
 // ============================================
 
 func TestTTLFiltersOldErrors(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
 	if err != nil {
 		t.Fatalf("failed to create server: %v", err)

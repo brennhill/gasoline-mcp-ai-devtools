@@ -19,7 +19,7 @@ const mockChrome = {
       addListener: mock.fn(),
     },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.1.0' }),
+    getManifest: () => ({ version: '5.2.0' }),
   },
   action: {
     setBadgeText: mock.fn(),
@@ -359,6 +359,25 @@ describe('formatLogEntry', () => {
     })
 
     assert.strictEqual(entry.url, 'http://localhost:3000/page')
+  })
+
+  test('should preserve tabId when present in entry', () => {
+    const entry = formatLogEntry({
+      level: 'error',
+      msg: 'test',
+      tabId: 42,
+    })
+
+    assert.strictEqual(entry.tabId, 42)
+  })
+
+  test('should work without tabId (backward compat)', () => {
+    const entry = formatLogEntry({
+      level: 'error',
+      msg: 'test',
+    })
+
+    assert.strictEqual(entry.tabId, undefined)
   })
 })
 
@@ -1011,7 +1030,7 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
-    assert.strictEqual(parsed.version, '5.1.0')
+    assert.strictEqual(parsed.version, '5.2.0')
     assert.ok(Array.isArray(parsed.entries))
   })
 

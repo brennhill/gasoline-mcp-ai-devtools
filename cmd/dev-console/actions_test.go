@@ -11,6 +11,7 @@ import (
 )
 
 func TestV5EnhancedActionsBuffer(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	actions := []EnhancedAction{
@@ -44,6 +45,7 @@ func TestV5EnhancedActionsBuffer(t *testing.T) {
 }
 
 func TestV5EnhancedActionsBufferRotation(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add more than max (50) actions
@@ -65,6 +67,7 @@ func TestV5EnhancedActionsBufferRotation(t *testing.T) {
 }
 
 func TestV5EnhancedActionsGetAll(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -80,6 +83,7 @@ func TestV5EnhancedActionsGetAll(t *testing.T) {
 }
 
 func TestV5EnhancedActionsFilterByLastN(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	for i := 0; i < 10; i++ {
@@ -100,6 +104,7 @@ func TestV5EnhancedActionsFilterByLastN(t *testing.T) {
 }
 
 func TestV5EnhancedActionsFilterByURL(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -115,6 +120,7 @@ func TestV5EnhancedActionsFilterByURL(t *testing.T) {
 }
 
 func TestV5EnhancedActionsNewestLast(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -131,6 +137,7 @@ func TestV5EnhancedActionsNewestLast(t *testing.T) {
 }
 
 func TestV5EnhancedActionsPasswordRedaction(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -146,6 +153,7 @@ func TestV5EnhancedActionsPasswordRedaction(t *testing.T) {
 }
 
 func TestV5PostEnhancedActionsEndpoint(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	body := `{"actions":[{"type":"click","timestamp":1705312200000,"url":"http://localhost:3000/login","selectors":{"testId":"login-btn","cssPath":"button.primary"}}]}`
@@ -165,6 +173,7 @@ func TestV5PostEnhancedActionsEndpoint(t *testing.T) {
 }
 
 func TestV5PostEnhancedActionsMultiple(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	body := `{"actions":[
@@ -188,6 +197,7 @@ func TestV5PostEnhancedActionsMultiple(t *testing.T) {
 }
 
 func TestV5PostEnhancedActionsInvalidJSON(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString("not json"))
@@ -202,6 +212,7 @@ func TestV5PostEnhancedActionsInvalidJSON(t *testing.T) {
 }
 
 func TestV5PostEnhancedActionsPasswordRedaction(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	body := `{"actions":[{"type":"input","timestamp":1000,"url":"http://localhost:3000","selectors":{},"inputType":"password","value":"mysecret"}]}`
@@ -222,6 +233,7 @@ func TestV5PostEnhancedActionsPasswordRedaction(t *testing.T) {
 }
 
 func TestMCPGetEnhancedActions(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -267,6 +279,7 @@ func TestMCPGetEnhancedActions(t *testing.T) {
 }
 
 func TestMCPGetEnhancedActionsWithLastN(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -302,6 +315,7 @@ func TestMCPGetEnhancedActionsWithLastN(t *testing.T) {
 }
 
 func TestMCPGetEnhancedActionsEmpty(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -334,6 +348,7 @@ func TestMCPGetEnhancedActionsEmpty(t *testing.T) {
 
 // TestHandleEnhancedActions_POST tests normal POST to /enhanced-actions
 func TestHandleEnhancedActions_POST(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	payload := `{"actions":[{"type":"click","timestamp":1000,"url":"http://example.com"}]}`
@@ -353,6 +368,7 @@ func TestHandleEnhancedActions_POST(t *testing.T) {
 
 // TestHandleEnhancedActions_InvalidJSON tests POST with invalid JSON body
 func TestHandleEnhancedActions_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString("not json"))
@@ -367,6 +383,7 @@ func TestHandleEnhancedActions_InvalidJSON(t *testing.T) {
 
 // TestHandleEnhancedActions_EmptyActions tests POST with empty actions array
 func TestHandleEnhancedActions_EmptyActions(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	payload := `{"actions":[]}`
@@ -385,6 +402,7 @@ func TestHandleEnhancedActions_EmptyActions(t *testing.T) {
 
 // TestHandleEnhancedActions_MultipleActions tests POST with multiple actions
 func TestHandleEnhancedActions_MultipleActions(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	payload := `{"actions":[
@@ -410,6 +428,7 @@ func TestHandleEnhancedActions_MultipleActions(t *testing.T) {
 // ============================================
 
 func TestHandleEnhancedActions_GETWithLimit(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// A GET request to the POST-only handler results in reading empty body
@@ -425,6 +444,7 @@ func TestHandleEnhancedActions_GETWithLimit(t *testing.T) {
 }
 
 func TestHandleEnhancedActions_DELETE(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add some actions first
@@ -448,6 +468,7 @@ func TestHandleEnhancedActions_DELETE(t *testing.T) {
 // ============================================
 
 func TestHandleEnhancedActionsBufferOverflow(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add more actions than the buffer capacity (maxEnhancedActions = 50)
@@ -483,6 +504,7 @@ func TestHandleEnhancedActionsBufferOverflow(t *testing.T) {
 // ============================================
 
 func TestHandleEnhancedActionsRateLimitAfterRecording(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Push the capture into a rate-limited state by opening the circuit

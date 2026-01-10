@@ -1,137 +1,125 @@
-> **[MIGRATION NOTICE]**
-> Canonical location for this tech spec. Migrated from `/docs/ai-first/tech-spec-dynamic-exposure.md` on 2026-01-26.
-> See also: [Product Spec](PRODUCT_SPEC.md) and [Dynamic Exposure Review](dynamic-exposure-review.md).
+---
+feature: dynamic-exposure
+status: proposed
+---
 
-# Tech Spec: Dynamic Tool Exposure (Phase 2)
+# Tech Spec: Dynamic Exposure
 
-## Purpose
+> Plain language only. No code. Describes HOW the implementation works at a high level.
 
-The MCP `tools/list` response should change based on what data is currently available in the server. This reduces cognitive load on AI consumers by only showing tools and modes that are actionable right now. An AI seeing `analyze(target: "accessibility")` when no a11y audit has been cached is wasted schema space.
+## Architecture Overview
 
-## How It Works
+Dynamic exposure uses runtime feature flags stored in YAML config file. Server loads flags at startup, stores in memory (map[string]bool, guarded by RWMutex). File watcher detects config changes, triggers hot-reload. Each tool handler checks feature flag before execution. If disabled, return error immediately. CLI flags can force-disable features (override config).
 
-### State-Aware Tool List
+## Key Components
 
-The `toolsList()` method on `ToolHandler` inspects the current state of `Server` (log entries), `Capture` (network bodies, WebSocket events, actions, performance snapshots, a11y cache, API schema store), and `SessionStore` (persistent data) to determine which tool modes are available.
+- **Feature flag registry**: Map[string]bool, protected by RWMutex
+- **Config loader**: Parse YAML feature flags file
+- **File watcher**: Detect config file changes, trigger reload
+- **Feature gate guards**: Check flag before executing feature
+- **Error response**: Return "feature_disabled" with flag name
+- **CLI override**: --disable-feature flag forces disable
+- **Observe integration**: Expose current flags via observe({what: "feature_flags"})
 
-For each composite tool, the enum values in the mode parameter are filtered to only include modes that have data. If a tool has zero available modes, it is omitted entirely from the response.
-
-### Availability Rules
-
-**`observe` tool — `what` enum filtering:**
-
-| Mode | Available when |
-|------|----------------|
-| `errors` | Always (errors may arrive at any time) |
-| `logs` | Always (same reason) |
-| `network` | `capture.networkBodies` is non-empty |
-| `websocket_events` | `capture.wsEvents` is non-empty |
-| `websocket_status` | `capture.connections` is non-empty |
-| `actions` | `capture.enhancedActions` is non-empty |
-| `vitals` | `capture.perf.snapshots` is non-empty |
-| `page` | Always (live query, data is on-demand) |
-
-**`analyze` tool — `target` enum filtering:**
-
-| Mode | Available when |
-|------|----------------|
-| `performance` | `capture.perf.snapshots` is non-empty |
-| `api` | `capture.schemaStore` has observed endpoints |
-| `accessibility` | Always (triggers a live audit) |
-| `changes` | `server.entries` or any capture buffer is non-empty |
-| `timeline` | `capture.enhancedActions` is non-empty |
-
-**`generate` tool — `format` enum filtering:**
-
-| Mode | Available when |
-|------|----------------|
-| `reproduction` | `capture.enhancedActions` is non-empty |
-| `test` | `capture.enhancedActions` is non-empty |
-| `pr_summary` | Any data exists (entries, actions, network, perf) |
-| `sarif` | Always (triggers a live audit) |
-| `har` | `capture.networkBodies` is non-empty |
-
-**`configure` tool:**
-
-Always available with all modes. Configuration is always valid.
-
-**`query_dom` tool:**
-
-Always available. It's a live query.
-
-### Progressive Disclosure
-
-The server tracks whether the AI has made at least one successful `observe` call (any mode). Until that first observation:
-
-- Only `observe` and `query_dom` are exposed
-- `analyze`, `generate`, and `configure` are hidden
-
-After the first successful observation, all tools that have available data are exposed. This prevents AI models from calling `generate(format: "reproduction")` before any actions have been captured.
-
-The "first observation" flag is stored as a boolean on `ToolHandler` and resets when the server restarts. It is NOT persisted.
-
-### Capability Annotations
-
-Each tool in the `tools/list` response includes an optional `_capabilities` annotation in its description or as a top-level field. This is a structured hint for AI consumers:
+## Data Flows
 
 ```
+Server startup: gasoline --feature-flags=features.yaml
+  → Load features.yaml
+  → Parse into map: {"interact_execute_js": true, "generate_har": false}
+  → Store in registry with RWMutex
+  → Start file watcher on features.yaml
+  → Log: "Feature flags loaded, X features enabled"
+
+Agent calls generate({type: "har"}):
+  → Handler: check registry.IsEnabled("generate_har")
+  → Registry: RLock, lookup, RUnlock → false
+  → Return error: {error: "feature_disabled", feature_flag: "generate_har"}
+
+Admin edits features.yaml (generate_har: false → true):
+  → File watcher detects change
+  → Reload: parse YAML, update registry with WLock
+  → Log: "Feature flags reloaded, generate_har enabled"
+
+Next request: generate({type: "har"}):
+  → Check flag: now true
+  → Execute normally
+```
+
+## Implementation Strategy
+
+**Feature flag naming convention:**
+- Format: {tool}_{action} (e.g., "interact_execute_js", "generate_har")
+- Underscore-separated, lowercase
+- Map to tool and action names in code
+
+**Registry implementation:**
+- Map[string]bool with sync.RWMutex
+- IsEnabled(flag string) bool: RLock, lookup, return (default true if not found)
+- SetFlag(flag string, enabled bool): WLock, set, WUnlock
+- LoadFromYAML(path string): parse YAML, bulk update registry
+
+**File watching:**
+- Use fsnotify (or similar) to watch config file
+- On change event: debounce (wait 1s for write completion), reload YAML
+- If reload fails: log error, keep existing flags (don't crash)
+
+**Feature gate pattern:**
+```
+In each tool handler:
+if !featureFlags.IsEnabled("tool_action") {
+  return error: "feature_disabled"
+}
+// Proceed with execution
+```
+
+**CLI override:**
+- --disable-feature=execute_js flag parses into list
+- After loading config, force-set these flags to false
+- CLI overrides take precedence (cannot be hot-reloaded)
+
+**Error response format:**
+```json
 {
-  "name": "observe",
-  "description": "...",
-  "_meta": {
-    "available_modes": ["errors", "logs", "network", "actions"],
-    "data_counts": {
-      "errors": 3,
-      "logs": 47,
-      "network": 12,
-      "actions": 8
-    }
-  }
+  "error": "feature_disabled",
+  "message": "The 'har' generation feature is currently disabled. Contact administrator to enable 'generate_har' flag.",
+  "feature_flag": "generate_har",
+  "feature_status": "disabled"
 }
 ```
 
-The `_meta` field uses the MCP convention for server-to-client metadata. It is informational — AI consumers may ignore it, but capable consumers use it to prioritize which mode to call first.
+## Edge Cases & Assumptions
 
-### Data Count Computation
+- **Edge Case 1**: Feature flag not defined in config → **Handling**: Default to enabled (backwards compatible)
+- **Edge Case 2**: Config file deleted → **Handling**: Log error, keep existing flags
+- **Edge Case 3**: Invalid YAML syntax → **Handling**: Log error, keep existing flags (don't crash)
+- **Edge Case 4**: Concurrent hot-reload and request → **Handling**: RWMutex ensures consistency
+- **Assumption 1**: Flags are binary (on/off), no percentage rollouts
+- **Assumption 2**: Hot-reload delay (10s) is acceptable
 
-Counts are computed at `tools/list` time by reading current buffer lengths:
+## Risks & Mitigations
 
-- `errors`: count of entries where `level == "error"`
-- `logs`: total `server.entries` count
-- `network`: `len(capture.networkBodies)`
-- `websocket_events`: `len(capture.wsEvents)`
-- `websocket_status`: `len(capture.connections)`
-- `actions`: `len(capture.enhancedActions)`
-- `vitals`: `len(capture.perf.snapshots)`
-- `performance`: same as vitals
-- `api`: `capture.schemaStore.EndpointCount()`
-- `timeline`: same as actions
-- `reproduction`/`test`: same as actions
-- `har`: same as network
+- **Risk 1**: Flag misconfiguration disables critical features → **Mitigation**: Validate config, log prominently, default to enabled
+- **Risk 2**: Hot-reload race condition → **Mitigation**: RWMutex for thread-safe access
+- **Risk 3**: File watcher fails, flags stale → **Mitigation**: Log warning, manual reload endpoint
+- **Risk 4**: Too many flags, hard to manage → **Mitigation**: Document flag hierarchy, use sparingly
 
-### Concurrency
+## Dependencies
 
-The `toolsList()` method acquires read locks on both `server.mu` and `capture.mu` to compute availability. Since `tools/list` is called infrequently (typically once at session start, occasionally on reconnect), the lock contention is negligible.
+- YAML parser
+- File watcher library (fsnotify)
+- sync.RWMutex for concurrency
 
-## Edge Cases
+## Performance Considerations
 
-- If all observe modes are empty (fresh start), `observe` still shows `errors`, `logs`, and `page` (always-available modes).
-- If progressive disclosure is active (no observation yet), `tools/list` returns exactly 2 tools.
-- A `tools/list` call itself does NOT count as an observation.
-- The `_meta` field is omitted entirely for tools with no meaningful counts (like `configure`).
+- Flag check: O(1) map lookup with RLock (fast, <0.01ms)
+- Hot-reload: triggered by file change, parses YAML (1-10ms), no impact on requests
+- RWMutex allows concurrent reads (no lock contention)
 
-## Performance Constraints
+## Security Considerations
 
-- `tools/list` must respond in under 1ms (just reading buffer lengths under read locks).
-- No allocations beyond the response construction itself.
-
-## Test Scenarios
-
-1. Fresh server: `tools/list` returns only `observe` (with errors, logs, page) and `query_dom`.
-2. After adding network bodies: `observe` gains "network" mode; if first observation made, `generate` appears with "har".
-3. After first `observe` call: `analyze`, `generate`, `configure` become visible (progressive disclosure lifted).
-4. After adding actions: `observe` gains "actions"; `analyze` gains "timeline"; `generate` gains "reproduction" and "test".
-5. After adding performance snapshot: `observe` gains "vitals"; `analyze` gains "performance".
-6. `configure` always shows all modes once progressive disclosure is lifted.
-7. `_meta.data_counts` reflects current buffer sizes accurately.
-8. Enum filtering: if network bodies exist but actions don't, `observe.what` enum has "network" but not "actions".
+- **Flag tampering**: Protect features.yaml with file permissions
+- **Feature disable as security**: Disable risky features quickly in emergency
+- **Audit trail**: Log all flag changes, who changed what when
+- **CLI override**: Emergency disable cannot be bypassed by config reload
+- **No remote API**: Flags cannot be toggled via MCP (file-based only, prevents unauthorized changes)

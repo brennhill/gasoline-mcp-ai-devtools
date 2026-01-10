@@ -14,7 +14,7 @@ const createMockChrome = () => ({
     onMessage: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
     getURL: mock.fn((path) => `chrome-extension://test-id/${path}`),
-    getManifest: () => ({ version: '5.1.0' }),
+    getManifest: () => ({ version: '5.2.0' }),
   },
   tabs: {
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1, url: 'http://localhost:3000' }])),

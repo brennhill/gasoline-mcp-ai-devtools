@@ -16,6 +16,7 @@ import (
 // --- Screenshot endpoint with correlation_id ---
 
 func TestScreenshot_FilenameWithCorrelationID(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 	server, err := NewServer(logFile, 100)
@@ -25,9 +26,9 @@ func TestScreenshot_FilenameWithCorrelationID(t *testing.T) {
 
 	jpegData := strings.Repeat("A", 1000)
 	body := map[string]string{
-		"dataUrl":       "data:image/jpeg;base64," + jpegData,
+		"data_url":       "data:image/jpeg;base64," + jpegData,
 		"url":           "https://example.com/page",
-		"correlationId": "err-42",
+		"correlation_id": "err-42",
 	}
 	bodyJSON, _ := json.Marshal(body)
 
@@ -53,6 +54,7 @@ func TestScreenshot_FilenameWithCorrelationID(t *testing.T) {
 }
 
 func TestScreenshot_FilenameWithoutCorrelationID(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 	server, err := NewServer(logFile, 100)
@@ -62,7 +64,7 @@ func TestScreenshot_FilenameWithoutCorrelationID(t *testing.T) {
 
 	jpegData := strings.Repeat("A", 1000)
 	body := map[string]string{
-		"dataUrl": "data:image/jpeg;base64," + jpegData,
+		"data_url": "data:image/jpeg;base64," + jpegData,
 		"url":     "https://example.com/page",
 	}
 	bodyJSON, _ := json.Marshal(body)
@@ -94,6 +96,7 @@ func TestScreenshot_FilenameWithoutCorrelationID(t *testing.T) {
 }
 
 func TestScreenshot_CorrelationIDSanitized(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 	server, err := NewServer(logFile, 100)
@@ -103,9 +106,9 @@ func TestScreenshot_CorrelationIDSanitized(t *testing.T) {
 
 	jpegData := strings.Repeat("A", 1000)
 	body := map[string]string{
-		"dataUrl":       "data:image/jpeg;base64," + jpegData,
+		"data_url":       "data:image/jpeg;base64," + jpegData,
 		"url":           "https://example.com/page",
-		"correlationId": "foo/bar:baz",
+		"correlation_id": "foo/bar:baz",
 	}
 	bodyJSON, _ := json.Marshal(body)
 
@@ -133,6 +136,7 @@ func TestScreenshot_CorrelationIDSanitized(t *testing.T) {
 }
 
 func TestScreenshot_CorrelationIDEchoedInResponse(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 	server, err := NewServer(logFile, 100)
@@ -142,9 +146,9 @@ func TestScreenshot_CorrelationIDEchoedInResponse(t *testing.T) {
 
 	jpegData := strings.Repeat("A", 1000)
 	body := map[string]string{
-		"dataUrl":       "data:image/jpeg;base64," + jpegData,
+		"data_url":       "data:image/jpeg;base64," + jpegData,
 		"url":           "https://example.com/page",
-		"correlationId": "err-42",
+		"correlation_id": "err-42",
 	}
 	bodyJSON, _ := json.Marshal(body)
 
@@ -168,6 +172,7 @@ func TestScreenshot_CorrelationIDEchoedInResponse(t *testing.T) {
 // --- Schema: correlation_id in interact tool ---
 
 func TestInteract_CorrelationIDInSchema(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

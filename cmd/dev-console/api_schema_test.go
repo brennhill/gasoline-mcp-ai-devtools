@@ -21,6 +21,7 @@ import (
 // TestToolDescriptions_ContainResponseDocs verifies that each of the 4 tool
 // descriptions contains response format documentation.
 func TestToolDescriptions_ContainResponseDocs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -61,6 +62,7 @@ func TestToolDescriptions_ContainResponseDocs(t *testing.T) {
 // observe tool's InputSchema, then verifies every enum value appears in the
 // observe description text.
 func TestToolDescriptions_AllModesDocumented(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -90,6 +92,7 @@ func TestToolDescriptions_AllModesDocumented(t *testing.T) {
 // the configure tool's InputSchema, then verifies every enum value appears
 // in the configure description text.
 func TestToolDescriptions_AllActionsDocumented(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -119,6 +122,7 @@ func TestToolDescriptions_AllActionsDocumented(t *testing.T) {
 // from the interact tool's InputSchema, then verifies every enum value appears
 // in the interact description text.
 func TestToolDescriptions_AllInteractActionsDocumented(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -148,6 +152,7 @@ func TestToolDescriptions_AllInteractActionsDocumented(t *testing.T) {
 // the generate tool's InputSchema, then verifies every enum value appears
 // in the generate description text.
 func TestToolDescriptions_AllFormatsDocumented(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -180,6 +185,7 @@ func TestToolDescriptions_AllFormatsDocumented(t *testing.T) {
 // TestObserveErrors_ColumnsMatchDocs calls observe with what:"errors" and
 // verifies the markdown table headers match what the response docs declare.
 func TestObserveErrors_ColumnsMatchDocs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -195,13 +201,14 @@ func TestObserveErrors_ColumnsMatchDocs(t *testing.T) {
 
 	text := extractMCPText(t, resp)
 	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"Level", "Message", "Source", "Time"}
+	expected := []string{"Level", "Message", "Source", "Time", "Tab"}
 	assertHeaders(t, "observe errors", headers, expected)
 }
 
 // TestObserveLogs_ColumnsMatchDocs calls observe with what:"logs" and
 // verifies the markdown table headers match the documented columns.
 func TestObserveLogs_ColumnsMatchDocs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -217,13 +224,14 @@ func TestObserveLogs_ColumnsMatchDocs(t *testing.T) {
 
 	text := extractMCPText(t, resp)
 	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"Level", "Message", "Source", "Time"}
+	expected := []string{"Level", "Message", "Source", "Time", "Tab"}
 	assertHeaders(t, "observe logs", headers, expected)
 }
 
 // TestObserveNetwork_ColumnsMatchDocs calls observe with what:"network_bodies" and
 // verifies the JSON structure matches the documented schema.
 func TestObserveNetwork_ColumnsMatchDocs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -252,13 +260,13 @@ func TestObserveNetwork_ColumnsMatchDocs(t *testing.T) {
 	}
 
 	// Verify expected fields exist
-	pairs, ok := data["networkRequestResponsePairs"].([]interface{})
+	pairs, ok := data["network_request_response_pairs"].([]interface{})
 	if !ok || len(pairs) != 1 {
 		t.Fatal("Expected networkRequestResponsePairs array with 1 entry")
 	}
 
 	pair := pairs[0].(map[string]interface{})
-	expectedFields := []string{"url", "method", "status", "durationMs"}
+	expectedFields := []string{"url", "method", "status", "duration_ms"}
 	for _, field := range expectedFields {
 		if _, ok := pair[field]; !ok {
 			t.Errorf("Expected field '%s' in pair object", field)
@@ -266,10 +274,10 @@ func TestObserveNetwork_ColumnsMatchDocs(t *testing.T) {
 	}
 
 	// Verify metadata fields
-	if _, ok := data["maxRequestBodyBytes"]; !ok {
+	if _, ok := data["max_request_body_bytes"]; !ok {
 		t.Error("Expected maxRequestBodyBytes metadata field")
 	}
-	if _, ok := data["maxResponseBodyBytes"]; !ok {
+	if _, ok := data["max_response_body_bytes"]; !ok {
 		t.Error("Expected maxResponseBodyBytes metadata field")
 	}
 }
@@ -277,6 +285,7 @@ func TestObserveNetwork_ColumnsMatchDocs(t *testing.T) {
 // TestObserveActions_ColumnsMatchDocs calls observe with what:"actions" and
 // verifies the markdown table headers match the documented columns.
 func TestObserveActions_ColumnsMatchDocs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -292,13 +301,14 @@ func TestObserveActions_ColumnsMatchDocs(t *testing.T) {
 
 	text := extractMCPText(t, resp)
 	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"Type", "URL", "Selector", "Value", "Time"}
+	expected := []string{"Type", "URL", "Selector", "Value", "Time", "Tab"}
 	assertHeaders(t, "observe actions", headers, expected)
 }
 
 // TestObserveWSEvents_ColumnsMatchDocs calls observe with what:"websocket_events"
 // and verifies the markdown table headers match the documented columns.
 func TestObserveWSEvents_ColumnsMatchDocs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -314,13 +324,14 @@ func TestObserveWSEvents_ColumnsMatchDocs(t *testing.T) {
 
 	text := extractMCPText(t, resp)
 	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"ID", "Event", "URL", "Direction", "Size", "Time"}
+	expected := []string{"ID", "Event", "URL", "Direction", "Size", "Time", "Tab"}
 	assertHeaders(t, "observe websocket_events", headers, expected)
 }
 
 // TestObserveHealth_FieldsMatchDocs calls configure with action:"health" and
 // verifies the top-level JSON keys match the documented structure.
 func TestObserveHealth_FieldsMatchDocs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -441,6 +452,7 @@ var oldParamNames = []string{
 // cmd/dev-console/ for JSON struct tags containing old parameter names.
 // Verifies zero matches — proving old names are fully removed from code.
 func TestNoOldParamNames_InStructTags(t *testing.T) {
+	t.Parallel()
 	// Build regex to match old names inside JSON struct tags
 	pattern := regexp.MustCompile(`json:"(url_filter|url_pattern|last_n_actions|last_n_entries|log_level|min_level|show_source|with_source)`)
 
@@ -475,6 +487,7 @@ func TestNoOldParamNames_InStructTags(t *testing.T) {
 // tool InputSchema properties maps, collecting every property key. Verifies
 // none match old deprecated parameter names.
 func TestNoOldParamNames_InSchemaProperties(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -512,6 +525,7 @@ func TestNoOldParamNames_InSchemaProperties(t *testing.T) {
 // TestObserveNetwork_URLParam verifies that observe({what:"network_bodies", url:"api"})
 // correctly filters network entries by the canonical "url" parameter.
 func TestObserveNetwork_URLParam(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -544,6 +558,7 @@ func TestObserveNetwork_URLParam(t *testing.T) {
 // TestGenerateTest_LastNParam verifies that generate({format:"test", last_n:2})
 // limits output to the last 2 actions using the canonical "last_n" parameter.
 func TestGenerateTest_LastNParam(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -570,6 +585,7 @@ func TestGenerateTest_LastNParam(t *testing.T) {
 // TestObserveTimeline_LastNParam verifies that observe({what:"timeline",
 // last_n:3}) applies the canonical "last_n" parameter for timeline filtering.
 func TestObserveTimeline_LastNParam(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -602,6 +618,7 @@ func TestObserveTimeline_LastNParam(t *testing.T) {
 // TestObserveNetwork_OldURLFilterRejected verifies that passing the old
 // "url_filter" parameter has no filtering effect — all entries are returned.
 func TestObserveNetwork_OldURLFilterRejected(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

@@ -96,38 +96,38 @@ type APIContractFilter struct {
 type AnalyzeSummary struct {
 	Violations     int `json:"violations"`
 	Endpoints      int `json:"endpoints"`
-	TotalRequests  int `json:"totalRequests"`
-	CleanEndpoints int `json:"cleanEndpoints"`
+	TotalRequests  int `json:"total_requests"` 
+	CleanEndpoints int `json:"clean_endpoints"`
 }
 
 // AppliedFilterEcho echoes back the filter parameters that were applied.
 type AppliedFilterEcho struct {
 	URL             string   `json:"url,omitempty"`
-	IgnoreEndpoints []string `json:"ignoreEndpoints,omitempty"`
+	IgnoreEndpoints []string `json:"ignore_endpoints,omitempty"`
 }
 
 // APIContractAnalyzeResult is the response from the analyze action.
 type APIContractAnalyzeResult struct {
 	Action                 string                 `json:"action"`
-	AnalyzedAt             string                 `json:"analyzedAt"`                    // RFC3339 timestamp
-	DataWindowStartedAt    string                 `json:"dataWindowStartedAt,omitempty"` // RFC3339 when data collection began
-	AppliedFilter          *AppliedFilterEcho     `json:"appliedFilter,omitempty"`       // Echo of filter parameters
-	Summary                *AnalyzeSummary        `json:"summary"`                       // Aggregate counts
+	AnalyzedAt             string                 `json:"analyzed_at"`                       
+	DataWindowStartedAt    string                 `json:"data_window_started_at,omitempty"`    
+	AppliedFilter          *AppliedFilterEcho     `json:"applied_filter,omitempty"`          
+	Summary                *AnalyzeSummary        `json:"summary"`                           // Aggregate counts
 	Violations             []APIContractViolation `json:"violations"`
 	TrackedEndpoints       int                    `json:"tracked_endpoints"`
 	TotalRequestsAnalyzed  int                    `json:"total_requests_analyzed"`
 	CleanEndpoints         int                    `json:"clean_endpoints"`
-	PossibleViolationTypes []string               `json:"possibleViolationTypes"` // Metadata: what types of violations are detected
+	PossibleViolationTypes []string               `json:"possible_violation_types"`
 	Hint                   string                 `json:"hint,omitempty"`         // Helpful hint when no violations found
 }
 
 // APIContractReportResult is the response from the report action.
 type APIContractReportResult struct {
 	Action            string                   `json:"action"`
-	AnalyzedAt        string                   `json:"analyzedAt"`              // RFC3339 timestamp
-	AppliedFilter     *AppliedFilterEcho       `json:"appliedFilter,omitempty"` // Echo of filter parameters
+	AnalyzedAt        string                   `json:"analyzed_at"`                 
+	AppliedFilter     *AppliedFilterEcho       `json:"applied_filter,omitempty"`    
 	Endpoints         []EndpointContractReport `json:"endpoints"`
-	ConsistencyLevels map[string]string        `json:"consistencyLevels"` // Metadata: score range explanations
+	ConsistencyLevels map[string]string        `json:"consistency_levels"`
 }
 
 // EndpointContractReport summarizes a single endpoint's contract state.

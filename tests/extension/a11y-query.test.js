@@ -22,7 +22,7 @@ import { createMockChrome } from './helpers.js'
 
 describe('Content Script: A11Y_QUERY message handling', () => {
   let mockChrome
-  let onMessageHandler
+  let _onMessageHandler
   let windowMessageHandlers
 
   beforeEach(() => {
@@ -40,19 +40,19 @@ describe('Content Script: A11Y_QUERY message handling', () => {
     }
 
     // Capture the chrome.runtime.onMessage listener
-    onMessageHandler = null
+    _onMessageHandler = null
     mockChrome.runtime.onMessage.addListener = mock.fn((handler) => {
-      onMessageHandler = handler
+      _onMessageHandler = handler
     })
   })
 
   test('should forward A11Y_QUERY to inject.js via window.postMessage', () => {
     // Simulate the content.js message handler
-    const sendResponse = mock.fn()
+    const _sendResponse = mock.fn()
     const params = { scope: 'main', tags: ['wcag2a'] }
 
     // Simulate the A11Y_QUERY handler logic from content.js
-    const message = { type: 'A11Y_QUERY', params }
+    const _message = { type: 'A11Y_QUERY', params }
     const requestId = Date.now()
 
     // Forward to inject.js via postMessage (as content.js does)
@@ -274,7 +274,7 @@ describe('Content Script: A11Y_QUERY message handling', () => {
 // =============================================================================
 
 describe('Inject Script: GASOLINE_A11Y_QUERY message handling', () => {
-  let messageHandler
+  let _messageHandler
 
   beforeEach(() => {
     globalThis.window = {
@@ -391,12 +391,13 @@ describe('Inject Script: GASOLINE_A11Y_QUERY message handling', () => {
   })
 
   test('should use empty object for undefined params', async () => {
-    const requestId = 12345
+    const _requestId = 12345
 
     const mockRunAxeAuditWithTimeout = mock.fn(() => Promise.resolve({ summary: {} }))
 
     // Simulate inject.js handling of undefined params
-    const resolvedParams = undefined || {}
+    const undefinedParams = undefined
+    const resolvedParams = undefinedParams || {}
     await mockRunAxeAuditWithTimeout(resolvedParams)
 
     assert.deepStrictEqual(mockRunAxeAuditWithTimeout.mock.calls[0].arguments[0], {})
@@ -417,7 +418,7 @@ describe('Background Script: A11Y query dispatch', () => {
         onMessage: { addListener: mock.fn() },
         onInstalled: { addListener: mock.fn() },
         sendMessage: mock.fn(() => Promise.resolve()),
-        getManifest: () => ({ version: '5.1.0' }),
+        getManifest: () => ({ version: '5.2.0' }),
       },
       action: {
         setBadgeText: mock.fn(),
@@ -554,7 +555,7 @@ describe('A11Y Query: End-to-end message chain', () => {
     }
 
     // Step 1: background.js sends A11Y_QUERY to content.js
-    const contentScriptHandler = mock.fn()
+    const _contentScriptHandler = mock.fn()
     const mockTabsSendMessage = mock.fn((tabId, message) => {
       // Step 2: content.js receives A11Y_QUERY and forwards to inject.js
       return new Promise((resolve) => {

@@ -26,6 +26,8 @@ import { mock } from 'node:test'
  * @returns {Object} Mock window object
  */
 export function createMockWindow(options = {}) {
+  const href = options.href || 'http://localhost/'
+  const url = new URL(href)
   const base = {
     postMessage: mock.fn(),
     addEventListener: mock.fn(),
@@ -33,7 +35,8 @@ export function createMockWindow(options = {}) {
     location: {
       pathname: options.pathname || '/',
       hostname: options.hostname || 'localhost',
-      href: options.href || 'http://localhost/',
+      href,
+      origin: url.origin,
     },
   }
 

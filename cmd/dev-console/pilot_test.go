@@ -9,6 +9,7 @@ import (
 
 // TestErrPilotDisabledMessage tests the error message format.
 func TestErrPilotDisabledMessage(t *testing.T) {
+	t.Parallel()
 	if ErrPilotDisabled == nil {
 		t.Fatal("ErrPilotDisabled should be defined")
 	}
@@ -30,6 +31,7 @@ func TestErrPilotDisabledMessage(t *testing.T) {
 
 // TestObservePilotMode verifies that observe tool supports "pilot" mode.
 func TestObservePilotMode(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -103,6 +105,7 @@ func TestObservePilotMode(t *testing.T) {
 
 // TestObservePilotResponseSchema verifies the response schema of observe {what: "pilot"}.
 func TestObservePilotResponseSchema(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -164,6 +167,7 @@ func TestObservePilotResponseSchema(t *testing.T) {
 
 // TestGetPilotStatusWithExtensionConnected verifies enabled state when extension polled recently.
 func TestGetPilotStatusWithExtensionConnected(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -221,6 +225,7 @@ func TestGetPilotStatusWithExtensionConnected(t *testing.T) {
 
 // TestGetPilotStatusStale verifies source='stale' when last poll is old.
 func TestGetPilotStatusStale(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -274,6 +279,7 @@ func TestGetPilotStatusStale(t *testing.T) {
 
 // TestGetPilotStatusNeverConnected verifies source='never_connected' when no polls.
 func TestGetPilotStatusNeverConnected(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -325,6 +331,7 @@ func TestGetPilotStatusNeverConnected(t *testing.T) {
 
 // TestGetPilotStatusThreadSafety verifies concurrent access is safe.
 func TestGetPilotStatusThreadSafety(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -372,6 +379,7 @@ func TestGetPilotStatusThreadSafety(t *testing.T) {
 
 // TestHealthResponseIncludesPilot verifies that get_health includes pilot field.
 func TestHealthResponseIncludesPilot(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

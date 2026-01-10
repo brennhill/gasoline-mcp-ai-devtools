@@ -65,6 +65,7 @@ func (m *mockVerifyState) GetCurrentPageURL() string {
 // ============================================
 
 func TestVerificationManager_Start(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Cannot read property 'user' of undefined", Count: 2},
@@ -111,6 +112,7 @@ func TestVerificationManager_Start(t *testing.T) {
 }
 
 func TestVerificationManager_StartWithLabel(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -125,6 +127,7 @@ func TestVerificationManager_StartWithLabel(t *testing.T) {
 }
 
 func TestVerificationManager_StartWithURLFilter(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		networkRequests: []SnapshotNetworkRequest{
 			{Method: "POST", URL: "/api/login", Status: 500},
@@ -152,6 +155,7 @@ func TestVerificationManager_StartWithURLFilter(t *testing.T) {
 // ============================================
 
 func TestVerificationManager_Watch(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Error in baseline", Count: 1},
@@ -185,6 +189,7 @@ func TestVerificationManager_Watch(t *testing.T) {
 }
 
 func TestVerificationManager_WatchWithoutStart(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -195,6 +200,7 @@ func TestVerificationManager_WatchWithoutStart(t *testing.T) {
 }
 
 func TestVerificationManager_WatchAlreadyWatching(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -216,6 +222,7 @@ func TestVerificationManager_WatchAlreadyWatching(t *testing.T) {
 // ============================================
 
 func TestVerificationManager_Compare_Fixed(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Cannot read property 'user' of undefined", Count: 2},
@@ -273,6 +280,7 @@ func TestVerificationManager_Compare_Fixed(t *testing.T) {
 }
 
 func TestVerificationManager_Compare_Improved(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Error A", Count: 1},
@@ -301,6 +309,7 @@ func TestVerificationManager_Compare_Improved(t *testing.T) {
 }
 
 func TestVerificationManager_Compare_Unchanged(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Persistent error", Count: 1},
@@ -324,6 +333,7 @@ func TestVerificationManager_Compare_Unchanged(t *testing.T) {
 }
 
 func TestVerificationManager_Compare_DifferentIssue(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Original error", Count: 1},
@@ -354,6 +364,7 @@ func TestVerificationManager_Compare_DifferentIssue(t *testing.T) {
 }
 
 func TestVerificationManager_Compare_Regressed(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Error A", Count: 1},
@@ -383,6 +394,7 @@ func TestVerificationManager_Compare_Regressed(t *testing.T) {
 }
 
 func TestVerificationManager_Compare_NoIssuesDetected(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors:   nil, // No errors
 		networkRequests: []SnapshotNetworkRequest{
@@ -406,6 +418,7 @@ func TestVerificationManager_Compare_NoIssuesDetected(t *testing.T) {
 }
 
 func TestVerificationManager_CompareWithoutWatch(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -422,6 +435,7 @@ func TestVerificationManager_CompareWithoutWatch(t *testing.T) {
 }
 
 func TestVerificationManager_CompareNonExistent(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -436,6 +450,7 @@ func TestVerificationManager_CompareNonExistent(t *testing.T) {
 // ============================================
 
 func TestVerificationManager_Cancel(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -458,6 +473,7 @@ func TestVerificationManager_Cancel(t *testing.T) {
 }
 
 func TestVerificationManager_CancelNonExistent(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -472,6 +488,7 @@ func TestVerificationManager_CancelNonExistent(t *testing.T) {
 // ============================================
 
 func TestVerificationManager_Status(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -491,6 +508,7 @@ func TestVerificationManager_Status(t *testing.T) {
 }
 
 func TestVerificationManager_StatusAfterWatch(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -508,6 +526,7 @@ func TestVerificationManager_StatusAfterWatch(t *testing.T) {
 }
 
 func TestVerificationManager_StatusNonExistent(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -522,6 +541,7 @@ func TestVerificationManager_StatusNonExistent(t *testing.T) {
 // ============================================
 
 func TestNormalizeVerifyErrorMessage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -573,6 +593,7 @@ func TestNormalizeVerifyErrorMessage(t *testing.T) {
 // ============================================
 
 func TestVerificationManager_ErrorMatchingNormalized(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Failed to load user 550e8400-e29b-41d4-a716-446655440000", Count: 1},
@@ -605,6 +626,7 @@ func TestVerificationManager_ErrorMatchingNormalized(t *testing.T) {
 // ============================================
 
 func TestVerificationManager_NetworkStatusChange(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		networkRequests: []SnapshotNetworkRequest{
 			{Method: "POST", URL: "/api/login", Status: 500},
@@ -649,6 +671,7 @@ func TestVerificationManager_NetworkStatusChange(t *testing.T) {
 // ============================================
 
 func TestVerificationManager_PerformanceDiff(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		performance: &PerformanceSnapshot{
 			URL: "http://localhost:3000",
@@ -692,6 +715,7 @@ func TestVerificationManager_PerformanceDiff(t *testing.T) {
 // ============================================
 
 func TestVerificationManager_MaxConcurrentSessions(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -714,6 +738,7 @@ func TestVerificationManager_MaxConcurrentSessions(t *testing.T) {
 }
 
 func TestVerificationManager_SessionTTL(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManagerWithTTL(mock, 100*time.Millisecond)
 
@@ -730,6 +755,7 @@ func TestVerificationManager_SessionTTL(t *testing.T) {
 }
 
 func TestVerificationManager_SessionAutoCleanup(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManagerWithTTL(mock, 100*time.Millisecond)
 
@@ -753,6 +779,7 @@ func TestVerificationManager_SessionAutoCleanup(t *testing.T) {
 // ============================================
 
 func TestVerificationManager_HandleTool_Start(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Test error", Count: 1},
@@ -781,6 +808,7 @@ func TestVerificationManager_HandleTool_Start(t *testing.T) {
 }
 
 func TestVerificationManager_HandleTool_FullWorkflow(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Original error", Count: 1},
@@ -823,6 +851,7 @@ func TestVerificationManager_HandleTool_FullWorkflow(t *testing.T) {
 }
 
 func TestVerificationManager_HandleTool_Status(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -846,6 +875,7 @@ func TestVerificationManager_HandleTool_Status(t *testing.T) {
 }
 
 func TestVerificationManager_HandleTool_Cancel(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -869,6 +899,7 @@ func TestVerificationManager_HandleTool_Cancel(t *testing.T) {
 }
 
 func TestVerificationManager_HandleTool_InvalidAction(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -880,6 +911,7 @@ func TestVerificationManager_HandleTool_InvalidAction(t *testing.T) {
 }
 
 func TestVerificationManager_HandleTool_MissingAction(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -891,6 +923,7 @@ func TestVerificationManager_HandleTool_MissingAction(t *testing.T) {
 }
 
 func TestVerificationManager_HandleTool_MissingSessionID(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
@@ -907,6 +940,7 @@ func TestVerificationManager_HandleTool_MissingSessionID(t *testing.T) {
 // ============================================
 
 func TestVerificationManager_EmptyBaseline(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors:   nil,
 		networkRequests: nil,
@@ -928,6 +962,7 @@ func TestVerificationManager_EmptyBaseline(t *testing.T) {
 }
 
 func TestVerificationManager_CompareMultipleTimes(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Error", Count: 1},
@@ -970,6 +1005,7 @@ func TestVerificationManager_CompareMultipleTimes(t *testing.T) {
 // ============================================
 
 func TestVerificationManager_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 

@@ -30,7 +30,7 @@
 | Config Profiles | proposed | configure | (settings) | — | [feature/config-profiles](feature/config-profiles/) |
 | Context Streaming | proposed | configure | streaming | — | [feature/context-streaming](feature/context-streaming/) |
 | Deployment Watchdog | proposed | observe | performance | — | [feature/deployment-watchdog](feature/deployment-watchdog/) |
-| DOM Fingerprinting | in-progress | interact, observe | query_dom | — | [feature/dom-fingerprinting](feature/dom-fingerprinting/) |
+| DOM Fingerprinting | in-progress | interact, observe | dom_fingerprint | — | [feature/dom-fingerprinting](feature/dom-fingerprinting/) |
 | Dynamic Exposure | proposed | configure | (feature flags) | — | [feature/dynamic-exposure](feature/dynamic-exposure/) |
 | Enterprise Audit | shipped | configure, observe | audit_log, security_audit | 5.0.0 | [feature/enterprise-audit](feature/enterprise-audit/) |
 | Error Clustering | shipped | observe | error_clusters | 5.0.0 | [feature/error-clustering](feature/error-clustering/) |
@@ -44,6 +44,7 @@
 | Persistent Memory | shipped | configure | store, load, record_event | 5.0.0 | [feature/persistent-memory](feature/persistent-memory/) |
 | Push Alerts | shipped | observe | (alert system) | 5.0.0 | [feature/push-alerts](feature/push-alerts/) |
 | Push Regression | shipped | observe | performance | 5.0.0 | [feature/push-regression](feature/push-regression/) |
+| Query DOM | proposed | configure | query_dom | — | [feature/query-dom](feature/query-dom/) |
 | Rate Limiting | shipped | configure | (throttling) | 5.0.0 | [feature/rate-limiting](feature/rate-limiting/) |
 | Redaction Patterns | shipped | configure | (data masking) | 5.0.0 | [feature/redaction-patterns](feature/redaction-patterns/) |
 | Reproduction Enhancements | shipped | generate | reproduction, test | 5.0.0 | [feature/reproduction-enhancements](feature/reproduction-enhancements/) |
@@ -63,8 +64,8 @@
 |--------|-------|
 | Shipped | 25 |
 | In-Progress | 7 |
-| Proposed | 9 |
-| **Total** | **41** |
+| Proposed | 10 |
+| **Total** | **42** |
 
 ## MCP Tool Distribution
 

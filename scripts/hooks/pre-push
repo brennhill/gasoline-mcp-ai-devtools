@@ -1,3 +1,14 @@
-#!/bin/sh
-echo "[gasoline] Running CI checks before push..."
+#!/bin/bash
+# Pre-push hook for Gasoline
+# Runs comprehensive CI checks before allowing push
+
+set -e
+
+echo "[gasoline] Running pre-push CI checks..."
+echo ""
+
+# Run the full local CI suite
 make ci-local
+
+echo ""
+echo "[gasoline] All pre-push checks passed"

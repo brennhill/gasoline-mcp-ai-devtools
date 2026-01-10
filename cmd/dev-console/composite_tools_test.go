@@ -13,6 +13,7 @@ import (
 // TestCompositeToolsListReturnsAllTools verifies that tools/list
 // returns all composite and security tools.
 func TestCompositeToolsListReturnsAllTools(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -56,6 +57,7 @@ func TestCompositeToolsListReturnsAllTools(t *testing.T) {
 // TestCompositeToolsHaveRequiredModeParam verifies that observe, analyze,
 // generate, and configure all have a required mode parameter.
 func TestCompositeToolsHaveRequiredModeParam(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -134,6 +136,7 @@ func TestCompositeToolsHaveRequiredModeParam(t *testing.T) {
 // TestCompositeToolsModeEnumValues verifies that each composite tool's mode
 // parameter has the correct enum values.
 func TestCompositeToolsModeEnumValues(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -153,7 +156,7 @@ func TestCompositeToolsModeEnumValues(t *testing.T) {
 	expectedEnums := map[string][]string{
 		"observe":   {"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "performance", "api", "accessibility", "changes", "timeline", "error_clusters", "history", "security_audit", "third_party_audit", "security_diff", "command_result", "pending_commands", "failed_commands"},
 		"generate":  {"reproduction", "test", "pr_summary", "sarif", "har", "csp", "sri"},
-		"configure": {"store", "load", "noise_rule", "dismiss", "clear", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming"},
+		"configure": {"store", "load", "noise_rule", "dismiss", "clear", "capture", "record_event", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming"},
 		"interact":  {"highlight", "save_state", "load_state", "list_states", "delete_state", "execute_js", "navigate", "refresh", "back", "forward", "new_tab"},
 	}
 
@@ -204,6 +207,7 @@ func TestCompositeToolsModeEnumValues(t *testing.T) {
 // ============================================
 
 func TestObserveErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -232,6 +236,7 @@ func TestObserveErrors(t *testing.T) {
 }
 
 func TestObserveLogs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -257,6 +262,7 @@ func TestObserveLogs(t *testing.T) {
 }
 
 func TestObserveLogsWithLimit(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -280,6 +286,7 @@ func TestObserveLogsWithLimit(t *testing.T) {
 }
 
 func TestObserveNetwork(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -304,6 +311,7 @@ func TestObserveNetwork(t *testing.T) {
 }
 
 func TestObserveNetworkWithFilters(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -325,6 +333,7 @@ func TestObserveNetworkWithFilters(t *testing.T) {
 }
 
 func TestObserveWebSocketEvents(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -354,6 +363,7 @@ func TestObserveWebSocketEvents(t *testing.T) {
 }
 
 func TestObserveWebSocketStatus(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -379,6 +389,7 @@ func TestObserveWebSocketStatus(t *testing.T) {
 }
 
 func TestObserveActions(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -409,6 +420,7 @@ func TestObserveActions(t *testing.T) {
 }
 
 func TestObserveVitals(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -446,6 +458,10 @@ func TestObserveVitals(t *testing.T) {
 }
 
 func TestObservePage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow query timeout test")
+	}
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -470,6 +486,7 @@ func TestObservePage(t *testing.T) {
 }
 
 func TestObserveUnknownMode(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -486,6 +503,7 @@ func TestObserveUnknownMode(t *testing.T) {
 }
 
 func TestObserveMissingMode(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -506,6 +524,7 @@ func TestObserveMissingMode(t *testing.T) {
 // ============================================
 
 func TestObservePerformance(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -526,6 +545,7 @@ func TestObservePerformance(t *testing.T) {
 }
 
 func TestObserveAPI(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -545,6 +565,7 @@ func TestObserveAPI(t *testing.T) {
 }
 
 func TestObserveChanges(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -564,6 +585,7 @@ func TestObserveChanges(t *testing.T) {
 }
 
 func TestObserveTimeline(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -587,6 +609,7 @@ func TestObserveTimeline(t *testing.T) {
 }
 
 func TestObserveUnknownWhat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -603,6 +626,7 @@ func TestObserveUnknownWhat(t *testing.T) {
 }
 
 func TestObserveMissingWhat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -623,6 +647,7 @@ func TestObserveMissingWhat(t *testing.T) {
 // ============================================
 
 func TestGenerateReproduction(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -646,6 +671,7 @@ func TestGenerateReproduction(t *testing.T) {
 }
 
 func TestGenerateTest(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -669,6 +695,7 @@ func TestGenerateTest(t *testing.T) {
 }
 
 func TestGeneratePRSummary(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -688,6 +715,7 @@ func TestGeneratePRSummary(t *testing.T) {
 }
 
 func TestGenerateHAR(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -711,6 +739,7 @@ func TestGenerateHAR(t *testing.T) {
 }
 
 func TestGenerateUnknownFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -727,6 +756,7 @@ func TestGenerateUnknownFormat(t *testing.T) {
 }
 
 func TestGenerateMissingFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -747,6 +777,7 @@ func TestGenerateMissingFormat(t *testing.T) {
 // ============================================
 
 func TestConfigureClear(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -779,6 +810,7 @@ func TestConfigureClear(t *testing.T) {
 }
 
 func TestConfigureLoad(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -798,6 +830,7 @@ func TestConfigureLoad(t *testing.T) {
 }
 
 func TestConfigureNoiseRule(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -817,6 +850,7 @@ func TestConfigureNoiseRule(t *testing.T) {
 }
 
 func TestConfigureDismiss(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -836,6 +870,7 @@ func TestConfigureDismiss(t *testing.T) {
 }
 
 func TestConfigureStore(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -855,6 +890,7 @@ func TestConfigureStore(t *testing.T) {
 }
 
 func TestConfigureUnknownAction(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -871,6 +907,7 @@ func TestConfigureUnknownAction(t *testing.T) {
 }
 
 func TestConfigureMissingAction(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -891,6 +928,10 @@ func TestConfigureMissingAction(t *testing.T) {
 // ============================================
 
 func TestQueryDomStillWorks(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow query timeout test")
+	}
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -912,6 +953,7 @@ func TestQueryDomStillWorks(t *testing.T) {
 // ============================================
 
 func TestLegacyToolNamesRejected(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -961,6 +1003,7 @@ func TestLegacyToolNamesRejected(t *testing.T) {
 // TestToolsListMetaFieldPresent verifies that observe, analyze, and generate
 // tools include a _meta field with data_counts in the tools/list response.
 func TestToolsListMetaFieldPresent(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1013,6 +1056,7 @@ func TestToolsListMetaFieldPresent(t *testing.T) {
 // TestToolsListMetaEmptyCountsOnFreshServer verifies that on a fresh server
 // with no data, all data_counts are zero.
 func TestToolsListMetaEmptyCountsOnFreshServer(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1045,6 +1089,7 @@ func TestToolsListMetaEmptyCountsOnFreshServer(t *testing.T) {
 // TestToolsListMetaReflectsBufferSizes verifies that data_counts update
 // as data is added to the server and capture buffers.
 func TestToolsListMetaReflectsBufferSizes(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1104,6 +1149,7 @@ func TestToolsListMetaReflectsBufferSizes(t *testing.T) {
 
 // TestToolsListMetaAPISchemaCount verifies the API schema endpoint count.
 func TestToolsListMetaAPISchemaCount(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1129,6 +1175,7 @@ func TestToolsListMetaAPISchemaCount(t *testing.T) {
 // TestToolsListGoldenMatchesWithMeta ensures the golden file test still works
 // (the _meta field is present but counts are zero on fresh server, matching expectations).
 func TestToolsListGoldenMatchesWithMeta(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1228,6 +1275,7 @@ func extractMCPText(t *testing.T, resp JSONRPCResponse) string {
 // ============================================
 
 func TestToolGenerateCSP(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1256,6 +1304,7 @@ func TestToolGenerateCSP(t *testing.T) {
 }
 
 func TestToolSecurityAudit(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1280,6 +1329,7 @@ func TestToolSecurityAudit(t *testing.T) {
 }
 
 func TestToolAuditThirdParties(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1310,6 +1360,7 @@ func TestToolAuditThirdParties(t *testing.T) {
 }
 
 func TestToolDiffSecuritySnapshot(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1339,6 +1390,7 @@ func TestToolDiffSecuritySnapshot(t *testing.T) {
 }
 
 func TestToolDiffSecurityList(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1370,6 +1422,7 @@ func TestToolDiffSecurityList(t *testing.T) {
 }
 
 func TestToolDiffSecurityCompare(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

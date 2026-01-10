@@ -8,6 +8,7 @@ import (
 )
 
 func TestThirdPartyBasicClassification(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		// Same-origin request — should NOT appear in results
@@ -30,6 +31,7 @@ func TestThirdPartyBasicClassification(t *testing.T) {
 }
 
 func TestThirdPartyRiskLevels(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		// Script from third party = high risk
@@ -65,6 +67,7 @@ func TestThirdPartyRiskLevels(t *testing.T) {
 }
 
 func TestThirdPartyPIIDetection(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		{
@@ -104,6 +107,7 @@ func TestThirdPartyPIIDetection(t *testing.T) {
 }
 
 func TestThirdPartyCookieDetection(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		{
@@ -131,6 +135,7 @@ func TestThirdPartyCookieDetection(t *testing.T) {
 }
 
 func TestThirdPartyReputationKnownCDN(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		{URL: "https://cdn.jsdelivr.net/npm/vue@3/dist/vue.js", ContentType: "application/javascript", Method: "GET"},
@@ -147,6 +152,7 @@ func TestThirdPartyReputationKnownCDN(t *testing.T) {
 }
 
 func TestThirdPartyReputationAbuseTLD(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		{URL: "https://tracker.xyz/pixel.gif", ContentType: "image/gif", Method: "GET"},
@@ -174,6 +180,7 @@ func TestThirdPartyReputationAbuseTLD(t *testing.T) {
 }
 
 func TestThirdPartyReputationDGA(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	// Use a high-entropy subdomain that looks like DGA output (12+ unique chars, entropy > 3.5)
 	bodies := []NetworkBody{
@@ -202,6 +209,7 @@ func TestThirdPartyReputationDGA(t *testing.T) {
 }
 
 func TestThirdPartyCustomLists(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		// Allowed domain
@@ -249,6 +257,7 @@ func TestThirdPartyCustomLists(t *testing.T) {
 }
 
 func TestThirdPartyRecommendations(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		// Suspicious origin with scripts = should generate critical recommendation
@@ -277,6 +286,7 @@ func TestThirdPartyRecommendations(t *testing.T) {
 }
 
 func TestThirdPartySummary(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		// Critical: scripts + outbound
@@ -319,6 +329,7 @@ func TestThirdPartySummary(t *testing.T) {
 }
 
 func TestThirdPartyHandleMCP(t *testing.T) {
+	t.Parallel()
 	bodies := []NetworkBody{
 		{URL: "https://cdn.example.com/lib.js", ContentType: "application/javascript", Method: "GET"},
 	}
@@ -341,6 +352,7 @@ func TestThirdPartyHandleMCP(t *testing.T) {
 }
 
 func TestThirdPartyFirstPartyOrigins(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		{URL: "https://api.myapp.com/data", ContentType: "application/json", Method: "GET"},
@@ -365,6 +377,7 @@ func TestThirdPartyFirstPartyOrigins(t *testing.T) {
 }
 
 func TestThirdPartyResourceCounts(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		{URL: "https://cdn.example.com/app.js", ContentType: "application/javascript", Method: "GET"},
@@ -401,6 +414,7 @@ func TestThirdPartyResourceCounts(t *testing.T) {
 }
 
 func TestThirdPartyURLLimit(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := make([]NetworkBody, 15)
 	for i := 0; i < 15; i++ {
@@ -422,6 +436,7 @@ func TestThirdPartyURLLimit(t *testing.T) {
 }
 
 func TestThirdPartyShannonEntropy(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		wantHigh bool // entropy > 3.5
@@ -443,6 +458,7 @@ func TestThirdPartyShannonEntropy(t *testing.T) {
 }
 
 func TestThirdPartyIncludeStaticFalse(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 	bodies := []NetworkBody{
 		{URL: "https://cdn.example.com/app.js", ContentType: "application/javascript", Method: "GET"},
@@ -490,6 +506,7 @@ func toLower(s string) string {
 }
 
 func TestThirdPartyHelperEdgeCases(t *testing.T) {
+	t.Parallel()
 	// extractHostname with invalid URL
 	got := extractHostname("://invalid")
 	if got != "" {
@@ -523,6 +540,7 @@ func TestThirdPartyHelperEdgeCases(t *testing.T) {
 }
 
 func TestLoadCustomListsFile(t *testing.T) {
+	t.Parallel()
 	// Non-existent file returns nil
 	result := loadCustomListsFile("/nonexistent/path.json")
 	if result != nil {
@@ -553,6 +571,7 @@ func TestLoadCustomListsFile(t *testing.T) {
 }
 
 func TestHandleAuditThirdPartiesHandler(t *testing.T) {
+	t.Parallel()
 	bodies := []NetworkBody{
 		{URL: "https://myapp.com/page", ContentType: "text/html", Status: 200},
 		{URL: "https://cdn.jsdelivr.net/lib.js", ContentType: "application/javascript", Status: 200},
@@ -586,6 +605,7 @@ func TestHandleAuditThirdPartiesHandler(t *testing.T) {
 }
 
 func TestThirdPartyCustomListsFromFile(t *testing.T) {
+	t.Parallel()
 	auditor := NewThirdPartyAuditor()
 
 	tmpFile := t.TempDir() + "/lists.json"

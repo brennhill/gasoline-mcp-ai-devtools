@@ -11,6 +11,7 @@ import (
 // ============================================
 
 func TestRingBuffer_WriteAndReadAll(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](5)
 
 	rb.Write([]int{1, 2, 3})
@@ -27,6 +28,7 @@ func TestRingBuffer_WriteAndReadAll(t *testing.T) {
 }
 
 func TestRingBuffer_WriteOne(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[string](10)
 	rb.WriteOne("hello")
 	rb.WriteOne("world")
@@ -41,6 +43,7 @@ func TestRingBuffer_WriteOne(t *testing.T) {
 }
 
 func TestRingBuffer_EmptyRead(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](5)
 
 	all := rb.ReadAll()
@@ -50,6 +53,7 @@ func TestRingBuffer_EmptyRead(t *testing.T) {
 }
 
 func TestRingBuffer_WriteEmpty(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](5)
 	n := rb.Write([]int{})
 	if n != 0 {
@@ -62,6 +66,7 @@ func TestRingBuffer_WriteEmpty(t *testing.T) {
 // ============================================
 
 func TestRingBuffer_Wraparound(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](3)
 
 	rb.Write([]int{1, 2, 3}) // fills buffer
@@ -81,6 +86,7 @@ func TestRingBuffer_Wraparound(t *testing.T) {
 }
 
 func TestRingBuffer_FullOverwrite(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](3)
 
 	// Write more than capacity
@@ -104,6 +110,7 @@ func TestRingBuffer_FullOverwrite(t *testing.T) {
 // ============================================
 
 func TestRingBuffer_ReadLast(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](10)
 	rb.Write([]int{1, 2, 3, 4, 5})
 
@@ -117,6 +124,7 @@ func TestRingBuffer_ReadLast(t *testing.T) {
 }
 
 func TestRingBuffer_ReadLastExceedsSize(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](10)
 	rb.Write([]int{1, 2, 3})
 
@@ -127,6 +135,7 @@ func TestRingBuffer_ReadLastExceedsSize(t *testing.T) {
 }
 
 func TestRingBuffer_ReadLastAfterWraparound(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](3)
 	rb.Write([]int{1, 2, 3, 4, 5}) // buffer has [3, 4, 5]
 
@@ -140,6 +149,7 @@ func TestRingBuffer_ReadLastAfterWraparound(t *testing.T) {
 }
 
 func TestRingBuffer_ReadLastZero(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](5)
 	rb.WriteOne(1)
 	result := rb.ReadLast(0)
@@ -153,6 +163,7 @@ func TestRingBuffer_ReadLastZero(t *testing.T) {
 // ============================================
 
 func TestRingBuffer_ReadFromZero(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](10)
 	rb.Write([]int{10, 20, 30})
 
@@ -166,6 +177,7 @@ func TestRingBuffer_ReadFromZero(t *testing.T) {
 }
 
 func TestRingBuffer_ReadFromMiddle(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](10)
 	rb.Write([]int{10, 20, 30, 40, 50})
 
@@ -182,6 +194,7 @@ func TestRingBuffer_ReadFromMiddle(t *testing.T) {
 }
 
 func TestRingBuffer_ReadFromCurrent(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](10)
 	rb.Write([]int{10, 20, 30})
 
@@ -196,6 +209,7 @@ func TestRingBuffer_ReadFromCurrent(t *testing.T) {
 }
 
 func TestRingBuffer_ReadFromEvicted(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](3)
 	rb.Write([]int{1, 2, 3, 4, 5}) // buffer has [3, 4, 5], positions 0-1 evicted
 
@@ -213,6 +227,7 @@ func TestRingBuffer_ReadFromEvicted(t *testing.T) {
 }
 
 func TestRingBuffer_SequentialCursorReads(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](100)
 
 	// Write batch 1
@@ -248,6 +263,7 @@ func TestRingBuffer_SequentialCursorReads(t *testing.T) {
 // ============================================
 
 func TestRingBuffer_FindPositionAtTime(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[string](10)
 
 	before := time.Now()
@@ -270,6 +286,7 @@ func TestRingBuffer_FindPositionAtTime(t *testing.T) {
 }
 
 func TestRingBuffer_FindPositionAtTime_Empty(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](5)
 	pos := rb.FindPositionAtTime(time.Now())
 	if pos != -1 {
@@ -282,6 +299,7 @@ func TestRingBuffer_FindPositionAtTime_Empty(t *testing.T) {
 // ============================================
 
 func TestRingBuffer_GetCurrentPosition(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](5)
 
 	if rb.GetCurrentPosition() != 0 {
@@ -300,6 +318,7 @@ func TestRingBuffer_GetCurrentPosition(t *testing.T) {
 }
 
 func TestRingBuffer_LenAndCap(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](5)
 
 	if rb.Len() != 0 {
@@ -325,6 +344,7 @@ func TestRingBuffer_LenAndCap(t *testing.T) {
 // ============================================
 
 func TestRingBuffer_Clear(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](5)
 	rb.Write([]int{1, 2, 3})
 	rb.Clear()
@@ -349,6 +369,7 @@ func TestRingBuffer_Clear(t *testing.T) {
 // ============================================
 
 func TestRingBuffer_ReadFromWithFilter(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](10)
 	rb.Write([]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
@@ -365,6 +386,7 @@ func TestRingBuffer_ReadFromWithFilter(t *testing.T) {
 }
 
 func TestRingBuffer_ReadFromWithFilter_Limit(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](10)
 	rb.Write([]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
@@ -377,6 +399,7 @@ func TestRingBuffer_ReadFromWithFilter_Limit(t *testing.T) {
 }
 
 func TestRingBuffer_ReadAllWithFilter(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](10)
 	rb.Write([]int{1, 2, 3, 4, 5})
 
@@ -393,6 +416,7 @@ func TestRingBuffer_ReadAllWithFilter(t *testing.T) {
 // ============================================
 
 func TestRingBuffer_ConcurrentWriteAndRead(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](100)
 	var wg sync.WaitGroup
 
@@ -432,6 +456,7 @@ func TestRingBuffer_ConcurrentWriteAndRead(t *testing.T) {
 }
 
 func TestRingBuffer_ConcurrentCursorReads(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](50)
 	rb.Write([]int{1, 2, 3, 4, 5})
 
@@ -455,6 +480,7 @@ func TestRingBuffer_ConcurrentCursorReads(t *testing.T) {
 // ============================================
 
 func TestRingBuffer_CapacityOne(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[string](1)
 
 	rb.WriteOne("a")
@@ -472,6 +498,7 @@ func TestRingBuffer_CapacityOne(t *testing.T) {
 }
 
 func TestRingBuffer_MultipleWraparounds(t *testing.T) {
+	t.Parallel()
 	rb := NewRingBuffer[int](3)
 
 	// Write 15 entries (5 full rotations)

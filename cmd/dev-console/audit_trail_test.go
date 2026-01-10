@@ -17,6 +17,7 @@ import (
 // ============================================
 
 func TestAuditTrail_RecordEntry(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -78,6 +79,7 @@ func TestAuditTrail_RecordEntry(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_RecordErrorEntry(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -114,6 +116,7 @@ func TestAuditTrail_RecordErrorEntry(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_QueryDefaultLimit(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   10000,
 		Enabled:      true,
@@ -141,6 +144,7 @@ func TestAuditTrail_QueryDefaultLimit(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_QueryBySessionID(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -168,6 +172,7 @@ func TestAuditTrail_QueryBySessionID(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_QueryByToolName(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -195,6 +200,7 @@ func TestAuditTrail_QueryByToolName(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_QuerySince(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -222,6 +228,7 @@ func TestAuditTrail_QuerySince(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_QueryWithLimit(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -243,6 +250,7 @@ func TestAuditTrail_QueryWithLimit(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_FIFOEviction(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   5,
 		Enabled:      true,
@@ -277,6 +285,7 @@ func TestAuditTrail_FIFOEviction(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_ConcurrentSafety(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   10000,
 		Enabled:      true,
@@ -316,6 +325,7 @@ func TestAuditTrail_ConcurrentSafety(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_ClientIdentification(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    ClientIdentifier
@@ -345,6 +355,7 @@ func TestAuditTrail_ClientIdentification(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_SessionIDUnique(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 100, Enabled: true})
 
 	seen := make(map[string]bool)
@@ -362,6 +373,7 @@ func TestAuditTrail_SessionIDUnique(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_SessionIDFormat(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 100, Enabled: true})
 	sess := trail.CreateSession(ClientIdentifier{Name: "cursor", Version: "1.0"})
 
@@ -383,6 +395,7 @@ func TestAuditTrail_SessionIDFormat(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_SessionCorrelation(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 1000, Enabled: true, RedactParams: false})
 
 	sess := trail.CreateSession(ClientIdentifier{Name: "claude-code", Version: "1.0"})
@@ -407,6 +420,7 @@ func TestAuditTrail_SessionCorrelation(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_SessionToolCallCount(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 1000, Enabled: true, RedactParams: false})
 
 	sess := trail.CreateSession(ClientIdentifier{Name: "claude-code", Version: "1.0"})
@@ -429,6 +443,7 @@ func TestAuditTrail_SessionToolCallCount(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_RedactBearerToken(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -464,6 +479,7 @@ func TestAuditTrail_RedactBearerToken(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_RedactAPIKey(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -495,6 +511,7 @@ func TestAuditTrail_RedactAPIKey(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_RegularParamsPreserved(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -524,6 +541,7 @@ func TestAuditTrail_RegularParamsPreserved(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_RedactionEventLogging(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -562,6 +580,7 @@ func TestAuditTrail_RedactionEventLogging(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_RedactionNoContent(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 1000, Enabled: true})
 
 	event := RedactionEvent{
@@ -601,6 +620,7 @@ func TestAuditTrail_RedactionNoContent(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_DisabledDropsEntries(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      false,
@@ -625,6 +645,7 @@ func TestAuditTrail_DisabledDropsEntries(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_EmptyFilterReturnsAll(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -646,6 +667,7 @@ func TestAuditTrail_EmptyFilterReturnsAll(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_ReverseChronologicalOrder(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -677,6 +699,7 @@ func TestAuditTrail_ReverseChronologicalOrder(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_DurationCaptured(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -701,6 +724,7 @@ func TestAuditTrail_DurationCaptured(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_ResponseSizeCaptured(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -725,6 +749,7 @@ func TestAuditTrail_ResponseSizeCaptured(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_HandleGetAuditLog(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -760,6 +785,7 @@ func TestAuditTrail_HandleGetAuditLog(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_HandleGetAuditLogFiltered(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -791,6 +817,7 @@ func TestAuditTrail_HandleGetAuditLogFiltered(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_CombinedFilters(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -816,6 +843,7 @@ func TestAuditTrail_CombinedFilters(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_RedactJWT(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -845,6 +873,7 @@ func TestAuditTrail_RedactJWT(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_RedactGitHubToken(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,
@@ -870,6 +899,7 @@ func TestAuditTrail_RedactGitHubToken(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_SessionStoresClientIdentity(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 100, Enabled: true})
 
 	sess := trail.CreateSession(ClientIdentifier{Name: "Windsurf", Version: "2.5.0"})
@@ -891,6 +921,7 @@ func TestAuditTrail_SessionStoresClientIdentity(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{})
 
 	// Default should be: MaxEntries=10000, Enabled=true, RedactParams=true
@@ -908,6 +939,7 @@ func TestAuditTrail_DefaultConfig(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_ConcurrentSessionCreation(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 10000, Enabled: true})
 
 	var wg sync.WaitGroup
@@ -943,6 +975,7 @@ func TestAuditTrail_ConcurrentSessionCreation(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_RedactionEventsBounded(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 5, Enabled: true})
 
 	for i := 0; i < 10; i++ {
@@ -966,6 +999,7 @@ func TestAuditTrail_RedactionEventsBounded(t *testing.T) {
 // ============================================
 
 func TestAuditTrail_RedactSessionCookie(t *testing.T) {
+	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{
 		MaxEntries:   1000,
 		Enabled:      true,

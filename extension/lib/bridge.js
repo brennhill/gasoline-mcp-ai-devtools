@@ -27,7 +27,7 @@ export function postLog(payload) {
         ts: new Date().toISOString(),
         url: window.location.href,
         // Extract message from multiple possible sources
-        message: payload.message || payload.error || (payload.args?.[0] != null ? String(payload.args[0]) : ''),
+        message: payload.message || payload.error || (payload.args?.[0] !== null && payload.args?.[0] !== undefined ? String(payload.args[0]) : ''),
         // Derive source from url (filename:line if available)
         source: payload.filename
           ? `${payload.filename}:${payload.lineno || 0}`

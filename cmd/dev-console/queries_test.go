@@ -12,6 +12,7 @@ import (
 )
 
 func TestV4PendingQueryCreation(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	id := capture.CreatePendingQuery(PendingQuery{
@@ -34,6 +35,7 @@ func TestV4PendingQueryCreation(t *testing.T) {
 }
 
 func TestV4PendingQueryMaxLimit(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Max 5 pending queries
@@ -51,6 +53,7 @@ func TestV4PendingQueryMaxLimit(t *testing.T) {
 }
 
 func TestV4PendingQueryTimeout(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Create a query with a very short timeout for testing
@@ -69,6 +72,7 @@ func TestV4PendingQueryTimeout(t *testing.T) {
 }
 
 func TestV4PendingQueryResult(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	id := capture.CreatePendingQuery(PendingQuery{
@@ -77,7 +81,7 @@ func TestV4PendingQueryResult(t *testing.T) {
 	})
 
 	// Simulate extension posting result
-	result := json.RawMessage(`{"matches":[{"tag":"ul","text":"users"}],"matchCount":1}`)
+	result := json.RawMessage(`{"matches":[{"tag":"ul","text":"users"}],"match_count":1}`)
 	capture.SetQueryResult(id, result)
 
 	// Query should no longer be pending
@@ -98,6 +102,7 @@ func TestV4PendingQueryResult(t *testing.T) {
 }
 
 func TestV4PendingQueryResultNotFound(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	_, found := capture.GetQueryResult("nonexistent-id", "")
@@ -107,6 +112,7 @@ func TestV4PendingQueryResultNotFound(t *testing.T) {
 }
 
 func TestV4PendingQueryPolling(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// No pending queries initially
@@ -129,6 +135,7 @@ func TestV4PendingQueryPolling(t *testing.T) {
 }
 
 func TestV4DOMQueryWaitsForResult(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Create query and immediately provide result in a goroutine
@@ -154,6 +161,7 @@ func TestV4DOMQueryWaitsForResult(t *testing.T) {
 }
 
 func TestV4DOMQueryWaitTimeout(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	id := capture.CreatePendingQuery(PendingQuery{
@@ -169,6 +177,7 @@ func TestV4DOMQueryWaitTimeout(t *testing.T) {
 }
 
 func TestV4GetPendingQueriesEndpoint(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.CreatePendingQuery(PendingQuery{
@@ -196,6 +205,7 @@ func TestV4GetPendingQueriesEndpoint(t *testing.T) {
 }
 
 func TestV4GetPendingQueriesEmpty(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("GET", "/pending-queries", nil)
@@ -218,6 +228,7 @@ func TestV4GetPendingQueriesEmpty(t *testing.T) {
 }
 
 func TestV4PostDOMResultEndpoint(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	id := capture.CreatePendingQuery(PendingQuery{
@@ -225,7 +236,7 @@ func TestV4PostDOMResultEndpoint(t *testing.T) {
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
 
-	body := `{"id":"` + id + `","result":{"matches":[{"tag":"h1","text":"Hello"}],"matchCount":1}}`
+	body := `{"id":"` + id + `","result":{"matches":[{"tag":"h1","text":"Hello"}],"match_count":1}}`
 	req := httptest.NewRequest("POST", "/dom-result", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -247,6 +258,7 @@ func TestV4PostDOMResultEndpoint(t *testing.T) {
 }
 
 func TestV4PostDOMResultUnknownID(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	body := `{"id":"nonexistent","result":{"matches":[]}}`
@@ -262,6 +274,7 @@ func TestV4PostDOMResultUnknownID(t *testing.T) {
 }
 
 func TestV4PostA11yResultEndpoint(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	id := capture.CreatePendingQuery(PendingQuery{
@@ -282,6 +295,7 @@ func TestV4PostA11yResultEndpoint(t *testing.T) {
 }
 
 func TestMCPQueryDOM(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -308,7 +322,7 @@ func TestMCPQueryDOM(t *testing.T) {
 		t.Fatal("Expected pending query to be created")
 	}
 
-	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Test","matchCount":1,"returnedCount":1,"matches":[{"tag":"h1","text":"Hello World"}]}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Test","match_count":1,"returned_count":1,"matches":[{"tag":"h1","text":"Hello World"}]}`))
 
 	// Wait for response
 	resp := <-done
@@ -334,6 +348,7 @@ func TestMCPQueryDOM(t *testing.T) {
 }
 
 func TestMCPQueryDOMTimeout(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	// Use short timeout for testing
@@ -366,6 +381,7 @@ func TestMCPQueryDOMTimeout(t *testing.T) {
 }
 
 func TestMCPGetPageInfo(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -402,6 +418,7 @@ func TestMCPGetPageInfo(t *testing.T) {
 }
 
 func TestMCPRunAccessibilityAudit(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -451,6 +468,7 @@ func TestMCPRunAccessibilityAudit(t *testing.T) {
 }
 
 func TestMCPRunAccessibilityAuditWithTags(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -485,6 +503,7 @@ func TestMCPRunAccessibilityAuditWithTags(t *testing.T) {
 }
 
 func TestV4QueryResultDeletedAfterRetrieval(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	id := capture.CreatePendingQuery(PendingQuery{
@@ -511,6 +530,7 @@ func TestV4QueryResultDeletedAfterRetrieval(t *testing.T) {
 }
 
 func TestV4QueryResultDeletedAfterWaitForResult(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	id := capture.CreatePendingQuery(PendingQuery{
@@ -541,6 +561,7 @@ func TestV4QueryResultDeletedAfterWaitForResult(t *testing.T) {
 }
 
 func TestV4QueryResultMapDoesNotGrowUnbounded(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Create and resolve 20 queries
@@ -565,6 +586,7 @@ func TestV4QueryResultMapDoesNotGrowUnbounded(t *testing.T) {
 }
 
 func TestA11yCacheMiss(t *testing.T) {
+	t.Parallel()
 	// First call with given params should trigger extension round-trip (pending query created)
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -610,6 +632,7 @@ func TestA11yCacheMiss(t *testing.T) {
 }
 
 func TestA11yCacheHit(t *testing.T) {
+	t.Parallel()
 	// Second call with same params within 30s should return immediately, no pending query
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -663,6 +686,7 @@ func TestA11yCacheHit(t *testing.T) {
 }
 
 func TestA11yCacheTTLExpiry(t *testing.T) {
+	t.Parallel()
 	// After 30s, cache entry should be expired and new audit triggered
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -722,6 +746,7 @@ func TestA11yCacheTTLExpiry(t *testing.T) {
 }
 
 func TestA11yCacheTagNormalization(t *testing.T) {
+	t.Parallel()
 	// Tags in different order should produce the same cache key
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -773,6 +798,7 @@ func TestA11yCacheTagNormalization(t *testing.T) {
 }
 
 func TestA11yCacheForceRefresh(t *testing.T) {
+	t.Parallel()
 	// force_refresh: true should bypass cache and re-run audit
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -829,6 +855,7 @@ func TestA11yCacheForceRefresh(t *testing.T) {
 }
 
 func TestA11yCacheErrorNotCached(t *testing.T) {
+	t.Parallel()
 	// Timeout/error should not be cached; next call should retry
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -878,6 +905,7 @@ func TestA11yCacheErrorNotCached(t *testing.T) {
 }
 
 func TestA11yCacheDifferentParams(t *testing.T) {
+	t.Parallel()
 	// Different scope/tags should produce different cache entries
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -924,6 +952,10 @@ func TestA11yCacheDifferentParams(t *testing.T) {
 }
 
 func TestA11yCacheMaxEntries(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow cache eviction test")
+	}
+	t.Parallel()
 	// 11th unique cache entry should evict the oldest
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1002,6 +1034,7 @@ func TestA11yCacheMaxEntries(t *testing.T) {
 }
 
 func TestA11yCacheNavigationInvalidation(t *testing.T) {
+	t.Parallel()
 	// Cache should be cleared when URL changes (navigation detected)
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1054,6 +1087,7 @@ func TestA11yCacheNavigationInvalidation(t *testing.T) {
 }
 
 func TestA11yCacheConcurrentDedup(t *testing.T) {
+	t.Parallel()
 	// Two simultaneous calls for the same cache key should produce only one pending query
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1114,6 +1148,7 @@ func TestA11yCacheConcurrentDedup(t *testing.T) {
 }
 
 func TestA11yCacheForceRefreshParam(t *testing.T) {
+	t.Parallel()
 	// Verify force_refresh is accepted as a tool parameter
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1154,6 +1189,7 @@ func TestA11yCacheForceRefreshParam(t *testing.T) {
 // ============================================
 
 func TestHandleQueryResultTimeout(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Create a query with a very short timeout
@@ -1179,6 +1215,7 @@ func TestHandleQueryResultTimeout(t *testing.T) {
 }
 
 func TestHandleQueryResultInvalidJSON(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Post invalid JSON
@@ -1194,6 +1231,7 @@ func TestHandleQueryResultInvalidJSON(t *testing.T) {
 }
 
 func TestHandleQueryResultUnknownQueryID(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Post result for a query ID that never existed
@@ -1210,6 +1248,7 @@ func TestHandleQueryResultUnknownQueryID(t *testing.T) {
 }
 
 func TestHandleQueryResultSuccess(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	id := capture.CreatePendingQuery(PendingQuery{
@@ -1218,7 +1257,7 @@ func TestHandleQueryResultSuccess(t *testing.T) {
 	})
 
 	// Post a valid result
-	payload := fmt.Sprintf(`{"id":"%s","result":{"matches":[{"tag":"div"}],"matchCount":1}}`, id)
+	payload := fmt.Sprintf(`{"id":"%s","result":{"matches":[{"tag":"div"}],"match_count":1}}`, id)
 	req := httptest.NewRequest(http.MethodPost, "/dom-result", bytes.NewBufferString(payload))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -1234,12 +1273,13 @@ func TestHandleQueryResultSuccess(t *testing.T) {
 	if !found {
 		t.Error("Expected query result to be stored")
 	}
-	if !strings.Contains(string(result), "matchCount") {
+	if !strings.Contains(string(result), "match_count") {
 		t.Errorf("Expected result to contain 'matchCount', got %s", string(result))
 	}
 }
 
 func TestHandleQueryResultNotifiesWaiters(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	id := capture.CreatePendingQuery(PendingQuery{
@@ -1280,6 +1320,7 @@ func TestHandleQueryResultNotifiesWaiters(t *testing.T) {
 }
 
 func TestHandlePendingQueriesEmpty(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/pending-queries", nil)
@@ -1302,6 +1343,7 @@ func TestHandlePendingQueriesEmpty(t *testing.T) {
 }
 
 func TestHandlePendingQueriesExpiryRemoval(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Create a query with very short timeout
@@ -1339,6 +1381,7 @@ func TestHandlePendingQueriesExpiryRemoval(t *testing.T) {
 }
 
 func TestSetQueryResultUnknownID(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Set result for a query that does not exist in pending
@@ -1355,6 +1398,7 @@ func TestSetQueryResultUnknownID(t *testing.T) {
 }
 
 func TestHandleA11yResultSameAsDOM(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	id := capture.CreatePendingQuery(PendingQuery{
@@ -1384,6 +1428,7 @@ func TestHandleA11yResultSameAsDOM(t *testing.T) {
 }
 
 func TestHandleQueryResultBodyTooLarge(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	id := capture.CreatePendingQuery(PendingQuery{
@@ -1409,6 +1454,7 @@ func TestHandleQueryResultBodyTooLarge(t *testing.T) {
 // ============================================
 
 func TestHandlePendingQueries_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// POST request to a GET-only handler - the handler doesn't check method,
@@ -1435,6 +1481,7 @@ func TestHandlePendingQueries_MethodNotAllowed(t *testing.T) {
 }
 
 func TestGetA11yCacheEntry_CacheMiss(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Query for a key that was never set
@@ -1445,6 +1492,7 @@ func TestGetA11yCacheEntry_CacheMiss(t *testing.T) {
 }
 
 func TestRemoveA11yCacheEntry_NonExistent(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Set one entry
@@ -1468,6 +1516,7 @@ func TestRemoveA11yCacheEntry_NonExistent(t *testing.T) {
 // ============================================
 
 func TestQueryDOM_SchemaHasURLAndPageTitle(t *testing.T) {
+	t.Parallel()
 	// Verify the improved response includes url and pageTitle from extension
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1494,7 +1543,7 @@ func TestQueryDOM_SchemaHasURLAndPageTitle(t *testing.T) {
 	}
 
 	// Extension returns url and title
-	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com/page","title":"Test Page","matchCount":1,"returnedCount":1,"matches":[{"tag":"h1","text":"Hello"}]}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com/page","title":"Test Page","match_count":1,"returned_count":1,"matches":[{"tag":"h1","text":"Hello"}]}`))
 
 	resp := <-done
 	text := extractMCPText(t, resp)
@@ -1515,12 +1564,13 @@ func TestQueryDOM_SchemaHasURLAndPageTitle(t *testing.T) {
 	}
 
 	// Check pageTitle field
-	if title, ok := data["pageTitle"].(string); !ok || title != "Test Page" {
-		t.Errorf("Expected pageTitle='Test Page', got: %v", data["pageTitle"])
+	if title, ok := data["page_title"].(string); !ok || title != "Test Page" {
+		t.Errorf("Expected pageTitle='Test Page', got: %v", data["page_title"])
 	}
 }
 
 func TestQueryDOM_SchemaHasSelectorEcho(t *testing.T) {
+	t.Parallel()
 	// Verify the response echoes back the selector that was queried
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1546,7 +1596,7 @@ func TestQueryDOM_SchemaHasSelectorEcho(t *testing.T) {
 		t.Fatal("Expected pending query")
 	}
 
-	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","matchCount":2,"returnedCount":2,"matches":[{"tag":"div","text":"User 1"},{"tag":"div","text":"User 2"}]}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","match_count":2,"returned_count":2,"matches":[{"tag":"div","text":"User 1"},{"tag":"div","text":"User 2"}]}`))
 
 	resp := <-done
 	text := extractMCPText(t, resp)
@@ -1566,6 +1616,7 @@ func TestQueryDOM_SchemaHasSelectorEcho(t *testing.T) {
 }
 
 func TestQueryDOM_SchemaHasMatchCounts(t *testing.T) {
+	t.Parallel()
 	// Verify totalMatchCount and returnedMatchCount are present
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1592,7 +1643,7 @@ func TestQueryDOM_SchemaHasMatchCounts(t *testing.T) {
 	}
 
 	// Extension found 100 matches but only returned 50
-	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","matchCount":100,"returnedCount":50,"matches":[{"tag":"li","text":"item"}]}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","match_count":100,"returned_count":50,"matches":[{"tag":"li","text":"item"}]}`))
 
 	resp := <-done
 	text := extractMCPText(t, resp)
@@ -1607,17 +1658,18 @@ func TestQueryDOM_SchemaHasMatchCounts(t *testing.T) {
 	}
 
 	// Check totalMatchCount
-	if total, ok := data["totalMatchCount"].(float64); !ok || total != 100 {
-		t.Errorf("Expected totalMatchCount=100, got: %v", data["totalMatchCount"])
+	if total, ok := data["total_match_count"].(float64); !ok || total != 100 {
+		t.Errorf("Expected totalMatchCount=100, got: %v", data["total_match_count"])
 	}
 
 	// Check returnedMatchCount
-	if returned, ok := data["returnedMatchCount"].(float64); !ok || returned != 50 {
-		t.Errorf("Expected returnedMatchCount=50, got: %v", data["returnedMatchCount"])
+	if returned, ok := data["returned_match_count"].(float64); !ok || returned != 50 {
+		t.Errorf("Expected returnedMatchCount=50, got: %v", data["returned_match_count"])
 	}
 }
 
 func TestQueryDOM_SchemaHasMetadata(t *testing.T) {
+	t.Parallel()
 	// Verify metadata fields: maxElementsReturned, maxDepthQueried, maxTextLength
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1643,7 +1695,7 @@ func TestQueryDOM_SchemaHasMetadata(t *testing.T) {
 		t.Fatal("Expected pending query")
 	}
 
-	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","matchCount":1,"returnedCount":1,"matches":[{"tag":"p","text":"Hello"}]}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","match_count":1,"returned_count":1,"matches":[{"tag":"p","text":"Hello"}]}`))
 
 	resp := <-done
 	text := extractMCPText(t, resp)
@@ -1657,20 +1709,21 @@ func TestQueryDOM_SchemaHasMetadata(t *testing.T) {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
 
-	if v, ok := data["maxElementsReturned"].(float64); !ok || v != 50 {
-		t.Errorf("Expected maxElementsReturned=50, got: %v", data["maxElementsReturned"])
+	if v, ok := data["max_elements_returned"].(float64); !ok || v != 50 {
+		t.Errorf("Expected maxElementsReturned=50, got: %v", data["max_elements_returned"])
 	}
 
-	if v, ok := data["maxDepthQueried"].(float64); !ok || v != 5 {
-		t.Errorf("Expected maxDepthQueried=5, got: %v", data["maxDepthQueried"])
+	if v, ok := data["max_depth_queried"].(float64); !ok || v != 5 {
+		t.Errorf("Expected maxDepthQueried=5, got: %v", data["max_depth_queried"])
 	}
 
-	if v, ok := data["maxTextLength"].(float64); !ok || v != 500 {
-		t.Errorf("Expected maxTextLength=500, got: %v", data["maxTextLength"])
+	if v, ok := data["max_text_length"].(float64); !ok || v != 500 {
+		t.Errorf("Expected maxTextLength=500, got: %v", data["max_text_length"])
 	}
 }
 
 func TestQueryDOM_SchemaTextTruncated(t *testing.T) {
+	t.Parallel()
 	// Verify textTruncated boolean is added to match objects
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1699,7 +1752,7 @@ func TestQueryDOM_SchemaTextTruncated(t *testing.T) {
 	// Create a long text string (exactly 500 chars = maxTextLength, so truncated)
 	longText := strings.Repeat("a", 500)
 	shortText := "short"
-	extResult := fmt.Sprintf(`{"url":"https://example.com","title":"Page","matchCount":2,"returnedCount":2,"matches":[{"tag":"p","text":"%s"},{"tag":"p","text":"%s"}]}`, longText, shortText)
+	extResult := fmt.Sprintf(`{"url":"https://example.com","title":"Page","match_count":2,"returned_count":2,"matches":[{"tag":"p","text":"%s"},{"tag":"p","text":"%s"}]}`, longText, shortText)
 	capture.SetQueryResult(pending[0].ID, json.RawMessage(extResult))
 
 	resp := <-done
@@ -1733,6 +1786,7 @@ func TestQueryDOM_SchemaTextTruncated(t *testing.T) {
 }
 
 func TestQueryDOM_SchemaBboxPixelsRename(t *testing.T) {
+	t.Parallel()
 	// Verify boundingBox is renamed to bboxPixels
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1758,7 +1812,7 @@ func TestQueryDOM_SchemaBboxPixelsRename(t *testing.T) {
 		t.Fatal("Expected pending query")
 	}
 
-	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","matchCount":1,"returnedCount":1,"matches":[{"tag":"div","text":"Hello","boundingBox":{"x":10,"y":20,"width":100,"height":50}}]}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","match_count":1,"returned_count":1,"matches":[{"tag":"div","text":"Hello","boundingBox":{"x":10,"y":20,"width":100,"height":50}}]}`))
 
 	resp := <-done
 	text := extractMCPText(t, resp)
@@ -1791,6 +1845,7 @@ func TestQueryDOM_SchemaBboxPixelsRename(t *testing.T) {
 }
 
 func TestQueryDOM_SchemaEmptyHint(t *testing.T) {
+	t.Parallel()
 	// Verify helpful hint when matches is empty
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1816,7 +1871,7 @@ func TestQueryDOM_SchemaEmptyHint(t *testing.T) {
 		t.Fatal("Expected pending query")
 	}
 
-	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","matchCount":0,"returnedCount":0,"matches":[]}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","match_count":0,"returned_count":0,"matches":[]}`))
 
 	resp := <-done
 	text := extractMCPText(t, resp)
@@ -1843,6 +1898,7 @@ func TestQueryDOM_SchemaEmptyHint(t *testing.T) {
 }
 
 func TestQueryDOM_SchemaFullResponse(t *testing.T) {
+	t.Parallel()
 	// Integration test: verify the full improved response structure
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -1868,7 +1924,7 @@ func TestQueryDOM_SchemaFullResponse(t *testing.T) {
 		t.Fatal("Expected pending query")
 	}
 
-	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://app.example.com/dashboard","title":"Dashboard","matchCount":3,"returnedCount":3,"matches":[{"tag":"h1","text":"Welcome","visible":true,"boundingBox":{"x":0,"y":10,"width":200,"height":40}},{"tag":"h1","text":"Features","visible":true},{"tag":"h1","text":"About","visible":false}]}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://app.example.com/dashboard","title":"Dashboard","match_count":3,"returned_count":3,"matches":[{"tag":"h1","text":"Welcome","visible":true,"boundingBox":{"x":0,"y":10,"width":200,"height":40}},{"tag":"h1","text":"Features","visible":true},{"tag":"h1","text":"About","visible":false}]}`))
 
 	resp := <-done
 	text := extractMCPText(t, resp)
@@ -1883,7 +1939,7 @@ func TestQueryDOM_SchemaFullResponse(t *testing.T) {
 	json.Unmarshal([]byte(text[jsonStart+1:]), &data)
 
 	// All top-level fields must be present
-	requiredFields := []string{"url", "pageTitle", "selector", "totalMatchCount", "returnedMatchCount", "maxElementsReturned", "maxDepthQueried", "maxTextLength", "matches"}
+	requiredFields := []string{"url", "page_title", "selector", "total_match_count", "returned_match_count", "max_elements_returned", "max_depth_queried", "max_text_length", "matches"}
 	for _, field := range requiredFields {
 		if _, ok := data[field]; !ok {
 			t.Errorf("Missing required field: %s", field)
@@ -1897,6 +1953,7 @@ func TestQueryDOM_SchemaFullResponse(t *testing.T) {
 }
 
 func TestSetQueryResult_ConcurrentSetAndWait(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Create a pending query with a short timeout

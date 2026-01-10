@@ -63,7 +63,8 @@ func (c *Capture) HandleNetworkWaterfall(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	//nolint:errcheck -- HTTP response encoding errors are logged by client; no recovery possible
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":         "ok",
 		"entries_stored": len(payload.Entries),
 	})

@@ -198,20 +198,20 @@ type TimelineEntry struct {
 	Selectors     map[string]interface{} `json:"selectors,omitempty"`
 	Method        string                 `json:"method,omitempty"`
 	Status        int                    `json:"status,omitempty"`
-	ContentType   string                 `json:"contentType,omitempty"`
-	ResponseShape interface{}            `json:"responseShape,omitempty"`
+	ContentType   string                 `json:"content_type,omitempty"`  
+	ResponseShape interface{}            `json:"response_shape,omitempty"`
 	Message       string                 `json:"message,omitempty"`
 	Level         string                 `json:"level,omitempty"`
-	ToURL         string                 `json:"toUrl,omitempty"`
+	ToURL         string                 `json:"to_url,omitempty"`        
 	Value         string                 `json:"value,omitempty"`
 }
 
 // TimelineSummary provides aggregate stats for the session timeline
 type TimelineSummary struct {
 	Actions         int   `json:"actions"`
-	NetworkRequests int   `json:"networkRequests"`
-	ConsoleErrors   int   `json:"consoleErrors"`
-	DurationMs      int64 `json:"durationMs"`
+	NetworkRequests int   `json:"network_requests"`
+	ConsoleErrors   int   `json:"console_errors"`  
+	DurationMs      int64 `json:"duration_ms"`     
 }
 
 // TimelineResponse is the internal response from GetSessionTimeline
@@ -405,7 +405,7 @@ func generateTestScript(timeline []TimelineEntry, opts TestGenerationOptions) st
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf("test('%s', async ({ page }) => {\n", testName))
+	sb.WriteString(fmt.Sprintf("test('%s', async ({ page }) => {\n", escapeJSString(testName)))
 
 	if opts.AssertNoErrors {
 		sb.WriteString("  const consoleErrors = []\n")

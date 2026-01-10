@@ -13,6 +13,7 @@ import (
 // --- CaptureOverrides Tests ---
 
 func TestCaptureOverridesSetValid(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	err := co.Set("ws_mode", "messages")
 	if err != nil {
@@ -25,6 +26,7 @@ func TestCaptureOverridesSetValid(t *testing.T) {
 }
 
 func TestCaptureOverridesSetMultiple(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	errs := co.SetMultiple(map[string]string{
 		"ws_mode":   "messages",
@@ -45,6 +47,7 @@ func TestCaptureOverridesSetMultiple(t *testing.T) {
 }
 
 func TestCaptureOverridesInvalidSettingName(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	err := co.Set("invalid_setting", "foo")
 	if err == nil {
@@ -59,6 +62,7 @@ func TestCaptureOverridesInvalidSettingName(t *testing.T) {
 }
 
 func TestCaptureOverridesInvalidSettingValue(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	err := co.Set("log_level", "verbose")
 	if err == nil {
@@ -73,6 +77,7 @@ func TestCaptureOverridesInvalidSettingValue(t *testing.T) {
 }
 
 func TestCaptureOverridesAllSettingValues(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		setting string
 		valid   []string
@@ -102,6 +107,7 @@ func TestCaptureOverridesAllSettingValues(t *testing.T) {
 }
 
 func TestCaptureOverridesReset(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	co.SetMultiple(map[string]string{
 		"ws_mode":   "messages",
@@ -115,6 +121,7 @@ func TestCaptureOverridesReset(t *testing.T) {
 }
 
 func TestCaptureOverridesGetAllReturnsEmpty(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	overrides := co.GetAll()
 	if overrides == nil {
@@ -126,6 +133,7 @@ func TestCaptureOverridesGetAllReturnsEmpty(t *testing.T) {
 }
 
 func TestCaptureOverridesGetPreviousValue(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	// First set - previous is the default
 	prev := co.GetDefault("ws_mode")
@@ -141,6 +149,7 @@ func TestCaptureOverridesGetPreviousValue(t *testing.T) {
 }
 
 func TestCaptureOverridesRateLimitFirstChange(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	err := co.Set("ws_mode", "messages")
 	if err != nil {
@@ -149,6 +158,7 @@ func TestCaptureOverridesRateLimitFirstChange(t *testing.T) {
 }
 
 func TestCaptureOverridesRateLimitSecondChangeWithinOneSecond(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	_ = co.Set("ws_mode", "messages")
 	err := co.Set("log_level", "all")
@@ -161,6 +171,7 @@ func TestCaptureOverridesRateLimitSecondChangeWithinOneSecond(t *testing.T) {
 }
 
 func TestCaptureOverridesRateLimitMultipleSettingsOneCall(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	// SetMultiple should count as one change
 	errs := co.SetMultiple(map[string]string{
@@ -179,6 +190,7 @@ func TestCaptureOverridesRateLimitMultipleSettingsOneCall(t *testing.T) {
 }
 
 func TestCaptureOverridesRateLimitAfterOneSecond(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	_ = co.Set("ws_mode", "messages")
 	// Manually advance the last change time
@@ -192,6 +204,7 @@ func TestCaptureOverridesRateLimitAfterOneSecond(t *testing.T) {
 }
 
 func TestCaptureOverridesConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	var wg sync.WaitGroup
 	for i := 0; i < 50; i++ {
@@ -205,6 +218,7 @@ func TestCaptureOverridesConcurrentAccess(t *testing.T) {
 }
 
 func TestCaptureOverridesGetForSettingsResponse(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	_ = co.Set("ws_mode", "messages")
 
@@ -218,6 +232,7 @@ func TestCaptureOverridesGetForSettingsResponse(t *testing.T) {
 }
 
 func TestCaptureOverridesEmptySettingsResponse(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	resp := co.GetSettingsResponse()
 	if len(resp) != 0 {
@@ -228,6 +243,7 @@ func TestCaptureOverridesEmptySettingsResponse(t *testing.T) {
 // --- AuditLogger Tests ---
 
 func TestAuditLoggerCreatesFile(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.jsonl")
 	logger, err := NewAuditLogger(logPath)
@@ -256,6 +272,7 @@ func TestAuditLoggerCreatesFile(t *testing.T) {
 }
 
 func TestAuditLoggerJSONLFormat(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.jsonl")
 	logger, err := NewAuditLogger(logPath)
@@ -300,6 +317,7 @@ func TestAuditLoggerJSONLFormat(t *testing.T) {
 }
 
 func TestAuditLoggerMultipleWrites(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.jsonl")
 	logger, err := NewAuditLogger(logPath)
@@ -325,6 +343,7 @@ func TestAuditLoggerMultipleWrites(t *testing.T) {
 }
 
 func TestAuditLoggerResetEvent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.jsonl")
 	logger, err := NewAuditLogger(logPath)
@@ -353,6 +372,7 @@ func TestAuditLoggerResetEvent(t *testing.T) {
 }
 
 func TestAuditLoggerRotation(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.jsonl")
 	logger, err := NewAuditLogger(logPath)
@@ -384,6 +404,7 @@ func TestAuditLoggerRotation(t *testing.T) {
 }
 
 func TestAuditLoggerRotationKeepsMax3(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.jsonl")
 	logger, err := NewAuditLogger(logPath)
@@ -425,6 +446,7 @@ func TestAuditLoggerRotationKeepsMax3(t *testing.T) {
 }
 
 func TestAuditLoggerCreatesDirectory(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	nestedPath := filepath.Join(dir, "subdir", "audit.jsonl")
 	logger, err := NewAuditLogger(nestedPath)
@@ -440,12 +462,14 @@ func TestAuditLoggerCreatesDirectory(t *testing.T) {
 }
 
 func TestAuditLoggerNilSafe(t *testing.T) {
+	t.Parallel()
 	// A nil logger should not panic
 	var logger *AuditLogger
 	logger.Write(AuditEvent{Event: "test"}) // Should not panic
 }
 
 func TestAuditLoggerConcurrentWrites(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.jsonl")
 	logger, err := NewAuditLogger(logPath)
@@ -477,6 +501,7 @@ func TestAuditLoggerConcurrentWrites(t *testing.T) {
 // --- Settings Endpoint Tests ---
 
 func TestSettingsResponseConnected(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	resp := buildSettingsResponse(co)
 
@@ -490,6 +515,7 @@ func TestSettingsResponseConnected(t *testing.T) {
 }
 
 func TestSettingsResponseWithOverrides(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	_ = co.Set("ws_mode", "messages")
 
@@ -509,6 +535,7 @@ func TestSettingsResponseWithOverrides(t *testing.T) {
 }
 
 func TestSettingsResponseWithoutOverrides(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	resp := buildSettingsResponse(co)
 
@@ -528,6 +555,7 @@ func TestSettingsResponseWithoutOverrides(t *testing.T) {
 // --- Alert on Change Tests ---
 
 func TestCaptureOverrideEmitsAlert(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	alerts := co.Set("ws_mode", "messages")
 	_ = alerts // Set returns error, alert is stored internally
@@ -551,6 +579,7 @@ func TestCaptureOverrideEmitsAlert(t *testing.T) {
 }
 
 func TestCaptureOverrideAlertDrained(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	_ = co.Set("ws_mode", "messages")
 	_ = co.DrainAlert() // drain it
@@ -561,6 +590,7 @@ func TestCaptureOverrideAlertDrained(t *testing.T) {
 }
 
 func TestCaptureResetEmitsAlert(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	_ = co.Set("ws_mode", "messages")
 	_ = co.DrainAlert() // drain the set alert
@@ -580,6 +610,7 @@ func TestCaptureResetEmitsAlert(t *testing.T) {
 // --- Page Info Integration Tests ---
 
 func TestCaptureOverridesForPageInfo(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	_ = co.Set("ws_mode", "messages")
 
@@ -600,6 +631,7 @@ func TestCaptureOverridesForPageInfo(t *testing.T) {
 }
 
 func TestCaptureOverridesPageInfoEmpty(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	info := co.GetPageInfo()
 	if len(info) != 0 {
@@ -610,6 +642,7 @@ func TestCaptureOverridesPageInfoEmpty(t *testing.T) {
 // --- Integration: Configure Handler Tests ---
 
 func TestConfigureCaptureSetSingle(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	settings := map[string]string{"ws_mode": "messages"}
 	result, err := handleCaptureSettings(co, settings, nil, "test-agent")
@@ -622,6 +655,7 @@ func TestConfigureCaptureSetSingle(t *testing.T) {
 }
 
 func TestConfigureCaptureSetMultiple(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	settings := map[string]string{
 		"ws_mode":   "messages",
@@ -637,6 +671,7 @@ func TestConfigureCaptureSetMultiple(t *testing.T) {
 }
 
 func TestConfigureCaptureReset(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	_ = co.Set("ws_mode", "messages")
 	result, err := handleCaptureReset(co, nil, "test-agent")
@@ -652,6 +687,7 @@ func TestConfigureCaptureReset(t *testing.T) {
 }
 
 func TestConfigureCaptureInvalidSetting(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	settings := map[string]string{"bad_setting": "value"}
 	_, err := handleCaptureSettings(co, settings, nil, "test-agent")
@@ -661,6 +697,7 @@ func TestConfigureCaptureInvalidSetting(t *testing.T) {
 }
 
 func TestConfigureCaptureRateLimited(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	settings1 := map[string]string{"ws_mode": "messages"}
 	handleCaptureSettings(co, settings1, nil, "test-agent")
@@ -675,6 +712,7 @@ func TestConfigureCaptureRateLimited(t *testing.T) {
 }
 
 func TestConfigureCaptureAuditLogged(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.jsonl")
 	logger, _ := NewAuditLogger(logPath)
@@ -699,6 +737,7 @@ func TestConfigureCaptureAuditLogged(t *testing.T) {
 }
 
 func TestConfigureCaptureAuditLogFailureDoesNotBlock(t *testing.T) {
+	t.Parallel()
 	// Pass nil logger - should still work
 	co := NewCaptureOverrides()
 	settings := map[string]string{"ws_mode": "messages"}
@@ -714,6 +753,7 @@ func TestConfigureCaptureAuditLogFailureDoesNotBlock(t *testing.T) {
 // --- Server Restart (Session Scoping) Tests ---
 
 func TestCaptureOverridesSessionScoped(t *testing.T) {
+	t.Parallel()
 	// Overrides are in-memory only — new instance = clean state
 	co1 := NewCaptureOverrides()
 	_ = co1.Set("ws_mode", "messages")

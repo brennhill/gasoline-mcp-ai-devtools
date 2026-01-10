@@ -8,6 +8,7 @@ import (
 )
 
 func TestSecuritySnapshotCapture(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 
 	bodies := []NetworkBody{
@@ -91,6 +92,7 @@ func TestSecuritySnapshotCapture(t *testing.T) {
 }
 
 func TestSecuritySnapshotNameValidation(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 	bodies := []NetworkBody{{URL: "https://myapp.com/", ContentType: "text/html", ResponseHeaders: map[string]string{"X-Frame-Options": "DENY"}}}
 
@@ -121,6 +123,7 @@ func TestSecuritySnapshotNameValidation(t *testing.T) {
 }
 
 func TestSecuritySnapshotMaxCount(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 	bodies := []NetworkBody{{URL: "https://myapp.com/", ContentType: "text/html", ResponseHeaders: map[string]string{"X-Frame-Options": "DENY"}}}
 
@@ -171,6 +174,7 @@ func TestSecuritySnapshotMaxCount(t *testing.T) {
 }
 
 func TestSecuritySnapshotTTL(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 	mgr.ttl = time.Millisecond // Very short TTL for testing
 
@@ -189,6 +193,7 @@ func TestSecuritySnapshotTTL(t *testing.T) {
 }
 
 func TestSecurityDiffHeaderRemoved(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 
 	// Before: has X-Frame-Options
@@ -255,6 +260,7 @@ func TestSecurityDiffHeaderRemoved(t *testing.T) {
 }
 
 func TestSecurityDiffHeaderAdded(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 
 	// Before: no CSP
@@ -315,6 +321,7 @@ func TestSecurityDiffHeaderAdded(t *testing.T) {
 }
 
 func TestSecurityDiffCookieFlagLost(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 
 	// Before: cookie has HttpOnly, Secure, SameSite
@@ -380,6 +387,7 @@ func TestSecurityDiffCookieFlagLost(t *testing.T) {
 }
 
 func TestSecurityDiffAuthDropped(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 
 	// Before: endpoint has auth
@@ -438,6 +446,7 @@ func TestSecurityDiffAuthDropped(t *testing.T) {
 }
 
 func TestSecurityDiffTransportDowngrade(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 
 	// Before: HTTPS
@@ -494,6 +503,7 @@ func TestSecurityDiffTransportDowngrade(t *testing.T) {
 }
 
 func TestSecurityDiffUnchanged(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 
 	bodies := []NetworkBody{
@@ -536,6 +546,7 @@ func TestSecurityDiffUnchanged(t *testing.T) {
 }
 
 func TestSecurityDiffListSnapshots(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 	bodies := []NetworkBody{{URL: "https://myapp.com/", ContentType: "text/html", ResponseHeaders: map[string]string{"X-Frame-Options": "DENY"}}}
 
@@ -568,6 +579,7 @@ func TestSecurityDiffListSnapshots(t *testing.T) {
 }
 
 func TestSecurityDiffCompareAgainstCurrent(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 
 	// Baseline snapshot with auth
@@ -627,6 +639,7 @@ func TestSecurityDiffCompareAgainstCurrent(t *testing.T) {
 }
 
 func TestSecurityDiffHandleDiffSecurity(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 	bodies := []NetworkBody{
 		{
@@ -703,6 +716,7 @@ func TestSecurityDiffHandleDiffSecurity(t *testing.T) {
 }
 
 func TestSecurityDiffSummary(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 
 	// Before: multiple headers, auth, HTTPS
@@ -754,6 +768,7 @@ func TestSecurityDiffSummary(t *testing.T) {
 }
 
 func TestSecurityDiffLRUEviction(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 	bodies := []NetworkBody{
 		{URL: "https://app.com/", ContentType: "text/html", Status: 200,
@@ -779,6 +794,7 @@ func TestSecurityDiffLRUEviction(t *testing.T) {
 }
 
 func TestSecurityDiffCompareWithCurrent(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 	bodies := []NetworkBody{
 		{URL: "https://app.com/", ContentType: "text/html", Status: 200,
@@ -820,6 +836,7 @@ func TestSecurityDiffCompareWithCurrent(t *testing.T) {
 }
 
 func TestSecurityDiffSnapshotOverwrite(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 	bodies := []NetworkBody{
 		{URL: "https://app.com/", ContentType: "text/html", Status: 200,
@@ -842,6 +859,7 @@ func TestSecurityDiffSnapshotOverwrite(t *testing.T) {
 }
 
 func TestBuildEphemeralSnapshotCookiesAndTransport(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 
 	// Baseline with cookies (HttpOnly, Secure, SameSite) and auth
@@ -888,6 +906,7 @@ func TestBuildEphemeralSnapshotCookiesAndTransport(t *testing.T) {
 }
 
 func TestHandleDiffSecurityInvalidAction(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 	params := []byte(`{"action":"invalid"}`)
 	_, err := mgr.HandleDiffSecurity(params, nil)
@@ -897,6 +916,7 @@ func TestHandleDiffSecurityInvalidAction(t *testing.T) {
 }
 
 func TestHandleDiffSecurityInvalidJSON(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 	params := []byte(`{invalid}`)
 	_, err := mgr.HandleDiffSecurity(params, nil)
@@ -906,6 +926,7 @@ func TestHandleDiffSecurityInvalidJSON(t *testing.T) {
 }
 
 func TestExtractSnapshotHelpers(t *testing.T) {
+	t.Parallel()
 	// extractSnapshotOrigin with invalid URL
 	got := extractSnapshotOrigin("://invalid")
 	if got != "://invalid" {
@@ -941,6 +962,7 @@ func TestExtractSnapshotHelpers(t *testing.T) {
 }
 
 func TestSecurityDiffExpiredSnapshot(t *testing.T) {
+	t.Parallel()
 	mgr := NewSecurityDiffManager()
 	mgr.ttl = 1 * time.Millisecond // Very short TTL
 

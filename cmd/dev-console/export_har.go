@@ -39,7 +39,7 @@ type HARCreator struct {
 
 // HAREntry represents a single HTTP request/response pair
 type HAREntry struct {
-	StartedDateTime string      `json:"startedDateTime"`
+	StartedDateTime string      `json:"startedDateTime"` // camelCase: HAR 1.2 spec standard
 	Time            int         `json:"time"`
 	Request         HARRequest  `json:"request"`
 	Response        HARResponse `json:"response"`
@@ -52,38 +52,38 @@ type HAREntry struct {
 type HARRequest struct {
 	Method      string       `json:"method"`
 	URL         string       `json:"url"`
-	HTTPVersion string       `json:"httpVersion"`
+	HTTPVersion string       `json:"httpVersion"`  // camelCase: HAR 1.2 spec standard
 	Headers     []HARHeader  `json:"headers"`
-	QueryString []HARQuery   `json:"queryString"`
-	PostData    *HARPostData `json:"postData,omitempty"`
-	HeadersSize int          `json:"headersSize"`
-	BodySize    int          `json:"bodySize"`
+	QueryString []HARQuery   `json:"queryString"`  // camelCase: HAR 1.2 spec standard
+	PostData    *HARPostData `json:"postData,omitempty"` // camelCase: HAR 1.2 spec standard
+	HeadersSize int          `json:"headersSize"`  // camelCase: HAR 1.2 spec standard
+	BodySize    int          `json:"bodySize"`     // camelCase: HAR 1.2 spec standard
 	Comment     string       `json:"comment,omitempty"`
 }
 
 // HARResponse represents the HTTP response
 type HARResponse struct {
 	Status      int         `json:"status"`
-	StatusText  string      `json:"statusText"`
-	HTTPVersion string      `json:"httpVersion"`
+	StatusText  string      `json:"statusText"`  // camelCase: HAR 1.2 spec standard
+	HTTPVersion string      `json:"httpVersion"` // camelCase: HAR 1.2 spec standard
 	Headers     []HARHeader `json:"headers"`
 	Content     HARContent  `json:"content"`
-	RedirectURL string      `json:"redirectURL"`
-	HeadersSize int         `json:"headersSize"`
-	BodySize    int         `json:"bodySize"`
+	RedirectURL string      `json:"redirectURL"` // camelCase: HAR 1.2 spec standard
+	HeadersSize int         `json:"headersSize"` // camelCase: HAR 1.2 spec standard
+	BodySize    int         `json:"bodySize"`    // camelCase: HAR 1.2 spec standard
 	Comment     string      `json:"comment,omitempty"`
 }
 
 // HARContent represents the response body content
 type HARContent struct {
 	Size     int    `json:"size"`
-	MimeType string `json:"mimeType"`
+	MimeType string `json:"mimeType"` // camelCase: HAR 1.2 spec standard
 	Text     string `json:"text,omitempty"`
 }
 
 // HARPostData represents the request body
 type HARPostData struct {
-	MimeType string `json:"mimeType"`
+	MimeType string `json:"mimeType"` // camelCase: HAR 1.2 spec standard
 	Text     string `json:"text"`
 }
 
@@ -258,23 +258,58 @@ func (c *Capture) ExportHARToFile(filter NetworkBodyFilter, path string) (HARExp
 // Path Validation
 // ============================================
 
+// resolvePathWithSymlinks resolves a file path, following symlinks in parent directories.
+// For paths where the file doesn't exist yet, it resolves the nearest existing
+// ancestor and appends the remaining path components.
+func resolvePathWithSymlinks(path string) string {
+	path = filepath.Clean(path)
+	resolved, err := filepath.EvalSymlinks(path)
+	if err == nil {
+		return resolved
+	}
+	// Path doesn't exist; resolve parent and append this component
+	parent := filepath.Dir(path)
+	if parent == path {
+		return path // reached root
+	}
+	return filepath.Join(resolvePathWithSymlinks(parent), filepath.Base(path))
+}
+
 // isPathSafe checks if a file path is safe to write to.
 // Only allows paths under /tmp, os.TempDir(), or relative paths
 // without traversal above the current working directory.
+// Resolves symlinks to prevent symlink-based path traversal attacks.
 func isPathSafe(path string) bool {
 	cleaned := filepath.Clean(path)
 
-	if filepath.IsAbs(cleaned) {
-		// Allow /tmp and os.TempDir()
-		if strings.HasPrefix(cleaned, "/tmp") {
-			return true
+	// Resolve symlinks to prevent traversal attacks
+	resolved := resolvePathWithSymlinks(cleaned)
+
+	if filepath.IsAbs(resolved) {
+		// Resolve /tmp symlink (e.g., /tmp -> /private/tmp on macOS)
+		tmpDirs := []string{"/tmp"}
+		if resolvedTmp, err := filepath.EvalSymlinks("/tmp"); err == nil {
+			tmpDirs = append(tmpDirs, resolvedTmp)
 		}
-		tmpDir := os.TempDir()
-		return strings.HasPrefix(cleaned, tmpDir)
+
+		// Also check os.TempDir()
+		osTmpDir := os.TempDir()
+		tmpDirs = append(tmpDirs, osTmpDir)
+		if resolvedOsTmp, err := filepath.EvalSymlinks(osTmpDir); err == nil && resolvedOsTmp != osTmpDir {
+			tmpDirs = append(tmpDirs, resolvedOsTmp)
+		}
+
+		// Check if resolved path is under any allowed tmpDir
+		for _, tmpDir := range tmpDirs {
+			if strings.HasPrefix(resolved, tmpDir) {
+				return true
+			}
+		}
+		return false
 	}
 
 	// Relative path - check no traversal above cwd
-	return !strings.Contains(cleaned, "..")
+	return !strings.Contains(resolved, "..")
 }
 
 // ============================================

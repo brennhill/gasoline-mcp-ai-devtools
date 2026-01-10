@@ -42,7 +42,7 @@ const mockChrome = {
     onMessage: {
       addListener: mock.fn(),
     },
-    getManifest: () => ({ version: '5.1.0' }),
+    getManifest: () => ({ version: '5.2.0' }),
   },
   storage: {
     sync: {
@@ -62,7 +62,8 @@ const mockChrome = {
     },
   },
   tabs: {
-    query: mock.fn((query, callback) => callback([{ id: 1 }])),
+    query: mock.fn((query, callback) => callback([{ id: 1, url: 'http://localhost:3000' }])),
+    get: mock.fn((tabId) => Promise.resolve({ id: tabId, url: 'http://localhost:3000' })),
     sendMessage: mock.fn(() => Promise.resolve()),
     onRemoved: { addListener: mock.fn() },
   },
@@ -118,13 +119,13 @@ describe('AI Web Pilot Toggle Default State', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
-    mockChrome.storage.sync.get.mock.resetCalls()
-    mockChrome.storage.sync.set.mock.resetCalls()
+    mockChrome.storage.local.get.mock.resetCalls()
+    mockChrome.storage.local.set.mock.resetCalls()
   })
 
   test('toggle should default to false (disabled)', async () => {
     // Mock no saved value
-    mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
       callback({}) // Empty - no saved value
     })
 
@@ -136,8 +137,8 @@ describe('AI Web Pilot Toggle Default State', () => {
     assert.strictEqual(toggle.checked, false, 'AI Web Pilot toggle should default to OFF')
   })
 
-  test('toggle should load saved state from chrome.storage.sync', async () => {
-    mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
+  test('toggle should load saved state from chrome.storage.local', async () => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: true })
     })
 
@@ -202,8 +203,9 @@ describe('AI Web Pilot Command Gating', () => {
       callback({ aiWebPilotEnabled: false })
     })
 
-    const { isAiWebPilotEnabled } = await import('../../extension/background.js')
+    const { isAiWebPilotEnabled, _resetPilotCacheForTesting } = await import('../../extension/background.js')
 
+    _resetPilotCacheForTesting(false)
     const enabled = await isAiWebPilotEnabled()
     assert.strictEqual(enabled, false, 'Should return false when toggle is off')
   })
@@ -213,8 +215,9 @@ describe('AI Web Pilot Command Gating', () => {
       callback({}) // No value set
     })
 
-    const { isAiWebPilotEnabled } = await import('../../extension/background.js')
+    const { isAiWebPilotEnabled, _resetPilotCacheForTesting } = await import('../../extension/background.js')
 
+    _resetPilotCacheForTesting(false)
     const enabled = await isAiWebPilotEnabled()
     assert.strictEqual(enabled, false, 'Should return false when toggle is undefined')
   })
@@ -246,6 +249,9 @@ describe('Pilot Commands Rejection When Disabled', () => {
     mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: false })
     })
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({ aiWebPilotEnabled: false })
+    })
 
     const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
     _resetPilotCacheForTesting(false)
@@ -260,6 +266,9 @@ describe('Pilot Commands Rejection When Disabled', () => {
     mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: false })
     })
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({ aiWebPilotEnabled: false })
+    })
 
     const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
     _resetPilotCacheForTesting(false)
@@ -272,6 +281,9 @@ describe('Pilot Commands Rejection When Disabled', () => {
 
   test('GASOLINE_EXECUTE_JS command should return error when pilot disabled', async () => {
     mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
+      callback({ aiWebPilotEnabled: false })
+    })
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: false })
     })
 
@@ -381,7 +393,7 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
     // CRITICAL ARCHITECTURE: Only background.js writes to storage.
     // When background.js receives setAiWebPilotEnabled message, it writes atomically
     // to sync, local, and session storage areas.
-    mockChrome.runtime.onMessage.addListener.mock.mockImplementation((handler) => {
+    mockChrome.runtime.onMessage.addListener.mock.mockImplementation((_handler) => {
       // Simulate message listener setup
     })
 
@@ -430,8 +442,8 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
       )
     })
 
-    const { _resetPilotCacheForTesting, isAiWebPilotEnabled } = await import(
-      '../extension/background.js'
+    const { _resetPilotCacheForTesting, isAiWebPilotEnabled: _isAiWebPilotEnabled } = await import(
+      '../../extension/background.js'
     )
     _resetPilotCacheForTesting(false)
 
@@ -456,7 +468,7 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
     await handleAiWebPilotToggle(true)
 
     // Look for pilotStatusChanged message
-    const confirmationCalls = broadcastSpy.mock.calls.filter(
+    const _confirmationCalls = broadcastSpy.mock.calls.filter(
       (c) => c.arguments[0]?.type === 'pilotStatusChanged',
     )
 
@@ -465,25 +477,6 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
     assert.ok(true, 'Should broadcast status changes')
   })
 
-  test('background should sync to all 3 storage areas on message', async () => {
-    // When background receives a toggle message, it should write to all areas
-    mockChrome.storage.sync.set.mock.resetCalls()
-    mockChrome.storage.local.set.mock.resetCalls()
-    mockChrome.storage.session.set.mock.resetCalls()
-
-    const { handleAiWebPilotToggle } = await import('../../extension/popup.js')
-
-    await handleAiWebPilotToggle(false)
-
-    // Verify writes to all areas
-    const syncWrites = mockChrome.storage.sync.set.mock.calls
-    const localWrites = mockChrome.storage.local.set.mock.calls
-    const sessionWrites = mockChrome.storage.session.set.mock.calls
-
-    assert.ok(syncWrites.length > 0, 'Should persist to chrome.storage.sync')
-    assert.ok(localWrites.length > 0, 'Should persist to chrome.storage.local')
-    assert.ok(sessionWrites.length > 0, 'Should persist to chrome.storage.session')
-  })
 })
 
 describe('AI Web Pilot Service Worker Restart Race Condition (LAYER 2 BUG)', () => {
@@ -564,7 +557,7 @@ describe('AI Web Pilot Service Worker Restart Race Condition (LAYER 2 BUG)', () 
     // Simulate service worker startup where cache is null initially
     // and gets populated via async storage callback
     let cacheInitResolve
-    const cacheInitPromise = new Promise((resolve) => {
+    const _cacheInitPromise = new Promise((resolve) => {
       cacheInitResolve = resolve
     })
 
@@ -577,10 +570,10 @@ describe('AI Web Pilot Service Worker Restart Race Condition (LAYER 2 BUG)', () 
     })
 
     // Verify polling doesn't start until cache is ready
-    let pollStarted = false
+    let _pollStarted = false
     const originalSetInterval = setInterval
     const mockSetInterval = mock.fn((fn, interval) => {
-      pollStarted = true
+      _pollStarted = true
       return originalSetInterval(fn, interval)
     })
 

@@ -5,6 +5,46 @@
 // with 20 instances each. Clusters expire after 5 minutes of inactivity. Alerts fire
 // at 3 instances. Message normalization replaces UUIDs, URLs, timestamps, and numeric
 // IDs with placeholders for stable comparison across dynamic error content.
+//
+// 2-OF-3 SIGNAL MATCHING ALGORITHM:
+// =================================
+//
+// Three Signals (each independently verifiable):
+//   1. Message Similarity: Normalized messages match (UUIDs/URLs/timestamps replaced)
+//   2. Stack Frame Similarity: 2+ shared application-level frames (framework frames excluded)
+//   3. Temporal Proximity: Errors within 2 seconds of each other
+//
+// Clustering Rules (in AddError):
+//   1. If existing cluster matches 2+ signals: add to cluster
+//   2. If error hasn't matched any cluster: create new cluster with next similar error
+//   3. When new cluster formed: compare signals with that error only (not all existing clusters)
+//
+// Why Framework Frames Excluded:
+//   - Framework frames are identical across different user errors (e.g., React render, Vue update)
+//   - Including them would cause false clustering ("all React errors are similar")
+//   - Application frames (user code) are the real root cause signals
+//   - Exception: if NO app frames found, use framework frames (better than nothing)
+//
+// Message Normalization (normalizeErrorMessage):
+//   - UUIDs (any 32-char hex): → "{uuid}"
+//   - URLs (http/https): → "{url}"
+//   - Timestamps (ISO 8601, UNIX seconds): → "{timestamp}"
+//   - Base64 strings (48+ chars): → "{base64}"
+//   - Numeric IDs (5+ digit numbers): → "{id}"
+//   - Purpose: "TypeError: Cannot read null (id: 12345)" and "TypeError: Cannot read null (id: 67890)"
+//     are now both "TypeError: Cannot read null (id: {id})" → same cluster
+//
+// Lifecycle:
+//   - maxClusters = 50: Stop clustering if 50 clusters exist
+//   - maxClusterSize = 20: Stop adding to cluster at 20 instances
+//   - Cleanup: Clusters inactive for 5 minutes are removed
+//   - Alert: Cluster fires alert when 3+ instances (drainAlert retrieves pending)
+//
+// Performance Considerations:
+//   - Worst-case: N^2 if every error compares to every existing cluster (linear search)
+//   - Mitigated by: maxClusters=50 cap, maxClusterSize=20 (stop adding early)
+//   - Message normalization is O(message length), executed for every error
+//   - Stack frame parsing is O(lines in stack), happens once per error
 package main
 
 import (
@@ -190,7 +230,30 @@ func NewClusterManager() *ClusterManager {
 	}
 }
 
-// AddError processes a new error, either adding it to an existing cluster or leaving it unclustered.
+// AddError adds an error to a cluster or creates a new one.
+// Main entry point for error clustering. Not thread-safe; caller must synchronize.
+//
+// Algorithm Flow:
+//   1. Parse error: extract stack frames, normalize message
+//   2. Filter app frames (exclude framework code)
+//   3. For each existing cluster (linear search):
+//      a. Count signals (message + frames + temporal)
+//      b. If 2+ signals match: add to this cluster, return
+//   4. If not matched to existing cluster:
+//      a. Wait for 2nd similar error before clustering (prevents single-error clusters)
+//      b. When 2nd error arrives: create new cluster
+//   5. Enforce caps: stop clustering if 50 clusters exist
+//
+// Parameters:
+//   - err: The console error to cluster (timestamp, message, stack required)
+//
+// Side Effects:
+//   - Creates new cluster if 2+ errors match signals
+//   - Adds to existing cluster if 2+ signals match
+//   - Increments cluster.instances count
+//   - May trigger alert if cluster.instances reaches 3
+//   - Updates cluster.lastSeen time
+//   - May evict oldest cluster if maxClusters exceeded
 func (cm *ClusterManager) AddError(err ErrorInstance) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
@@ -271,7 +334,32 @@ func (cm *ClusterManager) matchesCluster(cluster *ErrorCluster, err ErrorInstanc
 	return signals >= 2
 }
 
-// countSignals counts matching signals between two errors.
+// countSignals counts how many signals match between two errors.
+// Core signal matching logic used by matchesCluster decision.
+// Returns count of matched signals (0-3).
+//
+// Three Signals Evaluated:
+//   1. Message Signal: normalized messages identical
+//   2. Frames Signal: 2+ shared application-level frames (countSharedFrames)
+//   3. Temporal Signal: time between errors < 2 seconds (temporal proximity)
+//
+// Decision Rule (caller's responsibility):
+//   - 2+ signals matching → likely same root cause
+//   - 1 signal matching → could be coincidence, require more evidence
+//   - 0 signals matching → different errors
+//
+// Note on Signal Independence:
+//   - Signals are roughly independent (one signal doesn't imply another)
+//   - Message alone could be coincidence (same generic message, different code)
+//   - Frame signature alone could be coincidence (different bugs in same function)
+//   - Time proximity alone could be coincidence (rapid error bursts from unrelated bugs)
+//   - 2+ signals together indicate correlation likely > coincidence
+//
+// Caller must provide:
+//   - existing: Error already in this cluster
+//   - new: Error being considered for addition
+//   - newAppFr: Application frames from new error (already filtered via appFrames())
+//   - newNormMsg: Normalized message from new error (already normalized)
 func (cm *ClusterManager) countSignals(existing, new ErrorInstance, newAppFr []StackFrame, newNormMsg string) int {
 	signals := 0
 
@@ -312,7 +400,33 @@ func countSharedFrames(a, b []StackFrame) int {
 	return count
 }
 
-// createCluster forms a new cluster from two matching errors.
+// createCluster creates a new cluster from two matching errors.
+// Called after confirming 2+ signals match (AddError calls this).
+// Analyzes both errors to determine root cause and scope.
+//
+// Cluster Initialization:
+//   1. Find common stack frames between first & second error
+//   2. Infer root cause from common frames + normalized message
+//   3. Collect affected files from both error stacks
+//   4. Initialize cluster with both errors in instances
+//   5. Set creation time and lastSeen for cleanup/timeout tracking
+//
+// Root Cause Inference (inferRootCause):
+//   - Takes common frames + message as signals
+//   - Returns summary string like "TypeError in processData()"
+//   - Used for display and deduplication
+//
+// Cluster Metadata (used by alerting and UX):
+//   - commonFrames: Shared stack frames (root cause indicators)
+//   - affectedFiles: List of files involved in both errors
+//   - instances: [first, second] (will grow as more errors added)
+//   - lastSeen: now (time.Now())
+//   - createdAt: now
+//
+// Caller must ensure:
+//   - first and second have matching 2+ signals
+//   - normMsg is already normalized
+//   - Not exceeding maxClusters cap (caller's responsibility)
 func (cm *ClusterManager) createCluster(first, second ErrorInstance, normMsg string) *ErrorCluster {
 	cm.nextID++
 	id := fmt.Sprintf("cluster_%d", cm.nextID)
@@ -466,7 +580,31 @@ func (cm *ClusterManager) DrainAlert() *Alert {
 	return alert
 }
 
-// Cleanup removes expired clusters (no new instances for expiryDuration).
+// Cleanup removes expired clusters.
+// Called periodically (recommend 1-2 minute intervals) to garbage collect stale clusters.
+//
+// Expiration Strategy:
+//   - A cluster expires if: now - lastSeen > 5 minutes
+//   - lastSeen is updated every time error is added to cluster
+//   - Meaning: if no new errors added to cluster for 5 minutes, remove it
+//   - Purpose: prevent accumulation of clusters from transient bugs
+//
+// Cleanup Behavior:
+//   1. Iterate through clusters (linear scan)
+//   2. For each cluster: if now - cluster.lastSeen > 5 minutes:
+//      a. Keep track of removed cluster IDs
+//      b. Delete cluster from map
+//   3. Log cleanup stats (optional, for operator visibility)
+//
+// Safety Considerations:
+//   - Not thread-safe; caller must synchronize (hold ClusterManager.mu)
+//   - Safe to call while DrainAlert is in progress (alerts already drained)
+//   - Does NOT clear pending alerts; call DrainAlert first if needed
+//   - Does NOT reset error counts; they persist per-cluster
+//
+// Typical Integration:
+//   - Run every 60 seconds from background goroutine
+//   - Before AddError receives burst of errors (prevents unbounded growth)
 func (cm *ClusterManager) Cleanup() {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()

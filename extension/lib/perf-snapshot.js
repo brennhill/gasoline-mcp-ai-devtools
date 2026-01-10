@@ -53,10 +53,14 @@ export function aggregateResourceTiming() {
 
   for (const entry of resources) {
     const category = mapInitiatorType(entry.initiatorType)
+    // eslint-disable-next-line security/detect-object-injection -- category from mapInitiatorType returns known resource type strings
     if (!byType[category]) {
+      // eslint-disable-next-line security/detect-object-injection -- category from mapInitiatorType returns known resource type strings
       byType[category] = { count: 0, size: 0 }
     }
+    // eslint-disable-next-line security/detect-object-injection -- category from mapInitiatorType returns known resource type strings
     byType[category].count++
+    // eslint-disable-next-line security/detect-object-injection -- category from mapInitiatorType returns known resource type strings
     byType[category].size += entry.transferSize || 0
     transferSize += entry.transferSize || 0
     decodedSize += entry.decodedBodySize || 0
@@ -257,7 +261,7 @@ export function sendPerformanceSnapshot() {
   const snapshot = capturePerformanceSnapshot()
   if (!snapshot) return
 
-  window.postMessage({ type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: snapshot }, '*')
+  window.postMessage({ type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: snapshot }, window.location.origin)
 }
 
 /**

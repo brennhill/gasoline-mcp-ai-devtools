@@ -17,6 +17,7 @@ import (
 // ============================================
 
 func TestHandleSnapshot_EmptyState(t *testing.T) {
+	t.Parallel()
 	server, _ := NewServer("", 1000)
 	capture := NewCapture()
 
@@ -53,6 +54,7 @@ func TestHandleSnapshot_EmptyState(t *testing.T) {
 }
 
 func TestHandleSnapshot_WithData(t *testing.T) {
+	t.Parallel()
 	server, _ := NewServer("", 1000)
 	capture := NewCapture()
 
@@ -105,6 +107,7 @@ func TestHandleSnapshot_WithData(t *testing.T) {
 }
 
 func TestHandleSnapshot_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	server, _ := NewServer("", 1000)
 	capture := NewCapture()
 
@@ -120,6 +123,7 @@ func TestHandleSnapshot_MethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleSnapshot_SinceFilter(t *testing.T) {
+	t.Parallel()
 	server, _ := NewServer("", 1000)
 	capture := NewCapture()
 
@@ -157,6 +161,7 @@ func TestHandleSnapshot_SinceFilter(t *testing.T) {
 }
 
 func TestHandleSnapshot_InvalidSince(t *testing.T) {
+	t.Parallel()
 	server, _ := NewServer("", 1000)
 	capture := NewCapture()
 
@@ -176,6 +181,7 @@ func TestHandleSnapshot_InvalidSince(t *testing.T) {
 // ============================================
 
 func TestHandleClear_EmptyState(t *testing.T) {
+	t.Parallel()
 	server, _ := NewServer("", 1000)
 	capture := NewCapture()
 
@@ -200,6 +206,7 @@ func TestHandleClear_EmptyState(t *testing.T) {
 }
 
 func TestHandleClear_WithData(t *testing.T) {
+	t.Parallel()
 	server, _ := NewServer("", 1000)
 	capture := NewCapture()
 
@@ -244,6 +251,7 @@ func TestHandleClear_WithData(t *testing.T) {
 }
 
 func TestHandleClear_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	server, _ := NewServer("", 1000)
 	capture := NewCapture()
 
@@ -259,6 +267,7 @@ func TestHandleClear_MethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleClear_DeleteMethod(t *testing.T) {
+	t.Parallel()
 	server, _ := NewServer("", 1000)
 	capture := NewCapture()
 
@@ -280,6 +289,7 @@ func TestHandleClear_DeleteMethod(t *testing.T) {
 // ============================================
 
 func TestHandleTestBoundary_Start(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	handler := handleTestBoundary(capture)
@@ -313,6 +323,7 @@ func TestHandleTestBoundary_Start(t *testing.T) {
 }
 
 func TestHandleTestBoundary_End(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.SetCurrentTestID("login-flow")
 
@@ -335,6 +346,7 @@ func TestHandleTestBoundary_End(t *testing.T) {
 }
 
 func TestHandleTestBoundary_InvalidAction(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	handler := handleTestBoundary(capture)
@@ -351,6 +363,7 @@ func TestHandleTestBoundary_InvalidAction(t *testing.T) {
 }
 
 func TestHandleTestBoundary_MissingTestID(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	handler := handleTestBoundary(capture)
@@ -367,6 +380,7 @@ func TestHandleTestBoundary_MissingTestID(t *testing.T) {
 }
 
 func TestHandleTestBoundary_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	handler := handleTestBoundary(capture)
@@ -385,6 +399,7 @@ func TestHandleTestBoundary_MethodNotAllowed(t *testing.T) {
 // ============================================
 
 func TestComputeSnapshotStats(t *testing.T) {
+	t.Parallel()
 	logs := []LogEntry{
 		{"level": "error", "message": "err1"},
 		{"level": "error", "message": "err2"},
@@ -418,6 +433,7 @@ func TestComputeSnapshotStats(t *testing.T) {
 // ============================================
 
 func TestCaptureClearAll(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	capture.AddNetworkBodies([]NetworkBody{

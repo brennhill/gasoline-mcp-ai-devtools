@@ -6,7 +6,7 @@ import prettier from 'eslint-config-prettier'
 export default [
   // Ignore patterns
   {
-    ignores: ['node_modules/', 'dist/', 'tests/e2e/', 'npm/', 'server/', 'docs/', 'demo/'],
+    ignores: ['node_modules/', 'dist/', 'tests/e2e/', 'npm/', 'server/', 'docs/', 'demo/', 'extension/lib/*.min.js'],
   },
 
   // Base recommended rules

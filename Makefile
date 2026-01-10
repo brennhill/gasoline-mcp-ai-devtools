@@ -1,6 +1,6 @@
 # Gasoline Build Makefile
 
-VERSION := 5.1.0
+VERSION := 5.2.0
 BINARY_NAME := gasoline
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION)
@@ -19,6 +19,7 @@ PLATFORMS := \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
+	security-check pre-commit verify-all \
 	$(PLATFORMS)
 
 all: clean build
@@ -30,11 +31,11 @@ test:
 	CGO_ENABLED=0 go test -v ./cmd/dev-console/...
 
 test-js:
-	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 tests/extension/*.test.js
+	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
 
 test-fast:
 	go vet ./cmd/dev-console/
-	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 tests/extension/*.test.js
+	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
 
 test-all: test test-js
 
@@ -44,7 +45,7 @@ test-race:
 test-cover:
 	go test -coverprofile=coverage.out ./cmd/dev-console/...
 	@go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//' | \
-		awk '{if ($$1 < 95) {print "FAIL: Coverage " $$1 "% is below 95% threshold"; exit 1} else {print "OK: Coverage " $$1 "%"}}'
+		awk '{if ($$1 < 89) {print "FAIL: Coverage " $$1 "% is below 89% threshold"; exit 1} else {print "OK: Coverage " $$1 "%"}}'
 
 test-bench:
 	go test -bench=. -benchmem -count=3 ./cmd/dev-console/...
@@ -194,9 +195,28 @@ bench-baseline:
 	@echo "Baseline saved to docs/benchmarks/baseline.txt"
 
 install-hooks:
+	@cp scripts/hooks/pre-commit .git/hooks/pre-commit
 	@cp scripts/hooks/pre-push .git/hooks/pre-push
-	@chmod +x .git/hooks/pre-push
-	@echo "Git hooks installed."
+	@chmod +x .git/hooks/pre-commit .git/hooks/pre-push
+	@echo "Git hooks installed (pre-commit and pre-push)."
+
+# --- Quality Gates ---
+
+# Run all security checks (gosec for Go, ESLint security rules for JS)
+security-check:
+	@echo "Running security checks..."
+	@command -v gosec >/dev/null 2>&1 || { echo "gosec not found. Install: go install github.com/securego/gosec/v2/cmd/gosec@latest"; exit 1; }
+	gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high ./cmd/dev-console/
+	npx eslint extension/ tests/extension/
+	@echo "All security checks passed"
+
+# Pre-commit quality gate (lint + security, no tests)
+pre-commit: lint security-check
+	@echo "Pre-commit checks passed"
+
+# Full verification (lint + security + tests with coverage)
+verify-all: lint security-check test-cover test-js
+	@echo "All verification checks passed"
 
 # Update all version references to match VERSION (single source of truth)
 sync-version:

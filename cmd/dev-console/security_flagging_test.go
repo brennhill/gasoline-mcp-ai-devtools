@@ -16,6 +16,7 @@ import (
 // ============================================
 
 func TestCheckSuspiciousTLD_FlagsHighRiskTLD(t *testing.T) {
+	t.Parallel()
 	flag := checkSuspiciousTLD("https://cdn-analytics.xyz")
 
 	if flag == nil {
@@ -32,6 +33,7 @@ func TestCheckSuspiciousTLD_FlagsHighRiskTLD(t *testing.T) {
 }
 
 func TestCheckSuspiciousTLD_AllowsLegitimateOrigin(t *testing.T) {
+	t.Parallel()
 	// Even if TLD is suspicious, known legitimate origins should pass
 	flag := checkSuspiciousTLD("https://pages.dev")
 
@@ -41,6 +43,7 @@ func TestCheckSuspiciousTLD_AllowsLegitimateOrigin(t *testing.T) {
 }
 
 func TestCheckSuspiciousTLD_AllowsCommonTLDs(t *testing.T) {
+	t.Parallel()
 	// Common TLDs should not be flagged
 	commonOrigins := []string{
 		"https://example.com",
@@ -61,6 +64,7 @@ func TestCheckSuspiciousTLD_AllowsCommonTLDs(t *testing.T) {
 // ============================================
 
 func TestCheckNonStandardPort_FlagsUnusualPorts(t *testing.T) {
+	t.Parallel()
 	flag := checkNonStandardPort("https://example.com:8443")
 
 	if flag == nil {
@@ -73,6 +77,7 @@ func TestCheckNonStandardPort_FlagsUnusualPorts(t *testing.T) {
 }
 
 func TestCheckNonStandardPort_AllowsStandardPorts(t *testing.T) {
+	t.Parallel()
 	standardOrigins := []string{
 		"https://example.com",      // Implicit 443
 		"https://example.com:443",  // Explicit 443
@@ -89,6 +94,7 @@ func TestCheckNonStandardPort_AllowsStandardPorts(t *testing.T) {
 }
 
 func TestCheckNonStandardPort_AllowsDevPorts(t *testing.T) {
+	t.Parallel()
 	// Development ports should not be flagged
 	devOrigins := []string{
 		"http://localhost:3000",
@@ -109,6 +115,7 @@ func TestCheckNonStandardPort_AllowsDevPorts(t *testing.T) {
 // ============================================
 
 func TestCheckMixedContent_FlagsHTTPOnHTTPS(t *testing.T) {
+	t.Parallel()
 	entry := NetworkWaterfallEntry{
 		URL:           "http://cdn.example.com/script.js",
 		InitiatorType: "script",
@@ -131,6 +138,7 @@ func TestCheckMixedContent_FlagsHTTPOnHTTPS(t *testing.T) {
 }
 
 func TestCheckMixedContent_AllowsHTTPSOnHTTPS(t *testing.T) {
+	t.Parallel()
 	entry := NetworkWaterfallEntry{
 		URL:           "https://cdn.example.com/script.js",
 		InitiatorType: "script",
@@ -145,6 +153,7 @@ func TestCheckMixedContent_AllowsHTTPSOnHTTPS(t *testing.T) {
 }
 
 func TestCheckMixedContent_AllowsHTTPOnHTTP(t *testing.T) {
+	t.Parallel()
 	entry := NetworkWaterfallEntry{
 		URL:           "http://cdn.example.com/script.js",
 		InitiatorType: "script",
@@ -163,6 +172,7 @@ func TestCheckMixedContent_AllowsHTTPOnHTTP(t *testing.T) {
 // ============================================
 
 func TestCheckIPAddressOrigin_FlagsIPv4(t *testing.T) {
+	t.Parallel()
 	flag := checkIPAddressOrigin("http://192.168.1.100:8080")
 
 	if flag == nil {
@@ -175,6 +185,7 @@ func TestCheckIPAddressOrigin_FlagsIPv4(t *testing.T) {
 }
 
 func TestCheckIPAddressOrigin_FlagsIPv6(t *testing.T) {
+	t.Parallel()
 	flag := checkIPAddressOrigin("http://[2001:db8::1]")
 
 	if flag == nil {
@@ -187,6 +198,7 @@ func TestCheckIPAddressOrigin_FlagsIPv6(t *testing.T) {
 }
 
 func TestCheckIPAddressOrigin_AllowsHostnames(t *testing.T) {
+	t.Parallel()
 	flag := checkIPAddressOrigin("https://cdn.example.com")
 
 	if flag != nil {
@@ -195,6 +207,7 @@ func TestCheckIPAddressOrigin_AllowsHostnames(t *testing.T) {
 }
 
 func TestCheckIPAddressOrigin_AllowsLocalhost(t *testing.T) {
+	t.Parallel()
 	// localhost should not be flagged (development)
 	flag := checkIPAddressOrigin("http://localhost:3000")
 
@@ -208,6 +221,7 @@ func TestCheckIPAddressOrigin_AllowsLocalhost(t *testing.T) {
 // ============================================
 
 func TestCheckTyposquatting_FlagsSimilarDomains(t *testing.T) {
+	t.Parallel()
 	// "unpkg" vs "unpkg" typo
 	flag := checkTyposquatting("https://unpkg.cm/library.js") // .cm instead of .com
 
@@ -225,6 +239,7 @@ func TestCheckTyposquatting_FlagsSimilarDomains(t *testing.T) {
 }
 
 func TestCheckTyposquatting_AllowsLegitDomains(t *testing.T) {
+	t.Parallel()
 	legitDomains := []string{
 		"https://unpkg.com/library.js",
 		"https://cdn.jsdelivr.net/npm/package",
@@ -244,6 +259,7 @@ func TestCheckTyposquatting_AllowsLegitDomains(t *testing.T) {
 // ============================================
 
 func TestAnalyzeNetworkSecurity_RunsAllChecks(t *testing.T) {
+	t.Parallel()
 	entry := NetworkWaterfallEntry{
 		URL:           "http://cdn-malicious.xyz:8443/script.js",
 		InitiatorType: "script",
@@ -274,6 +290,7 @@ func TestAnalyzeNetworkSecurity_RunsAllChecks(t *testing.T) {
 }
 
 func TestAnalyzeNetworkSecurity_ReturnsEmptyForSafeOrigins(t *testing.T) {
+	t.Parallel()
 	entry := NetworkWaterfallEntry{
 		URL:           "https://cdn.example.com/library.js",
 		InitiatorType: "script",
@@ -293,6 +310,7 @@ func TestAnalyzeNetworkSecurity_ReturnsEmptyForSafeOrigins(t *testing.T) {
 // ============================================
 
 func TestCapture_StoresSecurityFlags(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Manually add a security flag (simulating detection)
@@ -319,6 +337,7 @@ func TestCapture_StoresSecurityFlags(t *testing.T) {
 }
 
 func TestCapture_EnforcesSecurityFlagCapacity(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Add 1100 flags (should trim to 1000)

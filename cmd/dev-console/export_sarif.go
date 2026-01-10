@@ -40,16 +40,16 @@ type SARIFTool struct {
 type SARIFDriver struct {
 	Name           string      `json:"name"`
 	Version        string      `json:"version"`
-	InformationURI string      `json:"informationUri"`
+	InformationURI string      `json:"informationUri"` // camelCase: SARIF 2.1.0 spec standard
 	Rules          []SARIFRule `json:"rules"`
 }
 
 // SARIFRule describes a single analysis rule.
 type SARIFRule struct {
 	ID               string               `json:"id"`
-	ShortDescription SARIFMessage         `json:"shortDescription"`
-	FullDescription  SARIFMessage         `json:"fullDescription"`
-	HelpURI          string               `json:"helpUri"`
+	ShortDescription SARIFMessage         `json:"shortDescription"` // camelCase: SARIF 2.1.0 spec standard
+	FullDescription  SARIFMessage         `json:"fullDescription"`  // camelCase: SARIF 2.1.0 spec standard
+	HelpURI          string               `json:"helpUri"`          // camelCase: SARIF 2.1.0 spec standard
 	Properties       *SARIFRuleProperties `json:"properties,omitempty"`
 }
 
@@ -60,8 +60,8 @@ type SARIFRuleProperties struct {
 
 // SARIFResult represents a single analysis finding.
 type SARIFResult struct {
-	RuleID    string          `json:"ruleId"`
-	RuleIndex int             `json:"ruleIndex"`
+	RuleID    string          `json:"ruleId"`    // camelCase: SARIF 2.1.0 spec standard
+	RuleIndex int             `json:"ruleIndex"` // camelCase: SARIF 2.1.0 spec standard
 	Level     string          `json:"level"`
 	Message   SARIFMessage    `json:"message"`
 	Locations []SARIFLocation `json:"locations"`
@@ -74,19 +74,19 @@ type SARIFMessage struct {
 
 // SARIFLocation represents a finding location.
 type SARIFLocation struct {
-	PhysicalLocation SARIFPhysicalLocation `json:"physicalLocation"`
+	PhysicalLocation SARIFPhysicalLocation `json:"physicalLocation"` // camelCase: SARIF 2.1.0 spec standard
 }
 
 // SARIFPhysicalLocation describes the physical location of a finding.
 type SARIFPhysicalLocation struct {
-	ArtifactLocation SARIFArtifactLocation `json:"artifactLocation"`
+	ArtifactLocation SARIFArtifactLocation `json:"artifactLocation"` // camelCase: SARIF 2.1.0 spec standard
 	Region           SARIFRegion           `json:"region"`
 }
 
 // SARIFArtifactLocation identifies the artifact (file, DOM element, etc.).
 type SARIFArtifactLocation struct {
 	URI       string `json:"uri"`
-	URIBaseID string `json:"uriBaseId,omitempty"`
+	URIBaseID string `json:"uriBaseId,omitempty"` // camelCase: SARIF 2.1.0 spec standard
 }
 
 // SARIFRegion describes a region within an artifact.
