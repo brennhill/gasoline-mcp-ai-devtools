@@ -273,14 +273,21 @@ context-size:
 	@echo "=== Claude Code Initial Context Size ==="
 	@echo ""
 	@total=0; \
-	for f in CLAUDE.md $$(find .claude -name "*.md" -not -path "*commands*" -type f 2>/dev/null); do \
+	for f in CLAUDE.md $$(find .claude/docs -name "*.md" -type f 2>/dev/null) $$(find .claude -maxdepth 1 -name "*.md" -type f 2>/dev/null); do \
 		chars=$$(wc -c < "$$f"); \
 		tokens=$$((chars / 4)); \
 		total=$$((total + chars)); \
 		printf "%6d tokens  %s\n" "$$tokens" "$$f"; \
 	done; \
 	echo ""; \
-	printf "%6d tokens  TOTAL (always loaded)\n" "$$((total / 4))"; \
+	printf "%6d tokens  TOTAL (always loaded - startup)\n" "$$((total / 4))"; \
+	echo ""; \
+	ref_total=0; \
+	for f in $$(find .claude/refs -name "*.md" -type f 2>/dev/null); do \
+		chars=$$(wc -c < "$$f"); \
+		ref_total=$$((ref_total + chars)); \
+	done; \
+	printf "%6d tokens  References (loaded on-demand)\n" "$$((ref_total / 4))"; \
 	echo ""; \
 	cmd_total=0; \
 	for f in $$(find .claude/commands -name "*.md" -type f 2>/dev/null); do \

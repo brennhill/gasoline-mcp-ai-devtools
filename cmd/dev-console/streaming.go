@@ -230,11 +230,7 @@ func (s *StreamState) canEmitAt(now time.Time) bool {
 
 	// Check rate limit
 	s.checkRateResetLocked(now)
-	if s.NotifyCount >= maxNotificationsPerMinute {
-		return false
-	}
-
-	return true
+	return s.NotifyCount < maxNotificationsPerMinute
 }
 
 // recordEmission records that a notification was sent.

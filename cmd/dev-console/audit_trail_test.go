@@ -383,7 +383,7 @@ func TestAuditTrail_SessionIDFormat(t *testing.T) {
 
 	// Verify it's valid hex
 	for _, c := range sess.ID {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			t.Errorf("session ID contains non-hex character: %c in %q", c, sess.ID)
 			break
 		}

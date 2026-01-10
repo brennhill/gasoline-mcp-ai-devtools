@@ -1,6 +1,6 @@
 [project]
 name = "gasoline-mcp-linux-arm64"
-version = "5.1.0"
+version = "5.2.0"
 description = "Gasoline MCP binary for linux-arm64"
 requires-python = ">=3.8"
 license = {text = "AGPL-3.0-only"}

@@ -29,26 +29,33 @@
 **Option A: NPM (recommended)**
 
 ```bash
-# 1. Install and run the server
-npx gasoline-mcp
+# 1. Clone the repo for the extension
+git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
+cd gasoline
 
-# 2. Load the extension manually (until Chrome Web Store approval):
+# 2. Load the extension:
 #    - Open chrome://extensions
 #    - Enable Developer mode
-#    - Click "Load unpacked" and select the `extension/` folder
+#    - Click "Load unpacked" and select the `extension/` folder from this repo
+
+# 3. The server will start automatically when your AI tool connects via MCP
+#    (no manual start needed - see MCP config below)
 ```
 
 **Option B: PyPI (Python)**
 
 ```bash
-# 1. Install and run the server
-pip install gasoline-mcp
-gasoline-mcp
+# 1. Clone the repo for the extension
+git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
+cd gasoline
 
-# 2. Load the extension manually (until Chrome Web Store approval):
+# 2. Load the extension:
 #    - Open chrome://extensions
 #    - Enable Developer mode
-#    - Click "Load unpacked" and select the `extension/` folder
+#    - Click "Load unpacked" and select the `extension/` folder from this repo
+
+# 3. The server will start automatically when your AI tool connects via MCP
+#    (no manual start needed - see MCP config below)
 ```
 
 **Option C: From source** (requires [Go 1.21+](https://go.dev/))
@@ -138,33 +145,40 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 ## Comparison
 
-| | Gasoline | Chrome DevTools MCP | BrowserTools MCP | Cursor Browser |
-|---|:---:|:---:|:---:|:---:|
-| **Console logs** | ✅ | ✅ | ✅ | ✅ |
-| **Network errors** | ✅ | ✅ | ✅ | ❌ |
-| **Network bodies** | ✅ | ❌ | ❌ | ❌ |
-| **WebSocket events** | ✅ | ❌ | ❌ | ❌ |
-| **User action recording** | ✅ | ❌ | ❌ | ❌ |
-| **DOM queries** | ✅ | ✅ | ✅ | ✅ |
-| **Screenshots** | ✅ | ✅ | ✅ | ✅ |
-| | | | | |
-| **[Web Vitals](https://cookwithgasoline.com/web-vitals/)** | ✅ LCP, CLS, INP, FCP | ❌ | ❌ | ❌ |
-| **[Regression detection](https://cookwithgasoline.com/regression-detection/)** | ✅ Automatic | ❌ | ❌ | ❌ |
-| **[API schema inference](https://cookwithgasoline.com/api-schema/)** | ✅ OpenAPI from traffic | ❌ | ❌ | ❌ |
-| **[Accessibility audits](https://cookwithgasoline.com/accessibility-audit/)** | ✅ WCAG + SARIF | ❌ | ❌ | ❌ |
-| **[Session checkpoints](https://cookwithgasoline.com/session-checkpoints/)** | ✅ Named + auto | ❌ | ❌ | ❌ |
-| **[Noise filtering](https://cookwithgasoline.com/noise-filtering/)** | ✅ Auto-detect | ❌ | ❌ | ❌ |
-| | | | | |
-| **[Test generation](https://cookwithgasoline.com/generate-test/)** | ✅ Playwright | ❌ | ❌ | ❌ |
-| **[Reproduction scripts](https://cookwithgasoline.com/reproduction-scripts/)** | ✅ From actions | ❌ | ❌ | ❌ |
-| **[PR summaries](https://cookwithgasoline.com/pr-summaries/)** | ✅ Perf impact | ❌ | ❌ | ❌ |
-| **[HAR export](https://cookwithgasoline.com/har-export/)** | ✅ | ❌ | ❌ | ❌ |
-| | | | | |
-| **Zero dependencies** | ✅ Single Go binary | ❌ Node.js + Chrome flags | ❌ Node.js + Puppeteer | ❌ Electron |
-| **Vendor neutral** | ✅ Any MCP tool | ⚠️ Any MCP tool | ⚠️ Any MCP tool | ❌ Cursor only |
-| **No debug port** | ✅ | ❌ `--remote-debugging-port` | ❌ `--remote-debugging-port` | N/A |
-| **Privacy** | ✅ Localhost only | ✅ Local | ⚠️ Optional cloud | ❌ Cursor servers |
-| **Performance overhead** | < 0.1ms | ~5ms | ~5ms | Unknown |
+| | Gasoline | TestSprite MCP | Chrome DevTools MCP | BrowserTools MCP | Cursor Browser |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Console logs** | ✅ | ❌ | ✅ | ✅ | ✅ |
+| **Network errors** | ✅ | ❌ | ✅ | ✅ | ❌ |
+| **Network bodies** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **WebSocket events** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **User action recording** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **DOM queries** | ✅ | ❌ | ✅ | ✅ | ✅ |
+| **Screenshots** | ✅ | ❌ | ✅ | ✅ | ✅ |
+| | | | | | |
+| **[Web Vitals](https://cookwithgasoline.com/web-vitals/)** | ✅ LCP, CLS, INP, FCP | ❌ | ❌ | ❌ | ❌ |
+| **[Regression detection](https://cookwithgasoline.com/regression-detection/)** | ✅ Automatic | ❌ | ❌ | ❌ | ❌ |
+| **[API schema inference](https://cookwithgasoline.com/api-schema/)** | ✅ OpenAPI from traffic | ❌ | ❌ | ❌ | ❌ |
+| **[Accessibility audits](https://cookwithgasoline.com/accessibility-audit/)** | ✅ WCAG + SARIF | ❌ | ❌ | ❌ | ❌ |
+| **[Session checkpoints](https://cookwithgasoline.com/session-checkpoints/)** | ✅ Named + auto | ❌ | ❌ | ❌ | ❌ |
+| **[Noise filtering](https://cookwithgasoline.com/noise-filtering/)** | ✅ Auto-detect | ❌ | ❌ | ❌ | ❌ |
+| | | | | | |
+| **[Test generation](https://cookwithgasoline.com/generate-test/)** | ✅ Playwright | ✅ AI-driven | ❌ | ❌ | ❌ |
+| **Test generation from errors** | 🟡 v6 | ❌ | ❌ | ❌ | ❌ |
+| **Self-healing tests** | 🟡 v6 | ✅ | ❌ | ❌ | ❌ |
+| **Failure classification** | 🟡 v6 | ✅ | ❌ | ❌ | ❌ |
+| **Auto-repair suggestions** | 🟡 v6 | ✅ | ❌ | ❌ | ❌ |
+| **[Reproduction scripts](https://cookwithgasoline.com/reproduction-scripts/)** | ✅ From actions | ❌ | ❌ | ❌ | ❌ |
+| **[PR summaries](https://cookwithgasoline.com/pr-summaries/)** | ✅ Perf impact | ❌ | ❌ | ❌ | ❌ |
+| **[HAR export](https://cookwithgasoline.com/har-export/)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| | | | | | |
+| **Zero dependencies** | ✅ Single Go binary | ❌ Node.js + cloud | ❌ Node.js + Chrome flags | ❌ Node.js + Puppeteer | ❌ Electron |
+| **Vendor neutral** | ✅ Any MCP tool | ⚠️ Any MCP tool | ⚠️ Any MCP tool | ⚠️ Any MCP tool | ❌ Cursor only |
+| **No debug port** | ✅ | ✅ | ❌ `--remote-debugging-port` | ❌ `--remote-debugging-port` | N/A |
+| **Privacy** | ✅ Localhost only | ❌ Cloud-based | ✅ Local | ⚠️ Optional cloud | ❌ Cursor servers |
+| **Cost** | ✅ Free, open-source | ❌ $29-99/month | ✅ Free | ✅ Free | ⚠️ Cursor subscription |
+| **Performance overhead** | < 0.1ms | Unknown | ~5ms | ~5ms | Unknown |
+
+**🟡 = Coming in v6.0** — [See roadmap](docs/roadmap.md)
 
 ## Why You Cook With Gasoline
 

@@ -1223,7 +1223,7 @@ func TestPushRegression_WithinThreshold_NoAlert(t *testing.T) {
 	addSnapshotAndDetect(cm, capture, withinThreshold)
 
 	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
-	if resp.PerformanceAlerts != nil && len(resp.PerformanceAlerts) > 0 {
+	if len(resp.PerformanceAlerts) > 0 {
 		t.Errorf("Expected no performance alerts for within-threshold snapshot, got %d", len(resp.PerformanceAlerts))
 	}
 }
@@ -1253,7 +1253,7 @@ func TestPushRegression_LoadTimeRegression_AlertGenerated(t *testing.T) {
 	addSnapshotAndDetect(cm, capture, regressing)
 
 	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
-	if resp.PerformanceAlerts == nil || len(resp.PerformanceAlerts) == 0 {
+	if len(resp.PerformanceAlerts) == 0 {
 		t.Fatal("Expected performance alert for load time regression")
 	}
 

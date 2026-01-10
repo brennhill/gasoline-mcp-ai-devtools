@@ -1210,9 +1210,8 @@ func TestMCPGenerateTestEmpty(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
-	if !strings.Contains(result.Content[0].Text, "No") {
-		// Should indicate no data available
-	}
+	// Should indicate no data available
+	_ = strings.Contains(result.Content[0].Text, "No")
 }
 
 func TestMCPGenerateTestToolInToolsList(t *testing.T) {

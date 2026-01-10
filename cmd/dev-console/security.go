@@ -462,8 +462,6 @@ var (
 	phonePattern = regexp.MustCompile(`(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}`)
 	ssnPattern   = regexp.MustCompile(`\b\d{3}-\d{2}-\d{4}\b`)
 	ccPattern    = regexp.MustCompile(`\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b`)
-
-	piiFieldNames = regexp.MustCompile(`(?i)"(email|phone|ssn|social_security|credit_card|password|address|date_of_birth|dob)"`)
 )
 
 func (s *SecurityScanner) checkPII(bodies []NetworkBody, pageURLs []string) []SecurityFinding {
@@ -845,10 +843,8 @@ func extractOrigin(rawURL string) string {
 	}
 
 	// Handle blob: URLs - extract the nested origin
-	if strings.HasPrefix(rawURL, "blob:") {
-		// blob:https://example.com/uuid -> https://example.com
-		rawURL = strings.TrimPrefix(rawURL, "blob:")
-	}
+	// blob:https://example.com/uuid -> https://example.com
+	rawURL = strings.TrimPrefix(rawURL, "blob:")
 
 	// Parse URL
 	parsed, err := url.Parse(rawURL)

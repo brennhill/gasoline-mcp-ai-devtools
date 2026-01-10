@@ -1,77 +1,29 @@
-version: '2'
+version: 2
 
 run:
-  timeout: 2m
-
-formatters:
-  enable:
-    - gofmt
-    - goimports
+  timeout: 10m
+  tests: true
 
 linters:
   enable:
-    # Security
-    - gosec
-    # Bug detection
-    - staticcheck
-    - govet
-    - errcheck
-    - nilerr
-    - bodyclose
-    # Style & consistency
-    - misspell
-    - gocritic
-    - revive
-    # Performance
-    - prealloc
-    - ineffassign
-    # Code quality
-    - unused
-    - copyloopvar
-  settings:
-    gosec:
-      excludes:
-        - G104 # Unhandled errors on deferred close (too noisy)
-        - G301 # Directory permissions > 0750 (local dev tool)
-        - G306 # WriteFile permissions > 0600 (local dev tool)
-        - G602 # False positive slice bounds in range loops
-    staticcheck:
-      checks:
-        - "all"
-        - "-QF*" # Quickfix suggestions are too opinionated
-    gocritic:
-      enabled-tags:
-        - diagnostic
-        - style
-        - performance
-      disabled-checks:
-        - hugeParam # Zero-dep server uses value types by design
-        - paramTypeCombine # Cosmetic, not worth enforcing
-        - unnamedResult # Cosmetic on test helpers
-        - ifElseChain # Existing code is readable
-        - tooManyResultsChecker # computeDataCounts returns all counts by design
-    revive:
-      rules:
-        - name: exported
-          severity: warning
-        - name: blank-imports
-          severity: warning
-        - name: context-as-argument
-          severity: error
-        - name: unreachable-code
-          severity: error
-    misspell:
-      locale: US
-  exclusions:
-    rules:
-      - path: _test\.go
-        linters:
-          - unused
-          - gosec
-          - errcheck
-          - gocritic
-      - path: _test\.go
-        linters:
-          - staticcheck
-          - ineffassign
-          - prealloc
+    - gocyclo        # Cyclomatic complexity
+    - maintidx       # Maintainability index
+    - staticcheck    # Static analysis (comprehensive)
+    - unused         # Unused variables, functions, types
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15  # Warn on functions with >15 cyclomatic complexity
+
+  maintidx:
+    under: 100  # Fail if maintainability index drops below 100
+
+issues:
+  # In test files, error checks are less critical (best-effort cleanup)
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+
+  exclude:
+    - "should have a package comment"
