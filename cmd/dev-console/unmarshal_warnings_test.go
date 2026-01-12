@@ -289,75 +289,12 @@ func TestGetJSONFieldNames(t *testing.T) {
 // Issue 3: Integration test — misspelled param produces warning in tool response
 // ============================================
 
-func TestObserveWithMisspelledParamProducesWarning(t *testing.T) {
-	t.Parallel()
-	server, _ := setupTestServer(t)
-	capture := setupTestCapture(t)
-	mcp := setupToolHandler(t, server, capture)
+// TestObserveWithMisspelledParamProducesWarning - REMOVED (2026-01-30)
+// This test validated routing-level parameter warnings, which were fundamentally broken.
+// The routing functions only know about routing parameters (what/action/format), so they
+// flagged ALL sub-handler parameters as "unknown" - including documented ones (UAT Bug #2).
+// Parameter validation for typos should be implemented at the sub-handler level in the future.
 
-	// Add some errors so the observe call has data to return
-	server.addEntries([]LogEntry{
-		{"level": "error", "message": "Test error", "source": "test.js", "ts": "00:00:00"},
-	})
-
-	// Call observe with a misspelled parameter "limt" instead of "limit"
-	resp := mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"errors","limt":5}}`),
-	})
-
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("Failed to parse result: %v", err)
-	}
-
-	// The response should contain a warning about the unknown parameter "limt"
-	found := false
-	for _, block := range result.Content {
-		if strings.Contains(block.Text, "limt") && strings.Contains(block.Text, "unknown") {
-			found = true
-			break
-		}
-	}
-	if !found {
-		texts := make([]string, len(result.Content))
-		for i, b := range result.Content {
-			texts[i] = b.Text
-		}
-		t.Errorf("Expected warning about unknown parameter 'limt', got content blocks: %v", texts)
-	}
-}
-
-func TestConfigureWithMisspelledParamProducesWarning(t *testing.T) {
-	t.Parallel()
-	server, _ := setupTestServer(t)
-	capture := setupTestCapture(t)
-	mcp := setupToolHandler(t, server, capture)
-
-	// Call configure with a misspelled parameter "acton" instead of "action"
-	// But we need a valid action, so pass both "action" (valid) and "acton" (typo)
-	resp := mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"configure","arguments":{"action":"health","acton":"health"}}`),
-	})
-
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("Failed to parse result: %v", err)
-	}
-
-	found := false
-	for _, block := range result.Content {
-		if strings.Contains(block.Text, "acton") && strings.Contains(block.Text, "unknown") {
-			found = true
-			break
-		}
-	}
-	if !found {
-		texts := make([]string, len(result.Content))
-		for i, b := range result.Content {
-			texts[i] = b.Text
-		}
-		t.Errorf("Expected warning about unknown parameter 'acton', got content blocks: %v", texts)
-	}
-}
+// TestConfigureWithMisspelledParamProducesWarning - REMOVED (2026-01-30)
+// Same rationale as TestObserveWithMisspelledParamProducesWarning - routing-level parameter
+// validation was broken and flagged documented parameters as "unknown" (UAT Bug #2).

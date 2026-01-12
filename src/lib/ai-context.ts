@@ -128,10 +128,10 @@ interface AiSummaryData {
 /**
  * Enriched error entry with AI context
  */
-interface EnrichedErrorEntry extends LogEntry {
+type EnrichedErrorEntry = LogEntry & {
   _aiContext?: AiContextData;
   _enrichments?: string[];
-}
+};
 
 /**
  * Internal AI context result
@@ -193,12 +193,15 @@ export function parseStackFrames(stack: string | undefined): InternalStackFrame[
     const chromeMatch = trimmed.match(/^at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?$/);
     if (chromeMatch) {
       const filename = chromeMatch[2];
-      if (filename.includes('<anonymous>')) continue;
+      if (!filename || filename.includes('<anonymous>')) continue;
+      const lineStr = chromeMatch[3];
+      const colStr = chromeMatch[4];
+      if (!lineStr || !colStr) continue;
       frames.push({
         functionName: chromeMatch[1] || null,
         filename,
-        lineno: parseInt(chromeMatch[3], 10),
-        colno: parseInt(chromeMatch[4], 10),
+        lineno: parseInt(lineStr, 10),
+        colno: parseInt(colStr, 10),
       });
       continue;
     }
@@ -207,12 +210,15 @@ export function parseStackFrames(stack: string | undefined): InternalStackFrame[
     const firefoxMatch = trimmed.match(/^(.+?)@(.+?):(\d+):(\d+)$/);
     if (firefoxMatch) {
       const filename = firefoxMatch[2];
-      if (filename.includes('<anonymous>')) continue;
+      if (!filename || filename.includes('<anonymous>')) continue;
+      const lineStr = firefoxMatch[3];
+      const colStr = firefoxMatch[4];
+      if (!lineStr || !colStr) continue;
       frames.push({
         functionName: firefoxMatch[1] || null,
         filename,
-        lineno: parseInt(firefoxMatch[3], 10),
-        colno: parseInt(firefoxMatch[4], 10),
+        lineno: parseInt(lineStr, 10),
+        colno: parseInt(colStr, 10),
       });
       continue;
     }
@@ -237,7 +243,7 @@ export function parseSourceMap(dataUrl: string | undefined | null): ParsedSource
   try {
     // Extract base64 content after the last comma
     const base64Match = dataUrl.match(/;base64,(.+)$/);
-    if (!base64Match) return null;
+    if (!base64Match || !base64Match[1]) return null;
 
     const decoded = atob(base64Match[1]);
     const parsed = JSON.parse(decoded) as ParsedSourceMap;
@@ -274,6 +280,7 @@ export function extractSnippet(sourceContent: string | undefined | null, line: n
   const snippet: SnippetLine[] = [];
   for (let i = start; i < end; i++) {
     let text = lines[i];
+    if (!text) continue;
     if (text.length > AI_CONTEXT_MAX_LINE_LENGTH) {
       text = text.slice(0, AI_CONTEXT_MAX_LINE_LENGTH);
     }

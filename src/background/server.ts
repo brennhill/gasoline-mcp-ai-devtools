@@ -258,11 +258,19 @@ export async function postQueryResult(
     endpoint = '/dom-result';
   }
 
-  await fetch(`${serverUrl}${endpoint}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: queryId, result }),
-  });
+  try {
+    const response = await fetch(`${serverUrl}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: queryId, result }),
+    });
+
+    if (!response.ok) {
+      console.error(`[Gasoline] Failed to post query result: HTTP ${response.status}`, { queryId, type, endpoint });
+    }
+  } catch (err) {
+    console.error('[Gasoline] Error posting query result:', { queryId, type, endpoint, error: (err as Error).message });
+  }
 }
 
 /**
@@ -293,12 +301,17 @@ export async function postAsyncCommandResult(
   }
 
   try {
-    await fetch(`${serverUrl}/execute-result`, {
+    const response = await fetch(`${serverUrl}/execute-result`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+      console.error(`[Gasoline] Failed to post async command result: HTTP ${response.status}`, { correlationId, status });
+    }
   } catch (err) {
+    console.error('[Gasoline] Error posting async command result:', { correlationId, status, error: (err as Error).message });
     if (debugLogFn) {
       debugLogFn('connection', 'Failed to post async command result', {
         correlationId,
@@ -319,7 +332,7 @@ export async function postSettings(
   debugLogFn?: (category: string, message: string, data?: unknown) => void
 ): Promise<void> {
   try {
-    await fetch(`${serverUrl}/settings`, {
+    const response = await fetch(`${serverUrl}/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -327,8 +340,14 @@ export async function postSettings(
         settings: settings,
       }),
     });
-    if (debugLogFn) debugLogFn('connection', 'Posted settings to server', settings);
+
+    if (!response.ok) {
+      console.error(`[Gasoline] Failed to post settings: HTTP ${response.status}`, { sessionId });
+    } else {
+      if (debugLogFn) debugLogFn('connection', 'Posted settings to server', settings);
+    }
   } catch (err) {
+    console.error('[Gasoline] Error posting settings:', { sessionId, error: (err as Error).message });
     if (debugLogFn) debugLogFn('connection', 'Failed to post settings', { error: (err as Error).message });
   }
 }
@@ -366,13 +385,17 @@ export async function postExtensionLogs(
   if (logs.length === 0) return;
 
   try {
-    await fetch(`${serverUrl}/extension-logs`, {
+    const response = await fetch(`${serverUrl}/extension-logs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ logs }),
     });
+
+    if (!response.ok) {
+      console.error(`[Gasoline] Failed to post extension logs: HTTP ${response.status}`, { count: logs.length });
+    }
   } catch (err) {
-    console.error('[Gasoline] Failed to post extension logs', err);
+    console.error('[Gasoline] Error posting extension logs:', { count: logs.length, error: (err as Error).message });
   }
 }
 
@@ -393,12 +416,17 @@ export async function sendStatusPing(
   diagnosticLogFn?: (message: string) => void
 ): Promise<void> {
   try {
-    await fetch(`${serverUrl}/api/extension-status`, {
+    const response = await fetch(`${serverUrl}/api/extension-status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(statusMessage),
     });
+
+    if (!response.ok) {
+      console.error(`[Gasoline] Failed to send status ping: HTTP ${response.status}`, { type: statusMessage.type });
+    }
   } catch (err) {
+    console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: (err as Error).message });
     if (diagnosticLogFn) {
       diagnosticLogFn('[Gasoline] Status ping error: ' + (err as Error).message);
     }

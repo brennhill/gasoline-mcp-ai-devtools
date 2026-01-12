@@ -14,7 +14,7 @@ import {
 } from './constants.js'
 
 // DOM query parameters
-interface DOMQueryParams {
+export interface DOMQueryParams {
   selector: string
   include_styles?: boolean
   properties?: string[]
@@ -158,6 +158,7 @@ export async function executeDOMQuery(params: DOMQueryParams): Promise<DOMQueryR
   const matches: DOMElementEntry[] = []
   for (let i = 0; i < Math.min(elements.length, DOM_QUERY_MAX_ELEMENTS); i++) {
     const el = elements[i]
+    if (!el) continue
     const entry = serializeDOMElement(el, include_styles, properties, include_children, cappedDepth, 0)
     matches.push(entry)
   }
@@ -220,7 +221,10 @@ function serializeDOMElement(
     entry.children = []
     const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS)
     for (let i = 0; i < maxChildren; i++) {
-      entry.children.push(serializeDOMElement(el.children[i], false, undefined, true, maxDepth, currentDepth + 1))
+      const child = el.children[i]
+      if (child) {
+        entry.children.push(serializeDOMElement(child, false, undefined, true, maxDepth, currentDepth + 1))
+      }
     }
   }
 
@@ -281,18 +285,20 @@ function loadAxeCore(): Promise<void> {
       return
     }
 
-    const script = document.createElement('script')
-    // Always load from bundled extension copy - never from a CDN or remote URL.
-    // Chrome Web Store rejects extensions that load remotely hosted code.
-    script.src = chrome.runtime.getURL('lib/axe.min.js')
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Failed to load axe-core from bundled extension copy'))
-    const targetElement = document.head || document.body || document.documentElement
-    if (targetElement) {
-      targetElement.appendChild(script)
-    } else {
-      reject(new Error('No document element available for axe-core injection'))
-    }
+    // Wait for axe-core to be injected by content script (which has chrome.runtime API access)
+    // Note: This function runs in page context (inject script), so we can't call chrome.runtime.getURL()
+    const checkInterval = setInterval(() => {
+      if (window.axe) {
+        clearInterval(checkInterval)
+        resolve()
+      }
+    }, 100)
+
+    // Timeout after 5 seconds
+    setTimeout(() => {
+      clearInterval(checkInterval)
+      reject(new Error('axe-core not available - content script may not have loaded it'))
+    }, 5000)
   })
 }
 
@@ -350,11 +356,14 @@ export function formatAxeResults(axeResult: AxeResults): FormattedAxeResults {
     }
 
     // Format nodes (cap at 10)
-    formatted.nodes = (v.nodes || []).slice(0, A11Y_MAX_NODES_PER_VIOLATION).map((node) => ({
-      selector: Array.isArray(node.target) ? node.target[0] : node.target,
-      html: (node.html || '').slice(0, DOM_QUERY_MAX_HTML),
-      failureSummary: node.failureSummary,
-    }))
+    formatted.nodes = (v.nodes || []).slice(0, A11Y_MAX_NODES_PER_VIOLATION).map((node) => {
+      const selector = Array.isArray(node.target) ? node.target[0] : node.target
+      return {
+        selector: selector || '',
+        html: (node.html || '').slice(0, DOM_QUERY_MAX_HTML),
+        ...(node.failureSummary ? { failureSummary: node.failureSummary } : {}),
+      }
+    })
 
     if (v.nodes && v.nodes.length > A11Y_MAX_NODES_PER_VIOLATION) {
       formatted.nodeCount = v.nodes.length

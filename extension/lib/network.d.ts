@@ -154,6 +154,6 @@ export declare function resetForTesting(): void;
  * @param fetchFn - The original fetch function
  * @returns Wrapped fetch that captures bodies
  */
-export declare function wrapFetchWithBodies(fetchFn: typeof fetch): typeof fetch;
+export declare function wrapFetchWithBodies(fetchFn: typeof fetch): any;
 export {};
 //# sourceMappingURL=network.d.ts.map

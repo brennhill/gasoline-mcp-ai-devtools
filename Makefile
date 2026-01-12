@@ -27,6 +27,27 @@ all: clean build
 clean:
 	rm -rf $(BUILD_DIR)
 
+# Compile TypeScript to JavaScript (REQUIRED before tests)
+compile-ts:
+	@echo "=== Compiling TypeScript ==="
+	@npx tsc
+	@if [ ! -f extension/background/index.js ]; then \
+		echo "❌ ERROR: TypeScript compilation failed - extension/background/index.js not found"; \
+		exit 1; \
+	fi
+	@./scripts/fix-esm-imports.sh
+	@echo "=== Bundling extension scripts ==="
+	@node scripts/bundle-content.js
+	@if [ ! -f extension/content.bundled.js ]; then \
+		echo "❌ ERROR: Content script bundling failed"; \
+		exit 1; \
+	fi
+	@if [ ! -f extension/inject.bundled.js ]; then \
+		echo "❌ ERROR: Inject script bundling failed"; \
+		exit 1; \
+	fi
+	@echo "✅ TypeScript compilation successful"
+
 test:
 	CGO_ENABLED=0 go test -v ./cmd/dev-console/...
 

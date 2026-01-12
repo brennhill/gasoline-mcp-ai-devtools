@@ -11,6 +11,15 @@ export declare const ALARM_NAMES: {
 export type AlarmName = (typeof ALARM_NAMES)[keyof typeof ALARM_NAMES];
 /**
  * Setup Chrome alarms for periodic tasks
+ *
+ * RATE LIMITING & DoS PROTECTION:
+ * 1. RECONNECT (5s): Maintains MCP connection with exponential backoff
+ * 2. ERROR_GROUP_FLUSH (30s): Deduplicates errors, reduces server load
+ * 3. MEMORY_CHECK (30s): Monitors buffer memory, prevents exhaustion
+ * 4. ERROR_GROUP_CLEANUP (10min): Removes stale deduplication state
+ *
+ * Note: Alarms are re-created on service worker startup (not persistent)
+ * If service worker restarts, alarms must be recreated by this function
  */
 export declare function setupChromeAlarms(): void;
 /**
@@ -28,6 +37,8 @@ export declare function installAlarmListener(handlers: {
 export declare function installTabRemovedListener(onTabRemoved: (tabId: number) => void): void;
 /**
  * Handle tracked tab being closed
+ * SECURITY: Clears ephemeral tracking state when tab closes
+ * Uses session storage for ephemeral tab tracking data
  */
 export declare function handleTrackedTabClosed(closedTabId: number, logFn?: (message: string, data?: unknown) => void): void;
 /**
@@ -79,12 +90,16 @@ export declare function loadDebugModeState(callback: (enabled: boolean) => void)
  */
 export declare function saveSetting(key: string, value: unknown): void;
 /**
- * Get tracked tab information
+ * Get tracked tab information (callback-based for compatibility with pre-async event listeners)
  */
 export declare function getTrackedTabInfo(): Promise<{
     trackedTabId: number | null;
     trackedTabUrl: string | null;
 }>;
+export declare function getTrackedTabInfo(callback: (info: {
+    trackedTabId: number | null;
+    trackedTabUrl: string | null;
+}) => void): void;
 /**
  * Clear tracked tab state
  */
@@ -93,4 +108,5 @@ export declare function clearTrackedTab(): void;
  * Get all extension config settings
  */
 export declare function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>>;
+export declare function getAllConfigSettings(callback: (settings: Record<string, boolean | string | undefined>) => void): void;
 //# sourceMappingURL=event-listeners.d.ts.map

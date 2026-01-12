@@ -51,6 +51,7 @@ export interface MessageHandlerDependencies {
 }
 /**
  * Install the main message listener
+ * All messages are validated for sender origin to ensure they come from trusted extension contexts
  */
 export declare function installMessageListener(deps: MessageHandlerDependencies): void;
 interface StoredStateSnapshot extends BrowserStateSnapshot {

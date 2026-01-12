@@ -321,9 +321,9 @@ export function sanitizeHeaders(headers: HeadersInit | Headers | Record<string, 
 
   const result: Record<string, string> = {};
 
-  if (headers instanceof Headers || (typeof (headers as Headers).forEach === 'function')) {
+  if (headers instanceof Headers || (typeof (headers as unknown as Headers).forEach === 'function')) {
     // Headers object or Map
-    (headers as Headers).forEach((value: string, key: string) => {
+    (headers as unknown as Headers).forEach((value: string, key: string) => {
       if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
         result[key] = value;
       }
@@ -417,8 +417,8 @@ export function resetForTesting(): void {
  * @param fetchFn - The original fetch function
  * @returns Wrapped fetch that captures bodies
  */
-export function wrapFetchWithBodies(fetchFn: typeof fetch): typeof fetch {
-  return async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+export function wrapFetchWithBodies(fetchFn: typeof fetch): any {
+  return async function (input: any, init?: RequestInit): Promise<Response> {
     const startTime = Date.now();
 
     // Extract URL and method
@@ -428,9 +428,9 @@ export function wrapFetchWithBodies(fetchFn: typeof fetch): typeof fetch {
 
     if (typeof input === 'string') {
       url = input;
-    } else if (input && (input as Request).url) {
-      url = (input as Request).url;
-      method = (input as Request).method || 'GET';
+    } else if (input && (input as unknown as Request).url) {
+      url = (input as unknown as Request).url;
+      method = (input as unknown as Request).method || 'GET';
     }
 
     if (init) {

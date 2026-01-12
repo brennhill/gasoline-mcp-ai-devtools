@@ -95,10 +95,10 @@ interface AiSummaryData {
 /**
  * Enriched error entry with AI context
  */
-interface EnrichedErrorEntry extends LogEntry {
+type EnrichedErrorEntry = LogEntry & {
     _aiContext?: AiContextData;
     _enrichments?: string[];
-}
+};
 /**
  * Element with framework markers
  */

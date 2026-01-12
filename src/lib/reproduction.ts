@@ -56,9 +56,7 @@ interface ScriptOptions {
 }
 
 // Element with extended properties for type checking
-interface ElementWithProperties extends Element {
-  getAttribute(name: string): string | null
-  textContent: string | null
+type ElementWithProperties = Element & {
   innerText?: string
   type?: string
 }
@@ -336,7 +334,10 @@ export function generatePlaywrightScript(actions: EnhancedActionRecord[], opts: 
   // Determine start URL
   let startUrl = ''
   if (filteredActions.length > 0) {
-    startUrl = filteredActions[0].url || ''
+    const firstAction = filteredActions[0]
+    if (firstAction) {
+      startUrl = firstAction.url || ''
+    }
   }
   if (baseUrl && startUrl) {
     try {

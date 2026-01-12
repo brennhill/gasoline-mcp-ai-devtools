@@ -22,6 +22,7 @@ import * as stateManager from './state-manager';
 import * as communication from './communication';
 import * as polling from './polling';
 import * as eventListeners from './event-listeners';
+import { DebugCategory } from './debug';
 import {
   installMessageListener,
   saveStateSnapshot,
@@ -30,6 +31,10 @@ import {
   deleteStateSnapshot,
   type MessageHandlerDependencies,
 } from './message-handlers';
+import {
+  handlePendingQuery as handlePendingQueryImpl,
+  handlePilotCommand as handlePilotCommandImpl,
+} from './pending-queries';
 
 // =============================================================================
 // CONSTANTS
@@ -100,19 +105,40 @@ export const extensionLogQueue: Array<{
 }> = [];
 
 // =============================================================================
+// STATE SETTERS (for init.ts)
+// =============================================================================
+// Note: setDebugMode is defined later in the file
+
+export function setServerUrl(url: string): void {
+  serverUrl = url;
+}
+
+export function setCurrentLogLevel(level: string): void {
+  currentLogLevel = level;
+}
+
+export function setScreenshotOnError(enabled: boolean): void {
+  screenshotOnError = enabled;
+}
+
+export function setAiWebPilotEnabledCache(enabled: boolean): void {
+  __aiWebPilotEnabledCache = enabled;
+}
+
+export function setAiWebPilotCacheInitialized(initialized: boolean): void {
+  __aiWebPilotCacheInitialized = initialized;
+}
+
+export function setPilotInitCallback(callback: (() => void) | null): void {
+  __pilotInitCallback = callback;
+}
+
+// =============================================================================
 // DEBUG LOGGING
 // =============================================================================
 
-/** Log categories for debug output */
-export const DebugCategory = {
-  CONNECTION: 'connection' as const,
-  CAPTURE: 'capture' as const,
-  ERROR: 'error' as const,
-  LIFECYCLE: 'lifecycle' as const,
-  SETTINGS: 'settings' as const,
-  SOURCEMAP: 'sourcemap' as const,
-  QUERY: 'query' as const,
-};
+// Re-export DebugCategory from debug module (to avoid circular dependencies)
+export { DebugCategory } from './debug';
 
 /**
  * Log a diagnostic message only when debug mode is enabled
@@ -493,14 +519,22 @@ export async function pollPendingQueriesWrapper(): Promise<void> {
     debugLog
   );
 
+  debugLog(DebugCategory.CONNECTION, 'Poll result', { count: queries.length, queries: queries.map(q => ({ id: q.id, type: q.type })) });
+
   for (const query of queries) {
+    debugLog(DebugCategory.CONNECTION, 'Processing query', { type: query.type, id: query.id });
     if (stateManager.isQueryProcessing(query.id)) {
       debugLog(DebugCategory.CONNECTION, 'Skipping already processing query', { id: query.id });
       continue;
     }
     stateManager.addProcessingQuery(query.id);
     try {
+      debugLog(DebugCategory.CONNECTION, 'Calling handlePendingQuery', { type: query.type });
       await handlePendingQuery(query as unknown as PendingQuery);
+      debugLog(DebugCategory.CONNECTION, 'handlePendingQuery completed', { type: query.type });
+    } catch (err) {
+      debugLog(DebugCategory.CONNECTION, 'Error in handlePendingQuery', { type: query.type, error: (err as Error).message });
+      console.error('[Gasoline] Error in handlePendingQuery:', query.type, err);
     } finally {
       stateManager.removeProcessingQuery(query.id);
     }
@@ -609,16 +643,9 @@ export function isAiWebPilotEnabled(): boolean {
   return __aiWebPilotEnabledCache === true;
 }
 
-// These will be defined as wrapper exports below
-export async function handlePendingQuery(query: PendingQuery): Promise<void> {
-  const { handlePendingQuery: impl } = await import('./pending-queries');
-  return impl(query);
-}
-
-export async function handlePilotCommand(command: string, params: unknown): Promise<unknown> {
-  const { handlePilotCommand: pilotCommand } = await import('./pending-queries');
-  return pilotCommand(command, params);
-}
+// Re-export statically imported functions (Service Workers don't support dynamic import())
+export const handlePendingQuery = handlePendingQueryImpl;
+export const handlePilotCommand = handlePilotCommandImpl;
 
 // Export snapshot/state management for backward compatibility
 export {

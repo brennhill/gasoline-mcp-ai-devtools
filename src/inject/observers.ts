@@ -3,14 +3,10 @@
  * performance, and WebSocket events.
  */
 
-import type { TimeoutId } from '../lib/timeout-utils';
-
 import {
   installPerformanceCapture,
   uninstallPerformanceCapture,
   setPerformanceMarksEnabled,
-  installPerfObservers,
-  uninstallPerfObservers,
 } from '../lib/performance';
 import {
   installWebSocketCapture,
@@ -59,6 +55,7 @@ interface NetworkErrorLog {
   response?: string;
   error?: string;
   headers?: Record<string, string>;
+  [key: string]: unknown;
 }
 
 /**
@@ -93,8 +90,9 @@ export function wrapFetch(originalFetchFn: typeof fetch): typeof fetch {
         if (rawHeaders) {
           const headers: Record<string, string> = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : (rawHeaders as Record<string, string>);
           Object.keys(headers).forEach((key) => {
-            if (!SENSITIVE_HEADERS.includes(key.toLowerCase())) {
-              safeHeaders[key] = headers[key];
+            const value = headers[key];
+            if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+              safeHeaders[key] = value;
             }
           });
         }
@@ -124,8 +122,9 @@ export function wrapFetch(originalFetchFn: typeof fetch): typeof fetch {
       if (rawHeaders) {
         const headers: Record<string, string> = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : (rawHeaders as Record<string, string>);
         Object.keys(headers).forEach((key) => {
-          if (!SENSITIVE_HEADERS.includes(key.toLowerCase())) {
-            safeHeaders[key] = headers[key];
+          const value = headers[key];
+          if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+            safeHeaders[key] = value;
           }
         });
       }
@@ -179,7 +178,7 @@ export function install(): void {
   installActionCapture();
   installNavigationCapture();
   installWebSocketCapture();
-  installPerfObservers();
+  installPerformanceCapture();
 }
 
 /**
@@ -192,7 +191,7 @@ export function uninstall(): void {
   uninstallActionCapture();
   uninstallNavigationCapture();
   uninstallWebSocketCapture();
-  uninstallPerfObservers();
+  uninstallPerformanceCapture();
 }
 
 /**
@@ -243,7 +242,7 @@ export function installPhase1(): void {
   phase2Timestamp = 0;
 
   // Start PerformanceObservers (passive observers, no prototype modification)
-  installPerfObservers();
+  installPerformanceCapture();
 
   // Now handle Phase 2 scheduling
   if (!deferralEnabled) {

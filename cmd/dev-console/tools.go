@@ -504,12 +504,15 @@ type ToolHandler struct {
 	// Rate limiter for MCP tool calls (sliding window)
 	toolCallLimiter *ToolCallLimiter
 
+	// SSE registry for MCP streaming transport
+	sseRegistry *SSERegistry
+
 	// Context streaming: active push notifications via MCP
 	streamState *StreamState
 }
 
 // NewToolHandler creates an MCP handler with composite tool capabilities
-func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
+func NewToolHandler(server *Server, capture *Capture, sseRegistry *SSERegistry) *MCPHandler {
 	handler := &ToolHandler{
 		MCPHandler:       NewMCPHandler(server),
 		capture:          capture,
@@ -517,6 +520,7 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 		noise:            NewNoiseConfig(),
 		captureOverrides: NewCaptureOverrides(),
 		clusters:         NewClusterManager(),
+		sseRegistry:      sseRegistry,
 	}
 
 	// Initialize persistent session store and temporal graph using CWD as project root.
@@ -554,7 +558,7 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 	handler.healthMetrics = NewHealthMetrics()
 	handler.verificationMgr = NewVerificationManager(&captureStateAdapter{capture: capture, server: server})
 	handler.toolCallLimiter = NewToolCallLimiter(100, time.Minute)
-	handler.streamState = NewStreamState()
+	handler.streamState = NewStreamState(sseRegistry)
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.
 	// Use SetOnEntries for thread-safe assignment (avoids racing with addEntries).
@@ -1250,13 +1254,10 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	var params struct {
 		What string `json:"what"`
 	}
-	var paramWarnings []string
 	if len(args) > 0 {
-		warnings, err := unmarshalWithWarnings(args, &params)
-		if err != nil {
+		if err := json.Unmarshal(args, &params); err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 		}
-		paramWarnings = warnings
 	}
 
 	if params.What == "" {
@@ -1333,9 +1334,6 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		resp = h.appendAlertsToResponse(resp, alerts)
 	}
 
-	// Append unknown parameter warnings
-	resp = appendWarningsToResponse(resp, paramWarnings)
-
 	return resp
 }
 
@@ -1382,17 +1380,14 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 	var params struct {
 		Format string `json:"format"`
 	}
-	var paramWarnings []string
 	if len(args) > 0 {
-		warnings, err := unmarshalWithWarnings(args, &params)
-		if err != nil {
+		if err := json.Unmarshal(args, &params); err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 		}
-		paramWarnings = warnings
 	}
 
 	if params.Format == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'format' is missing", "Add the 'format' parameter and call again", withParam("format"), withHint("Valid values: reproduction, test, pr_summary, sarif, har, csp, sri"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'format' is missing", "Add the 'format' parameter and call again", withParam("format"), withHint("Valid values: reproduction, test, pr_summary, sarif, har, csp, sri, test_from_context, test_heal, test_classify"))}
 	}
 
 	var resp JSONRPCResponse
@@ -1411,23 +1406,26 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 		resp = h.toolGenerateCSP(req, args)
 	case "sri":
 		resp = h.toolGenerateSRI(req, args)
+	case "test_from_context":
+		resp = h.handleGenerateTestFromContext(req, args)
+	case "test_heal":
+		resp = h.handleGenerateTestHeal(req, args)
+	case "test_classify":
+		resp = h.handleGenerateTestClassify(req, args)
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+params.Format, "Use a valid format from the 'format' enum", withParam("format"))}
 	}
-	return appendWarningsToResponse(resp, paramWarnings)
+	return resp
 }
 
 func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Action string `json:"action"`
 	}
-	var paramWarnings []string
 	if len(args) > 0 {
-		warnings, err := unmarshalWithWarnings(args, &params)
-		if err != nil {
+		if err := json.Unmarshal(args, &params); err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 		}
-		paramWarnings = warnings
 	}
 
 	if params.Action == "" {
@@ -1465,7 +1463,7 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown configure action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
 	}
-	return appendWarningsToResponse(resp, paramWarnings)
+	return resp
 }
 
 // ============================================
@@ -1476,13 +1474,10 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	var params struct {
 		Action string `json:"action"`
 	}
-	var paramWarnings []string
 	if len(args) > 0 {
-		warnings, err := unmarshalWithWarnings(args, &params)
-		if err != nil {
+		if err := json.Unmarshal(args, &params); err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 		}
-		paramWarnings = warnings
 	}
 
 	if params.Action == "" {
@@ -1516,7 +1511,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
 	}
-	return appendWarningsToResponse(resp, paramWarnings)
+	return resp
 }
 
 // ============================================

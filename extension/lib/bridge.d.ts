@@ -2,7 +2,7 @@
  * @fileoverview Message bridge for posting log events to the content script.
  * Enriches error-level messages with context annotations and user action replay.
  */
-interface BridgePayload {
+export interface BridgePayload {
     level?: string;
     message?: string;
     error?: string;
@@ -15,5 +15,4 @@ interface BridgePayload {
  * Post a log message to the content script
  */
 export declare function postLog(payload: BridgePayload): void;
-export {};
 //# sourceMappingURL=bridge.d.ts.map

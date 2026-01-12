@@ -87,9 +87,10 @@ curl http://localhost:7890/health
 {
   "mcpServers": {
     "gasoline": {
-      "type": "stdio",
+      "type": "sse",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+      "args": ["-y", "gasoline-mcp", "--port", "7890"],
+      "url": "http://localhost:7890/mcp/sse"
     }
   }
 }
@@ -100,17 +101,18 @@ curl http://localhost:7890/health
 {
   "mcpServers": {
     "gasoline": {
-      "type": "stdio",
+      "type": "sse",
       "command": "gasoline-mcp",
-      "args": ["--port", "7890", "--persist"]
+      "args": ["--port", "7890"],
+      "url": "http://localhost:7890/mcp/sse"
     }
   }
 }
 ```
 
-**Architecture:** The MCP system spawns a single Gasoline process that runs both:
-- HTTP server on port 7890 (for browser extension)
-- stdio MCP protocol (for AI tool)
+**Architecture:** The MCP system spawns a single Gasoline process that runs:
+- HTTP server on port 7890 (for browser extension + MCP)
+- SSE transport at `/mcp/sse` (MCP 2024-11-05 compliant)
 
 Both interfaces share the same browser telemetry state. Do NOT manually start Gasoline — let the MCP system manage the process lifecycle.
 
@@ -119,9 +121,10 @@ Both interfaces share the same browser telemetry state. Do NOT manually start Ga
 {
   "mcpServers": {
     "gasoline": {
-      "type": "stdio",
+      "type": "sse",
       "command": "go",
-      "args": ["run", "./cmd/dev-console", "--port", "7890", "--persist"]
+      "args": ["run", "./cmd/dev-console", "--port", "7890"],
+      "url": "http://localhost:7890/mcp/sse"
     }
   }
 }
