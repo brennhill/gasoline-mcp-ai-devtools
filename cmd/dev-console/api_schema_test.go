@@ -37,7 +37,7 @@ func TestToolDescriptions_ContainResponseDocs(t *testing.T) {
 	}
 
 	checks := map[string]string{
-		"observe":   "Mode responses",
+		"observe":   "Responses:",
 		"generate":  "Format responses",
 		"configure": "Returns",
 		"interact":  "Action responses",
@@ -200,9 +200,13 @@ func TestObserveErrors_ColumnsMatchDocs(t *testing.T) {
 	})
 
 	text := extractMCPText(t, resp)
-	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"Level", "Message", "Source", "Time", "Tab"}
-	assertHeaders(t, "observe errors", headers, expected)
+	// Response is now JSON format instead of markdown table
+	expectedFields := []string{`"level"`, `"message"`, `"source"`, `"timestamp"`, `"sequence"`}
+	for _, field := range expectedFields {
+		if !strings.Contains(text, field) {
+			t.Errorf("Expected JSON field %s in errors response, got: %s", field, text)
+		}
+	}
 }
 
 // TestObserveLogs_ColumnsMatchDocs calls observe with what:"logs" and
@@ -223,9 +227,13 @@ func TestObserveLogs_ColumnsMatchDocs(t *testing.T) {
 	})
 
 	text := extractMCPText(t, resp)
-	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"Level", "Message", "Source", "Time", "Tab"}
-	assertHeaders(t, "observe logs", headers, expected)
+	// Response is now JSON format instead of markdown table
+	expectedFields := []string{`"level"`, `"message"`, `"source"`, `"timestamp"`, `"sequence"`}
+	for _, field := range expectedFields {
+		if !strings.Contains(text, field) {
+			t.Errorf("Expected JSON field %s in logs response, got: %s", field, text)
+		}
+	}
 }
 
 // TestObserveNetwork_ColumnsMatchDocs calls observe with what:"network_bodies" and
@@ -300,9 +308,13 @@ func TestObserveActions_ColumnsMatchDocs(t *testing.T) {
 	})
 
 	text := extractMCPText(t, resp)
-	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"Type", "URL", "Selector", "Value", "Time", "Tab"}
-	assertHeaders(t, "observe actions", headers, expected)
+	// Response is now JSON format instead of markdown table
+	expectedFields := []string{`"type"`, `"url"`, `"selectors"`, `"timestamp"`, `"sequence"`}
+	for _, field := range expectedFields {
+		if !strings.Contains(text, field) {
+			t.Errorf("Expected JSON field %s in actions response, got: %s", field, text)
+		}
+	}
 }
 
 // TestObserveWSEvents_ColumnsMatchDocs calls observe with what:"websocket_events"
@@ -323,9 +335,13 @@ func TestObserveWSEvents_ColumnsMatchDocs(t *testing.T) {
 	})
 
 	text := extractMCPText(t, resp)
-	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"ID", "Event", "URL", "Direction", "Size", "Time", "Tab"}
-	assertHeaders(t, "observe websocket_events", headers, expected)
+	// Response is now JSON format instead of markdown table
+	expectedFields := []string{`"id"`, `"event"`, `"url"`, `"direction"`, `"timestamp"`, `"sequence"`}
+	for _, field := range expectedFields {
+		if !strings.Contains(text, field) {
+			t.Errorf("Expected JSON field %s in websocket_events response, got: %s", field, text)
+		}
+	}
 }
 
 // TestObserveHealth_FieldsMatchDocs calls configure with action:"health" and

@@ -80,7 +80,8 @@ function handleMessage(message, sender, sendResponse, deps) {
                 deps.debugLog('capture', 'Network body dropped: capture disabled');
                 return true;
             }
-            deps.addToNetworkBodyBatcher(message.payload);
+            // Attach tabId to payload before batching (v5.3+)
+            deps.addToNetworkBodyBatcher({ ...message.payload, tabId: message.tabId });
             return false;
         case 'performance_snapshot':
             deps.addToPerfBatcher(message.payload);

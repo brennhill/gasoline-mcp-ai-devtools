@@ -100,6 +100,12 @@ export function getCapturedMeasures(): Array<PerformanceMeasure & { capturedAt: 
 export function installPerformanceCapture(): void {
   if (typeof performance === 'undefined' || !performance) return;
 
+  // Guard against double installation (prevents infinite recursion)
+  if (performanceCaptureActive) {
+    console.warn('[Gasoline] Performance capture already installed, skipping');
+    return;
+  }
+
   // Clear previous captured data
   capturedMarks = [];
   capturedMeasures = [];

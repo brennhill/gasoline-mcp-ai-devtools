@@ -419,6 +419,19 @@ export async function checkConnectionAndUpdate(): Promise<void> {
 
   try {
     const health = await communication.checkServerHealth(serverUrl);
+
+    // Update version information from health response
+    if (health.connected) {
+      import('./version-check').then(vc => {
+        vc.updateVersionFromHealth({
+          version: health.version,
+          availableVersion: health.availableVersion,
+        }, debugLog);
+      }).catch(err => {
+        debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: (err as Error).message });
+      });
+    }
+
     const wasConnected = connectionStatus.connected;
     connectionStatus = {
       ...connectionStatus,

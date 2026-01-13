@@ -46,5 +46,6 @@ export interface NetworkBodyPayload {
     readonly requestBody?: string;
     readonly responseBody?: string;
     readonly duration: number;
+    readonly tabId?: number;
 }
 //# sourceMappingURL=network.d.ts.map

@@ -12,7 +12,6 @@ const DEFAULT_SERVER_URL = 'http://localhost:7890';
 
 interface StorageResult {
   serverUrl?: string;
-  domainFilters?: string[];
   screenshotOnError?: boolean;
   sourceMapEnabled?: boolean;
   deferralEnabled?: boolean;
@@ -35,18 +34,12 @@ interface ClearLogResponse {
  */
 export function loadOptions(): void {
   chrome.storage.local.get(
-    ['serverUrl', 'domainFilters', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled', 'debugMode'],
+    ['serverUrl', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled', 'debugMode'],
     (result: StorageResult) => {
       // Set server URL
       const serverUrlInput = document.getElementById('server-url-input') as HTMLInputElement | null;
       if (serverUrlInput) {
         serverUrlInput.value = result.serverUrl || DEFAULT_SERVER_URL;
-      }
-
-      const filters = result.domainFilters || [];
-      const domainFiltersElement = document.getElementById('domain-filters') as HTMLTextAreaElement | null;
-      if (domainFiltersElement) {
-        domainFiltersElement.value = filters.join('\n');
       }
 
       // Set screenshot toggle state
@@ -90,13 +83,6 @@ export function saveOptions(): void {
   const serverUrlInput = document.getElementById('server-url-input') as HTMLInputElement | null;
   const serverUrl = (serverUrlInput?.value.trim() || DEFAULT_SERVER_URL);
 
-  const domainFiltersElement = document.getElementById('domain-filters') as HTMLTextAreaElement | null;
-  const textarea = domainFiltersElement?.value || '';
-  const filters = textarea
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-
   const screenshotToggle = document.getElementById('screenshot-toggle');
   const screenshotOnError = screenshotToggle?.classList.contains('active') || false;
 
@@ -110,7 +96,7 @@ export function saveOptions(): void {
   const debugMode = debugToggle?.classList.contains('active') || false;
 
   chrome.storage.local.set(
-    { serverUrl, domainFilters: filters, screenshotOnError, sourceMapEnabled, deferralEnabled, debugMode },
+    { serverUrl, screenshotOnError, sourceMapEnabled, deferralEnabled, debugMode },
     () => {
       // Show saved message
       const message = document.getElementById('saved-message');
@@ -118,7 +104,6 @@ export function saveOptions(): void {
 
       // Notify background of changes so it can update its in-memory state
       chrome.runtime.sendMessage({ type: 'setServerUrl', url: serverUrl });
-      chrome.runtime.sendMessage({ type: 'setDomainFilters', filters });
       chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError });
       chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled });
       chrome.runtime.sendMessage({ type: 'setDeferralEnabled', enabled: deferralEnabled });

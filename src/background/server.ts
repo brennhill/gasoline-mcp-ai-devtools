@@ -12,6 +12,7 @@ import type {
   ConnectionStatus,
   WaterfallEntry,
 } from '../types';
+import { getExtensionVersion } from './version-check';
 
 /**
  * Server health response
@@ -20,11 +21,23 @@ export interface ServerHealthResponse {
   connected: boolean;
   error?: string;
   version?: string;
+  availableVersion?: string;
   logs?: {
     logFile?: string;
     logFileSize?: number;
     entries?: number;
     maxEntries?: number;
+  };
+}
+
+/**
+ * Get standard headers for API requests including version header
+ */
+function getRequestHeaders(additionalHeaders: Record<string, string> = {}): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'X-Gasoline-Extension-Version': getExtensionVersion(),
+    ...additionalHeaders,
   };
 }
 
@@ -40,7 +53,7 @@ export async function sendLogsToServer(
 
   const response = await fetch(`${serverUrl}/logs`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getRequestHeaders(),
     body: JSON.stringify({ entries }),
   });
 
@@ -67,7 +80,7 @@ export async function sendWSEventsToServer(
 
   const response = await fetch(`${serverUrl}/websocket-events`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getRequestHeaders(),
     body: JSON.stringify({ events }),
   });
 
@@ -92,7 +105,7 @@ export async function sendNetworkBodiesToServer(
 
   const response = await fetch(`${serverUrl}/network-bodies`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getRequestHeaders(),
     body: JSON.stringify({ bodies }),
   });
 
@@ -117,7 +130,7 @@ export async function sendNetworkWaterfallToServer(
 
   const response = await fetch(`${serverUrl}/network-waterfall`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getRequestHeaders(),
     body: JSON.stringify(payload),
   });
 
@@ -142,7 +155,7 @@ export async function sendEnhancedActionsToServer(
 
   const response = await fetch(`${serverUrl}/enhanced-actions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getRequestHeaders(),
     body: JSON.stringify({ actions }),
   });
 
@@ -167,7 +180,7 @@ export async function sendPerformanceSnapshotsToServer(
 
   const response = await fetch(`${serverUrl}/performance-snapshots`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getRequestHeaders(),
     body: JSON.stringify({ snapshots }),
   });
 
@@ -261,7 +274,7 @@ export async function postQueryResult(
   try {
     const response = await fetch(`${serverUrl}${endpoint}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getRequestHeaders(),
       body: JSON.stringify({ id: queryId, result }),
     });
 
@@ -303,7 +316,7 @@ export async function postAsyncCommandResult(
   try {
     const response = await fetch(`${serverUrl}/execute-result`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getRequestHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -334,7 +347,7 @@ export async function postSettings(
   try {
     const response = await fetch(`${serverUrl}/settings`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getRequestHeaders(),
       body: JSON.stringify({
         session_id: sessionId,
         settings: settings,
@@ -387,7 +400,7 @@ export async function postExtensionLogs(
   try {
     const response = await fetch(`${serverUrl}/extension-logs`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getRequestHeaders(),
       body: JSON.stringify({ logs }),
     });
 
@@ -418,7 +431,7 @@ export async function sendStatusPing(
   try {
     const response = await fetch(`${serverUrl}/api/extension-status`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getRequestHeaders(),
       body: JSON.stringify(statusMessage),
     });
 
@@ -455,8 +468,7 @@ export async function pollPendingQueries(
 
     const response = await fetch(`${serverUrl}/pending-queries`, {
       headers: {
-        'X-Gasoline-Session': sessionId,
-        'X-Gasoline-Pilot': pilotState,
+        ...getRequestHeaders({ 'X-Gasoline-Session': sessionId, 'X-Gasoline-Pilot': pilotState }),
       },
     });
 

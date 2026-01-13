@@ -42,6 +42,10 @@ export { handleLogMessage, handleClearLogs, isConnectionCheckRunning, checkConne
 // =============================================================================
 export { pollPendingQueriesWrapper, postSettingsWrapper, postNetworkWaterfall, postExtensionLogsWrapper, sendStatusPingWrapper, } from './background/index.js';
 // =============================================================================
+// === PUBLIC API: VERSION CHECKING
+// =============================================================================
+export { getExtensionVersion, isNewVersionAvailable, getAvailableVersion, updateVersionFromHealth, updateVersionBadge, getUpdateInfo, resetVersionCheck, } from './background/version-check.js';
+// =============================================================================
 // === PUBLIC API: PENDING QUERIES & PILOT
 // =============================================================================
 export { handlePendingQuery, handlePilotCommand, isAiWebPilotEnabled, } from './background/index.js';

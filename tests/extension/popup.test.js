@@ -21,7 +21,6 @@ const mockChrome = {
       get: mock.fn((keys, callback) =>
         callback({
           logLevel: 'error',
-          domainFilters: [],
         }),
       ),
       set: mock.fn((data, callback) => callback && callback()),
@@ -85,7 +84,7 @@ describe('Popup State Display', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error', domainFilters: [] }),
+      callback({ logLevel: 'error' }),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -153,7 +152,7 @@ describe('Log Level Selector', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error', domainFilters: [] }),
+      callback({ logLevel: 'error' }),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -218,7 +217,7 @@ describe('Clear Logs Button', () => {
       return Promise.resolve()
     })
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error', domainFilters: [] }),
+      callback({ logLevel: 'error' }),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -327,7 +326,7 @@ describe('Status Updates', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error', domainFilters: [] }),
+      callback({ logLevel: 'error' }),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -393,7 +392,7 @@ describe('Context Annotation Warning', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error', domainFilters: [] }),
+      callback({ logLevel: 'error' }),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -486,7 +485,7 @@ describe('Quick Actions', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error', domainFilters: [] }),
+      callback({ logLevel: 'error' }),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -520,7 +519,7 @@ describe('Server URL Display', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error', domainFilters: [] }),
+      callback({ logLevel: 'error' }),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -560,7 +559,7 @@ describe('WebSocket Toggle', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error', domainFilters: [] }),
+      callback({ logLevel: 'error' }),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -653,7 +652,7 @@ describe('Debug Logging', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error', domainFilters: [] }),
+      callback({ logLevel: 'error' }),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -683,7 +682,7 @@ describe('Health Indicators', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error', domainFilters: [] }),
+      callback({ logLevel: 'error' }),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -865,7 +864,7 @@ describe('Network Body Capture Toggle', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error', domainFilters: [] }),
+      callback({ logLevel: 'error' }),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),

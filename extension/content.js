@@ -9,7 +9,7 @@
  * tracked tab. Validates message origin (event.source === window) to prevent
  * cross-frame injection. Attaches tabId to all forwarded messages.
  */
-import { initTabTracking } from './content/tab-tracking.js';
+import { initTabTracking, getIsTrackedTab } from './content/tab-tracking.js';
 import { initScriptInjection } from './content/script-injection.js';
 import { initRequestTracking, getPendingRequestStats, clearPendingRequests } from './content/request-tracking.js';
 import { initWindowMessageListener } from './content/window-message-listener.js';
@@ -19,7 +19,9 @@ export { getPendingRequestStats, clearPendingRequests };
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
-// Initialize tab tracking
+// Track whether scripts have been injected
+let scriptsInjected = false;
+// Initialize tab tracking first
 initTabTracking();
 // Initialize request tracking (cleanup handlers)
 initRequestTracking();
@@ -27,6 +29,25 @@ initRequestTracking();
 initWindowMessageListener();
 // Initialize runtime message listener
 initRuntimeMessageListener();
-// Initialize script injection
-initScriptInjection();
+// Listen for tracking status changes and inject scripts only when tracked
+chrome.storage.onChanged.addListener((changes) => {
+    if (changes.trackedTabId) {
+        // Check if this tab is now tracked
+        if (getIsTrackedTab() && !scriptsInjected) {
+            // Tab just became tracked - inject scripts
+            initScriptInjection();
+            scriptsInjected = true;
+        }
+        // Note: We don't remove scripts when tab becomes untracked
+        // because that could break the page. Just stop injecting on new tracked tabs.
+    }
+});
+// Check initial tracking status and inject if already tracked
+// Use setTimeout to ensure initTabTracking() has completed its async work
+setTimeout(() => {
+    if (getIsTrackedTab() && !scriptsInjected) {
+        initScriptInjection();
+        scriptsInjected = true;
+    }
+}, 100);
 //# sourceMappingURL=content.js.map

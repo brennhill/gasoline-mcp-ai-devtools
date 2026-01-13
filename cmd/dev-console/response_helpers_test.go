@@ -686,8 +686,8 @@ func TestEntryStr_Helper(t *testing.T) {
 	}
 }
 
-// TestBrowserErrors_MarkdownFormat verifies toolGetBrowserErrors returns markdown table format.
-func TestBrowserErrors_MarkdownFormat(t *testing.T) {
+// TestBrowserErrors_JSONFormat verifies toolGetBrowserErrors returns JSON format.
+func TestBrowserErrors_JSONFormat(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -705,26 +705,24 @@ func TestBrowserErrors_MarkdownFormat(t *testing.T) {
 	json.Unmarshal(resp.Result, &result)
 	text := result.Content[0].Text
 
-	// First line should be summary
-	lines := strings.SplitN(text, "\n", 2)
-	if !strings.Contains(lines[0], "2 browser error(s)") {
-		t.Errorf("Expected summary with count, got: %q", lines[0])
+	if !strings.Contains(text, "2 browser error(s)") {
+		t.Errorf("Expected summary with count, got: %q", text)
 	}
 
-	// Should contain markdown table delimiters
-	if !strings.Contains(text, "| ") {
-		t.Error("Expected pipe delimiters in markdown table")
+	// Response is now JSON format
+	if !strings.Contains(text, `"errors"`) {
+		t.Error("Expected JSON response with 'errors' field")
 	}
-	if !strings.Contains(text, "---") {
-		t.Error("Expected separator row in markdown table")
+	if !strings.Contains(text, `"count"`) {
+		t.Error("Expected JSON response with 'count' field")
 	}
 
 	// Should contain the error data
 	if !strings.Contains(text, "TypeError: foo") {
-		t.Error("Expected error message in table")
+		t.Error("Expected error message in JSON")
 	}
 	if !strings.Contains(text, "app.js:10") {
-		t.Error("Expected source in table")
+		t.Error("Expected source in JSON")
 	}
 }
 
@@ -746,12 +744,15 @@ func TestBrowserLogs_MarkdownFormat(t *testing.T) {
 	json.Unmarshal(resp.Result, &result)
 	text := result.Content[0].Text
 
-	lines := strings.SplitN(text, "\n", 2)
-	if !strings.Contains(lines[0], "1 log entries") {
-		t.Errorf("Expected summary with count, got: %q", lines[0])
+	if !strings.Contains(text, "1 log entries") {
+		t.Errorf("Expected summary with count, got: %q", text)
 	}
-	if !strings.Contains(text, "| ") {
-		t.Error("Expected pipe delimiters in markdown table")
+	// Response is now JSON format
+	if !strings.Contains(text, `"logs"`) {
+		t.Error("Expected JSON response with 'logs' field")
+	}
+	if !strings.Contains(text, `"count"`) {
+		t.Error("Expected JSON response with 'count' field")
 	}
 }
 
@@ -774,13 +775,13 @@ func TestBrowserLogs_IncludesTabId(t *testing.T) {
 	json.Unmarshal(resp.Result, &result)
 	text := result.Content[0].Text
 
-	// Should contain Tab column header
-	if !strings.Contains(text, "Tab") {
-		t.Error("Expected 'Tab' column header in markdown table")
+	// Response is now JSON format with tab_id fields
+	if !strings.Contains(text, `"tab_id"`) {
+		t.Error("Expected 'tab_id' field in JSON response")
 	}
 	// Should contain tab IDs
 	if !strings.Contains(text, "42") {
-		t.Error("Expected tabId 42 in table")
+		t.Error("Expected tabId 42 in JSON")
 	}
 	if !strings.Contains(text, "99") {
 		t.Error("Expected tabId 99 in table")
@@ -805,13 +806,13 @@ func TestBrowserErrors_IncludesTabId(t *testing.T) {
 	json.Unmarshal(resp.Result, &result)
 	text := result.Content[0].Text
 
-	// Should contain Tab column header
-	if !strings.Contains(text, "Tab") {
-		t.Error("Expected 'Tab' column header in markdown table")
+	// Response is now JSON format with tab_id field
+	if !strings.Contains(text, `"tab_id"`) {
+		t.Error("Expected 'tab_id' field in JSON response")
 	}
 	// Should contain tab ID
 	if !strings.Contains(text, "42") {
-		t.Error("Expected tabId 42 in table")
+		t.Error("Expected tabId 42 in JSON")
 	}
 }
 
@@ -1219,6 +1220,7 @@ func TestWebSocketEvents_IncludesTabId(t *testing.T) {
 		{ID: "conn1", Event: "message", Direction: "incoming", Data: "hello", TabId: 42},
 		{ID: "conn2", Event: "message", Direction: "outgoing", Data: "world", TabId: 99},
 	}
+	capture.wsTotalAdded = 2 // Set total counter for cursor pagination
 	capture.mu.Unlock()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
@@ -1228,15 +1230,15 @@ func TestWebSocketEvents_IncludesTabId(t *testing.T) {
 	json.Unmarshal(resp.Result, &result)
 	text := result.Content[0].Text
 
-	// Should contain Tab column header and tab values in markdown table
-	if !strings.Contains(text, "| Tab |") {
-		t.Errorf("Expected 'Tab' column header in response, got: %s", text)
+	// Response is now JSON format with tab_id fields
+	if !strings.Contains(text, `"tab_id"`) {
+		t.Errorf("Expected 'tab_id' field in JSON response, got: %s", text)
 	}
-	if !strings.Contains(text, "| 42 |") {
-		t.Errorf("Expected tabId 42 in markdown table, got: %s", text)
+	if !strings.Contains(text, "42") {
+		t.Errorf("Expected tabId 42 in JSON response, got: %s", text)
 	}
-	if !strings.Contains(text, "| 99 |") {
-		t.Errorf("Expected tabId 99 in markdown table, got: %s", text)
+	if !strings.Contains(text, "99") {
+		t.Errorf("Expected tabId 99 in JSON response, got: %s", text)
 	}
 }
 
@@ -1253,6 +1255,7 @@ func TestEnhancedActions_IncludesTabId(t *testing.T) {
 		{Type: "click", Timestamp: 1000, URL: "https://example.com", TabId: 42},
 		{Type: "input", Timestamp: 2000, URL: "https://example.com", TabId: 99},
 	}
+	capture.actionTotalAdded = 2 // Set total counter for cursor pagination
 	capture.mu.Unlock()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
@@ -1262,15 +1265,16 @@ func TestEnhancedActions_IncludesTabId(t *testing.T) {
 	json.Unmarshal(resp.Result, &result)
 	text := result.Content[0].Text
 
-	// Should contain Tab column header and tab values in markdown table
-	if !strings.Contains(text, "| Tab |") {
-		t.Errorf("Expected 'Tab' column header in response, got: %s", text)
+	// Response should be JSON format with actions array (changed from markdown table)
+	if !strings.Contains(text, `"actions"`) {
+		t.Errorf("Expected JSON response with 'actions' field, got: %s", text)
 	}
-	if !strings.Contains(text, "| 42 |") {
-		t.Errorf("Expected tabId 42 in markdown table, got: %s", text)
+	// Should contain tab_id fields in JSON
+	if !strings.Contains(text, `"tab_id":42`) && !strings.Contains(text, `"tab_id": 42`) {
+		t.Errorf("Expected tabId 42 in JSON response, got: %s", text)
 	}
-	if !strings.Contains(text, "| 99 |") {
-		t.Errorf("Expected tabId 99 in markdown table, got: %s", text)
+	if !strings.Contains(text, `"tab_id":99`) && !strings.Contains(text, `"tab_id": 99`) {
+		t.Errorf("Expected tabId 99 in JSON response, got: %s", text)
 	}
 }
 

@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build all platform binaries
+        run: make build
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Copy binaries to NPM packages
+        run: |
+          cp dist/gasoline-darwin-arm64 npm/darwin-arm64/bin/gasoline
+          cp dist/gasoline-darwin-x64 npm/darwin-x64/bin/gasoline
+          cp dist/gasoline-linux-arm64 npm/linux-arm64/bin/gasoline
+          cp dist/gasoline-linux-x64 npm/linux-x64/bin/gasoline
+          cp dist/gasoline-win32-x64.exe npm/win32-x64/bin/gasoline.exe
+
+      - name: Publish NPM packages
+        run: |
+          cd npm/darwin-arm64 && npm publish --access public
+          cd ../darwin-x64 && npm publish --access public
+          cd ../linux-arm64 && npm publish --access public
+          cd ../linux-x64 && npm publish --access public
+          cd ../win32-x64 && npm publish --access public
+          cd ../gasoline-mcp && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Build PyPI packages
+        run: make pypi-build
+
+      - name: Publish to PyPI
+        run: |
+          cd pypi/gasoline-mcp-darwin-arm64 && python -m twine upload dist/*
+          cd ../gasoline-mcp-darwin-x64 && python -m twine upload dist/*
+          cd ../gasoline-mcp-linux-arm64 && python -m twine upload dist/*
+          cd ../gasoline-mcp-linux-x64 && python -m twine upload dist/*
+          cd ../gasoline-mcp-win32-x64 && python -m twine upload dist/*
+          cd ../gasoline-mcp && python -m twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/gasoline-darwin-arm64
+            dist/gasoline-darwin-x64
+            dist/gasoline-linux-arm64
+            dist/gasoline-linux-x64
+            dist/gasoline-win32-x64.exe
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

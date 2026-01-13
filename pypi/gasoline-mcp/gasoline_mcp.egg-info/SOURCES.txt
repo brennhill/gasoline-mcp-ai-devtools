@@ -2,7 +2,13 @@ README.md
 pyproject.toml
 gasoline_mcp/__init__.py
 gasoline_mcp/__main__.py
+gasoline_mcp/config.py
+gasoline_mcp/doctor.py
+gasoline_mcp/errors.py
+gasoline_mcp/install.py
+gasoline_mcp/output.py
 gasoline_mcp/platform.py
+gasoline_mcp/uninstall.py
 gasoline_mcp.egg-info/PKG-INFO
 gasoline_mcp.egg-info/SOURCES.txt
 gasoline_mcp.egg-info/dependency_links.txt
