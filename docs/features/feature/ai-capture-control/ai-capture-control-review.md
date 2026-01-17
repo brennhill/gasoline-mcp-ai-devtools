@@ -1,8 +1,17 @@
+---
+status: shipped
+scope: feature/ai-capture-control/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # AI Capture Control Review (Migrated)
 
 > **[MIGRATION NOTICE]**
 > Migrated from `/docs/specs/ai-capture-control-review.md` on 2026-01-26.
-> Related docs: [PRODUCT_SPEC.md](PRODUCT_SPEC.md), [TECH_SPEC.md](TECH_SPEC.md), [ADRS.md](ADRS.md).
+> Related docs: [product-spec.md](product-spec.md), [tech-spec.md](tech-spec.md), [ADRS.md](ADRS.md).
 
 ---
 

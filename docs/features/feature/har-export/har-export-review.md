@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/har-export/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # HAR Export Spec Review
 
 ## Executive Summary

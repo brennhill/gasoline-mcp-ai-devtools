@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/memory-enforcement/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # Memory Enforcement Review
 
 _Migrated from /specs/memory-enforcement-review.md_

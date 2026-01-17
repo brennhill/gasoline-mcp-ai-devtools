@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/api-schema/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # API Schema Review
 
 _Migrated from /specs/api-schema-review.md_

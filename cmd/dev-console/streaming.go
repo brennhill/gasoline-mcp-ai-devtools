@@ -10,6 +10,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -46,7 +48,7 @@ type StreamState struct {
 	SeenMessages map[string]time.Time // dedupKey → last sent
 	NotifyCount  int                  // count in current minute
 	MinuteStart  time.Time
-	PendingBatch []Alert
+	PendingBatch []types.Alert
 	mu           sync.Mutex
 	sseRegistry  *SSERegistry // SSE connections for broadcasting
 	writer       io.Writer    // defaults to os.Stdout (for testing)
@@ -152,7 +154,7 @@ func (s *StreamState) Configure(action string, events []string, throttle int, ur
 // ============================================
 
 // shouldEmit checks if an alert passes all configured filters.
-func (s *StreamState) shouldEmit(alert Alert) bool {
+func (s *StreamState) shouldEmit(alert types.Alert) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -233,7 +235,7 @@ func (s *StreamState) canEmitAt(now time.Time) bool {
 }
 
 // recordEmission records that a notification was sent.
-func (s *StreamState) recordEmission(now time.Time, alert Alert) {
+func (s *StreamState) recordEmission(now time.Time, alert types.Alert) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -294,7 +296,7 @@ func (s *StreamState) recordDedupKey(key string, now time.Time) {
 // ============================================
 
 // formatMCPNotification creates an MCP notification from an alert.
-func formatMCPNotification(alert Alert) MCPNotification {
+func formatMCPNotification(alert types.Alert) MCPNotification {
 	return MCPNotification{
 		JSONRPC: "2.0",
 		Method:  "notifications/message",
@@ -319,7 +321,7 @@ func formatMCPNotification(alert Alert) MCPNotification {
 
 // EmitAlert atomically checks all filters and emits an MCP notification if appropriate.
 // Uses a single lock acquisition to prevent TOCTOU races between filter checks and emission.
-func (s *StreamState) EmitAlert(alert Alert) {
+func (s *StreamState) EmitAlert(alert types.Alert) {
 	s.mu.Lock()
 
 	// === Filter checks (inlined from shouldEmit) ===

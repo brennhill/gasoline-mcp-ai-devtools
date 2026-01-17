@@ -50,6 +50,11 @@ export async function initTrackPageButton(): Promise<void> {
           if (info) info.style.display = 'block';
           if (urlEl && result.trackedTabUrl) {
             urlEl.textContent = result.trackedTabUrl;
+            // Make URL clickable - switch to tracked tab on click
+            urlEl.style.cursor = 'pointer';
+            urlEl.style.textDecoration = 'underline';
+            urlEl.title = 'Click to switch to this tab';
+            urlEl.addEventListener('click', () => handleUrlClick(result.trackedTabId));
           }
         } else {
           // Show track button - renamed from "Track This Page" to "Track This Tab"
@@ -74,6 +79,28 @@ export async function initTrackPageButton(): Promise<void> {
       });
     });
   });
+}
+
+/**
+ * Handle clicking on the tracked URL.
+ * Switches to the tracked tab.
+ */
+export async function handleUrlClick(tabId: number | undefined): Promise<void> {
+  if (!tabId) return;
+
+  try {
+    // Switch to the tracked tab and bring its window to focus
+    await chrome.tabs.update(tabId, { active: true });
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.windowId) {
+      await chrome.windows.update(tab.windowId, { focused: true });
+    }
+    console.log('[Gasoline] Switched to tracked tab:', tabId);
+  } catch (err) {
+    console.error('[Gasoline] Failed to switch to tracked tab:', err);
+    // Tab might have been closed - clear tracking
+    chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl']);
+  }
 }
 
 /**
@@ -127,7 +154,14 @@ export async function handleTrackPageClick(): Promise<void> {
               btn.style.borderColor = '#f85149';
             }
             if (info) info.style.display = 'block';
-            if (urlEl) urlEl.textContent = tab.url || '';
+            if (urlEl) {
+              urlEl.textContent = tab.url || '';
+              // Make URL clickable
+              urlEl.style.cursor = 'pointer';
+              urlEl.style.textDecoration = 'underline';
+              urlEl.title = 'Click to switch to this tab';
+              urlEl.addEventListener('click', () => handleUrlClick(tab.id));
+            }
             // Hide "no tracking" warning
             const noTrackEl = document.getElementById('no-tracking-warning');
             if (noTrackEl) noTrackEl.style.display = 'none';

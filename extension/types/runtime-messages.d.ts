@@ -102,6 +102,18 @@ export interface GetAiWebPilotEnabledResponse {
     readonly enabled: boolean;
 }
 /**
+ * Get tracking state message (for favicon replacer)
+ */
+export interface GetTrackingStateMessage {
+    readonly type: 'getTrackingState';
+}
+export interface GetTrackingStateResponse {
+    readonly state: {
+        isTracked: boolean;
+        aiPilotEnabled: boolean;
+    };
+}
+/**
  * Get diagnostic state message
  */
 export interface GetDiagnosticStateMessage {
@@ -146,7 +158,7 @@ export interface StatusUpdateMessage {
 /**
  * Union of all background-bound messages
  */
-export type BackgroundMessage = GetTabIdMessage | WsEventMessage | EnhancedActionMessage | NetworkBodyMessage | PerformanceSnapshotMessage | LogMessage | GetStatusMessage | ClearLogsMessage | SetLogLevelMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | GetAiWebPilotEnabledMessage | GetDiagnosticStateMessage | CaptureScreenshotMessage | GetDebugLogMessage | ClearDebugLogMessage | SetServerUrlMessage;
+export type BackgroundMessage = GetTabIdMessage | WsEventMessage | EnhancedActionMessage | NetworkBodyMessage | PerformanceSnapshotMessage | LogMessage | GetStatusMessage | ClearLogsMessage | SetLogLevelMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | GetAiWebPilotEnabledMessage | GetTrackingStateMessage | GetDiagnosticStateMessage | CaptureScreenshotMessage | GetDebugLogMessage | ClearDebugLogMessage | SetServerUrlMessage;
 /**
  * Ping message to check if content script is loaded
  */

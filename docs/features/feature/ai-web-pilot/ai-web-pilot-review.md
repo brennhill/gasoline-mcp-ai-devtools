@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/ai-web-pilot/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # AI Web Pilot Spec Review
 
 ## Executive Summary

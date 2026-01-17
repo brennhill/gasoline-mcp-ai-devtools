@@ -36,6 +36,15 @@ export declare function installAlarmListener(handlers: {
  */
 export declare function installTabRemovedListener(onTabRemoved: (tabId: number) => void): void;
 /**
+ * Install tab updated listener to track URL changes
+ */
+export declare function installTabUpdatedListener(onTabUpdated: (tabId: number, newUrl: string) => void): void;
+/**
+ * Handle tracked tab URL change
+ * Updates the stored URL when the tracked tab navigates
+ */
+export declare function handleTrackedTabUrlChange(updatedTabId: number, newUrl: string, logFn?: (message: string) => void): void;
+/**
  * Handle tracked tab being closed
  * SECURITY: Clears ephemeral tracking state when tab closes
  * Uses session storage for ephemeral tab tracking data

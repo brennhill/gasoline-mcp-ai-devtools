@@ -9,6 +9,11 @@
  */
 export declare function initTrackPageButton(): Promise<void>;
 /**
+ * Handle clicking on the tracked URL.
+ * Switches to the tracked tab.
+ */
+export declare function handleUrlClick(tabId: number | undefined): Promise<void>;
+/**
  * Handle Track This Tab button click.
  * Toggles tracking on/off for the current tab.
  * Blocks tracking on internal Chrome pages.

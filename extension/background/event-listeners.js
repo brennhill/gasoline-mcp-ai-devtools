@@ -101,6 +101,36 @@ export function installTabRemovedListener(onTabRemoved) {
     });
 }
 /**
+ * Install tab updated listener to track URL changes
+ */
+export function installTabUpdatedListener(onTabUpdated) {
+    if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.tabs.onUpdated)
+        return;
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+        // Only care about URL changes
+        if (changeInfo.url) {
+            onTabUpdated(tabId, changeInfo.url);
+        }
+    });
+}
+/**
+ * Handle tracked tab URL change
+ * Updates the stored URL when the tracked tab navigates
+ */
+export function handleTrackedTabUrlChange(updatedTabId, newUrl, logFn) {
+    if (typeof chrome === 'undefined' || !chrome.storage)
+        return;
+    chrome.storage.local.get(['trackedTabId'], (result) => {
+        if (result.trackedTabId === updatedTabId) {
+            chrome.storage.local.set({ trackedTabUrl: newUrl }, () => {
+                if (logFn) {
+                    logFn('[Gasoline] Tracked tab URL updated: ' + newUrl);
+                }
+            });
+        }
+    });
+}
+/**
  * Handle tracked tab being closed
  * SECURITY: Clears ephemeral tracking state when tab closes
  * Uses session storage for ephemeral tab tracking data

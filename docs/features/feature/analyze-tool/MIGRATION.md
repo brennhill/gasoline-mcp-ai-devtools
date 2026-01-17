@@ -41,7 +41,7 @@ However, cramming analysis capabilities into `observe` would violate principle #
    - Add `analyze` to tool table
    - Document semantic boundaries between `observe` and `analyze`
 
-2. **`CLAUDE.md`**
+2. **`claude.md`**
    - Update rule #5 from "4-Tool Maximum" to "5-Tool Maximum"
    - Add `analyze` to the tool list
 
@@ -148,7 +148,7 @@ Rollback does not affect existing functionality.
 ### Pre-Implementation
 - [ ] Spec reviewed by principal engineer agent
 - [ ] Architecture.md constraint update approved
-- [ ] CLAUDE.md update drafted
+- [ ] claude.md update drafted
 
 ### Implementation
 - [ ] Server: analyze.go created
@@ -161,7 +161,7 @@ Rollback does not affect existing functionality.
 
 ### Documentation
 - [ ] Architecture.md updated
-- [ ] CLAUDE.md updated
+- [ ] claude.md updated
 - [ ] README.md updated (if needed)
 - [ ] Changelog updated
 - [ ] UAT checklist updated

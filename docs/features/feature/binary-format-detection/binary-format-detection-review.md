@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/binary-format-detection/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # Binary Format Detection -- Engineering Review
 
 ## Executive Summary
@@ -46,7 +55,7 @@ type BinaryDecodeResult struct {
 
 ### C4. Zero-dependency constraint vs. full MessagePack/CBOR decoders
 
-Gasoline's core rule (CLAUDE.md, Rule 2): "Go server: stdlib only. Extension: no frameworks, no build tools." The spec proposes full MessagePack and CBOR decoders (Section: Partial Decoding). Writing a correct, fuzz-resistant MessagePack decoder from scratch is non-trivial -- MessagePack has 30+ type codes, extension types, and encoding ambiguities. CBOR is equally complex with tagged values, indefinite-length containers, and canonical encoding considerations.
+Gasoline's core rule (claude.md, Rule 2): "Go server: stdlib only. Extension: no frameworks, no build tools." The spec proposes full MessagePack and CBOR decoders (Section: Partial Decoding). Writing a correct, fuzz-resistant MessagePack decoder from scratch is non-trivial -- MessagePack has 30+ type codes, extension types, and encoding ambiguities. CBOR is equally complex with tagged values, indefinite-length containers, and canonical encoding considerations.
 
 Building these from scratch without pulling in `github.com/vmihailenco/msgpack` or `github.com/fxamacker/cbor` means accepting the risk of subtle decoding bugs that produce incorrect JSON output, which the AI agent will then reason about incorrectly.
 

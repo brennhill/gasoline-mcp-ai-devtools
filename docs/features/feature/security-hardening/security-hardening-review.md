@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/security-hardening/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # Review: Security Hardening Tools (tech-spec-security-hardening.md)
 
 ## Executive Summary

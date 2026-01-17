@@ -1,6 +1,6 @@
 ## Template: Known Issue Entry
 
-Use this format when adding entries to `/KNOWN-ISSUES.md`:
+Use this format when adding entries to `/known-issues.md`:
 
 ```markdown
 ### Short description of the issue

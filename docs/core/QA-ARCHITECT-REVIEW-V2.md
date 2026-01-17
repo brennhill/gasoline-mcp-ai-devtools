@@ -2,14 +2,14 @@
 
 **Reviewer:** Principal Engineer Agent (Opus 4.5)
 **Date:** 2026-01-28
-**Codebase:** Gasoline v5.2 (branch: `next`, commit: `ca2472f`)
+**Codebase:** Gasoline MCP v5.2 (branch: `next`, commit: `ca2472f`)
 **Scope:** Full codebase — Go server (18 source files), Chrome Extension (3 JS files)
 
 ---
 
 ## Executive Summary
 
-Gasoline is a well-architected MCP server and browser extension with strong foundations: zero-dependency Go stdlib server, consistent ring buffer eviction, proper mutex-guarded concurrency, and thoughtful memory management with three-tier eviction. The 4-tool MCP constraint enforces clean API design.
+Gasoline MCP is a well-architected MCP server and browser extension with strong foundations: zero-dependency Go stdlib server, consistent ring buffer eviction, proper mutex-guarded concurrency, and thoughtful memory management with three-tier eviction. The 4-tool MCP constraint enforces clean API design.
 
 This review identified **3 critical**, **6 high**, **11 medium**, and **8 low** severity issues across security, performance, memory, and cross-cutting concerns. The most impactful findings are:
 

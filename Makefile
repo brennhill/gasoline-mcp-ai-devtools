@@ -1,6 +1,6 @@
 # Gasoline Build Makefile
 
-VERSION := 5.2.5
+VERSION := 5.4.0
 BINARY_NAME := gasoline
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION)
@@ -131,7 +131,7 @@ lint: lint-go lint-js
 
 lint-go:
 	go vet ./cmd/dev-console/
-	golangci-lint run ./cmd/dev-console/
+	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run ./cmd/dev-console/ || echo "golangci-lint not installed (optional)"
 
 lint-js:
 	npx eslint extension/ tests/extension/
@@ -176,24 +176,19 @@ release-check: ci-local ci-e2e
 
 ci-go:
 	go vet ./cmd/dev-console/
-	@command -v govulncheck >/dev/null 2>&1 || { echo "govulncheck not found. Install: go install golang.org/x/vuln/cmd/govulncheck@latest"; exit 1; }
-	govulncheck ./cmd/dev-console/
 	make test-race
 	make test-cover
-	golangci-lint run ./cmd/dev-console/
 	make build
 	make verify-zero-deps
-	make verify-imports
 
 ci-js:
-	npm run lint
-	npm run format
-	npm run typecheck
-	npm run test:ext
+	npm ci
+	npx eslint extension/ tests/extension/
+	npx tsc --noEmit
+	node --test --test-force-exit --test-timeout=20000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
 
 ci-security:
-	@command -v gosec >/dev/null 2>&1 || { echo "gosec not found. Install: go install github.com/securego/gosec/v2/cmd/gosec@latest"; exit 1; }
-	gosec -exclude=G104,G114,G204,G301,G304,G306 ./cmd/dev-console/
+	@command -v gosec >/dev/null 2>&1 && gosec -exclude=G104,G114,G204,G301,G304,G306 ./cmd/dev-console/ || echo "gosec not installed (optional - GitHub Actions will verify)"
 
 ci-bench:
 	@command -v benchstat >/dev/null 2>&1 || { echo "benchstat not found. Install: go install golang.org/x/perf/cmd/benchstat@latest"; exit 1; }

@@ -72,15 +72,15 @@ export async function withTimeout<T>(
 ): Promise<T> {
   return Promise.race([
     promise,
-    new Promise<T>((_, reject) =>
+    new Promise<T>((_, reject) => {
       setTimeout(() => {
         if (fallback !== undefined) {
           reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, fallback as T));
         } else {
           reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
         }
-      }, timeoutMs)
-    ),
+      }, timeoutMs);
+    }),
   ]).catch((err) => {
     if (err instanceof TimeoutError && err.fallback !== undefined) {
       return err.fallback as T;
@@ -123,11 +123,11 @@ export class TimeoutError extends Error {
 export async function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return Promise.race([
     promise,
-    new Promise<T>((_, reject) =>
+    new Promise<T>((_, reject) => {
       setTimeout(() => {
         reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
-      }, timeoutMs)
-    ),
+      }, timeoutMs);
+    }),
   ]);
 }
 
@@ -215,7 +215,7 @@ export async function promiseRaceWithCleanup<T>(
   try {
     return await Promise.race([
       promise,
-      new Promise<T>((_, reject) =>
+      new Promise<T>((_, reject) => {
         setTimeout(() => {
           cleanup?.();
           if (timeoutFallback !== undefined) {
@@ -223,8 +223,8 @@ export async function promiseRaceWithCleanup<T>(
           } else {
             reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
           }
-        }, timeoutMs)
-      ),
+        }, timeoutMs);
+      }),
     ]);
   } catch (err) {
     if (err instanceof TimeoutError && err.fallback !== undefined) {
@@ -270,7 +270,9 @@ export async function executeWithTimeout<T>(
  * await delay(1000); // Wait 1 second
  */
 export function delay(delayMs: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, delayMs));
+  return new Promise((resolve) => {
+    setTimeout(resolve, delayMs);
+  });
 }
 
 /**

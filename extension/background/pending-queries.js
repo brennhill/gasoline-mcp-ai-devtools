@@ -11,6 +11,26 @@ import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSn
 // Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
 const { debugLog, diagnosticLog } = index;
 // =============================================================================
+// TIMEOUT CONFIGURATION
+// =============================================================================
+/**
+ * Timeout for async execute commands (JavaScript execution in page context)
+ * Needs to accommodate:
+ * - Axe accessibility audits on large pages (20-30s)
+ * - Complex DOM queries
+ * - Screenshot capture and encoding
+ * - Custom JavaScript execution
+ */
+const ASYNC_EXECUTE_TIMEOUT_MS = 60000; // 60 seconds
+/**
+ * Timeout for async browser actions (navigation, refresh, etc.)
+ * Needs to accommodate:
+ * - Page navigation on slow networks
+ * - Page load and rendering
+ * - Resource fetching
+ */
+const ASYNC_BROWSER_ACTION_TIMEOUT_MS = 60000; // 60 seconds
+// =============================================================================
 // PENDING QUERY HANDLING
 // =============================================================================
 export async function handlePendingQuery(query) {
@@ -371,7 +391,7 @@ async function handleAsyncExecuteCommand(query, tabId) {
         const execResult = await Promise.race([
             executionPromise,
             new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Execution timeout')), 10000);
+                setTimeout(() => reject(new Error('Execution timeout')), ASYNC_EXECUTE_TIMEOUT_MS);
             }),
         ]);
         clearTimeout(pendingTimer);
@@ -431,7 +451,7 @@ async function handleAsyncBrowserAction(query, tabId, params) {
         const execResult = await Promise.race([
             executionPromise,
             new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Execution timeout')), 10000);
+                setTimeout(() => reject(new Error('Execution timeout')), ASYNC_BROWSER_ACTION_TIMEOUT_MS);
             }),
         ]);
         clearTimeout(pendingTimer);

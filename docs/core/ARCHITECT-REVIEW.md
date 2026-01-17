@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Gasoline is a well-architected system with strong fundamentals: the 4-tool MCP constraint keeps the API surface manageable, the structured error system with recovery hints is genuinely LLM-friendly, and memory management is multi-layered with sensible eviction policies. However, the codebase has accumulated complexity — the `observe` tool now dispatches to 25+ modes, JSON field naming is inconsistent (mixed camelCase and snake_case), and there are goroutine leak vectors in the query wait path. The most critical finding is the `WaitForResult` goroutine that holds `c.mu.Lock()` indefinitely if the timeout fires before the goroutine exits.
+Gasoline MCP is a well-architected system with strong fundamentals: the 4-tool MCP constraint keeps the API surface manageable, the structured error system with recovery hints is genuinely LLM-friendly, and memory management is multi-layered with sensible eviction policies. However, the codebase has accumulated complexity — the `observe` tool now dispatches to 25+ modes, JSON field naming is inconsistent (mixed camelCase and snake_case), and there are goroutine leak vectors in the query wait path. The most critical finding is the `WaitForResult` goroutine that holds `c.mu.Lock()` indefinitely if the timeout fires before the goroutine exits.
 
 ---
 
@@ -158,7 +158,7 @@ Gasoline is a well-architected system with strong fundamentals: the 4-tool MCP c
 
 2. **`executeJavaScript` uses `new Function()` in page context** (`inject.js:643`). This is inherently a powerful capability -- the AI Web Pilot can execute arbitrary JavaScript on any tracked page. The security model relies entirely on: (a) the pilot toggle being disabled by default, (b) the user explicitly enabling it. However, there is no additional sandboxing or CSP enforcement once enabled. A malicious LLM provider could instruct the AI to execute exfiltration scripts. The pilot gate check (`pilot.go:77-145`) is the only defense.
 
-3. **`isAllowedOrigin` returns `true` for any `chrome-extension://` origin** (`main.go:831`). The check `strings.HasPrefix(origin, "chrome-extension://")` accepts requests from ANY Chrome extension, not just the Gasoline extension. A malicious extension could make requests to the Gasoline server if it knows the port. To fix this, validate the extension ID in the origin matches the expected Gasoline extension ID.
+3. **`isAllowedOrigin` returns `true` for any `chrome-extension://` origin** (`main.go:831`). The check `strings.HasPrefix(origin, "chrome-extension://")` accepts requests from ANY Chrome extension, not just the Gasoline MCP extension. A malicious extension could make requests to the Gasoline MCP server if it knows the port. To fix this, validate the extension ID in the origin matches the expected Gasoline MCP extension ID.
 
 4. **Empty Origin header accepted** (`main.go:826-828`). `isAllowedOrigin` returns `true` for empty origin, which is correct for CLI/curl usage but also allows requests from contexts that strip Origin headers (e.g., some browser-based tools, server-side requests that have been proxied). Combined with the Host header check, this is acceptable but worth documenting explicitly.
 
@@ -184,7 +184,7 @@ Choose either camelCase or snake_case for all JSON field names and apply consist
 
 ### 4. [High] Restrict `chrome-extension://` origin validation
 **File:** `cmd/dev-console/main.go:831`
-Validate the specific Gasoline extension ID rather than accepting any `chrome-extension://` origin. The extension ID can be configured via environment variable for development builds.
+Validate the specific Gasoline MCP extension ID rather than accepting any `chrome-extension://` origin. The extension ID can be configured via environment variable for development builds.
 
 ### 5. [High] Fix `postMessage` target origins
 **Files:** `extension/lib/perf-snapshot.js:260`, `extension/lib/reproduction.js:239`, `extension/inject.js:1265`

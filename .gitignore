@@ -46,3 +46,4 @@ docs/benchmarks/*.txt
 
 # Runtime state
 .gasoline/
+.claude/

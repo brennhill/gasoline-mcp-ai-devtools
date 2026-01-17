@@ -136,6 +136,16 @@ export async function initPopup() {
             }
         }
     });
+    // Listen for storage changes (e.g., tracked tab URL updates)
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'local' && changes.trackedTabUrl) {
+            const urlEl = document.getElementById('tracked-url');
+            if (urlEl && changes.trackedTabUrl.newValue) {
+                urlEl.textContent = changes.trackedTabUrl.newValue;
+                console.log('[Gasoline] Tracked tab URL updated in popup:', changes.trackedTabUrl.newValue);
+            }
+        }
+    });
 }
 // Initialize when DOM is ready
 if (typeof document !== 'undefined') {

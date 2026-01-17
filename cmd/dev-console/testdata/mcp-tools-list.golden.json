@@ -382,7 +382,7 @@
     },
     {
       "name": "configure",
-      "description": "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots \u0026 compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear buffers - specify buffer parameter), health (server health check). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot, configure({action:'clear',buffer:'network'})→clear network buffers. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: {cleared, counts, total_cleared}\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
+      "description": "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots, mark test boundaries. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots \u0026 compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear buffers - specify buffer parameter), health (server health check), test_boundary_start (mark test start for concurrent test correlation), test_boundary_end (mark test end, unmark from logs/network/actions). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot, configure({action:'clear',buffer:'network'})→clear network buffers, configure({action:'test_boundary_start',test_id:'login-test',label:'Login Test'})→mark test start, configure({action:'test_boundary_end',test_id:'login-test'})→mark test end. \n\nUse when: isolating signal, filtering noise, tracking state across multiple actions, or correlating telemetry with specific tests.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: {cleared, counts, total_cleared}\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}\n- test_boundary_start: {status, test_id, label, message}\n- test_boundary_end: {status, test_id, was_active, message}",
       "inputSchema": {
         "properties": {
           "action": {
@@ -400,7 +400,9 @@
               "validate_api",
               "audit_log",
               "health",
-              "streaming"
+              "streaming",
+              "test_boundary_start",
+              "test_boundary_end"
             ],
             "type": "string"
           },
@@ -463,6 +465,10 @@
           },
           "key": {
             "description": "Storage key (applies to store)",
+            "type": "string"
+          },
+          "label": {
+            "description": "Human-readable label for test boundary (applies to test_boundary_start)",
             "type": "string"
           },
           "limit": {
@@ -609,6 +615,10 @@
           "tab_id": {
             "description": "Target tab ID (applies to query_dom, diff_sessions)",
             "type": "number"
+          },
+          "test_id": {
+            "description": "Test ID for boundary marker (applies to test_boundary_start and test_boundary_end)",
+            "type": "string"
           },
           "throttle_seconds": {
             "description": "Minimum seconds between notifications (applies to streaming)",

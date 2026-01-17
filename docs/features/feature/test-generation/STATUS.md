@@ -64,15 +64,15 @@ ok      github.com/dev-console/dev-console/cmd/dev-console     2.438s
 
 ### Documentation
 
-1. ✅ **PRODUCT_SPEC.md** — Feature requirements and user stories
-2. ✅ **TECH_SPEC.md v1.1** — Technical implementation (all critical issues resolved)
-3. ✅ **REVIEW.md** — Principal engineer review (10 critical issues → all resolved)
-4. ✅ **QA_PLAN.md** — ~100+ test cases organized by category
-5. ✅ **UAT_GUIDE.md** — Human testing scenarios
-6. ✅ **MIGRATION.md** — Rollout plan for v5.2.0 → v5.3.0
-7. ✅ **QUESTIONS.md** — Autonomous decisions documented
-8. ✅ **VALIDATION_PLAN.md** — Honest assessment of validation gaps
-9. ✅ **VALIDATION_GUIDE.md** — Hands-on validation using demo site (NEW)
+1. ✅ **product-spec.md** — Feature requirements and user stories
+2. ✅ **tech-spec.md v1.1** — Technical implementation (all critical issues resolved)
+3. ✅ **review.md** — Principal engineer review (10 critical issues → all resolved)
+4. ✅ **qa-plan.md** — ~100+ test cases organized by category
+5. ✅ **uat-guide.md** — Human testing scenarios
+6. ✅ **migration.md** — Rollout plan for v5.2.0 → v5.3.0
+7. ✅ **questions.md** — Autonomous decisions documented
+8. ✅ **validation-plan.md** — Honest assessment of validation gaps
+9. ✅ **validation-guide.md** — Hands-on validation using demo site (NEW)
 
 ### Competitive Analysis
 
@@ -130,7 +130,7 @@ These features are implemented but not connected:
 
 ### Validation Plan
 
-**[VALIDATION_GUIDE.md](VALIDATION_GUIDE.md)** provides step-by-step validation:
+**[validation-guide.md](validation-guide.md)** provides step-by-step validation:
 
 1. **Phase 1:** Generate test from WebSocket error (30 min)
    - **Unique to Gasoline:** WebSocket frame monitoring
@@ -187,7 +187,7 @@ We can claim "TestSprite parity" when:
    ./dist/gasoline-mcp
    ```
 
-3. **Follow VALIDATION_GUIDE.md** step-by-step
+3. **Follow validation-guide.md** step-by-step
 
 ### After Validation
 
@@ -262,16 +262,16 @@ Gasoline can generate tests that verify WebSocket behavior automatically — no 
 
 1. `cmd/dev-console/testgen.go` (1,693 lines)
 2. `cmd/dev-console/testgen_test.go` (2,996 lines)
-3. `docs/features/feature/test-generation/PRODUCT_SPEC.md`
-4. `docs/features/feature/test-generation/TECH_SPEC.md`
-5. `docs/features/feature/test-generation/REVIEW.md`
-6. `docs/features/feature/test-generation/QA_PLAN.md`
-7. `docs/features/feature/test-generation/UAT_GUIDE.md`
-8. `docs/features/feature/test-generation/MIGRATION.md`
-9. `docs/features/feature/test-generation/QUESTIONS.md`
-10. `docs/features/feature/test-generation/VALIDATION_PLAN.md`
-11. `docs/features/feature/test-generation/VALIDATION_GUIDE.md`
-12. `docs/features/feature/test-generation/STATUS.md` (this file)
+3. `docs/features/feature/test-generation/product-spec.md`
+4. `docs/features/feature/test-generation/tech-spec.md`
+5. `docs/features/feature/test-generation/review.md`
+6. `docs/features/feature/test-generation/qa-plan.md`
+7. `docs/features/feature/test-generation/uat-guide.md`
+8. `docs/features/feature/test-generation/migration.md`
+9. `docs/features/feature/test-generation/questions.md`
+10. `docs/features/feature/test-generation/validation-plan.md`
+11. `docs/features/feature/test-generation/validation-guide.md`
+12. `docs/features/feature/test-generation/status.md` (this file)
 
 ### Modified Files
 
@@ -294,7 +294,7 @@ When you wake up, you have:
 2. ✅ **77 passing tests** with comprehensive coverage
 3. ✅ **Full documentation** including validation guide
 4. ✅ **Ready demo environment** with 34 intentional bugs
-5. ✅ **Clear next steps** in VALIDATION_GUIDE.md
+5. ✅ **Clear next steps** in validation-guide.md
 
 **All that remains:** Run the validation and document the results.
 

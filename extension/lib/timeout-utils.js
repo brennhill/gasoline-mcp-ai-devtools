@@ -53,14 +53,16 @@ export function createDeferredPromise() {
 export async function withTimeout(promise, timeoutMs, fallback) {
     return Promise.race([
         promise,
-        new Promise((_, reject) => setTimeout(() => {
-            if (fallback !== undefined) {
-                reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, fallback));
-            }
-            else {
-                reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
-            }
-        }, timeoutMs)),
+        new Promise((_, reject) => {
+            setTimeout(() => {
+                if (fallback !== undefined) {
+                    reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, fallback));
+                }
+                else {
+                    reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
+                }
+            }, timeoutMs);
+        }),
     ]).catch((err) => {
         if (err instanceof TimeoutError && err.fallback !== undefined) {
             return err.fallback;
@@ -100,9 +102,11 @@ export class TimeoutError extends Error {
 export async function promiseWithTimeout(promise, timeoutMs) {
     return Promise.race([
         promise,
-        new Promise((_, reject) => setTimeout(() => {
-            reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
-        }, timeoutMs)),
+        new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
+            }, timeoutMs);
+        }),
     ]);
 }
 /**
@@ -179,15 +183,17 @@ export async function promiseRaceWithCleanup(promise, timeoutMs, timeoutFallback
     try {
         return await Promise.race([
             promise,
-            new Promise((_, reject) => setTimeout(() => {
-                cleanup?.();
-                if (timeoutFallback !== undefined) {
-                    reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
-                }
-                else {
-                    reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
-                }
-            }, timeoutMs)),
+            new Promise((_, reject) => {
+                setTimeout(() => {
+                    cleanup?.();
+                    if (timeoutFallback !== undefined) {
+                        reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
+                    }
+                    else {
+                        reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
+                    }
+                }, timeoutMs);
+            }),
         ]);
     }
     catch (err) {
@@ -228,7 +234,9 @@ export async function executeWithTimeout(callback, timeoutMs, fallback) {
  * await delay(1000); // Wait 1 second
  */
 export function delay(delayMs) {
-    return new Promise((resolve) => setTimeout(resolve, delayMs));
+    return new Promise((resolve) => {
+        setTimeout(resolve, delayMs);
+    });
 }
 /**
  * Retry a promise-returning function with exponential backoff

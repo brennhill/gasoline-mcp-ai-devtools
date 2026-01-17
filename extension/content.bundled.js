@@ -454,12 +454,107 @@
     });
   }
 
+  // extension/content/favicon-replacer.js
+  var originalFaviconHref = null;
+  var flickerInterval = null;
+  function initFaviconReplacer() {
+    chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
+      if (message.type === "trackingStateChanged") {
+        const newState = message.state;
+        updateFavicon(newState);
+      }
+    });
+    chrome.runtime.sendMessage({ type: "getTrackingState" }, (response) => {
+      if (response && response.state) {
+        updateFavicon(response.state);
+      }
+    });
+  }
+  function updateFavicon(state) {
+    if (!state.isTracked) {
+      restoreOriginalFavicon();
+      stopFlicker();
+    } else if (state.aiPilotEnabled) {
+      replaceFaviconWithFlame(true);
+      startFlicker();
+    } else {
+      replaceFaviconWithFlame(false);
+      stopFlicker();
+    }
+  }
+  function replaceFaviconWithFlame(withGlow) {
+    if (!originalFaviconHref) {
+      const existingLink = document.querySelector('link[rel*="icon"]');
+      originalFaviconHref = existingLink?.href || "";
+    }
+    const existingIcons = document.querySelectorAll('link[rel*="icon"]');
+    existingIcons.forEach((icon) => icon.remove());
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.type = "image/svg+xml";
+    link.id = "gasoline-favicon";
+    const iconPath = withGlow ? "icons/icon-glow.svg" : "icons/icon.svg";
+    link.href = chrome.runtime.getURL(iconPath);
+    document.head.appendChild(link);
+  }
+  function restoreOriginalFavicon() {
+    const gasolineIcon = document.getElementById("gasoline-favicon");
+    if (gasolineIcon) {
+      gasolineIcon.remove();
+    }
+    if (originalFaviconHref) {
+      const link = document.createElement("link");
+      link.rel = "icon";
+      link.href = originalFaviconHref;
+      document.head.appendChild(link);
+    }
+  }
+  function startFlicker() {
+    if (flickerInterval !== null) {
+      return;
+    }
+    const flameFrames = [
+      "icon-flicker-1-tiny.svg",
+      // 85% - dark red/orange (coolest) + small dark ring
+      "icon-flicker-2-small.svg",
+      // 92% - orange + small orange ring
+      "icon-flicker-3-normal.svg",
+      // 100% - orange-yellow (base) + medium orange ring
+      "icon-flicker-4-medium.svg",
+      // 105% - yellow + medium yellow ring
+      "icon-flicker-5-large.svg",
+      // 112% - yellow/white (PEAK - hottest) + large bright ring
+      "icon-flicker-6-medium.svg",
+      // 105% - yellow + medium yellow ring (shrinking)
+      "icon-flicker-7-smallmed.svg",
+      // 96% - orange-yellow + medium ring
+      "icon-flicker-8-small.svg"
+      // 92% - orange + small orange ring (back to small)
+    ];
+    let currentFrameIndex = 0;
+    flickerInterval = window.setInterval(() => {
+      currentFrameIndex = (currentFrameIndex + 1) % flameFrames.length;
+      const gasolineIcon = document.getElementById("gasoline-favicon");
+      if (gasolineIcon) {
+        const iconPath = `icons/${flameFrames[currentFrameIndex]}`;
+        gasolineIcon.href = chrome.runtime.getURL(iconPath);
+      }
+    }, 150);
+  }
+  function stopFlicker() {
+    if (flickerInterval !== null) {
+      clearInterval(flickerInterval);
+      flickerInterval = null;
+    }
+  }
+
   // extension/content.js
   var scriptsInjected = false;
   initTabTracking();
   initRequestTracking();
   initWindowMessageListener();
   initRuntimeMessageListener();
+  initFaviconReplacer();
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.trackedTabId) {
       if (getIsTrackedTab() && !scriptsInjected) {

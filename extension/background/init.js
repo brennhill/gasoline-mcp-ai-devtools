@@ -7,7 +7,7 @@ import * as index from './index.js';
 import { setDebugMode, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback, } from './index.js';
 import * as stateManager from './state-manager.js';
 import * as eventListeners from './event-listeners.js';
-import { installMessageListener } from './message-handlers.js';
+import { installMessageListener, broadcastTrackingState } from './message-handlers.js';
 import * as communication from './communication.js';
 import * as storageUtils from './storage-utils.js';
 // =============================================================================
@@ -121,9 +121,13 @@ async function initializeExtensionAsync() {
             onAiWebPilotChanged: (newValue) => {
                 setAiWebPilotEnabledCache(newValue);
                 console.log('[Gasoline] AI Web Pilot cache updated from storage:', newValue);
+                // Broadcast to tracked tab for favicon flicker
+                broadcastTrackingState().catch(() => { });
             },
             onTrackedTabChanged: () => {
                 index.sendStatusPingWrapper();
+                // Broadcast to tracked tab for favicon flicker
+                broadcastTrackingState().catch(() => { });
             },
         });
         // ============= STEP 7: Install message handler =============
@@ -190,6 +194,10 @@ async function initializeExtensionAsync() {
         eventListeners.installTabRemovedListener((tabId) => {
             stateManager.clearScreenshotTimestamps(tabId);
             eventListeners.handleTrackedTabClosed(tabId, (msg) => console.log(msg));
+        });
+        // ============= STEP 9.5: Install tab updated listener =============
+        eventListeners.installTabUpdatedListener((tabId, newUrl) => {
+            eventListeners.handleTrackedTabUrlChange(tabId, newUrl, (msg) => console.log(msg));
         });
         // ============= STEP 10: Initial connection check =============
         if (index.__aiWebPilotCacheInitialized) {
