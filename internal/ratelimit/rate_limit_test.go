@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// NOTE: These tests require setupTestCapture and related functions that aren't exported.
+// Run with: go test -tags=integration ./internal/ratelimit/...
 package ratelimit
 
 import (

@@ -8,7 +8,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
+
+// Type alias for convenience in tests
+type NetworkBody = capture.NetworkBody
 
 // ============================================
 // Schema Learning Tests
@@ -72,7 +77,7 @@ func TestAPIContractValidator_LearnMultipleResponses(t *testing.T) {
 		t.Fatal("Expected established shape")
 	}
 
-	shapeMap, ok := shape.(map[string]interface{})
+	shapeMap, ok := shape.(map[string]any)
 	if !ok {
 		t.Fatal("Expected shape to be a map")
 	}
@@ -113,7 +118,7 @@ func TestAPIContractValidator_LearnMergesFields(t *testing.T) {
 
 	trackers := v.GetTrackers()
 	tracker := trackers["GET /api/users/{id}"]
-	shapeMap := tracker.EstablishedShape.(map[string]interface{})
+	shapeMap := tracker.EstablishedShape.(map[string]any)
 
 	// Shape should include all observed fields
 	if _, ok := shapeMap["id"]; !ok {
@@ -514,7 +519,7 @@ func TestAPIContractValidator_ErrorResponsesNotUpdatingShape(t *testing.T) {
 
 	// Shape should still be from success response
 	tracker := v.GetTrackers()["GET /api/users/{id}"]
-	shape := tracker.EstablishedShape.(map[string]interface{})
+	shape := tracker.EstablishedShape.(map[string]any)
 
 	if _, ok := shape["error"]; ok {
 		t.Error("Error response should not update established shape")
@@ -955,7 +960,7 @@ func TestAPIContractViolation_JSONSerialization(t *testing.T) {
 		t.Fatalf("Failed to marshal violation: %v", err)
 	}
 
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		t.Fatalf("Failed to unmarshal violation: %v", err)
 	}
@@ -1331,7 +1336,7 @@ func TestAPIContractReport_LastCalledAtRename(t *testing.T) {
 
 	// Verify JSON serialization uses last_called_at (not last_called)
 	data, _ := json.Marshal(ep)
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	_ = json.Unmarshal(data, &parsed)
 	if _, ok := parsed["last_called_at"]; !ok {
 		t.Error("Expected 'last_called_at' key in JSON output")
@@ -1427,7 +1432,7 @@ func TestAPIContractReport_ConsistencyLevels(t *testing.T) {
 
 	// Should contain keys mapping score ranges to descriptions
 	data, _ := json.Marshal(result.ConsistencyLevels)
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	_ = json.Unmarshal(data, &parsed)
 
 	// Should have at least some standard level descriptions

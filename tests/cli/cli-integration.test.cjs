@@ -7,8 +7,9 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { execSync } = require('child_process');
 const fs = require('fs');
-const path = require('path');
-const os = require('os');
+// These are used in disabled tests, keep for future use
+const _path = require('path');
+const _os = require('os');
 
 // Helper to run gasoline-mcp command
 function runCommand(args) {
@@ -88,7 +89,7 @@ test('gasoline-mcp --install --dry-run previews without writing', () => {
         assert.strictEqual(currentState, initialState[candidate], `File ${candidate} should not be modified in dry-run`);
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // Dry-run might fail if files don't exist, which is OK
   }
 });
@@ -206,7 +207,7 @@ test('CLI does not crash with empty arguments', () => {
   try {
     const result = runCommand('');
     assert.ok(typeof result.exitCode === 'number', 'Should handle empty args');
-  } catch (e) {
+  } catch (_e) {
     // Some error is OK - we just don't want a crash
     assert.ok(true, 'Handled without crashing');
   }

@@ -15,9 +15,9 @@
  * @template T The type of the resolved value
  */
 export interface DeferredPromise<T> {
-  promise: Promise<T>;
-  resolve: (value: T | PromiseLike<T>) => void;
-  reject: (reason?: unknown) => void;
+  promise: Promise<T>
+  resolve: (value: T | PromiseLike<T>) => void
+  reject: (reason?: unknown) => void
 }
 
 /**
@@ -31,15 +31,15 @@ export interface DeferredPromise<T> {
  * const result = await deferred.promise; // 42
  */
 export function createDeferredPromise<T>(): DeferredPromise<T> {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  let reject!: (reason?: unknown) => void;
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
 
   const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
+    resolve = res
+    reject = rej
+  })
 
-  return { promise, resolve, reject };
+  return { promise, resolve, reject }
 }
 
 /**
@@ -65,28 +65,24 @@ export function createDeferredPromise<T>(): DeferredPromise<T> {
  *   // Handle timeout
  * }
  */
-export async function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  fallback?: T
-): Promise<T> {
+export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback?: T): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => {
       setTimeout(() => {
         if (fallback !== undefined) {
-          reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, fallback as T));
+          reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, fallback as T))
         } else {
-          reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
+          reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`))
         }
-      }, timeoutMs);
+      }, timeoutMs)
     }),
   ]).catch((err) => {
     if (err instanceof TimeoutError && err.fallback !== undefined) {
-      return err.fallback as T;
+      return err.fallback as T
     }
-    throw err;
-  });
+    throw err
+  })
 }
 
 /**
@@ -95,10 +91,10 @@ export async function withTimeout<T>(
 export class TimeoutError extends Error {
   constructor(
     message: string,
-    public fallback?: unknown
+    public fallback?: unknown,
   ) {
-    super(message);
-    this.name = 'TimeoutError';
+    super(message)
+    this.name = 'TimeoutError'
   }
 }
 
@@ -125,10 +121,10 @@ export async function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: numb
     promise,
     new Promise<T>((_, reject) => {
       setTimeout(() => {
-        reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
+        reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`))
+      }, timeoutMs)
     }),
-  ]);
+  ])
 }
 
 /**
@@ -174,16 +170,16 @@ export async function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: numb
 export async function messageWithTimeout<T>(
   sender: () => Promise<T>,
   timeoutMs: number,
-  cleanup?: () => void
+  cleanup?: () => void,
 ): Promise<T> {
   const timeoutHandle = setTimeout(() => {
-    cleanup?.();
-  }, timeoutMs);
+    cleanup?.()
+  }, timeoutMs)
 
   try {
-    return await promiseWithTimeout(sender(), timeoutMs);
+    return await promiseWithTimeout(sender(), timeoutMs)
   } finally {
-    clearTimeout(timeoutHandle);
+    clearTimeout(timeoutHandle)
   }
 }
 
@@ -210,27 +206,27 @@ export async function promiseRaceWithCleanup<T>(
   promise: Promise<T>,
   timeoutMs: number,
   timeoutFallback: T | undefined,
-  cleanup?: () => void
+  cleanup?: () => void,
 ): Promise<T> {
   try {
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
         setTimeout(() => {
-          cleanup?.();
+          cleanup?.()
           if (timeoutFallback !== undefined) {
-            reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
+            reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback))
           } else {
-            reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
+            reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`))
           }
-        }, timeoutMs);
+        }, timeoutMs)
       }),
-    ]);
+    ])
   } catch (err) {
     if (err instanceof TimeoutError && err.fallback !== undefined) {
-      return err.fallback as T;
+      return err.fallback as T
     }
-    throw err;
+    throw err
   }
 }
 
@@ -251,12 +247,8 @@ export async function promiseRaceWithCleanup<T>(
  *   { ok: false, status: 408 } // fallback
  * );
  */
-export async function executeWithTimeout<T>(
-  callback: () => Promise<T>,
-  timeoutMs: number,
-  fallback?: T
-): Promise<T> {
-  return withTimeout(callback(), timeoutMs, fallback);
+export async function executeWithTimeout<T>(callback: () => Promise<T>, timeoutMs: number, fallback?: T): Promise<T> {
+  return withTimeout(callback(), timeoutMs, fallback)
 }
 
 /**
@@ -271,8 +263,8 @@ export async function executeWithTimeout<T>(
  */
 export function delay(delayMs: number): Promise<void> {
   return new Promise((resolve) => {
-    setTimeout(resolve, delayMs);
-  });
+    setTimeout(resolve, delayMs)
+  })
 }
 
 /**
@@ -295,23 +287,23 @@ export function delay(delayMs: number): Promise<void> {
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxAttempts: number = 3,
-  initialDelayMs: number = 100
+  initialDelayMs: number = 100,
 ): Promise<T> {
-  let lastError: unknown;
+  let lastError: unknown
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      return await fn();
+      return await fn()
     } catch (err) {
-      lastError = err;
+      lastError = err
       if (attempt < maxAttempts - 1) {
-        const delayMs = initialDelayMs * Math.pow(2, attempt);
-        await delay(delayMs);
+        const delayMs = initialDelayMs * Math.pow(2, attempt)
+        await delay(delayMs)
       }
     }
   }
 
-  throw lastError;
+  throw lastError
 }
 
 /**
@@ -332,34 +324,34 @@ export async function retryWithBackoff<T>(
  * }
  */
 export function makeCancellable<T>(promise: Promise<T>): {
-  promise: Promise<T>;
-  cancel: () => void;
+  promise: Promise<T>
+  cancel: () => void
 } {
-  let cancelled = false;
-  let rejectFn: (reason?: unknown) => void;
+  let cancelled = false
+  let rejectFn: (reason?: unknown) => void
 
   const wrappedPromise = new Promise<T>((resolve, reject) => {
-    rejectFn = reject;
+    rejectFn = reject
     promise
       .then((value) => {
         if (!cancelled) {
-          resolve(value);
+          resolve(value)
         }
       })
       .catch((err) => {
         if (!cancelled) {
-          reject(err);
+          reject(err)
         }
-      });
-  });
+      })
+  })
 
   return {
     promise: wrappedPromise,
     cancel: () => {
-      cancelled = true;
-      rejectFn(new Error('cancelled'));
+      cancelled = true
+      rejectFn(new Error('cancelled'))
     },
-  };
+  }
 }
 
 /**
@@ -377,23 +369,23 @@ export function makeCancellable<T>(promise: Promise<T>): {
 export async function waitFor(
   condition: () => boolean,
   timeoutMs: number,
-  pollIntervalMs: number = 100
+  pollIntervalMs: number = 100,
 ): Promise<void> {
-  const startTime = Date.now();
+  const startTime = Date.now()
 
   return new Promise((resolve, reject) => {
     const check = (): void => {
       if (condition()) {
-        resolve();
+        resolve()
       } else if (Date.now() - startTime > timeoutMs) {
-        reject(new TimeoutError(`Condition not met within ${timeoutMs}ms`));
+        reject(new TimeoutError(`Condition not met within ${timeoutMs}ms`))
       } else {
-        setTimeout(check, pollIntervalMs);
+        setTimeout(check, pollIntervalMs)
       }
-    };
+    }
 
-    check();
-  });
+    check()
+  })
 }
 
 /**
@@ -413,10 +405,10 @@ export async function waitFor(
  */
 export async function racePromises<T>(promises: Promise<T>[]): Promise<T> {
   if (promises.length === 0) {
-    throw new Error('racePromises requires at least one promise');
+    throw new Error('racePromises requires at least one promise')
   }
 
-  return Promise.race(promises);
+  return Promise.race(promises)
 }
 
 /**
@@ -447,39 +439,39 @@ export async function executeWithTimeoutAndCleanup<T>(
   callback: () => Promise<T>,
   timeoutMs: number,
   fallback?: T,
-  cleanup?: () => void
+  cleanup?: () => void,
 ): Promise<T> {
-  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null
 
   try {
     return await new Promise<T>((resolve, reject) => {
       timeoutHandle = setTimeout(() => {
-        cleanup?.();
+        cleanup?.()
         if (fallback !== undefined) {
-          resolve(fallback);
+          resolve(fallback)
         } else {
-          reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
+          reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`))
         }
-      }, timeoutMs);
+      }, timeoutMs)
 
       callback()
         .then((result) => {
           if (timeoutHandle !== null) {
-            clearTimeout(timeoutHandle);
+            clearTimeout(timeoutHandle)
           }
-          resolve(result);
+          resolve(result)
         })
         .catch((err) => {
           if (timeoutHandle !== null) {
-            clearTimeout(timeoutHandle);
+            clearTimeout(timeoutHandle)
           }
-          reject(err);
-        });
-    });
+          reject(err)
+        })
+    })
   } catch (err) {
     if (timeoutHandle !== null) {
-      clearTimeout(timeoutHandle);
+      clearTimeout(timeoutHandle)
     }
-    throw err;
+    throw err
   }
 }

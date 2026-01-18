@@ -994,7 +994,7 @@ func TestHandleDiffSessions_Capture(t *testing.T) {
 	}
 	sm := NewSessionManager(10, mock)
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"action": "capture",
 		"name":   "test-snap",
 	}
@@ -1006,7 +1006,7 @@ func TestHandleDiffSessions_Capture(t *testing.T) {
 	}
 
 	resultJSON, _ := json.Marshal(result)
-	var response map[string]interface{}
+	var response map[string]any
 	json.Unmarshal(resultJSON, &response)
 
 	if response["action"] != "captured" {
@@ -1025,7 +1025,7 @@ func TestHandleDiffSessions_List(t *testing.T) {
 	sm.Capture("snap-1", "")
 	sm.Capture("snap-2", "")
 
-	params := map[string]interface{}{"action": "list"}
+	params := map[string]any{"action": "list"}
 	paramsJSON, _ := json.Marshal(params)
 
 	result, err := sm.HandleTool(json.RawMessage(paramsJSON))
@@ -1034,13 +1034,13 @@ func TestHandleDiffSessions_List(t *testing.T) {
 	}
 
 	resultJSON, _ := json.Marshal(result)
-	var response map[string]interface{}
+	var response map[string]any
 	json.Unmarshal(resultJSON, &response)
 
 	if response["action"] != "listed" {
 		t.Errorf("Expected action 'listed', got %v", response["action"])
 	}
-	snapshots, ok := response["snapshots"].([]interface{})
+	snapshots, ok := response["snapshots"].([]any)
 	if !ok {
 		t.Fatal("Expected snapshots array in response")
 	}
@@ -1059,7 +1059,7 @@ func TestHandleDiffSessions_Compare(t *testing.T) {
 	mock.consoleErrors = []SnapshotError{{Type: "console", Message: "err", Count: 1}}
 	sm.Capture("after", "")
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"action":    "compare",
 		"compare_a": "before",
 		"compare_b": "after",
@@ -1072,7 +1072,7 @@ func TestHandleDiffSessions_Compare(t *testing.T) {
 	}
 
 	resultJSON, _ := json.Marshal(result)
-	var response map[string]interface{}
+	var response map[string]any
 	json.Unmarshal(resultJSON, &response)
 
 	if response["action"] != "compared" {
@@ -1087,7 +1087,7 @@ func TestHandleDiffSessions_Delete(t *testing.T) {
 
 	sm.Capture("to-delete", "")
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"action": "delete",
 		"name":   "to-delete",
 	}
@@ -1099,7 +1099,7 @@ func TestHandleDiffSessions_Delete(t *testing.T) {
 	}
 
 	resultJSON, _ := json.Marshal(result)
-	var response map[string]interface{}
+	var response map[string]any
 	json.Unmarshal(resultJSON, &response)
 
 	if response["action"] != "deleted" {
@@ -1117,7 +1117,7 @@ func TestHandleDiffSessions_InvalidAction(t *testing.T) {
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
-	params := map[string]interface{}{"action": "invalid"}
+	params := map[string]any{"action": "invalid"}
 	paramsJSON, _ := json.Marshal(params)
 
 	_, err := sm.HandleTool(json.RawMessage(paramsJSON))
@@ -1131,7 +1131,7 @@ func TestHandleDiffSessions_MissingAction(t *testing.T) {
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
-	params := map[string]interface{}{}
+	params := map[string]any{}
 	paramsJSON, _ := json.Marshal(params)
 
 	_, err := sm.HandleTool(json.RawMessage(paramsJSON))
@@ -1145,7 +1145,7 @@ func TestHandleDiffSessions_CaptureRequiresName(t *testing.T) {
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
-	params := map[string]interface{}{"action": "capture"}
+	params := map[string]any{"action": "capture"}
 	paramsJSON, _ := json.Marshal(params)
 
 	_, err := sm.HandleTool(json.RawMessage(paramsJSON))
@@ -1159,7 +1159,7 @@ func TestHandleDiffSessions_CompareRequiresParams(t *testing.T) {
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
-	params := map[string]interface{}{"action": "compare"}
+	params := map[string]any{"action": "compare"}
 	paramsJSON, _ := json.Marshal(params)
 
 	_, err := sm.HandleTool(json.RawMessage(paramsJSON))
@@ -1179,7 +1179,7 @@ func TestHandleDiffSessions_URLFilter(t *testing.T) {
 	}
 	sm := NewSessionManager(10, mock)
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"action":     "capture",
 		"name":       "filtered",
 		"url": "/api/",

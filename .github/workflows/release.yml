@@ -48,6 +48,12 @@ jobs:
 
       - name: Copy binaries to NPM packages
         run: |
+          mkdir -p npm/darwin-arm64/bin
+          mkdir -p npm/darwin-x64/bin
+          mkdir -p npm/linux-arm64/bin
+          mkdir -p npm/linux-x64/bin
+          mkdir -p npm/win32-x64/bin
+
           cp dist/gasoline-darwin-arm64 npm/darwin-arm64/bin/gasoline
           cp dist/gasoline-darwin-x64 npm/darwin-x64/bin/gasoline
           cp dist/gasoline-linux-arm64 npm/linux-arm64/bin/gasoline
@@ -56,12 +62,25 @@ jobs:
 
       - name: Publish NPM packages
         run: |
-          cd npm/darwin-arm64 && npm publish --access public
-          cd ../darwin-x64 && npm publish --access public
-          cd ../linux-arm64 && npm publish --access public
-          cd ../linux-x64 && npm publish --access public
-          cd ../win32-x64 && npm publish --access public
-          cd ../gasoline-mcp && npm publish --access public
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+
+          cd npm/darwin-arm64
+          npm publish --access public
+
+          cd ../darwin-x64
+          npm publish --access public
+
+          cd ../linux-arm64
+          npm publish --access public
+
+          cd ../linux-x64
+          npm publish --access public
+
+          cd ../win32-x64
+          npm publish --access public
+
+          cd ../gasoline-mcp
+          npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

@@ -55,7 +55,8 @@ jobs:
           fi
 
           # Fail if toolObserveCommandResult doesn't call GetCommandResult
-          if ! grep -A 20 'func (h \*ToolHandler) toolObserveCommandResult' cmd/dev-console/tools.go | grep -q 'GetCommandResult'; then
+          # Note: tools.go was split into tools_*.go files
+          if ! grep -rA 20 'func (h \*ToolHandler) toolObserveCommandResult' cmd/dev-console/tools_*.go | grep -q 'GetCommandResult'; then
             echo "❌ STUB DETECTED in toolObserveCommandResult"
             exit 1
           fi
@@ -72,7 +73,9 @@ jobs:
           CRITICAL_FILES=(
             "internal/capture/queries.go"
             "internal/capture/handlers.go"
-            "cmd/dev-console/tools.go"
+            "cmd/dev-console/tools_core.go"
+            "cmd/dev-console/tools_observe.go"
+            "cmd/dev-console/tools_interact.go"
           )
 
           for file in "${CRITICAL_FILES[@]}"; do

@@ -12,6 +12,6 @@ export const DebugCategory = {
   SETTINGS: 'settings' as const,
   SOURCEMAP: 'sourcemap' as const,
   QUERY: 'query' as const,
-};
+}
 
-export type DebugCategoryType = typeof DebugCategory[keyof typeof DebugCategory];
+export type DebugCategoryType = (typeof DebugCategory)[keyof typeof DebugCategory]

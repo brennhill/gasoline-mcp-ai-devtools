@@ -145,4 +145,4 @@ export {
   type RestoreStateResult,
   type RestoredCounts,
   type HighlightResult,
-} from './inject/index';
+} from './inject/index'

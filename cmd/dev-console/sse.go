@@ -95,7 +95,7 @@ func (r *SSERegistry) Get(sessionID string) (*SSEConnection, bool) {
 }
 
 // SendMessage writes an SSE message event to a specific session
-func (r *SSERegistry) SendMessage(sessionID string, data interface{}) error {
+func (r *SSERegistry) SendMessage(sessionID string, data any) error {
 	conn, exists := r.Get(sessionID)
 	if !exists {
 		return fmt.Errorf("session not found: %s", sessionID)
@@ -110,7 +110,7 @@ func (r *SSERegistry) SendMessage(sessionID string, data interface{}) error {
 }
 
 // BroadcastNotification sends an MCP notification to all connected clients
-func (r *SSERegistry) BroadcastNotification(notification interface{}) {
+func (r *SSERegistry) BroadcastNotification(notification any) {
 	jsonData, err := json.Marshal(notification)
 	if err != nil {
 		// Log error but don't fail broadcast

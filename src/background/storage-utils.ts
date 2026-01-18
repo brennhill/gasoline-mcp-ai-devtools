@@ -19,18 +19,27 @@
  * This module handles graceful degradation for older versions
  */
 
-import type { StorageAreaName } from '../types';
+import type { StorageAreaName, ChromeStorageWithSession } from '../types'
 
 // =============================================================================
 // FEATURE DETECTION
 // =============================================================================
 
 /**
+ * Type-safe access to chrome.storage with session storage support
+ * Chrome.storage.session is only available in Chrome 102+
+ */
+function getStorageWithSession(): ChromeStorageWithSession | null {
+  if (typeof chrome === 'undefined' || !chrome.storage) return null
+  return chrome.storage as unknown as ChromeStorageWithSession
+}
+
+/**
  * Check if chrome.storage.session is available (Chrome 102+)
  */
 function isSessionStorageAvailable(): boolean {
-  if (typeof chrome === 'undefined' || !chrome.storage) return false;
-  return (chrome.storage as any).session !== undefined;
+  const storage = getStorageWithSession()
+  return storage !== null && storage.session !== undefined
 }
 
 // =============================================================================
@@ -42,14 +51,15 @@ function isSessionStorageAvailable(): boolean {
  * Falls back to memory for older Chrome versions
  */
 export function setSessionValue(key: string, value: unknown, callback?: () => void): void {
-  if (!isSessionStorageAvailable()) {
+  const storage = getStorageWithSession()
+  if (!storage || !storage.session) {
     // Graceful degradation: store in memory (will be lost on service worker restart anyway)
-    if (callback) callback();
-    return;
+    if (callback) callback()
+    return
   }
-  (chrome.storage as any).session.set({ [key]: value }, () => {
-    if (callback) callback();
-  });
+  storage.session.set({ [key]: value }, () => {
+    if (callback) callback()
+  })
 }
 
 /**
@@ -57,39 +67,42 @@ export function setSessionValue(key: string, value: unknown, callback?: () => vo
  * Falls back to undefined for older Chrome versions
  */
 export function getSessionValue(key: string, callback: (value: unknown) => void): void {
-  if (!isSessionStorageAvailable()) {
-    callback(undefined);
-    return;
+  const storage = getStorageWithSession()
+  if (!storage || !storage.session) {
+    callback(undefined)
+    return
   }
-  (chrome.storage as any).session.get([key], (result: Record<string, unknown>) => {
-    callback(result[key]);
-  });
+  storage.session.get([key], (result: Record<string, unknown>) => {
+    callback(result[key])
+  })
 }
 
 /**
  * Remove an ephemeral value from session storage (callback-based)
  */
 export function removeSessionValue(key: string, callback?: () => void): void {
-  if (!isSessionStorageAvailable()) {
-    if (callback) callback();
-    return;
+  const storage = getStorageWithSession()
+  if (!storage || !storage.session) {
+    if (callback) callback()
+    return
   }
-  (chrome.storage as any).session.remove([key], () => {
-    if (callback) callback();
-  });
+  storage.session.remove([key], () => {
+    if (callback) callback()
+  })
 }
 
 /**
  * Clear all ephemeral values from session storage (callback-based)
  */
 export function clearSessionStorage(callback?: () => void): void {
-  if (!isSessionStorageAvailable()) {
-    if (callback) callback();
-    return;
+  const storage = getStorageWithSession()
+  if (!storage || !storage.session) {
+    if (callback) callback()
+    return
   }
-  (chrome.storage as any).session.clear(() => {
-    if (callback) callback();
-  });
+  storage.session.clear(() => {
+    if (callback) callback()
+  })
 }
 
 // =============================================================================
@@ -101,15 +114,15 @@ export function clearSessionStorage(callback?: () => void): void {
  */
 export function setLocalValue(key: string, value: unknown, callback?: () => void): void {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    if (callback) callback();
-    return;
+    if (callback) callback()
+    return
   }
   chrome.storage.local.set({ [key]: value }, () => {
     if (chrome.runtime.lastError) {
-      console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message);
+      console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message)
     }
-    if (callback) callback();
-  });
+    if (callback) callback()
+  })
 }
 
 /**
@@ -117,17 +130,17 @@ export function setLocalValue(key: string, value: unknown, callback?: () => void
  */
 export function getLocalValue(key: string, callback: (value: unknown) => void): void {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    callback(undefined);
-    return;
+    callback(undefined)
+    return
   }
   chrome.storage.local.get([key], (result: Record<string, unknown>) => {
     if (chrome.runtime.lastError) {
-      console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message);
-      callback(undefined);
-      return;
+      console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message)
+      callback(undefined)
+      return
     }
-    callback(result[key]);
-  });
+    callback(result[key])
+  })
 }
 
 /**
@@ -135,12 +148,12 @@ export function getLocalValue(key: string, callback: (value: unknown) => void): 
  */
 export function removeLocalValue(key: string, callback?: () => void): void {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    if (callback) callback();
-    return;
+    if (callback) callback()
+    return
   }
   chrome.storage.local.remove([key], () => {
-    if (callback) callback();
-  });
+    if (callback) callback()
+  })
 }
 
 // =============================================================================
@@ -152,55 +165,42 @@ export function removeLocalValue(key: string, callback?: () => void): void {
  * For ephemeral data, prefers session storage (Chrome 102+), falls back to memory
  * For persistent data, uses local storage
  */
-export function setValue(
-  key: string,
-  value: unknown,
-  areaName?: StorageAreaName,
-  callback?: () => void
-): void {
-  const area = areaName || 'session';
+export function setValue(key: string, value: unknown, areaName?: StorageAreaName, callback?: () => void): void {
+  const area = areaName || 'session'
   if (area === 'session') {
-    setSessionValue(key, value, callback);
+    setSessionValue(key, value, callback)
   } else if (area === 'local') {
-    setLocalValue(key, value, callback);
+    setLocalValue(key, value, callback)
   } else {
-    if (callback) callback();
+    if (callback) callback()
   }
 }
 
 /**
  * Get a value from the appropriate storage area (callback-based)
  */
-export function getValue(
-  key: string,
-  areaName: StorageAreaName | undefined,
-  callback: (value: unknown) => void
-): void {
-  const area = areaName || 'session';
+export function getValue(key: string, areaName: StorageAreaName | undefined, callback: (value: unknown) => void): void {
+  const area = areaName || 'session'
   if (area === 'session') {
-    getSessionValue(key, callback);
+    getSessionValue(key, callback)
   } else if (area === 'local') {
-    getLocalValue(key, callback);
+    getLocalValue(key, callback)
   } else {
-    callback(undefined);
+    callback(undefined)
   }
 }
 
 /**
  * Remove a value from the appropriate storage area (callback-based)
  */
-export function removeValue(
-  key: string,
-  areaName?: StorageAreaName,
-  callback?: () => void
-): void {
-  const area = areaName || 'session';
+export function removeValue(key: string, areaName?: StorageAreaName, callback?: () => void): void {
+  const area = areaName || 'session'
   if (area === 'session') {
-    removeSessionValue(key, callback);
+    removeSessionValue(key, callback)
   } else if (area === 'local') {
-    removeLocalValue(key, callback);
+    removeLocalValue(key, callback)
   } else {
-    if (callback) callback();
+    if (callback) callback()
   }
 }
 
@@ -212,22 +212,22 @@ export function removeValue(
  * Get diagnostic info about storage availability
  */
 export function getStorageDiagnostics(): {
-  sessionStorageAvailable: boolean;
-  localStorageAvailable: boolean;
-  browserVersion: string;
+  sessionStorageAvailable: boolean
+  localStorageAvailable: boolean
+  browserVersion: string
 } {
   return {
     sessionStorageAvailable: isSessionStorageAvailable(),
     localStorageAvailable: typeof chrome !== 'undefined' && !!chrome.storage?.local,
     browserVersion: navigator.userAgent,
-  };
+  }
 }
 
 /**
  * State version key for recovery detection
  */
-const STATE_VERSION_KEY = 'gasoline_state_version';
-const CURRENT_STATE_VERSION = '1.0.0';
+const STATE_VERSION_KEY = 'gasoline_state_version'
+const CURRENT_STATE_VERSION = '1.0.0'
 
 /**
  * Check if service worker was restarted (state version mismatch)
@@ -236,17 +236,17 @@ const CURRENT_STATE_VERSION = '1.0.0';
 export function wasServiceWorkerRestarted(callback: (wasRestarted: boolean) => void): void {
   if (!isSessionStorageAvailable()) {
     // Can't detect restart without session storage
-    callback(false);
-    return;
+    callback(false)
+    return
   }
   getSessionValue(STATE_VERSION_KEY, (storedVersion) => {
-    callback(storedVersion !== CURRENT_STATE_VERSION);
-  });
+    callback(storedVersion !== CURRENT_STATE_VERSION)
+  })
 }
 
 /**
  * Mark the current state version (call on init) - callback-based
  */
 export function markStateVersion(callback?: () => void): void {
-  setSessionValue(STATE_VERSION_KEY, CURRENT_STATE_VERSION, callback);
+  setSessionValue(STATE_VERSION_KEY, CURRENT_STATE_VERSION, callback)
 }

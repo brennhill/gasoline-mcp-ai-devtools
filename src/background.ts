@@ -13,8 +13,8 @@
  * - background/polling.ts: Polling loops (internal)
  */
 
-import { initializeExtension } from './background/init';
-import { EXTENSION_SESSION_ID } from './background/index';
+import { initializeExtension } from './background/init'
+import { EXTENSION_SESSION_ID } from './background/index'
 
 // =============================================================================
 // === PUBLIC API: CONSTANTS (Test & Init)
@@ -29,10 +29,10 @@ export {
   MEMORY_AVG_WS_EVENT_SIZE,
   MEMORY_AVG_NETWORK_BODY_SIZE,
   MEMORY_AVG_ACTION_SIZE,
-} from './background/state-manager';
+} from './background/state-manager'
 
 // Rate limiting constants
-export { RATE_LIMIT_CONFIG } from './background/communication';
+export { RATE_LIMIT_CONFIG } from './background/communication'
 
 // =============================================================================
 // === PUBLIC API: CORE STATE
@@ -47,18 +47,13 @@ export {
   screenshotOnError,
   extensionLogQueue,
   DebugCategory,
-} from './background/index';
+} from './background/index'
 
 // =============================================================================
 // === PUBLIC API: DEBUG LOGGING
 // =============================================================================
 
-export {
-  debugLog,
-  getDebugLog,
-  clearDebugLog,
-  exportDebugLog,
-} from './background/index';
+export { debugLog, getDebugLog, clearDebugLog, exportDebugLog } from './background/index'
 
 // =============================================================================
 // === PUBLIC API: BATCHERS & CIRCUIT BREAKER
@@ -71,7 +66,7 @@ export {
   enhancedActionBatcher,
   networkBodyBatcher,
   perfBatcher,
-} from './background/index';
+} from './background/index'
 
 // =============================================================================
 // === PUBLIC API: CORE HANDLERS
@@ -83,7 +78,7 @@ export {
   isConnectionCheckRunning,
   checkConnectionAndUpdate,
   applyCaptureOverrides,
-} from './background/index';
+} from './background/index'
 
 // =============================================================================
 // === PUBLIC API: POLLING WRAPPERS
@@ -95,7 +90,7 @@ export {
   postNetworkWaterfall,
   postExtensionLogsWrapper,
   sendStatusPingWrapper,
-} from './background/index';
+} from './background/index'
 
 // =============================================================================
 // === PUBLIC API: VERSION CHECKING
@@ -109,17 +104,13 @@ export {
   updateVersionBadge,
   getUpdateInfo,
   resetVersionCheck,
-} from './background/version-check';
+} from './background/version-check'
 
 // =============================================================================
 // === PUBLIC API: PENDING QUERIES & PILOT
 // =============================================================================
 
-export {
-  handlePendingQuery,
-  handlePilotCommand,
-  isAiWebPilotEnabled,
-} from './background/index';
+export { handlePendingQuery, handlePilotCommand, isAiWebPilotEnabled } from './background/index'
 
 // =============================================================================
 // === PUBLIC API: STATE MANAGEMENT (Tests, Initialization)
@@ -136,7 +127,7 @@ export {
   checkMemoryPressure,
   getMemoryPressureState,
   resetMemoryPressureState,
-} from './background/state-manager';
+} from './background/state-manager'
 
 // Context and annotations
 export {
@@ -144,14 +135,10 @@ export {
   checkContextAnnotations,
   getContextWarning,
   resetContextWarning,
-} from './background/state-manager';
+} from './background/state-manager'
 
 // Source map management
-export {
-  setSourceMapEnabled,
-  isSourceMapEnabled,
-  clearSourceMapCache,
-} from './background/state-manager';
+export { setSourceMapEnabled, isSourceMapEnabled, clearSourceMapCache } from './background/state-manager'
 
 // =============================================================================
 // === PUBLIC API: COMMUNICATION (Tests)
@@ -167,11 +154,9 @@ export {
   updateBadge,
   formatLogEntry,
   shouldCaptureLog,
-} from './background/communication';
+} from './background/communication'
 
-export {
-  postQueryResult,
-} from './background/server';
+export { postQueryResult } from './background/server'
 
 // =============================================================================
 // === PUBLIC API: STATE SNAPSHOTS (Initialization)
@@ -182,7 +167,7 @@ export {
   loadStateSnapshot,
   listStateSnapshots,
   deleteStateSnapshot,
-} from './background/message-handlers';
+} from './background/message-handlers'
 
 // =============================================================================
 // === INTERNAL USE (Underscore Prefix)
@@ -195,16 +180,16 @@ export {
   __aiWebPilotCacheInitialized,
   __pilotInitCallback,
   _resetPilotCacheForTesting,
-} from './background/index';
+} from './background/index'
 
 // =============================================================================
 // INITIALIZATION
 // =============================================================================
 
-const _moduleLoadTime = performance.now();
-console.log(`[DIAGNOSTIC] Module load start at ${_moduleLoadTime.toFixed(2)}ms (${new Date().toISOString()})`);
+const _moduleLoadTime = performance.now()
+console.log(`[DIAGNOSTIC] Module load start at ${_moduleLoadTime.toFixed(2)}ms (${new Date().toISOString()})`)
 
-console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`);
+console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`)
 
 // Initialize the extension
-initializeExtension();
+initializeExtension()

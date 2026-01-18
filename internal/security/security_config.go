@@ -41,9 +41,10 @@ func InitMode() {
 		return
 	}
 
-	// TODO: Add isStdinStdoutPipe() detection
+	// TODO(future): Add isStdinStdoutPipe() detection for better MCP mode detection
+	// Currently, we assume interactive mode when not explicitly in MCP mode via env var
 	isMCPMode = false
-	isInteractive = true // For now, assume interactive if not MCP mode
+	isInteractive = true
 }
 
 // IsMCPMode returns true if running as MCP server
@@ -125,7 +126,8 @@ func AddToWhitelist(origin string) error {
 		return errors.New("not in interactive mode - edit ~/.gasoline/security.json manually")
 	}
 
-	// TODO: Implement interactive confirmation and config file update
+	// TODO(future): Implement interactive confirmation and config file update
+	// For now, users must manually edit ~/.gasoline/security.json
 	return fmt.Errorf("AddToWhitelist not yet fully implemented for origin: %s", origin)
 }
 
@@ -140,7 +142,8 @@ func SetMinSeverity(severity string) error {
 		return errors.New("not in interactive mode - edit ~/.gasoline/security.json manually")
 	}
 
-	// TODO: Implement interactive confirmation and config file update
+	// TODO(future): Implement interactive confirmation and config file update
+	// For now, users must manually edit ~/.gasoline/security.json
 	return fmt.Errorf("SetMinSeverity not yet fully implemented for severity: %s", severity)
 }
 
@@ -155,7 +158,8 @@ func ClearWhitelist() error {
 		return errors.New("not in interactive mode - edit ~/.gasoline/security.json manually")
 	}
 
-	// TODO: Implement interactive confirmation and config file update
+	// TODO(future): Implement interactive confirmation and config file update
+	// For now, users must manually edit ~/.gasoline/security.json
 	return errors.New("ClearWhitelist not yet fully implemented")
 }
 
@@ -174,7 +178,8 @@ func LogSecurityEvent(event SecurityAuditEvent) {
 
 	securityAuditLog = append(securityAuditLog, event)
 
-	// TODO: Persist to ~/.gasoline/security-audit.jsonl
+	// TODO(future): Persist to ~/.gasoline/security-audit.jsonl for audit trail across sessions
+	// Currently, audit log is in-memory only and cleared on restart
 }
 
 // GetSecurityAuditEvents returns all security audit events

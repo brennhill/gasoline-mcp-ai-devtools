@@ -11,69 +11,58 @@ import type {
   WaterfallEntry,
   PerformanceMark,
   PerformanceMeasure,
-} from '../types/index';
+} from '../types/index'
 
 import {
   setContextAnnotation,
   removeContextAnnotation,
   clearContextAnnotations,
   getContextAnnotations,
-} from '../lib/context';
+} from '../lib/context'
 import {
   computeSelectors,
   recordEnhancedAction,
   getEnhancedActionBuffer,
   clearEnhancedActionBuffer,
   generatePlaywrightScript,
-} from '../lib/reproduction';
-import {
-  getActionBuffer,
-  clearActionBuffer,
-  setActionCaptureEnabled,
-} from '../lib/actions';
-import {
-  getNetworkWaterfall,
-  setNetworkWaterfallEnabled,
-} from '../lib/network';
-import {
-  getPerformanceMarks,
-  getPerformanceMeasures,
-  setPerformanceMarksEnabled,
-} from '../lib/performance';
-import { enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot } from '../lib/ai-context';
+} from '../lib/reproduction'
+import { getActionBuffer, clearActionBuffer, setActionCaptureEnabled } from '../lib/actions'
+import { getNetworkWaterfall, setNetworkWaterfallEnabled } from '../lib/network'
+import { getPerformanceMarks, getPerformanceMeasures, setPerformanceMarksEnabled } from '../lib/performance'
+import { enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot } from '../lib/ai-context'
 
 /**
  * GasolineAPI interface exposed on window.__gasoline
  */
 export interface GasolineAPI {
-  annotate(key: string, value: unknown): void;
-  removeAnnotation(key: string): void;
-  clearAnnotations(): void;
-  getContext(): Record<string, unknown> | null;
-  getActions(): ActionEntry[];
-  clearActions(): void;
-  setActionCapture(enabled: boolean): void;
-  setNetworkWaterfall(enabled: boolean): void;
-  getNetworkWaterfall(options?: { since?: number; initiatorTypes?: string[] }): WaterfallEntry[];
-  setPerformanceMarks(enabled: boolean): void;
-  getMarks(options?: { since?: number }): PerformanceMark[];
-  getMeasures(options?: { since?: number }): PerformanceMeasure[];
-  enrichError(error: LogEntry): Promise<LogEntry>;
-  setAiContext(enabled: boolean): void;
-  setStateSnapshot(enabled: boolean): void;
-  recordAction(type: string, element: Element, opts?: Record<string, unknown>): void;
-  getEnhancedActions(): EnhancedAction[];
-  clearEnhancedActions(): void;
-  generateScript(actions?: EnhancedAction[], opts?: Record<string, unknown>): string;
-  getSelectors(element: Element): SelectorStrategies;
-  setInputValue(selector: string, value: string | boolean): boolean;
-  version: string;
+  annotate(key: string, value: unknown): void
+  removeAnnotation(key: string): void
+  clearAnnotations(): void
+  getContext(): Record<string, unknown> | null
+  getActions(): ActionEntry[]
+  clearActions(): void
+  setActionCapture(enabled: boolean): void
+  setNetworkWaterfall(enabled: boolean): void
+  getNetworkWaterfall(options?: { since?: number; initiatorTypes?: string[] }): WaterfallEntry[]
+  setPerformanceMarks(enabled: boolean): void
+  getMarks(options?: { since?: number }): PerformanceMark[]
+  getMeasures(options?: { since?: number }): PerformanceMeasure[]
+  enrichError(error: LogEntry): Promise<LogEntry>
+  setAiContext(enabled: boolean): void
+  setStateSnapshot(enabled: boolean): void
+  recordAction(type: string, element: Element, opts?: Record<string, unknown>): void
+  getEnhancedActions(): EnhancedAction[]
+  clearEnhancedActions(): void
+  generateScript(opts?: Record<string, unknown>): string
+  getSelectors(element: Element): SelectorStrategies
+  setInputValue(selector: string, value: string | boolean): boolean
+  version: string
 }
 
 // Extend Window interface for __gasoline
 declare global {
   interface Window {
-    __gasoline?: GasolineAPI;
+    __gasoline?: GasolineAPI
   }
 }
 
@@ -81,7 +70,7 @@ declare global {
  * Install the window.__gasoline API for developers to interact with Gasoline
  */
 export function installGasolineAPI(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return
 
   window.__gasoline = {
     /**
@@ -92,7 +81,7 @@ export function installGasolineAPI(): void {
      * window.__gasoline.annotate('checkout-flow', { step: 'payment', items: 3 })
      */
     annotate(key: string, value: unknown): boolean {
-      return setContextAnnotation(key, value);
+      return setContextAnnotation(key, value)
     },
 
     /**
@@ -100,14 +89,14 @@ export function installGasolineAPI(): void {
      * @param key - Annotation key to remove
      */
     removeAnnotation(key: string): boolean {
-      return removeContextAnnotation(key);
+      return removeContextAnnotation(key)
     },
 
     /**
      * Clear all context annotations
      */
     clearAnnotations(): void {
-      clearContextAnnotations();
+      clearContextAnnotations()
     },
 
     /**
@@ -115,7 +104,7 @@ export function installGasolineAPI(): void {
      * @returns Current annotations or null if none
      */
     getContext(): Record<string, unknown> | null {
-      return getContextAnnotations();
+      return getContextAnnotations()
     },
 
     /**
@@ -123,14 +112,14 @@ export function installGasolineAPI(): void {
      * @returns Recent user actions
      */
     getActions(): ActionEntry[] {
-      return getActionBuffer() as unknown as ActionEntry[];
+      return getActionBuffer() as unknown as ActionEntry[]
     },
 
     /**
      * Clear the user action replay buffer
      */
     clearActions(): void {
-      clearActionBuffer();
+      clearActionBuffer()
     },
 
     /**
@@ -138,7 +127,7 @@ export function installGasolineAPI(): void {
      * @param enabled - Whether to capture user actions
      */
     setActionCapture(enabled: boolean): void {
-      setActionCaptureEnabled(enabled);
+      setActionCaptureEnabled(enabled)
     },
 
     /**
@@ -146,7 +135,7 @@ export function installGasolineAPI(): void {
      * @param enabled - Whether to capture network waterfall
      */
     setNetworkWaterfall(enabled: boolean): void {
-      setNetworkWaterfallEnabled(enabled);
+      setNetworkWaterfallEnabled(enabled)
     },
 
     /**
@@ -155,7 +144,7 @@ export function installGasolineAPI(): void {
      * @returns Network waterfall entries
      */
     getNetworkWaterfall(options?: { since?: number; initiatorTypes?: string[] }): WaterfallEntry[] {
-      return getNetworkWaterfall(options);
+      return getNetworkWaterfall(options)
     },
 
     /**
@@ -163,7 +152,7 @@ export function installGasolineAPI(): void {
      * @param enabled - Whether to capture performance marks
      */
     setPerformanceMarks(enabled: boolean): void {
-      setPerformanceMarksEnabled(enabled);
+      setPerformanceMarksEnabled(enabled)
     },
 
     /**
@@ -172,7 +161,7 @@ export function installGasolineAPI(): void {
      * @returns Performance mark entries
      */
     getMarks(options?: { since?: number }): PerformanceMark[] {
-      return getPerformanceMarks(options) as unknown as PerformanceMark[];
+      return getPerformanceMarks(options) as unknown as PerformanceMark[]
     },
 
     /**
@@ -181,7 +170,7 @@ export function installGasolineAPI(): void {
      * @returns Performance measure entries
      */
     getMeasures(options?: { since?: number }): PerformanceMeasure[] {
-      return getPerformanceMeasures(options) as unknown as PerformanceMeasure[];
+      return getPerformanceMeasures(options) as unknown as PerformanceMeasure[]
     },
 
     // === AI Context ===
@@ -192,7 +181,9 @@ export function installGasolineAPI(): void {
      * @returns Enriched error entry
      */
     enrichError(error: LogEntry): Promise<LogEntry> {
-      return enrichErrorWithAiContext(error as unknown as any) as unknown as Promise<LogEntry>;
+      // enrichErrorWithAiContext expects ErrorEntryForEnrichment which is compatible with LogEntry
+      // The return type EnrichedErrorEntry extends LogEntry, so we can safely cast
+      return enrichErrorWithAiContext(error as { stack?: string; message?: string }) as Promise<LogEntry>
     },
 
     /**
@@ -200,7 +191,7 @@ export function installGasolineAPI(): void {
      * @param enabled
      */
     setAiContext(enabled: boolean): void {
-      setAiContextEnabled(enabled);
+      setAiContextEnabled(enabled)
     },
 
     /**
@@ -208,19 +199,23 @@ export function installGasolineAPI(): void {
      * @param enabled
      */
     setStateSnapshot(enabled: boolean): void {
-      setAiContextStateSnapshot(enabled);
+      setAiContextStateSnapshot(enabled)
     },
 
     // === Reproduction Scripts ===
 
     /**
      * Record an enhanced action (for testing)
-     * @param type - Action type
+     * @param type - Action type (click, input, keypress, navigate, select, scroll)
      * @param element - Target element
      * @param opts - Options
      */
-    recordAction(type: string, element: Element, opts?: Record<string, unknown>): void {
-      recordEnhancedAction(type as any, element, opts);
+    recordAction(
+      type: 'click' | 'input' | 'keypress' | 'navigate' | 'select' | 'scroll',
+      element: Element,
+      opts?: Record<string, unknown>,
+    ): void {
+      recordEnhancedAction(type, element, opts)
     },
 
     /**
@@ -228,24 +223,24 @@ export function installGasolineAPI(): void {
      * @returns
      */
     getEnhancedActions(): EnhancedAction[] {
-      return getEnhancedActionBuffer() as unknown as EnhancedAction[];
+      return getEnhancedActionBuffer() as unknown as EnhancedAction[]
     },
 
     /**
      * Clear the enhanced action buffer
      */
     clearEnhancedActions(): void {
-      clearEnhancedActionBuffer();
+      clearEnhancedActionBuffer()
     },
 
     /**
      * Generate a Playwright reproduction script
-     * @param actions - Actions to convert
      * @param opts - Generation options
      * @returns Playwright test script
      */
-    generateScript(actions?: EnhancedAction[], opts?: Record<string, unknown>): string {
-      return generatePlaywrightScript((actions || getEnhancedActionBuffer()) as any, opts);
+    generateScript(opts?: Record<string, unknown>): string {
+      // Uses the internal enhanced action buffer which is populated by recordEnhancedAction
+      return generatePlaywrightScript(getEnhancedActionBuffer(), opts)
     },
 
     /**
@@ -254,7 +249,7 @@ export function installGasolineAPI(): void {
      * @returns
      */
     getSelectors(element: Element): SelectorStrategies {
-      return computeSelectors(element) as unknown as SelectorStrategies;
+      return computeSelectors(element) as unknown as SelectorStrategies
     },
 
     /**
@@ -277,10 +272,10 @@ export function installGasolineAPI(): void {
      * window.__gasoline.setInputValue('select[name="country"]', 'US')
      */
     setInputValue(selector: string, value: string | boolean): boolean {
-      const element = document.querySelector(selector);
+      const element = document.querySelector(selector)
       if (!element) {
-        console.error('[Gasoline] Element not found:', selector);
-        return false;
+        console.error('[Gasoline] Element not found:', selector)
+        return false
       }
 
       try {
@@ -290,69 +285,69 @@ export function installGasolineAPI(): void {
             // For checkbox/radio, use checked property
             const nativeInputCheckedSetter = Object.getOwnPropertyDescriptor(
               window.HTMLInputElement.prototype,
-              'checked'
-            )?.set;
+              'checked',
+            )?.set
             if (nativeInputCheckedSetter) {
-              nativeInputCheckedSetter.call(element, Boolean(value));
+              nativeInputCheckedSetter.call(element, Boolean(value))
             } else {
-              element.checked = Boolean(value);
+              element.checked = Boolean(value)
             }
           } else {
             // For text/email/password/etc, use value property
             const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
               window.HTMLInputElement.prototype,
-              'value'
-            )?.set;
+              'value',
+            )?.set
             if (nativeInputValueSetter) {
-              nativeInputValueSetter.call(element, String(value));
+              nativeInputValueSetter.call(element, String(value))
             } else {
-              element.value = String(value);
+              element.value = String(value)
             }
           }
         } else if (element instanceof HTMLTextAreaElement) {
           const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(
             window.HTMLTextAreaElement.prototype,
-            'value'
-          )?.set;
+            'value',
+          )?.set
           if (nativeTextAreaValueSetter) {
-            nativeTextAreaValueSetter.call(element, String(value));
+            nativeTextAreaValueSetter.call(element, String(value))
           } else {
-            element.value = String(value);
+            element.value = String(value)
           }
         } else if (element instanceof HTMLSelectElement) {
           const nativeSelectValueSetter = Object.getOwnPropertyDescriptor(
             window.HTMLSelectElement.prototype,
-            'value'
-          )?.set;
+            'value',
+          )?.set
           if (nativeSelectValueSetter) {
-            nativeSelectValueSetter.call(element, String(value));
+            nativeSelectValueSetter.call(element, String(value))
           } else {
-            element.value = String(value);
+            element.value = String(value)
           }
         } else {
-          console.error('[Gasoline] Element is not a form input:', selector);
-          return false;
+          console.error('[Gasoline] Element is not a form input:', selector)
+          return false
         }
 
         // Dispatch events that React/Vue/Svelte listen for
         // These events bubble up and trigger framework change handlers
 
         // Input event (React 16+, Vue 3, Svelte)
-        const inputEvent = new Event('input', { bubbles: true });
-        element.dispatchEvent(inputEvent);
+        const inputEvent = new Event('input', { bubbles: true })
+        element.dispatchEvent(inputEvent)
 
         // Change event (older React, Vue 2)
-        const changeEvent = new Event('change', { bubbles: true });
-        element.dispatchEvent(changeEvent);
+        const changeEvent = new Event('change', { bubbles: true })
+        element.dispatchEvent(changeEvent)
 
         // Blur event (some frameworks validate on blur)
-        const blurEvent = new Event('blur', { bubbles: true });
-        element.dispatchEvent(blurEvent);
+        const blurEvent = new Event('blur', { bubbles: true })
+        element.dispatchEvent(blurEvent)
 
-        return true;
+        return true
       } catch (err) {
-        console.error('[Gasoline] Failed to set input value:', err);
-        return false;
+        console.error('[Gasoline] Failed to set input value:', err)
+        return false
       }
     },
 
@@ -360,7 +355,7 @@ export function installGasolineAPI(): void {
      * Version of the Gasoline API
      */
     version: '5.2.0',
-  };
+  }
 }
 
 /**
@@ -368,6 +363,6 @@ export function installGasolineAPI(): void {
  */
 export function uninstallGasolineAPI(): void {
   if (typeof window !== 'undefined' && window.__gasoline) {
-    delete window.__gasoline;
+    delete window.__gasoline
   }
 }

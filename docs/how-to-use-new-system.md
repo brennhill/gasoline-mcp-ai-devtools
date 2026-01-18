@@ -99,7 +99,7 @@ cat docs/features/feature/<name>/tech-spec.md     # Current implementation
 ```
 
 **Step 3: After fixing**
-- Update KNOWN-ISSUES.md (mark as fixed)
+- Update known-issues.md (mark as fixed)
 - Update qa-plan.md (add regression test)
 - Update `last-verified` date
 - Commit with docs
@@ -305,7 +305,7 @@ docs/
 │       └── <name>-review.md (issues found)
 ├── core/
 │   ├── RELEASE.md (process)
-│   ├── KNOWN-ISSUES.md (blockers)
+│   ├── known-issues.md (blockers)
 │   ├── UAT-v5.3-CHECKLIST.md (canonical UAT)
 │   └── CODEBASE-CANON-V5.3.md (baseline reference)
 ├── adrs/

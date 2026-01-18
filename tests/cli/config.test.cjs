@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const config = require('../../npm/gasoline-mcp/lib/config');
-const { InvalidJSONError, FileSizeError, ConfigValidationError } = require('../../npm/gasoline-mcp/lib/errors');
+const { InvalidJSONError, FileSizeError, ConfigValidationError: _ConfigValidationError } = require('../../npm/gasoline-mcp/lib/errors');
 
 const testDir = path.join(os.tmpdir(), 'gasoline-cli-test');
 

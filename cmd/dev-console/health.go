@@ -317,7 +317,7 @@ func (hm *HealthMetrics) GetHealth(capture *capture.Capture, server *Server, ver
 	}
 	if capture != nil {
 		statusMap := capture.GetPilotStatus()
-		if m, ok := statusMap.(map[string]interface{}); ok {
+		if m, ok := statusMap.(map[string]any); ok {
 			enabled := false
 			if e, ok := m["enabled"].(bool); ok {
 				enabled = e

@@ -4,7 +4,7 @@ scope: documentation/canonical-reference
 ai-priority: high
 tags: [v5.3, canonical, codebase-truth, reference]
 version-applies-to: v5.3
-relates-to: [../../.claude/refs/architecture.md, KNOWN-ISSUES.md, RELEASE.md]
+relates-to: [../../.claude/refs/architecture.md, known-issues.md, RELEASE.md]
 last-verified: 2026-01-31
 canonical: true
 ---
@@ -113,7 +113,7 @@ For each doc, verify:
 - [ ] **Behavior matches code** — Doc describes what code actually does
 - [ ] **Status is accurate** — `shipped` docs are in v5.3, `proposed` docs aren't
 - [ ] **Examples are runnable** — Code examples in docs reflect actual API
-- [ ] **Limitations are noted** — Known issues documented in KNOWN-ISSUES.md
+- [ ] **Limitations are noted** — Known issues documented in known-issues.md
 - [ ] **Last-verified is recent** — Updated in last 30 days
 
 ---
@@ -219,7 +219,7 @@ git log -n 5 --oneline cmd/dev-console/tools.go
 
 - `.claude/refs/architecture.md` — System architecture (canonical)
 - `RELEASE.md` — Release process and quality gates
-- `KNOWN-ISSUES.md` — Current blockers and fixes
+- `known-issues.md` — Current blockers and fixes
 - `UAT-v5.3-CHECKLIST.md` — Comprehensive test verification
 - Features `*/tech-spec.md` — Implementation details per feature
 

@@ -11,6 +11,7 @@ import (
 	"github.com/dev-console/dev-console/internal/performance"
 	"github.com/dev-console/dev-console/internal/queries"
 	"github.com/dev-console/dev-console/internal/recording"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -30,7 +31,7 @@ type SchemaStore interface {
 // Has its own lock; safe to call outside Capture.mu.
 type CSPGenerator interface {
 	// GenerateCSP produces a CSP policy from observed origins (stub or full).
-	// Signature matches security.CSPGenerator.GenerateCSP(params interface{}) interface{}
+	// Signature matches security.CSPGenerator.GenerateCSP(params any) any
 	// For type safety in capture, callers will use type assertions.
 }
 
@@ -41,15 +42,15 @@ type ClientRegistry interface {
 	// Count returns the number of registered clients
 	Count() int
 	// List returns all registered clients (returns []session.ClientInfo)
-	List() interface{}
+	List() any
 	// Register creates a new client registration (returns *session.ClientState)
-	Register(cwd string) interface{}
+	Register(cwd string) any
 	// Get returns a specific client by ID (returns *session.ClientState)
-	Get(id string) interface{}
+	Get(id string) any
 }
 
 // Type aliases for imported packages to avoid qualifying every use.
-// These are real type aliases (= syntax), not interface{} forward declarations.
+// These are real type aliases (= syntax), not any forward declarations.
 type (
 	PerformanceSnapshot   = performance.PerformanceSnapshot   // Alias for convenience (avoid qualifying as performance.PerformanceSnapshot everywhere)
 	PerformanceBaseline   = performance.PerformanceBaseline   // Alias for convenience
@@ -241,35 +242,11 @@ type WebSocketSamplingStatus struct {
 // Network Body Types
 // ============================================
 
-// NetworkBody represents a captured network request/response
-type NetworkBody struct {
-	Timestamp          string  `json:"ts,omitempty"`
-	Method             string  `json:"method"`
-	URL                string  `json:"url"`
-	Status             int     `json:"status"`
-	RequestBody        string  `json:"request_body,omitempty"`
-	ResponseBody       string  `json:"response_body,omitempty"`
-	ContentType        string  `json:"content_type,omitempty"`
-	Duration           int     `json:"duration,omitempty"`
-	RequestTruncated   bool    `json:"request_truncated,omitempty"`
-	ResponseTruncated  bool    `json:"response_truncated,omitempty"`
-	ResponseHeaders    map[string]string `json:"response_headers,omitempty"`
-	HasAuthHeader      bool              `json:"has_auth_header,omitempty"`
-	BinaryFormat       string  `json:"binary_format,omitempty"`
-	FormatConfidence   float64 `json:"format_confidence,omitempty"`
-	TabId              int     `json:"tab_id,omitempty"` // Chrome tab ID that produced this request
-	TestIDs            []string `json:"test_ids,omitempty"` // Test IDs this entry belongs to (for test boundary correlation)
-}
+// NetworkBody is an alias to the canonical definition in internal/types/network.go
+type NetworkBody = types.NetworkBody
 
-// NetworkBodyFilter defines filtering criteria for network bodies
-type NetworkBodyFilter struct {
-	URLFilter string
-	Method    string
-	StatusMin int
-	StatusMax int
-	Limit     int
-	TestID    string // If set, filter entries where TestID is in entry's TestIDs array
-}
+// NetworkBodyFilter is an alias to the canonical definition in internal/types/network.go
+type NetworkBodyFilter = types.NetworkBodyFilter
 
 // ============================================
 // Extension Logging Types
@@ -282,7 +259,7 @@ type ExtensionLog struct {
 	Message   string                 `json:"message"`  // Log message
 	Source    string                 `json:"source"`   // "background", "content", "inject"
 	Category  string                 `json:"category,omitempty"` // DebugCategory (CONNECTION, CAPTURE, etc.)
-	Data      map[string]interface{} `json:"data,omitempty"`     // Additional structured data
+	Data      map[string]any `json:"data,omitempty"`     // Additional structured data
 }
 
 // PollingLogEntry tracks a single polling request (GET /pending-queries or POST /settings)
@@ -317,20 +294,22 @@ type HTTPDebugEntry struct {
 
 // EnhancedAction represents a captured user action with multi-strategy selectors
 type EnhancedAction struct {
-	Type          string                 `json:"type"`
-	Timestamp     int64                  `json:"timestamp"`
-	URL           string                 `json:"url,omitempty"`
-	Selectors     map[string]interface{} `json:"selectors,omitempty"`
-	Value         string                 `json:"value,omitempty"`
-	InputType     string                 `json:"inputType,omitempty"`
-	Key           string                 `json:"key,omitempty"`
-	FromURL       string                 `json:"fromUrl,omitempty"`
-	ToURL         string                 `json:"toUrl,omitempty"`
-	SelectedValue string                 `json:"selectedValue,omitempty"`
-	SelectedText  string                 `json:"selectedText,omitempty"`
-	ScrollY       int                    `json:"scrollY,omitempty"`
-	TabId         int                    `json:"tab_id,omitempty"` // Chrome tab ID that produced this action
-	TestIDs       []string               `json:"test_ids,omitempty"` // Test IDs this action belongs to (for test boundary correlation)
+	Type      string `json:"type"`
+	Timestamp int64  `json:"timestamp"`
+	URL       string `json:"url,omitempty"`
+	// any: Selectors map contains multiple selector strategies (css, xpath, text, testId, etc.)
+	// with string values, but some strategies have nested objects (e.g., aria-label with role)
+	Selectors     map[string]any `json:"selectors,omitempty"`
+	Value         string         `json:"value,omitempty"`
+	InputType     string         `json:"inputType,omitempty"`
+	Key           string         `json:"key,omitempty"`
+	FromURL       string         `json:"fromUrl,omitempty"`
+	ToURL         string         `json:"toUrl,omitempty"`
+	SelectedValue string         `json:"selectedValue,omitempty"`
+	SelectedText  string         `json:"selectedText,omitempty"`
+	ScrollY       int            `json:"scrollY,omitempty"`
+	TabId         int            `json:"tab_id,omitempty"`    // Chrome tab ID that produced this action
+	TestIDs       []string       `json:"test_ids,omitempty"` // Test IDs this action belongs to (for test boundary correlation)
 }
 
 // EnhancedActionFilter defines filtering criteria for enhanced actions

@@ -796,7 +796,7 @@ func TestVerificationManager_HandleTool_Start(t *testing.T) {
 		t.Fatalf("HandleTool failed: %v", err)
 	}
 
-	resultMap, ok := result.(map[string]interface{})
+	resultMap, ok := result.(map[string]any)
 	if !ok {
 		t.Fatalf("Expected map result, got %T", result)
 	}
@@ -825,7 +825,7 @@ func TestVerificationManager_HandleTool_FullWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	startMap := startResult.(map[string]interface{})
+	startMap := startResult.(map[string]any)
 	sessionID := startMap["session_id"].(string)
 
 	// Simulate fix
@@ -845,8 +845,8 @@ func TestVerificationManager_HandleTool_FullWorkflow(t *testing.T) {
 		t.Fatalf("Compare failed: %v", err)
 	}
 
-	compareMap := compareResult.(map[string]interface{})
-	result := compareMap["result"].(map[string]interface{})
+	compareMap := compareResult.(map[string]any)
+	result := compareMap["result"].(map[string]any)
 	if result["verdict"] != "fixed" {
 		t.Errorf("Expected verdict 'fixed', got %v", result["verdict"])
 	}
@@ -860,7 +860,7 @@ func TestVerificationManager_HandleTool_Status(t *testing.T) {
 	// Start
 	params := json.RawMessage(`{"action":"start"}`)
 	startResult, _ := vm.HandleTool(params)
-	startMap := startResult.(map[string]interface{})
+	startMap := startResult.(map[string]any)
 	sessionID := startMap["session_id"].(string)
 
 	// Status
@@ -870,7 +870,7 @@ func TestVerificationManager_HandleTool_Status(t *testing.T) {
 		t.Fatalf("Status failed: %v", err)
 	}
 
-	statusMap := statusResult.(map[string]interface{})
+	statusMap := statusResult.(map[string]any)
 	if statusMap["status"] != "baseline_captured" {
 		t.Errorf("Expected status 'baseline_captured', got %v", statusMap["status"])
 	}
@@ -884,7 +884,7 @@ func TestVerificationManager_HandleTool_Cancel(t *testing.T) {
 	// Start
 	params := json.RawMessage(`{"action":"start"}`)
 	startResult, _ := vm.HandleTool(params)
-	startMap := startResult.(map[string]interface{})
+	startMap := startResult.(map[string]any)
 	sessionID := startMap["session_id"].(string)
 
 	// Cancel
@@ -894,7 +894,7 @@ func TestVerificationManager_HandleTool_Cancel(t *testing.T) {
 		t.Fatalf("Cancel failed: %v", err)
 	}
 
-	cancelMap := cancelResult.(map[string]interface{})
+	cancelMap := cancelResult.(map[string]any)
 	if cancelMap["status"] != "cancelled" {
 		t.Errorf("Expected status 'cancelled', got %v", cancelMap["status"])
 	}

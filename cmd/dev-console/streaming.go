@@ -65,7 +65,7 @@ type MCPNotification struct {
 type NotificationParams struct {
 	Level  string      `json:"level"`
 	Logger string      `json:"logger"`
-	Data   interface{} `json:"data"`
+	Data   any `json:"data"`
 }
 
 // ============================================
@@ -94,7 +94,7 @@ func NewStreamState(sseRegistry *SSERegistry) *StreamState {
 
 // Configure handles the configure_streaming tool actions.
 // Returns a map suitable for JSON serialization in tool response.
-func (s *StreamState) Configure(action string, events []string, throttle int, urlFilter string, severityMin string) map[string]interface{} {
+func (s *StreamState) Configure(action string, events []string, throttle int, urlFilter string, severityMin string) map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -119,7 +119,7 @@ func (s *StreamState) Configure(action string, events []string, throttle int, ur
 		} else {
 			s.Config.SeverityMin = defaultSeverityMin
 		}
-		return map[string]interface{}{
+		return map[string]any{
 			"status": "enabled",
 			"config": s.Config,
 		}
@@ -130,20 +130,20 @@ func (s *StreamState) Configure(action string, events []string, throttle int, ur
 		s.PendingBatch = nil
 		s.SeenMessages = make(map[string]time.Time)
 		s.NotifyCount = 0
-		return map[string]interface{}{
+		return map[string]any{
 			"status":          "disabled",
 			"pending_cleared": pendingCount,
 		}
 
 	case "status":
-		return map[string]interface{}{
+		return map[string]any{
 			"config":       s.Config,
 			"notify_count": s.NotifyCount,
 			"pending":      len(s.PendingBatch),
 		}
 
 	default:
-		return map[string]interface{}{
+		return map[string]any{
 			"error": "unknown action: " + action + ". Use enable, disable, or status.",
 		}
 	}
@@ -303,7 +303,7 @@ func formatMCPNotification(alert types.Alert) MCPNotification {
 		Params: NotificationParams{
 			Level:  alert.Severity,
 			Logger: "gasoline",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"category":  alert.Category,
 				"severity":  alert.Severity,
 				"title":     alert.Title,

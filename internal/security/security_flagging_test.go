@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// NOTE: These tests require NetworkWaterfallEntry, NewCapture, SecurityFlag that aren't available.
+// Run with: go test -tags=integration ./internal/security/...
 package security
 
 import (

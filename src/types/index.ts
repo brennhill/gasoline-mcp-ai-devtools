@@ -135,7 +135,9 @@ export type {
   ChromeTabInfo,
   StorageChange,
   StorageAreaName,
-} from './messages';
+  ChromeSessionStorage,
+  ChromeStorageWithSession,
+} from './messages'
 
 // Re-export all utility types
 export type {
@@ -201,16 +203,10 @@ export type {
   // Buffer types
   BufferState,
   MemoryEstimate,
-} from './utils';
+} from './utils'
 
 // Re-export type guards from utils
-export {
-  isObject,
-  isNonEmptyString,
-  hasType,
-  isJsonValue,
-  createTypeGuard,
-} from './utils';
+export { isObject, isNonEmptyString, hasType, isJsonValue, createTypeGuard } from './utils'
 
 // ============================================
 // Favicon Replacer Types
@@ -220,6 +216,6 @@ export {
  * Tracking state for favicon replacer
  */
 export interface TrackingState {
-  isTracked: boolean;
-  aiPilotEnabled: boolean;
+  isTracked: boolean
+  aiPilotEnabled: boolean
 }

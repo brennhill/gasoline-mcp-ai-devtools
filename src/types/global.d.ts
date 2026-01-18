@@ -13,7 +13,7 @@ import type {
   PerformanceMark,
   PerformanceMeasure,
   AiContextData,
-} from './messages';
+} from './messages'
 
 // =============================================================================
 // GASOLINE DEVELOPER API (window.__gasoline)
@@ -24,7 +24,7 @@ import type {
  */
 interface GasolineAPI {
   /** API version string */
-  readonly version: string;
+  readonly version: string
 
   // --- Context Annotations ---
 
@@ -33,22 +33,22 @@ interface GasolineAPI {
    * @param key Annotation key (e.g., 'checkout-flow', 'user')
    * @param value Annotation value
    */
-  annotate(key: string, value: unknown): void;
+  annotate(key: string, value: unknown): void
 
   /**
    * Remove a context annotation
    * @param key Annotation key to remove
    */
-  removeAnnotation(key: string): void;
+  removeAnnotation(key: string): void
 
   /** Clear all context annotations */
-  clearAnnotations(): void;
+  clearAnnotations(): void
 
   /**
    * Get current context annotations
    * @returns Current annotations or null if none
    */
-  getContext(): Record<string, unknown> | null;
+  getContext(): Record<string, unknown> | null
 
   // --- User Action Replay ---
 
@@ -56,16 +56,16 @@ interface GasolineAPI {
    * Get the user action replay buffer
    * @returns Recent user actions
    */
-  getActions(): readonly ActionEntry[];
+  getActions(): readonly ActionEntry[]
 
   /** Clear the user action replay buffer */
-  clearActions(): void;
+  clearActions(): void
 
   /**
    * Enable or disable action capture
    * @param enabled Whether to capture user actions
    */
-  setActionCapture(enabled: boolean): void;
+  setActionCapture(enabled: boolean): void
 
   // --- Enhanced Actions / Reproduction Scripts ---
 
@@ -75,15 +75,15 @@ interface GasolineAPI {
    * @param element Target element
    * @param opts Options
    */
-  recordAction(type: string, element: Element, opts?: Record<string, unknown>): void;
+  recordAction(type: string, element: Element, opts?: Record<string, unknown>): void
 
   /**
    * Get the enhanced action buffer
    */
-  getEnhancedActions(): readonly EnhancedAction[];
+  getEnhancedActions(): readonly EnhancedAction[]
 
   /** Clear the enhanced action buffer */
-  clearEnhancedActions(): void;
+  clearEnhancedActions(): void
 
   /**
    * Generate a Playwright reproduction script
@@ -91,67 +91,64 @@ interface GasolineAPI {
    * @param opts Generation options
    * @returns Playwright test script
    */
-  generateScript(
-    actions?: readonly EnhancedAction[],
-    opts?: { baseUrl?: string }
-  ): string;
+  generateScript(actions?: readonly EnhancedAction[], opts?: { baseUrl?: string }): string
 
   /**
    * Compute multi-strategy selectors for an element
    * @param element Target element
    */
-  getSelectors(element: Element): SelectorStrategies;
+  getSelectors(element: Element): SelectorStrategies
 
   // --- Network Waterfall ---
 
   /**
    * Enable or disable network waterfall capture
    */
-  setNetworkWaterfall(enabled: boolean): void;
+  setNetworkWaterfall(enabled: boolean): void
 
   /**
    * Get current network waterfall
    * @param opts Filter options
    */
-  getNetworkWaterfall(opts?: { since?: number }): readonly WaterfallEntry[];
+  getNetworkWaterfall(opts?: { since?: number }): readonly WaterfallEntry[]
 
   // --- Performance Marks ---
 
   /**
    * Enable or disable performance marks capture
    */
-  setPerformanceMarks(enabled: boolean): void;
+  setPerformanceMarks(enabled: boolean): void
 
   /**
    * Get performance marks
    * @param opts Filter options
    */
-  getMarks(opts?: { since?: number }): readonly PerformanceMark[];
+  getMarks(opts?: { since?: number }): readonly PerformanceMark[]
 
   /**
    * Get performance measures
    * @param opts Filter options
    */
-  getMeasures(opts?: { since?: number }): readonly PerformanceMeasure[];
+  getMeasures(opts?: { since?: number }): readonly PerformanceMeasure[]
 
   // --- AI Context ---
 
   /**
    * Enable or disable AI context enrichment
    */
-  setAiContext(enabled: boolean): void;
+  setAiContext(enabled: boolean): void
 
   /**
    * Enable or disable state snapshot in AI context
    */
-  setStateSnapshot(enabled: boolean): void;
+  setStateSnapshot(enabled: boolean): void
 
   /**
    * Enrich an error entry with AI context
    * @param error Error entry to enrich
    * @returns Enriched error entry
    */
-  enrichError(error: Error): Promise<AiContextData | null>;
+  enrichError(error: Error): Promise<AiContextData | null>
 }
 
 // =============================================================================
@@ -161,13 +158,13 @@ interface GasolineAPI {
 declare global {
   interface Window {
     /** Gasoline developer API */
-    __gasoline?: GasolineAPI;
+    __gasoline?: GasolineAPI
 
     /** WebSocket class (for monkey-patching) */
-    WebSocket: typeof WebSocket;
+    WebSocket: typeof WebSocket
 
     /** Fetch function (for monkey-patching) */
-    fetch: typeof fetch;
+    fetch: typeof fetch
   }
 }
 
@@ -181,70 +178,70 @@ declare global {
 declare namespace axe {
   interface RunOptions {
     runOnly?: {
-      type: 'rule' | 'tag';
-      values: string[];
-    };
-    rules?: Record<string, { enabled: boolean }>;
-    reporter?: 'v1' | 'v2' | 'raw';
-    resultTypes?: Array<'violations' | 'passes' | 'incomplete' | 'inapplicable'>;
-    selectors?: boolean;
-    ancestry?: boolean;
-    xpath?: boolean;
+      type: 'rule' | 'tag'
+      values: string[]
+    }
+    rules?: Record<string, { enabled: boolean }>
+    reporter?: 'v1' | 'v2' | 'raw'
+    resultTypes?: Array<'violations' | 'passes' | 'incomplete' | 'inapplicable'>
+    selectors?: boolean
+    ancestry?: boolean
+    xpath?: boolean
   }
 
   interface NodeResult {
-    html: string;
-    target: string[];
-    failureSummary?: string;
-    any?: CheckResult[];
-    all?: CheckResult[];
-    none?: CheckResult[];
+    html: string
+    target: string[]
+    failureSummary?: string
+    any?: CheckResult[]
+    all?: CheckResult[]
+    none?: CheckResult[]
   }
 
   interface CheckResult {
-    id: string;
-    data: unknown;
-    relatedNodes?: NodeResult[];
-    impact?: string;
-    message: string;
+    id: string
+    data: unknown
+    relatedNodes?: NodeResult[]
+    impact?: string
+    message: string
   }
 
   interface RuleResult {
-    id: string;
-    impact?: 'minor' | 'moderate' | 'serious' | 'critical';
-    description: string;
-    help: string;
-    helpUrl: string;
-    tags: string[];
-    nodes: NodeResult[];
+    id: string
+    impact?: 'minor' | 'moderate' | 'serious' | 'critical'
+    description: string
+    help: string
+    helpUrl: string
+    tags: string[]
+    nodes: NodeResult[]
   }
 
   interface Result {
-    violations: RuleResult[];
-    passes: RuleResult[];
-    incomplete: RuleResult[];
+    violations: RuleResult[]
+    passes: RuleResult[]
+    incomplete: RuleResult[]
     inapplicable: Array<{
-      id: string;
-      description: string;
-      help: string;
-      helpUrl: string;
-      tags: string[];
-    }>;
-    timestamp: string;
-    url: string;
+      id: string
+      description: string
+      help: string
+      helpUrl: string
+      tags: string[]
+    }>
+    timestamp: string
+    url: string
     testEngine: {
-      name: string;
-      version: string;
-    };
+      name: string
+      version: string
+    }
     testRunner: {
-      name: string;
-    };
+      name: string
+    }
     testEnvironment: {
-      userAgent: string;
-      windowWidth: number;
-      windowHeight: number;
-    };
-    toolOptions: RunOptions;
+      userAgent: string
+      windowWidth: number
+      windowHeight: number
+    }
+    toolOptions: RunOptions
   }
 
   /**
@@ -252,7 +249,7 @@ declare namespace axe {
    * @param context Element or document to audit
    * @param options Audit options
    */
-  function run(context?: Element | Document, options?: RunOptions): Promise<Result>;
+  function run(context?: Element | Document, options?: RunOptions): Promise<Result>
 
   /**
    * Configure axe-core
@@ -260,23 +257,23 @@ declare namespace axe {
    */
   function configure(options: {
     rules?: Array<{
-      id: string;
-      enabled?: boolean;
-      selector?: string;
-      tags?: string[];
-    }>;
+      id: string
+      enabled?: boolean
+      selector?: string
+      tags?: string[]
+    }>
     branding?: {
-      brand?: string;
-      application?: string;
-    };
-    reporter?: string;
-    locale?: Record<string, unknown>;
-  }): void;
+      brand?: string
+      application?: string
+    }
+    reporter?: string
+    locale?: Record<string, unknown>
+  }): void
 
   /**
    * Reset axe-core configuration
    */
-  function reset(): void;
+  function reset(): void
 }
 
 // =============================================================================
@@ -287,37 +284,37 @@ declare namespace axe {
  * Layout Shift entry (for CLS measurement)
  */
 interface PerformanceLayoutShift extends PerformanceEntry {
-  readonly hadRecentInput: boolean;
-  readonly value: number;
-  readonly lastInputTime: number;
+  readonly hadRecentInput: boolean
+  readonly value: number
+  readonly lastInputTime: number
   readonly sources?: ReadonlyArray<{
-    readonly node?: Node;
-    readonly previousRect: DOMRectReadOnly;
-    readonly currentRect: DOMRectReadOnly;
-  }>;
+    readonly node?: Node
+    readonly previousRect: DOMRectReadOnly
+    readonly currentRect: DOMRectReadOnly
+  }>
 }
 
 /**
  * Largest Contentful Paint entry (for LCP measurement)
  */
 interface PerformanceLargestContentfulPaint extends PerformanceEntry {
-  readonly element?: Element;
-  readonly renderTime: number;
-  readonly loadTime: number;
-  readonly size: number;
-  readonly id: string;
-  readonly url: string;
+  readonly element?: Element
+  readonly renderTime: number
+  readonly loadTime: number
+  readonly size: number
+  readonly id: string
+  readonly url: string
 }
 
 /**
  * First Input entry (for FID measurement)
  */
 interface PerformanceEventTiming extends PerformanceEntry {
-  readonly processingStart: number;
-  readonly processingEnd: number;
-  readonly interactionId?: number;
-  readonly cancelable: boolean;
-  readonly target?: Element;
+  readonly processingStart: number
+  readonly processingEnd: number
+  readonly interactionId?: number
+  readonly cancelable: boolean
+  readonly target?: Element
 }
 
 /**
@@ -325,18 +322,18 @@ interface PerformanceEventTiming extends PerformanceEntry {
  */
 interface PerformanceLongTaskTiming extends PerformanceEntry {
   readonly attribution: ReadonlyArray<{
-    readonly containerType: string;
-    readonly containerSrc: string;
-    readonly containerId: string;
-    readonly containerName: string;
-  }>;
+    readonly containerType: string
+    readonly containerSrc: string
+    readonly containerId: string
+    readonly containerName: string
+  }>
 }
 
 /**
  * Paint entry (for FCP measurement)
  */
 interface PerformancePaintTiming extends PerformanceEntry {
-  readonly name: 'first-paint' | 'first-contentful-paint';
+  readonly name: 'first-paint' | 'first-contentful-paint'
 }
 
 // =============================================================================
@@ -346,10 +343,10 @@ interface PerformancePaintTiming extends PerformanceEntry {
 interface Performance {
   /** Chrome-specific memory info */
   readonly memory?: {
-    readonly usedJSHeapSize: number;
-    readonly totalJSHeapSize: number;
-    readonly jsHeapSizeLimit: number;
-  };
+    readonly usedJSHeapSize: number
+    readonly totalJSHeapSize: number
+    readonly jsHeapSizeLimit: number
+  }
 }
 
 // =============================================================================
@@ -364,10 +361,10 @@ interface Performance {
  */
 interface ChromeStorageChanges {
   [key: string]: {
-    oldValue?: unknown;
-    newValue?: unknown;
-  };
+    oldValue?: unknown
+    newValue?: unknown
+  }
 }
 
 // Export empty object to make this a module
-export {};
+export {}

@@ -9,7 +9,7 @@ import (
 )
 
 // JSONResponse writes a JSON response with the given status code and data
-func JSONResponse(w http.ResponseWriter, status int, data interface{}) {
+func JSONResponse(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(data); err != nil {

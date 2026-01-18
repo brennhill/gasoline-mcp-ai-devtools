@@ -43,4 +43,4 @@ Steps to upgrade from the previous version (if breaking changes exist).
 
 ## Known Issues
 
-See [KNOWN-ISSUES.md](../../known-issues.md) for current known issues.
+See [known-issues.md](../../known-issues.md) for current known issues.

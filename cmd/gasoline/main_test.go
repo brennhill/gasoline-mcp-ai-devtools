@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// NOTE: These tests require Server, NewServer, LogEntry, corsMiddleware, etc. that aren't exported.
+// Run with: go test -tags=integration ./cmd/gasoline/...
 package main
 
 import (
@@ -165,7 +170,7 @@ func TestHealthEndpoint(t *testing.T) {
 
 	// Setup HTTP handler
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		jsonResponse(w, http.StatusOK, map[string]interface{}{
+		jsonResponse(w, http.StatusOK, map[string]any{
 			"status":     "ok",
 			"entries":    server.getEntryCount(),
 			"maxEntries": server.maxEntries,
@@ -183,7 +188,7 @@ func TestHealthEndpoint(t *testing.T) {
 		t.Errorf("Expected status 200, got %d", rec.Code)
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	json.Unmarshal(rec.Body.Bytes(), &resp)
 
 	if resp["status"] != "ok" {
@@ -637,7 +642,7 @@ func TestMCPInitialize(t *testing.T) {
 			Version string `json:"version"`
 		} `json:"serverInfo"`
 		Capabilities struct {
-			Tools map[string]interface{} `json:"tools"`
+			Tools map[string]any `json:"tools"`
 		} `json:"capabilities"`
 	}
 
@@ -2169,7 +2174,7 @@ func TestMCPResourcesTemplatesList(t *testing.T) {
 	}
 
 	var result struct {
-		ResourceTemplates []interface{} `json:"resourceTemplates"`
+		ResourceTemplates []any `json:"resourceTemplates"`
 	}
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("Failed to unmarshal result: %v", err)

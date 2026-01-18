@@ -4,11 +4,7 @@
  */
 
 // Re-export circuit breaker functions
-export {
-  createCircuitBreaker,
-  type CircuitBreakerOptions,
-  type CircuitBreaker,
-} from './circuit-breaker';
+export { createCircuitBreaker, type CircuitBreakerOptions, type CircuitBreaker } from './circuit-breaker'
 
 // Re-export batcher functions and types
 export {
@@ -19,7 +15,7 @@ export {
   type BatcherWithCircuitBreaker,
   type BatcherConfig,
   type LogBatcherOptions,
-} from './batchers';
+} from './batchers'
 
 // Re-export server communication functions
 export {
@@ -39,31 +35,31 @@ export {
   sendStatusPing,
   pollPendingQueries,
   type ServerHealthResponse,
-} from './server';
+} from './server'
 
 // Import for logging formatting functions (still in this file for now)
-import type { LogEntry } from '../types';
+import type { LogEntry } from '../types'
 
 /**
  * Truncate a single argument if too large
  */
 function truncateArg(arg: unknown, maxSize = 10240): unknown {
-  if (arg === null || arg === undefined) return arg;
+  if (arg === null || arg === undefined) return arg
 
   try {
-    const serialized = JSON.stringify(arg);
+    const serialized = JSON.stringify(arg)
     if (serialized.length > maxSize) {
       if (typeof arg === 'string') {
-        return arg.slice(0, maxSize) + '... [truncated]';
+        return arg.slice(0, maxSize) + '... [truncated]'
       }
-      return serialized.slice(0, maxSize) + '...[truncated]';
+      return serialized.slice(0, maxSize) + '...[truncated]'
     }
-    return arg;
+    return arg
   } catch {
     if (typeof arg === 'object') {
-      return '[Circular or unserializable object]';
+      return '[Circular or unserializable object]'
     }
-    return String(arg);
+    return String(arg)
   }
 }
 
@@ -71,36 +67,32 @@ function truncateArg(arg: unknown, maxSize = 10240): unknown {
  * Format a log entry with timestamp and truncation
  */
 export function formatLogEntry(entry: LogEntry): LogEntry {
-  const formatted = { ...entry } as LogEntry & { ts?: string; args?: unknown[] };
+  const formatted = { ...entry } as LogEntry & { ts?: string; args?: unknown[] }
 
   if (!formatted.ts) {
-    (formatted as { ts: string }).ts = new Date().toISOString();
+    ;(formatted as { ts: string }).ts = new Date().toISOString()
   }
 
   if ('args' in formatted && Array.isArray(formatted.args)) {
-    formatted.args = formatted.args.map((arg: unknown) => truncateArg(arg));
+    formatted.args = formatted.args.map((arg: unknown) => truncateArg(arg))
   }
 
-  return formatted as LogEntry;
+  return formatted as LogEntry
 }
 
 /**
  * Determine if a log should be captured based on level filter
  */
-export function shouldCaptureLog(
-  logLevel: string,
-  filterLevel: string,
-  logType?: string
-): boolean {
+export function shouldCaptureLog(logLevel: string, filterLevel: string, logType?: string): boolean {
   if (logType === 'network' || logType === 'exception') {
-    return true;
+    return true
   }
 
-  const levels = ['debug', 'log', 'info', 'warn', 'error'];
-  const logIndex = levels.indexOf(logLevel);
-  const filterIndex = levels.indexOf(filterLevel === 'all' ? 'debug' : filterLevel);
+  const levels = ['debug', 'log', 'info', 'warn', 'error']
+  const logIndex = levels.indexOf(logLevel)
+  const filterIndex = levels.indexOf(filterLevel === 'all' ? 'debug' : filterLevel)
 
-  return logIndex >= filterIndex;
+  return logIndex >= filterIndex
 }
 
 /**
@@ -113,37 +105,37 @@ export async function captureScreenshot(
   errorType: string | null,
   canTakeScreenshotFn: (tabId: number) => { allowed: boolean; reason?: string; nextAllowedIn?: number | null },
   recordScreenshotFn: (tabId: number) => void,
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
+  debugLogFn?: (category: string, message: string, data?: unknown) => void,
 ): Promise<{
-  success: boolean;
-  entry?: LogEntry;
-  error?: string;
-  nextAllowedIn?: number | null;
+  success: boolean
+  entry?: LogEntry
+  error?: string
+  nextAllowedIn?: number | null
 }> {
-  const rateCheck = canTakeScreenshotFn(tabId);
+  const rateCheck = canTakeScreenshotFn(tabId)
   if (!rateCheck.allowed) {
     if (debugLogFn) {
       debugLogFn('capture', `Screenshot rate limited: ${rateCheck.reason}`, {
         tabId,
         nextAllowedIn: rateCheck.nextAllowedIn,
-      });
+      })
     }
     return {
       success: false,
       error: `Rate limited: ${rateCheck.reason}`,
       nextAllowedIn: rateCheck.nextAllowedIn,
-    };
+    }
   }
 
   try {
-    const tab = await chrome.tabs.get(tabId);
+    const tab = await chrome.tabs.get(tabId)
 
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
       format: 'jpeg',
       quality: 80,
-    });
+    })
 
-    recordScreenshotFn(tabId);
+    recordScreenshotFn(tabId)
 
     const response = await fetch(`${serverUrl}/screenshots`, {
       method: 'POST',
@@ -154,13 +146,13 @@ export async function captureScreenshot(
         errorId: relatedErrorId || '',
         errorType: errorType || '',
       }),
-    });
+    })
 
     if (!response.ok) {
-      throw new Error(`Server returned ${response.status}`);
+      throw new Error(`Server returned ${response.status}`)
     }
 
-    const result = (await response.json()) as { filename: string };
+    const result = (await response.json()) as { filename: string }
 
     const screenshotEntry: LogEntry = {
       ts: new Date().toISOString(),
@@ -171,20 +163,20 @@ export async function captureScreenshot(
       screenshotFile: result.filename,
       trigger: relatedErrorId ? 'error' : 'manual',
       ...(relatedErrorId ? { relatedErrorId } : {}),
-    } as LogEntry;
+    } as LogEntry
 
     if (debugLogFn) {
       debugLogFn('capture', `Screenshot saved: ${result.filename}`, {
         trigger: relatedErrorId ? 'error' : 'manual',
         relatedErrorId,
-      });
+      })
     }
 
-    return { success: true, entry: screenshotEntry };
+    return { success: true, entry: screenshotEntry }
   } catch (error) {
     if (debugLogFn) {
-      debugLogFn('error', 'Screenshot capture failed', { error: (error as Error).message });
+      debugLogFn('error', 'Screenshot capture failed', { error: (error as Error).message })
     }
-    return { success: false, error: (error as Error).message };
+    return { success: false, error: (error as Error).message }
   }
 }

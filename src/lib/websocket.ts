@@ -341,7 +341,9 @@ export function createConnectionTracker(id: string, url: string): ConnectionTrac
       try {
         const parsed: unknown = JSON.parse(data)
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
-        const keys = Object.keys(parsed as object).sort().join(',')
+        const keys = Object.keys(parsed as object)
+          .sort()
+          .join(',')
         // It's a change if none of the first 5 schemas match
         return !this._schemaKeys.includes(keys)
       } catch {
@@ -426,7 +428,13 @@ export function installWebSocketCapture(): void {
       window.postMessage(
         {
           type: 'GASOLINE_WS',
-          payload: { type: 'websocket', event: 'error', id: connectionId, url: urlString, ts: new Date().toISOString() },
+          payload: {
+            type: 'websocket',
+            event: 'error',
+            id: connectionId,
+            url: urlString,
+            ts: new Date().toISOString(),
+          },
         } as GasolineWsMessage,
         '*',
       )

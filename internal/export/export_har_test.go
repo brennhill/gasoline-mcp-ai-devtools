@@ -1,3 +1,10 @@
+//go:build integration
+// +build integration
+
+// export_har_test.go — HAR export tests.
+// NOTE: These tests require HAR export implementation that doesn't exist yet.
+// The implementation stub is in cmd/dev-console/tools.go (toolExportHAR).
+// Run with: go test -tags=integration ./internal/export/...
 package export
 
 import (
@@ -575,7 +582,7 @@ func TestExportHARTool(t *testing.T) {
 			capture:    capture,
 		}
 
-		args, _ := json.Marshal(map[string]interface{}{})
+		args, _ := json.Marshal(map[string]any{})
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
 		resp := handler.toolExportHAR(req, args)
 
@@ -623,7 +630,7 @@ func TestExportHARTool(t *testing.T) {
 		tmpFile := filepath.Join(os.TempDir(), "test-tool-export.har")
 		defer os.Remove(tmpFile)
 
-		args, _ := json.Marshal(map[string]interface{}{
+		args, _ := json.Marshal(map[string]any{
 			"save_to": tmpFile,
 		})
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
@@ -676,7 +683,7 @@ func TestExportHARTool(t *testing.T) {
 			capture:    capture,
 		}
 
-		args, _ := json.Marshal(map[string]interface{}{
+		args, _ := json.Marshal(map[string]any{
 			"method":     "POST",
 			"status_min": 400,
 		})
@@ -736,7 +743,7 @@ func TestExportHARTool(t *testing.T) {
 			capture:    capture,
 		}
 
-		args, _ := json.Marshal(map[string]interface{}{"format": "har"})
+		args, _ := json.Marshal(map[string]any{"format": "har"})
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`4`), Method: "tools/call"}
 		resp, handled := handler.handleToolCall(req, "generate", args)
 
@@ -758,7 +765,7 @@ func TestExportHARTool(t *testing.T) {
 			capture:    capture,
 		}
 
-		args, _ := json.Marshal(map[string]interface{}{
+		args, _ := json.Marshal(map[string]any{
 			"save_to": "../../etc/passwd",
 		})
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`5`), Method: "tools/call"}
@@ -824,7 +831,7 @@ func TestToolExportHAR_MethodStatusFilters(t *testing.T) {
 	}
 
 	t.Run("filter by method", func(t *testing.T) {
-		args, _ := json.Marshal(map[string]interface{}{"method": "POST"})
+		args, _ := json.Marshal(map[string]any{"method": "POST"})
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 
 		resp := handler.toolExportHAR(req, args)
@@ -852,7 +859,7 @@ func TestToolExportHAR_MethodStatusFilters(t *testing.T) {
 	})
 
 	t.Run("filter by status range", func(t *testing.T) {
-		args, _ := json.Marshal(map[string]interface{}{"status_min": 400, "status_max": 499})
+		args, _ := json.Marshal(map[string]any{"status_min": 400, "status_max": 499})
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`)}
 
 		resp := handler.toolExportHAR(req, args)
@@ -880,7 +887,7 @@ func TestToolExportHAR_MethodStatusFilters(t *testing.T) {
 	})
 
 	t.Run("filter by method and status", func(t *testing.T) {
-		args, _ := json.Marshal(map[string]interface{}{"method": "GET", "status_min": 200, "status_max": 299})
+		args, _ := json.Marshal(map[string]any{"method": "GET", "status_min": 200, "status_max": 299})
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`3`)}
 
 		resp := handler.toolExportHAR(req, args)
@@ -951,7 +958,7 @@ func TestToolExportHAR_WriteFailure(t *testing.T) {
 	}
 
 	// Use a path under /tmp that has a non-existent deep directory
-	args, _ := json.Marshal(map[string]interface{}{
+	args, _ := json.Marshal(map[string]any{
 		"save_to": "/tmp/gasoline-nonexist-parent/deep/nested/file.har",
 	})
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
@@ -985,7 +992,7 @@ func TestToolExportHAR_NoSaveTo_EmptyCapture(t *testing.T) {
 		capture:    capture,
 	}
 
-	args, _ := json.Marshal(map[string]interface{}{})
+	args, _ := json.Marshal(map[string]any{})
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
 	resp := handler.toolExportHAR(req, args)
 

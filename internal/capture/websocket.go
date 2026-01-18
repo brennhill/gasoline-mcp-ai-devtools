@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -23,6 +24,15 @@ import (
 func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	// Defensive: verify parallel arrays are in sync
+	if len(c.wsEvents) != len(c.wsAddedAt) {
+		fmt.Fprintf(os.Stderr, "[gasoline] WARNING: wsEvents/wsAddedAt length mismatch: %d != %d (recovering by truncating)\n",
+			len(c.wsEvents), len(c.wsAddedAt))
+		minLen := min(len(c.wsEvents), len(c.wsAddedAt))
+		c.wsEvents = c.wsEvents[:minLen]
+		c.wsAddedAt = c.wsAddedAt[:minLen]
+	}
 
 	// Enforce memory limits before adding
 	c.enforceMemory()
@@ -402,7 +412,7 @@ func (c *Capture) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) 
 	if r.Method == "GET" {
 		events := c.GetWebSocketEvents(WebSocketEventFilter{})
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"events": events,
 			"count":  len(events),
 		})

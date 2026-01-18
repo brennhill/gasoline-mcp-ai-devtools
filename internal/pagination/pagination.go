@@ -2,9 +2,50 @@
 package pagination
 
 import (
-	"github.com/dev-console/dev-console/internal/capture"
 	"fmt"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
+
+// Type aliases for imported types to avoid qualifying every use.
+type (
+	// LogEntry is a map-based log entry from the capture package.
+	// any: JSON log entries have dynamic fields; map allows flexible access without schema.
+	LogEntry = map[string]any
+	// EnhancedAction is a user action from the capture package.
+	EnhancedAction = capture.EnhancedAction
+	// WebSocketEvent is a WebSocket event from the capture package.
+	WebSocketEvent = capture.WebSocketEvent
+)
+
+// entryStr extracts a string field from a LogEntry map.
+// Returns empty string if field doesn't exist or isn't a string.
+func entryStr(entry LogEntry, key string) string {
+	if v, ok := entry[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+// entryDisplay extracts a field from a LogEntry and returns it as a display string.
+// Handles numeric types by converting to string representation.
+func entryDisplay(entry LogEntry, key string) string {
+	if v, ok := entry[key]; ok {
+		switch val := v.(type) {
+		case string:
+			return val
+		case int:
+			return fmt.Sprintf("%d", val)
+		case int64:
+			return fmt.Sprintf("%d", val)
+		case float64:
+			return fmt.Sprintf("%.0f", val)
+		}
+	}
+	return ""
+}
 
 // LogEntryWithSequence pairs a log entry with its sequence number and timestamp for pagination.
 type LogEntryWithSequence struct {
@@ -153,8 +194,8 @@ func ApplyLogCursorPagination(
 }
 
 // SerializeLogEntryWithSequence converts a LogEntryWithSequence to a JSON-serializable map.
-func SerializeLogEntryWithSequence(enriched LogEntryWithSequence) map[string]interface{} {
-	result := map[string]interface{}{
+func SerializeLogEntryWithSequence(enriched LogEntryWithSequence) map[string]any {
+	result := map[string]any{
 		"level":     entryStr(enriched.Entry, "level"),
 		"message":   entryStr(enriched.Entry, "message"),
 		"source":    entryStr(enriched.Entry, "source"),
@@ -321,8 +362,8 @@ func ApplyActionCursorPagination(
 }
 
 // SerializeActionEntryWithSequence converts an ActionEntryWithSequence to a JSON-serializable map.
-func SerializeActionEntryWithSequence(enriched ActionEntryWithSequence) map[string]interface{} {
-	result := map[string]interface{}{
+func SerializeActionEntryWithSequence(enriched ActionEntryWithSequence) map[string]any {
+	result := map[string]any{
 		"type":      enriched.Entry.Type,
 		"timestamp": enriched.Timestamp,
 		"sequence":  enriched.Sequence,
@@ -519,8 +560,8 @@ func ApplyWebSocketCursorPagination(
 }
 
 // SerializeWebSocketEntryWithSequence converts a WebSocketEntryWithSequence to a JSON-serializable map.
-func SerializeWebSocketEntryWithSequence(enriched WebSocketEntryWithSequence) map[string]interface{} {
-	result := map[string]interface{}{
+func SerializeWebSocketEntryWithSequence(enriched WebSocketEntryWithSequence) map[string]any {
+	result := map[string]any{
 		"event":     enriched.Entry.Event,
 		"id":        enriched.Entry.ID,
 		"timestamp": enriched.Timestamp,

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Gasoline",
-  "version": "5.4.0",
-  "description": "Browser observability for AI coding agents - autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
+  "version": "5.4.1",
+  "description": "Browser observability for AI agents. Stream console logs, network errors to Claude Code, Cursor, Copilot via MCP protocol.",
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
@@ -27,7 +27,7 @@
       "run_at": "document_start"
     }
   ],
-  "permissions": ["activeTab", "storage", "alarms", "tabs"],
+  "permissions": ["storage", "alarms", "tabs"],
   "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
   "options_ui": {
     "page": "options.html",

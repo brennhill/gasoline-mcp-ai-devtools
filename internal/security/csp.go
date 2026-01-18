@@ -618,7 +618,7 @@ func contentTypeToResourceType(ct string) string {
 // ============================================
 
 // HandleGenerateCSP is the MCP tool handler for generate_csp.
-func (g *CSPGenerator) HandleGenerateCSP(params json.RawMessage) (interface{}, error) {
+func (g *CSPGenerator) HandleGenerateCSP(params json.RawMessage) (any, error) {
 	var cspParams CSPParams
 	if len(params) > 0 {
 		if err := json.Unmarshal(params, &cspParams); err != nil {

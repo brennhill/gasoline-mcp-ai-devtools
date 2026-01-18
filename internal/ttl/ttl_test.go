@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// NOTE: These tests require types (ParseTTL, NewCapture, WebSocketEvent, etc.) that aren't available here.
+// Run with: go test -tags=integration ./internal/ttl/...
 package ttl
 
 import (

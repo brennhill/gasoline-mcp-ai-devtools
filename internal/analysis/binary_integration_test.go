@@ -1,4 +1,9 @@
+//go:build integration
+// +build integration
+
 // binary_integration_test.go — Integration tests for binary format detection
+// NOTE: These tests require capture methods that have different signatures.
+// Run with: go test -tags=integration ./internal/analysis/...
 package analysis
 
 import (

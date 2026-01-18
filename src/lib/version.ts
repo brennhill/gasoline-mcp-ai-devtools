@@ -8,19 +8,19 @@
  * @returns Object with major, minor, patch components, or null if invalid
  */
 export function parseVersion(version: string): {
-  major: number;
-  minor: number;
-  patch: number;
+  major: number
+  minor: number
+  patch: number
 } | null {
-  const match = version.match(/^(\d+)\.(\d+)\.(\d+)/);
+  const match = version.match(/^(\d+)\.(\d+)\.(\d+)/)
   if (!match || !match[1] || !match[2] || !match[3]) {
-    return null;
+    return null
   }
   return {
     major: parseInt(match[1], 10),
     minor: parseInt(match[2], 10),
     patch: parseInt(match[3], 10),
-  };
+  }
 }
 
 /**
@@ -30,24 +30,24 @@ export function parseVersion(version: string): {
  * @returns -1 if A < B, 0 if A == B, 1 if A > B, null if either is invalid
  */
 export function compareVersions(versionA: string, versionB: string): -1 | 0 | 1 | null {
-  const a = parseVersion(versionA);
-  const b = parseVersion(versionB);
+  const a = parseVersion(versionA)
+  const b = parseVersion(versionB)
 
   if (!a || !b) {
-    return null;
+    return null
   }
 
   if (a.major !== b.major) {
-    return a.major < b.major ? -1 : 1;
+    return a.major < b.major ? -1 : 1
   }
   if (a.minor !== b.minor) {
-    return a.minor < b.minor ? -1 : 1;
+    return a.minor < b.minor ? -1 : 1
   }
   if (a.patch !== b.patch) {
-    return a.patch < b.patch ? -1 : 1;
+    return a.patch < b.patch ? -1 : 1
   }
 
-  return 0;
+  return 0
 }
 
 /**
@@ -57,8 +57,8 @@ export function compareVersions(versionA: string, versionB: string): -1 | 0 | 1 
  * @returns true if newer > older
  */
 export function isVersionNewer(newer: string, older: string): boolean {
-  const result = compareVersions(newer, older);
-  return result === 1;
+  const result = compareVersions(newer, older)
+  return result === 1
 }
 
 /**
@@ -68,13 +68,13 @@ export function isVersionNewer(newer: string, older: string): boolean {
  * @returns true if version >= minimum
  */
 export function isVersionSameOrNewer(version: string, minimum: string): boolean {
-  const result = compareVersions(version, minimum);
-  return result === 1 || result === 0;
+  const result = compareVersions(version, minimum)
+  return result === 1 || result === 0
 }
 
 /**
  * Format version for display (e.g., "v5.2.5")
  */
 export function formatVersionDisplay(version: string): string {
-  return `v${version}`;
+  return `v${version}`
 }

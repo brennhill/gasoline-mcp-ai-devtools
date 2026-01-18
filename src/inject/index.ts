@@ -4,13 +4,13 @@
  */
 
 // Re-export barrel pattern for tests and consumers
-export { safeSerialize, getElementSelector, isSensitiveInput } from '../lib/serialize';
+export { safeSerialize, getElementSelector, isSensitiveInput } from '../lib/serialize'
 export {
   getContextAnnotations,
   setContextAnnotation,
   removeContextAnnotation,
   clearContextAnnotations,
-} from '../lib/context';
+} from '../lib/context'
 export {
   getImplicitRole,
   isDynamicClass,
@@ -20,7 +20,7 @@ export {
   getEnhancedActionBuffer,
   clearEnhancedActionBuffer,
   generatePlaywrightScript,
-} from '../lib/reproduction';
+} from '../lib/reproduction'
 export {
   recordAction,
   getActionBuffer,
@@ -35,7 +35,7 @@ export {
   setActionCaptureEnabled,
   installNavigationCapture,
   uninstallNavigationCapture,
-} from '../lib/actions';
+} from '../lib/actions'
 export {
   parseResourceTiming,
   getNetworkWaterfall,
@@ -56,7 +56,7 @@ export {
   readResponseBody,
   readResponseBodyWithTimeout,
   wrapFetchWithBodies,
-} from '../lib/network';
+} from '../lib/network'
 export {
   getPerformanceMarks,
   getPerformanceMeasures,
@@ -68,9 +68,9 @@ export {
   getPerformanceSnapshotForError,
   setPerformanceMarksEnabled,
   isPerformanceMarksEnabled,
-} from '../lib/performance';
-export { postLog } from '../lib/bridge';
-export { installConsoleCapture, uninstallConsoleCapture } from '../lib/console';
+} from '../lib/performance'
+export { postLog } from '../lib/bridge'
+export { installConsoleCapture, uninstallConsoleCapture } from '../lib/console'
 export {
   parseStackFrames,
   parseSourceMap,
@@ -86,8 +86,8 @@ export {
   setSourceMapCache,
   getSourceMapCache,
   getSourceMapCacheSize,
-} from '../lib/ai-context';
-export { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions';
+} from '../lib/ai-context'
+export { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions'
 export {
   getSize,
   formatPayload,
@@ -98,14 +98,8 @@ export {
   setWebSocketCaptureEnabled,
   getWebSocketCaptureMode,
   uninstallWebSocketCapture,
-} from '../lib/websocket';
-export {
-  executeDOMQuery,
-  getPageInfo,
-  runAxeAudit,
-  runAxeAuditWithTimeout,
-  formatAxeResults,
-} from '../lib/dom-queries';
+} from '../lib/websocket'
+export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from '../lib/dom-queries'
 export {
   mapInitiatorType,
   aggregateResourceTiming,
@@ -120,13 +114,13 @@ export {
   sendPerformanceSnapshot,
   isPerformanceSnapshotEnabled,
   setPerformanceSnapshotEnabled,
-} from '../lib/perf-snapshot';
+} from '../lib/perf-snapshot'
 
 // Re-export constants that tests import from inject.js
-export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants';
+export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants'
 
 // Export API module
-export { installGasolineAPI, uninstallGasolineAPI, type GasolineAPI } from './api';
+export { installGasolineAPI, uninstallGasolineAPI, type GasolineAPI } from './api'
 
 // Export observer module
 export {
@@ -141,14 +135,10 @@ export {
   shouldDeferIntercepts,
   checkMemoryPressure,
   type DeferralState,
-} from './observers';
+} from './observers'
 
 // Export message handlers module
-export {
-  installMessageListener,
-  executeJavaScript,
-  safeSerializeForExecute,
-} from './message-handlers';
+export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers'
 
 // Export state management functions
 export {
@@ -159,31 +149,31 @@ export {
   type RestoreStateResult,
   type RestoredCounts,
   type HighlightResult,
-} from './state';
+} from './state'
 
-import { installGasolineAPI } from './api';
-import { installPhase1 } from './observers';
-import { installMessageListener } from './message-handlers';
-import { captureState, restoreState, sendPerformanceSnapshotWrapper } from './state';
-import { sendPerformanceSnapshot } from '../lib/perf-snapshot';
+import { installGasolineAPI } from './api'
+import { installPhase1 } from './observers'
+import { installMessageListener } from './message-handlers'
+import { captureState, restoreState, sendPerformanceSnapshotWrapper } from './state'
+import { sendPerformanceSnapshot } from '../lib/perf-snapshot'
 
 /**
  * Auto-install when loaded in browser
  */
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   // Install Phase 1 (lightweight API + observers)
-  installPhase1();
+  installPhase1()
 
   // Install message listener with state functions
-  installMessageListener(captureState, restoreState);
+  installMessageListener(captureState, restoreState)
 
   // Install Gasoline API
-  installGasolineAPI();
+  installGasolineAPI()
 
   // Send performance snapshot after page load + 2s settling time
   window.addEventListener('load', () => {
     setTimeout(() => {
-      sendPerformanceSnapshot();
-    }, 2000);
-  });
+      sendPerformanceSnapshot()
+    }, 2000)
+  })
 }

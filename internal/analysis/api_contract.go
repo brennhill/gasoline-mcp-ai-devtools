@@ -44,7 +44,7 @@ type APIContractValidator struct {
 // EndpointTracker maintains the established shape for an endpoint.
 type EndpointTracker struct {
 	Endpoint         string                 `json:"endpoint"`          // "METHOD /path"
-	EstablishedShape interface{}            `json:"established_shape"` // Learned response shape
+	EstablishedShape any            `json:"established_shape"` // Learned response shape
 	CallCount        int                    `json:"call_count"`
 	SuccessCount     int                    `json:"success_count"`     // 2xx responses
 	ConsistentCount  int                    `json:"consistent_count"`  // Responses matching established shape
@@ -66,16 +66,16 @@ type APIContractViolation struct {
 	AffectedCallCount int                    `json:"affected_call_count"`        // How many calls violated this rule
 	FirstSeenAt       string                 `json:"first_seen_at,omitempty"`    // RFC3339 when violation first detected
 	LastSeenAt        string                 `json:"last_seen_at,omitempty"`     // RFC3339 when violation last detected
-	ExpectedShape     map[string]interface{} `json:"expected_shape,omitempty"`
-	ActualShape       map[string]interface{} `json:"actual_shape,omitempty"`
+	ExpectedShape     map[string]any `json:"expected_shape,omitempty"`
+	ActualShape       map[string]any `json:"actual_shape,omitempty"`
 	MissingFields     []string               `json:"missing_fields,omitempty"`
 	NewFields         []string               `json:"new_fields,omitempty"`
 	Field             string                 `json:"field,omitempty"`
 	ExpectedType      string                 `json:"expected_type,omitempty"`
 	ActualType        string                 `json:"actual_type,omitempty"`
-	SampleValue       interface{}            `json:"sample_value,omitempty"`
+	SampleValue       any            `json:"sample_value,omitempty"`
 	StatusHistory     []int                  `json:"status_history,omitempty"`
-	LastErrorBody     map[string]interface{} `json:"last_error_body,omitempty"`
+	LastErrorBody     map[string]any `json:"last_error_body,omitempty"`
 	Occurrences       *ViolationOccurrences  `json:"occurrences,omitempty"`
 }
 
@@ -137,7 +137,7 @@ type EndpointContractReport struct {
 	Method           string                 `json:"method"`
 	CallCount        int                    `json:"call_count"`
 	StatusCodes      map[string]int         `json:"status_codes"`
-	EstablishedShape map[string]interface{} `json:"established_shape,omitempty"`
+	EstablishedShape map[string]any `json:"established_shape,omitempty"`
 	Consistency      string                 `json:"consistency"`
 	ConsistencyScore float64                `json:"consistency_score"` // Numeric 0-1
 	FirstCalledAt    string                 `json:"first_called_at"`
@@ -266,7 +266,7 @@ func (v *APIContractValidator) learnShape(tracker *EndpointTracker, body capture
 		return
 	}
 
-	var parsed interface{}
+	var parsed any
 	if err := json.Unmarshal([]byte(body.ResponseBody), &parsed); err != nil {
 		return
 	}
@@ -288,7 +288,7 @@ func (v *APIContractValidator) learnShape(tracker *EndpointTracker, body capture
 	}
 
 	// Track field presence for objects
-	if objShape, ok := shape.(map[string]interface{}); ok {
+	if objShape, ok := shape.(map[string]any); ok {
 		for field, fieldType := range objShape {
 			tracker.FieldPresence[field]++
 			if typeStr, ok := fieldType.(string); ok {
@@ -299,7 +299,7 @@ func (v *APIContractValidator) learnShape(tracker *EndpointTracker, body capture
 }
 
 // extractShape extracts a type-only shape from a JSON value.
-func (v *APIContractValidator) extractShape(value interface{}, depth int) interface{} {
+func (v *APIContractValidator) extractShape(value any, depth int) any {
 	if depth > maxShapeComparisonDepth {
 		return "object" // Truncate deep nesting
 	}
@@ -313,15 +313,15 @@ func (v *APIContractValidator) extractShape(value interface{}, depth int) interf
 		return "number"
 	case string:
 		return "string"
-	case []interface{}:
+	case []any:
 		if len(val) > 0 {
 			// Use first element to infer array element type
 			elemShape := v.extractShape(val[0], depth+1)
-			return map[string]interface{}{"$array": elemShape}
+			return map[string]any{"$array": elemShape}
 		}
 		return "array"
-	case map[string]interface{}:
-		shape := make(map[string]interface{})
+	case map[string]any:
+		shape := make(map[string]any)
 		for k, fieldVal := range val {
 			shape[k] = v.extractShape(fieldVal, depth+1)
 		}
@@ -332,9 +332,9 @@ func (v *APIContractValidator) extractShape(value interface{}, depth int) interf
 }
 
 // mergeShapes combines two shapes, keeping all observed fields.
-func (v *APIContractValidator) mergeShapes(existing, incoming interface{}) interface{} {
-	existingMap, eOK := existing.(map[string]interface{})
-	incomingMap, iOK := incoming.(map[string]interface{})
+func (v *APIContractValidator) mergeShapes(existing, incoming any) any {
+	existingMap, eOK := existing.(map[string]any)
+	incomingMap, iOK := incoming.(map[string]any)
 
 	if !eOK || !iOK {
 		// If types differ, prefer the existing (already established)
@@ -342,7 +342,7 @@ func (v *APIContractValidator) mergeShapes(existing, incoming interface{}) inter
 	}
 
 	// Merge all fields from both
-	merged := make(map[string]interface{})
+	merged := make(map[string]any)
 	for k, val := range existingMap {
 		merged[k] = val
 	}
@@ -407,7 +407,7 @@ func (v *APIContractValidator) Validate(body capture.NetworkBody) []APIContractV
 		return violations
 	}
 
-	var parsed interface{}
+	var parsed any
 	if err := json.Unmarshal([]byte(body.ResponseBody), &parsed); err != nil {
 		return violations
 	}
@@ -459,7 +459,7 @@ func (v *APIContractValidator) detectErrorSpike(tracker *EndpointTracker, body c
 
 	// Detect spike: had successes, now consecutive errors
 	if body.Status >= 500 && earlierSuccesses >= 2 && recentErrors >= 2 {
-		var errorBody map[string]interface{}
+		var errorBody map[string]any
 		_ = json.Unmarshal([]byte(body.ResponseBody), &errorBody)
 
 		return &APIContractViolation{
@@ -475,11 +475,11 @@ func (v *APIContractValidator) detectErrorSpike(tracker *EndpointTracker, body c
 }
 
 // compareShapes compares expected vs actual shape and returns violations.
-func (v *APIContractValidator) compareShapes(endpoint string, expected, actual, actualData interface{}) []APIContractViolation {
+func (v *APIContractValidator) compareShapes(endpoint string, expected, actual, actualData any) []APIContractViolation {
 	var violations []APIContractViolation
 
-	expectedMap, eOK := expected.(map[string]interface{})
-	actualMap, aOK := actual.(map[string]interface{})
+	expectedMap, eOK := expected.(map[string]any)
+	actualMap, aOK := actual.(map[string]any)
 
 	if !eOK || !aOK {
 		// Top-level type change
@@ -539,7 +539,7 @@ func (v *APIContractValidator) compareShapes(endpoint string, expected, actual, 
 	}
 
 	// Check for type changes in existing fields
-	actualDataMap, _ := actualData.(map[string]interface{})
+	actualDataMap, _ := actualData.(map[string]any)
 	for field, expectedType := range expectedMap {
 		actualType, found := actualMap[field]
 		if !found {
@@ -560,7 +560,7 @@ func (v *APIContractValidator) compareShapes(endpoint string, expected, actual, 
 				ActualType:   "null",
 			})
 		} else if expectedTypeStr != actualTypeStr && actualTypeStr != "null" {
-			var sampleValue interface{}
+			var sampleValue any
 			if actualDataMap != nil {
 				sampleValue = actualDataMap[field]
 			}
@@ -760,7 +760,7 @@ func (v *APIContractValidator) Report(filter APIContractFilter) APIContractRepor
 		}
 
 		if tracker.EstablishedShape != nil {
-			if shapeMap, ok := tracker.EstablishedShape.(map[string]interface{}); ok {
+			if shapeMap, ok := tracker.EstablishedShape.(map[string]any); ok {
 				report.EstablishedShape = toStringMap(shapeMap)
 			}
 		}
@@ -831,13 +831,13 @@ func (v *APIContractValidator) matchesFilter(endpoint string, filter APIContract
 	return true
 }
 
-func describeType(value interface{}) string {
+func describeType(value any) string {
 	switch v := value.(type) {
 	case nil:
 		return "null"
 	case string:
 		return v // Already a type string
-	case map[string]interface{}:
+	case map[string]any:
 		if _, hasArray := v["$array"]; hasArray {
 			return "array"
 		}
@@ -847,13 +847,13 @@ func describeType(value interface{}) string {
 	}
 }
 
-func toStringMap(m map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
+func toStringMap(m map[string]any) map[string]any {
+	result := make(map[string]any)
 	for k, v := range m {
 		switch val := v.(type) {
 		case string:
 			result[k] = val
-		case map[string]interface{}:
+		case map[string]any:
 			result[k] = toStringMap(val)
 		default:
 			result[k] = describeType(v)

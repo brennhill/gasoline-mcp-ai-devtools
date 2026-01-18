@@ -1,6 +1,6 @@
 {
   "name": "@brennhill/gasoline-linux-x64",
-  "version": "5.4.0",
+  "version": "5.4.1",
   "description": "Gasoline binary for Linux x64",
   "license": "AGPL-3.0-only",
   "os": [

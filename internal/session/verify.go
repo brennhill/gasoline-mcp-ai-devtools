@@ -711,12 +711,12 @@ func (vm *VerificationManager) determineVerdict(result VerificationResult) strin
 // normalizeVerifyErrorMessage normalizes dynamic values in error messages for matching.
 // Uses similar patterns to clustering.go but returns placeholders in a test-friendly format.
 func normalizeVerifyErrorMessage(msg string) string {
-	// Reuse existing patterns from clustering.go
+	// Order matters: apply more specific patterns first
+	// File:line must be matched before numeric IDs, or the line number gets replaced first
 	result := clusterUUIDRegex.ReplaceAllString(msg, "[uuid]")
 	result = clusterTimestampRegex.ReplaceAllString(result, "[timestamp]")
-	result = clusterNumericIDRegex.ReplaceAllString(result, "[id]")
-	// Add file:line normalization not in clustering.go
 	result = verifyFileLineRegex.ReplaceAllString(result, "[file]")
+	result = clusterNumericIDRegex.ReplaceAllString(result, "[id]")
 	return result
 }
 
@@ -763,7 +763,7 @@ type verifyFixParams struct {
 }
 
 // HandleTool dispatches the verify_fix MCP tool call
-func (vm *VerificationManager) HandleTool(params json.RawMessage) (interface{}, error) {
+func (vm *VerificationManager) HandleTool(params json.RawMessage) (any, error) {
 	var p verifyFixParams
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, fmt.Errorf("invalid params: %w", err)
@@ -775,7 +775,7 @@ func (vm *VerificationManager) HandleTool(params json.RawMessage) (interface{}, 
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{
+		return map[string]any{
 			"session_id": result.SessionID,
 			"status":     result.Status,
 			"label":      result.Label,
@@ -790,7 +790,7 @@ func (vm *VerificationManager) HandleTool(params json.RawMessage) (interface{}, 
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{
+		return map[string]any{
 			"session_id": result.SessionID,
 			"status":     result.Status,
 			"message":    result.Message,
@@ -804,11 +804,11 @@ func (vm *VerificationManager) HandleTool(params json.RawMessage) (interface{}, 
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{
+		return map[string]any{
 			"session_id": result.SessionID,
 			"status":     result.Status,
 			"label":      result.Label,
-			"result": map[string]interface{}{
+			"result": map[string]any{
 				"verdict":          result.Result.Verdict,
 				"before":           result.Result.Before,
 				"after":            result.Result.After,
@@ -826,7 +826,7 @@ func (vm *VerificationManager) HandleTool(params json.RawMessage) (interface{}, 
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{
+		return map[string]any{
 			"session_id": result.SessionID,
 			"status":     result.Status,
 			"label":      result.Label,
@@ -841,7 +841,7 @@ func (vm *VerificationManager) HandleTool(params json.RawMessage) (interface{}, 
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{
+		return map[string]any{
 			"session_id": result.SessionID,
 			"status":     result.Status,
 		}, nil

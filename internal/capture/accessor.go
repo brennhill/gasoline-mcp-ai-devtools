@@ -228,10 +228,10 @@ func (c *Capture) GetHTTPDebugLog() []HTTPDebugEntry {
 }
 
 // GetPilotStatus returns pilot status information (stub implementation)
-func (c *Capture) GetPilotStatus() interface{} {
+func (c *Capture) GetPilotStatus() any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return map[string]interface{}{
+	return map[string]any{
 		"enabled":             c.pilotEnabled,
 		"source":              "extension_poll",
 		"extension_connected": !c.lastPollAt.IsZero(),

@@ -22,7 +22,7 @@ docs/
 ├── core/                      ← Cross-product specs, API specs, UAT
 │   ├── UAT-v5.3-CHECKLIST.md  ← Current UAT checklist (canonical)
 │   ├── RELEASE.md             ← Release process & quality gates
-│   ├── KNOWN-ISSUES.md        ← Current blockers & issues
+│   ├── known-issues.md        ← Current blockers & issues
 │   ├── async-command-api.yaml ← OpenAPI 3.0 spec
 │   └── in-progress/           ← Active tracking docs, issue trackers
 ├── features/                  ← All feature documentation
@@ -64,6 +64,13 @@ Proposed → In-Progress → Shipped → (Deprecated → Archived)
 4. **Deprecated** — Feature sunset. Status updated to `deprecated`.
 5. **Archived** — Docs moved to `archive/`. Removed from feature index.
 
+## Quality & Verification
+
+- [quality-standards.md](quality-standards.md) — Complete quality guide (20 sections)
+- [quality-quick-reference.md](quality-quick-reference.md) — One-page quality checklist
+- [post-refactor-verification.md](post-refactor-verification.md) — Verification after refactoring
+- [5.4-todo.md](5.4-todo.md) — v5.4 refactoring notes and prevention rules
+
 ## For LLM Agents
 
 ### Adding a new feature
@@ -75,7 +82,7 @@ Proposed → In-Progress → Shipped → (Deprecated → Archived)
 
 ### Creating a release
 1. Update `CHANGELOG.md` using the structured format
-2. Update `KNOWN-ISSUES.md` if issues are resolved
+2. Update `known-issues.md` if issues are resolved
 3. Follow `/release.md` process
 
 ### Finding implementation details

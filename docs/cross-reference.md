@@ -19,12 +19,12 @@ last-verified: 2026-01-31
 
 ```
 RELEASE.md (process)
-├── KNOWN-ISSUES.md (blockers)
+├── known-issues.md (blockers)
 ├── UAT-v5.3-CHECKLIST.md (testing)
-└── VERSION-CHECKING.md (deployment)
+└── version-checking.md (deployment)
     └── CHANGELOG.md (history)
 
-KNOWN-ISSUES.md (blockers)
+known-issues.md (blockers)
 ├── FEATURE-index.md (status)
 └── features/*/product-spec.md (feature reqs)
 ```
@@ -73,6 +73,19 @@ core/uat-v5.3-checklist.md (canonical UAT)
 
 .claude/docs/spec-review.md (spec approval)
 └── features/feature/*/product-spec.md (feature specs)
+```
+
+### Quality Standards & Verification
+
+```
+quality-standards.md (comprehensive guide)
+├── quality-quick-reference.md (quick checklist)
+├── post-refactor-verification.md (refactor verification)
+├── 5.4-todo.md (refactoring prevention rules)
+├── scripts/check-file-length.sh (800-line enforcer)
+├── scripts/verify-refactor.sh (7-level verification)
+└── .claude/docs/testing.md (includes quality-gate)
+    └── .claude/docs/feature-workflow.md (5-gate process)
 ```
 
 ### Archive & Historical
@@ -133,7 +146,7 @@ api-key-auth (shipped)
 **Read these first:**
 1. `FEATURE-index.md` — What's shipped vs. proposed
 2. `features/feature/<name>/product-spec.md` — Requirements
-3. `KNOWN-ISSUES.md` — What's blocking
+3. `known-issues.md` — What's blocking
 
 **Then read:**
 - `ROADMAP-STRATEGY-ANALYSIS.md` — Roadmap for v6+
@@ -172,7 +185,7 @@ api-key-auth (shipped)
 
 **Then read:**
 - `features/<name>-review.md` — Known issues (regression prevention)
-- `KNOWN-ISSUES.md` — Current blockers
+- `known-issues.md` — Current blockers
 - `.claude/refs/testing-examples.md` — Test patterns
 
 ---

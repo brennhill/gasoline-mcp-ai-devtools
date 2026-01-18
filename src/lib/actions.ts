@@ -258,7 +258,7 @@ export function installNavigationCapture(): void {
       this: History,
       state: unknown,
       title: string,
-      url?: string | URL | null
+      url?: string | URL | null,
     ): void {
       const fromUrl = lastUrl
       originalPushState!.call(this, state, title, url)
@@ -275,7 +275,7 @@ export function installNavigationCapture(): void {
       this: History,
       state: unknown,
       title: string,
-      url?: string | URL | null
+      url?: string | URL | null,
     ): void {
       const fromUrl = lastUrl
       originalReplaceState!.call(this, state, title, url)

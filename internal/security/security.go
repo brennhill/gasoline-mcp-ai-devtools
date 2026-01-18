@@ -32,8 +32,8 @@ type SecurityFinding struct {
 	Remediation string `json:"remediation"` // How to fix
 }
 
-// LogEntry represents a console log entry as a map of string to interface{}
-type LogEntry map[string]interface{}
+// LogEntry represents a console log entry as a map of string to any
+type LogEntry map[string]any
 
 // SecurityScanInput contains the data to scan.
 type SecurityScanInput struct {
@@ -140,7 +140,7 @@ func (s *SecurityScanner) Scan(input SecurityScanInput) SecurityScanResult {
 // ============================================
 
 // HandleSecurityAudit processes MCP tool call parameters and runs the scan.
-func (s *SecurityScanner) HandleSecurityAudit(params json.RawMessage, bodies []capture.NetworkBody, entries []LogEntry, pageURLs []string) (interface{}, error) {
+func (s *SecurityScanner) HandleSecurityAudit(params json.RawMessage, bodies []capture.NetworkBody, entries []LogEntry, pageURLs []string) (any, error) {
 	var toolParams struct {
 		Checks      []string `json:"checks"`
 		URLFilter   string   `json:"url"`
