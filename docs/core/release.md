@@ -131,28 +131,43 @@ go tool cover -func=coverage.out | grep total
 
 ### 2. Version Bump
 
-All locations must be updated together (use `/bump-version`):
+**CRITICAL:** Use `/bump-version {version}` to update all locations, then **MUST run validation**:
+
+```bash
+bash scripts/validate-versions.sh
+```
+
+This validates all 17+ version locations match, including:
+- All package.json files (npm, extension, server)
+- Go main.go version constant
+- MCP golden test file
+- README badge
+- **optionalDependencies in npm/gasoline-mcp/package.json** (CRITICAL - must match main version)
+
+**If validation fails, STOP. Do not proceed with release.**
+
+All locations updated by bump-version:
 
 | File | Field |
 |------|-------|
-| `extension/manifest.json` | `"version"` |
-| `extension/inject.js` | `version:` in `window.__gasoline` |
-| `extension/background.js` | `version:` in debug export |
-| `extension/package.json` | `"version"` |
+| `Makefile` | `VERSION :=` |
 | `cmd/dev-console/main.go` | `version` constant |
+| `extension/manifest.json` | `"version"` |
+| `extension/package.json` | `"version"` |
 | `server/package.json` | `"version"` |
-| `npm/gasoline-mcp/package.json` | `"version"` + `optionalDependencies` |
+| `server/scripts/install.js` | `VERSION` constant |
+| `npm/gasoline-mcp/package.json` | `"version"` + `optionalDependencies` ⚠️ |
 | `npm/darwin-arm64/package.json` | `"version"` |
 | `npm/darwin-x64/package.json` | `"version"` |
 | `npm/linux-arm64/package.json` | `"version"` |
 | `npm/linux-x64/package.json` | `"version"` |
 | `npm/win32-x64/package.json` | `"version"` |
-| `pypi/gasoline-mcp/pyproject.toml` | `version` + optional deps |
-| `pypi/gasoline-mcp-*/pyproject.toml` | `version` (5 platform packages) |
-| `pypi/gasoline-mcp*/__init__.py` | `__version__` (6 packages) |
+| `cmd/dev-console/testdata/mcp-initialize.golden.json` | `"version"` |
 | `README.md` | Version badge |
+| `tests/extension/background.test.js` | Test assertions (2 locations) |
+| `extension/background/index.test.js` | Mock manifest version |
 
-Verify: `grep -r "OLD_VERSION" --include="*.json" --include="*.js" --include="*.go" --include="*.md" .` should return zero results.
+**⚠️ CRITICAL:** `optionalDependencies` in `npm/gasoline-mcp/package.json` MUST point to the same version as the wrapper package itself. If these are mismatched, npx will install old binaries.
 
 ### 3. Merge to `main`
 

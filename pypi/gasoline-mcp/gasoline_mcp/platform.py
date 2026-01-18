@@ -243,6 +243,48 @@ def run():
         show_help()
 
     # No config command, run the binary
+
+    # Kill any existing gasoline servers on port 7890 before starting
+    # This ensures pip/pipx always uses the newly installed version
+    port = "7890"  # Default port
+    if "--port" in args:
+        try:
+            port_index = args.index("--port")
+            if port_index + 1 < len(args):
+                port = args[port_index + 1]
+        except (ValueError, IndexError):
+            pass
+
+    try:
+        # Find PIDs on the port (cross-platform: lsof on Unix, netstat on Windows)
+        if sys.platform == "win32":
+            # Windows: netstat -ano | findstr :PORT
+            result = subprocess.run(
+                ["netstat", "-ano"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            for line in result.stdout.split('\n'):
+                if f":{port}" in line and "LISTENING" in line:
+                    pid = line.strip().split()[-1]
+                    subprocess.run(["taskkill", "/F", "/PID", pid], check=False, capture_output=True)
+        else:
+            # Unix: lsof -ti :PORT
+            result = subprocess.run(
+                ["lsof", "-ti", f":{port}"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if result.stdout.strip():
+                pids = result.stdout.strip().split('\n')
+                for pid in pids:
+                    subprocess.run(["kill", pid], check=False, capture_output=True)
+    except Exception:
+        # Kill failed - continue anyway
+        pass
+
     binary = get_binary_path()
 
     # Make sure binary is executable
