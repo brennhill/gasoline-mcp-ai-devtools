@@ -50,6 +50,8 @@ exclude:
   - v5-specification.md
   - v5-roadmap.md
   - v5-test-generation.md
+  - v6-roadmap.md
+  - v6-specification.md
   - product-description.md
   - performance-budget-spec.md
   - generate-test-v2.md
