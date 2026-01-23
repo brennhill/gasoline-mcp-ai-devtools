@@ -692,6 +692,17 @@ node --test extension-tests/performance.test.js
 - [x] **Performance benchmarks** - SLO tests for all critical paths
 - [x] **Debug log export** - Download JSON with recent extension activity
 
+### v4 (Planned)
+
+- [ ] **WebSocket monitoring** - Connection lifecycle, message payloads, reconnection events
+- [ ] **Network response bodies** - Capture request/response payloads for API debugging
+- [ ] **Live DOM queries** - On-demand DOM state inspection via MCP tool
+- [ ] **Accessibility audit** - Run axe-core and surface violations as actionable findings
+- [ ] **Performance metrics** - Core Web Vitals (LCP, FID, CLS), long tasks, memory pressure
+- [ ] **Component state inspection** - React/Vue/Svelte DevTools-level state and props
+- [ ] **Storage inspection** - localStorage, sessionStorage, IndexedDB, cookies
+- [ ] **Full network waterfall** - Request timing breakdown (DNS, TLS, TTFB, download)
+
 ## Troubleshooting
 
 ### Extension not connecting to server
