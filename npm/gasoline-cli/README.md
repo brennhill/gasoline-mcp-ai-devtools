@@ -1,4 +1,4 @@
-# gasoline-cli
+# gasoline-mcp
 
 **Adding fuel to the AI fire.** Captures browser console logs, network errors, and exceptions for your AI coding assistant via MCP.
 
@@ -20,7 +20,7 @@ Pick your tool and add the config:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -33,7 +33,7 @@ Pick your tool and add the config:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -56,7 +56,7 @@ Edit your config file:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -76,7 +76,7 @@ Go to Settings → MCP Servers → Add Server, or add to `~/.cursor/mcp.json`:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -96,7 +96,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -119,7 +119,7 @@ Add to `~/.continue/config.json`:
         "transport": {
           "type": "stdio",
           "command": "npx",
-          "args": ["gasoline-cli", "--mcp"]
+          "args": ["gasoline-mcp", "--mcp"]
         }
       }
     ]
@@ -140,7 +140,7 @@ Add to `~/.config/zed/settings.json`:
     "gasoline": {
       "command": {
         "path": "npx",
-        "args": ["gasoline-cli", "--mcp"]
+        "args": ["gasoline-mcp", "--mcp"]
       }
     }
   }
@@ -189,7 +189,7 @@ Browser → Extension → Local Server (localhost:7890) → Log File → AI read
 If your AI tool doesn't support MCP, you can run the server standalone:
 
 ```bash
-npx gasoline-cli
+npx gasoline-mcp
 ```
 
 This starts an HTTP server on `http://localhost:7890` and writes logs to `~/gasoline-logs.jsonl`. Your AI can read this file directly.
@@ -197,7 +197,7 @@ This starts an HTTP server on `http://localhost:7890` and writes logs to `~/gaso
 ## Options
 
 ```
-gasoline-cli [options]
+gasoline-mcp [options]
 
   --port <number>        Port to listen on (default: 7890)
   --log-file <path>      Path to log file (default: ~/gasoline-logs.jsonl)
@@ -213,12 +213,12 @@ gasoline-cli [options]
 
 - Make sure you restarted the AI tool after adding the config
 - Check the config file path is correct for your tool
-- Try running `npx gasoline-cli --version` to verify the package works
+- Try running `npx gasoline-mcp --version` to verify the package works
 
 **Extension shows "Disconnected"?**
 
 - The MCP server starts automatically when your AI tool launches — make sure it's running
-- For manual mode, run `npx gasoline-cli` in a terminal first
+- For manual mode, run `npx gasoline-mcp` in a terminal first
 - Check if port 7890 is in use: try `--port 7891` and update extension Options to match
 
 **No logs appearing?**

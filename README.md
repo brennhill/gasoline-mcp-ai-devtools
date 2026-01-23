@@ -12,7 +12,7 @@
 **Adding fuel to the AI fire**
 
 [![License](https://img.shields.io/badge/license-PolyForm%20Internal%20Use-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.0-green.svg)](https://github.com/brennhill/gasoline/releases)
+[![Version](https://img.shields.io/badge/version-3.0.0-green.svg)](https://github.com/brennhill/gasoline/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline)
@@ -51,7 +51,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -69,7 +69,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -82,7 +82,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -98,7 +98,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -112,7 +112,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
     "gasoline": {
       "command": {
         "path": "npx",
-        "args": ["gasoline-cli", "--mcp"]
+        "args": ["gasoline-mcp", "--mcp"]
       }
     }
   }
@@ -129,7 +129,7 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
         "transport": {
           "type": "stdio",
           "command": "npx",
-          "args": ["gasoline-cli", "--mcp"]
+          "args": ["gasoline-mcp", "--mcp"]
         }
       }
     ]
@@ -172,7 +172,7 @@ Your AI assistant now has access to these tools:
 If your AI tool doesn't support MCP, run the server standalone and point your AI at the log file:
 
 ```bash
-npx gasoline-cli
+npx gasoline-mcp
 ```
 
 The server will listen on `http://localhost:7890` and write logs to `~/gasoline-logs.jsonl`.
@@ -370,7 +370,7 @@ function CheckoutPage() {
 ## Server Options
 
 ```bash
-npx gasoline-cli [options]
+npx gasoline-mcp [options]
 
 Options:
   --port <number>        Port to listen on (default: 7890)
@@ -407,14 +407,14 @@ A fully-enriched error = ~5 entries, so 1000 entries ≈ **200 fully-enriched er
 
 ```bash
 # Increase to 5000 entries for verbose logging
-npx gasoline-cli --max-entries 5000
+npx gasoline-mcp --max-entries 5000
 ```
 
 **When to decrease:** If disk space is constrained or you only need the most recent errors:
 
 ```bash
 # Keep only the last 200 entries
-npx gasoline-cli --max-entries 200
+npx gasoline-mcp --max-entries 200
 ```
 
 ### MCP Mode
@@ -439,7 +439,7 @@ Add to `~/.claude/settings.json`:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -457,7 +457,7 @@ Add to your Claude Desktop config file:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -471,7 +471,7 @@ Add to Cursor's MCP settings (Settings → MCP Servers → Add Server):
 {
   "gasoline": {
     "command": "npx",
-    "args": ["gasoline-cli", "--mcp"]
+    "args": ["gasoline-mcp", "--mcp"]
   }
 }
 ```
@@ -483,7 +483,7 @@ Or add directly to `~/.cursor/mcp.json`:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -498,7 +498,7 @@ Add to Windsurf's MCP configuration (`~/.codeium/windsurf/mcp_config.json`):
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp"]
+      "args": ["gasoline-mcp", "--mcp"]
     }
   }
 }
@@ -516,7 +516,7 @@ Add to Continue's config (`~/.continue/config.json`):
         "transport": {
           "type": "stdio",
           "command": "npx",
-          "args": ["gasoline-cli", "--mcp"]
+          "args": ["gasoline-mcp", "--mcp"]
         }
       }
     ]
@@ -534,7 +534,7 @@ Add to your Zed settings (`~/.config/zed/settings.json`):
     "gasoline": {
       "command": {
         "path": "npx",
-        "args": ["gasoline-cli", "--mcp"]
+        "args": ["gasoline-mcp", "--mcp"]
       }
     }
   }
@@ -550,7 +550,7 @@ If you need to run Gasoline on a different port, add the `--port` flag:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-cli", "--mcp", "--port", "7891"]
+      "args": ["gasoline-mcp", "--mcp", "--port", "7891"]
     }
   }
 }
@@ -672,7 +672,7 @@ node --test extension-tests/performance.test.js
 - [x] Domain filtering
 - [x] Log rotation
 
-### v2 (Current)
+### v2 (Complete)
 
 - [x] **Screenshot capture** - Auto-capture on error (configurable)
 - [x] **DOM snapshot** - Capture relevant DOM subtree on error
@@ -686,7 +686,7 @@ node --test extension-tests/performance.test.js
 - [x] **Toggle controls** - Enable/disable advanced features from popup
 - [x] **Debug logging** - Internal extension logging for troubleshooting
 
-### v3 (Complete)
+### v3 (Current)
 
 - [x] **Configurable server URL** - Change port in extension Options
 - [x] **Performance benchmarks** - SLO tests for all critical paths
@@ -764,7 +764,7 @@ If you encounter a bug, please [open an issue](https://github.com/brennhill/gaso
 5. **Extension popup screenshot**: Shows connection status and settings
 6. **Debug log export**: Click "Export Debug Log" in the popup and attach the JSON file
 7. **Browser console errors**: Right-click extension icon → Inspect → Console tab
-8. **Server output**: Any errors from `npx gasoline-cli`
+8. **Server output**: Any errors from `npx gasoline-mcp`
 
 For log format or enrichment questions, include a sample log entry (redact sensitive data).
 
@@ -787,13 +787,13 @@ node --experimental-vm-modules --test extension-tests/*.test.js
 
 ## Publishing (npm)
 
-Gasoline is distributed as an npm package (`gasoline-cli`) with platform-specific binaries, similar to how esbuild works.
+Gasoline is distributed as an npm package (`gasoline-mcp`) with platform-specific binaries, similar to how esbuild works.
 
 ### Package Structure
 
 ```
 npm/
-├── gasoline-cli/               # Main package (bin entry point)
+├── gasoline-cli/               # Main package (gasoline-mcp on npm)
 ├── darwin-arm64/               # @brennhill/gasoline-darwin-arm64
 ├── darwin-x64/                 # @brennhill/gasoline-darwin-x64
 ├── linux-arm64/                # @brennhill/gasoline-linux-arm64
@@ -801,7 +801,7 @@ npm/
 └── win32-x64/                  # @brennhill/gasoline-win32-x64
 ```
 
-When a user runs `npm install gasoline-cli`, npm installs only the platform-specific optional dependency matching their OS/architecture. The main package's bin script detects the platform and runs the correct binary.
+When a user runs `npm install gasoline-mcp`, npm installs only the platform-specific optional dependency matching their OS/architecture. The main package's bin script detects the platform and runs the correct binary.
 
 ### Publishing a New Version
 
@@ -820,7 +820,7 @@ The script will:
 1. Build Go binaries for all platforms (`make build`)
 2. Copy binaries into the correct npm package directories
 3. Publish each `@brennhill/gasoline-*` platform package
-4. Publish the main `gasoline-cli` package
+4. Publish the main `gasoline-mcp` package
 
 ### Supported Platforms
 
@@ -834,7 +834,7 @@ The script will:
 
 ## Requirements
 
-- **Server**: Go 1.21+ (or use `npx gasoline-cli` for pre-built binary)
+- **Server**: Go 1.21+ (or use `npx gasoline-mcp` for pre-built binary)
 - **Extension**: Chrome/Chromium-based browser (Manifest V3)
 
 ## License
