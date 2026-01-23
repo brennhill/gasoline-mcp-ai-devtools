@@ -45,9 +45,11 @@ docs:
 
   - title: "More"
     children:
+      - title: "Security"
+        url: /security/
+      - title: "Privacy"
+        url: /privacy/
       - title: "Alternatives"
         url: /alternatives/
-      - title: "Privacy & Security"
-        url: /privacy/
       - title: "Troubleshooting"
         url: /troubleshooting/
