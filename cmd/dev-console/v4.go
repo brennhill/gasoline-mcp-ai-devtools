@@ -933,12 +933,32 @@ func (v *V4Server) SetMemoryUsage(bytes int64) {
 	v.simulatedMemory = bytes
 }
 
-// isMemoryExceeded checks if memory is over the hard limit
+// IsMemoryExceeded checks if memory is over the hard limit (acquires lock).
+// Uses simulated memory if set (for testing), otherwise checks real buffer memory.
+func (v *V4Server) IsMemoryExceeded() bool {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return v.isMemoryExceeded()
+}
+
+// isMemoryExceeded is the internal version (caller must hold lock)
 func (v *V4Server) isMemoryExceeded() bool {
 	if v.simulatedMemory > 0 {
 		return v.simulatedMemory > memoryHardLimit
 	}
-	return false
+	return v.calcTotalMemory() > memoryHardLimit
+}
+
+// GetTotalBufferMemory returns the sum of all buffer memory usage
+func (v *V4Server) GetTotalBufferMemory() int64 {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return v.calcTotalMemory()
+}
+
+// calcTotalMemory returns total memory across all buffers (caller must hold lock)
+func (v *V4Server) calcTotalMemory() int64 {
+	return v.calcWSMemory() + v.calcNBMemory()
 }
 
 // GetWebSocketBufferMemory returns approximate memory usage of WS buffer
@@ -973,10 +993,16 @@ func (v *V4Server) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request)
 
 	v.mu.RLock()
 	rateLimited := v.isRateLimited()
+	memExceeded := v.isMemoryExceeded()
 	v.mu.RUnlock()
 
 	if rateLimited {
 		w.WriteHeader(http.StatusTooManyRequests)
+		return
+	}
+
+	if memExceeded {
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
