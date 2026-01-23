@@ -417,6 +417,9 @@ func NewV4Server() *V4Server {
 		perfSnapshotOrder: make([]string, 0),
 		perfBaselines:     make(map[string]PerformanceBaseline),
 		perfBaselineOrder: make([]string, 0),
+		a11yCache:         make(map[string]*a11yCacheEntry),
+		a11yCacheOrder:    make([]string, 0),
+		a11yInflight:      make(map[string]*a11yInflightEntry),
 	}
 	v4.queryCond = sync.NewCond(&v4.mu)
 	return v4
@@ -431,12 +434,15 @@ func (v *V4Server) AddWebSocketEvents(events []WebSocketEvent) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	v.wsTotalAdded += int64(len(events))
+	now := time.Now()
 	for i := range events {
 		// Track connection state
 		v.trackConnection(events[i])
 
 		// Add to ring buffer
 		v.wsEvents = append(v.wsEvents, events[i])
+		v.wsAddedAt = append(v.wsAddedAt, now)
 	}
 
 	// Enforce max count
@@ -1963,6 +1969,29 @@ func (h *MCPHandlerV4) v4ToolsList() []MCPTool {
 				},
 			},
 		},
+		{
+			Name:        "get_changes_since",
+			Description: "Get a compressed diff of browser activity since the last checkpoint. Returns only new console errors, network failures, WebSocket disconnections, and user actions — deduplicated and severity-ranked. Call with no arguments for auto-advancing behavior, or pass a named checkpoint to compare against a stable reference point.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"checkpoint": map[string]interface{}{
+						"type":        "string",
+						"description": "Named checkpoint, ISO 8601 timestamp, or omit for auto-advance. Named checkpoints persist across calls.",
+					},
+					"include": map[string]interface{}{
+						"type":        "array",
+						"description": "Categories to include: console, network, websocket, actions. Omit for all.",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+					"severity": map[string]interface{}{
+						"type":        "string",
+						"description": "Minimum severity: all (default), warnings, errors_only",
+						"enum":        []string{"all", "warnings", "errors_only"},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -1991,6 +2020,8 @@ func (h *MCPHandlerV4) handleV4ToolCall(req JSONRPCRequest, name string, args js
 		return h.toolGetSessionTimeline(req, args), true
 	case "generate_test":
 		return h.toolGenerateTest(req, args), true
+	case "get_changes_since":
+		return h.toolGetChangesSince(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -2250,6 +2281,171 @@ func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage
 		},
 	}
 	resultJSON, _ := json.Marshal(resp)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+// ============================================
+// A11y Audit Cache
+// ============================================
+
+// a11yCacheKey generates a cache key from scope and tags (tags sorted for normalization)
+func (v *V4Server) a11yCacheKey(scope string, tags []string) string {
+	sortedTags := make([]string, len(tags))
+	copy(sortedTags, tags)
+	sort.Strings(sortedTags)
+	return scope + "|" + strings.Join(sortedTags, ",")
+}
+
+// getA11yCacheEntry returns cached result if valid, nil otherwise
+func (v *V4Server) getA11yCacheEntry(key string) json.RawMessage {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	entry, exists := v.a11yCache[key]
+	if !exists {
+		return nil
+	}
+	if time.Since(entry.createdAt) > a11yCacheTTL {
+		return nil
+	}
+	if v.lastKnownURL != "" && entry.url != "" && entry.url != v.lastKnownURL {
+		return nil
+	}
+	return entry.result
+}
+
+// setA11yCacheEntry stores a result in the cache with eviction
+func (v *V4Server) setA11yCacheEntry(key string, result json.RawMessage) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	if _, exists := v.a11yCache[key]; !exists && len(v.a11yCache) >= maxA11yCacheEntries {
+		if len(v.a11yCacheOrder) > 0 {
+			oldest := v.a11yCacheOrder[0]
+			v.a11yCacheOrder = v.a11yCacheOrder[1:]
+			delete(v.a11yCache, oldest)
+		}
+	}
+
+	v.a11yCache[key] = &a11yCacheEntry{
+		result:    result,
+		createdAt: time.Now(),
+		url:       v.lastKnownURL,
+	}
+
+	newOrder := make([]string, 0, len(v.a11yCacheOrder)+1)
+	for _, k := range v.a11yCacheOrder {
+		if k != key {
+			newOrder = append(newOrder, k)
+		}
+	}
+	newOrder = append(newOrder, key)
+	v.a11yCacheOrder = newOrder
+}
+
+// removeA11yCacheEntry removes a specific cache entry
+func (v *V4Server) removeA11yCacheEntry(key string) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	delete(v.a11yCache, key)
+	newOrder := make([]string, 0, len(v.a11yCacheOrder))
+	for _, k := range v.a11yCacheOrder {
+		if k != key {
+			newOrder = append(newOrder, k)
+		}
+	}
+	v.a11yCacheOrder = newOrder
+}
+
+// getOrCreateInflight returns an existing inflight entry to wait on, or nil if this caller should proceed.
+func (v *V4Server) getOrCreateInflight(key string) *a11yInflightEntry {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	if existing, ok := v.a11yInflight[key]; ok {
+		return existing
+	}
+	v.a11yInflight[key] = &a11yInflightEntry{
+		done: make(chan struct{}),
+	}
+	return nil
+}
+
+// completeInflight signals waiters and removes the inflight entry
+func (v *V4Server) completeInflight(key string, result json.RawMessage, err error) {
+	v.mu.Lock()
+	entry, exists := v.a11yInflight[key]
+	if exists {
+		entry.result = result
+		entry.err = err
+		delete(v.a11yInflight, key)
+	}
+	v.mu.Unlock()
+
+	if exists {
+		close(entry.done)
+	}
+}
+
+// ExpireA11yCache forces all cache entries to expire (for testing)
+func (v *V4Server) ExpireA11yCache() {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	for key, entry := range v.a11yCache {
+		entry.createdAt = time.Now().Add(-a11yCacheTTL - time.Second)
+		v.a11yCache[key] = entry
+	}
+}
+
+// GetA11yCacheSize returns the number of entries in the a11y cache
+func (v *V4Server) GetA11yCacheSize() int {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return len(v.a11yCache)
+}
+
+// SetLastKnownURL updates the last known page URL for navigation detection.
+func (v *V4Server) SetLastKnownURL(url string) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	if v.lastKnownURL != "" && url != v.lastKnownURL {
+		v.a11yCache = make(map[string]*a11yCacheEntry)
+		v.a11yCacheOrder = make([]string, 0)
+	}
+	v.lastKnownURL = url
+}
+
+// ============================================
+// Compressed State Diffs
+// ============================================
+
+func (h *MCPHandlerV4) toolGetChangesSince(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		Checkpoint string   `json:"checkpoint"`
+		Include    []string `json:"include"`
+		Severity   string   `json:"severity"`
+	}
+	_ = json.Unmarshal(args, &arguments)
+
+	params := GetChangesSinceParams{
+		Checkpoint: arguments.Checkpoint,
+		Include:    arguments.Include,
+		Severity:   arguments.Severity,
+	}
+
+	diff := h.checkpoints.GetChangesSince(params)
+
+	diffJSON, _ := json.Marshal(diff)
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": string(diffJSON)},
+		},
+	}
+
+	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 

@@ -614,25 +614,25 @@ func (cm *CheckpointManager) computeWebSocketDiff(cp *Checkpoint, severity strin
 
 	diff := &WebSocketDiff{TotalNew: len(newEvents)}
 
-	for _, event := range newEvents {
-		switch event.Event {
+	for i := range newEvents {
+		switch newEvents[i].Event {
 		case "close":
 			if severity != "errors_only" {
 				diff.Disconnections = append(diff.Disconnections, WSDisco{
-					URL:         event.URL,
-					CloseCode:   event.CloseCode,
-					CloseReason: event.CloseReason,
+					URL:         newEvents[i].URL,
+					CloseCode:   newEvents[i].CloseCode,
+					CloseReason: newEvents[i].CloseReason,
 				})
 			}
 		case "open":
 			diff.Connections = append(diff.Connections, WSConn{
-				URL: event.URL,
-				ID:  event.ID,
+				URL: newEvents[i].URL,
+				ID:  newEvents[i].ID,
 			})
 		case "error":
 			diff.Errors = append(diff.Errors, WSError{
-				URL:     event.URL,
-				Message: event.Data,
+				URL:     newEvents[i].URL,
+				Message: newEvents[i].Data,
 			})
 		}
 	}
@@ -672,14 +672,14 @@ func (cm *CheckpointManager) computeActionsDiff(cp *Checkpoint) *ActionsDiff {
 
 	diff := &ActionsDiff{TotalNew: len(newActions)}
 
-	for i, action := range newActions {
+	for i := range newActions {
 		if i >= maxDiffEntriesPerCat {
 			break
 		}
 		diff.Actions = append(diff.Actions, ActionEntry{
-			Type:      action.Type,
-			URL:       action.URL,
-			Timestamp: action.Timestamp,
+			Type:      newActions[i].Type,
+			URL:       newActions[i].URL,
+			Timestamp: newActions[i].Timestamp,
 		})
 	}
 

@@ -4191,3 +4191,594 @@ func TestWeightedOptionalFloat(t *testing.T) {
 		t.Errorf("nil snapshot should preserve baseline, got %v", result)
 	}
 }
+func TestA11yCacheMiss(t *testing.T) {
+	// First call with given params should trigger extension round-trip (pending query created)
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","tags":["wcag2aa"]}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := v4.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query on cache miss")
+	}
+
+	// Simulate extension response
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0,"passes":5}}`))
+	resp := <-done
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+	if !strings.Contains(result.Content[0].Text, `"violations":0`) {
+		t.Errorf("Expected violations summary in result, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestA11yCacheHit(t *testing.T) {
+	// Second call with same params within 30s should return immediately, no pending query
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// First call (cache miss) — run in goroutine and simulate response
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","tags":["wcag2aa"]}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := v4.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query on first call")
+	}
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0,"passes":5}}`))
+	<-done
+
+	// Second call (should be cache hit — no pending query, immediate response)
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 3, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","tags":["wcag2aa"]}}`),
+	})
+
+	// Verify no new pending query was created
+	pending = v4.GetPendingQueries()
+	if len(pending) != 0 {
+		t.Errorf("Expected no pending queries on cache hit, got %d", len(pending))
+	}
+
+	// Verify we got the same result
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+	if !strings.Contains(result.Content[0].Text, `"violations":0`) {
+		t.Errorf("Expected cached result, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestA11yCacheTTLExpiry(t *testing.T) {
+	// After 30s, cache entry should be expired and new audit triggered
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// First call
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := v4.GetPendingQueries()
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	<-done
+
+	// Simulate time passing beyond TTL by setting the cache entry's timestamp to the past
+	v4.ExpireA11yCache()
+
+	// Third call should be cache miss again
+	done2 := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 4, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+		})
+		done2 <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending = v4.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query after TTL expiry")
+	}
+
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"new-violation"}],"summary":{"violations":1}}`))
+	resp := <-done2
+
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+	if !strings.Contains(result.Content[0].Text, "new-violation") {
+		t.Errorf("Expected fresh result after TTL expiry, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestA11yCacheTagNormalization(t *testing.T) {
+	// Tags in different order should produce the same cache key
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// First call with tags ["wcag2aa", "wcag2a"]
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"tags":["wcag2aa","wcag2a"]}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := v4.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query")
+	}
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	<-done
+
+	// Second call with tags in different order ["wcag2a", "wcag2aa"] — should hit cache
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 3, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"tags":["wcag2a","wcag2aa"]}}`),
+	})
+
+	pending = v4.GetPendingQueries()
+	if len(pending) != 0 {
+		t.Errorf("Expected cache hit for reordered tags, but got %d pending queries", len(pending))
+	}
+
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+	if !strings.Contains(result.Content[0].Text, `"violations":0`) {
+		t.Errorf("Expected cached result for reordered tags, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestA11yCacheForceRefresh(t *testing.T) {
+	// force_refresh: true should bypass cache and re-run audit
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// First call (populates cache)
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := v4.GetPendingQueries()
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	<-done
+
+	// Second call with force_refresh — should bypass cache
+	done2 := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 3, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","force_refresh":true}}`),
+		})
+		done2 <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending = v4.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query when force_refresh is true")
+	}
+
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"new-issue"}],"summary":{"violations":1}}`))
+	resp := <-done2
+
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+	if !strings.Contains(result.Content[0].Text, "new-issue") {
+		t.Errorf("Expected fresh result after force_refresh, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestA11yCacheErrorNotCached(t *testing.T) {
+	// Timeout/error should not be cached; next call should retry
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	v4.queryTimeout = 100 * time.Millisecond // Short timeout for test
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// First call — let it time out (don't provide result)
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#timeout-test"}}`),
+	})
+
+	var errResult struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+		IsError bool `json:"isError"`
+	}
+	json.Unmarshal(resp.Result, &errResult)
+	if !errResult.IsError {
+		t.Fatal("Expected error response from timeout")
+	}
+
+	// Second call — should NOT be cached, should create new pending query
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 3, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#timeout-test"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := v4.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query after error (error should not be cached)")
+	}
+
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	<-done
+}
+
+func TestA11yCacheDifferentParams(t *testing.T) {
+	// Different scope/tags should produce different cache entries
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// First call: scope="#main"
+	done1 := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+		})
+		done1 <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := v4.GetPendingQueries()
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	<-done1
+
+	// Second call: scope="#footer" — different params, should be cache miss
+	done2 := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 3, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#footer"}}`),
+		})
+		done2 <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending = v4.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query for different scope (cache miss)")
+	}
+
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"footer-issue"}],"summary":{"violations":1}}`))
+	<-done2
+}
+
+func TestA11yCacheMaxEntries(t *testing.T) {
+	// 11th unique cache entry should evict the oldest
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// Populate 10 cache entries with different scopes
+	for i := 0; i < 10; i++ {
+		scope := fmt.Sprintf("#section-%d", i)
+		args := fmt.Sprintf(`{"name":"run_accessibility_audit","arguments":{"scope":"%s"}}`, scope)
+
+		done := make(chan JSONRPCResponse)
+		go func() {
+			resp := mcp.HandleRequest(JSONRPCRequest{
+				JSONRPC: "2.0", ID: json.RawMessage(fmt.Sprintf("%d", i+10)), Method: "tools/call",
+				Params: json.RawMessage(args),
+			})
+			done <- resp
+		}()
+
+		time.Sleep(50 * time.Millisecond)
+		pending := v4.GetPendingQueries()
+		if len(pending) == 0 {
+			t.Fatalf("Expected pending query for scope #section-%d", i)
+		}
+		v4.SetQueryResult(pending[0].ID, json.RawMessage(fmt.Sprintf(`{"violations":[],"summary":{"violations":0,"scope":"%s"}}`, scope)))
+		<-done
+	}
+
+	// Verify cache has 10 entries
+	if v4.GetA11yCacheSize() != 10 {
+		t.Fatalf("Expected 10 cache entries, got %d", v4.GetA11yCacheSize())
+	}
+
+	// Add 11th entry — should evict #section-0
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 100, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#section-new"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := v4.GetPendingQueries()
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	<-done
+
+	// Cache should still be 10 (evicted oldest)
+	if v4.GetA11yCacheSize() != 10 {
+		t.Errorf("Expected 10 cache entries after eviction, got %d", v4.GetA11yCacheSize())
+	}
+
+	// #section-0 should now be a cache miss
+	done2 := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 101, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#section-0"}}`),
+		})
+		done2 <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending = v4.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected cache miss for evicted entry #section-0")
+	}
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	<-done2
+}
+
+func TestA11yCacheNavigationInvalidation(t *testing.T) {
+	// Cache should be cleared when URL changes (navigation detected)
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// Set initial URL context
+	v4.SetLastKnownURL("https://myapp.com/dashboard")
+
+	// First call (populates cache)
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := v4.GetPendingQueries()
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	<-done
+
+	// Simulate navigation — URL changes
+	v4.SetLastKnownURL("https://myapp.com/settings")
+
+	// Same params — should be cache miss because URL changed
+	done2 := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 3, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+		})
+		done2 <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending = v4.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected cache miss after navigation (URL change)")
+	}
+
+	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	<-done2
+}
+
+func TestA11yCacheConcurrentDedup(t *testing.T) {
+	// Two simultaneous calls for the same cache key should produce only one pending query
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// Launch two concurrent calls with the same params
+	done1 := make(chan JSONRPCResponse)
+	done2 := make(chan JSONRPCResponse)
+
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#concurrent"}}`),
+		})
+		done1 <- resp
+	}()
+
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 3, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#concurrent"}}`),
+		})
+		done2 <- resp
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	// Should have at most 1 pending query (deduplication)
+	pending := v4.GetPendingQueries()
+	if len(pending) > 1 {
+		t.Errorf("Expected at most 1 pending query for concurrent dedup, got %d", len(pending))
+	}
+
+	if len(pending) > 0 {
+		v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	}
+
+	// Both should complete with same result
+	resp1 := <-done1
+	resp2 := <-done2
+
+	var r1, r2 struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp1.Result, &r1)
+	json.Unmarshal(resp2.Result, &r2)
+
+	if r1.Content[0].Text != r2.Content[0].Text {
+		t.Errorf("Expected same result for both concurrent calls")
+	}
+}
+
+func TestA11yCacheForceRefreshParam(t *testing.T) {
+	// Verify force_refresh is accepted as a tool parameter
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// Check that force_refresh is in the tool schema
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/list",
+	})
+
+	var toolsResult struct {
+		Tools []struct {
+			Name        string                 `json:"name"`
+			InputSchema map[string]interface{} `json:"inputSchema"`
+		} `json:"tools"`
+	}
+	json.Unmarshal(resp.Result, &toolsResult)
+
+	var found bool
+	for _, tool := range toolsResult.Tools {
+		if tool.Name == "run_accessibility_audit" {
+			props, ok := tool.InputSchema["properties"].(map[string]interface{})
+			if !ok {
+				t.Fatal("Expected properties in inputSchema")
+			}
+			if _, exists := props["force_refresh"]; !exists {
+				t.Error("Expected force_refresh parameter in run_accessibility_audit schema")
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("run_accessibility_audit tool not found in tools list")
+	}
+}
