@@ -119,7 +119,7 @@ table {
 
 // Page hero / splash
 .page__hero--overlay {
-  background-color: $gasoline-bg;
+  background: linear-gradient(135deg, $gasoline-bg 0%, $gasoline-bg-light 50%, rgba($gasoline-flame-outer, 0.12) 100%) !important;
 
   .page__title {
     color: #ffffff;
