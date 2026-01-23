@@ -250,6 +250,21 @@ git branch -d feature/<feature-name>
 
 See `docs/v5-roadmap.md` for the prioritized list. Pick unchecked items.
 
+## Technical Specifications (NON-NEGOTIABLE)
+
+Tech specs MUST be written in natural language. They are human-readable documents that describe **what** the system does and **how** it behaves — not code dumps with comments.
+
+**Rules:**
+1. Describe behavior in plain English sentences and paragraphs
+2. Use prose to explain data flow, decisions, and constraints
+3. Code snippets are allowed ONLY as brief illustrative examples (a few lines max), never as the primary content
+4. Structure with sections like: Purpose, How It Works, Data Model (described in words), Tool Interface, Behavior, Edge Cases, Performance Constraints, Test Scenarios
+5. A non-engineer should be able to read a tech spec and understand what the feature does
+6. The spec acts as a cross-reference for target behavior — if an implementer reads it, they know exactly what to build without needing to reverse-engineer code blocks
+
+**Don't:** Paste full Go structs, function implementations, or test function signatures as the spec content.
+**Do:** Write "The server maintains a map of checkpoint IDs to captured state. Each checkpoint stores the buffer positions at the time it was created, so diffs can be computed by comparing current positions against the checkpoint."
+
 ## Don't Do This
 
 - Write implementation before tests (**TDD VIOLATION**)
