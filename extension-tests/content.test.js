@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Tests for content script message forwarding
  * TDD: Tests for v5 GASOLINE_NETWORK_BODY forwarding
@@ -33,7 +34,9 @@ describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
     globalThis.document = {
       createElement: mock.fn(() => ({
         remove: mock.fn(),
-        set onload(fn) { fn() },
+        set onload(fn) {
+          fn()
+        },
       })),
       head: { appendChild: mock.fn() },
       documentElement: { appendChild: mock.fn() },
@@ -167,9 +170,23 @@ describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
   test('should forward GASOLINE_ENHANCED_ACTION with all action types', () => {
     const actions = [
       { type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: { id: 'btn' } },
-      { type: 'input', timestamp: 1001, url: 'http://localhost:3000', selectors: { id: 'input' }, value: 'hello', inputType: 'text' },
+      {
+        type: 'input',
+        timestamp: 1001,
+        url: 'http://localhost:3000',
+        selectors: { id: 'input' },
+        value: 'hello',
+        inputType: 'text',
+      },
       { type: 'keypress', timestamp: 1002, url: 'http://localhost:3000', selectors: { id: 'input' }, key: 'Enter' },
-      { type: 'select', timestamp: 1003, url: 'http://localhost:3000', selectors: { id: 'dropdown' }, selectedValue: 'us', selectedText: 'United States' },
+      {
+        type: 'select',
+        timestamp: 1003,
+        url: 'http://localhost:3000',
+        selectors: { id: 'dropdown' },
+        selectedValue: 'us',
+        selectedText: 'United States',
+      },
       { type: 'scroll', timestamp: 1004, url: 'http://localhost:3000', scrollY: 500 },
       { type: 'navigate', timestamp: 1005, url: 'http://localhost:3000', fromUrl: '/home', toUrl: '/about' },
     ]
@@ -181,8 +198,7 @@ describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
         data: { type: 'GASOLINE_ENHANCED_ACTION', payload },
       })
 
-      assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 1,
-        `Should forward ${payload.type} action`)
+      assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 1, `Should forward ${payload.type} action`)
       const sentMessage = mockChrome.runtime.sendMessage.mock.calls[0].arguments[0]
       assert.strictEqual(sentMessage.type, 'enhanced_action')
       assert.strictEqual(sentMessage.payload.type, payload.type)

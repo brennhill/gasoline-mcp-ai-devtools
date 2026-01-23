@@ -561,7 +561,7 @@ func TestV4PendingQueryCreation(t *testing.T) {
 	v4 := setupV4TestServer(t)
 
 	id := v4.CreatePendingQuery(PendingQuery{
-		Type: "dom",
+		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".user-list"}`),
 	})
 
@@ -948,7 +948,7 @@ func TestV4WebSocketBufferMemoryLimit(t *testing.T) {
 
 	// Add events that exceed 4MB memory limit
 	largeData := strings.Repeat("x", 100000) // 100KB per event
-	for i := 0; i < 50; i++ { // 50 * 100KB = 5MB
+	for i := 0; i < 50; i++ {                // 50 * 100KB = 5MB
 		v4.AddWebSocketEvents([]WebSocketEvent{
 			{ID: "uuid-1", Event: "message", Data: largeData},
 		})
@@ -966,7 +966,7 @@ func TestV4NetworkBodiesBufferMemoryLimit(t *testing.T) {
 
 	// Add bodies that exceed 8MB memory limit
 	largeBody := strings.Repeat("y", 200000) // 200KB per body
-	for i := 0; i < 50; i++ { // 50 * 200KB = 10MB
+	for i := 0; i < 50; i++ {                // 50 * 200KB = 10MB
 		v4.AddNetworkBodies([]NetworkBody{
 			{URL: "/api/test", ResponseBody: largeBody, Status: 200},
 		})
@@ -1055,7 +1055,9 @@ func TestMCPGetWebSocketEventsWithFilter(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1092,7 +1094,9 @@ func TestMCPGetWebSocketStatus(t *testing.T) {
 	}
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1131,7 +1135,9 @@ func TestMCPGetNetworkBodies(t *testing.T) {
 	}
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1164,7 +1170,9 @@ func TestMCPGetNetworkBodiesWithFilter(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1213,7 +1221,9 @@ func TestMCPQueryDOM(t *testing.T) {
 	}
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1246,8 +1256,10 @@ func TestMCPQueryDOMTimeout(t *testing.T) {
 
 	// Should return an error in the content (not protocol error)
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
-		IsError bool                                   `json:"isError"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+		IsError bool `json:"isError"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1330,7 +1342,9 @@ func TestMCPRunAccessibilityAudit(t *testing.T) {
 	}
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1388,7 +1402,9 @@ func TestMCPToolsListIncludesV4Tools(t *testing.T) {
 	})
 
 	var result struct {
-		Tools []struct{ Name string `json:"name"` } `json:"tools"`
+		Tools []struct {
+			Name string `json:"name"`
+		} `json:"tools"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1432,7 +1448,9 @@ func TestMCPGetWebSocketEventsEmpty(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1462,7 +1480,9 @@ func TestMCPGetNetworkBodiesEmpty(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1724,7 +1744,9 @@ func TestMCPGetEnhancedActions(t *testing.T) {
 	}
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1764,7 +1786,9 @@ func TestMCPGetEnhancedActionsWithLastN(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1792,7 +1816,9 @@ func TestMCPGetEnhancedActionsEmpty(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1830,7 +1856,9 @@ func TestMCPGetReproductionScript(t *testing.T) {
 	}
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1868,7 +1896,9 @@ func TestMCPGetReproductionScriptWithErrorMessage(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1901,7 +1931,9 @@ func TestMCPGetReproductionScriptWithLastN(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1935,7 +1967,9 @@ func TestMCPGetReproductionScriptWithBaseURL(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -1963,7 +1997,9 @@ func TestMCPGetReproductionScriptEmpty(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -2012,7 +2048,9 @@ func TestMCPGetReproductionScriptSelectorPriority(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -2057,7 +2095,9 @@ func TestMCPGetReproductionScriptInputActions(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -2105,7 +2145,9 @@ func TestMCPGetReproductionScriptPauseComments(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -2162,7 +2204,9 @@ func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
 	}
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -2593,7 +2637,7 @@ func TestV4GlobalEvictionOnWSIngest(t *testing.T) {
 
 	// Fill WS buffer to near its per-buffer limit (4MB)
 	largeData := strings.Repeat("x", 100000) // 100KB each
-	for i := 0; i < 38; i++ { // ~3.8MB
+	for i := 0; i < 38; i++ {                // ~3.8MB
 		v4.AddWebSocketEvents([]WebSocketEvent{
 			{ID: "uuid-1", Event: "message", Data: largeData},
 		})
@@ -2625,7 +2669,7 @@ func TestV4GlobalEvictionOnNBIngest(t *testing.T) {
 
 	// Fill NB buffer to near its per-buffer limit (8MB)
 	largeBody := strings.Repeat("y", 200000) // 200KB each
-	for i := 0; i < 38; i++ { // ~7.6MB
+	for i := 0; i < 38; i++ {                // ~7.6MB
 		v4.AddNetworkBodies([]NetworkBody{
 			{URL: "/api/test", ResponseBody: largeBody, Status: 200},
 		})
@@ -2696,7 +2740,9 @@ func TestMCPToolsListIncludesV5Tools(t *testing.T) {
 	})
 
 	var result struct {
-		Tools []struct{ Name string `json:"name"` } `json:"tools"`
+		Tools []struct {
+			Name string `json:"name"`
+		} `json:"tools"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -2825,7 +2871,7 @@ func TestExtractResponseShapeDepthLimit(t *testing.T) {
 
 func TestNormalizeTimestampRFC3339(t *testing.T) {
 	ts := normalizeTimestamp("2024-01-15T10:30:00.000Z")
-	expected := int64(1705312200000)
+	expected := int64(1705314600000)
 	if ts != expected {
 		t.Errorf("Expected %d, got %d", expected, ts)
 	}
@@ -2833,8 +2879,8 @@ func TestNormalizeTimestampRFC3339(t *testing.T) {
 
 func TestNormalizeTimestampRFC3339Nano(t *testing.T) {
 	ts := normalizeTimestamp("2024-01-15T10:30:00.123456789Z")
-	// Should be 1705312200123 (truncated to ms)
-	expected := int64(1705312200123)
+	// Should be 1705314600123 (truncated to ms)
+	expected := int64(1705314600123)
 	if ts != expected {
 		t.Errorf("Expected %d, got %d", expected, ts)
 	}
@@ -2985,8 +3031,8 @@ func TestGetSessionTimelineMergedAndSorted(t *testing.T) {
 	v4 := setupV4TestServer(t)
 
 	v4.AddEnhancedActions([]EnhancedAction{
-		{Type: "click", Timestamp: 1705312200000, URL: "http://localhost:3000"},
-		{Type: "navigate", Timestamp: 1705312200300, ToURL: "/dashboard"},
+		{Type: "click", Timestamp: 1705314600000, URL: "http://localhost:3000"},
+		{Type: "navigate", Timestamp: 1705314600300, ToURL: "/dashboard"},
 	})
 	v4.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "2024-01-15T10:30:00.150Z", Method: "POST", URL: "/api/login", Status: 200,
@@ -3002,7 +3048,7 @@ func TestGetSessionTimelineMergedAndSorted(t *testing.T) {
 		t.Fatalf("Expected 4 entries, got %d", len(resp.Timeline))
 	}
 
-	// Verify order: click(1705312200000) → network(150ms later) → navigate(300ms) → error(400ms)
+	// Verify order: click(1705314600000) → network(150ms later) → navigate(300ms) → error(400ms)
 	if resp.Timeline[0].Kind != "action" || resp.Timeline[0].Type != "click" {
 		t.Errorf("Entry 0: expected action/click, got %s/%s", resp.Timeline[0].Kind, resp.Timeline[0].Type)
 	}
@@ -3137,8 +3183,8 @@ func TestGenerateTestScriptBasicStructure(t *testing.T) {
 	}
 
 	script := generateTestScript(timeline, TestGenerationOptions{
-		TestName:      "login flow",
-		AssertNetwork: true,
+		TestName:       "login flow",
+		AssertNetwork:  true,
 		AssertNoErrors: true,
 	})
 
@@ -3362,7 +3408,9 @@ func TestMCPGetSessionTimeline(t *testing.T) {
 	}
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -3411,7 +3459,9 @@ func TestMCPGetSessionTimelineWithLastN(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -3439,12 +3489,14 @@ func TestMCPGetSessionTimelineEmpty(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
 	if !strings.Contains(result.Content[0].Text, `"timeline":[]`) && !strings.Contains(result.Content[0].Text, `"actions":0`) {
-		// Either empty timeline array or 0 actions in summary is acceptable
+		t.Error("Expected empty timeline or 0 actions in summary")
 	}
 }
 
@@ -3480,7 +3532,9 @@ func TestMCPGenerateTest(t *testing.T) {
 	}
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -3523,7 +3577,9 @@ func TestMCPGenerateTestWithBaseURL(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -3552,7 +3608,9 @@ func TestMCPGenerateTestEmpty(t *testing.T) {
 	})
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -3576,7 +3634,9 @@ func TestMCPGenerateTestToolInToolsList(t *testing.T) {
 	})
 
 	var result struct {
-		Tools []struct{ Name string `json:"name"` } `json:"tools"`
+		Tools []struct {
+			Name string `json:"name"`
+		} `json:"tools"`
 	}
 	json.Unmarshal(resp.Result, &result)
 
@@ -3600,583 +3660,534 @@ func TestMCPGenerateTestToolInToolsList(t *testing.T) {
 }
 
 // ============================================
-// A11y Audit Caching Tests
+// POST /mcp HTTP Endpoint Tests
 // ============================================
 
-func TestA11yCacheMiss(t *testing.T) {
-	// First call with given params should trigger extension round-trip (pending query created)
+func TestMCPHTTPEndpointToolsList(t *testing.T) {
 	server, _ := setupTestServer(t)
 	v4 := setupV4TestServer(t)
 	mcp := NewMCPHandlerV4(server, v4)
 
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
+	body := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
+	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
 
-	done := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","tags":["wcag2aa"]}}`),
-		})
-		done <- resp
-	}()
+	mcp.HandleHTTP(rec, req)
 
-	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	if len(pending) == 0 {
-		t.Fatal("Expected pending query on cache miss")
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
 	}
 
-	// Simulate extension response
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0,"passes":5}}`))
-	resp := <-done
+	var resp JSONRPCResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
 
+	if resp.JSONRPC != "2.0" {
+		t.Errorf("Expected jsonrpc 2.0, got %s", resp.JSONRPC)
+	}
 	if resp.Error != nil {
-		t.Fatalf("Expected no error, got: %v", resp.Error)
+		t.Errorf("Expected no error, got %v", resp.Error)
 	}
 
 	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
-	}
-	json.Unmarshal(resp.Result, &result)
-	if !strings.Contains(result.Content[0].Text, `"violations":0`) {
-		t.Errorf("Expected violations summary in result, got: %s", result.Content[0].Text)
-	}
-}
-
-func TestA11yCacheHit(t *testing.T) {
-	// Second call with same params within 30s should return immediately, no pending query
-	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// First call (cache miss) — run in goroutine and simulate response
-	done := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","tags":["wcag2aa"]}}`),
-		})
-		done <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	if len(pending) == 0 {
-		t.Fatal("Expected pending query on first call")
-	}
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0,"passes":5}}`))
-	<-done
-
-	// Second call (should be cache hit — no pending query, immediate response)
-	resp := mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 3, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","tags":["wcag2aa"]}}`),
-	})
-
-	// Verify no new pending query was created
-	pending = v4.GetPendingQueries()
-	if len(pending) != 0 {
-		t.Errorf("Expected no pending queries on cache hit, got %d", len(pending))
-	}
-
-	// Verify we got the same result
-	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
-	}
-	json.Unmarshal(resp.Result, &result)
-	if !strings.Contains(result.Content[0].Text, `"violations":0`) {
-		t.Errorf("Expected cached result, got: %s", result.Content[0].Text)
-	}
-}
-
-func TestA11yCacheTTLExpiry(t *testing.T) {
-	// After 30s, cache entry should be expired and new audit triggered
-	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// First call
-	done := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
-		})
-		done <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
-	<-done
-
-	// Simulate time passing beyond TTL by setting the cache entry's timestamp to the past
-	v4.ExpireA11yCache()
-
-	// Third call should be cache miss again
-	done2 := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 4, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
-		})
-		done2 <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending = v4.GetPendingQueries()
-	if len(pending) == 0 {
-		t.Fatal("Expected pending query after TTL expiry")
-	}
-
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"new-violation"}],"summary":{"violations":1}}`))
-	resp := <-done2
-
-	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
-	}
-	json.Unmarshal(resp.Result, &result)
-	if !strings.Contains(result.Content[0].Text, "new-violation") {
-		t.Errorf("Expected fresh result after TTL expiry, got: %s", result.Content[0].Text)
-	}
-}
-
-func TestA11yCacheTagNormalization(t *testing.T) {
-	// Tags in different order should produce the same cache key
-	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// First call with tags ["wcag2aa", "wcag2a"]
-	done := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"tags":["wcag2aa","wcag2a"]}}`),
-		})
-		done <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	if len(pending) == 0 {
-		t.Fatal("Expected pending query")
-	}
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
-	<-done
-
-	// Second call with tags in different order ["wcag2a", "wcag2aa"] — should hit cache
-	resp := mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 3, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"tags":["wcag2a","wcag2aa"]}}`),
-	})
-
-	pending = v4.GetPendingQueries()
-	if len(pending) != 0 {
-		t.Errorf("Expected cache hit for reordered tags, but got %d pending queries", len(pending))
-	}
-
-	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
-	}
-	json.Unmarshal(resp.Result, &result)
-	if !strings.Contains(result.Content[0].Text, `"violations":0`) {
-		t.Errorf("Expected cached result for reordered tags, got: %s", result.Content[0].Text)
-	}
-}
-
-func TestA11yCacheForceRefresh(t *testing.T) {
-	// force_refresh: true should bypass cache and re-run audit
-	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// First call (populates cache)
-	done := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
-		})
-		done <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
-	<-done
-
-	// Second call with force_refresh — should bypass cache
-	done2 := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","force_refresh":true}}`),
-		})
-		done2 <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending = v4.GetPendingQueries()
-	if len(pending) == 0 {
-		t.Fatal("Expected pending query when force_refresh is true")
-	}
-
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"new-issue"}],"summary":{"violations":1}}`))
-	resp := <-done2
-
-	var result struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
-	}
-	json.Unmarshal(resp.Result, &result)
-	if !strings.Contains(result.Content[0].Text, "new-issue") {
-		t.Errorf("Expected fresh result after force_refresh, got: %s", result.Content[0].Text)
-	}
-}
-
-func TestA11yCacheErrorNotCached(t *testing.T) {
-	// Timeout/error should not be cached; next call should retry
-	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	v4.queryTimeout = 100 * time.Millisecond // Short timeout for test
-	mcp := NewMCPHandlerV4(server, v4)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// First call — let it time out (don't provide result)
-	resp := mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#timeout-test"}}`),
-	})
-
-	var errResult struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
-		IsError bool                                   `json:"isError"`
-	}
-	json.Unmarshal(resp.Result, &errResult)
-	if !errResult.IsError {
-		t.Fatal("Expected error response from timeout")
-	}
-
-	// Second call — should NOT be cached, should create new pending query
-	done := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#timeout-test"}}`),
-		})
-		done <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	if len(pending) == 0 {
-		t.Fatal("Expected pending query after error (error should not be cached)")
-	}
-
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
-	<-done
-}
-
-func TestA11yCacheDifferentParams(t *testing.T) {
-	// Different scope/tags should produce different cache entries
-	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// First call: scope="#main"
-	done1 := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
-		})
-		done1 <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
-	<-done1
-
-	// Second call: scope="#footer" — different params, should be cache miss
-	done2 := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#footer"}}`),
-		})
-		done2 <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending = v4.GetPendingQueries()
-	if len(pending) == 0 {
-		t.Fatal("Expected pending query for different scope (cache miss)")
-	}
-
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"footer-issue"}],"summary":{"violations":1}}`))
-	<-done2
-}
-
-func TestA11yCacheMaxEntries(t *testing.T) {
-	// 11th unique cache entry should evict the oldest
-	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// Populate 10 cache entries with different scopes
-	for i := 0; i < 10; i++ {
-		scope := fmt.Sprintf("#section-%d", i)
-		args := fmt.Sprintf(`{"name":"run_accessibility_audit","arguments":{"scope":"%s"}}`, scope)
-
-		done := make(chan JSONRPCResponse)
-		go func() {
-			resp := mcp.HandleRequest(JSONRPCRequest{
-				JSONRPC: "2.0", ID: json.RawMessage(fmt.Sprintf("%d", i+10)), Method: "tools/call",
-				Params: json.RawMessage(args),
-			})
-			done <- resp
-		}()
-
-		time.Sleep(50 * time.Millisecond)
-		pending := v4.GetPendingQueries()
-		if len(pending) == 0 {
-			t.Fatalf("Expected pending query for scope #section-%d", i)
-		}
-		v4.SetQueryResult(pending[0].ID, json.RawMessage(fmt.Sprintf(`{"violations":[],"summary":{"violations":0,"scope":"%s"}}`, scope)))
-		<-done
-	}
-
-	// Verify cache has 10 entries
-	if v4.GetA11yCacheSize() != 10 {
-		t.Fatalf("Expected 10 cache entries, got %d", v4.GetA11yCacheSize())
-	}
-
-	// Add 11th entry — should evict #section-0
-	done := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 100, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#section-new"}}`),
-		})
-		done <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
-	<-done
-
-	// Cache should still be 10 (evicted oldest)
-	if v4.GetA11yCacheSize() != 10 {
-		t.Errorf("Expected 10 cache entries after eviction, got %d", v4.GetA11yCacheSize())
-	}
-
-	// #section-0 should now be a cache miss
-	done2 := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 101, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#section-0"}}`),
-		})
-		done2 <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending = v4.GetPendingQueries()
-	if len(pending) == 0 {
-		t.Fatal("Expected cache miss for evicted entry #section-0")
-	}
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
-	<-done2
-}
-
-func TestA11yCacheNavigationInvalidation(t *testing.T) {
-	// Cache should be cleared when URL changes (navigation detected)
-	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// Set initial URL context
-	v4.SetLastKnownURL("https://myapp.com/dashboard")
-
-	// First call (populates cache)
-	done := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
-		})
-		done <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
-	<-done
-
-	// Simulate navigation — URL changes
-	v4.SetLastKnownURL("https://myapp.com/settings")
-
-	// Same params — should be cache miss because URL changed
-	done2 := make(chan JSONRPCResponse)
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
-		})
-		done2 <- resp
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	pending = v4.GetPendingQueries()
-	if len(pending) == 0 {
-		t.Fatal("Expected cache miss after navigation (URL change)")
-	}
-
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
-	<-done2
-}
-
-func TestA11yCacheConcurrentDedup(t *testing.T) {
-	// Two simultaneous calls for the same cache key should produce only one pending query
-	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// Launch two concurrent calls with the same params
-	done1 := make(chan JSONRPCResponse)
-	done2 := make(chan JSONRPCResponse)
-
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#concurrent"}}`),
-		})
-		done1 <- resp
-	}()
-
-	go func() {
-		resp := mcp.HandleRequest(JSONRPCRequest{
-			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#concurrent"}}`),
-		})
-		done2 <- resp
-	}()
-
-	time.Sleep(100 * time.Millisecond)
-
-	// Should have at most 1 pending query (deduplication)
-	pending := v4.GetPendingQueries()
-	if len(pending) > 1 {
-		t.Errorf("Expected at most 1 pending query for concurrent dedup, got %d", len(pending))
-	}
-
-	if len(pending) > 0 {
-		v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
-	}
-
-	// Both should complete with same result
-	resp1 := <-done1
-	resp2 := <-done2
-
-	var r1, r2 struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
-	}
-	json.Unmarshal(resp1.Result, &r1)
-	json.Unmarshal(resp2.Result, &r2)
-
-	if r1.Content[0].Text != r2.Content[0].Text {
-		t.Errorf("Expected same result for both concurrent calls")
-	}
-}
-
-func TestA11yCacheForceRefreshParam(t *testing.T) {
-	// Verify force_refresh is accepted as a tool parameter
-	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// Check that force_refresh is in the tool schema
-	resp := mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 2, Method: "tools/list",
-	})
-
-	var toolsResult struct {
 		Tools []struct {
-			Name        string                 `json:"name"`
-			InputSchema map[string]interface{} `json:"inputSchema"`
+			Name string `json:"name"`
 		} `json:"tools"`
 	}
-	json.Unmarshal(resp.Result, &toolsResult)
+	json.Unmarshal(resp.Result, &result)
 
-	var found bool
-	for _, tool := range toolsResult.Tools {
-		if tool.Name == "run_accessibility_audit" {
-			props, ok := tool.InputSchema["properties"].(map[string]interface{})
-			if !ok {
-				t.Fatal("Expected properties in inputSchema")
-			}
-			if _, exists := props["force_refresh"]; !exists {
-				t.Error("Expected force_refresh parameter in run_accessibility_audit schema")
-			}
-			found = true
-			break
+	if len(result.Tools) == 0 {
+		t.Error("Expected tools in response")
+	}
+}
+
+func TestMCPHTTPEndpointToolCall(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	body := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_browser_logs","arguments":{}}}`
+	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	mcp.HandleHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+
+	var resp JSONRPCResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+
+	if resp.Error != nil {
+		t.Errorf("Expected no error, got %v", resp.Error)
+	}
+}
+
+func TestMCPHTTPEndpointMethodNotAllowed(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	req := httptest.NewRequest("GET", "/mcp", nil)
+	rec := httptest.NewRecorder()
+
+	mcp.HandleHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("Expected 405, got %d", rec.Code)
+	}
+}
+
+func TestMCPHTTPEndpointInvalidJSON(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	mcp.HandleHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200 (JSON-RPC error in body), got %d", rec.Code)
+	}
+
+	var resp JSONRPCResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+
+	if resp.Error == nil {
+		t.Error("Expected JSON-RPC error for invalid JSON")
+	}
+	if resp.Error.Code != -32700 {
+		t.Errorf("Expected parse error code -32700, got %d", resp.Error.Code)
+	}
+}
+
+func TestMCPHTTPEndpointUnknownMethod(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	body := `{"jsonrpc":"2.0","id":3,"method":"unknown/method"}`
+	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	mcp.HandleHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+
+	var resp JSONRPCResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+
+	if resp.Error == nil {
+		t.Error("Expected JSON-RPC error for unknown method")
+	}
+	if resp.Error.Code != -32601 {
+		t.Errorf("Expected method not found code -32601, got %d", resp.Error.Code)
+	}
+}
+
+func TestMCPHTTPEndpointV4ToolCall(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	body := `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_websocket_events","arguments":{}}}`
+	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	mcp.HandleHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+
+	var resp JSONRPCResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+
+	if resp.Error != nil {
+		t.Errorf("Expected no error, got %v", resp.Error)
+	}
+}
+
+// ============================================
+// Performance Snapshot Shape Tests (Contract-First)
+// ============================================
+
+func TestPerformanceSnapshotJSONShape(t *testing.T) {
+	fcp := 250.0
+	lcp := 800.0
+	cls := 0.05
+	snapshot := PerformanceSnapshot{
+		URL:       "/dashboard",
+		Timestamp: "2024-01-01T00:00:00Z",
+		Timing: PerformanceTiming{
+			DomContentLoaded:       600,
+			Load:                   1200,
+			FirstContentfulPaint:   &fcp,
+			LargestContentfulPaint: &lcp,
+			TimeToFirstByte:        80,
+			DomInteractive:         500,
+		},
+		Network: NetworkSummary{
+			RequestCount: 10,
+			TransferSize: 50000,
+			DecodedSize:  100000,
+			ByType:       map[string]TypeSummary{"script": {Count: 3, Size: 30000}},
+			SlowestRequests: []SlowRequest{
+				{URL: "/app.js", Duration: 300, Size: 30000},
+			},
+		},
+		LongTasks: LongTaskMetrics{
+			Count:             2,
+			TotalBlockingTime: 100,
+			Longest:           80,
+		},
+		CLS: &cls,
+	}
+
+	data, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatalf("Failed to marshal snapshot: %v", err)
+	}
+
+	var m map[string]interface{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("Failed to unmarshal: %v", err)
+	}
+
+	// Top-level fields
+	for _, field := range []string{"url", "timestamp", "timing", "network", "longTasks", "cumulativeLayoutShift"} {
+		if _, ok := m[field]; !ok {
+			t.Errorf("missing top-level field: %s", field)
 		}
 	}
+
+	// Timing fields
+	timing := m["timing"].(map[string]interface{})
+	for _, field := range []string{
+		"domContentLoaded", "load", "firstContentfulPaint",
+		"largestContentfulPaint", "timeToFirstByte", "domInteractive",
+	} {
+		if _, ok := timing[field]; !ok {
+			t.Errorf("missing timing field: %s", field)
+		}
+	}
+
+	// Network fields
+	network := m["network"].(map[string]interface{})
+	for _, field := range []string{"requestCount", "transferSize", "decodedSize", "byType", "slowestRequests"} {
+		if _, ok := network[field]; !ok {
+			t.Errorf("missing network field: %s", field)
+		}
+	}
+
+	// LongTasks fields
+	longTasks := m["longTasks"].(map[string]interface{})
+	for _, field := range []string{"count", "totalBlockingTime", "longest"} {
+		if _, ok := longTasks[field]; !ok {
+			t.Errorf("missing longTasks field: %s", field)
+		}
+	}
+}
+
+func TestPerformanceBaselineJSONShape(t *testing.T) {
+	fcp := 250.0
+	lcp := 800.0
+	cls := 0.05
+	baseline := PerformanceBaseline{
+		URL:         "/dashboard",
+		SampleCount: 3,
+		LastUpdated: "2024-01-01T00:00:00Z",
+		Timing: BaselineTiming{
+			DomContentLoaded:       600,
+			Load:                   1200,
+			FirstContentfulPaint:   &fcp,
+			LargestContentfulPaint: &lcp,
+			TimeToFirstByte:        80,
+			DomInteractive:         500,
+		},
+		Network: BaselineNetwork{
+			RequestCount: 10,
+			TransferSize: 50000,
+		},
+		LongTasks: LongTaskMetrics{
+			Count:             2,
+			TotalBlockingTime: 100,
+			Longest:           80,
+		},
+		CLS: &cls,
+	}
+
+	data, err := json.Marshal(baseline)
+	if err != nil {
+		t.Fatalf("Failed to marshal baseline: %v", err)
+	}
+
+	var m map[string]interface{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("Failed to unmarshal: %v", err)
+	}
+
+	// Top-level fields
+	for _, field := range []string{"url", "sampleCount", "lastUpdated", "timing", "network", "longTasks", "cumulativeLayoutShift"} {
+		if _, ok := m[field]; !ok {
+			t.Errorf("missing top-level field: %s", field)
+		}
+	}
+
+	// Timing fields
+	timing := m["timing"].(map[string]interface{})
+	for _, field := range []string{
+		"domContentLoaded", "load", "firstContentfulPaint",
+		"largestContentfulPaint", "timeToFirstByte", "domInteractive",
+	} {
+		if _, ok := timing[field]; !ok {
+			t.Errorf("missing timing field: %s", field)
+		}
+	}
+}
+
+func TestPerformanceSnapshotStorageAndRetrieval(t *testing.T) {
+	server := NewV4Server()
+	fcp := 250.0
+	lcp := 800.0
+	cls := 0.05
+
+	snapshot := PerformanceSnapshot{
+		URL:       "/dashboard",
+		Timestamp: "2024-01-01T00:00:00Z",
+		Timing: PerformanceTiming{
+			DomContentLoaded:       600,
+			Load:                   1200,
+			FirstContentfulPaint:   &fcp,
+			LargestContentfulPaint: &lcp,
+			TimeToFirstByte:        80,
+			DomInteractive:         500,
+		},
+		Network: NetworkSummary{
+			RequestCount:    10,
+			TransferSize:    50000,
+			DecodedSize:     100000,
+			ByType:          map[string]TypeSummary{},
+			SlowestRequests: []SlowRequest{},
+		},
+		LongTasks: LongTaskMetrics{Count: 0, TotalBlockingTime: 0, Longest: 0},
+		CLS:       &cls,
+	}
+
+	server.AddPerformanceSnapshot(snapshot)
+
+	got, found := server.GetPerformanceSnapshot("/dashboard")
 	if !found {
-		t.Fatal("run_accessibility_audit tool not found in tools list")
+		t.Fatal("snapshot not found after adding")
+	}
+	if got.Timing.FirstContentfulPaint == nil || *got.Timing.FirstContentfulPaint != 250.0 {
+		t.Errorf("FCP not stored: got %v", got.Timing.FirstContentfulPaint)
+	}
+	if got.Timing.LargestContentfulPaint == nil || *got.Timing.LargestContentfulPaint != 800.0 {
+		t.Errorf("LCP not stored: got %v", got.Timing.LargestContentfulPaint)
+	}
+	if got.CLS == nil || *got.CLS != 0.05 {
+		t.Errorf("CLS not stored: got %v", got.CLS)
+	}
+}
+
+func TestPerformanceBaselineAveragesFCPLCP(t *testing.T) {
+	server := NewV4Server()
+	fcp1 := 200.0
+	lcp1 := 600.0
+	fcp2 := 300.0
+	lcp2 := 800.0
+
+	server.AddPerformanceSnapshot(PerformanceSnapshot{
+		URL:       "/test",
+		Timestamp: "2024-01-01T00:00:00Z",
+		Timing: PerformanceTiming{
+			DomContentLoaded:       500,
+			Load:                   1000,
+			FirstContentfulPaint:   &fcp1,
+			LargestContentfulPaint: &lcp1,
+			TimeToFirstByte:        80,
+			DomInteractive:         400,
+		},
+		Network:   NetworkSummary{ByType: map[string]TypeSummary{}},
+		LongTasks: LongTaskMetrics{Longest: 100},
+	})
+
+	server.AddPerformanceSnapshot(PerformanceSnapshot{
+		URL:       "/test",
+		Timestamp: "2024-01-01T00:01:00Z",
+		Timing: PerformanceTiming{
+			DomContentLoaded:       500,
+			Load:                   1000,
+			FirstContentfulPaint:   &fcp2,
+			LargestContentfulPaint: &lcp2,
+			TimeToFirstByte:        80,
+			DomInteractive:         400,
+		},
+		Network:   NetworkSummary{ByType: map[string]TypeSummary{}},
+		LongTasks: LongTaskMetrics{Longest: 60},
+	})
+
+	server.mu.RLock()
+	baseline := server.perfBaselines["/test"]
+	server.mu.RUnlock()
+
+	if baseline.SampleCount != 2 {
+		t.Fatalf("expected 2 samples, got %d", baseline.SampleCount)
+	}
+	if baseline.Timing.FirstContentfulPaint == nil {
+		t.Fatal("baseline FCP should not be nil")
+	}
+	// Average of 200 and 300 = 250
+	if *baseline.Timing.FirstContentfulPaint != 250.0 {
+		t.Errorf("expected FCP baseline 250, got %f", *baseline.Timing.FirstContentfulPaint)
+	}
+	if baseline.Timing.LargestContentfulPaint == nil {
+		t.Fatal("baseline LCP should not be nil")
+	}
+	// Average of 600 and 800 = 700
+	if *baseline.Timing.LargestContentfulPaint != 700.0 {
+		t.Errorf("expected LCP baseline 700, got %f", *baseline.Timing.LargestContentfulPaint)
+	}
+	// Longest should be averaged: (100 + 60) / 2 = 80
+	if baseline.LongTasks.Longest != 80.0 {
+		t.Errorf("expected Longest baseline 80, got %f", baseline.LongTasks.Longest)
+	}
+}
+
+func TestPerformanceRegressionDetectsFCPLCP(t *testing.T) {
+	server := NewV4Server()
+
+	fcpBaseline := 200.0
+	lcpBaseline := 500.0
+	fcpCurrent := 450.0 // +125% increase, +250ms
+	lcpCurrent := 900.0 // +80% increase, +400ms
+
+	baseline := PerformanceBaseline{
+		URL:         "/test",
+		SampleCount: 5,
+		Timing: BaselineTiming{
+			FirstContentfulPaint:   &fcpBaseline,
+			LargestContentfulPaint: &lcpBaseline,
+		},
+		Network:   BaselineNetwork{},
+		LongTasks: LongTaskMetrics{},
+	}
+
+	snapshot := PerformanceSnapshot{
+		URL: "/test",
+		Timing: PerformanceTiming{
+			FirstContentfulPaint:   &fcpCurrent,
+			LargestContentfulPaint: &lcpCurrent,
+		},
+		Network:   NetworkSummary{ByType: map[string]TypeSummary{}},
+		LongTasks: LongTaskMetrics{},
+	}
+
+	regressions := server.DetectRegressions(snapshot, baseline)
+
+	fcpFound := false
+	lcpFound := false
+	for _, r := range regressions {
+		if r.Metric == "firstContentfulPaint" {
+			fcpFound = true
+		}
+		if r.Metric == "largestContentfulPaint" {
+			lcpFound = true
+		}
+	}
+
+	if !fcpFound {
+		t.Error("expected FCP regression to be detected")
+	}
+	if !lcpFound {
+		t.Error("expected LCP regression to be detected")
+	}
+}
+
+func TestPerformanceRegressionNoFalsePositiveFCPLCP(t *testing.T) {
+	server := NewV4Server()
+
+	fcpBaseline := 200.0
+	lcpBaseline := 500.0
+	// Small changes: +20% for FCP, +10% for LCP (below thresholds)
+	fcpCurrent := 240.0
+	lcpCurrent := 550.0
+
+	baseline := PerformanceBaseline{
+		URL:         "/test",
+		SampleCount: 5,
+		Timing: BaselineTiming{
+			FirstContentfulPaint:   &fcpBaseline,
+			LargestContentfulPaint: &lcpBaseline,
+		},
+		Network:   BaselineNetwork{},
+		LongTasks: LongTaskMetrics{},
+	}
+
+	snapshot := PerformanceSnapshot{
+		URL: "/test",
+		Timing: PerformanceTiming{
+			FirstContentfulPaint:   &fcpCurrent,
+			LargestContentfulPaint: &lcpCurrent,
+		},
+		Network:   NetworkSummary{ByType: map[string]TypeSummary{}},
+		LongTasks: LongTaskMetrics{},
+	}
+
+	regressions := server.DetectRegressions(snapshot, baseline)
+
+	for _, r := range regressions {
+		if r.Metric == "firstContentfulPaint" || r.Metric == "largestContentfulPaint" {
+			t.Errorf("unexpected regression for %s (change too small)", r.Metric)
+		}
+	}
+}
+
+func TestAvgOptionalFloat(t *testing.T) {
+	// nil snapshot: baseline unchanged
+	baseline := 100.0
+	result := avgOptionalFloat(&baseline, nil, 2)
+	if result == nil || *result != 100.0 {
+		t.Errorf("nil snapshot should preserve baseline, got %v", result)
+	}
+
+	// nil baseline: use snapshot value
+	snapshot := 200.0
+	result = avgOptionalFloat(nil, &snapshot, 2)
+	if result == nil || *result != 200.0 {
+		t.Errorf("nil baseline should use snapshot, got %v", result)
+	}
+
+	// Both present: average
+	result = avgOptionalFloat(&baseline, &snapshot, 2)
+	if result == nil || *result != 150.0 {
+		t.Errorf("expected average 150, got %v", result)
+	}
+}
+
+func TestWeightedOptionalFloat(t *testing.T) {
+	baseline := 100.0
+	snapshot := 200.0
+
+	result := weightedOptionalFloat(&baseline, &snapshot, 0.8, 0.2)
+	expected := 100.0*0.8 + 200.0*0.2 // 120
+	if result == nil || *result != expected {
+		t.Errorf("expected %f, got %v", expected, result)
+	}
+
+	// nil snapshot
+	result = weightedOptionalFloat(&baseline, nil, 0.8, 0.2)
+	if result == nil || *result != 100.0 {
+		t.Errorf("nil snapshot should preserve baseline, got %v", result)
 	}
 }

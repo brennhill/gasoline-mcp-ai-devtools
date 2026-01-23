@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Options page logic for Gasoline extension
  */

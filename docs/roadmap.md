@@ -141,11 +141,203 @@ Medium effort. Ship after Phase 1.
 
 ---
 
-## Phase 3: Agent Ergonomics
+## <i class="fas fa-globe"></i> Platform Expansion
+
+**Status:** Future
+{: .notice}
+
+### Firefox Extension
+
+The Chrome extension's WebExtensions API is ~90% compatible with Firefox. Main porting work: service worker → event page, `chrome.scripting` API differences.
+
+**Effort:** Low-medium. 1-2 days of porting + testing.
+
+**Note:** Edge, Brave, Arc, Vivaldi, and Opera already work — they're Chromium-based and run the Chrome extension unmodified.
+
+### React Native
+
+Tap into React Native's debug bridge to capture LogBox errors, network requests, and component tree state. Forward to the Gasoline MCP server over the local network.
+
+**Effort:** Medium. New companion package, not an extension.
+
+### Flutter
+
+Dart DevTools extension or `debugPrint` interceptor that forwards runtime events to the Gasoline MCP server.
+
+**Effort:** Medium. Dart package + DevTools integration.
+
+### Native iOS / Android
+
+Stream system logs (`os_log` on iOS, Logcat on Android) to the Gasoline MCP server via a CLI companion tool. Zero app modification required — purely observational.
+
+**Effort:** Low per platform. CLI tool that pipes structured log output to the existing server.
+
+---
+
+## Priority Order
 
 Low effort. Ship when convenient.
 
-### <i class="fas fa-book"></i> Workflow Recipe
+## <i class="fas fa-shield-alt"></i> Engineering Resilience
+
+**Status:** Planned
+{: .notice}
+
+Infrastructure hardening that prevents regressions, catches integration drift, and enforces invariants mechanically — without burning agent context.
+
+### Contract & Schema Validation
+
+The extension-to-server interface has an implicit contract (`POST /logs` expects `{ entries: [{ level, message, timestamp, ... }] }`). Make it explicit:
+
+- JSON Schema files defining every HTTP endpoint's request/response format
+- Go struct validation that rejects malformed entries at the boundary (not `map[string]interface{}`)
+- Extension-side contract tests that verify emitted payloads match the schema
+- Shared schema file that both Go and JS tests validate against
+
+**Why:** Prevents silent data corruption when either side drifts. An AI modifying `inject.js` can't accidentally break the server contract without CI catching it.
+
+### End-to-End Integration Tests
+
+All current tests are unit tests (mocked Chrome APIs, `httptest` recorders). Nothing exercises the full pipeline:
+
+```
+Browser page → inject.js → content.js → background.js → HTTP POST → Go server → MCP tool response
+```
+
+- Playwright-based E2E suite that starts a real server, loads the real extension, and verifies MCP tool output
+- Covers: console capture, network errors, WebSocket events, DOM queries, accessibility audits, screenshots
+- Runs in CI with `xvfb-run` for headless extension loading
+
+**Why:** Unit tests can't catch message-passing bugs, serialization mismatches, or timing issues between components.
+
+### Zero-Dependency Verification
+
+The Go server's zero-dependency guarantee is documented but not enforced:
+
+- CI step that parses `go.mod` and fails if any `require` directive exists
+- CI step that verifies `go.sum` is empty or absent
+- Extension check: no `node_modules` imports, no CDN script tags (except optional axe-core)
+
+**Why:** A single accidental `import "github.com/..."` breaks the "single binary, no supply chain risk" promise.
+
+### Typed Response Structs
+
+MCP tool responses currently use `map[string]interface{}`:
+
+```go
+// Current (fragile):
+result := map[string]interface{}{"entries": entries, "count": len(entries)}
+
+// Target (typed):
+type GetLogsResult struct {
+    Entries []LogEntry `json:"entries"`
+    Count   int        `json:"count"`
+}
+```
+
+- Replace all MCP tool response construction with typed structs
+- Compiler catches missing fields, typos, type mismatches
+- JSON tags serve as documentation of the wire format
+
+**Why:** `map[string]interface{}` silently accepts any structure. Typed structs make response format changes a compile error.
+
+### Performance Benchmarks
+
+SLOs are documented but not enforced in CI:
+
+- Go benchmarks for hot paths: `addEntries`, `getEntries`, WebSocket event ingestion, `/snapshot` aggregation
+- Baseline file checked into repo (`benchstat` format)
+- CI step that runs benchmarks and fails on > 20% regression
+- Extension: Playwright performance measurement for intercept overhead
+
+**Why:** Performance regressions are invisible without measurement. A seemingly-innocent refactor can 10x the cost of a hot path.
+
+### Race Detection
+
+Go tests currently run with `go test -v` — no race detector. Add `-race` flag:
+
+```makefile
+test:
+    CGO_ENABLED=1 go test -race -v ./cmd/dev-console/...
+```
+
+- Catches data races in concurrent buffer access under real load patterns
+- Server uses `sync.RWMutex` everywhere but `-race` catches any missed paths
+- Runs in CI on every push (adds ~30% test runtime)
+
+**Why:** Race conditions are the hardest bugs to reproduce. The race detector catches them deterministically at test time.
+
+### Test Coverage Gate
+
+No coverage measurement exists. Add threshold enforcement:
+
+- `go test -coverprofile=coverage.out` in CI
+- Fail if total coverage drops below 70%
+- Report per-package coverage breakdown
+- Track coverage trend over time (no ratchet — just floor)
+
+**Why:** Prevents large code additions with zero test coverage from merging.
+
+### Fuzz Testing
+
+Go's built-in fuzz testing (since 1.18) for HTTP input parsing:
+
+- Fuzz `POST /logs` with arbitrary JSON → must never panic
+- Fuzz `POST /websocket-events` → must never panic
+- Fuzz `POST /network-bodies` → must never panic
+- Fuzz MCP JSON-RPC request parsing → must never panic
+- Corpus seeded with real-world payloads
+
+**Why:** Manual test cases can't cover all malformed input combinations. Fuzzing finds panics on edge-case JSON that would crash the server in production.
+
+### Binary Size Gate
+
+The Go binary should stay small (currently ~8MB). Add a CI size check:
+
+- Fail if binary exceeds 15MB (indicates dependency smuggling or bloat)
+- Track size per-commit for trend detection
+- Separate check per platform (cross-compilation shouldn't inflate)
+
+**Why:** Binary size is a proxy for dependency smuggling. A jump from 8MB to 25MB means something got linked in.
+
+### Import Path Verification
+
+Stronger than zero-dep check — verify every Go import is from stdlib:
+
+```bash
+go list -f '{{join .Imports "\n"}}' ./cmd/dev-console/ | grep "\." && exit 1
+```
+
+- Catches internal package paths that might pull in transitive deps
+- Runs alongside the `go.sum` absence check
+- Extension equivalent: verify no `import` statements reference `node_modules`
+
+**Why:** `go.mod` can be clean while code still imports something that triggers `go mod tidy` to add a dep on next build.
+
+### Goroutine Leak Detection
+
+After tests complete, verify no goroutines leaked:
+
+- `TestMain` wrapper checks goroutine count before/after test suite
+- Allow small delta (±5) for runtime internals
+- Fail loudly if goroutines accumulate (indicates unclosed HTTP connections, blocked channels)
+
+**Why:** Leaked goroutines accumulate over server lifetime. In long-running dev sessions, they cause memory growth and eventual OOM.
+
+### Response Snapshot Tests
+
+Golden file comparison for every MCP tool response:
+
+- Serialize each MCP tool's response to JSON
+- Compare against checked-in `testdata/*.golden.json` files
+- `go test -update` flag regenerates goldens intentionally
+- Any unintentional format change fails CI
+
+**Why:** Typed structs prevent wrong types, but golden files catch unintentional field additions, removals, or ordering changes that break MCP clients.
+
+---
+
+## <i class="fas fa-dollar-sign"></i> Economic Impact
 
 Canonical first-call sequence for AI agents connecting to Gasoline. Reduces wasted tokens on discovery.
 

@@ -57,6 +57,7 @@ exclude:
   - generate-test-v2.md
   - generate-test-specification.md
   - competitive-analysis.md
+  - gasoline-ci-specification.md
   - features/
   - ai-first/
   - Gemfile

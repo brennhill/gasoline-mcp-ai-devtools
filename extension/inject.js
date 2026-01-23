@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Injected script for capturing browser events
  * This script runs in the page context to intercept console, fetch, and errors
@@ -44,7 +45,7 @@ let changeHandler = null
 
 // Network Waterfall state
 let networkWaterfallEnabled = false
-let pendingRequests = new Map() // requestId -> { url, method, startTime }
+const pendingRequests = new Map() // requestId -> { url, method, startTime }
 let requestIdCounter = 0
 
 // Performance Marks state
@@ -205,9 +206,10 @@ export function getElementSelector(element) {
 
   const tag = element.tagName.toLowerCase()
   const id = element.id ? `#${element.id}` : ''
-  const classes = element.className && typeof element.className === 'string'
-    ? '.' + element.className.trim().split(/\s+/).slice(0, 2).join('.')
-    : ''
+  const classes =
+    element.className && typeof element.className === 'string'
+      ? '.' + element.className.trim().split(/\s+/).slice(0, 2).join('.')
+      : ''
 
   // Add data-testid if present
   const testId = element.getAttribute('data-testid')
@@ -232,20 +234,22 @@ export function isSensitiveInput(element) {
   if (SENSITIVE_INPUT_TYPES.includes(type)) return true
 
   // Check autocomplete attribute
-  if (autocomplete.includes('password') ||
-      autocomplete.includes('cc-') ||
-      autocomplete.includes('credit-card')) return true
+  if (autocomplete.includes('password') || autocomplete.includes('cc-') || autocomplete.includes('credit-card'))
+    return true
 
   // Check name attribute for common patterns
-  if (name.includes('password') ||
-      name.includes('passwd') ||
-      name.includes('secret') ||
-      name.includes('token') ||
-      name.includes('credit') ||
-      name.includes('card') ||
-      name.includes('cvv') ||
-      name.includes('cvc') ||
-      name.includes('ssn')) return true
+  if (
+    name.includes('password') ||
+    name.includes('passwd') ||
+    name.includes('secret') ||
+    name.includes('token') ||
+    name.includes('credit') ||
+    name.includes('card') ||
+    name.includes('cvv') ||
+    name.includes('cvc') ||
+    name.includes('ssn')
+  )
+    return true
 
   return false
 }
@@ -358,9 +362,15 @@ export function handleScroll(event) {
  * Actionable keys that are worth recording (navigation/submission keys)
  */
 const ACTIONABLE_KEYS = new Set([
-  'Enter', 'Escape', 'Tab',
-  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-  'Backspace', 'Delete',
+  'Enter',
+  'Escape',
+  'Tab',
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'Backspace',
+  'Delete',
 ])
 
 /**
@@ -962,7 +972,7 @@ function postLog(payload) {
         ...payload, // Allow payload to override defaults like url
       },
     },
-    '*'
+    '*',
   )
 }
 
@@ -1028,8 +1038,7 @@ export function wrapFetch(originalFetchFn) {
         // Filter sensitive headers
         const safeHeaders = {}
         if (init?.headers) {
-          const headers =
-            init.headers instanceof Headers ? Object.fromEntries(init.headers) : init.headers
+          const headers = init.headers instanceof Headers ? Object.fromEntries(init.headers) : init.headers
           Object.keys(headers).forEach((key) => {
             if (!SENSITIVE_HEADERS.includes(key.toLowerCase())) {
               safeHeaders[key] = headers[key]
@@ -1180,6 +1189,7 @@ export function install() {
   installActionCapture()
   installNavigationCapture()
   installWebSocketCapture()
+  installPerfObservers()
 }
 
 /**
@@ -1192,6 +1202,7 @@ export function uninstall() {
   uninstallActionCapture()
   uninstallNavigationCapture()
   uninstallWebSocketCapture()
+  uninstallPerfObservers()
 }
 
 /**
@@ -1498,16 +1509,14 @@ export function createConnectionTracker(id, url) {
       this.stats[direction].lastAt = now
 
       if (data && typeof data === 'string') {
-        this.stats[direction].lastPreview = data.length > WS_PREVIEW_LIMIT
-          ? data.slice(0, WS_PREVIEW_LIMIT)
-          : data
+        this.stats[direction].lastPreview = data.length > WS_PREVIEW_LIMIT ? data.slice(0, WS_PREVIEW_LIMIT) : data
       }
 
       // Track timestamps for rate calculation
       this._messageTimestamps.push(now)
       // Keep only last 5 seconds
       const cutoff = now - 5000
-      this._messageTimestamps = this._messageTimestamps.filter(t => t >= cutoff)
+      this._messageTimestamps = this._messageTimestamps.filter((t) => t >= cutoff)
 
       // Schema detection from first 5 incoming JSON messages
       if (direction === 'incoming' && data && typeof data === 'string' && this._schemaKeys.length < 5) {
@@ -1524,7 +1533,7 @@ export function createConnectionTracker(id, url) {
             // Check consistency after 2+ messages
             if (this._schemaKeys.length >= 2) {
               const first = this._schemaKeys[0]
-              this._schemaConsistent = this._schemaKeys.every(k => k === first)
+              this._schemaConsistent = this._schemaKeys.every((k) => k === first)
             }
 
             if (this._schemaKeys.length >= 5) {
@@ -1554,7 +1563,7 @@ export function createConnectionTracker(id, url) {
     /**
      * Determine if a message should be sampled (logged)
      */
-    shouldSample(direction) {
+    shouldSample(_direction) {
       this._sampleCounter++
 
       // Always log first 5 messages on a connection
@@ -1566,16 +1575,16 @@ export function createConnectionTracker(id, url) {
       if (rate < 50) {
         // Target ~10 msg/s
         const n = Math.max(1, Math.round(rate / 10))
-        return (this._sampleCounter % n) === 0
+        return this._sampleCounter % n === 0
       }
       if (rate < 200) {
         // Target ~5 msg/s
         const n = Math.max(1, Math.round(rate / 5))
-        return (this._sampleCounter % n) === 0
+        return this._sampleCounter % n === 0
       }
       // > 200: target ~2 msg/s
       const n = Math.max(1, Math.round(rate / 2))
-      return (this._sampleCounter % n) === 0
+      return this._sampleCounter % n === 0
     },
 
     /**
@@ -1691,30 +1700,43 @@ export function installWebSocketCapture() {
 
     ws.addEventListener('open', () => {
       if (!webSocketCaptureEnabled) return
-      window.postMessage({
-        type: 'GASOLINE_WS',
-        payload: { event: 'open', id: connectionId, url, ts: new Date().toISOString() },
-      }, '*')
+      window.postMessage(
+        {
+          type: 'GASOLINE_WS',
+          payload: { type: 'websocket', event: 'open', id: connectionId, url, ts: new Date().toISOString() },
+        },
+        '*',
+      )
     })
 
     ws.addEventListener('close', (event) => {
       if (!webSocketCaptureEnabled) return
-      window.postMessage({
-        type: 'GASOLINE_WS',
-        payload: {
-          event: 'close', id: connectionId, url,
-          code: event.code, reason: event.reason,
-          ts: new Date().toISOString(),
+      window.postMessage(
+        {
+          type: 'GASOLINE_WS',
+          payload: {
+            type: 'websocket',
+            event: 'close',
+            id: connectionId,
+            url,
+            code: event.code,
+            reason: event.reason,
+            ts: new Date().toISOString(),
+          },
         },
-      }, '*')
+        '*',
+      )
     })
 
     ws.addEventListener('error', () => {
       if (!webSocketCaptureEnabled) return
-      window.postMessage({
-        type: 'GASOLINE_WS',
-        payload: { event: 'error', id: connectionId, url, ts: new Date().toISOString() },
-      }, '*')
+      window.postMessage(
+        {
+          type: 'GASOLINE_WS',
+          payload: { type: 'websocket', event: 'error', id: connectionId, url, ts: new Date().toISOString() },
+        },
+        '*',
+      )
     })
 
     ws.addEventListener('message', (event) => {
@@ -1726,15 +1748,23 @@ export function installWebSocketCapture() {
       const formatted = formatPayload(data)
       const { data: truncatedData, truncated } = truncateWsMessage(formatted)
 
-      window.postMessage({
-        type: 'GASOLINE_WS',
-        payload: {
-          event: 'message', id: connectionId, url,
-          direction: 'incoming', data: truncatedData,
-          size, truncated: truncated || undefined,
-          ts: new Date().toISOString(),
+      window.postMessage(
+        {
+          type: 'GASOLINE_WS',
+          payload: {
+            type: 'websocket',
+            event: 'message',
+            id: connectionId,
+            url,
+            direction: 'incoming',
+            data: truncatedData,
+            size,
+            truncated: truncated || undefined,
+            ts: new Date().toISOString(),
+          },
         },
-      }, '*')
+        '*',
+      )
     })
 
     // Wrap send() to capture outgoing messages
@@ -1745,15 +1775,23 @@ export function installWebSocketCapture() {
         const formatted = formatPayload(data)
         const { data: truncatedData, truncated } = truncateWsMessage(formatted)
 
-        window.postMessage({
-          type: 'GASOLINE_WS',
-          payload: {
-            event: 'message', id: connectionId, url,
-            direction: 'outgoing', data: truncatedData,
-            size, truncated: truncated || undefined,
-            ts: new Date().toISOString(),
+        window.postMessage(
+          {
+            type: 'GASOLINE_WS',
+            payload: {
+              type: 'websocket',
+              event: 'message',
+              id: connectionId,
+              url,
+              direction: 'outgoing',
+              data: truncatedData,
+              size,
+              truncated: truncated || undefined,
+              ts: new Date().toISOString(),
+            },
           },
-        }, '*')
+          '*',
+        )
       }
 
       return originalSend(data)
@@ -1813,9 +1851,11 @@ export function uninstallWebSocketCapture() {
 const REQUEST_BODY_MAX = 8192 // 8KB
 const RESPONSE_BODY_MAX = 16384 // 16KB
 const BODY_READ_TIMEOUT_MS = 5
-const SENSITIVE_HEADER_PATTERNS = /^(authorization|cookie|set-cookie|x-api-key|x-auth-token|x-secret|x-password|.*token.*|.*secret.*|.*key.*|.*password.*)$/i
+const SENSITIVE_HEADER_PATTERNS =
+  /^(authorization|cookie|set-cookie|x-api-key|x-auth-token|x-secret|x-password|.*token.*|.*secret.*|.*key.*|.*password.*)$/i
 const BINARY_CONTENT_TYPES = /^(image|video|audio|font)\/|^application\/(wasm|octet-stream|zip|gzip|pdf)/
-const TEXT_CONTENT_TYPES = /^(text\/|application\/json|application\/xml|application\/javascript|application\/x-www-form-urlencoded)/
+const _TEXT_CONTENT_TYPES =
+  /^(text\/|application\/json|application\/xml|application\/javascript|application\/x-www-form-urlencoded)/
 
 /**
  * Check if a URL should be captured (not gasoline server or extension)
@@ -1911,7 +1951,9 @@ export async function readResponseBody(response) {
 export async function readResponseBodyWithTimeout(response, timeoutMs = BODY_READ_TIMEOUT_MS) {
   return Promise.race([
     readResponseBody(response),
-    new Promise(resolve => setTimeout(() => resolve('[Skipped: body read timeout]'), timeoutMs))
+    new Promise((resolve) => {
+      setTimeout(() => resolve('[Skipped: body read timeout]'), timeoutMs)
+    }),
   ])
 }
 
@@ -1972,18 +2014,21 @@ export function wrapFetchWithBodies(fetchFn) {
         const { body: truncReq } = truncateRequestBody(typeof requestBody === 'string' ? requestBody : null)
 
         if (win) {
-          win.postMessage({
-            type: 'GASOLINE_NETWORK_BODY',
-            payload: {
-              url,
-              method,
-              status: response.status,
-              contentType,
-              requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
-              responseBody: truncResp || responseBody,
-              duration,
+          win.postMessage(
+            {
+              type: 'GASOLINE_NETWORK_BODY',
+              payload: {
+                url,
+                method,
+                status: response.status,
+                contentType,
+                requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
+                responseBody: truncResp || responseBody,
+                duration,
+              },
             },
-          }, '*')
+            '*',
+          )
         }
       } catch {
         // Body capture failure should not affect user code
@@ -2133,9 +2178,10 @@ function loadAxeCore() {
     }
 
     const script = document.createElement('script')
-    script.src = typeof chrome !== 'undefined' && chrome.runtime
-      ? chrome.runtime.getURL('lib/axe.min.js')
-      : 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.8.4/axe.min.js'
+    script.src =
+      typeof chrome !== 'undefined' && chrome.runtime
+        ? chrome.runtime.getURL('lib/axe.min.js')
+        : 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.8.4/axe.min.js'
     script.onload = () => resolve()
     script.onerror = () => reject(new Error('Failed to load axe-core'))
     document.head.appendChild(script)
@@ -2176,7 +2222,9 @@ export async function runAxeAudit(params) {
 export async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIMEOUT_MS) {
   return Promise.race([
     runAxeAudit(params),
-    new Promise(resolve => setTimeout(() => resolve({ error: 'Accessibility audit timeout' }), timeoutMs))
+    new Promise((resolve) => {
+      setTimeout(() => resolve({ error: 'Accessibility audit timeout' }), timeoutMs)
+    }),
   ])
 }
 
@@ -2196,11 +2244,11 @@ export function formatAxeResults(axeResult) {
 
     // Extract WCAG tags
     if (v.tags) {
-      formatted.wcag = v.tags.filter(t => t.startsWith('wcag'))
+      formatted.wcag = v.tags.filter((t) => t.startsWith('wcag'))
     }
 
     // Format nodes (cap at 10)
-    formatted.nodes = (v.nodes || []).slice(0, A11Y_MAX_NODES_PER_VIOLATION).map(node => ({
+    formatted.nodes = (v.nodes || []).slice(0, A11Y_MAX_NODES_PER_VIOLATION).map((node) => ({
       selector: Array.isArray(node.target) ? node.target[0] : node.target,
       html: (node.html || '').slice(0, DOM_QUERY_MAX_HTML),
       failureSummary: node.failureSummary,
@@ -2315,7 +2363,7 @@ export function parseStackFrames(stack) {
         functionName: chromeMatch[1] || null,
         filename,
         lineno: parseInt(chromeMatch[3], 10),
-        colno: parseInt(chromeMatch[4], 10)
+        colno: parseInt(chromeMatch[4], 10),
       })
       continue
     }
@@ -2329,7 +2377,7 @@ export function parseStackFrames(stack) {
         functionName: firefoxMatch[1] || null,
         filename,
         lineno: parseInt(firefoxMatch[3], 10),
-        colno: parseInt(firefoxMatch[4], 10)
+        colno: parseInt(firefoxMatch[4], 10),
       })
       continue
     }
@@ -2435,9 +2483,7 @@ export function detectFramework(element) {
 
   // React: __reactFiber$ or __reactInternalInstance$
   const keys = Object.keys(element)
-  const reactKey = keys.find(k =>
-    k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$')
-  )
+  const reactKey = keys.find((k) => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'))
   if (reactKey) return { framework: 'react', key: reactKey }
 
   // Vue 3: __vueParentComponent or __vue_app__
@@ -2476,7 +2522,7 @@ export function getReactComponentAncestry(fiber) {
       // Extract prop keys (excluding children)
       if (current.memoizedProps && typeof current.memoizedProps === 'object') {
         entry.propKeys = Object.keys(current.memoizedProps)
-          .filter(k => k !== 'children')
+          .filter((k) => k !== 'children')
           .slice(0, AI_CONTEXT_MAX_PROP_KEYS)
       }
 
@@ -2527,7 +2573,10 @@ export function captureStateSnapshot(errorMessage) {
     const relevantSlice = {}
     let sliceCount = 0
 
-    const errorWords = (errorMessage || '').toLowerCase().split(/\W+/).filter(w => w.length > 2)
+    const errorWords = (errorMessage || '')
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((w) => w.length > 2)
 
     for (const [key, value] of Object.entries(state)) {
       if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE) break
@@ -2536,10 +2585,8 @@ export function captureStateSnapshot(errorMessage) {
         for (const [subKey, subValue] of Object.entries(value)) {
           if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE) break
 
-          const isRelevantKey = ['error', 'loading', 'status', 'failed'].some(k =>
-            subKey.toLowerCase().includes(k)
-          )
-          const isKeywordMatch = errorWords.some(w => key.toLowerCase().includes(w))
+          const isRelevantKey = ['error', 'loading', 'status', 'failed'].some((k) => subKey.toLowerCase().includes(k))
+          const isKeywordMatch = errorWords.some((w) => key.toLowerCase().includes(w))
 
           if (isRelevantKey || isKeywordMatch) {
             let val = subValue
@@ -2556,7 +2603,7 @@ export function captureStateSnapshot(errorMessage) {
     return {
       source: 'redux',
       keys,
-      relevantSlice
+      relevantSlice,
     }
   } catch {
     return null
@@ -2580,7 +2627,7 @@ export function generateAiSummary(data) {
 
   // Component context
   if (data.componentAncestry && data.componentAncestry.components) {
-    const path = data.componentAncestry.components.map(c => c.name).join(' > ')
+    const path = data.componentAncestry.components.map((c) => c.name).join(' > ')
     parts.push(`Component tree: ${path}.`)
   }
 
@@ -2588,7 +2635,7 @@ export function generateAiSummary(data) {
   if (data.stateSnapshot && data.stateSnapshot.relevantSlice) {
     const sliceKeys = Object.keys(data.stateSnapshot.relevantSlice)
     if (sliceKeys.length > 0) {
-      const stateInfo = sliceKeys.map(k => `${k}=${JSON.stringify(data.stateSnapshot.relevantSlice[k])}`).join(', ')
+      const stateInfo = sliceKeys.map((k) => `${k}=${JSON.stringify(data.stateSnapshot.relevantSlice[k])}`).join(', ')
       parts.push(`State: ${stateInfo}.`)
     }
   }
@@ -2650,12 +2697,14 @@ export async function enrichErrorWithAiContext(error) {
           file: topFrame?.filename || null,
           line: topFrame?.lineno || null,
           componentAncestry: result.componentAncestry || null,
-          stateSnapshot: result.stateSnapshot || null
+          stateSnapshot: result.stateSnapshot || null,
         })
 
         return result
       })(),
-      new Promise(resolve => setTimeout(() => resolve({ summary: `${error.message || 'Error'}` }), AI_CONTEXT_PIPELINE_TIMEOUT_MS))
+      new Promise((resolve) => {
+        setTimeout(() => resolve({ summary: `${error.message || 'Error'}` }), AI_CONTEXT_PIPELINE_TIMEOUT_MS)
+      }),
     ])
 
     enriched._aiContext = context
@@ -2745,14 +2794,22 @@ export function getImplicitRole(element) {
   const type = element.getAttribute ? element.getAttribute('type') : null
 
   switch (tag) {
-    case 'button': return 'button'
-    case 'a': return element.getAttribute && element.getAttribute('href') !== null ? 'link' : null
-    case 'textarea': return 'textbox'
-    case 'select': return 'combobox'
-    case 'nav': return 'navigation'
-    case 'main': return 'main'
-    case 'header': return 'banner'
-    case 'footer': return 'contentinfo'
+    case 'button':
+      return 'button'
+    case 'a':
+      return element.getAttribute && element.getAttribute('href') !== null ? 'link' : null
+    case 'textarea':
+      return 'textbox'
+    case 'select':
+      return 'combobox'
+    case 'nav':
+      return 'navigation'
+    case 'main':
+      return 'main'
+    case 'header':
+      return 'banner'
+    case 'footer':
+      return 'contentinfo'
     case 'input': {
       const inputType = type || 'text'
       switch (inputType) {
@@ -2760,16 +2817,24 @@ export function getImplicitRole(element) {
         case 'email':
         case 'password':
         case 'tel':
-        case 'url': return 'textbox'
-        case 'checkbox': return 'checkbox'
-        case 'radio': return 'radio'
-        case 'search': return 'searchbox'
-        case 'number': return 'spinbutton'
-        case 'range': return 'slider'
-        default: return 'textbox'
+        case 'url':
+          return 'textbox'
+        case 'checkbox':
+          return 'checkbox'
+        case 'radio':
+          return 'radio'
+        case 'search':
+          return 'searchbox'
+        case 'number':
+          return 'spinbutton'
+        case 'range':
+          return 'slider'
+        default:
+          return 'textbox'
       }
     }
-    default: return null
+    default:
+      return null
   }
 }
 
@@ -2809,9 +2874,13 @@ export function computeCssPath(element) {
     }
 
     // Add non-dynamic classes (max 2)
-    const classList = current.className && typeof current.className === 'string'
-      ? current.className.trim().split(/\s+/).filter(c => c && !isDynamicClass(c))
-      : []
+    const classList =
+      current.className && typeof current.className === 'string'
+        ? current.className
+            .trim()
+            .split(/\s+/)
+            .filter((c) => c && !isDynamicClass(c))
+        : []
     if (classList.length > 0) {
       selector += '.' + classList.slice(0, 2).join('.')
     }
@@ -2834,11 +2903,12 @@ export function computeSelectors(element) {
   const selectors = {}
 
   // Priority 1: Test ID
-  const testId = (element.getAttribute && (
-    element.getAttribute('data-testid') ||
-    element.getAttribute('data-test-id') ||
-    element.getAttribute('data-cy')
-  )) || undefined
+  const testId =
+    (element.getAttribute &&
+      (element.getAttribute('data-testid') ||
+        element.getAttribute('data-test-id') ||
+        element.getAttribute('data-cy'))) ||
+    undefined
   if (testId) selectors.testId = testId
 
   // Priority 2: ARIA label
@@ -2886,7 +2956,7 @@ export function recordEnhancedAction(type, element, opts = {}) {
   const action = {
     type,
     timestamp: Date.now(),
-    url: (typeof window !== 'undefined' && window.location) ? window.location.href : ''
+    url: typeof window !== 'undefined' && window.location ? window.location.href : '',
   }
 
   // Compute selectors for element (if provided)
@@ -2982,9 +3052,7 @@ export function generatePlaywrightScript(actions, opts = {}) {
   }
 
   // Build test name
-  const testName = errorMessage
-    ? `reproduction: ${errorMessage.slice(0, 80)}`
-    : 'reproduction: captured user actions'
+  const testName = errorMessage ? `reproduction: ${errorMessage.slice(0, 80)}` : 'reproduction: captured user actions'
 
   // Generate step code
   const steps = []
@@ -3009,7 +3077,7 @@ export function generatePlaywrightScript(actions, opts = {}) {
         }
         break
       case 'input': {
-        const value = action.value === '[redacted]' ? '[user-provided]' : (action.value || '')
+        const value = action.value === '[redacted]' ? '[user-provided]' : action.value || ''
         if (locator) {
           steps.push(`  await page.${locator}.fill('${escapeString(value)}');`)
         }
@@ -3024,7 +3092,9 @@ export function generatePlaywrightScript(actions, opts = {}) {
           try {
             const parsed = new URL(toUrl)
             toUrl = baseUrl + parsed.pathname
-          } catch { /* use as-is */ }
+          } catch {
+            /* use as-is */
+          }
         }
         steps.push(`  await page.waitForURL('${escapeString(toUrl)}');`)
         break
@@ -3102,6 +3172,253 @@ function escapeString(str) {
   return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')
 }
 
+// =====================
+// Performance Snapshot
+// =====================
+
+const MAX_LONG_TASKS = 50
+const MAX_SLOWEST_REQUESTS = 3
+const MAX_URL_LENGTH = 80
+
+let perfSnapshotEnabled = true
+let longTaskEntries = []
+let longTaskObserver = null
+let paintObserver = null
+let lcpObserver = null
+let clsObserver = null
+let fcpValue = null
+let lcpValue = null
+let clsValue = 0
+
+/**
+ * Map resource initiator types to standard categories
+ */
+export function mapInitiatorType(type) {
+  switch (type) {
+    case 'script':
+      return 'script'
+    case 'link':
+    case 'css':
+      return 'style'
+    case 'img':
+      return 'image'
+    case 'fetch':
+    case 'xmlhttprequest':
+      return 'fetch'
+    case 'font':
+      return 'font'
+    default:
+      return 'other'
+  }
+}
+
+/**
+ * Aggregate resource timing entries into a network summary
+ */
+export function aggregateResourceTiming() {
+  const resources = performance.getEntriesByType('resource')
+  const byType = {}
+  let transferSize = 0
+  let decodedSize = 0
+
+  for (const entry of resources) {
+    const category = mapInitiatorType(entry.initiatorType)
+    if (!byType[category]) {
+      byType[category] = { count: 0, size: 0 }
+    }
+    byType[category].count++
+    byType[category].size += entry.transferSize || 0
+    transferSize += entry.transferSize || 0
+    decodedSize += entry.decodedBodySize || 0
+  }
+
+  // Top N slowest requests
+  const sorted = [...resources].sort((a, b) => b.duration - a.duration)
+  const slowestRequests = sorted.slice(0, MAX_SLOWEST_REQUESTS).map((r) => ({
+    url: r.name.length > MAX_URL_LENGTH ? r.name.slice(0, MAX_URL_LENGTH) : r.name,
+    duration: r.duration,
+    size: r.transferSize || 0,
+  }))
+
+  return {
+    requestCount: resources.length,
+    transferSize,
+    decodedSize,
+    byType,
+    slowestRequests,
+  }
+}
+
+/**
+ * Capture a performance snapshot with navigation timing and network summary
+ */
+export function capturePerformanceSnapshot() {
+  const navEntries = performance.getEntriesByType('navigation')
+  if (!navEntries || navEntries.length === 0) return null
+
+  const nav = navEntries[0]
+  const timing = {
+    domContentLoaded: nav.domContentLoadedEventEnd,
+    load: nav.loadEventEnd,
+    firstContentfulPaint: getFCP(),
+    largestContentfulPaint: getLCP(),
+    timeToFirstByte: nav.responseStart - nav.requestStart,
+    domInteractive: nav.domInteractive,
+  }
+
+  const network = aggregateResourceTiming()
+  const longTasks = getLongTaskMetrics()
+
+  return {
+    url: window.location.pathname,
+    timestamp: new Date().toISOString(),
+    timing,
+    network,
+    longTasks,
+    cumulativeLayoutShift: getCLS(),
+  }
+}
+
+/**
+ * Install performance observers for long tasks, paint, LCP, and CLS
+ */
+export function installPerfObservers() {
+  longTaskEntries = []
+  fcpValue = null
+  lcpValue = null
+  clsValue = 0
+
+  // Long task observer
+  longTaskObserver = new PerformanceObserver((list) => {
+    const entries = list.getEntries()
+    for (const entry of entries) {
+      if (longTaskEntries.length < MAX_LONG_TASKS) {
+        longTaskEntries.push(entry)
+      }
+    }
+  })
+  longTaskObserver.observe({ type: 'longtask' })
+
+  // Paint observer (FCP)
+  paintObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      if (entry.name === 'first-contentful-paint') {
+        fcpValue = entry.startTime
+      }
+    }
+  })
+  paintObserver.observe({ type: 'paint' })
+
+  // LCP observer
+  lcpObserver = new PerformanceObserver((list) => {
+    const entries = list.getEntries()
+    if (entries.length > 0) {
+      lcpValue = entries[entries.length - 1].startTime
+    }
+  })
+  lcpObserver.observe({ type: 'largest-contentful-paint' })
+
+  // CLS observer
+  clsObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      if (!entry.hadRecentInput) {
+        clsValue += entry.value
+      }
+    }
+  })
+  clsObserver.observe({ type: 'layout-shift' })
+}
+
+/**
+ * Disconnect all performance observers
+ */
+export function uninstallPerfObservers() {
+  if (longTaskObserver) {
+    longTaskObserver.disconnect()
+    longTaskObserver = null
+  }
+  if (paintObserver) {
+    paintObserver.disconnect()
+    paintObserver = null
+  }
+  if (lcpObserver) {
+    lcpObserver.disconnect()
+    lcpObserver = null
+  }
+  if (clsObserver) {
+    clsObserver.disconnect()
+    clsObserver = null
+  }
+  longTaskEntries = []
+}
+
+/**
+ * Get accumulated long task metrics
+ */
+export function getLongTaskMetrics() {
+  let totalBlockingTime = 0
+  let longest = 0
+
+  for (const entry of longTaskEntries) {
+    const blocking = entry.duration - 50
+    if (blocking > 0) totalBlockingTime += blocking
+    if (entry.duration > longest) longest = entry.duration
+  }
+
+  return {
+    count: longTaskEntries.length,
+    totalBlockingTime,
+    longest,
+  }
+}
+
+/**
+ * Get First Contentful Paint value
+ */
+export function getFCP() {
+  return fcpValue
+}
+
+/**
+ * Get Largest Contentful Paint value
+ */
+export function getLCP() {
+  return lcpValue
+}
+
+/**
+ * Get Cumulative Layout Shift value
+ */
+export function getCLS() {
+  return clsValue
+}
+
+/**
+ * Send performance snapshot via postMessage to content script
+ */
+export function sendPerformanceSnapshot() {
+  if (!perfSnapshotEnabled) return
+
+  const snapshot = capturePerformanceSnapshot()
+  if (!snapshot) return
+
+  window.postMessage({ type: 'DEV_CONSOLE_PERFORMANCE_SNAPSHOT', payload: snapshot }, '*')
+}
+
+/**
+ * Check if performance snapshot capture is enabled
+ */
+export function isPerformanceSnapshotEnabled() {
+  return perfSnapshotEnabled
+}
+
+/**
+ * Enable or disable performance snapshot capture
+ */
+export function setPerformanceSnapshotEnabled(enabled) {
+  perfSnapshotEnabled = enabled
+}
+
 // Listen for settings changes from content script
 if (typeof window !== 'undefined') {
   window.addEventListener('message', (event) => {
@@ -3136,6 +3453,9 @@ if (typeof window !== 'undefined') {
         case 'setWebSocketCaptureMode':
           webSocketCaptureMode = event.data.mode || 'lifecycle'
           break
+        case 'setPerformanceSnapshotEnabled':
+          setPerformanceSnapshotEnabled(event.data.enabled)
+          break
       }
     }
   })
@@ -3145,4 +3465,11 @@ if (typeof window !== 'undefined') {
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   install()
   installGasolineAPI()
+
+  // Send performance snapshot after page load + 2s settling time
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      sendPerformanceSnapshot()
+    }, 2000)
+  })
 }

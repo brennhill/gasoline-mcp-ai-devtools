@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Tests for Network Waterfall feature
  * TDD: These tests are written BEFORE implementation
@@ -271,12 +272,8 @@ describe('Network Waterfall - getNetworkWaterfall', () => {
   test('should filter by time range', async () => {
     const { getNetworkWaterfall } = await import('../extension/inject.js')
 
-    globalThis.performance._addEntry(
-      createMockResourceTiming({ name: 'http://localhost/early', startTime: 50 })
-    )
-    globalThis.performance._addEntry(
-      createMockResourceTiming({ name: 'http://localhost/late', startTime: 500 })
-    )
+    globalThis.performance._addEntry(createMockResourceTiming({ name: 'http://localhost/early', startTime: 50 }))
+    globalThis.performance._addEntry(createMockResourceTiming({ name: 'http://localhost/late', startTime: 500 }))
 
     const waterfall = getNetworkWaterfall({ since: 400 })
 
@@ -290,7 +287,7 @@ describe('Network Waterfall - getNetworkWaterfall', () => {
     // Add more entries than the limit
     for (let i = 0; i < 100; i++) {
       globalThis.performance._addEntry(
-        createMockResourceTiming({ name: `http://localhost/api/${i}`, startTime: i * 10 })
+        createMockResourceTiming({ name: `http://localhost/api/${i}`, startTime: i * 10 }),
       )
     }
 
@@ -302,12 +299,8 @@ describe('Network Waterfall - getNetworkWaterfall', () => {
   test('should sort entries by start time', async () => {
     const { getNetworkWaterfall } = await import('../extension/inject.js')
 
-    globalThis.performance._addEntry(
-      createMockResourceTiming({ name: 'http://localhost/second', startTime: 200 })
-    )
-    globalThis.performance._addEntry(
-      createMockResourceTiming({ name: 'http://localhost/first', startTime: 100 })
-    )
+    globalThis.performance._addEntry(createMockResourceTiming({ name: 'http://localhost/second', startTime: 200 }))
+    globalThis.performance._addEntry(createMockResourceTiming({ name: 'http://localhost/first', startTime: 100 }))
 
     const waterfall = getNetworkWaterfall()
 
@@ -317,29 +310,23 @@ describe('Network Waterfall - getNetworkWaterfall', () => {
   test('should filter by initiator type', async () => {
     const { getNetworkWaterfall } = await import('../extension/inject.js')
 
+    globalThis.performance._addEntry(createMockResourceTiming({ name: 'http://localhost/api', initiatorType: 'fetch' }))
     globalThis.performance._addEntry(
-      createMockResourceTiming({ name: 'http://localhost/api', initiatorType: 'fetch' })
-    )
-    globalThis.performance._addEntry(
-      createMockResourceTiming({ name: 'http://localhost/style.css', initiatorType: 'link' })
+      createMockResourceTiming({ name: 'http://localhost/style.css', initiatorType: 'link' }),
     )
 
     const waterfall = getNetworkWaterfall({ initiatorTypes: ['fetch', 'xmlhttprequest'] })
 
     assert.strictEqual(waterfall.length, 1)
     assert.ok(
-      waterfall[0].initiatorType === 'fetch' ||
-        waterfall[0].initiator === 'fetch' ||
-        waterfall[0].type === 'fetch'
+      waterfall[0].initiatorType === 'fetch' || waterfall[0].initiator === 'fetch' || waterfall[0].type === 'fetch',
     )
   })
 
   test('should exclude data URLs', async () => {
     const { getNetworkWaterfall } = await import('../extension/inject.js')
 
-    globalThis.performance._addEntry(
-      createMockResourceTiming({ name: 'data:image/png;base64,abc123' })
-    )
+    globalThis.performance._addEntry(createMockResourceTiming({ name: 'data:image/png;base64,abc123' }))
     globalThis.performance._addEntry(createMockResourceTiming({ name: 'http://localhost/api' }))
 
     const waterfall = getNetworkWaterfall()
@@ -377,9 +364,7 @@ describe('Network Waterfall - Pending Requests', () => {
   })
 
   test('should track pending fetch requests', async () => {
-    const { trackPendingRequest, getPendingRequests, clearPendingRequests } = await import(
-      '../extension/inject.js'
-    )
+    const { trackPendingRequest, getPendingRequests, clearPendingRequests } = await import('../extension/inject.js')
 
     clearPendingRequests()
 
@@ -417,9 +402,8 @@ describe('Network Waterfall - Pending Requests', () => {
   })
 
   test('should include pending requests in error snapshots', async () => {
-    const { trackPendingRequest, getNetworkWaterfallForError, clearPendingRequests, setNetworkWaterfallEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { trackPendingRequest, getNetworkWaterfallForError, clearPendingRequests, setNetworkWaterfallEnabled } =
+      await import('../extension/inject.js')
 
     setNetworkWaterfallEnabled(true)
     clearPendingRequests()
@@ -463,9 +447,7 @@ describe('Network Waterfall - Error Integration', () => {
   })
 
   test('should create waterfall snapshot for error', async () => {
-    const { getNetworkWaterfallForError, setNetworkWaterfallEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { getNetworkWaterfallForError, setNetworkWaterfallEnabled } = await import('../extension/inject.js')
 
     setNetworkWaterfallEnabled(true)
 
@@ -487,9 +469,7 @@ describe('Network Waterfall - Error Integration', () => {
   })
 
   test('should respect networkWaterfallEnabled setting', async () => {
-    const { getNetworkWaterfallForError, setNetworkWaterfallEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { getNetworkWaterfallForError, setNetworkWaterfallEnabled } = await import('../extension/inject.js')
 
     setNetworkWaterfallEnabled(false)
 
@@ -507,22 +487,18 @@ describe('Network Waterfall - Error Integration', () => {
   })
 
   test('should only capture recent entries (last 30 seconds)', async () => {
-    const { getNetworkWaterfallForError, setNetworkWaterfallEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { getNetworkWaterfallForError, setNetworkWaterfallEnabled } = await import('../extension/inject.js')
 
     setNetworkWaterfallEnabled(true)
 
     // Old entry (simulated via startTime relative to performance.now)
-    globalThis.performance._addEntry(
-      createMockResourceTiming({ name: 'http://localhost/old', startTime: 0 })
-    )
+    globalThis.performance._addEntry(createMockResourceTiming({ name: 'http://localhost/old', startTime: 0 }))
 
     // Recent entry
     const now = Date.now()
     globalThis.performance.now = () => now
     globalThis.performance._addEntry(
-      createMockResourceTiming({ name: 'http://localhost/recent', startTime: now - 5000 })
+      createMockResourceTiming({ name: 'http://localhost/recent', startTime: now - 5000 }),
     )
 
     const errorEntry = { type: 'exception', level: 'error' }
@@ -550,9 +526,7 @@ describe('Network Waterfall - Configuration', () => {
   })
 
   test('setNetworkWaterfallEnabled should toggle feature', async () => {
-    const { setNetworkWaterfallEnabled, isNetworkWaterfallEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { setNetworkWaterfallEnabled, isNetworkWaterfallEnabled } = await import('../extension/inject.js')
 
     setNetworkWaterfallEnabled(true)
     assert.strictEqual(isNetworkWaterfallEnabled(), true)
@@ -562,9 +536,8 @@ describe('Network Waterfall - Configuration', () => {
   })
 
   test('should expose network waterfall through __gasoline API', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI, setNetworkWaterfallEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { installGasolineAPI, uninstallGasolineAPI, setNetworkWaterfallEnabled } =
+      await import('../extension/inject.js')
 
     setNetworkWaterfallEnabled(true)
     installGasolineAPI()

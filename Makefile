@@ -12,7 +12,9 @@ PLATFORMS := \
 	linux-arm64 \
 	windows-amd64
 
-.PHONY: all clean build test $(PLATFORMS)
+.PHONY: all clean build test dev run checksums \
+	lint lint-go lint-js format format-fix typecheck check ci \
+	$(PLATFORMS)
 
 all: clean build
 
@@ -55,3 +57,31 @@ run:
 # Create checksums
 checksums:
 	cd $(BUILD_DIR) && shasum -a 256 * > checksums.txt
+
+# --- Code Quality ---
+
+lint: lint-go lint-js
+
+lint-go:
+	go vet ./cmd/dev-console/
+	golangci-lint run ./cmd/dev-console/
+
+lint-js:
+	npx eslint extension/ extension-tests/
+
+format:
+	@echo "Checking Go formatting..."
+	@test -z "$$(gofmt -l ./cmd/dev-console/)" || (gofmt -l ./cmd/dev-console/ && exit 1)
+	npx prettier --check .
+
+format-fix:
+	gofmt -w ./cmd/dev-console/
+	npx prettier --write .
+
+typecheck:
+	npx tsc --noEmit
+
+check: lint format typecheck
+
+ci: check test
+	node --test extension-tests/*.test.js

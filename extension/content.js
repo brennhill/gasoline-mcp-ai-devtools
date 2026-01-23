@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Content script that injects the capture script into pages
  * Runs in the content script context, bridges page and extension
@@ -42,6 +43,12 @@ window.addEventListener('message', (event) => {
       type: 'enhanced_action',
       payload: event.data.payload,
     })
+  } else if (event.data?.type === 'DEV_CONSOLE_PERFORMANCE_SNAPSHOT') {
+    // Forward performance snapshot to background service worker
+    chrome.runtime.sendMessage({
+      type: 'performance_snapshot',
+      payload: event.data.payload,
+    })
   }
 })
 
@@ -53,7 +60,8 @@ chrome.runtime.onMessage.addListener((message) => {
     message.type === 'setPerformanceMarksEnabled' ||
     message.type === 'setActionReplayEnabled' ||
     message.type === 'setWebSocketCaptureEnabled' ||
-    message.type === 'setWebSocketCaptureMode'
+    message.type === 'setWebSocketCaptureMode' ||
+    message.type === 'setPerformanceSnapshotEnabled'
   ) {
     const payload = { type: 'DEV_CONSOLE_SETTING', setting: message.type }
     if (message.type === 'setWebSocketCaptureMode') {

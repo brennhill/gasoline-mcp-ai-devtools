@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Tests for AI-preprocessed error context enrichment
  * TDD: These tests are written BEFORE implementation (v5 feature)
@@ -22,13 +23,13 @@ const createMockWindow = () => ({
   postMessage: mock.fn(),
   addEventListener: mock.fn(),
   fetch: mock.fn(() => Promise.resolve({ ok: false })),
-  performance: { now: () => Date.now() }
+  performance: { now: () => Date.now() },
 })
 
 const createMockDocument = () => ({
   activeElement: null,
   querySelectorAll: mock.fn(() => []),
-  body: {}
+  body: {},
 })
 
 let originalWindow, originalDocument
@@ -78,7 +79,7 @@ onclick@http://localhost:3000/main.js:100:3`
     const frames = parseStackFrames(stack)
 
     // Should extract frames with real file locations, skipping <anonymous>
-    const realFrames = frames.filter(f => f.filename && !f.filename.includes('<anonymous>'))
+    const realFrames = frames.filter((f) => f.filename && !f.filename.includes('<anonymous>'))
     assert.ok(realFrames.length >= 2)
     assert.strictEqual(realFrames[0].lineno, 42)
   })
@@ -111,7 +112,7 @@ onclick@http://localhost:3000/main.js:100:3`
     const frames = parseStackFrames(stack)
 
     // Should at minimum extract the runCode frame
-    const runCodeFrame = frames.find(f => f.functionName === 'runCode')
+    const runCodeFrame = frames.find((f) => f.functionName === 'runCode')
     assert.ok(runCodeFrame)
     assert.strictEqual(runCodeFrame.lineno, 10)
   })
@@ -136,7 +137,7 @@ describe('Source Map Parsing', () => {
       version: 3,
       sources: ['src/app.ts'],
       sourcesContent: ['const x = 1;\nconst y = x.foo;\nconsole.log(y);'],
-      mappings: 'AAAA;AACA;AACA'
+      mappings: 'AAAA;AACA;AACA',
     }
     const encoded = Buffer.from(JSON.stringify(sourceMap)).toString('base64')
     const dataUrl = `data:application/json;base64,${encoded}`
@@ -155,7 +156,7 @@ describe('Source Map Parsing', () => {
       version: 3,
       sources: ['app.js'],
       sourcesContent: ['function test() {}'],
-      mappings: 'AAAA'
+      mappings: 'AAAA',
     }
     const encoded = Buffer.from(JSON.stringify(sourceMap)).toString('base64')
     const dataUrl = `data:application/json;charset=utf-8;base64,${encoded}`
@@ -172,7 +173,7 @@ describe('Source Map Parsing', () => {
     const sourceMap = {
       version: 3,
       sources: ['src/app.ts'],
-      mappings: 'AAAA'
+      mappings: 'AAAA',
     }
     const encoded = Buffer.from(JSON.stringify(sourceMap)).toString('base64')
     const dataUrl = `data:application/json;base64,${encoded}`
@@ -217,9 +218,7 @@ describe('Source Snippet Extraction', () => {
   test('should extract snippet with 5 lines before and after', async () => {
     const { extractSnippet } = await import('../extension/inject.js')
 
-    const sourceContent = Array.from({ length: 20 }, (_, i) =>
-      `line ${i + 1} content`
-    ).join('\n')
+    const sourceContent = Array.from({ length: 20 }, (_, i) => `line ${i + 1} content`).join('\n')
 
     const snippet = extractSnippet(sourceContent, 10)
 
@@ -252,7 +251,7 @@ describe('Source Snippet Extraction', () => {
     const snippet = extractSnippet(sourceContent, 5)
 
     assert.ok(snippet)
-    const errorLine = snippet.find(s => s.isError)
+    const errorLine = snippet.find((s) => s.isError)
     assert.strictEqual(errorLine.line, 5)
     assert.strictEqual(errorLine.text, 'line 5')
   })
@@ -265,7 +264,7 @@ describe('Source Snippet Extraction', () => {
 
     const snippet = extractSnippet(sourceContent, 2)
 
-    const errorLine = snippet.find(s => s.isError)
+    const errorLine = snippet.find((s) => s.isError)
     assert.ok(errorLine.text.length <= 200)
   })
 
@@ -308,7 +307,7 @@ describe('Source Snippet Extraction', () => {
 
     const snippet = extractSnippet(sourceContent, 10)
 
-    const errorLines = snippet.filter(s => s.isError)
+    const errorLines = snippet.filter((s) => s.isError)
     assert.strictEqual(errorLines.length, 1)
     assert.strictEqual(errorLines[0].line, 10)
   })
@@ -321,7 +320,7 @@ describe('Source Snippet Extraction', () => {
       { filename: 'b.js', lineno: 20 },
       { filename: 'c.js', lineno: 30 },
       { filename: 'd.js', lineno: 40 },
-      { filename: 'e.js', lineno: 50 }
+      { filename: 'e.js', lineno: 50 },
     ]
 
     const mockSourceMaps = {
@@ -329,7 +328,7 @@ describe('Source Snippet Extraction', () => {
       'b.js': { sourcesContent: [Array(50).fill('code').join('\n')] },
       'c.js': { sourcesContent: [Array(50).fill('code').join('\n')] },
       'd.js': { sourcesContent: [Array(50).fill('code').join('\n')] },
-      'e.js': { sourcesContent: [Array(50).fill('code').join('\n')] }
+      'e.js': { sourcesContent: [Array(50).fill('code').join('\n')] },
     }
 
     const snippets = await extractSourceSnippets(frames, mockSourceMaps)
@@ -346,13 +345,13 @@ describe('Source Snippet Extraction', () => {
     const frames = [
       { filename: 'a.js', lineno: 50 },
       { filename: 'b.js', lineno: 50 },
-      { filename: 'c.js', lineno: 50 }
+      { filename: 'c.js', lineno: 50 },
     ]
 
     const mockSourceMaps = {
       'a.js': { sourcesContent: [largeSource] },
       'b.js': { sourcesContent: [largeSource] },
-      'c.js': { sourcesContent: [largeSource] }
+      'c.js': { sourcesContent: [largeSource] },
     }
 
     const snippets = await extractSourceSnippets(frames, mockSourceMaps)
@@ -377,7 +376,7 @@ describe('Component Ancestry - React', () => {
   test('should detect React from __reactFiber$ key', async () => {
     const { detectFramework } = await import('../extension/inject.js')
 
-    const element = { '__reactFiber$abc123': {} }
+    const element = { __reactFiber$abc123: {} }
     const result = detectFramework(element)
 
     assert.strictEqual(result.framework, 'react')
@@ -387,7 +386,7 @@ describe('Component Ancestry - React', () => {
   test('should detect React from __reactInternalInstance$ key', async () => {
     const { detectFramework } = await import('../extension/inject.js')
 
-    const element = { '__reactInternalInstance$xyz': {} }
+    const element = { __reactInternalInstance$xyz: {} }
     const result = detectFramework(element)
 
     assert.strictEqual(result.framework, 'react')
@@ -406,9 +405,9 @@ describe('Component Ancestry - React', () => {
         return: {
           type: { name: 'App' },
           memoizedProps: { theme: 'dark' },
-          return: null
-        }
-      }
+          return: null,
+        },
+      },
     }
 
     const ancestry = getReactComponentAncestry(fiber)
@@ -426,7 +425,7 @@ describe('Component Ancestry - React', () => {
     const fiber = {
       type: { name: 'Comp', displayName: 'MyDisplayName' },
       memoizedProps: {},
-      return: null
+      return: null,
     }
 
     const ancestry = getReactComponentAncestry(fiber)
@@ -440,7 +439,7 @@ describe('Component Ancestry - React', () => {
     const fiber = {
       type: { name: '', displayName: null },
       memoizedProps: {},
-      return: null
+      return: null,
     }
 
     const ancestry = getReactComponentAncestry(fiber)
@@ -454,7 +453,7 @@ describe('Component Ancestry - React', () => {
     const fiber = {
       type: { name: 'Button' },
       memoizedProps: { onClick: () => {}, className: 'btn', children: 'text', disabled: false },
-      return: null
+      return: null,
     }
 
     const ancestry = getReactComponentAncestry(fiber)
@@ -471,7 +470,7 @@ describe('Component Ancestry - React', () => {
       type: { name: 'Form' },
       memoizedProps: {},
       memoizedState: { email: '', loading: false, error: null },
-      return: null
+      return: null,
     }
 
     const ancestry = getReactComponentAncestry(fiber)
@@ -490,7 +489,7 @@ describe('Component Ancestry - React', () => {
       current = {
         type: { name: `C${i}` },
         memoizedProps: {},
-        return: current
+        return: current,
       }
     }
 
@@ -508,7 +507,7 @@ describe('Component Ancestry - React', () => {
     const fiber = {
       type: { name: 'Big' },
       memoizedProps: props,
-      return: null
+      return: null,
     }
 
     const ancestry = getReactComponentAncestry(fiber)
@@ -526,7 +525,7 @@ describe('Component Ancestry - React', () => {
       type: { name: 'Big' },
       memoizedProps: {},
       memoizedState: state,
-      return: null
+      return: null,
     }
 
     const ancestry = getReactComponentAncestry(fiber)
@@ -546,13 +545,13 @@ describe('Component Ancestry - React', () => {
         return: {
           type: { name: 'Parent' },
           memoizedProps: {},
-          return: null
-        }
-      }
+          return: null,
+        },
+      },
     }
 
     const ancestry = getReactComponentAncestry(fiber)
-    const names = ancestry.map(c => c.name)
+    const names = ancestry.map((c) => c.name)
 
     assert.ok(!names.includes('div'))
     assert.ok(names.includes('Child'))
@@ -642,8 +641,8 @@ describe('Application State Snapshot', () => {
     globalThis.window.__REDUX_STORE__ = {
       getState: () => ({
         auth: { user: null, loading: false, error: 'Unauthorized' },
-        cart: { items: [], total: 0 }
-      })
+        cart: { items: [], total: 0 },
+      }),
     }
 
     const snapshot = captureStateSnapshot('Unauthorized')
@@ -665,8 +664,8 @@ describe('Application State Snapshot', () => {
         num: 42,
         str: 'hello',
         bool: true,
-        nil: null
-      })
+        nil: null,
+      }),
     }
 
     const snapshot = captureStateSnapshot('')
@@ -687,8 +686,8 @@ describe('Application State Snapshot', () => {
       getState: () => ({
         auth: { user: null, error: 'Token expired' },
         cart: { items: ['a'], total: 50 },
-        ui: { theme: 'dark' }
-      })
+        ui: { theme: 'dark' },
+      }),
     }
 
     const snapshot = captureStateSnapshot('auth failed: Token expired')
@@ -696,7 +695,7 @@ describe('Application State Snapshot', () => {
     assert.ok(snapshot.relevantSlice)
     // Should include auth state because error mentions "auth"
     const keys = Object.keys(snapshot.relevantSlice)
-    assert.ok(keys.some(k => k.startsWith('auth')))
+    assert.ok(keys.some((k) => k.startsWith('auth')))
 
     delete globalThis.window.__REDUX_STORE__
   })
@@ -707,15 +706,15 @@ describe('Application State Snapshot', () => {
     globalThis.window.__REDUX_STORE__ = {
       getState: () => ({
         data: { items: [], loading: true, error: null, status: 'pending' },
-        ui: { modal: false }
-      })
+        ui: { modal: false },
+      }),
     }
 
     const snapshot = captureStateSnapshot('')
 
     const keys = Object.keys(snapshot.relevantSlice)
-    assert.ok(keys.some(k => k.includes('loading')))
-    assert.ok(keys.some(k => k.includes('status')))
+    assert.ok(keys.some((k) => k.includes('loading')))
+    assert.ok(keys.some((k) => k.includes('status')))
 
     delete globalThis.window.__REDUX_STORE__
   })
@@ -742,8 +741,8 @@ describe('Application State Snapshot', () => {
 
     globalThis.window.__REDUX_STORE__ = {
       getState: () => ({
-        data: { error: 'x'.repeat(500) }
-      })
+        data: { error: 'x'.repeat(500) },
+      }),
     }
 
     const snapshot = captureStateSnapshot('')
@@ -766,7 +765,9 @@ describe('Application State Snapshot', () => {
     const { captureStateSnapshot } = await import('../extension/inject.js')
 
     globalThis.window.__REDUX_STORE__ = {
-      getState: () => { throw new Error('store error') }
+      getState: () => {
+        throw new Error('store error')
+      },
     }
 
     const snapshot = captureStateSnapshot('')
@@ -790,11 +791,11 @@ describe('AI Context Summary Generation', () => {
       line: 42,
       componentAncestry: {
         framework: 'react',
-        components: [{ name: 'App' }, { name: 'LoginForm' }]
+        components: [{ name: 'App' }, { name: 'LoginForm' }],
       },
       stateSnapshot: {
-        relevantSlice: { 'auth.error': 'Unauthorized', 'auth.user': null }
-      }
+        relevantSlice: { 'auth.error': 'Unauthorized', 'auth.user': null },
+      },
     })
 
     assert.ok(summary.includes('TypeError'))
@@ -811,7 +812,7 @@ describe('AI Context Summary Generation', () => {
       file: null,
       line: null,
       componentAncestry: null,
-      stateSnapshot: null
+      stateSnapshot: null,
     })
 
     assert.ok(summary.includes('Error'))
@@ -830,9 +831,9 @@ describe('AI Context Summary Generation', () => {
       line: 1,
       componentAncestry: {
         framework: 'react',
-        components: [{ name: 'App' }, { name: 'Dashboard' }, { name: 'UserList' }]
+        components: [{ name: 'App' }, { name: 'Dashboard' }, { name: 'UserList' }],
       },
-      stateSnapshot: null
+      stateSnapshot: null,
     })
 
     // Should mention component names
@@ -850,8 +851,8 @@ describe('AI Context Summary Generation', () => {
       line: 5,
       componentAncestry: null,
       stateSnapshot: {
-        relevantSlice: { 'auth.loading': false, 'auth.error': 'timeout' }
-      }
+        relevantSlice: { 'auth.loading': false, 'auth.error': 'timeout' },
+      },
     })
 
     assert.ok(summary.includes('auth'))
@@ -884,7 +885,7 @@ describe('AI Context Enrichment Pipeline', () => {
     at bar (http://localhost:3000/main.js:10:5)`,
       filename: 'http://localhost:3000/main.js',
       lineno: 10,
-      _enrichments: []
+      _enrichments: [],
     }
 
     const enriched = await enrichErrorWithAiContext(error)
@@ -906,7 +907,7 @@ describe('AI Context Enrichment Pipeline', () => {
       stack: 'Error: test\n    at fn (http://localhost:3000/main.js:10:5)',
       filename: 'http://localhost:3000/main.js',
       lineno: 10,
-      _enrichments: []
+      _enrichments: [],
     }
 
     const start = Date.now()
@@ -927,7 +928,7 @@ describe('AI Context Enrichment Pipeline', () => {
       level: 'error',
       message: 'test',
       stack: 'Error: test',
-      _enrichments: []
+      _enrichments: [],
     }
 
     const enriched = await enrichErrorWithAiContext(error)
@@ -941,11 +942,11 @@ describe('AI Context Enrichment Pipeline', () => {
     const { enrichErrorWithAiContext } = await import('../extension/inject.js')
 
     globalThis.document.activeElement = {
-      '__reactFiber$test': {
+      __reactFiber$test: {
         type: { name: 'TestComponent' },
         memoizedProps: { foo: 'bar' },
-        return: null
-      }
+        return: null,
+      },
     }
 
     const error = {
@@ -953,7 +954,7 @@ describe('AI Context Enrichment Pipeline', () => {
       level: 'error',
       message: 'test',
       stack: 'Error: test',
-      _enrichments: []
+      _enrichments: [],
     }
 
     const enriched = await enrichErrorWithAiContext(error)
@@ -970,7 +971,7 @@ describe('AI Context Enrichment Pipeline', () => {
     setAiContextStateSnapshot(true)
 
     globalThis.window.__REDUX_STORE__ = {
-      getState: () => ({ auth: { error: 'failed' } })
+      getState: () => ({ auth: { error: 'failed' } }),
     }
 
     const error = {
@@ -978,7 +979,7 @@ describe('AI Context Enrichment Pipeline', () => {
       level: 'error',
       message: 'auth failed',
       stack: 'Error: auth failed',
-      _enrichments: []
+      _enrichments: [],
     }
 
     const enriched = await enrichErrorWithAiContext(error)
@@ -997,7 +998,7 @@ describe('AI Context Enrichment Pipeline', () => {
     setAiContextStateSnapshot(false) // Default
 
     globalThis.window.__REDUX_STORE__ = {
-      getState: () => ({ auth: { error: 'failed' } })
+      getState: () => ({ auth: { error: 'failed' } }),
     }
 
     const error = {
@@ -1005,7 +1006,7 @@ describe('AI Context Enrichment Pipeline', () => {
       level: 'error',
       message: 'test',
       stack: 'Error: test',
-      _enrichments: []
+      _enrichments: [],
     }
 
     const enriched = await enrichErrorWithAiContext(error)
@@ -1044,7 +1045,7 @@ describe('Source Map Cache', () => {
     for (let i = 0; i < 25; i++) {
       setSourceMapCache(`http://localhost/file${i}.js`, {
         sources: [`f${i}.ts`],
-        sourcesContent: ['code']
+        sourcesContent: ['code'],
       })
     }
 
@@ -1058,14 +1059,14 @@ describe('Source Map Cache', () => {
     for (let i = 0; i < 20; i++) {
       setSourceMapCache(`http://localhost/file${i}.js`, {
         sources: [`f${i}.ts`],
-        sourcesContent: ['code']
+        sourcesContent: ['code'],
       })
     }
 
     // Add one more (should evict file0)
     setSourceMapCache('http://localhost/file_new.js', {
       sources: ['new.ts'],
-      sourcesContent: ['new code']
+      sourcesContent: ['new code'],
     })
 
     // Newest should exist

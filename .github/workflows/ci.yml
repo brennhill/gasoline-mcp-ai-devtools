@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  go:
+    name: Go Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Vet
+        run: go vet ./cmd/dev-console/
+
+      - name: Test
+        run: make test
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: run ./cmd/dev-console/
+
+      - name: Build
+        run: make build
+
+  javascript:
+    name: JavaScript Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Extension tests
+        run: npm run test:ext
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Go security scan
+        uses: securego/gosec@master
+        with:
+          args: ./cmd/dev-console/
+
+      - name: JS security lint
+        run: |
+          npx eslint --no-eslintrc -c eslint.config.js \
+            --rule '{"security/detect-eval-with-expression": "error", "security/detect-non-literal-regexp": "error", "security/detect-possible-timing-attacks": "error"}' \
+            extension/
