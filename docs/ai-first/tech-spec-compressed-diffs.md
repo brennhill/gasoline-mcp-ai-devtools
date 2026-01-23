@@ -147,6 +147,50 @@ The overall severity is determined by scanning all diff categories. Console erro
 
 ---
 
+## Checkpoint Naming Conventions
+
+Agents should follow consistent naming so humans (and future sessions) can understand the checkpoint history at a glance.
+
+**Required checkpoints** (agents should always create these):
+- `session_start` — created at the beginning of every coding session, before any edits. This is the "known state" anchor for post-session auditing.
+- `pre_commit` — created just before the agent commits code. Allows comparing pre-commit health against post-deploy health.
+
+**Recommended checkpoints** (for multi-step work):
+- `before_{action}` — before a risky operation (e.g., `before_refactor`, `before_migration`, `before_dependency_upgrade`)
+- `after_{action}` — after completing a phase, to mark it as a known-good point
+- `baseline_{feature}` — when a feature is confirmed working, for future regression comparison
+
+**Naming rules:**
+- Lowercase, underscores for spaces
+- Max 50 characters
+- Descriptive enough that a human reading the checkpoint list can reconstruct the session timeline
+- No timestamps in names (the checkpoint already stores its creation time)
+
+**Example session timeline:**
+```
+session_start          → clean
+before_auth_refactor   → clean
+after_auth_refactor    → 1 warning (new deprecation notice, acceptable)
+before_commit          → clean
+```
+
+A human reviewing this can immediately see: the agent started clean, did an auth refactor that introduced a minor warning, then resolved it before committing.
+
+---
+
+## Future: Human-Friendly Diff Viewer
+
+The compressed diff format is optimized for AI token efficiency, but humans overseeing agent sessions need a way to audit what happened too. A human-readable diff viewer should present the same checkpoint-based data in a format designed for quick human scanning — not JSON payloads.
+
+Use cases:
+- **Post-session review**: "The agent said it fixed the bug — did the browser actually stop erroring?"
+- **Regression auditing**: "Before the agent's PR, was the app healthy? After?"
+- **Trust building**: Gives humans confidence that the agent's self-reported status matches reality
+
+Implementation is TBD. Could be a CLI output mode, a browser extension panel, a web dashboard served by the Go binary, or an MCP resource that renders markdown. The key requirement is that the same checkpoint/diff data powering the agent's feedback loop is also inspectable by a human without parsing JSON.
+
+---
+
 ## File Location
 
 Implementation goes in `cmd/dev-console/ai_checkpoint.go` with tests in `cmd/dev-console/ai_checkpoint_test.go`.
