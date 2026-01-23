@@ -1,178 +1,335 @@
 ---
-title: "Roadmap — AI-First Features"
-description: "Upcoming Gasoline features built for AI-native development: compressed state diffs, noise filtering, behavioral baselines, persistent memory, API schema inference, and DOM fingerprinting."
-keywords: "AI-first debugging, AI coding agent features, compressed state diffs, noise filtering, behavioral baselines, persistent memory, API schema inference, DOM fingerprinting, token-efficient debugging"
+title: "Roadmap"
+description: "Gasoline roadmap: endpoint catalog, time-windowed diffs, noise dismissal, performance budgets, and infrastructure hardening."
+keywords: "gasoline roadmap, endpoint catalog, compressed diffs, noise filtering, performance budget, MCP browser debugging"
 permalink: /roadmap/
 header:
   overlay_image: /assets/images/hero-banner.png
   overlay_filter: 0.85
-  excerpt: "What's next: features designed for a world where AI agents are the primary coders."
+  excerpt: "What's next: capture more, interpret less."
 toc: true
 toc_sticky: true
 ---
 
-These features are designed for the next generation of AI coding — where agents run tight edit-verify loops, need peripheral awareness, and accumulate understanding over time.
+Every feature follows the [product philosophy](/docs/product-philosophy/): capture and organize for AI agents, but keep output human-verifiable. We don't interpret data the AI reads better than us.
 
-## <i class="fas fa-bolt"></i> Compressed State Diffs
+---
 
-**Status:** Specification Complete
+## Phase 1: Discovery & Infrastructure
+
+Low effort, high value. Ship first.
+
+### <i class="fas fa-sitemap"></i> Endpoint Catalog
+
+**Status:** Specified
 {: .notice--info}
 
-### The Problem
-
-AI agents in edit-verify loops waste 10-20K tokens per state check, re-reading entire log buffers to find what changed. Over a 50-edit session, that's 500K-1M tokens wasted on state reads.
-
-### The Solution
-
-`get_changes_since` returns only what changed since the last check — token-efficient deltas instead of full state dumps.
+`get_endpoint_catalog` — list every API endpoint the app talks to, with call counts, status codes, and latency.
 
 ```json
 {
-  "summary": "1 new console error, 1 network failure (POST /api/users 500), error banner visible",
-  "severity": "error",
-  "token_count": 287
+  "endpoints": [
+    {"method": "GET", "path": "/api/users", "status_codes_seen": [200, 401], "call_count": 47, "avg_latency_ms": 142},
+    {"method": "POST", "path": "/api/users", "status_codes_seen": [201, 422], "call_count": 3, "avg_latency_ms": 289}
+  ]
 }
 ```
 
-**Target:** 95% token reduction for state verification. 10x faster response. < 5% false alarm rate.
+**Why:** AI agents can analyze JSON, but they can't discover endpoints they haven't seen. This gives the agent a map of the API surface in one call. No type inference, no schema learning — just aggregated facts.
+
+**Effort:** ~150 lines Go. Zero extension changes.
 
 ---
 
-## <i class="fas fa-filter"></i> Noise Filtering
+### <i class="fas fa-shield-alt"></i> Infrastructure Hardening
 
-**Status:** Specification Complete
+**Status:** Partially complete (circuit breaker done in extension)
 {: .notice--info}
 
-### The Problem
+- **Server rate limiting (429)** — Reject > 1000 events/sec
+- **Memory enforcement** — Automatic buffer clearing when limits hit
+- **Interception deferral** — Enforce post-`load` + 100ms delay for v4 intercepts
 
-A typical page load produces dozens of irrelevant entries — extension errors, favicon 404s, HMR logs, analytics failures. Humans ignore these reflexively. AI agents can't distinguish "favicon 404" from "critical API 404" without explicit classification.
+**Why:** Reliability. Without these, the extension can overwhelm the server or degrade the page.
 
-### The Solution
+**Effort:** Small, targeted fixes. Must-do before new features.
 
-`configure_noise` and `dismiss_noise` classify noise automatically. Built-in heuristics catch common patterns (extensions, HMR, analytics). Statistical detection catches the rest.
+---
 
-Auto-detection proposes rules with confidence scores:
+### <i class="fas fa-tachometer-alt"></i> Performance Capture Basics
+
+**Status:** Partially implemented
+{: .notice--info}
+
+- Include FCP/LCP/CLS in performance snapshots (observers exist, values aren't sent)
+- Resource fingerprint in snapshots (top-20-by-size for causal diffing)
+- URL path normalization (`/users/123` → `/users/:id`)
+
+**Why:** Pure capture. The extension already observes these metrics — we're just not sending them to the server yet.
+
+**Effort:** Small. Extension + server changes.
+
+---
+
+## Phase 2: Agent Efficiency
+
+Medium effort. Ship after Phase 1.
+
+### <i class="fas fa-bolt"></i> Time-Windowed Diffs
+
+**Status:** Redesigning (simplified from original spec)
+{: .notice--warning}
+
+`get_changes_since` — return only log entries, network events, and WebSocket messages that arrived after a given checkpoint.
 
 ```json
 {
-  "rule": {"category": "console", "match": {"source_pattern": "^chrome-extension://.*"}},
-  "evidence": "12 entries from 3 extensions, none application-related",
-  "confidence": 0.99
-}
-```
-
-**Target:** 90% precision (don't filter real errors), 80% recall (catch most noise). < 5% false investigation rate.
-
----
-
-## <i class="fas fa-chart-bar"></i> Behavioral Baselines
-
-**Status:** Specification Complete
-{: .notice--info}
-
-### The Problem
-
-AI agents don't know what "normal" looks like for your app. When they see 3 network requests taking 200ms each, they can't tell if that's fast or slow for your system. They need a reference point.
-
-### The Solution
-
-`save_baseline` captures what "correct" looks like. `compare_baseline` detects regressions against that reference — without needing explicit test assertions.
-
-Use cases:
-- Save baseline after fixing a bug → detect if it regresses
-- Save baseline for production behavior → detect drift in development
-- Save baseline for performance → detect latency regressions
-
----
-
-## <i class="fas fa-brain"></i> Persistent Memory
-
-**Status:** Specification Complete
-{: .notice--info}
-
-### The Problem
-
-Every AI session starts from scratch. The agent re-discovers which errors are noise, re-learns API schemas, and re-investigates the same false positives. There's no continuity between sessions.
-
-### The Solution
-
-`session_store` and `load_session_context` give agents persistent memory across sessions:
-
-- Noise rules persist (don't re-learn what's irrelevant)
-- API schemas persist (don't re-infer structure)
-- Baselines persist (regression detection works across days)
-- Known errors persist (don't re-investigate the same issue)
-
----
-
-## <i class="fas fa-project-diagram"></i> API Schema Inference
-
-**Status:** Specification Complete
-{: .notice--info}
-
-### The Problem
-
-AI agents need to understand your API contracts to debug integration issues. Today they read documentation (if it exists) or guess from error messages. Neither is reliable.
-
-### The Solution
-
-`get_api_schema` learns API contracts from observed traffic — request/response shapes, status code patterns, and timing characteristics. Your AI knows the API without reading docs.
-
-```json
-{
-  "endpoint": "POST /api/users",
-  "request_shape": {"email": "string", "name": "string", "role": "enum(admin,user)"},
-  "response_shapes": {
-    "201": {"id": "number", "email": "string", "created_at": "datetime"},
-    "422": {"errors": {"field": "string"}}
+  "checkpoint_from": "2026-01-23T10:30:00.000Z",
+  "checkpoint_to": "2026-01-23T10:30:45.123Z",
+  "console": {
+    "new_entries": [
+      {"level": "error", "message": "TypeError: Cannot read property 'id' of undefined", "source": "app.js:42"}
+    ]
   },
-  "avg_latency_ms": 145
+  "network": {
+    "new_failures": [
+      {"method": "POST", "url": "/api/users", "status": 500}
+    ]
+  }
 }
 ```
 
+**Why:** Agents re-reading full buffers waste tokens. Time-windowed filtering is pure aggregation — just "show me what's new." No summaries, no severity classification, no token counting. The AI summarizes.
+
+**Design note:** Original spec included `summary`, `severity`, and `token_count` fields. These are interpretation — removed. The checkpoint mechanism is the value.
+
+**Effort:** ~200 lines Go.
+
 ---
 
-## <i class="fas fa-fingerprint"></i> DOM Fingerprinting
+### <i class="fas fa-filter"></i> Noise Dismissal
 
-**Status:** Specification Complete
+**Status:** Redesigning (simplified from original spec)
+{: .notice--warning}
+
+`dismiss_noise` — agent-driven pattern exclusion. The agent decides what's noise, Gasoline applies the filter to future reads.
+
+```json
+{"pattern": "chrome-extension://.*", "category": "console", "reason": "Browser extension logs"}
+```
+
+**Why:** Reduces tokens on subsequent tool calls by excluding entries the agent has already classified as irrelevant. The agent makes the judgment — we just apply it.
+
+**Design note:** Original spec included `auto_detect` with confidence scores. Removed — the AI already knows extension errors are noise. The value is in *applying* the exclusion, not detecting it.
+
+**Effort:** ~100 lines Go.
+
+---
+
+### <i class="fas fa-chart-line"></i> Performance Diffing
+
+**Status:** Specified
 {: .notice--info}
 
-### The Problem
+- Resource fingerprint comparison (added/grew/slowed/removed)
+- AI auto-check hints in tool descriptions ("call after code changes")
+- Cross-tool regression warnings
 
-Verifying UI correctness typically requires vision models or screenshot comparison — both expensive and brittle. An agent needs a way to structurally verify "the page looks right" without pixel comparison.
+**Why:** Structured comparison of observable data. No judgment about whether performance is "good" — just "here's what changed."
 
-### The Solution
-
-`get_dom_fingerprint` and `compare_dom_fingerprint` create structural hashes of the page:
-
-- Detect unexpected DOM changes (elements added/removed/reordered)
-- Verify component rendering without screenshots
-- Catch CSS-invisible regressions (wrong structure, correct appearance)
-- Works as a component of baselines and diffs
+**Effort:** Medium. Builds on Phase 1 perf basics.
 
 ---
 
-## Priority Order
+## Phase 3: Agent Ergonomics
 
-| # | Feature | Why First |
-|---|---------|-----------|
-| 1 | Compressed Diffs | Unblocks tight feedback loops (token efficiency) |
-| 2 | Noise Filtering | Makes all other signals useful (reduces false positives) |
-| 3 | Behavioral Baselines | Enables regression detection without tests |
-| 4 | Persistent Memory | Agent accumulates understanding over time |
-| 5 | API Schema Inference | Agent understands the system without docs |
-| 6 | DOM Fingerprinting | Structural UI verification without vision models |
+Low effort. Ship when convenient.
 
-## <i class="fas fa-dollar-sign"></i> Economic Impact
+### <i class="fas fa-book"></i> Workflow Recipe
 
-Combined value per developer per year:
+Canonical first-call sequence for AI agents connecting to Gasoline. Reduces wasted tokens on discovery.
 
-| Savings Source | Estimated Value |
-|---------------|----------------|
-| Token reduction (compressed diffs) | $3,600-4,800/year |
-| Time saved (faster feedback loops) | $12,480/year |
-| Fewer false positives (noise filtering) | $4,160/year |
-| No re-investigation (persistent memory) | $4,648-5,570/year |
-| **Total** | **$24,888-27,010/year** |
+Not code — just a recommended tool call sequence baked into tool descriptions or an MCP resource.
 
-Zero cost. Open source. Replaces $65-90K/year commercial alternatives.
+**Effort:** Documentation only.
+
+---
+
+### <i class="fas fa-bookmark"></i> Named Checkpoints
+
+`create_checkpoint` — MCP tool to create named markers for `get_changes_since`.
+
+```
+create_checkpoint(name: "before_refactor")
+// ... make changes ...
+get_changes_since(checkpoint: "before_refactor")
+```
+
+**Why:** Pure utility. 20 lines of code (map of name → timestamp).
+
+**Effort:** Trivial. Ships with time-windowed diffs.
+
+---
+
+## Deferred
+
+### <i class="fas fa-brain"></i> Persistent Memory
+
+Cross-session storage for noise rules and other state.
+
+**Why deferred:** Without noise dismissal shipping first, there's nothing to persist. If noise rules prove useful, a simple `save_noise_config` / `load_noise_config` tool pair covers the use case without building a generic persistence framework.
+
+**Revisit:** After noise dismissal has real-world usage data.
+
+---
+
+### <i class="fas fa-stream"></i> Context Streaming
+
+Push significant browser events via MCP notifications.
+
+**Why deferred:** MCP notification support in AI clients (Claude Code, Cursor, Windsurf) is not mature enough. Building for a spec with no consumers is premature. The same value is achieved by agents calling `get_changes_since` in their feedback loop.
+
+**Revisit:** When MCP notification handling is reliable across major clients.
+
+---
+
+## Killed
+
+### ~~Behavioral Baselines~~
+
+`save_baseline` / `compare_baseline` — snapshot browser state, detect regressions.
+
+**Why killed:**
+- **Interprets rather than reports.** Tolerance thresholds (`timing_tolerance_percent: 20`) are judgments Gasoline shouldn't make. The AI compares states better than hardcoded thresholds.
+- **Solved by simpler tools.** Time-windowed diffs + the agent's own context = regression detection without a baseline system.
+- **Session lifetime mismatch.** Baselines assume long sessions with save/edit/compare cycles. Most real sessions don't have that lifecycle.
+- **Stale cross-session.** Yesterday's baseline breaks on legitimate API changes today.
+
+### ~~API Schema Inference~~
+
+Removed — AI reads JSON natively. Inferred types add noise, not signal.
+
+### ~~DOM Fingerprinting~~
+
+Removed — opaque hashes aren't human-verifiable. DOM queries already provide discovery.
+
+---
+
+## Priority Summary
+
+| # | Feature | Effort | Value | Status |
+|---|---------|--------|-------|--------|
+| 1 | Endpoint Catalog | Low | High | Specified |
+| 2 | Infrastructure (429, memory, deferral) | Low | High | Partial |
+| 3 | Perf capture basics (FCP/LCP/CLS) | Low | Medium | Partial |
+| 4 | Time-Windowed Diffs | Medium | Medium | Redesigning |
+| 5 | Noise Dismissal | Low | Medium-High | Redesigning |
+| 6 | Performance Diffing | Medium | Medium | Specified |
+| 7 | Workflow Recipe | Negligible | Low-Medium | To specify |
+| 8 | Named Checkpoints | Trivial | Medium | To specify |
+| — | Persistent Memory | High | Low (now) | Deferred |
+| — | Context Streaming | High | Zero (now) | Deferred |
+| ~~—~~ | ~~Behavioral Baselines~~ | High | Low | Killed |
+
+---
+
+## Lifecycle Integration — Beyond Local Dev
+
+Gasoline today works in local development. The three largest gaps in the web development lifecycle are places where browser observability doesn't exist at all.
+
+---
+
+### <i class="fas fa-cogs"></i> CI Browser Observability
+
+**Status:** To specify
+{: .notice--warning}
+
+**The gap:** CI pipelines run browsers but provide zero browser-level observability. When an E2E test fails, you get the test framework's error and maybe a screenshot. No console logs, no network responses, no WebSocket state, no DOM context. 26% of developer time goes to CI failure investigation. 30% of CI failures are flaky.
+
+**The solution:** Run Gasoline alongside Playwright/Cypress in CI. On test failure, the AI reads console errors, network bodies, and DOM state — skipping the "pull branch, reproduce locally, fail to reproduce, add logging, push, wait" loop.
+
+**Architecture:** The capture logic in `inject.js` is pure JavaScript with no Chrome API dependencies in the core. Two paths:
+
+1. **Script injection** — inject via Playwright's `addInitScript()`, POST directly to the Gasoline server (no extension needed, works in true headless)
+2. **Extension loading** — load the extension in CI Chrome (`--load-extension`, requires `--headless=new`)
+
+```typescript
+// Playwright integration concept
+import { gasolineFixture } from '@aspect-fuel/playwright';
+
+test.afterEach(async ({}, testInfo) => {
+  if (testInfo.status === 'failed') {
+    const state = await fetch('http://localhost:7890/snapshot').then(r => r.json());
+    testInfo.attach('gasoline-state', { body: JSON.stringify(state), contentType: 'application/json' });
+  }
+});
+```
+
+**Estimated value:** $30-60K/year per 10-person team in recovered engineering time.
+
+**Effort:** Medium. Requires: standalone CI capture script (~200 lines), `/snapshot` server endpoint (~50 lines Go), Playwright fixture package.
+
+---
+
+### <i class="fas fa-eye"></i> Preview Deployment Observability
+
+**Status:** To specify
+{: .notice--warning}
+
+**The gap:** When someone tests a Vercel/Netlify preview deployment and finds a bug, the feedback is a screenshot + "it broke." The developer spends 15-30 minutes reproducing an environment-specific issue. No existing tool provides client-side observability on preview environments — Vercel's observability is server-side only, and session replay tools aren't deployed on previews.
+
+**The solution:** Run Gasoline during preview QA. When a bug is found, the full browser state (console, network, WebSocket, DOM) is already captured. Attach it to the PR as a structured artifact. The developer's AI reads it immediately — no reproduction needed.
+
+**Architecture:** The reviewer has the Gasoline extension installed. The preview deployment has a lightweight Gasoline server running (or the reviewer's local server captures from the preview URL). Captured state exports as a shareable JSON artifact.
+
+**Estimated value:** Eliminates 1-2 reproduction cycles per PR review (15-30 min each).
+
+**Effort:** Low-Medium. Extension already captures from any URL. Needs: export/share mechanism, artifact format spec.
+
+---
+
+### <i class="fas fa-exchange-alt"></i> Production-to-Local Bridge
+
+**Status:** To specify
+{: .notice--warning}
+
+**The gap:** Production error monitoring (Sentry, DataDog) tells you *what* broke but not *how to reproduce it locally*. Developers spend 30-60 minutes per bug setting up local reproduction. Session replay tools show visual state but not developer state (no WebSocket payloads, no computed styles, no a11y tree).
+
+**The solution:** When reproducing a production issue locally, Gasoline captures the full browser context — network bodies, WebSocket messages, console logs, DOM state — so the AI can compare against the production error report and identify the exact trigger conditions.
+
+**Workflow:**
+1. Sentry alerts: "TypeError on `/dashboard`"
+2. Developer opens the page locally with Gasoline running
+3. AI reads Gasoline: API returned `null` instead of `[]`, WebSocket dropped 2s before the error, loading spinner never resolved
+4. Root cause identified without manual investigation
+
+**Estimated value:** 30-60 minutes saved per production bug investigation.
+
+**Effort:** Low. Gasoline already captures everything needed. Value comes from documentation, workflow recipes, and optional Sentry/DataDog integration guides.
+
+---
+
+## Integration Opportunities
+
+| Integration | Pain Point | Gasoline Value | Estimated Impact |
+|-------------|-----------|----------------|-----------------|
+| **E2E flaky test diagnosis** | Root cause is app-side (race conditions, API timing) but tests only show assertions | WS events + network timing + console logs reveal the actual race condition | -70% test failure investigation time |
+| **Visual regression context** | Percy/Chromatic show WHAT changed, not WHY | Network bodies reveal different API data; console shows CSS overrides | -50% visual regression triage time |
+| **Storybook observability** | Multiple addons needed (console, a11y, network) | Single MCP interface replaces all | Addon consolidation, unified AI access |
+| **API debugging** | Postman tests in isolation; browser has CORS, cookies, auth, ordering | Gasoline captures real browser API interactions with full context | Eliminates "copy from network tab" workflow |
+| **Code review context** | QA feedback is unstructured screenshots | Structured browser state attached to PR comments | -80% "can't reproduce reviewer's bug" time |
+| **Stale test maintenance** | Tests break on legitimate app changes, no way to tell expected vs unexpected | Gasoline state shows whether the app behavior actually changed or just the test is stale | Faster test update decisions |
+
+---
+
+## Economic Impact
+
+| Gap | Annual Cost (10-person team) | Gasoline Saves |
+|-----|------------------------------|---------------|
+| CI failure investigation | $75-150K (26% of eng time on debugging) | $30-60K (skip reproduce-locally loop) |
+| Preview QA reproduction | $15-30K (1-2 cycles/PR × 15-30 min) | $10-20K (zero reproduction needed) |
+| Production bug reproduction | $25-50K (30-60 min/bug × frequency) | $15-30K (instant context from Gasoline) |
+| Flaky test root cause | $20-40K (30% of CI failures × investigation) | $14-28K (browser state reveals race conditions) |
+| **Total addressable** | **$135-270K/year** | **$69-138K/year recovered** |
+
+Zero cost. Open source. No cloud dependency. The savings come from time — not from replacing paid tools.
