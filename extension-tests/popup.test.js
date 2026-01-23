@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Tests for popup UI functionality
  * TDD: These tests are written BEFORE implementation
@@ -20,7 +21,7 @@ const mockChrome = {
         callback({
           logLevel: 'error',
           domainFilters: [],
-        })
+        }),
       ),
       set: mock.fn((data, callback) => callback && callback()),
     },
@@ -125,9 +126,7 @@ describe('Popup State Display', () => {
     await initPopup()
 
     // Should have sent getStatus message
-    assert.ok(
-      mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'getStatus')
-    )
+    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'getStatus'))
   })
 })
 
@@ -157,9 +156,7 @@ describe('Log Level Selector', () => {
 
     await handleLogLevelChange('error')
 
-    assert.ok(
-      mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0]?.logLevel === 'error')
-    )
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0]?.logLevel === 'error'))
   })
 
   test('should notify background when level changes', async () => {
@@ -169,8 +166,8 @@ describe('Log Level Selector', () => {
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0]?.type === 'setLogLevel' && c.arguments[0]?.level === 'all'
-      )
+        (c) => c.arguments[0]?.type === 'setLogLevel' && c.arguments[0]?.level === 'all',
+      ),
     )
   })
 
@@ -205,9 +202,7 @@ describe('Clear Logs Button', () => {
 
     await handleClearLogs()
 
-    assert.ok(
-      mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'clearLogs')
-    )
+    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0]?.type === 'clearLogs'))
   })
 
   test('should update UI after clearing logs', async () => {
@@ -512,9 +507,7 @@ describe('WebSocket Toggle', () => {
 
     handleFeatureToggle('webSocketCaptureEnabled', 'setWebSocketCaptureEnabled', true)
 
-    assert.ok(mockChrome.storage.local.set.mock.calls.some(
-      (c) => c.arguments[0].webSocketCaptureEnabled === true
-    ))
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].webSocketCaptureEnabled === true))
   })
 
   test('should send message to background when WebSocket toggled', async () => {
@@ -522,9 +515,11 @@ describe('WebSocket Toggle', () => {
 
     handleFeatureToggle('webSocketCaptureEnabled', 'setWebSocketCaptureEnabled', true)
 
-    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some(
-      (c) => c.arguments[0].type === 'setWebSocketCaptureEnabled' && c.arguments[0].enabled === true
-    ))
+    assert.ok(
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setWebSocketCaptureEnabled' && c.arguments[0].enabled === true,
+      ),
+    )
   })
 
   test('should save WebSocket mode when changed', async () => {
@@ -532,9 +527,7 @@ describe('WebSocket Toggle', () => {
 
     handleWebSocketModeChange('messages')
 
-    assert.ok(mockChrome.storage.local.set.mock.calls.some(
-      (c) => c.arguments[0].webSocketCaptureMode === 'messages'
-    ))
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].webSocketCaptureMode === 'messages'))
   })
 
   test('should send mode change message to background', async () => {
@@ -542,9 +535,11 @@ describe('WebSocket Toggle', () => {
 
     handleWebSocketModeChange('messages')
 
-    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some(
-      (c) => c.arguments[0].type === 'setWebSocketCaptureMode' && c.arguments[0].mode === 'messages'
-    ))
+    assert.ok(
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setWebSocketCaptureMode' && c.arguments[0].mode === 'messages',
+      ),
+    )
   })
 
   test('should default mode to lifecycle', async () => {
@@ -662,7 +657,9 @@ describe('Debug Logging', () => {
 
     // Should have sent message to background
     assert.ok(
-      mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0].type === 'setDebugMode' && c.arguments[0].enabled === true)
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setDebugMode' && c.arguments[0].enabled === true,
+      ),
     )
   })
 })

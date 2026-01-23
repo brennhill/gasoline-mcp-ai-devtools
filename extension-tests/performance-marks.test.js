@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Tests for Performance Marks capture feature
  * TDD: These tests are written BEFORE implementation
@@ -42,7 +43,7 @@ function createMockPerformance() {
       entries.push(mark)
       return mark
     }),
-    measure: mock.fn((name, startMark, endMark) => {
+    measure: mock.fn((name, _startMark, _endMark) => {
       const measure = createMockMeasure(name, 0, 50)
       entries.push(measure)
       return measure
@@ -53,9 +54,7 @@ function createMockPerformance() {
       entries.push(...filtered)
     }),
     clearMeasures: mock.fn((name) => {
-      const filtered = entries.filter(
-        (e) => e.entryType !== 'measure' || (name && e.name !== name)
-      )
+      const filtered = entries.filter((e) => e.entryType !== 'measure' || (name && e.name !== name))
       entries.length = 0
       entries.push(...filtered)
     }),
@@ -71,7 +70,7 @@ function createMockWindow() {
     location: { href: 'http://localhost:3000/test' },
     postMessage: mock.fn(),
     performance: createMockPerformance(),
-    PerformanceObserver: mock.fn((callback) => ({
+    PerformanceObserver: mock.fn((_callback) => ({
       observe: mock.fn(),
       disconnect: mock.fn(),
     })),
@@ -285,9 +284,7 @@ describe('Performance Marks - wrapPerformanceMark', () => {
   })
 
   test('should preserve original mark behavior', async () => {
-    const { installPerformanceCapture, uninstallPerformanceCapture } = await import(
-      '../extension/inject.js'
-    )
+    const { installPerformanceCapture, uninstallPerformanceCapture } = await import('../extension/inject.js')
 
     const originalMark = globalThis.performance.mark
 
@@ -350,9 +347,7 @@ describe('Performance Marks - wrapPerformanceMeasure', () => {
   })
 
   test('should preserve original measure behavior', async () => {
-    const { installPerformanceCapture, uninstallPerformanceCapture } = await import(
-      '../extension/inject.js'
-    )
+    const { installPerformanceCapture, uninstallPerformanceCapture } = await import('../extension/inject.js')
 
     const originalMeasure = globalThis.performance.measure
 
@@ -384,9 +379,7 @@ describe('Performance Marks - Error Integration', () => {
   })
 
   test('should create performance snapshot for error', async () => {
-    const { getPerformanceSnapshotForError, setPerformanceMarksEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { getPerformanceSnapshotForError, setPerformanceMarksEnabled } = await import('../extension/inject.js')
 
     setPerformanceMarksEnabled(true)
 
@@ -409,9 +402,7 @@ describe('Performance Marks - Error Integration', () => {
   })
 
   test('should respect performanceMarksEnabled setting', async () => {
-    const { getPerformanceSnapshotForError, setPerformanceMarksEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { getPerformanceSnapshotForError, setPerformanceMarksEnabled } = await import('../extension/inject.js')
 
     setPerformanceMarksEnabled(false)
 
@@ -426,9 +417,7 @@ describe('Performance Marks - Error Integration', () => {
   })
 
   test('should only include recent entries (last 60 seconds)', async () => {
-    const { getPerformanceSnapshotForError, setPerformanceMarksEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { getPerformanceSnapshotForError, setPerformanceMarksEnabled } = await import('../extension/inject.js')
 
     setPerformanceMarksEnabled(true)
 
@@ -449,9 +438,7 @@ describe('Performance Marks - Error Integration', () => {
   })
 
   test('should include navigation timing', async () => {
-    const { getPerformanceSnapshotForError, setPerformanceMarksEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { getPerformanceSnapshotForError, setPerformanceMarksEnabled } = await import('../extension/inject.js')
 
     setPerformanceMarksEnabled(true)
 
@@ -495,9 +482,7 @@ describe('Performance Marks - Configuration', () => {
   })
 
   test('setPerformanceMarksEnabled should toggle feature', async () => {
-    const { setPerformanceMarksEnabled, isPerformanceMarksEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { setPerformanceMarksEnabled, isPerformanceMarksEnabled } = await import('../extension/inject.js')
 
     setPerformanceMarksEnabled(true)
     assert.strictEqual(isPerformanceMarksEnabled(), true)
@@ -507,9 +492,8 @@ describe('Performance Marks - Configuration', () => {
   })
 
   test('should expose performance marks through __gasoline API', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI, setPerformanceMarksEnabled } = await import(
-      '../extension/inject.js'
-    )
+    const { installGasolineAPI, uninstallGasolineAPI, setPerformanceMarksEnabled } =
+      await import('../extension/inject.js')
 
     setPerformanceMarksEnabled(true)
     installGasolineAPI()
@@ -523,12 +507,8 @@ describe('Performance Marks - Configuration', () => {
   })
 
   test('should clear captured data on uninstall', async () => {
-    const {
-      installPerformanceCapture,
-      uninstallPerformanceCapture,
-      getCapturedMarks,
-      getCapturedMeasures,
-    } = await import('../extension/inject.js')
+    const { installPerformanceCapture, uninstallPerformanceCapture, getCapturedMarks, getCapturedMeasures } =
+      await import('../extension/inject.js')
 
     installPerformanceCapture()
 
@@ -539,7 +519,7 @@ describe('Performance Marks - Configuration', () => {
     installPerformanceCapture() // Fresh start
 
     const marks = getCapturedMarks()
-    const measures = getCapturedMeasures()
+    const _measures = getCapturedMeasures()
 
     // Should be empty after uninstall/reinstall
     assert.strictEqual(marks.filter((m) => m.name === 'toBeCleared').length, 0)
@@ -565,9 +545,8 @@ describe('Performance Marks - PerformanceObserver', () => {
   })
 
   test('should use PerformanceObserver when available', async () => {
-    const { installPerformanceCapture, uninstallPerformanceCapture, isPerformanceCaptureActive } = await import(
-      '../extension/inject.js'
-    )
+    const { installPerformanceCapture, uninstallPerformanceCapture, isPerformanceCaptureActive } =
+      await import('../extension/inject.js')
 
     // First uninstall any existing capture (from module auto-init)
     uninstallPerformanceCapture()
@@ -579,10 +558,10 @@ describe('Performance Marks - PerformanceObserver', () => {
       location: { href: 'http://localhost:3000/test' },
       postMessage: mock.fn(),
       performance: createMockPerformance(),
-      PerformanceObserver: function MockPerformanceObserver(callback) {
+      PerformanceObserver: function MockPerformanceObserver(_callback) {
         observerCreated = true
         return {
-          observe: function (options) {
+          observe: function (_options) {
             observeMethodCalled = true
           },
           disconnect: mock.fn(),

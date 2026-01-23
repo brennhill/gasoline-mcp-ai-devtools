@@ -133,7 +133,7 @@ func TestHealthEndpoint(t *testing.T) {
 		})
 	})
 
-	req := httptest.NewRequest("GET", "/health", nil)
+	req := httptest.NewRequest("GET", "/health", http.NoBody)
 	rec := httptest.NewRecorder()
 
 	handler(rec, req)
@@ -264,7 +264,7 @@ func TestDeleteLogsEndpoint(t *testing.T) {
 		jsonResponse(w, http.StatusOK, map[string]bool{"cleared": true})
 	})
 
-	req := httptest.NewRequest("DELETE", "/logs", nil)
+	req := httptest.NewRequest("DELETE", "/logs", http.NoBody)
 	rec := httptest.NewRecorder()
 
 	handler(rec, req)
@@ -283,7 +283,7 @@ func TestCORSHeaders(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	req := httptest.NewRequest("GET", "/health", nil)
+	req := httptest.NewRequest("GET", "/health", http.NoBody)
 	req.Header.Set("Origin", "chrome-extension://abc123")
 	rec := httptest.NewRecorder()
 
@@ -813,9 +813,9 @@ func TestScreenshotEndpoint(t *testing.T) {
 	jpegData := strings.Repeat("A", 1000) // base64 content
 
 	body := map[string]string{
-		"dataUrl":  "data:image/jpeg;base64," + jpegData,
-		"url":      "https://example.com/page",
-		"errorId":  "err_123_abc",
+		"dataUrl":   "data:image/jpeg;base64," + jpegData,
+		"url":       "https://example.com/page",
+		"errorId":   "err_123_abc",
 		"errorType": "console",
 	}
 	bodyJSON, _ := json.Marshal(body)
@@ -917,7 +917,7 @@ func TestLoadEntriesLargeEntry(t *testing.T) {
 	normalData, _ := json.Marshal(normalEntry)
 
 	content := string(data) + "\n" + string(normalData) + "\n"
-	if err := os.WriteFile(logFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(logFile, []byte(content), 0o644); err != nil {
 		t.Fatalf("Failed to write log file: %v", err)
 	}
 

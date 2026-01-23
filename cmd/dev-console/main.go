@@ -77,6 +77,33 @@ func NewMCPHandler(server *Server) *MCPHandler {
 	}
 }
 
+// HandleHTTP handles MCP requests over HTTP (POST /mcp)
+func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	var req JSONRPCRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		resp := JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      nil,
+			Error: &JSONRPCError{
+				Code:    -32700,
+				Message: "Parse error: " + err.Error(),
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	resp := h.HandleRequest(req)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
 // HandleRequest processes an MCP request and returns a response
 func (h *MCPHandler) HandleRequest(req JSONRPCRequest) JSONRPCResponse {
 	switch req.Method {
@@ -238,7 +265,15 @@ func (h *MCPHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage
 	var arguments struct {
 		Limit int `json:"limit"`
 	}
-	json.Unmarshal(args, &arguments)
+	if err := json.Unmarshal(args, &arguments); err != nil {
+		result := map[string]interface{}{
+			"content": []map[string]string{
+				{"type": "text", "text": "Error parsing arguments: " + err.Error()},
+			},
+		}
+		resultJSON, _ := json.Marshal(result)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	}
 
 	h.server.mu.RLock()
 	defer h.server.mu.RUnlock()
@@ -300,7 +335,7 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 
 	// Ensure log directory exists
 	dir := filepath.Dir(logFile)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // G301: 0o755 is appropriate for log directory
 		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
@@ -321,7 +356,7 @@ func (s *Server) loadEntries() error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck // deferred close
 
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024) // Allow up to 10MB per line (screenshots can be large)
@@ -347,15 +382,19 @@ func (s *Server) saveEntries() error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck // deferred close
 
 	for _, entry := range s.entries {
 		data, err := json.Marshal(entry)
 		if err != nil {
 			continue
 		}
-		file.Write(data)
-		file.WriteString("\n")
+		if _, err := file.Write(data); err != nil {
+			return err
+		}
+		if _, err := file.WriteString("\n"); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -434,7 +473,7 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	dir := filepath.Dir(s.logFile)
 	savePath := filepath.Join(dir, filename)
 
-	if err := os.WriteFile(savePath, imageData, 0644); err != nil {
+	if err := os.WriteFile(savePath, imageData, 0o644); err != nil { //nolint:gosec // G306: 0o644 is appropriate for screenshot files
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "Failed to save screenshot"})
 		return
 	}
@@ -457,7 +496,9 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 		s.entries = s.entries[len(s.entries)-s.maxEntries:]
 	}
 
-	s.saveEntries()
+	if err := s.saveEntries(); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
+	}
 	return len(newEntries)
 }
 
@@ -467,7 +508,9 @@ func (s *Server) clearEntries() {
 	defer s.mu.Unlock()
 
 	s.entries = make([]LogEntry, 0)
-	s.saveEntries()
+	if err := s.saveEntries(); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
+	}
 }
 
 // getEntryCount returns current entry count
@@ -506,7 +549,9 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 func jsonResponse(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Error encoding JSON response: %v\n", err)
+	}
 }
 
 func main() {
@@ -559,7 +604,7 @@ func main() {
 		if isTTY {
 			// User ran "gasoline" directly - start server as background process
 			exe, _ := os.Executable()
-			cmd := exec.Command(exe, "--server", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries))
+			cmd := exec.Command(exe, "--server", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)) //nolint:gosec,noctx // G204: exe is our own binary path; no context needed for daemon fork
 			cmd.Stdout = nil
 			cmd.Stderr = nil
 			cmd.Stdin = nil
@@ -600,7 +645,13 @@ func main() {
 
 	// Start server (localhost only for security)
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	srv := &http.Server{
+		Addr:         addr,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting server: %v\n", err)
 		os.Exit(1)
 	}
@@ -619,7 +670,9 @@ func runMCPMode(server *Server, port int) {
 	go func() {
 		setupHTTPRoutes(server, v4)
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
-		http.ListenAndServe(addr, nil)
+		if err := http.ListenAndServe(addr, nil); err != nil { //nolint:gosec // G114: MCP mode background server
+			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
+		}
 	}()
 
 	// Run MCP protocol over stdin/stdout (with v4 tools)
@@ -672,6 +725,10 @@ func setupHTTPRoutes(server *Server, v4 *V4Server) {
 		http.HandleFunc("/enhanced-actions", corsMiddleware(v4.HandleEnhancedActions))
 		http.HandleFunc("/performance-snapshot", corsMiddleware(v4.HandlePerformanceSnapshot))
 	}
+
+	// MCP over HTTP endpoint
+	mcp := NewMCPHandlerV4(server, v4)
+	http.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
 
 	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {

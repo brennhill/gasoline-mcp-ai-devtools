@@ -199,10 +199,12 @@ type PerformanceSnapshot struct {
 
 // PerformanceTiming holds navigation timing metrics
 type PerformanceTiming struct {
-	DomContentLoaded float64 `json:"domContentLoaded"`
-	Load             float64 `json:"load"`
-	TimeToFirstByte  float64 `json:"timeToFirstByte"`
-	DomInteractive   float64 `json:"domInteractive"`
+	DomContentLoaded       float64  `json:"domContentLoaded"`
+	Load                   float64  `json:"load"`
+	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`
+	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`
+	TimeToFirstByte        float64  `json:"timeToFirstByte"`
+	DomInteractive         float64  `json:"domInteractive"`
 }
 
 // NetworkSummary holds aggregated network resource metrics
@@ -247,10 +249,12 @@ type PerformanceBaseline struct {
 
 // BaselineTiming holds averaged timing metrics
 type BaselineTiming struct {
-	DomContentLoaded float64 `json:"domContentLoaded"`
-	Load             float64 `json:"load"`
-	TimeToFirstByte  float64 `json:"timeToFirstByte"`
-	DomInteractive   float64 `json:"domInteractive"`
+	DomContentLoaded       float64  `json:"domContentLoaded"`
+	Load                   float64  `json:"load"`
+	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`
+	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`
+	TimeToFirstByte        float64  `json:"timeToFirstByte"`
+	DomInteractive         float64  `json:"domInteractive"`
 }
 
 // BaselineNetwork holds averaged network metrics
@@ -313,8 +317,8 @@ const (
 	maxPerfBaselines    = 20
 	defaultWSLimit      = 50
 	defaultBodyLimit    = 20
-	maxRequestBodySize  = 8192  // 8KB
-	maxResponseBodySize = 16384 // 16KB
+	maxRequestBodySize  = 8192            // 8KB
+	maxResponseBodySize = 16384           // 16KB
 	wsBufferMemoryLimit = 4 * 1024 * 1024 // 4MB
 	nbBufferMemoryLimit = 8 * 1024 * 1024 // 8MB
 	rateLimitThreshold  = 1000
@@ -341,9 +345,9 @@ type V4Server struct {
 	enhancedActions []EnhancedAction
 
 	// Connection tracker
-	connections    map[string]*connectionState
-	closedConns    []WebSocketClosedConnection
-	connOrder      []string // Track insertion order for eviction
+	connections map[string]*connectionState
+	closedConns []WebSocketClosedConnection
+	connOrder   []string // Track insertion order for eviction
 
 	// Pending queries
 	pendingQueries []pendingQueryEntry
@@ -359,9 +363,9 @@ type V4Server struct {
 	simulatedMemory int64
 
 	// Performance snapshots
-	perfSnapshots    map[string]PerformanceSnapshot
+	perfSnapshots     map[string]PerformanceSnapshot
 	perfSnapshotOrder []string
-	perfBaselines    map[string]PerformanceBaseline
+	perfBaselines     map[string]PerformanceBaseline
 	perfBaselineOrder []string
 
 	// Query timeout
@@ -371,19 +375,19 @@ type V4Server struct {
 // NewV4Server creates a new v4 server instance
 func NewV4Server() *V4Server {
 	v4 := &V4Server{
-		wsEvents:        make([]WebSocketEvent, 0, maxWSEvents),
-		networkBodies:   make([]NetworkBody, 0, maxNetworkBodies),
-		enhancedActions: make([]EnhancedAction, 0, maxEnhancedActions),
-		connections:     make(map[string]*connectionState),
-		closedConns:    make([]WebSocketClosedConnection, 0),
-		connOrder:      make([]string, 0),
-		pendingQueries: make([]pendingQueryEntry, 0),
-		queryResults:   make(map[string]json.RawMessage),
-		rateResetTime:    time.Now(),
-		queryTimeout:     defaultQueryTimeout,
-		perfSnapshots:    make(map[string]PerformanceSnapshot),
+		wsEvents:          make([]WebSocketEvent, 0, maxWSEvents),
+		networkBodies:     make([]NetworkBody, 0, maxNetworkBodies),
+		enhancedActions:   make([]EnhancedAction, 0, maxEnhancedActions),
+		connections:       make(map[string]*connectionState),
+		closedConns:       make([]WebSocketClosedConnection, 0),
+		connOrder:         make([]string, 0),
+		pendingQueries:    make([]pendingQueryEntry, 0),
+		queryResults:      make(map[string]json.RawMessage),
+		rateResetTime:     time.Now(),
+		queryTimeout:      defaultQueryTimeout,
+		perfSnapshots:     make(map[string]PerformanceSnapshot),
 		perfSnapshotOrder: make([]string, 0),
-		perfBaselines:    make(map[string]PerformanceBaseline),
+		perfBaselines:     make(map[string]PerformanceBaseline),
 		perfBaselineOrder: make([]string, 0),
 	}
 	v4.queryCond = sync.NewCond(&v4.mu)
@@ -399,12 +403,12 @@ func (v *V4Server) AddWebSocketEvents(events []WebSocketEvent) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	for _, event := range events {
+	for i := range events {
 		// Track connection state
-		v.trackConnection(event)
+		v.trackConnection(events[i])
 
 		// Add to ring buffer
-		v.wsEvents = append(v.wsEvents, event)
+		v.wsEvents = append(v.wsEvents, events[i])
 	}
 
 	// Enforce max count
@@ -426,8 +430,8 @@ func (v *V4Server) evictWSForMemory() {
 // calcWSMemory approximates memory usage of WS buffer
 func (v *V4Server) calcWSMemory() int64 {
 	var total int64
-	for _, e := range v.wsEvents {
-		total += int64(len(e.Data) + len(e.URL) + len(e.ID) + len(e.Timestamp) + len(e.Direction) + len(e.Event) + 64)
+	for i := range v.wsEvents {
+		total += int64(len(v.wsEvents[i].Data) + len(v.wsEvents[i].URL) + len(v.wsEvents[i].ID) + len(v.wsEvents[i].Timestamp) + len(v.wsEvents[i].Direction) + len(v.wsEvents[i].Event) + 64)
 	}
 	return total
 }
@@ -451,17 +455,17 @@ func (v *V4Server) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEv
 
 	// Filter events
 	var filtered []WebSocketEvent
-	for _, e := range v.wsEvents {
-		if filter.ConnectionID != "" && e.ID != filter.ConnectionID {
+	for i := range v.wsEvents {
+		if filter.ConnectionID != "" && v.wsEvents[i].ID != filter.ConnectionID {
 			continue
 		}
-		if filter.URLFilter != "" && !strings.Contains(e.URL, filter.URLFilter) {
+		if filter.URLFilter != "" && !strings.Contains(v.wsEvents[i].URL, filter.URLFilter) {
 			continue
 		}
-		if filter.Direction != "" && e.Direction != filter.Direction {
+		if filter.Direction != "" && v.wsEvents[i].Direction != filter.Direction {
 			continue
 		}
-		filtered = append(filtered, e)
+		filtered = append(filtered, v.wsEvents[i])
 	}
 
 	// Reverse for newest first
@@ -542,13 +546,14 @@ func (v *V4Server) trackConnection(event WebSocketEvent) {
 			return
 		}
 		msgTime := parseTimestamp(event.Timestamp)
-		if event.Direction == "incoming" {
+		switch event.Direction {
+		case "incoming":
 			conn.incoming.total++
 			conn.incoming.bytes += event.Size
 			conn.incoming.lastAt = event.Timestamp
 			conn.incoming.lastData = event.Data
 			conn.incoming.recentTimes = appendAndPrune(conn.incoming.recentTimes, msgTime)
-		} else if event.Direction == "outgoing" {
+		case "outgoing":
 			conn.outgoing.total++
 			conn.outgoing.bytes += event.Size
 			conn.outgoing.lastAt = event.Timestamp
@@ -728,12 +733,12 @@ func (v *V4Server) AddNetworkBodies(bodies []NetworkBody) {
 	for i := range bodies {
 		// Truncate request body
 		if len(bodies[i].RequestBody) > maxRequestBodySize {
-			bodies[i].RequestBody = bodies[i].RequestBody[:maxRequestBodySize]
+			bodies[i].RequestBody = bodies[i].RequestBody[:maxRequestBodySize] //nolint:gosec // G602: i is bounded by range
 			bodies[i].RequestTruncated = true
 		}
 		// Truncate response body
 		if len(bodies[i].ResponseBody) > maxResponseBodySize {
-			bodies[i].ResponseBody = bodies[i].ResponseBody[:maxResponseBodySize]
+			bodies[i].ResponseBody = bodies[i].ResponseBody[:maxResponseBodySize] //nolint:gosec // G602: i is bounded by range
 			bodies[i].ResponseTruncated = true
 		}
 		v.networkBodies = append(v.networkBodies, bodies[i])
@@ -847,11 +852,11 @@ func (v *V4Server) GetEnhancedActions(filter EnhancedActionFilter) []EnhancedAct
 	defer v.mu.RUnlock()
 
 	var filtered []EnhancedAction
-	for _, a := range v.enhancedActions {
-		if filter.URLFilter != "" && !strings.Contains(a.URL, filter.URLFilter) {
+	for i := range v.enhancedActions {
+		if filter.URLFilter != "" && !strings.Contains(v.enhancedActions[i].URL, filter.URLFilter) {
 			continue
 		}
-		filtered = append(filtered, a)
+		filtered = append(filtered, v.enhancedActions[i])
 	}
 
 	// Apply lastN (return most recent N)
@@ -1098,6 +1103,32 @@ func (v *V4Server) AddPerformanceSnapshot(snapshot PerformanceSnapshot) {
 	v.updateBaseline(snapshot)
 }
 
+// avgOptionalFloat computes a simple running average for nullable float64 pointers
+func avgOptionalFloat(baseline *float64, snapshot *float64, n float64) *float64 {
+	if snapshot == nil {
+		return baseline
+	}
+	if baseline == nil {
+		v := *snapshot
+		return &v
+	}
+	v := *baseline*(n-1)/n + *snapshot/n
+	return &v
+}
+
+// weightedOptionalFloat computes a weighted average for nullable float64 pointers
+func weightedOptionalFloat(baseline *float64, snapshot *float64, baseWeight, newWeight float64) *float64 {
+	if snapshot == nil {
+		return baseline
+	}
+	if baseline == nil {
+		v := *snapshot
+		return &v
+	}
+	v := *baseline*baseWeight + *snapshot*newWeight
+	return &v
+}
+
 // updateBaseline updates the running average baseline for a URL
 func (v *V4Server) updateBaseline(snapshot PerformanceSnapshot) {
 	url := snapshot.URL
@@ -1117,10 +1148,12 @@ func (v *V4Server) updateBaseline(snapshot PerformanceSnapshot) {
 			SampleCount: 1,
 			LastUpdated: snapshot.Timestamp,
 			Timing: BaselineTiming{
-				DomContentLoaded: snapshot.Timing.DomContentLoaded,
-				Load:             snapshot.Timing.Load,
-				TimeToFirstByte:  snapshot.Timing.TimeToFirstByte,
-				DomInteractive:   snapshot.Timing.DomInteractive,
+				DomContentLoaded:       snapshot.Timing.DomContentLoaded,
+				Load:                   snapshot.Timing.Load,
+				FirstContentfulPaint:   snapshot.Timing.FirstContentfulPaint,
+				LargestContentfulPaint: snapshot.Timing.LargestContentfulPaint,
+				TimeToFirstByte:        snapshot.Timing.TimeToFirstByte,
+				DomInteractive:         snapshot.Timing.DomInteractive,
 			},
 			Network: BaselineNetwork{
 				RequestCount: snapshot.Network.RequestCount,
@@ -1152,15 +1185,10 @@ func (v *V4Server) updateBaseline(snapshot PerformanceSnapshot) {
 		baseline.Network.TransferSize = int64(float64(baseline.Network.TransferSize)*(n-1)/n + float64(snapshot.Network.TransferSize)/n)
 		baseline.LongTasks.Count = int(float64(baseline.LongTasks.Count)*(n-1)/n + float64(snapshot.LongTasks.Count)/n)
 		baseline.LongTasks.TotalBlockingTime = baseline.LongTasks.TotalBlockingTime*(n-1)/n + snapshot.LongTasks.TotalBlockingTime/n
-		if snapshot.CLS != nil {
-			if baseline.CLS == nil {
-				cls := *snapshot.CLS
-				baseline.CLS = &cls
-			} else {
-				cls := *baseline.CLS*(n-1)/n + *snapshot.CLS/n
-				baseline.CLS = &cls
-			}
-		}
+		baseline.LongTasks.Longest = baseline.LongTasks.Longest*(n-1)/n + snapshot.LongTasks.Longest/n
+		baseline.Timing.FirstContentfulPaint = avgOptionalFloat(baseline.Timing.FirstContentfulPaint, snapshot.Timing.FirstContentfulPaint, n)
+		baseline.Timing.LargestContentfulPaint = avgOptionalFloat(baseline.Timing.LargestContentfulPaint, snapshot.Timing.LargestContentfulPaint, n)
+		baseline.CLS = avgOptionalFloat(baseline.CLS, snapshot.CLS, n)
 	} else {
 		// Weighted average: 80% existing + 20% new
 		baseline.Timing.DomContentLoaded = baseline.Timing.DomContentLoaded*0.8 + snapshot.Timing.DomContentLoaded*0.2
@@ -1171,15 +1199,10 @@ func (v *V4Server) updateBaseline(snapshot PerformanceSnapshot) {
 		baseline.Network.TransferSize = int64(float64(baseline.Network.TransferSize)*0.8 + float64(snapshot.Network.TransferSize)*0.2)
 		baseline.LongTasks.Count = int(float64(baseline.LongTasks.Count)*0.8 + float64(snapshot.LongTasks.Count)*0.2)
 		baseline.LongTasks.TotalBlockingTime = baseline.LongTasks.TotalBlockingTime*0.8 + snapshot.LongTasks.TotalBlockingTime*0.2
-		if snapshot.CLS != nil {
-			if baseline.CLS == nil {
-				cls := *snapshot.CLS
-				baseline.CLS = &cls
-			} else {
-				cls := *baseline.CLS*0.8 + *snapshot.CLS*0.2
-				baseline.CLS = &cls
-			}
-		}
+		baseline.LongTasks.Longest = baseline.LongTasks.Longest*0.8 + snapshot.LongTasks.Longest*0.2
+		baseline.Timing.FirstContentfulPaint = weightedOptionalFloat(baseline.Timing.FirstContentfulPaint, snapshot.Timing.FirstContentfulPaint, 0.8, 0.2)
+		baseline.Timing.LargestContentfulPaint = weightedOptionalFloat(baseline.Timing.LargestContentfulPaint, snapshot.Timing.LargestContentfulPaint, 0.8, 0.2)
+		baseline.CLS = weightedOptionalFloat(baseline.CLS, snapshot.CLS, 0.8, 0.2)
 	}
 
 	v.perfBaselines[url] = baseline
@@ -1228,13 +1251,25 @@ func (v *V4Server) DetectRegressions(snapshot PerformanceSnapshot, baseline Perf
 		}
 	}
 
-	// FCP (domContentLoaded as proxy): >50% AND >200ms
-	if baseline.Timing.DomContentLoaded > 0 {
-		change := snapshot.Timing.DomContentLoaded - baseline.Timing.DomContentLoaded
-		pct := change / baseline.Timing.DomContentLoaded * 100
+	// FCP: >50% increase AND >200ms absolute
+	if snapshot.Timing.FirstContentfulPaint != nil && baseline.Timing.FirstContentfulPaint != nil && *baseline.Timing.FirstContentfulPaint > 0 {
+		change := *snapshot.Timing.FirstContentfulPaint - *baseline.Timing.FirstContentfulPaint
+		pct := change / *baseline.Timing.FirstContentfulPaint * 100
 		if pct > 50 && change > 200 {
 			regressions = append(regressions, PerformanceRegression{
-				Metric: "domContentLoaded", Current: snapshot.Timing.DomContentLoaded, Baseline: baseline.Timing.DomContentLoaded,
+				Metric: "firstContentfulPaint", Current: *snapshot.Timing.FirstContentfulPaint, Baseline: *baseline.Timing.FirstContentfulPaint,
+				ChangePercent: pct, AbsoluteChange: change,
+			})
+		}
+	}
+
+	// LCP: >50% increase AND >200ms absolute
+	if snapshot.Timing.LargestContentfulPaint != nil && baseline.Timing.LargestContentfulPaint != nil && *baseline.Timing.LargestContentfulPaint > 0 {
+		change := *snapshot.Timing.LargestContentfulPaint - *baseline.Timing.LargestContentfulPaint
+		pct := change / *baseline.Timing.LargestContentfulPaint * 100
+		if pct > 50 && change > 200 {
+			regressions = append(regressions, PerformanceRegression{
+				Metric: "largestContentfulPaint", Current: *snapshot.Timing.LargestContentfulPaint, Baseline: *baseline.Timing.LargestContentfulPaint,
 				ChangePercent: pct, AbsoluteChange: change,
 			})
 		}
@@ -1321,6 +1356,12 @@ func (v *V4Server) FormatPerformanceReport(snapshot PerformanceSnapshot, baselin
 
 	sb.WriteString("### Navigation Timing\n")
 	sb.WriteString(fmt.Sprintf("- TTFB: %.0fms\n", snapshot.Timing.TimeToFirstByte))
+	if snapshot.Timing.FirstContentfulPaint != nil {
+		sb.WriteString(fmt.Sprintf("- First Contentful Paint: %.0fms\n", *snapshot.Timing.FirstContentfulPaint))
+	}
+	if snapshot.Timing.LargestContentfulPaint != nil {
+		sb.WriteString(fmt.Sprintf("- Largest Contentful Paint: %.0fms\n", *snapshot.Timing.LargestContentfulPaint))
+	}
 	sb.WriteString(fmt.Sprintf("- DOM Interactive: %.0fms\n", snapshot.Timing.DomInteractive))
 	sb.WriteString(fmt.Sprintf("- DOM Content Loaded: %.0fms\n", snapshot.Timing.DomContentLoaded))
 	sb.WriteString(fmt.Sprintf("- Load: %.0fms\n", snapshot.Timing.Load))
@@ -1401,7 +1442,7 @@ func (v *V4Server) HandlePerformanceSnapshot(w http.ResponseWriter, r *http.Requ
 
 		if !found {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"snapshot": nil,
 				"baseline": nil,
 			})
@@ -1420,7 +1461,7 @@ func (v *V4Server) HandlePerformanceSnapshot(w http.ResponseWriter, r *http.Requ
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
@@ -1440,7 +1481,7 @@ func (v *V4Server) HandlePerformanceSnapshot(w http.ResponseWriter, r *http.Requ
 		v.AddPerformanceSnapshot(snapshot)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"received":         true,
 			"baseline_updated": true,
 		})
@@ -1456,7 +1497,7 @@ func (v *V4Server) HandlePerformanceSnapshot(w http.ResponseWriter, r *http.Requ
 		v.mu.Unlock()
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"cleared": true,
 		})
 		return
@@ -1470,7 +1511,7 @@ func (v *V4Server) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request)
 	if r.Method == "GET" {
 		events := v.GetWebSocketEvents(WebSocketEventFilter{})
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"events": events,
 			"count":  len(events),
 		})
@@ -1514,7 +1555,7 @@ func (v *V4Server) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request)
 func (v *V4Server) HandleWebSocketStatus(w http.ResponseWriter, r *http.Request) {
 	status := v.GetWebSocketStatus(WebSocketStatusFilter{})
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	_ = json.NewEncoder(w).Encode(status)
 }
 
 // HandleNetworkBodies handles POST /network-bodies
@@ -1559,7 +1600,7 @@ func (v *V4Server) HandlePendingQueries(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // HandleDOMResult handles POST /dom-result
@@ -1912,7 +1953,15 @@ func (h *MCPHandlerV4) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage)
 		Direction    string `json:"direction"`
 		Limit        int    `json:"limit"`
 	}
-	json.Unmarshal(args, &arguments)
+	if err := json.Unmarshal(args, &arguments); err != nil {
+		result := map[string]interface{}{
+			"content": []map[string]string{
+				{"type": "text", "text": "Error parsing arguments: " + err.Error()},
+			},
+		}
+		resultJSON, _ := json.Marshal(result)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	}
 
 	events := h.v4.GetWebSocketEvents(WebSocketEventFilter{
 		ConnectionID: arguments.ConnectionID,
@@ -1943,7 +1992,15 @@ func (h *MCPHandlerV4) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage)
 		URL          string `json:"url"`
 		ConnectionID string `json:"connection_id"`
 	}
-	json.Unmarshal(args, &arguments)
+	if err := json.Unmarshal(args, &arguments); err != nil {
+		result := map[string]interface{}{
+			"content": []map[string]string{
+				{"type": "text", "text": "Error parsing arguments: " + err.Error()},
+			},
+		}
+		resultJSON, _ := json.Marshal(result)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	}
 
 	status := h.v4.GetWebSocketStatus(WebSocketStatusFilter{
 		URLFilter:    arguments.URL,
@@ -1968,7 +2025,7 @@ func (h *MCPHandlerV4) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMes
 		StatusMax int    `json:"status_max"`
 		Limit     int    `json:"limit"`
 	}
-	json.Unmarshal(args, &arguments)
+	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
 	bodies := h.v4.GetNetworkBodies(NetworkBodyFilter{
 		URLFilter: arguments.URL,
@@ -1999,7 +2056,7 @@ func (h *MCPHandlerV4) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JS
 	var arguments struct {
 		Selector string `json:"selector"`
 	}
-	json.Unmarshal(args, &arguments)
+	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
 	params, _ := json.Marshal(map[string]string{"selector": arguments.Selector})
 	id := h.v4.CreatePendingQuery(PendingQuery{
@@ -2060,7 +2117,7 @@ func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage
 		Scope string   `json:"scope"`
 		Tags  []string `json:"tags"`
 	}
-	json.Unmarshal(args, &arguments)
+	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
 	params := map[string]interface{}{}
 	if arguments.Scope != "" {
@@ -2106,7 +2163,7 @@ func (h *MCPHandlerV4) toolGetEnhancedActions(req JSONRPCRequest, args json.RawM
 		LastN int    `json:"last_n"`
 		URL   string `json:"url"`
 	}
-	json.Unmarshal(args, &arguments)
+	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
 	actions := h.v4.GetEnhancedActions(EnhancedActionFilter{
 		LastN:     arguments.LastN,
@@ -2136,7 +2193,7 @@ func (h *MCPHandlerV4) toolGetReproductionScript(req JSONRPCRequest, args json.R
 		LastNActions int    `json:"last_n_actions"`
 		BaseURL      string `json:"base_url"`
 	}
-	json.Unmarshal(args, &arguments)
+	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
 	actions := h.v4.GetEnhancedActions(EnhancedActionFilter{})
 
@@ -2170,7 +2227,7 @@ func (h *MCPHandlerV4) toolCheckPerformance(req JSONRPCRequest, args json.RawMes
 	var arguments struct {
 		URL string `json:"url"`
 	}
-	json.Unmarshal(args, &arguments)
+	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
 	var snapshot PerformanceSnapshot
 	var found bool
@@ -2213,7 +2270,7 @@ func (h *MCPHandlerV4) toolGetSessionTimeline(req JSONRPCRequest, args json.RawM
 		URLFilter    string   `json:"url_filter"`
 		Include      []string `json:"include"`
 	}
-	json.Unmarshal(args, &arguments)
+	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
 	h.server.mu.RLock()
 	entries := make([]LogEntry, len(h.server.entries))
@@ -2226,10 +2283,7 @@ func (h *MCPHandlerV4) toolGetSessionTimeline(req JSONRPCRequest, args json.RawM
 		Include:      arguments.Include,
 	}, entries)
 
-	respJSON, _ := json.Marshal(SessionTimelineResponse{
-		Timeline: resp.Timeline,
-		Summary:  resp.Summary,
-	})
+	respJSON, _ := json.Marshal(SessionTimelineResponse(resp))
 
 	result := map[string]interface{}{
 		"content": []map[string]string{
@@ -2248,7 +2302,7 @@ func (h *MCPHandlerV4) toolGenerateTest(req JSONRPCRequest, args json.RawMessage
 		AssertResponseShape bool   `json:"assert_response_shape"`
 		BaseURL             string `json:"base_url"`
 	}
-	json.Unmarshal(args, &arguments)
+	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
 	h.server.mu.RLock()
 	entries := make([]LogEntry, len(h.server.entries))
@@ -2313,7 +2367,8 @@ func generatePlaywrightScript(actions []EnhancedAction, errorMessage, baseURL st
 	var steps []string
 	var prevTimestamp int64
 
-	for _, action := range actions {
+	for i := range actions {
+		action := &actions[i]
 		// Add pause comment for gaps > 2 seconds
 		if prevTimestamp > 0 && action.Timestamp-prevTimestamp > 2000 {
 			gap := (action.Timestamp - prevTimestamp) / 1000
@@ -2557,18 +2612,18 @@ func (v *V4Server) GetSessionTimeline(filter TimelineFilter, logEntries []LogEnt
 
 	// Add actions
 	if shouldInclude("action") {
-		for _, a := range actions {
-			if filter.URLFilter != "" && !strings.Contains(a.URL, filter.URLFilter) {
+		for i := range actions {
+			if filter.URLFilter != "" && !strings.Contains(actions[i].URL, filter.URLFilter) {
 				continue
 			}
 			entries = append(entries, TimelineEntry{
-				Timestamp: a.Timestamp,
+				Timestamp: actions[i].Timestamp,
 				Kind:      "action",
-				Type:      a.Type,
-				URL:       a.URL,
-				Selectors: a.Selectors,
-				ToURL:     a.ToURL,
-				Value:     a.Value,
+				Type:      actions[i].Type,
+				URL:       actions[i].URL,
+				Selectors: actions[i].Selectors,
+				ToURL:     actions[i].ToURL,
+				Value:     actions[i].Value,
 			})
 		}
 	}
@@ -2634,14 +2689,14 @@ func (v *V4Server) GetSessionTimeline(filter TimelineFilter, logEntries []LogEnt
 
 	// Build summary
 	summary := TimelineSummary{}
-	for _, e := range entries {
-		switch e.Kind {
+	for i := range entries {
+		switch entries[i].Kind {
 		case "action":
 			summary.Actions++
 		case "network":
 			summary.NetworkRequests++
 		case "console":
-			if e.Level == "error" {
+			if entries[i].Level == "error" {
 				summary.ConsoleErrors++
 			}
 		}
@@ -2663,9 +2718,9 @@ func generateTestScript(timeline []TimelineEntry, opts TestGenerationOptions) st
 	if testName == "" {
 		testName = "recorded session"
 		if len(timeline) > 0 {
-			for _, e := range timeline {
-				if e.URL != "" {
-					testName = e.URL
+			for i := range timeline {
+				if timeline[i].URL != "" {
+					testName = timeline[i].URL
 					if opts.BaseURL != "" {
 						testName = replaceOrigin(testName, opts.BaseURL)
 					}
@@ -2684,9 +2739,9 @@ func generateTestScript(timeline []TimelineEntry, opts TestGenerationOptions) st
 
 	// Determine start URL
 	startURL := ""
-	for _, e := range timeline {
-		if e.Kind == "action" && e.URL != "" {
-			startURL = e.URL
+	for i := range timeline {
+		if timeline[i].Kind == "action" && timeline[i].URL != "" {
+			startURL = timeline[i].URL
 			break
 		}
 	}
@@ -2699,14 +2754,15 @@ func generateTestScript(timeline []TimelineEntry, opts TestGenerationOptions) st
 
 	// Track if errors were present in session
 	hasErrors := false
-	for _, e := range timeline {
-		if e.Kind == "console" && e.Level == "error" {
+	for i := range timeline {
+		if timeline[i].Kind == "console" && timeline[i].Level == "error" {
 			hasErrors = true
 			break
 		}
 	}
 
-	for i, entry := range timeline {
+	for i := range timeline {
+		entry := &timeline[i]
 		switch entry.Kind {
 		case "action":
 			if entry.Type == "click" && entry.Selectors != nil {
@@ -2769,10 +2825,10 @@ func generateTestScript(timeline []TimelineEntry, opts TestGenerationOptions) st
 
 func getSelectorFromMap(selectors map[string]interface{}) string {
 	if testId, ok := selectors["testId"].(string); ok {
-		return fmt.Sprintf("[data-testid=\"%s\"]", testId)
+		return fmt.Sprintf("[data-testid=\"%s\"]", testId) //nolint:gocritic // CSS selector needs exact quote format
 	}
 	if role, ok := selectors["role"].(string); ok {
-		return fmt.Sprintf("[role=\"%s\"]", role)
+		return fmt.Sprintf("[role=\"%s\"]", role) //nolint:gocritic // CSS selector needs exact quote format
 	}
 	return "unknown"
 }

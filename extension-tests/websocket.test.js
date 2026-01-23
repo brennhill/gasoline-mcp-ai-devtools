@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Tests for WebSocket interception, adaptive sampling, schema detection, and binary handling
  * TDD: These tests are written BEFORE implementation (v4 feature)
@@ -19,12 +20,12 @@ const createMockWindow = () => {
       if (!this._listeners[event]) this._listeners[event] = []
       this._listeners[event].push(handler)
     }
-    send(data) {}
-    close(code, reason) {}
+    send(_data) {}
+    close(_code, _reason) {}
     // Helper for tests to simulate events
     _emit(event, data) {
       if (this._listeners[event]) {
-        this._listeners[event].forEach(h => h(data))
+        this._listeners[event].forEach((h) => h(data))
       }
     }
   }
@@ -41,7 +42,7 @@ const createMockWindow = () => {
 }
 
 const createMockCrypto = () => ({
-  randomUUID: mock.fn(() => 'test-uuid-' + Math.random().toString(36).slice(2))
+  randomUUID: mock.fn(() => 'test-uuid-' + Math.random().toString(36).slice(2)),
 })
 
 let originalWindow, originalCrypto
@@ -52,8 +53,10 @@ describe('WebSocket Interception', () => {
     originalCrypto = globalThis.crypto
     globalThis.window = createMockWindow()
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
-    // Reset mode to lifecycle (default) and enable capture
-    const { setWebSocketCaptureMode, setWebSocketCaptureEnabled } = await import('../extension/inject.js')
+    // Force uninstall to reset module state in case a previous test crashed before cleanup
+    const { setWebSocketCaptureMode, setWebSocketCaptureEnabled, uninstallWebSocketCapture } =
+      await import('../extension/inject.js')
+    uninstallWebSocketCapture()
     setWebSocketCaptureMode('lifecycle')
     setWebSocketCaptureEnabled(true)
   })
@@ -110,6 +113,85 @@ describe('WebSocket Interception', () => {
     uninstallWebSocketCapture()
   })
 
+  test('ws:open payload has spec-compliant shape', async () => {
+    const { installWebSocketCapture, uninstallWebSocketCapture } = await import('../extension/inject.js')
+    installWebSocketCapture()
+
+    const ws = new globalThis.window.WebSocket('wss://example.com/ws')
+    ws._emit('open', {})
+
+    const calls = globalThis.window.postMessage.mock.calls
+    const openMsg = calls.find((c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'open')
+    assert.ok(openMsg, 'Expected ws:open event')
+    const payload = openMsg.arguments[0].payload
+
+    // Shape from spec: ts, type, event, id, url
+    assert.ok('ts' in payload, 'missing: ts')
+    assert.strictEqual(payload.type, 'websocket')
+    assert.strictEqual(payload.event, 'open')
+    assert.ok('id' in payload, 'missing: id')
+    assert.ok('url' in payload, 'missing: url')
+
+    uninstallWebSocketCapture()
+  })
+
+  test('ws:close payload has spec-compliant shape', async () => {
+    const { installWebSocketCapture, uninstallWebSocketCapture } = await import('../extension/inject.js')
+    installWebSocketCapture()
+
+    const ws = new globalThis.window.WebSocket('wss://example.com/ws')
+    ws._emit('open', {})
+    ws._emit('close', { code: 1000, reason: 'normal' })
+
+    const calls = globalThis.window.postMessage.mock.calls
+    const closeMsg = calls.find(
+      (c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'close',
+    )
+    assert.ok(closeMsg, 'Expected ws:close event')
+    const payload = closeMsg.arguments[0].payload
+
+    // Shape from spec: ts, type, event, id, url, code, reason
+    assert.ok('ts' in payload, 'missing: ts')
+    assert.strictEqual(payload.type, 'websocket')
+    assert.strictEqual(payload.event, 'close')
+    assert.ok('id' in payload, 'missing: id')
+    assert.ok('url' in payload, 'missing: url')
+    assert.ok('code' in payload, 'missing: code')
+    assert.ok('reason' in payload, 'missing: reason')
+
+    uninstallWebSocketCapture()
+  })
+
+  test('ws:message payload has spec-compliant shape', async () => {
+    const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } =
+      await import('../extension/inject.js')
+    setWebSocketCaptureMode('messages')
+    installWebSocketCapture()
+
+    const ws = new globalThis.window.WebSocket('wss://example.com/ws')
+    ws._emit('open', {})
+    ws._emit('message', { data: '{"type":"chat"}' })
+
+    const calls = globalThis.window.postMessage.mock.calls
+    const msgEvent = calls.find(
+      (c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'message',
+    )
+    assert.ok(msgEvent, 'Expected ws:message event')
+    const payload = msgEvent.arguments[0].payload
+
+    // Shape from spec: ts, type, event, id, url, direction, data, size
+    assert.ok('ts' in payload, 'missing: ts')
+    assert.strictEqual(payload.type, 'websocket')
+    assert.strictEqual(payload.event, 'message')
+    assert.ok('id' in payload, 'missing: id')
+    assert.ok('url' in payload, 'missing: url')
+    assert.ok('direction' in payload, 'missing: direction')
+    assert.ok('data' in payload, 'missing: data')
+    assert.ok('size' in payload, 'missing: size')
+
+    uninstallWebSocketCapture()
+  })
+
   test('should emit ws:open event on connection open', async () => {
     const { installWebSocketCapture, uninstallWebSocketCapture } = await import('../extension/inject.js')
 
@@ -119,7 +201,7 @@ describe('WebSocket Interception', () => {
     ws._emit('open', {})
 
     const calls = globalThis.window.postMessage.mock.calls
-    const openMessage = calls.find(c => {
+    const openMessage = calls.find((c) => {
       const msg = c.arguments[0]
       return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
     })
@@ -141,7 +223,7 @@ describe('WebSocket Interception', () => {
     ws._emit('close', { code: 1000, reason: 'normal closure' })
 
     const calls = globalThis.window.postMessage.mock.calls
-    const closeMessage = calls.find(c => {
+    const closeMessage = calls.find((c) => {
       const msg = c.arguments[0]
       return msg.type === 'GASOLINE_WS' && msg.payload.event === 'close'
     })
@@ -163,7 +245,7 @@ describe('WebSocket Interception', () => {
     ws._emit('error', {})
 
     const calls = globalThis.window.postMessage.mock.calls
-    const errorMessage = calls.find(c => {
+    const errorMessage = calls.find((c) => {
       const msg = c.arguments[0]
       return msg.type === 'GASOLINE_WS' && msg.payload.event === 'error'
     })
@@ -174,7 +256,8 @@ describe('WebSocket Interception', () => {
   })
 
   test('should track incoming messages', async () => {
-    const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } = await import('../extension/inject.js')
+    const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } =
+      await import('../extension/inject.js')
 
     setWebSocketCaptureMode('messages')
     installWebSocketCapture()
@@ -184,7 +267,7 @@ describe('WebSocket Interception', () => {
     ws._emit('message', { data: '{"type":"chat","msg":"hello"}' })
 
     const calls = globalThis.window.postMessage.mock.calls
-    const msgEvent = calls.find(c => {
+    const msgEvent = calls.find((c) => {
       const msg = c.arguments[0]
       return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message' && msg.payload.direction === 'incoming'
     })
@@ -197,7 +280,8 @@ describe('WebSocket Interception', () => {
   })
 
   test('should intercept outgoing messages via send()', async () => {
-    const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } = await import('../extension/inject.js')
+    const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } =
+      await import('../extension/inject.js')
 
     setWebSocketCaptureMode('messages')
     installWebSocketCapture()
@@ -207,7 +291,7 @@ describe('WebSocket Interception', () => {
     ws.send('{"type":"ping"}')
 
     const calls = globalThis.window.postMessage.mock.calls
-    const msgEvent = calls.find(c => {
+    const msgEvent = calls.find((c) => {
       const msg = c.arguments[0]
       return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message' && msg.payload.direction === 'outgoing'
     })
@@ -244,8 +328,8 @@ describe('WebSocket Interception', () => {
 
     const calls = globalThis.window.postMessage.mock.calls
     const openEvents = calls
-      .filter(c => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'open')
-      .map(c => c.arguments[0].payload.id)
+      .filter((c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'open')
+      .map((c) => c.arguments[0].payload.id)
 
     assert.strictEqual(openEvents.length, 2)
     assert.notStrictEqual(openEvents[0], openEvents[1], 'Expected unique IDs per connection')
@@ -254,7 +338,8 @@ describe('WebSocket Interception', () => {
   })
 
   test('should not emit message events in lifecycle mode', async () => {
-    const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } = await import('../extension/inject.js')
+    const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } =
+      await import('../extension/inject.js')
 
     setWebSocketCaptureMode('lifecycle')
     installWebSocketCapture()
@@ -265,7 +350,7 @@ describe('WebSocket Interception', () => {
     ws.send('{"type":"pong"}')
 
     const calls = globalThis.window.postMessage.mock.calls
-    const msgEvents = calls.filter(c => {
+    const msgEvents = calls.filter((c) => {
       const msg = c.arguments[0]
       return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message'
     })
@@ -273,7 +358,7 @@ describe('WebSocket Interception', () => {
     assert.strictEqual(msgEvents.length, 0, 'Expected no message events in lifecycle mode')
 
     // But lifecycle events should still be emitted
-    const openEvents = calls.filter(c => {
+    const openEvents = calls.filter((c) => {
       const msg = c.arguments[0]
       return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
     })
@@ -283,7 +368,8 @@ describe('WebSocket Interception', () => {
   })
 
   test('should truncate message data at 4KB', async () => {
-    const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } = await import('../extension/inject.js')
+    const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } =
+      await import('../extension/inject.js')
 
     setWebSocketCaptureMode('messages')
     installWebSocketCapture()
@@ -295,7 +381,7 @@ describe('WebSocket Interception', () => {
     ws._emit('message', { data: largeData })
 
     const calls = globalThis.window.postMessage.mock.calls
-    const msgEvent = calls.find(c => {
+    const msgEvent = calls.find((c) => {
       const msg = c.arguments[0]
       return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message'
     })
@@ -562,7 +648,10 @@ describe('Binary Message Handling', () => {
     // Binary >= 256 bytes: size + magic bytes
     const buffer = new ArrayBuffer(4096)
     const view = new Uint8Array(buffer)
-    view[0] = 0x0a; view[1] = 0x1b; view[2] = 0x2c; view[3] = 0x3d
+    view[0] = 0x0a
+    view[1] = 0x1b
+    view[2] = 0x2c
+    view[3] = 0x3d
 
     const formatted = formatPayload(buffer)
 
@@ -592,7 +681,11 @@ describe('Binary Message Handling', () => {
     const { formatPayload } = await import('../extension/inject.js')
 
     // Simulate Blob (in test environment, use object with size)
-    const blob = { size: 1024, type: 'application/octet-stream', arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024)) }
+    const blob = {
+      size: 1024,
+      type: 'application/octet-stream',
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024)),
+    }
 
     const formatted = formatPayload(blob)
 

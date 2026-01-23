@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Tests for circuit breaker + exponential backoff
  * TDD: These tests are written BEFORE implementation
@@ -18,7 +19,7 @@ globalThis.chrome = {
 import { createCircuitBreaker } from '../extension/background.js'
 
 describe('Circuit Breaker', () => {
-  let clock
+  let _clock
 
   beforeEach(() => {
     mock.reset()
@@ -121,7 +122,7 @@ describe('Circuit Breaker', () => {
     assert.strictEqual(cb.getState(), 'open')
 
     // Wait for reset timeout
-    await new Promise(r => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 60))
 
     assert.strictEqual(cb.getState(), 'half-open')
   })
@@ -139,7 +140,7 @@ describe('Circuit Breaker', () => {
     await assert.rejects(() => cb.execute(['entry']))
 
     // Wait for half-open
-    await new Promise(r => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 60))
     assert.strictEqual(cb.getState(), 'half-open')
 
     // Success in half-open closes the circuit
@@ -158,7 +159,7 @@ describe('Circuit Breaker', () => {
     await assert.rejects(() => cb.execute(['entry']))
 
     // Wait for half-open
-    await new Promise(r => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 60))
     assert.strictEqual(cb.getState(), 'half-open')
 
     // Failure in half-open re-opens
@@ -182,23 +183,31 @@ describe('Circuit Breaker', () => {
   })
 
   test('should only allow one probe in half-open state', async () => {
-    let resolveProbe
+    let _resolveProbe
     // Slow sendFn that hangs until we resolve it
-    const slowFn = mock.fn(() => new Promise((resolve, reject) => { resolveProbe = reject }))
-    const cb = createCircuitBreaker(slowFn, { maxFailures: 2, resetTimeout: 50, initialBackoff: 1 })
+    const slowFn = mock.fn(
+      () =>
+        new Promise((resolve, reject) => {
+          _resolveProbe = reject
+        }),
+    )
+    const _cb = createCircuitBreaker(slowFn, { maxFailures: 2, resetTimeout: 50, initialBackoff: 1 })
 
     // Open circuit with quick failures first
-    let callCount = 0
-    const openCb = createCircuitBreaker(() => {
-      callCount++
-      return Promise.reject(new Error('fail'))
-    }, { maxFailures: 2, resetTimeout: 50, initialBackoff: 1 })
+    let _callCount = 0
+    const openCb = createCircuitBreaker(
+      () => {
+        _callCount++
+        return Promise.reject(new Error('fail'))
+      },
+      { maxFailures: 2, resetTimeout: 50, initialBackoff: 1 },
+    )
 
     await assert.rejects(() => openCb.execute(['entry']))
     await assert.rejects(() => openCb.execute(['entry']))
 
     // Wait for half-open
-    await new Promise(r => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 60))
     assert.strictEqual(openCb.getState(), 'half-open')
 
     // First probe starts - hangs because failFn takes time

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Content script that injects the capture script into pages
  * Runs in the content script context, bridges page and extension

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Tests for performance snapshot capture (inject.js)
  * TDD: These tests are written BEFORE implementation
@@ -24,20 +25,46 @@ MockPerformanceObserver.instances = []
 const createMockPerformance = () => ({
   getEntriesByType: mock.fn((type) => {
     if (type === 'navigation') {
-      return [{
-        domContentLoadedEventEnd: 600,
-        loadEventEnd: 1200,
-        responseStart: 180,
-        requestStart: 100,
-        domInteractive: 500,
-      }]
+      return [
+        {
+          domContentLoadedEventEnd: 600,
+          loadEventEnd: 1200,
+          responseStart: 180,
+          requestStart: 100,
+          domInteractive: 500,
+        },
+      ]
     }
     if (type === 'resource') {
       return [
-        { initiatorType: 'script', transferSize: 50000, decodedBodySize: 100000, duration: 300, name: 'http://localhost/app.js' },
-        { initiatorType: 'css', transferSize: 10000, decodedBodySize: 20000, duration: 100, name: 'http://localhost/style.css' },
-        { initiatorType: 'img', transferSize: 80000, decodedBodySize: 80000, duration: 500, name: 'http://localhost/hero.png' },
-        { initiatorType: 'fetch', transferSize: 2000, decodedBodySize: 5000, duration: 200, name: 'http://localhost/api/data' },
+        {
+          initiatorType: 'script',
+          transferSize: 50000,
+          decodedBodySize: 100000,
+          duration: 300,
+          name: 'http://localhost/app.js',
+        },
+        {
+          initiatorType: 'css',
+          transferSize: 10000,
+          decodedBodySize: 20000,
+          duration: 100,
+          name: 'http://localhost/style.css',
+        },
+        {
+          initiatorType: 'img',
+          transferSize: 80000,
+          decodedBodySize: 80000,
+          duration: 500,
+          name: 'http://localhost/hero.png',
+        },
+        {
+          initiatorType: 'fetch',
+          transferSize: 2000,
+          decodedBodySize: 5000,
+          duration: 200,
+          name: 'http://localhost/api/data',
+        },
       ]
     }
     return []
@@ -68,6 +95,39 @@ describe('Performance Snapshot Capture', () => {
     globalThis.window = originalWindow
     globalThis.performance = originalPerformance
     globalThis.PerformanceObserver = originalPerformanceObserver
+  })
+
+  test('capturePerformanceSnapshot returns spec-compliant shape', async () => {
+    const { capturePerformanceSnapshot } = await import('../extension/inject.js')
+    const snapshot = capturePerformanceSnapshot()
+
+    // Top-level fields from spec
+    assert.ok('url' in snapshot, 'missing: url')
+    assert.ok('timestamp' in snapshot, 'missing: timestamp')
+    assert.ok('timing' in snapshot, 'missing: timing')
+    assert.ok('network' in snapshot, 'missing: network')
+    assert.ok('longTasks' in snapshot, 'missing: longTasks')
+    assert.ok('cumulativeLayoutShift' in snapshot, 'missing: cumulativeLayoutShift')
+
+    // timing fields from spec
+    assert.ok('domContentLoaded' in snapshot.timing, 'missing: timing.domContentLoaded')
+    assert.ok('load' in snapshot.timing, 'missing: timing.load')
+    assert.ok('firstContentfulPaint' in snapshot.timing, 'missing: timing.firstContentfulPaint')
+    assert.ok('largestContentfulPaint' in snapshot.timing, 'missing: timing.largestContentfulPaint')
+    assert.ok('timeToFirstByte' in snapshot.timing, 'missing: timing.timeToFirstByte')
+    assert.ok('domInteractive' in snapshot.timing, 'missing: timing.domInteractive')
+
+    // network fields from spec
+    assert.ok('requestCount' in snapshot.network, 'missing: network.requestCount')
+    assert.ok('transferSize' in snapshot.network, 'missing: network.transferSize')
+    assert.ok('decodedSize' in snapshot.network, 'missing: network.decodedSize')
+    assert.ok('byType' in snapshot.network, 'missing: network.byType')
+    assert.ok('slowestRequests' in snapshot.network, 'missing: network.slowestRequests')
+
+    // longTasks fields from spec
+    assert.ok('count' in snapshot.longTasks, 'missing: longTasks.count')
+    assert.ok('totalBlockingTime' in snapshot.longTasks, 'missing: longTasks.totalBlockingTime')
+    assert.ok('longest' in snapshot.longTasks, 'missing: longTasks.longest')
   })
 
   test('capturePerformanceSnapshot collects navigation timing', async () => {
@@ -193,9 +253,7 @@ describe('Long Task Observer', () => {
 
     installPerfObservers()
 
-    const longTaskObserver = MockPerformanceObserver.instances.find(
-      obs => obs.observedTypes.includes('longtask')
-    )
+    const longTaskObserver = MockPerformanceObserver.instances.find((obs) => obs.observedTypes.includes('longtask'))
     assert.ok(longTaskObserver, 'Should have created a longtask observer')
 
     uninstallPerfObservers()
@@ -207,9 +265,7 @@ describe('Long Task Observer', () => {
     installPerfObservers()
 
     // Simulate long task entries
-    const longTaskObserver = MockPerformanceObserver.instances.find(
-      obs => obs.observedTypes.includes('longtask')
-    )
+    const longTaskObserver = MockPerformanceObserver.instances.find((obs) => obs.observedTypes.includes('longtask'))
     assert.ok(longTaskObserver)
 
     // Call the observer callback with mock entries
@@ -217,7 +273,7 @@ describe('Long Task Observer', () => {
       getEntries: () => [
         { duration: 120, startTime: 500 },
         { duration: 80, startTime: 700 },
-      ]
+      ],
     })
 
     const metrics = getLongTaskMetrics()
@@ -235,9 +291,7 @@ describe('Long Task Observer', () => {
 
     installPerfObservers()
 
-    const longTaskObserver = MockPerformanceObserver.instances.find(
-      obs => obs.observedTypes.includes('longtask')
-    )
+    const longTaskObserver = MockPerformanceObserver.instances.find((obs) => obs.observedTypes.includes('longtask'))
 
     // Add 60 entries
     const entries = Array.from({ length: 60 }, (_, i) => ({
@@ -275,9 +329,7 @@ describe('Web Vitals Observers', () => {
 
     installPerfObservers()
 
-    const paintObserver = MockPerformanceObserver.instances.find(
-      obs => obs.observedTypes.includes('paint')
-    )
+    const paintObserver = MockPerformanceObserver.instances.find((obs) => obs.observedTypes.includes('paint'))
     assert.ok(paintObserver, 'Should have created a paint observer')
 
     uninstallPerfObservers()
@@ -288,14 +340,12 @@ describe('Web Vitals Observers', () => {
 
     installPerfObservers()
 
-    const paintObserver = MockPerformanceObserver.instances.find(
-      obs => obs.observedTypes.includes('paint')
-    )
+    const paintObserver = MockPerformanceObserver.instances.find((obs) => obs.observedTypes.includes('paint'))
     paintObserver.callback({
       getEntries: () => [
         { name: 'first-paint', startTime: 100 },
         { name: 'first-contentful-paint', startTime: 250 },
-      ]
+      ],
     })
 
     assert.strictEqual(getFCP(), 250)
@@ -308,8 +358,8 @@ describe('Web Vitals Observers', () => {
 
     installPerfObservers()
 
-    const lcpObserver = MockPerformanceObserver.instances.find(
-      obs => obs.observedTypes.includes('largest-contentful-paint')
+    const lcpObserver = MockPerformanceObserver.instances.find((obs) =>
+      obs.observedTypes.includes('largest-contentful-paint'),
     )
     assert.ok(lcpObserver, 'Should have created an LCP observer')
 
@@ -317,7 +367,7 @@ describe('Web Vitals Observers', () => {
       getEntries: () => [
         { startTime: 500 },
         { startTime: 800 }, // Last one wins
-      ]
+      ],
     })
 
     assert.strictEqual(getLCP(), 800)
@@ -330,9 +380,7 @@ describe('Web Vitals Observers', () => {
 
     installPerfObservers()
 
-    const clsObserver = MockPerformanceObserver.instances.find(
-      obs => obs.observedTypes.includes('layout-shift')
-    )
+    const clsObserver = MockPerformanceObserver.instances.find((obs) => obs.observedTypes.includes('layout-shift'))
     assert.ok(clsObserver, 'Should have created a layout-shift observer')
 
     clsObserver.callback({
@@ -340,7 +388,7 @@ describe('Web Vitals Observers', () => {
         { value: 0.05, hadRecentInput: false },
         { value: 0.03, hadRecentInput: false },
         { value: 0.1, hadRecentInput: true }, // Should be ignored
-      ]
+      ],
     })
 
     // 0.05 + 0.03 = 0.08 (the 0.1 is ignored because hadRecentInput)
@@ -355,14 +403,10 @@ describe('Web Vitals Observers', () => {
 
     installPerfObservers()
 
-    const clsObserver = MockPerformanceObserver.instances.find(
-      obs => obs.observedTypes.includes('layout-shift')
-    )
+    const clsObserver = MockPerformanceObserver.instances.find((obs) => obs.observedTypes.includes('layout-shift'))
 
     clsObserver.callback({
-      getEntries: () => [
-        { value: 0.5, hadRecentInput: true },
-      ]
+      getEntries: () => [{ value: 0.5, hadRecentInput: true }],
     })
 
     assert.strictEqual(getCLS(), 0)
@@ -411,6 +455,9 @@ describe('Performance Snapshot Message', () => {
     assert.ok(payload.network, 'Should have network')
     assert.ok(payload.longTasks, 'Should have longTasks')
     assert.ok(payload.timestamp, 'Should have timestamp')
+    assert.ok('cumulativeLayoutShift' in payload, 'Should have cumulativeLayoutShift')
+    assert.ok('firstContentfulPaint' in payload.timing, 'Should have timing.firstContentfulPaint')
+    assert.ok('largestContentfulPaint' in payload.timing, 'Should have timing.largestContentfulPaint')
   })
 
   test('sendPerformanceSnapshot does nothing when no navigation entry', async () => {

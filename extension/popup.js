@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Popup UI logic for Dev Console extension
  */
@@ -78,10 +79,30 @@ export function updateConnectionStatus(status) {
  * Feature toggle configuration
  */
 const FEATURE_TOGGLES = [
-  { id: 'toggle-websocket', storageKey: 'webSocketCaptureEnabled', messageType: 'setWebSocketCaptureEnabled', default: false },
-  { id: 'toggle-network-waterfall', storageKey: 'networkWaterfallEnabled', messageType: 'setNetworkWaterfallEnabled', default: false },
-  { id: 'toggle-performance-marks', storageKey: 'performanceMarksEnabled', messageType: 'setPerformanceMarksEnabled', default: false },
-  { id: 'toggle-action-replay', storageKey: 'actionReplayEnabled', messageType: 'setActionReplayEnabled', default: true },
+  {
+    id: 'toggle-websocket',
+    storageKey: 'webSocketCaptureEnabled',
+    messageType: 'setWebSocketCaptureEnabled',
+    default: false,
+  },
+  {
+    id: 'toggle-network-waterfall',
+    storageKey: 'networkWaterfallEnabled',
+    messageType: 'setNetworkWaterfallEnabled',
+    default: false,
+  },
+  {
+    id: 'toggle-performance-marks',
+    storageKey: 'performanceMarksEnabled',
+    messageType: 'setPerformanceMarksEnabled',
+    default: false,
+  },
+  {
+    id: 'toggle-action-replay',
+    storageKey: 'actionReplayEnabled',
+    messageType: 'setActionReplayEnabled',
+    default: true,
+  },
   { id: 'toggle-screenshot', storageKey: 'screenshotOnError', messageType: 'setScreenshotOnError', default: false },
   { id: 'toggle-source-maps', storageKey: 'sourceMapEnabled', messageType: 'setSourceMapEnabled', default: false },
   { id: 'toggle-debug-mode', storageKey: 'debugMode', messageType: 'setDebugMode', default: false },

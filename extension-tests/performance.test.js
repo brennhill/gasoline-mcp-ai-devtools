@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Performance benchmarks for Gasoline extension
  * These tests ensure the extension doesn't degrade page performance
@@ -11,7 +12,7 @@
  * - Total error handling path: < 5ms
  */
 
-import { test, describe, beforeEach, mock } from 'node:test'
+import { test, describe, mock } from 'node:test'
 import assert from 'node:assert'
 
 // Performance measurement helper
@@ -24,7 +25,7 @@ function measureTime(fn, iterations = 1000) {
   return (end - start) / iterations
 }
 
-async function measureTimeAsync(fn, iterations = 100) {
+async function _measureTimeAsync(fn, iterations = 100) {
   const start = performance.now()
   for (let i = 0; i < iterations; i++) {
     await fn()
@@ -245,7 +246,7 @@ describe('Performance Benchmarks', () => {
 
   describe('Error Grouping Performance', () => {
     test('should process error group under 0.2ms', async () => {
-      const { processErrorGroup, createErrorSignature } = await import('../extension/background.js')
+      const { processErrorGroup } = await import('../extension/background.js')
 
       const entry = {
         type: 'exception',
@@ -337,7 +338,7 @@ describe('Performance Benchmarks', () => {
           tagName: 'BUTTON',
           id: 'submit-btn',
           className: 'btn primary',
-          getAttribute: (name) => name === 'data-testid' ? 'submit' : null,
+          getAttribute: (name) => (name === 'data-testid' ? 'submit' : null),
           textContent: 'Submit',
           type: 'button',
           name: '',
@@ -456,4 +457,3 @@ describe('Performance Benchmarks', () => {
     })
   })
 })
-

@@ -1,0 +1,69 @@
+version: '2'
+
+run:
+  timeout: 2m
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+linters:
+  enable:
+    # Security
+    - gosec
+    # Bug detection
+    - staticcheck
+    - govet
+    - errcheck
+    - nilerr
+    - bodyclose
+    # Style & consistency
+    - misspell
+    - gocritic
+    - revive
+    # Performance
+    - prealloc
+    - ineffassign
+    # Code quality
+    - unused
+    - copyloopvar
+  settings:
+    gosec:
+      excludes:
+        - G104 # Unhandled errors on deferred close (too noisy)
+        - G602 # False positive slice bounds in range loops
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      disabled-checks:
+        - hugeParam # Zero-dep server uses value types by design
+        - paramTypeCombine # Cosmetic, not worth enforcing
+        - unnamedResult # Cosmetic on test helpers
+        - ifElseChain # Existing code is readable
+    revive:
+      rules:
+        - name: exported
+          severity: warning
+        - name: blank-imports
+          severity: warning
+        - name: context-as-argument
+          severity: error
+        - name: unreachable-code
+          severity: error
+    misspell:
+      locale: US
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - unused
+          - gosec
+          - errcheck
+          - gocritic
+      - path: _test\.go
+        linters:
+          - staticcheck
+        text: 'SA9003'

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Background service worker for Dev Console extension
  * Handles log batching, server communication, and badge updates
@@ -38,7 +39,7 @@ let screenshotOnError = false // Auto-capture screenshot on error (off by defaul
 
 // Error grouping state
 const errorGroups = new Map() // signature -> { entry, count, firstSeen, lastSeen }
-let errorGroupFlushTimer = null
+let _errorGroupFlushTimer = null
 
 // Rate limiting state
 const screenshotTimestamps = new Map() // tabId -> [timestamps]
@@ -82,9 +83,7 @@ export function checkContextAnnotations(entries) {
   }
 
   // Prune timestamps outside the 60s window
-  contextExcessiveTimestamps = contextExcessiveTimestamps.filter(
-    (t) => now - t.ts < CONTEXT_WARNING_WINDOW_MS
-  )
+  contextExcessiveTimestamps = contextExcessiveTimestamps.filter((t) => now - t.ts < CONTEXT_WARNING_WINDOW_MS)
 
   // Check if we've hit the threshold
   if (contextExcessiveTimestamps.length >= CONTEXT_WARNING_COUNT) {
@@ -186,18 +185,22 @@ export function clearDebugLog() {
  * @returns {string} JSON formatted debug log with metadata
  */
 export function exportDebugLog() {
-  return JSON.stringify({
-    exportedAt: new Date().toISOString(),
-    version: '3.5.0',
-    debugMode,
-    connectionStatus,
-    settings: {
-      logLevel: currentLogLevel,
-      screenshotOnError,
-      sourceMapEnabled,
+  return JSON.stringify(
+    {
+      exportedAt: new Date().toISOString(),
+      version: '3.5.0',
+      debugMode,
+      connectionStatus,
+      settings: {
+        logLevel: currentLogLevel,
+        screenshotOnError,
+        sourceMapEnabled,
+      },
+      entries: debugLogBuffer,
     },
-    entries: debugLogBuffer,
-  }, null, 2)
+    null,
+    2,
+  )
 }
 
 /**
@@ -279,10 +282,7 @@ export function createCircuitBreaker(sendFn, options = {}) {
 
     // Calculate next backoff (exponential: initialBackoff * 2^(failures-1))
     if (consecutiveFailures > 1) {
-      currentBackoff = Math.min(
-        initialBackoff * Math.pow(2, consecutiveFailures - 2),
-        maxBackoff
-      )
+      currentBackoff = Math.min(initialBackoff * Math.pow(2, consecutiveFailures - 2), maxBackoff)
     } else {
       currentBackoff = 0
     }
@@ -304,7 +304,9 @@ export function createCircuitBreaker(sendFn, options = {}) {
 
     // Apply backoff delay
     if (currentBackoff > 0) {
-      await new Promise(r => setTimeout(r, currentBackoff))
+      await new Promise((r) => {
+        setTimeout(r, currentBackoff)
+      })
     }
 
     try {
@@ -1149,7 +1151,9 @@ export async function resolveStackTrace(stack) {
         const lineNum = resolved.originalLineNumber
         const colNum = resolved.originalColumnNumber
 
-        resolvedLines.push(`    at ${funcName} (${fileName}:${lineNum}:${colNum}) [resolved from ${resolved.fileName}:${resolved.lineNumber}:${resolved.columnNumber}]`)
+        resolvedLines.push(
+          `    at ${funcName} (${fileName}:${lineNum}:${colNum}) [resolved from ${resolved.fileName}:${resolved.lineNumber}:${resolved.columnNumber}]`,
+        )
       } else {
         resolvedLines.push(line)
       }
@@ -1299,23 +1303,26 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   checkConnectionAndUpdate()
 
   // Load saved settings
-  chrome.storage.local.get(['serverUrl', 'logLevel', 'screenshotOnError', 'sourceMapEnabled', 'debugMode'], (result) => {
-    serverUrl = result.serverUrl || DEFAULT_SERVER_URL
-    currentLogLevel = result.logLevel || 'error'
-    screenshotOnError = result.screenshotOnError || false
-    sourceMapEnabled = result.sourceMapEnabled || false
-    debugMode = result.debugMode || false
-    debugLog(DebugCategory.LIFECYCLE, 'Extension initialized', {
-      serverUrl,
-      logLevel: currentLogLevel,
-      screenshotOnError,
-      sourceMapEnabled,
-      debugMode,
-    })
-  })
+  chrome.storage.local.get(
+    ['serverUrl', 'logLevel', 'screenshotOnError', 'sourceMapEnabled', 'debugMode'],
+    (result) => {
+      serverUrl = result.serverUrl || DEFAULT_SERVER_URL
+      currentLogLevel = result.logLevel || 'error'
+      screenshotOnError = result.screenshotOnError || false
+      sourceMapEnabled = result.sourceMapEnabled || false
+      debugMode = result.debugMode || false
+      debugLog(DebugCategory.LIFECYCLE, 'Extension initialized', {
+        serverUrl,
+        logLevel: currentLogLevel,
+        screenshotOnError,
+        sourceMapEnabled,
+        debugMode,
+      })
+    },
+  )
 
   // Start error group flush timer
-  errorGroupFlushTimer = setInterval(() => {
+  _errorGroupFlushTimer = setInterval(() => {
     const aggregatedEntries = flushErrorGroups()
     if (aggregatedEntries.length > 0) {
       aggregatedEntries.forEach((entry) => logBatcher.add(entry))
@@ -1348,26 +1355,32 @@ const logBatcher = createLogBatcher(async (entries) => {
 })
 
 // WebSocket event batcher instance
-const wsBatcher = createLogBatcher(async (events) => {
-  try {
-    await sendWSEventsToServer(events)
-    connectionStatus.connected = true
-  } catch {
-    connectionStatus.connected = false
-    updateBadge(connectionStatus)
-  }
-}, { debounceMs: 200, maxBatchSize: 100 })
+const wsBatcher = createLogBatcher(
+  async (events) => {
+    try {
+      await sendWSEventsToServer(events)
+      connectionStatus.connected = true
+    } catch {
+      connectionStatus.connected = false
+      updateBadge(connectionStatus)
+    }
+  },
+  { debounceMs: 200, maxBatchSize: 100 },
+)
 
 // Enhanced action batcher instance
-const enhancedActionBatcher = createLogBatcher(async (actions) => {
-  try {
-    await sendEnhancedActionsToServer(actions)
-    connectionStatus.connected = true
-  } catch {
-    connectionStatus.connected = false
-    updateBadge(connectionStatus)
-  }
-}, { debounceMs: 200, maxBatchSize: 50 })
+const enhancedActionBatcher = createLogBatcher(
+  async (actions) => {
+    try {
+      await sendEnhancedActionsToServer(actions)
+      connectionStatus.connected = true
+    } catch {
+      connectionStatus.connected = false
+      updateBadge(connectionStatus)
+    }
+  },
+  { debounceMs: 200, maxBatchSize: 50 },
+)
 
 async function handleLogMessage(payload, sender) {
   if (!shouldCaptureLog(payload.level, currentLogLevel, payload.type)) {
@@ -1487,9 +1500,9 @@ export async function pollPendingQueries(serverUrl) {
  * @param {Object} query - { id, type, params }
  * @param {string} serverUrl - The server base URL
  */
-export async function handlePendingQuery(query, serverUrl) {
+export async function handlePendingQuery(query, _serverUrl) {
   try {
-    const tabs = await new Promise(resolve => {
+    const tabs = await new Promise((resolve) => {
       chrome.tabs.query({ active: true, currentWindow: true }, resolve)
     })
 
