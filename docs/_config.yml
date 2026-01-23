@@ -1,0 +1,76 @@
+title: "Gasoline"
+subtitle: "Fuel for the AI Fire"
+description: "Browser extension + MCP server that captures real-time browser logs, network activity, WebSocket events, and DOM state for AI coding assistants like Claude Code, Cursor, and Windsurf."
+url: "https://cookwithgasoline.com"
+baseurl: ""
+
+remote_theme: "mmistakes/minimal-mistakes@4.26.2"
+
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-include-cache
+
+# SEO
+twitter:
+  username: brennhill
+og_image: /assets/images/og-default.png
+logo: /assets/images/logo.png
+
+# Site Author
+author:
+  name: "Brenn Hill"
+  links:
+    - label: "GitHub"
+      icon: "fab fa-fw fa-github"
+      url: "https://github.com/brennhill/gasoline"
+
+analytics:
+  provider: "google-gtag"
+  google:
+    tracking_id: "G-BDRZ2Z24M7"
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "single"
+      sidebar:
+        nav: "docs"
+      toc: true
+      toc_sticky: true
+
+# Exclude internal spec files from the site build
+exclude:
+  - specification.md
+  - v4-specification.md
+  - v5-specification.md
+  - v5-roadmap.md
+  - v5-test-generation.md
+  - product-description.md
+  - performance-budget-spec.md
+  - generate-test-v2.md
+  - features/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+
+# Collections (if needed later)
+# collections:
+#   guides:
+#     output: true
+#     permalink: /guides/:path/
+
+# Markdown
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# Pagination (if blog added later)
+# paginate: 10
+# paginate_path: "/blog/page:num/"
