@@ -2,7 +2,7 @@
 
 <img src="chrome_store_files/readme-banner.png" alt="Gasoline - Fuel for the AI Fire" width="100%" />
 
-[![License](https://img.shields.io/badge/license-PolyForm%20Internal%20Use-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-3.0.0-green.svg)](https://github.com/brennhill/gasoline/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
