@@ -1377,7 +1377,7 @@ export function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: '3.0.2',
+    version: '3.5.0',
   }
 }
 

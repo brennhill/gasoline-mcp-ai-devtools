@@ -188,7 +188,7 @@ export function clearDebugLog() {
 export function exportDebugLog() {
   return JSON.stringify({
     exportedAt: new Date().toISOString(),
-    version: '3.0.2',
+    version: '3.5.0',
     debugMode,
     connectionStatus,
     settings: {

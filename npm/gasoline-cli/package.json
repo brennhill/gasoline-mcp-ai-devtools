@@ -1,6 +1,6 @@
 {
   "name": "gasoline-mcp",
-  "version": "3.0.2",
+  "version": "3.5.0",
   "description": "Adding fuel to the AI fire. Captures browser console logs, errors, and context for your AI coding assistant via MCP.",
   "license": "AGPL-3.0-only",
   "bin": {
@@ -11,11 +11,11 @@
     "lib"
   ],
   "optionalDependencies": {
-    "@brennhill/gasoline-darwin-arm64": "3.0.2",
-    "@brennhill/gasoline-darwin-x64": "3.0.2",
-    "@brennhill/gasoline-linux-arm64": "3.0.2",
-    "@brennhill/gasoline-linux-x64": "3.0.2",
-    "@brennhill/gasoline-win32-x64": "3.0.2"
+    "@brennhill/gasoline-darwin-arm64": "3.5.0",
+    "@brennhill/gasoline-darwin-x64": "3.5.0",
+    "@brennhill/gasoline-linux-arm64": "3.5.0",
+    "@brennhill/gasoline-linux-x64": "3.5.0",
+    "@brennhill/gasoline-win32-x64": "3.5.0"
   },
   "keywords": [
     "mcp",
