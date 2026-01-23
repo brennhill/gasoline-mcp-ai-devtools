@@ -74,14 +74,12 @@ Your browser logs stay on your hardware. The AI reads a local file via stdio. At
 
 Gasoline implements the open **[Model Context Protocol](https://modelcontextprotocol.io/)** standard. Swap AI tools without changing your debugging setup:
 
-| Tool | Setup Guide |
-|------|-------------|
-| [Claude Code](/mcp-integration/claude-code/) | `.mcp.json` in project root |
-| [Cursor](/mcp-integration/cursor/) | `~/.cursor/mcp.json` |
-| [Windsurf](/mcp-integration/windsurf/) | `~/.codeium/windsurf/mcp_config.json` |
-| [Claude Desktop](/mcp-integration/claude-desktop/) | OS-specific config |
-| [Zed](/mcp-integration/zed/) | `~/.config/zed/settings.json` |
-| VS Code + Continue | `~/.continue/config.json` |
+- **[Claude Code](/mcp-integration/claude-code/)** — `.mcp.json` in project root
+- **[Cursor](/mcp-integration/cursor/)** — `~/.cursor/mcp.json`
+- **[Windsurf](/mcp-integration/windsurf/)** — `~/.codeium/windsurf/mcp_config.json`
+- **[Claude Desktop](/mcp-integration/claude-desktop/)** — OS-specific config
+- **[Zed](/mcp-integration/zed/)** — `~/.config/zed/settings.json`
+- **VS Code + Continue** — `~/.continue/config.json`
 
 Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your tool speaks MCP, Gasoline fuels it.
 
@@ -112,12 +110,10 @@ Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your tool spea
 
 ## Zero Bloat, Zero Risk
 
-| | |
-|---|---|
-| **Single binary** | Go. No Node.js, no Python, no runtime deps. |
-| **< 0.1ms overhead** | Per console intercept. Your browsing stays fast. |
-| **20MB memory cap** | The extension never bloats your browser. |
-| **Zero network calls** | The binary never connects to the internet. |
-| **No dependencies** | No supply chain risk. One binary, auditable. |
+- **Single binary** — Go. No Node.js, no Python, no runtime deps.
+- **< 0.1ms overhead** — Per console intercept. Your browsing stays fast.
+- **20MB memory cap** — The extension never bloats your browser.
+- **Zero network calls** — The binary never connects to the internet.
+- **No dependencies** — No supply chain risk. One binary, auditable.
 
 [Fire It Up →](/getting-started/){: .btn .btn--primary .btn--large}
