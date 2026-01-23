@@ -284,10 +284,12 @@ func (h *MCPHandler) toolClearBrowserLogs(req JSONRPCRequest) JSONRPCResponse {
 
 // Server holds the server state
 type Server struct {
-	logFile    string
-	maxEntries int
-	entries    []LogEntry
-	mu         sync.RWMutex
+	logFile       string
+	maxEntries    int
+	entries       []LogEntry
+	logAddedAt    []time.Time // parallel slice: when each entry was added
+	mu            sync.RWMutex
+	logTotalAdded int64 // monotonic counter of total entries ever added
 }
 
 // NewServer creates a new server instance
@@ -450,11 +452,17 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.logTotalAdded += int64(len(newEntries))
+	now := time.Now()
+	for range newEntries {
+		s.logAddedAt = append(s.logAddedAt, now)
+	}
 	s.entries = append(s.entries, newEntries...)
 
 	// Rotate if needed
 	if len(s.entries) > s.maxEntries {
 		s.entries = s.entries[len(s.entries)-s.maxEntries:]
+		s.logAddedAt = s.logAddedAt[len(s.logAddedAt)-s.maxEntries:]
 	}
 
 	s.saveEntries()

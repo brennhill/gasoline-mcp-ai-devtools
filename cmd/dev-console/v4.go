@@ -246,13 +246,19 @@ type V4Server struct {
 	mu sync.RWMutex
 
 	// WebSocket event ring buffer
-	wsEvents []WebSocketEvent
+	wsEvents     []WebSocketEvent
+	wsAddedAt    []time.Time // parallel: when each event was added
+	wsTotalAdded int64       // monotonic counter
 
 	// Network bodies ring buffer
-	networkBodies []NetworkBody
+	networkBodies     []NetworkBody
+	networkAddedAt    []time.Time // parallel: when each body was added
+	networkTotalAdded int64       // monotonic counter
 
 	// Enhanced actions ring buffer (v5)
-	enhancedActions []EnhancedAction
+	enhancedActions  []EnhancedAction
+	actionAddedAt    []time.Time // parallel: when each action was added
+	actionTotalAdded int64       // monotonic counter
 
 	// Connection tracker
 	connections    map[string]*connectionState
@@ -327,17 +333,21 @@ func (v *V4Server) AddWebSocketEvents(events []WebSocketEvent) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	v.wsTotalAdded += int64(len(events))
+	now := time.Now()
 	for _, event := range events {
 		// Track connection state
 		v.trackConnection(event)
 
 		// Add to ring buffer
 		v.wsEvents = append(v.wsEvents, event)
+		v.wsAddedAt = append(v.wsAddedAt, now)
 	}
 
 	// Enforce max count
 	if len(v.wsEvents) > maxWSEvents {
 		v.wsEvents = v.wsEvents[len(v.wsEvents)-maxWSEvents:]
+		v.wsAddedAt = v.wsAddedAt[len(v.wsAddedAt)-maxWSEvents:]
 	}
 
 	// Enforce memory limit
@@ -348,6 +358,9 @@ func (v *V4Server) AddWebSocketEvents(events []WebSocketEvent) {
 func (v *V4Server) evictWSForMemory() {
 	for v.calcWSMemory() > wsBufferMemoryLimit && len(v.wsEvents) > 0 {
 		v.wsEvents = v.wsEvents[1:]
+		if len(v.wsAddedAt) > 0 {
+			v.wsAddedAt = v.wsAddedAt[1:]
+		}
 	}
 }
 
@@ -653,6 +666,8 @@ func (v *V4Server) AddNetworkBodies(bodies []NetworkBody) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	v.networkTotalAdded += int64(len(bodies))
+	now := time.Now()
 	for i := range bodies {
 		// Truncate request body
 		if len(bodies[i].RequestBody) > maxRequestBodySize {
@@ -665,11 +680,13 @@ func (v *V4Server) AddNetworkBodies(bodies []NetworkBody) {
 			bodies[i].ResponseTruncated = true
 		}
 		v.networkBodies = append(v.networkBodies, bodies[i])
+		v.networkAddedAt = append(v.networkAddedAt, now)
 	}
 
 	// Enforce max count
 	if len(v.networkBodies) > maxNetworkBodies {
 		v.networkBodies = v.networkBodies[len(v.networkBodies)-maxNetworkBodies:]
+		v.networkAddedAt = v.networkAddedAt[len(v.networkAddedAt)-maxNetworkBodies:]
 	}
 
 	// Enforce memory limit
@@ -680,6 +697,9 @@ func (v *V4Server) AddNetworkBodies(bodies []NetworkBody) {
 func (v *V4Server) evictNBForMemory() {
 	for v.calcNBMemory() > nbBufferMemoryLimit && len(v.networkBodies) > 0 {
 		v.networkBodies = v.networkBodies[1:]
+		if len(v.networkAddedAt) > 0 {
+			v.networkAddedAt = v.networkAddedAt[1:]
+		}
 	}
 }
 
@@ -748,17 +768,21 @@ func (v *V4Server) AddEnhancedActions(actions []EnhancedAction) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	v.actionTotalAdded += int64(len(actions))
+	now := time.Now()
 	for i := range actions {
 		// Redact password values on ingest
 		if actions[i].InputType == "password" && actions[i].Value != "[redacted]" {
 			actions[i].Value = "[redacted]"
 		}
 		v.enhancedActions = append(v.enhancedActions, actions[i])
+		v.actionAddedAt = append(v.actionAddedAt, now)
 	}
 
 	// Enforce max count
 	if len(v.enhancedActions) > maxEnhancedActions {
 		v.enhancedActions = v.enhancedActions[len(v.enhancedActions)-maxEnhancedActions:]
+		v.actionAddedAt = v.actionAddedAt[len(v.actionAddedAt)-maxEnhancedActions:]
 	}
 }
 
@@ -1178,14 +1202,16 @@ func (v *V4Server) HandleEnhancedActions(w http.ResponseWriter, r *http.Request)
 // MCPHandlerV4 extends MCPHandler with v4 tools
 type MCPHandlerV4 struct {
 	*MCPHandler
-	v4 *V4Server
+	v4          *V4Server
+	checkpoints *CheckpointManager
 }
 
 // NewMCPHandlerV4 creates an MCP handler with v4 capabilities
 func NewMCPHandlerV4(server *Server, v4 *V4Server) *MCPHandler {
 	handler := &MCPHandlerV4{
-		MCPHandler: NewMCPHandler(server),
-		v4:         v4,
+		MCPHandler:  NewMCPHandler(server),
+		v4:          v4,
+		checkpoints: NewCheckpointManager(server, v4),
 	}
 	// Return as MCPHandler but with overridden methods via the wrapper
 	return &MCPHandler{
@@ -1352,6 +1378,29 @@ func (h *MCPHandlerV4) v4ToolsList() []MCPTool {
 				},
 			},
 		},
+		{
+			Name:        "get_changes_since",
+			Description: "Get a compressed diff of browser activity since the last checkpoint. Returns only new console errors, network failures, WebSocket disconnections, and user actions — deduplicated and severity-ranked. Call with no arguments for auto-advancing behavior, or pass a named checkpoint to compare against a stable reference point.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"checkpoint": map[string]interface{}{
+						"type":        "string",
+						"description": "Named checkpoint, ISO 8601 timestamp, or omit for auto-advance. Named checkpoints persist across calls.",
+					},
+					"include": map[string]interface{}{
+						"type":        "array",
+						"description": "Categories to include: console, network, websocket, actions. Omit for all.",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+					"severity": map[string]interface{}{
+						"type":        "string",
+						"description": "Minimum severity: all (default), warnings, errors_only",
+						"enum":        []string{"all", "warnings", "errors_only"},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -1378,6 +1427,8 @@ func (h *MCPHandlerV4) handleV4ToolCall(req JSONRPCRequest, name string, args js
 		return h.toolGetSessionTimeline(req, args), true
 	case "generate_test":
 		return h.toolGenerateTest(req, args), true
+	case "get_changes_since":
+		return h.toolGetChangesSince(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -2283,4 +2334,31 @@ func (v *V4Server) SetLastKnownURL(url string) {
 		v.a11yCacheOrder = make([]string, 0)
 	}
 	v.lastKnownURL = url
+}
+
+func (h *MCPHandlerV4) toolGetChangesSince(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		Checkpoint string   `json:"checkpoint"`
+		Include    []string `json:"include"`
+		Severity   string   `json:"severity"`
+	}
+	json.Unmarshal(args, &arguments)
+
+	params := GetChangesSinceParams{
+		Checkpoint: arguments.Checkpoint,
+		Include:    arguments.Include,
+		Severity:   arguments.Severity,
+	}
+
+	diff := h.checkpoints.GetChangesSince(params)
+
+	diffJSON, _ := json.Marshal(diff)
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": string(diffJSON)},
+		},
+	}
+
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
