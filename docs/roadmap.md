@@ -152,6 +152,39 @@ Verifying UI correctness typically requires vision models or screenshot comparis
 
 ---
 
+## <i class="fas fa-globe"></i> Platform Expansion
+
+**Status:** Future
+{: .notice}
+
+### Firefox Extension
+
+The Chrome extension's WebExtensions API is ~90% compatible with Firefox. Main porting work: service worker → event page, `chrome.scripting` API differences.
+
+**Effort:** Low-medium. 1-2 days of porting + testing.
+
+**Note:** Edge, Brave, Arc, Vivaldi, and Opera already work — they're Chromium-based and run the Chrome extension unmodified.
+
+### React Native
+
+Tap into React Native's debug bridge to capture LogBox errors, network requests, and component tree state. Forward to the Gasoline MCP server over the local network.
+
+**Effort:** Medium. New companion package, not an extension.
+
+### Flutter
+
+Dart DevTools extension or `debugPrint` interceptor that forwards runtime events to the Gasoline MCP server.
+
+**Effort:** Medium. Dart package + DevTools integration.
+
+### Native iOS / Android
+
+Stream system logs (`os_log` on iOS, Logcat on Android) to the Gasoline MCP server via a CLI companion tool. Zero app modification required — purely observational.
+
+**Effort:** Low per platform. CLI tool that pipes structured log output to the existing server.
+
+---
+
 ## Priority Order
 
 | # | Feature | Why First |
