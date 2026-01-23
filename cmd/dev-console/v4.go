@@ -1177,14 +1177,16 @@ func (v *V4Server) HandleEnhancedActions(w http.ResponseWriter, r *http.Request)
 // MCPHandlerV4 extends MCPHandler with v4 tools
 type MCPHandlerV4 struct {
 	*MCPHandler
-	v4 *V4Server
+	v4          *V4Server
+	checkpoints *CheckpointManager
 }
 
 // NewMCPHandlerV4 creates an MCP handler with v4 capabilities
 func NewMCPHandlerV4(server *Server, v4 *V4Server) *MCPHandler {
 	handler := &MCPHandlerV4{
-		MCPHandler: NewMCPHandler(server),
-		v4:         v4,
+		MCPHandler:  NewMCPHandler(server),
+		v4:          v4,
+		checkpoints: NewCheckpointManager(server, v4),
 	}
 	// Return as MCPHandler but with overridden methods via the wrapper
 	return &MCPHandler{
@@ -1347,6 +1349,29 @@ func (h *MCPHandlerV4) v4ToolsList() []MCPTool {
 				},
 			},
 		},
+		{
+			Name:        "get_changes_since",
+			Description: "Get a compressed diff of browser activity since the last checkpoint. Returns only new console errors, network failures, WebSocket disconnections, and user actions — deduplicated and severity-ranked. Call with no arguments for auto-advancing behavior, or pass a named checkpoint to compare against a stable reference point.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"checkpoint": map[string]interface{}{
+						"type":        "string",
+						"description": "Named checkpoint, ISO 8601 timestamp, or omit for auto-advance. Named checkpoints persist across calls.",
+					},
+					"include": map[string]interface{}{
+						"type":        "array",
+						"description": "Categories to include: console, network, websocket, actions. Omit for all.",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+					"severity": map[string]interface{}{
+						"type":        "string",
+						"description": "Minimum severity: all (default), warnings, errors_only",
+						"enum":        []string{"all", "warnings", "errors_only"},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -1369,6 +1394,8 @@ func (h *MCPHandlerV4) handleV4ToolCall(req JSONRPCRequest, name string, args js
 		return h.toolGetEnhancedActions(req, args), true
 	case "get_reproduction_script":
 		return h.toolGetReproductionScript(req, args), true
+	case "get_changes_since":
+		return h.toolGetChangesSince(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -1802,4 +1829,31 @@ func replaceOrigin(original, baseURL string) string {
 func extractResponseShape(body string) interface{} {
 	// STUB: implementation pending from api-schema feature
 	return nil
+}
+
+func (h *MCPHandlerV4) toolGetChangesSince(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		Checkpoint string   `json:"checkpoint"`
+		Include    []string `json:"include"`
+		Severity   string   `json:"severity"`
+	}
+	json.Unmarshal(args, &arguments)
+
+	params := GetChangesSinceParams{
+		Checkpoint: arguments.Checkpoint,
+		Include:    arguments.Include,
+		Severity:   arguments.Severity,
+	}
+
+	diff := h.checkpoints.GetChangesSince(params)
+
+	diffJSON, _ := json.Marshal(diff)
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": string(diffJSON)},
+		},
+	}
+
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
