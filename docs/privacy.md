@@ -3,26 +3,30 @@ title: "Privacy & Security"
 description: "Gasoline is 100% local. No cloud, no analytics, no telemetry. Logs never leave your machine. Auth headers are automatically stripped."
 keywords: "local only debugging, privacy first developer tools, localhost debugging tool, no telemetry developer tool, secure browser debugging"
 permalink: /privacy/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Your fuel stays in your tank — 100% local, zero telemetry."
 toc: true
 toc_sticky: true
 ---
 
 Gasoline is designed with privacy as a core principle, not an afterthought.
 
-## 100% Local
+## <i class="fas fa-home"></i> 100% Local
 
 - **Logs never leave your machine** — everything stays on localhost
 - **No cloud services** — no accounts, no sign-ups, no data uploads
 - **No analytics** — zero telemetry, zero tracking
 - **No network calls** — the server binds to `127.0.0.1` only
 
-## Sensitive Data Protection
+## <i class="fas fa-shield-alt"></i> Sensitive Data Protection
 
 - **Authorization headers stripped** — tokens, API keys, and bearer tokens are automatically removed from captured network logs
 - **No cookie capture** — cookies are not included in log entries
 - **No form values by default** — input values in user actions are redacted unless explicitly enabled
 
-## Localhost Only
+## <i class="fas fa-lock"></i> Localhost Only
 
 The Gasoline server binds exclusively to `127.0.0.1`:
 
@@ -31,7 +35,7 @@ The Gasoline server binds exclusively to `127.0.0.1`:
 - Other devices on your WiFi cannot reach it
 - Firewall rules are not required
 
-## Open Source
+## <i class="fab fa-github"></i> Open Source
 
 The entire codebase is open source under AGPL-3.0:
 
@@ -39,7 +43,7 @@ The entire codebase is open source under AGPL-3.0:
 - **Build from source** — compile the Go binary yourself
 - **No obfuscation** — extension code is vanilla JavaScript, readable in Chrome DevTools
 
-## Data Lifecycle
+## <i class="fas fa-recycle"></i> Data Lifecycle
 
 1. Browser extension captures events in-page
 2. Events are sent to `localhost:7890` via HTTP POST
@@ -49,7 +53,7 @@ The entire codebase is open source under AGPL-3.0:
 
 At no point does data leave your machine.
 
-## Extension Permissions
+## <i class="fas fa-key"></i> Extension Permissions
 
 The Chrome extension requests only the minimum permissions needed:
 

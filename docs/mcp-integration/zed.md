@@ -1,15 +1,17 @@
 ---
-title: "Gasoline + Zed Setup"
+title: "Gasoline + Zed"
 description: "Configure Gasoline as a context server for Zed editor. Give Zed's AI assistant access to browser console logs, network errors, and DOM state."
 keywords: "Zed MCP server, Zed context server, Zed browser debugging, Zed AI browser logs"
 permalink: /mcp-integration/zed/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Fuel Zed's AI with live browser data."
 toc: true
 toc_sticky: true
 ---
 
-Zed is a high-performance code editor with built-in AI features. Gasoline connects as a context server, giving Zed's assistant access to your browser state.
-
-## Configuration
+## <i class="fas fa-file-code"></i> Configuration
 
 Add to `~/.config/zed/settings.json`:
 
@@ -26,14 +28,14 @@ Add to `~/.config/zed/settings.json`:
 }
 ```
 
-Note: Zed uses `context_servers` instead of `mcpServers`, and the command format differs slightly from other tools.
+> <i class="fas fa-info-circle"></i> Zed uses `context_servers` instead of `mcpServers`, and the command format differs slightly.
 
-## Usage
+## <i class="fas fa-fire-alt"></i> Usage
 
-After restarting Zed, the AI assistant can access browser state through Gasoline's MCP tools.
+After restarting Zed, the AI assistant taps into Gasoline's full MCP toolset.
 
-## Troubleshooting
+## <i class="fas fa-wrench"></i> Troubleshooting
 
 1. **Restart Zed** after editing settings
-2. **Check the config key** — must be `context_servers`, not `mcpServers`
-3. **Verify the extension popup** shows "Connected"
+2. **Check the config key** — must be `context_servers`
+3. **Verify extension popup** shows "Connected"

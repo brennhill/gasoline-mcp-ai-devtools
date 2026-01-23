@@ -1,52 +1,56 @@
 ---
-title: "MCP Integration"
+title: "Fuel Any AI Tool"
 description: "Connect Gasoline to any MCP-compatible AI coding assistant. Configuration guides for Claude Code, Cursor, Windsurf, Claude Desktop, Zed, and VS Code with Continue."
 keywords: "MCP server configuration, Model Context Protocol, AI coding assistant integration, browser debugging MCP"
 permalink: /mcp-integration/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "One config. Your AI tool fires up Gasoline automatically."
 toc: true
 toc_sticky: true
 ---
 
-Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), a standard for connecting AI assistants to external tools. This means any MCP-compatible tool can access your browser state.
+Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io/) — a standard for connecting AI assistants to external tools. Any MCP-compatible tool can tap into your browser state.
 
-## Supported Tools
+## <i class="fas fa-plug"></i> Supported Tools
 
 | Tool | Config Location | Guide |
 |------|----------------|-------|
-| Claude Code | `.mcp.json` (project root) | [Setup →](/mcp-integration/claude-code/) |
-| Cursor | `~/.cursor/mcp.json` | [Setup →](/mcp-integration/cursor/) |
-| Windsurf | `~/.codeium/windsurf/mcp_config.json` | [Setup →](/mcp-integration/windsurf/) |
-| Claude Desktop | OS-specific config file | [Setup →](/mcp-integration/claude-desktop/) |
-| Zed | `~/.config/zed/settings.json` | [Setup →](/mcp-integration/zed/) |
-| VS Code + Continue | `~/.continue/config.json` | [Below](#vs-code-with-continue) |
+| <i class="fas fa-terminal"></i> Claude Code | `.mcp.json` (project root) | [Setup →](/mcp-integration/claude-code/) |
+| <i class="fas fa-i-cursor"></i> Cursor | `~/.cursor/mcp.json` | [Setup →](/mcp-integration/cursor/) |
+| <i class="fas fa-wind"></i> Windsurf | `~/.codeium/windsurf/mcp_config.json` | [Setup →](/mcp-integration/windsurf/) |
+| <i class="fas fa-desktop"></i> Claude Desktop | OS-specific config file | [Setup →](/mcp-integration/claude-desktop/) |
+| <i class="fas fa-bolt"></i> Zed | `~/.config/zed/settings.json` | [Setup →](/mcp-integration/zed/) |
+| <i class="fas fa-code"></i> VS Code + Continue | `~/.continue/config.json` | [Below](#-vs-code-with-continue) |
 
-## How MCP Mode Works
+## <i class="fas fa-fire"></i> How MCP Mode Works
 
-When you add `--mcp` to the command, Gasoline runs as an MCP server:
+With `--mcp`, Gasoline runs as a dual-mode server:
 
-- **HTTP server** runs in the background for the browser extension
-- **MCP protocol** runs over stdio for your AI tool
-- Your AI tool starts and manages the server process automatically
+- <i class="fas fa-server"></i> **HTTP server** — background process for the browser extension
+- <i class="fas fa-exchange-alt"></i> **MCP protocol** — stdio channel for your AI tool
+- <i class="fas fa-magic"></i> **Auto-managed** — your AI tool starts and stops the server
 
-## Available MCP Tools
+## <i class="fas fa-tools"></i> Available MCP Tools
 
-Once connected, your AI assistant has access to:
+Once the pipeline is connected:
 
 | Tool | Description |
 |------|-------------|
-| `get_browser_errors` | Recent browser errors (console errors, network failures, exceptions) |
-| `get_browser_logs` | All browser logs (errors, warnings, info) |
-| `clear_browser_logs` | Clear the log file |
-| `get_websocket_events` | WebSocket events (messages, lifecycle). Filter by URL, connection ID, or direction |
-| `get_websocket_status` | WebSocket connection states, message rates, and schemas |
-| `get_network_bodies` | Network request/response bodies. Filter by URL, method, or status code |
-| `query_dom` | Query the live DOM using a CSS selector |
-| `get_page_info` | Current page URL, title, and viewport |
-| `run_accessibility_audit` | Run an accessibility audit on the current page |
+| `get_browser_errors` | <i class="fas fa-exclamation-triangle"></i> Console errors, network failures, exceptions |
+| `get_browser_logs` | <i class="fas fa-list"></i> All logs (errors, warnings, info) |
+| `clear_browser_logs` | <i class="fas fa-eraser"></i> Clear the log file |
+| `get_websocket_events` | <i class="fas fa-plug"></i> WebSocket events. Filter by URL, ID, direction |
+| `get_websocket_status` | <i class="fas fa-signal"></i> Connection states, rates, schemas |
+| `get_network_bodies` | <i class="fas fa-exchange-alt"></i> Request/response bodies. Filter by URL, method, status |
+| `query_dom` | <i class="fas fa-code"></i> Live DOM query with CSS selectors |
+| `get_page_info` | <i class="fas fa-info-circle"></i> Page URL, title, viewport |
+| `run_accessibility_audit` | <i class="fas fa-universal-access"></i> Accessibility violations |
 
-## Custom Port
+## <i class="fas fa-cog"></i> Custom Port
 
-If port 7890 is in use, specify a different port:
+If port 7890 is occupied:
 
 ```json
 {
@@ -59,11 +63,11 @@ If port 7890 is in use, specify a different port:
 }
 ```
 
-Remember to update the extension's Server URL in Options to match.
+Update the extension's Server URL in Options to match.
 
-## VS Code with Continue
+## <i class="fas fa-code"></i> VS Code with Continue
 
-Add to Continue's config (`~/.continue/config.json`):
+Add to `~/.continue/config.json`:
 
 ```json
 {
@@ -81,11 +85,9 @@ Add to Continue's config (`~/.continue/config.json`):
 }
 ```
 
-## Verifying the Connection
+## <i class="fas fa-check-circle"></i> Verify the Connection
 
-After configuring:
-
-1. Restart your AI tool to load the new MCP server
-2. The Gasoline server should start automatically
-3. Check the extension popup — it should show "Connected"
+1. Restart your AI tool
+2. Gasoline server ignites automatically
+3. Extension popup shows "Connected"
 4. Ask your AI: _"What browser errors do you see?"_

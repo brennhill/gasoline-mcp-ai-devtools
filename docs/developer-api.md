@@ -3,13 +3,17 @@ title: "Developer API"
 description: "Gasoline's window.__gasoline API for adding custom context, annotations, user actions, and reproduction scripts to browser error reports."
 keywords: "gasoline API, window.__gasoline, browser context annotations, error context API, reproduction scripts, Playwright test generation"
 permalink: /developer-api/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Control the flame — annotate, enrich, reproduce."
 toc: true
 toc_sticky: true
 ---
 
 Gasoline exposes `window.__gasoline` for adding context to your logs and controlling capture behavior programmatically.
 
-## Context Annotations
+## <i class="fas fa-tags"></i> Context Annotations
 
 Add semantic context that gets included with all subsequent errors:
 
@@ -49,7 +53,7 @@ function CheckoutPage() {
 }
 ```
 
-## User Actions
+## <i class="fas fa-mouse-pointer"></i> User Actions
 
 Control the user action buffer that gets attached to errors:
 
@@ -64,7 +68,7 @@ window.__gasoline.clearActions()
 window.__gasoline.setActionCapture(true)
 ```
 
-## Enhanced Action Recording
+## <i class="fas fa-film"></i> Enhanced Action Recording
 
 Record enhanced actions with multi-strategy selectors for reproduction:
 
@@ -82,7 +86,7 @@ window.__gasoline.clearEnhancedActions()
 const script = window.__gasoline.generateScript(enhanced, { baseUrl: 'http://localhost:3000' })
 ```
 
-## Network & Performance
+## <i class="fas fa-chart-line"></i> Network & Performance
 
 ```javascript
 // Network waterfall
@@ -95,7 +99,7 @@ const marks = window.__gasoline.getMarks({ since: Date.now() - 60000 })
 const measures = window.__gasoline.getMeasures()
 ```
 
-## AI Context Enrichment
+## <i class="fas fa-brain"></i> AI Context Enrichment
 
 Enrich errors with framework-aware context (component ancestry, app state):
 
@@ -110,7 +114,7 @@ window.__gasoline.setStateSnapshot(true)
 const enriched = window.__gasoline.enrichError(new Error('Something failed'))
 ```
 
-## Selector Computation
+## <i class="fas fa-crosshairs"></i> Selector Computation
 
 Get multi-strategy selectors for any DOM element:
 
@@ -119,7 +123,7 @@ const selectors = window.__gasoline.getSelectors(document.querySelector('#submit
 // Returns: { testId: 'submit-btn', aria: 'Submit', role: 'button', cssPath: '...' }
 ```
 
-## Full API Reference
+## <i class="fas fa-book"></i> Full API Reference
 
 | Method | Description |
 |--------|-------------|

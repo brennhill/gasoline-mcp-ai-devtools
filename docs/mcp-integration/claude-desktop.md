@@ -1,20 +1,22 @@
 ---
-title: "Gasoline + Claude Desktop Setup"
+title: "Gasoline + Claude Desktop"
 description: "Configure Gasoline as an MCP server for Claude Desktop. Give Claude real-time access to your browser's console logs, network errors, and DOM state."
 keywords: "Claude Desktop MCP server, Claude Desktop browser errors, Claude Desktop MCP config, Claude Desktop debugging"
 permalink: /mcp-integration/claude-desktop/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Fuel Claude Desktop with live browser data."
 toc: true
 toc_sticky: true
 ---
 
-Claude Desktop is Anthropic's desktop application for conversing with Claude. Gasoline connects via MCP to give Claude visibility into your browser.
-
-## Configuration
+## <i class="fas fa-file-code"></i> Configuration
 
 Edit the Claude Desktop config file:
 
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- <i class="fab fa-apple"></i> **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- <i class="fab fa-windows"></i> **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -27,21 +29,21 @@ Edit the Claude Desktop config file:
 }
 ```
 
-## Usage
+## <i class="fas fa-fire-alt"></i> Usage
 
 After restarting Claude Desktop, Claude can:
 
-- Read browser console errors and warnings
-- Inspect failed API calls with response bodies
-- Query the live DOM
-- Monitor WebSocket connections
-- Run accessibility audits
+- <i class="fas fa-exclamation-triangle"></i> Read browser console errors and warnings
+- <i class="fas fa-wifi"></i> Inspect failed API calls with response bodies
+- <i class="fas fa-code"></i> Query the live DOM
+- <i class="fas fa-plug"></i> Monitor WebSocket connections
+- <i class="fas fa-universal-access"></i> Run accessibility audits
 
 Ask Claude: _"What errors are showing in my browser?"_
 
-## Troubleshooting
+## <i class="fas fa-wrench"></i> Troubleshooting
 
-1. **Restart Claude Desktop** after editing the config
-2. **Check file location** — path is OS-specific (see above)
-3. **Verify JSON syntax** — invalid JSON will silently fail
+1. **Restart Claude Desktop** after editing config
+2. **Check file location** — path is OS-specific
+3. **Verify JSON syntax** — invalid JSON fails silently
 4. **Check extension popup** — should show "Connected"
