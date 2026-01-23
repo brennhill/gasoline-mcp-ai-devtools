@@ -41,6 +41,15 @@ body {
   border-bottom: 1px solid $gasoline-border;
 }
 
+.greedy-nav {
+  background: transparent;
+
+  .site-logo img {
+    max-height: 2.5rem;
+    width: auto;
+  }
+}
+
 .site-title {
   color: $gasoline-text !important;
   font-weight: 700;
