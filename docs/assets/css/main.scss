@@ -94,6 +94,8 @@ code.highlighter-rouge {
 
 // Tables
 table {
+  width: 100%;
+  table-layout: fixed;
   background-color: $gasoline-bg-light;
   border: 1px solid $gasoline-border;
 
