@@ -13,7 +13,7 @@ import (
 // ============================================
 
 // AddEnhancedActions adds enhanced actions to the buffer
-func (v *V4Server) AddEnhancedActions(actions []EnhancedAction) {
+func (v *Capture) AddEnhancedActions(actions []EnhancedAction) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -36,14 +36,14 @@ func (v *V4Server) AddEnhancedActions(actions []EnhancedAction) {
 }
 
 // GetEnhancedActionCount returns the current number of buffered actions
-func (v *V4Server) GetEnhancedActionCount() int {
+func (v *Capture) GetEnhancedActionCount() int {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	return len(v.enhancedActions)
 }
 
 // GetEnhancedActions returns filtered enhanced actions
-func (v *V4Server) GetEnhancedActions(filter EnhancedActionFilter) []EnhancedAction {
+func (v *Capture) GetEnhancedActions(filter EnhancedActionFilter) []EnhancedAction {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
@@ -63,7 +63,7 @@ func (v *V4Server) GetEnhancedActions(filter EnhancedActionFilter) []EnhancedAct
 	return filtered
 }
 
-func (v *V4Server) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) {
+func (v *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -82,14 +82,14 @@ func (v *V4Server) HandleEnhancedActions(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *MCPHandlerV4) toolGetEnhancedActions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGetEnhancedActions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		LastN int    `json:"last_n"`
 		URL   string `json:"url"`
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
-	actions := h.v4.GetEnhancedActions(EnhancedActionFilter{
+	actions := h.capture.GetEnhancedActions(EnhancedActionFilter{
 		LastN:     arguments.LastN,
 		URLFilter: arguments.URL,
 	})

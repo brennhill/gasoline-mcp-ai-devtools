@@ -149,8 +149,8 @@ type CheckpointManager struct {
 	namedCheckpoints map[string]*Checkpoint
 	namedOrder       []string // track insertion order for eviction
 
-	server *Server
-	v4     *V4Server
+	server  *Server
+	capture *Capture
 }
 
 // ============================================
@@ -158,12 +158,12 @@ type CheckpointManager struct {
 // ============================================
 
 // NewCheckpointManager creates a new checkpoint manager
-func NewCheckpointManager(server *Server, v4 *V4Server) *CheckpointManager {
+func NewCheckpointManager(server *Server, capture *Capture) *CheckpointManager {
 	return &CheckpointManager{
 		namedCheckpoints: make(map[string]*Checkpoint),
 		namedOrder:       make([]string, 0),
 		server:           server,
-		v4:               v4,
+		capture:          capture,
 	}
 }
 
@@ -333,11 +333,11 @@ func (cm *CheckpointManager) snapshotNow() *Checkpoint {
 	logTotal := cm.server.logTotalAdded
 	cm.server.mu.RUnlock()
 
-	cm.v4.mu.RLock()
-	netTotal := cm.v4.networkTotalAdded
-	wsTotal := cm.v4.wsTotalAdded
-	actTotal := cm.v4.actionTotalAdded
-	cm.v4.mu.RUnlock()
+	cm.capture.mu.RLock()
+	netTotal := cm.capture.networkTotalAdded
+	wsTotal := cm.capture.wsTotalAdded
+	actTotal := cm.capture.actionTotalAdded
+	cm.capture.mu.RUnlock()
 
 	return &Checkpoint{
 		CreatedAt:      time.Now(),
@@ -363,11 +363,11 @@ func (cm *CheckpointManager) resolveTimestampCheckpoint(tsStr string) *Checkpoin
 	logTotal := cm.findPositionAtTime(cm.server.logAddedAt, cm.server.logTotalAdded, t)
 	cm.server.mu.RUnlock()
 
-	cm.v4.mu.RLock()
-	netTotal := cm.findPositionAtTime(cm.v4.networkAddedAt, cm.v4.networkTotalAdded, t)
-	wsTotal := cm.findPositionAtTime(cm.v4.wsAddedAt, cm.v4.wsTotalAdded, t)
-	actTotal := cm.findPositionAtTime(cm.v4.actionAddedAt, cm.v4.actionTotalAdded, t)
-	cm.v4.mu.RUnlock()
+	cm.capture.mu.RLock()
+	netTotal := cm.findPositionAtTime(cm.capture.networkAddedAt, cm.capture.networkTotalAdded, t)
+	wsTotal := cm.findPositionAtTime(cm.capture.wsAddedAt, cm.capture.wsTotalAdded, t)
+	actTotal := cm.findPositionAtTime(cm.capture.actionAddedAt, cm.capture.actionTotalAdded, t)
+	cm.capture.mu.RUnlock()
 
 	return &Checkpoint{
 		CreatedAt:      t,
@@ -518,10 +518,10 @@ func (cm *CheckpointManager) computeConsoleDiff(cp *Checkpoint, severity string)
 }
 
 func (cm *CheckpointManager) computeNetworkDiff(cp *Checkpoint) *NetworkDiff {
-	cm.v4.mu.RLock()
-	bodies := cm.v4.networkBodies
-	currentTotal := cm.v4.networkTotalAdded
-	cm.v4.mu.RUnlock()
+	cm.capture.mu.RLock()
+	bodies := cm.capture.networkBodies
+	currentTotal := cm.capture.networkTotalAdded
+	cm.capture.mu.RUnlock()
 
 	newCount := int(currentTotal - cp.NetworkTotal)
 	if newCount <= 0 {
@@ -594,10 +594,10 @@ func (cm *CheckpointManager) computeNetworkDiff(cp *Checkpoint) *NetworkDiff {
 }
 
 func (cm *CheckpointManager) computeWebSocketDiff(cp *Checkpoint, severity string) *WebSocketDiff {
-	cm.v4.mu.RLock()
-	events := cm.v4.wsEvents
-	currentTotal := cm.v4.wsTotalAdded
-	cm.v4.mu.RUnlock()
+	cm.capture.mu.RLock()
+	events := cm.capture.wsEvents
+	currentTotal := cm.capture.wsTotalAdded
+	cm.capture.mu.RUnlock()
 
 	newCount := int(currentTotal - cp.WSTotal)
 	if newCount <= 0 {
@@ -652,10 +652,10 @@ func (cm *CheckpointManager) computeWebSocketDiff(cp *Checkpoint, severity strin
 }
 
 func (cm *CheckpointManager) computeActionsDiff(cp *Checkpoint) *ActionsDiff {
-	cm.v4.mu.RLock()
-	actions := cm.v4.enhancedActions
-	currentTotal := cm.v4.actionTotalAdded
-	cm.v4.mu.RUnlock()
+	cm.capture.mu.RLock()
+	actions := cm.capture.enhancedActions
+	currentTotal := cm.capture.actionTotalAdded
+	cm.capture.mu.RUnlock()
 
 	newCount := int(currentTotal - cp.ActionTotal)
 	if newCount <= 0 {
@@ -761,15 +761,15 @@ func (cm *CheckpointManager) buildKnownEndpoints(existing map[string]endpointSta
 	}
 
 	// Update with current network bodies
-	cm.v4.mu.RLock()
-	for _, body := range cm.v4.networkBodies {
+	cm.capture.mu.RLock()
+	for _, body := range cm.capture.networkBodies {
 		path := ExtractURLPath(body.URL)
 		result[path] = endpointState{
 			Status:   body.Status,
 			Duration: body.Duration,
 		}
 	}
-	cm.v4.mu.RUnlock()
+	cm.capture.mu.RUnlock()
 
 	return result
 }

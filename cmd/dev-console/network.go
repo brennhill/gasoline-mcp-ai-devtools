@@ -13,7 +13,7 @@ import (
 // ============================================
 
 // AddNetworkBodies adds network bodies to the buffer
-func (v *V4Server) AddNetworkBodies(bodies []NetworkBody) {
+func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -45,7 +45,7 @@ func (v *V4Server) AddNetworkBodies(bodies []NetworkBody) {
 }
 
 // evictNBForMemory removes oldest bodies if memory exceeds limit
-func (v *V4Server) evictNBForMemory() {
+func (v *Capture) evictNBForMemory() {
 	for v.calcNBMemory() > nbBufferMemoryLimit && len(v.networkBodies) > 0 {
 		v.networkBodies = v.networkBodies[1:]
 		if len(v.networkAddedAt) > 0 {
@@ -55,7 +55,7 @@ func (v *V4Server) evictNBForMemory() {
 }
 
 // calcNBMemory approximates memory usage of network bodies buffer
-func (v *V4Server) calcNBMemory() int64 {
+func (v *Capture) calcNBMemory() int64 {
 	var total int64
 	for _, b := range v.networkBodies {
 		total += int64(len(b.RequestBody) + len(b.ResponseBody) + len(b.URL) + len(b.Method) + 64)
@@ -64,14 +64,14 @@ func (v *V4Server) calcNBMemory() int64 {
 }
 
 // GetNetworkBodyCount returns the current number of buffered bodies
-func (v *V4Server) GetNetworkBodyCount() int {
+func (v *Capture) GetNetworkBodyCount() int {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	return len(v.networkBodies)
 }
 
 // GetNetworkBodies returns filtered network bodies (newest first)
-func (v *V4Server) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
+func (v *Capture) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
@@ -110,7 +110,7 @@ func (v *V4Server) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
 	return filtered
 }
 
-func (v *V4Server) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
+func (v *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 	v.mu.RLock()
 	memExceeded := v.isMemoryExceeded()
 	v.mu.RUnlock()
@@ -140,7 +140,7 @@ func (v *V4Server) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 
 // HandlePendingQueries handles GET /pending-queries
 
-func (h *MCPHandlerV4) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		URL       string `json:"url"`
 		Method    string `json:"method"`
@@ -150,7 +150,7 @@ func (h *MCPHandlerV4) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMes
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
-	bodies := h.v4.GetNetworkBodies(NetworkBodyFilter{
+	bodies := h.capture.GetNetworkBodies(NetworkBodyFilter{
 		URLFilter: arguments.URL,
 		Method:    arguments.Method,
 		StatusMin: arguments.StatusMin,

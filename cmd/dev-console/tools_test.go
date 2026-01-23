@@ -10,11 +10,11 @@ import (
 )
 
 func TestV4RateLimitWebSocketEvents(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Simulate flooding: > 1000 events in rapid succession
 	for i := 0; i < 1100; i++ {
-		v4.RecordEventReceived()
+		capture.RecordEventReceived()
 	}
 
 	// Next request should be rate limited
@@ -22,7 +22,7 @@ func TestV4RateLimitWebSocketEvents(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleWebSocketEvents(rec, req)
+	capture.HandleWebSocketEvents(rec, req)
 
 	if rec.Code != http.StatusTooManyRequests {
 		t.Errorf("Expected 429, got %d", rec.Code)
@@ -30,17 +30,17 @@ func TestV4RateLimitWebSocketEvents(t *testing.T) {
 }
 
 func TestV4MemoryLimitRejectsNetworkBodies(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Simulate exceeding memory limit
-	v4.SetMemoryUsage(55 * 1024 * 1024) // 55MB > 50MB limit
+	capture.SetMemoryUsage(55 * 1024 * 1024) // 55MB > 50MB limit
 
 	body := `{"bodies":[{"url":"/api/test","status":200,"responseBody":"data"}]}`
 	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleNetworkBodies(rec, req)
+	capture.HandleNetworkBodies(rec, req)
 
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Errorf("Expected 503, got %d", rec.Code)
@@ -48,36 +48,36 @@ func TestV4MemoryLimitRejectsNetworkBodies(t *testing.T) {
 }
 
 func TestV4WebSocketBufferMemoryLimit(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Add events that exceed 4MB memory limit
 	largeData := strings.Repeat("x", 100000) // 100KB per event
 	for i := 0; i < 50; i++ {                // 50 * 100KB = 5MB
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{ID: "uuid-1", Event: "message", Data: largeData},
 		})
 	}
 
 	// Buffer should evict to stay under 4MB
-	memUsage := v4.GetWebSocketBufferMemory()
+	memUsage := capture.GetWebSocketBufferMemory()
 	if memUsage > 4*1024*1024 {
 		t.Errorf("Expected WS buffer memory <= 4MB, got %d bytes", memUsage)
 	}
 }
 
 func TestV4NetworkBodiesBufferMemoryLimit(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Add bodies that exceed 8MB memory limit
 	largeBody := strings.Repeat("y", 200000) // 200KB per body
 	for i := 0; i < 50; i++ {                // 50 * 200KB = 10MB
-		v4.AddNetworkBodies([]NetworkBody{
+		capture.AddNetworkBodies([]NetworkBody{
 			{URL: "/api/test", ResponseBody: largeBody, Status: 200},
 		})
 	}
 
 	// Buffer should evict to stay under 8MB
-	memUsage := v4.GetNetworkBodiesBufferMemory()
+	memUsage := capture.GetNetworkBodiesBufferMemory()
 	if memUsage > 8*1024*1024 {
 		t.Errorf("Expected network bodies buffer memory <= 8MB, got %d bytes", memUsage)
 	}
@@ -85,8 +85,8 @@ func TestV4NetworkBodiesBufferMemoryLimit(t *testing.T) {
 
 func TestMCPToolsListIncludesV4Tools(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -130,8 +130,8 @@ func TestMCPToolsListIncludesV4Tools(t *testing.T) {
 
 func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	// Add a log entry with _aiContext field (as extension would send)
 	entry := LogEntry{
@@ -193,118 +193,118 @@ func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
 }
 
 func TestV4GetTotalBufferMemory(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Add some data to each buffer
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "message", Data: strings.Repeat("a", 1000)},
 	})
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "/api/test", ResponseBody: strings.Repeat("b", 2000)},
 	})
 
-	total := v4.GetTotalBufferMemory()
+	total := capture.GetTotalBufferMemory()
 	if total <= 0 {
 		t.Errorf("Expected positive total buffer memory, got %d", total)
 	}
 
 	// Total should be sum of WS + NB buffers
-	wsMemory := v4.GetWebSocketBufferMemory()
-	nbMemory := v4.GetNetworkBodiesBufferMemory()
+	wsMemory := capture.GetWebSocketBufferMemory()
+	nbMemory := capture.GetNetworkBodiesBufferMemory()
 	if total != wsMemory+nbMemory {
 		t.Errorf("Expected total (%d) = ws (%d) + nb (%d)", total, wsMemory, nbMemory)
 	}
 }
 
 func TestV4IsMemoryExceededUsesRealMemory(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// With empty buffers, memory should not be exceeded
-	if v4.IsMemoryExceeded() {
+	if capture.IsMemoryExceeded() {
 		t.Error("Expected memory NOT to be exceeded with empty buffers")
 	}
 
 	// Simulated memory should still work as override for testing
-	v4.SetMemoryUsage(55 * 1024 * 1024) // 55MB
-	if !v4.IsMemoryExceeded() {
+	capture.SetMemoryUsage(55 * 1024 * 1024) // 55MB
+	if !capture.IsMemoryExceeded() {
 		t.Error("Expected simulated memory to trigger exceeded")
 	}
 
 	// Reset simulated
-	v4.SetMemoryUsage(0)
-	if v4.IsMemoryExceeded() {
+	capture.SetMemoryUsage(0)
+	if capture.IsMemoryExceeded() {
 		t.Error("Expected memory NOT exceeded after resetting simulated")
 	}
 }
 
 func TestV4GlobalEvictionOnWSIngest(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Fill WS buffer to near its per-buffer limit (4MB)
 	largeData := strings.Repeat("x", 100000) // 100KB each
 	for i := 0; i < 38; i++ {                // ~3.8MB
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{ID: "uuid-1", Event: "message", Data: largeData},
 		})
 	}
 
-	beforeCount := v4.GetWebSocketEventCount()
+	beforeCount := capture.GetWebSocketEventCount()
 
 	// Adding more events should still enforce per-buffer memory limit
 	for i := 0; i < 5; i++ {
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{ID: "uuid-1", Event: "message", Data: largeData},
 		})
 	}
 
-	afterMem := v4.GetWebSocketBufferMemory()
+	afterMem := capture.GetWebSocketBufferMemory()
 	if afterMem > wsBufferMemoryLimit {
 		t.Errorf("Expected WS buffer <= 4MB after eviction, got %d bytes", afterMem)
 	}
 
 	// Should have fewer events than beforeCount + 5 due to eviction
-	afterCount := v4.GetWebSocketEventCount()
+	afterCount := capture.GetWebSocketEventCount()
 	if afterCount >= beforeCount+5 {
 		t.Errorf("Expected eviction to reduce events, before=%d after=%d", beforeCount, afterCount)
 	}
 }
 
 func TestV4GlobalEvictionOnNBIngest(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Fill NB buffer to near its per-buffer limit (8MB)
 	largeBody := strings.Repeat("y", 200000) // 200KB each
 	for i := 0; i < 38; i++ {                // ~7.6MB
-		v4.AddNetworkBodies([]NetworkBody{
+		capture.AddNetworkBodies([]NetworkBody{
 			{URL: "/api/test", ResponseBody: largeBody, Status: 200},
 		})
 	}
 
 	// Adding more should trigger eviction
 	for i := 0; i < 5; i++ {
-		v4.AddNetworkBodies([]NetworkBody{
+		capture.AddNetworkBodies([]NetworkBody{
 			{URL: "/api/test", ResponseBody: largeBody, Status: 200},
 		})
 	}
 
-	afterMem := v4.GetNetworkBodiesBufferMemory()
+	afterMem := capture.GetNetworkBodiesBufferMemory()
 	if afterMem > nbBufferMemoryLimit {
 		t.Errorf("Expected NB buffer <= 8MB after eviction, got %d bytes", afterMem)
 	}
 }
 
 func TestV4MemoryExceededRejectsWSEvents(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Simulate global memory exceeded
-	v4.SetMemoryUsage(55 * 1024 * 1024) // 55MB > 50MB hard limit
+	capture.SetMemoryUsage(55 * 1024 * 1024) // 55MB > 50MB hard limit
 
 	body := `{"events":[{"event":"message","id":"uuid-1","data":"test"}]}`
 	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleWebSocketEvents(rec, req)
+	capture.HandleWebSocketEvents(rec, req)
 
 	// Should return 503 when global memory is exceeded
 	if rec.Code != http.StatusServiceUnavailable {
@@ -313,18 +313,18 @@ func TestV4MemoryExceededRejectsWSEvents(t *testing.T) {
 }
 
 func TestV4MemoryExceededHeaderInResponse(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Fill buffers close to their limits
 	largeData := strings.Repeat("x", 100000)
 	for i := 0; i < 35; i++ {
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{ID: "uuid-1", Event: "message", Data: largeData},
 		})
 	}
 
 	// Check that total memory is reported
-	total := v4.GetTotalBufferMemory()
+	total := capture.GetTotalBufferMemory()
 	if total <= 0 {
 		t.Error("Expected non-zero total memory after filling buffers")
 	}
@@ -332,8 +332,8 @@ func TestV4MemoryExceededHeaderInResponse(t *testing.T) {
 
 func TestMCPToolsListIncludesV5Tools(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -370,8 +370,8 @@ func TestMCPToolsListIncludesV5Tools(t *testing.T) {
 
 func TestMCPHTTPEndpointToolsList(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	body := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
 	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
@@ -408,8 +408,8 @@ func TestMCPHTTPEndpointToolsList(t *testing.T) {
 
 func TestMCPHTTPEndpointToolCall(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	body := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_browser_logs","arguments":{}}}`
 	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
@@ -432,8 +432,8 @@ func TestMCPHTTPEndpointToolCall(t *testing.T) {
 
 func TestMCPHTTPEndpointMethodNotAllowed(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	req := httptest.NewRequest("GET", "/mcp", nil)
 	rec := httptest.NewRecorder()
@@ -447,8 +447,8 @@ func TestMCPHTTPEndpointMethodNotAllowed(t *testing.T) {
 
 func TestMCPHTTPEndpointInvalidJSON(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString("not json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -473,8 +473,8 @@ func TestMCPHTTPEndpointInvalidJSON(t *testing.T) {
 
 func TestMCPHTTPEndpointUnknownMethod(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	body := `{"jsonrpc":"2.0","id":3,"method":"unknown/method"}`
 	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
@@ -500,8 +500,8 @@ func TestMCPHTTPEndpointUnknownMethod(t *testing.T) {
 
 func TestMCPHTTPEndpointV4ToolCall(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	body := `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_websocket_events","arguments":{}}}`
 	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))

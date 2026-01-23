@@ -66,7 +66,7 @@ type MCPTool struct {
 type MCPHandler struct {
 	server      *Server
 	initialized bool
-	v4Handler   *MCPHandlerV4
+	toolHandler *ToolHandler
 }
 
 // NewMCPHandler creates a new MCP handler
@@ -180,8 +180,8 @@ func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
 	}
 
 	// Add v4 tools if available
-	if h.v4Handler != nil {
-		tools = append(tools, h.v4Handler.v4ToolsList()...)
+	if h.toolHandler != nil {
+		tools = append(tools, h.toolHandler.toolsList()...)
 	}
 
 	result := map[string]interface{}{"tools": tools}
@@ -215,8 +215,8 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 		return h.toolClearBrowserLogs(req)
 	default:
 		// Try v4 handler
-		if h.v4Handler != nil {
-			if resp, handled := h.v4Handler.handleV4ToolCall(req, params.Name, params.Arguments); handled {
+		if h.toolHandler != nil {
+			if resp, handled := h.toolHandler.handleToolCall(req, params.Name, params.Arguments); handled {
 				return resp
 			}
 		}
@@ -633,8 +633,8 @@ func main() {
 
 	// HTTP-only server mode (--server)
 	// Setup routes
-	v4 := NewV4Server()
-	setupHTTPRoutes(server, v4)
+	capture := NewCapture()
+	setupHTTPRoutes(server, capture)
 
 	// Print banner
 	fmt.Println()
@@ -672,11 +672,11 @@ func runMCPMode(server *Server, port int) {
 	fmt.Fprintf(os.Stderr, "[gasoline] Starting MCP server, HTTP on port %d, log file: %s\n", port, server.logFile)
 
 	// Create v4 server for WebSocket/network body capture
-	v4 := NewV4Server()
+	capture := NewCapture()
 
 	// Start HTTP server in background for browser extension
 	go func() {
-		setupHTTPRoutes(server, v4)
+		setupHTTPRoutes(server, capture)
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
 		if err := http.ListenAndServe(addr, nil); err != nil { //nolint:gosec // G114: MCP mode background server
 			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
@@ -684,7 +684,7 @@ func runMCPMode(server *Server, port int) {
 	}()
 
 	// Run MCP protocol over stdin/stdout (with v4 tools)
-	mcp := NewMCPHandlerV4(server, v4)
+	mcp := NewToolHandler(server, capture)
 	scanner := bufio.NewScanner(os.Stdin)
 
 	// Increase scanner buffer for large messages
@@ -721,21 +721,21 @@ func runMCPMode(server *Server, port int) {
 }
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
-func setupHTTPRoutes(server *Server, v4 *V4Server) {
+func setupHTTPRoutes(server *Server, capture *Capture) {
 	// V4 routes
-	if v4 != nil {
-		http.HandleFunc("/websocket-events", corsMiddleware(v4.HandleWebSocketEvents))
-		http.HandleFunc("/websocket-status", corsMiddleware(v4.HandleWebSocketStatus))
-		http.HandleFunc("/network-bodies", corsMiddleware(v4.HandleNetworkBodies))
-		http.HandleFunc("/pending-queries", corsMiddleware(v4.HandlePendingQueries))
-		http.HandleFunc("/dom-result", corsMiddleware(v4.HandleDOMResult))
-		http.HandleFunc("/a11y-result", corsMiddleware(v4.HandleA11yResult))
-		http.HandleFunc("/enhanced-actions", corsMiddleware(v4.HandleEnhancedActions))
-		http.HandleFunc("/performance-snapshot", corsMiddleware(v4.HandlePerformanceSnapshot))
+	if capture != nil {
+		http.HandleFunc("/websocket-events", corsMiddleware(capture.HandleWebSocketEvents))
+		http.HandleFunc("/websocket-status", corsMiddleware(capture.HandleWebSocketStatus))
+		http.HandleFunc("/network-bodies", corsMiddleware(capture.HandleNetworkBodies))
+		http.HandleFunc("/pending-queries", corsMiddleware(capture.HandlePendingQueries))
+		http.HandleFunc("/dom-result", corsMiddleware(capture.HandleDOMResult))
+		http.HandleFunc("/a11y-result", corsMiddleware(capture.HandleA11yResult))
+		http.HandleFunc("/enhanced-actions", corsMiddleware(capture.HandleEnhancedActions))
+		http.HandleFunc("/performance-snapshot", corsMiddleware(capture.HandlePerformanceSnapshot))
 	}
 
 	// MCP over HTTP endpoint
-	mcp := NewMCPHandlerV4(server, v4)
+	mcp := NewToolHandler(server, capture)
 	http.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
 
 	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {

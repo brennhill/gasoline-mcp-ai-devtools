@@ -12,12 +12,12 @@ import (
 // Test Helpers
 // ============================================
 
-func setupCheckpointTest(t *testing.T) (*CheckpointManager, *Server, *V4Server) {
+func setupCheckpointTest(t *testing.T) (*CheckpointManager, *Server, *Capture) {
 	t.Helper()
 	server, _ := NewServer("", 1000)
-	v4 := NewV4Server()
-	cm := NewCheckpointManager(server, v4)
-	return cm, server, v4
+	capture := NewCapture()
+	cm := NewCheckpointManager(server, capture)
+	return cm, server, capture
 }
 
 // addLogEntries is a helper to add console log entries with level and message
@@ -124,10 +124,10 @@ func TestCheckpointMessageDeduplication(t *testing.T) {
 // ============================================
 
 func TestCheckpointNetworkFailure(t *testing.T) {
-	cm, _, v4 := setupCheckpointTest(t)
+	cm, _, capture := setupCheckpointTest(t)
 
 	// Add a successful request before checkpoint
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/users", Status: 200, Method: "GET"},
 	})
 
@@ -135,7 +135,7 @@ func TestCheckpointNetworkFailure(t *testing.T) {
 	cm.GetChangesSince(GetChangesSinceParams{})
 
 	// Now the endpoint fails
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/users?page=2", Status: 500, Method: "GET"},
 	})
 
@@ -167,16 +167,16 @@ func TestCheckpointNetworkFailure(t *testing.T) {
 // ============================================
 
 func TestCheckpointNewEndpoint(t *testing.T) {
-	cm, _, v4 := setupCheckpointTest(t)
+	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint with known endpoints
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/users", Status: 200, Method: "GET"},
 	})
 	cm.GetChangesSince(GetChangesSinceParams{})
 
 	// New endpoint appears
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/orders?limit=10", Status: 200, Method: "GET"},
 	})
 
@@ -198,13 +198,13 @@ func TestCheckpointNewEndpoint(t *testing.T) {
 // ============================================
 
 func TestCheckpointWebSocketDisconnection(t *testing.T) {
-	cm, _, v4 := setupCheckpointTest(t)
+	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
 	cm.GetChangesSince(GetChangesSinceParams{})
 
 	// WebSocket close event after checkpoint
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Event: "close", ID: "ws-1", URL: "wss://chat.example.com/ws", CloseCode: 1006, CloseReason: "abnormal"},
 	})
 
@@ -297,7 +297,7 @@ func TestCheckpointNamedStability(t *testing.T) {
 // ============================================
 
 func TestCheckpointSeverityFilterErrorsOnly(t *testing.T) {
-	cm, server, v4 := setupCheckpointTest(t)
+	cm, server, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
 	cm.GetChangesSince(GetChangesSinceParams{})
@@ -308,7 +308,7 @@ func TestCheckpointSeverityFilterErrorsOnly(t *testing.T) {
 		LogEntry{"level": "error", "msg": "fatal error"},
 	)
 	// Add a WebSocket disconnection (warning-level)
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Event: "close", ID: "ws-1", URL: "wss://example.com", CloseCode: 1000},
 	})
 
@@ -331,16 +331,16 @@ func TestCheckpointSeverityFilterErrorsOnly(t *testing.T) {
 // ============================================
 
 func TestCheckpointIncludeFiltering(t *testing.T) {
-	cm, server, v4 := setupCheckpointTest(t)
+	cm, server, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
 	cm.GetChangesSince(GetChangesSinceParams{})
 
 	// Add data in all categories
 	addLogEntries(server, LogEntry{"level": "error", "msg": "error"})
-	v4.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/test", Status: 500, Method: "GET"}})
-	v4.AddWebSocketEvents([]WebSocketEvent{{Event: "close", ID: "ws-1", URL: "wss://x.com"}})
-	v4.AddEnhancedActions([]EnhancedAction{{Type: "click", Timestamp: time.Now().UnixMilli()}})
+	capture.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/test", Status: 500, Method: "GET"}})
+	capture.AddWebSocketEvents([]WebSocketEvent{{Event: "close", ID: "ws-1", URL: "wss://x.com"}})
+	capture.AddEnhancedActions([]EnhancedAction{{Type: "click", Timestamp: time.Now().UnixMilli()}})
 
 	// Only include console and network
 	resp := cm.GetChangesSince(GetChangesSinceParams{
@@ -485,7 +485,7 @@ func TestCheckpointMaxEntriesCap(t *testing.T) {
 // ============================================
 
 func TestCheckpointConcurrency(t *testing.T) {
-	cm, server, v4 := setupCheckpointTest(t)
+	cm, server, capture := setupCheckpointTest(t)
 
 	var wg sync.WaitGroup
 	const goroutines = 10
@@ -498,8 +498,8 @@ func TestCheckpointConcurrency(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < iterations; j++ {
 				addLogEntries(server, LogEntry{"level": "error", "msg": "concurrent error"})
-				v4.AddWebSocketEvents([]WebSocketEvent{{Event: "message", ID: "ws-1", Data: "test"}})
-				v4.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/x", Status: 200, Method: "GET"}})
+				capture.AddWebSocketEvents([]WebSocketEvent{{Event: "message", ID: "ws-1", Data: "test"}})
+				capture.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/x", Status: 200, Method: "GET"}})
 			}
 		}(i)
 	}
@@ -601,16 +601,16 @@ func TestCheckpointFingerprintNormalization(t *testing.T) {
 // ============================================
 
 func TestCheckpointURLPathExtraction(t *testing.T) {
-	cm, _, v4 := setupCheckpointTest(t)
+	cm, _, capture := setupCheckpointTest(t)
 
 	// Multiple requests to same path with different query params
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/users?page=1&limit=10", Status: 200, Method: "GET"},
 	})
 	cm.GetChangesSince(GetChangesSinceParams{})
 
 	// Same endpoint with different query params now fails
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/users?page=2&limit=20", Status: 500, Method: "GET"},
 	})
 
@@ -635,13 +635,13 @@ func TestCheckpointSeverityHierarchy(t *testing.T) {
 	// Test: error > warning > clean
 
 	t.Run("error beats warning", func(t *testing.T) {
-		cm, server, v4 := setupCheckpointTest(t)
+		cm, server, capture := setupCheckpointTest(t)
 		cm.GetChangesSince(GetChangesSinceParams{})
 
 		// Add both a warning and an error
 		addLogEntries(server, LogEntry{"level": "warn", "msg": "warning"})
 		addLogEntries(server, LogEntry{"level": "error", "msg": "error"})
-		v4.AddWebSocketEvents([]WebSocketEvent{{Event: "close", ID: "ws-1", URL: "wss://x.com", CloseCode: 1006}})
+		capture.AddWebSocketEvents([]WebSocketEvent{{Event: "close", ID: "ws-1", URL: "wss://x.com", CloseCode: 1006}})
 
 		resp := cm.GetChangesSince(GetChangesSinceParams{})
 		if resp.Severity != "error" {
@@ -662,10 +662,10 @@ func TestCheckpointSeverityHierarchy(t *testing.T) {
 	})
 
 	t.Run("websocket disconnection is warning", func(t *testing.T) {
-		cm, _, v4 := setupCheckpointTest(t)
+		cm, _, capture := setupCheckpointTest(t)
 		cm.GetChangesSince(GetChangesSinceParams{})
 
-		v4.AddWebSocketEvents([]WebSocketEvent{{Event: "close", ID: "ws-1", URL: "wss://x.com", CloseCode: 1006}})
+		capture.AddWebSocketEvents([]WebSocketEvent{{Event: "close", ID: "ws-1", URL: "wss://x.com", CloseCode: 1006}})
 
 		resp := cm.GetChangesSince(GetChangesSinceParams{})
 		if resp.Severity != "warning" {
@@ -674,11 +674,11 @@ func TestCheckpointSeverityHierarchy(t *testing.T) {
 	})
 
 	t.Run("network failure is error", func(t *testing.T) {
-		cm, _, v4 := setupCheckpointTest(t)
-		v4.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/test", Status: 200, Method: "GET"}})
+		cm, _, capture := setupCheckpointTest(t)
+		capture.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/test", Status: 200, Method: "GET"}})
 		cm.GetChangesSince(GetChangesSinceParams{})
 
-		v4.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/test", Status: 500, Method: "GET"}})
+		capture.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/test", Status: 500, Method: "GET"}})
 
 		resp := cm.GetChangesSince(GetChangesSinceParams{})
 		if resp.Severity != "error" {
@@ -706,15 +706,15 @@ func TestCheckpointSeverityHierarchy(t *testing.T) {
 
 func TestCheckpointSummaryFormatting(t *testing.T) {
 	t.Run("console errors and network failures", func(t *testing.T) {
-		cm, server, v4 := setupCheckpointTest(t)
-		v4.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/a", Status: 200, Method: "GET"}})
+		cm, server, capture := setupCheckpointTest(t)
+		capture.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/a", Status: 200, Method: "GET"}})
 		cm.GetChangesSince(GetChangesSinceParams{})
 
 		addLogEntries(server,
 			LogEntry{"level": "error", "msg": "err1"},
 			LogEntry{"level": "error", "msg": "err2"},
 		)
-		v4.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/a", Status: 500, Method: "GET"}})
+		capture.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/a", Status: 500, Method: "GET"}})
 
 		resp := cm.GetChangesSince(GetChangesSinceParams{})
 		if resp.Summary != "2 new console error(s), 1 network failure(s)" {
@@ -739,10 +739,10 @@ func TestCheckpointSummaryFormatting(t *testing.T) {
 	})
 
 	t.Run("disconnections", func(t *testing.T) {
-		cm, _, v4 := setupCheckpointTest(t)
+		cm, _, capture := setupCheckpointTest(t)
 		cm.GetChangesSince(GetChangesSinceParams{})
 
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{Event: "close", ID: "ws-1", URL: "wss://a.com", CloseCode: 1006},
 			{Event: "close", ID: "ws-2", URL: "wss://b.com", CloseCode: 1001},
 		})
@@ -855,10 +855,10 @@ func TestCheckpointDiffTimestamps(t *testing.T) {
 // ============================================
 
 func TestCheckpointWebSocketNewConnections(t *testing.T) {
-	cm, _, v4 := setupCheckpointTest(t)
+	cm, _, capture := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{})
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Event: "open", ID: "ws-new", URL: "wss://realtime.example.com/feed"},
 	})
 
@@ -880,11 +880,11 @@ func TestCheckpointWebSocketNewConnections(t *testing.T) {
 // ============================================
 
 func TestCheckpointActionsDiff(t *testing.T) {
-	cm, _, v4 := setupCheckpointTest(t)
+	cm, _, capture := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{})
 
 	now := time.Now().UnixMilli()
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: now, URL: "http://localhost/page"},
 		{Type: "navigation", Timestamp: now + 100, URL: "http://localhost/page", ToURL: "http://localhost/other"},
 		{Type: "input", Timestamp: now + 200, URL: "http://localhost/other"},
@@ -908,16 +908,16 @@ func TestCheckpointActionsDiff(t *testing.T) {
 // ============================================
 
 func TestCheckpointDegradedEndpoint(t *testing.T) {
-	cm, _, v4 := setupCheckpointTest(t)
+	cm, _, capture := setupCheckpointTest(t)
 
 	// Baseline: endpoint responds in 50ms
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/data", Status: 200, Method: "GET", Duration: 50},
 	})
 	cm.GetChangesSince(GetChangesSinceParams{})
 
 	// Same endpoint now takes >3x longer (200ms > 3*50ms)
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/data", Status: 200, Method: "GET", Duration: 200},
 	})
 
@@ -939,14 +939,14 @@ func TestCheckpointDegradedEndpoint(t *testing.T) {
 // ============================================
 
 func TestCheckpointFirstCallReturnsEverything(t *testing.T) {
-	cm, server, v4 := setupCheckpointTest(t)
+	cm, server, capture := setupCheckpointTest(t)
 
 	// Add data before any checkpoint call
 	addLogEntries(server,
 		LogEntry{"level": "error", "msg": "pre-existing error"},
 		LogEntry{"level": "warn", "msg": "pre-existing warning"},
 	)
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Event: "open", ID: "ws-1", URL: "wss://example.com"},
 	})
 
@@ -997,10 +997,10 @@ func TestCheckpointSeverityFilterWarnings(t *testing.T) {
 // ============================================
 
 func TestCheckpointWebSocketErrors(t *testing.T) {
-	cm, _, v4 := setupCheckpointTest(t)
+	cm, _, capture := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{})
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Event: "error", ID: "ws-1", URL: "wss://example.com/ws", Data: "connection refused"},
 	})
 
@@ -1022,11 +1022,11 @@ func TestCheckpointWebSocketErrors(t *testing.T) {
 // ============================================
 
 func TestCheckpointNewEndpointWithFailure(t *testing.T) {
-	cm, _, v4 := setupCheckpointTest(t)
+	cm, _, capture := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{})
 
 	// New endpoint that immediately fails (never seen before returning success)
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "http://localhost/api/new-thing", Status: 404, Method: "GET"},
 	})
 
@@ -1046,11 +1046,11 @@ func TestCheckpointNewEndpointWithFailure(t *testing.T) {
 // ============================================
 
 func TestCheckpointWebSocketTotalCount(t *testing.T) {
-	cm, _, v4 := setupCheckpointTest(t)
+	cm, _, capture := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{})
 
 	// Add various WS events
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Event: "open", ID: "ws-1", URL: "wss://a.com"},
 		{Event: "message", ID: "ws-1", Direction: "incoming", Data: "hello"},
 		{Event: "message", ID: "ws-1", Direction: "outgoing", Data: "world"},

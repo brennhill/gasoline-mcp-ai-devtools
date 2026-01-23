@@ -12,9 +12,9 @@ import (
 )
 
 func TestV4PendingQueryCreation(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	id := v4.CreatePendingQuery(PendingQuery{
+	id := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".user-list"}`),
 	})
@@ -23,7 +23,7 @@ func TestV4PendingQueryCreation(t *testing.T) {
 		t.Error("Expected non-empty query ID")
 	}
 
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) != 1 {
 		t.Fatalf("Expected 1 pending query, got %d", len(pending))
 	}
@@ -34,27 +34,27 @@ func TestV4PendingQueryCreation(t *testing.T) {
 }
 
 func TestV4PendingQueryMaxLimit(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Max 5 pending queries
 	for i := 0; i < 7; i++ {
-		v4.CreatePendingQuery(PendingQuery{
+		capture.CreatePendingQuery(PendingQuery{
 			Type:   "dom",
 			Params: json.RawMessage(`{"selector":"div"}`),
 		})
 	}
 
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) > 5 {
 		t.Errorf("Expected max 5 pending queries, got %d", len(pending))
 	}
 }
 
 func TestV4PendingQueryTimeout(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Create a query with a very short timeout for testing
-	v4.CreatePendingQueryWithTimeout(PendingQuery{
+	capture.CreatePendingQueryWithTimeout(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"div"}`),
 	}, 50*time.Millisecond)
@@ -62,32 +62,32 @@ func TestV4PendingQueryTimeout(t *testing.T) {
 	// Wait for timeout
 	time.Sleep(100 * time.Millisecond)
 
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) != 0 {
 		t.Errorf("Expected 0 pending queries after timeout, got %d", len(pending))
 	}
 }
 
 func TestV4PendingQueryResult(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	id := v4.CreatePendingQuery(PendingQuery{
+	id := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".user-list"}`),
 	})
 
 	// Simulate extension posting result
 	result := json.RawMessage(`{"matches":[{"tag":"ul","text":"users"}],"matchCount":1}`)
-	v4.SetQueryResult(id, result)
+	capture.SetQueryResult(id, result)
 
 	// Query should no longer be pending
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) != 0 {
 		t.Errorf("Expected 0 pending queries after result, got %d", len(pending))
 	}
 
 	// Result should be retrievable
-	got, found := v4.GetQueryResult(id)
+	got, found := capture.GetQueryResult(id)
 	if !found {
 		t.Fatal("Expected to find query result")
 	}
@@ -98,52 +98,52 @@ func TestV4PendingQueryResult(t *testing.T) {
 }
 
 func TestV4PendingQueryResultNotFound(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	_, found := v4.GetQueryResult("nonexistent-id")
+	_, found := capture.GetQueryResult("nonexistent-id")
 	if found {
 		t.Error("Expected not found for nonexistent query")
 	}
 }
 
 func TestV4PendingQueryPolling(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// No pending queries initially
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) != 0 {
 		t.Errorf("Expected 0 pending queries initially, got %d", len(pending))
 	}
 
 	// Create a query
-	v4.CreatePendingQuery(PendingQuery{
+	capture.CreatePendingQuery(PendingQuery{
 		Type:   "a11y",
 		Params: json.RawMessage(`{"scope":null}`),
 	})
 
 	// Polling should return it
-	pending = v4.GetPendingQueries()
+	pending = capture.GetPendingQueries()
 	if len(pending) != 1 {
 		t.Errorf("Expected 1 pending query, got %d", len(pending))
 	}
 }
 
 func TestV4DOMQueryWaitsForResult(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Create query and immediately provide result in a goroutine
-	id := v4.CreatePendingQuery(PendingQuery{
+	id := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
 
 	go func() {
 		time.Sleep(50 * time.Millisecond)
-		v4.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
+		capture.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
 	}()
 
 	// WaitForResult should block until result arrives
-	result, err := v4.WaitForResult(id, 1*time.Second)
+	result, err := capture.WaitForResult(id, 1*time.Second)
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
@@ -154,24 +154,24 @@ func TestV4DOMQueryWaitsForResult(t *testing.T) {
 }
 
 func TestV4DOMQueryWaitTimeout(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	id := v4.CreatePendingQuery(PendingQuery{
+	id := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
 
 	// WaitForResult should timeout
-	_, err := v4.WaitForResult(id, 50*time.Millisecond)
+	_, err := capture.WaitForResult(id, 50*time.Millisecond)
 	if err == nil {
 		t.Error("Expected timeout error")
 	}
 }
 
 func TestV4GetPendingQueriesEndpoint(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.CreatePendingQuery(PendingQuery{
+	capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
@@ -179,7 +179,7 @@ func TestV4GetPendingQueriesEndpoint(t *testing.T) {
 	req := httptest.NewRequest("GET", "/pending-queries", nil)
 	rec := httptest.NewRecorder()
 
-	v4.HandlePendingQueries(rec, req)
+	capture.HandlePendingQueries(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rec.Code)
@@ -196,12 +196,12 @@ func TestV4GetPendingQueriesEndpoint(t *testing.T) {
 }
 
 func TestV4GetPendingQueriesEmpty(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("GET", "/pending-queries", nil)
 	rec := httptest.NewRecorder()
 
-	v4.HandlePendingQueries(rec, req)
+	capture.HandlePendingQueries(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rec.Code)
@@ -218,9 +218,9 @@ func TestV4GetPendingQueriesEmpty(t *testing.T) {
 }
 
 func TestV4PostDOMResultEndpoint(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	id := v4.CreatePendingQuery(PendingQuery{
+	id := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
@@ -230,14 +230,14 @@ func TestV4PostDOMResultEndpoint(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleDOMResult(rec, req)
+	capture.HandleDOMResult(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rec.Code)
 	}
 
 	// Result should be stored
-	result, found := v4.GetQueryResult(id)
+	result, found := capture.GetQueryResult(id)
 	if !found {
 		t.Error("Expected result to be stored")
 	}
@@ -247,14 +247,14 @@ func TestV4PostDOMResultEndpoint(t *testing.T) {
 }
 
 func TestV4PostDOMResultUnknownID(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	body := `{"id":"nonexistent","result":{"matches":[]}}`
 	req := httptest.NewRequest("POST", "/dom-result", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleDOMResult(rec, req)
+	capture.HandleDOMResult(rec, req)
 
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("Expected 404, got %d", rec.Code)
@@ -262,9 +262,9 @@ func TestV4PostDOMResultUnknownID(t *testing.T) {
 }
 
 func TestV4PostA11yResultEndpoint(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	id := v4.CreatePendingQuery(PendingQuery{
+	id := capture.CreatePendingQuery(PendingQuery{
 		Type:   "a11y",
 		Params: json.RawMessage(`{"scope":null}`),
 	})
@@ -274,7 +274,7 @@ func TestV4PostA11yResultEndpoint(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleA11yResult(rec, req)
+	capture.HandleA11yResult(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rec.Code)
@@ -283,8 +283,8 @@ func TestV4PostA11yResultEndpoint(t *testing.T) {
 
 func TestMCPQueryDOM(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -303,12 +303,12 @@ func TestMCPQueryDOM(t *testing.T) {
 
 	// Simulate extension picking up and responding
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected pending query to be created")
 	}
 
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"matches":[{"tag":"h1","text":"Hello World"}],"matchCount":1,"returnedCount":1}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"matches":[{"tag":"h1","text":"Hello World"}],"matchCount":1,"returnedCount":1}`))
 
 	// Wait for response
 	resp := <-done
@@ -335,10 +335,10 @@ func TestMCPQueryDOM(t *testing.T) {
 
 func TestMCPQueryDOMTimeout(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 	// Use short timeout for testing
-	v4.SetQueryTimeout(100 * time.Millisecond)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture.SetQueryTimeout(100 * time.Millisecond)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -367,8 +367,8 @@ func TestMCPQueryDOMTimeout(t *testing.T) {
 
 func TestMCPGetPageInfo(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -387,12 +387,12 @@ func TestMCPGetPageInfo(t *testing.T) {
 
 	// Simulate extension response
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected pending query")
 	}
 
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"http://localhost:3000","title":"Test Page","viewport":{"width":1440,"height":900}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"http://localhost:3000","title":"Test Page","viewport":{"width":1440,"height":900}}`))
 
 	resp := <-done
 
@@ -403,8 +403,8 @@ func TestMCPGetPageInfo(t *testing.T) {
 
 func TestMCPRunAccessibilityAudit(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -421,7 +421,7 @@ func TestMCPRunAccessibilityAudit(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected pending a11y query")
 	}
@@ -430,7 +430,7 @@ func TestMCPRunAccessibilityAudit(t *testing.T) {
 		t.Errorf("Expected query type 'a11y', got %s", pending[0].Type)
 	}
 
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"color-contrast","impact":"serious","nodes":[]}],"summary":{"violations":1,"passes":10}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"color-contrast","impact":"serious","nodes":[]}],"summary":{"violations":1,"passes":10}}`))
 
 	resp := <-done
 
@@ -452,8 +452,8 @@ func TestMCPRunAccessibilityAudit(t *testing.T) {
 
 func TestMCPRunAccessibilityAuditWithTags(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -470,7 +470,7 @@ func TestMCPRunAccessibilityAuditWithTags(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 
 	// Verify the tags are passed through in params
 	var params map[string]interface{}
@@ -480,22 +480,22 @@ func TestMCPRunAccessibilityAuditWithTags(t *testing.T) {
 		t.Error("Expected tags in pending query params")
 	}
 
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
 	<-done
 }
 
 func TestV4QueryResultDeletedAfterRetrieval(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	id := v4.CreatePendingQuery(PendingQuery{
+	id := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
 
-	v4.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
+	capture.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
 
 	// First retrieval should succeed
-	result, found := v4.GetQueryResult(id)
+	result, found := capture.GetQueryResult(id)
 	if !found {
 		t.Fatal("Expected result to be found on first read")
 	}
@@ -504,16 +504,16 @@ func TestV4QueryResultDeletedAfterRetrieval(t *testing.T) {
 	}
 
 	// Second retrieval should fail (result deleted after read)
-	_, found2 := v4.GetQueryResult(id)
+	_, found2 := capture.GetQueryResult(id)
 	if found2 {
 		t.Error("Expected result to be deleted after first retrieval")
 	}
 }
 
 func TestV4QueryResultDeletedAfterWaitForResult(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	id := v4.CreatePendingQuery(PendingQuery{
+	id := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
@@ -521,11 +521,11 @@ func TestV4QueryResultDeletedAfterWaitForResult(t *testing.T) {
 	// Set result in background
 	go func() {
 		time.Sleep(20 * time.Millisecond)
-		v4.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
+		capture.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
 	}()
 
 	// WaitForResult should succeed
-	result, err := v4.WaitForResult(id, time.Second)
+	result, err := capture.WaitForResult(id, time.Second)
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
@@ -534,30 +534,30 @@ func TestV4QueryResultDeletedAfterWaitForResult(t *testing.T) {
 	}
 
 	// Result should be cleaned up after WaitForResult returns
-	_, found := v4.GetQueryResult(id)
+	_, found := capture.GetQueryResult(id)
 	if found {
 		t.Error("Expected result to be cleaned up after WaitForResult")
 	}
 }
 
 func TestV4QueryResultMapDoesNotGrowUnbounded(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Create and resolve 20 queries
 	for i := 0; i < 20; i++ {
-		id := v4.CreatePendingQuery(PendingQuery{
+		id := capture.CreatePendingQuery(PendingQuery{
 			Type:   "dom",
 			Params: json.RawMessage(`{"selector":"h1"}`),
 		})
-		v4.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
+		capture.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
 		// Read the result (should delete it)
-		v4.GetQueryResult(id)
+		capture.GetQueryResult(id)
 	}
 
 	// queryResults map should be empty
-	v4.mu.RLock()
-	mapSize := len(v4.queryResults)
-	v4.mu.RUnlock()
+	capture.mu.RLock()
+	mapSize := len(capture.queryResults)
+	capture.mu.RUnlock()
 
 	if mapSize != 0 {
 		t.Errorf("Expected queryResults map to be empty after all reads, got %d entries", mapSize)
@@ -567,8 +567,8 @@ func TestV4QueryResultMapDoesNotGrowUnbounded(t *testing.T) {
 func TestA11yCacheMiss(t *testing.T) {
 	// First call with given params should trigger extension round-trip (pending query created)
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -585,13 +585,13 @@ func TestA11yCacheMiss(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected pending query on cache miss")
 	}
 
 	// Simulate extension response
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0,"passes":5}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0,"passes":5}}`))
 	resp := <-done
 
 	if resp.Error != nil {
@@ -612,8 +612,8 @@ func TestA11yCacheMiss(t *testing.T) {
 func TestA11yCacheHit(t *testing.T) {
 	// Second call with same params within 30s should return immediately, no pending query
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -631,11 +631,11 @@ func TestA11yCacheHit(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected pending query on first call")
 	}
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0,"passes":5}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0,"passes":5}}`))
 	<-done
 
 	// Second call (should be cache hit — no pending query, immediate response)
@@ -645,7 +645,7 @@ func TestA11yCacheHit(t *testing.T) {
 	})
 
 	// Verify no new pending query was created
-	pending = v4.GetPendingQueries()
+	pending = capture.GetPendingQueries()
 	if len(pending) != 0 {
 		t.Errorf("Expected no pending queries on cache hit, got %d", len(pending))
 	}
@@ -665,8 +665,8 @@ func TestA11yCacheHit(t *testing.T) {
 func TestA11yCacheTTLExpiry(t *testing.T) {
 	// After 30s, cache entry should be expired and new audit triggered
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -684,12 +684,12 @@ func TestA11yCacheTTLExpiry(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	pending := capture.GetPendingQueries()
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
 	<-done
 
 	// Simulate time passing beyond TTL by setting the cache entry's timestamp to the past
-	v4.ExpireA11yCache()
+	capture.ExpireA11yCache()
 
 	// Third call should be cache miss again
 	done2 := make(chan JSONRPCResponse)
@@ -702,12 +702,12 @@ func TestA11yCacheTTLExpiry(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending = v4.GetPendingQueries()
+	pending = capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected pending query after TTL expiry")
 	}
 
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"new-violation"}],"summary":{"violations":1}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"new-violation"}],"summary":{"violations":1}}`))
 	resp := <-done2
 
 	var result struct {
@@ -724,8 +724,8 @@ func TestA11yCacheTTLExpiry(t *testing.T) {
 func TestA11yCacheTagNormalization(t *testing.T) {
 	// Tags in different order should produce the same cache key
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -743,11 +743,11 @@ func TestA11yCacheTagNormalization(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected pending query")
 	}
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
 	<-done
 
 	// Second call with tags in different order ["wcag2a", "wcag2aa"] — should hit cache
@@ -756,7 +756,7 @@ func TestA11yCacheTagNormalization(t *testing.T) {
 		Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"tags":["wcag2a","wcag2aa"]}}`),
 	})
 
-	pending = v4.GetPendingQueries()
+	pending = capture.GetPendingQueries()
 	if len(pending) != 0 {
 		t.Errorf("Expected cache hit for reordered tags, but got %d pending queries", len(pending))
 	}
@@ -775,8 +775,8 @@ func TestA11yCacheTagNormalization(t *testing.T) {
 func TestA11yCacheForceRefresh(t *testing.T) {
 	// force_refresh: true should bypass cache and re-run audit
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -794,8 +794,8 @@ func TestA11yCacheForceRefresh(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	pending := capture.GetPendingQueries()
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
 	<-done
 
 	// Second call with force_refresh — should bypass cache
@@ -809,12 +809,12 @@ func TestA11yCacheForceRefresh(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending = v4.GetPendingQueries()
+	pending = capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected pending query when force_refresh is true")
 	}
 
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"new-issue"}],"summary":{"violations":1}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"new-issue"}],"summary":{"violations":1}}`))
 	resp := <-done2
 
 	var result struct {
@@ -831,9 +831,9 @@ func TestA11yCacheForceRefresh(t *testing.T) {
 func TestA11yCacheErrorNotCached(t *testing.T) {
 	// Timeout/error should not be cached; next call should retry
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	v4.queryTimeout = 100 * time.Millisecond // Short timeout for test
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	capture.queryTimeout = 100 * time.Millisecond // Short timeout for test
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -868,20 +868,20 @@ func TestA11yCacheErrorNotCached(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected pending query after error (error should not be cached)")
 	}
 
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
 	<-done
 }
 
 func TestA11yCacheDifferentParams(t *testing.T) {
 	// Different scope/tags should produce different cache entries
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -899,8 +899,8 @@ func TestA11yCacheDifferentParams(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	pending := capture.GetPendingQueries()
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
 	<-done1
 
 	// Second call: scope="#footer" — different params, should be cache miss
@@ -914,20 +914,20 @@ func TestA11yCacheDifferentParams(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending = v4.GetPendingQueries()
+	pending = capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected pending query for different scope (cache miss)")
 	}
 
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"footer-issue"}],"summary":{"violations":1}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[{"id":"footer-issue"}],"summary":{"violations":1}}`))
 	<-done2
 }
 
 func TestA11yCacheMaxEntries(t *testing.T) {
 	// 11th unique cache entry should evict the oldest
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -949,17 +949,17 @@ func TestA11yCacheMaxEntries(t *testing.T) {
 		}()
 
 		time.Sleep(50 * time.Millisecond)
-		pending := v4.GetPendingQueries()
+		pending := capture.GetPendingQueries()
 		if len(pending) == 0 {
 			t.Fatalf("Expected pending query for scope #section-%d", i)
 		}
-		v4.SetQueryResult(pending[0].ID, json.RawMessage(fmt.Sprintf(`{"violations":[],"summary":{"violations":0,"scope":"%s"}}`, scope)))
+		capture.SetQueryResult(pending[0].ID, json.RawMessage(fmt.Sprintf(`{"violations":[],"summary":{"violations":0,"scope":"%s"}}`, scope)))
 		<-done
 	}
 
 	// Verify cache has 10 entries
-	if v4.GetA11yCacheSize() != 10 {
-		t.Fatalf("Expected 10 cache entries, got %d", v4.GetA11yCacheSize())
+	if capture.GetA11yCacheSize() != 10 {
+		t.Fatalf("Expected 10 cache entries, got %d", capture.GetA11yCacheSize())
 	}
 
 	// Add 11th entry — should evict #section-0
@@ -973,13 +973,13 @@ func TestA11yCacheMaxEntries(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	pending := capture.GetPendingQueries()
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
 	<-done
 
 	// Cache should still be 10 (evicted oldest)
-	if v4.GetA11yCacheSize() != 10 {
-		t.Errorf("Expected 10 cache entries after eviction, got %d", v4.GetA11yCacheSize())
+	if capture.GetA11yCacheSize() != 10 {
+		t.Errorf("Expected 10 cache entries after eviction, got %d", capture.GetA11yCacheSize())
 	}
 
 	// #section-0 should now be a cache miss
@@ -993,19 +993,19 @@ func TestA11yCacheMaxEntries(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending = v4.GetPendingQueries()
+	pending = capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected cache miss for evicted entry #section-0")
 	}
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
 	<-done2
 }
 
 func TestA11yCacheNavigationInvalidation(t *testing.T) {
 	// Cache should be cleared when URL changes (navigation detected)
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1013,7 +1013,7 @@ func TestA11yCacheNavigationInvalidation(t *testing.T) {
 	})
 
 	// Set initial URL context
-	v4.SetLastKnownURL("https://myapp.com/dashboard")
+	capture.SetLastKnownURL("https://myapp.com/dashboard")
 
 	// First call (populates cache)
 	done := make(chan JSONRPCResponse)
@@ -1026,12 +1026,12 @@ func TestA11yCacheNavigationInvalidation(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending := v4.GetPendingQueries()
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	pending := capture.GetPendingQueries()
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
 	<-done
 
 	// Simulate navigation — URL changes
-	v4.SetLastKnownURL("https://myapp.com/settings")
+	capture.SetLastKnownURL("https://myapp.com/settings")
 
 	// Same params — should be cache miss because URL changed
 	done2 := make(chan JSONRPCResponse)
@@ -1044,20 +1044,20 @@ func TestA11yCacheNavigationInvalidation(t *testing.T) {
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-	pending = v4.GetPendingQueries()
+	pending = capture.GetPendingQueries()
 	if len(pending) == 0 {
 		t.Fatal("Expected cache miss after navigation (URL change)")
 	}
 
-	v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
 	<-done2
 }
 
 func TestA11yCacheConcurrentDedup(t *testing.T) {
 	// Two simultaneous calls for the same cache key should produce only one pending query
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1087,13 +1087,13 @@ func TestA11yCacheConcurrentDedup(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Should have at most 1 pending query (deduplication)
-	pending := v4.GetPendingQueries()
+	pending := capture.GetPendingQueries()
 	if len(pending) > 1 {
 		t.Errorf("Expected at most 1 pending query for concurrent dedup, got %d", len(pending))
 	}
 
 	if len(pending) > 0 {
-		v4.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
+		capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"violations":[],"summary":{"violations":0}}`))
 	}
 
 	// Both should complete with same result
@@ -1116,8 +1116,8 @@ func TestA11yCacheConcurrentDedup(t *testing.T) {
 func TestA11yCacheForceRefreshParam(t *testing.T) {
 	// Verify force_refresh is accepted as a tool parameter
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",

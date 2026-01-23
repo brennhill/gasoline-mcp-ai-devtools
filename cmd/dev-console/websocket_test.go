@@ -11,22 +11,22 @@ import (
 )
 
 func TestV4WebSocketEventBuffer(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	events := []WebSocketEvent{
 		{Timestamp: "2024-01-15T10:30:00.000Z", Type: "websocket", Event: "open", ID: "uuid-1", URL: "wss://example.com/ws"},
 		{Timestamp: "2024-01-15T10:30:01.000Z", Type: "websocket", Event: "message", ID: "uuid-1", Direction: "incoming", Data: `{"type":"chat","msg":"hello"}`, Size: 32},
 	}
 
-	v4.AddWebSocketEvents(events)
+	capture.AddWebSocketEvents(events)
 
-	if v4.GetWebSocketEventCount() != 2 {
-		t.Errorf("Expected 2 events, got %d", v4.GetWebSocketEventCount())
+	if capture.GetWebSocketEventCount() != 2 {
+		t.Errorf("Expected 2 events, got %d", capture.GetWebSocketEventCount())
 	}
 }
 
 func TestV4WebSocketEventBufferRotation(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Add more than max (500) events
 	events := make([]WebSocketEvent, 550)
@@ -40,23 +40,23 @@ func TestV4WebSocketEventBufferRotation(t *testing.T) {
 		}
 	}
 
-	v4.AddWebSocketEvents(events)
+	capture.AddWebSocketEvents(events)
 
-	if v4.GetWebSocketEventCount() != 500 {
-		t.Errorf("Expected 500 events after rotation, got %d", v4.GetWebSocketEventCount())
+	if capture.GetWebSocketEventCount() != 500 {
+		t.Errorf("Expected 500 events after rotation, got %d", capture.GetWebSocketEventCount())
 	}
 }
 
 func TestV4WebSocketEventFilterByConnectionID(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://a.com"},
 		{ID: "uuid-2", Event: "open", URL: "wss://b.com"},
 		{ID: "uuid-1", Event: "message", Direction: "incoming"},
 	})
 
-	filtered := v4.GetWebSocketEvents(WebSocketEventFilter{ConnectionID: "uuid-1"})
+	filtered := capture.GetWebSocketEvents(WebSocketEventFilter{ConnectionID: "uuid-1"})
 
 	if len(filtered) != 2 {
 		t.Errorf("Expected 2 events for uuid-1, got %d", len(filtered))
@@ -64,15 +64,15 @@ func TestV4WebSocketEventFilterByConnectionID(t *testing.T) {
 }
 
 func TestV4WebSocketEventFilterByURL(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://chat.example.com/ws"},
 		{ID: "uuid-2", Event: "open", URL: "wss://feed.example.com/prices"},
 		{ID: "uuid-1", Event: "message", URL: "wss://chat.example.com/ws"},
 	})
 
-	filtered := v4.GetWebSocketEvents(WebSocketEventFilter{URLFilter: "chat"})
+	filtered := capture.GetWebSocketEvents(WebSocketEventFilter{URLFilter: "chat"})
 
 	if len(filtered) != 2 {
 		t.Errorf("Expected 2 events matching 'chat', got %d", len(filtered))
@@ -80,15 +80,15 @@ func TestV4WebSocketEventFilterByURL(t *testing.T) {
 }
 
 func TestV4WebSocketEventFilterByDirection(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "message", Direction: "incoming"},
 		{ID: "uuid-1", Event: "message", Direction: "outgoing"},
 		{ID: "uuid-1", Event: "message", Direction: "incoming"},
 	})
 
-	filtered := v4.GetWebSocketEvents(WebSocketEventFilter{Direction: "incoming"})
+	filtered := capture.GetWebSocketEvents(WebSocketEventFilter{Direction: "incoming"})
 
 	if len(filtered) != 2 {
 		t.Errorf("Expected 2 incoming events, got %d", len(filtered))
@@ -96,15 +96,15 @@ func TestV4WebSocketEventFilterByDirection(t *testing.T) {
 }
 
 func TestV4WebSocketEventFilterWithLimit(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	for i := 0; i < 10; i++ {
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{ID: "uuid-1", Event: "message", Direction: "incoming"},
 		})
 	}
 
-	filtered := v4.GetWebSocketEvents(WebSocketEventFilter{Limit: 5})
+	filtered := capture.GetWebSocketEvents(WebSocketEventFilter{Limit: 5})
 
 	if len(filtered) != 5 {
 		t.Errorf("Expected 5 events with limit, got %d", len(filtered))
@@ -112,16 +112,16 @@ func TestV4WebSocketEventFilterWithLimit(t *testing.T) {
 }
 
 func TestV4WebSocketEventDefaultLimit(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	for i := 0; i < 100; i++ {
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{ID: "uuid-1", Event: "message"},
 		})
 	}
 
 	// Default limit is 50
-	filtered := v4.GetWebSocketEvents(WebSocketEventFilter{})
+	filtered := capture.GetWebSocketEvents(WebSocketEventFilter{})
 
 	if len(filtered) != 50 {
 		t.Errorf("Expected 50 events with default limit, got %d", len(filtered))
@@ -129,14 +129,14 @@ func TestV4WebSocketEventDefaultLimit(t *testing.T) {
 }
 
 func TestV4WebSocketEventNewestFirst(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Timestamp: "2024-01-15T10:30:00.000Z", ID: "uuid-1", Event: "open"},
 		{Timestamp: "2024-01-15T10:30:05.000Z", ID: "uuid-1", Event: "close"},
 	})
 
-	filtered := v4.GetWebSocketEvents(WebSocketEventFilter{})
+	filtered := capture.GetWebSocketEvents(WebSocketEventFilter{})
 
 	if len(filtered) == 0 {
 		t.Fatal("Expected events to be returned")
@@ -147,13 +147,13 @@ func TestV4WebSocketEventNewestFirst(t *testing.T) {
 }
 
 func TestV4WebSocketConnectionTracker(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://chat.example.com/ws", Timestamp: "2024-01-15T10:30:00.000Z"},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 
 	if len(status.Connections) != 1 {
 		t.Fatalf("Expected 1 open connection, got %d", len(status.Connections))
@@ -169,14 +169,14 @@ func TestV4WebSocketConnectionTracker(t *testing.T) {
 }
 
 func TestV4WebSocketConnectionClose(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 		{ID: "uuid-1", Event: "close", URL: "wss://example.com/ws", CloseCode: 1000, CloseReason: "normal closure"},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 
 	if len(status.Connections) != 0 {
 		t.Errorf("Expected 0 open connections, got %d", len(status.Connections))
@@ -192,14 +192,14 @@ func TestV4WebSocketConnectionClose(t *testing.T) {
 }
 
 func TestV4WebSocketConnectionError(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 		{ID: "uuid-1", Event: "error", URL: "wss://example.com/ws"},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 
 	if len(status.Connections) != 1 {
 		t.Fatalf("Expected 1 connection (in error state), got %d", len(status.Connections))
@@ -211,16 +211,16 @@ func TestV4WebSocketConnectionError(t *testing.T) {
 }
 
 func TestV4WebSocketConnectionMessageStats(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 		{ID: "uuid-1", Event: "message", Direction: "incoming", Size: 100},
 		{ID: "uuid-1", Event: "message", Direction: "incoming", Size: 200},
 		{ID: "uuid-1", Event: "message", Direction: "outgoing", Size: 50},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 
 	if len(status.Connections) != 1 {
 		t.Fatalf("Expected 1 connection, got %d", len(status.Connections))
@@ -245,15 +245,15 @@ func TestV4WebSocketConnectionMessageStats(t *testing.T) {
 }
 
 func TestV4WebSocketConnectionLastMessage(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 		{ID: "uuid-1", Event: "message", Direction: "incoming", Data: `{"type":"hello"}`, Timestamp: "2024-01-15T10:30:01.000Z"},
 		{ID: "uuid-1", Event: "message", Direction: "incoming", Data: `{"type":"world"}`, Timestamp: "2024-01-15T10:30:02.000Z"},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 	conn := status.Connections[0]
 
 	if conn.LastMessage.Incoming.Preview != `{"type":"world"}` {
@@ -262,16 +262,16 @@ func TestV4WebSocketConnectionLastMessage(t *testing.T) {
 }
 
 func TestV4WebSocketMaxTrackedConnections(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Open 25 connections (max is 20 active)
 	for i := 0; i < 25; i++ {
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{ID: "uuid-" + string(rune('a'+i)), Event: "open", URL: "wss://example.com/ws"},
 		})
 	}
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 
 	if len(status.Connections) > 20 {
 		t.Errorf("Expected max 20 active connections, got %d", len(status.Connections))
@@ -279,18 +279,18 @@ func TestV4WebSocketMaxTrackedConnections(t *testing.T) {
 }
 
 func TestV4WebSocketClosedConnectionHistory(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Open and close 15 connections (max closed history is 10)
 	for i := 0; i < 15; i++ {
 		id := "uuid-" + strings.Repeat("x", i+1) // unique IDs
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{ID: id, Event: "open", URL: "wss://example.com/ws"},
 			{ID: id, Event: "close", URL: "wss://example.com/ws", CloseCode: 1000},
 		})
 	}
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 
 	if len(status.Closed) > 10 {
 		t.Errorf("Expected max 10 closed connections in history, got %d", len(status.Closed))
@@ -298,14 +298,14 @@ func TestV4WebSocketClosedConnectionHistory(t *testing.T) {
 }
 
 func TestV4WebSocketStatusFilterByURL(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://chat.example.com/ws"},
 		{ID: "uuid-2", Event: "open", URL: "wss://feed.example.com/prices"},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{URLFilter: "chat"})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{URLFilter: "chat"})
 
 	if len(status.Connections) != 1 {
 		t.Errorf("Expected 1 connection matching 'chat', got %d", len(status.Connections))
@@ -313,14 +313,14 @@ func TestV4WebSocketStatusFilterByURL(t *testing.T) {
 }
 
 func TestV4WebSocketStatusFilterByConnectionID(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://a.com"},
 		{ID: "uuid-2", Event: "open", URL: "wss://b.com"},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{ConnectionID: "uuid-2"})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{ConnectionID: "uuid-2"})
 
 	if len(status.Connections) != 1 {
 		t.Errorf("Expected 1 connection, got %d", len(status.Connections))
@@ -332,14 +332,14 @@ func TestV4WebSocketStatusFilterByConnectionID(t *testing.T) {
 }
 
 func TestV4WebSocketSamplingInfo(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 		{ID: "uuid-1", Event: "message", Direction: "incoming", Sampled: &SamplingInfo{Rate: "48.2/s", Logged: "1/5", Window: "5s"}},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 	conn := status.Connections[0]
 
 	if !conn.Sampling.Active {
@@ -348,32 +348,32 @@ func TestV4WebSocketSamplingInfo(t *testing.T) {
 }
 
 func TestV4PostWebSocketEventsEndpoint(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	body := `{"events":[{"ts":"2024-01-15T10:30:00.000Z","type":"websocket","event":"open","id":"uuid-1","url":"wss://example.com/ws"}]}`
 	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleWebSocketEvents(rec, req)
+	capture.HandleWebSocketEvents(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rec.Code)
 	}
 
-	if v4.GetWebSocketEventCount() != 1 {
-		t.Errorf("Expected 1 event stored, got %d", v4.GetWebSocketEventCount())
+	if capture.GetWebSocketEventCount() != 1 {
+		t.Errorf("Expected 1 event stored, got %d", capture.GetWebSocketEventCount())
 	}
 }
 
 func TestV4PostWebSocketEventsInvalidJSON(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewBufferString("not json"))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleWebSocketEvents(rec, req)
+	capture.HandleWebSocketEvents(rec, req)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("Expected 400, got %d", rec.Code)
@@ -382,11 +382,11 @@ func TestV4PostWebSocketEventsInvalidJSON(t *testing.T) {
 
 func TestMCPGetWebSocketEvents(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	// Add some WebSocket events
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Timestamp: "2024-01-15T10:30:00.000Z", ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 		{Timestamp: "2024-01-15T10:30:01.000Z", ID: "uuid-1", Event: "message", Direction: "incoming", Data: `{"msg":"hello"}`},
 	})
@@ -432,10 +432,10 @@ func TestMCPGetWebSocketEvents(t *testing.T) {
 
 func TestMCPGetWebSocketEventsWithFilter(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "message", Direction: "incoming"},
 		{ID: "uuid-1", Event: "message", Direction: "outgoing"},
 		{ID: "uuid-2", Event: "message", Direction: "incoming"},
@@ -468,10 +468,10 @@ func TestMCPGetWebSocketEventsWithFilter(t *testing.T) {
 
 func TestMCPGetWebSocketStatus(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://chat.example.com/ws"},
 		{ID: "uuid-1", Event: "message", Direction: "incoming", Size: 100},
 	})
@@ -509,8 +509,8 @@ func TestMCPGetWebSocketStatus(t *testing.T) {
 
 func TestMCPGetWebSocketEventsEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -540,10 +540,10 @@ func TestMCPGetWebSocketEventsEmpty(t *testing.T) {
 }
 
 func TestV4ConnectionDurationFormatted(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	openedAt := time.Now().Add(-5*time.Minute - 2*time.Second)
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{
 			Timestamp: openedAt.Format(time.RFC3339Nano),
 			ID:        "uuid-1",
@@ -552,7 +552,7 @@ func TestV4ConnectionDurationFormatted(t *testing.T) {
 		},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 	if len(status.Connections) != 1 {
 		t.Fatalf("Expected 1 connection, got %d", len(status.Connections))
 	}
@@ -569,10 +569,10 @@ func TestV4ConnectionDurationFormatted(t *testing.T) {
 }
 
 func TestV4ConnectionDurationShortFormat(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	openedAt := time.Now().Add(-3 * time.Second)
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{
 			Timestamp: openedAt.Format(time.RFC3339Nano),
 			ID:        "uuid-1",
@@ -581,7 +581,7 @@ func TestV4ConnectionDurationShortFormat(t *testing.T) {
 		},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 	conn := status.Connections[0]
 
 	// Should be "3s" or "4s" (within test timing tolerance)
@@ -591,10 +591,10 @@ func TestV4ConnectionDurationShortFormat(t *testing.T) {
 }
 
 func TestV4ConnectionDurationHourFormat(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	openedAt := time.Now().Add(-1*time.Hour - 15*time.Minute)
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{
 			Timestamp: openedAt.Format(time.RFC3339Nano),
 			ID:        "uuid-1",
@@ -603,7 +603,7 @@ func TestV4ConnectionDurationHourFormat(t *testing.T) {
 		},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 	conn := status.Connections[0]
 
 	if !strings.Contains(conn.Duration, "h") {
@@ -612,10 +612,10 @@ func TestV4ConnectionDurationHourFormat(t *testing.T) {
 }
 
 func TestV4MessageRateCalculation(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Open connection
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Timestamp: time.Now().Add(-10 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 	})
 
@@ -623,12 +623,12 @@ func TestV4MessageRateCalculation(t *testing.T) {
 	now := time.Now()
 	for i := 0; i < 10; i++ {
 		ts := now.Add(-5*time.Second + time.Duration(i)*500*time.Millisecond)
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{Timestamp: ts.Format(time.RFC3339Nano), ID: "uuid-1", Event: "message", Direction: "incoming", Size: 100},
 		})
 	}
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 	if len(status.Connections) != 1 {
 		t.Fatalf("Expected 1 connection, got %d", len(status.Connections))
 	}
@@ -644,22 +644,22 @@ func TestV4MessageRateCalculation(t *testing.T) {
 }
 
 func TestV4MessageRateZeroWhenNoRecentMessages(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Open connection long ago
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Timestamp: time.Now().Add(-60 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 	})
 
 	// Send messages long ago (outside 5-second window)
 	oldTime := time.Now().Add(-30 * time.Second)
 	for i := 0; i < 5; i++ {
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{Timestamp: oldTime.Add(time.Duration(i) * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "message", Direction: "incoming", Size: 50},
 		})
 	}
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 	conn := status.Connections[0]
 
 	// Rate should be 0 since all messages are outside the 5-second window
@@ -669,9 +669,9 @@ func TestV4MessageRateZeroWhenNoRecentMessages(t *testing.T) {
 }
 
 func TestV4MessageRateOutgoing(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Timestamp: time.Now().Add(-10 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 	})
 
@@ -679,12 +679,12 @@ func TestV4MessageRateOutgoing(t *testing.T) {
 	now := time.Now()
 	for i := 0; i < 5; i++ {
 		ts := now.Add(-4*time.Second + time.Duration(i)*time.Second)
-		v4.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]WebSocketEvent{
 			{Timestamp: ts.Format(time.RFC3339Nano), ID: "uuid-1", Event: "message", Direction: "outgoing", Size: 200},
 		})
 	}
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 	conn := status.Connections[0]
 
 	if conn.MessageRate.Outgoing.PerSecond < 0.5 {
@@ -693,15 +693,15 @@ func TestV4MessageRateOutgoing(t *testing.T) {
 }
 
 func TestV4LastMessageAgeFormatted(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Open connection
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Timestamp: time.Now().Add(-60 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 	})
 
 	// Last message 3 seconds ago
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{
 			Timestamp: time.Now().Add(-3 * time.Second).Format(time.RFC3339Nano),
 			ID:        "uuid-1",
@@ -712,7 +712,7 @@ func TestV4LastMessageAgeFormatted(t *testing.T) {
 		},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 	conn := status.Connections[0]
 
 	if conn.LastMessage.Incoming == nil {
@@ -731,14 +731,14 @@ func TestV4LastMessageAgeFormatted(t *testing.T) {
 }
 
 func TestV4LastMessageAgeMinutesFormat(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Timestamp: time.Now().Add(-600 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 	})
 
 	// Last message 2 minutes 30 seconds ago
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{
 			Timestamp: time.Now().Add(-150 * time.Second).Format(time.RFC3339Nano),
 			ID:        "uuid-1",
@@ -749,7 +749,7 @@ func TestV4LastMessageAgeMinutesFormat(t *testing.T) {
 		},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 	conn := status.Connections[0]
 
 	if conn.LastMessage.Outgoing == nil {
@@ -763,14 +763,14 @@ func TestV4LastMessageAgeMinutesFormat(t *testing.T) {
 }
 
 func TestV4LastMessageAgeSubSecond(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{Timestamp: time.Now().Add(-10 * time.Second).Format(time.RFC3339Nano), ID: "uuid-1", Event: "open", URL: "wss://example.com/ws"},
 	})
 
 	// Last message just now (< 1 second ago)
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{
 			Timestamp: time.Now().Add(-200 * time.Millisecond).Format(time.RFC3339Nano),
 			ID:        "uuid-1",
@@ -781,7 +781,7 @@ func TestV4LastMessageAgeSubSecond(t *testing.T) {
 		},
 	})
 
-	status := v4.GetWebSocketStatus(WebSocketStatusFilter{})
+	status := capture.GetWebSocketStatus(WebSocketStatusFilter{})
 	conn := status.Connections[0]
 
 	age := conn.LastMessage.Incoming.Age

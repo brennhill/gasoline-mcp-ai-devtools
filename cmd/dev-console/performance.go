@@ -13,7 +13,7 @@ import (
 // ============================================
 
 // AddPerformanceSnapshot stores a performance snapshot and updates baselines
-func (v *V4Server) AddPerformanceSnapshot(snapshot PerformanceSnapshot) {
+func (v *Capture) AddPerformanceSnapshot(snapshot PerformanceSnapshot) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -61,7 +61,7 @@ func weightedOptionalFloat(baseline *float64, snapshot *float64, baseWeight, new
 }
 
 // updateBaseline updates the running average baseline for a URL
-func (v *V4Server) updateBaseline(snapshot PerformanceSnapshot) {
+func (v *Capture) updateBaseline(snapshot PerformanceSnapshot) {
 	url := snapshot.URL
 	baseline, exists := v.perfBaselines[url]
 
@@ -140,7 +140,7 @@ func (v *V4Server) updateBaseline(snapshot PerformanceSnapshot) {
 }
 
 // GetPerformanceSnapshot returns the snapshot for a given URL
-func (v *V4Server) GetPerformanceSnapshot(url string) (PerformanceSnapshot, bool) {
+func (v *Capture) GetPerformanceSnapshot(url string) (PerformanceSnapshot, bool) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	s, ok := v.perfSnapshots[url]
@@ -148,7 +148,7 @@ func (v *V4Server) GetPerformanceSnapshot(url string) (PerformanceSnapshot, bool
 }
 
 // GetLatestPerformanceSnapshot returns the most recently added snapshot
-func (v *V4Server) GetLatestPerformanceSnapshot() (PerformanceSnapshot, bool) {
+func (v *Capture) GetLatestPerformanceSnapshot() (PerformanceSnapshot, bool) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	if len(v.perfSnapshotOrder) == 0 {
@@ -159,7 +159,7 @@ func (v *V4Server) GetLatestPerformanceSnapshot() (PerformanceSnapshot, bool) {
 }
 
 // GetPerformanceBaseline returns the baseline for a given URL
-func (v *V4Server) GetPerformanceBaseline(url string) (PerformanceBaseline, bool) {
+func (v *Capture) GetPerformanceBaseline(url string) (PerformanceBaseline, bool) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	b, ok := v.perfBaselines[url]
@@ -167,7 +167,7 @@ func (v *V4Server) GetPerformanceBaseline(url string) (PerformanceBaseline, bool
 }
 
 // DetectRegressions compares a snapshot against its baseline and returns regressions
-func (v *V4Server) DetectRegressions(snapshot PerformanceSnapshot, baseline PerformanceBaseline) []PerformanceRegression {
+func (v *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline PerformanceBaseline) []PerformanceRegression {
 	var regressions []PerformanceRegression
 
 	// Load time: >50% increase AND >200ms absolute
@@ -279,7 +279,7 @@ func (v *V4Server) DetectRegressions(snapshot PerformanceSnapshot, baseline Perf
 }
 
 // FormatPerformanceReport generates a human-readable performance report
-func (v *V4Server) FormatPerformanceReport(snapshot PerformanceSnapshot, baseline *PerformanceBaseline) string {
+func (v *Capture) FormatPerformanceReport(snapshot PerformanceSnapshot, baseline *PerformanceBaseline) string {
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf("## Performance Snapshot: %s\n", snapshot.URL))
@@ -359,7 +359,7 @@ func formatBytes(b int64) string {
 // ============================================
 
 // HandlePerformanceSnapshot handles GET, POST, and DELETE /performance-snapshot
-func (v *V4Server) HandlePerformanceSnapshot(w http.ResponseWriter, r *http.Request) {
+func (v *Capture) HandlePerformanceSnapshot(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		urlFilter := r.URL.Query().Get("url")
 
@@ -437,7 +437,7 @@ func (v *V4Server) HandlePerformanceSnapshot(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (h *MCPHandlerV4) toolCheckPerformance(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolCheckPerformance(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		URL string `json:"url"`
 	}
@@ -446,9 +446,9 @@ func (h *MCPHandlerV4) toolCheckPerformance(req JSONRPCRequest, args json.RawMes
 	var snapshot PerformanceSnapshot
 	var found bool
 	if arguments.URL != "" {
-		snapshot, found = h.v4.GetPerformanceSnapshot(arguments.URL)
+		snapshot, found = h.capture.GetPerformanceSnapshot(arguments.URL)
 	} else {
-		snapshot, found = h.v4.GetLatestPerformanceSnapshot()
+		snapshot, found = h.capture.GetLatestPerformanceSnapshot()
 	}
 
 	if !found {
@@ -461,13 +461,13 @@ func (h *MCPHandlerV4) toolCheckPerformance(req JSONRPCRequest, args json.RawMes
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 	}
 
-	baseline, baselineFound := h.v4.GetPerformanceBaseline(snapshot.URL)
+	baseline, baselineFound := h.capture.GetPerformanceBaseline(snapshot.URL)
 	var baselinePtr *PerformanceBaseline
 	if baselineFound {
 		baselinePtr = &baseline
 	}
 
-	report := h.v4.FormatPerformanceReport(snapshot, baselinePtr)
+	report := h.capture.FormatPerformanceReport(snapshot, baselinePtr)
 
 	result := map[string]interface{}{
 		"content": []map[string]string{

@@ -14,7 +14,7 @@ import (
 // ============================================
 
 // AddWebSocketEvents adds WebSocket events to the buffer
-func (v *V4Server) AddWebSocketEvents(events []WebSocketEvent) {
+func (v *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -40,7 +40,7 @@ func (v *V4Server) AddWebSocketEvents(events []WebSocketEvent) {
 }
 
 // evictWSForMemory removes oldest events if memory exceeds limit
-func (v *V4Server) evictWSForMemory() {
+func (v *Capture) evictWSForMemory() {
 	for v.calcWSMemory() > wsBufferMemoryLimit && len(v.wsEvents) > 0 {
 		v.wsEvents = v.wsEvents[1:]
 		if len(v.wsAddedAt) > 0 {
@@ -50,7 +50,7 @@ func (v *V4Server) evictWSForMemory() {
 }
 
 // calcWSMemory approximates memory usage of WS buffer
-func (v *V4Server) calcWSMemory() int64 {
+func (v *Capture) calcWSMemory() int64 {
 	var total int64
 	for i := range v.wsEvents {
 		total += int64(len(v.wsEvents[i].Data) + len(v.wsEvents[i].URL) + len(v.wsEvents[i].ID) + len(v.wsEvents[i].Timestamp) + len(v.wsEvents[i].Direction) + len(v.wsEvents[i].Event) + 64)
@@ -59,14 +59,14 @@ func (v *V4Server) calcWSMemory() int64 {
 }
 
 // GetWebSocketEventCount returns the current number of buffered events
-func (v *V4Server) GetWebSocketEventCount() int {
+func (v *Capture) GetWebSocketEventCount() int {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	return len(v.wsEvents)
 }
 
 // GetWebSocketEvents returns filtered WebSocket events (newest first)
-func (v *V4Server) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEvent {
+func (v *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEvent {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
@@ -104,7 +104,7 @@ func (v *V4Server) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEv
 }
 
 // trackConnection updates connection state from events
-func (v *V4Server) trackConnection(event WebSocketEvent) {
+func (v *Capture) trackConnection(event WebSocketEvent) {
 	switch event.Event {
 	case "open":
 		// Enforce max active connections
@@ -267,7 +267,7 @@ func formatAge(ts string) string {
 }
 
 // GetWebSocketStatus returns current connection states
-func (v *V4Server) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStatusResponse {
+func (v *Capture) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStatusResponse {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
@@ -343,7 +343,7 @@ func (v *V4Server) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketSta
 	return resp
 }
 
-func (v *V4Server) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) {
+func (v *Capture) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		events := v.GetWebSocketEvents(WebSocketEventFilter{})
 		w.Header().Set("Content-Type", "application/json")
@@ -388,13 +388,13 @@ func (v *V4Server) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request)
 }
 
 // HandleWebSocketStatus handles GET /websocket-status
-func (v *V4Server) HandleWebSocketStatus(w http.ResponseWriter, r *http.Request) {
+func (v *Capture) HandleWebSocketStatus(w http.ResponseWriter, r *http.Request) {
 	status := v.GetWebSocketStatus(WebSocketStatusFilter{})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(status)
 }
 
-func (h *MCPHandlerV4) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		ConnectionID string `json:"connection_id"`
 		URL          string `json:"url"`
@@ -411,7 +411,7 @@ func (h *MCPHandlerV4) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 	}
 
-	events := h.v4.GetWebSocketEvents(WebSocketEventFilter{
+	events := h.capture.GetWebSocketEvents(WebSocketEventFilter{
 		ConnectionID: arguments.ConnectionID,
 		URLFilter:    arguments.URL,
 		Direction:    arguments.Direction,
@@ -435,7 +435,7 @@ func (h *MCPHandlerV4) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
-func (h *MCPHandlerV4) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		URL          string `json:"url"`
 		ConnectionID string `json:"connection_id"`
@@ -450,7 +450,7 @@ func (h *MCPHandlerV4) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 	}
 
-	status := h.v4.GetWebSocketStatus(WebSocketStatusFilter{
+	status := h.capture.GetWebSocketStatus(WebSocketStatusFilter{
 		URLFilter:    arguments.URL,
 		ConnectionID: arguments.ConnectionID,
 	})

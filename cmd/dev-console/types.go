@@ -324,11 +324,11 @@ const (
 )
 
 // ============================================
-// V4Server
+// Capture
 // ============================================
 
-// V4Server handles v4-specific state and operations
-type V4Server struct {
+// Capture handles v4-specific state and operations
+type Capture struct {
 	mu sync.RWMutex
 
 	// WebSocket event ring buffer
@@ -395,9 +395,9 @@ type a11yInflightEntry struct {
 	err    error
 }
 
-// NewV4Server creates a new v4 server instance
-func NewV4Server() *V4Server {
-	v4 := &V4Server{
+// NewCapture creates a new v4 server instance
+func NewCapture() *Capture {
+	c := &Capture{
 		wsEvents:          make([]WebSocketEvent, 0, maxWSEvents),
 		networkBodies:     make([]NetworkBody, 0, maxNetworkBodies),
 		enhancedActions:   make([]EnhancedAction, 0, maxEnhancedActions),
@@ -416,6 +416,6 @@ func NewV4Server() *V4Server {
 		a11yCacheOrder:    make([]string, 0),
 		a11yInflight:      make(map[string]*a11yInflightEntry),
 	}
-	v4.queryCond = sync.NewCond(&v4.mu)
-	return v4
+	c.queryCond = sync.NewCond(&c.mu)
+	return c
 }

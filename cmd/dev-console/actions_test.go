@@ -9,7 +9,7 @@ import (
 )
 
 func TestV5EnhancedActionsBuffer(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	actions := []EnhancedAction{
 		{
@@ -34,15 +34,15 @@ func TestV5EnhancedActionsBuffer(t *testing.T) {
 		},
 	}
 
-	v4.AddEnhancedActions(actions)
+	capture.AddEnhancedActions(actions)
 
-	if v4.GetEnhancedActionCount() != 2 {
-		t.Errorf("Expected 2 actions, got %d", v4.GetEnhancedActionCount())
+	if capture.GetEnhancedActionCount() != 2 {
+		t.Errorf("Expected 2 actions, got %d", capture.GetEnhancedActionCount())
 	}
 }
 
 func TestV5EnhancedActionsBufferRotation(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Add more than max (50) actions
 	actions := make([]EnhancedAction, 60)
@@ -55,38 +55,38 @@ func TestV5EnhancedActionsBufferRotation(t *testing.T) {
 		}
 	}
 
-	v4.AddEnhancedActions(actions)
+	capture.AddEnhancedActions(actions)
 
-	if v4.GetEnhancedActionCount() != 50 {
-		t.Errorf("Expected 50 actions after rotation, got %d", v4.GetEnhancedActionCount())
+	if capture.GetEnhancedActionCount() != 50 {
+		t.Errorf("Expected 50 actions after rotation, got %d", capture.GetEnhancedActionCount())
 	}
 }
 
 func TestV5EnhancedActionsGetAll(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/a"},
 		{Type: "input", Timestamp: 2000, URL: "http://localhost:3000/b"},
 		{Type: "navigate", Timestamp: 3000, URL: "http://localhost:3000/c"},
 	})
 
-	actions := v4.GetEnhancedActions(EnhancedActionFilter{})
+	actions := capture.GetEnhancedActions(EnhancedActionFilter{})
 	if len(actions) != 3 {
 		t.Errorf("Expected 3 actions, got %d", len(actions))
 	}
 }
 
 func TestV5EnhancedActionsFilterByLastN(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	for i := 0; i < 10; i++ {
-		v4.AddEnhancedActions([]EnhancedAction{
+		capture.AddEnhancedActions([]EnhancedAction{
 			{Type: "click", Timestamp: int64(i * 1000), URL: "http://localhost:3000"},
 		})
 	}
 
-	actions := v4.GetEnhancedActions(EnhancedActionFilter{LastN: 3})
+	actions := capture.GetEnhancedActions(EnhancedActionFilter{LastN: 3})
 	if len(actions) != 3 {
 		t.Errorf("Expected 3 actions with lastN filter, got %d", len(actions))
 	}
@@ -98,30 +98,30 @@ func TestV5EnhancedActionsFilterByLastN(t *testing.T) {
 }
 
 func TestV5EnhancedActionsFilterByURL(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login"},
 		{Type: "input", Timestamp: 2000, URL: "http://localhost:3000/dashboard"},
 		{Type: "click", Timestamp: 3000, URL: "http://localhost:3000/login"},
 	})
 
-	actions := v4.GetEnhancedActions(EnhancedActionFilter{URLFilter: "login"})
+	actions := capture.GetEnhancedActions(EnhancedActionFilter{URLFilter: "login"})
 	if len(actions) != 2 {
 		t.Errorf("Expected 2 actions matching 'login', got %d", len(actions))
 	}
 }
 
 func TestV5EnhancedActionsNewestLast(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000"},
 		{Type: "input", Timestamp: 3000, URL: "http://localhost:3000"},
 		{Type: "click", Timestamp: 2000, URL: "http://localhost:3000"},
 	})
 
-	actions := v4.GetEnhancedActions(EnhancedActionFilter{})
+	actions := capture.GetEnhancedActions(EnhancedActionFilter{})
 	// Actions should preserve insertion order (chronological from extension)
 	if actions[0].Timestamp != 1000 || actions[2].Timestamp != 2000 {
 		t.Error("Expected actions in insertion order")
@@ -129,13 +129,13 @@ func TestV5EnhancedActionsNewestLast(t *testing.T) {
 }
 
 func TestV5EnhancedActionsPasswordRedaction(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "input", Timestamp: 1000, URL: "http://localhost:3000", InputType: "password", Value: "secret123"},
 	})
 
-	actions := v4.GetEnhancedActions(EnhancedActionFilter{})
+	actions := capture.GetEnhancedActions(EnhancedActionFilter{})
 	// Server should preserve what extension sent (extension already redacts)
 	// But server should also redact if inputType is password
 	if actions[0].Value != "[redacted]" {
@@ -144,26 +144,26 @@ func TestV5EnhancedActionsPasswordRedaction(t *testing.T) {
 }
 
 func TestV5PostEnhancedActionsEndpoint(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	body := `{"actions":[{"type":"click","timestamp":1705312200000,"url":"http://localhost:3000/login","selectors":{"testId":"login-btn","cssPath":"button.primary"}}]}`
 	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleEnhancedActions(rec, req)
+	capture.HandleEnhancedActions(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rec.Code)
 	}
 
-	if v4.GetEnhancedActionCount() != 1 {
-		t.Errorf("Expected 1 action stored, got %d", v4.GetEnhancedActionCount())
+	if capture.GetEnhancedActionCount() != 1 {
+		t.Errorf("Expected 1 action stored, got %d", capture.GetEnhancedActionCount())
 	}
 }
 
 func TestV5PostEnhancedActionsMultiple(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	body := `{"actions":[
 		{"type":"click","timestamp":1000,"url":"http://localhost:3000","selectors":{"cssPath":"button"}},
@@ -174,25 +174,25 @@ func TestV5PostEnhancedActionsMultiple(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleEnhancedActions(rec, req)
+	capture.HandleEnhancedActions(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rec.Code)
 	}
 
-	if v4.GetEnhancedActionCount() != 3 {
-		t.Errorf("Expected 3 actions stored, got %d", v4.GetEnhancedActionCount())
+	if capture.GetEnhancedActionCount() != 3 {
+		t.Errorf("Expected 3 actions stored, got %d", capture.GetEnhancedActionCount())
 	}
 }
 
 func TestV5PostEnhancedActionsInvalidJSON(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString("not json"))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleEnhancedActions(rec, req)
+	capture.HandleEnhancedActions(rec, req)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("Expected 400, got %d", rec.Code)
@@ -200,20 +200,20 @@ func TestV5PostEnhancedActionsInvalidJSON(t *testing.T) {
 }
 
 func TestV5PostEnhancedActionsPasswordRedaction(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	body := `{"actions":[{"type":"input","timestamp":1000,"url":"http://localhost:3000","selectors":{},"inputType":"password","value":"mysecret"}]}`
 	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleEnhancedActions(rec, req)
+	capture.HandleEnhancedActions(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rec.Code)
 	}
 
-	actions := v4.GetEnhancedActions(EnhancedActionFilter{})
+	actions := capture.GetEnhancedActions(EnhancedActionFilter{})
 	if actions[0].Value != "[redacted]" {
 		t.Errorf("Expected password to be redacted on ingest, got %s", actions[0].Value)
 	}
@@ -221,10 +221,10 @@ func TestV5PostEnhancedActionsPasswordRedaction(t *testing.T) {
 
 func TestMCPGetEnhancedActions(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "login-btn"}},
 		{Type: "input", Timestamp: 2000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"ariaLabel": "Email"}, Value: "user@test.com", InputType: "email"},
 	})
@@ -266,11 +266,11 @@ func TestMCPGetEnhancedActions(t *testing.T) {
 
 func TestMCPGetEnhancedActionsWithLastN(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	for i := 0; i < 10; i++ {
-		v4.AddEnhancedActions([]EnhancedAction{
+		capture.AddEnhancedActions([]EnhancedAction{
 			{Type: "click", Timestamp: int64(i * 1000), URL: "http://localhost:3000"},
 		})
 	}
@@ -302,8 +302,8 @@ func TestMCPGetEnhancedActionsWithLastN(t *testing.T) {
 
 func TestMCPGetEnhancedActionsEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",

@@ -10,7 +10,7 @@ import (
 )
 
 func TestV4NetworkBodiesBuffer(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	bodies := []NetworkBody{
 		{
@@ -25,15 +25,15 @@ func TestV4NetworkBodiesBuffer(t *testing.T) {
 		},
 	}
 
-	v4.AddNetworkBodies(bodies)
+	capture.AddNetworkBodies(bodies)
 
-	if v4.GetNetworkBodyCount() != 1 {
-		t.Errorf("Expected 1 body, got %d", v4.GetNetworkBodyCount())
+	if capture.GetNetworkBodyCount() != 1 {
+		t.Errorf("Expected 1 body, got %d", capture.GetNetworkBodyCount())
 	}
 }
 
 func TestV4NetworkBodiesBufferRotation(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Add more than max (100) entries
 	bodies := make([]NetworkBody, 120)
@@ -41,23 +41,23 @@ func TestV4NetworkBodiesBufferRotation(t *testing.T) {
 		bodies[i] = NetworkBody{Method: "GET", URL: "/api/test", Status: 200}
 	}
 
-	v4.AddNetworkBodies(bodies)
+	capture.AddNetworkBodies(bodies)
 
-	if v4.GetNetworkBodyCount() != 100 {
-		t.Errorf("Expected 100 bodies after rotation, got %d", v4.GetNetworkBodyCount())
+	if capture.GetNetworkBodyCount() != 100 {
+		t.Errorf("Expected 100 bodies after rotation, got %d", capture.GetNetworkBodyCount())
 	}
 }
 
 func TestV4NetworkBodiesFilterByURL(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "/api/users", Status: 200},
 		{URL: "/api/products", Status: 200},
 		{URL: "/api/users/1", Status: 404},
 	})
 
-	filtered := v4.GetNetworkBodies(NetworkBodyFilter{URLFilter: "users"})
+	filtered := capture.GetNetworkBodies(NetworkBodyFilter{URLFilter: "users"})
 
 	if len(filtered) != 2 {
 		t.Errorf("Expected 2 bodies matching 'users', got %d", len(filtered))
@@ -65,15 +65,15 @@ func TestV4NetworkBodiesFilterByURL(t *testing.T) {
 }
 
 func TestV4NetworkBodiesFilterByMethod(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "/api/test", Method: "GET", Status: 200},
 		{URL: "/api/test", Method: "POST", Status: 201},
 		{URL: "/api/test", Method: "GET", Status: 200},
 	})
 
-	filtered := v4.GetNetworkBodies(NetworkBodyFilter{Method: "POST"})
+	filtered := capture.GetNetworkBodies(NetworkBodyFilter{Method: "POST"})
 
 	if len(filtered) != 1 {
 		t.Errorf("Expected 1 POST body, got %d", len(filtered))
@@ -81,9 +81,9 @@ func TestV4NetworkBodiesFilterByMethod(t *testing.T) {
 }
 
 func TestV4NetworkBodiesFilterByStatus(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "/api/test", Status: 200},
 		{URL: "/api/test", Status: 404},
 		{URL: "/api/test", Status: 500},
@@ -91,14 +91,14 @@ func TestV4NetworkBodiesFilterByStatus(t *testing.T) {
 	})
 
 	// Filter for errors only (>= 400)
-	filtered := v4.GetNetworkBodies(NetworkBodyFilter{StatusMin: 400})
+	filtered := capture.GetNetworkBodies(NetworkBodyFilter{StatusMin: 400})
 
 	if len(filtered) != 2 {
 		t.Errorf("Expected 2 error bodies, got %d", len(filtered))
 	}
 
 	// Filter for range 400-499
-	filtered = v4.GetNetworkBodies(NetworkBodyFilter{StatusMin: 400, StatusMax: 499})
+	filtered = capture.GetNetworkBodies(NetworkBodyFilter{StatusMin: 400, StatusMax: 499})
 
 	if len(filtered) != 1 {
 		t.Errorf("Expected 1 client error body, got %d", len(filtered))
@@ -106,15 +106,15 @@ func TestV4NetworkBodiesFilterByStatus(t *testing.T) {
 }
 
 func TestV4NetworkBodiesFilterWithLimit(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	for i := 0; i < 50; i++ {
-		v4.AddNetworkBodies([]NetworkBody{
+		capture.AddNetworkBodies([]NetworkBody{
 			{URL: "/api/test", Status: 200},
 		})
 	}
 
-	filtered := v4.GetNetworkBodies(NetworkBodyFilter{Limit: 10})
+	filtered := capture.GetNetworkBodies(NetworkBodyFilter{Limit: 10})
 
 	if len(filtered) != 10 {
 		t.Errorf("Expected 10 bodies with limit, got %d", len(filtered))
@@ -122,16 +122,16 @@ func TestV4NetworkBodiesFilterWithLimit(t *testing.T) {
 }
 
 func TestV4NetworkBodiesDefaultLimit(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	for i := 0; i < 50; i++ {
-		v4.AddNetworkBodies([]NetworkBody{
+		capture.AddNetworkBodies([]NetworkBody{
 			{URL: "/api/test", Status: 200},
 		})
 	}
 
 	// Default limit is 20
-	filtered := v4.GetNetworkBodies(NetworkBodyFilter{})
+	filtered := capture.GetNetworkBodies(NetworkBodyFilter{})
 
 	if len(filtered) != 20 {
 		t.Errorf("Expected 20 bodies with default limit, got %d", len(filtered))
@@ -139,14 +139,14 @@ func TestV4NetworkBodiesDefaultLimit(t *testing.T) {
 }
 
 func TestV4NetworkBodiesNewestFirst(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "/api/first", Timestamp: "2024-01-15T10:30:00.000Z"},
 		{URL: "/api/last", Timestamp: "2024-01-15T10:30:05.000Z"},
 	})
 
-	filtered := v4.GetNetworkBodies(NetworkBodyFilter{})
+	filtered := capture.GetNetworkBodies(NetworkBodyFilter{})
 
 	if filtered[0].URL != "/api/last" {
 		t.Errorf("Expected newest first, got URL %s", filtered[0].URL)
@@ -154,15 +154,15 @@ func TestV4NetworkBodiesNewestFirst(t *testing.T) {
 }
 
 func TestV4NetworkBodiesTruncation(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Request body > 8KB should be truncated
 	largeBody := strings.Repeat("x", 10000)
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "/api/test", RequestBody: largeBody, Status: 200},
 	})
 
-	filtered := v4.GetNetworkBodies(NetworkBodyFilter{})
+	filtered := capture.GetNetworkBodies(NetworkBodyFilter{})
 
 	if len(filtered[0].RequestBody) > 8192 {
 		t.Errorf("Expected request body truncated to 8KB, got %d bytes", len(filtered[0].RequestBody))
@@ -174,15 +174,15 @@ func TestV4NetworkBodiesTruncation(t *testing.T) {
 }
 
 func TestV4NetworkBodiesResponseTruncation(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Response body > 16KB should be truncated
 	largeBody := strings.Repeat("y", 20000)
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "/api/test", ResponseBody: largeBody, Status: 200},
 	})
 
-	filtered := v4.GetNetworkBodies(NetworkBodyFilter{})
+	filtered := capture.GetNetworkBodies(NetworkBodyFilter{})
 
 	if len(filtered[0].ResponseBody) > 16384 {
 		t.Errorf("Expected response body truncated to 16KB, got %d bytes", len(filtered[0].ResponseBody))
@@ -194,32 +194,32 @@ func TestV4NetworkBodiesResponseTruncation(t *testing.T) {
 }
 
 func TestV4PostNetworkBodiesEndpoint(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	body := `{"bodies":[{"ts":"2024-01-15T10:30:00.000Z","method":"GET","url":"/api/test","status":200,"responseBody":"{}","contentType":"application/json"}]}`
 	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleNetworkBodies(rec, req)
+	capture.HandleNetworkBodies(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rec.Code)
 	}
 
-	if v4.GetNetworkBodyCount() != 1 {
-		t.Errorf("Expected 1 body stored, got %d", v4.GetNetworkBodyCount())
+	if capture.GetNetworkBodyCount() != 1 {
+		t.Errorf("Expected 1 body stored, got %d", capture.GetNetworkBodyCount())
 	}
 }
 
 func TestV4PostNetworkBodiesInvalidJSON(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewBufferString("garbage"))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
-	v4.HandleNetworkBodies(rec, req)
+	capture.HandleNetworkBodies(rec, req)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("Expected 400, got %d", rec.Code)
@@ -228,10 +228,10 @@ func TestV4PostNetworkBodiesInvalidJSON(t *testing.T) {
 
 func TestMCPGetNetworkBodies(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "/api/users", Method: "GET", Status: 200, ResponseBody: `[{"id":1}]`},
 		{URL: "/api/users", Method: "POST", Status: 201, RequestBody: `{"name":"Alice"}`},
 	})
@@ -267,10 +267,10 @@ func TestMCPGetNetworkBodies(t *testing.T) {
 
 func TestMCPGetNetworkBodiesWithFilter(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "/api/users", Method: "GET", Status: 200},
 		{URL: "/api/users", Method: "GET", Status: 500},
 	})
@@ -302,8 +302,8 @@ func TestMCPGetNetworkBodiesWithFilter(t *testing.T) {
 
 func TestMCPGetNetworkBodiesEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",

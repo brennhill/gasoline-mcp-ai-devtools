@@ -140,7 +140,7 @@ func TestPerformanceBaselineJSONShape(t *testing.T) {
 }
 
 func TestPerformanceSnapshotStorageAndRetrieval(t *testing.T) {
-	server := NewV4Server()
+	server := NewCapture()
 	fcp := 250.0
 	lcp := 800.0
 	cls := 0.05
@@ -185,7 +185,7 @@ func TestPerformanceSnapshotStorageAndRetrieval(t *testing.T) {
 }
 
 func TestPerformanceBaselineAveragesFCPLCP(t *testing.T) {
-	server := NewV4Server()
+	server := NewCapture()
 	fcp1 := 200.0
 	lcp1 := 600.0
 	fcp2 := 300.0
@@ -249,7 +249,7 @@ func TestPerformanceBaselineAveragesFCPLCP(t *testing.T) {
 }
 
 func TestPerformanceRegressionDetectsFCPLCP(t *testing.T) {
-	server := NewV4Server()
+	server := NewCapture()
 
 	fcpBaseline := 200.0
 	lcpBaseline := 500.0
@@ -299,7 +299,7 @@ func TestPerformanceRegressionDetectsFCPLCP(t *testing.T) {
 }
 
 func TestPerformanceRegressionNoFalsePositiveFCPLCP(t *testing.T) {
-	server := NewV4Server()
+	server := NewCapture()
 
 	fcpBaseline := 200.0
 	lcpBaseline := 500.0

@@ -14,18 +14,18 @@
 
 ```
 cmd/dev-console/
-├── main.go             # Server + MCP handler
+├── main.go             # HTTP server, routes, v3 MCP handler
 ├── main_test.go        # Server tests (v3)
+├── types.go            # Types, constants, Capture struct
+├── websocket.go        # WebSocket buffer, connections, MCP tools
+├── network.go          # Network body storage, MCP tool
+├── queries.go          # Pending queries, DOM/A11y, a11y cache
+├── actions.go          # Enhanced actions buffer, MCP tool
+├── performance.go      # Snapshots, baselines, regression detection
+├── codegen.go          # Reproduction scripts, timeline, test gen
+├── tools.go            # MCP tool dispatcher, schemas, memory/rate-limit
 ├── ai_checkpoint.go    # Checkpoint/diff system
-├── v4_types.go         # Types, constants, V4Server struct
-├── v4_websocket.go     # WebSocket buffer, connections, MCP tools
-├── v4_network.go       # Network body storage, MCP tool
-├── v4_queries.go       # Pending queries, DOM/A11y, a11y cache
-├── v4_actions.go       # Enhanced actions buffer, MCP tool
-├── v4_performance.go   # Snapshots, baselines, regression detection
-├── v4_codegen.go       # Reproduction scripts, timeline, test gen
-├── v4_mcp.go           # MCP dispatcher, tool schemas, memory/rate-limit
-└── v4_*_test.go        # Matching test files per domain
+└── *_test.go           # Matching test files per domain
 
 extension/
 ├── manifest.json       # Chrome Manifest V3
@@ -155,20 +155,20 @@ See `.claude/docs/` for detailed policies:
 
 | File | Purpose |
 |------|---------|
-| `cmd/dev-console/main.go` | Server, HTTP routes, MCP handler |
-| `cmd/dev-console/v4_types.go` | All v4 types, constants, V4Server struct |
-| `cmd/dev-console/v4_websocket.go` | WebSocket buffer, connection tracking |
-| `cmd/dev-console/v4_network.go` | Network body storage and retrieval |
-| `cmd/dev-console/v4_queries.go` | DOM/A11y queries, a11y cache |
-| `cmd/dev-console/v4_actions.go` | Enhanced actions buffer |
-| `cmd/dev-console/v4_performance.go` | Performance snapshots, baselines |
-| `cmd/dev-console/v4_codegen.go` | Playwright scripts, timeline, test gen |
-| `cmd/dev-console/v4_mcp.go` | MCP dispatcher, tool schemas |
+| `cmd/dev-console/main.go` | HTTP server, routes, v3 MCP handler |
+| `cmd/dev-console/types.go` | All types, constants, `Capture` struct |
+| `cmd/dev-console/websocket.go` | WebSocket buffer, connection tracking |
+| `cmd/dev-console/network.go` | Network body storage and retrieval |
+| `cmd/dev-console/queries.go` | DOM/A11y queries, a11y cache |
+| `cmd/dev-console/actions.go` | Enhanced actions buffer |
+| `cmd/dev-console/performance.go` | Performance snapshots, baselines |
+| `cmd/dev-console/codegen.go` | Playwright scripts, timeline, test gen |
+| `cmd/dev-console/tools.go` | MCP tool dispatcher, schemas |
 | `cmd/dev-console/ai_checkpoint.go` | Checkpoint/diff system |
 | `extension/inject.js` | Page capture (console, network, WS, DOM) |
 | `extension/background.js` | Service worker (batching, server comm) |
 | `extension/content.js` | Message bridge between inject and background |
-| `docs/v4-specification.md` | v4 feature specification and SLOs |
+| `docs/v4-specification.md` | Feature specification and SLOs |
 
 ## Version Management (KEEP IN SYNC)
 
@@ -225,14 +225,14 @@ Each domain file can be worked on by one agent at a time:
 
 | File | Parallel-safe? |
 |------|---------------|
-| `v4_types.go` | Shared (append-only for new types) |
-| `v4_websocket.go` | One agent at a time |
-| `v4_network.go` | One agent at a time |
-| `v4_queries.go` | One agent at a time |
-| `v4_actions.go` | One agent at a time |
-| `v4_performance.go` | One agent at a time |
-| `v4_codegen.go` | One agent at a time |
-| `v4_mcp.go` | Shared (dispatcher — add case + tool schema) |
+| `types.go` | Shared (append-only for new types) |
+| `websocket.go` | One agent at a time |
+| `network.go` | One agent at a time |
+| `queries.go` | One agent at a time |
+| `actions.go` | One agent at a time |
+| `performance.go` | One agent at a time |
+| `codegen.go` | One agent at a time |
+| `tools.go` | Shared (dispatcher — add case + tool schema) |
 | `ai_checkpoint.go` | One agent at a time |
 | `extension/inject.js` | One agent at a time |
 | `extension/background.js` | Can be shared if changes are in different functions |
@@ -250,7 +250,7 @@ A `.agent-locks.json` file (gitignored) tracks which agent owns which file. Befo
 Lock entry format:
 ```json
 {
-  "file": "cmd/dev-console/v4_websocket.go",
+  "file": "cmd/dev-console/websocket.go",
   "agent": "feature-name",
   "branch": "feature/ws-binary",
   "acquired": "2026-01-23T10:00:00Z",

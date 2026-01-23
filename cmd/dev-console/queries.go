@@ -15,12 +15,12 @@ import (
 // ============================================
 
 // CreatePendingQuery creates a pending query and returns its ID
-func (v *V4Server) CreatePendingQuery(query PendingQuery) string {
+func (v *Capture) CreatePendingQuery(query PendingQuery) string {
 	return v.CreatePendingQueryWithTimeout(query, v.queryTimeout)
 }
 
 // CreatePendingQueryWithTimeout creates a pending query with a custom timeout
-func (v *V4Server) CreatePendingQueryWithTimeout(query PendingQuery, timeout time.Duration) string {
+func (v *Capture) CreatePendingQueryWithTimeout(query PendingQuery, timeout time.Duration) string {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -57,7 +57,7 @@ func (v *V4Server) CreatePendingQueryWithTimeout(query PendingQuery, timeout tim
 }
 
 // cleanExpiredQueries removes expired pending queries (must hold lock)
-func (v *V4Server) cleanExpiredQueries() {
+func (v *Capture) cleanExpiredQueries() {
 	now := time.Now()
 	remaining := v.pendingQueries[:0]
 	for _, pq := range v.pendingQueries {
@@ -69,7 +69,7 @@ func (v *V4Server) cleanExpiredQueries() {
 }
 
 // GetPendingQueries returns all pending queries
-func (v *V4Server) GetPendingQueries() []PendingQueryResponse {
+func (v *Capture) GetPendingQueries() []PendingQueryResponse {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -83,7 +83,7 @@ func (v *V4Server) GetPendingQueries() []PendingQueryResponse {
 }
 
 // SetQueryResult stores the result for a pending query
-func (v *V4Server) SetQueryResult(id string, result json.RawMessage) {
+func (v *Capture) SetQueryResult(id string, result json.RawMessage) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -103,7 +103,7 @@ func (v *V4Server) SetQueryResult(id string, result json.RawMessage) {
 }
 
 // GetQueryResult retrieves the result for a query and deletes it from storage
-func (v *V4Server) GetQueryResult(id string) (json.RawMessage, bool) {
+func (v *Capture) GetQueryResult(id string) (json.RawMessage, bool) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -115,7 +115,7 @@ func (v *V4Server) GetQueryResult(id string) (json.RawMessage, bool) {
 }
 
 // WaitForResult blocks until a result is available or timeout, then deletes it
-func (v *V4Server) WaitForResult(id string, timeout time.Duration) (json.RawMessage, error) {
+func (v *Capture) WaitForResult(id string, timeout time.Duration) (json.RawMessage, error) {
 	deadline := time.Now().Add(timeout)
 
 	v.mu.Lock()
@@ -139,7 +139,7 @@ func (v *V4Server) WaitForResult(id string, timeout time.Duration) (json.RawMess
 }
 
 // SetQueryTimeout sets the default timeout for on-demand queries
-func (v *V4Server) SetQueryTimeout(timeout time.Duration) {
+func (v *Capture) SetQueryTimeout(timeout time.Duration) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	v.queryTimeout = timeout
@@ -150,7 +150,7 @@ func (v *V4Server) SetQueryTimeout(timeout time.Duration) {
 // ============================================
 
 // RecordEventReceived records an event for rate limiting
-func (v *V4Server) RecordEventReceived() {
+func (v *Capture) RecordEventReceived() {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -163,7 +163,7 @@ func (v *V4Server) RecordEventReceived() {
 }
 
 // isRateLimited checks if the server is rate limited (must hold lock)
-func (v *V4Server) isRateLimited() bool {
+func (v *Capture) isRateLimited() bool {
 	now := time.Now()
 	if now.Sub(v.rateResetTime) > time.Second {
 		return false
@@ -172,7 +172,7 @@ func (v *V4Server) isRateLimited() bool {
 }
 
 // SetMemoryUsage sets simulated memory usage for testing
-func (v *V4Server) SetMemoryUsage(bytes int64) {
+func (v *Capture) SetMemoryUsage(bytes int64) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	v.simulatedMemory = bytes
@@ -180,14 +180,14 @@ func (v *V4Server) SetMemoryUsage(bytes int64) {
 
 // IsMemoryExceeded checks if memory is over the hard limit (acquires lock).
 // Uses simulated memory if set (for testing), otherwise checks real buffer memory.
-func (v *V4Server) IsMemoryExceeded() bool {
+func (v *Capture) IsMemoryExceeded() bool {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	return v.isMemoryExceeded()
 }
 
 // isMemoryExceeded is the internal version (caller must hold lock)
-func (v *V4Server) isMemoryExceeded() bool {
+func (v *Capture) isMemoryExceeded() bool {
 	if v.simulatedMemory > 0 {
 		return v.simulatedMemory > memoryHardLimit
 	}
@@ -195,32 +195,32 @@ func (v *V4Server) isMemoryExceeded() bool {
 }
 
 // GetTotalBufferMemory returns the sum of all buffer memory usage
-func (v *V4Server) GetTotalBufferMemory() int64 {
+func (v *Capture) GetTotalBufferMemory() int64 {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	return v.calcTotalMemory()
 }
 
 // calcTotalMemory returns total memory across all buffers (caller must hold lock)
-func (v *V4Server) calcTotalMemory() int64 {
+func (v *Capture) calcTotalMemory() int64 {
 	return v.calcWSMemory() + v.calcNBMemory()
 }
 
 // GetWebSocketBufferMemory returns approximate memory usage of WS buffer
-func (v *V4Server) GetWebSocketBufferMemory() int64 {
+func (v *Capture) GetWebSocketBufferMemory() int64 {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	return v.calcWSMemory()
 }
 
 // GetNetworkBodiesBufferMemory returns approximate memory usage of network bodies buffer
-func (v *V4Server) GetNetworkBodiesBufferMemory() int64 {
+func (v *Capture) GetNetworkBodiesBufferMemory() int64 {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	return v.calcNBMemory()
 }
 
-func (v *V4Server) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
+func (v *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
 	queries := v.GetPendingQueries()
 	if queries == nil {
 		queries = make([]PendingQueryResponse, 0)
@@ -236,17 +236,17 @@ func (v *V4Server) HandlePendingQueries(w http.ResponseWriter, r *http.Request) 
 }
 
 // HandleDOMResult handles POST /dom-result
-func (v *V4Server) HandleDOMResult(w http.ResponseWriter, r *http.Request) {
+func (v *Capture) HandleDOMResult(w http.ResponseWriter, r *http.Request) {
 	v.handleQueryResult(w, r)
 }
 
 // HandleA11yResult handles POST /a11y-result
-func (v *V4Server) HandleA11yResult(w http.ResponseWriter, r *http.Request) {
+func (v *Capture) HandleA11yResult(w http.ResponseWriter, r *http.Request) {
 	v.handleQueryResult(w, r)
 }
 
 // handleQueryResult handles a query result POST (shared between DOM and A11y)
-func (v *V4Server) handleQueryResult(w http.ResponseWriter, r *http.Request) {
+func (v *Capture) handleQueryResult(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -287,19 +287,19 @@ func (v *V4Server) handleQueryResult(w http.ResponseWriter, r *http.Request) {
 
 // HandleEnhancedActions handles POST /enhanced-actions
 
-func (h *MCPHandlerV4) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		Selector string `json:"selector"`
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
 	params, _ := json.Marshal(map[string]string{"selector": arguments.Selector})
-	id := h.v4.CreatePendingQuery(PendingQuery{
+	id := h.capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: params,
 	})
 
-	result, err := h.v4.WaitForResult(id, h.v4.queryTimeout)
+	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
 	if err != nil {
 		errResult := map[string]interface{}{
 			"content": []map[string]string{
@@ -320,13 +320,13 @@ func (h *MCPHandlerV4) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JS
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
-func (h *MCPHandlerV4) toolGetPageInfo(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	id := h.v4.CreatePendingQuery(PendingQuery{
+func (h *ToolHandler) toolGetPageInfo(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	id := h.capture.CreatePendingQuery(PendingQuery{
 		Type:   "page_info",
 		Params: json.RawMessage(`{}`),
 	})
 
-	result, err := h.v4.WaitForResult(id, h.v4.queryTimeout)
+	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
 	if err != nil {
 		errResult := map[string]interface{}{
 			"content": []map[string]string{
@@ -347,7 +347,7 @@ func (h *MCPHandlerV4) toolGetPageInfo(req JSONRPCRequest, args json.RawMessage)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
-func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		Scope        string   `json:"scope"`
 		Tags         []string `json:"tags"`
@@ -355,11 +355,11 @@ func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
-	cacheKey := h.v4.a11yCacheKey(arguments.Scope, arguments.Tags)
+	cacheKey := h.capture.a11yCacheKey(arguments.Scope, arguments.Tags)
 
 	// Check cache (unless force_refresh)
 	if !arguments.ForceRefresh {
-		if cached := h.v4.getA11yCacheEntry(cacheKey); cached != nil {
+		if cached := h.capture.getA11yCacheEntry(cacheKey); cached != nil {
 			resp := map[string]interface{}{
 				"content": []map[string]string{
 					{"type": "text", "text": string(cached)},
@@ -370,7 +370,7 @@ func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage
 		}
 
 		// Check if there's an inflight request for this key (concurrent dedup)
-		if inflight := h.v4.getOrCreateInflight(cacheKey); inflight != nil {
+		if inflight := h.capture.getOrCreateInflight(cacheKey); inflight != nil {
 			// Wait for the inflight request to complete
 			<-inflight.done
 			if inflight.err != nil {
@@ -393,9 +393,9 @@ func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage
 		}
 	} else {
 		// force_refresh: remove existing cache entry
-		h.v4.removeA11yCacheEntry(cacheKey)
+		h.capture.removeA11yCacheEntry(cacheKey)
 		// Register inflight
-		h.v4.getOrCreateInflight(cacheKey)
+		h.capture.getOrCreateInflight(cacheKey)
 	}
 
 	params := map[string]interface{}{}
@@ -407,15 +407,15 @@ func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage
 	}
 	paramsJSON, _ := json.Marshal(params)
 
-	id := h.v4.CreatePendingQuery(PendingQuery{
+	id := h.capture.CreatePendingQuery(PendingQuery{
 		Type:   "a11y",
 		Params: paramsJSON,
 	})
 
-	result, err := h.v4.WaitForResult(id, h.v4.queryTimeout)
+	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
 	if err != nil {
 		// Don't cache errors — complete inflight with error
-		h.v4.completeInflight(cacheKey, nil, err)
+		h.capture.completeInflight(cacheKey, nil, err)
 		errResult := map[string]interface{}{
 			"content": []map[string]string{
 				{"type": "text", "text": "Timeout waiting for accessibility audit result"},
@@ -427,8 +427,8 @@ func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage
 	}
 
 	// Cache the successful result
-	h.v4.setA11yCacheEntry(cacheKey, result)
-	h.v4.completeInflight(cacheKey, result, nil)
+	h.capture.setA11yCacheEntry(cacheKey, result)
+	h.capture.completeInflight(cacheKey, result, nil)
 
 	resp := map[string]interface{}{
 		"content": []map[string]string{
@@ -444,7 +444,7 @@ func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage
 // ============================================
 
 // a11yCacheKey generates a cache key from scope and tags (tags sorted for normalization)
-func (v *V4Server) a11yCacheKey(scope string, tags []string) string {
+func (v *Capture) a11yCacheKey(scope string, tags []string) string {
 	sortedTags := make([]string, len(tags))
 	copy(sortedTags, tags)
 	sort.Strings(sortedTags)
@@ -452,7 +452,7 @@ func (v *V4Server) a11yCacheKey(scope string, tags []string) string {
 }
 
 // getA11yCacheEntry returns cached result if valid, nil otherwise
-func (v *V4Server) getA11yCacheEntry(key string) json.RawMessage {
+func (v *Capture) getA11yCacheEntry(key string) json.RawMessage {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
@@ -470,7 +470,7 @@ func (v *V4Server) getA11yCacheEntry(key string) json.RawMessage {
 }
 
 // setA11yCacheEntry stores a result in the cache with eviction
-func (v *V4Server) setA11yCacheEntry(key string, result json.RawMessage) {
+func (v *Capture) setA11yCacheEntry(key string, result json.RawMessage) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -499,7 +499,7 @@ func (v *V4Server) setA11yCacheEntry(key string, result json.RawMessage) {
 }
 
 // removeA11yCacheEntry removes a specific cache entry
-func (v *V4Server) removeA11yCacheEntry(key string) {
+func (v *Capture) removeA11yCacheEntry(key string) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -514,7 +514,7 @@ func (v *V4Server) removeA11yCacheEntry(key string) {
 }
 
 // getOrCreateInflight returns an existing inflight entry to wait on, or nil if this caller should proceed.
-func (v *V4Server) getOrCreateInflight(key string) *a11yInflightEntry {
+func (v *Capture) getOrCreateInflight(key string) *a11yInflightEntry {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -528,7 +528,7 @@ func (v *V4Server) getOrCreateInflight(key string) *a11yInflightEntry {
 }
 
 // completeInflight signals waiters and removes the inflight entry
-func (v *V4Server) completeInflight(key string, result json.RawMessage, err error) {
+func (v *Capture) completeInflight(key string, result json.RawMessage, err error) {
 	v.mu.Lock()
 	entry, exists := v.a11yInflight[key]
 	if exists {
@@ -544,7 +544,7 @@ func (v *V4Server) completeInflight(key string, result json.RawMessage, err erro
 }
 
 // ExpireA11yCache forces all cache entries to expire (for testing)
-func (v *V4Server) ExpireA11yCache() {
+func (v *Capture) ExpireA11yCache() {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -555,14 +555,14 @@ func (v *V4Server) ExpireA11yCache() {
 }
 
 // GetA11yCacheSize returns the number of entries in the a11y cache
-func (v *V4Server) GetA11yCacheSize() int {
+func (v *Capture) GetA11yCacheSize() int {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	return len(v.a11yCache)
 }
 
 // SetLastKnownURL updates the last known page URL for navigation detection.
-func (v *V4Server) SetLastKnownURL(url string) {
+func (v *Capture) SetLastKnownURL(url string) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 

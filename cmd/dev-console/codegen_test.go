@@ -8,10 +8,10 @@ import (
 
 func TestMCPGetReproductionScript(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "login-btn"}},
 		{Type: "input", Timestamp: 2000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"ariaLabel": "Email"}, Value: "user@test.com", InputType: "email"},
 	})
@@ -53,10 +53,10 @@ func TestMCPGetReproductionScript(t *testing.T) {
 
 func TestMCPGetReproductionScriptWithErrorMessage(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "submit-btn"}},
 	})
 
@@ -86,11 +86,11 @@ func TestMCPGetReproductionScriptWithErrorMessage(t *testing.T) {
 
 func TestMCPGetReproductionScriptWithLastN(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	for i := 0; i < 10; i++ {
-		v4.AddEnhancedActions([]EnhancedAction{
+		capture.AddEnhancedActions([]EnhancedAction{
 			{Type: "click", Timestamp: int64(i * 1000), URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "btn-" + string(rune('a'+i))}},
 		})
 	}
@@ -123,10 +123,10 @@ func TestMCPGetReproductionScriptWithLastN(t *testing.T) {
 
 func TestMCPGetReproductionScriptWithBaseURL(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
 		{Type: "navigate", Timestamp: 2000, URL: "http://localhost:3000/dashboard", FromURL: "http://localhost:3000/login", ToURL: "http://localhost:3000/dashboard"},
 	})
@@ -158,8 +158,8 @@ func TestMCPGetReproductionScriptWithBaseURL(t *testing.T) {
 
 func TestMCPGetReproductionScriptEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -185,10 +185,10 @@ func TestMCPGetReproductionScriptEmpty(t *testing.T) {
 
 func TestMCPGetReproductionScriptSelectorPriority(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{
 			Type: "click", Timestamp: 1000, URL: "http://localhost:3000",
 			Selectors: map[string]interface{}{
@@ -249,10 +249,10 @@ func TestMCPGetReproductionScriptSelectorPriority(t *testing.T) {
 
 func TestMCPGetReproductionScriptInputActions(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "input", Timestamp: 1000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "email-input"}, Value: "user@test.com", InputType: "email"},
 		{Type: "input", Timestamp: 2000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "password-input"}, Value: "[redacted]", InputType: "password"},
 		{Type: "select", Timestamp: 3000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "country-select"}, SelectedValue: "us"},
@@ -301,10 +301,10 @@ func TestMCPGetReproductionScriptInputActions(t *testing.T) {
 
 func TestMCPGetReproductionScriptPauseComments(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "btn1"}},
 		{Type: "click", Timestamp: 6000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "btn2"}}, // 5 seconds later
 	})
@@ -464,9 +464,9 @@ func TestNormalizeTimestampEmpty(t *testing.T) {
 }
 
 func TestGetSessionTimelineEmpty(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	resp := v4.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
+	resp := capture.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
 
 	if len(resp.Timeline) != 0 {
 		t.Errorf("Expected empty timeline, got %d entries", len(resp.Timeline))
@@ -477,14 +477,14 @@ func TestGetSessionTimelineEmpty(t *testing.T) {
 }
 
 func TestGetSessionTimelineActionsOnly(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
 		{Type: "input", Timestamp: 2000, URL: "http://localhost:3000/login", Value: "test@test.com"},
 	})
 
-	resp := v4.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
+	resp := capture.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
 
 	if len(resp.Timeline) != 2 {
 		t.Fatalf("Expected 2 entries, got %d", len(resp.Timeline))
@@ -501,13 +501,13 @@ func TestGetSessionTimelineActionsOnly(t *testing.T) {
 }
 
 func TestGetSessionTimelineNetworkOnly(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "2024-01-15T10:30:00.000Z", Method: "POST", URL: "/api/login", Status: 200, ResponseBody: `{"token":"abc"}`, ContentType: "application/json"},
 	})
 
-	resp := v4.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
+	resp := capture.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
 
 	if len(resp.Timeline) != 1 {
 		t.Fatalf("Expected 1 entry, got %d", len(resp.Timeline))
@@ -527,14 +527,14 @@ func TestGetSessionTimelineNetworkOnly(t *testing.T) {
 }
 
 func TestGetSessionTimelineNetworkResponseShape(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "2024-01-15T10:30:00.000Z", Method: "GET", URL: "/api/users", Status: 200,
 			ResponseBody: `{"users":[{"id":1,"name":"Alice"}]}`, ContentType: "application/json"},
 	})
 
-	resp := v4.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
+	resp := capture.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
 
 	if resp.Timeline[0].ResponseShape == nil {
 		t.Fatal("Expected responseShape to be populated for JSON responses")
@@ -550,14 +550,14 @@ func TestGetSessionTimelineNetworkResponseShape(t *testing.T) {
 }
 
 func TestGetSessionTimelineNetworkNonJSONNoShape(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "2024-01-15T10:30:00.000Z", Method: "GET", URL: "/page", Status: 200,
 			ResponseBody: `<html></html>`, ContentType: "text/html"},
 	})
 
-	resp := v4.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
+	resp := capture.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
 
 	if resp.Timeline[0].ResponseShape != nil {
 		t.Errorf("Expected nil responseShape for non-JSON content, got %v", resp.Timeline[0].ResponseShape)
@@ -565,7 +565,7 @@ func TestGetSessionTimelineNetworkNonJSONNoShape(t *testing.T) {
 }
 
 func TestGetSessionTimelineConsoleEntries(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	entries := []LogEntry{
 		{"level": "error", "message": "Something failed", "ts": "2024-01-15T10:30:00.500Z"},
@@ -573,7 +573,7 @@ func TestGetSessionTimelineConsoleEntries(t *testing.T) {
 		{"level": "info", "message": "App started", "ts": "2024-01-15T10:30:00.100Z"}, // Should be excluded
 	}
 
-	resp := v4.GetSessionTimeline(TimelineFilter{}, entries)
+	resp := capture.GetSessionTimeline(TimelineFilter{}, entries)
 
 	if len(resp.Timeline) != 2 {
 		t.Fatalf("Expected 2 entries (error+warn, no info), got %d", len(resp.Timeline))
@@ -587,13 +587,13 @@ func TestGetSessionTimelineConsoleEntries(t *testing.T) {
 }
 
 func TestGetSessionTimelineMergedAndSorted(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1705314600000, URL: "http://localhost:3000"},
 		{Type: "navigate", Timestamp: 1705314600300, ToURL: "/dashboard"},
 	})
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "2024-01-15T10:30:00.150Z", Method: "POST", URL: "/api/login", Status: 200,
 			ResponseBody: `{"ok":true}`, ContentType: "application/json"},
 	})
@@ -601,7 +601,7 @@ func TestGetSessionTimelineMergedAndSorted(t *testing.T) {
 		{"level": "error", "message": "Widget failed", "ts": "2024-01-15T10:30:00.400Z"},
 	}
 
-	resp := v4.GetSessionTimeline(TimelineFilter{}, entries)
+	resp := capture.GetSessionTimeline(TimelineFilter{}, entries)
 
 	if len(resp.Timeline) != 4 {
 		t.Fatalf("Expected 4 entries, got %d", len(resp.Timeline))
@@ -623,20 +623,20 @@ func TestGetSessionTimelineMergedAndSorted(t *testing.T) {
 }
 
 func TestGetSessionTimelineLastNActions(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000"},
 		{Type: "click", Timestamp: 2000, URL: "http://localhost:3000"},
 		{Type: "click", Timestamp: 3000, URL: "http://localhost:3000"},
 	})
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "1970-01-01T00:00:00.500Z", Method: "GET", URL: "/early", Status: 200, ContentType: "application/json", ResponseBody: `{}`}, // Before action 1
 		{Timestamp: "1970-01-01T00:00:02.500Z", Method: "GET", URL: "/late", Status: 200, ContentType: "application/json", ResponseBody: `{}`},  // Between action 2 and 3
 	})
 
 	// Request last 2 actions -- should start from action at t=2000
-	resp := v4.GetSessionTimeline(TimelineFilter{LastNActions: 2}, []LogEntry{})
+	resp := capture.GetSessionTimeline(TimelineFilter{LastNActions: 2}, []LogEntry{})
 
 	// Should include: action@2000, network@2500, action@3000 -- NOT action@1000 or network@500
 	hasEarly := false
@@ -654,18 +654,18 @@ func TestGetSessionTimelineLastNActions(t *testing.T) {
 }
 
 func TestGetSessionTimelineURLFilter(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login"},
 		{Type: "click", Timestamp: 2000, URL: "http://localhost:3000/dashboard"},
 	})
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "1970-01-01T00:00:01.500Z", Method: "POST", URL: "/api/login", Status: 200, ContentType: "application/json", ResponseBody: `{}`},
 		{Timestamp: "1970-01-01T00:00:02.500Z", Method: "GET", URL: "/api/dashboard", Status: 200, ContentType: "application/json", ResponseBody: `{}`},
 	})
 
-	resp := v4.GetSessionTimeline(TimelineFilter{URLFilter: "login"}, []LogEntry{})
+	resp := capture.GetSessionTimeline(TimelineFilter{URLFilter: "login"}, []LogEntry{})
 
 	for _, entry := range resp.Timeline {
 		if entry.Kind == "action" && !strings.Contains(entry.URL, "login") {
@@ -678,12 +678,12 @@ func TestGetSessionTimelineURLFilter(t *testing.T) {
 }
 
 func TestGetSessionTimelineIncludeFilter(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000"},
 	})
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "1970-01-01T00:00:01.500Z", Method: "GET", URL: "/api", Status: 200, ContentType: "application/json", ResponseBody: `{}`},
 	})
 	entries := []LogEntry{
@@ -691,7 +691,7 @@ func TestGetSessionTimelineIncludeFilter(t *testing.T) {
 	}
 
 	// Only include actions
-	resp := v4.GetSessionTimeline(TimelineFilter{Include: []string{"actions"}}, entries)
+	resp := capture.GetSessionTimeline(TimelineFilter{Include: []string{"actions"}}, entries)
 
 	for _, entry := range resp.Timeline {
 		if entry.Kind != "action" {
@@ -701,16 +701,16 @@ func TestGetSessionTimelineIncludeFilter(t *testing.T) {
 }
 
 func TestGetSessionTimelineMaxEntries(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
 	// Add 50 actions (max buffer) -- timeline cap is 200
 	for i := 0; i < 50; i++ {
-		v4.AddEnhancedActions([]EnhancedAction{
+		capture.AddEnhancedActions([]EnhancedAction{
 			{Type: "click", Timestamp: int64(i * 1000), URL: "http://localhost:3000"},
 		})
 	}
 
-	resp := v4.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
+	resp := capture.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
 
 	if len(resp.Timeline) > 200 {
 		t.Errorf("Expected timeline capped at 200, got %d", len(resp.Timeline))
@@ -718,14 +718,14 @@ func TestGetSessionTimelineMaxEntries(t *testing.T) {
 }
 
 func TestGetSessionTimelineDurationMs(t *testing.T) {
-	v4 := setupV4TestServer(t)
+	capture := setupTestCapture(t)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000},
 		{Type: "click", Timestamp: 5000},
 	})
 
-	resp := v4.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
+	resp := capture.GetSessionTimeline(TimelineFilter{}, []LogEntry{})
 
 	if resp.Summary.DurationMs != 4000 {
 		t.Errorf("Expected duration 4000ms, got %d", resp.Summary.DurationMs)
@@ -930,13 +930,13 @@ func TestGenerateTestScriptEmpty(t *testing.T) {
 
 func TestMCPGetSessionTimeline(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1705312200000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
 	})
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "2024-01-15T10:30:00.150Z", Method: "POST", URL: "/api/login", Status: 200,
 			ResponseBody: `{"token":"abc"}`, ContentType: "application/json"},
 	})
@@ -990,11 +990,11 @@ func TestMCPGetSessionTimeline(t *testing.T) {
 
 func TestMCPGetSessionTimelineWithLastN(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	for i := 0; i < 10; i++ {
-		v4.AddEnhancedActions([]EnhancedAction{
+		capture.AddEnhancedActions([]EnhancedAction{
 			{Type: "click", Timestamp: int64(i * 1000), URL: "http://localhost:3000"},
 		})
 	}
@@ -1026,8 +1026,8 @@ func TestMCPGetSessionTimelineWithLastN(t *testing.T) {
 
 func TestMCPGetSessionTimelineEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1053,13 +1053,13 @@ func TestMCPGetSessionTimelineEmpty(t *testing.T) {
 
 func TestMCPGenerateTest(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1705312200000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "login-btn"}},
 	})
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "2024-01-15T10:30:00.150Z", Method: "POST", URL: "/api/login", Status: 200,
 			ResponseBody: `{"token":"abc"}`, ContentType: "application/json"},
 	})
@@ -1106,10 +1106,10 @@ func TestMCPGenerateTest(t *testing.T) {
 
 func TestMCPGenerateTestWithBaseURL(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
 	})
 
@@ -1141,8 +1141,8 @@ func TestMCPGenerateTestWithBaseURL(t *testing.T) {
 
 func TestMCPGenerateTestEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1168,8 +1168,8 @@ func TestMCPGenerateTestEmpty(t *testing.T) {
 
 func TestMCPGenerateTestToolInToolsList(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",

@@ -11,7 +11,7 @@ import (
 //
 // These tests exercise the get_changes_since tool through
 // the full MCP JSON-RPC handler stack (HandleRequest → handleToolsCall
-// → handleV4ToolCall → toolGetChangesSince).
+// → handleToolCall → toolGetChangesSince).
 
 // helper: initialize MCP session
 func initMCP(t *testing.T, mcp *MCPHandler) {
@@ -60,8 +60,8 @@ func callGetChangesSince(t *testing.T, mcp *MCPHandler, argsJSON string) DiffRes
 
 func TestE2E_ToolAppearsInToolsList(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
@@ -95,8 +95,8 @@ func TestE2E_ToolAppearsInToolsList(t *testing.T) {
 
 func TestE2E_FirstCallEmptyBuffers(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	diff := callGetChangesSince(t, mcp, `{}`)
@@ -122,8 +122,8 @@ func TestE2E_FirstCallEmptyBuffers(t *testing.T) {
 
 func TestE2E_FirstCallWithConsoleErrors(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	// Add console errors
@@ -156,8 +156,8 @@ func TestE2E_FirstCallWithConsoleErrors(t *testing.T) {
 
 func TestE2E_AutoAdvance(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	// Add initial error
@@ -202,8 +202,8 @@ func TestE2E_AutoAdvance(t *testing.T) {
 
 func TestE2E_NamedCheckpointDoesNotAdvanceAuto(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	// Add initial error
@@ -233,8 +233,8 @@ func TestE2E_NamedCheckpointDoesNotAdvanceAuto(t *testing.T) {
 
 func TestE2E_SeverityFilterErrorsOnly(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	server.addEntries([]LogEntry{
@@ -260,8 +260,8 @@ func TestE2E_SeverityFilterErrorsOnly(t *testing.T) {
 
 func TestE2E_SeverityFilterWarnings(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	server.addEntries([]LogEntry{
@@ -287,15 +287,15 @@ func TestE2E_SeverityFilterWarnings(t *testing.T) {
 
 func TestE2E_IncludeFilterConsoleOnly(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	// Add data to multiple categories
 	server.addEntries([]LogEntry{
 		{"level": "error", "message": "Console error"},
 	})
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "https://api.example.com/data", Method: "GET", Status: 500, Duration: 100},
 	})
 
@@ -313,14 +313,14 @@ func TestE2E_IncludeFilterConsoleOnly(t *testing.T) {
 
 func TestE2E_IncludeFilterNetworkOnly(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	server.addEntries([]LogEntry{
 		{"level": "error", "message": "Console error"},
 	})
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "https://api.example.com/data", Method: "GET", Status: 500, Duration: 100},
 	})
 
@@ -338,18 +338,18 @@ func TestE2E_IncludeFilterNetworkOnly(t *testing.T) {
 
 func TestE2E_NetworkFailureRegression(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	// First: endpoint returns 200, establish baseline via auto-checkpoint
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "https://api.example.com/users", Method: "GET", Status: 200, Duration: 50},
 	})
 	callGetChangesSince(t, mcp, `{}`) // advances auto-checkpoint, saves known endpoints
 
 	// Now the same endpoint fails with 500
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "https://api.example.com/users", Method: "GET", Status: 500, Duration: 200},
 	})
 
@@ -377,12 +377,12 @@ func TestE2E_NetworkFailureRegression(t *testing.T) {
 
 func TestE2E_NetworkNewFailingEndpoints(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	// A brand new endpoint that immediately returns 500
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "https://api.example.com/orders", Method: "POST", Status: 500, Duration: 200},
 	})
 
@@ -401,11 +401,11 @@ func TestE2E_NetworkNewFailingEndpoints(t *testing.T) {
 
 func TestE2E_WebSocketDisconnections(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "ws-1", Event: "open", URL: "wss://example.com/ws"},
 		{ID: "ws-1", Event: "close", CloseCode: 1006, CloseReason: "abnormal"},
 	})
@@ -424,8 +424,8 @@ func TestE2E_WebSocketDisconnections(t *testing.T) {
 
 func TestE2E_ConsoleDeduplication(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	// Same error repeated 5 times
@@ -453,21 +453,21 @@ func TestE2E_ConsoleDeduplication(t *testing.T) {
 
 func TestE2E_MultipleCategoriesCombined(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	// Add data to all categories
 	server.addEntries([]LogEntry{
 		{"level": "error", "message": "JS error"},
 	})
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "https://api.example.com/fail", Method: "GET", Status: 500, Duration: 100},
 	})
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "ws-1", Event: "error", URL: "wss://example.com/ws"},
 	})
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Selectors: map[string]interface{}{"css": ".btn-submit"}},
 	})
 
@@ -494,8 +494,8 @@ func TestE2E_MultipleCategoriesCombined(t *testing.T) {
 
 func TestE2E_TimestampBased(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	// Add data - the timestamp in the checkpoint param refers to wall clock time
@@ -519,8 +519,8 @@ func TestE2E_TimestampBased(t *testing.T) {
 
 func TestE2E_UnknownToolReturnsError(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
@@ -540,14 +540,14 @@ func TestE2E_UnknownToolReturnsError(t *testing.T) {
 
 func TestE2E_SummaryPopulated(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	server.addEntries([]LogEntry{
 		{"level": "error", "message": "Something broke"},
 	})
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "https://api.example.com/fail", Method: "GET", Status: 503, Duration: 5000},
 	})
 
@@ -562,18 +562,18 @@ func TestE2E_SummaryPopulated(t *testing.T) {
 
 func TestE2E_DegradedEndpoints(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	// First call establishes baseline with fast endpoint via auto-checkpoint
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "https://api.example.com/data", Method: "GET", Status: 200, Duration: 50},
 	})
 	callGetChangesSince(t, mcp, `{}`) // advances auto, saves KnownEndpoints with duration=50
 
 	// Now add a much slower request to the same endpoint (>3x baseline)
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "https://api.example.com/data", Method: "GET", Status: 200, Duration: 500},
 	})
 
@@ -591,8 +591,8 @@ func TestE2E_DegradedEndpoints(t *testing.T) {
 
 func TestE2E_FromToTimestamps(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	server.addEntries([]LogEntry{
@@ -616,11 +616,11 @@ func TestE2E_FromToTimestamps(t *testing.T) {
 
 func TestE2E_ActionsDiff(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
-	v4.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Selectors: map[string]interface{}{"css": "#submit-btn"}, URL: "https://app.example.com/form"},
 		{Type: "input", Selectors: map[string]interface{}{"css": "#email"}, URL: "https://app.example.com/form"},
 		{Type: "click", Selectors: map[string]interface{}{"css": ".nav-link"}, URL: "https://app.example.com/home"},
@@ -640,11 +640,11 @@ func TestE2E_ActionsDiff(t *testing.T) {
 
 func TestE2E_WebSocketErrors(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "ws-1", Event: "error", URL: "wss://example.com/ws"},
 	})
 
@@ -662,11 +662,11 @@ func TestE2E_WebSocketErrors(t *testing.T) {
 
 func TestE2E_WebSocketNewConnections(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
-	v4.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "ws-1", Event: "open", URL: "wss://example.com/ws"},
 		{ID: "ws-2", Event: "open", URL: "wss://other.com/realtime"},
 	})
@@ -685,8 +685,8 @@ func TestE2E_WebSocketNewConnections(t *testing.T) {
 
 func TestE2E_AutoCheckpointPersistence(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
 	// Add initial data
@@ -726,11 +726,11 @@ func TestE2E_AutoCheckpointPersistence(t *testing.T) {
 
 func TestE2E_NetworkNewEndpoints(t *testing.T) {
 	server, _ := setupTestServer(t)
-	v4 := setupV4TestServer(t)
-	mcp := NewMCPHandlerV4(server, v4)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
 	initMCP(t, mcp)
 
-	v4.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "https://api.example.com/users", Method: "GET", Status: 200, Duration: 50},
 		{URL: "https://api.example.com/posts", Method: "GET", Status: 200, Duration: 80},
 	})

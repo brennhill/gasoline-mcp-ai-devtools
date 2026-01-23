@@ -248,7 +248,7 @@ func normalizeTimestamp(ts string) int64 {
 }
 
 // GetSessionTimeline merges actions, network, and console entries into a sorted timeline
-func (v *V4Server) GetSessionTimeline(filter TimelineFilter, logEntries []LogEntry) TimelineResponse {
+func (v *Capture) GetSessionTimeline(filter TimelineFilter, logEntries []LogEntry) TimelineResponse {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
@@ -540,7 +540,7 @@ func extractShape(val interface{}, depth int) interface{} {
 	}
 }
 
-func (h *MCPHandlerV4) toolGetReproductionScript(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		ErrorMessage string `json:"error_message"`
 		LastNActions int    `json:"last_n_actions"`
@@ -548,7 +548,7 @@ func (h *MCPHandlerV4) toolGetReproductionScript(req JSONRPCRequest, args json.R
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
-	actions := h.v4.GetEnhancedActions(EnhancedActionFilter{})
+	actions := h.capture.GetEnhancedActions(EnhancedActionFilter{})
 
 	if len(actions) == 0 {
 		result := map[string]interface{}{
@@ -576,7 +576,7 @@ func (h *MCPHandlerV4) toolGetReproductionScript(req JSONRPCRequest, args json.R
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
-func (h *MCPHandlerV4) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		LastNActions int      `json:"last_n_actions"`
 		URLFilter    string   `json:"url_filter"`
@@ -589,7 +589,7 @@ func (h *MCPHandlerV4) toolGetSessionTimeline(req JSONRPCRequest, args json.RawM
 	copy(entries, h.server.entries)
 	h.server.mu.RUnlock()
 
-	resp := h.v4.GetSessionTimeline(TimelineFilter{
+	resp := h.capture.GetSessionTimeline(TimelineFilter{
 		LastNActions: arguments.LastNActions,
 		URLFilter:    arguments.URLFilter,
 		Include:      arguments.Include,
@@ -606,7 +606,7 @@ func (h *MCPHandlerV4) toolGetSessionTimeline(req JSONRPCRequest, args json.RawM
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
-func (h *MCPHandlerV4) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		TestName            string `json:"test_name"`
 		AssertNetwork       bool   `json:"assert_network"`
@@ -621,7 +621,7 @@ func (h *MCPHandlerV4) toolGenerateTest(req JSONRPCRequest, args json.RawMessage
 	copy(entries, h.server.entries)
 	h.server.mu.RUnlock()
 
-	resp := h.v4.GetSessionTimeline(TimelineFilter{}, entries)
+	resp := h.capture.GetSessionTimeline(TimelineFilter{}, entries)
 
 	if len(resp.Timeline) == 0 {
 		result := map[string]interface{}{

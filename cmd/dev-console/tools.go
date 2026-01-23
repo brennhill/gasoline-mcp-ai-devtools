@@ -6,30 +6,30 @@ import "encoding/json"
 // MCP Handler V4
 // ============================================
 
-// MCPHandlerV4 extends MCPHandler with v4 tools
-type MCPHandlerV4 struct {
+// ToolHandler extends MCPHandler with v4 tools
+type ToolHandler struct {
 	*MCPHandler
-	v4          *V4Server
+	capture     *Capture
 	checkpoints *CheckpointManager
 }
 
-// NewMCPHandlerV4 creates an MCP handler with v4 capabilities
-func NewMCPHandlerV4(server *Server, v4 *V4Server) *MCPHandler {
-	handler := &MCPHandlerV4{
+// NewToolHandler creates an MCP handler with v4 capabilities
+func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
+	handler := &ToolHandler{
 		MCPHandler:  NewMCPHandler(server),
-		v4:          v4,
-		checkpoints: NewCheckpointManager(server, v4),
+		capture:     capture,
+		checkpoints: NewCheckpointManager(server, capture),
 	}
 	// Return as MCPHandler but with overridden methods via the wrapper
 	return &MCPHandler{
 		server:      server,
 		initialized: false,
-		v4Handler:   handler,
+		toolHandler: handler,
 	}
 }
 
-// v4ToolsList returns the list of v4 tools
-func (h *MCPHandlerV4) v4ToolsList() []MCPTool {
+// toolsList returns the list of v4 tools
+func (h *ToolHandler) toolsList() []MCPTool {
 	return []MCPTool{
 		{
 			Name:        "get_websocket_events",
@@ -275,8 +275,8 @@ func (h *MCPHandlerV4) v4ToolsList() []MCPTool {
 	}
 }
 
-// handleV4ToolCall handles a v4-specific tool call
-func (h *MCPHandlerV4) handleV4ToolCall(req JSONRPCRequest, name string, args json.RawMessage) (JSONRPCResponse, bool) {
+// handleToolCall handles a v4-specific tool call
+func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.RawMessage) (JSONRPCResponse, bool) {
 	switch name {
 	case "get_websocket_events":
 		return h.toolGetWSEvents(req, args), true
@@ -310,7 +310,7 @@ func (h *MCPHandlerV4) handleV4ToolCall(req JSONRPCRequest, name string, args js
 // Compressed State Diffs
 // ============================================
 
-func (h *MCPHandlerV4) toolGetChangesSince(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolGetChangesSince(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		Checkpoint string   `json:"checkpoint"`
 		Include    []string `json:"include"`
