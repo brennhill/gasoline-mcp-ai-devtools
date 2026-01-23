@@ -245,13 +245,19 @@ type V4Server struct {
 	mu sync.RWMutex
 
 	// WebSocket event ring buffer
-	wsEvents []WebSocketEvent
+	wsEvents     []WebSocketEvent
+	wsAddedAt    []time.Time // parallel: when each event was added
+	wsTotalAdded int64       // monotonic counter
 
 	// Network bodies ring buffer
-	networkBodies []NetworkBody
+	networkBodies     []NetworkBody
+	networkAddedAt    []time.Time // parallel: when each body was added
+	networkTotalAdded int64       // monotonic counter
 
 	// Enhanced actions ring buffer (v5)
-	enhancedActions []EnhancedAction
+	enhancedActions  []EnhancedAction
+	actionAddedAt    []time.Time // parallel: when each action was added
+	actionTotalAdded int64       // monotonic counter
 
 	// Connection tracker
 	connections    map[string]*connectionState
@@ -302,17 +308,21 @@ func (v *V4Server) AddWebSocketEvents(events []WebSocketEvent) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	v.wsTotalAdded += int64(len(events))
+	now := time.Now()
 	for _, event := range events {
 		// Track connection state
 		v.trackConnection(event)
 
 		// Add to ring buffer
 		v.wsEvents = append(v.wsEvents, event)
+		v.wsAddedAt = append(v.wsAddedAt, now)
 	}
 
 	// Enforce max count
 	if len(v.wsEvents) > maxWSEvents {
 		v.wsEvents = v.wsEvents[len(v.wsEvents)-maxWSEvents:]
+		v.wsAddedAt = v.wsAddedAt[len(v.wsAddedAt)-maxWSEvents:]
 	}
 
 	// Enforce memory limit
@@ -323,6 +333,9 @@ func (v *V4Server) AddWebSocketEvents(events []WebSocketEvent) {
 func (v *V4Server) evictWSForMemory() {
 	for v.calcWSMemory() > wsBufferMemoryLimit && len(v.wsEvents) > 0 {
 		v.wsEvents = v.wsEvents[1:]
+		if len(v.wsAddedAt) > 0 {
+			v.wsAddedAt = v.wsAddedAt[1:]
+		}
 	}
 }
 
@@ -628,6 +641,8 @@ func (v *V4Server) AddNetworkBodies(bodies []NetworkBody) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	v.networkTotalAdded += int64(len(bodies))
+	now := time.Now()
 	for i := range bodies {
 		// Truncate request body
 		if len(bodies[i].RequestBody) > maxRequestBodySize {
@@ -640,11 +655,13 @@ func (v *V4Server) AddNetworkBodies(bodies []NetworkBody) {
 			bodies[i].ResponseTruncated = true
 		}
 		v.networkBodies = append(v.networkBodies, bodies[i])
+		v.networkAddedAt = append(v.networkAddedAt, now)
 	}
 
 	// Enforce max count
 	if len(v.networkBodies) > maxNetworkBodies {
 		v.networkBodies = v.networkBodies[len(v.networkBodies)-maxNetworkBodies:]
+		v.networkAddedAt = v.networkAddedAt[len(v.networkAddedAt)-maxNetworkBodies:]
 	}
 
 	// Enforce memory limit
@@ -655,6 +672,9 @@ func (v *V4Server) AddNetworkBodies(bodies []NetworkBody) {
 func (v *V4Server) evictNBForMemory() {
 	for v.calcNBMemory() > nbBufferMemoryLimit && len(v.networkBodies) > 0 {
 		v.networkBodies = v.networkBodies[1:]
+		if len(v.networkAddedAt) > 0 {
+			v.networkAddedAt = v.networkAddedAt[1:]
+		}
 	}
 }
 
@@ -723,17 +743,21 @@ func (v *V4Server) AddEnhancedActions(actions []EnhancedAction) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	v.actionTotalAdded += int64(len(actions))
+	now := time.Now()
 	for i := range actions {
 		// Redact password values on ingest
 		if actions[i].InputType == "password" && actions[i].Value != "[redacted]" {
 			actions[i].Value = "[redacted]"
 		}
 		v.enhancedActions = append(v.enhancedActions, actions[i])
+		v.actionAddedAt = append(v.actionAddedAt, now)
 	}
 
 	// Enforce max count
 	if len(v.enhancedActions) > maxEnhancedActions {
 		v.enhancedActions = v.enhancedActions[len(v.enhancedActions)-maxEnhancedActions:]
+		v.actionAddedAt = v.actionAddedAt[len(v.actionAddedAt)-maxEnhancedActions:]
 	}
 }
 
@@ -1772,4 +1796,10 @@ func replaceOrigin(original, baseURL string) string {
 	// Remove trailing slash from baseURL if path starts with /
 	base := strings.TrimRight(baseURL, "/")
 	return base + path
+}
+
+// extractResponseShape extracts the JSON structure shape (stub for TDD)
+func extractResponseShape(body string) interface{} {
+	// STUB: implementation pending from api-schema feature
+	return nil
 }
