@@ -1,0 +1,523 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestV4RateLimitWebSocketEvents(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Simulate flooding: > 1000 events in rapid succession
+	for i := 0; i < 1100; i++ {
+		v4.RecordEventReceived()
+	}
+
+	// Next request should be rate limited
+	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewBufferString(`{"events":[{"event":"message"}]}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	v4.HandleWebSocketEvents(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("Expected 429, got %d", rec.Code)
+	}
+}
+
+func TestV4MemoryLimitRejectsNetworkBodies(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Simulate exceeding memory limit
+	v4.SetMemoryUsage(55 * 1024 * 1024) // 55MB > 50MB limit
+
+	body := `{"bodies":[{"url":"/api/test","status":200,"responseBody":"data"}]}`
+	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	v4.HandleNetworkBodies(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("Expected 503, got %d", rec.Code)
+	}
+}
+
+func TestV4WebSocketBufferMemoryLimit(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Add events that exceed 4MB memory limit
+	largeData := strings.Repeat("x", 100000) // 100KB per event
+	for i := 0; i < 50; i++ {                // 50 * 100KB = 5MB
+		v4.AddWebSocketEvents([]WebSocketEvent{
+			{ID: "uuid-1", Event: "message", Data: largeData},
+		})
+	}
+
+	// Buffer should evict to stay under 4MB
+	memUsage := v4.GetWebSocketBufferMemory()
+	if memUsage > 4*1024*1024 {
+		t.Errorf("Expected WS buffer memory <= 4MB, got %d bytes", memUsage)
+	}
+}
+
+func TestV4NetworkBodiesBufferMemoryLimit(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Add bodies that exceed 8MB memory limit
+	largeBody := strings.Repeat("y", 200000) // 200KB per body
+	for i := 0; i < 50; i++ {                // 50 * 200KB = 10MB
+		v4.AddNetworkBodies([]NetworkBody{
+			{URL: "/api/test", ResponseBody: largeBody, Status: 200},
+		})
+	}
+
+	// Buffer should evict to stay under 8MB
+	memUsage := v4.GetNetworkBodiesBufferMemory()
+	if memUsage > 8*1024*1024 {
+		t.Errorf("Expected network bodies buffer memory <= 8MB, got %d bytes", memUsage)
+	}
+}
+
+func TestMCPToolsListIncludesV4Tools(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/list",
+	})
+
+	var result struct {
+		Tools []struct {
+			Name string `json:"name"`
+		} `json:"tools"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	toolNames := make(map[string]bool)
+	for _, tool := range result.Tools {
+		toolNames[tool.Name] = true
+	}
+
+	expectedTools := []string{
+		"get_browser_errors",
+		"get_browser_logs",
+		"clear_browser_logs",
+		"get_websocket_events",
+		"get_websocket_status",
+		"get_network_bodies",
+		"query_dom",
+		"get_page_info",
+		"run_accessibility_audit",
+	}
+
+	for _, name := range expectedTools {
+		if !toolNames[name] {
+			t.Errorf("Expected tool '%s' in tools list", name)
+		}
+	}
+}
+
+func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	// Add a log entry with _aiContext field (as extension would send)
+	entry := LogEntry{
+		"level":   "error",
+		"message": "Cannot read property 'user' of undefined",
+		"stack":   "TypeError: Cannot read property 'user' of undefined\n    at UserProfile.render (app.js:42:15)",
+		"_aiContext": map[string]interface{}{
+			"summary": "TypeError in UserProfile.render at app.js:42. React component: UserProfile > App.",
+			"componentAncestry": map[string]interface{}{
+				"framework":  "react",
+				"components": []interface{}{"UserProfile", "App"},
+			},
+			"stateSnapshot": map[string]interface{}{
+				"relevantSlice": map[string]interface{}{
+					"auth": map[string]interface{}{"user": nil, "loading": false},
+				},
+			},
+		},
+		"_enrichments": []interface{}{"aiContext"},
+	}
+	server.addEntries([]LogEntry{entry})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"get_browser_errors","arguments":{}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	if len(result.Content) == 0 {
+		t.Fatal("Expected content in response")
+	}
+
+	// The _aiContext should be preserved in the output
+	responseText := result.Content[0].Text
+	if !strings.Contains(responseText, "_aiContext") {
+		t.Error("Expected _aiContext field to be preserved in get_browser_errors output")
+	}
+	if !strings.Contains(responseText, "componentAncestry") {
+		t.Error("Expected componentAncestry in _aiContext to be preserved")
+	}
+	if !strings.Contains(responseText, "UserProfile") {
+		t.Error("Expected component name to be preserved in _aiContext")
+	}
+}
+
+func TestV4GetTotalBufferMemory(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Add some data to each buffer
+	v4.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "uuid-1", Event: "message", Data: strings.Repeat("a", 1000)},
+	})
+	v4.AddNetworkBodies([]NetworkBody{
+		{URL: "/api/test", ResponseBody: strings.Repeat("b", 2000)},
+	})
+
+	total := v4.GetTotalBufferMemory()
+	if total <= 0 {
+		t.Errorf("Expected positive total buffer memory, got %d", total)
+	}
+
+	// Total should be sum of WS + NB buffers
+	wsMemory := v4.GetWebSocketBufferMemory()
+	nbMemory := v4.GetNetworkBodiesBufferMemory()
+	if total != wsMemory+nbMemory {
+		t.Errorf("Expected total (%d) = ws (%d) + nb (%d)", total, wsMemory, nbMemory)
+	}
+}
+
+func TestV4IsMemoryExceededUsesRealMemory(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// With empty buffers, memory should not be exceeded
+	if v4.IsMemoryExceeded() {
+		t.Error("Expected memory NOT to be exceeded with empty buffers")
+	}
+
+	// Simulated memory should still work as override for testing
+	v4.SetMemoryUsage(55 * 1024 * 1024) // 55MB
+	if !v4.IsMemoryExceeded() {
+		t.Error("Expected simulated memory to trigger exceeded")
+	}
+
+	// Reset simulated
+	v4.SetMemoryUsage(0)
+	if v4.IsMemoryExceeded() {
+		t.Error("Expected memory NOT exceeded after resetting simulated")
+	}
+}
+
+func TestV4GlobalEvictionOnWSIngest(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Fill WS buffer to near its per-buffer limit (4MB)
+	largeData := strings.Repeat("x", 100000) // 100KB each
+	for i := 0; i < 38; i++ {                // ~3.8MB
+		v4.AddWebSocketEvents([]WebSocketEvent{
+			{ID: "uuid-1", Event: "message", Data: largeData},
+		})
+	}
+
+	beforeCount := v4.GetWebSocketEventCount()
+
+	// Adding more events should still enforce per-buffer memory limit
+	for i := 0; i < 5; i++ {
+		v4.AddWebSocketEvents([]WebSocketEvent{
+			{ID: "uuid-1", Event: "message", Data: largeData},
+		})
+	}
+
+	afterMem := v4.GetWebSocketBufferMemory()
+	if afterMem > wsBufferMemoryLimit {
+		t.Errorf("Expected WS buffer <= 4MB after eviction, got %d bytes", afterMem)
+	}
+
+	// Should have fewer events than beforeCount + 5 due to eviction
+	afterCount := v4.GetWebSocketEventCount()
+	if afterCount >= beforeCount+5 {
+		t.Errorf("Expected eviction to reduce events, before=%d after=%d", beforeCount, afterCount)
+	}
+}
+
+func TestV4GlobalEvictionOnNBIngest(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Fill NB buffer to near its per-buffer limit (8MB)
+	largeBody := strings.Repeat("y", 200000) // 200KB each
+	for i := 0; i < 38; i++ {                // ~7.6MB
+		v4.AddNetworkBodies([]NetworkBody{
+			{URL: "/api/test", ResponseBody: largeBody, Status: 200},
+		})
+	}
+
+	// Adding more should trigger eviction
+	for i := 0; i < 5; i++ {
+		v4.AddNetworkBodies([]NetworkBody{
+			{URL: "/api/test", ResponseBody: largeBody, Status: 200},
+		})
+	}
+
+	afterMem := v4.GetNetworkBodiesBufferMemory()
+	if afterMem > nbBufferMemoryLimit {
+		t.Errorf("Expected NB buffer <= 8MB after eviction, got %d bytes", afterMem)
+	}
+}
+
+func TestV4MemoryExceededRejectsWSEvents(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Simulate global memory exceeded
+	v4.SetMemoryUsage(55 * 1024 * 1024) // 55MB > 50MB hard limit
+
+	body := `{"events":[{"event":"message","id":"uuid-1","data":"test"}]}`
+	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	v4.HandleWebSocketEvents(rec, req)
+
+	// Should return 503 when global memory is exceeded
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("Expected 503 when memory exceeded, got %d", rec.Code)
+	}
+}
+
+func TestV4MemoryExceededHeaderInResponse(t *testing.T) {
+	v4 := setupV4TestServer(t)
+
+	// Fill buffers close to their limits
+	largeData := strings.Repeat("x", 100000)
+	for i := 0; i < 35; i++ {
+		v4.AddWebSocketEvents([]WebSocketEvent{
+			{ID: "uuid-1", Event: "message", Data: largeData},
+		})
+	}
+
+	// Check that total memory is reported
+	total := v4.GetTotalBufferMemory()
+	if total <= 0 {
+		t.Error("Expected non-zero total memory after filling buffers")
+	}
+}
+
+func TestMCPToolsListIncludesV5Tools(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/list",
+	})
+
+	var result struct {
+		Tools []struct {
+			Name string `json:"name"`
+		} `json:"tools"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	toolNames := make(map[string]bool)
+	for _, tool := range result.Tools {
+		toolNames[tool.Name] = true
+	}
+
+	v5Tools := []string{
+		"get_enhanced_actions",
+		"get_reproduction_script",
+	}
+
+	for _, name := range v5Tools {
+		if !toolNames[name] {
+			t.Errorf("Expected v5 tool '%s' in tools list", name)
+		}
+	}
+}
+
+func TestMCPHTTPEndpointToolsList(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	body := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
+	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	mcp.HandleHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+
+	var resp JSONRPCResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+
+	if resp.JSONRPC != "2.0" {
+		t.Errorf("Expected jsonrpc 2.0, got %s", resp.JSONRPC)
+	}
+	if resp.Error != nil {
+		t.Errorf("Expected no error, got %v", resp.Error)
+	}
+
+	var result struct {
+		Tools []struct {
+			Name string `json:"name"`
+		} `json:"tools"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	if len(result.Tools) == 0 {
+		t.Error("Expected tools in response")
+	}
+}
+
+func TestMCPHTTPEndpointToolCall(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	body := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_browser_logs","arguments":{}}}`
+	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	mcp.HandleHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+
+	var resp JSONRPCResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+
+	if resp.Error != nil {
+		t.Errorf("Expected no error, got %v", resp.Error)
+	}
+}
+
+func TestMCPHTTPEndpointMethodNotAllowed(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	req := httptest.NewRequest("GET", "/mcp", nil)
+	rec := httptest.NewRecorder()
+
+	mcp.HandleHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("Expected 405, got %d", rec.Code)
+	}
+}
+
+func TestMCPHTTPEndpointInvalidJSON(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	mcp.HandleHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200 (JSON-RPC error in body), got %d", rec.Code)
+	}
+
+	var resp JSONRPCResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+
+	if resp.Error == nil {
+		t.Error("Expected JSON-RPC error for invalid JSON")
+	}
+	if resp.Error.Code != -32700 {
+		t.Errorf("Expected parse error code -32700, got %d", resp.Error.Code)
+	}
+}
+
+func TestMCPHTTPEndpointUnknownMethod(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	body := `{"jsonrpc":"2.0","id":3,"method":"unknown/method"}`
+	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	mcp.HandleHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+
+	var resp JSONRPCResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+
+	if resp.Error == nil {
+		t.Error("Expected JSON-RPC error for unknown method")
+	}
+	if resp.Error.Code != -32601 {
+		t.Errorf("Expected method not found code -32601, got %d", resp.Error.Code)
+	}
+}
+
+func TestMCPHTTPEndpointV4ToolCall(t *testing.T) {
+	server, _ := setupTestServer(t)
+	v4 := setupV4TestServer(t)
+	mcp := NewMCPHandlerV4(server, v4)
+
+	body := `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_websocket_events","arguments":{}}}`
+	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	mcp.HandleHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+
+	var resp JSONRPCResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+
+	if resp.Error != nil {
+		t.Errorf("Expected no error, got %v", resp.Error)
+	}
+}
