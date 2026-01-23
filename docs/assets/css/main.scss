@@ -169,6 +169,32 @@ blockquote {
 // Headings
 h1, h2, h3, h4, h5, h6 {
   color: #ffffff;
+
+  // Static "@" symbol instead of hoverable permalink
+  .header-link {
+    opacity: 1;
+    transition: none;
+    font-size: 0;
+    color: $gasoline-text-muted;
+    text-decoration: none;
+
+    &::after {
+      content: "@";
+      font-size: 0.55rem;
+      vertical-align: super;
+      margin-left: 0.3em;
+    }
+
+    // Hide any icon the theme inserts
+    * {
+      display: none;
+    }
+  }
+
+  &:hover .header-link {
+    opacity: 1;
+    color: $gasoline-text-muted;
+  }
 }
 
 h2 {
