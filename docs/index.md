@@ -74,6 +74,7 @@ Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your tool spea
 - **[Network Bodies](/network-bodies/)** — Request/response payloads for API debugging
 - **[Live DOM](/dom-queries/)** — Query the page with CSS selectors via MCP
 - **[Accessibility](/accessibility-audit/)** — Run axe-core audits from your AI
+- **[Test Generation](/generate-test/)** — Turn browser sessions into Playwright regression tests
 - **[Context API](/developer-api/)** — Annotate errors with `window.__gasoline`
 
 ## Zero Bloat, Zero Risk
