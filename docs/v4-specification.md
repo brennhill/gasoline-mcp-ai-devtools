@@ -92,21 +92,54 @@ const OriginalWebSocket = window.WebSocket;
 window.WebSocket = function(url, protocols) {
   const ws = new OriginalWebSocket(url, protocols);
   const id = crypto.randomUUID();
+  const conn = createConnectionTracker(id, url);
 
   // Track lifecycle
-  ws.addEventListener('open', () => emit('ws:open', { id, url }));
-  ws.addEventListener('close', (e) => emit('ws:close', { id, url, code: e.code, reason: e.reason }));
-  ws.addEventListener('error', () => emit('ws:error', { id, url }));
+  ws.addEventListener('open', () => {
+    conn.state = 'open';
+    conn.openedAt = Date.now();
+    emit('ws:open', { id, url });
+  });
+  ws.addEventListener('close', (e) => {
+    conn.state = 'closed';
+    emit('ws:close', { id, url, code: e.code, reason: e.reason });
+  });
+  ws.addEventListener('error', () => {
+    conn.state = 'error';
+    emit('ws:error', { id, url });
+  });
 
-  // Track incoming messages
-  ws.addEventListener('message', (e) => emit('ws:message', {
-    id, url, direction: 'incoming', data: truncate(e.data)
-  }));
+  // Track incoming messages (with adaptive sampling)
+  ws.addEventListener('message', (e) => {
+    conn.stats.incoming.count++;
+    conn.stats.incoming.bytes += getSize(e.data);
+    conn.stats.incoming.lastAt = Date.now();
+    conn.stats.incoming.lastPreview = truncate(e.data, 200);
 
-  // Intercept send
+    if (conn.shouldSample('incoming')) {
+      emit('ws:message', {
+        id, url, direction: 'incoming',
+        data: formatPayload(e.data), size: getSize(e.data),
+        sampled: conn.getSamplingInfo()
+      });
+    }
+  });
+
+  // Intercept send (with adaptive sampling)
   const origSend = ws.send.bind(ws);
   ws.send = (data) => {
-    emit('ws:message', { id, url, direction: 'outgoing', data: truncate(data) });
+    conn.stats.outgoing.count++;
+    conn.stats.outgoing.bytes += getSize(data);
+    conn.stats.outgoing.lastAt = Date.now();
+    conn.stats.outgoing.lastPreview = truncate(data, 200);
+
+    if (conn.shouldSample('outgoing')) {
+      emit('ws:message', {
+        id, url, direction: 'outgoing',
+        data: formatPayload(data), size: getSize(data),
+        sampled: conn.getSamplingInfo()
+      });
+    }
     origSend(data);
   };
 
@@ -115,12 +148,48 @@ window.WebSocket = function(url, protocols) {
 window.WebSocket.prototype = OriginalWebSocket.prototype;
 ```
 
+### Adaptive Sampling
+
+High-frequency WebSocket connections (stock feeds, game state, telemetry) can produce hundreds of messages per second. Logging every message would overwhelm the buffer and provide no useful signal.
+
+**Sampling strategy:**
+
+| Message Rate | Behavior |
+|-------------|----------|
+| < 10 msg/s | Log every message (no sampling) |
+| 10–50 msg/s | Log 1 in N (targeting ~10 logged msg/s) |
+| 50–200 msg/s | Log 1 in N (targeting ~5 logged msg/s) + rate stats |
+| > 200 msg/s | Log 1 in N (targeting ~2 logged msg/s) + rate stats |
+
+**Rate calculation**: Rolling 5-second window, recalculated every second.
+
+**Always logged regardless of sampling:**
+- Connection lifecycle events (open, close, error)
+- First 5 messages on a new connection (for schema detection)
+- Messages matching a different JSON structure than previous (schema change detection)
+
+**Schema detection**: On the first 5 messages, if all are JSON, extract top-level keys as the "schema fingerprint". If a later message has different keys, log it even if it would be sampled out. This catches events like subscription confirmations, error responses, or protocol changes within a stream.
+
+### Binary Message Handling
+
+Binary WebSocket messages (ArrayBuffer, Blob) are common in financial feeds (protobuf), games (custom binary), and media streams.
+
+| Content | Handling |
+|---------|----------|
+| JSON (text message) | Capture full payload (subject to 4KB truncation) |
+| Text (non-JSON) | Capture full payload (subject to 4KB truncation) |
+| Binary < 256 bytes | Hex preview: `"[Binary: 128B] 0a1b2c3d..."` (first 64 bytes as hex) |
+| Binary >= 256 bytes | Size + magic bytes: `"[Binary: 4096B, magic: 0a1b2c3d]"` |
+
+The hex preview allows developers to identify protobuf messages, MessagePack, or custom protocols. The AI can recognize common binary format headers.
+
 ### Log Entry Format
 
 ```jsonl
 {"ts":"2024-01-15T10:30:00.000Z","type":"websocket","event":"open","id":"uuid","url":"wss://api.example.com/ws","tabId":123}
 {"ts":"2024-01-15T10:30:01.000Z","type":"websocket","event":"message","id":"uuid","direction":"incoming","data":"{\"type\":\"chat\",\"msg\":\"hello\"}","size":32}
 {"ts":"2024-01-15T10:30:02.000Z","type":"websocket","event":"message","id":"uuid","direction":"outgoing","data":"{\"type\":\"ping\"}","size":16}
+{"ts":"2024-01-15T10:30:02.500Z","type":"websocket","event":"message","id":"uuid","direction":"incoming","data":"{\"sym\":\"AAPL\",\"price\":185.42}","size":34,"sampled":{"rate":"48.2/s","logged":"1/5","window":"5s"}}
 {"ts":"2024-01-15T10:30:05.000Z","type":"websocket","event":"close","id":"uuid","code":1000,"reason":"normal closure"}
 {"ts":"2024-01-15T10:30:06.000Z","type":"websocket","event":"error","id":"uuid","url":"wss://api.example.com/ws"}
 ```
@@ -139,12 +208,109 @@ window.WebSocket.prototype = OriginalWebSocket.prototype;
 
 **Response**: Array of WebSocket event objects, newest first.
 
+### MCP Tool: `get_websocket_status`
+
+**Description**: Returns the current state of all tracked WebSocket connections — whether they're open, their message rates, and a preview of recent data. Use this to answer "is my WebSocket connected?" without scanning event history.
+
+**Parameters**:
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `url_filter` | string | null | Filter by URL substring |
+| `connection_id` | string | null | Filter by specific connection UUID |
+
+**Response**:
+```json
+{
+  "connections": [
+    {
+      "id": "uuid-1",
+      "url": "wss://feed.example.com/prices",
+      "state": "open",
+      "openedAt": "2024-01-15T10:30:00.000Z",
+      "duration": "5m02s",
+      "messageRate": {
+        "incoming": { "perSecond": 48.2, "total": 14460, "bytes": 892400 },
+        "outgoing": { "perSecond": 0.1, "total": 3, "bytes": 156 }
+      },
+      "lastMessage": {
+        "incoming": {
+          "at": "2024-01-15T10:35:02.000Z",
+          "age": "0.2s",
+          "preview": "{\"sym\":\"AAPL\",\"price\":185.42,\"vol\":1234}"
+        },
+        "outgoing": {
+          "at": "2024-01-15T10:30:01.000Z",
+          "age": "5m01s",
+          "preview": "{\"action\":\"subscribe\",\"symbols\":[\"AAPL\",\"GOOG\"]}"
+        }
+      },
+      "schema": {
+        "detectedKeys": ["sym", "price", "vol", "ts"],
+        "messageCount": 14460,
+        "consistent": true
+      },
+      "sampling": {
+        "active": true,
+        "rate": "1/5",
+        "reason": "48.2 msg/s exceeds 10 msg/s threshold"
+      }
+    },
+    {
+      "id": "uuid-2",
+      "url": "wss://chat.example.com/rooms/general",
+      "state": "open",
+      "openedAt": "2024-01-15T10:28:00.000Z",
+      "duration": "7m02s",
+      "messageRate": {
+        "incoming": { "perSecond": 0.3, "total": 126, "bytes": 18900 },
+        "outgoing": { "perSecond": 0.1, "total": 12, "bytes": 1800 }
+      },
+      "lastMessage": {
+        "incoming": {
+          "at": "2024-01-15T10:34:58.000Z",
+          "age": "4.2s",
+          "preview": "{\"type\":\"message\",\"user\":\"alice\",\"text\":\"sounds good!\"}"
+        },
+        "outgoing": {
+          "at": "2024-01-15T10:34:45.000Z",
+          "age": "17.2s",
+          "preview": "{\"type\":\"message\",\"text\":\"let's deploy after lunch\"}"
+        }
+      },
+      "schema": {
+        "detectedKeys": ["type", "user", "text", "ts"],
+        "messageCount": 138,
+        "consistent": false,
+        "variants": ["message (89%)", "typing (8%)", "presence (3%)"]
+      },
+      "sampling": {
+        "active": false,
+        "reason": "0.4 msg/s below 10 msg/s threshold"
+      }
+    }
+  ],
+  "closed": [
+    {
+      "id": "uuid-0",
+      "url": "wss://api.example.com/notifications",
+      "state": "closed",
+      "openedAt": "2024-01-15T10:25:00.000Z",
+      "closedAt": "2024-01-15T10:29:30.000Z",
+      "closeCode": 1006,
+      "closeReason": "",
+      "totalMessages": { "incoming": 8, "outgoing": 2 }
+    }
+  ]
+}
+```
+
 ### Limits
 
 - **Message body truncation**: 4KB per message. If exceeded, truncate and add `"truncated": true`.
-- **Max tracked connections**: 20 concurrent. Oldest connection evicted if exceeded.
-- **Buffer size**: 200 WebSocket events in memory ring buffer (separate from main log rotation).
-- **Binary messages**: Captured as `"[Binary: ${size} bytes]"` — not base64 encoded.
+- **Max tracked connections**: 20 concurrent. Oldest closed connection evicted if exceeded.
+- **Buffer size**: 500 WebSocket events in memory ring buffer (separate from main log rotation).
+- **Closed connection history**: Keep last 10 closed connections for debugging reconnection issues.
+- **Stats retention**: Per-connection stats kept for 5 minutes after close.
 
 ### Extension Settings
 
@@ -503,6 +669,7 @@ For on-demand features (DOM queries, accessibility audit), the extension needs t
 | Tool | Type | Description |
 |------|------|-------------|
 | `get_websocket_events` | Passive | Return buffered WebSocket events |
+| `get_websocket_status` | Passive | Return current connection states, rates, and schemas |
 | `get_network_bodies` | Passive | Return buffered network request/response data |
 | `query_dom` | On-demand | Query live DOM state by CSS selector |
 | `get_page_info` | On-demand | Get page structure summary |
