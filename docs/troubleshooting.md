@@ -3,11 +3,15 @@ title: "Troubleshooting"
 description: "Fix common Gasoline issues: extension not connecting, logs not appearing, MCP mode problems, port conflicts, and debug mode usage."
 keywords: "gasoline troubleshooting, extension not connecting, MCP not working, gasoline debug mode, port conflict fix"
 permalink: /troubleshooting/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Flame out? Get it burning again."
 toc: true
 toc_sticky: true
 ---
 
-## Extension Not Connecting to Server
+## <i class="fas fa-unlink"></i> Extension Not Connecting to Server
 
 1. **Check server is running**: Look for `Gasoline server listening on http://localhost:7890`
 2. **Check extension badge**: Red `!` means disconnected, green means connected
@@ -15,21 +19,21 @@ toc_sticky: true
 4. **Update extension URL**: If using a different port, go to Options and change the Server URL
 5. **Check browser console**: Right-click extension icon → Inspect → Console tab
 
-## Logs Not Appearing
+## <i class="fas fa-eye-slash"></i> Logs Not Appearing
 
 1. **Check capture level**: Popup may be set to "Errors Only" — try "All Logs"
 2. **Check domain filter**: Options page may have filters excluding your domain
 3. **Check log file**: `cat ~/gasoline-logs.jsonl | tail -5` to see recent entries
 4. **Reload the page**: Extension injects on page load
 
-## MCP Mode Not Working
+## <i class="fas fa-robot"></i> MCP Mode Not Working
 
 1. **Check config path**: Must be in your AI tool's config directory
 2. **Restart your AI tool**: MCP servers are loaded on startup
 3. **Check for JSON errors**: Invalid JSON in config will silently fail
 4. **Verify with AI**: Ask _"What MCP tools do you have?"_ — Gasoline tools should appear
 
-## Changing the Server Port
+## <i class="fas fa-plug"></i> Changing the Server Port
 
 If port 7890 is in use:
 
@@ -44,7 +48,7 @@ Then update the extension:
 3. Change **Server URL** to `http://localhost:7891`
 4. Click "Save Options"
 
-## Using Debug Mode
+## <i class="fas fa-bug"></i> Using Debug Mode
 
 The extension has built-in debug logging for troubleshooting:
 
@@ -64,7 +68,7 @@ The extension has built-in debug logging for troubleshooting:
 
 The debug buffer holds 200 entries (circular — oldest are dropped). Logs are stored even when debug mode is off, so you can export after an issue occurs.
 
-## Reporting Issues
+## <i class="fas fa-flag"></i> Reporting Issues
 
 [Open an issue](https://github.com/brennhill/gasoline/issues/new) with:
 

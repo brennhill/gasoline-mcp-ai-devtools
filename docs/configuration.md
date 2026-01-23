@@ -3,11 +3,15 @@ title: "Configuration"
 description: "Gasoline server options and extension settings. Configure port, log file path, log rotation, capture levels, and domain filters."
 keywords: "gasoline configuration, server options, log rotation, capture level, domain filter, extension settings"
 permalink: /configuration/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Tune the burner — ports, paths, and capture levels."
 toc: true
 toc_sticky: true
 ---
 
-## Server Options
+## <i class="fas fa-terminal"></i> Server Options
 
 ```bash
 npx gasoline-mcp [options]
@@ -20,11 +24,11 @@ Options:
   --help, -h             Show help message
 ```
 
-## Log File Auto-Discovery
+## <i class="fas fa-search-location"></i> Log File Auto-Discovery
 
 The extension automatically discovers the log file path from the server. When you use `--log-file` to set a custom location, the server reports the actual path via its `/health` endpoint. The extension popup displays the correct path under "Server Info."
 
-## Log Rotation
+## <i class="fas fa-sync-alt"></i> Log Rotation
 
 The default limit is **1000 entries**. When reached, the oldest entries are removed.
 
@@ -54,7 +58,7 @@ npx gasoline-mcp --max-entries 5000
 npx gasoline-mcp --max-entries 200
 ```
 
-## Extension Settings
+## <i class="fas fa-sliders-h"></i> Extension Settings
 
 Click the Gasoline extension icon to configure:
 
@@ -84,7 +88,7 @@ Toggle these independently:
 
 In Options, configure which domains to capture from. This prevents noise from third-party scripts and analytics.
 
-## Custom Port
+## <i class="fas fa-plug"></i> Custom Port
 
 If port 7890 is in use:
 

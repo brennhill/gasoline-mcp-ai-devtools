@@ -1,15 +1,17 @@
 ---
-title: "Gasoline + Windsurf Setup"
+title: "Gasoline + Windsurf"
 description: "Configure Gasoline as an MCP server for Windsurf (Codeium). Give Windsurf's AI access to browser console logs, network errors, and page state."
 keywords: "Windsurf MCP server, Windsurf browser debugging, Codeium MCP, Windsurf AI browser logs"
 permalink: /mcp-integration/windsurf/
+header:
+  overlay_image: /assets/images/hero-banner.png
+  overlay_filter: 0.85
+  excerpt: "Fuel Windsurf's AI with live browser data."
 toc: true
 toc_sticky: true
 ---
 
-Windsurf (by Codeium) is an AI-powered IDE. Gasoline connects via MCP to give its AI real-time browser visibility.
-
-## Configuration
+## <i class="fas fa-file-code"></i> Configuration
 
 Add to `~/.codeium/windsurf/mcp_config.json`:
 
@@ -24,18 +26,18 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 }
 ```
 
-## Usage
+## <i class="fas fa-fire-alt"></i> Usage
 
 After restarting Windsurf, the AI can access all browser state:
 
-- Console errors and warnings
-- Failed network requests with response bodies
-- WebSocket events and connection states
-- Live DOM queries
-- Accessibility audit results
+- <i class="fas fa-exclamation-triangle"></i> Console errors and warnings
+- <i class="fas fa-wifi"></i> Failed network requests with response bodies
+- <i class="fas fa-plug"></i> WebSocket events and connection states
+- <i class="fas fa-code"></i> Live DOM queries
+- <i class="fas fa-universal-access"></i> Accessibility audit results
 
-## Troubleshooting
+## <i class="fas fa-wrench"></i> Troubleshooting
 
-1. **Restart Windsurf** after adding the config
-2. **Check the extension popup** — should show "Connected"
-3. **Verify the config path** — must be exactly `~/.codeium/windsurf/mcp_config.json`
+1. **Restart Windsurf** after adding config
+2. **Check extension popup** — should show "Connected"
+3. **Verify config path** — must be `~/.codeium/windsurf/mcp_config.json`
