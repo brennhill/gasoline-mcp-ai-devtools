@@ -193,31 +193,74 @@ When bumping the version, **ALL** of the following locations must be updated tog
 
 **Verification command:** `grep -r "OLD_VERSION" --include="*.json" --include="*.js" --include="*.go" --include="*.md" .` should return zero results after a bump.
 
-## Branching & Parallel Agent Strategy
+## Branching Strategy
+
+### Branch Model: `main` + `next`
+
+- **`main`** — Last stable release. What's published on npm and the Chrome Web Store. Only touched by release merges and hotfixes.
+- **`next`** — Active development. All feature branches merge here. Always buildable, always tests passing.
+- **Feature branches** — Branch from `next`, merge back to `next`.
+- **Hotfixes** — Branch from `main`, merge to both `main` and `next`.
+
+```
+main    ─●───────────────────●────────── (releases only)
+          │                   ↑
+          │             merge + tag
+          ↓                   │
+next    ─●──●──●──●──●──●──●─● ──────── (integration)
+             ↑  ↑        ↑
+feature/a ───●  │        │
+feature/b ──────●        │
+feature/c ───────────────●
+```
+
+### Releasing
+
+```bash
+git checkout main
+git merge next
+git tag v0.X.0
+# Bump versions (see Version Management section)
+# Build + publish npm packages
+# Upload extension to Chrome Web Store
+git checkout next
+git merge main  # Keep next in sync with the tag commit
+```
+
+### Hotfixes
+
+```bash
+git checkout -b hotfix/fix-name main
+# Fix, test, commit
+git checkout main && git merge hotfix/fix-name
+git checkout next && git merge hotfix/fix-name
+git branch -d hotfix/fix-name
+```
+
+### Parallel Agent Strategy
 
 Multiple agents work on features in parallel using `git worktree`. Each agent gets its own directory and branch — no conflicts, no branch switching.
 
 ### Setup (run from main repo)
 
 ```bash
-# Create a worktree for each feature
-git worktree add ../gasoline-<feature-name> -b feature/<feature-name>
+# Create a worktree for each feature (branch from next)
+git worktree add ../gasoline-<feature-name> -b feature/<feature-name> next
 
 # Example: 4 agents in parallel
-git worktree add ../gasoline-generate-test-v2 -b feature/generate-test-v2
-git worktree add ../gasoline-circuit-breaker -b feature/circuit-breaker
-git worktree add ../gasoline-memory-enforcement -b feature/memory-enforcement
-git worktree add ../gasoline-a11y-caching -b feature/a11y-caching
+git worktree add ../gasoline-feature-a -b feature/feature-a next
+git worktree add ../gasoline-feature-b -b feature/feature-b next
+git worktree add ../gasoline-feature-c -b feature/feature-c next
 ```
 
 ### Rules for Each Agent
 
 1. **One feature per branch** — Never commit multiple features to the same branch
-2. **Branch from main** — All feature branches start from current `main`
+2. **Branch from `next`** — All feature branches start from current `next`
 3. **Own your files** — Avoid touching the same files as another parallel feature. If overlap is unavoidable, keep changes minimal and isolated to reduce merge conflicts
 4. **TDD in your worktree** — Write tests, run them, implement, run again. All tests must pass before merge
 5. **Commit frequently** — Small, focused commits with descriptive messages
-6. **Don't touch main** — Only merge to main when the feature is complete and all tests pass
+6. **Never touch `main`** — Only release merges touch `main`
 
 ### File Ownership (Conflict Prevention)
 
@@ -263,8 +306,8 @@ This is advisory — agents should respect locks but the system won't block comm
 ### Merging Back
 
 ```bash
-# From main repo
-git checkout main
+# From main repo — merge to next, not main
+git checkout next
 git merge feature/<feature-name>
 
 # If conflicts: resolve, run full test suite, then commit
@@ -279,12 +322,12 @@ git branch -d feature/<feature-name>
 ### Feature Lifecycle
 
 ```
-1. Spec exists in docs/ (e.g., docs/generate-test-v2.md)
-2. Create worktree + branch
+1. Spec exists in docs/ (e.g., docs/ai-first/feature-name.md)
+2. Create worktree + branch from next
 3. Agent reads spec → writes tests (TDD red)
 4. Agent implements → tests pass (TDD green)
 5. Agent runs full test suite in worktree
-6. Merge to main, resolve any conflicts
+6. Merge to next, resolve any conflicts
 7. Remove worktree
 ```
 
