@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -273,6 +274,27 @@ type V4Server struct {
 
 	// Query timeout
 	queryTimeout time.Duration
+
+	// A11y audit cache
+	a11yCache      map[string]*a11yCacheEntry
+	a11yCacheOrder []string // Track insertion order for eviction
+	lastKnownURL   string
+	a11yInflight   map[string]*a11yInflightEntry
+}
+
+const maxA11yCacheEntries = 10
+const a11yCacheTTL = 30 * time.Second
+
+type a11yCacheEntry struct {
+	result    json.RawMessage
+	createdAt time.Time
+	url       string
+}
+
+type a11yInflightEntry struct {
+	done   chan struct{}
+	result json.RawMessage
+	err    error
 }
 
 // NewV4Server creates a new v4 server instance
@@ -288,6 +310,9 @@ func NewV4Server() *V4Server {
 		queryResults:   make(map[string]json.RawMessage),
 		rateResetTime:  time.Now(),
 		queryTimeout:   defaultQueryTimeout,
+		a11yCache:      make(map[string]*a11yCacheEntry),
+		a11yCacheOrder: make([]string, 0),
+		a11yInflight:   make(map[string]*a11yInflightEntry),
 	}
 	v4.queryCond = sync.NewCond(&v4.mu)
 	return v4
@@ -1282,6 +1307,10 @@ func (h *MCPHandlerV4) v4ToolsList() []MCPTool {
 						"description": "WCAG tags to test (e.g., wcag2a, wcag2aa)",
 						"items":       map[string]interface{}{"type": "string"},
 					},
+					"force_refresh": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Bypass cache and re-run the audit",
+					},
 				},
 			},
 		},
@@ -1501,10 +1530,54 @@ func (h *MCPHandlerV4) toolGetPageInfo(req JSONRPCRequest, args json.RawMessage)
 
 func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
-		Scope string   `json:"scope"`
-		Tags  []string `json:"tags"`
+		Scope        string   `json:"scope"`
+		Tags         []string `json:"tags"`
+		ForceRefresh bool     `json:"force_refresh"`
 	}
 	json.Unmarshal(args, &arguments)
+
+	cacheKey := h.v4.a11yCacheKey(arguments.Scope, arguments.Tags)
+
+	// Check cache (unless force_refresh)
+	if !arguments.ForceRefresh {
+		if cached := h.v4.getA11yCacheEntry(cacheKey); cached != nil {
+			resp := map[string]interface{}{
+				"content": []map[string]string{
+					{"type": "text", "text": string(cached)},
+				},
+			}
+			resultJSON, _ := json.Marshal(resp)
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		}
+
+		// Check if there's an inflight request for this key (concurrent dedup)
+		if inflight := h.v4.getOrCreateInflight(cacheKey); inflight != nil {
+			// Wait for the inflight request to complete
+			<-inflight.done
+			if inflight.err != nil {
+				errResult := map[string]interface{}{
+					"content": []map[string]string{
+						{"type": "text", "text": "Timeout waiting for accessibility audit result"},
+					},
+					"isError": true,
+				}
+				resultJSON, _ := json.Marshal(errResult)
+				return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+			}
+			resp := map[string]interface{}{
+				"content": []map[string]string{
+					{"type": "text", "text": string(inflight.result)},
+				},
+			}
+			resultJSON, _ := json.Marshal(resp)
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		}
+	} else {
+		// force_refresh: remove existing cache entry
+		h.v4.removeA11yCacheEntry(cacheKey)
+		// Register inflight
+		h.v4.getOrCreateInflight(cacheKey)
+	}
 
 	params := map[string]interface{}{}
 	if arguments.Scope != "" {
@@ -1522,6 +1595,8 @@ func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage
 
 	result, err := h.v4.WaitForResult(id, h.v4.queryTimeout)
 	if err != nil {
+		// Don't cache errors — complete inflight with error
+		h.v4.completeInflight(cacheKey, nil, err)
 		errResult := map[string]interface{}{
 			"content": []map[string]string{
 				{"type": "text", "text": "Timeout waiting for accessibility audit result"},
@@ -1531,6 +1606,10 @@ func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage
 		resultJSON, _ := json.Marshal(errResult)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 	}
+
+	// Cache the successful result
+	h.v4.setA11yCacheEntry(cacheKey, result)
+	h.v4.completeInflight(cacheKey, result, nil)
 
 	resp := map[string]interface{}{
 		"content": []map[string]string{
@@ -1772,4 +1851,226 @@ func replaceOrigin(original, baseURL string) string {
 	// Remove trailing slash from baseURL if path starts with /
 	base := strings.TrimRight(baseURL, "/")
 	return base + path
+}
+
+// ============================================
+// v5 Test Generation (stubs — TDD RED for separate feature)
+// ============================================
+
+// TimelineFilter controls what gets included in the session timeline
+type TimelineFilter struct {
+	LastNActions int
+	URLFilter    string
+	Include      []string
+}
+
+// TimelineEntry represents a single event in the session timeline
+type TimelineEntry struct {
+	Timestamp     int64                  `json:"timestamp"`
+	Kind          string                 `json:"kind"`
+	Type          string                 `json:"type,omitempty"`
+	URL           string                 `json:"url,omitempty"`
+	Selectors     map[string]interface{} `json:"selectors,omitempty"`
+	Method        string                 `json:"method,omitempty"`
+	Status        int                    `json:"status,omitempty"`
+	ContentType   string                 `json:"contentType,omitempty"`
+	ResponseShape interface{}            `json:"responseShape,omitempty"`
+	Level         string                 `json:"level,omitempty"`
+	Message       string                 `json:"message,omitempty"`
+	ToURL         string                 `json:"toUrl,omitempty"`
+	Value         string                 `json:"value,omitempty"`
+}
+
+// TimelineSummary provides aggregate counts for a session timeline
+type TimelineSummary struct {
+	Actions         int   `json:"actions"`
+	NetworkRequests int   `json:"networkRequests"`
+	ConsoleErrors   int   `json:"consoleErrors"`
+	DurationMs      int64 `json:"durationMs"`
+}
+
+// TimelineResponse is returned by GetSessionTimeline
+type TimelineResponse struct {
+	Timeline []TimelineEntry `json:"timeline"`
+	Summary  TimelineSummary `json:"summary"`
+}
+
+// SessionTimelineResponse is the MCP response format for session timeline
+type SessionTimelineResponse struct {
+	Timeline []TimelineEntry `json:"timeline"`
+	Summary  TimelineSummary `json:"summary"`
+}
+
+// TestGenerationOptions controls test script generation
+type TestGenerationOptions struct {
+	TestName            string `json:"test_name"`
+	AssertNetwork       bool   `json:"assert_network"`
+	AssertNoErrors      bool   `json:"assert_no_errors"`
+	AssertResponseShape bool   `json:"assert_response_shape"`
+	BaseURL             string `json:"base_url"`
+}
+
+// extractResponseShape extracts the structural type signature from a JSON response body.
+// TODO: Implementation pending (tests exist in TDD RED state)
+func extractResponseShape(body string) interface{} {
+	return nil
+}
+
+// normalizeTimestamp converts various timestamp formats to Unix milliseconds.
+// TODO: Implementation pending (tests exist in TDD RED state)
+func normalizeTimestamp(s string) int64 {
+	return 0
+}
+
+// GetSessionTimeline returns a merged, sorted timeline of all session events.
+// TODO: Implementation pending (tests exist in TDD RED state)
+func (v *V4Server) GetSessionTimeline(filter TimelineFilter, entries []LogEntry) TimelineResponse {
+	return TimelineResponse{}
+}
+
+// generateTestScript generates a Playwright test script from a timeline.
+// TODO: Implementation pending (tests exist in TDD RED state)
+func generateTestScript(timeline []TimelineEntry, opts TestGenerationOptions) string {
+	return ""
+}
+
+// ============================================
+// A11y Audit Cache
+// ============================================
+
+// a11yCacheKey generates a cache key from scope and tags (tags sorted for normalization)
+func (v *V4Server) a11yCacheKey(scope string, tags []string) string {
+	sortedTags := make([]string, len(tags))
+	copy(sortedTags, tags)
+	sort.Strings(sortedTags)
+	return scope + "|" + strings.Join(sortedTags, ",")
+}
+
+// getA11yCacheEntry returns cached result if valid, nil otherwise
+func (v *V4Server) getA11yCacheEntry(key string) json.RawMessage {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	entry, exists := v.a11yCache[key]
+	if !exists {
+		return nil
+	}
+	if time.Since(entry.createdAt) > a11yCacheTTL {
+		return nil
+	}
+	// Check URL change (navigation invalidation)
+	if v.lastKnownURL != "" && entry.url != "" && entry.url != v.lastKnownURL {
+		return nil
+	}
+	return entry.result
+}
+
+// setA11yCacheEntry stores a result in the cache with eviction
+func (v *V4Server) setA11yCacheEntry(key string, result json.RawMessage) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	// Evict oldest if at capacity
+	if _, exists := v.a11yCache[key]; !exists && len(v.a11yCache) >= maxA11yCacheEntries {
+		if len(v.a11yCacheOrder) > 0 {
+			oldest := v.a11yCacheOrder[0]
+			v.a11yCacheOrder = v.a11yCacheOrder[1:]
+			delete(v.a11yCache, oldest)
+		}
+	}
+
+	v.a11yCache[key] = &a11yCacheEntry{
+		result:    result,
+		createdAt: time.Now(),
+		url:       v.lastKnownURL,
+	}
+
+	// Update order tracking (remove old position if exists, add to end)
+	newOrder := make([]string, 0, len(v.a11yCacheOrder)+1)
+	for _, k := range v.a11yCacheOrder {
+		if k != key {
+			newOrder = append(newOrder, k)
+		}
+	}
+	newOrder = append(newOrder, key)
+	v.a11yCacheOrder = newOrder
+}
+
+// removeA11yCacheEntry removes a specific cache entry
+func (v *V4Server) removeA11yCacheEntry(key string) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	delete(v.a11yCache, key)
+	newOrder := make([]string, 0, len(v.a11yCacheOrder))
+	for _, k := range v.a11yCacheOrder {
+		if k != key {
+			newOrder = append(newOrder, k)
+		}
+	}
+	v.a11yCacheOrder = newOrder
+}
+
+// getOrCreateInflight returns an existing inflight entry to wait on, or nil if this caller should proceed.
+// If nil is returned, the caller is the "owner" and should complete the inflight when done.
+func (v *V4Server) getOrCreateInflight(key string) *a11yInflightEntry {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	if existing, ok := v.a11yInflight[key]; ok {
+		return existing
+	}
+	// Create new inflight — caller is the owner
+	v.a11yInflight[key] = &a11yInflightEntry{
+		done: make(chan struct{}),
+	}
+	return nil
+}
+
+// completeInflight signals waiters and removes the inflight entry
+func (v *V4Server) completeInflight(key string, result json.RawMessage, err error) {
+	v.mu.Lock()
+	entry, exists := v.a11yInflight[key]
+	if exists {
+		entry.result = result
+		entry.err = err
+		delete(v.a11yInflight, key)
+	}
+	v.mu.Unlock()
+
+	if exists {
+		close(entry.done)
+	}
+}
+
+// ExpireA11yCache forces all cache entries to expire (for testing)
+func (v *V4Server) ExpireA11yCache() {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	for key, entry := range v.a11yCache {
+		entry.createdAt = time.Now().Add(-a11yCacheTTL - time.Second)
+		v.a11yCache[key] = entry
+	}
+}
+
+// GetA11yCacheSize returns the number of entries in the a11y cache
+func (v *V4Server) GetA11yCacheSize() int {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return len(v.a11yCache)
+}
+
+// SetLastKnownURL updates the last known page URL for navigation detection.
+// If the URL changes, the cache is cleared.
+func (v *V4Server) SetLastKnownURL(url string) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	if v.lastKnownURL != "" && url != v.lastKnownURL {
+		// URL changed — clear cache
+		v.a11yCache = make(map[string]*a11yCacheEntry)
+		v.a11yCacheOrder = make([]string, 0)
+	}
+	v.lastKnownURL = url
 }
