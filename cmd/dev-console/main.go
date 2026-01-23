@@ -17,7 +17,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -564,7 +563,7 @@ func main() {
 			cmd.Stdout = nil
 			cmd.Stderr = nil
 			cmd.Stdin = nil
-			cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+			setDetachedProcess(cmd)
 			if err := cmd.Start(); err != nil {
 				fmt.Fprintf(os.Stderr, "Error starting background server: %v\n", err)
 				os.Exit(1)
