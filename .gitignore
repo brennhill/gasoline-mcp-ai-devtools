@@ -28,5 +28,8 @@ e2e-tests/playwright-report/
 .eslintcache
 *.tsbuildinfo
 
+# Agent lock file (advisory, per-machine)
+.agent-locks.json
+
 # Claude Code local state (not instructions)
 .claude/sessions/

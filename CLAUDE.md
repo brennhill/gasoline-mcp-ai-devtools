@@ -16,8 +16,16 @@
 cmd/dev-console/
 ├── main.go             # Server + MCP handler
 ├── main_test.go        # Server tests (v3)
-├── v4.go               # v4 types and implementation
-└── v4_test.go          # v4 tests
+├── ai_checkpoint.go    # Checkpoint/diff system
+├── v4_types.go         # Types, constants, V4Server struct
+├── v4_websocket.go     # WebSocket buffer, connections, MCP tools
+├── v4_network.go       # Network body storage, MCP tool
+├── v4_queries.go       # Pending queries, DOM/A11y, a11y cache
+├── v4_actions.go       # Enhanced actions buffer, MCP tool
+├── v4_performance.go   # Snapshots, baselines, regression detection
+├── v4_codegen.go       # Reproduction scripts, timeline, test gen
+├── v4_mcp.go           # MCP dispatcher, tool schemas, memory/rate-limit
+└── v4_*_test.go        # Matching test files per domain
 
 extension/
 ├── manifest.json       # Chrome Manifest V3
@@ -148,7 +156,15 @@ See `.claude/docs/` for detailed policies:
 | File | Purpose |
 |------|---------|
 | `cmd/dev-console/main.go` | Server, HTTP routes, MCP handler |
-| `cmd/dev-console/v4.go` | v4 types and implementations |
+| `cmd/dev-console/v4_types.go` | All v4 types, constants, V4Server struct |
+| `cmd/dev-console/v4_websocket.go` | WebSocket buffer, connection tracking |
+| `cmd/dev-console/v4_network.go` | Network body storage and retrieval |
+| `cmd/dev-console/v4_queries.go` | DOM/A11y queries, a11y cache |
+| `cmd/dev-console/v4_actions.go` | Enhanced actions buffer |
+| `cmd/dev-console/v4_performance.go` | Performance snapshots, baselines |
+| `cmd/dev-console/v4_codegen.go` | Playwright scripts, timeline, test gen |
+| `cmd/dev-console/v4_mcp.go` | MCP dispatcher, tool schemas |
+| `cmd/dev-console/ai_checkpoint.go` | Checkpoint/diff system |
 | `extension/inject.js` | Page capture (console, network, WS, DOM) |
 | `extension/background.js` | Service worker (batching, server comm) |
 | `extension/content.js` | Message bridge between inject and background |
@@ -205,18 +221,44 @@ git worktree add ../gasoline-a11y-caching -b feature/a11y-caching
 
 ### File Ownership (Conflict Prevention)
 
-When assigning parallel features, prefer features that don't overlap on primary files:
+Each domain file can be worked on by one agent at a time:
 
-| File | Owner should be... |
-|------|-------------------|
-| `cmd/dev-console/v4.go` | Only one agent at a time (large file, high conflict risk) |
-| `extension/inject.js` | Only one agent at a time (same reason) |
+| File | Parallel-safe? |
+|------|---------------|
+| `v4_types.go` | Shared (append-only for new types) |
+| `v4_websocket.go` | One agent at a time |
+| `v4_network.go` | One agent at a time |
+| `v4_queries.go` | One agent at a time |
+| `v4_actions.go` | One agent at a time |
+| `v4_performance.go` | One agent at a time |
+| `v4_codegen.go` | One agent at a time |
+| `v4_mcp.go` | Shared (dispatcher — add case + tool schema) |
+| `ai_checkpoint.go` | One agent at a time |
+| `extension/inject.js` | One agent at a time |
 | `extension/background.js` | Can be shared if changes are in different functions |
 | `extension-tests/*` | Each agent owns their test file |
-| `e2e-tests/*` | Each agent owns their test file |
 | `docs/*` | Low conflict risk, multiple agents OK |
 
-If two features must touch `v4.go`, sequence them (finish one before starting the other) or isolate changes to clearly separate functions.
+### Agent Lock Protocol (Advisory)
+
+A `.agent-locks.json` file (gitignored) tracks which agent owns which file. Before modifying a domain file:
+
+1. **Check locks**: Read `.agent-locks.json` to see if the file is locked
+2. **Acquire lock**: Add an entry with your feature name, branch, and expiry (16h default)
+3. **Release lock**: Remove your entry when done (or let it expire)
+
+Lock entry format:
+```json
+{
+  "file": "cmd/dev-console/v4_websocket.go",
+  "agent": "feature-name",
+  "branch": "feature/ws-binary",
+  "acquired": "2026-01-23T10:00:00Z",
+  "expires": "2026-01-24T02:00:00Z"
+}
+```
+
+This is advisory — agents should respect locks but the system won't block commits. The real protection comes from file-level isolation (each domain file is independent) and pre-commit hooks catching compilation errors.
 
 ### Merging Back
 
