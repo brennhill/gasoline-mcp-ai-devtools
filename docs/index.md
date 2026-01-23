@@ -116,4 +116,8 @@ Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your tool spea
 - **Zero network calls** — The binary never connects to the internet.
 - **No dependencies** — No supply chain risk. One binary, auditable.
 
+---
+
+<i class="fas fa-shield-alt"></i> [Security & Privacy](/security/) · <i class="fas fa-building"></i> [Enterprise Ready](/security/#enterprise-ready) · <i class="fas fa-bolt"></i> [Performance SLOs](/performance-slos/) · <i class="fas fa-map"></i> [Roadmap](/roadmap/) · <i class="fas fa-code-branch"></i> [Developer API](/developer-api/) · <i class="fas fa-balance-scale"></i> [Alternatives Compared](/alternatives/) · <i class="fab fa-github"></i> [GitHub](https://github.com/brennhill/gasoline)
+
 [Fire It Up →](/getting-started/){: .btn .btn--primary .btn--large}
