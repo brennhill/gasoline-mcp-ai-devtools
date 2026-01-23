@@ -14,3 +14,7 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Claude Code instructions (local only)
+CLAUDE.md
+.claude/

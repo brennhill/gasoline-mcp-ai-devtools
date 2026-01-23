@@ -5,16 +5,20 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 )
 
 const (
@@ -63,6 +67,7 @@ type MCPTool struct {
 type MCPHandler struct {
 	server      *Server
 	initialized bool
+	v4Handler   *MCPHandlerV4
 }
 
 // NewMCPHandler creates a new MCP handler
@@ -148,6 +153,11 @@ func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
 		},
 	}
 
+	// Add v4 tools if available
+	if h.v4Handler != nil {
+		tools = append(tools, h.v4Handler.v4ToolsList()...)
+	}
+
 	result := map[string]interface{}{"tools": tools}
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
@@ -178,6 +188,12 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 	case "clear_browser_logs":
 		return h.toolClearBrowserLogs(req)
 	default:
+		// Try v4 handler
+		if h.v4Handler != nil {
+			if resp, handled := h.v4Handler.handleV4ToolCall(req, params.Name, params.Arguments); handled {
+				return resp
+			}
+		}
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -309,6 +325,7 @@ func (s *Server) loadEntries() error {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024) // Allow up to 10MB per line (screenshots can be large)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -343,6 +360,90 @@ func (s *Server) saveEntries() error {
 	}
 
 	return nil
+}
+
+// sanitizeFilename removes characters unsafe for filenames
+var unsafeChars = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
+
+func sanitizeForFilename(s string) string {
+	s = unsafeChars.ReplaceAllString(s, "_")
+	if len(s) > 50 {
+		s = s[:50]
+	}
+	return s
+}
+
+// handleScreenshot saves a screenshot JPEG to disk and returns the filename
+func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	var body struct {
+		DataUrl   string `json:"dataUrl"`
+		URL       string `json:"url"`
+		ErrorID   string `json:"errorId"`
+		ErrorType string `json:"errorType"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+		return
+	}
+
+	if body.DataUrl == "" {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing dataUrl"})
+		return
+	}
+
+	// Extract base64 data from data URL
+	parts := strings.SplitN(body.DataUrl, ",", 2)
+	if len(parts) != 2 {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid dataUrl format"})
+		return
+	}
+
+	imageData, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid base64 data"})
+		return
+	}
+
+	// Build filename: [website]-[timestamp]-[errortype]-[errorid].jpg
+	hostname := "unknown"
+	if body.URL != "" {
+		if u, err := url.Parse(body.URL); err == nil && u.Host != "" {
+			hostname = u.Host
+		}
+	}
+
+	timestamp := time.Now().Format("20060102-150405")
+	errorType := "unknown"
+	if body.ErrorType != "" {
+		errorType = sanitizeForFilename(body.ErrorType)
+	}
+	errorID := "manual"
+	if body.ErrorID != "" {
+		errorID = sanitizeForFilename(body.ErrorID)
+	}
+
+	filename := fmt.Sprintf("%s-%s-%s-%s.jpg",
+		sanitizeForFilename(hostname), timestamp, errorType, errorID)
+
+	// Save to same directory as log file
+	dir := filepath.Dir(s.logFile)
+	savePath := filepath.Join(dir, filename)
+
+	if err := os.WriteFile(savePath, imageData, 0644); err != nil {
+		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "Failed to save screenshot"})
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, map[string]string{
+		"filename": filename,
+		"path":     savePath,
+	})
 }
 
 // addEntries adds new entries and rotates if needed
@@ -471,7 +572,8 @@ func main() {
 
 	// HTTP-only server mode (--server)
 	// Setup routes
-	setupHTTPRoutes(server)
+	v4 := NewV4Server()
+	setupHTTPRoutes(server, v4)
 
 	// Print banner
 	fmt.Println()
@@ -502,15 +604,18 @@ func main() {
 func runMCPMode(server *Server, port int) {
 	fmt.Fprintf(os.Stderr, "[gasoline] Starting MCP server, HTTP on port %d, log file: %s\n", port, server.logFile)
 
+	// Create v4 server for WebSocket/network body capture
+	v4 := NewV4Server()
+
 	// Start HTTP server in background for browser extension
 	go func() {
-		setupHTTPRoutes(server)
+		setupHTTPRoutes(server, v4)
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
 		http.ListenAndServe(addr, nil)
 	}()
 
-	// Run MCP protocol over stdin/stdout
-	mcp := NewMCPHandler(server)
+	// Run MCP protocol over stdin/stdout (with v4 tools)
+	mcp := NewMCPHandlerV4(server, v4)
 	scanner := bufio.NewScanner(os.Stdin)
 
 	// Increase scanner buffer for large messages
@@ -547,7 +652,16 @@ func runMCPMode(server *Server, port int) {
 }
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
-func setupHTTPRoutes(server *Server) {
+func setupHTTPRoutes(server *Server, v4 *V4Server) {
+	// V4 routes
+	if v4 != nil {
+		http.HandleFunc("/websocket-events", corsMiddleware(v4.HandleWebSocketEvents))
+		http.HandleFunc("/network-bodies", corsMiddleware(v4.HandleNetworkBodies))
+		http.HandleFunc("/pending-queries", corsMiddleware(v4.HandlePendingQueries))
+		http.HandleFunc("/dom-result", corsMiddleware(v4.HandleDOMResult))
+		http.HandleFunc("/a11y-result", corsMiddleware(v4.HandleA11yResult))
+	}
+
 	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -590,6 +704,8 @@ func setupHTTPRoutes(server *Server) {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		}
 	}))
+
+	http.HandleFunc("/screenshots", corsMiddleware(server.handleScreenshot))
 
 	http.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {

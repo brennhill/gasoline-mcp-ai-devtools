@@ -328,6 +328,91 @@ describe('Status Updates', () => {
   })
 })
 
+describe('Context Annotation Warning', () => {
+  beforeEach(() => {
+    mock.reset()
+    mockDocument = createMockDocument()
+    globalThis.document = mockDocument
+  })
+
+  test('should show context warning when status has contextWarning', async () => {
+    const { updateConnectionStatus } = await import('../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: true,
+      entries: 10,
+      contextWarning: {
+        sizeKB: 25,
+        count: 4,
+        triggeredAt: Date.now(),
+      },
+    })
+
+    const warningEl = mockDocument.getElementById('context-warning')
+    assert.strictEqual(warningEl.style.display, 'block')
+  })
+
+  test('should populate warning text with size and count info', async () => {
+    const { updateConnectionStatus } = await import('../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: true,
+      entries: 10,
+      contextWarning: {
+        sizeKB: 30,
+        count: 5,
+        triggeredAt: Date.now(),
+      },
+    })
+
+    const warningTextEl = mockDocument.getElementById('context-warning-text')
+    assert.ok(warningTextEl.textContent.includes('30'))
+    assert.ok(warningTextEl.textContent.includes('5'))
+  })
+
+  test('should hide context warning when contextWarning is null', async () => {
+    const { updateConnectionStatus } = await import('../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: true,
+      entries: 10,
+      contextWarning: null,
+    })
+
+    const warningEl = mockDocument.getElementById('context-warning')
+    assert.strictEqual(warningEl.style.display, 'none')
+  })
+
+  test('should hide context warning when contextWarning is undefined', async () => {
+    const { updateConnectionStatus } = await import('../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: true,
+      entries: 10,
+    })
+
+    const warningEl = mockDocument.getElementById('context-warning')
+    assert.strictEqual(warningEl.style.display, 'none')
+  })
+
+  test('should hide context warning when disconnected even if warning exists', async () => {
+    const { updateConnectionStatus } = await import('../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: false,
+      error: 'Connection refused',
+      contextWarning: {
+        sizeKB: 25,
+        count: 3,
+        triggeredAt: Date.now(),
+      },
+    })
+
+    const warningEl = mockDocument.getElementById('context-warning')
+    assert.strictEqual(warningEl.style.display, 'none')
+  })
+})
+
 describe('Quick Actions', () => {
   beforeEach(() => {
     mock.reset()
