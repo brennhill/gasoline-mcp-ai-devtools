@@ -1374,6 +1374,10 @@ func (h *MCPHandlerV4) handleV4ToolCall(req JSONRPCRequest, name string, args js
 		return h.toolGetEnhancedActions(req, args), true
 	case "get_reproduction_script":
 		return h.toolGetReproductionScript(req, args), true
+	case "get_session_timeline":
+		return h.toolGetSessionTimeline(req, args), true
+	case "generate_test":
+		return h.toolGenerateTest(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -1913,25 +1917,231 @@ type TestGenerationOptions struct {
 // extractResponseShape extracts the structural type signature from a JSON response body.
 // TODO: Implementation pending (tests exist in TDD RED state)
 func extractResponseShape(body string) interface{} {
-	return nil
+	var raw interface{}
+	if err := json.Unmarshal([]byte(body), &raw); err != nil {
+		return nil
+	}
+	return shapeOf(raw, 0, 3)
+}
+
+func shapeOf(v interface{}, depth, maxDepth int) interface{} {
+	if depth > maxDepth {
+		return "..."
+	}
+	switch val := v.(type) {
+	case map[string]interface{}:
+		result := make(map[string]interface{})
+		for k, child := range val {
+			result[k] = shapeOf(child, depth+1, maxDepth)
+		}
+		return result
+	case []interface{}:
+		if len(val) == 0 {
+			return []interface{}{}
+		}
+		// Return only the first element as a representative sample
+		return []interface{}{shapeOf(val[0], depth+1, maxDepth)}
+	case string:
+		return "string"
+	case float64:
+		return "number"
+	case bool:
+		return "boolean"
+	case nil:
+		return "null"
+	default:
+		return "unknown"
+	}
 }
 
 // normalizeTimestamp converts various timestamp formats to Unix milliseconds.
-// TODO: Implementation pending (tests exist in TDD RED state)
 func normalizeTimestamp(s string) int64 {
-	return 0
+	t, err := time.Parse(time.RFC3339Nano, s)
+	if err != nil {
+		return 0
+	}
+	return t.UnixMilli()
 }
 
 // GetSessionTimeline returns a merged, sorted timeline of all session events.
-// TODO: Implementation pending (tests exist in TDD RED state)
 func (v *V4Server) GetSessionTimeline(filter TimelineFilter, entries []LogEntry) TimelineResponse {
-	return TimelineResponse{}
+	var timeline []TimelineEntry
+	var summary TimelineSummary
+
+	// Add enhanced actions
+	v.mu.RLock()
+	actions := make([]EnhancedAction, len(v.enhancedActions))
+	copy(actions, v.enhancedActions)
+	networkBodies := make([]NetworkBody, len(v.networkBodies))
+	copy(networkBodies, v.networkBodies)
+	v.mu.RUnlock()
+
+	for _, a := range actions {
+		entry := TimelineEntry{
+			Kind:      "action",
+			Timestamp: a.Timestamp,
+			Type:      a.Type,
+			URL:       a.URL,
+		}
+		timeline = append(timeline, entry)
+		summary.Actions++
+	}
+
+	// Add network bodies
+	for _, nb := range networkBodies {
+		ts := normalizeTimestamp(nb.Timestamp)
+		entry := TimelineEntry{
+			Kind:      "network",
+			Timestamp: ts,
+			URL:       nb.URL,
+			Method:    nb.Method,
+			Status:    nb.Status,
+		}
+		if strings.Contains(nb.ContentType, "json") && nb.ResponseBody != "" {
+			entry.ResponseShape = extractResponseShape(nb.ResponseBody)
+		}
+		timeline = append(timeline, entry)
+		summary.NetworkRequests++
+	}
+
+	// Add console entries (errors and warnings only)
+	for _, e := range entries {
+		level, _ := e["level"].(string)
+		if level != "error" && level != "warn" {
+			continue
+		}
+		ts, _ := e["ts"].(string)
+		msg, _ := e["message"].(string)
+		entry := TimelineEntry{
+			Kind:      "console",
+			Timestamp: normalizeTimestamp(ts),
+			Level:     level,
+			Message:   msg,
+		}
+		timeline = append(timeline, entry)
+		if level == "error" {
+			summary.ConsoleErrors++
+		}
+	}
+
+	// Sort by timestamp
+	sort.Slice(timeline, func(i, j int) bool {
+		return timeline[i].Timestamp < timeline[j].Timestamp
+	})
+
+	// Apply LastNActions filter
+	if filter.LastNActions > 0 {
+		actionCount := 0
+		startIdx := len(timeline)
+		for i := len(timeline) - 1; i >= 0; i-- {
+			if timeline[i].Kind == "action" {
+				actionCount++
+				if actionCount >= filter.LastNActions {
+					startIdx = i
+					break
+				}
+			}
+		}
+		if startIdx < len(timeline) {
+			startTs := timeline[startIdx].Timestamp
+			var filtered []TimelineEntry
+			for _, e := range timeline {
+				if e.Timestamp >= startTs {
+					filtered = append(filtered, e)
+				}
+			}
+			timeline = filtered
+			// Recount summary
+			summary = TimelineSummary{}
+			for _, e := range timeline {
+				switch e.Kind {
+				case "action":
+					summary.Actions++
+				case "network":
+					summary.NetworkRequests++
+				case "console":
+					if e.Level == "error" {
+						summary.ConsoleErrors++
+					}
+				}
+			}
+		}
+	}
+
+	// Apply URL filter
+	if filter.URLFilter != "" {
+		var filtered []TimelineEntry
+		for _, e := range timeline {
+			if strings.Contains(e.URL, filter.URLFilter) {
+				filtered = append(filtered, e)
+			}
+		}
+		timeline = filtered
+	}
+
+	return TimelineResponse{
+		Timeline: timeline,
+		Summary:  summary,
+	}
 }
 
 // generateTestScript generates a Playwright test script from a timeline.
 // TODO: Implementation pending (tests exist in TDD RED state)
 func generateTestScript(timeline []TimelineEntry, opts TestGenerationOptions) string {
 	return ""
+}
+
+func (h *MCPHandlerV4) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		LastNActions int    `json:"last_n_actions"`
+		URLFilter   string `json:"url_filter"`
+		Include     string `json:"include"`
+	}
+	json.Unmarshal(args, &arguments)
+
+	filter := TimelineFilter{
+		LastNActions: arguments.LastNActions,
+		URLFilter:   arguments.URLFilter,
+	}
+	resp := h.v4.GetSessionTimeline(filter, h.server.entries)
+	contentBytes, _ := json.Marshal(SessionTimelineResponse{
+		Timeline: resp.Timeline,
+		Summary:  resp.Summary,
+	})
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": string(contentBytes)},
+		},
+	}
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+func (h *MCPHandlerV4) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		LastNActions   int    `json:"last_n_actions"`
+		BaseURL        string `json:"base_url"`
+		TestName       string `json:"test_name"`
+		AssertNetwork  bool   `json:"assert_network"`
+		ResponseShapes bool   `json:"response_shapes"`
+	}
+	json.Unmarshal(args, &arguments)
+
+	filter := TimelineFilter{LastNActions: arguments.LastNActions}
+	resp := h.v4.GetSessionTimeline(filter, h.server.entries)
+	script := generateTestScript(resp.Timeline, TestGenerationOptions{
+		BaseURL:             arguments.BaseURL,
+		TestName:            arguments.TestName,
+		AssertNetwork:       arguments.AssertNetwork,
+		AssertResponseShape: arguments.ResponseShapes,
+	})
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": script},
+		},
+	}
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
 // ============================================
