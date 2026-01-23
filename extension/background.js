@@ -188,7 +188,7 @@ export function clearDebugLog() {
 export function exportDebugLog() {
   return JSON.stringify({
     exportedAt: new Date().toISOString(),
-    version: '3.0.0',
+    version: '3.0.2',
     debugMode,
     connectionStatus,
     settings: {
@@ -313,6 +313,30 @@ export async function sendWSEventsToServer(events) {
   }
 
   debugLog(DebugCategory.CONNECTION, `Server accepted ${events.length} WS events`)
+}
+
+/**
+ * Send enhanced actions to server
+ * @param {Array} actions - Array of enhanced action objects
+ */
+export async function sendEnhancedActionsToServer(actions) {
+  debugLog(DebugCategory.CONNECTION, `Sending ${actions.length} enhanced actions to server`)
+
+  const response = await fetch(`${serverUrl}/enhanced-actions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ actions }),
+  })
+
+  if (!response.ok) {
+    const error = `Server error (enhanced actions): ${response.status} ${response.statusText}`
+    debugLog(DebugCategory.ERROR, error)
+    throw new Error(error)
+  }
+
+  debugLog(DebugCategory.CONNECTION, `Server accepted ${actions.length} enhanced actions`)
 }
 
 /**
@@ -1047,6 +1071,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'ws_event') {
       wsBatcher.add(message.payload)
+    } else if (message.type === 'enhanced_action') {
+      enhancedActionBatcher.add(message.payload)
     } else if (message.type === 'log') {
       handleLogMessage(message.payload, sender)
     } else if (message.type === 'getStatus') {
@@ -1129,13 +1155,15 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   })
 
   // Reconnect alarm
-  chrome.alarms.create('reconnect', { periodInMinutes: RECONNECT_INTERVAL / 60000 })
+  if (chrome.alarms) {
+    chrome.alarms.create('reconnect', { periodInMinutes: RECONNECT_INTERVAL / 60000 })
 
-  chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === 'reconnect') {
-      checkConnectionAndUpdate()
-    }
-  })
+    chrome.alarms.onAlarm.addListener((alarm) => {
+      if (alarm.name === 'reconnect') {
+        checkConnectionAndUpdate()
+      }
+    })
+  }
 
   // Initial connection check
   checkConnectionAndUpdate()
@@ -1165,9 +1193,11 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   }, ERROR_GROUP_FLUSH_MS)
 
   // Clean up screenshot rate limits when tabs are closed
-  chrome.tabs.onRemoved.addListener((tabId) => {
-    screenshotTimestamps.delete(tabId)
-  })
+  if (chrome.tabs && chrome.tabs.onRemoved) {
+    chrome.tabs.onRemoved.addListener((tabId) => {
+      screenshotTimestamps.delete(tabId)
+    })
+  }
 }
 
 // Log batcher instance
@@ -1197,6 +1227,17 @@ const wsBatcher = createLogBatcher(async (events) => {
     updateBadge(connectionStatus)
   }
 }, { debounceMs: 200, maxBatchSize: 100 })
+
+// Enhanced action batcher instance
+const enhancedActionBatcher = createLogBatcher(async (actions) => {
+  try {
+    await sendEnhancedActionsToServer(actions)
+    connectionStatus.connected = true
+  } catch {
+    connectionStatus.connected = false
+    updateBadge(connectionStatus)
+  }
+}, { debounceMs: 200, maxBatchSize: 50 })
 
 async function handleLogMessage(payload, sender) {
   if (!shouldCaptureLog(payload.level, currentLogLevel, payload.type)) {
@@ -1282,5 +1323,93 @@ async function checkConnectionAndUpdate() {
     chrome.runtime.sendMessage({ type: 'statusUpdate', status: connectionStatus }).catch(() => {
       // Popup not open, ignore
     })
+  }
+}
+
+// =============================================================================
+// ON-DEMAND QUERY POLLING (v4)
+// =============================================================================
+
+let queryPollingInterval = null
+
+/**
+ * Poll the server for pending queries (DOM queries, a11y audits)
+ * @param {string} serverUrl - The server base URL
+ */
+export async function pollPendingQueries(serverUrl) {
+  try {
+    const response = await fetch(`${serverUrl}/pending-queries`)
+    if (!response.ok) return
+
+    const data = await response.json()
+    if (!data.queries || data.queries.length === 0) return
+
+    for (const query of data.queries) {
+      await handlePendingQuery(query, serverUrl)
+    }
+  } catch {
+    // Server unavailable, silently ignore
+  }
+}
+
+/**
+ * Handle a single pending query by dispatching to the active tab
+ * @param {Object} query - { id, type, params }
+ * @param {string} serverUrl - The server base URL
+ */
+export async function handlePendingQuery(query, serverUrl) {
+  try {
+    const tabs = await new Promise(resolve => {
+      chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+    })
+
+    if (!tabs || tabs.length === 0) return
+
+    const tabId = tabs[0].id
+    const messageType = query.type === 'a11y' ? 'GASOLINE_A11Y_AUDIT' : 'GASOLINE_DOM_QUERY'
+
+    await chrome.tabs.sendMessage(tabId, {
+      type: messageType,
+      queryId: query.id,
+      params: query.params,
+    })
+  } catch {
+    // Tab communication failed
+  }
+}
+
+/**
+ * Post query results back to the server
+ * @param {string} serverUrl - The server base URL
+ * @param {string} queryId - The query ID
+ * @param {string} type - Query type ('dom' or 'a11y')
+ * @param {Object} result - The query result
+ */
+export async function postQueryResult(serverUrl, queryId, type, result) {
+  const endpoint = type === 'a11y' ? '/a11y-result' : '/dom-result'
+
+  await fetch(`${serverUrl}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: queryId, result }),
+  })
+}
+
+/**
+ * Start polling for pending queries at 1-second intervals
+ * @param {string} serverUrl - The server base URL
+ */
+export function startQueryPolling(serverUrl) {
+  stopQueryPolling()
+  queryPollingInterval = setInterval(() => pollPendingQueries(serverUrl), 1000)
+}
+
+/**
+ * Stop polling for pending queries
+ */
+export function stopQueryPolling() {
+  if (queryPollingInterval) {
+    clearInterval(queryPollingInterval)
+    queryPollingInterval = null
   }
 }

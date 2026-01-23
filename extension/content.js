@@ -30,6 +30,18 @@ window.addEventListener('message', (event) => {
       type: 'ws_event',
       payload: event.data.payload,
     })
+  } else if (event.data?.type === 'GASOLINE_NETWORK_BODY') {
+    // Forward network body captures to background service worker
+    chrome.runtime.sendMessage({
+      type: 'network_body',
+      payload: event.data.payload,
+    })
+  } else if (event.data?.type === 'GASOLINE_ENHANCED_ACTION') {
+    // Forward enhanced action events to background service worker
+    chrome.runtime.sendMessage({
+      type: 'enhanced_action',
+      payload: event.data.payload,
+    })
   }
 })
 

@@ -3,7 +3,7 @@
  *
  * Tests the full pipeline:
  *   Page console.error → inject.js captures → content.js bridges →
- *   background.js batches → POST /logs → MCP tool reads
+ *   background.js batches → POST /logs → GET /logs reads
  */
 import { test, expect } from './helpers/extension.js'
 import path from 'path'
@@ -12,8 +12,27 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const fixturesDir = path.join(__dirname, 'fixtures')
 
+/**
+ * Check if a log entry contains a string in its args or message
+ */
+function entryContains(entry, text) {
+  // Exception entries have a message field
+  if (entry.message && entry.message.includes(text)) return true
+  // Console entries have an args array
+  if (entry.args) {
+    return entry.args.some((arg) => {
+      if (typeof arg === 'string') return arg.includes(text)
+      if (typeof arg === 'object' && arg !== null) {
+        return JSON.stringify(arg).includes(text)
+      }
+      return false
+    })
+  }
+  return false
+}
+
 test.describe('Console Error Capture', () => {
-  test('should capture console.error and deliver to server', async ({ page, serverUrl, context }) => {
+  test('should capture console.error and deliver to server', async ({ page, serverUrl }) => {
     // Navigate to test page
     await page.goto(`file://${path.join(fixturesDir, 'test-page.html')}`)
 
@@ -35,10 +54,10 @@ test.describe('Console Error Capture', () => {
     expect(data.entries.length).toBeGreaterThan(0)
 
     const errorEntry = data.entries.find(
-      (e) => e.level === 'error' && e.message?.includes('Test error message')
+      (e) => e.level === 'error' && e.type === 'console' && entryContains(e, 'Test error message')
     )
     expect(errorEntry).toBeDefined()
-    expect(errorEntry.message).toContain('Test error message')
+    expect(errorEntry.args).toBeDefined()
   })
 
   test('should capture uncaught exceptions', async ({ page, serverUrl }) => {
@@ -56,9 +75,10 @@ test.describe('Console Error Capture', () => {
 
     expect(data.entries).toBeDefined()
     const exceptionEntry = data.entries.find(
-      (e) => e.level === 'error' && e.message?.includes('Uncaught test exception')
+      (e) => e.level === 'error' && e.type === 'exception' && entryContains(e, 'Uncaught test exception')
     )
     expect(exceptionEntry).toBeDefined()
+    expect(exceptionEntry.message).toContain('Uncaught test exception')
   })
 
   test('should capture unhandled promise rejections', async ({ page, serverUrl }) => {
@@ -76,7 +96,7 @@ test.describe('Console Error Capture', () => {
 
     expect(data.entries).toBeDefined()
     const rejectionEntry = data.entries.find(
-      (e) => e.level === 'error' && e.message?.includes('Unhandled rejection test')
+      (e) => e.level === 'error' && e.type === 'exception' && entryContains(e, 'Unhandled rejection test')
     )
     expect(rejectionEntry).toBeDefined()
   })
@@ -95,28 +115,29 @@ test.describe('Console Error Capture', () => {
     const data = await response.json()
 
     // Warnings should not appear at 'error' log level
-    const warnEntry = data.entries?.find(
-      (e) => e.level === 'warn' && e.message?.includes('Test warning message')
+    const warnEntry = (data.entries || []).find(
+      (e) => e.level === 'warn' && entryContains(e, 'Test warning message')
     )
     expect(warnEntry).toBeUndefined()
   })
 
-  test('should include source location in captured errors', async ({ page, serverUrl }) => {
+  test('should include source location in captured exceptions', async ({ page, serverUrl }) => {
     await page.goto(`file://${path.join(fixturesDir, 'test-page.html')}`)
     await page.waitForTimeout(1000)
 
-    await page.click('#trigger-error')
+    await page.click('#trigger-uncaught')
     await page.waitForTimeout(3000)
 
     const response = await fetch(`${serverUrl}/logs`)
     const data = await response.json()
 
-    const errorEntry = data.entries?.find(
-      (e) => e.level === 'error' && e.message?.includes('Test error message')
+    const exceptionEntry = data.entries?.find(
+      (e) => e.level === 'error' && e.type === 'exception' && entryContains(e, 'Uncaught test exception')
     )
-    expect(errorEntry).toBeDefined()
-    // Source location should be present (file, line, column)
-    expect(errorEntry.source).toBeDefined()
+    expect(exceptionEntry).toBeDefined()
+    // Exception entries include filename and line numbers
+    expect(exceptionEntry.filename).toBeDefined()
+    expect(exceptionEntry.lineno).toBeDefined()
   })
 
   test('should clear logs via DELETE endpoint', async ({ page, serverUrl }) => {

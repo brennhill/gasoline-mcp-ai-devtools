@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gasoline",
-  "version": "3.0.0",
+  "version": "3.5.0",
   "description": "Captures browser console logs, network errors, and exceptions for AI coding assistants (Claude, Cursor, etc.)",
   "icons": {
     "16": "icons/icon-16.png",

@@ -3,7 +3,7 @@
 <img src="chrome_store_files/readme-banner.png" alt="Gasoline - Fuel for the AI Fire" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.0.0-green.svg)](https://github.com/brennhill/gasoline/releases)
+[![Version](https://img.shields.io/badge/version-3.5.0-green.svg)](https://github.com/brennhill/gasoline/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline)
@@ -24,7 +24,7 @@
 
 ---
 
-**Stop copy-pasting browser errors.** Gasoline captures console logs, network errors, and exceptions from your browser and writes them to a local file that your AI coding assistant (Claude Code, Cursor, etc.) can read.
+**Stop copy-pasting browser errors.** Gasoline captures console logs, network errors, exceptions, WebSocket events, and more from your browser and makes them available to your AI coding assistant (Claude Code, Cursor, etc.) via MCP.
 
 ## Quick Start
 
@@ -135,15 +135,18 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
 
 ### 2. Install the browser extension
 
-**Chrome Web Store** (coming soon)
+**Chrome Web Store** — search for "Gasoline" or install from the [Chrome Web Store listing](https://chromewebstore.google.com)
 
-**Load unpacked** (works now):
+<details>
+<summary>Load unpacked (for development)</summary>
 
 1. Download or clone this repository
 2. Open `chrome://extensions` in Chrome
 3. Enable **Developer mode** (top right toggle)
 4. Click **Load unpacked**
 5. Select the `extension/` folder
+
+</details>
 
 ### 3. Verify it's working
 
@@ -153,11 +156,17 @@ Pick your tool below. This config tells your AI tool to start Gasoline automatic
 
 Your AI assistant now has access to these tools:
 
-| Tool                 | What it does                                            |
-| -------------------- | ------------------------------------------------------- |
-| `get_browser_errors` | Recent console errors, network failures, and exceptions |
-| `get_browser_logs`   | All logs (errors + warnings + info)                     |
-| `clear_browser_logs` | Clears the log file                                     |
+| Tool                      | What it does                                            |
+| ------------------------- | ------------------------------------------------------- |
+| `get_browser_errors`      | Recent console errors, network failures, and exceptions |
+| `get_browser_logs`        | All logs (errors + warnings + info)                     |
+| `clear_browser_logs`      | Clears the log file                                     |
+| `get_websocket_events`    | Captured WebSocket messages and lifecycle events        |
+| `get_websocket_status`    | Active WebSocket connection states and rates            |
+| `get_network_bodies`      | Captured request/response payloads                      |
+| `query_dom`               | Query the live DOM with a CSS selector                  |
+| `get_page_info`           | Current page URL, title, and viewport                   |
+| `run_accessibility_audit` | Run an accessibility audit on the page                  |
 
 ### Alternative: Manual server mode (no MCP)
 
@@ -173,7 +182,11 @@ The server will listen on `http://localhost:7890` and write logs to `~/gasoline-
 
 - **Console logs** - `console.log()`, `.warn()`, `.error()`, `.info()`, `.debug()` with full arguments
 - **Network errors** - Failed API calls (4xx, 5xx) with URL, method, status, and response body
+- **Network bodies** - Request/response payloads for API debugging (on-demand)
 - **Exceptions** - Uncaught errors and unhandled promise rejections with full stack traces
+- **WebSocket events** - Connection lifecycle (open/close) and message payloads with adaptive sampling
+- **User actions** - Clicks, inputs, scrolls, and keyboard events with multi-strategy selectors
+- **Screenshots** - Auto-capture on error with configurable rate limiting
 
 ## Log Format
 
@@ -334,7 +347,7 @@ const context = window.__gasoline.getContext()
 | `getNetworkWaterfall(options)` | Get current network waterfall data            |
 | `getMarks(options)`            | Get performance marks                         |
 | `getMeasures(options)`         | Get performance measures                      |
-| `version`                      | API version (currently "3.0.0")               |
+| `version`                      | API version (currently "3.5.0")               |
 
 ### Example: Add Context in React
 
@@ -552,11 +565,17 @@ If you need to run Gasoline on a different port, add the `--port` flag:
 
 Once connected, your AI assistant has access to these tools:
 
-| Tool                 | Description                                                              |
-| -------------------- | ------------------------------------------------------------------------ |
-| `get_browser_errors` | Get recent browser errors (console errors, network failures, exceptions) |
-| `get_browser_logs`   | Get all browser logs (errors, warnings, info)                            |
-| `clear_browser_logs` | Clear the log file                                                       |
+| Tool                      | Description                                                              |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `get_browser_errors`      | Get recent browser errors (console errors, network failures, exceptions) |
+| `get_browser_logs`        | Get all browser logs (errors, warnings, info)                            |
+| `clear_browser_logs`      | Clear the log file                                                       |
+| `get_websocket_events`    | Get captured WebSocket events (messages, lifecycle). Filter by URL, connection ID, or direction |
+| `get_websocket_status`    | Get current WebSocket connection states, message rates, and schemas      |
+| `get_network_bodies`      | Get captured network request/response bodies. Filter by URL, method, or status code |
+| `query_dom`               | Query the live DOM in the browser using a CSS selector                    |
+| `get_page_info`           | Get information about the current page (URL, title, viewport)            |
+| `run_accessibility_audit` | Run an accessibility audit on the current page or a scoped element       |
 
 ### Verifying MCP Connection
 
@@ -571,12 +590,13 @@ After configuring, verify the connection:
 
 Click the extension icon to:
 
-- View connection status
+- View connection status and log entry count
 - Set capture level (Errors Only, Warnings+, All Logs)
-- Toggle advanced capture features (DOM snapshots, network waterfall, etc.)
+- Toggle advanced capture features (screenshots, network waterfall, performance marks, user action replay)
+- Configure WebSocket capture (off, lifecycle only, or full messages)
 - Clear all logs
 
-In Options, you can configure domain filters to only capture logs from specific sites.
+In Options, you can configure the server URL and domain filters to only capture logs from specific sites.
 
 ## Privacy & Security
 
@@ -667,7 +687,6 @@ Built-in limits prevent runaway resource usage:
 
 ```bash
 # Run performance benchmark tests
-cd apps/dev-console
 node --test extension-tests/performance.test.js
 ```
 
@@ -696,23 +715,31 @@ node --test extension-tests/performance.test.js
 - [x] **Toggle controls** - Enable/disable advanced features from popup
 - [x] **Debug logging** - Internal extension logging for troubleshooting
 
-### v3 (Current)
+### v3 (Complete)
 
 - [x] **Configurable server URL** - Change port in extension Options
 - [x] **Performance benchmarks** - SLO tests for all critical paths
 - [x] **Debug log export** - Download JSON with recent extension activity
 
-### v4 (Planned)
+### v4 (Complete)
 
-- [ ] **WebSocket monitoring** - Connection lifecycle, message payloads, adaptive sampling for high-frequency streams
-- [ ] **Network response bodies** - Capture request/response payloads for API debugging
-- [ ] **Live DOM queries** - On-demand DOM state inspection via MCP tool
-- [ ] **Accessibility audit** - Run axe-core and surface violations as actionable findings
+- [x] **WebSocket monitoring** - Connection lifecycle, message payloads, adaptive sampling for high-frequency streams
+- [x] **Network response bodies** - Capture request/response payloads for API debugging
+- [x] **Live DOM queries** - On-demand DOM state inspection via MCP tool
+- [x] **Accessibility audit** - Run axe-core and surface violations as actionable findings
 
-### v5 (Planned)
+### v5 (Current)
 
-- [ ] **AI-preprocessed errors** - Enrich errors with source code snippets, component ancestry (React/Vue/Svelte), and relevant app state — gives the AI a complete diagnosis without extra tool calls
-- [ ] **Reproduction scripts** - Convert captured user actions into runnable Playwright tests with robust selectors (data-testid > aria > role > CSS path) that reproduce the bug
+- [x] **AI context enrichment** - Enrich errors with component ancestry (React/Vue/Svelte) and relevant app state for complete diagnosis
+- [x] **Reproduction scripts** - Convert captured user actions into runnable Playwright tests with robust multi-strategy selectors (data-testid > aria > role > CSS path)
+- [x] **Enhanced action recording** - Click, input, scroll, keyboard, and select events with multi-strategy selector computation
+
+### v6 (Planned)
+
+- [ ] **Visual context at error time** - Capture a screenshot and annotated DOM region when errors occur, giving the AI visual context alongside stack traces
+- [ ] **State timeline** - Record Redux/Zustand action log with timestamps, showing how app state evolved leading up to a bug
+- [ ] **Fix verification feedback** - After a fix is applied and the page reloads, diff the error buffer to confirm the error is resolved or flag new regressions
+- [ ] **API type inference** - Generate TypeScript interfaces from observed network request/response payloads, so the AI knows the real API shape
 
 ## Troubleshooting
 
@@ -803,8 +830,15 @@ make build
 # Run server locally
 make run
 
-# Run extension tests
-node --experimental-vm-modules --test extension-tests/*.test.js
+# Run Go server tests
+make test
+
+# Run extension unit tests
+node --test extension-tests/*.test.js
+
+# Run e2e tests (requires built binary)
+make dev
+cd e2e-tests && npm test
 ```
 
 ## Publishing (npm)

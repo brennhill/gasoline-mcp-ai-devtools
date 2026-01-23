@@ -311,7 +311,11 @@ describe('Exception Capture', () => {
     // Simulate error event
     globalThis.window.onerror("Cannot read property 'x' of undefined", 'app.js', 42, 15, new Error())
 
-    const [message] = globalThis.window.postMessage.mock.calls[0].arguments
+    // Wait for async enrichment
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const calls = globalThis.window.postMessage.mock.calls
+    const message = calls[calls.length - 1].arguments[0]
     assert.strictEqual(message.type, 'DEV_CONSOLE_LOG')
     assert.strictEqual(message.payload.type, 'exception')
     assert.strictEqual(message.payload.level, 'error')
@@ -342,7 +346,11 @@ describe('Exception Capture', () => {
       reason: new Error('Promise rejection'),
     })
 
-    const [message] = globalThis.window.postMessage.mock.calls[0].arguments
+    // Wait for async enrichment
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const calls = globalThis.window.postMessage.mock.calls
+    const message = calls[calls.length - 1].arguments[0]
     assert.strictEqual(message.payload.type, 'exception')
     assert.strictEqual(message.payload.level, 'error')
     assert.ok(message.payload.message.includes('Promise rejection'))
@@ -360,7 +368,11 @@ describe('Exception Capture', () => {
 
     globalThis.window.onerror('Test error', 'app.js', 42, 1, error)
 
-    const [message] = globalThis.window.postMessage.mock.calls[0].arguments
+    // Wait for async enrichment
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const calls = globalThis.window.postMessage.mock.calls
+    const message = calls[calls.length - 1].arguments[0]
     assert.ok(message.payload.stack.includes('app.js:42'))
     assert.ok(message.payload.stack.includes('app.js:100'))
 
@@ -375,7 +387,11 @@ describe('Exception Capture', () => {
     // Some browsers don't provide error object
     globalThis.window.onerror('Script error', '', 0, 0, null)
 
-    const [message] = globalThis.window.postMessage.mock.calls[0].arguments
+    // Wait for async enrichment
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const calls = globalThis.window.postMessage.mock.calls
+    const message = calls[calls.length - 1].arguments[0]
     assert.strictEqual(message.payload.message, 'Script error')
     assert.ok(message.payload.stack === '' || message.payload.stack === undefined)
 
@@ -1117,5 +1133,633 @@ describe('User Action Replay', () => {
     assert.strictEqual(buffer[0].target, 'document')
 
     clearActionBuffer()
+  })
+})
+
+// =============================================================================
+// V5 WIRING: Exception handlers call enrichErrorWithAiContext
+// =============================================================================
+
+describe('V5 Wiring: Exception handler enrichment', () => {
+  beforeEach(() => {
+    originalWindow = globalThis.window
+    globalThis.window = createMockWindow()
+    globalThis.document = {
+      activeElement: null,
+      addEventListener: mock.fn(),
+      removeEventListener: mock.fn(),
+    }
+  })
+
+  afterEach(() => {
+    globalThis.window = originalWindow
+  })
+
+  test('window.onerror should enrich error with AI context before posting', async () => {
+    const { installExceptionCapture, uninstallExceptionCapture, setAiContextEnabled } =
+      await import('../extension/inject.js')
+
+    setAiContextEnabled(true)
+    installExceptionCapture()
+
+    const error = new Error('TypeError: x is undefined')
+    error.stack = 'TypeError: x is undefined\n    at foo (http://localhost:3000/main.js:10:5)'
+
+    globalThis.window.onerror('TypeError: x is undefined', 'http://localhost:3000/main.js', 10, 5, error)
+
+    // enrichErrorWithAiContext is async, wait for it
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    // The posted message should include _aiContext
+    const calls = globalThis.window.postMessage.mock.calls
+    assert.ok(calls.length >= 1, 'Should have posted a message')
+
+    const lastCall = calls[calls.length - 1]
+    const message = lastCall.arguments[0]
+    assert.strictEqual(message.type, 'DEV_CONSOLE_LOG')
+    assert.strictEqual(message.payload.type, 'exception')
+    assert.ok(message.payload._aiContext, 'Should have _aiContext field')
+    assert.ok(message.payload._aiContext.summary, 'Should have summary in _aiContext')
+
+    uninstallExceptionCapture()
+  })
+
+  test('unhandled rejection should enrich error with AI context', async () => {
+    const { installExceptionCapture, uninstallExceptionCapture, setAiContextEnabled } =
+      await import('../extension/inject.js')
+
+    setAiContextEnabled(true)
+    installExceptionCapture()
+
+    // Get the rejection handler
+    const addListenerCalls = globalThis.window.addEventListener.mock.calls
+    const rejectionHandler = addListenerCalls.find(
+      (call) => call.arguments[0] === 'unhandledrejection'
+    )
+    assert.ok(rejectionHandler)
+
+    const handler = rejectionHandler.arguments[1]
+    handler({ reason: new Error('Async failure') })
+
+    // Wait for async enrichment
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const calls = globalThis.window.postMessage.mock.calls
+    assert.ok(calls.length >= 1)
+
+    const lastCall = calls[calls.length - 1]
+    const message = lastCall.arguments[0]
+    assert.ok(message.payload._aiContext, 'Rejection should have _aiContext')
+
+    uninstallExceptionCapture()
+  })
+
+  test('should still post error when AI context is disabled', async () => {
+    const { installExceptionCapture, uninstallExceptionCapture, setAiContextEnabled } =
+      await import('../extension/inject.js')
+
+    setAiContextEnabled(false)
+    installExceptionCapture()
+
+    globalThis.window.onerror('Test error', 'app.js', 1, 1, new Error('Test'))
+
+    // Wait for async path
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const calls = globalThis.window.postMessage.mock.calls
+    assert.ok(calls.length >= 1)
+    const message = calls[calls.length - 1].arguments[0]
+    assert.strictEqual(message.payload.type, 'exception')
+    // No _aiContext when disabled
+    assert.strictEqual(message.payload._aiContext, undefined)
+
+    uninstallExceptionCapture()
+    setAiContextEnabled(true)
+  })
+})
+
+// =============================================================================
+// V5 WIRING: Action handlers call recordEnhancedAction
+// =============================================================================
+
+describe('V5 Wiring: Enhanced action recording in handlers', () => {
+  beforeEach(() => {
+    originalWindow = globalThis.window
+    globalThis.window = createMockWindow()
+    globalThis.document = {
+      addEventListener: mock.fn(),
+      removeEventListener: mock.fn(),
+    }
+  })
+
+  afterEach(() => {
+    globalThis.window = originalWindow
+  })
+
+  test('handleClick should also call recordEnhancedAction', async () => {
+    const { handleClick, getEnhancedActionBuffer, clearEnhancedActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+    setActionCaptureEnabled(true)
+
+    const mockElement = {
+      tagName: 'BUTTON',
+      id: 'submit-btn',
+      className: '',
+      textContent: 'Submit',
+      innerText: 'Submit',
+      getAttribute: (name) => {
+        if (name === 'data-testid') return 'submit-btn'
+        return null
+      },
+      hasAttribute: (name) => name === 'data-testid',
+      parentElement: null,
+      children: [],
+      childNodes: [],
+    }
+
+    const mockEvent = {
+      target: mockElement,
+      clientX: 100,
+      clientY: 200,
+    }
+
+    handleClick(mockEvent)
+
+    const enhanced = getEnhancedActionBuffer()
+    assert.ok(enhanced.length >= 1, 'Should have recorded enhanced action')
+    assert.strictEqual(enhanced[enhanced.length - 1].type, 'click')
+    assert.ok(enhanced[enhanced.length - 1].selectors, 'Should have selectors')
+
+    clearEnhancedActionBuffer()
+  })
+
+  test('handleInput should also call recordEnhancedAction', async () => {
+    const { handleInput, getEnhancedActionBuffer, clearEnhancedActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+    setActionCaptureEnabled(true)
+
+    const mockElement = {
+      tagName: 'INPUT',
+      id: 'email-input',
+      className: '',
+      type: 'email',
+      value: 'test@example.com',
+      textContent: '',
+      getAttribute: (name) => {
+        if (name === 'type') return 'email'
+        if (name === 'autocomplete') return 'email'
+        return null
+      },
+      hasAttribute: (name) => name === 'type',
+      parentElement: null,
+      children: [],
+      childNodes: [],
+    }
+
+    const mockEvent = { target: mockElement }
+
+    handleInput(mockEvent)
+
+    const enhanced = getEnhancedActionBuffer()
+    assert.ok(enhanced.length >= 1, 'Should have recorded enhanced action')
+    const lastAction = enhanced[enhanced.length - 1]
+    assert.strictEqual(lastAction.type, 'input')
+    assert.strictEqual(lastAction.inputType, 'email')
+
+    clearEnhancedActionBuffer()
+  })
+
+  test('handleInput should redact password fields in enhanced action', async () => {
+    const { handleInput, getEnhancedActionBuffer, clearEnhancedActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+    setActionCaptureEnabled(true)
+
+    const mockElement = {
+      tagName: 'INPUT',
+      id: 'password-input',
+      className: '',
+      type: 'password',
+      value: 'secret123',
+      textContent: '',
+      getAttribute: (name) => {
+        if (name === 'type') return 'password'
+        return null
+      },
+      hasAttribute: (name) => name === 'type',
+      parentElement: null,
+      children: [],
+      childNodes: [],
+    }
+
+    handleInput({ target: mockElement })
+
+    const enhanced = getEnhancedActionBuffer()
+    const lastAction = enhanced[enhanced.length - 1]
+    assert.strictEqual(lastAction.value, '[redacted]')
+
+    clearEnhancedActionBuffer()
+  })
+
+  test('handleScroll should call recordEnhancedAction with scroll type', async () => {
+    const { handleScroll, getEnhancedActionBuffer, clearEnhancedActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+    setActionCaptureEnabled(true)
+
+    // Wait for scroll throttle to expire (250ms)
+    await new Promise(r => setTimeout(r, 300))
+
+    globalThis.window.scrollX = 0
+    globalThis.window.scrollY = 750
+
+    const mockEvent = {
+      target: globalThis.document,
+    }
+
+    handleScroll(mockEvent)
+
+    const enhanced = getEnhancedActionBuffer()
+    const scrollAction = enhanced.find(a => a.type === 'scroll')
+    assert.ok(scrollAction, 'handleScroll should record enhanced action')
+    assert.strictEqual(scrollAction.scrollY, 750)
+    assert.strictEqual(scrollAction.type, 'scroll')
+
+    clearEnhancedActionBuffer()
+  })
+
+  test('keydown handler should call recordEnhancedAction with keypress type', async () => {
+    const { handleKeydown, getEnhancedActionBuffer, clearEnhancedActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+    setActionCaptureEnabled(true)
+
+    const mockElement = {
+      tagName: 'INPUT',
+      id: 'search-input',
+      className: '',
+      textContent: '',
+      getAttribute: (name) => null,
+      hasAttribute: () => false,
+      parentElement: null,
+      children: [],
+      childNodes: [],
+    }
+
+    const mockEvent = {
+      target: mockElement,
+      key: 'Enter',
+    }
+
+    handleKeydown(mockEvent)
+
+    const enhanced = getEnhancedActionBuffer()
+    const keyAction = enhanced.find(a => a.type === 'keypress')
+    assert.ok(keyAction, 'keydown handler should record enhanced action')
+    assert.strictEqual(keyAction.key, 'Enter')
+    assert.ok(keyAction.selectors, 'Should have selectors')
+
+    clearEnhancedActionBuffer()
+  })
+
+  test('keydown handler should only record actionable keys (Enter, Escape, Tab, arrows)', async () => {
+    const { handleKeydown, getEnhancedActionBuffer, clearEnhancedActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+    setActionCaptureEnabled(true)
+
+    const mockElement = {
+      tagName: 'INPUT',
+      id: 'text-input',
+      className: '',
+      textContent: '',
+      getAttribute: () => null,
+      hasAttribute: () => false,
+      parentElement: null,
+      children: [],
+      childNodes: [],
+    }
+
+    // Regular character keys should NOT be recorded
+    handleKeydown({ target: mockElement, key: 'a' })
+    handleKeydown({ target: mockElement, key: '5' })
+    handleKeydown({ target: mockElement, key: ' ' })
+
+    const enhanced = getEnhancedActionBuffer()
+    assert.strictEqual(enhanced.filter(a => a.type === 'keypress').length, 0,
+      'Regular character keys should not be recorded')
+
+    // Actionable keys SHOULD be recorded
+    handleKeydown({ target: mockElement, key: 'Enter' })
+    handleKeydown({ target: mockElement, key: 'Escape' })
+    handleKeydown({ target: mockElement, key: 'Tab' })
+    handleKeydown({ target: mockElement, key: 'ArrowDown' })
+
+    const enhanced2 = getEnhancedActionBuffer()
+    assert.strictEqual(enhanced2.filter(a => a.type === 'keypress').length, 4,
+      'Actionable keys should be recorded')
+
+    clearEnhancedActionBuffer()
+  })
+
+  test('change handler on select should call recordEnhancedAction with select type', async () => {
+    const { handleChange, getEnhancedActionBuffer, clearEnhancedActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+    setActionCaptureEnabled(true)
+
+    const mockElement = {
+      tagName: 'SELECT',
+      id: 'country-select',
+      className: '',
+      textContent: '',
+      value: 'us',
+      getAttribute: (name) => null,
+      hasAttribute: () => false,
+      parentElement: null,
+      children: [],
+      childNodes: [],
+      options: [
+        { value: 'uk', text: 'United Kingdom', selected: false },
+        { value: 'us', text: 'United States', selected: true },
+      ],
+      selectedIndex: 1,
+    }
+
+    handleChange({ target: mockElement })
+
+    const enhanced = getEnhancedActionBuffer()
+    const selectAction = enhanced.find(a => a.type === 'select')
+    assert.ok(selectAction, 'change handler on select should record enhanced action')
+    assert.strictEqual(selectAction.selectedValue, 'us')
+    assert.strictEqual(selectAction.selectedText, 'United States')
+
+    clearEnhancedActionBuffer()
+  })
+
+  test('change handler should ignore non-select elements', async () => {
+    const { handleChange, getEnhancedActionBuffer, clearEnhancedActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+    setActionCaptureEnabled(true)
+
+    const mockElement = {
+      tagName: 'INPUT',
+      id: 'text-input',
+      className: '',
+      type: 'text',
+      value: 'hello',
+      textContent: '',
+      getAttribute: () => null,
+      hasAttribute: () => false,
+      parentElement: null,
+      children: [],
+      childNodes: [],
+    }
+
+    handleChange({ target: mockElement })
+
+    const enhanced = getEnhancedActionBuffer()
+    assert.strictEqual(enhanced.filter(a => a.type === 'select').length, 0,
+      'change handler should not record for non-select elements')
+
+    clearEnhancedActionBuffer()
+  })
+
+  test('installActionCapture should register keydown and change listeners', async () => {
+    const { installActionCapture, uninstallActionCapture } =
+      await import('../extension/inject.js')
+
+    installActionCapture()
+
+    // Check document.addEventListener was called with keydown
+    const docCalls = globalThis.document.addEventListener.mock.calls
+    const keydownCall = docCalls.find(c => c.arguments[0] === 'keydown')
+    assert.ok(keydownCall, 'installActionCapture should register keydown listener')
+    assert.deepStrictEqual(keydownCall.arguments[2], { capture: true, passive: true })
+
+    // Check document.addEventListener was called with change
+    const changeCall = docCalls.find(c => c.arguments[0] === 'change')
+    assert.ok(changeCall, 'installActionCapture should register change listener')
+    assert.deepStrictEqual(changeCall.arguments[2], { capture: true, passive: true })
+
+    uninstallActionCapture()
+  })
+})
+
+// =============================================================================
+// V5 WIRING: recordEnhancedAction emits postMessage
+// =============================================================================
+
+describe('V5 Wiring: Enhanced action postMessage emission', () => {
+  beforeEach(() => {
+    originalWindow = globalThis.window
+    globalThis.window = createMockWindow()
+    globalThis.document = {
+      addEventListener: mock.fn(),
+      removeEventListener: mock.fn(),
+      activeElement: null,
+    }
+  })
+
+  afterEach(() => {
+    globalThis.window = originalWindow
+  })
+
+  test('recordEnhancedAction should emit GASOLINE_ENHANCED_ACTION via postMessage', async () => {
+    const { recordEnhancedAction, clearEnhancedActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+    setActionCaptureEnabled(true)
+
+    const mockElement = {
+      tagName: 'BUTTON',
+      id: 'save-btn',
+      className: '',
+      textContent: 'Save',
+      innerText: 'Save',
+      getAttribute: (name) => {
+        if (name === 'data-testid') return 'save-btn'
+        return null
+      },
+      hasAttribute: (name) => name === 'data-testid',
+      parentElement: null,
+      children: [],
+      childNodes: [],
+    }
+
+    recordEnhancedAction('click', mockElement)
+
+    // Should have posted GASOLINE_ENHANCED_ACTION message
+    const postCalls = globalThis.window.postMessage.mock.calls
+    const enhancedCall = postCalls.find(c => c.arguments[0]?.type === 'GASOLINE_ENHANCED_ACTION')
+    assert.ok(enhancedCall, 'recordEnhancedAction should emit GASOLINE_ENHANCED_ACTION')
+    assert.strictEqual(enhancedCall.arguments[0].payload.type, 'click')
+    assert.ok(enhancedCall.arguments[0].payload.selectors, 'Payload should include selectors')
+    assert.ok(enhancedCall.arguments[0].payload.timestamp, 'Payload should include timestamp')
+    assert.strictEqual(enhancedCall.arguments[1], '*')
+
+    clearEnhancedActionBuffer()
+  })
+
+  test('recordEnhancedAction should include all action fields in postMessage', async () => {
+    const { recordEnhancedAction, clearEnhancedActionBuffer, setActionCaptureEnabled } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+    setActionCaptureEnabled(true)
+
+    const mockElement = {
+      tagName: 'INPUT',
+      id: 'email',
+      className: '',
+      textContent: '',
+      type: 'email',
+      getAttribute: (name) => {
+        if (name === 'type') return 'email'
+        return null
+      },
+      hasAttribute: () => false,
+      parentElement: null,
+      children: [],
+      childNodes: [],
+    }
+
+    recordEnhancedAction('input', mockElement, { value: 'test@example.com' })
+
+    const postCalls = globalThis.window.postMessage.mock.calls
+    const enhancedCall = postCalls.find(c => c.arguments[0]?.type === 'GASOLINE_ENHANCED_ACTION')
+    assert.ok(enhancedCall)
+    assert.strictEqual(enhancedCall.arguments[0].payload.inputType, 'email')
+    assert.strictEqual(enhancedCall.arguments[0].payload.value, 'test@example.com')
+
+    clearEnhancedActionBuffer()
+  })
+})
+
+// =============================================================================
+// V5 WIRING: Navigation events call recordEnhancedAction
+// =============================================================================
+
+describe('V5 Wiring: Navigation event recording', () => {
+  beforeEach(() => {
+    originalWindow = globalThis.window
+    globalThis.window = {
+      ...createMockWindow(),
+      history: {
+        pushState: mock.fn(),
+        replaceState: mock.fn(),
+      },
+    }
+    globalThis.document = {
+      addEventListener: mock.fn(),
+      removeEventListener: mock.fn(),
+    }
+  })
+
+  afterEach(() => {
+    globalThis.window = originalWindow
+  })
+
+  test('should record enhanced action on popstate', async () => {
+    const { installNavigationCapture, uninstallNavigationCapture, getEnhancedActionBuffer, clearEnhancedActionBuffer } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+
+    installNavigationCapture()
+
+    // Find the popstate handler
+    const addListenerCalls = globalThis.window.addEventListener.mock.calls
+    const popstateHandler = addListenerCalls.find(
+      (call) => call.arguments[0] === 'popstate'
+    )
+    assert.ok(popstateHandler, 'Should have registered popstate handler')
+
+    // Simulate popstate
+    globalThis.window.location.href = 'http://localhost:3000/new-page'
+    popstateHandler.arguments[1]({ state: {} })
+
+    const enhanced = getEnhancedActionBuffer()
+    const navAction = enhanced.find(a => a.type === 'navigate')
+    assert.ok(navAction, 'Should have navigate action')
+    assert.ok(navAction.toUrl, 'Should have toUrl')
+
+    uninstallNavigationCapture()
+    clearEnhancedActionBuffer()
+  })
+
+  test('should record enhanced action on pushState', async () => {
+    const { installNavigationCapture, uninstallNavigationCapture, getEnhancedActionBuffer, clearEnhancedActionBuffer } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+
+    const originalPushState = globalThis.window.history.pushState
+
+    installNavigationCapture()
+
+    // Call the patched pushState
+    globalThis.window.history.pushState({}, '', '/dashboard')
+
+    const enhanced = getEnhancedActionBuffer()
+    const navAction = enhanced.find(a => a.type === 'navigate')
+    assert.ok(navAction, 'pushState should trigger navigate action')
+    assert.strictEqual(navAction.toUrl, '/dashboard')
+
+    uninstallNavigationCapture()
+    clearEnhancedActionBuffer()
+  })
+
+  test('should record enhanced action on replaceState', async () => {
+    const { installNavigationCapture, uninstallNavigationCapture, getEnhancedActionBuffer, clearEnhancedActionBuffer } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+
+    installNavigationCapture()
+
+    // Call the patched replaceState
+    globalThis.window.history.replaceState({}, '', '/login')
+
+    const enhanced = getEnhancedActionBuffer()
+    const navAction = enhanced.find(a => a.type === 'navigate')
+    assert.ok(navAction, 'replaceState should trigger navigate action')
+    assert.strictEqual(navAction.toUrl, '/login')
+
+    uninstallNavigationCapture()
+    clearEnhancedActionBuffer()
+  })
+
+  test('navigate action should include fromUrl', async () => {
+    const { installNavigationCapture, uninstallNavigationCapture, getEnhancedActionBuffer, clearEnhancedActionBuffer } =
+      await import('../extension/inject.js')
+
+    clearEnhancedActionBuffer()
+
+    globalThis.window.location.href = 'http://localhost:3000/home'
+
+    installNavigationCapture()
+
+    globalThis.window.history.pushState({}, '', '/about')
+
+    const enhanced = getEnhancedActionBuffer()
+    const navAction = enhanced.find(a => a.type === 'navigate')
+    assert.ok(navAction)
+    assert.strictEqual(navAction.fromUrl, 'http://localhost:3000/home')
+
+    uninstallNavigationCapture()
+    clearEnhancedActionBuffer()
   })
 })

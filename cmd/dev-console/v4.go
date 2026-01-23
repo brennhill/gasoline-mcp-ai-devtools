@@ -161,6 +161,28 @@ type PendingQueryResponse struct {
 	Params json.RawMessage `json:"params"`
 }
 
+// EnhancedAction represents a captured user action with multi-strategy selectors
+type EnhancedAction struct {
+	Type          string                 `json:"type"`
+	Timestamp     int64                  `json:"timestamp"`
+	URL           string                 `json:"url,omitempty"`
+	Selectors     map[string]interface{} `json:"selectors,omitempty"`
+	Value         string                 `json:"value,omitempty"`
+	InputType     string                 `json:"inputType,omitempty"`
+	Key           string                 `json:"key,omitempty"`
+	FromURL       string                 `json:"fromUrl,omitempty"`
+	ToURL         string                 `json:"toUrl,omitempty"`
+	SelectedValue string                 `json:"selectedValue,omitempty"`
+	SelectedText  string                 `json:"selectedText,omitempty"`
+	ScrollY       int                    `json:"scrollY,omitempty"`
+}
+
+// EnhancedActionFilter defines filtering criteria for enhanced actions
+type EnhancedActionFilter struct {
+	LastN     int
+	URLFilter string
+}
+
 // ============================================
 // Internal types
 // ============================================
@@ -178,10 +200,11 @@ type connectionState struct {
 }
 
 type directionStats struct {
-	total     int
-	bytes     int
-	lastAt    string
-	lastData  string
+	total       int
+	bytes       int
+	lastAt      string
+	lastData    string
+	recentTimes []time.Time // timestamps within rate window for rate calculation
 }
 
 // pendingQueryEntry tracks a pending query with timeout
@@ -197,6 +220,7 @@ type pendingQueryEntry struct {
 const (
 	maxWSEvents         = 500
 	maxNetworkBodies    = 100
+	maxEnhancedActions  = 50
 	maxActiveConns      = 20
 	maxClosedConns      = 10
 	maxPendingQueries   = 5
@@ -209,6 +233,7 @@ const (
 	rateLimitThreshold  = 1000
 	memoryHardLimit     = 50 * 1024 * 1024 // 50MB
 	defaultQueryTimeout = 10 * time.Second
+	rateWindow          = 5 * time.Second // rolling window for msg/s calculation
 )
 
 // ============================================
@@ -224,6 +249,9 @@ type V4Server struct {
 
 	// Network bodies ring buffer
 	networkBodies []NetworkBody
+
+	// Enhanced actions ring buffer (v5)
+	enhancedActions []EnhancedAction
 
 	// Connection tracker
 	connections    map[string]*connectionState
@@ -250,9 +278,10 @@ type V4Server struct {
 // NewV4Server creates a new v4 server instance
 func NewV4Server() *V4Server {
 	v4 := &V4Server{
-		wsEvents:       make([]WebSocketEvent, 0, maxWSEvents),
-		networkBodies:  make([]NetworkBody, 0, maxNetworkBodies),
-		connections:    make(map[string]*connectionState),
+		wsEvents:        make([]WebSocketEvent, 0, maxWSEvents),
+		networkBodies:   make([]NetworkBody, 0, maxNetworkBodies),
+		enhancedActions: make([]EnhancedAction, 0, maxEnhancedActions),
+		connections:     make(map[string]*connectionState),
 		closedConns:    make([]WebSocketClosedConnection, 0),
 		connOrder:      make([]string, 0),
 		pendingQueries: make([]pendingQueryEntry, 0),
@@ -415,22 +444,102 @@ func (v *V4Server) trackConnection(event WebSocketEvent) {
 		if conn == nil {
 			return
 		}
+		msgTime := parseTimestamp(event.Timestamp)
 		if event.Direction == "incoming" {
 			conn.incoming.total++
 			conn.incoming.bytes += event.Size
 			conn.incoming.lastAt = event.Timestamp
 			conn.incoming.lastData = event.Data
+			conn.incoming.recentTimes = appendAndPrune(conn.incoming.recentTimes, msgTime)
 		} else if event.Direction == "outgoing" {
 			conn.outgoing.total++
 			conn.outgoing.bytes += event.Size
 			conn.outgoing.lastAt = event.Timestamp
 			conn.outgoing.lastData = event.Data
+			conn.outgoing.recentTimes = appendAndPrune(conn.outgoing.recentTimes, msgTime)
 		}
 		if event.Sampled != nil {
 			conn.sampling = true
 			conn.lastSample = event.Sampled
 		}
 	}
+}
+
+// parseTimestamp parses an RFC3339 timestamp string, returns zero time on failure
+func parseTimestamp(ts string) time.Time {
+	t, err := time.Parse(time.RFC3339Nano, ts)
+	if err != nil {
+		t, _ = time.Parse(time.RFC3339, ts)
+	}
+	return t
+}
+
+// appendAndPrune adds a timestamp to the slice and removes entries older than rateWindow
+func appendAndPrune(times []time.Time, t time.Time) []time.Time {
+	cutoff := time.Now().Add(-rateWindow)
+	// Prune old entries
+	start := 0
+	for start < len(times) && times[start].Before(cutoff) {
+		start++
+	}
+	pruned := times[start:]
+	if !t.IsZero() {
+		pruned = append(pruned, t)
+	}
+	return pruned
+}
+
+// calcRate returns messages per second from recent timestamps within the rate window
+func calcRate(times []time.Time) float64 {
+	now := time.Now()
+	cutoff := now.Add(-rateWindow)
+	count := 0
+	for _, t := range times {
+		if t.After(cutoff) {
+			count++
+		}
+	}
+	if count == 0 {
+		return 0.0
+	}
+	return float64(count) / rateWindow.Seconds()
+}
+
+// formatDuration formats a duration as human-readable (e.g., "5s", "2m30s", "1h15m")
+func formatDuration(d time.Duration) string {
+	if d < time.Second {
+		return fmt.Sprintf("%.1fs", d.Seconds())
+	}
+	if d < time.Minute {
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	}
+	if d < time.Hour {
+		mins := int(d.Minutes())
+		secs := int(d.Seconds()) % 60
+		if secs == 0 {
+			return fmt.Sprintf("%dm", mins)
+		}
+		return fmt.Sprintf("%dm%02ds", mins, secs)
+	}
+	hours := int(d.Hours())
+	mins := int(d.Minutes()) % 60
+	if mins == 0 {
+		return fmt.Sprintf("%dh", hours)
+	}
+	return fmt.Sprintf("%dh%02dm", hours, mins)
+}
+
+// formatAge formats the age of a timestamp relative to now (e.g., "0.2s", "3s", "2m30s")
+func formatAge(ts string) string {
+	t := parseTimestamp(ts)
+	if t.IsZero() {
+		return ""
+	}
+	d := time.Since(t)
+	if d < 0 {
+		d = 0
+	}
+	return formatDuration(d)
 }
 
 // GetWebSocketStatus returns current connection states
@@ -458,12 +567,14 @@ func (v *V4Server) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketSta
 			OpenedAt: conn.openedAt,
 			MessageRate: WebSocketMessageRate{
 				Incoming: WebSocketDirectionStats{
-					Total: conn.incoming.total,
-					Bytes: conn.incoming.bytes,
+					PerSecond: calcRate(conn.incoming.recentTimes),
+					Total:     conn.incoming.total,
+					Bytes:     conn.incoming.bytes,
 				},
 				Outgoing: WebSocketDirectionStats{
-					Total: conn.outgoing.total,
-					Bytes: conn.outgoing.bytes,
+					PerSecond: calcRate(conn.outgoing.recentTimes),
+					Total:     conn.outgoing.total,
+					Bytes:     conn.outgoing.bytes,
 				},
 			},
 			Sampling: WebSocketSamplingStatus{
@@ -471,15 +582,23 @@ func (v *V4Server) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketSta
 			},
 		}
 
+		// Calculate connection duration
+		openedTime := parseTimestamp(conn.openedAt)
+		if !openedTime.IsZero() {
+			wc.Duration = formatDuration(time.Since(openedTime))
+		}
+
 		if conn.incoming.lastData != "" {
 			wc.LastMessage.Incoming = &WebSocketMessagePreview{
 				At:      conn.incoming.lastAt,
+				Age:     formatAge(conn.incoming.lastAt),
 				Preview: conn.incoming.lastData,
 			}
 		}
 		if conn.outgoing.lastData != "" {
 			wc.LastMessage.Outgoing = &WebSocketMessagePreview{
 				At:      conn.outgoing.lastAt,
+				Age:     formatAge(conn.outgoing.lastAt),
 				Preview: conn.outgoing.lastData,
 			}
 		}
@@ -596,6 +715,57 @@ func (v *V4Server) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
 }
 
 // ============================================
+// Enhanced Actions (v5)
+// ============================================
+
+// AddEnhancedActions adds enhanced actions to the buffer
+func (v *V4Server) AddEnhancedActions(actions []EnhancedAction) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	for i := range actions {
+		// Redact password values on ingest
+		if actions[i].InputType == "password" && actions[i].Value != "[redacted]" {
+			actions[i].Value = "[redacted]"
+		}
+		v.enhancedActions = append(v.enhancedActions, actions[i])
+	}
+
+	// Enforce max count
+	if len(v.enhancedActions) > maxEnhancedActions {
+		v.enhancedActions = v.enhancedActions[len(v.enhancedActions)-maxEnhancedActions:]
+	}
+}
+
+// GetEnhancedActionCount returns the current number of buffered actions
+func (v *V4Server) GetEnhancedActionCount() int {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return len(v.enhancedActions)
+}
+
+// GetEnhancedActions returns filtered enhanced actions
+func (v *V4Server) GetEnhancedActions(filter EnhancedActionFilter) []EnhancedAction {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	var filtered []EnhancedAction
+	for _, a := range v.enhancedActions {
+		if filter.URLFilter != "" && !strings.Contains(a.URL, filter.URLFilter) {
+			continue
+		}
+		filtered = append(filtered, a)
+	}
+
+	// Apply lastN (return most recent N)
+	if filter.LastN > 0 && len(filtered) > filter.LastN {
+		filtered = filtered[len(filtered)-filter.LastN:]
+	}
+
+	return filtered
+}
+
+// ============================================
 // Pending Queries
 // ============================================
 
@@ -687,16 +857,19 @@ func (v *V4Server) SetQueryResult(id string, result json.RawMessage) {
 	v.queryCond.Broadcast()
 }
 
-// GetQueryResult retrieves the result for a query
+// GetQueryResult retrieves the result for a query and deletes it from storage
 func (v *V4Server) GetQueryResult(id string) (json.RawMessage, bool) {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+	v.mu.Lock()
+	defer v.mu.Unlock()
 
 	result, found := v.queryResults[id]
+	if found {
+		delete(v.queryResults, id)
+	}
 	return result, found
 }
 
-// WaitForResult blocks until a result is available or timeout
+// WaitForResult blocks until a result is available or timeout, then deletes it
 func (v *V4Server) WaitForResult(id string, timeout time.Duration) (json.RawMessage, error) {
 	deadline := time.Now().Add(timeout)
 
@@ -705,6 +878,7 @@ func (v *V4Server) WaitForResult(id string, timeout time.Duration) (json.RawMess
 
 	for {
 		if result, found := v.queryResults[id]; found {
+			delete(v.queryResults, id)
 			return result, nil
 		}
 		if time.Now().After(deadline) {
@@ -785,8 +959,18 @@ func (v *V4Server) GetNetworkBodiesBufferMemory() int64 {
 // HTTP Handlers
 // ============================================
 
-// HandleWebSocketEvents handles POST /websocket-events
+// HandleWebSocketEvents handles GET and POST /websocket-events
 func (v *V4Server) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		events := v.GetWebSocketEvents(WebSocketEventFilter{})
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"events": events,
+			"count":  len(events),
+		})
+		return
+	}
+
 	v.mu.RLock()
 	rateLimited := v.isRateLimited()
 	v.mu.RUnlock()
@@ -812,6 +996,13 @@ func (v *V4Server) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request)
 
 	v.AddWebSocketEvents(payload.Events)
 	w.WriteHeader(http.StatusOK)
+}
+
+// HandleWebSocketStatus handles GET /websocket-status
+func (v *V4Server) HandleWebSocketStatus(w http.ResponseWriter, r *http.Request) {
+	status := v.GetWebSocketStatus(WebSocketStatusFilter{})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(status)
 }
 
 // HandleNetworkBodies handles POST /network-bodies
@@ -906,6 +1097,26 @@ func (v *V4Server) handleQueryResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	v.SetQueryResult(payload.ID, payload.Result)
+	w.WriteHeader(http.StatusOK)
+}
+
+// HandleEnhancedActions handles POST /enhanced-actions
+func (v *V4Server) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var payload struct {
+		Actions []EnhancedAction `json:"actions"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	v.AddEnhancedActions(payload.Actions)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -1048,6 +1259,44 @@ func (h *MCPHandlerV4) v4ToolsList() []MCPTool {
 				},
 			},
 		},
+		{
+			Name:        "get_enhanced_actions",
+			Description: "Get captured user actions with multi-strategy selectors. Useful for understanding what the user did before an error occurred.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"last_n": map[string]interface{}{
+						"type":        "number",
+						"description": "Return only the last N actions (default: all)",
+					},
+					"url": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by URL substring",
+					},
+				},
+			},
+		},
+		{
+			Name:        "get_reproduction_script",
+			Description: "Generate a Playwright test script from captured user actions. Useful for reproducing bugs.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"error_message": map[string]interface{}{
+						"type":        "string",
+						"description": "Error message to include in the test (adds context comment)",
+					},
+					"last_n_actions": map[string]interface{}{
+						"type":        "number",
+						"description": "Use only the last N actions (default: all)",
+					},
+					"base_url": map[string]interface{}{
+						"type":        "string",
+						"description": "Replace the origin in URLs (e.g., 'https://staging.example.com')",
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -1066,6 +1315,10 @@ func (h *MCPHandlerV4) handleV4ToolCall(req JSONRPCRequest, name string, args js
 		return h.toolGetPageInfo(req, args), true
 	case "run_accessibility_audit":
 		return h.toolRunA11yAudit(req, args), true
+	case "get_enhanced_actions":
+		return h.toolGetEnhancedActions(req, args), true
+	case "get_reproduction_script":
+		return h.toolGetReproductionScript(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -1260,4 +1513,237 @@ func (h *MCPHandlerV4) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage
 	}
 	resultJSON, _ := json.Marshal(resp)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+// ============================================
+// v5 MCP Tool Implementations
+// ============================================
+
+func (h *MCPHandlerV4) toolGetEnhancedActions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		LastN int    `json:"last_n"`
+		URL   string `json:"url"`
+	}
+	json.Unmarshal(args, &arguments)
+
+	actions := h.v4.GetEnhancedActions(EnhancedActionFilter{
+		LastN:     arguments.LastN,
+		URLFilter: arguments.URL,
+	})
+
+	var contentText string
+	if len(actions) == 0 {
+		contentText = "No enhanced actions captured"
+	} else {
+		actionsJSON, _ := json.Marshal(actions)
+		contentText = string(actionsJSON)
+	}
+
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": contentText},
+		},
+	}
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+func (h *MCPHandlerV4) toolGetReproductionScript(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		ErrorMessage string `json:"error_message"`
+		LastNActions int    `json:"last_n_actions"`
+		BaseURL      string `json:"base_url"`
+	}
+	json.Unmarshal(args, &arguments)
+
+	actions := h.v4.GetEnhancedActions(EnhancedActionFilter{})
+
+	if len(actions) == 0 {
+		result := map[string]interface{}{
+			"content": []map[string]string{
+				{"type": "text", "text": "No enhanced actions captured to generate script"},
+			},
+		}
+		resultJSON, _ := json.Marshal(result)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	}
+
+	// Apply lastNActions filter
+	if arguments.LastNActions > 0 && len(actions) > arguments.LastNActions {
+		actions = actions[len(actions)-arguments.LastNActions:]
+	}
+
+	script := generatePlaywrightScript(actions, arguments.ErrorMessage, arguments.BaseURL)
+
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": script},
+		},
+	}
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+// ============================================
+// Playwright Script Generation (v5)
+// ============================================
+
+// generatePlaywrightScript generates a Playwright test script from enhanced actions
+func generatePlaywrightScript(actions []EnhancedAction, errorMessage, baseURL string) string {
+	// Determine start URL
+	startURL := ""
+	if len(actions) > 0 && actions[0].URL != "" {
+		startURL = actions[0].URL
+	}
+	if baseURL != "" && startURL != "" {
+		startURL = replaceOrigin(startURL, baseURL)
+	}
+
+	// Build test name
+	testName := "reproduction: captured user actions"
+	if errorMessage != "" {
+		name := errorMessage
+		if len(name) > 80 {
+			name = name[:80]
+		}
+		testName = "reproduction: " + name
+	}
+
+	// Generate steps
+	var steps []string
+	var prevTimestamp int64
+
+	for _, action := range actions {
+		// Add pause comment for gaps > 2 seconds
+		if prevTimestamp > 0 && action.Timestamp-prevTimestamp > 2000 {
+			gap := (action.Timestamp - prevTimestamp) / 1000
+			steps = append(steps, fmt.Sprintf("  // [%ds pause]", gap))
+		}
+		prevTimestamp = action.Timestamp
+
+		locator := getPlaywrightLocator(action.Selectors)
+
+		switch action.Type {
+		case "click":
+			if locator != "" {
+				steps = append(steps, fmt.Sprintf("  await page.%s.click();", locator))
+			} else {
+				steps = append(steps, "  // click action - no selector available")
+			}
+		case "input":
+			value := action.Value
+			if value == "[redacted]" {
+				value = "[user-provided]"
+			}
+			if locator != "" {
+				steps = append(steps, fmt.Sprintf("  await page.%s.fill('%s');", locator, escapeJSString(value)))
+			}
+		case "keypress":
+			steps = append(steps, fmt.Sprintf("  await page.keyboard.press('%s');", escapeJSString(action.Key)))
+		case "navigate":
+			toURL := action.ToURL
+			if baseURL != "" && toURL != "" {
+				toURL = replaceOrigin(toURL, baseURL)
+			}
+			steps = append(steps, fmt.Sprintf("  await page.waitForURL('%s');", escapeJSString(toURL)))
+		case "select":
+			if locator != "" {
+				steps = append(steps, fmt.Sprintf("  await page.%s.selectOption('%s');", locator, escapeJSString(action.SelectedValue)))
+			}
+		case "scroll":
+			steps = append(steps, fmt.Sprintf("  // User scrolled to y=%d", action.ScrollY))
+		}
+	}
+
+	// Assemble script
+	script := "import { test, expect } from '@playwright/test';\n\n"
+	script += fmt.Sprintf("test('%s', async ({ page }) => {\n", escapeJSString(testName))
+	if startURL != "" {
+		script += fmt.Sprintf("  await page.goto('%s');\n\n", escapeJSString(startURL))
+	}
+	script += strings.Join(steps, "\n")
+	if len(steps) > 0 {
+		script += "\n"
+	}
+	if errorMessage != "" {
+		script += fmt.Sprintf("\n  // Error occurred here: %s\n", errorMessage)
+	}
+	script += "});\n"
+
+	// Cap output size (50KB)
+	if len(script) > 51200 {
+		script = script[:51200]
+	}
+
+	return script
+}
+
+// getPlaywrightLocator returns the best Playwright locator for a set of selectors
+// Priority: testId > role > ariaLabel > text > id > cssPath
+func getPlaywrightLocator(selectors map[string]interface{}) string {
+	if selectors == nil {
+		return ""
+	}
+
+	if testId, ok := selectors["testId"].(string); ok && testId != "" {
+		return fmt.Sprintf("getByTestId('%s')", escapeJSString(testId))
+	}
+
+	if roleData, ok := selectors["role"]; ok {
+		if roleMap, ok := roleData.(map[string]interface{}); ok {
+			role, _ := roleMap["role"].(string)
+			name, _ := roleMap["name"].(string)
+			if role != "" && name != "" {
+				return fmt.Sprintf("getByRole('%s', { name: '%s' })", escapeJSString(role), escapeJSString(name))
+			}
+			if role != "" {
+				return fmt.Sprintf("getByRole('%s')", escapeJSString(role))
+			}
+		}
+	}
+
+	if ariaLabel, ok := selectors["ariaLabel"].(string); ok && ariaLabel != "" {
+		return fmt.Sprintf("getByLabel('%s')", escapeJSString(ariaLabel))
+	}
+
+	if text, ok := selectors["text"].(string); ok && text != "" {
+		return fmt.Sprintf("getByText('%s')", escapeJSString(text))
+	}
+
+	if id, ok := selectors["id"].(string); ok && id != "" {
+		return fmt.Sprintf("locator('#%s')", escapeJSString(id))
+	}
+
+	if cssPath, ok := selectors["cssPath"].(string); ok && cssPath != "" {
+		return fmt.Sprintf("locator('%s')", escapeJSString(cssPath))
+	}
+
+	return ""
+}
+
+// escapeJSString escapes a string for use in JavaScript single-quoted strings
+func escapeJSString(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "'", "\\'")
+	s = strings.ReplaceAll(s, "\n", "\\n")
+	s = strings.ReplaceAll(s, "\r", "\\r")
+	return s
+}
+
+// replaceOrigin replaces the origin (scheme+host) in a URL with a new base URL
+func replaceOrigin(original, baseURL string) string {
+	// Find the path start (after scheme://host)
+	schemeEnd := strings.Index(original, "://")
+	if schemeEnd == -1 {
+		return baseURL + original
+	}
+	rest := original[schemeEnd+3:]
+	pathStart := strings.Index(rest, "/")
+	if pathStart == -1 {
+		return baseURL
+	}
+	path := rest[pathStart:]
+	// Remove trailing slash from baseURL if path starts with /
+	base := strings.TrimRight(baseURL, "/")
+	return base + path
 }
