@@ -35,6 +35,8 @@ Gasoline is a **browser extension + local MCP server** that fuels AI coding assi
 
 Your browser logs stay on your hardware. The AI reads a local file via stdio. At no point does debugging data touch a third-party server — making Gasoline safe for regulated environments, proprietary codebases, and enterprise security policies.
 
+[Full Security Details →](/security/)
+
 ## Ecosystem Neutral — No Vendor Lock-In
 
 Gasoline implements the open **[Model Context Protocol](https://modelcontextprotocol.io/)** standard. Swap AI tools without changing your debugging setup:
