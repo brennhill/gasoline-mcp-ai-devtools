@@ -1092,7 +1092,9 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
     } else if (
       message.type === 'setNetworkWaterfallEnabled' ||
       message.type === 'setPerformanceMarksEnabled' ||
-      message.type === 'setActionReplayEnabled'
+      message.type === 'setActionReplayEnabled' ||
+      message.type === 'setWebSocketCaptureEnabled' ||
+      message.type === 'setWebSocketCaptureMode'
     ) {
       // Forward to all content scripts
       debugLog(DebugCategory.SETTINGS, `Setting ${message.type}: ${message.enabled}`)

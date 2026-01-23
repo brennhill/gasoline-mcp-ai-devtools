@@ -472,6 +472,108 @@ describe('Server URL Display', () => {
   })
 })
 
+describe('WebSocket Toggle', () => {
+  beforeEach(() => {
+    mock.reset()
+    mockDocument = createMockDocument()
+    globalThis.document = mockDocument
+    mockChrome.runtime.sendMessage.mock.resetCalls()
+    mockChrome.storage.local.set.mock.resetCalls()
+  })
+
+  test('should load saved WebSocket capture state on init', async () => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({ webSocketCaptureEnabled: true, webSocketCaptureMode: 'messages' })
+    })
+
+    const { initFeatureToggles } = await import('../extension/popup.js')
+
+    await initFeatureToggles()
+
+    const wsToggle = mockDocument.getElementById('toggle-websocket')
+    assert.strictEqual(wsToggle.checked, true)
+  })
+
+  test('should default WebSocket capture to OFF', async () => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({}) // No saved value
+    })
+
+    const { initFeatureToggles } = await import('../extension/popup.js')
+
+    await initFeatureToggles()
+
+    const wsToggle = mockDocument.getElementById('toggle-websocket')
+    assert.strictEqual(wsToggle.checked, false)
+  })
+
+  test('should save WebSocket state when toggled', async () => {
+    const { handleFeatureToggle } = await import('../extension/popup.js')
+
+    handleFeatureToggle('webSocketCaptureEnabled', 'setWebSocketCaptureEnabled', true)
+
+    assert.ok(mockChrome.storage.local.set.mock.calls.some(
+      (c) => c.arguments[0].webSocketCaptureEnabled === true
+    ))
+  })
+
+  test('should send message to background when WebSocket toggled', async () => {
+    const { handleFeatureToggle } = await import('../extension/popup.js')
+
+    handleFeatureToggle('webSocketCaptureEnabled', 'setWebSocketCaptureEnabled', true)
+
+    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some(
+      (c) => c.arguments[0].type === 'setWebSocketCaptureEnabled' && c.arguments[0].enabled === true
+    ))
+  })
+
+  test('should save WebSocket mode when changed', async () => {
+    const { handleWebSocketModeChange } = await import('../extension/popup.js')
+
+    handleWebSocketModeChange('messages')
+
+    assert.ok(mockChrome.storage.local.set.mock.calls.some(
+      (c) => c.arguments[0].webSocketCaptureMode === 'messages'
+    ))
+  })
+
+  test('should send mode change message to background', async () => {
+    const { handleWebSocketModeChange } = await import('../extension/popup.js')
+
+    handleWebSocketModeChange('messages')
+
+    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some(
+      (c) => c.arguments[0].type === 'setWebSocketCaptureMode' && c.arguments[0].mode === 'messages'
+    ))
+  })
+
+  test('should default mode to lifecycle', async () => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({}) // No saved value
+    })
+
+    const { initWebSocketModeSelector } = await import('../extension/popup.js')
+
+    await initWebSocketModeSelector()
+
+    const modeSelect = mockDocument.getElementById('ws-mode')
+    assert.strictEqual(modeSelect.value, 'lifecycle')
+  })
+
+  test('should load saved mode on init', async () => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({ webSocketCaptureMode: 'messages' })
+    })
+
+    const { initWebSocketModeSelector } = await import('../extension/popup.js')
+
+    await initWebSocketModeSelector()
+
+    const modeSelect = mockDocument.getElementById('ws-mode')
+    assert.strictEqual(modeSelect.value, 'messages')
+  })
+})
+
 describe('Debug Logging', () => {
   beforeEach(() => {
     mock.reset()

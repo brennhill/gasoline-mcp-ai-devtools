@@ -1,6 +1,10 @@
 # Build artifacts
 dist/
+/dev-console
 *.zip
+
+# Local config
+.mcp.json
 
 # Dependencies
 node_modules/
@@ -14,6 +18,11 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# E2E test artifacts
+e2e-tests/.tmp/
+e2e-tests/test-results/
+e2e-tests/playwright-report/
 
 # Claude Code instructions (local only)
 CLAUDE.md

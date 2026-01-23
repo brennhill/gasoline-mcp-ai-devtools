@@ -24,6 +24,7 @@
 
 [Quick Start](#quick-start) •
 [Features](#what-gets-captured) •
+[Alternatives](#alternatives) •
 [Privacy](#privacy--security) •
 [Roadmap](#features-roadmap) •
 [Development](#development)
@@ -615,6 +616,24 @@ Browser Page                Extension                 Server              AI Ass
 4. The service worker batches logs and POSTs them to the **local server**
 5. The server appends each log entry to the JSONL file
 6. Your **AI assistant** can read the file to help debug issues
+
+## Alternatives
+
+Other tools that give AI coding assistants access to browser state via MCP:
+
+| Tool | Architecture | Approach | Dependencies |
+|------|-------------|----------|--------------|
+| **Gasoline** | Extension + Go binary | Passive capture (observes without controlling) | None (single binary) |
+| [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) | Puppeteer-based server | Active control (agent drives the browser) | Node.js 22+, Chrome launched with debug port |
+| [BrowserTools MCP](https://github.com/AgentDeskAI/browser-tools-mcp) | Extension + Node server + MCP server | Passive capture + Lighthouse audits | Node.js |
+| [Cursor MCP Extension](https://github.com/sirvenis/cursor-mcp-extension) | Extension + MCP server | Passive capture (console + network) | Node.js |
+
+**Key differences:**
+
+- **Passive vs. active** — Gasoline and BrowserTools observe what happens in the browser without interfering. Chrome DevTools MCP takes control of the browser via Puppeteer, which is more powerful but requires a separate Chrome instance and can't observe your normal browsing session.
+- **Zero dependencies** — Gasoline ships as a single Go binary with no runtime dependencies. The others require Node.js.
+- **WebSocket capture** — Gasoline captures real-time WebSocket traffic (messages, lifecycle events). This is unique among the alternatives.
+- **Performance overhead** — Gasoline enforces strict SLOs (< 0.1ms per console intercept, < 0.1ms per WebSocket message). The extension never blocks the main thread.
 
 ## Performance SLOs
 

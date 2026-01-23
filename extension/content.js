@@ -39,16 +39,17 @@ chrome.runtime.onMessage.addListener((message) => {
   if (
     message.type === 'setNetworkWaterfallEnabled' ||
     message.type === 'setPerformanceMarksEnabled' ||
-    message.type === 'setActionReplayEnabled'
+    message.type === 'setActionReplayEnabled' ||
+    message.type === 'setWebSocketCaptureEnabled' ||
+    message.type === 'setWebSocketCaptureMode'
   ) {
-    window.postMessage(
-      {
-        type: 'DEV_CONSOLE_SETTING',
-        setting: message.type,
-        enabled: message.enabled,
-      },
-      '*'
-    )
+    const payload = { type: 'DEV_CONSOLE_SETTING', setting: message.type }
+    if (message.type === 'setWebSocketCaptureMode') {
+      payload.mode = message.mode
+    } else {
+      payload.enabled = message.enabled
+    }
+    window.postMessage(payload, '*')
   }
 })
 
