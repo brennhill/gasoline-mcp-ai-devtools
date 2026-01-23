@@ -448,6 +448,25 @@ export async function sendEnhancedActionsToServer(actions) {
 }
 
 /**
+ * Send performance snapshot to server
+ * @param {Object} snapshot - Performance snapshot object
+ */
+export async function sendPerformanceSnapshotToServer(snapshot) {
+  try {
+    const response = await fetch(`${serverUrl}/performance-snapshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(snapshot),
+    })
+    if (!response.ok) {
+      debugLog(DebugCategory.ERROR, `Server error (performance snapshot): ${response.status}`)
+    }
+  } catch (err) {
+    debugLog(DebugCategory.ERROR, `Failed to send performance snapshot: ${err.message}`)
+  }
+}
+
+/**
  * Check server health
  */
 export async function checkServerHealth() {
@@ -1181,6 +1200,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       wsBatcher.add(message.payload)
     } else if (message.type === 'enhanced_action') {
       enhancedActionBatcher.add(message.payload)
+    } else if (message.type === 'performance_snapshot') {
+      sendPerformanceSnapshotToServer(message.payload)
     } else if (message.type === 'log') {
       handleLogMessage(message.payload, sender)
     } else if (message.type === 'getStatus') {
@@ -1228,7 +1249,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       message.type === 'setPerformanceMarksEnabled' ||
       message.type === 'setActionReplayEnabled' ||
       message.type === 'setWebSocketCaptureEnabled' ||
-      message.type === 'setWebSocketCaptureMode'
+      message.type === 'setWebSocketCaptureMode' ||
+      message.type === 'setPerformanceSnapshotEnabled'
     ) {
       // Forward to all content scripts
       debugLog(DebugCategory.SETTINGS, `Setting ${message.type}: ${message.enabled}`)

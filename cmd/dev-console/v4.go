@@ -184,6 +184,91 @@ type EnhancedActionFilter struct {
 }
 
 // ============================================
+// Performance Budget Types
+// ============================================
+
+// PerformanceSnapshot represents a captured performance snapshot from a page load
+type PerformanceSnapshot struct {
+	URL       string            `json:"url"`
+	Timestamp string            `json:"timestamp"`
+	Timing    PerformanceTiming `json:"timing"`
+	Network   NetworkSummary    `json:"network"`
+	LongTasks LongTaskMetrics   `json:"longTasks"`
+	CLS       *float64          `json:"cumulativeLayoutShift,omitempty"`
+}
+
+// PerformanceTiming holds navigation timing metrics
+type PerformanceTiming struct {
+	DomContentLoaded float64 `json:"domContentLoaded"`
+	Load             float64 `json:"load"`
+	TimeToFirstByte  float64 `json:"timeToFirstByte"`
+	DomInteractive   float64 `json:"domInteractive"`
+}
+
+// NetworkSummary holds aggregated network resource metrics
+type NetworkSummary struct {
+	RequestCount    int                    `json:"requestCount"`
+	TransferSize    int64                  `json:"transferSize"`
+	DecodedSize     int64                  `json:"decodedSize"`
+	ByType          map[string]TypeSummary `json:"byType"`
+	SlowestRequests []SlowRequest          `json:"slowestRequests"`
+}
+
+// TypeSummary holds per-type resource metrics
+type TypeSummary struct {
+	Count int   `json:"count"`
+	Size  int64 `json:"size"`
+}
+
+// SlowRequest represents one of the slowest network requests
+type SlowRequest struct {
+	URL      string  `json:"url"`
+	Duration float64 `json:"duration"`
+	Size     int64   `json:"size"`
+}
+
+// LongTaskMetrics holds accumulated long task data
+type LongTaskMetrics struct {
+	Count             int     `json:"count"`
+	TotalBlockingTime float64 `json:"totalBlockingTime"`
+	Longest           float64 `json:"longest"`
+}
+
+// PerformanceBaseline holds averaged performance data for a URL path
+type PerformanceBaseline struct {
+	URL         string          `json:"url"`
+	SampleCount int             `json:"sampleCount"`
+	LastUpdated string          `json:"lastUpdated"`
+	Timing      BaselineTiming  `json:"timing"`
+	Network     BaselineNetwork `json:"network"`
+	LongTasks   LongTaskMetrics `json:"longTasks"`
+	CLS         *float64        `json:"cumulativeLayoutShift,omitempty"`
+}
+
+// BaselineTiming holds averaged timing metrics
+type BaselineTiming struct {
+	DomContentLoaded float64 `json:"domContentLoaded"`
+	Load             float64 `json:"load"`
+	TimeToFirstByte  float64 `json:"timeToFirstByte"`
+	DomInteractive   float64 `json:"domInteractive"`
+}
+
+// BaselineNetwork holds averaged network metrics
+type BaselineNetwork struct {
+	RequestCount int   `json:"requestCount"`
+	TransferSize int64 `json:"transferSize"`
+}
+
+// PerformanceRegression describes a detected performance regression
+type PerformanceRegression struct {
+	Metric         string  `json:"metric"`
+	Current        float64 `json:"current"`
+	Baseline       float64 `json:"baseline"`
+	ChangePercent  float64 `json:"changePercent"`
+	AbsoluteChange float64 `json:"absoluteChange"`
+}
+
+// ============================================
 // Internal types
 // ============================================
 
@@ -224,6 +309,8 @@ const (
 	maxActiveConns      = 20
 	maxClosedConns      = 10
 	maxPendingQueries   = 5
+	maxPerfSnapshots    = 20
+	maxPerfBaselines    = 20
 	defaultWSLimit      = 50
 	defaultBodyLimit    = 20
 	maxRequestBodySize  = 8192  // 8KB
@@ -271,6 +358,12 @@ type V4Server struct {
 	// Memory simulation (for testing)
 	simulatedMemory int64
 
+	// Performance snapshots
+	perfSnapshots    map[string]PerformanceSnapshot
+	perfSnapshotOrder []string
+	perfBaselines    map[string]PerformanceBaseline
+	perfBaselineOrder []string
+
 	// Query timeout
 	queryTimeout time.Duration
 }
@@ -286,8 +379,12 @@ func NewV4Server() *V4Server {
 		connOrder:      make([]string, 0),
 		pendingQueries: make([]pendingQueryEntry, 0),
 		queryResults:   make(map[string]json.RawMessage),
-		rateResetTime:  time.Now(),
-		queryTimeout:   defaultQueryTimeout,
+		rateResetTime:    time.Now(),
+		queryTimeout:     defaultQueryTimeout,
+		perfSnapshots:    make(map[string]PerformanceSnapshot),
+		perfSnapshotOrder: make([]string, 0),
+		perfBaselines:    make(map[string]PerformanceBaseline),
+		perfBaselineOrder: make([]string, 0),
 	}
 	v4.queryCond = sync.NewCond(&v4.mu)
 	return v4
@@ -976,8 +1073,397 @@ func (v *V4Server) GetNetworkBodiesBufferMemory() int64 {
 }
 
 // ============================================
+// Performance Budget
+// ============================================
+
+// AddPerformanceSnapshot stores a performance snapshot and updates baselines
+func (v *V4Server) AddPerformanceSnapshot(snapshot PerformanceSnapshot) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	url := snapshot.URL
+
+	// LRU eviction for snapshots
+	if _, exists := v.perfSnapshots[url]; exists {
+		v.perfSnapshotOrder = removeFromOrder(v.perfSnapshotOrder, url)
+	} else if len(v.perfSnapshotOrder) >= maxPerfSnapshots {
+		oldest := v.perfSnapshotOrder[0]
+		delete(v.perfSnapshots, oldest)
+		v.perfSnapshotOrder = v.perfSnapshotOrder[1:]
+	}
+	v.perfSnapshots[url] = snapshot
+	v.perfSnapshotOrder = append(v.perfSnapshotOrder, url)
+
+	// Update baseline
+	v.updateBaseline(snapshot)
+}
+
+// updateBaseline updates the running average baseline for a URL
+func (v *V4Server) updateBaseline(snapshot PerformanceSnapshot) {
+	url := snapshot.URL
+	baseline, exists := v.perfBaselines[url]
+
+	if !exists {
+		// LRU eviction for baselines
+		if len(v.perfBaselineOrder) >= maxPerfBaselines {
+			oldest := v.perfBaselineOrder[0]
+			delete(v.perfBaselines, oldest)
+			v.perfBaselineOrder = v.perfBaselineOrder[1:]
+		}
+
+		// First sample: use snapshot values directly
+		baseline = PerformanceBaseline{
+			URL:         url,
+			SampleCount: 1,
+			LastUpdated: snapshot.Timestamp,
+			Timing: BaselineTiming{
+				DomContentLoaded: snapshot.Timing.DomContentLoaded,
+				Load:             snapshot.Timing.Load,
+				TimeToFirstByte:  snapshot.Timing.TimeToFirstByte,
+				DomInteractive:   snapshot.Timing.DomInteractive,
+			},
+			Network: BaselineNetwork{
+				RequestCount: snapshot.Network.RequestCount,
+				TransferSize: snapshot.Network.TransferSize,
+			},
+			LongTasks: snapshot.LongTasks,
+			CLS:       snapshot.CLS,
+		}
+		v.perfBaselines[url] = baseline
+		v.perfBaselineOrder = append(v.perfBaselineOrder, url)
+		return
+	}
+
+	// Remove from order and re-append (LRU touch)
+	v.perfBaselineOrder = removeFromOrder(v.perfBaselineOrder, url)
+	v.perfBaselineOrder = append(v.perfBaselineOrder, url)
+
+	baseline.SampleCount++
+	baseline.LastUpdated = snapshot.Timestamp
+
+	if baseline.SampleCount < 5 {
+		// Simple average for first few samples
+		n := float64(baseline.SampleCount)
+		baseline.Timing.DomContentLoaded = baseline.Timing.DomContentLoaded*(n-1)/n + snapshot.Timing.DomContentLoaded/n
+		baseline.Timing.Load = baseline.Timing.Load*(n-1)/n + snapshot.Timing.Load/n
+		baseline.Timing.TimeToFirstByte = baseline.Timing.TimeToFirstByte*(n-1)/n + snapshot.Timing.TimeToFirstByte/n
+		baseline.Timing.DomInteractive = baseline.Timing.DomInteractive*(n-1)/n + snapshot.Timing.DomInteractive/n
+		baseline.Network.RequestCount = int(float64(baseline.Network.RequestCount)*(n-1)/n + float64(snapshot.Network.RequestCount)/n)
+		baseline.Network.TransferSize = int64(float64(baseline.Network.TransferSize)*(n-1)/n + float64(snapshot.Network.TransferSize)/n)
+		baseline.LongTasks.Count = int(float64(baseline.LongTasks.Count)*(n-1)/n + float64(snapshot.LongTasks.Count)/n)
+		baseline.LongTasks.TotalBlockingTime = baseline.LongTasks.TotalBlockingTime*(n-1)/n + snapshot.LongTasks.TotalBlockingTime/n
+		if snapshot.CLS != nil {
+			if baseline.CLS == nil {
+				cls := *snapshot.CLS
+				baseline.CLS = &cls
+			} else {
+				cls := *baseline.CLS*(n-1)/n + *snapshot.CLS/n
+				baseline.CLS = &cls
+			}
+		}
+	} else {
+		// Weighted average: 80% existing + 20% new
+		baseline.Timing.DomContentLoaded = baseline.Timing.DomContentLoaded*0.8 + snapshot.Timing.DomContentLoaded*0.2
+		baseline.Timing.Load = baseline.Timing.Load*0.8 + snapshot.Timing.Load*0.2
+		baseline.Timing.TimeToFirstByte = baseline.Timing.TimeToFirstByte*0.8 + snapshot.Timing.TimeToFirstByte*0.2
+		baseline.Timing.DomInteractive = baseline.Timing.DomInteractive*0.8 + snapshot.Timing.DomInteractive*0.2
+		baseline.Network.RequestCount = int(float64(baseline.Network.RequestCount)*0.8 + float64(snapshot.Network.RequestCount)*0.2)
+		baseline.Network.TransferSize = int64(float64(baseline.Network.TransferSize)*0.8 + float64(snapshot.Network.TransferSize)*0.2)
+		baseline.LongTasks.Count = int(float64(baseline.LongTasks.Count)*0.8 + float64(snapshot.LongTasks.Count)*0.2)
+		baseline.LongTasks.TotalBlockingTime = baseline.LongTasks.TotalBlockingTime*0.8 + snapshot.LongTasks.TotalBlockingTime*0.2
+		if snapshot.CLS != nil {
+			if baseline.CLS == nil {
+				cls := *snapshot.CLS
+				baseline.CLS = &cls
+			} else {
+				cls := *baseline.CLS*0.8 + *snapshot.CLS*0.2
+				baseline.CLS = &cls
+			}
+		}
+	}
+
+	v.perfBaselines[url] = baseline
+}
+
+// GetPerformanceSnapshot returns the snapshot for a given URL
+func (v *V4Server) GetPerformanceSnapshot(url string) (PerformanceSnapshot, bool) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	s, ok := v.perfSnapshots[url]
+	return s, ok
+}
+
+// GetLatestPerformanceSnapshot returns the most recently added snapshot
+func (v *V4Server) GetLatestPerformanceSnapshot() (PerformanceSnapshot, bool) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	if len(v.perfSnapshotOrder) == 0 {
+		return PerformanceSnapshot{}, false
+	}
+	url := v.perfSnapshotOrder[len(v.perfSnapshotOrder)-1]
+	return v.perfSnapshots[url], true
+}
+
+// GetPerformanceBaseline returns the baseline for a given URL
+func (v *V4Server) GetPerformanceBaseline(url string) (PerformanceBaseline, bool) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	b, ok := v.perfBaselines[url]
+	return b, ok
+}
+
+// DetectRegressions compares a snapshot against its baseline and returns regressions
+func (v *V4Server) DetectRegressions(snapshot PerformanceSnapshot, baseline PerformanceBaseline) []PerformanceRegression {
+	var regressions []PerformanceRegression
+
+	// Load time: >50% increase AND >200ms absolute
+	if baseline.Timing.Load > 0 {
+		change := snapshot.Timing.Load - baseline.Timing.Load
+		pct := change / baseline.Timing.Load * 100
+		if pct > 50 && change > 200 {
+			regressions = append(regressions, PerformanceRegression{
+				Metric: "load", Current: snapshot.Timing.Load, Baseline: baseline.Timing.Load,
+				ChangePercent: pct, AbsoluteChange: change,
+			})
+		}
+	}
+
+	// FCP (domContentLoaded as proxy): >50% AND >200ms
+	if baseline.Timing.DomContentLoaded > 0 {
+		change := snapshot.Timing.DomContentLoaded - baseline.Timing.DomContentLoaded
+		pct := change / baseline.Timing.DomContentLoaded * 100
+		if pct > 50 && change > 200 {
+			regressions = append(regressions, PerformanceRegression{
+				Metric: "domContentLoaded", Current: snapshot.Timing.DomContentLoaded, Baseline: baseline.Timing.DomContentLoaded,
+				ChangePercent: pct, AbsoluteChange: change,
+			})
+		}
+	}
+
+	// Request count: >50% increase AND >5 absolute
+	if baseline.Network.RequestCount > 0 {
+		change := float64(snapshot.Network.RequestCount - baseline.Network.RequestCount)
+		pct := change / float64(baseline.Network.RequestCount) * 100
+		if pct > 50 && change > 5 {
+			regressions = append(regressions, PerformanceRegression{
+				Metric: "requestCount", Current: float64(snapshot.Network.RequestCount), Baseline: float64(baseline.Network.RequestCount),
+				ChangePercent: pct, AbsoluteChange: change,
+			})
+		}
+	}
+
+	// Transfer size: >100% increase AND >100KB absolute
+	if baseline.Network.TransferSize > 0 {
+		change := float64(snapshot.Network.TransferSize - baseline.Network.TransferSize)
+		pct := change / float64(baseline.Network.TransferSize) * 100
+		if pct > 100 && change > 102400 {
+			regressions = append(regressions, PerformanceRegression{
+				Metric: "transferSize", Current: float64(snapshot.Network.TransferSize), Baseline: float64(baseline.Network.TransferSize),
+				ChangePercent: pct, AbsoluteChange: change,
+			})
+		}
+	}
+
+	// Long tasks: any increase from 0, or >100% increase
+	if baseline.LongTasks.Count == 0 && snapshot.LongTasks.Count > 0 {
+		regressions = append(regressions, PerformanceRegression{
+			Metric: "longTaskCount", Current: float64(snapshot.LongTasks.Count), Baseline: 0,
+			ChangePercent: 100, AbsoluteChange: float64(snapshot.LongTasks.Count),
+		})
+	} else if baseline.LongTasks.Count > 0 {
+		change := float64(snapshot.LongTasks.Count - baseline.LongTasks.Count)
+		pct := change / float64(baseline.LongTasks.Count) * 100
+		if pct > 100 {
+			regressions = append(regressions, PerformanceRegression{
+				Metric: "longTaskCount", Current: float64(snapshot.LongTasks.Count), Baseline: float64(baseline.LongTasks.Count),
+				ChangePercent: pct, AbsoluteChange: change,
+			})
+		}
+	}
+
+	// TBT: >100ms absolute increase
+	tbtChange := snapshot.LongTasks.TotalBlockingTime - baseline.LongTasks.TotalBlockingTime
+	if tbtChange > 100 {
+		pct := 0.0
+		if baseline.LongTasks.TotalBlockingTime > 0 {
+			pct = tbtChange / baseline.LongTasks.TotalBlockingTime * 100
+		}
+		regressions = append(regressions, PerformanceRegression{
+			Metric: "totalBlockingTime", Current: snapshot.LongTasks.TotalBlockingTime, Baseline: baseline.LongTasks.TotalBlockingTime,
+			ChangePercent: pct, AbsoluteChange: tbtChange,
+		})
+	}
+
+	// CLS: >0.05 absolute increase
+	if snapshot.CLS != nil && baseline.CLS != nil {
+		clsChange := *snapshot.CLS - *baseline.CLS
+		if clsChange > 0.05 {
+			pct := 0.0
+			if *baseline.CLS > 0 {
+				pct = clsChange / *baseline.CLS * 100
+			}
+			regressions = append(regressions, PerformanceRegression{
+				Metric: "cumulativeLayoutShift", Current: *snapshot.CLS, Baseline: *baseline.CLS,
+				ChangePercent: pct, AbsoluteChange: clsChange,
+			})
+		}
+	}
+
+	return regressions
+}
+
+// FormatPerformanceReport generates a human-readable performance report
+func (v *V4Server) FormatPerformanceReport(snapshot PerformanceSnapshot, baseline *PerformanceBaseline) string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("## Performance Snapshot: %s\n", snapshot.URL))
+	sb.WriteString(fmt.Sprintf("Captured: %s\n\n", snapshot.Timestamp))
+
+	sb.WriteString("### Navigation Timing\n")
+	sb.WriteString(fmt.Sprintf("- TTFB: %.0fms\n", snapshot.Timing.TimeToFirstByte))
+	sb.WriteString(fmt.Sprintf("- DOM Interactive: %.0fms\n", snapshot.Timing.DomInteractive))
+	sb.WriteString(fmt.Sprintf("- DOM Content Loaded: %.0fms\n", snapshot.Timing.DomContentLoaded))
+	sb.WriteString(fmt.Sprintf("- Load: %.0fms\n", snapshot.Timing.Load))
+
+	sb.WriteString("\n### Network\n")
+	sb.WriteString(fmt.Sprintf("- Requests: %d\n", snapshot.Network.RequestCount))
+	sb.WriteString(fmt.Sprintf("- Transfer Size: %s\n", formatBytes(snapshot.Network.TransferSize)))
+	sb.WriteString(fmt.Sprintf("- Decoded Size: %s\n", formatBytes(snapshot.Network.DecodedSize)))
+
+	if len(snapshot.Network.SlowestRequests) > 0 {
+		sb.WriteString("\n### Slowest Requests\n")
+		for _, req := range snapshot.Network.SlowestRequests {
+			sb.WriteString(fmt.Sprintf("- %.0fms %s (%s)\n", req.Duration, req.URL, formatBytes(req.Size)))
+		}
+	}
+
+	sb.WriteString("\n### Long Tasks\n")
+	sb.WriteString(fmt.Sprintf("- Count: %d\n", snapshot.LongTasks.Count))
+	sb.WriteString(fmt.Sprintf("- Total Blocking Time: %.0fms\n", snapshot.LongTasks.TotalBlockingTime))
+
+	if baseline != nil {
+		regressions := v.DetectRegressions(snapshot, *baseline)
+		if len(regressions) > 0 {
+			sb.WriteString("\n### ⚠️ Regressions Detected\n")
+			for _, r := range regressions {
+				sb.WriteString(fmt.Sprintf("- **%s**: %.0f → %.0f (+%.0f%%, +%.0f)\n",
+					r.Metric, r.Baseline, r.Current, r.ChangePercent, r.AbsoluteChange))
+			}
+		} else {
+			sb.WriteString("\n### ✅ No Regressions\n")
+			sb.WriteString(fmt.Sprintf("Baseline: %d samples\n", baseline.SampleCount))
+		}
+	} else {
+		sb.WriteString("\n### 📊 No Baseline Yet\n")
+		sb.WriteString("This is the first snapshot for this URL. A baseline will be built over subsequent loads.\n")
+	}
+
+	return sb.String()
+}
+
+// removeFromOrder removes a string from a slice preserving order
+func removeFromOrder(order []string, item string) []string {
+	for i, v := range order {
+		if v == item {
+			return append(order[:i], order[i+1:]...)
+		}
+	}
+	return order
+}
+
+// formatBytes formats bytes as human-readable string
+func formatBytes(b int64) string {
+	if b < 1024 {
+		return fmt.Sprintf("%dB", b)
+	}
+	if b < 1024*1024 {
+		return fmt.Sprintf("%.1fKB", float64(b)/1024)
+	}
+	return fmt.Sprintf("%.1fMB", float64(b)/(1024*1024))
+}
+
+// ============================================
 // HTTP Handlers
 // ============================================
+
+// HandlePerformanceSnapshot handles GET, POST, and DELETE /performance-snapshot
+func (v *V4Server) HandlePerformanceSnapshot(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		urlFilter := r.URL.Query().Get("url")
+
+		var snapshot PerformanceSnapshot
+		var found bool
+		if urlFilter != "" {
+			snapshot, found = v.GetPerformanceSnapshot(urlFilter)
+		} else {
+			snapshot, found = v.GetLatestPerformanceSnapshot()
+		}
+
+		if !found {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"snapshot": nil,
+				"baseline": nil,
+			})
+			return
+		}
+
+		baseline, baselineFound := v.GetPerformanceBaseline(snapshot.URL)
+
+		resp := map[string]interface{}{
+			"snapshot": snapshot,
+		}
+		if baselineFound {
+			resp["baseline"] = &baseline
+		} else {
+			resp["baseline"] = nil
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	if r.Method == "POST" {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		var snapshot PerformanceSnapshot
+		if err := json.Unmarshal(body, &snapshot); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		v.AddPerformanceSnapshot(snapshot)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"received":         true,
+			"baseline_updated": true,
+		})
+		return
+	}
+
+	if r.Method == "DELETE" {
+		v.mu.Lock()
+		v.perfSnapshots = make(map[string]PerformanceSnapshot)
+		v.perfSnapshotOrder = nil
+		v.perfBaselines = make(map[string]PerformanceBaseline)
+		v.perfBaselineOrder = nil
+		v.mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"cleared": true,
+		})
+		return
+	}
+
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
 
 // HandleWebSocketEvents handles GET and POST /websocket-events
 func (v *V4Server) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) {
@@ -1323,6 +1809,70 @@ func (h *MCPHandlerV4) v4ToolsList() []MCPTool {
 				},
 			},
 		},
+		{
+			Name:        "check_performance",
+			Description: "Get a performance snapshot of the current page including load timing, network weight, main-thread blocking, and regression detection against baselines.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"url": map[string]interface{}{
+						"type":        "string",
+						"description": "URL path to check (default: latest snapshot)",
+					},
+				},
+			},
+		},
+		{
+			Name:        "get_session_timeline",
+			Description: "Get a unified timeline of user actions, network requests, and console errors sorted chronologically.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"last_n_actions": map[string]interface{}{
+						"type":        "number",
+						"description": "Only include the last N actions and events after them",
+					},
+					"url_filter": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter entries by URL substring",
+					},
+					"include": map[string]interface{}{
+						"type":        "array",
+						"description": "Entry types to include: actions, network, console (default: all)",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+				},
+			},
+		},
+		{
+			Name:        "generate_test",
+			Description: "Generate a Playwright test from the session timeline with configurable assertions.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"test_name": map[string]interface{}{
+						"type":        "string",
+						"description": "Name for the generated test",
+					},
+					"assert_network": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Include network response assertions",
+					},
+					"assert_no_errors": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Assert no console errors occurred",
+					},
+					"assert_response_shape": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Assert response body shape matches",
+					},
+					"base_url": map[string]interface{}{
+						"type":        "string",
+						"description": "Replace origin in URLs",
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -1345,6 +1895,12 @@ func (h *MCPHandlerV4) handleV4ToolCall(req JSONRPCRequest, name string, args js
 		return h.toolGetEnhancedActions(req, args), true
 	case "get_reproduction_script":
 		return h.toolGetReproductionScript(req, args), true
+	case "check_performance":
+		return h.toolCheckPerformance(req, args), true
+	case "get_session_timeline":
+		return h.toolGetSessionTimeline(req, args), true
+	case "generate_test":
+		return h.toolGenerateTest(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -1610,6 +2166,124 @@ func (h *MCPHandlerV4) toolGetReproductionScript(req JSONRPCRequest, args json.R
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
+func (h *MCPHandlerV4) toolCheckPerformance(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		URL string `json:"url"`
+	}
+	json.Unmarshal(args, &arguments)
+
+	var snapshot PerformanceSnapshot
+	var found bool
+	if arguments.URL != "" {
+		snapshot, found = h.v4.GetPerformanceSnapshot(arguments.URL)
+	} else {
+		snapshot, found = h.v4.GetLatestPerformanceSnapshot()
+	}
+
+	if !found {
+		result := map[string]interface{}{
+			"content": []map[string]string{
+				{"type": "text", "text": "No performance snapshot available. Navigate to a page to capture one."},
+			},
+		}
+		resultJSON, _ := json.Marshal(result)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	}
+
+	baseline, baselineFound := h.v4.GetPerformanceBaseline(snapshot.URL)
+	var baselinePtr *PerformanceBaseline
+	if baselineFound {
+		baselinePtr = &baseline
+	}
+
+	report := h.v4.FormatPerformanceReport(snapshot, baselinePtr)
+
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": report},
+		},
+	}
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+func (h *MCPHandlerV4) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		LastNActions int      `json:"last_n_actions"`
+		URLFilter    string   `json:"url_filter"`
+		Include      []string `json:"include"`
+	}
+	json.Unmarshal(args, &arguments)
+
+	h.server.mu.RLock()
+	entries := make([]LogEntry, len(h.server.entries))
+	copy(entries, h.server.entries)
+	h.server.mu.RUnlock()
+
+	resp := h.v4.GetSessionTimeline(TimelineFilter{
+		LastNActions: arguments.LastNActions,
+		URLFilter:    arguments.URLFilter,
+		Include:      arguments.Include,
+	}, entries)
+
+	respJSON, _ := json.Marshal(SessionTimelineResponse{
+		Timeline: resp.Timeline,
+		Summary:  resp.Summary,
+	})
+
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": string(respJSON)},
+		},
+	}
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+func (h *MCPHandlerV4) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		TestName            string `json:"test_name"`
+		AssertNetwork       bool   `json:"assert_network"`
+		AssertNoErrors      bool   `json:"assert_no_errors"`
+		AssertResponseShape bool   `json:"assert_response_shape"`
+		BaseURL             string `json:"base_url"`
+	}
+	json.Unmarshal(args, &arguments)
+
+	h.server.mu.RLock()
+	entries := make([]LogEntry, len(h.server.entries))
+	copy(entries, h.server.entries)
+	h.server.mu.RUnlock()
+
+	resp := h.v4.GetSessionTimeline(TimelineFilter{}, entries)
+
+	if len(resp.Timeline) == 0 {
+		result := map[string]interface{}{
+			"content": []map[string]string{
+				{"type": "text", "text": "No session data available. Navigate and interact with a page first."},
+			},
+		}
+		resultJSON, _ := json.Marshal(result)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	}
+
+	script := generateTestScript(resp.Timeline, TestGenerationOptions{
+		TestName:            arguments.TestName,
+		AssertNetwork:       arguments.AssertNetwork,
+		AssertNoErrors:      arguments.AssertNoErrors,
+		AssertResponseShape: arguments.AssertResponseShape,
+		BaseURL:             arguments.BaseURL,
+	})
+
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": script},
+		},
+	}
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
 // ============================================
 // Playwright Script Generation (v5)
 // ============================================
@@ -1772,4 +2446,371 @@ func replaceOrigin(original, baseURL string) string {
 	// Remove trailing slash from baseURL if path starts with /
 	base := strings.TrimRight(baseURL, "/")
 	return base + path
+}
+
+// ============================================
+// Session Timeline (v5)
+// ============================================
+
+// TimelineFilter defines filtering criteria for timeline queries
+type TimelineFilter struct {
+	LastNActions int
+	URLFilter    string
+	Include      []string
+}
+
+// TimelineEntry represents a single entry in the session timeline
+type TimelineEntry struct {
+	Timestamp     int64                  `json:"timestamp"`
+	Kind          string                 `json:"kind"`
+	Type          string                 `json:"type,omitempty"`
+	URL           string                 `json:"url,omitempty"`
+	Selectors     map[string]interface{} `json:"selectors,omitempty"`
+	Method        string                 `json:"method,omitempty"`
+	Status        int                    `json:"status,omitempty"`
+	ContentType   string                 `json:"contentType,omitempty"`
+	ResponseShape interface{}            `json:"responseShape,omitempty"`
+	Message       string                 `json:"message,omitempty"`
+	Level         string                 `json:"level,omitempty"`
+	ToURL         string                 `json:"toUrl,omitempty"`
+	Value         string                 `json:"value,omitempty"`
+}
+
+// TimelineSummary provides aggregate stats for the session timeline
+type TimelineSummary struct {
+	Actions         int   `json:"actions"`
+	NetworkRequests int   `json:"networkRequests"`
+	ConsoleErrors   int   `json:"consoleErrors"`
+	DurationMs      int64 `json:"durationMs"`
+}
+
+// TimelineResponse is the internal response from GetSessionTimeline
+type TimelineResponse struct {
+	Timeline []TimelineEntry `json:"timeline"`
+	Summary  TimelineSummary `json:"summary"`
+}
+
+// SessionTimelineResponse is the JSON response for the MCP tool
+type SessionTimelineResponse struct {
+	Timeline []TimelineEntry `json:"timeline"`
+	Summary  TimelineSummary `json:"summary"`
+}
+
+// TestGenerationOptions configures test script generation
+type TestGenerationOptions struct {
+	TestName            string `json:"test_name"`
+	AssertNetwork       bool   `json:"assert_network"`
+	AssertNoErrors      bool   `json:"assert_no_errors"`
+	AssertResponseShape bool   `json:"assert_response_shape"`
+	BaseURL             string `json:"base_url"`
+}
+
+// normalizeTimestamp converts an ISO timestamp string to unix milliseconds
+func normalizeTimestamp(ts string) int64 {
+	if ts == "" {
+		return 0
+	}
+	formats := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02T15:04:05.000Z",
+	}
+	for _, format := range formats {
+		if t, err := time.Parse(format, ts); err == nil {
+			return t.UnixMilli()
+		}
+	}
+	return 0
+}
+
+// GetSessionTimeline merges actions, network, and console entries into a sorted timeline
+func (v *V4Server) GetSessionTimeline(filter TimelineFilter, logEntries []LogEntry) TimelineResponse {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	var entries []TimelineEntry
+
+	// Determine action subset
+	actions := v.enhancedActions
+	if filter.LastNActions > 0 && len(actions) > filter.LastNActions {
+		actions = actions[len(actions)-filter.LastNActions:]
+	}
+
+	// Determine time boundary
+	var minTimestamp int64
+	if len(actions) > 0 {
+		minTimestamp = actions[0].Timestamp
+	}
+
+	// Include check helper
+	shouldInclude := func(kind string) bool {
+		if len(filter.Include) == 0 {
+			return true
+		}
+		for _, inc := range filter.Include {
+			if inc == kind+"s" || inc == kind {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Add actions
+	if shouldInclude("action") {
+		for _, a := range actions {
+			if filter.URLFilter != "" && !strings.Contains(a.URL, filter.URLFilter) {
+				continue
+			}
+			entries = append(entries, TimelineEntry{
+				Timestamp: a.Timestamp,
+				Kind:      "action",
+				Type:      a.Type,
+				URL:       a.URL,
+				Selectors: a.Selectors,
+				ToURL:     a.ToURL,
+				Value:     a.Value,
+			})
+		}
+	}
+
+	// Add network bodies
+	if shouldInclude("network") {
+		for _, nb := range v.networkBodies {
+			ts := normalizeTimestamp(nb.Timestamp)
+			if minTimestamp > 0 && ts < minTimestamp {
+				continue
+			}
+			if filter.URLFilter != "" && !strings.Contains(nb.URL, filter.URLFilter) {
+				continue
+			}
+			entry := TimelineEntry{
+				Timestamp:   ts,
+				Kind:        "network",
+				Method:      nb.Method,
+				URL:         nb.URL,
+				Status:      nb.Status,
+				ContentType: nb.ContentType,
+			}
+			// Extract response shape for JSON responses
+			if strings.Contains(nb.ContentType, "json") && nb.ResponseBody != "" {
+				entry.ResponseShape = extractResponseShape(nb.ResponseBody)
+			}
+			entries = append(entries, entry)
+		}
+	}
+
+	// Add console entries (error and warn only)
+	if shouldInclude("console") {
+		for _, le := range logEntries {
+			level, _ := le["level"].(string)
+			if level != "error" && level != "warn" {
+				continue
+			}
+			ts := normalizeTimestamp(fmt.Sprintf("%v", le["ts"]))
+			if minTimestamp > 0 && ts < minTimestamp {
+				continue
+			}
+			msg, _ := le["message"].(string)
+			entries = append(entries, TimelineEntry{
+				Timestamp: ts,
+				Kind:      "console",
+				Level:     level,
+				Message:   msg,
+			})
+		}
+	}
+
+	// Sort by timestamp
+	for i := 1; i < len(entries); i++ {
+		for j := i; j > 0 && entries[j].Timestamp < entries[j-1].Timestamp; j-- {
+			entries[j], entries[j-1] = entries[j-1], entries[j]
+		}
+	}
+
+	// Cap at 200
+	if len(entries) > 200 {
+		entries = entries[:200]
+	}
+
+	// Build summary
+	summary := TimelineSummary{}
+	for _, e := range entries {
+		switch e.Kind {
+		case "action":
+			summary.Actions++
+		case "network":
+			summary.NetworkRequests++
+		case "console":
+			if e.Level == "error" {
+				summary.ConsoleErrors++
+			}
+		}
+	}
+	if len(entries) >= 2 {
+		summary.DurationMs = entries[len(entries)-1].Timestamp - entries[0].Timestamp
+	}
+
+	return TimelineResponse{Timeline: entries, Summary: summary}
+}
+
+// generateTestScript generates a Playwright test script from a timeline
+func generateTestScript(timeline []TimelineEntry, opts TestGenerationOptions) string {
+	var sb strings.Builder
+
+	sb.WriteString("import { test, expect } from '@playwright/test'\n\n")
+
+	testName := opts.TestName
+	if testName == "" {
+		testName = "recorded session"
+		if len(timeline) > 0 {
+			for _, e := range timeline {
+				if e.URL != "" {
+					testName = e.URL
+					if opts.BaseURL != "" {
+						testName = replaceOrigin(testName, opts.BaseURL)
+					}
+					break
+				}
+			}
+		}
+	}
+
+	sb.WriteString(fmt.Sprintf("test('%s', async ({ page }) => {\n", testName))
+
+	if opts.AssertNoErrors {
+		sb.WriteString("  const consoleErrors = []\n")
+		sb.WriteString("  page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()) })\n\n")
+	}
+
+	// Determine start URL
+	startURL := ""
+	for _, e := range timeline {
+		if e.Kind == "action" && e.URL != "" {
+			startURL = e.URL
+			break
+		}
+	}
+	if startURL != "" {
+		if opts.BaseURL != "" {
+			startURL = replaceOrigin(startURL, opts.BaseURL)
+		}
+		sb.WriteString(fmt.Sprintf("  await page.goto('%s')\n\n", startURL))
+	}
+
+	// Track if errors were present in session
+	hasErrors := false
+	for _, e := range timeline {
+		if e.Kind == "console" && e.Level == "error" {
+			hasErrors = true
+			break
+		}
+	}
+
+	for i, entry := range timeline {
+		switch entry.Kind {
+		case "action":
+			if entry.Type == "click" && entry.Selectors != nil {
+				selector := getSelectorFromMap(entry.Selectors)
+				sb.WriteString(fmt.Sprintf("  await page.locator('%s').click()\n", selector))
+			} else if entry.Type == "input" {
+				value := entry.Value
+				if value == "[redacted]" {
+					value = "[user-provided]"
+				}
+				selector := getSelectorFromMap(entry.Selectors)
+				sb.WriteString(fmt.Sprintf("  await page.locator('%s').fill('%s')\n", selector, value))
+			} else if entry.Type == "navigate" {
+				toURL := entry.ToURL
+				if toURL == "" {
+					toURL = entry.URL
+				}
+				if opts.BaseURL != "" {
+					toURL = replaceOrigin(toURL, opts.BaseURL)
+				}
+				sb.WriteString(fmt.Sprintf("  await expect(page).toHaveURL(/%s/)\n", strings.TrimPrefix(toURL, "/")))
+			}
+		case "network":
+			if opts.AssertNetwork {
+				url := entry.URL
+				if opts.BaseURL != "" {
+					url = replaceOrigin(url, opts.BaseURL)
+				}
+				sb.WriteString(fmt.Sprintf("  const response%d = await page.waitForResponse(r => r.url().includes('%s'))\n", i, url))
+				sb.WriteString(fmt.Sprintf("  expect(response%d.status()).toBe(%d)\n", i, entry.Status))
+				if opts.AssertResponseShape && entry.ResponseShape != nil {
+					shapeMap, ok := entry.ResponseShape.(map[string]interface{})
+					if ok {
+						for key := range shapeMap {
+							sb.WriteString(fmt.Sprintf("  expect(await response%d.json()).toHaveProperty('%s')\n", i, key))
+						}
+					}
+				}
+			}
+		case "console":
+			if entry.Level == "error" {
+				sb.WriteString(fmt.Sprintf("  // Captured error: %s\n", entry.Message))
+			}
+		}
+	}
+
+	if opts.AssertNoErrors {
+		if hasErrors {
+			sb.WriteString("\n  // Note: errors were observed during recording\n")
+			sb.WriteString("  // expect(consoleErrors).toHaveLength(0)\n")
+		} else {
+			sb.WriteString("\n  expect(consoleErrors).toHaveLength(0)\n")
+		}
+	}
+
+	sb.WriteString("})\n")
+
+	return sb.String()
+}
+
+func getSelectorFromMap(selectors map[string]interface{}) string {
+	if testId, ok := selectors["testId"].(string); ok {
+		return fmt.Sprintf("[data-testid=\"%s\"]", testId)
+	}
+	if role, ok := selectors["role"].(string); ok {
+		return fmt.Sprintf("[role=\"%s\"]", role)
+	}
+	return "unknown"
+}
+
+// extractResponseShape extracts the type shape of a JSON response (replaces values with type names)
+func extractResponseShape(jsonStr string) interface{} {
+	var raw interface{}
+	if err := json.Unmarshal([]byte(jsonStr), &raw); err != nil {
+		return nil
+	}
+	return extractShape(raw, 0)
+}
+
+func extractShape(val interface{}, depth int) interface{} {
+	if depth >= 4 {
+		return "..."
+	}
+	switch v := val.(type) {
+	case map[string]interface{}:
+		result := make(map[string]interface{})
+		for key, value := range v {
+			result[key] = extractShape(value, depth+1)
+		}
+		return result
+	case []interface{}:
+		if len(v) == 0 {
+			return []interface{}{}
+		}
+		return []interface{}{extractShape(v[0], depth+1)}
+	case string:
+		return "string"
+	case float64:
+		return "number"
+	case bool:
+		return "boolean"
+	case nil:
+		return "null"
+	default:
+		return "unknown"
+	}
 }

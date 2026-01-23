@@ -670,6 +670,7 @@ func setupHTTPRoutes(server *Server, v4 *V4Server) {
 		http.HandleFunc("/dom-result", corsMiddleware(v4.HandleDOMResult))
 		http.HandleFunc("/a11y-result", corsMiddleware(v4.HandleA11yResult))
 		http.HandleFunc("/enhanced-actions", corsMiddleware(v4.HandleEnhancedActions))
+		http.HandleFunc("/performance-snapshot", corsMiddleware(v4.HandlePerformanceSnapshot))
 	}
 
 	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {

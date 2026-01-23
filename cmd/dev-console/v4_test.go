@@ -2824,7 +2824,7 @@ func TestExtractResponseShapeDepthLimit(t *testing.T) {
 
 func TestNormalizeTimestampRFC3339(t *testing.T) {
 	ts := normalizeTimestamp("2024-01-15T10:30:00.000Z")
-	expected := int64(1705312200000)
+	expected := int64(1705314600000)
 	if ts != expected {
 		t.Errorf("Expected %d, got %d", expected, ts)
 	}
@@ -2832,8 +2832,8 @@ func TestNormalizeTimestampRFC3339(t *testing.T) {
 
 func TestNormalizeTimestampRFC3339Nano(t *testing.T) {
 	ts := normalizeTimestamp("2024-01-15T10:30:00.123456789Z")
-	// Should be 1705312200123 (truncated to ms)
-	expected := int64(1705312200123)
+	// Should be 1705314600123 (truncated to ms)
+	expected := int64(1705314600123)
 	if ts != expected {
 		t.Errorf("Expected %d, got %d", expected, ts)
 	}
@@ -2984,8 +2984,8 @@ func TestGetSessionTimelineMergedAndSorted(t *testing.T) {
 	v4 := setupV4TestServer(t)
 
 	v4.AddEnhancedActions([]EnhancedAction{
-		{Type: "click", Timestamp: 1705312200000, URL: "http://localhost:3000"},
-		{Type: "navigate", Timestamp: 1705312200300, ToURL: "/dashboard"},
+		{Type: "click", Timestamp: 1705314600000, URL: "http://localhost:3000"},
+		{Type: "navigate", Timestamp: 1705314600300, ToURL: "/dashboard"},
 	})
 	v4.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "2024-01-15T10:30:00.150Z", Method: "POST", URL: "/api/login", Status: 200,
@@ -3001,7 +3001,7 @@ func TestGetSessionTimelineMergedAndSorted(t *testing.T) {
 		t.Fatalf("Expected 4 entries, got %d", len(resp.Timeline))
 	}
 
-	// Verify order: click(1705312200000) → network(150ms later) → navigate(300ms) → error(400ms)
+	// Verify order: click(1705314600000) → network(150ms later) → navigate(300ms) → error(400ms)
 	if resp.Timeline[0].Kind != "action" || resp.Timeline[0].Type != "click" {
 		t.Errorf("Entry 0: expected action/click, got %s/%s", resp.Timeline[0].Kind, resp.Timeline[0].Type)
 	}
