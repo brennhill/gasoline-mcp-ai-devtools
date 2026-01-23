@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gasoline</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        width: 320px;
+        padding: 16px;
+      }
+
+      h1 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      h1 .logo {
+        width: 24px;
+        height: 24px;
+      }
+
+      .status-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background: #252525;
+        border-radius: 6px;
+      }
+
+      .status-label {
+        font-size: 12px;
+        color: #888;
+      }
+
+      .status-value {
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      #status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      #status::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #888;
+      }
+
+      #status.connected::before {
+        background: #3fb950;
+      }
+
+      #status.disconnected::before {
+        background: #f85149;
+      }
+
+      .section {
+        margin-bottom: 16px;
+      }
+
+      .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+      }
+
+      select {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+        background: #252525;
+        border: 1px solid #333;
+        border-radius: 6px;
+        color: #e0e0e0;
+        cursor: pointer;
+      }
+
+      select:hover {
+        border-color: #444;
+      }
+
+      select:focus {
+        outline: none;
+        border-color: #58a6ff;
+      }
+
+      button {
+        width: 100%;
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        background: #252525;
+        border: 1px solid #333;
+        border-radius: 6px;
+        color: #e0e0e0;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+
+      button:hover {
+        background: #303030;
+        border-color: #444;
+      }
+
+      button:active {
+        background: #252525;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      button.danger {
+        color: #f85149;
+        border-color: #f85149;
+      }
+
+      button.danger:hover {
+        background: rgba(248, 81, 73, 0.1);
+      }
+
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        padding: 6px 0;
+        border-bottom: 1px solid #252525;
+      }
+
+      .info-row:last-child {
+        border-bottom: none;
+      }
+
+      .info-label {
+        color: #888;
+      }
+
+      .info-value {
+        color: #e0e0e0;
+        font-family: ui-monospace, monospace;
+        word-break: break-all;
+        max-width: 180px;
+        text-align: right;
+      }
+
+      #error-message {
+        font-size: 12px;
+        color: #f85149;
+        margin-top: 8px;
+        padding: 8px;
+        background: rgba(248, 81, 73, 0.1);
+        border-radius: 4px;
+        display: none;
+      }
+
+      #error-message:not(:empty) {
+        display: block;
+      }
+
+      .links {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid #252525;
+      }
+
+      .links a {
+        font-size: 12px;
+        color: #58a6ff;
+        text-decoration: none;
+      }
+
+      .links a:hover {
+        text-decoration: underline;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        font-size: 11px;
+        font-weight: 600;
+        background: #f85149;
+        color: white;
+        border-radius: 10px;
+      }
+
+      .badge:empty {
+        display: none;
+      }
+
+      /* Toggle Switch Styles */
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #333;
+      }
+
+      .toggle-row:last-child {
+        border-bottom: none;
+      }
+
+      .toggle-info {
+        flex: 1;
+      }
+
+      .toggle-label {
+        font-size: 13px;
+        color: #e0e0e0;
+        display: block;
+      }
+
+      .toggle-desc {
+        font-size: 11px;
+        color: #666;
+        margin-top: 2px;
+      }
+
+      .toggle-switch {
+        position: relative;
+        width: 40px;
+        height: 22px;
+        flex-shrink: 0;
+        margin-left: 12px;
+      }
+
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #333;
+        border-radius: 22px;
+        transition: 0.2s;
+      }
+
+      .toggle-slider::before {
+        position: absolute;
+        content: '';
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        background: #666;
+        border-radius: 50%;
+        transition: 0.2s;
+      }
+
+      .toggle-switch input:checked + .toggle-slider {
+        background: #238636;
+      }
+
+      .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(18px);
+        background: #fff;
+      }
+
+      .feature-section {
+        background: #252525;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>
+      <img class="logo" src="icons/icon-48.png" alt="" />
+      Gasoline
+    </h1>
+
+    <div class="status-row">
+      <span class="status-label">Status</span>
+      <span id="status" class="status-value disconnected">Disconnected</span>
+    </div>
+
+    <div class="status-row">
+      <span class="status-label">Log Entries</span>
+      <span id="entries-count" class="status-value">0 / 1000</span>
+    </div>
+
+    <div class="status-row">
+      <span class="status-label">Errors</span>
+      <span id="error-count" class="status-value badge">0</span>
+    </div>
+
+    <div id="error-message"></div>
+
+    <div class="section">
+      <div class="section-title">Capture Level</div>
+      <select id="log-level">
+        <option value="error">Errors Only</option>
+        <option value="warn">Warnings & Errors</option>
+        <option value="all">All Logs</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Advanced Capture</div>
+      <div class="feature-section">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">DOM Snapshot</span>
+            <span class="toggle-desc">Capture page structure on errors</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-dom-snapshot" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Network Waterfall</span>
+            <span class="toggle-desc">Include request timing data</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-network-waterfall" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Performance Marks</span>
+            <span class="toggle-desc">Capture performance.mark() calls</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-performance-marks" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">User Actions</span>
+            <span class="toggle-desc">Record clicks/inputs before errors</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-action-replay" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Screenshot on Error</span>
+            <span class="toggle-desc">Auto-capture page screenshot</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-screenshot" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Source Maps</span>
+            <span class="toggle-desc">Resolve minified stack traces</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-source-maps" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <button id="clear-btn" class="danger">Clear Logs</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Debugging</div>
+      <div class="feature-section">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Debug Mode</span>
+            <span class="toggle-desc">Log extension activity to console</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-debug-mode" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div style="margin-top: 12px; display: flex; gap: 8px;">
+          <button id="export-debug-btn" style="flex: 1;">Export Debug Log</button>
+          <button id="clear-debug-btn" style="flex: 0 0 auto; width: auto; padding: 10px 12px;" title="Clear debug log">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Server Info</div>
+      <div class="info-row">
+        <span class="info-label">URL</span>
+        <span id="server-url" class="info-value">localhost:7890</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Log File</span>
+        <span id="log-file-path" class="info-value">~/gasoline-logs.jsonl</span>
+      </div>
+    </div>
+
+    <div class="links">
+      <a href="#" id="open-log-file">Open Log File</a>
+      <a href="options.html" id="options-link">Options</a>
+    </div>
+
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>
