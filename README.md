@@ -848,9 +848,26 @@ The script will:
 - **Server**: Go 1.21+ (or use `npx gasoline-mcp` for pre-built binary)
 - **Extension**: Chrome/Chromium-based browser (Manifest V3)
 
-## License
+## ⚖️ License & Commercial Use
 
-PolyForm Internal Use License 1.0.0 - see [LICENSE](LICENSE)
+**Gasoline** is free and open-source software licensed under the **GNU Affero General Public License v3.0 (AGPL v3)**.
+
+### What this means for you:
+
+* ✅ **Personal Use:** You can use Gasoline locally, modify it, and hack on it as much as you like.
+* ✅ **Internal Company Use:** You are free to use Gasoline inside your company to debug, test, and develop your own applications.
+* ✅ **Contributing:** Pull requests are welcome!
+
+### What this restricts:
+
+* ❌ **Closed-Source Distribution:** If you fork Gasoline, modify it, and make it available to others (either as a download or a hosted service), **you must open-source your modifications** under the same AGPL v3 license.
+* ❌ **Proprietary Wrappers:** You cannot take this code, wrap it in a proprietary product, and sell it without releasing the source code.
+
+### 💼 Commercial Licensing
+
+We chose AGPL to ensure that Gasoline remains a community-driven tool and to prevent proprietary vendor lock-in.
+
+However, if you wish to integrate Gasoline's technology into a proprietary commercial product **without** open-sourcing your code, we offer a separate commercial license.
 
 ---
 

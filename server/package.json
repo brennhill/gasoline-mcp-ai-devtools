@@ -22,7 +22,7 @@
     "type": "git",
     "url": "git+https://github.com/brennhill/gasoline.git"
   },
-  "license": "PolyForm-Internal-Use-1.0.0",
+  "license": "AGPL-3.0-only",
   "author": "Brenn Hill",
   "bin": {
     "gasoline": "bin/gasoline"
