@@ -966,6 +966,120 @@ func TestLoadEntriesLargeEntry(t *testing.T) {
 }
 
 // ============================================
+// Contract Validation Tests
+// ============================================
+
+func TestValidateLogEntry(t *testing.T) {
+	tests := []struct {
+		name  string
+		entry LogEntry
+		valid bool
+	}{
+		{"valid error", LogEntry{"level": "error", "msg": "test"}, true},
+		{"valid warn", LogEntry{"level": "warn", "msg": "test"}, true},
+		{"valid info", LogEntry{"level": "info", "msg": "test"}, true},
+		{"valid debug", LogEntry{"level": "debug", "msg": "test"}, true},
+		{"valid log", LogEntry{"level": "log", "msg": "test"}, true},
+		{"missing level", LogEntry{"msg": "no level"}, false},
+		{"empty level", LogEntry{"level": "", "msg": "test"}, false},
+		{"invalid level", LogEntry{"level": "critical", "msg": "test"}, false},
+		{"level not string", LogEntry{"level": 42, "msg": "test"}, false},
+		{"empty entry", LogEntry{}, false},
+		{"nil level", LogEntry{"level": nil, "msg": "test"}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := validateLogEntry(tt.entry)
+			if got != tt.valid {
+				t.Errorf("validateLogEntry(%v) = %v, want %v", tt.entry, got, tt.valid)
+			}
+		})
+	}
+}
+
+func TestValidateLogEntrySize(t *testing.T) {
+	// Entry under limit
+	smallEntry := LogEntry{"level": "error", "msg": "small"}
+	if !validateLogEntry(smallEntry) {
+		t.Error("Small entry should be valid")
+	}
+
+	// Entry over 1MB limit
+	largeEntry := LogEntry{"level": "error", "msg": strings.Repeat("x", maxEntrySize+1)}
+	if validateLogEntry(largeEntry) {
+		t.Error("Entry over 1MB should be invalid")
+	}
+}
+
+func TestValidateLogEntries(t *testing.T) {
+	entries := []LogEntry{
+		{"level": "error", "msg": "valid1"},
+		{"level": "invalid", "msg": "bad level"},
+		{"level": "warn", "msg": "valid2"},
+		{"msg": "no level"},
+		{"level": "info", "msg": "valid3"},
+	}
+
+	valid, rejected := validateLogEntries(entries)
+
+	if len(valid) != 3 {
+		t.Errorf("Expected 3 valid entries, got %d", len(valid))
+	}
+	if rejected != 2 {
+		t.Errorf("Expected 2 rejected entries, got %d", rejected)
+	}
+
+	// Verify correct entries were kept
+	for _, entry := range valid {
+		level := entry["level"].(string)
+		if !validLogLevels[level] {
+			t.Errorf("Invalid entry slipped through: %v", entry)
+		}
+	}
+}
+
+func TestValidateLogEntriesAllValid(t *testing.T) {
+	entries := []LogEntry{
+		{"level": "error", "msg": "e1"},
+		{"level": "warn", "msg": "w1"},
+	}
+
+	valid, rejected := validateLogEntries(entries)
+	if len(valid) != 2 {
+		t.Errorf("Expected 2 valid, got %d", len(valid))
+	}
+	if rejected != 0 {
+		t.Errorf("Expected 0 rejected, got %d", rejected)
+	}
+}
+
+func TestValidateLogEntriesAllInvalid(t *testing.T) {
+	entries := []LogEntry{
+		{"msg": "no level"},
+		{"level": "unknown"},
+	}
+
+	valid, rejected := validateLogEntries(entries)
+	if len(valid) != 0 {
+		t.Errorf("Expected 0 valid, got %d", len(valid))
+	}
+	if rejected != 2 {
+		t.Errorf("Expected 2 rejected, got %d", rejected)
+	}
+}
+
+func TestValidateLogEntriesEmpty(t *testing.T) {
+	valid, rejected := validateLogEntries([]LogEntry{})
+	if len(valid) != 0 {
+		t.Errorf("Expected 0 valid, got %d", len(valid))
+	}
+	if rejected != 0 {
+		t.Errorf("Expected 0 rejected, got %d", rejected)
+	}
+}
+
+// ============================================
 // Fuzz Tests
 // ============================================
 
