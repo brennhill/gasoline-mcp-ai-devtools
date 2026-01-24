@@ -12,7 +12,8 @@ PLATFORMS := \
 	linux-arm64 \
 	windows-amd64
 
-.PHONY: all clean build test dev run checksums \
+.PHONY: all clean build test test-race test-cover test-bench test-fuzz \
+	dev run checksums verify-zero-deps verify-imports verify-size \
 	lint lint-go lint-js format format-fix typecheck check ci \
 	$(PLATFORMS)
 
@@ -23,6 +24,37 @@ clean:
 
 test:
 	CGO_ENABLED=0 go test -v ./cmd/dev-console/...
+
+test-race:
+	go test -race -v ./cmd/dev-console/...
+
+test-cover:
+	go test -coverprofile=coverage.out ./cmd/dev-console/...
+	@go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//' | \
+		awk '{if ($$1 < 60) {print "FAIL: Coverage " $$1 "% is below 60% threshold"; exit 1} else {print "OK: Coverage " $$1 "%"}}'
+
+test-bench:
+	go test -bench=. -benchmem -count=3 ./cmd/dev-console/...
+
+test-fuzz:
+	go test -fuzz=. -fuzztime=10s ./cmd/dev-console/...
+
+verify-zero-deps:
+	@if grep -q '^require' go.mod; then echo "FAIL: go.mod contains external dependencies"; exit 1; fi
+	@if [ -f go.sum ]; then echo "FAIL: go.sum exists (implies external dependencies)"; exit 1; fi
+	@echo "OK: Zero external dependencies verified"
+
+verify-imports:
+	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' ./cmd/dev-console/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/dev-console/dev-console'); \
+	if [ -n "$$VIOLATIONS" ]; then echo "FAIL: Non-stdlib imports found:"; echo "$$VIOLATIONS"; exit 1; fi
+	@echo "OK: All imports are stdlib or internal"
+
+verify-size:
+	@make dev 2>/dev/null
+	@SIZE=$$(wc -c < dist/gasoline | tr -d ' '); \
+	MAX=15000000; \
+	if [ $$SIZE -gt $$MAX ]; then echo "FAIL: Binary size $${SIZE} bytes exceeds $${MAX} byte limit"; exit 1; \
+	else echo "OK: Binary size $${SIZE} bytes (limit: $${MAX})"; fi
 
 build: $(PLATFORMS)
 

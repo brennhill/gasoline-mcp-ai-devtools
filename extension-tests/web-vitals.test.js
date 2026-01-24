@@ -1,5 +1,4 @@
 // @ts-nocheck
-// @ts-nocheck
 /**
  * @fileoverview Tests for Web Vitals capture (FCP, LCP, CLS, TTFB)
  * TDD: These tests are written BEFORE implementation

@@ -55,6 +55,30 @@ Help the human verify what the AI observed and decided.
 - [ ] **SARIF export** — `export_sarif` MCP tool. A11y audit results → GitHub Code Scanning format. Human sees AI-detected issues in PR review. File: `export_sarif.go`.
 - [ ] **HAR export** — `export_har` MCP tool. Network bodies + timing → HTTP Archive format. Human can inspect in Charles Proxy / DevTools. File: `export_har.go`.
 
+## Tech Debt: Consolidation (code quality)
+
+Codebase grew feature-by-feature without periodic pattern extraction. Locally consistent, globally drifting. Two parallel streams since Go and Extension files don't overlap.
+
+### Stream A: Go Server
+
+Sequential (each touches overlapping files):
+
+- [ ] **MCP response helper** — Extract `mcpTextResponse(text)` to eliminate 25+ identical response constructions across tool handlers. File: `tools.go`.
+- [ ] **Decompose Capture struct** — Extract `RateLimiter`, `A11yCache`, `PerformanceStore` from the 67-field God Object. Files: `types.go`, all domain files.
+- [ ] **Remove Go dead code** — Delete `RecordEventReceived()`, legacy `eventCount`/`rateResetTime` fields, unused `initialized` field. Files: `queries.go`, `types.go`, `main.go`.
+- [ ] **Add request body limits** — `http.MaxBytesReader` on all POST handlers to prevent unbounded `io.ReadAll`. Files: `websocket.go`, `network.go`, `actions.go`, `performance.go`.
+- [ ] **Deduplicate utilities** — Consolidate `extractPath`/`ExtractURLPath`, timestamp parsers, ring buffer pattern. Files: `ai_noise.go`, `ai_checkpoint.go`, `codegen.go`.
+
+### Stream B: Extension + Tests
+
+Sequential (message naming cascades into test assertions):
+
+- [ ] **Normalize message naming** — Replace `DEV_CONSOLE_*` with `GASOLINE_*` throughout. Incomplete rename from "Dev Console" to "Gasoline". Files: `inject.js`, `content.js`, `background.js`.
+- [ ] **Fix truncateArg** — Replace dangerous `JSON.parse(sliced + '"} [truncated]')` with safe truncation. File: `background.js:551`.
+- [ ] **Replace setInterval with chrome.alarms** — `setInterval` is unreliable in MV3 service workers. File: `background.js:1325`.
+- [ ] **Remove JS dead code** — Delete `_TEXT_CONTENT_TYPES`, no-op references in popup.js. Files: `inject.js`, `popup.js`.
+- [ ] **Shared test infrastructure** — Extract `createMockWindow()`, `createMockChrome()`, `findPostedMessage()` into `extension-tests/helpers.js`. All test files reinvent mocks independently today.
+
 ## P4: Nice-to-have (someday, maybe)
 
 Useful but not thesis-critical. Only if there's nothing higher to work on.
@@ -83,7 +107,7 @@ These don't serve the thesis. The AI IS the interface — exporting to other too
 
 ## Parallel Assignment Guide
 
-P0 and P1 features all touch different files and can run as simultaneous agents:
+### Feature work (P0–P1)
 
 | Feature | Primary files | Can parallel with |
 |---------|--------------|-------------------|
@@ -93,3 +117,16 @@ P0 and P1 features all touch different files and can run as simultaneous agents:
 | Noise filtering | `ai_noise.go` (new) | Rate, Memory, Persistent |
 | API schema inference | `api_schema.go` (new) | All of the above |
 | Interception deferral | `extension/inject.js`, `extension/content.js` | All server-side features |
+
+### Consolidation work (Tech Debt)
+
+Two independent streams — can run simultaneously:
+
+| Stream | Items (sequential within stream) | Files touched |
+|--------|----------------------------------|---------------|
+| A: Go Server | MCP helper → Decompose Capture → Dead code → Body limits → Dedup utilities | `tools.go`, `types.go`, all `cmd/dev-console/*.go` |
+| B: Extension + Tests | Message naming → truncateArg + setInterval → JS dead code → Test helpers | `inject.js`, `content.js`, `background.js`, `extension-tests/*.test.js` |
+
+Stream A and Stream B can run in parallel (no file overlap). Items within each stream are sequential due to cascading dependencies.
+
+**Ordering constraint:** Feature work on `inject.js` (Interception deferral) conflicts with Stream B. Run one or the other, not both.

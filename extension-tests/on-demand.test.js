@@ -4,7 +4,7 @@
  * TDD: These tests are written BEFORE implementation (v4 feature)
  */
 
-import { test, describe, mock, beforeEach, afterEach } from 'node:test'
+import { test, describe, mock, beforeEach, afterEach, after } from 'node:test'
 import assert from 'node:assert'
 
 // Mock Chrome APIs
@@ -67,6 +67,29 @@ const createMockWindow = () => ({
 })
 
 let originalChrome, originalDocument, originalWindow
+
+// Track all setInterval calls so we can clean up leaked timers from module init
+const activeIntervals = new Set()
+const _originalSetInterval = globalThis.setInterval
+const _originalClearInterval = globalThis.clearInterval
+globalThis.setInterval = (...args) => {
+  const id = _originalSetInterval(...args)
+  activeIntervals.add(id)
+  return id
+}
+globalThis.clearInterval = (id) => {
+  activeIntervals.delete(id)
+  _originalClearInterval(id)
+}
+
+// Clean up all leaked intervals after all tests complete
+after(() => {
+  for (const id of activeIntervals) {
+    _originalClearInterval(id)
+  }
+  globalThis.setInterval = _originalSetInterval
+  globalThis.clearInterval = _originalClearInterval
+})
 
 describe('Pending Query Polling', () => {
   beforeEach(() => {
@@ -185,12 +208,28 @@ describe('Pending Query Polling', () => {
     )
     globalThis.fetch = mockFetch
 
+    // Mock setInterval to capture callback and call it synchronously
+    let intervalCallback
+    const originalSetInterval = globalThis.setInterval
+    const originalClearInterval = globalThis.clearInterval
+    globalThis.setInterval = (cb, _ms) => {
+      intervalCallback = cb
+      return 999
+    }
+    globalThis.clearInterval = mock.fn()
+
     startQueryPolling('http://localhost:7890')
 
-    // Wait for 2.5 seconds
-    await new Promise((r) => setTimeout(r, 2500))
+    // Invoke the polling callback multiple times to simulate interval ticks
+    await intervalCallback()
+    await intervalCallback()
+    await intervalCallback()
 
     stopQueryPolling()
+
+    // Restore originals
+    globalThis.setInterval = originalSetInterval
+    globalThis.clearInterval = originalClearInterval
 
     // Should have polled at least 2 times
     assert.ok(mockFetch.mock.calls.length >= 2, `Expected >= 2 polls, got ${mockFetch.mock.calls.length}`)
