@@ -27,7 +27,7 @@ jobs:
         run: make test-cover
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
           version: v2.8.0
           args: run ./cmd/dev-console/
@@ -136,6 +136,6 @@ jobs:
 
       - name: JS security lint
         run: |
-          npx eslint --no-eslintrc -c eslint.config.js \
+          npx eslint -c eslint.config.js \
             --rule '{"security/detect-eval-with-expression": "error", "security/detect-non-literal-regexp": "error", "security/detect-possible-timing-attacks": "error"}' \
             extension/
