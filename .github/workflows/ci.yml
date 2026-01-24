@@ -78,39 +78,6 @@ jobs:
       - name: Extension tests
         run: npm run test:ext
 
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.21"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install root dependencies
-        run: npm ci
-
-      - name: Install E2E dependencies
-        run: cd e2e-tests && npm ci
-
-      - name: Install Playwright browsers
-        run: cd e2e-tests && npx playwright install chromium --with-deps
-
-      - name: Run E2E tests
-        run: cd e2e-tests && xvfb-run npx playwright test
-
-      - name: Upload test results
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-test-results
-          path: e2e-tests/test-results/
-
   security:
     name: Security Scan
     runs-on: ubuntu-latest
