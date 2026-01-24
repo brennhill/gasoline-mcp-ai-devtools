@@ -6,7 +6,7 @@
  * Tests validate spec scenarios 13-23 from docs/ai-first/tech-spec-rate-limiting.md
  */
 
-import { test, describe, mock, beforeEach, afterEach } from 'node:test'
+import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
 
 // Mock Chrome APIs
@@ -28,20 +28,11 @@ globalThis.chrome = {
 // Mock fetch globally
 globalThis.fetch = mock.fn()
 
-import {
-  createCircuitBreaker,
-  createBatcherWithCircuitBreaker,
-  RATE_LIMIT_CONFIG,
-} from '../extension/background.js'
+import { createCircuitBreaker, createBatcherWithCircuitBreaker, RATE_LIMIT_CONFIG } from '../extension/background.js'
 
 describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
-  let mockSendFn
-  let batcher
-  let circuitBreaker
-
   beforeEach(() => {
     mock.reset()
-    mockSendFn = mock.fn(() => Promise.resolve())
   })
 
   // Spec scenario 13: Single 429 -> backoff 100ms before next attempt
@@ -324,7 +315,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
   test('23: Retry budget of 3 - batch abandoned after 3 attempts', async () => {
     const sendFn = mock.fn(() => Promise.reject(new Error('Server error: 429')))
 
-    const { batcher, circuitBreaker } = createBatcherWithCircuitBreaker(sendFn, {
+    const { batcher } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
       maxBatchSize: 50,
       retryBudget: 3,
@@ -359,10 +350,10 @@ describe('Rate Limit: Shared Circuit Breaker', () => {
     const sendFn2 = mock.fn(() => Promise.reject(new Error('Server error: 429')))
 
     // Create a shared circuit breaker
-    const sharedCB = createCircuitBreaker(
-      () => Promise.reject(new Error('fail')),
-      { maxFailures: 5, resetTimeout: 30000 },
-    )
+    const sharedCB = createCircuitBreaker(() => Promise.reject(new Error('fail')), {
+      maxFailures: 5,
+      resetTimeout: 30000,
+    })
 
     const batcher1 = createBatcherWithCircuitBreaker(sendFn1, {
       debounceMs: 1,

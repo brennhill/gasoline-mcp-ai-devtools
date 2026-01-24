@@ -584,7 +584,7 @@ describe('Debug Logging', () => {
         callback({
           log: JSON.stringify({
             exportedAt: '2024-01-22T12:00:00Z',
-            version: '4.5.0',
+            version: '4.6.0',
             entries: [{ ts: '2024-01-22T12:00:00Z', category: 'lifecycle', message: 'Test' }],
           }),
         })
@@ -874,8 +874,6 @@ describe('Network Body Capture Toggle', () => {
 
     handleFeatureToggle('networkBodyCaptureEnabled', 'setNetworkBodyCaptureEnabled', true)
 
-    assert.ok(
-      mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].networkBodyCaptureEnabled === true),
-    )
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].networkBodyCaptureEnabled === true))
   })
 })

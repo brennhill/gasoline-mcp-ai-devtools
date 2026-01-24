@@ -11,7 +11,7 @@ import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 import { createMockWindow, createMockDocument } from './helpers.js'
 
-let originalWindow, originalDocument, originalPerformance, originalConsole
+let originalWindow, _originalDocument, originalPerformance, originalConsole
 
 describe('Interception Deferral: Phase 1 (Immediate)', () => {
   beforeEach(() => {
@@ -31,7 +31,9 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
       now: mock.fn(() => 42.5),
     }
     globalThis.PerformanceObserver = class MockPerfObserver {
-      constructor(cb) { this.cb = cb }
+      constructor(cb) {
+        this.cb = cb
+      }
       observe() {}
       disconnect() {}
     }
@@ -46,7 +48,7 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
   })
 
   test('Phase 1 should install window.__gasoline API', async () => {
-    const { installPhase1, getDeferralState } = await import('../extension/inject.js')
+    const { installPhase1 } = await import('../extension/inject.js')
 
     // Ensure clean state
     delete globalThis.window.__gasoline
@@ -93,7 +95,6 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
   test('Phase 1 should NOT modify fetch', async () => {
     const { installPhase1 } = await import('../extension/inject.js')
 
-    const originalFetch = globalThis.window.fetch
     globalThis.window.fetch = mock.fn()
     const fetchBefore = globalThis.window.fetch
 
@@ -124,8 +125,12 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
 
     let observerCount = 0
     globalThis.PerformanceObserver = class MockPerfObserver {
-      constructor(cb) { this.cb = cb }
-      observe() { observerCount++ }
+      constructor(cb) {
+        this.cb = cb
+      }
+      observe() {
+        observerCount++
+      }
       disconnect() {}
     }
 
@@ -169,7 +174,9 @@ describe('Interception Deferral: Phase 2 (Deferred)', () => {
       now: mock.fn(() => 150.0),
     }
     globalThis.PerformanceObserver = class MockPerfObserver {
-      constructor(cb) { this.cb = cb }
+      constructor(cb) {
+        this.cb = cb
+      }
       observe() {}
       disconnect() {}
     }
@@ -254,7 +261,9 @@ describe('Interception Deferral: Deferral Logic', () => {
       now: mock.fn(() => 10.0),
     }
     globalThis.PerformanceObserver = class MockPerfObserver {
-      constructor(cb) { this.cb = cb }
+      constructor(cb) {
+        this.cb = cb
+      }
       observe() {}
       disconnect() {}
     }
@@ -279,7 +288,11 @@ describe('Interception Deferral: Deferral Logic', () => {
     installPhase1()
 
     // Phase 2 should NOT be installed yet
-    assert.strictEqual(getDeferralState().phase2Installed, false, 'Phase 2 should not install immediately when deferral is enabled')
+    assert.strictEqual(
+      getDeferralState().phase2Installed,
+      false,
+      'Phase 2 should not install immediately when deferral is enabled',
+    )
 
     // Find the load event listener that was registered
     const addListenerCalls = globalThis.window.addEventListener.mock.calls
@@ -309,7 +322,11 @@ describe('Interception Deferral: Deferral Logic', () => {
     installPhase1()
 
     // Phase 2 should be installed immediately
-    assert.strictEqual(getDeferralState().phase2Installed, true, 'Phase 2 should install immediately when deferral is disabled')
+    assert.strictEqual(
+      getDeferralState().phase2Installed,
+      true,
+      'Phase 2 should install immediately when deferral is disabled',
+    )
 
     uninstall()
     setDeferralEnabled(true) // reset
@@ -327,12 +344,20 @@ describe('Interception Deferral: Deferral Logic', () => {
     installPhase1()
 
     // Should NOT be installed immediately (still needs 100ms)
-    assert.strictEqual(getDeferralState().phase2Installed, false, 'Phase 2 should wait 100ms even when readyState=complete')
+    assert.strictEqual(
+      getDeferralState().phase2Installed,
+      false,
+      'Phase 2 should wait 100ms even when readyState=complete',
+    )
 
     // Wait for the 100ms setTimeout
     await new Promise((resolve) => setTimeout(resolve, 150))
 
-    assert.strictEqual(getDeferralState().phase2Installed, true, 'Phase 2 should install 100ms after detecting readyState=complete')
+    assert.strictEqual(
+      getDeferralState().phase2Installed,
+      true,
+      'Phase 2 should install 100ms after detecting readyState=complete',
+    )
 
     uninstall()
     delete globalThis.window.__gasoline
@@ -363,7 +388,7 @@ describe('Interception Deferral: Deferral Logic', () => {
     assert.strictEqual(getDeferralState().phase2Installed, false, 'Phase 2 should not install before timeout')
 
     // Verify a setTimeout with 10000ms was registered (the fallback)
-    const fallbackTimeout = timeoutCalls.find(c => c.delay === 10000)
+    const fallbackTimeout = timeoutCalls.find((c) => c.delay === 10000)
     assert.ok(fallbackTimeout, 'Should register a 10-second fallback timeout')
 
     // Manually invoke the fallback callback to simulate the timeout firing
@@ -372,7 +397,7 @@ describe('Interception Deferral: Deferral Logic', () => {
     // Phase 2 should now be installed
     assert.strictEqual(getDeferralState().phase2Installed, true, 'Phase 2 should install when 10s fallback fires')
 
-    timerIds.forEach(id => clearTimeout(id))
+    timerIds.forEach((id) => clearTimeout(id))
     globalThis.setTimeout = originalSetTimeout
     uninstall()
     delete globalThis.window.__gasoline
@@ -394,7 +419,7 @@ describe('Interception Deferral: Deferral Logic', () => {
 
     // postMessage should not have been called with a GASOLINE_LOG for this
     const gasolineLogs = globalThis.window.postMessage.mock.calls.filter(
-      (call) => call.arguments[0]?.type === 'GASOLINE_LOG'
+      (call) => call.arguments[0]?.type === 'GASOLINE_LOG',
     )
     assert.strictEqual(gasolineLogs.length, 0, 'Console logs before Phase 2 should not be captured')
 
@@ -402,8 +427,7 @@ describe('Interception Deferral: Deferral Logic', () => {
   })
 
   test('SPA navigation after Phase 2 does not re-defer interceptors', async () => {
-    const { installPhase1, installPhase2, getDeferralState, setDeferralEnabled, uninstall } =
-      await import('../extension/inject.js')
+    const { installPhase1, getDeferralState, setDeferralEnabled, uninstall } = await import('../extension/inject.js')
 
     setDeferralEnabled(false) // Install immediately for this test
     installPhase1()
@@ -412,10 +436,9 @@ describe('Interception Deferral: Deferral Logic', () => {
     const phase2Time = getDeferralState().phase2Timestamp
 
     // Simulate SPA navigation via popstate event
-    const popstateHandlers = globalThis.window.addEventListener.mock.calls
-      .filter(c => c.arguments[0] === 'popstate')
+    const popstateHandlers = globalThis.window.addEventListener.mock.calls.filter((c) => c.arguments[0] === 'popstate')
     if (popstateHandlers.length > 0) {
-      popstateHandlers.forEach(h => h.arguments[1]({ type: 'popstate' }))
+      popstateHandlers.forEach((h) => h.arguments[1]({ type: 'popstate' }))
     }
 
     // Phase 2 should stay active (not re-deferred, timestamp unchanged)
@@ -447,7 +470,9 @@ describe('Interception Deferral: State Management', () => {
       now: mock.fn(() => 50.0),
     }
     globalThis.PerformanceObserver = class MockPerfObserver {
-      constructor(cb) { this.cb = cb }
+      constructor(cb) {
+        this.cb = cb
+      }
       observe() {}
       disconnect() {}
     }
@@ -486,8 +511,7 @@ describe('Interception Deferral: State Management', () => {
   })
 
   test('getDeferralState includes timing diagnostics after Phase 2', async () => {
-    const { installPhase1, installPhase2, getDeferralState, setDeferralEnabled, uninstall } =
-      await import('../extension/inject.js')
+    const { installPhase1, getDeferralState, setDeferralEnabled, uninstall } = await import('../extension/inject.js')
 
     setDeferralEnabled(false)
 
@@ -525,7 +549,9 @@ describe('Interception Deferral: GASOLINE_SETTING integration', () => {
       now: mock.fn(() => 5.0),
     }
     globalThis.PerformanceObserver = class MockPerfObserver {
-      constructor(cb) { this.cb = cb }
+      constructor(cb) {
+        this.cb = cb
+      }
       observe() {}
       disconnect() {}
     }

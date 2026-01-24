@@ -30,7 +30,7 @@ Gasoline is a **browser extension + local MCP server** that streams real-time br
 
 **Single binary, zero runtime.** No Node.js, no Python, no Puppeteer, no package.json. One Go binary that runs anywhere. No supply chain risk. No `node_modules`.
 
-**Captures what others can't.** WebSocket messages, full request/response bodies, and Playwright test generation from real browser sessions — features no other MCP browser tool offers.
+**Captures what others can't.** WebSocket messages, full request/response bodies, user action recording, Web Vitals with regression detection, API schema inference, and Playwright test generation from real browser sessions — features no other MCP browser tool offers.
 
 **Works with every MCP tool.** Claude Code, Cursor, Windsurf, Zed, Claude Desktop, VS Code + Continue. Switch AI tools without changing your debugging setup.
 
@@ -44,10 +44,21 @@ Gasoline is a **browser extension + local MCP server** that streams real-time br
 | **Network errors** | ✅ | ✅ | ✅ | ❌ |
 | **Network bodies** | ✅ | ❌ | ❌ | ❌ |
 | **WebSocket events** | ✅ | ❌ | ❌ | ❌ |
+| **User action recording** | ✅ | ❌ | ❌ | ❌ |
 | **DOM queries** | ✅ | ✅ | ✅ | ✅ |
-| **Accessibility audits** | ✅ | ❌ | ❌ | ❌ |
-| **Test generation** | ✅ | ❌ | ❌ | ❌ |
 | **Screenshots** | ✅ | ✅ | ✅ | ✅ |
+| | | | | |
+| **Web Vitals** | ✅ LCP, CLS, INP, FCP | ❌ | ❌ | ❌ |
+| **Regression detection** | ✅ Automatic | ❌ | ❌ | ❌ |
+| **API schema inference** | ✅ OpenAPI from traffic | ❌ | ❌ | ❌ |
+| **Accessibility audits** | ✅ WCAG + SARIF | ❌ | ❌ | ❌ |
+| **Session checkpoints** | ✅ Named + auto | ❌ | ❌ | ❌ |
+| **Noise filtering** | ✅ Auto-detect | ❌ | ❌ | ❌ |
+| | | | | |
+| **Test generation** | ✅ Playwright | ❌ | ❌ | ❌ |
+| **Reproduction scripts** | ✅ From actions | ❌ | ❌ | ❌ |
+| **PR summaries** | ✅ Perf impact | ❌ | ❌ | ❌ |
+| **HAR export** | ✅ | ❌ | ❌ | ❌ |
 | | | | | |
 | **Zero dependencies** | ✅ Single Go binary | ❌ Node.js + Chrome flags | ❌ Node.js + Puppeteer | ❌ Electron |
 | **Vendor neutral** | ✅ Any MCP tool | ⚠️ Any MCP tool | ⚠️ Any MCP tool | ❌ Cursor only |
@@ -103,9 +114,14 @@ Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your agent spe
 - **Exceptions** — Uncaught errors with full stack traces
 - **[WebSocket Events](/websocket-monitoring/)** — Connection lifecycle and message payloads
 - **[Network Bodies](/network-bodies/)** — Request/response payloads for API debugging
+- **User Actions** — Click, type, navigate, scroll recording with smart selectors
+- **Web Vitals** — LCP, CLS, INP, FCP with automatic regression detection
 - **[Live DOM](/dom-queries/)** — Query the page with CSS selectors via MCP
-- **[Accessibility](/accessibility-audit/)** — Run axe-core audits from your AI
-- **[Test Generation](/generate-test/)** — Turn browser sessions into Playwright regression tests
+- **[Accessibility](/accessibility-audit/)** — WCAG audits with SARIF export
+- **API Schema Inference** — Auto-discover OpenAPI from captured traffic
+- **Session Checkpoints** — Save state, diff changes, detect regressions over time
+- **[Test Generation](/generate-test/)** — Playwright tests and reproduction scripts from actions
+- **Noise Filtering** — Auto-detect and dismiss irrelevant errors
 - **[Context API](/developer-api/)** — Annotate errors with `window.__gasoline`
 
 ## Zero Bloat, Zero Risk

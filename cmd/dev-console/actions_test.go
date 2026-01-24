@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestV5EnhancedActionsBuffer(t *testing.T) {
@@ -324,5 +325,182 @@ func TestMCPGetEnhancedActionsEmpty(t *testing.T) {
 
 	if result.Content[0].Text != "No enhanced actions captured" {
 		t.Errorf("Expected empty message, got: %s", result.Content[0].Text)
+	}
+}
+
+// ============================================
+// Coverage Gap Tests: HandleEnhancedActions HTTP handler
+// ============================================
+
+// TestHandleEnhancedActions_POST tests normal POST to /enhanced-actions
+func TestHandleEnhancedActions_POST(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	payload := `{"actions":[{"type":"click","timestamp":1000,"url":"http://example.com"}]}`
+	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	capture.HandleEnhancedActions(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", w.Code)
+	}
+	if capture.GetEnhancedActionCount() != 1 {
+		t.Errorf("Expected 1 action stored, got %d", capture.GetEnhancedActionCount())
+	}
+}
+
+// TestHandleEnhancedActions_InvalidJSON tests POST with invalid JSON body
+func TestHandleEnhancedActions_InvalidJSON(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString("not json"))
+	w := httptest.NewRecorder()
+
+	capture.HandleEnhancedActions(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for invalid JSON, got %d", w.Code)
+	}
+}
+
+// TestHandleEnhancedActions_EmptyActions tests POST with empty actions array
+func TestHandleEnhancedActions_EmptyActions(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	payload := `{"actions":[]}`
+	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString(payload))
+	w := httptest.NewRecorder()
+
+	capture.HandleEnhancedActions(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected 200 for empty actions, got %d", w.Code)
+	}
+	if capture.GetEnhancedActionCount() != 0 {
+		t.Errorf("Expected 0 actions stored, got %d", capture.GetEnhancedActionCount())
+	}
+}
+
+// TestHandleEnhancedActions_MultipleActions tests POST with multiple actions
+func TestHandleEnhancedActions_MultipleActions(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	payload := `{"actions":[
+		{"type":"click","timestamp":1000,"url":"http://example.com/a"},
+		{"type":"input","timestamp":2000,"url":"http://example.com/b"},
+		{"type":"scroll","timestamp":3000,"url":"http://example.com/c"}
+	]}`
+	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString(payload))
+	w := httptest.NewRecorder()
+
+	capture.HandleEnhancedActions(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", w.Code)
+	}
+	if capture.GetEnhancedActionCount() != 3 {
+		t.Errorf("Expected 3 actions stored, got %d", capture.GetEnhancedActionCount())
+	}
+}
+
+// ============================================
+// Coverage Gap Tests: HandleEnhancedActions GET and DELETE
+// ============================================
+
+func TestHandleEnhancedActions_GETWithLimit(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// A GET request to the POST-only handler results in reading empty body
+	// and failing at json.Unmarshal, returning 400
+	req := httptest.NewRequest("GET", "/enhanced-actions?limit=5", nil)
+	w := httptest.NewRecorder()
+
+	capture.HandleEnhancedActions(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for GET request (no valid JSON body), got %d", w.Code)
+	}
+}
+
+func TestHandleEnhancedActions_DELETE(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Add some actions first
+	capture.AddEnhancedActions([]EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "http://example.com"},
+	})
+
+	// DELETE on the POST-only handler reads empty body and fails at json.Unmarshal
+	req := httptest.NewRequest("DELETE", "/enhanced-actions", nil)
+	w := httptest.NewRecorder()
+
+	capture.HandleEnhancedActions(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for DELETE request (no valid JSON body), got %d", w.Code)
+	}
+}
+
+// ============================================
+// Coverage: HandleEnhancedActions — buffer capacity exceeded (line 79)
+// ============================================
+
+func TestHandleEnhancedActionsBufferOverflow(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Add more actions than the buffer capacity (maxEnhancedActions = 50)
+	actions := make([]EnhancedAction, 60)
+	for i := range actions {
+		actions[i] = EnhancedAction{
+			Type:      "click",
+			Timestamp: int64(i * 1000),
+			URL:       "http://localhost:3000/page",
+		}
+	}
+
+	payload, _ := json.Marshal(map[string]interface{}{"actions": actions})
+	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBuffer(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	capture.HandleEnhancedActions(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+
+	// Buffer should be capped to effectiveActionCapacity
+	count := capture.GetEnhancedActionCount()
+	if count > 50 {
+		t.Errorf("Expected at most 50 actions in buffer (capacity), got %d", count)
+	}
+}
+
+// ============================================
+// Coverage: HandleEnhancedActions — rate limit triggered after recording (line 96)
+// ============================================
+
+func TestHandleEnhancedActionsRateLimitAfterRecording(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Push the capture into a rate-limited state by opening the circuit
+	capture.mu.Lock()
+	capture.circuitOpen = true
+	capture.circuitOpenedAt = time.Now()
+	capture.circuitReason = "rate_exceeded"
+	capture.mu.Unlock()
+
+	// Even though circuit is open, we send a request to verify response is 429
+	payload := `{"actions":[{"type":"click","timestamp":1000,"url":"http://localhost:3000"}]}`
+	req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	capture.HandleEnhancedActions(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("Expected 429 when circuit is open, got %d", rec.Code)
 	}
 }

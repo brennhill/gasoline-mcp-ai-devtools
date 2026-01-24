@@ -3,7 +3,7 @@
 <img src="chrome_store_files/readme-banner.png" alt="Gasoline - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-4.5.0-green.svg)](https://github.com/brennhill/gasoline/releases)
+[![Version](https://img.shields.io/badge/version-4.6.0-green.svg)](https://github.com/brennhill/gasoline/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline)
@@ -57,10 +57,21 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 | **Network errors** | ✅ | ✅ | ✅ | ❌ |
 | **Network bodies** | ✅ | ❌ | ❌ | ❌ |
 | **WebSocket events** | ✅ | ❌ | ❌ | ❌ |
+| **User action recording** | ✅ | ❌ | ❌ | ❌ |
 | **DOM queries** | ✅ | ✅ | ✅ | ✅ |
-| **Accessibility audits** | ✅ | ❌ | ❌ | ❌ |
-| **Test generation** | ✅ | ❌ | ❌ | ❌ |
 | **Screenshots** | ✅ | ✅ | ✅ | ✅ |
+| | | | | |
+| **Web Vitals** | ✅ LCP, CLS, INP, FCP | ❌ | ❌ | ❌ |
+| **Regression detection** | ✅ Automatic | ❌ | ❌ | ❌ |
+| **API schema inference** | ✅ OpenAPI from traffic | ❌ | ❌ | ❌ |
+| **Accessibility audits** | ✅ WCAG + SARIF | ❌ | ❌ | ❌ |
+| **Session checkpoints** | ✅ Named + auto | ❌ | ❌ | ❌ |
+| **Noise filtering** | ✅ Auto-detect | ❌ | ❌ | ❌ |
+| | | | | |
+| **Test generation** | ✅ Playwright | ❌ | ❌ | ❌ |
+| **Reproduction scripts** | ✅ From actions | ❌ | ❌ | ❌ |
+| **PR summaries** | ✅ Perf impact | ❌ | ❌ | ❌ |
+| **HAR export** | ✅ | ❌ | ❌ | ❌ |
 | | | | | |
 | **Zero dependencies** | ✅ Single Go binary | ❌ Node.js + Chrome flags | ❌ Node.js + Puppeteer | ❌ Electron |
 | **Vendor neutral** | ✅ Any MCP tool | ⚠️ Any MCP tool | ⚠️ Any MCP tool | ❌ Cursor only |
@@ -74,7 +85,7 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 **Single binary, zero runtime.** No Node.js, no Python, no Puppeteer, no package.json. One Go binary that runs anywhere. No supply chain risk. No `node_modules`.
 
-**Captures what others can't.** WebSocket messages, full request/response bodies, and Playwright test generation from real browser sessions — features no other MCP browser tool offers.
+**Captures what others can't.** WebSocket messages, full request/response bodies, user action recording, Web Vitals, automatic regression detection, API schema inference, and Playwright test generation from real browser sessions — features no other MCP browser tool offers.
 
 **Works with every MCP tool.** Claude Code, Cursor, Windsurf, Zed, Claude Desktop, VS Code + Continue. Switch AI tools without changing your debugging setup.
 
@@ -87,8 +98,14 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 - **Exceptions** — Uncaught errors with full stack traces
 - **WebSocket events** — Connection lifecycle and message payloads
 - **Network bodies** — Request/response payloads for API debugging
+- **User actions** — Click, type, navigate, scroll recording with smart selectors
+- **Web Vitals** — LCP, CLS, INP, FCP with regression detection
 - **Live DOM queries** — Query the page with CSS selectors via MCP
-- **Accessibility audits** — Run a11y checks from your AI assistant
+- **Accessibility audits** — WCAG checks with SARIF export
+- **API schema inference** — Auto-discover OpenAPI from captured traffic
+- **Session checkpoints** — Save state, diff changes, detect regressions
+- **Test generation** — Playwright tests and reproduction scripts from actions
+- **Noise filtering** — Auto-detect and dismiss irrelevant errors
 - **Developer API** — `window.__gasoline.annotate()` for custom context
 
 **[Full feature list →](https://cookwithgasoline.com/features/)**

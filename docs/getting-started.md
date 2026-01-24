@@ -17,7 +17,7 @@ toc_sticky: true
 npx gasoline-mcp
 ```
 
-You'll see: `Gasoline server listening on http://localhost:7890`
+You'll see: `Gasoline v4.6.0` and `Server: http://127.0.0.1:7890`
 
 Leave this burning. No global install — `npx` handles everything.
 
@@ -67,19 +67,19 @@ Ask your AI: _"What browser errors do you see?"_
 
 ## <i class="fas fa-tools"></i> Available Tools
 
-Your AI now has these at its disposal:
+Your AI now has 5 composite tools covering the full debugging lifecycle:
 
 | Tool | What it does |
 |------|-------------|
-| `get_browser_errors` | <i class="fas fa-exclamation-triangle"></i> Console errors, network failures, exceptions |
-| `get_browser_logs` | <i class="fas fa-list"></i> All logs (errors + warnings + info) |
-| `clear_browser_logs` | <i class="fas fa-eraser"></i> Clear the log file |
-| `get_websocket_events` | <i class="fas fa-plug"></i> WebSocket messages and lifecycle |
-| `get_websocket_status` | <i class="fas fa-signal"></i> Connection states and rates |
-| `get_network_bodies` | <i class="fas fa-exchange-alt"></i> Request/response payloads |
-| `query_dom` | <i class="fas fa-code"></i> Live DOM query with CSS selectors |
-| `get_page_info` | <i class="fas fa-info-circle"></i> Page URL, title, viewport |
-| `run_accessibility_audit` | <i class="fas fa-universal-access"></i> Accessibility violations |
+| `observe` | <i class="fas fa-eye"></i> Browser state — errors, logs, network, WebSocket, actions, Web Vitals, page info |
+| `analyze` | <i class="fas fa-chart-line"></i> Insights — performance regression, API schema, accessibility, session diffs, timeline |
+| `generate` | <i class="fas fa-code"></i> Artifacts — Playwright tests, reproduction scripts, PR summaries, SARIF, HAR |
+| `configure` | <i class="fas fa-cog"></i> Session — persistent memory, noise filtering, log management |
+| `query_dom` | <i class="fas fa-search"></i> Live DOM query with CSS selectors |
+
+Each tool has sub-modes. For example, `observe` with `what: "errors"` returns console errors, while `what: "vitals"` returns Core Web Vitals.
+
+See [MCP Integration](/mcp-integration/) for full tool documentation.
 
 ## <i class="fas fa-file-alt"></i> No MCP? No Problem.
 

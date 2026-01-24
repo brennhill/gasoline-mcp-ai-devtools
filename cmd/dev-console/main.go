@@ -23,7 +23,7 @@ import (
 const (
 	defaultPort       = 7890
 	defaultMaxEntries = 1000
-	version           = "4.5.0"
+	version           = "4.6.0"
 )
 
 // LogEntry represents a single log entry
@@ -186,7 +186,6 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 		},
 	}
 }
-
 
 // Server holds the server state
 type Server struct {
@@ -556,17 +555,14 @@ func main() {
 
 	// Print banner
 	fmt.Println()
-	fmt.Println("╔═══════════════════════════════════════════════════════════╗")
-	fmt.Println("║                       Gasoline                             ║")
-	fmt.Println("║     Browser observability for AI coding agents            ║")
-	fmt.Println("╚═══════════════════════════════════════════════════════════╝")
+	fmt.Printf("  Gasoline v%s\n", version)
+	fmt.Println("  Browser observability for AI coding agents")
 	fmt.Println()
-	fmt.Printf("✓ Server listening on http://127.0.0.1:%d\n", *port)
-	fmt.Printf("✓ Writing logs to %s\n", *logFile)
-	fmt.Printf("✓ Max entries: %d\n", *maxEntries)
+	fmt.Printf("  Server:  http://127.0.0.1:%d\n", *port)
+	fmt.Printf("  Logs:    %s\n", *logFile)
+	fmt.Printf("  Max:     %d entries\n", *maxEntries)
 	fmt.Println()
-	fmt.Println("Ready to receive logs from browser extension.")
-	fmt.Println("Press Ctrl+C to stop.")
+	fmt.Println("  Ready. Press Ctrl+C to stop.")
 	fmt.Println()
 
 	// Start server (localhost only for security)
@@ -650,7 +646,6 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 		http.HandleFunc("/a11y-result", corsMiddleware(capture.HandleA11yResult))
 		http.HandleFunc("/enhanced-actions", corsMiddleware(capture.HandleEnhancedActions))
 		http.HandleFunc("/performance-snapshot", corsMiddleware(capture.HandlePerformanceSnapshot))
-		http.HandleFunc("/v4/health", corsMiddleware(capture.HandleHealth))
 	}
 
 	// MCP over HTTP endpoint
@@ -668,12 +663,36 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 			return
 		}
 
-		jsonResponse(w, http.StatusOK, map[string]interface{}{
-			"status":     "ok",
-			"entries":    server.getEntryCount(),
-			"maxEntries": server.maxEntries,
-			"logFile":    server.logFile,
-		})
+		resp := map[string]interface{}{
+			"status":  "ok",
+			"version": version,
+			"logs": map[string]interface{}{
+				"entries":    server.getEntryCount(),
+				"maxEntries": server.maxEntries,
+				"logFile":    server.logFile,
+			},
+		}
+
+		if capture != nil {
+			health := capture.GetHealthStatus()
+			capture.mu.RLock()
+			resp["buffers"] = map[string]interface{}{
+				"websocket_events": len(capture.wsEvents),
+				"network_bodies":   len(capture.networkBodies),
+				"actions":          len(capture.enhancedActions),
+				"connections":      len(capture.connections),
+			}
+			capture.mu.RUnlock()
+			resp["circuit"] = map[string]interface{}{
+				"open":         health.CircuitOpen,
+				"current_rate": health.CurrentRate,
+				"memory_bytes": health.MemoryBytes,
+				"reason":       health.Reason,
+				"opened_at":    health.OpenedAt,
+			}
+		}
+
+		jsonResponse(w, http.StatusOK, resp)
 	}))
 
 	http.HandleFunc("/logs", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {

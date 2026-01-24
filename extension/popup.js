@@ -99,7 +99,7 @@ export function updateConnectionStatus(status) {
     // Show/hide entire section
     const cbVisible = status.connected && cbState !== 'closed'
     const mpVisible = status.connected && mpState !== 'normal'
-    healthSection.style.display = (cbVisible || mpVisible) ? '' : 'none'
+    healthSection.style.display = cbVisible || mpVisible ? '' : 'none'
   }
 
   // Context annotation warning

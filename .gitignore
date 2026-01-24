@@ -32,12 +32,9 @@ e2e-tests/playwright-report/
 # Agent lock file (advisory, per-machine)
 .agent-locks.json
 
-# Claude Code local state (not instructions)
+# Claude Code sessions (ephemeral, not backed up)
 .claude/sessions/
 coverage.out
 
 # Runtime state
 .gasoline/
-
-# Marketing (private)
-docs/marketing/
