@@ -37,20 +37,56 @@ A noise rule has:
 - A creation timestamp
 - An optional reason string (for dismissed patterns)
 
-### Built-in Rules
+### Built-in Rules (Global)
 
-The server ships with these always-active rules:
+The server ships with ~50 always-active rules organized by category. These represent universal browser noise that applies regardless of project. They cannot be removed.
+
+**Browser internals:**
 - Console messages from chrome-extension:// or moz-extension:// sources
 - Network requests to favicon.ico
 - Source map 404s (.map files returning 4xx)
-- Console messages starting with [HMR], [vite], [webpack], or [next]
-- Network requests to HMR/Vite/webpack hot-update URLs
-- React DevTools download prompts
 - CORS preflight (OPTIONS 2xx)
-- Analytics domains (Google Analytics, Segment, Mixpanel, Hotjar, Amplitude, Plausible, PostHog)
 - Service worker lifecycle info messages
 - "Added non-passive event listener" warnings
 - [Deprecation] warnings
+- "DevTools failed to load source map" messages
+- net::ERR_BLOCKED_BY_CLIENT (ad blockers)
+- "Indicate whether to send a cookie" SameSite warnings
+
+**Dev tooling:**
+- Console messages starting with [HMR], [vite], [webpack], or [next]
+- Network requests to HMR/Vite/webpack hot-update URLs (__vite_ping, *.hot-update.json, sockjs-node, _next/webpack-hmr)
+- React DevTools download prompts
+- "Download the React DevTools" message
+- Angular debug mode messages
+- Vue.js devtools connection messages
+- Svelte HMR messages
+
+**Analytics & tracking:**
+- Network requests to: Google Analytics (google-analytics.com, analytics.google.com), Segment (api.segment.io, cdn.segment.com), Mixpanel (api.mixpanel.com), Hotjar (*.hotjar.com), Amplitude (api.amplitude.com), Plausible (plausible.io), PostHog (app.posthog.com), Datadog RUM (rum.browser-intake-*.datadoghq.com), Sentry (*.ingest.sentry.io), LogRocket, FullStory, Heap
+
+**Framework noise (activated by framework detection):**
+- React: "Warning: Each child in a list should have a unique key", strict mode double-render logs, "Cannot update a component while rendering a different component"
+- Next.js: "next-dev.js" internal messages, hydration mismatch warnings (info-level only, not errors), Fast Refresh messages
+- Vite: plugin resolution messages, dependency pre-bundling logs
+- Angular: "Angular is running in development mode"
+- Create React App: "The development server has disconnected"
+
+### Framework Detection
+
+The server auto-detects the project's framework by scanning network requests and page scripts for signatures:
+
+| Framework | Detection signals |
+|-----------|------------------|
+| React | `react.development.js` in scripts, `__REACT_DEVTOOLS_GLOBAL_HOOK__` in console sources |
+| Next.js | `/_next/` URL prefix, `__NEXT_DATA__` in page |
+| Vite | `/@vite/client` in scripts, `__vite_ping` requests |
+| Webpack | `webpack-dev-server` in requests, `webpackHotUpdate` in scripts |
+| Angular | `angular.js` or `@angular/core` in scripts |
+| Svelte | `svelte-hmr` in requests |
+| Vue | `vue.js` or `@vue` in scripts |
+
+Framework-specific rules are only active when the framework is detected. Detection runs once on the first batch of captured data and caches the result for the session.
 
 These cannot be removed.
 
@@ -116,13 +152,19 @@ A WebSocket event is noise if any rule with category "websocket" has a URL regex
 
 ## Auto-Detection
 
-The `auto_detect` action scans current buffers looking for noise patterns:
+The `auto_detect` action scans current buffers looking for noise patterns using four heuristics:
 
-1. **Frequency analysis** — Console messages that repeat 10+ times (after fingerprinting) are candidates. Confidence scales with count: 0.7 base + count/100, capped at 0.99.
-2. **Source analysis** — Console entries from chrome-extension://, moz-extension://, or node_modules paths are flagged.
-3. **Network frequency** — URL paths hit 20+ times that look like infrastructure (/health, /ping, /ready, /__*, /sockjs-node, /ws) are flagged with 0.8 confidence.
+1. **Frequency analysis** — Console messages that repeat 10+ times (after fingerprinting by stripping numbers/hashes) are candidates. Confidence scales with count: 0.7 base + count/100, capped at 0.99.
 
-Rules with confidence ≥ 0.9 are automatically applied. All proposals are returned to the agent regardless so it can review and add lower-confidence ones manually.
+2. **Source analysis** — Console entries from chrome-extension://, moz-extension://, or node_modules paths are flagged with 0.85 confidence.
+
+3. **Periodicity detection** — Network requests or WebSocket messages arriving at regular intervals (±10% jitter tolerance) are flagged as infrastructure. Examples: health checks every 10s, analytics pings every 30s, keepalive every 60s. Confidence: 0.8 for clear periodicity (≥3 intervals observed). The server tracks inter-arrival times per URL path and flags paths where the standard deviation of intervals is less than 10% of the mean.
+
+4. **Entropy scoring** — Console messages are scored by information content. Messages that are mostly static (low unique token ratio after fingerprinting) score low entropy. A message like "Rendering component X" repeated with different component names has higher entropy than "[HMR] Updated 1 modules" which is nearly identical each time. Low-entropy messages (score < 0.3) with 5+ occurrences are flagged with 0.75 confidence.
+
+5. **Network frequency** — URL paths hit 20+ times that look like infrastructure (/health, /ping, /ready, /__*, /sockjs-node, /ws) are flagged with 0.8 confidence.
+
+Rules with confidence ≥ 0.9 are automatically applied. All proposals are returned to the agent regardless so it can review and add lower-confidence ones manually. The AI agent is the final decision-maker for ambiguous cases.
 
 Auto-detection skips patterns already covered by existing rules to avoid duplicates.
 
