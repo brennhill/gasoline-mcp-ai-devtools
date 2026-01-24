@@ -383,7 +383,7 @@ func TestV4PostWebSocketEventsInvalidJSON(t *testing.T) {
 func TestMCPGetWebSocketEvents(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	// Add some WebSocket events
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -400,7 +400,7 @@ func TestMCPGetWebSocketEvents(t *testing.T) {
 	// Call get_websocket_events tool
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_websocket_events","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"websocket_events"}}`),
 	})
 
 	if resp.Error != nil {
@@ -433,7 +433,7 @@ func TestMCPGetWebSocketEvents(t *testing.T) {
 func TestMCPGetWebSocketEventsWithFilter(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "message", Direction: "incoming"},
@@ -448,7 +448,7 @@ func TestMCPGetWebSocketEventsWithFilter(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_websocket_events","arguments":{"connection_id":"uuid-1","direction":"incoming"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"websocket_events","connection_id":"uuid-1","direction":"incoming"}}`),
 	})
 
 	var result struct {
@@ -469,7 +469,7 @@ func TestMCPGetWebSocketEventsWithFilter(t *testing.T) {
 func TestMCPGetWebSocketStatus(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
 		{ID: "uuid-1", Event: "open", URL: "wss://chat.example.com/ws"},
@@ -483,7 +483,7 @@ func TestMCPGetWebSocketStatus(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_websocket_status","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"websocket_status"}}`),
 	})
 
 	if resp.Error != nil {
@@ -510,7 +510,7 @@ func TestMCPGetWebSocketStatus(t *testing.T) {
 func TestMCPGetWebSocketEventsEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -519,7 +519,7 @@ func TestMCPGetWebSocketEventsEmpty(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_websocket_events","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"websocket_events"}}`),
 	})
 
 	var result struct {

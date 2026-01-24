@@ -84,7 +84,7 @@ func TestV4NetworkBodiesBufferMemoryLimit(t *testing.T) {
 func TestMCPToolsListIncludesV4Tools(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -108,15 +108,11 @@ func TestMCPToolsListIncludesV4Tools(t *testing.T) {
 	}
 
 	expectedTools := []string{
-		"get_browser_errors",
-		"get_browser_logs",
-		"clear_browser_logs",
-		"get_websocket_events",
-		"get_websocket_status",
-		"get_network_bodies",
+		"observe",
+		"analyze",
+		"generate",
+		"configure",
 		"query_dom",
-		"get_page_info",
-		"run_accessibility_audit",
 	}
 
 	for _, name := range expectedTools {
@@ -129,7 +125,7 @@ func TestMCPToolsListIncludesV4Tools(t *testing.T) {
 func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	// Add a log entry with _aiContext field (as extension would send)
 	entry := LogEntry{
@@ -159,7 +155,7 @@ func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_browser_errors","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
 	})
 
 	if resp.Error != nil {
@@ -180,7 +176,7 @@ func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
 	// The _aiContext should be preserved in the output
 	responseText := result.Content[0].Text
 	if !strings.Contains(responseText, "_aiContext") {
-		t.Error("Expected _aiContext field to be preserved in get_browser_errors output")
+		t.Error("Expected _aiContext field to be preserved in observe(what:errors) output")
 	}
 	if !strings.Contains(responseText, "componentAncestry") {
 		t.Error("Expected componentAncestry in _aiContext to be preserved")
@@ -331,7 +327,7 @@ func TestV4MemoryExceededHeaderInResponse(t *testing.T) {
 func TestMCPToolsListIncludesV5Tools(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -355,8 +351,8 @@ func TestMCPToolsListIncludesV5Tools(t *testing.T) {
 	}
 
 	v5Tools := []string{
-		"get_enhanced_actions",
-		"get_reproduction_script",
+		"observe",
+		"generate",
 	}
 
 	for _, name := range v5Tools {
@@ -369,7 +365,7 @@ func TestMCPToolsListIncludesV5Tools(t *testing.T) {
 func TestMCPHTTPEndpointToolsList(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	body := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
 	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
@@ -407,9 +403,9 @@ func TestMCPHTTPEndpointToolsList(t *testing.T) {
 func TestMCPHTTPEndpointToolCall(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
-	body := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_browser_logs","arguments":{}}}`
+	body := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"observe","arguments":{"what":"logs"}}}`
 	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -431,7 +427,7 @@ func TestMCPHTTPEndpointToolCall(t *testing.T) {
 func TestMCPHTTPEndpointMethodNotAllowed(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	req := httptest.NewRequest("GET", "/mcp", nil)
 	rec := httptest.NewRecorder()
@@ -446,7 +442,7 @@ func TestMCPHTTPEndpointMethodNotAllowed(t *testing.T) {
 func TestMCPHTTPEndpointInvalidJSON(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString("not json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -472,7 +468,7 @@ func TestMCPHTTPEndpointInvalidJSON(t *testing.T) {
 func TestMCPHTTPEndpointUnknownMethod(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	body := `{"jsonrpc":"2.0","id":3,"method":"unknown/method"}`
 	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
@@ -499,9 +495,9 @@ func TestMCPHTTPEndpointUnknownMethod(t *testing.T) {
 func TestMCPHTTPEndpointV4ToolCall(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
-	body := `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_websocket_events","arguments":{}}}`
+	body := `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"observe","arguments":{"what":"websocket_events"}}}`
 	req := httptest.NewRequest("POST", "/mcp", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()

@@ -421,7 +421,63 @@ Removed — opaque hashes aren't human-verifiable. DOM queries already provide d
 | 8 | Named Checkpoints | Trivial | Medium | To specify |
 | — | Persistent Memory | High | Low (now) | Deferred |
 | — | Context Streaming | High | Zero (now) | Deferred |
+| 9 | Sparky Rollout (Wave 1) | Low | High | Planned |
+| 10 | Sparky Rollout (Waves 2-4) | Medium | Medium | Planned |
 | ~~—~~ | ~~Behavioral Baselines~~ | High | Low | Killed |
+
+---
+
+## <i class="fas fa-fire"></i> Marketing & Brand: Sparky Rollout
+
+**Status:** Planned
+{: .notice}
+
+Sparky is the Gasoline mascot — a friendly anthropomorphic salamander with fire-colored gradient skin and thick outlines, distinct from the abstract logo flame. See [Brand Guidelines](/brand/#mascot-sparky) for design specs. Minimum size: 48px. Only appears where there's room for a pose.
+
+### Wave 1: High-Traffic Pages
+
+| Page | Location | Pose |
+|------|----------|------|
+| Homepage | Hero section, beside "Gasoline" title | Leaning against the "G", arms crossed, one eyebrow raised |
+| Homepage | Pipeline diagram, in the arrow between Server → AI | Riding the arrow like a log flume, arms up |
+| Getting Started | "Ignite the Server" header | Striking a match on his own head |
+| Getting Started | "Verify the Flame" header | Peeking out from behind a terminal, thumbs-up |
+| Getting Started | Bottom of page | Chef's kiss, tiny chef hat — "now you're cooking" |
+| 404 Page | Center, large | Holding a crumpled map upside-down, flame flickering low |
+
+### Wave 2: Feature & Trust Pages
+
+| Page | Location | Pose |
+|------|----------|------|
+| Features | Page hero | Holding a magnifying glass, squinting |
+| Features | WebSocket section header | Two tin cans connected by wire, listening |
+| Features | Screenshots section header | Posing with camera, flash going off |
+| Security | Page hero | Wearing sunglasses, bouncer stance |
+| Security | Data flow diagram boundary line | Sitting on the line, legs dangling |
+| Security | "Zero Network Calls" header | Unplugging an ethernet cable, smirking |
+| Privacy | "100% Local" header | Hugging a tiny server rack protectively |
+
+### Wave 3: Secondary Pages
+
+| Page | Location | Pose |
+|------|----------|------|
+| Configuration | Page hero | Turning a dial/knob, tongue out in concentration |
+| Alternatives | Comparison table area | Standing on #1 podium, tiny trophy, waving |
+| MCP Integration | "How MCP Mode Works" flow | Riding a fuel pipe like a waterslide |
+| Roadmap | Phase headers (3x) | Growing from tiny ember → medium flame → roaring fire |
+| Blog | Index header | Sitting at a tiny desk, quill pen, ink spot on cheek |
+| Troubleshooting | Page hero | Hard hat, holding a wrench bigger than himself |
+
+### Wave 4: Demo App
+
+| Page | Location | Pose |
+|------|----------|------|
+| Error states | Toast/banner | Wincing, one eye closed, holding a fire extinguisher |
+| Empty states | "No data" messages | Sitting cross-legged, meditating, eyes closed |
+| WebSocket disconnect | Status indicator | Flickering/dimming, reaching toward a severed wire |
+| Homepage footer | Below nav | Asleep on a campfire, single "z" ember rising |
+
+**Effort:** Asset creation (illustration), then drop-in placement. No code architecture changes.
 
 ---
 

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Gasoline",
   "version": "4.5.0",
-  "description": "Captures browser console logs, network errors, and exceptions for AI coding assistants (Claude, Cursor, etc.)",
+  "description": "Browser observability for AI coding agents. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time.",
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",

@@ -229,7 +229,7 @@ func TestV4PostNetworkBodiesInvalidJSON(t *testing.T) {
 func TestMCPGetNetworkBodies(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "/api/users", Method: "GET", Status: 200, ResponseBody: `[{"id":1}]`},
@@ -243,7 +243,7 @@ func TestMCPGetNetworkBodies(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_network_bodies","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network"}}`),
 	})
 
 	if resp.Error != nil {
@@ -268,7 +268,7 @@ func TestMCPGetNetworkBodies(t *testing.T) {
 func TestMCPGetNetworkBodiesWithFilter(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddNetworkBodies([]NetworkBody{
 		{URL: "/api/users", Method: "GET", Status: 200},
@@ -282,7 +282,7 @@ func TestMCPGetNetworkBodiesWithFilter(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_network_bodies","arguments":{"status_min":400}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network","status_min":400}}`),
 	})
 
 	var result struct {
@@ -303,7 +303,7 @@ func TestMCPGetNetworkBodiesWithFilter(t *testing.T) {
 func TestMCPGetNetworkBodiesEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -312,7 +312,7 @@ func TestMCPGetNetworkBodiesEmpty(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_network_bodies","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network"}}`),
 	})
 
 	var result struct {

@@ -9,7 +9,7 @@ import (
 func TestMCPGetReproductionScript(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "login-btn"}},
@@ -23,7 +23,7 @@ func TestMCPGetReproductionScript(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"reproduction"}}`),
 	})
 
 	if resp.Error != nil {
@@ -54,7 +54,7 @@ func TestMCPGetReproductionScript(t *testing.T) {
 func TestMCPGetReproductionScriptWithErrorMessage(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "submit-btn"}},
@@ -67,7 +67,7 @@ func TestMCPGetReproductionScriptWithErrorMessage(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{"error_message":"Cannot read property 'user' of undefined"}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"reproduction","error_message":"Cannot read property 'user' of undefined"}}`),
 	})
 
 	var result struct {
@@ -87,7 +87,7 @@ func TestMCPGetReproductionScriptWithErrorMessage(t *testing.T) {
 func TestMCPGetReproductionScriptWithLastN(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	for i := 0; i < 10; i++ {
 		capture.AddEnhancedActions([]EnhancedAction{
@@ -102,7 +102,7 @@ func TestMCPGetReproductionScriptWithLastN(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{"last_n_actions":3}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"reproduction","last_n_actions":3}}`),
 	})
 
 	var result struct {
@@ -124,7 +124,7 @@ func TestMCPGetReproductionScriptWithLastN(t *testing.T) {
 func TestMCPGetReproductionScriptWithBaseURL(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
@@ -138,7 +138,7 @@ func TestMCPGetReproductionScriptWithBaseURL(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{"base_url":"https://staging.example.com"}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"reproduction","base_url":"https://staging.example.com"}}`),
 	})
 
 	var result struct {
@@ -159,7 +159,7 @@ func TestMCPGetReproductionScriptWithBaseURL(t *testing.T) {
 func TestMCPGetReproductionScriptEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -168,7 +168,7 @@ func TestMCPGetReproductionScriptEmpty(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"reproduction"}}`),
 	})
 
 	var result struct {
@@ -186,7 +186,7 @@ func TestMCPGetReproductionScriptEmpty(t *testing.T) {
 func TestMCPGetReproductionScriptSelectorPriority(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddEnhancedActions([]EnhancedAction{
 		{
@@ -219,7 +219,7 @@ func TestMCPGetReproductionScriptSelectorPriority(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"reproduction"}}`),
 	})
 
 	var result struct {
@@ -250,7 +250,7 @@ func TestMCPGetReproductionScriptSelectorPriority(t *testing.T) {
 func TestMCPGetReproductionScriptInputActions(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "input", Timestamp: 1000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "email-input"}, Value: "user@test.com", InputType: "email"},
@@ -266,7 +266,7 @@ func TestMCPGetReproductionScriptInputActions(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"reproduction"}}`),
 	})
 
 	var result struct {
@@ -302,7 +302,7 @@ func TestMCPGetReproductionScriptInputActions(t *testing.T) {
 func TestMCPGetReproductionScriptPauseComments(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000", Selectors: map[string]interface{}{"testId": "btn1"}},
@@ -316,7 +316,7 @@ func TestMCPGetReproductionScriptPauseComments(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_reproduction_script","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"reproduction"}}`),
 	})
 
 	var result struct {
@@ -931,7 +931,7 @@ func TestGenerateTestScriptEmpty(t *testing.T) {
 func TestMCPGetSessionTimeline(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1705312200000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
@@ -951,7 +951,7 @@ func TestMCPGetSessionTimeline(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_session_timeline","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"timeline"}}`),
 	})
 
 	if resp.Error != nil {
@@ -991,7 +991,7 @@ func TestMCPGetSessionTimeline(t *testing.T) {
 func TestMCPGetSessionTimelineWithLastN(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	for i := 0; i < 10; i++ {
 		capture.AddEnhancedActions([]EnhancedAction{
@@ -1006,7 +1006,7 @@ func TestMCPGetSessionTimelineWithLastN(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_session_timeline","arguments":{"last_n_actions":3}}`),
+		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"timeline","last_n_actions":3}}`),
 	})
 
 	var result struct {
@@ -1027,7 +1027,7 @@ func TestMCPGetSessionTimelineWithLastN(t *testing.T) {
 func TestMCPGetSessionTimelineEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1036,7 +1036,7 @@ func TestMCPGetSessionTimelineEmpty(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_session_timeline","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"timeline"}}`),
 	})
 
 	var result struct {
@@ -1054,7 +1054,7 @@ func TestMCPGetSessionTimelineEmpty(t *testing.T) {
 func TestMCPGenerateTest(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1705312200000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "login-btn"}},
@@ -1071,7 +1071,7 @@ func TestMCPGenerateTest(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"generate_test","arguments":{"test_name":"login test","assert_network":true,"assert_no_errors":true}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"test","test_name":"login test","assert_network":true,"assert_no_errors":true}}`),
 	})
 
 	if resp.Error != nil {
@@ -1107,7 +1107,7 @@ func TestMCPGenerateTest(t *testing.T) {
 func TestMCPGenerateTestWithBaseURL(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "btn"}},
@@ -1120,7 +1120,7 @@ func TestMCPGenerateTestWithBaseURL(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"generate_test","arguments":{"base_url":"https://staging.example.com"}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"test","base_url":"https://staging.example.com"}}`),
 	})
 
 	var result struct {
@@ -1142,7 +1142,7 @@ func TestMCPGenerateTestWithBaseURL(t *testing.T) {
 func TestMCPGenerateTestEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1151,7 +1151,7 @@ func TestMCPGenerateTestEmpty(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"generate_test","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"test"}}`),
 	})
 
 	var result struct {
@@ -1169,7 +1169,7 @@ func TestMCPGenerateTestEmpty(t *testing.T) {
 func TestMCPGenerateTestToolInToolsList(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1187,22 +1187,22 @@ func TestMCPGenerateTestToolInToolsList(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
-	foundTimeline := false
+	foundAnalyze := false
 	foundGenerate := false
 	for _, tool := range result.Tools {
-		if tool.Name == "get_session_timeline" {
-			foundTimeline = true
+		if tool.Name == "analyze" {
+			foundAnalyze = true
 		}
-		if tool.Name == "generate_test" {
+		if tool.Name == "generate" {
 			foundGenerate = true
 		}
 	}
 
-	if !foundTimeline {
-		t.Error("Expected get_session_timeline in tools list")
+	if !foundAnalyze {
+		t.Error("Expected analyze in tools list")
 	}
 	if !foundGenerate {
-		t.Error("Expected generate_test in tools list")
+		t.Error("Expected generate in tools list")
 	}
 }
 
@@ -1528,7 +1528,7 @@ func TestOneLinerNoPerformanceData(t *testing.T) {
 func TestMCPGeneratePRSummaryTool(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	fcp1 := 800.0
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
@@ -1553,7 +1553,7 @@ func TestMCPGeneratePRSummaryTool(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"generate_pr_summary","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"pr_summary"}}`),
 	})
 
 	if resp.Error != nil {
@@ -1576,7 +1576,7 @@ func TestMCPGeneratePRSummaryTool(t *testing.T) {
 func TestMCPGeneratePRSummaryToolInToolsList(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1594,14 +1594,14 @@ func TestMCPGeneratePRSummaryToolInToolsList(t *testing.T) {
 
 	found := false
 	for _, tool := range result.Tools {
-		if tool.Name == "generate_pr_summary" {
+		if tool.Name == "generate" {
 			found = true
 			break
 		}
 	}
 
 	if !found {
-		t.Error("Expected generate_pr_summary in tools list")
+		t.Error("Expected generate in tools list")
 	}
 }
 

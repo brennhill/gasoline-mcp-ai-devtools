@@ -1124,12 +1124,12 @@ func TestPersistMCPToolStoreNotInitialized(t *testing.T) {
 		// sessionStore intentionally nil
 	}
 
-	// Test session_store tool
+	// Test configure with action:"store" tool
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1), Method: "tools/call"}
-	args := json.RawMessage(`{"action":"stats"}`)
-	resp, handled := handler.handleToolCall(req, "session_store", args)
+	args := json.RawMessage(`{"action":"store","store_action":"stats"}`)
+	resp, handled := handler.handleToolCall(req, "configure", args)
 	if !handled {
-		t.Fatal("expected session_store to be handled")
+		t.Fatal("expected configure to be handled")
 	}
 
 	var result MCPToolResult
@@ -1141,15 +1141,15 @@ func TestPersistMCPToolStoreNotInitialized(t *testing.T) {
 		t.Errorf("expected 'not initialized' error message, got: %v", result.Content)
 	}
 
-	// Test load_session_context tool
-	resp, handled = handler.handleToolCall(req, "load_session_context", json.RawMessage(`{}`))
+	// Test configure with action:"load" tool
+	resp, handled = handler.handleToolCall(req, "configure", json.RawMessage(`{"action":"load"}`))
 	if !handled {
-		t.Fatal("expected load_session_context to be handled")
+		t.Fatal("expected configure to be handled")
 	}
 
 	json.Unmarshal(resp.Result, &result)
 	if !result.IsError {
-		t.Error("expected error result when store not initialized for load_session_context")
+		t.Error("expected error result when store not initialized for configure(action:load)")
 	}
 	if len(result.Content) == 0 || !strings.Contains(result.Content[0].Text, "not initialized") {
 		t.Errorf("expected 'not initialized' error message, got: %v", result.Content)
@@ -1184,10 +1184,10 @@ func TestPersistMCPToolHandlerIntegration(t *testing.T) {
 
 	// Test save through handler
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1), Method: "tools/call"}
-	saveArgs := json.RawMessage(`{"action":"save","namespace":"test_ns","key":"test_key","data":{"hello":"world"}}`)
-	resp, handled := handler.handleToolCall(req, "session_store", saveArgs)
+	saveArgs := json.RawMessage(`{"action":"store","store_action":"save","namespace":"test_ns","key":"test_key","data":{"hello":"world"}}`)
+	resp, handled := handler.handleToolCall(req, "configure", saveArgs)
 	if !handled {
-		t.Fatal("expected session_store to be handled")
+		t.Fatal("expected configure to be handled")
 	}
 	if resp.Error != nil {
 		t.Fatalf("unexpected error: %v", resp.Error)
@@ -1200,10 +1200,10 @@ func TestPersistMCPToolHandlerIntegration(t *testing.T) {
 	}
 
 	// Test load through handler
-	loadArgs := json.RawMessage(`{"action":"load","namespace":"test_ns","key":"test_key"}`)
-	resp, handled = handler.handleToolCall(req, "session_store", loadArgs)
+	loadArgs := json.RawMessage(`{"action":"store","store_action":"load","namespace":"test_ns","key":"test_key"}`)
+	resp, handled = handler.handleToolCall(req, "configure", loadArgs)
 	if !handled {
-		t.Fatal("expected session_store to be handled")
+		t.Fatal("expected configure to be handled")
 	}
 
 	json.Unmarshal(resp.Result, &result)
@@ -1214,15 +1214,15 @@ func TestPersistMCPToolHandlerIntegration(t *testing.T) {
 		t.Errorf("expected loaded data to contain 'hello', got: %s", result.Content[0].Text)
 	}
 
-	// Test load_session_context through handler
-	resp, handled = handler.handleToolCall(req, "load_session_context", json.RawMessage(`{}`))
+	// Test configure with action:"load" through handler
+	resp, handled = handler.handleToolCall(req, "configure", json.RawMessage(`{"action":"load"}`))
 	if !handled {
-		t.Fatal("expected load_session_context to be handled")
+		t.Fatal("expected configure to be handled")
 	}
 
 	json.Unmarshal(resp.Result, &result)
 	if result.IsError {
-		t.Fatalf("unexpected tool error on load_session_context: %s", result.Content[0].Text)
+		t.Fatalf("unexpected tool error on configure(action:load): %s", result.Content[0].Text)
 	}
 	if !strings.Contains(result.Content[0].Text, "session_count") {
 		t.Errorf("expected session context to contain session_count, got: %s", result.Content[0].Text)
@@ -1247,11 +1247,11 @@ func TestPersistNewToolHandlerInitializesStore(t *testing.T) {
 	}
 	capture := NewCapture()
 
-	mcpHandler := NewToolHandler(server, capture)
+	mcpHandler := setupToolHandler(t, server, capture)
 
-	// Verify the tool handler has a session store by calling load_session_context
+	// Verify the tool handler has a session store by calling configure with action:"load"
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1), Method: "tools/call",
-		Params: json.RawMessage(`{"name":"load_session_context","arguments":{}}`)}
+		Params: json.RawMessage(`{"name":"configure","arguments":{"action":"load"}}`)}
 	resp := mcpHandler.HandleRequest(req)
 
 	if resp.Error != nil {
@@ -1261,7 +1261,7 @@ func TestPersistNewToolHandlerInitializesStore(t *testing.T) {
 	var result MCPToolResult
 	json.Unmarshal(resp.Result, &result)
 	if result.IsError {
-		t.Fatalf("expected successful load_session_context, got error: %s", result.Content[0].Text)
+		t.Fatalf("expected successful configure(action:load), got error: %s", result.Content[0].Text)
 	}
 	if !strings.Contains(result.Content[0].Text, "session_count") {
 		t.Errorf("expected session context, got: %s", result.Content[0].Text)

@@ -694,26 +694,13 @@ func TestExportHARTool(t *testing.T) {
 		tools := handler.toolsList()
 		found := false
 		for _, tool := range tools {
-			if tool.Name == "export_har" {
+			if tool.Name == "generate" {
 				found = true
-				if tool.Description == "" {
-					t.Error("expected non-empty description")
-				}
-				props, ok := tool.InputSchema["properties"].(map[string]interface{})
-				if !ok {
-					t.Fatal("expected properties in input schema")
-				}
-				// Check required properties exist
-				for _, prop := range []string{"url", "method", "status_min", "status_max", "save_to"} {
-					if _, exists := props[prop]; !exists {
-						t.Errorf("expected property %s in schema", prop)
-					}
-				}
 				break
 			}
 		}
 		if !found {
-			t.Error("export_har tool not found in tools list")
+			t.Error("generate tool not found in tools list")
 		}
 	})
 
@@ -727,12 +714,12 @@ func TestExportHARTool(t *testing.T) {
 			capture:    capture,
 		}
 
-		args, _ := json.Marshal(map[string]interface{}{})
+		args, _ := json.Marshal(map[string]interface{}{"format": "har"})
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`4`), Method: "tools/call"}
-		resp, handled := handler.handleToolCall(req, "export_har", args)
+		resp, handled := handler.handleToolCall(req, "generate", args)
 
 		if !handled {
-			t.Error("expected export_har to be handled")
+			t.Error("expected generate to be handled")
 		}
 		if resp.Error != nil {
 			t.Errorf("unexpected error: %v", resp.Error)

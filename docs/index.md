@@ -1,7 +1,7 @@
 ---
-title: "Gasoline — Fuel for the AI Fire"
-description: "Enterprise-ready, vendor-neutral browser debugging for AI. Capture console logs, network errors, WebSocket events, and DOM state — 100% local, zero data shared with any provider."
-keywords: "browser debugging, MCP server, AI coding assistant, enterprise browser debugging, vendor neutral MCP, local AI debugging, no data sharing, Claude Code, Cursor, Windsurf"
+title: "Gasoline — Browser Observability for AI Coding Agents"
+description: "Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time."
+keywords: "autonomous coding agent, browser debugging, MCP server, AI coding assistant, agentic debugging, vendor neutral MCP, local AI debugging, Claude Code, Cursor, Windsurf"
 layout: splash
 permalink: /
 header:
@@ -11,18 +11,18 @@ header:
       url: /getting-started/
     - label: "GitHub"
       url: "https://github.com/brennhill/gasoline"
-excerpt: "Vendor-neutral. Enterprise-ready. Zero data shared with any provider. Gasoline captures browser logs, network failures, exceptions, and WebSocket events — and feeds them to any MCP-compatible AI assistant, entirely on your machine."
+excerpt: "Browser observability for AI coding agents. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time."
 ---
 
 ## Now You're Cooking
 
-One command. Your AI assistant can see your browser.
+One command. Your AI agent can see your browser.
 
 ```bash
 npx gasoline-mcp
 ```
 
-Gasoline is a **browser extension + local MCP server** that fuels AI coding assistants with real-time browser data. Console errors, failed API calls, uncaught exceptions, WebSocket traffic, live DOM state — your AI sees it all without you lifting a finger.
+Gasoline is a **browser extension + local MCP server** that streams real-time browser data to autonomous coding agents. Console errors, failed API calls, uncaught exceptions, WebSocket traffic, live DOM state — your AI sees it all and fixes issues without you lifting a finger.
 
 ## Smart Teams Cook With Gasoline
 
@@ -81,7 +81,7 @@ Gasoline implements the open **[Model Context Protocol](https://modelcontextprot
 - **[Zed](/mcp-integration/zed/)** — `~/.config/zed/settings.json`
 - **VS Code + Continue** — `~/.continue/config.json`
 
-Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your tool speaks MCP, Gasoline fuels it.
+Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your agent speaks MCP, Gasoline fuels it.
 
 ## The Pipeline
 

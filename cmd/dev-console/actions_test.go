@@ -222,7 +222,7 @@ func TestV5PostEnhancedActionsPasswordRedaction(t *testing.T) {
 func TestMCPGetEnhancedActions(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.AddEnhancedActions([]EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/login", Selectors: map[string]interface{}{"testId": "login-btn"}},
@@ -236,7 +236,7 @@ func TestMCPGetEnhancedActions(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_enhanced_actions","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"actions"}}`),
 	})
 
 	if resp.Error != nil {
@@ -267,7 +267,7 @@ func TestMCPGetEnhancedActions(t *testing.T) {
 func TestMCPGetEnhancedActionsWithLastN(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	for i := 0; i < 10; i++ {
 		capture.AddEnhancedActions([]EnhancedAction{
@@ -282,7 +282,7 @@ func TestMCPGetEnhancedActionsWithLastN(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_enhanced_actions","arguments":{"last_n":5}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"actions","last_n":5}}`),
 	})
 
 	var result struct {
@@ -303,7 +303,7 @@ func TestMCPGetEnhancedActionsWithLastN(t *testing.T) {
 func TestMCPGetEnhancedActionsEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -312,7 +312,7 @@ func TestMCPGetEnhancedActionsEmpty(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_enhanced_actions","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"actions"}}`),
 	})
 
 	var result struct {

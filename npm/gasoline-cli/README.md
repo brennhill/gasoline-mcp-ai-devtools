@@ -1,6 +1,6 @@
 # gasoline-mcp
 
-**Adding fuel to the AI fire.** Captures browser console logs, network errors, and exceptions for your AI coding assistant via MCP.
+**Browser observability for AI coding agents.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time.
 
 ## Setup (2 Steps)
 

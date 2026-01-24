@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="chrome_store_files/readme-banner.png" alt="Gasoline - Fuel for the AI Fire" width="100%" />
+<img src="chrome_store_files/readme-banner.png" alt="Gasoline - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-4.5.0-green.svg)](https://github.com/brennhill/gasoline/releases)
@@ -12,7 +12,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/gasoline/pulls)
 [![X Follow](https://img.shields.io/badge/follow-%40gasolinedev-000000.svg?logo=x&logoColor=white)](https://x.com/gasolinedev)
 
-**Stop copy-pasting browser errors.** Gasoline captures console logs, network errors, exceptions, WebSocket events, and more from your browser and makes them available to your AI coding assistant via MCP.
+**Browser observability for AI coding agents.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time.
 
 [Documentation](https://cookwithgasoline.com) •
 [Quick Start](https://cookwithgasoline.com/getting-started/) •

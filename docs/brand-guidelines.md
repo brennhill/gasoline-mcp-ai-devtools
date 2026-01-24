@@ -8,9 +8,9 @@ toc_sticky: true
 
 ## Brand Essence
 
-**Gasoline fuels the fire.** The brand leans into the cooking-with-fire metaphor — raw, essential, high-energy. Gasoline isn't a polished consumer product; it's the fuel that makes AI assistants burn brighter.
+**Gasoline fuels the fire.** The brand leans into the cooking-with-fire metaphor — raw, essential, high-energy. Gasoline isn't a polished consumer product; it's the fuel that makes autonomous coding agents burn brighter.
 
-**Tagline:** Fuel for the AI Fire
+**Tagline:** Browser observability for AI coding agents
 
 **Domain:** cookwithgasoline.com — a nod to the idiom "now we're cooking with gas" (meaning things are going well, working efficiently).
 
@@ -42,6 +42,24 @@ toc_sticky: true
 | | Muted | `#9BA3B0` | Subtitles, captions, secondary text |
 | | Border | `#3A4556` | Dividers, card borders, table lines |
 
+### Icon Gradient (Image Generation & Marketing)
+
+The flame icon uses a richer multi-stop gradient for visual impact at larger sizes. Use these values for image generation, marketing assets, social banners, and any context where the flame needs to feel vibrant and dimensional.
+
+| Swatch | Name | Hex | Usage |
+|--------|------|-----|-------|
+| | Gradient Start | `#f97316` | Outer flame base (orange-500) |
+| | Gradient Mid | `#fb923c` | Outer flame body (orange-400) |
+| | Gradient End | `#fbbf24` | Flame tip / inner start (amber-400) |
+| | Inner Tip | `#fef3c7` | Hottest center point (amber-100) |
+| | Icon Background | `#1a1a1a` | Dark circle behind flame in icon |
+
+**Gradient direction:** Bottom-to-top (`#f97316` at base → `#fef3c7` at tip).
+
+**When to use which palette:**
+- **Primary (Fire Spectrum)** — UI elements, text accents, borders, website components
+- **Icon Gradient** — Image generation, marketing materials, hero graphics, social media, app store assets
+
 ### Logo Circle
 
 | Swatch | Name | Hex | Usage |
@@ -62,6 +80,49 @@ The logo is a stylized flame (teardrop shape) with a gradient from Flame Outer a
 ### Favicon
 
 The flame icon alone, without the circle backdrop, on transparent background.
+
+## Mascot: Sparky
+
+Sparky is the Gasoline brand character — a friendly anthropomorphic salamander with a fire-colored gradient. He is **not** a replacement for the logo flame; he is a separate illustrated asset used where there's room for expression and storytelling.
+
+### Sparky vs. Logo Flame
+
+| | Logo Flame | Sparky |
+|---|-----------|--------|
+| **What** | Abstract flame icon | Anthropomorphic salamander character |
+| **Shape** | Sharp teardrop, symmetrical | Compact upright body, slightly chubby proportions |
+| **Features** | Abstract, no face | Large expressive dark maroon eyes, short stubby limbs, accent markings |
+| **Style** | Flat color or simple gradient | Modern vector with thick defined outlines |
+| **Behavior** | Static, precise | Leans, stretches, reacts, emotes, holds props |
+| **Usage** | Icons, nav, favicons, inline bullets | Illustrations, hero sections, empty states, step guides, error pages |
+| **Minimum size** | 16px | 48px (needs room for expression) |
+
+### Design Principles
+
+- **Salamander, not flame** — Sparky is a character with a body, limbs, and personality. He's fire-*colored*, not fire-shaped.
+- **Thick outlines** — Clean vector style with bold, defined outlines. This is what makes him read well at illustration sizes.
+- **Expressive through pose** — Personality comes from body language. Arms crossed = confident. Arms up = excited. Leaning = casual. No mouth unless the pose demands it (e.g., chef's kiss).
+- **Same gradient** — Skin uses the Icon Gradient palette (`#f97316` → `#fb923c` → `#fbbf24` → `#fef3c7`). Deep orange on extremities/back, golden yellow on belly/tail tip.
+- **Dark eyes** — Large, expressive, dark maroon. The primary point of emotional connection.
+- **Accent markings** — Warm red-orange spots on cheeks and tail for visual interest.
+- **Transparent backgrounds** — Rendered on transparent for maximum reusability. Backgrounds added in post-production.
+- **Never replaces the logo** — The logo flame stays clean and abstract. Sparky lives beside it, not instead of it.
+
+### When to Use Sparky
+
+- Hero sections and marketing illustrations
+- Step-by-step guides (one pose per step)
+- Empty states and 404 pages
+- Section headers with sufficient whitespace
+- Social media and blog graphics
+- Onboarding flows and success confirmations
+
+### When NOT to Use Sparky
+
+- Anywhere the plain logo flame currently appears (nav, favicon, inline icons)
+- Dense UI with no breathing room
+- Formal/enterprise contexts where the abstract logo is more appropriate
+- At sizes below 48px — use the logo flame instead
 
 ## Typography
 
@@ -95,18 +156,18 @@ The flame icon alone, without the circle backdrop, on transparent background.
 ### Naming Conventions
 
 - **Product:** Gasoline (capital G, no "the")
-- **Tagline:** Fuel for the AI Fire
-- **Action verbs:** "captures", "feeds", "fuels", "fires up"
+- **Tagline:** Browser observability for AI coding agents
+- **Action verbs:** "streams", "captures", "fuels", "fires up"
 - **Domain voice:** "Cook with Gasoline" — as in "now we're cooking"
 
 ### Do / Don't
 
 | Do | Don't |
 |----|-------|
-| "Gasoline captures browser errors" | "Our tool helps you with errors" |
+| "Gasoline streams browser errors to your agent" | "Our tool helps you with errors" |
 | "Zero overhead. Zero dependencies." | "We've worked hard to minimize overhead" |
-| "Fire up your AI assistant" | "Start using Gasoline with your AI" |
-| "Fuel your debugging workflow" | "Improve your development experience" |
+| "Fire up your coding agent" | "Start using Gasoline with your AI" |
+| "Fuel your autonomous workflow" | "Improve your development experience" |
 
 ## UI Elements
 

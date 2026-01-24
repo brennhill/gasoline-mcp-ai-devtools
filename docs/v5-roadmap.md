@@ -48,6 +48,68 @@ Help the human verify what the AI observed and decided.
 - [x] **SARIF export** — `export_sarif` MCP tool. A11y audit results → GitHub Code Scanning format. Human sees AI-detected issues in PR review. File: `export_sarif.go`.
 - [x] **HAR export** — `export_har` MCP tool. Network bodies + timing → HTTP Archive format. Human can inspect in Charles Proxy / DevTools. File: `export_har.go`.
 
+## Next: AI-First Tool Surface (architectural refactor)
+
+The tool surface has grown to 24 tools — past the threshold where AI models degrade in tool selection accuracy. This refactor consolidates to 5 composite tools, adds dynamic exposure, and introduces push-based alerts. This is the highest-priority work because it directly affects every AI consumer's ability to use Gasoline effectively.
+
+### Phase 1: Composite Tools (24 → 5)
+
+Collapse granular tools into smart composite tools with mode parameters.
+
+- [x] **`observe`** — Replaces: `get_browser_errors`, `get_browser_logs`, `get_websocket_events`, `get_websocket_status`, `get_network_bodies`, `get_enhanced_actions`, `get_web_vitals`, `get_page_info`. Mode parameter: `what: "errors"|"logs"|"network"|"websocket_events"|"websocket_status"|"actions"|"vitals"|"page"`.
+- [x] **`analyze`** — Replaces: `check_performance`, `get_api_schema`, `run_accessibility_audit`, `get_changes_since`, `get_session_timeline`. Mode parameter: `target: "performance"|"api"|"accessibility"|"changes"|"timeline"`.
+- [x] **`generate`** — Replaces: `get_reproduction_script`, `generate_test`, `generate_pr_summary`, `export_sarif`, `export_har`. Mode parameter: `format: "reproduction"|"test"|"pr_summary"|"sarif"|"har"`.
+- [x] **`configure`** — Replaces: `session_store`, `load_session_context`, `configure_noise`, `dismiss_noise`, `clear_browser_logs`. Mode parameter: `action: "store"|"load"|"noise_rule"|"dismiss"|"clear"`.
+- [x] **`query_dom`** — Stays standalone (interactive, requires CSS selector input).
+
+### Phase 2: Metadata Annotations
+
+Tools list includes `_meta.data_counts` so AI consumers know what data is available without changing the schema. Dynamic tool exposure was rejected (AI models work best with stable schemas; MCP clients cache `tools/list` and don't re-poll reliably).
+
+- [x] **`_meta` data counts** — Each tool in `tools/list` includes `_meta.data_counts` showing current buffer sizes per mode. AI uses this as a hint for which modes to call first. File: `tools.go`.
+- ~~**State-aware tool list**~~ — Rejected: dynamic enum filtering confuses AI models.
+- ~~**Progressive disclosure**~~ — Rejected: same reason (schema instability).
+
+### Phase 3: Push-Based Alerts
+
+Server attaches unsolicited context to responses instead of requiring separate tool calls.
+
+- [x] **Alert piggyback** — Every `observe` response includes an alerts block with regressions, anomalies, and noise rule triggers detected since last call. Alerts are drained after delivery. File: `alerts.go`.
+- [x] **Situation synthesis** — Server-side triage: deduplication, priority ordering (error > warning > info), correlation (regression + anomaly within 5s → compound alert), summary prefix (4+ alerts). File: `alerts.go`.
+- [x] **CI/CD webhook receiver** — `POST /ci-result` endpoint. Build failures, test results, and deploy status surface through alerts without a dedicated tool. Idempotent, capped at 10 results. File: `alerts.go`, route in `main.go`.
+- [x] **Anomaly detection** — Error frequency spike (>3x rolling average in 10s window) generates anomaly alert. File: `alerts.go`.
+
+### Phase 4: External Signal Ingestion
+
+Broader context sources beyond the browser, all surfacing through the existing 5-tool interface.
+
+- [ ] **Spec ingestion** — `configure(action: "ingest_spec")` parses markdown specs into structured requirements. AI checks runtime behavior against spec.
+- [ ] **Production error bridge** — Sentry/Datadog webhook receiver. Production errors correlated with code the AI is modifying surface in `observe` alerts.
+- [ ] **Git context** — `analyze(target: "git")` shows recent commits, blame info, and PR history for files involved in current errors.
+- [ ] **Cross-session temporal graph** — Persistent memory v2: not just key-value but "error X first appeared at time T, correlated with change Y, resolved by fix Z."
+
+### Phase 5: Autonomous AI Behavior
+
+Server-side intelligence that acts without the AI needing to poll.
+
+- [x] **Anomaly detection** — Error frequency spike detection (>3x rolling average) surfaces in alerts. Future: background thread for metrics beyond error counts.
+- [ ] **Error clustering** — Group related errors across sessions: "These 4 stack traces share a common root cause."
+- [ ] **Predictive warnings** — Pattern matching against known failure modes: "This code pattern caused issues in 3 prior sessions."
+- [ ] **Agent-to-agent channel** — `configure(action: "post_observation")` / `observe(what: "observations")` for multi-agent handoff.
+
+### Files Modified
+- `cmd/dev-console/tools.go` — Composite dispatchers, `_meta` data counts, alert piggyback on observe
+- `cmd/dev-console/main.go` — `MCPTool.Meta` field, CI webhook route
+- `cmd/dev-console/alerts.go` — New: Alert struct, buffer, dedup, correlation, CI webhook, anomaly detection
+- `cmd/dev-console/api_schema.go` — `EndpointCount()` method
+- `cmd/dev-console/composite_tools_test.go` — Phase 2 metadata tests
+- `cmd/dev-console/alerts_test.go` — New: 16 Phase 3 tests
+- `cmd/dev-console/testdata/mcp-tools-list.golden.json` — Updated with `_meta` fields
+- `docs/ai-first/tech-spec-dynamic-exposure.md` — Phase 2 spec
+- `docs/ai-first/tech-spec-push-alerts.md` — Phase 3 spec
+
+---
+
 ## Tech Debt: Consolidation (code quality)
 
 Codebase grew feature-by-feature without periodic pattern extraction. Locally consistent, globally drifting. Two parallel streams since Go and Extension files don't overlap.

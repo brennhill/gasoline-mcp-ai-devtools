@@ -25,15 +25,25 @@ func initMCP(t *testing.T, mcp *MCPHandler) {
 	}
 }
 
-// helper: call get_changes_since with given arguments JSON
+// helper: call analyze with target:"changes" and given arguments JSON
 func callGetChangesSince(t *testing.T, mcp *MCPHandler, argsJSON string) DiffResponse {
 	t.Helper()
+	// Inject "target":"changes" into the arguments
+	var args map[string]interface{}
+	if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
+		t.Fatalf("Failed to unmarshal argsJSON: %v", err)
+	}
+	args["target"] = "changes"
+	mergedArgs, err := json.Marshal(args)
+	if err != nil {
+		t.Fatalf("Failed to marshal merged args: %v", err)
+	}
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_changes_since","arguments":` + argsJSON + `}`),
+		Params: json.RawMessage(`{"name":"analyze","arguments":` + string(mergedArgs) + `}`),
 	})
 	if resp.Error != nil {
-		t.Fatalf("get_changes_since failed: %s", resp.Error.Message)
+		t.Fatalf("analyze(target:changes) failed: %s", resp.Error.Message)
 	}
 
 	var result struct {
@@ -61,7 +71,7 @@ func callGetChangesSince(t *testing.T, mcp *MCPHandler, argsJSON string) DiffRes
 func TestE2E_ToolAppearsInToolsList(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
@@ -81,13 +91,13 @@ func TestE2E_ToolAppearsInToolsList(t *testing.T) {
 
 	found := false
 	for _, tool := range toolsList.Tools {
-		if tool.Name == "get_changes_since" {
+		if tool.Name == "analyze" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("get_changes_since not found in tools/list")
+		t.Error("analyze not found in tools/list")
 	}
 }
 
@@ -96,7 +106,7 @@ func TestE2E_ToolAppearsInToolsList(t *testing.T) {
 func TestE2E_FirstCallEmptyBuffers(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	diff := callGetChangesSince(t, mcp, `{}`)
@@ -123,7 +133,7 @@ func TestE2E_FirstCallEmptyBuffers(t *testing.T) {
 func TestE2E_FirstCallWithConsoleErrors(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	// Add console errors
@@ -157,7 +167,7 @@ func TestE2E_FirstCallWithConsoleErrors(t *testing.T) {
 func TestE2E_AutoAdvance(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	// Add initial error
@@ -203,7 +213,7 @@ func TestE2E_AutoAdvance(t *testing.T) {
 func TestE2E_NamedCheckpointDoesNotAdvanceAuto(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	// Add initial error
@@ -234,7 +244,7 @@ func TestE2E_NamedCheckpointDoesNotAdvanceAuto(t *testing.T) {
 func TestE2E_SeverityFilterErrorsOnly(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	server.addEntries([]LogEntry{
@@ -261,7 +271,7 @@ func TestE2E_SeverityFilterErrorsOnly(t *testing.T) {
 func TestE2E_SeverityFilterWarnings(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	server.addEntries([]LogEntry{
@@ -288,7 +298,7 @@ func TestE2E_SeverityFilterWarnings(t *testing.T) {
 func TestE2E_IncludeFilterConsoleOnly(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	// Add data to multiple categories
@@ -314,7 +324,7 @@ func TestE2E_IncludeFilterConsoleOnly(t *testing.T) {
 func TestE2E_IncludeFilterNetworkOnly(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	server.addEntries([]LogEntry{
@@ -339,7 +349,7 @@ func TestE2E_IncludeFilterNetworkOnly(t *testing.T) {
 func TestE2E_NetworkFailureRegression(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	// First: endpoint returns 200, establish baseline via auto-checkpoint
@@ -378,7 +388,7 @@ func TestE2E_NetworkFailureRegression(t *testing.T) {
 func TestE2E_NetworkNewFailingEndpoints(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	// A brand new endpoint that immediately returns 500
@@ -402,7 +412,7 @@ func TestE2E_NetworkNewFailingEndpoints(t *testing.T) {
 func TestE2E_WebSocketDisconnections(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -425,7 +435,7 @@ func TestE2E_WebSocketDisconnections(t *testing.T) {
 func TestE2E_ConsoleDeduplication(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	// Same error repeated 5 times
@@ -454,7 +464,7 @@ func TestE2E_ConsoleDeduplication(t *testing.T) {
 func TestE2E_MultipleCategoriesCombined(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	// Add data to all categories
@@ -495,7 +505,7 @@ func TestE2E_MultipleCategoriesCombined(t *testing.T) {
 func TestE2E_TimestampBased(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	// Add data - the timestamp in the checkpoint param refers to wall clock time
@@ -520,7 +530,7 @@ func TestE2E_TimestampBased(t *testing.T) {
 func TestE2E_UnknownToolReturnsError(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
@@ -541,7 +551,7 @@ func TestE2E_UnknownToolReturnsError(t *testing.T) {
 func TestE2E_SummaryPopulated(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	server.addEntries([]LogEntry{
@@ -563,7 +573,7 @@ func TestE2E_SummaryPopulated(t *testing.T) {
 func TestE2E_DegradedEndpoints(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	// First call establishes baseline with fast endpoint via auto-checkpoint
@@ -592,7 +602,7 @@ func TestE2E_DegradedEndpoints(t *testing.T) {
 func TestE2E_FromToTimestamps(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	server.addEntries([]LogEntry{
@@ -617,7 +627,7 @@ func TestE2E_FromToTimestamps(t *testing.T) {
 func TestE2E_ActionsDiff(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -641,7 +651,7 @@ func TestE2E_ActionsDiff(t *testing.T) {
 func TestE2E_WebSocketErrors(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -663,7 +673,7 @@ func TestE2E_WebSocketErrors(t *testing.T) {
 func TestE2E_WebSocketNewConnections(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -686,7 +696,7 @@ func TestE2E_WebSocketNewConnections(t *testing.T) {
 func TestE2E_AutoCheckpointPersistence(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	// Add initial data
@@ -727,7 +737,7 @@ func TestE2E_AutoCheckpointPersistence(t *testing.T) {
 func TestE2E_NetworkNewEndpoints(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 	initMCP(t, mcp)
 
 	capture.AddNetworkBodies([]NetworkBody{

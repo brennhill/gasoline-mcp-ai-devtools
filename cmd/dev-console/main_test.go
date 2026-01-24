@@ -428,7 +428,8 @@ func TestMCPInitialize(t *testing.T) {
 
 func TestMCPToolsList(t *testing.T) {
 	server, _ := setupTestServer(t)
-	mcp := NewMCPHandler(server)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
 
 	// Initialize first
 	mcp.HandleRequest(JSONRPCRequest{
@@ -461,22 +462,18 @@ func TestMCPToolsList(t *testing.T) {
 		t.Fatalf("Failed to unmarshal result: %v", err)
 	}
 
-	// Should have at least get_browser_errors and clear_browser_logs
+	// Should have composite tools: observe, configure
 	toolNames := make(map[string]bool)
 	for _, tool := range result.Tools {
 		toolNames[tool.Name] = true
 	}
 
-	if !toolNames["get_browser_errors"] {
-		t.Error("Expected tool 'get_browser_errors' in tools list")
+	if !toolNames["observe"] {
+		t.Error("Expected tool 'observe' in tools list")
 	}
 
-	if !toolNames["clear_browser_logs"] {
-		t.Error("Expected tool 'clear_browser_logs' in tools list")
-	}
-
-	if !toolNames["get_browser_logs"] {
-		t.Error("Expected tool 'get_browser_logs' in tools list")
+	if !toolNames["configure"] {
+		t.Error("Expected tool 'configure' in tools list")
 	}
 }
 
@@ -491,7 +488,8 @@ func TestMCPGetBrowserErrors(t *testing.T) {
 		{"ts": "2024-01-22T10:00:03Z", "level": "info", "type": "console", "message": "Test info"},
 	})
 
-	mcp := NewMCPHandler(server)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
 
 	// Initialize
 	mcp.HandleRequest(JSONRPCRequest{
@@ -501,12 +499,12 @@ func TestMCPGetBrowserErrors(t *testing.T) {
 		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Call get_browser_errors tool
+	// Call observe tool with what:"errors"
 	req := JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      2,
 		Method:  "tools/call",
-		Params:  json.RawMessage(`{"name":"get_browser_errors","arguments":{}}`),
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
 	}
 
 	resp := mcp.HandleRequest(req)
@@ -557,7 +555,8 @@ func TestMCPGetBrowserLogs(t *testing.T) {
 		{"ts": "2024-01-22T10:00:02Z", "level": "info", "message": "Test info"},
 	})
 
-	mcp := NewMCPHandler(server)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
 
 	// Initialize
 	mcp.HandleRequest(JSONRPCRequest{
@@ -567,12 +566,12 @@ func TestMCPGetBrowserLogs(t *testing.T) {
 		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Call get_browser_logs tool (returns all logs)
+	// Call observe tool with what:"logs" (returns all logs)
 	req := JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      2,
 		Method:  "tools/call",
-		Params:  json.RawMessage(`{"name":"get_browser_logs","arguments":{}}`),
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"logs"}}`),
 	}
 
 	resp := mcp.HandleRequest(req)
@@ -613,7 +612,8 @@ func TestMCPGetBrowserLogsWithLimit(t *testing.T) {
 		})
 	}
 
-	mcp := NewMCPHandler(server)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
 
 	// Initialize
 	mcp.HandleRequest(JSONRPCRequest{
@@ -623,12 +623,12 @@ func TestMCPGetBrowserLogsWithLimit(t *testing.T) {
 		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Call get_browser_logs with limit
+	// Call observe tool with what:"logs" and limit
 	req := JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      2,
 		Method:  "tools/call",
-		Params:  json.RawMessage(`{"name":"get_browser_logs","arguments":{"limit":5}}`),
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"logs","limit":5}}`),
 	}
 
 	resp := mcp.HandleRequest(req)
@@ -670,7 +670,8 @@ func TestMCPClearBrowserLogs(t *testing.T) {
 		t.Fatalf("Expected 1 entry before clear")
 	}
 
-	mcp := NewMCPHandler(server)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
 
 	// Initialize
 	mcp.HandleRequest(JSONRPCRequest{
@@ -680,12 +681,12 @@ func TestMCPClearBrowserLogs(t *testing.T) {
 		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Call clear_browser_logs tool
+	// Call configure tool with action:"clear"
 	req := JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      2,
 		Method:  "tools/call",
-		Params:  json.RawMessage(`{"name":"clear_browser_logs","arguments":{}}`),
+		Params:  json.RawMessage(`{"name":"configure","arguments":{"action":"clear"}}`),
 	}
 
 	resp := mcp.HandleRequest(req)
@@ -721,7 +722,8 @@ func TestMCPClearBrowserLogs(t *testing.T) {
 
 func TestMCPUnknownTool(t *testing.T) {
 	server, _ := setupTestServer(t)
-	mcp := NewMCPHandler(server)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
 
 	// Initialize
 	mcp.HandleRequest(JSONRPCRequest{
@@ -782,7 +784,8 @@ func TestMCPUnknownMethod(t *testing.T) {
 
 func TestMCPGetBrowserErrorsEmpty(t *testing.T) {
 	server, _ := setupTestServer(t)
-	mcp := NewMCPHandler(server)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
 
 	// Initialize
 	mcp.HandleRequest(JSONRPCRequest{
@@ -792,12 +795,12 @@ func TestMCPGetBrowserErrorsEmpty(t *testing.T) {
 		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Call get_browser_errors with no entries
+	// Call observe with what:"errors" with no entries
 	req := JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      2,
 		Method:  "tools/call",
-		Params:  json.RawMessage(`{"name":"get_browser_errors","arguments":{}}`),
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
 	}
 
 	resp := mcp.HandleRequest(req)
@@ -1134,7 +1137,7 @@ func FuzzPostLogs(f *testing.F) {
 // FuzzMCPRequest fuzzes the MCP JSON-RPC handler with arbitrary payloads.
 func FuzzMCPRequest(f *testing.F) {
 	f.Add([]byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`))
-	f.Add([]byte(`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_browser_errors","arguments":{}}}`))
+	f.Add([]byte(`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`))
 	f.Add([]byte(`{"jsonrpc":"2.0","id":3,"method":"unknown"}`))
 	f.Add([]byte(`not json`))
 	f.Add([]byte(`{"jsonrpc":"2.0"}`))
@@ -1258,7 +1261,13 @@ func BenchmarkMCPGetBrowserErrors(b *testing.B) {
 	}
 	server.addEntries(entries)
 
-	mcp := NewMCPHandler(server)
+	capture := NewCapture()
+	mcp := NewToolHandler(server, capture)
+	b.Cleanup(func() {
+		if mcp.toolHandler != nil && mcp.toolHandler.sessionStore != nil {
+			mcp.toolHandler.sessionStore.Shutdown()
+		}
+	})
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -1270,7 +1279,7 @@ func BenchmarkMCPGetBrowserErrors(b *testing.B) {
 		JSONRPC: "2.0",
 		ID:      2,
 		Method:  "tools/call",
-		Params:  json.RawMessage(`{"name":"get_browser_errors","arguments":{}}`),
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
 	}
 
 	b.ResetTimer()
@@ -1290,7 +1299,13 @@ func BenchmarkMCPGetBrowserLogs(b *testing.B) {
 	}
 	server.addEntries(entries)
 
-	mcp := NewMCPHandler(server)
+	capture := NewCapture()
+	mcp := NewToolHandler(server, capture)
+	b.Cleanup(func() {
+		if mcp.toolHandler != nil && mcp.toolHandler.sessionStore != nil {
+			mcp.toolHandler.sessionStore.Shutdown()
+		}
+	})
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -1302,7 +1317,7 @@ func BenchmarkMCPGetBrowserLogs(b *testing.B) {
 		JSONRPC: "2.0",
 		ID:      2,
 		Method:  "tools/call",
-		Params:  json.RawMessage(`{"name":"get_browser_logs","arguments":{}}`),
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"logs"}}`),
 	}
 
 	b.ResetTimer()
@@ -1405,7 +1420,8 @@ func TestMCPInitializeGolden(t *testing.T) {
 
 func TestMCPToolsListGolden(t *testing.T) {
 	server, _ := setupTestServer(t)
-	mcp := NewMCPHandler(server)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
 
 	// Initialize first
 	mcp.HandleRequest(JSONRPCRequest{
@@ -1439,7 +1455,8 @@ func TestMCPGetBrowserErrorsGolden(t *testing.T) {
 		{"ts": "2024-01-22T10:00:02Z", "level": "error", "type": "network", "message": "GET /api/data 500", "status": float64(500)},
 	})
 
-	mcp := NewMCPHandler(server)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -1451,7 +1468,7 @@ func TestMCPGetBrowserErrorsGolden(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      2,
 		Method:  "tools/call",
-		Params:  json.RawMessage(`{"name":"get_browser_errors","arguments":{}}`),
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
 	}
 
 	resp := mcp.HandleRequest(req)

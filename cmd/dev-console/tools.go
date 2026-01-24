@@ -85,6 +85,7 @@ type ToolHandler struct {
 	checkpoints  *CheckpointManager
 	sessionStore *SessionStore
 	noise        *NoiseConfig
+	AlertBuffer  // Embedded alert state (Phase 3)
 }
 
 // NewToolHandler creates an MCP handler with v4 capabilities
@@ -112,79 +113,319 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 	}
 }
 
-// toolsList returns the list of v4 tools
+// computeDataCounts reads current buffer sizes from server and capture under read locks.
+// Returns counts for each observable mode.
+func (h *ToolHandler) computeDataCounts() (errorCount, logCount, networkCount, wsEventCount, wsStatusCount, actionCount, vitalCount, apiCount int) {
+	h.MCPHandler.server.mu.RLock()
+	logCount = len(h.MCPHandler.server.entries)
+	for _, entry := range h.MCPHandler.server.entries {
+		if level, ok := entry["level"].(string); ok && level == "error" {
+			errorCount++
+		}
+	}
+	h.MCPHandler.server.mu.RUnlock()
+
+	h.capture.mu.RLock()
+	networkCount = len(h.capture.networkBodies)
+	wsEventCount = len(h.capture.wsEvents)
+	wsStatusCount = len(h.capture.connections)
+	actionCount = len(h.capture.enhancedActions)
+	vitalCount = len(h.capture.perf.snapshots)
+	h.capture.mu.RUnlock()
+
+	apiCount = h.capture.schemaStore.EndpointCount()
+	return
+}
+
+// toolsList returns the list of composite tools (5 tools replacing the 24 granular ones).
+// This design reduces AI decision space by 79%, improving tool selection accuracy.
+// Each data-dependent tool includes a _meta field with current data_counts.
 func (h *ToolHandler) toolsList() []MCPTool {
+	errorCount, logCount, networkCount, wsEventCount, wsStatusCount, actionCount, vitalCount, apiCount := h.computeDataCounts()
+
 	return []MCPTool{
 		{
-			Name:        "get_websocket_events",
-			Description: "Get captured WebSocket events (messages, lifecycle). Useful for debugging real-time communication.",
+			Name:        "observe",
+			Description: "Observe browser state: errors, logs, network traffic, WebSocket events, user actions, web vitals, or page info. Use the 'what' parameter to select what to observe.",
+			Meta: map[string]interface{}{
+				"data_counts": map[string]interface{}{
+					"errors":           errorCount,
+					"logs":             logCount,
+					"network":          networkCount,
+					"websocket_events": wsEventCount,
+					"websocket_status": wsStatusCount,
+					"actions":          actionCount,
+					"vitals":           vitalCount,
+				},
+			},
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
-					"connection_id": map[string]interface{}{
+					"what": map[string]interface{}{
 						"type":        "string",
-						"description": "Filter by connection ID",
-					},
-					"url": map[string]interface{}{
-						"type":        "string",
-						"description": "Filter by URL substring",
-					},
-					"direction": map[string]interface{}{
-						"type":        "string",
-						"description": "Filter by direction (incoming/outgoing)",
-						"enum":        []string{"incoming", "outgoing"},
+						"description": "What to observe",
+						"enum":        []string{"errors", "logs", "network", "websocket_events", "websocket_status", "actions", "vitals", "page"},
 					},
 					"limit": map[string]interface{}{
 						"type":        "number",
-						"description": "Maximum events to return (default: 50)",
+						"description": "Maximum entries to return (applies to logs, network, websocket_events, actions)",
 					},
-				},
-			},
-		},
-		{
-			Name:        "get_websocket_status",
-			Description: "Get current WebSocket connection states, rates, and schemas.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
 					"url": map[string]interface{}{
 						"type":        "string",
-						"description": "Filter by URL substring",
-					},
-					"connection_id": map[string]interface{}{
-						"type":        "string",
-						"description": "Filter by connection ID",
-					},
-				},
-			},
-		},
-		{
-			Name:        "get_network_bodies",
-			Description: "Get captured network request/response bodies.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"url": map[string]interface{}{
-						"type":        "string",
-						"description": "Filter by URL substring",
+						"description": "Filter by URL substring (applies to network, websocket_events, websocket_status, actions)",
 					},
 					"method": map[string]interface{}{
 						"type":        "string",
-						"description": "Filter by HTTP method",
+						"description": "Filter by HTTP method (applies to network)",
 					},
 					"status_min": map[string]interface{}{
 						"type":        "number",
-						"description": "Minimum status code",
+						"description": "Minimum status code (applies to network)",
 					},
 					"status_max": map[string]interface{}{
 						"type":        "number",
-						"description": "Maximum status code",
+						"description": "Maximum status code (applies to network)",
 					},
-					"limit": map[string]interface{}{
+					"connection_id": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by WebSocket connection ID (applies to websocket_events, websocket_status)",
+					},
+					"direction": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by direction (applies to websocket_events)",
+						"enum":        []string{"incoming", "outgoing"},
+					},
+					"last_n": map[string]interface{}{
 						"type":        "number",
-						"description": "Maximum entries to return (default: 20)",
+						"description": "Return only the last N items (applies to actions)",
 					},
 				},
+				"required": []string{"what"},
+			},
+		},
+		{
+			Name:        "analyze",
+			Description: "Analyze browser data: performance metrics, API schema, accessibility audit, changes since checkpoint, or session timeline.",
+			Meta: map[string]interface{}{
+				"data_counts": map[string]interface{}{
+					"performance": vitalCount,
+					"api":         apiCount,
+					"timeline":    actionCount,
+				},
+			},
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"target": map[string]interface{}{
+						"type":        "string",
+						"description": "What to analyze",
+						"enum":        []string{"performance", "api", "accessibility", "changes", "timeline"},
+					},
+					"url": map[string]interface{}{
+						"type":        "string",
+						"description": "URL path to check (applies to performance)",
+					},
+					"url_filter": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by URL substring (applies to api, timeline)",
+					},
+					"min_observations": map[string]interface{}{
+						"type":        "number",
+						"description": "Minimum times an endpoint must be observed (applies to api)",
+					},
+					"format": map[string]interface{}{
+						"type":        "string",
+						"description": "Output format for API schema: gasoline or openapi_stub (applies to api)",
+						"enum":        []string{"gasoline", "openapi_stub"},
+					},
+					"scope": map[string]interface{}{
+						"type":        "string",
+						"description": "CSS selector to scope the audit (applies to accessibility)",
+					},
+					"tags": map[string]interface{}{
+						"type":        "array",
+						"description": "WCAG tags to test (applies to accessibility)",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+					"force_refresh": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Bypass cache and re-run (applies to accessibility)",
+					},
+					"checkpoint": map[string]interface{}{
+						"type":        "string",
+						"description": "Named checkpoint or ISO 8601 timestamp (applies to changes)",
+					},
+					"include": map[string]interface{}{
+						"type":        "array",
+						"description": "Categories to include (applies to changes, timeline)",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+					"severity": map[string]interface{}{
+						"type":        "string",
+						"description": "Minimum severity: all, warnings, errors_only (applies to changes)",
+						"enum":        []string{"all", "warnings", "errors_only"},
+					},
+					"last_n_actions": map[string]interface{}{
+						"type":        "number",
+						"description": "Only include the last N actions (applies to timeline)",
+					},
+				},
+				"required": []string{"target"},
+			},
+		},
+		{
+			Name:        "generate",
+			Description: "Generate artifacts from captured data: reproduction scripts, Playwright tests, PR summaries, SARIF reports, or HAR archives.",
+			Meta: map[string]interface{}{
+				"data_counts": map[string]interface{}{
+					"reproduction": actionCount,
+					"test":         actionCount,
+					"har":          networkCount,
+				},
+			},
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"format": map[string]interface{}{
+						"type":        "string",
+						"description": "What to generate",
+						"enum":        []string{"reproduction", "test", "pr_summary", "sarif", "har"},
+					},
+					"error_message": map[string]interface{}{
+						"type":        "string",
+						"description": "Error message for context (applies to reproduction)",
+					},
+					"last_n_actions": map[string]interface{}{
+						"type":        "number",
+						"description": "Use only the last N actions (applies to reproduction)",
+					},
+					"base_url": map[string]interface{}{
+						"type":        "string",
+						"description": "Replace origin in URLs (applies to reproduction, test)",
+					},
+					"test_name": map[string]interface{}{
+						"type":        "string",
+						"description": "Name for the generated test (applies to test)",
+					},
+					"assert_network": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Include network response assertions (applies to test)",
+					},
+					"assert_no_errors": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Assert no console errors occurred (applies to test)",
+					},
+					"assert_response_shape": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Assert response body shape matches (applies to test)",
+					},
+					"scope": map[string]interface{}{
+						"type":        "string",
+						"description": "CSS selector to scope (applies to sarif)",
+					},
+					"include_passes": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Include passing rules (applies to sarif)",
+					},
+					"save_to": map[string]interface{}{
+						"type":        "string",
+						"description": "File path to save output (applies to sarif, har)",
+					},
+					"url": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by URL substring (applies to har)",
+					},
+					"method": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by HTTP method (applies to har)",
+					},
+					"status_min": map[string]interface{}{
+						"type":        "number",
+						"description": "Minimum status code (applies to har)",
+					},
+					"status_max": map[string]interface{}{
+						"type":        "number",
+						"description": "Maximum status code (applies to har)",
+					},
+				},
+				"required": []string{"format"},
+			},
+		},
+		{
+			Name:        "configure",
+			Description: "Configure the session: store/load persistent data, manage noise filtering rules, dismiss noise patterns, or clear browser logs.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "Configuration action to perform",
+						"enum":        []string{"store", "load", "noise_rule", "dismiss", "clear"},
+					},
+					"store_action": map[string]interface{}{
+						"type":        "string",
+						"description": "Store sub-action: save, load, list, delete, stats (applies to store)",
+						"enum":        []string{"save", "load", "list", "delete", "stats"},
+					},
+					"namespace": map[string]interface{}{
+						"type":        "string",
+						"description": "Logical grouping for store (applies to store)",
+					},
+					"key": map[string]interface{}{
+						"type":        "string",
+						"description": "Storage key (applies to store)",
+					},
+					"data": map[string]interface{}{
+						"type":        "object",
+						"description": "JSON data to persist (applies to store)",
+					},
+					"noise_action": map[string]interface{}{
+						"type":        "string",
+						"description": "Noise sub-action: add, remove, list, reset, auto_detect (applies to noise_rule)",
+						"enum":        []string{"add", "remove", "list", "reset", "auto_detect"},
+					},
+					"rules": map[string]interface{}{
+						"type":        "array",
+						"description": "Noise rules to add (applies to noise_rule)",
+						"items": map[string]interface{}{
+							"type": "object",
+							"properties": map[string]interface{}{
+								"category":       map[string]interface{}{"type": "string", "enum": []string{"console", "network", "websocket"}},
+								"classification": map[string]interface{}{"type": "string"},
+								"matchSpec": map[string]interface{}{
+									"type": "object",
+									"properties": map[string]interface{}{
+										"messageRegex": map[string]interface{}{"type": "string"},
+										"sourceRegex":  map[string]interface{}{"type": "string"},
+										"urlRegex":     map[string]interface{}{"type": "string"},
+										"method":       map[string]interface{}{"type": "string"},
+										"statusMin":    map[string]interface{}{"type": "number"},
+										"statusMax":    map[string]interface{}{"type": "number"},
+										"level":        map[string]interface{}{"type": "string"},
+									},
+								},
+							},
+						},
+					},
+					"rule_id": map[string]interface{}{
+						"type":        "string",
+						"description": "ID of rule to remove (applies to noise_rule)",
+					},
+					"pattern": map[string]interface{}{
+						"type":        "string",
+						"description": "Regex pattern to dismiss (applies to dismiss)",
+					},
+					"category": map[string]interface{}{
+						"type":        "string",
+						"description": "Buffer category (applies to dismiss)",
+						"enum":        []string{"console", "network", "websocket"},
+					},
+					"reason": map[string]interface{}{
+						"type":        "string",
+						"description": "Why this is noise (applies to dismiss)",
+					},
+				},
+				"required": []string{"action"},
 			},
 		},
 		{
@@ -201,406 +442,289 @@ func (h *ToolHandler) toolsList() []MCPTool {
 				"required": []string{"selector"},
 			},
 		},
-		{
-			Name:        "get_page_info",
-			Description: "Get information about the current page (URL, title, viewport).",
-			InputSchema: map[string]interface{}{
-				"type":       "object",
-				"properties": map[string]interface{}{},
-			},
-		},
-		{
-			Name:        "run_accessibility_audit",
-			Description: "Run an accessibility audit on the current page or a scoped element.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"scope": map[string]interface{}{
-						"type":        "string",
-						"description": "CSS selector to scope the audit",
-					},
-					"tags": map[string]interface{}{
-						"type":        "array",
-						"description": "WCAG tags to test (e.g., wcag2a, wcag2aa)",
-						"items":       map[string]interface{}{"type": "string"},
-					},
-					"force_refresh": map[string]interface{}{
-						"type":        "boolean",
-						"description": "Bypass cache and re-run the audit",
-					},
-				},
-			},
-		},
-		{
-			Name:        "get_enhanced_actions",
-			Description: "Get captured user actions with multi-strategy selectors. Useful for understanding what the user did before an error occurred.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"last_n": map[string]interface{}{
-						"type":        "number",
-						"description": "Return only the last N actions (default: all)",
-					},
-					"url": map[string]interface{}{
-						"type":        "string",
-						"description": "Filter by URL substring",
-					},
-				},
-			},
-		},
-		{
-			Name:        "get_reproduction_script",
-			Description: "Generate a Playwright test script from captured user actions. Useful for reproducing bugs.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"error_message": map[string]interface{}{
-						"type":        "string",
-						"description": "Error message to include in the test (adds context comment)",
-					},
-					"last_n_actions": map[string]interface{}{
-						"type":        "number",
-						"description": "Use only the last N actions (default: all)",
-					},
-					"base_url": map[string]interface{}{
-						"type":        "string",
-						"description": "Replace the origin in URLs (e.g., 'https://staging.example.com')",
-					},
-				},
-			},
-		},
-		{
-			Name:        "check_performance",
-			Description: "Get a performance snapshot of the current page including load timing, network weight, main-thread blocking, and regression detection against baselines.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"url": map[string]interface{}{
-						"type":        "string",
-						"description": "URL path to check (default: latest snapshot)",
-					},
-				},
-			},
-		},
-		{
-			Name:        "get_session_timeline",
-			Description: "Get a unified timeline of user actions, network requests, and console errors sorted chronologically.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"last_n_actions": map[string]interface{}{
-						"type":        "number",
-						"description": "Only include the last N actions and events after them",
-					},
-					"url_filter": map[string]interface{}{
-						"type":        "string",
-						"description": "Filter entries by URL substring",
-					},
-					"include": map[string]interface{}{
-						"type":        "array",
-						"description": "Entry types to include: actions, network, console (default: all)",
-						"items":       map[string]interface{}{"type": "string"},
-					},
-				},
-			},
-		},
-		{
-			Name:        "generate_test",
-			Description: "Generate a Playwright test from the session timeline with configurable assertions.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"test_name": map[string]interface{}{
-						"type":        "string",
-						"description": "Name for the generated test",
-					},
-					"assert_network": map[string]interface{}{
-						"type":        "boolean",
-						"description": "Include network response assertions",
-					},
-					"assert_no_errors": map[string]interface{}{
-						"type":        "boolean",
-						"description": "Assert no console errors occurred",
-					},
-					"assert_response_shape": map[string]interface{}{
-						"type":        "boolean",
-						"description": "Assert response body shape matches",
-					},
-					"base_url": map[string]interface{}{
-						"type":        "string",
-						"description": "Replace origin in URLs",
-					},
-				},
-			},
-		},
-		{
-			Name:        "generate_pr_summary",
-			Description: "Generate a markdown-formatted performance summary suitable for inclusion in a PR description or comment. Includes performance deltas, error status, and session metadata.",
-			InputSchema: map[string]interface{}{
-				"type":       "object",
-				"properties": map[string]interface{}{},
-			},
-		},
-		{
-			Name:        "get_changes_since",
-			Description: "Get a compressed diff of browser activity since the last checkpoint. Returns only new console errors, network failures, WebSocket disconnections, and user actions — deduplicated and severity-ranked. Call with no arguments for auto-advancing behavior, or pass a named checkpoint to compare against a stable reference point.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"checkpoint": map[string]interface{}{
-						"type":        "string",
-						"description": "Named checkpoint, ISO 8601 timestamp, or omit for auto-advance. Named checkpoints persist across calls.",
-					},
-					"include": map[string]interface{}{
-						"type":        "array",
-						"description": "Categories to include: console, network, websocket, actions. Omit for all.",
-						"items":       map[string]interface{}{"type": "string"},
-					},
-					"severity": map[string]interface{}{
-						"type":        "string",
-						"description": "Minimum severity: all (default), warnings, errors_only",
-						"enum":        []string{"all", "warnings", "errors_only"},
-					},
-				},
-			},
-		},
-		{
-			Name:        "session_store",
-			Description: "A general-purpose key-value interface for storing/loading arbitrary data across sessions. Useful for persisting baselines, noise rules, error history, and other configuration.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"action": map[string]interface{}{
-						"type":        "string",
-						"description": "The action to perform: save, load, list, delete, or stats",
-						"enum":        []string{"save", "load", "list", "delete", "stats"},
-					},
-					"namespace": map[string]interface{}{
-						"type":        "string",
-						"description": "Logical grouping (required for save/load/delete/list)",
-					},
-					"key": map[string]interface{}{
-						"type":        "string",
-						"description": "Storage key (required for save/load/delete)",
-					},
-					"data": map[string]interface{}{
-						"type":        "object",
-						"description": "JSON data to persist (required for save)",
-					},
-				},
-				"required": []string{"action"},
-			},
-		},
-		{
-			Name:        "load_session_context",
-			Description: "Reads all namespace summaries from disk and returns combined session context. This is the first tool call an agent should make when starting work on a project.",
-			InputSchema: map[string]interface{}{
-				"type":       "object",
-				"properties": map[string]interface{}{},
-			},
-		},
-		{
-			Name:        "configure_noise",
-			Description: "Configure noise filtering rules to suppress irrelevant browser entries (extension warnings, analytics pings, HMR messages, etc.) from tool responses.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"action": map[string]interface{}{
-						"type":        "string",
-						"description": "Action to perform",
-						"enum":        []string{"add", "remove", "list", "reset", "auto_detect"},
-					},
-					"rules": map[string]interface{}{
-						"type":        "array",
-						"description": "Rules to add (for action 'add')",
-						"items": map[string]interface{}{
-							"type": "object",
-							"properties": map[string]interface{}{
-								"category": map[string]interface{}{
-									"type":        "string",
-									"description": "Buffer category: console, network, or websocket",
-									"enum":        []string{"console", "network", "websocket"},
-								},
-								"classification": map[string]interface{}{
-									"type":        "string",
-									"description": "Noise type: extension, framework, cosmetic, analytics, infrastructure, repetitive, dismissed",
-								},
-								"matchSpec": map[string]interface{}{
-									"type": "object",
-									"properties": map[string]interface{}{
-										"messageRegex": map[string]interface{}{"type": "string", "description": "Regex to match console message text"},
-										"sourceRegex":  map[string]interface{}{"type": "string", "description": "Regex to match console source URL"},
-										"urlRegex":     map[string]interface{}{"type": "string", "description": "Regex to match network/websocket URL"},
-										"method":       map[string]interface{}{"type": "string", "description": "HTTP method filter"},
-										"statusMin":    map[string]interface{}{"type": "number", "description": "Minimum status code"},
-										"statusMax":    map[string]interface{}{"type": "number", "description": "Maximum status code"},
-										"level":        map[string]interface{}{"type": "string", "description": "Console level filter"},
-									},
-								},
-							},
-						},
-					},
-					"rule_id": map[string]interface{}{
-						"type":        "string",
-						"description": "ID of rule to remove (for action 'remove')",
-					},
-				},
-				"required": []string{"action"},
-			},
-		},
-		{
-			Name:        "dismiss_noise",
-			Description: "Quickly dismiss a noise pattern. Creates a noise filtering rule from a regex pattern.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"pattern": map[string]interface{}{
-						"type":        "string",
-						"description": "Regex pattern to dismiss",
-					},
-					"category": map[string]interface{}{
-						"type":        "string",
-						"description": "Buffer category (default: console)",
-						"enum":        []string{"console", "network", "websocket"},
-					},
-					"reason": map[string]interface{}{
-						"type":        "string",
-						"description": "Why this is noise (for audit trail)",
-					},
-				},
-				"required": []string{"pattern"},
-			},
-		},
-		{
-			Name:        "get_api_schema",
-			Description: "Get the inferred API schema from observed network traffic. Returns endpoint shapes, query parameters, auth patterns, and timing stats without reading backend code.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"url_filter": map[string]interface{}{
-						"type":        "string",
-						"description": "Only include endpoints whose path contains this string",
-					},
-					"min_observations": map[string]interface{}{
-						"type":        "number",
-						"description": "Minimum times an endpoint must be observed to be included (default: 1)",
-					},
-					"format": map[string]interface{}{
-						"type":        "string",
-						"description": "Output format: gasoline (default, structured JSON) or openapi_stub (minimal OpenAPI 3.0 YAML)",
-						"enum":        []string{"gasoline", "openapi_stub"},
-					},
-				},
-			},
-		},
-		{
-			Name:        "export_sarif",
-			Description: "Export accessibility audit results as SARIF (GitHub Code Scanning format).",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"scope": map[string]interface{}{
-						"type":        "string",
-						"description": "CSS selector to scope the audit (same as run_accessibility_audit)",
-					},
-					"include_passes": map[string]interface{}{
-						"type":        "boolean",
-						"description": "Include passing rules as 'pass' results (default: false)",
-					},
-					"save_to": map[string]interface{}{
-						"type":        "string",
-						"description": "File path to save SARIF file. If omitted, returns JSON in response.",
-					},
-				},
-			},
-		},
-		{
-			Name:        "export_har",
-			Description: "Export captured network traffic as a HAR (HTTP Archive) file. Supported by Chrome DevTools, Postman, Charles Proxy.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"url": map[string]interface{}{
-						"type":        "string",
-						"description": "Filter to requests matching this URL substring",
-					},
-					"method": map[string]interface{}{
-						"type":        "string",
-						"description": "Filter to this HTTP method (GET, POST, etc.)",
-					},
-					"status_min": map[string]interface{}{
-						"type":        "number",
-						"description": "Minimum status code to include",
-					},
-					"status_max": map[string]interface{}{
-						"type":        "number",
-						"description": "Maximum status code to include",
-					},
-					"save_to": map[string]interface{}{
-						"type":        "string",
-						"description": "File path to save HAR file. If omitted, returns JSON in response.",
-					},
-				},
-			},
-		},
-		{
-			Name:        "get_web_vitals",
-			Description: "Get current Core Web Vitals (FCP, LCP, CLS, INP) with performance assessments (good/needs-improvement/poor) based on standard thresholds.",
-			InputSchema: map[string]interface{}{
-				"type":       "object",
-				"properties": map[string]interface{}{},
-			},
-		},
 	}
 }
 
-// handleToolCall handles a v4-specific tool call
+// handleToolCall dispatches composite tool calls by mode parameter.
 func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.RawMessage) (JSONRPCResponse, bool) {
 	switch name {
-	case "get_websocket_events":
-		return h.toolGetWSEvents(req, args), true
-	case "get_websocket_status":
-		return h.toolGetWSStatus(req, args), true
-	case "get_network_bodies":
-		return h.toolGetNetworkBodies(req, args), true
+	case "observe":
+		return h.toolObserve(req, args), true
+	case "analyze":
+		return h.toolAnalyze(req, args), true
+	case "generate":
+		return h.toolGenerate(req, args), true
+	case "configure":
+		return h.toolConfigure(req, args), true
 	case "query_dom":
 		return h.toolQueryDOM(req, args), true
-	case "get_page_info":
-		return h.toolGetPageInfo(req, args), true
-	case "run_accessibility_audit":
-		return h.toolRunA11yAudit(req, args), true
-	case "get_enhanced_actions":
-		return h.toolGetEnhancedActions(req, args), true
-	case "get_reproduction_script":
-		return h.toolGetReproductionScript(req, args), true
-	case "check_performance":
-		return h.toolCheckPerformance(req, args), true
-	case "get_session_timeline":
-		return h.toolGetSessionTimeline(req, args), true
-	case "generate_test":
-		return h.toolGenerateTest(req, args), true
-	case "generate_pr_summary":
-		return h.toolGeneratePRSummary(req, args), true
-	case "get_changes_since":
-		return h.toolGetChangesSince(req, args), true
-	case "session_store":
-		return h.toolSessionStore(req, args), true
-	case "load_session_context":
-		return h.toolLoadSessionContext(req, args), true
-	case "configure_noise":
-		return h.toolConfigureNoise(req, args), true
-	case "dismiss_noise":
-		return h.toolDismissNoise(req, args), true
-	case "get_api_schema":
-		return h.toolGetAPISchema(req, args), true
-	case "export_sarif":
-		return h.toolExportSARIF(req, args), true
-	case "export_har":
-		return h.toolExportHAR(req, args), true
-	case "get_web_vitals":
-		return h.toolGetWebVitals(req, args), true
 	}
 	return JSONRPCResponse{}, false
+}
+
+// ============================================
+// Composite Tool Dispatchers
+// ============================================
+
+func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		What string `json:"what"`
+	}
+	_ = json.Unmarshal(args, &params)
+
+	if params.What == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Required parameter 'what' is missing")}
+	}
+
+	var resp JSONRPCResponse
+	switch params.What {
+	case "errors":
+		resp = h.toolGetBrowserErrors(req, args)
+	case "logs":
+		resp = h.toolGetBrowserLogs(req, args)
+	case "network":
+		resp = h.toolGetNetworkBodies(req, args)
+	case "websocket_events":
+		resp = h.toolGetWSEvents(req, args)
+	case "websocket_status":
+		resp = h.toolGetWSStatus(req, args)
+	case "actions":
+		resp = h.toolGetEnhancedActions(req, args)
+	case "vitals":
+		resp = h.toolGetWebVitals(req, args)
+	case "page":
+		resp = h.toolGetPageInfo(req, args)
+	default:
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Unknown observe mode: " + params.What)}
+	}
+
+	// Piggyback alerts: append as second content block if any pending
+	alerts := h.drainAlerts()
+	if len(alerts) > 0 {
+		resp = h.appendAlertsToResponse(resp, alerts)
+	}
+
+	return resp
+}
+
+// appendAlertsToResponse adds an alerts content block to an existing MCP response.
+func (h *ToolHandler) appendAlertsToResponse(resp JSONRPCResponse, alerts []Alert) JSONRPCResponse {
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+
+	alertText := formatAlertsBlock(alerts)
+	result.Content = append(result.Content, MCPContentBlock{
+		Type: "text",
+		Text: alertText,
+	})
+
+	resultJSON, _ := json.Marshal(result)
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
+func (h *ToolHandler) toolAnalyze(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Target string `json:"target"`
+	}
+	_ = json.Unmarshal(args, &params)
+
+	if params.Target == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Required parameter 'target' is missing")}
+	}
+
+	switch params.Target {
+	case "performance":
+		return h.toolCheckPerformance(req, args)
+	case "api":
+		return h.toolGetAPISchema(req, args)
+	case "accessibility":
+		return h.toolRunA11yAudit(req, args)
+	case "changes":
+		return h.toolGetChangesSince(req, args)
+	case "timeline":
+		return h.toolGetSessionTimeline(req, args)
+	default:
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Unknown analyze target: " + params.Target)}
+	}
+}
+
+func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Format string `json:"format"`
+	}
+	_ = json.Unmarshal(args, &params)
+
+	if params.Format == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Required parameter 'format' is missing")}
+	}
+
+	switch params.Format {
+	case "reproduction":
+		return h.toolGetReproductionScript(req, args)
+	case "test":
+		return h.toolGenerateTest(req, args)
+	case "pr_summary":
+		return h.toolGeneratePRSummary(req, args)
+	case "sarif":
+		return h.toolExportSARIF(req, args)
+	case "har":
+		return h.toolExportHAR(req, args)
+	default:
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Unknown generate format: " + params.Format)}
+	}
+}
+
+func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Action string `json:"action"`
+	}
+	_ = json.Unmarshal(args, &params)
+
+	if params.Action == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Required parameter 'action' is missing")}
+	}
+
+	switch params.Action {
+	case "store":
+		return h.toolConfigureStore(req, args)
+	case "load":
+		return h.toolLoadSessionContext(req, args)
+	case "noise_rule":
+		return h.toolConfigureNoiseRule(req, args)
+	case "dismiss":
+		return h.toolConfigureDismiss(req, args)
+	case "clear":
+		return h.toolClearBrowserLogs(req)
+	default:
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Unknown configure action: " + params.Action)}
+	}
+}
+
+// ============================================
+// Observe sub-handlers (browser errors/logs moved from main.go)
+// ============================================
+
+func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	h.MCPHandler.server.mu.RLock()
+	defer h.MCPHandler.server.mu.RUnlock()
+
+	var errors []LogEntry
+	for _, entry := range h.MCPHandler.server.entries {
+		if level, ok := entry["level"].(string); ok && level == "error" {
+			if h.noise != nil && h.noise.IsConsoleNoise(entry) {
+				continue
+			}
+			errors = append(errors, entry)
+		}
+	}
+
+	if len(errors) == 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("No browser errors found")}
+	}
+
+	errorsJSON, _ := json.Marshal(errors)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(errorsJSON))}
+}
+
+func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		Limit int `json:"limit"`
+	}
+	_ = json.Unmarshal(args, &arguments)
+
+	h.MCPHandler.server.mu.RLock()
+	defer h.MCPHandler.server.mu.RUnlock()
+
+	entries := h.MCPHandler.server.entries
+
+	if h.noise != nil {
+		var filtered []LogEntry
+		for _, entry := range entries {
+			if !h.noise.IsConsoleNoise(entry) {
+				filtered = append(filtered, entry)
+			}
+		}
+		entries = filtered
+	}
+
+	if arguments.Limit > 0 && arguments.Limit < len(entries) {
+		entries = entries[len(entries)-arguments.Limit:]
+	}
+
+	if len(entries) == 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("No browser logs found")}
+	}
+
+	entriesJSON, _ := json.Marshal(entries)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(entriesJSON))}
+}
+
+func (h *ToolHandler) toolClearBrowserLogs(req JSONRPCRequest) JSONRPCResponse {
+	h.MCPHandler.server.clearEntries()
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Browser logs cleared successfully")}
+}
+
+// ============================================
+// Configure sub-handlers (adapted from session_store/noise)
+// ============================================
+
+func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if h.sessionStore == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Session store not initialized")}
+	}
+
+	// Map composite fields to SessionStoreArgs
+	var compositeArgs struct {
+		StoreAction string          `json:"store_action"`
+		Namespace   string          `json:"namespace"`
+		Key         string          `json:"key"`
+		Data        json.RawMessage `json:"data"`
+	}
+	_ = json.Unmarshal(args, &compositeArgs)
+
+	storeArgs := SessionStoreArgs{
+		Action:    compositeArgs.StoreAction,
+		Namespace: compositeArgs.Namespace,
+		Key:       compositeArgs.Key,
+		Data:      compositeArgs.Data,
+	}
+
+	if storeArgs.Action == "" {
+		storeArgs.Action = "stats"
+	}
+
+	result, err := h.sessionStore.HandleSessionStore(storeArgs)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Error: " + err.Error())}
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(result))}
+}
+
+func (h *ToolHandler) toolConfigureNoiseRule(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	// Extract the noise_action field as the action for configure_noise
+	var compositeArgs struct {
+		NoiseAction string `json:"noise_action"`
+	}
+	_ = json.Unmarshal(args, &compositeArgs)
+
+	// Rewrite args to have "action" field that toolConfigureNoise expects
+	var rawMap map[string]interface{}
+	_ = json.Unmarshal(args, &rawMap)
+	rawMap["action"] = compositeArgs.NoiseAction
+	if rawMap["action"] == "" {
+		rawMap["action"] = "list"
+	}
+	rewrittenArgs, _ := json.Marshal(rawMap)
+
+	return h.toolConfigureNoise(req, rewrittenArgs)
+}
+
+func (h *ToolHandler) toolConfigureDismiss(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	return h.toolDismissNoise(req, args)
 }
 
 // ============================================

@@ -1,7 +1,7 @@
 ---
-title: "Fuel Any AI Tool"
-description: "Connect Gasoline to any MCP-compatible AI coding assistant. Configuration guides for Claude Code, Cursor, Windsurf, Claude Desktop, Zed, and VS Code with Continue."
-keywords: "MCP server configuration, Model Context Protocol, AI coding assistant integration, browser debugging MCP"
+title: "Fuel Any Agent"
+description: "Connect Gasoline to any MCP-compatible coding agent. Configuration guides for Claude Code, Cursor, Windsurf, Claude Desktop, Zed, and VS Code with Continue."
+keywords: "MCP server configuration, Model Context Protocol, autonomous coding agent, agentic debugging, browser debugging MCP"
 permalink: /mcp-integration/
 header:
   overlay_image: /assets/images/hero-banner.png

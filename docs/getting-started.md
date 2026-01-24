@@ -1,6 +1,6 @@
 ---
 title: "Fire It Up"
-description: "Install and configure Gasoline in under 2 minutes. Start capturing browser logs for your AI coding assistant with a single command."
+description: "Install and configure Gasoline in under 2 minutes. Start streaming browser logs to your autonomous coding agent with a single command."
 keywords: "install gasoline, gasoline mcp setup, npx gasoline-mcp, browser extension install, MCP server setup"
 permalink: /getting-started/
 header:

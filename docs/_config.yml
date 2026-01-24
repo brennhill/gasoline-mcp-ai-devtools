@@ -1,6 +1,6 @@
 title: "Gasoline"
-subtitle: "Fuel for the AI Fire"
-description: "Browser extension + MCP server that captures real-time browser logs, network activity, WebSocket events, and DOM state for AI coding assistants like Claude Code, Cursor, and Windsurf."
+subtitle: "Browser observability for AI coding agents"
+description: "Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time."
 url: "https://cookwithgasoline.com"
 baseurl: ""
 

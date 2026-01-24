@@ -1,6 +1,6 @@
-// Gasoline - Adding fuel to the AI fire
+// Gasoline - Browser observability for AI coding agents
 // A zero-dependency server that receives logs from the browser extension
-// and writes them to a JSONL file for your AI coding assistant.
+// and streams them to your AI coding agent via MCP.
 package main
 
 import (
@@ -60,6 +60,7 @@ type MCPTool struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
 	InputSchema map[string]interface{} `json:"inputSchema"`
+	Meta        map[string]interface{} `json:"_meta,omitempty"`
 }
 
 // MCPHandler handles MCP protocol messages
@@ -143,41 +144,9 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
-	tools := []MCPTool{
-		{
-			Name:        "get_browser_errors",
-			Description: "Get recent browser errors (console errors, network failures, exceptions) from the Gasoline log. Useful for debugging web application issues.",
-			InputSchema: map[string]interface{}{
-				"type":       "object",
-				"properties": map[string]interface{}{},
-			},
-		},
-		{
-			Name:        "get_browser_logs",
-			Description: "Get all browser logs from the Gasoline log, including errors, warnings, and info messages.",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"limit": map[string]interface{}{
-						"type":        "number",
-						"description": "Maximum number of log entries to return (default: all)",
-					},
-				},
-			},
-		},
-		{
-			Name:        "clear_browser_logs",
-			Description: "Clear all browser logs from the Gasoline log file.",
-			InputSchema: map[string]interface{}{
-				"type":       "object",
-				"properties": map[string]interface{}{},
-			},
-		},
-	}
-
-	// Add v4 tools if available
+	var tools []MCPTool
 	if h.toolHandler != nil {
-		tools = append(tools, h.toolHandler.toolsList()...)
+		tools = h.toolHandler.toolsList()
 	}
 
 	result := MCPToolsListResult{Tools: tools}
@@ -202,104 +171,22 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	switch params.Name {
-	case "get_browser_errors":
-		return h.toolGetBrowserErrors(req, params.Arguments)
-	case "get_browser_logs":
-		return h.toolGetBrowserLogs(req, params.Arguments)
-	case "clear_browser_logs":
-		return h.toolClearBrowserLogs(req)
-	default:
-		// Try v4 handler
-		if h.toolHandler != nil {
-			if resp, handled := h.toolHandler.handleToolCall(req, params.Name, params.Arguments); handled {
-				return resp
-			}
-		}
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error: &JSONRPCError{
-				Code:    -32601,
-				Message: "Unknown tool: " + params.Name,
-			},
-		}
-	}
-}
-
-func (h *MCPHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	h.server.mu.RLock()
-	defer h.server.mu.RUnlock()
-
-	// Filter for error-level entries only
-	var errors []LogEntry
-	for _, entry := range h.server.entries {
-		if level, ok := entry["level"].(string); ok && level == "error" {
-			// Apply noise filtering if available
-			if h.toolHandler != nil && h.toolHandler.noise != nil && h.toolHandler.noise.IsConsoleNoise(entry) {
-				continue
-			}
-			errors = append(errors, entry)
+	if h.toolHandler != nil {
+		if resp, handled := h.toolHandler.handleToolCall(req, params.Name, params.Arguments); handled {
+			return resp
 		}
 	}
 
-	var contentText string
-	if len(errors) == 0 {
-		contentText = "No browser errors found"
-	} else {
-		errorsJSON, _ := json.Marshal(errors)
-		contentText = string(errorsJSON)
+	return JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Error: &JSONRPCError{
+			Code:    -32601,
+			Message: "Unknown tool: " + params.Name,
+		},
 	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(contentText)}
 }
 
-func (h *MCPHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var arguments struct {
-		Limit int `json:"limit"`
-	}
-	if err := json.Unmarshal(args, &arguments); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Error parsing arguments: " + err.Error())}
-	}
-
-	h.server.mu.RLock()
-	defer h.server.mu.RUnlock()
-
-	entries := h.server.entries
-
-	// Apply noise filtering if available
-	if h.toolHandler != nil && h.toolHandler.noise != nil {
-		var filtered []LogEntry
-		for _, entry := range entries {
-			if !h.toolHandler.noise.IsConsoleNoise(entry) {
-				filtered = append(filtered, entry)
-			}
-		}
-		entries = filtered
-	}
-
-	// Apply limit if specified
-	if arguments.Limit > 0 && arguments.Limit < len(entries) {
-		// Return the most recent entries
-		entries = entries[len(entries)-arguments.Limit:]
-	}
-
-	var contentText string
-	if len(entries) == 0 {
-		contentText = "No browser logs found"
-	} else {
-		entriesJSON, _ := json.Marshal(entries)
-		contentText = string(entriesJSON)
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(contentText)}
-}
-
-func (h *MCPHandler) toolClearBrowserLogs(req JSONRPCRequest) JSONRPCResponse {
-	h.server.clearEntries()
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Browser logs cleared successfully")}
-}
 
 // Server holds the server state
 type Server struct {
@@ -671,7 +558,7 @@ func main() {
 	fmt.Println()
 	fmt.Println("╔═══════════════════════════════════════════════════════════╗")
 	fmt.Println("║                       Gasoline                             ║")
-	fmt.Println("║              Adding fuel to the AI fire                   ║")
+	fmt.Println("║     Browser observability for AI coding agents            ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════╝")
 	fmt.Println()
 	fmt.Printf("✓ Server listening on http://127.0.0.1:%d\n", *port)
@@ -770,6 +657,11 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 	mcp := NewToolHandler(server, capture)
 	http.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
 
+	// CI/CD webhook endpoint (Phase 3: push-based alerts)
+	if mcp.toolHandler != nil {
+		http.HandleFunc("/ci-result", corsMiddleware(mcp.toolHandler.handleCIWebhook))
+	}
+
 	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -840,7 +732,7 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 
 func printHelp() {
 	fmt.Print(`
-Gasoline - Adding fuel to the AI fire
+Gasoline - Browser observability for AI coding agents
 
 Usage: gasoline [options]
 

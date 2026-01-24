@@ -1371,13 +1371,13 @@ func TestGetWebVitalsToolRegistered(t *testing.T) {
 	tools := handler.toolsList()
 	found := false
 	for _, tool := range tools {
-		if tool.Name == "get_web_vitals" {
+		if tool.Name == "observe" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("get_web_vitals tool should be registered in toolsList")
+		t.Error("observe tool should be registered in toolsList")
 	}
 }
 
@@ -1394,11 +1394,11 @@ func TestGetWebVitalsToolDispatch(t *testing.T) {
 		ID:      json.RawMessage(`1`),
 		Method:  "tools/call",
 	}
-	args := json.RawMessage(`{}`)
+	args := json.RawMessage(`{"what":"vitals"}`)
 
-	resp, handled := handler.handleToolCall(req, "get_web_vitals", args)
+	resp, handled := handler.handleToolCall(req, "observe", args)
 	if !handled {
-		t.Error("get_web_vitals should be handled by handleToolCall")
+		t.Error("observe should be handled by handleToolCall")
 	}
 	if resp.Error != nil {
 		t.Fatalf("unexpected error: %v", resp.Error)

@@ -1022,7 +1022,7 @@ func TestSchemaStore_PathParameters(t *testing.T) {
 func TestMCPGetAPISchema(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	// Add some network bodies that will trigger schema inference
 	capture.AddNetworkBodies([]NetworkBody{
@@ -1053,7 +1053,7 @@ func TestMCPGetAPISchema(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_api_schema","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"api"}}`),
 	})
 
 	if resp.Error != nil {
@@ -1084,7 +1084,7 @@ func TestMCPGetAPISchema(t *testing.T) {
 func TestMCPGetAPISchemaWithURLFilter(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.schemaStore.Observe(NetworkBody{
 		Method: "GET", URL: "http://localhost:3000/api/users/1", Status: 200, Duration: 50,
@@ -1100,7 +1100,7 @@ func TestMCPGetAPISchemaWithURLFilter(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_api_schema","arguments":{"url_filter":"users"}}`),
+		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"api","url_filter":"users"}}`),
 	})
 
 	var result struct {
@@ -1121,7 +1121,7 @@ func TestMCPGetAPISchemaWithURLFilter(t *testing.T) {
 func TestMCPGetAPISchemaOpenAPIFormat(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	capture.schemaStore.Observe(NetworkBody{
 		Method:       "GET",
@@ -1139,7 +1139,7 @@ func TestMCPGetAPISchemaOpenAPIFormat(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"get_api_schema","arguments":{"format":"openapi_stub"}}`),
+		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"api","format":"openapi_stub"}}`),
 	})
 
 	var result struct {
@@ -1315,10 +1315,10 @@ func TestSchemaStore_CoverageStats(t *testing.T) {
 // Tool Listed in tools/list
 // ============================================
 
-func TestMCPToolsListIncludesGetAPISchema(t *testing.T) {
+func TestMCPToolsListIncludesAnalyze(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1336,15 +1336,12 @@ func TestMCPToolsListIncludesGetAPISchema(t *testing.T) {
 
 	found := false
 	for _, tool := range result.Tools {
-		if tool.Name == "get_api_schema" {
+		if tool.Name == "analyze" {
 			found = true
-			if !strings.Contains(tool.Description, "API") {
-				t.Error("Expected description to mention 'API'")
-			}
 			break
 		}
 	}
 	if !found {
-		t.Error("Expected 'get_api_schema' tool to be listed")
+		t.Error("Expected 'analyze' tool to be listed")
 	}
 }

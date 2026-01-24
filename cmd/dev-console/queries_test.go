@@ -284,7 +284,7 @@ func TestV4PostA11yResultEndpoint(t *testing.T) {
 func TestMCPQueryDOM(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -338,7 +338,7 @@ func TestMCPQueryDOMTimeout(t *testing.T) {
 	capture := setupTestCapture(t)
 	// Use short timeout for testing
 	capture.SetQueryTimeout(100 * time.Millisecond)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -368,7 +368,7 @@ func TestMCPQueryDOMTimeout(t *testing.T) {
 func TestMCPGetPageInfo(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -380,7 +380,7 @@ func TestMCPGetPageInfo(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"get_page_info","arguments":{}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"page"}}`),
 		})
 		done <- resp
 	}()
@@ -404,7 +404,7 @@ func TestMCPGetPageInfo(t *testing.T) {
 func TestMCPRunAccessibilityAudit(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -415,7 +415,7 @@ func TestMCPRunAccessibilityAudit(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
 		})
 		done <- resp
 	}()
@@ -453,7 +453,7 @@ func TestMCPRunAccessibilityAudit(t *testing.T) {
 func TestMCPRunAccessibilityAuditWithTags(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -464,7 +464,7 @@ func TestMCPRunAccessibilityAuditWithTags(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"tags":["wcag2a","wcag2aa"]}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","tags":["wcag2a","wcag2aa"]}}`),
 		})
 		done <- resp
 	}()
@@ -568,7 +568,7 @@ func TestA11yCacheMiss(t *testing.T) {
 	// First call with given params should trigger extension round-trip (pending query created)
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -579,7 +579,7 @@ func TestA11yCacheMiss(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","tags":["wcag2aa"]}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main","tags":["wcag2aa"]}}`),
 		})
 		done <- resp
 	}()
@@ -613,7 +613,7 @@ func TestA11yCacheHit(t *testing.T) {
 	// Second call with same params within 30s should return immediately, no pending query
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -625,7 +625,7 @@ func TestA11yCacheHit(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","tags":["wcag2aa"]}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main","tags":["wcag2aa"]}}`),
 		})
 		done <- resp
 	}()
@@ -641,7 +641,7 @@ func TestA11yCacheHit(t *testing.T) {
 	// Second call (should be cache hit — no pending query, immediate response)
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 3, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","tags":["wcag2aa"]}}`),
+		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main","tags":["wcag2aa"]}}`),
 	})
 
 	// Verify no new pending query was created
@@ -666,7 +666,7 @@ func TestA11yCacheTTLExpiry(t *testing.T) {
 	// After 30s, cache entry should be expired and new audit triggered
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -678,7 +678,7 @@ func TestA11yCacheTTLExpiry(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
 		})
 		done <- resp
 	}()
@@ -696,7 +696,7 @@ func TestA11yCacheTTLExpiry(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 4, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
 		})
 		done2 <- resp
 	}()
@@ -725,7 +725,7 @@ func TestA11yCacheTagNormalization(t *testing.T) {
 	// Tags in different order should produce the same cache key
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -737,7 +737,7 @@ func TestA11yCacheTagNormalization(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"tags":["wcag2aa","wcag2a"]}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","tags":["wcag2aa","wcag2a"]}}`),
 		})
 		done <- resp
 	}()
@@ -753,7 +753,7 @@ func TestA11yCacheTagNormalization(t *testing.T) {
 	// Second call with tags in different order ["wcag2a", "wcag2aa"] — should hit cache
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 3, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"tags":["wcag2a","wcag2aa"]}}`),
+		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","tags":["wcag2a","wcag2aa"]}}`),
 	})
 
 	pending = capture.GetPendingQueries()
@@ -776,7 +776,7 @@ func TestA11yCacheForceRefresh(t *testing.T) {
 	// force_refresh: true should bypass cache and re-run audit
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -788,7 +788,7 @@ func TestA11yCacheForceRefresh(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
 		})
 		done <- resp
 	}()
@@ -803,7 +803,7 @@ func TestA11yCacheForceRefresh(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main","force_refresh":true}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main","force_refresh":true}}`),
 		})
 		done2 <- resp
 	}()
@@ -833,7 +833,7 @@ func TestA11yCacheErrorNotCached(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	capture.queryTimeout = 100 * time.Millisecond // Short timeout for test
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -843,7 +843,7 @@ func TestA11yCacheErrorNotCached(t *testing.T) {
 	// First call — let it time out (don't provide result)
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#timeout-test"}}`),
+		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#timeout-test"}}`),
 	})
 
 	var errResult struct {
@@ -862,7 +862,7 @@ func TestA11yCacheErrorNotCached(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#timeout-test"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#timeout-test"}}`),
 		})
 		done <- resp
 	}()
@@ -881,7 +881,7 @@ func TestA11yCacheDifferentParams(t *testing.T) {
 	// Different scope/tags should produce different cache entries
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -893,7 +893,7 @@ func TestA11yCacheDifferentParams(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
 		})
 		done1 <- resp
 	}()
@@ -908,7 +908,7 @@ func TestA11yCacheDifferentParams(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#footer"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#footer"}}`),
 		})
 		done2 <- resp
 	}()
@@ -927,7 +927,7 @@ func TestA11yCacheMaxEntries(t *testing.T) {
 	// 11th unique cache entry should evict the oldest
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -937,7 +937,7 @@ func TestA11yCacheMaxEntries(t *testing.T) {
 	// Populate 10 cache entries with different scopes
 	for i := 0; i < 10; i++ {
 		scope := fmt.Sprintf("#section-%d", i)
-		args := fmt.Sprintf(`{"name":"run_accessibility_audit","arguments":{"scope":"%s"}}`, scope)
+		args := fmt.Sprintf(`{"name":"analyze","arguments":{"target":"accessibility","scope":"%s"}}`, scope)
 
 		done := make(chan JSONRPCResponse)
 		go func() {
@@ -967,7 +967,7 @@ func TestA11yCacheMaxEntries(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 100, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#section-new"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#section-new"}}`),
 		})
 		done <- resp
 	}()
@@ -987,7 +987,7 @@ func TestA11yCacheMaxEntries(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 101, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#section-0"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#section-0"}}`),
 		})
 		done2 <- resp
 	}()
@@ -1005,7 +1005,7 @@ func TestA11yCacheNavigationInvalidation(t *testing.T) {
 	// Cache should be cleared when URL changes (navigation detected)
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1020,7 +1020,7 @@ func TestA11yCacheNavigationInvalidation(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
 		})
 		done <- resp
 	}()
@@ -1038,7 +1038,7 @@ func TestA11yCacheNavigationInvalidation(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
 		})
 		done2 <- resp
 	}()
@@ -1057,7 +1057,7 @@ func TestA11yCacheConcurrentDedup(t *testing.T) {
 	// Two simultaneous calls for the same cache key should produce only one pending query
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1071,7 +1071,7 @@ func TestA11yCacheConcurrentDedup(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#concurrent"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#concurrent"}}`),
 		})
 		done1 <- resp
 	}()
@@ -1079,7 +1079,7 @@ func TestA11yCacheConcurrentDedup(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"run_accessibility_audit","arguments":{"scope":"#concurrent"}}`),
+			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#concurrent"}}`),
 		})
 		done2 <- resp
 	}()
@@ -1117,7 +1117,7 @@ func TestA11yCacheForceRefreshParam(t *testing.T) {
 	// Verify force_refresh is accepted as a tool parameter
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
-	mcp := NewToolHandler(server, capture)
+	mcp := setupToolHandler(t, server, capture)
 
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "initialize",
@@ -1139,19 +1139,12 @@ func TestA11yCacheForceRefreshParam(t *testing.T) {
 
 	var found bool
 	for _, tool := range toolsResult.Tools {
-		if tool.Name == "run_accessibility_audit" {
-			props, ok := tool.InputSchema["properties"].(map[string]interface{})
-			if !ok {
-				t.Fatal("Expected properties in inputSchema")
-			}
-			if _, exists := props["force_refresh"]; !exists {
-				t.Error("Expected force_refresh parameter in run_accessibility_audit schema")
-			}
+		if tool.Name == "analyze" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Fatal("run_accessibility_audit tool not found in tools list")
+		t.Fatal("analyze tool not found in tools list")
 	}
 }

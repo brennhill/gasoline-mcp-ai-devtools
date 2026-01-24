@@ -203,6 +203,13 @@ func NewSchemaStore() *SchemaStore {
 	}
 }
 
+// EndpointCount returns the number of observed API endpoints.
+func (s *SchemaStore) EndpointCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.accumulators)
+}
+
 // ============================================
 // Path Parameterization
 // ============================================
