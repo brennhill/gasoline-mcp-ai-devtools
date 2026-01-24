@@ -166,7 +166,7 @@ func (v *Capture) RecordEventReceived() {
 func (v *Capture) SetMemoryUsage(bytes int64) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	v.simulatedMemory = bytes
+	v.mem.simulatedMemory = bytes
 }
 
 func (v *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
@@ -347,14 +347,14 @@ func (v *Capture) getA11yCacheEntry(key string) json.RawMessage {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
-	entry, exists := v.a11yCache[key]
+	entry, exists := v.a11y.cache[key]
 	if !exists {
 		return nil
 	}
 	if time.Since(entry.createdAt) > a11yCacheTTL {
 		return nil
 	}
-	if v.lastKnownURL != "" && entry.url != "" && entry.url != v.lastKnownURL {
+	if v.a11y.lastURL != "" && entry.url != "" && entry.url != v.a11y.lastURL {
 		return nil
 	}
 	return entry.result
@@ -365,28 +365,28 @@ func (v *Capture) setA11yCacheEntry(key string, result json.RawMessage) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	if _, exists := v.a11yCache[key]; !exists && len(v.a11yCache) >= maxA11yCacheEntries {
-		if len(v.a11yCacheOrder) > 0 {
-			oldest := v.a11yCacheOrder[0]
-			v.a11yCacheOrder = v.a11yCacheOrder[1:]
-			delete(v.a11yCache, oldest)
+	if _, exists := v.a11y.cache[key]; !exists && len(v.a11y.cache) >= maxA11yCacheEntries {
+		if len(v.a11y.cacheOrder) > 0 {
+			oldest := v.a11y.cacheOrder[0]
+			v.a11y.cacheOrder = v.a11y.cacheOrder[1:]
+			delete(v.a11y.cache, oldest)
 		}
 	}
 
-	v.a11yCache[key] = &a11yCacheEntry{
+	v.a11y.cache[key] = &a11yCacheEntry{
 		result:    result,
 		createdAt: time.Now(),
-		url:       v.lastKnownURL,
+		url:       v.a11y.lastURL,
 	}
 
-	newOrder := make([]string, 0, len(v.a11yCacheOrder)+1)
-	for _, k := range v.a11yCacheOrder {
+	newOrder := make([]string, 0, len(v.a11y.cacheOrder)+1)
+	for _, k := range v.a11y.cacheOrder {
 		if k != key {
 			newOrder = append(newOrder, k)
 		}
 	}
 	newOrder = append(newOrder, key)
-	v.a11yCacheOrder = newOrder
+	v.a11y.cacheOrder = newOrder
 }
 
 // removeA11yCacheEntry removes a specific cache entry
@@ -394,14 +394,14 @@ func (v *Capture) removeA11yCacheEntry(key string) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	delete(v.a11yCache, key)
-	newOrder := make([]string, 0, len(v.a11yCacheOrder))
-	for _, k := range v.a11yCacheOrder {
+	delete(v.a11y.cache, key)
+	newOrder := make([]string, 0, len(v.a11y.cacheOrder))
+	for _, k := range v.a11y.cacheOrder {
 		if k != key {
 			newOrder = append(newOrder, k)
 		}
 	}
-	v.a11yCacheOrder = newOrder
+	v.a11y.cacheOrder = newOrder
 }
 
 // getOrCreateInflight returns an existing inflight entry to wait on, or nil if this caller should proceed.
@@ -409,10 +409,10 @@ func (v *Capture) getOrCreateInflight(key string) *a11yInflightEntry {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	if existing, ok := v.a11yInflight[key]; ok {
+	if existing, ok := v.a11y.inflight[key]; ok {
 		return existing
 	}
-	v.a11yInflight[key] = &a11yInflightEntry{
+	v.a11y.inflight[key] = &a11yInflightEntry{
 		done: make(chan struct{}),
 	}
 	return nil
@@ -421,11 +421,11 @@ func (v *Capture) getOrCreateInflight(key string) *a11yInflightEntry {
 // completeInflight signals waiters and removes the inflight entry
 func (v *Capture) completeInflight(key string, result json.RawMessage, err error) {
 	v.mu.Lock()
-	entry, exists := v.a11yInflight[key]
+	entry, exists := v.a11y.inflight[key]
 	if exists {
 		entry.result = result
 		entry.err = err
-		delete(v.a11yInflight, key)
+		delete(v.a11y.inflight, key)
 	}
 	v.mu.Unlock()
 
@@ -439,9 +439,9 @@ func (v *Capture) ExpireA11yCache() {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	for key, entry := range v.a11yCache {
+	for key, entry := range v.a11y.cache {
 		entry.createdAt = time.Now().Add(-a11yCacheTTL - time.Second)
-		v.a11yCache[key] = entry
+		v.a11y.cache[key] = entry
 	}
 }
 
@@ -449,7 +449,7 @@ func (v *Capture) ExpireA11yCache() {
 func (v *Capture) GetA11yCacheSize() int {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	return len(v.a11yCache)
+	return len(v.a11y.cache)
 }
 
 // SetLastKnownURL updates the last known page URL for navigation detection.
@@ -457,9 +457,9 @@ func (v *Capture) SetLastKnownURL(url string) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	if v.lastKnownURL != "" && url != v.lastKnownURL {
-		v.a11yCache = make(map[string]*a11yCacheEntry)
-		v.a11yCacheOrder = make([]string, 0)
+	if v.a11y.lastURL != "" && url != v.a11y.lastURL {
+		v.a11y.cache = make(map[string]*a11yCacheEntry)
+		v.a11y.cacheOrder = make([]string, 0)
 	}
-	v.lastKnownURL = url
+	v.a11y.lastURL = url
 }

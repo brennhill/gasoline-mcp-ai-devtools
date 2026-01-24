@@ -161,7 +161,7 @@ func TestCircuitClosesAfterRecovery(t *testing.T) {
 	c.windowEventCount = 0                                // no events
 	c.rateWindowStart = time.Now()
 	c.lastBelowThresholdAt = time.Now().Add(-11 * time.Second) // below threshold for 11s
-	c.simulatedMemory = 20 * 1024 * 1024                       // 20MB - well under 30MB
+	c.mem.simulatedMemory = 20 * 1024 * 1024                   // 20MB - well under 30MB
 	c.mu.Unlock()
 
 	// Evaluate circuit - should close
@@ -186,7 +186,7 @@ func TestCircuitStaysOpenIfMemoryHigh(t *testing.T) {
 	c.windowEventCount = 0
 	c.rateWindowStart = time.Now()
 	c.lastBelowThresholdAt = time.Now().Add(-11 * time.Second)
-	c.simulatedMemory = 35 * 1024 * 1024 // 35MB - over 30MB threshold
+	c.mem.simulatedMemory = 35 * 1024 * 1024 // 35MB - over 30MB threshold
 	c.mu.Unlock()
 
 	c.mu.Lock()
@@ -502,7 +502,7 @@ func TestCircuitOpensOnMemoryExceeded(t *testing.T) {
 
 	// Set memory over the hard limit (50MB)
 	c.mu.Lock()
-	c.simulatedMemory = 55 * 1024 * 1024 // 55MB
+	c.mem.simulatedMemory = 55 * 1024 * 1024 // 55MB
 	c.mu.Unlock()
 
 	c.mu.Lock()
@@ -519,7 +519,7 @@ func TestCircuitReasonMemoryExceeded(t *testing.T) {
 	c := setupTestCapture(t)
 
 	c.mu.Lock()
-	c.simulatedMemory = 55 * 1024 * 1024
+	c.mem.simulatedMemory = 55 * 1024 * 1024
 	c.evaluateCircuit()
 	reason := c.circuitReason
 	c.mu.Unlock()
@@ -654,7 +654,7 @@ func TestLastBelowThresholdTracking(t *testing.T) {
 	c.rateLimitStreak = 0
 	c.windowEventCount = 500                                  // under threshold
 	c.lastBelowThresholdAt = time.Now().Add(-5 * time.Second) // only 5 seconds below
-	c.simulatedMemory = 20 * 1024 * 1024                      // under 30MB
+	c.mem.simulatedMemory = 20 * 1024 * 1024                  // under 30MB
 	c.mu.Unlock()
 
 	// Circuit should stay open (need 10s below threshold)

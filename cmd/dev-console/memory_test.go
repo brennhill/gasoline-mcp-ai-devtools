@@ -92,7 +92,7 @@ func TestMemory_BelowSoftLimit_NoEviction(t *testing.T) {
 	}
 
 	c.mu.RLock()
-	evictions := c.totalEvictions
+	evictions := c.mem.totalEvictions
 	c.mu.RUnlock()
 
 	if evictions != 0 {
@@ -135,7 +135,7 @@ func TestMemory_AboveSoftLimit_Evicts25Percent(t *testing.T) {
 
 	c.mu.RLock()
 	afterCount := len(c.networkBodies)
-	evictions := c.totalEvictions
+	evictions := c.mem.totalEvictions
 	c.mu.RUnlock()
 
 	if evictions == 0 {
@@ -219,7 +219,7 @@ func TestMemory_AboveCriticalLimit_ClearsAll_MinimalMode(t *testing.T) {
 	wsCount := len(c.wsEvents)
 	nbCount := len(c.networkBodies)
 	actionCount := len(c.enhancedActions)
-	minimal := c.minimalMode
+	minimal := c.mem.minimalMode
 	c.mu.RUnlock()
 
 	// All buffers should be cleared (only the new event might be present)
@@ -246,7 +246,7 @@ func TestMemory_MinimalMode_HalvedCapacities(t *testing.T) {
 
 	// Force minimal mode
 	c.mu.Lock()
-	c.minimalMode = true
+	c.mem.minimalMode = true
 	c.mu.Unlock()
 
 	// Get effective capacities
@@ -275,12 +275,12 @@ func TestMemory_MinimalMode_PersistsAfterMemoryDrops(t *testing.T) {
 
 	// Force minimal mode
 	c.mu.Lock()
-	c.minimalMode = true
+	c.mem.minimalMode = true
 	c.mu.Unlock()
 
 	// Memory is now zero (empty buffers) - still in minimal mode
 	c.mu.RLock()
-	minimal := c.minimalMode
+	minimal := c.mem.minimalMode
 	c.mu.RUnlock()
 
 	if !minimal {
@@ -291,7 +291,7 @@ func TestMemory_MinimalMode_PersistsAfterMemoryDrops(t *testing.T) {
 	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(100)})
 
 	c.mu.RLock()
-	minimal = c.minimalMode
+	minimal = c.mem.minimalMode
 	c.mu.RUnlock()
 
 	if !minimal {
@@ -411,15 +411,15 @@ func TestMemory_EvictionCooldown(t *testing.T) {
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
 	// Set lastEvictionTime to now (simulating a recent eviction)
-	c.lastEvictionTime = time.Now()
-	c.totalEvictions = 1
+	c.mem.lastEvictionTime = time.Now()
+	c.mem.totalEvictions = 1
 	c.mu.Unlock()
 
 	// Trigger another ingest immediately (within 1 second cooldown)
 	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(100)})
 
 	c.mu.RLock()
-	evictions := c.totalEvictions
+	evictions := c.mem.totalEvictions
 	c.mu.RUnlock()
 
 	// Should still be 1 eviction (the cooldown prevented a second)
@@ -447,7 +447,7 @@ func TestMemory_PeriodicCheck_AtSoftLimit_TriggersEviction(t *testing.T) {
 	c.checkMemoryAndEvict()
 
 	c.mu.RLock()
-	evictions := c.totalEvictions
+	evictions := c.mem.totalEvictions
 	c.mu.RUnlock()
 
 	if evictions == 0 {
@@ -468,7 +468,7 @@ func TestMemory_PeriodicCheck_BelowSoftLimit_NoAction(t *testing.T) {
 	c.checkMemoryAndEvict()
 
 	c.mu.RLock()
-	evictions := c.totalEvictions
+	evictions := c.mem.totalEvictions
 	c.mu.RUnlock()
 
 	if evictions != 0 {
@@ -651,7 +651,7 @@ func TestMemory_AddWSEvents_AtHardLimit(t *testing.T) {
 	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(100)})
 
 	c.mu.RLock()
-	evictions := c.totalEvictions
+	evictions := c.mem.totalEvictions
 	wsCount := len(c.wsEvents)
 	c.mu.RUnlock()
 
@@ -673,7 +673,7 @@ func TestMemory_MinimalMode_IngestAtReducedCapacity(t *testing.T) {
 
 	// Force minimal mode
 	c.mu.Lock()
-	c.minimalMode = true
+	c.mem.minimalMode = true
 	c.mu.Unlock()
 
 	// Add more WS events than the halved capacity
@@ -704,7 +704,7 @@ func TestMemory_ExtensionSoftLimit_BufferCapacitiesHalved(t *testing.T) {
 	// Server-side: verify the concept - when minimalMode is true, capacities are halved
 	c := NewCapture()
 	c.mu.Lock()
-	c.minimalMode = true
+	c.mem.minimalMode = true
 	c.mu.Unlock()
 
 	c.mu.RLock()
@@ -773,9 +773,9 @@ func TestMemory_GetMemoryStatus(t *testing.T) {
 	c := NewCapture()
 
 	c.mu.Lock()
-	c.totalEvictions = 5
-	c.evictedEntries = 42
-	c.minimalMode = true
+	c.mem.totalEvictions = 5
+	c.mem.evictedEntries = 42
+	c.mem.minimalMode = true
 	c.mu.Unlock()
 
 	status := c.GetMemoryStatus()
@@ -817,8 +817,8 @@ func TestMemory_EvictionCounterIncrements(t *testing.T) {
 	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(100)})
 
 	c.mu.RLock()
-	firstEvictions := c.totalEvictions
-	firstEvicted := c.evictedEntries
+	firstEvictions := c.mem.totalEvictions
+	firstEvicted := c.mem.evictedEntries
 	c.mu.RUnlock()
 
 	if firstEvictions == 0 {

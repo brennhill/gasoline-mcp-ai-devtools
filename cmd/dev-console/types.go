@@ -327,6 +327,52 @@ const (
 )
 
 // ============================================
+// Sub-structs for Capture composition
+// ============================================
+
+// A11yCache manages the accessibility audit result cache with LRU eviction
+// and concurrent deduplication of inflight requests.
+type A11yCache struct {
+	cache      map[string]*a11yCacheEntry
+	cacheOrder []string // Track insertion order for eviction
+	lastURL    string
+	inflight   map[string]*a11yInflightEntry
+}
+
+const maxA11yCacheEntries = 10
+const a11yCacheTTL = 30 * time.Second
+
+type a11yCacheEntry struct {
+	result    json.RawMessage
+	createdAt time.Time
+	url       string
+}
+
+type a11yInflightEntry struct {
+	done   chan struct{}
+	result json.RawMessage
+	err    error
+}
+
+// PerformanceStore manages performance snapshots and baselines with LRU eviction.
+type PerformanceStore struct {
+	snapshots     map[string]PerformanceSnapshot
+	snapshotOrder []string
+	baselines     map[string]PerformanceBaseline
+	baselineOrder []string
+}
+
+// MemoryState tracks memory enforcement state including eviction counters
+// and minimal mode flag.
+type MemoryState struct {
+	minimalMode      bool
+	lastEvictionTime time.Time
+	totalEvictions   int
+	evictedEntries   int
+	simulatedMemory  int64
+}
+
+// ============================================
 // Capture
 // ============================================
 
@@ -373,44 +419,13 @@ type Capture struct {
 	eventCount    int
 	rateResetTime time.Time
 
-	// Memory simulation (for testing)
-	simulatedMemory int64
-
-	// Performance snapshots
-	perfSnapshots     map[string]PerformanceSnapshot
-	perfSnapshotOrder []string
-	perfBaselines     map[string]PerformanceBaseline
-	perfBaselineOrder []string
-
 	// Query timeout
 	queryTimeout time.Duration
 
-	// Memory enforcement
-	minimalMode      bool
-	lastEvictionTime time.Time
-	totalEvictions   int
-	evictedEntries   int
-
-	// A11y audit cache
-	a11yCache      map[string]*a11yCacheEntry
-	a11yCacheOrder []string // Track insertion order for eviction
-	lastKnownURL   string
-	a11yInflight   map[string]*a11yInflightEntry
-}
-
-const maxA11yCacheEntries = 10
-const a11yCacheTTL = 30 * time.Second
-
-type a11yCacheEntry struct {
-	result    json.RawMessage
-	createdAt time.Time
-	url       string
-}
-
-type a11yInflightEntry struct {
-	done   chan struct{}
-	result json.RawMessage
-	err    error
+	// Composed sub-structs
+	a11y A11yCache
+	perf PerformanceStore
+	mem  MemoryState
 }
 
 // NewCapture creates a new v4 server instance
@@ -429,13 +444,17 @@ func NewCapture() *Capture {
 		rateWindowStart:      now,
 		lastBelowThresholdAt: now,
 		queryTimeout:         defaultQueryTimeout,
-		perfSnapshots:        make(map[string]PerformanceSnapshot),
-		perfSnapshotOrder:    make([]string, 0),
-		perfBaselines:        make(map[string]PerformanceBaseline),
-		perfBaselineOrder:    make([]string, 0),
-		a11yCache:            make(map[string]*a11yCacheEntry),
-		a11yCacheOrder:       make([]string, 0),
-		a11yInflight:         make(map[string]*a11yInflightEntry),
+		perf: PerformanceStore{
+			snapshots:     make(map[string]PerformanceSnapshot),
+			snapshotOrder: make([]string, 0),
+			baselines:     make(map[string]PerformanceBaseline),
+			baselineOrder: make([]string, 0),
+		},
+		a11y: A11yCache{
+			cache:      make(map[string]*a11yCacheEntry),
+			cacheOrder: make([]string, 0),
+			inflight:   make(map[string]*a11yInflightEntry),
+		},
 	}
 	c.queryCond = sync.NewCond(&c.mu)
 	return c

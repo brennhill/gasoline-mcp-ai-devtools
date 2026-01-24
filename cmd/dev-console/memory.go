@@ -55,9 +55,9 @@ func (v *Capture) GetMemoryStatus() MemoryStatus {
 		SoftLimit:      memorySoftLimit,
 		HardLimit:      memoryHardLimit,
 		CriticalLimit:  memoryCriticalLimit,
-		MinimalMode:    v.minimalMode,
-		TotalEvictions: v.totalEvictions,
-		EvictedEntries: v.evictedEntries,
+		MinimalMode:    v.mem.minimalMode,
+		TotalEvictions: v.mem.totalEvictions,
+		EvictedEntries: v.mem.evictedEntries,
 	}
 }
 
@@ -100,7 +100,7 @@ func (v *Capture) calcActionMemory() int64 {
 // effectiveWSCapacity returns the current WS buffer capacity (halved in minimal mode)
 // caller must hold lock
 func (v *Capture) effectiveWSCapacity() int {
-	if v.minimalMode {
+	if v.mem.minimalMode {
 		return maxWSEvents / 2
 	}
 	return maxWSEvents
@@ -109,7 +109,7 @@ func (v *Capture) effectiveWSCapacity() int {
 // effectiveNBCapacity returns the current network body buffer capacity (halved in minimal mode)
 // caller must hold lock
 func (v *Capture) effectiveNBCapacity() int {
-	if v.minimalMode {
+	if v.mem.minimalMode {
 		return maxNetworkBodies / 2
 	}
 	return maxNetworkBodies
@@ -118,7 +118,7 @@ func (v *Capture) effectiveNBCapacity() int {
 // effectiveActionCapacity returns the current action buffer capacity (halved in minimal mode)
 // caller must hold lock
 func (v *Capture) effectiveActionCapacity() int {
-	if v.minimalMode {
+	if v.mem.minimalMode {
 		return maxEnhancedActions / 2
 	}
 	return maxEnhancedActions
@@ -132,7 +132,7 @@ func (v *Capture) effectiveActionCapacity() int {
 // This is the primary enforcement point, called on every ingest operation.
 func (v *Capture) enforceMemory() {
 	// Respect cooldown
-	if !v.lastEvictionTime.IsZero() && time.Since(v.lastEvictionTime) < evictionCooldown {
+	if !v.mem.lastEvictionTime.IsZero() && time.Since(v.mem.lastEvictionTime) < evictionCooldown {
 		return
 	}
 
@@ -200,9 +200,9 @@ func (v *Capture) evictSoft() {
 		}
 	}
 
-	v.lastEvictionTime = time.Now()
-	v.totalEvictions++
-	v.evictedEntries += evicted
+	v.mem.lastEvictionTime = time.Now()
+	v.mem.totalEvictions++
+	v.mem.evictedEntries += evicted
 }
 
 // evictHard removes oldest 50% from each buffer (prioritizing network bodies)
@@ -248,9 +248,9 @@ func (v *Capture) evictHard() {
 		}
 	}
 
-	v.lastEvictionTime = time.Now()
-	v.totalEvictions++
-	v.evictedEntries += evicted
+	v.mem.lastEvictionTime = time.Now()
+	v.mem.totalEvictions++
+	v.mem.evictedEntries += evicted
 }
 
 // evictCritical clears ALL buffers and enters minimal mode
@@ -264,10 +264,10 @@ func (v *Capture) evictCritical() {
 	v.enhancedActions = v.enhancedActions[:0]
 	v.actionAddedAt = v.actionAddedAt[:0]
 
-	v.minimalMode = true
-	v.lastEvictionTime = time.Now()
-	v.totalEvictions++
-	v.evictedEntries += evicted
+	v.mem.minimalMode = true
+	v.mem.lastEvictionTime = time.Now()
+	v.mem.totalEvictions++
+	v.mem.evictedEntries += evicted
 }
 
 // ============================================
@@ -284,8 +284,8 @@ func (v *Capture) IsMemoryExceeded() bool {
 
 // isMemoryExceeded is the internal version (caller must hold lock)
 func (v *Capture) isMemoryExceeded() bool {
-	if v.simulatedMemory > 0 {
-		return v.simulatedMemory > memoryHardLimit
+	if v.mem.simulatedMemory > 0 {
+		return v.mem.simulatedMemory > memoryHardLimit
 	}
 	return v.calcTotalMemory() > memoryHardLimit
 }

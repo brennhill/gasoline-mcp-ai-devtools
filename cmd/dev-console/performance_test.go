@@ -222,7 +222,7 @@ func TestPerformanceBaselineAveragesFCPLCP(t *testing.T) {
 	})
 
 	server.mu.RLock()
-	baseline := server.perfBaselines["/test"]
+	baseline := server.perf.baselines["/test"]
 	server.mu.RUnlock()
 
 	if baseline.SampleCount != 2 {

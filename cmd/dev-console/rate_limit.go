@@ -144,8 +144,8 @@ func (v *Capture) evaluateCircuit() {
 // getMemoryForCircuit returns the memory to use for circuit evaluation.
 // Uses simulated memory if set, otherwise real buffer memory. Caller must hold lock.
 func (v *Capture) getMemoryForCircuit() int64 {
-	if v.simulatedMemory > 0 {
-		return v.simulatedMemory
+	if v.mem.simulatedMemory > 0 {
+		return v.mem.simulatedMemory
 	}
 	return v.calcTotalMemory()
 }

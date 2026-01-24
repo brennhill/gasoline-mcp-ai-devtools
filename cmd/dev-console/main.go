@@ -131,14 +131,14 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) JSONRPCResponse {
 func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 	h.initialized = true
 
-	result := map[string]interface{}{
-		"protocolVersion": "2024-11-05",
-		"serverInfo": map[string]string{
-			"name":    "gasoline",
-			"version": version,
+	result := MCPInitializeResult{
+		ProtocolVersion: "2024-11-05",
+		ServerInfo: MCPServerInfo{
+			Name:    "gasoline",
+			Version: version,
 		},
-		"capabilities": map[string]interface{}{
-			"tools": map[string]interface{}{},
+		Capabilities: MCPCapabilities{
+			Tools: MCPToolsCapability{},
 		},
 	}
 
@@ -184,7 +184,7 @@ func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
 		tools = append(tools, h.toolHandler.toolsList()...)
 	}
 
-	result := map[string]interface{}{"tools": tools}
+	result := MCPToolsListResult{Tools: tools}
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
@@ -525,6 +525,52 @@ func (s *Server) getEntries() []LogEntry {
 	return result
 }
 
+// validLogLevels defines accepted log level values.
+var validLogLevels = map[string]bool{
+	"error": true,
+	"warn":  true,
+	"info":  true,
+	"debug": true,
+	"log":   true,
+}
+
+// maxEntrySize is the maximum serialized size of a single log entry (1MB).
+const maxEntrySize = 1024 * 1024
+
+// validateLogEntry checks if a log entry meets the contract requirements.
+// Returns true if the entry is valid, false otherwise.
+func validateLogEntry(entry LogEntry) bool {
+	// Required: level field must exist and be a known value
+	level, ok := entry["level"].(string)
+	if !ok || !validLogLevels[level] {
+		return false
+	}
+
+	// Size check: entry must not exceed maxEntrySize when serialized
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return false
+	}
+	if len(data) > maxEntrySize {
+		return false
+	}
+
+	return true
+}
+
+// validateLogEntries filters entries, returning only valid ones and a count of rejected.
+func validateLogEntries(entries []LogEntry) (valid []LogEntry, rejected int) {
+	valid = make([]LogEntry, 0, len(entries))
+	for _, entry := range entries {
+		if validateLogEntry(entry) {
+			valid = append(valid, entry)
+		} else {
+			rejected++
+		}
+	}
+	return valid, rejected
+}
+
 // CORS middleware
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -765,8 +811,9 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 				return
 			}
 
-			received := server.addEntries(body.Entries)
-			jsonResponse(w, http.StatusOK, map[string]int{"received": received})
+			valid, rejected := validateLogEntries(body.Entries)
+			received := server.addEntries(valid)
+			jsonResponse(w, http.StatusOK, map[string]int{"received": received, "rejected": rejected})
 
 		case "DELETE":
 			server.clearEntries()

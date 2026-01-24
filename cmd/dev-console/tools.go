@@ -3,27 +3,71 @@ package main
 import "encoding/json"
 
 // ============================================
+// MCP Typed Response Structs
+// ============================================
+
+// MCPContentBlock represents a single content block in an MCP tool result.
+type MCPContentBlock struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+// MCPToolResult represents the result of an MCP tool call.
+type MCPToolResult struct {
+	Content []MCPContentBlock `json:"content"`
+	IsError bool              `json:"isError,omitempty"`
+}
+
+// MCPInitializeResult represents the result of an MCP initialize request.
+type MCPInitializeResult struct {
+	ProtocolVersion string          `json:"protocolVersion"`
+	ServerInfo      MCPServerInfo   `json:"serverInfo"`
+	Capabilities    MCPCapabilities `json:"capabilities"`
+}
+
+// MCPServerInfo identifies the MCP server.
+type MCPServerInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+// MCPCapabilities declares the server's MCP capabilities.
+type MCPCapabilities struct {
+	Tools MCPToolsCapability `json:"tools"`
+}
+
+// MCPToolsCapability declares tool support.
+type MCPToolsCapability struct{}
+
+// MCPToolsListResult represents the result of a tools/list request.
+type MCPToolsListResult struct {
+	Tools []MCPTool `json:"tools"`
+}
+
+// ============================================
 // MCP Response Helpers
 // ============================================
 
 // mcpTextResponse constructs an MCP tool result containing a single text content block.
 func mcpTextResponse(text string) json.RawMessage {
-	resultJSON, _ := json.Marshal(map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": text},
+	result := MCPToolResult{
+		Content: []MCPContentBlock{
+			{Type: "text", Text: text},
 		},
-	})
+	}
+	resultJSON, _ := json.Marshal(result)
 	return json.RawMessage(resultJSON)
 }
 
 // mcpErrorResponse constructs an MCP tool error result containing a single text content block.
 func mcpErrorResponse(text string) json.RawMessage {
-	resultJSON, _ := json.Marshal(map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": text},
+	result := MCPToolResult{
+		Content: []MCPContentBlock{
+			{Type: "text", Text: text},
 		},
-		"isError": true,
-	})
+		IsError: true,
+	}
+	resultJSON, _ := json.Marshal(result)
 	return json.RawMessage(resultJSON)
 }
 

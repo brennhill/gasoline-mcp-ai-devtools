@@ -548,7 +548,7 @@ function truncateArg(arg, maxSize = 10240) {
       if (typeof arg === 'string') {
         return arg.slice(0, maxSize) + '... [truncated]'
       }
-      return JSON.parse(serialized.slice(0, maxSize - 50) + '"} [truncated]')
+      return serialized.slice(0, maxSize) + '...[truncated]'
     }
     return arg
   } catch {

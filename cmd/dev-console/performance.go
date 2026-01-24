@@ -20,15 +20,15 @@ func (v *Capture) AddPerformanceSnapshot(snapshot PerformanceSnapshot) {
 	url := snapshot.URL
 
 	// LRU eviction for snapshots
-	if _, exists := v.perfSnapshots[url]; exists {
-		v.perfSnapshotOrder = removeFromOrder(v.perfSnapshotOrder, url)
-	} else if len(v.perfSnapshotOrder) >= maxPerfSnapshots {
-		oldest := v.perfSnapshotOrder[0]
-		delete(v.perfSnapshots, oldest)
-		v.perfSnapshotOrder = v.perfSnapshotOrder[1:]
+	if _, exists := v.perf.snapshots[url]; exists {
+		v.perf.snapshotOrder = removeFromOrder(v.perf.snapshotOrder, url)
+	} else if len(v.perf.snapshotOrder) >= maxPerfSnapshots {
+		oldest := v.perf.snapshotOrder[0]
+		delete(v.perf.snapshots, oldest)
+		v.perf.snapshotOrder = v.perf.snapshotOrder[1:]
 	}
-	v.perfSnapshots[url] = snapshot
-	v.perfSnapshotOrder = append(v.perfSnapshotOrder, url)
+	v.perf.snapshots[url] = snapshot
+	v.perf.snapshotOrder = append(v.perf.snapshotOrder, url)
 
 	// Update baseline
 	v.updateBaseline(snapshot)
@@ -63,14 +63,14 @@ func weightedOptionalFloat(baseline *float64, snapshot *float64, baseWeight, new
 // updateBaseline updates the running average baseline for a URL
 func (v *Capture) updateBaseline(snapshot PerformanceSnapshot) {
 	url := snapshot.URL
-	baseline, exists := v.perfBaselines[url]
+	baseline, exists := v.perf.baselines[url]
 
 	if !exists {
 		// LRU eviction for baselines
-		if len(v.perfBaselineOrder) >= maxPerfBaselines {
-			oldest := v.perfBaselineOrder[0]
-			delete(v.perfBaselines, oldest)
-			v.perfBaselineOrder = v.perfBaselineOrder[1:]
+		if len(v.perf.baselineOrder) >= maxPerfBaselines {
+			oldest := v.perf.baselineOrder[0]
+			delete(v.perf.baselines, oldest)
+			v.perf.baselineOrder = v.perf.baselineOrder[1:]
 		}
 
 		// First sample: use snapshot values directly
@@ -93,14 +93,14 @@ func (v *Capture) updateBaseline(snapshot PerformanceSnapshot) {
 			LongTasks: snapshot.LongTasks,
 			CLS:       snapshot.CLS,
 		}
-		v.perfBaselines[url] = baseline
-		v.perfBaselineOrder = append(v.perfBaselineOrder, url)
+		v.perf.baselines[url] = baseline
+		v.perf.baselineOrder = append(v.perf.baselineOrder, url)
 		return
 	}
 
 	// Remove from order and re-append (LRU touch)
-	v.perfBaselineOrder = removeFromOrder(v.perfBaselineOrder, url)
-	v.perfBaselineOrder = append(v.perfBaselineOrder, url)
+	v.perf.baselineOrder = removeFromOrder(v.perf.baselineOrder, url)
+	v.perf.baselineOrder = append(v.perf.baselineOrder, url)
 
 	baseline.SampleCount++
 	baseline.LastUpdated = snapshot.Timestamp
@@ -136,14 +136,14 @@ func (v *Capture) updateBaseline(snapshot PerformanceSnapshot) {
 		baseline.CLS = weightedOptionalFloat(baseline.CLS, snapshot.CLS, 0.8, 0.2)
 	}
 
-	v.perfBaselines[url] = baseline
+	v.perf.baselines[url] = baseline
 }
 
 // GetPerformanceSnapshot returns the snapshot for a given URL
 func (v *Capture) GetPerformanceSnapshot(url string) (PerformanceSnapshot, bool) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	s, ok := v.perfSnapshots[url]
+	s, ok := v.perf.snapshots[url]
 	return s, ok
 }
 
@@ -151,18 +151,18 @@ func (v *Capture) GetPerformanceSnapshot(url string) (PerformanceSnapshot, bool)
 func (v *Capture) GetLatestPerformanceSnapshot() (PerformanceSnapshot, bool) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	if len(v.perfSnapshotOrder) == 0 {
+	if len(v.perf.snapshotOrder) == 0 {
 		return PerformanceSnapshot{}, false
 	}
-	url := v.perfSnapshotOrder[len(v.perfSnapshotOrder)-1]
-	return v.perfSnapshots[url], true
+	url := v.perf.snapshotOrder[len(v.perf.snapshotOrder)-1]
+	return v.perf.snapshots[url], true
 }
 
 // GetPerformanceBaseline returns the baseline for a given URL
 func (v *Capture) GetPerformanceBaseline(url string) (PerformanceBaseline, bool) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	b, ok := v.perfBaselines[url]
+	b, ok := v.perf.baselines[url]
 	return b, ok
 }
 
@@ -421,10 +421,10 @@ func (v *Capture) HandlePerformanceSnapshot(w http.ResponseWriter, r *http.Reque
 
 	if r.Method == "DELETE" {
 		v.mu.Lock()
-		v.perfSnapshots = make(map[string]PerformanceSnapshot)
-		v.perfSnapshotOrder = nil
-		v.perfBaselines = make(map[string]PerformanceBaseline)
-		v.perfBaselineOrder = nil
+		v.perf.snapshots = make(map[string]PerformanceSnapshot)
+		v.perf.snapshotOrder = nil
+		v.perf.baselines = make(map[string]PerformanceBaseline)
+		v.perf.baselineOrder = nil
 		v.mu.Unlock()
 
 		w.Header().Set("Content-Type", "application/json")
