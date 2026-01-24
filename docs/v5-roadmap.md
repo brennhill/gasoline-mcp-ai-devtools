@@ -1,5 +1,7 @@
 # Roadmap
 
+Thesis: AI reads browser state → AI writes code → human verifies. Every feature is judged by whether it makes the AI smarter, the feedback loop tighter, or human verification easier.
+
 ## Completed
 
 - [x] **Query result cleanup** — Delete on read + periodic expiry sweep.
@@ -15,75 +17,79 @@
 - [x] **WebSocket payload spec compliance** — Added `type: "websocket"` field to all WS event payloads per spec log format.
 - [x] **Contract-first testing process** — Shape tests enforce spec field presence before behavioral tests. Rule codified in `.claude/docs/tdd.md`.
 
-## Next: Reliability (ship-blockers)
+---
+
+## P0: Reliability (ship-blockers)
+
+Without these, the server crashes under real-world load. Nothing else matters until these ship.
 
 Specs: `docs/ai-first/tech-spec-rate-limiting.md`, `docs/ai-first/tech-spec-memory-enforcement.md`
 
 - [ ] **Rate limiting / circuit breaker** — Server responds 429 at >1000 events/sec; extension exponential-backoff (100ms→500ms→2s) with 5-failure circuit break. File: `rate_limit.go`.
 - [ ] **Memory enforcement** — Three thresholds (20MB soft, 50MB hard, 100MB critical) with progressive eviction. Minimal mode at critical. File: `memory.go`.
-- [ ] **Interception deferral** — Defer v4 intercepts (WS constructor, fetch body capture) until after `load` event + 100ms. Currently `install()` runs immediately.
+- [ ] **Interception deferral** — Defer intercepts (WS constructor, fetch body capture) until after `load` event + 100ms. Gasoline must not slow the app it debugs.
 
-## Next: AI Features (product differentiation)
+## P1: AI Intelligence (the AI gets smarter)
+
+These make the AI a competent collaborator instead of a stateless tool.
 
 Specs: `docs/ai-first/tech-spec-persistent-memory.md`, `docs/ai-first/tech-spec-noise-filtering.md`
 
 - [ ] **Persistent memory** — Cross-session storage (`session_store`, `load_session_context`). Baselines, noise rules, API schemas, error history survive restarts. File: `ai_persistence.go`.
 - [ ] **Noise filtering** — Built-in heuristics + agent-configurable rules (`configure_noise`, `dismiss_noise`). Auto-detection from buffer frequency analysis. File: `ai_noise.go`.
+- [ ] **API schema inference** — Auto-detect endpoints, request/response shapes, auth patterns from network traffic. The AI understands your API without documentation. File: `api_schema.go`. Spec: `docs/ai-first/tech-spec-api-schema.md`.
 
-## Next: Web Vitals (spec-complete capture)
+## P2: Feedback Loop (AI learns from its own changes)
 
-- [ ] **Web vitals capture** — Implement `startWebVitalsCapture`, `resetWebVitals`, `getWebVitals`, `stopWebVitalsCapture`, `sendWebVitals`. TDD stubs exist in `extension-tests/web-vitals.test.js` (10 tests, all currently failing).
+The core thesis loop: AI changes code → Gasoline detects impact → AI adjusts.
 
-## Performance Intelligence (extends check_performance)
-
-Building on the existing performance budget monitor to provide proactive, contextual performance insights.
-
-- [ ] **Push notification on regression** — AI is alerted without polling. After a reload, if baselines are exceeded, the server proactively signals "your last reload regressed load by 800ms". Requires MCP notifications or a status field in `get_changes_since`.
-- [ ] **SPA route measurement** — Observe `pushState`/`replaceState` and `popstate` events. Measure time-to-interactive per route transition. Extend performance snapshots to include per-route metrics.
-- [ ] **Causal diffing** — Compare resource lists (scripts, stylesheets, fonts) between baseline and current snapshot. Report what changed: "3 new scripts totaling 400KB added since baseline". File: `performance.go`.
+- [ ] **Push notification on regression** — AI is alerted without polling. After a reload, if baselines are exceeded, the server signals "your last reload regressed load by 800ms" via a status field in `get_changes_since`.
+- [ ] **Causal diffing** — Compare resource lists (scripts, stylesheets, fonts) between baseline and current. Report what changed: "3 new scripts totaling 400KB added since baseline". File: `performance.go`.
 - [ ] **Workflow integration** — Auto-run `check_performance` after each AI-initiated code change. Include performance delta in PR summaries. Integrates with codegen/reproduction scripts.
-- [ ] **Budget thresholds as config** — Developer sets constraints ("load < 2s, bundle < 500KB") in a `.gasoline.json` or via MCP tool. AI enforces as hard constraints during development. Persisted via `session_store`.
 
-## Ecosystem Exports
+## P3: Measurement & Verification (human audits AI work)
 
-Standard format exports that make Gasoline data consumable by other tools. All are new files with zero overlap on existing code.
+Help the human verify what the AI observed and decided.
 
-### Tier 1: Standard Formats (low effort, high reach)
+- [ ] **Web vitals capture** — FCP, LCP, CLS, INP via extension. Standardized performance data the AI can reference. TDD stubs exist in `extension-tests/web-vitals.test.js`.
+- [ ] **SARIF export** — `export_sarif` MCP tool. A11y audit results → GitHub Code Scanning format. Human sees AI-detected issues in PR review. File: `export_sarif.go`.
+- [ ] **HAR export** — `export_har` MCP tool. Network bodies + timing → HTTP Archive format. Human can inspect in Charles Proxy / DevTools. File: `export_har.go`.
 
-- [ ] **HAR export** — `export_har` MCP tool. Network bodies + timing → HTTP Archive format. Consumable by Charles Proxy, Fiddler, Chrome DevTools import, Postman. ~100 lines Go. File: `export_har.go`.
-- [ ] **SARIF export** — `export_sarif` MCP tool. A11y audit results → Static Analysis Results Interchange Format. Consumable by GitHub Code Scanning, VS Code SARIF Viewer, CI/CD security gates. ~80 lines Go. File: `export_sarif.go`.
-- [ ] **Playwright test export** — Formalize existing `generate_test` into proper `.spec.ts` files with network mocking from captured bodies. Enhancement to `codegen.go`.
+## P4: Nice-to-have (someday, maybe)
 
-### Tier 2: Dev Tool Integrations (medium effort, focused audience)
+Useful but not thesis-critical. Only if there's nothing higher to work on.
 
-- [ ] **MSW export** — `export_msw` MCP tool. Endpoint catalog + network bodies → Mock Service Worker handlers. "Observe your real API, generate test mocks automatically." ~150 lines Go. File: `export_msw.go`.
-- [ ] **OpenAPI skeleton** — `export_openapi` MCP tool. Observed endpoints, methods, status codes, example bodies → OpenAPI 3.0 YAML. Not type inference — just observed facts. ~200 lines Go. File: `export_openapi.go`.
-- [ ] **VS Code extension** — Gasoline status in sidebar: error count, recent failures, endpoint list, performance alerts. Uses existing MCP tools. Separate repo.
-
-### Tier 3: Observability Bridge (higher effort, enterprise value)
-
-- [ ] **Prometheus metrics** — `/metrics` endpoint. Performance marks, endpoint latencies, error rates, WS connection counts. Consumable by Grafana, Datadog, any monitoring dashboard. ~200 lines Go. File: `export_prometheus.go`.
-- [ ] **Webhook/event stream** — Push captured events to arbitrary URLs. Works without MCP notifications. Consumable by Slack, Discord, PagerDuty, custom dashboards. ~100 lines Go. File: `export_webhook.go`.
-- [ ] **Sentry-compatible export** — Format errors for local Sentry/GlitchTip. Stack traces, breadcrumbs (user actions), context. Sentry envelope format. ~200 lines Go. File: `export_sentry.go`.
-
-## Later: Completeness & Polish
-
-- [ ] **API schema inference** — Auto-detect endpoints, request/response shapes, auth patterns from network traffic. Spec: `docs/ai-first/tech-spec-api-schema.md`.
+- [ ] **SPA route measurement** — `pushState`/`popstate` observation, per-route time-to-interactive.
+- [ ] **Budget thresholds as config** — Developer sets "load < 2s, bundle < 500KB" in `.gasoline.json`, AI enforces.
 - [ ] **Binary format detection** — Identify protobuf/MessagePack via magic bytes instead of hex dump.
 - [ ] **Network body E2E tests** — E2E coverage for body capture (large bodies, binary, header sanitization).
 - [ ] **Reproduction script enhancements** — Screenshot insertion, data fixture generation, visual assertions.
-- [ ] **Extension health dashboard** — Buffer usage, memory, dropped events, POST success rate.
-- [ ] **Selective capture profiles** — Pre-defined configs ("debugging", "performance", "security").
+
+## Discarded
+
+These don't serve the thesis. The AI IS the interface — exporting to other tools assumes a non-AI workflow.
+
+- ~~**Prometheus metrics**~~ — Enterprise observability for a dev-time tool. Nobody runs Grafana dashboards for their debugger.
+- ~~**Webhook/event stream**~~ — Slack alerts for localhost console errors. The AI is already watching in real-time.
+- ~~**Sentry-compatible export**~~ — Sentry is for production. Dev-time errors are transient and the AI handles them directly.
+- ~~**MSW export**~~ — Generates mock handlers. Useful developer tool, but the AI already has the raw data.
+- ~~**OpenAPI skeleton**~~ — Exports observed endpoints to YAML. Redundant when API schema inference gives the AI this directly.
+- ~~**VS Code extension**~~ — Status sidebar. The AI is the interface, not a widget.
+- ~~**Playwright test export**~~ — `generate_test` already works. Prettier output isn't a new capability.
+- ~~**Extension health dashboard**~~ — Meta-monitoring of the tool itself.
+- ~~**Selective capture profiles**~~ — Pre-configs. Convenience, not capability.
+
+---
 
 ## Parallel Assignment Guide
 
-These features touch different files and can run as simultaneous agents:
+P0 and P1 features all touch different files and can run as simultaneous agents:
 
 | Feature | Primary files | Can parallel with |
 |---------|--------------|-------------------|
-| Rate limiting | `rate_limit.go`, `extension/background.js` | Memory, Persistent, Noise, Web Vitals |
-| Memory enforcement | `memory.go`, `queries.go` (move helpers) | Rate, Persistent, Noise, Web Vitals |
-| Persistent memory | `ai_persistence.go` (new) | Rate, Memory, Noise, Web Vitals |
-| Noise filtering | `ai_noise.go` (new) | Rate, Memory, Persistent, Web Vitals |
-| Web vitals | `extension/inject.js` | Rate, Memory, Persistent, Noise |
-| Interception deferral | `extension/inject.js`, `extension/content.js` | Rate, Memory, Persistent, Noise |
+| Rate limiting | `rate_limit.go`, `extension/background.js` | Memory, Persistent, Noise |
+| Memory enforcement | `memory.go`, `queries.go` | Rate, Persistent, Noise |
+| Persistent memory | `ai_persistence.go` (new) | Rate, Memory, Noise |
+| Noise filtering | `ai_noise.go` (new) | Rate, Memory, Persistent |
+| API schema inference | `api_schema.go` (new) | All of the above |
+| Interception deferral | `extension/inject.js`, `extension/content.js` | All server-side features |
