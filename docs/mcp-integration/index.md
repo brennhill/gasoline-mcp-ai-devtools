@@ -34,19 +34,65 @@ With `--mcp`, Gasoline runs as a dual-mode server:
 
 ## <i class="fas fa-tools"></i> Available MCP Tools
 
-Once the pipeline is connected:
+Gasoline exposes **5 composite tools** — each with multiple sub-modes controlled by a single parameter. This reduces decision space by 79% compared to individual tool calls.
 
-| Tool | Description |
-|------|-------------|
-| `get_browser_errors` | <i class="fas fa-exclamation-triangle"></i> Console errors, network failures, exceptions |
-| `get_browser_logs` | <i class="fas fa-list"></i> All logs (errors, warnings, info) |
-| `clear_browser_logs` | <i class="fas fa-eraser"></i> Clear the log file |
-| `get_websocket_events` | <i class="fas fa-plug"></i> WebSocket events. Filter by URL, ID, direction |
-| `get_websocket_status` | <i class="fas fa-signal"></i> Connection states, rates, schemas |
-| `get_network_bodies` | <i class="fas fa-exchange-alt"></i> Request/response bodies. Filter by URL, method, status |
-| `query_dom` | <i class="fas fa-code"></i> Live DOM query with CSS selectors |
-| `get_page_info` | <i class="fas fa-info-circle"></i> Page URL, title, viewport |
-| `run_accessibility_audit` | <i class="fas fa-universal-access"></i> Accessibility violations |
+| Tool | What it does | Sub-modes |
+|------|-------------|-----------|
+| `observe` | <i class="fas fa-eye"></i> Real-time browser state | errors, logs, network, websocket_events, websocket_status, actions, vitals, page |
+| `analyze` | <i class="fas fa-chart-line"></i> Data analysis and insights | performance, api, accessibility, changes, timeline |
+| `generate` | <i class="fas fa-code"></i> Code generation from captured data | reproduction, test, pr_summary, sarif, har |
+| `configure` | <i class="fas fa-cog"></i> Session and noise management | store, noise_rule, dismiss, clear |
+| `query_dom` | <i class="fas fa-search"></i> Live DOM inspection | CSS selector queries |
+
+### observe
+
+Monitor browser state in real time. Use the `what` parameter to select:
+
+| Mode | Returns |
+|------|---------|
+| `errors` | Console errors with deduplication and noise filtering |
+| `logs` | All console output (configurable limit) |
+| `network` | HTTP requests — filter by URL, method, status range |
+| `websocket_events` | WebSocket messages — filter by connection ID, direction |
+| `websocket_status` | Active WebSocket connections and stats |
+| `actions` | User interactions (click, input, navigate, scroll, select) |
+| `vitals` | Core Web Vitals — FCP, LCP, CLS, INP |
+| `page` | Current page URL, title, viewport |
+
+### analyze
+
+Derive insights from captured data. Use the `target` parameter:
+
+| Target | Returns |
+|--------|---------|
+| `performance` | Performance snapshot with regression detection against baselines |
+| `api` | Auto-inferred API schema (OpenAPI stub or gasoline format) |
+| `accessibility` | WCAG audit results with caching |
+| `changes` | Compressed state diff since a named/auto checkpoint |
+| `timeline` | Merged session timeline (actions + network + errors) |
+
+### generate
+
+Generate code artifacts from your session. Use the `format` parameter:
+
+| Format | Output |
+|--------|--------|
+| `reproduction` | Playwright script reproducing user actions |
+| `test` | Playwright test with network/error assertions |
+| `pr_summary` | Markdown performance impact summary |
+| `sarif` | SARIF accessibility report (standard format) |
+| `har` | HTTP Archive export |
+
+### configure
+
+Manage session state and noise filtering. Use the `action` parameter:
+
+| Action | Effect |
+|--------|--------|
+| `store` | Persistent key-value storage (save/load/list/delete/stats) |
+| `noise_rule` | Manage noise filtering rules (add/remove/list/auto_detect) |
+| `dismiss` | Quick one-off noise dismissal by regex pattern |
+| `clear` | Clear all browser logs |
 
 ## <i class="fas fa-cog"></i> Custom Port
 
