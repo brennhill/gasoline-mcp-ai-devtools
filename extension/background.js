@@ -202,7 +202,7 @@ export function exportDebugLog() {
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      version: '4.5.0',
+      version: '4.6.0',
       debugMode,
       connectionStatus,
       settings: {
@@ -378,17 +378,16 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
   const backoffSchedule = RATE_LIMIT_CONFIG.backoffSchedule
 
   // Track connection status locally
-  let localConnectionStatus = { connected: true }
+  const localConnectionStatus = { connected: true }
 
   const isSharedCB = !!options.sharedCircuitBreaker
 
   // Create a circuit breaker that wraps the sendFn.
   // initialBackoff and maxBackoff are set to 0 because we apply our own
   // schedule-based backoff externally (the CB still tracks state/failures).
-  const cb = options.sharedCircuitBreaker || createCircuitBreaker(
-    sendFn,
-    { maxFailures, resetTimeout, initialBackoff: 0, maxBackoff: 0 },
-  )
+  const cb =
+    options.sharedCircuitBreaker ||
+    createCircuitBreaker(sendFn, { maxFailures, resetTimeout, initialBackoff: 0, maxBackoff: 0 })
 
   // Schedule-based backoff: returns delay based on consecutive failures
   function getScheduledBackoff(failures) {
@@ -434,7 +433,11 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
     } catch (err) {
       // Record failure on shared CB by calling execute (its sendFn will fail too,
       // which correctly increments the failure counter)
-      try { await cb.execute(entries) } catch { /* expected - records the failure */ }
+      try {
+        await cb.execute(entries)
+      } catch {
+        /* expected - records the failure */
+      }
       throw err
     }
   }
@@ -466,7 +469,7 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
     try {
       await attemptSend(entries)
       localConnectionStatus.connected = true
-    } catch (err) {
+    } catch {
       localConnectionStatus.connected = false
 
       // If circuit opened, buffer the entries for later draining
@@ -484,7 +487,9 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
         const stats = cb.getStats()
         const backoff = getScheduledBackoff(stats.consecutiveFailures)
         if (backoff > 0) {
-          await new Promise((r) => setTimeout(r, backoff))
+          await new Promise((r) => {
+            setTimeout(r, backoff)
+          })
         }
 
         try {
@@ -1733,15 +1738,12 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 // All ingest batchers share this single circuit breaker so that failures from
 // any endpoint (logs, WS, actions, network bodies) contribute to the same
 // consecutive failure count and circuit state.
-const sharedServerCircuitBreaker = createCircuitBreaker(
-  () => Promise.reject(new Error('shared circuit breaker')),
-  {
-    maxFailures: RATE_LIMIT_CONFIG.maxFailures,
-    resetTimeout: RATE_LIMIT_CONFIG.resetTimeout,
-    initialBackoff: 0,
-    maxBackoff: 0,
-  },
-)
+const sharedServerCircuitBreaker = createCircuitBreaker(() => Promise.reject(new Error('shared circuit breaker')), {
+  maxFailures: RATE_LIMIT_CONFIG.maxFailures,
+  resetTimeout: RATE_LIMIT_CONFIG.resetTimeout,
+  initialBackoff: 0,
+  maxBackoff: 0,
+})
 
 // Helper to create a send function that updates global connectionStatus on failure
 function withConnectionStatus(sendFn, onSuccess) {
@@ -1777,24 +1779,27 @@ const logBatcherWithCB = createBatcherWithCircuitBreaker(
 const logBatcher = logBatcherWithCB.batcher
 
 // WebSocket event batcher instance with circuit breaker
-const wsBatcherWithCB = createBatcherWithCircuitBreaker(
-  withConnectionStatus(sendWSEventsToServer),
-  { debounceMs: 200, maxBatchSize: 100, sharedCircuitBreaker: sharedServerCircuitBreaker },
-)
+const wsBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(sendWSEventsToServer), {
+  debounceMs: 200,
+  maxBatchSize: 100,
+  sharedCircuitBreaker: sharedServerCircuitBreaker,
+})
 const wsBatcher = wsBatcherWithCB.batcher
 
 // Enhanced action batcher instance with circuit breaker
-const enhancedActionBatcherWithCB = createBatcherWithCircuitBreaker(
-  withConnectionStatus(sendEnhancedActionsToServer),
-  { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker: sharedServerCircuitBreaker },
-)
+const enhancedActionBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(sendEnhancedActionsToServer), {
+  debounceMs: 200,
+  maxBatchSize: 50,
+  sharedCircuitBreaker: sharedServerCircuitBreaker,
+})
 const enhancedActionBatcher = enhancedActionBatcherWithCB.batcher
 
 // Network body batcher instance with circuit breaker
-const networkBodyBatcherWithCB = createBatcherWithCircuitBreaker(
-  withConnectionStatus(sendNetworkBodiesToServer),
-  { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker: sharedServerCircuitBreaker },
-)
+const networkBodyBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(sendNetworkBodiesToServer), {
+  debounceMs: 200,
+  maxBatchSize: 50,
+  sharedCircuitBreaker: sharedServerCircuitBreaker,
+})
 const networkBodyBatcher = networkBodyBatcherWithCB.batcher
 
 async function handleLogMessage(payload, sender) {

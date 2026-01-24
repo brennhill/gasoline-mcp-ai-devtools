@@ -5,6 +5,7 @@ npm/
 server/
 chrome_store_files/
 docs/
+demo/
 .github/
 *.go
 go.mod

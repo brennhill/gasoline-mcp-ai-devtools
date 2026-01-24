@@ -209,10 +209,7 @@ describe('Memory Enforcement: estimateBufferMemory', () => {
   })
 
   test('should handle network bodies without requestBody or responseBody', () => {
-    const bodies = [
-      { url: 'http://example.com/api' },
-      { requestBody: 'data' },
-    ]
+    const bodies = [{ url: 'http://example.com/api' }, { requestBody: 'data' }]
     const memory = estimateBufferMemory({
       logEntries: [],
       wsEvents: [],
@@ -596,10 +593,8 @@ describe('Memory Enforcement: Hard limit disables network body batcher', () => {
     checkMemoryPressure(hardBuffers)
 
     const state = getMemoryPressureState()
-    assert.strictEqual(state.networkBodyCaptureDisabled, true,
-      'Network body capture should be disabled at hard limit')
-    assert.strictEqual(state.reducedCapacities, true,
-      'Capacities should also be reduced at hard limit')
+    assert.strictEqual(state.networkBodyCaptureDisabled, true, 'Network body capture should be disabled at hard limit')
+    assert.strictEqual(state.reducedCapacities, true, 'Capacities should also be reduced at hard limit')
   })
 
   test('hard limit action is disable_network_capture', () => {
@@ -613,8 +608,7 @@ describe('Memory Enforcement: Hard limit disables network body batcher', () => {
     const result = checkMemoryPressure(hardBuffers)
     assert.strictEqual(result.action, 'disable_network_capture')
     assert.strictEqual(result.level, 'hard')
-    assert.ok(result.estimatedMemory >= MEMORY_HARD_LIMIT,
-      'Estimated memory should be at or above hard limit')
+    assert.ok(result.estimatedMemory >= MEMORY_HARD_LIMIT, 'Estimated memory should be at or above hard limit')
   })
 })
 

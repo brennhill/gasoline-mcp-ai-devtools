@@ -1397,7 +1397,7 @@ export function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: '4.5.0',
+    version: '4.6.0',
   }
 }
 
@@ -3535,7 +3535,9 @@ export function installPhase1() {
       // Wait for load event, then defer by 100ms
       window.addEventListener('load', installDeferred, { once: true })
       // 10-second timeout fallback
-      setTimeout(() => { if (!phase2Installed) installPhase2() }, 10000)
+      setTimeout(() => {
+        if (!phase2Installed) installPhase2()
+      }, 10000)
     }
   }
 }

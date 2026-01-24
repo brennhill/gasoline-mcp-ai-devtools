@@ -6,7 +6,7 @@ import prettier from 'eslint-config-prettier'
 export default [
   // Ignore patterns
   {
-    ignores: ['node_modules/', 'dist/', 'e2e-tests/', 'npm/', 'server/', 'docs/', 'chrome_store_files/'],
+    ignores: ['node_modules/', 'dist/', 'e2e-tests/', 'npm/', 'server/', 'docs/', 'chrome_store_files/', 'demo/'],
   },
 
   // Base recommended rules
@@ -72,6 +72,7 @@ export default [
       globals: {
         ...globals.node,
         globalThis: 'readonly',
+        document: 'readonly',
       },
     },
     plugins: {
