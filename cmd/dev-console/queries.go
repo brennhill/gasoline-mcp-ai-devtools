@@ -178,48 +178,6 @@ func (v *Capture) SetMemoryUsage(bytes int64) {
 	v.simulatedMemory = bytes
 }
 
-// IsMemoryExceeded checks if memory is over the hard limit (acquires lock).
-// Uses simulated memory if set (for testing), otherwise checks real buffer memory.
-func (v *Capture) IsMemoryExceeded() bool {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	return v.isMemoryExceeded()
-}
-
-// isMemoryExceeded is the internal version (caller must hold lock)
-func (v *Capture) isMemoryExceeded() bool {
-	if v.simulatedMemory > 0 {
-		return v.simulatedMemory > memoryHardLimit
-	}
-	return v.calcTotalMemory() > memoryHardLimit
-}
-
-// GetTotalBufferMemory returns the sum of all buffer memory usage
-func (v *Capture) GetTotalBufferMemory() int64 {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	return v.calcTotalMemory()
-}
-
-// calcTotalMemory returns total memory across all buffers (caller must hold lock)
-func (v *Capture) calcTotalMemory() int64 {
-	return v.calcWSMemory() + v.calcNBMemory()
-}
-
-// GetWebSocketBufferMemory returns approximate memory usage of WS buffer
-func (v *Capture) GetWebSocketBufferMemory() int64 {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	return v.calcWSMemory()
-}
-
-// GetNetworkBodiesBufferMemory returns approximate memory usage of network bodies buffer
-func (v *Capture) GetNetworkBodiesBufferMemory() int64 {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	return v.calcNBMemory()
-}
-
 func (v *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
 	queries := v.GetPendingQueries()
 	if queries == nil {

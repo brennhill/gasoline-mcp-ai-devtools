@@ -386,6 +386,12 @@ type Capture struct {
 	// Query timeout
 	queryTimeout time.Duration
 
+	// Memory enforcement
+	minimalMode     bool
+	lastEvictionTime time.Time
+	totalEvictions  int
+	evictedEntries  int
+
 	// A11y audit cache
 	a11yCache      map[string]*a11yCacheEntry
 	a11yCacheOrder []string // Track insertion order for eviction

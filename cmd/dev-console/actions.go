@@ -17,6 +17,9 @@ func (v *Capture) AddEnhancedActions(actions []EnhancedAction) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	// Enforce memory limits before adding
+	v.enforceMemory()
+
 	v.actionTotalAdded += int64(len(actions))
 	now := time.Now()
 	for i := range actions {
@@ -28,10 +31,11 @@ func (v *Capture) AddEnhancedActions(actions []EnhancedAction) {
 		v.actionAddedAt = append(v.actionAddedAt, now)
 	}
 
-	// Enforce max count
-	if len(v.enhancedActions) > maxEnhancedActions {
-		v.enhancedActions = v.enhancedActions[len(v.enhancedActions)-maxEnhancedActions:]
-		v.actionAddedAt = v.actionAddedAt[len(v.actionAddedAt)-maxEnhancedActions:]
+	// Enforce max count (respecting minimal mode)
+	cap := v.effectiveActionCapacity()
+	if len(v.enhancedActions) > cap {
+		v.enhancedActions = v.enhancedActions[len(v.enhancedActions)-cap:]
+		v.actionAddedAt = v.actionAddedAt[len(v.actionAddedAt)-cap:]
 	}
 }
 
