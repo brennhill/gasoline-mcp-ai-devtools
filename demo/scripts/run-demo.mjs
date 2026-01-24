@@ -6,6 +6,7 @@
 //   node scripts/run-demo.mjs --all
 
 const scenes = {
+  // Bug trigger scenes (single behavior)
   "dashboard-cls": () => import("./scenes/dashboard-cls.mjs"),
   "users-500": () => import("./scenes/users-500.mjs"),
   "notifications-ws": () => import("./scenes/notifications-ws.mjs"),
@@ -13,10 +14,20 @@ const scenes = {
   "reports-undefined": () => import("./scenes/reports-undefined.mjs"),
   "billing-a11y": () => import("./scenes/billing-a11y.mjs"),
   "activity-payload": () => import("./scenes/activity-payload.mjs"),
+  // Feature demos (shows extension + MCP tool workflows)
   "demo-zero-config": () => import("./scenes/demo-zero-config.mjs"),
   "demo-websocket-toggle": () => import("./scenes/demo-websocket-toggle.mjs"),
   "demo-network-bodies": () => import("./scenes/demo-network-bodies.mjs"),
   "demo-full-observability": () => import("./scenes/demo-full-observability.mjs"),
+  "demo-console-logs": () => import("./scenes/demo-console-logs.mjs"),
+  "demo-dom-query": () => import("./scenes/demo-dom-query.mjs"),
+  "demo-api-schema": () => import("./scenes/demo-api-schema.mjs"),
+  "demo-security-scan": () => import("./scenes/demo-security-scan.mjs"),
+  "demo-csp-generator": () => import("./scenes/demo-csp-generator.mjs"),
+  "demo-noise-filter": () => import("./scenes/demo-noise-filter.mjs"),
+  "demo-session-diff": () => import("./scenes/demo-session-diff.mjs"),
+  "demo-checkpoint": () => import("./scenes/demo-checkpoint.mjs"),
+  "demo-generate-repro": () => import("./scenes/demo-generate-repro.mjs"),
 };
 
 async function main() {
