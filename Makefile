@@ -15,7 +15,7 @@ PLATFORMS := \
 .PHONY: all clean build test test-race test-cover test-bench test-fuzz \
 	dev run checksums verify-zero-deps verify-imports verify-size \
 	lint lint-go lint-js format format-fix typecheck check ci \
-	ci-local ci-go ci-js ci-security install-hooks \
+	ci-local ci-go ci-js ci-security ci-e2e release-check install-hooks \
 	$(PLATFORMS)
 
 all: clean build
@@ -123,6 +123,12 @@ ci: check test
 
 ci-local: ci-go ci-js ci-security
 	@echo "All CI checks passed locally"
+
+ci-e2e:
+	cd e2e-tests && npm ci && npx playwright install chromium --with-deps && npx playwright test
+
+release-check: ci-local ci-e2e
+	@echo "All release checks passed (CI + E2E)"
 
 ci-go:
 	go vet ./cmd/dev-console/
