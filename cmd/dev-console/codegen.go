@@ -551,13 +551,7 @@ func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.Ra
 	actions := h.capture.GetEnhancedActions(EnhancedActionFilter{})
 
 	if len(actions) == 0 {
-		result := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "No enhanced actions captured to generate script"},
-			},
-		}
-		resultJSON, _ := json.Marshal(result)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("No enhanced actions captured to generate script")}
 	}
 
 	// Apply lastNActions filter
@@ -567,13 +561,7 @@ func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.Ra
 
 	script := generatePlaywrightScript(actions, arguments.ErrorMessage, arguments.BaseURL)
 
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": script},
-		},
-	}
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(script)}
 }
 
 func (h *ToolHandler) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -597,13 +585,7 @@ func (h *ToolHandler) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMe
 
 	respJSON, _ := json.Marshal(SessionTimelineResponse(resp))
 
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": string(respJSON)},
-		},
-	}
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
 }
 
 func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -624,13 +606,7 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 	resp := h.capture.GetSessionTimeline(TimelineFilter{}, entries)
 
 	if len(resp.Timeline) == 0 {
-		result := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "No session data available. Navigate and interact with a page first."},
-			},
-		}
-		resultJSON, _ := json.Marshal(result)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("No session data available. Navigate and interact with a page first.")}
 	}
 
 	script := generateTestScript(resp.Timeline, TestGenerationOptions{
@@ -641,11 +617,5 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 		BaseURL:             arguments.BaseURL,
 	})
 
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": script},
-		},
-	}
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(script)}
 }

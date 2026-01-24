@@ -3,13 +3,46 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
+
+// TestMain wraps all tests with goroutine leak detection.
+// If any test leaks goroutines, the test suite fails.
+func TestMain(m *testing.M) {
+	// Baseline goroutine count before tests
+	baseline := runtime.NumGoroutine()
+
+	code := m.Run()
+
+	// Allow goroutines to wind down
+	time.Sleep(200 * time.Millisecond)
+
+	final := runtime.NumGoroutine()
+	leaked := final - baseline
+
+	// Threshold accounts for Go testing framework goroutines (~1 per test case).
+	// This catches goroutine bombs (spawning in loops) but not framework internals.
+	// With ~40 test cases, normal is ~40-80 framework goroutines.
+	const leakThreshold = 150
+	if leaked > leakThreshold {
+		fmt.Fprintf(os.Stderr, "FAIL: %d goroutine(s) leaked (baseline=%d, final=%d, threshold=%d)\n",
+			leaked, baseline, final, leakThreshold)
+		buf := make([]byte, 1024*1024)
+		n := runtime.Stack(buf, true)
+		fmt.Fprintf(os.Stderr, "Goroutine dump:\n%s\n", buf[:n])
+		os.Exit(1)
+	}
+
+	os.Exit(code)
+}
 
 func setupTestServer(t *testing.T) (*Server, string) {
 	t.Helper()
@@ -930,4 +963,387 @@ func TestLoadEntriesLargeEntry(t *testing.T) {
 	if len(server.entries) != 2 {
 		t.Errorf("Expected 2 entries, got %d", len(server.entries))
 	}
+}
+
+// ============================================
+// Fuzz Tests
+// ============================================
+
+// FuzzPostLogs fuzzes the POST /logs endpoint with arbitrary JSON payloads.
+// The server must never panic regardless of input.
+func FuzzPostLogs(f *testing.F) {
+	// Seed corpus
+	f.Add([]byte(`{"entries":[{"level":"error","msg":"test"}]}`))
+	f.Add([]byte(`{"entries":[]}`))
+	f.Add([]byte(`{}`))
+	f.Add([]byte(`{"entries":null}`))
+	f.Add([]byte(`not json at all`))
+	f.Add([]byte(`{"entries":[{"level":"error","msg":"` + strings.Repeat("x", 10000) + `"}]}`))
+	f.Add([]byte{0x00, 0xff, 0xfe})
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		server, _ := setupTestServer(t)
+
+		handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Entries []LogEntry `json:"entries"`
+			}
+
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+				return
+			}
+
+			if body.Entries == nil {
+				jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing entries array"})
+				return
+			}
+
+			server.addEntries(body.Entries)
+			jsonResponse(w, http.StatusOK, map[string]int{"received": len(body.Entries)})
+		})
+
+		req := httptest.NewRequest("POST", "/logs", bytes.NewReader(data))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		// Must not panic
+		handler(rec, req)
+
+		// Response must be valid HTTP
+		if rec.Code != http.StatusOK && rec.Code != http.StatusBadRequest {
+			t.Errorf("Unexpected status code: %d", rec.Code)
+		}
+	})
+}
+
+// FuzzMCPRequest fuzzes the MCP JSON-RPC handler with arbitrary payloads.
+func FuzzMCPRequest(f *testing.F) {
+	f.Add([]byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`))
+	f.Add([]byte(`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_browser_errors","arguments":{}}}`))
+	f.Add([]byte(`{"jsonrpc":"2.0","id":3,"method":"unknown"}`))
+	f.Add([]byte(`not json`))
+	f.Add([]byte(`{"jsonrpc":"2.0"}`))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		server, _ := setupTestServer(t)
+		mcp := NewMCPHandler(server)
+
+		// Initialize first
+		mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0",
+			ID:      1,
+			Method:  "initialize",
+			Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+		})
+
+		var req JSONRPCRequest
+		if err := json.Unmarshal(data, &req); err != nil {
+			return // Skip unparseable inputs for this fuzz target
+		}
+
+		// Must not panic
+		mcp.HandleRequest(req)
+	})
+}
+
+// FuzzScreenshotEndpoint fuzzes the screenshot upload handler.
+func FuzzScreenshotEndpoint(f *testing.F) {
+	f.Add([]byte(`{"dataUrl":"data:image/jpeg;base64,AAAA","url":"https://example.com","errorId":"err1","errorType":"console"}`))
+	f.Add([]byte(`{"dataUrl":"","url":""}`))
+	f.Add([]byte(`{}`))
+	f.Add([]byte(`not json`))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		tmpDir := t.TempDir()
+		logFile := filepath.Join(tmpDir, "test-logs.jsonl")
+		server, err := NewServer(logFile, 100)
+		if err != nil {
+			t.Fatalf("Failed to create server: %v", err)
+		}
+
+		req := httptest.NewRequest("POST", "/screenshots", bytes.NewReader(data))
+		w := httptest.NewRecorder()
+
+		// Must not panic
+		server.handleScreenshot(w, req)
+	})
+}
+
+// ============================================
+// Benchmarks
+// ============================================
+
+func BenchmarkAddEntries(b *testing.B) {
+	tmpDir := b.TempDir()
+	logFile := filepath.Join(tmpDir, "bench-logs.jsonl")
+	server, _ := NewServer(logFile, 1000)
+
+	entries := []LogEntry{
+		{"level": "error", "msg": "benchmark entry", "ts": "2024-01-01T00:00:00Z"},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		server.addEntries(entries)
+	}
+}
+
+func BenchmarkAddEntriesBatch(b *testing.B) {
+	tmpDir := b.TempDir()
+	logFile := filepath.Join(tmpDir, "bench-logs.jsonl")
+	server, _ := NewServer(logFile, 10000)
+
+	entries := make([]LogEntry, 100)
+	for i := range entries {
+		entries[i] = LogEntry{"level": "error", "msg": fmt.Sprintf("entry %d", i)}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		server.addEntries(entries)
+		if server.getEntryCount() > 5000 {
+			server.clearEntries()
+		}
+	}
+}
+
+func BenchmarkLogRotation(b *testing.B) {
+	tmpDir := b.TempDir()
+	logFile := filepath.Join(tmpDir, "bench-logs.jsonl")
+	server, _ := NewServer(logFile, 100) // Small max to trigger rotation
+
+	entries := make([]LogEntry, 50)
+	for i := range entries {
+		entries[i] = LogEntry{"level": "error", "msg": fmt.Sprintf("rotate %d", i)}
+	}
+
+	// Fill to capacity
+	server.addEntries(entries)
+	server.addEntries(entries)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		server.addEntries(entries) // Triggers rotation each time
+	}
+}
+
+func BenchmarkMCPGetBrowserErrors(b *testing.B) {
+	tmpDir := b.TempDir()
+	logFile := filepath.Join(tmpDir, "bench-logs.jsonl")
+	server, _ := NewServer(logFile, 1000)
+
+	// Add mix of entries
+	entries := make([]LogEntry, 500)
+	for i := range entries {
+		level := "info"
+		if i%5 == 0 {
+			level = "error"
+		}
+		entries[i] = LogEntry{"level": level, "msg": fmt.Sprintf("msg %d", i), "ts": "2024-01-01T00:00:00Z"}
+	}
+	server.addEntries(entries)
+
+	mcp := NewMCPHandler(server)
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "initialize",
+		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	req := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      2,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"get_browser_errors","arguments":{}}`),
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		mcp.HandleRequest(req)
+	}
+}
+
+func BenchmarkMCPGetBrowserLogs(b *testing.B) {
+	tmpDir := b.TempDir()
+	logFile := filepath.Join(tmpDir, "bench-logs.jsonl")
+	server, _ := NewServer(logFile, 1000)
+
+	entries := make([]LogEntry, 500)
+	for i := range entries {
+		entries[i] = LogEntry{"level": "info", "msg": fmt.Sprintf("msg %d", i)}
+	}
+	server.addEntries(entries)
+
+	mcp := NewMCPHandler(server)
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "initialize",
+		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	req := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      2,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"get_browser_logs","arguments":{}}`),
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		mcp.HandleRequest(req)
+	}
+}
+
+func BenchmarkPostLogsHTTP(b *testing.B) {
+	tmpDir := b.TempDir()
+	logFile := filepath.Join(tmpDir, "bench-logs.jsonl")
+	server, _ := NewServer(logFile, 10000)
+
+	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Entries []LogEntry `json:"entries"`
+		}
+		json.NewDecoder(r.Body).Decode(&body)
+		server.addEntries(body.Entries)
+		jsonResponse(w, http.StatusOK, map[string]int{"received": len(body.Entries)})
+	})
+
+	payload := []byte(`{"entries":[{"level":"error","msg":"bench1"},{"level":"warn","msg":"bench2"},{"level":"info","msg":"bench3"}]}`)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest("POST", "/logs", bytes.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		handler(rec, req)
+		if i%1000 == 0 {
+			server.clearEntries()
+		}
+	}
+}
+
+// ============================================
+// Golden File / Snapshot Tests
+// ============================================
+
+// updateGoldenFiles controls whether to update golden files.
+// Run with: go test -run TestMCP.*Golden -update-golden
+var updateGolden = os.Getenv("UPDATE_GOLDEN") == "1"
+
+func goldenPath(name string) string {
+	return filepath.Join("testdata", name+".golden.json")
+}
+
+func assertGolden(t *testing.T, name string, got []byte) {
+	t.Helper()
+
+	path := goldenPath(name)
+
+	if updateGolden {
+		if err := os.MkdirAll("testdata", 0o755); err != nil {
+			t.Fatalf("Failed to create testdata dir: %v", err)
+		}
+		// Pretty-print for readable diffs
+		var buf bytes.Buffer
+		json.Indent(&buf, got, "", "  ")
+		if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
+			t.Fatalf("Failed to write golden file: %v", err)
+		}
+		return
+	}
+
+	expected, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Golden file %s not found. Run with UPDATE_GOLDEN=1 to create it.", path)
+	}
+
+	// Normalize both for comparison
+	var gotNorm, expNorm bytes.Buffer
+	json.Indent(&gotNorm, got, "", "  ")
+	json.Indent(&expNorm, expected, "", "  ")
+
+	if gotNorm.String() != expNorm.String() {
+		t.Errorf("Response does not match golden file %s.\nGot:\n%s\nExpected:\n%s", path, gotNorm.String(), expNorm.String())
+	}
+}
+
+func TestMCPInitializeGolden(t *testing.T) {
+	server, _ := setupTestServer(t)
+	mcp := NewMCPHandler(server)
+
+	req := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "initialize",
+		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	}
+
+	resp := mcp.HandleRequest(req)
+	if resp.Error != nil {
+		t.Fatalf("Unexpected error: %v", resp.Error)
+	}
+
+	assertGolden(t, "mcp-initialize", resp.Result)
+}
+
+func TestMCPToolsListGolden(t *testing.T) {
+	server, _ := setupTestServer(t)
+	mcp := NewMCPHandler(server)
+
+	// Initialize first
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "initialize",
+		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	req := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      2,
+		Method:  "tools/list",
+	}
+
+	resp := mcp.HandleRequest(req)
+	if resp.Error != nil {
+		t.Fatalf("Unexpected error: %v", resp.Error)
+	}
+
+	assertGolden(t, "mcp-tools-list", resp.Result)
+}
+
+func TestMCPGetBrowserErrorsGolden(t *testing.T) {
+	server, _ := setupTestServer(t)
+
+	// Add deterministic entries for snapshot
+	server.addEntries([]LogEntry{
+		{"ts": "2024-01-22T10:00:00Z", "level": "error", "type": "exception", "message": "ReferenceError: foo is not defined"},
+		{"ts": "2024-01-22T10:00:01Z", "level": "info", "type": "console", "message": "Normal log"},
+		{"ts": "2024-01-22T10:00:02Z", "level": "error", "type": "network", "message": "GET /api/data 500", "status": float64(500)},
+	})
+
+	mcp := NewMCPHandler(server)
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "initialize",
+		Params:  json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	req := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      2,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"get_browser_errors","arguments":{}}`),
+	}
+
+	resp := mcp.HandleRequest(req)
+	if resp.Error != nil {
+		t.Fatalf("Unexpected error: %v", resp.Error)
+	}
+
+	assertGolden(t, "mcp-get-browser-errors", resp.Result)
 }

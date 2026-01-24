@@ -250,23 +250,10 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 
 	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
 	if err != nil {
-		errResult := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "Timeout waiting for DOM query result"},
-			},
-			"isError": true,
-		}
-		resultJSON, _ := json.Marshal(errResult)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Timeout waiting for DOM query result")}
 	}
 
-	resp := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": string(result)},
-		},
-	}
-	resultJSON, _ := json.Marshal(resp)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(result))}
 }
 
 func (h *ToolHandler) toolGetPageInfo(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -277,23 +264,10 @@ func (h *ToolHandler) toolGetPageInfo(req JSONRPCRequest, args json.RawMessage) 
 
 	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
 	if err != nil {
-		errResult := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "Timeout waiting for page info"},
-			},
-			"isError": true,
-		}
-		resultJSON, _ := json.Marshal(errResult)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Timeout waiting for page info")}
 	}
 
-	resp := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": string(result)},
-		},
-	}
-	resultJSON, _ := json.Marshal(resp)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(result))}
 }
 
 func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -309,13 +283,7 @@ func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage)
 	// Check cache (unless force_refresh)
 	if !arguments.ForceRefresh {
 		if cached := h.capture.getA11yCacheEntry(cacheKey); cached != nil {
-			resp := map[string]interface{}{
-				"content": []map[string]string{
-					{"type": "text", "text": string(cached)},
-				},
-			}
-			resultJSON, _ := json.Marshal(resp)
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(cached))}
 		}
 
 		// Check if there's an inflight request for this key (concurrent dedup)
@@ -323,22 +291,9 @@ func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage)
 			// Wait for the inflight request to complete
 			<-inflight.done
 			if inflight.err != nil {
-				errResult := map[string]interface{}{
-					"content": []map[string]string{
-						{"type": "text", "text": "Timeout waiting for accessibility audit result"},
-					},
-					"isError": true,
-				}
-				resultJSON, _ := json.Marshal(errResult)
-				return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+				return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Timeout waiting for accessibility audit result")}
 			}
-			resp := map[string]interface{}{
-				"content": []map[string]string{
-					{"type": "text", "text": string(inflight.result)},
-				},
-			}
-			resultJSON, _ := json.Marshal(resp)
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(inflight.result))}
 		}
 	} else {
 		// force_refresh: remove existing cache entry
@@ -365,27 +320,14 @@ func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage)
 	if err != nil {
 		// Don't cache errors — complete inflight with error
 		h.capture.completeInflight(cacheKey, nil, err)
-		errResult := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "Timeout waiting for accessibility audit result"},
-			},
-			"isError": true,
-		}
-		resultJSON, _ := json.Marshal(errResult)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Timeout waiting for accessibility audit result")}
 	}
 
 	// Cache the successful result
 	h.capture.setA11yCacheEntry(cacheKey, result)
 	h.capture.completeInflight(cacheKey, result, nil)
 
-	resp := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": string(result)},
-		},
-	}
-	resultJSON, _ := json.Marshal(resp)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(result))}
 }
 
 // ============================================

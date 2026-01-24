@@ -255,14 +255,7 @@ func (h *MCPHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMessa
 		contentText = string(errorsJSON)
 	}
 
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": contentText},
-		},
-	}
-
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(contentText)}
 }
 
 func (h *MCPHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -270,13 +263,7 @@ func (h *MCPHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage
 		Limit int `json:"limit"`
 	}
 	if err := json.Unmarshal(args, &arguments); err != nil {
-		result := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "Error parsing arguments: " + err.Error()},
-			},
-		}
-		resultJSON, _ := json.Marshal(result)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Error parsing arguments: " + err.Error())}
 	}
 
 	h.server.mu.RLock()
@@ -309,27 +296,13 @@ func (h *MCPHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage
 		contentText = string(entriesJSON)
 	}
 
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": contentText},
-		},
-	}
-
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(contentText)}
 }
 
 func (h *MCPHandler) toolClearBrowserLogs(req JSONRPCRequest) JSONRPCResponse {
 	h.server.clearEntries()
 
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": "Browser logs cleared successfully"},
-		},
-	}
-
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Browser logs cleared successfully")}
 }
 
 // Server holds the server state

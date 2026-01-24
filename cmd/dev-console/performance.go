@@ -452,13 +452,7 @@ func (h *ToolHandler) toolCheckPerformance(req JSONRPCRequest, args json.RawMess
 	}
 
 	if !found {
-		result := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "No performance snapshot available. Navigate to a page to capture one."},
-			},
-		}
-		resultJSON, _ := json.Marshal(result)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("No performance snapshot available. Navigate to a page to capture one.")}
 	}
 
 	baseline, baselineFound := h.capture.GetPerformanceBaseline(snapshot.URL)
@@ -469,11 +463,5 @@ func (h *ToolHandler) toolCheckPerformance(req JSONRPCRequest, args json.RawMess
 
 	report := h.capture.FormatPerformanceReport(snapshot, baselinePtr)
 
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": report},
-		},
-	}
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(report)}
 }

@@ -178,11 +178,5 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		contentText = string(bodiesJSON)
 	}
 
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": contentText},
-		},
-	}
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(contentText)}
 }

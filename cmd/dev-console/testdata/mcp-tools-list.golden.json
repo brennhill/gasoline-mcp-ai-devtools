@@ -1,0 +1,33 @@
+{
+  "tools": [
+    {
+      "name": "get_browser_errors",
+      "description": "Get recent browser errors (console errors, network failures, exceptions) from the Gasoline log. Useful for debugging web application issues.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_browser_logs",
+      "description": "Get all browser logs from the Gasoline log, including errors, warnings, and info messages.",
+      "inputSchema": {
+        "properties": {
+          "limit": {
+            "description": "Maximum number of log entries to return (default: all)",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "clear_browser_logs",
+      "description": "Clear all browser logs from the Gasoline log file.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

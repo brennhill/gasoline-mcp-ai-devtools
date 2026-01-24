@@ -397,13 +397,7 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 		Limit        int    `json:"limit"`
 	}
 	if err := json.Unmarshal(args, &arguments); err != nil {
-		result := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "Error parsing arguments: " + err.Error()},
-			},
-		}
-		resultJSON, _ := json.Marshal(result)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Error parsing arguments: " + err.Error())}
 	}
 
 	events := h.capture.GetWebSocketEvents(WebSocketEventFilter{
@@ -432,13 +426,7 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 		contentText = string(eventsJSON)
 	}
 
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": contentText},
-		},
-	}
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(contentText)}
 }
 
 func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -447,13 +435,7 @@ func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) 
 		ConnectionID string `json:"connection_id"`
 	}
 	if err := json.Unmarshal(args, &arguments); err != nil {
-		result := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "Error parsing arguments: " + err.Error()},
-			},
-		}
-		resultJSON, _ := json.Marshal(result)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Error parsing arguments: " + err.Error())}
 	}
 
 	status := h.capture.GetWebSocketStatus(WebSocketStatusFilter{
@@ -462,11 +444,5 @@ func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) 
 	})
 
 	statusJSON, _ := json.Marshal(status)
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": string(statusJSON)},
-		},
-	}
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(statusJSON))}
 }

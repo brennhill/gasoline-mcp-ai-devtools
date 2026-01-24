@@ -121,11 +121,5 @@ func (h *ToolHandler) toolGetEnhancedActions(req JSONRPCRequest, args json.RawMe
 		contentText = string(actionsJSON)
 	}
 
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": contentText},
-		},
-	}
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(contentText)}
 }

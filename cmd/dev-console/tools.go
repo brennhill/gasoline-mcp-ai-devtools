@@ -3,6 +3,31 @@ package main
 import "encoding/json"
 
 // ============================================
+// MCP Response Helpers
+// ============================================
+
+// mcpTextResponse constructs an MCP tool result containing a single text content block.
+func mcpTextResponse(text string) json.RawMessage {
+	resultJSON, _ := json.Marshal(map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": text},
+		},
+	})
+	return json.RawMessage(resultJSON)
+}
+
+// mcpErrorResponse constructs an MCP tool error result containing a single text content block.
+func mcpErrorResponse(text string) json.RawMessage {
+	resultJSON, _ := json.Marshal(map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": text},
+		},
+		"isError": true,
+	})
+	return json.RawMessage(resultJSON)
+}
+
+// ============================================
 // MCP Handler V4
 // ============================================
 
@@ -445,14 +470,7 @@ func (h *ToolHandler) toolGetChangesSince(req JSONRPCRequest, args json.RawMessa
 	diff := h.checkpoints.GetChangesSince(params)
 
 	diffJSON, _ := json.Marshal(diff)
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": string(diffJSON)},
-		},
-	}
-
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(diffJSON))}
 }
 
 // ============================================
@@ -461,71 +479,31 @@ func (h *ToolHandler) toolGetChangesSince(req JSONRPCRequest, args json.RawMessa
 
 func (h *ToolHandler) toolSessionStore(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.sessionStore == nil {
-		errResult := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "Session store not initialized"},
-			},
-			"isError": true,
-		}
-		resultJSON, _ := json.Marshal(errResult)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Session store not initialized")}
 	}
 
 	var storeArgs SessionStoreArgs
 	if err := json.Unmarshal(args, &storeArgs); err != nil {
-		errResult := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "Error parsing arguments: " + err.Error()},
-			},
-			"isError": true,
-		}
-		resultJSON, _ := json.Marshal(errResult)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Error parsing arguments: " + err.Error())}
 	}
 
 	result, err := h.sessionStore.HandleSessionStore(storeArgs)
 	if err != nil {
-		errResult := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "Error: " + err.Error()},
-			},
-			"isError": true,
-		}
-		resultJSON, _ := json.Marshal(errResult)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Error: " + err.Error())}
 	}
 
-	contentResult := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": string(result)},
-		},
-	}
-	resultJSON, _ := json.Marshal(contentResult)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(result))}
 }
 
 func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.sessionStore == nil {
-		errResult := map[string]interface{}{
-			"content": []map[string]string{
-				{"type": "text", "text": "Session store not initialized"},
-			},
-			"isError": true,
-		}
-		resultJSON, _ := json.Marshal(errResult)
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Session store not initialized")}
 	}
 
 	ctx := h.sessionStore.LoadSessionContext()
 	ctxJSON, _ := json.Marshal(ctx)
 
-	contentResult := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": string(ctxJSON)},
-		},
-	}
-	resultJSON, _ := json.Marshal(contentResult)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(ctxJSON))}
 }
 
 // ============================================
@@ -631,13 +609,7 @@ func (h *ToolHandler) toolConfigureNoise(req JSONRPCRequest, args json.RawMessag
 	}
 
 	respJSON, _ := json.Marshal(responseData)
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": string(respJSON)},
-		},
-	}
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
 }
 
 func (h *ToolHandler) toolDismissNoise(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -655,13 +627,7 @@ func (h *ToolHandler) toolDismissNoise(req JSONRPCRequest, args json.RawMessage)
 		"totalRules": len(h.noise.ListRules()),
 	}
 	respJSON, _ := json.Marshal(responseData)
-	result := map[string]interface{}{
-		"content": []map[string]string{
-			{"type": "text", "text": string(respJSON)},
-		},
-	}
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
 }
 
 // ============================================
