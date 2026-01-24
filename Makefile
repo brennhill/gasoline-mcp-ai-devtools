@@ -1,6 +1,6 @@
 # Gasoline Build Makefile
 
-VERSION := 4.5.0
+VERSION := 4.6.0
 BINARY_NAME := gasoline
 BUILD_DIR := dist
 

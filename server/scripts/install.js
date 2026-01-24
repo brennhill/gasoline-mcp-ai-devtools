@@ -9,7 +9,7 @@ const fs = require('fs')
 const path = require('path')
 const { execSync } = require('child_process')
 
-const VERSION = '4.5.0'
+const VERSION = '4.6.0'
 const GITHUB_REPO = 'brennhill/gasoline'
 const BINARY_NAME = 'gasoline'
 

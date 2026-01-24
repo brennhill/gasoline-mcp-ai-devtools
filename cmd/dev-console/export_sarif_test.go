@@ -671,3 +671,291 @@ func TestExportSARIFTool_NoCachedResult(t *testing.T) {
 		t.Errorf("Expected error message about no results, got %q", toolResult.Content[0].Text)
 	}
 }
+
+// ============================================
+// Coverage Gap Tests
+// ============================================
+
+func TestSaveSARIFToFile_ValidAbsPath(t *testing.T) {
+	a11yResult := json.RawMessage(`{
+		"violations": [{
+			"id": "image-alt",
+			"impact": "critical",
+			"description": "Images must have alternate text",
+			"help": "Images must have alternate text",
+			"helpUrl": "https://dequeuniversity.com/rules/axe/4.10/image-alt",
+			"tags": ["wcag2a", "wcag111"],
+			"nodes": [{
+				"html": "<img src=\"photo.jpg\">",
+				"target": ["img"],
+				"impact": "critical"
+			}]
+		}],
+		"passes": [],
+		"incomplete": [],
+		"inapplicable": []
+	}`)
+
+	tmpDir := t.TempDir()
+	savePath := filepath.Join(tmpDir, "subdir", "results.sarif.json")
+
+	opts := SARIFExportOptions{
+		SaveTo: savePath,
+	}
+
+	log, err := ExportSARIF(a11yResult, opts)
+	if err != nil {
+		t.Fatalf("ExportSARIF with save_to failed: %v", err)
+	}
+	if log == nil {
+		t.Fatal("Expected non-nil SARIF log")
+	}
+
+	// Verify the file was written
+	data, err := os.ReadFile(savePath)
+	if err != nil {
+		t.Fatalf("Failed to read saved SARIF file: %v", err)
+	}
+
+	var savedLog SARIFLog
+	if err := json.Unmarshal(data, &savedLog); err != nil {
+		t.Fatalf("Saved file is not valid SARIF JSON: %v", err)
+	}
+	if savedLog.Version != "2.1.0" {
+		t.Errorf("Expected version 2.1.0, got %q", savedLog.Version)
+	}
+	if len(savedLog.Runs[0].Results) != 1 {
+		t.Errorf("Expected 1 result in saved file, got %d", len(savedLog.Runs[0].Results))
+	}
+}
+
+func TestSaveSARIFToFile_MkdirAllFailure(t *testing.T) {
+	a11yResult := json.RawMessage(`{
+		"violations": [],
+		"passes": [],
+		"incomplete": [],
+		"inapplicable": []
+	}`)
+
+	// Use a path under /tmp but with an invalid parent that can't be created
+	// (a file pretending to be a directory)
+	tmpDir := t.TempDir()
+	blockingFile := filepath.Join(tmpDir, "blocker")
+	if err := os.WriteFile(blockingFile, []byte("I am a file"), 0644); err != nil {
+		t.Fatalf("Failed to create blocking file: %v", err)
+	}
+	// Try to create a file inside the blocking file (which is not a directory)
+	savePath := filepath.Join(blockingFile, "subdir", "result.sarif.json")
+
+	opts := SARIFExportOptions{
+		SaveTo: savePath,
+	}
+
+	_, err := ExportSARIF(a11yResult, opts)
+	if err == nil {
+		t.Fatal("Expected error when MkdirAll fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create directory") {
+		t.Errorf("Expected 'failed to create directory' error, got: %v", err)
+	}
+}
+
+func TestEnsureRule_DedupPath(t *testing.T) {
+	a11yResult := json.RawMessage(`{
+		"violations": [{
+			"id": "color-contrast",
+			"impact": "serious",
+			"description": "Color contrast check",
+			"help": "Elements must meet contrast ratio",
+			"helpUrl": "https://example.com/color-contrast",
+			"tags": ["wcag2aa"],
+			"nodes": [
+				{"html": "<span class=\"a\">A</span>", "target": ["span.a"], "impact": "serious"},
+				{"html": "<span class=\"b\">B</span>", "target": ["span.b"], "impact": "serious"}
+			]
+		}],
+		"passes": [],
+		"incomplete": [],
+		"inapplicable": []
+	}`)
+
+	opts := SARIFExportOptions{}
+	log, err := ExportSARIF(a11yResult, opts)
+	if err != nil {
+		t.Fatalf("ExportSARIF failed: %v", err)
+	}
+
+	// Two nodes under the same violation should produce 2 results but only 1 rule
+	run := log.Runs[0]
+	if len(run.Tool.Driver.Rules) != 1 {
+		t.Errorf("Expected 1 rule (deduped), got %d", len(run.Tool.Driver.Rules))
+	}
+	if len(run.Results) != 2 {
+		t.Errorf("Expected 2 results, got %d", len(run.Results))
+	}
+	// Both results should reference rule index 0
+	for i, r := range run.Results {
+		if r.RuleIndex != 0 {
+			t.Errorf("Result[%d] ruleIndex expected 0, got %d", i, r.RuleIndex)
+		}
+	}
+}
+
+// ============================================
+// Coverage: ExportSARIF with invalid JSON (unmarshal error, line 142)
+// ============================================
+
+func TestExportSARIF_InvalidJSON(t *testing.T) {
+	invalidJSON := json.RawMessage(`not valid json at all`)
+	_, err := ExportSARIF(invalidJSON, SARIFExportOptions{})
+	if err == nil {
+		t.Error("Expected error for invalid JSON input")
+	}
+	if !strings.Contains(err.Error(), "failed to parse") {
+		t.Errorf("Expected 'failed to parse' error, got: %v", err)
+	}
+}
+
+// ============================================
+// Coverage: ExportSARIF with IncludePasses (line 199 - ensureRule for passes)
+// ============================================
+
+func TestExportSARIF_IncludePasses(t *testing.T) {
+	a11yResult := json.RawMessage(`{
+		"violations": [{
+			"id": "color-contrast",
+			"impact": "serious",
+			"description": "Color contrast issue",
+			"help": "Fix contrast",
+			"helpUrl": "https://example.com",
+			"tags": ["wcag2aa"],
+			"nodes": [{"html": "<p>text</p>", "target": ["p"], "impact": "serious"}]
+		}],
+		"passes": [{
+			"id": "image-alt",
+			"impact": "critical",
+			"description": "Images have alt text",
+			"help": "Good alt text",
+			"helpUrl": "https://example.com/alt",
+			"tags": ["wcag2a"],
+			"nodes": [{"html": "<img alt='photo'>", "target": ["img"], "impact": "minor"}]
+		}],
+		"incomplete": []
+	}`)
+
+	log, err := ExportSARIF(a11yResult, SARIFExportOptions{IncludePasses: true})
+	if err != nil {
+		t.Fatalf("ExportSARIF failed: %v", err)
+	}
+
+	run := log.Runs[0]
+	// Should have 2 rules: one from violations, one from passes
+	if len(run.Tool.Driver.Rules) != 2 {
+		t.Errorf("Expected 2 rules (violation + pass), got %d", len(run.Tool.Driver.Rules))
+	}
+	// Should have 2 results
+	if len(run.Results) != 2 {
+		t.Errorf("Expected 2 results, got %d", len(run.Results))
+	}
+}
+
+// ============================================
+// Coverage: ExportSARIF with SaveTo option (line 275/286/301/305)
+// ============================================
+
+func TestExportSARIF_SaveToTempDir(t *testing.T) {
+	a11yResult := json.RawMessage(`{
+		"violations": [{
+			"id": "label",
+			"impact": "critical",
+			"description": "Form elements must have labels",
+			"help": "Add a label",
+			"helpUrl": "https://example.com",
+			"tags": ["wcag2a"],
+			"nodes": [{"html": "<input>", "target": ["input"], "impact": "critical"}]
+		}],
+		"passes": [],
+		"incomplete": []
+	}`)
+
+	tmpDir := t.TempDir()
+	outPath := filepath.Join(tmpDir, "subdir", "output.sarif.json")
+
+	log, err := ExportSARIF(a11yResult, SARIFExportOptions{SaveTo: outPath})
+	if err != nil {
+		t.Fatalf("ExportSARIF with SaveTo failed: %v", err)
+	}
+	if log == nil {
+		t.Fatal("Expected non-nil log")
+	}
+
+	// Verify the file was written
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("Failed to read saved SARIF file: %v", err)
+	}
+	if !strings.Contains(string(data), "label") {
+		t.Error("Expected saved file to contain rule ID 'label'")
+	}
+}
+
+// ============================================
+// Coverage: saveSARIFToFile with unwritable directory (line 305)
+// ============================================
+
+func TestSaveSARIFToFile_UnwritableDir(t *testing.T) {
+	log := &SARIFLog{
+		Schema:  "https://example.com/schema",
+		Version: "2.1.0",
+		Runs:    []SARIFRun{},
+	}
+
+	// Create a temp dir, then create a subdir that's not writable
+	tmpDir := t.TempDir()
+	readonlyDir := filepath.Join(tmpDir, "readonly")
+	os.MkdirAll(readonlyDir, 0o555)
+	defer os.Chmod(readonlyDir, 0o755)
+
+	outPath := filepath.Join(readonlyDir, "subdir", "cannot-write.sarif")
+
+	err := saveSARIFToFile(log, outPath)
+	if err == nil {
+		t.Error("Expected error when writing to unwritable directory")
+	}
+}
+
+// ============================================
+// Coverage: ensureRule deduplication (line 199)
+// ============================================
+
+func TestEnsureRule_Deduplication(t *testing.T) {
+	run := &SARIFRun{
+		Tool: SARIFTool{
+			Driver: SARIFDriver{
+				Rules: []SARIFRule{},
+			},
+		},
+		Results: []SARIFResult{},
+	}
+	indices := make(map[string]int)
+
+	v1 := axeViolation{ID: "rule-1", Description: "Desc 1", Help: "Help 1"}
+	v2 := axeViolation{ID: "rule-2", Description: "Desc 2", Help: "Help 2"}
+
+	idx1 := ensureRule(run, &indices, v1)
+	idx2 := ensureRule(run, &indices, v2)
+	idx1Again := ensureRule(run, &indices, v1) // should return existing
+
+	if idx1 != 0 {
+		t.Errorf("Expected first rule index 0, got %d", idx1)
+	}
+	if idx2 != 1 {
+		t.Errorf("Expected second rule index 1, got %d", idx2)
+	}
+	if idx1Again != 0 {
+		t.Errorf("Expected duplicate to return 0, got %d", idx1Again)
+	}
+	if len(run.Tool.Driver.Rules) != 2 {
+		t.Errorf("Expected 2 rules total, got %d", len(run.Tool.Driver.Rules))
+	}
+}

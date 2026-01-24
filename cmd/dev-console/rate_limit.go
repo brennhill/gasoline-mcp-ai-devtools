@@ -191,7 +191,7 @@ func (v *Capture) WriteRateLimitResponse(w http.ResponseWriter) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// HandleHealth handles GET /v4/health returning circuit breaker state
+// HandleHealth returns circuit breaker state as a JSON response (used by /health)
 func (v *Capture) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"strings"
 	"sync"
@@ -1345,3 +1346,527 @@ func TestMCPToolsListIncludesAnalyze(t *testing.T) {
 		t.Error("Expected 'analyze' tool to be listed")
 	}
 }
+
+// ============================================
+// Coverage Gap Tests
+// ============================================
+
+// TestObserveWebSocket_JSONParseFailure tests WS messages with non-JSON data
+func TestObserveWebSocket_JSONParseFailure(t *testing.T) {
+	store := NewSchemaStore()
+
+	// Observe events with invalid JSON data — should not panic
+	store.ObserveWebSocket(WebSocketEvent{
+		URL:       "ws://example.com/stream",
+		Direction: "incoming",
+		Data:      "this is not JSON at all {{{",
+	})
+	store.ObserveWebSocket(WebSocketEvent{
+		URL:       "ws://example.com/stream",
+		Direction: "outgoing",
+		Data:      "<xml>not json</xml>",
+	})
+
+	schema := store.BuildSchema(SchemaFilter{})
+	if len(schema.WebSockets) != 1 {
+		t.Fatalf("Expected 1 WS schema, got %d", len(schema.WebSockets))
+	}
+	ws := schema.WebSockets[0]
+	if ws.TotalMessages != 2 {
+		t.Errorf("Expected 2 total messages, got %d", ws.TotalMessages)
+	}
+	// No message types should be inferred from invalid JSON
+	if len(ws.MessageTypes) != 0 {
+		t.Errorf("Expected 0 message types from invalid JSON, got %d", len(ws.MessageTypes))
+	}
+	if ws.IncomingCount != 1 {
+		t.Errorf("Expected 1 incoming, got %d", ws.IncomingCount)
+	}
+	if ws.OutgoingCount != 1 {
+		t.Errorf("Expected 1 outgoing, got %d", ws.OutgoingCount)
+	}
+}
+
+// TestObserveWebSocket_MaxVariantsExceeded tests the maxWSMessageTypes cap
+func TestObserveWebSocket_MaxVariantsExceeded(t *testing.T) {
+	store := NewSchemaStore()
+
+	// Add more than maxWSMessageTypes distinct message types
+	for i := 0; i < maxWSMessageTypes+10; i++ {
+		store.ObserveWebSocket(WebSocketEvent{
+			URL:       "ws://example.com/ws",
+			Direction: "incoming",
+			Data:      fmt.Sprintf(`{"type":"msg_type_%d"}`, i),
+		})
+	}
+
+	schema := store.BuildSchema(SchemaFilter{})
+	if len(schema.WebSockets) != 1 {
+		t.Fatalf("Expected 1 WS schema, got %d", len(schema.WebSockets))
+	}
+	ws := schema.WebSockets[0]
+	if len(ws.MessageTypes) > maxWSMessageTypes {
+		t.Errorf("Expected at most %d message types, got %d", maxWSMessageTypes, len(ws.MessageTypes))
+	}
+	if ws.TotalMessages != maxWSMessageTypes+10 {
+		t.Errorf("Expected %d total messages, got %d", maxWSMessageTypes+10, ws.TotalMessages)
+	}
+}
+
+// TestObserveWebSocket_MaxConnections tests the maxWSSchemaConns cap
+func TestObserveWebSocket_MaxConnections(t *testing.T) {
+	store := NewSchemaStore()
+
+	// Fill to max WS schema connections
+	for i := 0; i < maxWSSchemaConns+5; i++ {
+		store.ObserveWebSocket(WebSocketEvent{
+			URL:       fmt.Sprintf("ws://example.com/ws/%d", i),
+			Direction: "incoming",
+			Data:      `{"type":"ping"}`,
+		})
+	}
+
+	store.mu.RLock()
+	count := len(store.wsSchemas)
+	store.mu.RUnlock()
+
+	if count > maxWSSchemaConns {
+		t.Errorf("Expected at most %d WS schemas, got %d", maxWSSchemaConns, count)
+	}
+}
+
+// TestBuildOpenAPIStub_PathParams tests OpenAPI output with path parameters
+func TestBuildOpenAPIStub_PathParams(t *testing.T) {
+	store := NewSchemaStore()
+
+	// Observe an endpoint with a UUID path param
+	store.Observe(NetworkBody{
+		Method: "GET",
+		URL:    "http://api.example.com/users/550e8400-e29b-41d4-a716-446655440000/profile",
+		Status: 200,
+	})
+	// Observe same endpoint with different UUID
+	store.Observe(NetworkBody{
+		Method: "GET",
+		URL:    "http://api.example.com/users/660e8400-e29b-41d4-a716-446655440001/profile",
+		Status: 200,
+	})
+
+	stub := store.BuildOpenAPIStub(SchemaFilter{})
+
+	if !strings.Contains(stub, "/users/{uuid}/profile") {
+		t.Errorf("Expected path pattern with {uuid}, got:\n%s", stub)
+	}
+	if !strings.Contains(stub, "in: path") {
+		t.Errorf("Expected 'in: path' for path param, got:\n%s", stub)
+	}
+	if !strings.Contains(stub, "name: uuid") {
+		t.Errorf("Expected 'name: uuid' for path param, got:\n%s", stub)
+	}
+	if !strings.Contains(stub, "required: true") {
+		t.Errorf("Expected 'required: true' for path param, got:\n%s", stub)
+	}
+}
+
+// TestBuildOpenAPIStub_RequestBodies tests OpenAPI with request bodies
+func TestBuildOpenAPIStub_RequestBodies(t *testing.T) {
+	store := NewSchemaStore()
+
+	store.Observe(NetworkBody{
+		Method:      "POST",
+		URL:         "http://api.example.com/users",
+		Status:      201,
+		ContentType: "application/json",
+		RequestBody: `{"name":"Alice","email":"alice@example.com"}`,
+	})
+
+	stub := store.BuildOpenAPIStub(SchemaFilter{})
+
+	if !strings.Contains(stub, "requestBody:") {
+		t.Errorf("Expected 'requestBody:' in stub, got:\n%s", stub)
+	}
+	if !strings.Contains(stub, "application/json:") {
+		t.Errorf("Expected 'application/json:' in stub request body, got:\n%s", stub)
+	}
+	if !strings.Contains(stub, "name:") {
+		t.Errorf("Expected 'name:' field in request body schema, got:\n%s", stub)
+	}
+	if !strings.Contains(stub, "email:") {
+		t.Errorf("Expected 'email:' field in request body schema, got:\n%s", stub)
+	}
+}
+
+// TestBuildOpenAPIStub_MultipleStatusCodes tests OpenAPI with multiple response status codes
+func TestBuildOpenAPIStub_MultipleStatusCodes(t *testing.T) {
+	store := NewSchemaStore()
+
+	// Observe successful response with body
+	store.Observe(NetworkBody{
+		Method:       "GET",
+		URL:          "http://api.example.com/items",
+		Status:       200,
+		ContentType:  "application/json",
+		ResponseBody: `{"items":[],"count":0}`,
+	})
+	// Observe error response with body
+	store.Observe(NetworkBody{
+		Method:       "GET",
+		URL:          "http://api.example.com/items",
+		Status:       404,
+		ContentType:  "application/json",
+		ResponseBody: `{"error":"not found","code":404}`,
+	})
+
+	stub := store.BuildOpenAPIStub(SchemaFilter{})
+
+	if !strings.Contains(stub, `"200":`) {
+		t.Errorf("Expected '\"200\":' in stub, got:\n%s", stub)
+	}
+	if !strings.Contains(stub, `"404":`) {
+		t.Errorf("Expected '\"404\":' in stub, got:\n%s", stub)
+	}
+}
+
+// TestBuildOpenAPIStub_QueryParams tests OpenAPI with query parameters
+func TestBuildOpenAPIStub_QueryParams(t *testing.T) {
+	store := NewSchemaStore()
+
+	store.Observe(NetworkBody{
+		Method: "GET",
+		URL:    "http://api.example.com/search?q=hello&page=1",
+		Status: 200,
+	})
+	store.Observe(NetworkBody{
+		Method: "GET",
+		URL:    "http://api.example.com/search?q=world&page=2",
+		Status: 200,
+	})
+
+	stub := store.BuildOpenAPIStub(SchemaFilter{})
+
+	if !strings.Contains(stub, "in: query") {
+		t.Errorf("Expected 'in: query' for query params, got:\n%s", stub)
+	}
+}
+
+// ============================================
+// Coverage: Observe with invalid URL (parse error)
+// ============================================
+
+func TestObserve_InvalidURL(t *testing.T) {
+	store := NewSchemaStore()
+
+	// URL with control chars triggers url.Parse error
+	store.Observe(NetworkBody{
+		Method: "GET",
+		URL:    "http://example.com/path\x7f",
+		Status: 200,
+	})
+
+	schema := store.BuildSchema(SchemaFilter{})
+	// Should not have stored anything since URL parsing failed
+	if len(schema.Endpoints) != 0 {
+		t.Errorf("Expected 0 endpoints for invalid URL, got %d", len(schema.Endpoints))
+	}
+}
+
+// ============================================
+// Coverage: Observe hitting maxSchemaEndpoints limit
+// ============================================
+
+func TestObserve_MaxEndpointsLimit(t *testing.T) {
+	store := NewSchemaStore()
+
+	// Fill up to maxSchemaEndpoints
+	for i := 0; i < maxSchemaEndpoints; i++ {
+		store.Observe(NetworkBody{
+			Method: "GET",
+			URL:    fmt.Sprintf("http://example.com/path-%d", i),
+			Status: 200,
+		})
+	}
+
+	// One more should be ignored
+	store.Observe(NetworkBody{
+		Method: "GET",
+		URL:    "http://example.com/new-path-beyond-limit",
+		Status: 200,
+	})
+
+	schema := store.BuildSchema(SchemaFilter{})
+	if len(schema.Endpoints) > maxSchemaEndpoints {
+		t.Errorf("Expected at most %d endpoints, got %d", maxSchemaEndpoints, len(schema.Endpoints))
+	}
+}
+
+// ============================================
+// Coverage: Observe with status but no response body (lines 303-317)
+// The status is tracked internally even without fields; buildEndpoint only exports if fields > 0
+// ============================================
+
+func TestObserve_StatusNoBody(t *testing.T) {
+	store := NewSchemaStore()
+
+	// Non-zero status, no response body, no content type
+	store.Observe(NetworkBody{
+		Method: "DELETE",
+		URL:    "http://example.com/api/item/1",
+		Status: 204,
+	})
+
+	schema := store.BuildSchema(SchemaFilter{})
+	if len(schema.Endpoints) != 1 {
+		t.Fatalf("Expected 1 endpoint, got %d", len(schema.Endpoints))
+	}
+	// Status is tracked internally but not exported to ResponseShapes without fields
+	// The endpoint itself should still exist with observation count = 1
+	if schema.Endpoints[0].ObservationCount != 1 {
+		t.Errorf("Expected ObservationCount=1, got %d", schema.Endpoints[0].ObservationCount)
+	}
+}
+
+// ============================================
+// Coverage: Observe same status multiple times without body increments observation count
+// ============================================
+
+func TestObserve_StatusNoBodyMultiple(t *testing.T) {
+	store := NewSchemaStore()
+
+	for i := 0; i < 5; i++ {
+		store.Observe(NetworkBody{
+			Method: "GET",
+			URL:    "http://example.com/api/health",
+			Status: 200,
+		})
+	}
+
+	schema := store.BuildSchema(SchemaFilter{})
+	if len(schema.Endpoints) != 1 {
+		t.Fatalf("Expected 1 endpoint, got %d", len(schema.Endpoints))
+	}
+	// All 5 observations counted
+	if schema.Endpoints[0].ObservationCount != 5 {
+		t.Errorf("Expected ObservationCount=5, got %d", schema.Endpoints[0].ObservationCount)
+	}
+}
+
+// ============================================
+// Coverage: Observe maxResponseShapes limit with no-body responses
+// ============================================
+
+func TestObserve_MaxResponseShapesNoBody(t *testing.T) {
+	store := NewSchemaStore()
+
+	// Fill to maxResponseShapes different status codes
+	for i := 0; i < maxResponseShapes+5; i++ {
+		store.Observe(NetworkBody{
+			Method: "GET",
+			URL:    "http://example.com/api/multi",
+			Status: 200 + i,
+		})
+	}
+
+	schema := store.BuildSchema(SchemaFilter{})
+	if len(schema.Endpoints) != 1 {
+		t.Fatalf("Expected 1 endpoint, got %d", len(schema.Endpoints))
+	}
+	if len(schema.Endpoints[0].ResponseShapes) > maxResponseShapes {
+		t.Errorf("Expected at most %d response shapes, got %d", maxResponseShapes, len(schema.Endpoints[0].ResponseShapes))
+	}
+}
+
+// ============================================
+// Coverage: observeResponseBody with non-JSON body (unmarshal fails)
+// ============================================
+
+func TestObserve_NonJSONResponseBody(t *testing.T) {
+	store := NewSchemaStore()
+
+	store.Observe(NetworkBody{
+		Method:       "GET",
+		URL:          "http://example.com/api/data",
+		Status:       200,
+		ResponseBody: "this is not json",
+		ContentType:  "application/json",
+	})
+
+	schema := store.BuildSchema(SchemaFilter{})
+	if len(schema.Endpoints) != 1 {
+		t.Fatalf("Expected 1 endpoint, got %d", len(schema.Endpoints))
+	}
+	// Response shapes should be empty (unmarshal failed)
+	if schema.Endpoints[0].ResponseShapes[200] != nil && len(schema.Endpoints[0].ResponseShapes[200].Fields) > 0 {
+		t.Error("Expected no fields when response body is not valid JSON")
+	}
+}
+
+// ============================================
+// Coverage: observeResponseBody hitting maxResponseShapes
+// ============================================
+
+func TestObserve_MaxResponseShapesWithBody(t *testing.T) {
+	store := NewSchemaStore()
+
+	// Fill with max different status codes that have JSON bodies
+	for i := 0; i < maxResponseShapes; i++ {
+		store.Observe(NetworkBody{
+			Method:       "GET",
+			URL:          "http://example.com/api/multi-body",
+			Status:       200 + i,
+			ResponseBody: fmt.Sprintf(`{"status":%d}`, 200+i),
+			ContentType:  "application/json",
+		})
+	}
+
+	// One more status with body should be ignored
+	store.Observe(NetworkBody{
+		Method:       "GET",
+		URL:          "http://example.com/api/multi-body",
+		Status:       299,
+		ResponseBody: `{"overflow":true}`,
+		ContentType:  "application/json",
+	})
+
+	schema := store.BuildSchema(SchemaFilter{})
+	if len(schema.Endpoints[0].ResponseShapes) > maxResponseShapes {
+		t.Errorf("Expected at most %d response shapes, got %d", maxResponseShapes, len(schema.Endpoints[0].ResponseShapes))
+	}
+}
+
+// ============================================
+// Coverage: inferTypeAndFormat — integer case (float64 with no decimal)
+// ============================================
+
+func TestInferTypeAndFormat_Integer(t *testing.T) {
+	typeName, format := inferTypeAndFormat(float64(42))
+	if typeName != "integer" {
+		t.Errorf("Expected type 'integer' for 42.0, got %q", typeName)
+	}
+	if format != "" {
+		t.Errorf("Expected empty format for integer, got %q", format)
+	}
+}
+
+func TestInferTypeAndFormat_Float(t *testing.T) {
+	typeName, format := inferTypeAndFormat(float64(3.14))
+	if typeName != "number" {
+		t.Errorf("Expected type 'number' for 3.14, got %q", typeName)
+	}
+	if format != "" {
+		t.Errorf("Expected empty format for number, got %q", format)
+	}
+}
+
+func TestInferTypeAndFormat_NegativeInteger(t *testing.T) {
+	typeName, _ := inferTypeAndFormat(float64(-100))
+	if typeName != "integer" {
+		t.Errorf("Expected type 'integer' for -100, got %q", typeName)
+	}
+}
+
+func TestInferTypeAndFormat_Zero(t *testing.T) {
+	typeName, _ := inferTypeAndFormat(float64(0))
+	if typeName != "integer" {
+		t.Errorf("Expected type 'integer' for 0, got %q", typeName)
+	}
+}
+
+func TestInferTypeAndFormat_DefaultCase(t *testing.T) {
+	// Use a type that doesn't match any case (e.g., an int, which shouldn't appear from JSON)
+	typeName, format := inferTypeAndFormat(complex(1, 2))
+	if typeName != "string" {
+		t.Errorf("Expected default type 'string', got %q", typeName)
+	}
+	if format != "" {
+		t.Errorf("Expected empty format for default, got %q", format)
+	}
+}
+
+// ============================================
+// Coverage: percentile — edge cases
+// ============================================
+
+func TestPercentile_EmptySlice(t *testing.T) {
+	result := percentile([]float64{}, 0.50)
+	if result != 0 {
+		t.Errorf("Expected 0 for empty slice, got %f", result)
+	}
+}
+
+func TestPercentile_SingleElement(t *testing.T) {
+	result := percentile([]float64{42.0}, 0.50)
+	if result != 42.0 {
+		t.Errorf("Expected 42.0 for single element, got %f", result)
+	}
+}
+
+func TestPercentile_TwoElements(t *testing.T) {
+	result := percentile([]float64{10.0, 20.0}, 0.50)
+	if result != 15.0 {
+		t.Errorf("Expected 15.0 for p50 of [10,20], got %f", result)
+	}
+}
+
+func TestPercentile_ExactIndex(t *testing.T) {
+	// p0 should return first element
+	result := percentile([]float64{1, 2, 3, 4, 5}, 0.0)
+	if result != 1.0 {
+		t.Errorf("Expected 1.0 for p0, got %f", result)
+	}
+	// p100 should return last element
+	result = percentile([]float64{1, 2, 3, 4, 5}, 1.0)
+	if result != 5.0 {
+		t.Errorf("Expected 5.0 for p100, got %f", result)
+	}
+}
+
+// ============================================
+// Coverage: BuildOpenAPIStub with response shapes containing fields
+// ============================================
+
+func TestBuildOpenAPIStub_WithResponseFields(t *testing.T) {
+	store := NewSchemaStore()
+
+	store.Observe(NetworkBody{
+		Method:       "GET",
+		URL:          "http://example.com/api/users",
+		Status:       200,
+		ResponseBody: `{"name":"John","age":30,"active":true}`,
+		ContentType:  "application/json",
+	})
+
+	stub := store.BuildOpenAPIStub(SchemaFilter{})
+
+	if !strings.Contains(stub, "/api/users") {
+		t.Errorf("Expected '/api/users' in stub, got:\n%s", stub)
+	}
+	if !strings.Contains(stub, "properties") {
+		t.Errorf("Expected 'properties' in stub, got:\n%s", stub)
+	}
+	if !strings.Contains(stub, "name") {
+		t.Errorf("Expected field 'name' in stub, got:\n%s", stub)
+	}
+}
+
+// ============================================
+// Coverage: Observe with empty path defaults to "/"
+// ============================================
+
+func TestObserve_EmptyPathDefaultsToSlash(t *testing.T) {
+	store := NewSchemaStore()
+
+	store.Observe(NetworkBody{
+		Method: "GET",
+		URL:    "http://example.com",
+		Status: 200,
+	})
+
+	schema := store.BuildSchema(SchemaFilter{})
+	if len(schema.Endpoints) != 1 {
+		t.Fatalf("Expected 1 endpoint, got %d", len(schema.Endpoints))
+	}
+	if schema.Endpoints[0].PathPattern != "/" {
+		t.Errorf("Expected path pattern '/', got %q", schema.Endpoints[0].PathPattern)
+	}
+}
+

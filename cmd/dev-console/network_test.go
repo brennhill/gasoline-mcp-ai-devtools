@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 	"testing"
 )
 
@@ -329,5 +330,208 @@ func TestMCPGetNetworkBodiesEmpty(t *testing.T) {
 				t.Error("Expected empty bodies or message")
 			}
 		}
+	}
+}
+
+// ============================================
+// evictNBForMemory: loop body exercised
+// ============================================
+
+// Test: evictNBForMemory removes bodies one at a time until memory is within limit.
+func TestV4NetworkBodiesEvictForMemory(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// nbBufferMemoryLimit = 8MB = 8,388,608 bytes.
+	// AddNetworkBodies truncates to maxRequestBodySize (8KB) + maxResponseBodySize (16KB),
+	// so to exceed 8MB we must bypass truncation and load the buffer directly.
+	// Then adding a new body via AddNetworkBodies triggers evictNBForMemory on existing data.
+	//
+	// Load 100 entries with 100KB bodies each: 100 * (100000 + 100000 + 300) = ~20MB > 8MB
+	capture.mu.Lock()
+	now := time.Now()
+	for i := 0; i < 100; i++ {
+		capture.networkBodies = append(capture.networkBodies, NetworkBody{
+			Method:       "GET",
+			URL:          "/api/large",
+			Status:       200,
+			RequestBody:  strings.Repeat("R", 100000),
+			ResponseBody: strings.Repeat("S", 100000),
+		})
+		capture.networkAddedAt = append(capture.networkAddedAt, now)
+	}
+	capture.mu.Unlock()
+
+	// Verify setup: NB memory exceeds limit
+	if capture.GetNetworkBodiesBufferMemory() <= nbBufferMemoryLimit {
+		t.Fatalf("setup: expected NB memory > %d, got %d", nbBufferMemoryLimit, capture.GetNetworkBodiesBufferMemory())
+	}
+
+	// Adding one more small body triggers evictNBForMemory
+	capture.AddNetworkBodies([]NetworkBody{
+		{Method: "GET", URL: "/api/trigger", Status: 200, ResponseBody: "ok"},
+	})
+
+	// After eviction, the NB memory should be <= nbBufferMemoryLimit
+	nbMem := capture.GetNetworkBodiesBufferMemory()
+	if nbMem > nbBufferMemoryLimit {
+		t.Errorf("expected NB memory <= %d after eviction, got %d", nbBufferMemoryLimit, nbMem)
+	}
+
+	// Should have fewer entries than we loaded
+	count := capture.GetNetworkBodyCount()
+	if count >= 100 {
+		t.Errorf("expected eviction to reduce entries below 100, got %d", count)
+	}
+	if count == 0 {
+		t.Error("expected some entries to remain after eviction")
+	}
+}
+
+// Test: evictNBForMemory with bodies that are just at the limit (no eviction needed).
+func TestV4NetworkBodiesEvictForMemory_AtLimit(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Each body: 1000 + 1000 + 300 = 2300 bytes.
+	// nbBufferMemoryLimit = 8MB = 8388608.
+	// 8388608 / 2300 = ~3647 entries. But maxNetworkBodies = 100.
+	// So 100 entries * 2300 = 230000 bytes, well under limit. No eviction.
+	bodies := make([]NetworkBody, 100)
+	for i := range bodies {
+		bodies[i] = NetworkBody{
+			Method:       "GET",
+			URL:          "/api/small",
+			Status:       200,
+			RequestBody:  strings.Repeat("a", 1000),
+			ResponseBody: strings.Repeat("b", 1000),
+		}
+	}
+
+	capture.AddNetworkBodies(bodies)
+
+	count := capture.GetNetworkBodyCount()
+	if count != 100 {
+		t.Errorf("expected all 100 entries retained (under memory limit), got %d", count)
+	}
+}
+
+// ============================================
+// HandleNetworkBodies: rate limit, body too large, bad JSON, re-check rate limit
+// ============================================
+
+// Test: HandleNetworkBodies rejects when rate limited (initial check).
+func TestV4HandleNetworkBodies_RateLimited(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Force circuit breaker open to simulate rate limiting
+	capture.mu.Lock()
+	capture.circuitOpen = true
+	capture.circuitOpenedAt = time.Now()
+	capture.circuitReason = "rate_exceeded"
+	capture.mu.Unlock()
+
+	body := `{"bodies":[{"method":"GET","url":"/api/test","status":200}]}`
+	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	capture.HandleNetworkBodies(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("expected 429, got %d", rec.Code)
+	}
+
+	// Verify response body is the rate limit JSON
+	var resp RateLimitResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("expected JSON rate limit response, got: %s", rec.Body.String())
+	}
+	if !resp.CircuitOpen {
+		t.Error("expected circuit_open=true in response")
+	}
+}
+
+// Test: HandleNetworkBodies rejects when request body is too large.
+func TestV4HandleNetworkBodies_BodyTooLarge(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// maxPostBodySize = 5MB. Create a body larger than that.
+	largePayload := strings.Repeat("x", 6*1024*1024) // 6MB
+	req := httptest.NewRequest("POST", "/network-bodies", strings.NewReader(largePayload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	capture.HandleNetworkBodies(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("expected 413, got %d", rec.Code)
+	}
+}
+
+// Test: HandleNetworkBodies rejects malformed JSON with 400.
+func TestV4HandleNetworkBodies_BadJSON(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewBufferString("{invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	capture.HandleNetworkBodies(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for bad JSON, got %d", rec.Code)
+	}
+}
+
+// Test: HandleNetworkBodies rejects after recording events pushes over rate limit.
+func TestV4HandleNetworkBodies_RateLimitAfterRecording(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Set the rate window to current time and push event count just below threshold.
+	// Then send a batch that pushes it over.
+	capture.mu.Lock()
+	capture.rateWindowStart = time.Now()
+	capture.windowEventCount = rateLimitThreshold - 1
+	capture.mu.Unlock()
+
+	// Send a batch with 10 bodies (pushes count to threshold-1+10 = over threshold)
+	bodies := make([]map[string]interface{}, 10)
+	for i := range bodies {
+		bodies[i] = map[string]interface{}{
+			"method": "GET",
+			"url":    "/api/test",
+			"status": 200,
+		}
+	}
+	payload, _ := json.Marshal(map[string]interface{}{"bodies": bodies})
+
+	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	capture.HandleNetworkBodies(rec, req)
+
+	// After recording, CheckRateLimit should return true, yielding 429
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("expected 429 after recording pushes over threshold, got %d", rec.Code)
+	}
+}
+
+// Test: HandleNetworkBodies succeeds when memory-exceeded flag is set but within rate.
+// Memory-exceeded means CheckRateLimit returns true (isMemoryExceeded check).
+func TestV4HandleNetworkBodies_MemoryExceeded(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Set simulated memory above hard limit to trigger memory-exceeded rejection
+	capture.SetMemoryUsage(memoryHardLimit + 1)
+
+	body := `{"bodies":[{"method":"GET","url":"/api/test","status":200}]}`
+	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	capture.HandleNetworkBodies(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("expected 429 when memory exceeded, got %d", rec.Code)
 	}
 }

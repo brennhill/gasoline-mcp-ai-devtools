@@ -1148,3 +1148,355 @@ func TestA11yCacheForceRefreshParam(t *testing.T) {
 		t.Fatal("analyze tool not found in tools list")
 	}
 }
+
+// ============================================
+// Additional coverage tests for queries.go
+// ============================================
+
+func TestHandleQueryResultTimeout(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Create a query with a very short timeout
+	id := capture.CreatePendingQueryWithTimeout(PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":".test"}`),
+	}, 50*time.Millisecond)
+
+	// Wait for the query to expire
+	time.Sleep(100 * time.Millisecond)
+
+	// Now try to post a result for the expired query - it should be not found
+	payload := fmt.Sprintf(`{"id":"%s","result":{"html":"<div>test</div>"}}`, id)
+	req := httptest.NewRequest(http.MethodPost, "/dom-result", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	capture.HandleDOMResult(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Expected 404 for expired query, got %d", w.Code)
+	}
+}
+
+func TestHandleQueryResultInvalidJSON(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Post invalid JSON
+	req := httptest.NewRequest(http.MethodPost, "/dom-result", bytes.NewBufferString("not valid json{{{"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	capture.HandleDOMResult(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for invalid JSON, got %d", w.Code)
+	}
+}
+
+func TestHandleQueryResultUnknownQueryID(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Post result for a query ID that never existed
+	payload := `{"id":"q-99999","result":{"html":"<div>test</div>"}}`
+	req := httptest.NewRequest(http.MethodPost, "/dom-result", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	capture.HandleDOMResult(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Expected 404 for unknown query ID, got %d", w.Code)
+	}
+}
+
+func TestHandleQueryResultSuccess(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	id := capture.CreatePendingQuery(PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":".user-list"}`),
+	})
+
+	// Post a valid result
+	payload := fmt.Sprintf(`{"id":"%s","result":{"matches":[{"tag":"div"}],"matchCount":1}}`, id)
+	req := httptest.NewRequest(http.MethodPost, "/dom-result", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	capture.HandleDOMResult(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected 200 for valid result, got %d", w.Code)
+	}
+
+	// The result should be stored and query removed from pending
+	result, found := capture.GetQueryResult(id)
+	if !found {
+		t.Error("Expected query result to be stored")
+	}
+	if !strings.Contains(string(result), "matchCount") {
+		t.Errorf("Expected result to contain 'matchCount', got %s", string(result))
+	}
+}
+
+func TestHandleQueryResultNotifiesWaiters(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	id := capture.CreatePendingQuery(PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":".item"}`),
+	})
+
+	// Start a goroutine waiting for the result
+	done := make(chan json.RawMessage, 1)
+	go func() {
+		result, err := capture.WaitForResult(id, 2*time.Second)
+		if err != nil {
+			return
+		}
+		done <- result
+	}()
+
+	// Give the waiter time to start
+	time.Sleep(50 * time.Millisecond)
+
+	// Post the result via HTTP handler
+	payload := fmt.Sprintf(`{"id":"%s","result":{"html":"<div class=\"item\">found</div>"}}`, id)
+	req := httptest.NewRequest(http.MethodPost, "/dom-result", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	capture.HandleDOMResult(w, req)
+
+	// Wait for the goroutine to get the result
+	select {
+	case result := <-done:
+		if !strings.Contains(string(result), "found") {
+			t.Errorf("Expected result to contain 'found', got %s", string(result))
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Timed out waiting for result notification")
+	}
+}
+
+func TestHandlePendingQueriesEmpty(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/pending-queries", nil)
+	w := httptest.NewRecorder()
+
+	capture.HandlePendingQueries(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", w.Code)
+	}
+
+	var resp struct {
+		Queries []PendingQueryResponse `json:"queries"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if len(resp.Queries) != 0 {
+		t.Errorf("Expected 0 queries, got %d", len(resp.Queries))
+	}
+}
+
+func TestHandlePendingQueriesExpiryRemoval(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Create a query with very short timeout
+	capture.CreatePendingQueryWithTimeout(PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":"#expiring"}`),
+	}, 50*time.Millisecond)
+
+	// Create a second query with longer timeout
+	capture.CreatePendingQueryWithTimeout(PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":"#persistent"}`),
+	}, 5*time.Second)
+
+	// Wait for first to expire
+	time.Sleep(100 * time.Millisecond)
+
+	// HandlePendingQueries should only return the non-expired one
+	req := httptest.NewRequest(http.MethodGet, "/pending-queries", nil)
+	w := httptest.NewRecorder()
+
+	capture.HandlePendingQueries(w, req)
+
+	var resp struct {
+		Queries []PendingQueryResponse `json:"queries"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if len(resp.Queries) != 1 {
+		t.Fatalf("Expected 1 remaining query after expiry, got %d", len(resp.Queries))
+	}
+	if !strings.Contains(string(resp.Queries[0].Params), "#persistent") {
+		t.Errorf("Expected persistent query to remain, got params: %s", string(resp.Queries[0].Params))
+	}
+}
+
+func TestSetQueryResultUnknownID(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Set result for a query that does not exist in pending
+	capture.SetQueryResult("q-nonexistent", json.RawMessage(`{"data":"test"}`))
+
+	// The result should still be stored in queryResults
+	result, found := capture.GetQueryResult("q-nonexistent")
+	if !found {
+		t.Error("Expected result to be stored even for unknown ID")
+	}
+	if string(result) != `{"data":"test"}` {
+		t.Errorf("Expected stored result, got %s", string(result))
+	}
+}
+
+func TestHandleA11yResultSameAsDOM(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	id := capture.CreatePendingQuery(PendingQuery{
+		Type:   "a11y",
+		Params: json.RawMessage(`{"scope":"main"}`),
+	})
+
+	// Post via HandleA11yResult instead of HandleDOMResult
+	payload := fmt.Sprintf(`{"id":"%s","result":{"violations":[],"passes":5}}`, id)
+	req := httptest.NewRequest(http.MethodPost, "/a11y-result", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	capture.HandleA11yResult(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", w.Code)
+	}
+
+	result, found := capture.GetQueryResult(id)
+	if !found {
+		t.Error("Expected a11y result to be stored")
+	}
+	if !strings.Contains(string(result), "violations") {
+		t.Errorf("Expected result to contain 'violations', got %s", string(result))
+	}
+}
+
+func TestHandleQueryResultBodyTooLarge(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	id := capture.CreatePendingQuery(PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":"*"}`),
+	})
+
+	// Create a body that exceeds maxPostBodySize (5MB)
+	largePayload := fmt.Sprintf(`{"id":"%s","result":"`, id) + strings.Repeat("x", 6*1024*1024) + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/dom-result", bytes.NewBufferString(largePayload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	capture.HandleDOMResult(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("Expected 413 for oversized body, got %d", w.Code)
+	}
+}
+
+// ============================================
+// Coverage Gap Tests: HandlePendingQueries, getA11yCacheEntry, removeA11yCacheEntry, SetQueryResult
+// ============================================
+
+func TestHandlePendingQueries_MethodNotAllowed(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// POST request to a GET-only handler - the handler doesn't check method,
+	// so it will still return 200 with the queries list
+	req := httptest.NewRequest(http.MethodPost, "/pending-queries", nil)
+	w := httptest.NewRecorder()
+
+	capture.HandlePendingQueries(w, req)
+
+	// HandlePendingQueries doesn't check method; it always returns queries
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected 200 (handler does not enforce method), got %d", w.Code)
+	}
+
+	var resp map[string]interface{}
+	json.NewDecoder(w.Body).Decode(&resp)
+	queries, ok := resp["queries"].([]interface{})
+	if !ok {
+		t.Fatal("Expected 'queries' field in response")
+	}
+	if len(queries) != 0 {
+		t.Errorf("Expected empty queries list, got %d", len(queries))
+	}
+}
+
+func TestGetA11yCacheEntry_CacheMiss(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Query for a key that was never set
+	result := capture.getA11yCacheEntry("nonexistent-key")
+	if result != nil {
+		t.Errorf("Expected nil for cache miss, got %s", string(result))
+	}
+}
+
+func TestRemoveA11yCacheEntry_NonExistent(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Set one entry
+	capture.setA11yCacheEntry("existing-key", json.RawMessage(`{"data":"test"}`))
+
+	// Remove a key that doesn't exist - should not panic or affect existing entries
+	capture.removeA11yCacheEntry("nonexistent-key")
+
+	// Verify existing entry is still there
+	result := capture.getA11yCacheEntry("existing-key")
+	if result == nil {
+		t.Error("Expected existing entry to remain after removing nonexistent key")
+	}
+	if string(result) != `{"data":"test"}` {
+		t.Errorf("Expected existing entry unchanged, got %s", string(result))
+	}
+}
+
+func TestSetQueryResult_ConcurrentSetAndWait(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	// Create a pending query with a short timeout
+	capture.SetQueryTimeout(2 * time.Second)
+	id := capture.CreatePendingQuery(PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":"#app"}`),
+	})
+
+	// Start a goroutine that waits for the result
+	resultCh := make(chan json.RawMessage, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		result, err := capture.WaitForResult(id, 2*time.Second)
+		resultCh <- result
+		errCh <- err
+	}()
+
+	// Brief delay then set the result concurrently
+	time.Sleep(50 * time.Millisecond)
+	capture.SetQueryResult(id, json.RawMessage(`{"innerHTML":"<div>Hello</div>"}`))
+
+	// Wait for the goroutine
+	select {
+	case result := <-resultCh:
+		err := <-errCh
+		if err != nil {
+			t.Fatalf("WaitForResult returned error: %v", err)
+		}
+		if string(result) != `{"innerHTML":"<div>Hello</div>"}` {
+			t.Errorf("Expected result, got %s", string(result))
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("Timed out waiting for concurrent SetQueryResult")
+	}
+}
