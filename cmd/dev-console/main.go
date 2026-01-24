@@ -173,6 +173,10 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 
 	if h.toolHandler != nil {
 		if resp, handled := h.toolHandler.handleToolCall(req, params.Name, params.Arguments); handled {
+			// Apply redaction to tool response before returning to AI client
+			if h.toolHandler.redactionEngine != nil && resp.Result != nil {
+				resp.Result = h.toolHandler.redactionEngine.RedactJSON(resp.Result)
+			}
 			return resp
 		}
 	}
@@ -196,7 +200,8 @@ type Server struct {
 	mu            sync.RWMutex
 	logTotalAdded int64 // monotonic counter of total entries ever added
 	onEntries     func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
-	TTL           time.Duration // TTL for read-time filtering (0 means unlimited)
+	TTL                 time.Duration // TTL for read-time filtering (0 means unlimited)
+	redactionConfigPath string        // path to redaction config JSON file (optional)
 }
 
 // NewServer creates a new server instance

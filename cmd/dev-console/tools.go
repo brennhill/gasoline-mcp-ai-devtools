@@ -105,6 +105,9 @@ type ToolHandler struct {
 	securityScanner *SecurityScanner
 	auditTrail      *AuditTrail
 	sessionManager  *SessionManager
+
+	// Redaction engine for scrubbing sensitive data from tool responses
+	redactionEngine *RedactionEngine
 }
 
 // NewToolHandler creates an MCP handler with composite tool capabilities
@@ -139,6 +142,10 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 	}
 
 	// Initialize v6 tools
+	// Initialize redaction engine (always active with built-in patterns).
+	// Custom patterns loaded from server.redactionConfigPath if set.
+	handler.redactionEngine = NewRedactionEngine(server.redactionConfigPath)
+
 	handler.cspGenerator = NewCSPGenerator()
 	handler.securityScanner = NewSecurityScanner()
 	handler.auditTrail = NewAuditTrail(AuditConfig{MaxEntries: 10000, Enabled: true, RedactParams: true})
