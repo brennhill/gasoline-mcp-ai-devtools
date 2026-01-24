@@ -158,6 +158,17 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		Limit:     arguments.Limit,
 	})
 
+	// Apply noise filtering
+	if h.noise != nil {
+		var filtered []NetworkBody
+		for _, b := range bodies {
+			if !h.noise.IsNetworkNoise(b) {
+				filtered = append(filtered, b)
+			}
+		}
+		bodies = filtered
+	}
+
 	var contentText string
 	if len(bodies) == 0 {
 		contentText = "No network bodies captured"

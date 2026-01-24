@@ -418,6 +418,17 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 		Limit:        arguments.Limit,
 	})
 
+	// Apply noise filtering
+	if h.noise != nil {
+		var filtered []WebSocketEvent
+		for _, e := range events {
+			if !h.noise.IsWebSocketNoise(e) {
+				filtered = append(filtered, e)
+			}
+		}
+		events = filtered
+	}
+
 	var contentText string
 	if len(events) == 0 {
 		contentText = "No WebSocket events captured"

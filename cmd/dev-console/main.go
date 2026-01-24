@@ -239,6 +239,10 @@ func (h *MCPHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMessa
 	var errors []LogEntry
 	for _, entry := range h.server.entries {
 		if level, ok := entry["level"].(string); ok && level == "error" {
+			// Apply noise filtering if available
+			if h.toolHandler != nil && h.toolHandler.noise != nil && h.toolHandler.noise.IsConsoleNoise(entry) {
+				continue
+			}
 			errors = append(errors, entry)
 		}
 	}
@@ -279,6 +283,17 @@ func (h *MCPHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage
 	defer h.server.mu.RUnlock()
 
 	entries := h.server.entries
+
+	// Apply noise filtering if available
+	if h.toolHandler != nil && h.toolHandler.noise != nil {
+		var filtered []LogEntry
+		for _, entry := range entries {
+			if !h.toolHandler.noise.IsConsoleNoise(entry) {
+				filtered = append(filtered, entry)
+			}
+		}
+		entries = filtered
+	}
 
 	// Apply limit if specified
 	if arguments.Limit > 0 && arguments.Limit < len(entries) {
