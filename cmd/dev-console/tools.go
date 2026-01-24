@@ -939,5 +939,3 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 	sarifJSON, _ := json.MarshalIndent(sarifLog, "", "  ")
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(sarifJSON))}
 }
-
-
