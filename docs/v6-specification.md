@@ -101,7 +101,7 @@ This is NOT a penetration testing tool. It analyzes data Gasoline already captur
 ```json
 {
   "name": "security_audit",
-  "description": "Scan captured network traffic and console logs for security issues: exposed credentials, missing authentication, PII in logs, and insecure transport. Analyzes data already captured by Gasoline — no additional browser access needed.",
+  "description": "Scan captured network traffic and console logs for security issues: exposed credentials, missing authentication, PII in logs, insecure transport, missing security headers, and insecure cookies. Analyzes data already captured by Gasoline — no additional browser access needed.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -109,7 +109,7 @@ This is NOT a penetration testing tool. It analyzes data Gasoline already captur
         "type": "array",
         "items": {
           "type": "string",
-          "enum": ["credentials", "auth_patterns", "pii_exposure", "transport"]
+          "enum": ["credentials", "auth_patterns", "pii_exposure", "transport", "security_headers", "cookie_security"]
         },
         "description": "Which checks to run (default: all)"
       },
@@ -356,6 +356,77 @@ func checkTransport(bodies []NetworkBody, wsEvents []WebSocketEvent) []Finding {
 }
 ```
 
+#### 5. Security Headers (`security_headers`)
+
+Detect missing or misconfigured security headers on HTTP responses. These headers provide defense-in-depth against common web attacks and are cheap to implement.
+
+**Checks (on responses to document/HTML requests):**
+
+| Header | Expected | Severity | CWE |
+|--------|----------|----------|-----|
+| `Content-Security-Policy` | Present with restrictive policy | warning | CWE-1021 |
+| `X-Content-Type-Options` | `nosniff` | warning | CWE-16 |
+| `X-Frame-Options` | `DENY` or `SAMEORIGIN` | warning | CWE-1021 |
+| `Strict-Transport-Security` | Present (any value) on HTTPS responses | warning | CWE-319 |
+| `Referrer-Policy` | Present (any non-`unsafe-url` value) | info | CWE-200 |
+| `Permissions-Policy` | Present | info | CWE-16 |
+| `X-XSS-Protection` | Not set to `0` (deprecated but still relevant) | info | CWE-79 |
+| `Access-Control-Allow-Origin` | Not `*` on authenticated endpoints | warning | CWE-942 |
+
+**CSP analysis (when Content-Security-Policy header IS present):**
+
+```
+If CSP header present, parse directives and flag weak policies:
+  - script-src contains 'unsafe-inline' → warning (XSS mitigation defeated)
+  - script-src contains 'unsafe-eval' → warning (allows eval-based attacks)
+  - default-src or script-src contains * → warning (overly permissive)
+  - No script-src and no default-src → info (no script restriction)
+```
+
+**CSP violation surfacing:**
+
+Console errors matching `Refused to execute` or `Content Security Policy` are surfaced as `security_headers` findings (severity: info). These indicate the CSP IS working — the browser blocked something — which helps developers verify their policy is correctly restrictive.
+
+**Algorithm:**
+
+```
+For each network response where content-type contains "text/html":
+  1. Check each security header against expected value
+  2. If header missing → finding with recommendation
+  3. If header present but misconfigured → finding with explanation
+  4. If CSP present, parse and check directive strength
+  5. Group findings by origin to avoid repetition (flag once per unique origin)
+```
+
+**Scope:** Only checks HTML document responses (not API calls, images, or static assets). CORS (`Access-Control-Allow-Origin`) is also checked on API responses that include auth headers. HSTS and Secure cookie checks skip localhost (where HTTPS isn't expected).
+
+#### 6. Cookie Security (`cookie_security`)
+
+Detect insecure cookie configuration by analyzing `Set-Cookie` response headers.
+
+**Checks:**
+
+| Flag | Expected | Severity | Condition |
+|------|----------|----------|-----------|
+| `HttpOnly` | Present on session/auth cookies | warning | Cookie name matches `session\|token\|auth\|jwt\|sid` and lacks `HttpOnly` |
+| `Secure` | Present on all cookies (HTTPS) | warning | Response is HTTPS and cookie lacks `Secure` flag |
+| `SameSite` | `Strict` or `Lax` | warning | Cookie lacks `SameSite` or set to `None` without `Secure` |
+| `__Host-` prefix | Used for sensitive cookies | info | Sensitive cookie not using `__Host-` or `__Secure-` prefix |
+| Expiry | Not excessively long | info | `Max-Age` > 1 year (31536000s) on session cookies |
+
+**Algorithm:**
+
+```
+For each network response with Set-Cookie header:
+  1. Parse cookie attributes (name, flags, domain, path, expiry)
+  2. Determine if cookie is "sensitive" (name matches auth/session patterns)
+  3. Check each flag against expectations
+  4. If sensitive cookie is missing security flags → warning
+  5. If any cookie has SameSite=None without Secure → warning (browser will reject it anyway)
+```
+
+**What Gasoline sees:** Set-Cookie headers are part of the network response headers that Gasoline already captures. Cookie VALUES are redacted (privacy), but the cookie name and attribute flags are preserved — which is exactly what this check needs.
+
 ### Security Audit Implementation
 
 #### Go Types
@@ -364,7 +435,7 @@ func checkTransport(bodies []NetworkBody, wsEvents []WebSocketEvent) []Finding {
 // SecurityFinding represents a single security issue found
 type SecurityFinding struct {
     Severity       string            `json:"severity"` // "critical", "warning", "info"
-    Category       string            `json:"category"` // "credentials", "auth_patterns", "pii_exposure", "transport"
+    Category       string            `json:"category"` // "credentials", "auth_patterns", "pii_exposure", "transport", "security_headers", "cookie_security"
     Title          string            `json:"title"`
     Description    string            `json:"description"`
     Evidence       map[string]interface{} `json:"evidence"`
@@ -396,7 +467,7 @@ type ScannedScope struct {
 
 // SecurityAuditFilter defines which checks to run
 type SecurityAuditFilter struct {
-    Checks      []string // "credentials", "auth_patterns", "pii_exposure", "transport"
+    Checks      []string // "credentials", "auth_patterns", "pii_exposure", "transport", "security_headers", "cookie_security"
     URLFilter   string
     SeverityMin string // "info", "warning", "critical"
 }
@@ -419,6 +490,12 @@ func checkPIIExposure(bodies []NetworkBody, entries []LogEntry, urlFilter string
 
 // checkTransport detects HTTP usage and mixed content
 func checkTransport(bodies []NetworkBody, wsEvents []WebSocketEvent, urlFilter string) []SecurityFinding
+
+// checkSecurityHeaders detects missing/misconfigured security headers and CSP policy issues
+func checkSecurityHeaders(bodies []NetworkBody, urlFilter string) []SecurityFinding
+
+// checkCookieSecurity detects insecure cookie flags on Set-Cookie headers
+func checkCookieSecurity(bodies []NetworkBody, urlFilter string) []SecurityFinding
 
 // matchesSecretPattern checks if a string matches any known secret format
 func matchesSecretPattern(s string) (pattern string, matched bool)
@@ -1379,6 +1456,9 @@ Not every captured event warrants a notification. Only "significant" events are 
 | `user_frustration` | Same element clicked 3+ times in 5 seconds | `"Repeated clicks on {selector} — handler may be broken"` |
 | `user_frustration` | Form submitted with no network response after 5s | `"Form submit to {action} — no response after 5s"` |
 | `security` | Secret pattern detected in new request | `"Possible credential exposure in {method} {url}"` |
+| `security` | CSP violation in console | `"CSP violation: {message}"` |
+| `security` | Sensitive cookie missing security flags | `"Insecure cookie: {cookie_name} missing {flags}"` |
+| `security` | Security headers missing on new origin | `"Missing security headers on {origin}: {headers}"` |
 
 ### Notification Format (MCP)
 
