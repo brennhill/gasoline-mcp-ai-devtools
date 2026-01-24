@@ -162,15 +162,6 @@ func (v *Capture) RecordEventReceived() {
 	v.eventCount++
 }
 
-// isRateLimited checks if the server is rate limited (must hold lock)
-func (v *Capture) isRateLimited() bool {
-	now := time.Now()
-	if now.Sub(v.rateResetTime) > time.Second {
-		return false
-	}
-	return v.eventCount > rateLimitThreshold
-}
-
 // SetMemoryUsage sets simulated memory usage for testing
 func (v *Capture) SetMemoryUsage(bytes int64) {
 	v.mu.Lock()

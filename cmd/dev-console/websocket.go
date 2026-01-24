@@ -33,10 +33,10 @@ func (v *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	}
 
 	// Enforce max count (respecting minimal mode)
-	cap := v.effectiveWSCapacity()
-	if len(v.wsEvents) > cap {
-		v.wsEvents = v.wsEvents[len(v.wsEvents)-cap:]
-		v.wsAddedAt = v.wsAddedAt[len(v.wsAddedAt)-cap:]
+	capacity := v.effectiveWSCapacity()
+	if len(v.wsEvents) > capacity {
+		v.wsEvents = v.wsEvents[len(v.wsEvents)-capacity:]
+		v.wsAddedAt = v.wsAddedAt[len(v.wsAddedAt)-capacity:]
 	}
 
 	// Enforce per-buffer memory limit
@@ -52,7 +52,6 @@ func (v *Capture) evictWSForMemory() {
 		}
 	}
 }
-
 
 // GetWebSocketEventCount returns the current number of buffered events
 func (v *Capture) GetWebSocketEventCount() int {
@@ -413,6 +412,17 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 		Direction:    arguments.Direction,
 		Limit:        arguments.Limit,
 	})
+
+	// Apply noise filtering
+	if h.noise != nil {
+		var filtered []WebSocketEvent
+		for i := range events {
+			if !h.noise.IsWebSocketNoise(events[i]) {
+				filtered = append(filtered, events[i])
+			}
+		}
+		events = filtered
+	}
 
 	var contentText string
 	if len(events) == 0 {

@@ -16,14 +16,14 @@ import (
 // ============================================
 
 const (
-	maxFileSize         = 1 * 1024 * 1024  // 1MB per file
-	maxProjectSize      = 10 * 1024 * 1024 // 10MB per project
-	maxGlobalSize       = 100 * 1024 * 1024 // 100MB global
-	maxErrorHistory     = 500
-	staleErrorThreshold = 30 * 24 * time.Hour // 30 days
+	maxFileSize          = 1 * 1024 * 1024   // 1MB per file
+	maxProjectSize       = 10 * 1024 * 1024  // 10MB per project
+	maxGlobalSize        = 100 * 1024 * 1024 // 100MB global
+	maxErrorHistory      = 500
+	staleErrorThreshold  = 30 * 24 * time.Hour // 30 days
 	defaultFlushInterval = 30 * time.Second
-	dirPermissions      = 0755
-	filePermissions     = 0644
+	dirPermissions       = 0o755
+	filePermissions      = 0o644
 )
 
 // ============================================
@@ -40,8 +40,8 @@ type SessionStore struct {
 	meta        *ProjectMeta
 
 	// Dirty data buffer: namespace/key -> data
-	dirty     map[string][]byte
-	dirtyMu   sync.Mutex
+	dirty   map[string][]byte
+	dirtyMu sync.Mutex
 
 	// Background flush
 	flushInterval time.Duration
@@ -60,13 +60,13 @@ type ProjectMeta struct {
 
 // SessionContext is returned by LoadSessionContext
 type SessionContext struct {
-	ProjectID    string                   `json:"project_id"`
-	SessionCount int                      `json:"session_count"`
-	Baselines    []string                 `json:"baselines"`
-	NoiseConfig  map[string]interface{}   `json:"noise_config,omitempty"`
-	ErrorHistory []ErrorHistoryEntry      `json:"error_history"`
-	APISchema    map[string]interface{}   `json:"api_schema,omitempty"`
-	Performance  map[string]interface{}   `json:"performance,omitempty"`
+	ProjectID    string                 `json:"project_id"`
+	SessionCount int                    `json:"session_count"`
+	Baselines    []string               `json:"baselines"`
+	NoiseConfig  map[string]interface{} `json:"noise_config,omitempty"`
+	ErrorHistory []ErrorHistoryEntry    `json:"error_history"`
+	APISchema    map[string]interface{} `json:"api_schema,omitempty"`
+	Performance  map[string]interface{} `json:"performance,omitempty"`
 }
 
 // ErrorHistoryEntry tracks an error across sessions
@@ -146,7 +146,7 @@ func NewSessionStoreWithInterval(basePath, projectPath string, flushInterval tim
 
 func (s *SessionStore) loadOrCreateMeta() error {
 	metaPath := filepath.Join(s.projectDir, "meta.json")
-	data, err := os.ReadFile(metaPath)
+	data, err := os.ReadFile(metaPath) //nolint:gosec // G304: path constructed from internal fields
 	if err != nil || len(data) == 0 {
 		// Fresh store
 		now := time.Now()
@@ -238,7 +238,7 @@ func (s *SessionStore) Load(namespace, key string) ([]byte, error) {
 	defer s.mu.RUnlock()
 
 	filePath := filepath.Join(s.projectDir, namespace, key+".json")
-	data, err := os.ReadFile(filePath)
+	data, err := os.ReadFile(filePath) //nolint:gosec // G304: path constructed from internal fields
 	if err != nil {
 		return nil, fmt.Errorf("key not found: %s/%s", namespace, key)
 	}
@@ -364,7 +364,7 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 
 	// Load noise config
 	noisePath := filepath.Join(s.projectDir, "noise", "config.json")
-	if data, err := os.ReadFile(noisePath); err == nil {
+	if data, err := os.ReadFile(noisePath); err == nil { //nolint:gosec // G304: path constructed from internal fields
 		var config map[string]interface{}
 		if json.Unmarshal(data, &config) == nil {
 			ctx.NoiseConfig = config
@@ -373,7 +373,7 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 
 	// Load error history
 	errPath := filepath.Join(s.projectDir, "errors", "history.json")
-	if data, err := os.ReadFile(errPath); err == nil {
+	if data, err := os.ReadFile(errPath); err == nil { //nolint:gosec // G304: path constructed from internal fields
 		// Try to unmarshal as []ErrorHistoryEntry first
 		var entries []ErrorHistoryEntry
 		if json.Unmarshal(data, &entries) == nil {
@@ -401,7 +401,7 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 
 	// Load API schema
 	schemaPath := filepath.Join(s.projectDir, "api_schema", "schema.json")
-	if data, err := os.ReadFile(schemaPath); err == nil {
+	if data, err := os.ReadFile(schemaPath); err == nil { //nolint:gosec // G304: path constructed from internal fields
 		var schema map[string]interface{}
 		if json.Unmarshal(data, &schema) == nil {
 			ctx.APISchema = schema
@@ -410,7 +410,7 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 
 	// Load performance
 	perfPath := filepath.Join(s.projectDir, "performance", "endpoints.json")
-	if data, err := os.ReadFile(perfPath); err == nil {
+	if data, err := os.ReadFile(perfPath); err == nil { //nolint:gosec // G304: path constructed from internal fields
 		var perf map[string]interface{}
 		if json.Unmarshal(data, &perf) == nil {
 			ctx.Performance = perf
@@ -469,10 +469,12 @@ func (s *SessionStore) flushDirty() {
 		namespace, name := parts[0], parts[1]
 
 		nsDir := filepath.Join(s.projectDir, namespace)
-		os.MkdirAll(nsDir, dirPermissions)
+		if err := os.MkdirAll(nsDir, dirPermissions); err != nil {
+			continue
+		}
 
 		filePath := filepath.Join(nsDir, name+".json")
-		os.WriteFile(filePath, data, filePermissions)
+		_ = os.WriteFile(filePath, data, filePermissions)
 	}
 }
 
@@ -495,7 +497,7 @@ func (s *SessionStore) Shutdown() {
 	// Save final meta
 	s.mu.Lock()
 	s.meta.LastSession = time.Now()
-	s.saveMeta()
+	_ = s.saveMeta()
 	s.mu.Unlock()
 }
 
@@ -507,7 +509,7 @@ func (s *SessionStore) projectSize() (int64, error) {
 	var total int64
 	err := filepath.Walk(s.projectDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil // skip errors
+			return nil //nolint:nilerr // intentionally skip errors to continue walking
 		}
 		if !info.IsDir() {
 			total += info.Size()
@@ -572,7 +574,7 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 		if args.Key == "" {
 			return nil, fmt.Errorf("key is required for save action")
 		}
-		if args.Data == nil || len(args.Data) == 0 {
+		if len(args.Data) == 0 {
 			return nil, fmt.Errorf("data is required for save action")
 		}
 		if err := s.Save(args.Namespace, args.Key, []byte(args.Data)); err != nil {
@@ -597,7 +599,7 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 			return nil, err
 		}
 		var parsed interface{}
-		json.Unmarshal(data, &parsed)
+		_ = json.Unmarshal(data, &parsed)
 		result, _ := json.Marshal(map[string]interface{}{
 			"namespace": args.Namespace,
 			"key":       args.Key,

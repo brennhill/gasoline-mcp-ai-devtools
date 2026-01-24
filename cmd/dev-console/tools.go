@@ -12,6 +12,7 @@ type ToolHandler struct {
 	capture      *Capture
 	checkpoints  *CheckpointManager
 	sessionStore *SessionStore
+	noise        *NoiseConfig
 }
 
 // NewToolHandler creates an MCP handler with v4 capabilities
@@ -20,6 +21,7 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 		MCPHandler:  NewMCPHandler(server),
 		capture:     capture,
 		checkpoints: NewCheckpointManager(server, capture),
+		noise:       NewNoiseConfig(),
 	}
 	// Return as MCPHandler but with overridden methods via the wrapper
 	return &MCPHandler{
@@ -308,6 +310,78 @@ func (h *ToolHandler) toolsList() []MCPTool {
 				"properties": map[string]interface{}{},
 			},
 		},
+		{
+			Name:        "configure_noise",
+			Description: "Configure noise filtering rules to suppress irrelevant browser entries (extension warnings, analytics pings, HMR messages, etc.) from tool responses.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "Action to perform",
+						"enum":        []string{"add", "remove", "list", "reset", "auto_detect"},
+					},
+					"rules": map[string]interface{}{
+						"type":        "array",
+						"description": "Rules to add (for action 'add')",
+						"items": map[string]interface{}{
+							"type": "object",
+							"properties": map[string]interface{}{
+								"category": map[string]interface{}{
+									"type":        "string",
+									"description": "Buffer category: console, network, or websocket",
+									"enum":        []string{"console", "network", "websocket"},
+								},
+								"classification": map[string]interface{}{
+									"type":        "string",
+									"description": "Noise type: extension, framework, cosmetic, analytics, infrastructure, repetitive, dismissed",
+								},
+								"matchSpec": map[string]interface{}{
+									"type": "object",
+									"properties": map[string]interface{}{
+										"messageRegex": map[string]interface{}{"type": "string", "description": "Regex to match console message text"},
+										"sourceRegex":  map[string]interface{}{"type": "string", "description": "Regex to match console source URL"},
+										"urlRegex":     map[string]interface{}{"type": "string", "description": "Regex to match network/websocket URL"},
+										"method":       map[string]interface{}{"type": "string", "description": "HTTP method filter"},
+										"statusMin":    map[string]interface{}{"type": "number", "description": "Minimum status code"},
+										"statusMax":    map[string]interface{}{"type": "number", "description": "Maximum status code"},
+										"level":        map[string]interface{}{"type": "string", "description": "Console level filter"},
+									},
+								},
+							},
+						},
+					},
+					"rule_id": map[string]interface{}{
+						"type":        "string",
+						"description": "ID of rule to remove (for action 'remove')",
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
+		{
+			Name:        "dismiss_noise",
+			Description: "Quickly dismiss a noise pattern. Creates a noise filtering rule from a regex pattern.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"pattern": map[string]interface{}{
+						"type":        "string",
+						"description": "Regex pattern to dismiss",
+					},
+					"category": map[string]interface{}{
+						"type":        "string",
+						"description": "Buffer category (default: console)",
+						"enum":        []string{"console", "network", "websocket"},
+					},
+					"reason": map[string]interface{}{
+						"type":        "string",
+						"description": "Why this is noise (for audit trail)",
+					},
+				},
+				"required": []string{"pattern"},
+			},
+		},
 	}
 }
 
@@ -342,6 +416,10 @@ func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.
 		return h.toolSessionStore(req, args), true
 	case "load_session_context":
 		return h.toolLoadSessionContext(req, args), true
+	case "configure_noise":
+		return h.toolConfigureNoise(req, args), true
+	case "dismiss_noise":
+		return h.toolDismissNoise(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -447,6 +525,142 @@ func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMe
 		},
 	}
 	resultJSON, _ := json.Marshal(contentResult)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+// ============================================
+// Noise Filtering Tool Implementations
+// ============================================
+
+func (h *ToolHandler) toolConfigureNoise(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		Action string `json:"action"`
+		Rules  []struct {
+			Category       string `json:"category"`
+			Classification string `json:"classification"`
+			MatchSpec      struct {
+				MessageRegex string `json:"messageRegex"`
+				SourceRegex  string `json:"sourceRegex"`
+				URLRegex     string `json:"urlRegex"`
+				Method       string `json:"method"`
+				StatusMin    int    `json:"statusMin"`
+				StatusMax    int    `json:"statusMax"`
+				Level        string `json:"level"`
+			} `json:"matchSpec"`
+		} `json:"rules"`
+		RuleID string `json:"rule_id"`
+	}
+	_ = json.Unmarshal(args, &arguments)
+
+	var responseData interface{}
+
+	switch arguments.Action {
+	case "add":
+		rules := make([]NoiseRule, len(arguments.Rules))
+		for i := range arguments.Rules {
+			rules[i] = NoiseRule{
+				Category:       arguments.Rules[i].Category,
+				Classification: arguments.Rules[i].Classification,
+				MatchSpec: NoiseMatchSpec{
+					MessageRegex: arguments.Rules[i].MatchSpec.MessageRegex,
+					SourceRegex:  arguments.Rules[i].MatchSpec.SourceRegex,
+					URLRegex:     arguments.Rules[i].MatchSpec.URLRegex,
+					Method:       arguments.Rules[i].MatchSpec.Method,
+					StatusMin:    arguments.Rules[i].MatchSpec.StatusMin,
+					StatusMax:    arguments.Rules[i].MatchSpec.StatusMax,
+					Level:        arguments.Rules[i].MatchSpec.Level,
+				},
+			}
+		}
+		err := h.noise.AddRules(rules)
+		if err != nil {
+			responseData = map[string]interface{}{"error": err.Error()}
+		} else {
+			responseData = map[string]interface{}{
+				"status":     "ok",
+				"rulesAdded": len(rules),
+				"totalRules": len(h.noise.ListRules()),
+			}
+		}
+
+	case "remove":
+		err := h.noise.RemoveRule(arguments.RuleID)
+		if err != nil {
+			responseData = map[string]interface{}{"error": err.Error()}
+		} else {
+			responseData = map[string]interface{}{"status": "ok", "removed": arguments.RuleID}
+		}
+
+	case "list":
+		rules := h.noise.ListRules()
+		stats := h.noise.GetStatistics()
+		responseData = map[string]interface{}{
+			"rules":      rules,
+			"statistics": stats,
+		}
+
+	case "reset":
+		h.noise.Reset()
+		responseData = map[string]interface{}{
+			"status":     "ok",
+			"totalRules": len(h.noise.ListRules()),
+		}
+
+	case "auto_detect":
+		// Gather current buffer data
+		h.server.mu.RLock()
+		consoleEntries := make([]LogEntry, len(h.server.entries))
+		copy(consoleEntries, h.server.entries)
+		h.server.mu.RUnlock()
+
+		h.capture.mu.RLock()
+		networkBodies := make([]NetworkBody, len(h.capture.networkBodies))
+		copy(networkBodies, h.capture.networkBodies)
+		wsEvents := make([]WebSocketEvent, len(h.capture.wsEvents))
+		copy(wsEvents, h.capture.wsEvents)
+		h.capture.mu.RUnlock()
+
+		proposals := h.noise.AutoDetect(consoleEntries, networkBodies, wsEvents)
+		responseData = map[string]interface{}{
+			"proposals":  proposals,
+			"totalRules": len(h.noise.ListRules()),
+		}
+
+	default:
+		responseData = map[string]interface{}{"error": "unknown action: " + arguments.Action}
+	}
+
+	respJSON, _ := json.Marshal(responseData)
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": string(respJSON)},
+		},
+	}
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+func (h *ToolHandler) toolDismissNoise(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		Pattern  string `json:"pattern"`
+		Category string `json:"category"`
+		Reason   string `json:"reason"`
+	}
+	_ = json.Unmarshal(args, &arguments)
+
+	h.noise.DismissNoise(arguments.Pattern, arguments.Category, arguments.Reason)
+
+	responseData := map[string]interface{}{
+		"status":     "ok",
+		"totalRules": len(h.noise.ListRules()),
+	}
+	respJSON, _ := json.Marshal(responseData)
+	result := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": string(respJSON)},
+		},
+	}
+	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 

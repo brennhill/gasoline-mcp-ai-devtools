@@ -652,7 +652,7 @@ func TestLastBelowThresholdTracking(t *testing.T) {
 	c.circuitOpen = true
 	c.circuitOpenedAt = time.Now().Add(-15 * time.Second)
 	c.rateLimitStreak = 0
-	c.windowEventCount = 500 // under threshold
+	c.windowEventCount = 500                                  // under threshold
 	c.lastBelowThresholdAt = time.Now().Add(-5 * time.Second) // only 5 seconds below
 	c.simulatedMemory = 20 * 1024 * 1024                      // under 30MB
 	c.mu.Unlock()

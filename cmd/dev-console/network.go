@@ -38,10 +38,10 @@ func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	}
 
 	// Enforce max count (respecting minimal mode)
-	cap := v.effectiveNBCapacity()
-	if len(v.networkBodies) > cap {
-		v.networkBodies = v.networkBodies[len(v.networkBodies)-cap:]
-		v.networkAddedAt = v.networkAddedAt[len(v.networkAddedAt)-cap:]
+	capacity := v.effectiveNBCapacity()
+	if len(v.networkBodies) > capacity {
+		v.networkBodies = v.networkBodies[len(v.networkBodies)-capacity:]
+		v.networkAddedAt = v.networkAddedAt[len(v.networkAddedAt)-capacity:]
 	}
 
 	// Enforce per-buffer memory limit
@@ -57,7 +57,6 @@ func (v *Capture) evictNBForMemory() {
 		}
 	}
 }
-
 
 // GetNetworkBodyCount returns the current number of buffered bodies
 func (v *Capture) GetNetworkBodyCount() int {
@@ -159,6 +158,17 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		StatusMax: arguments.StatusMax,
 		Limit:     arguments.Limit,
 	})
+
+	// Apply noise filtering
+	if h.noise != nil {
+		var filtered []NetworkBody
+		for _, b := range bodies {
+			if !h.noise.IsNetworkNoise(b) {
+				filtered = append(filtered, b)
+			}
+		}
+		bodies = filtered
+	}
 
 	var contentText string
 	if len(bodies) == 0 {

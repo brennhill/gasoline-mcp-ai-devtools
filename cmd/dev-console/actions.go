@@ -32,10 +32,10 @@ func (v *Capture) AddEnhancedActions(actions []EnhancedAction) {
 	}
 
 	// Enforce max count (respecting minimal mode)
-	cap := v.effectiveActionCapacity()
-	if len(v.enhancedActions) > cap {
-		v.enhancedActions = v.enhancedActions[len(v.enhancedActions)-cap:]
-		v.actionAddedAt = v.actionAddedAt[len(v.actionAddedAt)-cap:]
+	capacity := v.effectiveActionCapacity()
+	if len(v.enhancedActions) > capacity {
+		v.enhancedActions = v.enhancedActions[len(v.enhancedActions)-capacity:]
+		v.actionAddedAt = v.actionAddedAt[len(v.actionAddedAt)-capacity:]
 	}
 }
 

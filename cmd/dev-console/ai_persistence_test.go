@@ -51,7 +51,7 @@ func TestPersistSaveAndLoad(t *testing.T) {
 	defer store.Shutdown()
 
 	data := map[string]interface{}{
-		"key1": "value1",
+		"key1":  "value1",
 		"count": float64(42),
 		"nested": map[string]interface{}{
 			"inner": "data",
@@ -336,10 +336,10 @@ func TestPersistExistingDataSummaries(t *testing.T) {
 
 	// Save noise config
 	noiseConfig := map[string]interface{}{
-		"rules":           []interface{}{map[string]interface{}{"pattern": "test"}},
-		"auto_count":      float64(1),
-		"manual_count":    float64(0),
-		"total_filtered":  float64(100),
+		"rules":          []interface{}{map[string]interface{}{"pattern": "test"}},
+		"auto_count":     float64(1),
+		"manual_count":   float64(0),
+		"total_filtered": float64(100),
 	}
 	noiseJSON, _ := json.Marshal(noiseConfig)
 	store.Save("noise", "config", noiseJSON)
@@ -441,7 +441,7 @@ func TestPersistConcurrentAccess(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			data, _ := json.Marshal(map[string]int{"id": id})
-			key := strings.Replace(strings.Repeat("k", 1), "k", string(rune('a'+id)), -1)
+			key := string(rune('a' + id))
 			if err := store.Save("concurrent", key, data); err != nil {
 				errCh <- err
 			}
