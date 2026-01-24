@@ -511,7 +511,7 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Gasoline-Key")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusNoContent)
@@ -539,6 +539,7 @@ func main() {
 	showVersion := flag.Bool("version", false, "Show version")
 	showHelp := flag.Bool("help", false, "Show help")
 	serverOnly := flag.Bool("server", false, "Run in HTTP-only mode (no MCP)")
+	apiKey := flag.String("api-key", "", "API key for HTTP authentication (optional)")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 
 	flag.Parse()
@@ -581,7 +582,11 @@ func main() {
 		if isTTY {
 			// User ran "gasoline" directly - start server as background process
 			exe, _ := os.Executable()
-			cmd := exec.Command(exe, "--server", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)) //nolint:gosec,noctx // G204: exe is our own binary path; no context needed for daemon fork
+			args := []string{"--server", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)}
+			if *apiKey != "" {
+				args = append(args, "--api-key", *apiKey)
+			}
+			cmd := exec.Command(exe, args...) //nolint:gosec,noctx // G204: exe is our own binary path; no context needed for daemon fork
 			cmd.Stdout = nil
 			cmd.Stderr = nil
 			cmd.Stdin = nil
@@ -596,7 +601,7 @@ func main() {
 		}
 
 		// stdin is piped → MCP mode
-		runMCPMode(server, *port)
+		runMCPMode(server, *port, *apiKey)
 		return
 	}
 
@@ -624,6 +629,7 @@ func main() {
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
+		Handler:      AuthMiddleware(*apiKey)(http.DefaultServeMux),
 	}
 	if err := srv.ListenAndServe(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting server: %v\n", err)
@@ -634,7 +640,7 @@ func main() {
 // runMCPMode runs the server in MCP mode:
 // - HTTP server runs in a goroutine (for browser extension)
 // - MCP protocol runs over stdin/stdout (for Claude Code)
-func runMCPMode(server *Server, port int) {
+func runMCPMode(server *Server, port int, apiKey string) {
 	fmt.Fprintf(os.Stderr, "[gasoline] Starting MCP server, HTTP on port %d, log file: %s\n", port, server.logFile)
 
 	// Create capture buffers for WebSocket, network, and actions
@@ -644,7 +650,7 @@ func runMCPMode(server *Server, port int) {
 	go func() {
 		setupHTTPRoutes(server, capture)
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
-		if err := http.ListenAndServe(addr, nil); err != nil { //nolint:gosec // G114: MCP mode background server
+		if err := http.ListenAndServe(addr, AuthMiddleware(apiKey)(http.DefaultServeMux)); err != nil { //nolint:gosec // G114: MCP mode background server
 			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
 		}
 	}()
