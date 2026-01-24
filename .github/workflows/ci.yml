@@ -30,7 +30,7 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.8.0
-          args: run ./cmd/dev-console/
+          args: ./cmd/dev-console/
 
       - name: Build
         run: make build
