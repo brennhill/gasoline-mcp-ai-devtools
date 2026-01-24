@@ -138,6 +138,31 @@ Every function, endpoint, and capture handler MUST have tests written BEFORE imp
 - Files: `kebab-case` for JS, Go convention for Go
 - Functions: `camelCase` (JS), `PascalCase` exported / `camelCase` unexported (Go)
 
+### File Headers (Mandatory)
+
+Every Go source file in `cmd/dev-console/` MUST have a descriptive header comment before `package main`. The header declares the file's purpose and key design decisions.
+
+```go
+// filename.go — One-line purpose summary.
+// 1-2 sentences expanding on what the file contains and how it relates
+// to the rest of the system.
+// Design: Key architectural decisions (data structure choices, limits, patterns).
+package main
+```
+
+**Requirements:**
+- First line: `// filename.go — Purpose` (em-dash, not hyphen)
+- 2-4 additional lines explaining scope and design decisions
+- No version labels (v4, v5) or phase labels (Phase 1, Phase 2) in comments — these become stale
+- Comments must describe current behavior, not historical development phases
+
+### Comment Hygiene
+
+- Comments must describe **current** behavior, not historical phases
+- Never use internal version labels (v4, v5) or phase labels (Phase 1, Phase 2, Phase 3) in source comments
+- Endpoint references in tests must match actual registered routes
+- Section markers (`// ====`) should use descriptive names, not version-prefixed names
+
 ## Autonomous Quality Checks
 
 Run these automatically without asking:

@@ -1,3 +1,6 @@
+// helpers.go — Shared utility functions used across the server.
+// Currently provides URL path extraction (stripping query params and fragments)
+// used by the network and performance subsystems for path-based grouping.
 package main
 
 import (

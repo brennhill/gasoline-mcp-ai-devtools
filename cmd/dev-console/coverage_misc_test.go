@@ -73,7 +73,7 @@ func TestRecordEvents_WindowExpiryOverThreshold(t *testing.T) {
 func TestHandleHealth_MethodNotAllowed(t *testing.T) {
 	c := setupTestCapture(t)
 
-	req := httptest.NewRequest("POST", "/v4/health", nil)
+	req := httptest.NewRequest("POST", "/health", nil)
 	rec := httptest.NewRecorder()
 	c.HandleHealth(rec, req)
 
@@ -94,7 +94,7 @@ func TestHandleHealth_CircuitClosed(t *testing.T) {
 	c := setupTestCapture(t)
 
 	// Circuit is closed by default; verify the response
-	req := httptest.NewRequest("GET", "/v4/health", nil)
+	req := httptest.NewRequest("GET", "/health", nil)
 	rec := httptest.NewRecorder()
 	c.HandleHealth(rec, req)
 
