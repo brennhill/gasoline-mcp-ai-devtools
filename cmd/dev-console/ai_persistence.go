@@ -1,3 +1,9 @@
+// ai_persistence.go — File-based persistent key-value store for session data.
+// Provides namespace-scoped storage that survives server restarts, enabling AI
+// assistants to save and retrieve structured data across sessions.
+// Design: Each namespace maps to a JSON file on disk. Individual values are capped
+// at 1MB, total storage per project at 10MB. Operations are mutex-guarded for
+// concurrent safety. Supports save, load, list, delete, and stats actions.
 package main
 
 import (

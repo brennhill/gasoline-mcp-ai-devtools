@@ -1,7 +1,8 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for extension-side memory enforcement
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview memory.test.js — Tests for extension-side memory enforcement.
+ * Verifies buffer size caps, eviction of oldest entries when limits are reached,
+ * memory pressure detection (20MB soft, 50MB hard), and periodic checks.
  *
  * Spec: docs/ai-first/tech-spec-memory-enforcement.md (Extension-Side Memory section)
  * Scenarios covered:

@@ -1,10 +1,10 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for interception deferral (Phase 1 / Phase 2 split)
- * TDD: These tests are written BEFORE implementation
- *
- * Spec: Phase 1 (immediate) installs lightweight, non-intercepting setup.
- * Phase 2 (deferred) installs heavy interceptors after load + 100ms.
+ * @fileoverview interception-deferral.test.js — Tests for two-phase interception.
+ * Verifies that console/error capture starts immediately (Phase 1) while network,
+ * WebSocket, and action capture defers until after the page load event (Phase 2).
+ * Ensures zero performance impact on initial page render.
+ * Spec: Phase 1 installs lightweight setup; Phase 2 adds interceptors after load + 100ms.
  */
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'

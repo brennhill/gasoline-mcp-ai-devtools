@@ -1,3 +1,8 @@
+// rate_limit.go — Request rate limiting and circuit breaker for the HTTP server.
+// Protects against runaway extension polling or misbehaving clients.
+// Design: Token bucket rate limiter per endpoint category. Circuit breaker
+// opens after sustained errors, with exponential backoff before retry.
+// Health endpoint bypasses rate limiting for monitoring.
 package main
 
 import (

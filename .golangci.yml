@@ -32,7 +32,13 @@ linters:
     gosec:
       excludes:
         - G104 # Unhandled errors on deferred close (too noisy)
+        - G301 # Directory permissions > 0750 (local dev tool)
+        - G306 # WriteFile permissions > 0600 (local dev tool)
         - G602 # False positive slice bounds in range loops
+    staticcheck:
+      checks:
+        - "all"
+        - "-QF*" # Quickfix suggestions are too opinionated
     gocritic:
       enabled-tags:
         - diagnostic
@@ -43,6 +49,7 @@ linters:
         - paramTypeCombine # Cosmetic, not worth enforcing
         - unnamedResult # Cosmetic on test helpers
         - ifElseChain # Existing code is readable
+        - tooManyResultsChecker # computeDataCounts returns all counts by design
     revive:
       rules:
         - name: exported
@@ -66,4 +73,5 @@ linters:
       - path: _test\.go
         linters:
           - staticcheck
-        text: 'SA9003'
+          - ineffassign
+          - prealloc

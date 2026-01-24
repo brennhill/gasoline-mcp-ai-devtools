@@ -292,7 +292,7 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	var body struct {
-		DataUrl   string `json:"dataUrl"`
+		DataURL   string `json:"dataUrl"`
 		URL       string `json:"url"`
 		ErrorID   string `json:"errorId"`
 		ErrorType string `json:"errorType"`
@@ -303,13 +303,13 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if body.DataUrl == "" {
+	if body.DataURL == "" {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing dataUrl"})
 		return
 	}
 
 	// Extract base64 data from data URL
-	parts := strings.SplitN(body.DataUrl, ",", 2)
+	parts := strings.SplitN(body.DataURL, ",", 2)
 	if len(parts) != 2 {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid dataUrl format"})
 		return
@@ -585,7 +585,7 @@ func main() {
 func runMCPMode(server *Server, port int) {
 	fmt.Fprintf(os.Stderr, "[gasoline] Starting MCP server, HTTP on port %d, log file: %s\n", port, server.logFile)
 
-	// Create v4 server for WebSocket/network body capture
+	// Create capture buffers for WebSocket, network, and actions
 	capture := NewCapture()
 
 	// Start HTTP server in background for browser extension
@@ -597,7 +597,7 @@ func runMCPMode(server *Server, port int) {
 		}
 	}()
 
-	// Run MCP protocol over stdin/stdout (with v4 tools)
+	// Run MCP protocol over stdin/stdout
 	mcp := NewToolHandler(server, capture)
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -652,7 +652,7 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 	mcp := NewToolHandler(server, capture)
 	http.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
 
-	// CI/CD webhook endpoint (Phase 3: push-based alerts)
+	// CI/CD webhook endpoint for push-based alerts
 	if mcp.toolHandler != nil {
 		http.HandleFunc("/ci-result", corsMiddleware(mcp.toolHandler.handleCIWebhook))
 	}

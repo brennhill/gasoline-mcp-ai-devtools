@@ -1,8 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for rate limiting / circuit breaker wiring into batchers
- * TDD: These tests are written BEFORE implementation
- *
+ * @fileoverview rate-limit.test.js — Tests for rate limiting and circuit breaker.
+ * Verifies request throttling, exponential backoff on repeated failures,
+ * circuit breaker state transitions (closed → open → half-open), and
+ * integration with the batching system in background.js.
  * Tests validate spec scenarios 13-23 from docs/ai-first/tech-spec-rate-limiting.md
  */
 

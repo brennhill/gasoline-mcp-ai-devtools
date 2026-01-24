@@ -1,7 +1,13 @@
 // @ts-nocheck
 /**
- * @fileoverview Injected script for capturing browser events
- * This script runs in the page context to intercept console, fetch, and errors
+ * @fileoverview inject.js — Page-level capture script for browser telemetry.
+ * Runs in the page context (not extension sandbox) to intercept console methods,
+ * fetch/XHR requests, WebSocket connections, errors, and user actions. Posts
+ * captured events to the content script via window.postMessage.
+ * Design: Monkey-patches native APIs (console, fetch, WebSocket) with safe wrappers.
+ * Defers network/WS interception until after page load to avoid impacting performance.
+ * Buffers are size-capped (actions: 20, waterfall: 50, perf entries: 50).
+ * Exposes window.__gasoline for version detection and programmatic control.
  */
 
 const MAX_STRING_LENGTH = 10240 // 10KB

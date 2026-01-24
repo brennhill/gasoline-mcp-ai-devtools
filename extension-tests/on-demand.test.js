@@ -1,7 +1,8 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for on-demand features: DOM query execution, accessibility audit, pending query polling
- * TDD: These tests are written BEFORE implementation (v4 feature)
+ * @fileoverview on-demand.test.js — Tests for on-demand DOM/a11y query system.
+ * Covers CSS selector query execution, accessibility tree audits, pending query
+ * polling from the server, response posting, and error handling for invalid selectors.
  */
 
 import { test, describe, mock, beforeEach, afterEach, after } from 'node:test'

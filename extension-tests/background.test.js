@@ -1,7 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for background service worker
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview background.test.js — Tests for the background service worker.
+ * Covers log batching/debouncing, server communication, error deduplication,
+ * connection status management, badge updates, debug export, screenshot capture,
+ * source map resolution, and on-demand query dispatch.
  */
 
 import { test, describe, mock, beforeEach } from 'node:test'

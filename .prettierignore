@@ -12,3 +12,5 @@ go.mod
 go.sum
 *.md
 package-lock.json
+cmd/dev-console/testdata/
+.golangci.yml

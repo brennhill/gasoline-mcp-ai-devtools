@@ -1,7 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Shared test infrastructure for extension tests.
- * Provides configurable mock factories and query helpers.
+ * @fileoverview helpers.js — Shared test infrastructure for all extension tests.
+ * Provides mock factories for Chrome APIs (runtime, storage, tabs), browser globals
+ * (window, document, crypto, navigator), fetch, WebSocket, and PerformanceObserver.
+ * Design: Each mock factory returns a fresh instance to prevent cross-test leakage.
  *
  * Usage: Import only what each test file needs.
  *   import { createMockWindow, createMockCrypto } from './helpers.js'

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"time"
 	"testing"
+	"time"
 )
 
 func TestV4NetworkBodiesBuffer(t *testing.T) {

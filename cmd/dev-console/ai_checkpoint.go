@@ -1,3 +1,9 @@
+// ai_checkpoint.go — Named checkpoint/diff system for session state comparison.
+// Checkpoints record buffer positions at a point in time. Diffs return only
+// new entries since the checkpoint, deduplicated and severity-filtered.
+// Design: Checkpoints store position counters, not data copies, making them
+// cheap to create. Max 20 named checkpoints with LRU eviction. Auto-checkpoint
+// advances on each diff call for "show me what's new" workflows.
 package main
 
 import (
@@ -36,7 +42,7 @@ type Checkpoint struct {
 	ActionTotal    int64
 	PageURL        string
 	KnownEndpoints map[string]endpointState // path → state
-	AlertDelivery  int64                       // alert delivery counter at checkpoint time
+	AlertDelivery  int64                    // alert delivery counter at checkpoint time
 }
 
 // endpointState tracks the last known state of an endpoint
@@ -54,17 +60,17 @@ type GetChangesSinceParams struct {
 
 // DiffResponse is the compressed diff returned by get_changes_since
 type DiffResponse struct {
-	From       time.Time      `json:"from"`
-	To         time.Time      `json:"to"`
-	DurationMs int64          `json:"duration_ms"`
-	Severity   string         `json:"severity"`
-	Summary    string         `json:"summary"`
-	TokenCount int            `json:"token_count"`
-	Console    *ConsoleDiff   `json:"console,omitempty"`
-	Network    *NetworkDiff   `json:"network,omitempty"`
-	WebSocket  *WebSocketDiff `json:"websocket,omitempty"`
-	Actions           *ActionsDiff        `json:"actions,omitempty"`
-	PerformanceAlerts []PerformanceAlert  `json:"performance_alerts,omitempty"`
+	From              time.Time          `json:"from"`
+	To                time.Time          `json:"to"`
+	DurationMs        int64              `json:"duration_ms"`
+	Severity          string             `json:"severity"`
+	Summary           string             `json:"summary"`
+	TokenCount        int                `json:"token_count"`
+	Console           *ConsoleDiff       `json:"console,omitempty"`
+	Network           *NetworkDiff       `json:"network,omitempty"`
+	WebSocket         *WebSocketDiff     `json:"websocket,omitempty"`
+	Actions           *ActionsDiff       `json:"actions,omitempty"`
+	PerformanceAlerts []PerformanceAlert `json:"performance_alerts,omitempty"`
 }
 
 // ConsoleDiff contains deduplicated console entries since the checkpoint
@@ -150,13 +156,13 @@ type CheckpointManager struct {
 	namedCheckpoints map[string]*Checkpoint
 	namedOrder       []string // track insertion order for eviction
 
-	server  *Server
+	server *Server
 
 	// Push regression alerts
 	pendingAlerts []PerformanceAlert
 	alertCounter  int64
 	alertDelivery int64 // monotonic counter for delivery tracking
-	capture *Capture
+	capture       *Capture
 }
 
 // ============================================
@@ -846,6 +852,7 @@ const (
 // ============================================
 // Push Regression Alert Detection
 // ============================================
+
 // DetectAndStoreAlerts checks the given performance snapshot against the given baseline
 // and stores any regression alerts for delivery via get_changes_since.
 // The baseline should be the state BEFORE the snapshot was incorporated.
@@ -896,6 +903,7 @@ func (cm *CheckpointManager) DetectAndStoreAlerts(snapshot PerformanceSnapshot, 
 		cm.pendingAlerts = cm.pendingAlerts[len(cm.pendingAlerts)-maxPendingAlerts:]
 	}
 }
+
 // detectPushRegressions compares snapshot against baseline using the push-notification thresholds.
 // Returns only metrics that exceed their thresholds.
 func (cm *CheckpointManager) detectPushRegressions(snapshot PerformanceSnapshot, baseline PerformanceBaseline) map[string]AlertMetricDelta {

@@ -1,3 +1,9 @@
+// export_sarif.go — SARIF 2.1.0 accessibility report generation.
+// Converts axe-core accessibility audit results into the Static Analysis
+// Results Interchange Format, compatible with GitHub Code Scanning and
+// other SARIF-consuming tools.
+// Design: Each axe-core violation becomes a SARIF result with rule metadata,
+// affected element locations, and remediation guidance.
 package main
 
 import (
@@ -14,8 +20,8 @@ import (
 
 // SARIFLog is the top-level SARIF 2.1.0 object.
 type SARIFLog struct {
-	Schema  string    `json:"$schema"`
-	Version string    `json:"version"`
+	Schema  string     `json:"$schema"`
+	Version string     `json:"version"`
 	Runs    []SARIFRun `json:"runs"`
 }
 
@@ -40,10 +46,10 @@ type SARIFDriver struct {
 
 // SARIFRule describes a single analysis rule.
 type SARIFRule struct {
-	ID               string             `json:"id"`
-	ShortDescription SARIFMessage       `json:"shortDescription"`
-	FullDescription  SARIFMessage       `json:"fullDescription"`
-	HelpURI          string             `json:"helpUri"`
+	ID               string               `json:"id"`
+	ShortDescription SARIFMessage         `json:"shortDescription"`
+	FullDescription  SARIFMessage         `json:"fullDescription"`
+	HelpURI          string               `json:"helpUri"`
 	Properties       *SARIFRuleProperties `json:"properties,omitempty"`
 }
 
@@ -99,9 +105,9 @@ type SARIFSnippet struct {
 
 // SARIFExportOptions controls the export behavior.
 type SARIFExportOptions struct {
-	Scope        string `json:"scope"`
+	Scope         string `json:"scope"`
 	IncludePasses bool   `json:"include_passes"`
-	SaveTo       string `json:"save_to"`
+	SaveTo        string `json:"save_to"`
 }
 
 // ============================================
@@ -126,9 +132,9 @@ type axeViolation struct {
 }
 
 type axeNode struct {
-	HTML    string   `json:"html"`
-	Target  []string `json:"target"`
-	Impact  string   `json:"impact"`
+	HTML   string   `json:"html"`
+	Target []string `json:"target"`
+	Impact string   `json:"impact"`
 }
 
 // ============================================
@@ -165,8 +171,9 @@ func ExportSARIF(a11yResultJSON json.RawMessage, opts SARIFExportOptions) (*SARI
 	ruleIndices := make(map[string]int)
 
 	// Convert violations
-	for _, v := range axe.Violations {
-		ruleIdx := ensureRule(run, &ruleIndices, v)
+	for i := range axe.Violations {
+		v := axe.Violations[i]
+		ruleIdx := ensureRule(run, ruleIndices, v)
 		for _, node := range v.Nodes {
 			result := nodeToResult(v, node, ruleIdx, axeImpactToLevel(node.Impact))
 			run.Results = append(run.Results, result)
@@ -175,8 +182,9 @@ func ExportSARIF(a11yResultJSON json.RawMessage, opts SARIFExportOptions) (*SARI
 
 	// Convert passes if requested
 	if opts.IncludePasses {
-		for _, p := range axe.Passes {
-			ruleIdx := ensureRule(run, &ruleIndices, p)
+		for i := range axe.Passes {
+			p := axe.Passes[i]
+			ruleIdx := ensureRule(run, ruleIndices, p)
 			for _, node := range p.Nodes {
 				result := nodeToResult(p, node, ruleIdx, "none")
 				run.Results = append(run.Results, result)
@@ -195,8 +203,8 @@ func ExportSARIF(a11yResultJSON json.RawMessage, opts SARIFExportOptions) (*SARI
 }
 
 // ensureRule adds a rule to the driver rules if not already present, returns the index.
-func ensureRule(run *SARIFRun, indices *map[string]int, v axeViolation) int {
-	if idx, exists := (*indices)[v.ID]; exists {
+func ensureRule(run *SARIFRun, indices map[string]int, v axeViolation) int {
+	if idx, exists := indices[v.ID]; exists {
 		return idx
 	}
 
@@ -214,7 +222,7 @@ func ensureRule(run *SARIFRun, indices *map[string]int, v axeViolation) int {
 
 	idx := len(run.Tool.Driver.Rules)
 	run.Tool.Driver.Rules = append(run.Tool.Driver.Rules, rule)
-	(*indices)[v.ID] = idx
+	indices[v.ID] = idx
 	return idx
 }
 

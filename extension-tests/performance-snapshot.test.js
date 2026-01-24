@@ -1,7 +1,8 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for performance snapshot capture (inject.js)
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview performance-snapshot.test.js — Tests for on-demand performance snapshots.
+ * Verifies collection of navigation timing, resource timing, Web Vitals (LCP, CLS, FCP),
+ * long tasks, and memory usage into a single snapshot payload posted to the server.
  */
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'

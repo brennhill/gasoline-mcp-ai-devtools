@@ -1,7 +1,13 @@
 // @ts-nocheck
 /**
- * @fileoverview Content script that injects the capture script into pages
- * Runs in the content script context, bridges page and extension
+ * @fileoverview content.js — Message bridge between page and extension contexts.
+ * Injects inject.js into the page as a module script, then listens for
+ * window.postMessage events (GASOLINE_LOG, GASOLINE_WS, GASOLINE_NETWORK_BODY,
+ * GASOLINE_ENHANCED_ACTION, GASOLINE_PERF_SNAPSHOT) and forwards them to the
+ * background service worker via chrome.runtime.sendMessage.
+ * Also handles chrome.runtime messages for on-demand queries (DOM, a11y, perf).
+ * Design: Minimal footprint — no state, just message routing. Validates message
+ * origin (event.source === window) to prevent cross-frame injection.
  */
 
 // Inject the capture script into the page

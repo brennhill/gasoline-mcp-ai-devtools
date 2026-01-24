@@ -15,6 +15,7 @@ PLATFORMS := \
 .PHONY: all clean build test test-race test-cover test-bench test-fuzz \
 	dev run checksums verify-zero-deps verify-imports verify-size \
 	lint lint-go lint-js format format-fix typecheck check ci \
+	ci-local ci-go ci-js ci-security ci-e2e release-check install-hooks \
 	$(PLATFORMS)
 
 all: clean build
@@ -31,7 +32,7 @@ test-race:
 test-cover:
 	go test -coverprofile=coverage.out ./cmd/dev-console/...
 	@go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//' | \
-		awk '{if ($$1 < 60) {print "FAIL: Coverage " $$1 "% is below 60% threshold"; exit 1} else {print "OK: Coverage " $$1 "%"}}'
+		awk '{if ($$1 < 95) {print "FAIL: Coverage " $$1 "% is below 95% threshold"; exit 1} else {print "OK: Coverage " $$1 "%"}}'
 
 test-bench:
 	go test -bench=. -benchmem -count=3 ./cmd/dev-console/...
@@ -117,3 +118,38 @@ check: lint format typecheck
 
 ci: check test
 	node --test extension-tests/*.test.js
+
+# --- Local CI (mirrors GitHub Actions) ---
+
+ci-local: ci-go ci-js ci-security
+	@echo "All CI checks passed locally"
+
+ci-e2e:
+	cd e2e-tests && npm ci && npx playwright install chromium --with-deps && npx playwright test
+
+release-check: ci-local ci-e2e
+	@echo "All release checks passed (CI + E2E)"
+
+ci-go:
+	go vet ./cmd/dev-console/
+	make test-race
+	make test-cover
+	golangci-lint run ./cmd/dev-console/
+	make build
+	make verify-zero-deps
+	make verify-imports
+
+ci-js:
+	npm run lint
+	npm run format
+	npm run typecheck
+	npm run test:ext
+
+ci-security:
+	@command -v gosec >/dev/null 2>&1 || { echo "gosec not found. Install: go install github.com/securego/gosec/v2/cmd/gosec@latest"; exit 1; }
+	gosec -exclude=G104,G114,G204,G301,G304,G306 ./cmd/dev-console/
+
+install-hooks:
+	@cp scripts/hooks/pre-push .git/hooks/pre-push
+	@chmod +x .git/hooks/pre-push
+	@echo "Git hooks installed."

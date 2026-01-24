@@ -1,3 +1,8 @@
+// queries.go — On-demand DOM and accessibility queries via the browser extension.
+// Implements a request/response pattern: the MCP tool posts a query, the
+// extension picks it up via polling, executes it in the page, and posts results.
+// Design: Pending queries have a TTL and are garbage-collected. Accessibility
+// audit results are cached with a configurable TTL to avoid redundant scans.
 package main
 
 import (

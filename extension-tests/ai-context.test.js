@@ -1,7 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for AI-preprocessed error context enrichment
- * TDD: These tests are written BEFORE implementation (v5 feature)
+ * @fileoverview ai-context.test.js — Tests for error context enrichment.
+ * Verifies that console errors and unhandled exceptions are augmented with
+ * surrounding code context, variable snapshots, and stack frame metadata
+ * to help AI assistants diagnose issues without additional queries.
  *
  * Tests cover:
  * - Stack frame parsing (Chrome + Firefox formats)

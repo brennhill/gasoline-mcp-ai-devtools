@@ -1,7 +1,8 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for circuit breaker + exponential backoff
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview circuit-breaker.test.js — Tests for circuit breaker state machine.
+ * Covers state transitions (closed/open/half-open), failure threshold triggers,
+ * exponential backoff timing, half-open probe requests, and recovery to closed state.
  */
 
 import { test, describe, mock, beforeEach } from 'node:test'

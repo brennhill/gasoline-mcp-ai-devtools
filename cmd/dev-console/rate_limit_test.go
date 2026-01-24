@@ -350,7 +350,7 @@ func TestHealthEndpointHTTP(t *testing.T) {
 	c.windowEventCount = 1500
 	c.mu.Unlock()
 
-	req := httptest.NewRequest("GET", "/v4/health", nil)
+	req := httptest.NewRequest("GET", "/health", nil)
 	rec := httptest.NewRecorder()
 	c.HandleHealth(rec, req)
 
@@ -485,11 +485,11 @@ func TestNonIngestEndpointsNotRateLimited(t *testing.T) {
 	}
 
 	// Health endpoint should still work
-	req2 := httptest.NewRequest("GET", "/v4/health", nil)
+	req2 := httptest.NewRequest("GET", "/health", nil)
 	rec2 := httptest.NewRecorder()
 	c.HandleHealth(rec2, req2)
 	if rec2.Code != http.StatusOK {
-		t.Errorf("expected GET /v4/health to return 200 even when rate limited, got %d", rec2.Code)
+		t.Errorf("expected GET /health to return 200 even when rate limited, got %d", rec2.Code)
 	}
 }
 

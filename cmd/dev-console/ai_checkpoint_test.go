@@ -2756,8 +2756,8 @@ func TestComputeNetworkDiff_ToReadExceedsAvailable(t *testing.T) {
 func TestDetectAndStoreAlerts_CLSRegressionWithZeroBaseline(t *testing.T) {
 	cm, _, _ := setupCheckpointTest(t)
 
-	baselineCLS := 0.0   // Zero baseline CLS
-	snapshotCLS := 0.15  // >0.1 absolute increase
+	baselineCLS := 0.0  // Zero baseline CLS
+	snapshotCLS := 0.15 // >0.1 absolute increase
 
 	baseline := PerformanceBaseline{
 		SampleCount: 3,
@@ -2792,7 +2792,6 @@ func TestDetectAndStoreAlerts_CLSRegressionWithZeroBaseline(t *testing.T) {
 		t.Errorf("Expected DeltaPct=0 when baseline CLS is 0, got %f", clsMetric.DeltaPct)
 	}
 }
-
 
 // ============================================
 // Coverage: buildAlertSummary in alerts.go — singular count

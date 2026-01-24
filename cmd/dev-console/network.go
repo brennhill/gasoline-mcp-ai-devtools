@@ -1,3 +1,8 @@
+// network.go — Network request/response body storage and retrieval.
+// Stores full HTTP payloads (request + response bodies) for API debugging,
+// with ring buffer eviction and per-entry size limits.
+// Design: Bodies indexed by request URL+method for fast lookup. Large
+// payloads truncated to prevent memory bloat. Auth headers stripped on ingest.
 package main
 
 import (

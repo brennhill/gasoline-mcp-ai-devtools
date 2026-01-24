@@ -1,7 +1,8 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for reproduction script generation
- * TDD: These tests are written BEFORE implementation (v5 feature)
+ * @fileoverview reproduction-script.test.js — Tests for Playwright repro script generation.
+ * Verifies that recorded user actions are converted into runnable Playwright test
+ * scripts with smart selector strategies, timing annotations, and sensitive data redaction.
  *
  * Tests cover:
  * - Selector computation (multi-strategy: testId, aria, role, id, text, cssPath)

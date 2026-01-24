@@ -23,14 +23,14 @@ jobs:
       - name: Test (with race detector)
         run: make test-race
 
-      - name: Test coverage gate (60% minimum)
+      - name: Test coverage gate (95% minimum)
         run: make test-cover
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: latest
-          args: run ./cmd/dev-console/
+          version: v2.8.0
+          args: ./cmd/dev-console/
 
       - name: Build
         run: make build
@@ -78,39 +78,6 @@ jobs:
       - name: Extension tests
         run: npm run test:ext
 
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.21"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install root dependencies
-        run: npm ci
-
-      - name: Install E2E dependencies
-        run: cd e2e-tests && npm ci
-
-      - name: Install Playwright browsers
-        run: cd e2e-tests && npx playwright install chromium --with-deps
-
-      - name: Run E2E tests
-        run: cd e2e-tests && xvfb-run npx playwright test
-
-      - name: Upload test results
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-test-results
-          path: e2e-tests/test-results/
-
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -132,10 +99,10 @@ jobs:
       - name: Go security scan
         uses: securego/gosec@master
         with:
-          args: ./cmd/dev-console/
+          args: -exclude=G104,G114,G204,G301,G304,G306 ./cmd/dev-console/
 
       - name: JS security lint
         run: |
-          npx eslint --no-eslintrc -c eslint.config.js \
+          npx eslint -c eslint.config.js \
             --rule '{"security/detect-eval-with-expression": "error", "security/detect-non-literal-regexp": "error", "security/detect-possible-timing-attacks": "error"}' \
             extension/

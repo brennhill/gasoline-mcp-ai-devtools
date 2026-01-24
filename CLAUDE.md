@@ -54,6 +54,21 @@ docs/
 └── product-description.md  # Product overview
 ```
 
+## Git Subrepos (DO NOT DELETE)
+
+This project uses git submodules for shared configuration. These are **separate repositories** embedded in the project tree:
+
+| Path | Repository | Purpose |
+|------|-----------|---------|
+| `.claude/` | gasoline-claude | Claude Code skills, docs, and quality gates |
+| `docs/marketing/` | gasoline-marketing | Marketing site (Jekyll) |
+
+**Rules:**
+- NEVER delete or recreate these directories — they are independent repos with their own history
+- To update: `cd` into the subrepo, commit, and push to its own remote
+- After committing inside a subrepo, update the parent repo's submodule reference: `git add <path> && git commit`
+- Both the subrepo push and the parent ref update are required for changes to propagate
+
 ## Quick Commands
 
 ```bash
@@ -137,6 +152,44 @@ Every function, endpoint, and capture handler MUST have tests written BEFORE imp
 - JS: ES modules, no semicolons optional (follow existing)
 - Files: `kebab-case` for JS, Go convention for Go
 - Functions: `camelCase` (JS), `PascalCase` exported / `camelCase` unexported (Go)
+
+### File Headers (Mandatory)
+
+Every source file MUST have a descriptive header comment declaring the file's purpose and key design decisions.
+
+**Go files** (`cmd/dev-console/*.go`, excluding tests):
+
+```go
+// filename.go — One-line purpose summary.
+// 1-2 sentences expanding on what the file contains and how it relates
+// to the rest of the system.
+// Design: Key architectural decisions (data structure choices, limits, patterns).
+package main
+```
+
+**JavaScript files** (`extension/*.js`, `extension-tests/*.js`):
+
+```javascript
+// @ts-nocheck
+/**
+ * @fileoverview filename.js — One-line purpose summary.
+ * 1-2 sentences expanding on scope, responsibilities, and system role.
+ * Design: Key architectural decisions (communication patterns, buffer limits, etc).
+ */
+```
+
+**Requirements:**
+- First descriptive line: `filename — Purpose` (em-dash, not hyphen)
+- 2-4 additional lines explaining scope and design decisions
+- No version labels (v4, v5) or phase labels (Phase 1, Phase 2) in comments — these become stale
+- Comments must describe current behavior, not historical development phases
+
+### Comment Hygiene
+
+- Comments must describe **current** behavior, not historical phases
+- Never use internal version labels (v4, v5) or phase labels (Phase 1, Phase 2, Phase 3) in source comments
+- Endpoint references in tests must match actual registered routes
+- Section markers (`// ====`) should use descriptive names, not version-prefixed names
 
 ## Autonomous Quality Checks
 
@@ -366,6 +419,7 @@ Tech specs MUST be written in natural language. They are human-readable document
 - Log sensitive data (auth tokens, cookies, passwords)
 - Skip performance budget checks
 - Commit code without corresponding tests
+- Delete or recreate git subrepos (`.claude/`, `docs/marketing/`) — update them in place
 
 ## Do This
 

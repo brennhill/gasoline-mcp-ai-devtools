@@ -1,7 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for content script message forwarding
- * TDD: Tests for v5 GASOLINE_NETWORK_BODY forwarding
+ * @fileoverview content.test.js — Tests for content script message bridge.
+ * Verifies that window.postMessage events (GASOLINE_LOG, GASOLINE_WS,
+ * GASOLINE_NETWORK_BODY, GASOLINE_ENHANCED_ACTION, GASOLINE_PERF_SNAPSHOT)
+ * are correctly forwarded to chrome.runtime.sendMessage with proper payloads.
  */
 
 import { test, describe, mock, beforeEach } from 'node:test'

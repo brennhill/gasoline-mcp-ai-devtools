@@ -1,7 +1,13 @@
 // @ts-nocheck
 /**
- * @fileoverview Background service worker for Dev Console extension
- * Handles log batching, server communication, and badge updates
+ * @fileoverview background.js — Service worker managing server communication and state.
+ * Receives captured events from content scripts, batches them with debouncing,
+ * and posts to the Go server. Handles error deduplication/grouping, connection
+ * status, badge updates, screenshot capture, source map resolution, and
+ * on-demand query polling (DOM, a11y, performance snapshots).
+ * Design: Debounced batching (100ms default, max 50 per batch) prevents flooding.
+ * Circuit breaker with exponential backoff protects against server unavailability.
+ * Rate-limited screenshots (5s cooldown, 10/session max). LRU source map cache (50 entries).
  */
 
 const DEFAULT_SERVER_URL = 'http://localhost:7890'

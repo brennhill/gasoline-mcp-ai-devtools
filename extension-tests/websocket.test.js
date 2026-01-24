@@ -1,7 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for WebSocket interception, adaptive sampling, schema detection, and binary handling
- * TDD: These tests are written BEFORE implementation (v4 feature)
+ * @fileoverview websocket.test.js — Tests for WebSocket capture subsystem.
+ * Covers WebSocket constructor wrapping, message interception (text + binary),
+ * adaptive sampling under high throughput, JSON schema detection, connection
+ * tracking, and close/error event forwarding.
  */
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'

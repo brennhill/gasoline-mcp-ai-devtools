@@ -857,12 +857,13 @@ func TestMemory_EmptyBuffers_ZeroMemory(t *testing.T) {
 // does not bring memory below soft limit.
 //
 // Math:
-//   soft limit = 20MB
-//   NB: 20 entries at 200KB each = ~4MB
-//   WS: 200 events at 100KB each = ~20MB
-//   Total = ~24MB (above soft limit)
-//   After NB eviction (25% of 20 = 5 entries removed): 15*200KB = ~3MB NB
-//   Remaining = ~3MB + ~20MB = ~23MB -> still above soft, so WS branch is hit
+//
+//	soft limit = 20MB
+//	NB: 20 entries at 200KB each = ~4MB
+//	WS: 200 events at 100KB each = ~20MB
+//	Total = ~24MB (above soft limit)
+//	After NB eviction (25% of 20 = 5 entries removed): 15*200KB = ~3MB NB
+//	Remaining = ~3MB + ~20MB = ~23MB -> still above soft, so WS branch is hit
 func TestMemory_EvictSoft_NBAndWS(t *testing.T) {
 	c := NewCapture()
 
@@ -907,15 +908,16 @@ func TestMemory_EvictSoft_NBAndWS(t *testing.T) {
 // eviction still leave memory above soft limit.
 //
 // Math:
-//   soft limit = 20MB
-//   NB: 8 entries at 200KB = ~1.6MB
-//   WS: 8 events at 100KB = ~0.8MB
-//   Actions: 50000 entries at 500 bytes = 25MB
-//   Total = ~27.4MB (above soft)
-//   After NB 25% eviction (2 removed): 6*200KB = ~1.2MB NB
-//   Remaining = ~1.2MB + ~0.8MB + ~25MB = ~27MB -> still above, WS branch hit
-//   After WS 25% eviction (2 removed): 6*100KB = ~0.6MB WS
-//   Remaining = ~1.2MB + ~0.6MB + ~25MB = ~26.8MB -> still above, actions branch hit
+//
+//	soft limit = 20MB
+//	NB: 8 entries at 200KB = ~1.6MB
+//	WS: 8 events at 100KB = ~0.8MB
+//	Actions: 50000 entries at 500 bytes = 25MB
+//	Total = ~27.4MB (above soft)
+//	After NB 25% eviction (2 removed): 6*200KB = ~1.2MB NB
+//	Remaining = ~1.2MB + ~0.8MB + ~25MB = ~27MB -> still above, WS branch hit
+//	After WS 25% eviction (2 removed): 6*100KB = ~0.6MB WS
+//	Remaining = ~1.2MB + ~0.6MB + ~25MB = ~26.8MB -> still above, actions branch hit
 func TestMemory_EvictSoft_NBAndWSAndActions(t *testing.T) {
 	c := NewCapture()
 
@@ -965,12 +967,13 @@ func TestMemory_EvictSoft_NBAndWSAndActions(t *testing.T) {
 // does not bring memory below hard limit.
 //
 // Math:
-//   hard limit = 50MB
-//   NB: 30 entries at 200KB = ~6MB
-//   WS: 500 events at 100KB = ~50MB
-//   Total = ~56MB (above hard)
-//   After NB 50% eviction (15 removed): 15*200KB = ~3MB NB
-//   Remaining = ~3MB + ~50MB = ~53MB -> still above hard, WS branch hit
+//
+//	hard limit = 50MB
+//	NB: 30 entries at 200KB = ~6MB
+//	WS: 500 events at 100KB = ~50MB
+//	Total = ~56MB (above hard)
+//	After NB 50% eviction (15 removed): 15*200KB = ~3MB NB
+//	Remaining = ~3MB + ~50MB = ~53MB -> still above hard, WS branch hit
 func TestMemory_EvictHard_NBAndWS(t *testing.T) {
 	c := NewCapture()
 
@@ -1013,15 +1016,16 @@ func TestMemory_EvictHard_NBAndWS(t *testing.T) {
 // eviction still leave memory above hard limit.
 //
 // Math:
-//   hard limit = 50MB
-//   NB: 8 entries at 200KB = ~1.6MB
-//   WS: 8 events at 100KB = ~0.8MB
-//   Actions: 120000 entries at 500 bytes = 60MB
-//   Total = ~62.4MB (above hard)
-//   After NB 50% eviction (4 removed): 4*200KB = ~0.8MB NB
-//   Remaining = ~0.8MB + ~0.8MB + ~60MB = ~61.6MB -> still above, WS branch hit
-//   After WS 50% eviction (4 removed): 4*100KB = ~0.4MB WS
-//   Remaining = ~0.8MB + ~0.4MB + ~60MB = ~61.2MB -> still above, actions branch hit
+//
+//	hard limit = 50MB
+//	NB: 8 entries at 200KB = ~1.6MB
+//	WS: 8 events at 100KB = ~0.8MB
+//	Actions: 120000 entries at 500 bytes = 60MB
+//	Total = ~62.4MB (above hard)
+//	After NB 50% eviction (4 removed): 4*200KB = ~0.8MB NB
+//	Remaining = ~0.8MB + ~0.8MB + ~60MB = ~61.6MB -> still above, WS branch hit
+//	After WS 50% eviction (4 removed): 4*100KB = ~0.4MB WS
+//	Remaining = ~0.8MB + ~0.4MB + ~60MB = ~61.2MB -> still above, actions branch hit
 func TestMemory_EvictHard_NBAndWSAndActions(t *testing.T) {
 	c := NewCapture()
 

@@ -4,8 +4,8 @@
  * Tests the full pipeline via the HTTP-accessible MCP endpoint:
  *   Browser extension captures → Server stores → POST /mcp retrieves
  *
- * Covers: tools/list, get_browser_logs, get_browser_errors,
- *         get_websocket_events, get_network_bodies, check_performance
+ * Covers: tools/list, observe (errors, logs, network, websocket_events,
+ *         websocket_status), analyze (performance), configure (clear), query_dom
  */
 import { test, expect } from './helpers/extension.js'
 import path from 'path'
@@ -51,19 +51,12 @@ test.describe('MCP HTTP Endpoint', () => {
 
     const toolNames = resp.result.tools.map((t) => t.name)
 
-    // Core tools
-    expect(toolNames).toContain('get_browser_errors')
-    expect(toolNames).toContain('get_browser_logs')
-    expect(toolNames).toContain('clear_browser_logs')
-
-    // V4 tools
-    expect(toolNames).toContain('get_websocket_events')
-    expect(toolNames).toContain('get_websocket_status')
-    expect(toolNames).toContain('get_network_bodies')
+    // V5 composite tools
+    expect(toolNames).toContain('observe')
+    expect(toolNames).toContain('analyze')
+    expect(toolNames).toContain('generate')
+    expect(toolNames).toContain('configure')
     expect(toolNames).toContain('query_dom')
-    expect(toolNames).toContain('get_page_info')
-    expect(toolNames).toContain('run_accessibility_audit')
-    expect(toolNames).toContain('check_performance')
   })
 
   test('should return error for unknown method', async ({ page, serverUrl }) => {
@@ -93,7 +86,7 @@ test.describe('MCP: Browser Logs', () => {
     await page.waitForTimeout(3000)
 
     // Query via MCP - returns JSON array as text when entries exist
-    const text = await mcpToolText(serverUrl, 'get_browser_errors')
+    const text = await mcpToolText(serverUrl, 'observe', { what: 'errors' })
 
     // Should be a JSON array of error entries (not the "no errors" message)
     const errors = JSON.parse(text)
@@ -108,21 +101,21 @@ test.describe('MCP: Browser Logs', () => {
 
   test('should return empty message after clearing', async ({ page, serverUrl }) => {
     // Clear first
-    await mcpCall(serverUrl, 'tools/call', { name: 'clear_browser_logs', arguments: {} })
+    await mcpCall(serverUrl, 'tools/call', { name: 'configure', arguments: { action: 'clear' } })
 
-    const text = await mcpToolText(serverUrl, 'get_browser_logs')
+    const text = await mcpToolText(serverUrl, 'observe', { what: 'logs' })
     expect(text).toBe('No browser logs found')
   })
 })
 
 test.describe('MCP: WebSocket Events', () => {
   test('should return empty message when no WebSocket connections', async ({ page, serverUrl }) => {
-    const text = await mcpToolText(serverUrl, 'get_websocket_events')
+    const text = await mcpToolText(serverUrl, 'observe', { what: 'websocket_events' })
     expect(text).toBe('No WebSocket events captured')
   })
 
   test('should return empty status when no WebSocket connections', async ({ page, serverUrl }) => {
-    const text = await mcpToolText(serverUrl, 'get_websocket_status')
+    const text = await mcpToolText(serverUrl, 'observe', { what: 'websocket_status' })
     // WebSocket status returns JSON with empty connections array
     const data = JSON.parse(text)
     expect(data.connections).toBeDefined()
@@ -132,14 +125,14 @@ test.describe('MCP: WebSocket Events', () => {
 
 test.describe('MCP: Network Bodies', () => {
   test('should return empty message when nothing captured', async ({ page, serverUrl }) => {
-    const text = await mcpToolText(serverUrl, 'get_network_bodies')
+    const text = await mcpToolText(serverUrl, 'observe', { what: 'network' })
     expect(text).toBe('No network bodies captured')
   })
 })
 
 test.describe('MCP: Performance', () => {
   test('should return no data message when no snapshots captured', async ({ page, serverUrl }) => {
-    const text = await mcpToolText(serverUrl, 'check_performance')
+    const text = await mcpToolText(serverUrl, 'analyze', { target: 'performance' })
     expect(text).toContain('No performance snapshot available')
   })
 })
