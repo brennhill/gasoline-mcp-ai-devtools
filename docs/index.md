@@ -11,7 +11,7 @@ header:
       url: /getting-started/
     - label: "GitHub"
       url: "https://github.com/brennhill/gasoline"
-excerpt: "Browser observability for AI coding agents. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time.<br><br><span style='color: #fb923c; font-size: 0.85em; font-style: italic;'>Pouring fuel on the AI development fire</span>"
+excerpt: "<div style='display: flex; align-items: center; gap: 2rem;'><div>Browser observability for AI coding agents. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time.<br><br><span style='color: #fb923c; font-size: 0.85em; font-style: italic;'>Pouring fuel on the AI development fire</span></div><img src='/marketing/assets/sparky-grill-vector.svg' alt='Sparky the mascot grilling' style='width: 200px; height: auto; flex-shrink: 0;'></div>"
 ---
 
 ## Now You're Cooking
