@@ -9,8 +9,9 @@ import "encoding/json"
 // ToolHandler extends MCPHandler with v4 tools
 type ToolHandler struct {
 	*MCPHandler
-	capture     *Capture
-	checkpoints *CheckpointManager
+	capture      *Capture
+	checkpoints  *CheckpointManager
+	sessionStore *SessionStore
 }
 
 // NewToolHandler creates an MCP handler with v4 capabilities
@@ -272,6 +273,41 @@ func (h *ToolHandler) toolsList() []MCPTool {
 				},
 			},
 		},
+		{
+			Name:        "session_store",
+			Description: "A general-purpose key-value interface for storing/loading arbitrary data across sessions. Useful for persisting baselines, noise rules, error history, and other configuration.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "The action to perform: save, load, list, delete, or stats",
+						"enum":        []string{"save", "load", "list", "delete", "stats"},
+					},
+					"namespace": map[string]interface{}{
+						"type":        "string",
+						"description": "Logical grouping (required for save/load/delete/list)",
+					},
+					"key": map[string]interface{}{
+						"type":        "string",
+						"description": "Storage key (required for save/load/delete)",
+					},
+					"data": map[string]interface{}{
+						"type":        "object",
+						"description": "JSON data to persist (required for save)",
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
+		{
+			Name:        "load_session_context",
+			Description: "Reads all namespace summaries from disk and returns combined session context. This is the first tool call an agent should make when starting work on a project.",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
 	}
 }
 
@@ -302,6 +338,10 @@ func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.
 		return h.toolGenerateTest(req, args), true
 	case "get_changes_since":
 		return h.toolGetChangesSince(req, args), true
+	case "session_store":
+		return h.toolSessionStore(req, args), true
+	case "load_session_context":
+		return h.toolLoadSessionContext(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -334,6 +374,79 @@ func (h *ToolHandler) toolGetChangesSince(req JSONRPCRequest, args json.RawMessa
 	}
 
 	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+// ============================================
+// Persistent Memory MCP Tool Implementations
+// ============================================
+
+func (h *ToolHandler) toolSessionStore(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if h.sessionStore == nil {
+		errResult := map[string]interface{}{
+			"content": []map[string]string{
+				{"type": "text", "text": "Session store not initialized"},
+			},
+			"isError": true,
+		}
+		resultJSON, _ := json.Marshal(errResult)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	}
+
+	var storeArgs SessionStoreArgs
+	if err := json.Unmarshal(args, &storeArgs); err != nil {
+		errResult := map[string]interface{}{
+			"content": []map[string]string{
+				{"type": "text", "text": "Error parsing arguments: " + err.Error()},
+			},
+			"isError": true,
+		}
+		resultJSON, _ := json.Marshal(errResult)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	}
+
+	result, err := h.sessionStore.HandleSessionStore(storeArgs)
+	if err != nil {
+		errResult := map[string]interface{}{
+			"content": []map[string]string{
+				{"type": "text", "text": "Error: " + err.Error()},
+			},
+			"isError": true,
+		}
+		resultJSON, _ := json.Marshal(errResult)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	}
+
+	contentResult := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": string(result)},
+		},
+	}
+	resultJSON, _ := json.Marshal(contentResult)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if h.sessionStore == nil {
+		errResult := map[string]interface{}{
+			"content": []map[string]string{
+				{"type": "text", "text": "Session store not initialized"},
+			},
+			"isError": true,
+		}
+		resultJSON, _ := json.Marshal(errResult)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+	}
+
+	ctx := h.sessionStore.LoadSessionContext()
+	ctxJSON, _ := json.Marshal(ctx)
+
+	contentResult := map[string]interface{}{
+		"content": []map[string]string{
+			{"type": "text", "text": string(ctxJSON)},
+		},
+	}
+	resultJSON, _ := json.Marshal(contentResult)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
