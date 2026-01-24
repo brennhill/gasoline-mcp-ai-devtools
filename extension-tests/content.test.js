@@ -48,7 +48,7 @@ describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
     // We'll simulate the handler behavior directly
     messageHandler = (event) => {
       if (event.source !== globalThis.window) return
-      if (event.data?.type === 'DEV_CONSOLE_LOG') {
+      if (event.data?.type === 'GASOLINE_LOG') {
         mockChrome.runtime.sendMessage({
           type: 'log',
           payload: event.data.payload,
@@ -126,10 +126,10 @@ describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
     assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 0)
   })
 
-  test('should still forward DEV_CONSOLE_LOG messages', () => {
+  test('should still forward GASOLINE_LOG messages', () => {
     messageHandler({
       source: globalThis.window,
-      data: { type: 'DEV_CONSOLE_LOG', payload: { level: 'error', message: 'test' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'test' } },
     })
 
     assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 1)

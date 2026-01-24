@@ -962,7 +962,7 @@ function postLog(payload) {
 
   window.postMessage(
     {
-      type: 'DEV_CONSOLE_LOG',
+      type: 'GASOLINE_LOG',
       payload: {
         ts: new Date().toISOString(),
         url: window.location.href,
@@ -3402,7 +3402,7 @@ export function sendPerformanceSnapshot() {
   const snapshot = capturePerformanceSnapshot()
   if (!snapshot) return
 
-  window.postMessage({ type: 'DEV_CONSOLE_PERFORMANCE_SNAPSHOT', payload: snapshot }, '*')
+  window.postMessage({ type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: snapshot }, '*')
 }
 
 /**
@@ -3426,7 +3426,7 @@ if (typeof window !== 'undefined') {
     if (event.source !== window) return
 
     // Handle settings messages from content script
-    if (event.data?.type === 'DEV_CONSOLE_SETTING') {
+    if (event.data?.type === 'GASOLINE_SETTING') {
       switch (event.data.setting) {
         case 'setNetworkWaterfallEnabled':
           setNetworkWaterfallEnabled(event.data.enabled)

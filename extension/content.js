@@ -19,7 +19,7 @@ window.addEventListener('message', (event) => {
   if (event.source !== window) return
 
   // Only handle our messages
-  if (event.data?.type === 'DEV_CONSOLE_LOG') {
+  if (event.data?.type === 'GASOLINE_LOG') {
     // Forward to background service worker
     chrome.runtime.sendMessage({
       type: 'log',
@@ -43,7 +43,7 @@ window.addEventListener('message', (event) => {
       type: 'enhanced_action',
       payload: event.data.payload,
     })
-  } else if (event.data?.type === 'DEV_CONSOLE_PERFORMANCE_SNAPSHOT') {
+  } else if (event.data?.type === 'GASOLINE_PERFORMANCE_SNAPSHOT') {
     // Forward performance snapshot to background service worker
     chrome.runtime.sendMessage({
       type: 'performance_snapshot',
@@ -63,7 +63,7 @@ chrome.runtime.onMessage.addListener((message) => {
     message.type === 'setWebSocketCaptureMode' ||
     message.type === 'setPerformanceSnapshotEnabled'
   ) {
-    const payload = { type: 'DEV_CONSOLE_SETTING', setting: message.type }
+    const payload = { type: 'GASOLINE_SETTING', setting: message.type }
     if (message.type === 'setWebSocketCaptureMode') {
       payload.mode = message.mode
     } else {
