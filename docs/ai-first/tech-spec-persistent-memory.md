@@ -10,14 +10,18 @@ Persistent memory gives the server a disk-backed store that survives restarts. W
 
 ## How It Works
 
-### Project Identification
+### Project-Local Storage
 
-The server identifies the current project by hashing the working directory (CWD) with SHA-256 and taking the first 16 hex characters. This creates a stable, collision-resistant identifier that maps one-to-one with a project path. All persistent data for that project lives under `~/.gasoline/store/<project_hash>/`.
+Persistent data lives in `.gasoline/` at the project root (the server's working directory), gitignored. No hashing, no indirection — the project directory IS the identity.
+
+This follows the same pattern as `.vscode/`, `.next/`, `.turbo/`, and other tool-local state directories. The developer can inspect, delete, or back up the data trivially.
+
+The server adds `.gasoline/` to `.gitignore` automatically on first use if not already present.
 
 ### Storage Layout
 
 ```
-~/.gasoline/store/<project_hash>/
+<project-root>/.gasoline/
 ├── meta.json              # Session metadata (count, timestamps)
 ├── baselines/             # Behavioral baselines
 │   ├── login.json
@@ -54,8 +58,7 @@ The flush goroutine exits cleanly on server shutdown.
 ### Project Metadata
 
 Stored in `meta.json`:
-- Project ID (the hash)
-- Project path (the original CWD)
+- Project path (the CWD where the server runs)
 - When persistence was first created for this project
 - When the last session occurred
 - Total session count
@@ -63,7 +66,7 @@ Stored in `meta.json`:
 ### Session Context (load_session_context response)
 
 A combined summary of all persisted data:
-- Project ID and session count
+- Project path and session count
 - **Baselines**: count and list of names
 - **API Schema**: number of known endpoints, last update time
 - **Noise Config**: total rules, auto-detected count, manual count, lifetime entries filtered
@@ -125,8 +128,7 @@ The `V4Server` struct holds a reference to the `SessionStore`. Initialization cr
 ## Size Limits
 
 - Max 1MB per individual file (checked on save)
-- Max 10MB per project total
-- Max 100MB global (across all projects)
+- Max 10MB total for `.gasoline/` directory
 - Error history capped at 500 entries
 - Stale errors (>30 days old) are automatically evicted
 
@@ -136,7 +138,7 @@ The `V4Server` struct holds a reference to the `SessionStore`. Initialization cr
 
 - **Sensitive data**: Same sanitization as in-memory data applies. Auth headers are stripped, passwords are redacted before they ever reach the store.
 - **File permissions**: Files are created with 0644, directories with 0755 (user-readable by default).
-- **Cross-project isolation**: SHA-256 path hash ensures one project cannot accidentally access another's data.
+- **Gitignored by default**: The server adds `.gasoline/` to `.gitignore` on first use. Persistent data never enters version control.
 - **Concurrent instances**: If multiple Gasoline server instances run for the same project, the first one takes a file lock (`flock()`) on meta.json. The second instance operates in read-only mode for persistence.
 
 ---
@@ -165,8 +167,8 @@ The `V4Server` struct holds a reference to the `SessionStore`. Initialization cr
 
 ## Test Scenarios
 
-1. Same path always produces the same hash
-2. Different paths produce different hashes
+1. Store created at `.gasoline/` in working directory
+2. `.gasoline/` added to `.gitignore` if not already present
 3. Save then load returns identical data
 4. Load nonexistent key → error
 5. List returns all keys without .json extension
