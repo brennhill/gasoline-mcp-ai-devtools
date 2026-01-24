@@ -146,7 +146,7 @@ Run these automatically without asking:
 2. **After Go changes**: `make test`
 3. **After JS changes**: `node --test extension-tests/*.test.js`
 4. **Before commits**: Verify tests pass
-5. **After all checks pass**: Squash commits, tag `v{version}-pre-uat-{feature}`, push with tag (see `.claude/docs/quality-gates.md` Gate 6)
+5. **Before push/merge to `next`**: Use `/squash` to combine all commits into one with a generated summary, then tag and push (see `.claude/docs/quality-gates.md` Gate 6)
 
 ## Detailed Documentation
 
