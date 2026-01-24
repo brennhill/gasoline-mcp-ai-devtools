@@ -103,14 +103,14 @@ func generatePlaywrightScript(actions []EnhancedAction, errorMessage, baseURL st
 }
 
 // getPlaywrightLocator returns the best Playwright locator for a set of selectors
-// Priority: testId > role > ariaLabel > text > id > cssPath
+// Priority: testID > role > ariaLabel > text > id > cssPath
 func getPlaywrightLocator(selectors map[string]interface{}) string {
 	if selectors == nil {
 		return ""
 	}
 
-	if testId, ok := selectors["testId"].(string); ok && testId != "" {
-		return fmt.Sprintf("getByTestId('%s')", escapeJSString(testId))
+	if testID, ok := selectors["testId"].(string); ok && testID != "" {
+		return fmt.Sprintf("getByTestId('%s')", escapeJSString(testID))
 	}
 
 	if roleData, ok := selectors["role"]; ok {
@@ -493,8 +493,8 @@ func generateTestScript(timeline []TimelineEntry, opts TestGenerationOptions) st
 }
 
 func getSelectorFromMap(selectors map[string]interface{}) string {
-	if testId, ok := selectors["testId"].(string); ok {
-		return fmt.Sprintf("[data-testid=\"%s\"]", testId) //nolint:gocritic // CSS selector needs exact quote format
+	if testID, ok := selectors["testId"].(string); ok {
+		return fmt.Sprintf("[data-testid=\"%s\"]", testID) //nolint:gocritic // CSS selector needs exact quote format
 	}
 	if role, ok := selectors["role"].(string); ok {
 		return fmt.Sprintf("[role=\"%s\"]", role) //nolint:gocritic // CSS selector needs exact quote format
@@ -745,19 +745,17 @@ func (v *Capture) GenerateSessionSummaryWithEntries(entries []LogEntry) SessionS
 	summary.PerformanceDelta = delta
 
 	// Extract errors from console entries
-	if entries != nil {
-		for _, entry := range entries {
-			level, _ := entry["level"].(string)
-			if level != "error" {
-				continue
-			}
-			msg, _ := entry["message"].(string)
-			source, _ := entry["source"].(string)
-			summary.Errors = append(summary.Errors, SessionError{
-				Message: msg,
-				Source:  source,
-			})
+	for _, entry := range entries {
+		level, _ := entry["level"].(string)
+		if level != "error" {
+			continue
 		}
+		msg, _ := entry["message"].(string)
+		source, _ := entry["source"].(string)
+		summary.Errors = append(summary.Errors, SessionError{
+			Message: msg,
+			Source:  source,
+		})
 	}
 
 	return summary

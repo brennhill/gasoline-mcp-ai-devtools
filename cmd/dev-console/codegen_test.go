@@ -1680,13 +1680,13 @@ func TestHTTPSessionSummaryEndpoint(t *testing.T) {
 	fcp1 := 800.0
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
 		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:00:00Z",
-		Timing: PerformanceTiming{Load: 1200, FirstContentfulPaint: &fcp1},
+		Timing:  PerformanceTiming{Load: 1200, FirstContentfulPaint: &fcp1},
 		Network: NetworkSummary{TransferSize: 340 * 1024},
 	})
 	fcp2 := 900.0
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
 		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:05:00Z",
-		Timing: PerformanceTiming{Load: 1400, FirstContentfulPaint: &fcp2},
+		Timing:  PerformanceTiming{Load: 1400, FirstContentfulPaint: &fcp2},
 		Network: NetworkSummary{TransferSize: 385 * 1024},
 	})
 
@@ -1713,13 +1713,13 @@ func TestGeneratePRSummaryGeneratedByLine(t *testing.T) {
 	fcp1 := 800.0
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
 		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:00:00Z",
-		Timing: PerformanceTiming{Load: 1200, FirstContentfulPaint: &fcp1},
+		Timing:  PerformanceTiming{Load: 1200, FirstContentfulPaint: &fcp1},
 		Network: NetworkSummary{TransferSize: 340 * 1024},
 	})
 	fcp2 := 900.0
 	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
 		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:05:00Z",
-		Timing: PerformanceTiming{Load: 1400, FirstContentfulPaint: &fcp2},
+		Timing:  PerformanceTiming{Load: 1400, FirstContentfulPaint: &fcp2},
 		Network: NetworkSummary{TransferSize: 385 * 1024},
 	})
 

@@ -243,7 +243,7 @@ type PerformanceBaseline struct {
 	Network     BaselineNetwork `json:"network"`
 	LongTasks   LongTaskMetrics `json:"longTasks"`
 	CLS         *float64        `json:"cumulativeLayoutShift,omitempty"`
-	Resources []ResourceEntry   `json:"resources,omitempty"`
+	Resources   []ResourceEntry `json:"resources,omitempty"`
 }
 
 // BaselineTiming holds averaged timing metrics
@@ -423,9 +423,9 @@ type Capture struct {
 	queryTimeout time.Duration
 
 	// Composed sub-structs
-	a11y A11yCache
-	perf PerformanceStore
-	session SessionTracker
+	a11y        A11yCache
+	perf        PerformanceStore
+	session     SessionTracker
 	mem         MemoryState
 	schemaStore *SchemaStore
 }
@@ -479,21 +479,21 @@ type SessionSummary struct {
 
 // PerformanceDelta represents the net change in performance metrics during a session
 type PerformanceDelta struct {
-	LoadTimeBefore  float64 `json:"loadTimeBefore"`
-	LoadTimeAfter   float64 `json:"loadTimeAfter"`
-	LoadTimeDelta   float64 `json:"loadTimeDelta"`
-	FCPBefore       float64 `json:"fcpBefore,omitempty"`
-	FCPAfter        float64 `json:"fcpAfter,omitempty"`
-	FCPDelta        float64 `json:"fcpDelta,omitempty"`
-	LCPBefore       float64 `json:"lcpBefore,omitempty"`
-	LCPAfter        float64 `json:"lcpAfter,omitempty"`
-	LCPDelta        float64 `json:"lcpDelta,omitempty"`
-	CLSBefore       float64 `json:"clsBefore,omitempty"`
-	CLSAfter        float64 `json:"clsAfter,omitempty"`
-	CLSDelta        float64 `json:"clsDelta,omitempty"`
-	BundleSizeBefore int64  `json:"bundleSizeBefore"`
-	BundleSizeAfter  int64  `json:"bundleSizeAfter"`
-	BundleSizeDelta  int64  `json:"bundleSizeDelta"`
+	LoadTimeBefore   float64 `json:"loadTimeBefore"`
+	LoadTimeAfter    float64 `json:"loadTimeAfter"`
+	LoadTimeDelta    float64 `json:"loadTimeDelta"`
+	FCPBefore        float64 `json:"fcpBefore,omitempty"`
+	FCPAfter         float64 `json:"fcpAfter,omitempty"`
+	FCPDelta         float64 `json:"fcpDelta,omitempty"`
+	LCPBefore        float64 `json:"lcpBefore,omitempty"`
+	LCPAfter         float64 `json:"lcpAfter,omitempty"`
+	LCPDelta         float64 `json:"lcpDelta,omitempty"`
+	CLSBefore        float64 `json:"clsBefore,omitempty"`
+	CLSAfter         float64 `json:"clsAfter,omitempty"`
+	CLSDelta         float64 `json:"clsDelta,omitempty"`
+	BundleSizeBefore int64   `json:"bundleSizeBefore"`
+	BundleSizeAfter  int64   `json:"bundleSizeAfter"`
+	BundleSizeDelta  int64   `json:"bundleSizeDelta"`
 }
 
 // SessionError represents an error observed during a session
@@ -525,7 +525,6 @@ type PerformanceAlert struct {
 	Recommendation string                      `json:"recommendation"`
 	// Internal tracking (not serialized to JSON response)
 	deliveredAt int64 // checkpoint counter at which this was delivered
-	resolved    bool  // cleared by subsequent non-regressing snapshot
 }
 
 // AlertMetricDelta describes the delta for a single regressed metric
@@ -559,17 +558,17 @@ type ResourceDiff struct {
 
 // AddedResource is a resource present in current but not in baseline
 type AddedResource struct {
-	URL            string `json:"url"`
-	Type           string `json:"type"`
-	SizeBytes      int64  `json:"size_bytes"`
+	URL            string  `json:"url"`
+	Type           string  `json:"type"`
+	SizeBytes      int64   `json:"size_bytes"`
 	DurationMs     float64 `json:"duration_ms"`
-	RenderBlocking bool   `json:"render_blocking"`
+	RenderBlocking bool    `json:"render_blocking"`
 }
 
 // RemovedResource is a resource present in baseline but not in current
 type RemovedResource struct {
-	URL      string `json:"url"`
-	Type     string `json:"type"`
+	URL       string `json:"url"`
+	Type      string `json:"type"`
 	SizeBytes int64  `json:"size_bytes"`
 }
 

@@ -1,10 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http/httptest"
 	"strings"
-	"fmt"
-	"encoding/json"
 	"testing"
 )
 
@@ -1208,39 +1208,39 @@ func TestGetWebVitalsWithSnapshot(t *testing.T) {
 
 func TestGetWebVitalsAssessmentThresholds(t *testing.T) {
 	tests := []struct {
-		name       string
-		fcp        float64
-		lcp        float64
-		cls        float64
-		inp        float64
-		expectFCP  string
-		expectLCP  string
-		expectCLS  string
-		expectINP  string
+		name      string
+		fcp       float64
+		lcp       float64
+		cls       float64
+		inp       float64
+		expectFCP string
+		expectLCP string
+		expectCLS string
+		expectINP string
 	}{
 		{
 			name: "all good",
-			fcp: 1000, lcp: 2000, cls: 0.05, inp: 100,
+			fcp:  1000, lcp: 2000, cls: 0.05, inp: 100,
 			expectFCP: "good", expectLCP: "good", expectCLS: "good", expectINP: "good",
 		},
 		{
 			name: "all needs-improvement",
-			fcp: 2500, lcp: 3500, cls: 0.15, inp: 350,
+			fcp:  2500, lcp: 3500, cls: 0.15, inp: 350,
 			expectFCP: "needs-improvement", expectLCP: "needs-improvement", expectCLS: "needs-improvement", expectINP: "needs-improvement",
 		},
 		{
 			name: "all poor",
-			fcp: 3500, lcp: 5000, cls: 0.3, inp: 600,
+			fcp:  3500, lcp: 5000, cls: 0.3, inp: 600,
 			expectFCP: "poor", expectLCP: "poor", expectCLS: "poor", expectINP: "poor",
 		},
 		{
 			name: "boundary: exactly at good threshold",
-			fcp: 1800, lcp: 2500, cls: 0.1, inp: 200,
+			fcp:  1800, lcp: 2500, cls: 0.1, inp: 200,
 			expectFCP: "needs-improvement", expectLCP: "needs-improvement", expectCLS: "needs-improvement", expectINP: "needs-improvement",
 		},
 		{
 			name: "boundary: exactly at poor threshold",
-			fcp: 3000, lcp: 4000, cls: 0.25, inp: 500,
+			fcp:  3000, lcp: 4000, cls: 0.25, inp: 500,
 			expectFCP: "poor", expectLCP: "poor", expectCLS: "poor", expectINP: "poor",
 		},
 	}
@@ -2578,11 +2578,11 @@ func TestFormatBytesMB(t *testing.T) {
 		input    int64
 		expected string
 	}{
-		{1048576, "1.0MB"},                  // exactly 1MB
-		{1572864, "1.5MB"},                  // 1.5MB
-		{10485760, "10.0MB"},                // 10MB
-		{1048576 + 524288, "1.5MB"},         // 1.5MB
-		{2 * 1024 * 1024, "2.0MB"},          // 2MB
+		{1048576, "1.0MB"},          // exactly 1MB
+		{1572864, "1.5MB"},          // 1.5MB
+		{10485760, "10.0MB"},        // 10MB
+		{1048576 + 524288, "1.5MB"}, // 1.5MB
+		{2 * 1024 * 1024, "2.0MB"},  // 2MB
 	}
 
 	for _, tt := range tests {

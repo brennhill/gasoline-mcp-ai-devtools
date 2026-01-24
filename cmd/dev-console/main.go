@@ -292,7 +292,7 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	var body struct {
-		DataUrl   string `json:"dataUrl"`
+		DataURL   string `json:"dataUrl"`
 		URL       string `json:"url"`
 		ErrorID   string `json:"errorId"`
 		ErrorType string `json:"errorType"`
@@ -303,13 +303,13 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if body.DataUrl == "" {
+	if body.DataURL == "" {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing dataUrl"})
 		return
 	}
 
 	// Extract base64 data from data URL
-	parts := strings.SplitN(body.DataUrl, ",", 2)
+	parts := strings.SplitN(body.DataURL, ",", 2)
 	if len(parts) != 2 {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid dataUrl format"})
 		return

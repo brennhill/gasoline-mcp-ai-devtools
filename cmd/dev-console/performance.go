@@ -137,7 +137,6 @@ func (v *Capture) updateBaseline(snapshot PerformanceSnapshot) {
 		baseline.CLS = weightedOptionalFloat(baseline.CLS, snapshot.CLS, 0.8, 0.2)
 	}
 
-
 	// Update resource fingerprint with moving average
 	v.updateBaselineResources(&baseline, snapshot.Resources)
 	v.perf.baselines[url] = baseline
@@ -605,7 +604,6 @@ func (h *ToolHandler) toolGetCausalDiff(req JSONRPCRequest, args json.RawMessage
 // ============================================
 
 const maxResourceFingerprints = 50
-const smallResourceThreshold = 1024 // 1KB
 
 // normalizeResourceURL strips query parameters but preserves hash fragments
 func normalizeResourceURL(rawURL string) string {
@@ -728,11 +726,6 @@ func computeResourceDiff(baseline, current []ResourceEntry) ResourceDiff {
 	}
 
 	// Build maps by normalized URL (with dynamic path grouping for fetch/xmlhttprequest)
-	type resourceInfo struct {
-		entry      ResourceEntry
-		normalURL  string
-	}
-
 	normalizeKey := func(r ResourceEntry) string {
 		normalized := normalizeResourceURL(r.URL)
 		if r.Type == "fetch" || r.Type == "xmlhttprequest" {
@@ -870,7 +863,7 @@ func computeProbableCause(diff ResourceDiff, baselineTotalBytes, currentTotalByt
 		for _, a := range diff.Added {
 			totalAdded += a.SizeBytes
 			if a.RenderBlocking {
-				blocking = append(blocking, fmt.Sprintf("%s", a.URL))
+				blocking = append(blocking, a.URL)
 			}
 		}
 		parts = append(parts, fmt.Sprintf("Added %dKB in new scripts", totalAdded/1024))

@@ -1869,4 +1869,3 @@ func TestObserve_EmptyPathDefaultsToSlash(t *testing.T) {
 		t.Errorf("Expected path pattern '/', got %q", schema.Endpoints[0].PathPattern)
 	}
 }
-

@@ -239,7 +239,7 @@ func (v *Capture) ExportHARToFile(filter NetworkBodyFilter, path string) (HARExp
 		return HARExportResult{}, fmt.Errorf("failed to marshal HAR: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return HARExportResult{}, fmt.Errorf("failed to write file: %w", err)
 	}
 
@@ -266,10 +266,7 @@ func isPathSafe(path string) bool {
 			return true
 		}
 		tmpDir := os.TempDir()
-		if strings.HasPrefix(cleaned, tmpDir) {
-			return true
-		}
-		return false
+		return strings.HasPrefix(cleaned, tmpDir)
 	}
 
 	// Relative path - check no traversal above cwd

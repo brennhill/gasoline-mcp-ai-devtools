@@ -67,7 +67,7 @@ func TestAxeImpactToSARIFLevel(t *testing.T) {
 		{"serious", "error"},
 		{"moderate", "warning"},
 		{"minor", "note"},
-		{"", "warning"},       // unknown defaults to warning
+		{"", "warning"},        // unknown defaults to warning
 		{"unknown", "warning"}, // unknown defaults to warning
 	}
 
@@ -942,9 +942,9 @@ func TestEnsureRule_Deduplication(t *testing.T) {
 	v1 := axeViolation{ID: "rule-1", Description: "Desc 1", Help: "Help 1"}
 	v2 := axeViolation{ID: "rule-2", Description: "Desc 2", Help: "Help 2"}
 
-	idx1 := ensureRule(run, &indices, v1)
-	idx2 := ensureRule(run, &indices, v2)
-	idx1Again := ensureRule(run, &indices, v1) // should return existing
+	idx1 := ensureRule(run, indices, v1)
+	idx2 := ensureRule(run, indices, v2)
+	idx1Again := ensureRule(run, indices, v1) // should return existing
 
 	if idx1 != 0 {
 		t.Errorf("Expected first rule index 0, got %d", idx1)

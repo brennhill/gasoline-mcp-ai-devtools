@@ -37,24 +37,24 @@ type SchemaFilter struct {
 
 // APISchema is the top-level response from get_api_schema
 type APISchema struct {
-	Endpoints   []EndpointSchema   `json:"endpoints"`
-	WebSockets  []WSSchema         `json:"websockets,omitempty"`
-	AuthPattern *AuthPattern       `json:"auth_pattern,omitempty"`
-	Coverage    CoverageStats      `json:"coverage"`
+	Endpoints   []EndpointSchema `json:"endpoints"`
+	WebSockets  []WSSchema       `json:"websockets,omitempty"`
+	AuthPattern *AuthPattern     `json:"auth_pattern,omitempty"`
+	Coverage    CoverageStats    `json:"coverage"`
 }
 
 // EndpointSchema describes one inferred API endpoint
 type EndpointSchema struct {
-	Method           string                       `json:"method"`
-	PathPattern      string                       `json:"path_pattern"`
-	LastPath         string                       `json:"last_path,omitempty"`
-	ObservationCount int                          `json:"observation_count"`
-	LastSeen         string                       `json:"last_seen,omitempty"`
-	PathParams       []PathParam                  `json:"path_params,omitempty"`
-	QueryParams      []QueryParam                 `json:"query_params,omitempty"`
-	RequestShape     *BodyShape                   `json:"request_shape,omitempty"`
-	ResponseShapes   map[int]*BodyShape           `json:"response_shapes,omitempty"`
-	Timing           TimingStats                  `json:"timing"`
+	Method           string             `json:"method"`
+	PathPattern      string             `json:"path_pattern"`
+	LastPath         string             `json:"last_path,omitempty"`
+	ObservationCount int                `json:"observation_count"`
+	LastSeen         string             `json:"last_seen,omitempty"`
+	PathParams       []PathParam        `json:"path_params,omitempty"`
+	QueryParams      []QueryParam       `json:"query_params,omitempty"`
+	RequestShape     *BodyShape         `json:"request_shape,omitempty"`
+	ResponseShapes   map[int]*BodyShape `json:"response_shapes,omitempty"`
+	Timing           TimingStats        `json:"timing"`
 }
 
 // PathParam describes a detected path parameter
@@ -74,9 +74,9 @@ type QueryParam struct {
 
 // BodyShape describes the inferred shape of a request or response body
 type BodyShape struct {
-	ContentType string                `json:"content_type,omitempty"`
+	ContentType string                 `json:"content_type,omitempty"`
 	Fields      map[string]FieldSchema `json:"fields,omitempty"`
-	Count       int                   `json:"count"`
+	Count       int                    `json:"count"`
 }
 
 // FieldSchema describes a single field in a body shape
@@ -97,9 +97,9 @@ type TimingStats struct {
 
 // AuthPattern describes detected authentication patterns
 type AuthPattern struct {
-	Type       string   `json:"type"`
-	Header     string   `json:"header"`
-	AuthRate   float64  `json:"auth_rate_percent"`
+	Type        string   `json:"type"`
+	Header      string   `json:"header"`
+	AuthRate    float64  `json:"auth_rate_percent"`
 	PublicPaths []string `json:"public_paths,omitempty"`
 }
 
@@ -155,10 +155,10 @@ type endpointAccumulator struct {
 
 // paramAccumulator tracks query parameter values and occurrences
 type paramAccumulator struct {
-	count    int
-	values   []string
-	allNumeric  bool
-	allBoolean  bool
+	count      int
+	values     []string
+	allNumeric bool
+	allBoolean bool
 }
 
 // fieldAccumulator tracks a body field across observations
@@ -215,8 +215,8 @@ func (s *SchemaStore) EndpointCount() int {
 // ============================================
 
 var (
-	uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
-	numericPattern = regexp.MustCompile(`^[0-9]+$`)
+	uuidPattern    = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	numericPattern = regexp.MustCompile(`^\d+$`)
 	hexHashPattern = regexp.MustCompile(`^[0-9a-fA-F]{16,}$`)
 )
 
@@ -593,8 +593,8 @@ func (s *SchemaStore) BuildSchema(filter SchemaFilter) APISchema {
 		TotalEndpoints: len(endpoints),
 		Methods:        make(map[string]int),
 	}
-	for _, ep := range endpoints {
-		coverage.Methods[ep.Method]++
+	for i := range endpoints {
+		coverage.Methods[endpoints[i].Method]++
 	}
 	if totalObservations > 0 {
 		coverage.ErrorRate = float64(totalErrors) / float64(totalObservations) * 100.0
@@ -604,7 +604,7 @@ func (s *SchemaStore) BuildSchema(filter SchemaFilter) APISchema {
 	}
 
 	// Build WebSocket schemas
-	var wsSchemas []WSSchema
+	wsSchemas := make([]WSSchema, 0, len(s.wsSchemas))
 	for _, ws := range s.wsSchemas {
 		wsSchema := WSSchema{
 			URL:           ws.url,
@@ -692,7 +692,7 @@ func (s *SchemaStore) buildPathParams(pattern string) []PathParam {
 }
 
 func (s *SchemaStore) buildQueryParams(acc *endpointAccumulator) []QueryParam {
-	var params []QueryParam
+	params := make([]QueryParam, 0, len(acc.queryParams))
 	for name, pa := range acc.queryParams {
 		qp := QueryParam{
 			Name:           name,
@@ -860,8 +860,9 @@ func (s *SchemaStore) BuildOpenAPIStub(filter SchemaFilter) string {
 
 	// Group endpoints by path pattern
 	pathMethods := make(map[string][]EndpointSchema)
-	for _, ep := range schema.Endpoints {
-		pathMethods[ep.PathPattern] = append(pathMethods[ep.PathPattern], ep)
+	for i := range schema.Endpoints {
+		ep := &schema.Endpoints[i]
+		pathMethods[ep.PathPattern] = append(pathMethods[ep.PathPattern], *ep)
 	}
 
 	// Sort paths for deterministic output
@@ -877,7 +878,8 @@ func (s *SchemaStore) BuildOpenAPIStub(filter SchemaFilter) string {
 		sort.Slice(methods, func(i, j int) bool {
 			return methods[i].Method < methods[j].Method
 		})
-		for _, ep := range methods {
+		for i := range methods {
+			ep := &methods[i]
 			method := strings.ToLower(ep.Method)
 			b.WriteString("    " + method + ":\n")
 			b.WriteString("      summary: \"" + ep.Method + " " + ep.PathPattern + "\"\n")

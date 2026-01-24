@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-
 // ============================================
 // rate_limit.go: RecordEvents — window expiry path
 // ============================================
@@ -1035,7 +1034,7 @@ func TestTickRateWindow_BelowThresholdSetsTime(t *testing.T) {
 
 	// Start with zero events in window (below threshold)
 	c.mu.Lock()
-	c.windowEventCount = 100 // well below rateLimitThreshold (1000)
+	c.windowEventCount = 100             // well below rateLimitThreshold (1000)
 	c.lastBelowThresholdAt = time.Time{} // not yet set
 	c.tickRateWindow()
 	belowAt := c.lastBelowThresholdAt

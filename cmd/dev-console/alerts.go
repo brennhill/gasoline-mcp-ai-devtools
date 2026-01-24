@@ -24,26 +24,26 @@ const (
 
 // Alert represents a server-generated alert that piggybacks on observe responses.
 type Alert struct {
-	Severity  string `json:"severity"`            // "info", "warning", "error"
-	Category  string `json:"category"`            // "regression", "anomaly", "ci", "noise", "threshold"
-	Title     string `json:"title"`               // Short summary
-	Detail    string `json:"detail,omitempty"`    // Longer explanation
-	Timestamp string `json:"timestamp"`           // ISO 8601
-	Source    string `json:"source"`              // What generated it
-	Count     int    `json:"count,omitempty"`     // Deduplication count (>1 means repeated)
+	Severity  string `json:"severity"`         // "info", "warning", "error"
+	Category  string `json:"category"`         // "regression", "anomaly", "ci", "noise", "threshold"
+	Title     string `json:"title"`            // Short summary
+	Detail    string `json:"detail,omitempty"` // Longer explanation
+	Timestamp string `json:"timestamp"`        // ISO 8601
+	Source    string `json:"source"`           // What generated it
+	Count     int    `json:"count,omitempty"`  // Deduplication count (>1 means repeated)
 }
 
 // CIResult stores a CI/CD webhook result.
 type CIResult struct {
-	Status     string       `json:"status"`      // "success", "failure", "error"
-	Source     string       `json:"source"`      // "github-actions", "gitlab-ci", "custom"
-	Ref        string       `json:"ref"`         // Branch ref
-	Commit     string       `json:"commit"`      // Commit SHA
-	Summary    string       `json:"summary"`     // Human-readable summary
-	Failures   []CIFailure  `json:"failures"`    // Failed tests
-	URL        string       `json:"url"`         // Link to CI run
-	DurationMs int          `json:"duration_ms"` // Build duration
-	ReceivedAt time.Time    `json:"-"`           // When we received it
+	Status     string      `json:"status"`      // "success", "failure", "error"
+	Source     string      `json:"source"`      // "github-actions", "gitlab-ci", "custom"
+	Ref        string      `json:"ref"`         // Branch ref
+	Commit     string      `json:"commit"`      // Commit SHA
+	Summary    string      `json:"summary"`     // Human-readable summary
+	Failures   []CIFailure `json:"failures"`    // Failed tests
+	URL        string      `json:"url"`         // Link to CI run
+	DurationMs int         `json:"duration_ms"` // Build duration
+	ReceivedAt time.Time   `json:"-"`           // When we received it
 }
 
 // CIFailure represents a single test failure in a CI result.
@@ -315,8 +315,8 @@ func (h *ToolHandler) handleCIWebhook(w http.ResponseWriter, r *http.Request) {
 
 	// Idempotency: check if same commit+status already exists
 	updated := false
-	for i, existing := range h.ciResults {
-		if existing.Commit == ciResult.Commit && existing.Status == ciResult.Status {
+	for i := range h.ciResults {
+		if h.ciResults[i].Commit == ciResult.Commit && h.ciResults[i].Status == ciResult.Status {
 			h.ciResults[i] = ciResult
 			updated = true
 			// Also update the corresponding alert
@@ -349,7 +349,7 @@ func (h *ToolHandler) handleCIWebhook(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"ok":true}`))
+	_, _ = w.Write([]byte(`{"ok":true}`))
 }
 
 func (h *ToolHandler) buildCIAlert(ci CIResult) Alert {
@@ -360,7 +360,7 @@ func (h *ToolHandler) buildCIAlert(ci CIResult) Alert {
 
 	detail := ci.Summary
 	if len(ci.Failures) > 0 {
-		var failNames []string
+		failNames := make([]string, 0, len(ci.Failures))
 		for _, f := range ci.Failures {
 			failNames = append(failNames, f.Name)
 		}
