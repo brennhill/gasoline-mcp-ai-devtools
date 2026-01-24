@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/sha256"
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,9 +16,8 @@ import (
 // ============================================
 
 const (
-	maxFileSize          = 1 * 1024 * 1024   // 1MB per file
-	maxProjectSize       = 10 * 1024 * 1024  // 10MB per project
-	maxGlobalSize        = 100 * 1024 * 1024 // 100MB global
+	maxFileSize          = 1 * 1024 * 1024  // 1MB per file
+	maxProjectSize       = 10 * 1024 * 1024 // 10MB per project
 	maxErrorHistory      = 500
 	staleErrorThreshold  = 30 * 24 * time.Hour // 30 days
 	defaultFlushInterval = 30 * time.Second
@@ -31,12 +30,11 @@ const (
 // ============================================
 
 // SessionStore provides persistent cross-session memory backed by disk.
+// Data is stored in .gasoline/ within the project directory.
 type SessionStore struct {
 	mu          sync.RWMutex
-	basePath    string // base directory (e.g., ~/.gasoline/store)
-	projectPath string // original CWD
-	projectHash string // SHA-256 hash of CWD (first 16 hex chars)
-	projectDir  string // basePath/projectHash
+	projectPath string // project root directory (CWD)
+	projectDir  string // projectPath/.gasoline
 	meta        *ProjectMeta
 
 	// Dirty data buffer: namespace/key -> data
@@ -98,36 +96,31 @@ type SessionStoreArgs struct {
 // Constructor
 // ============================================
 
-// projectHash computes the SHA-256 hash of a path, returning the first 16 hex chars.
-func projectHash(path string) string {
-	h := sha256.Sum256([]byte(path))
-	return fmt.Sprintf("%x", h[:8]) // 8 bytes = 16 hex chars
-}
-
 // NewSessionStore creates a new SessionStore with default flush interval.
-func NewSessionStore(basePath, projectPath string) (*SessionStore, error) {
-	return NewSessionStoreWithInterval(basePath, projectPath, defaultFlushInterval)
+// projectPath is the project root directory; data is stored in projectPath/.gasoline/
+func NewSessionStore(projectPath string) (*SessionStore, error) {
+	return NewSessionStoreWithInterval(projectPath, defaultFlushInterval)
 }
 
 // NewSessionStoreWithInterval creates a new SessionStore with a custom flush interval.
-func NewSessionStoreWithInterval(basePath, projectPath string, flushInterval time.Duration) (*SessionStore, error) {
-	hash := projectHash(projectPath)
-	projectDir := filepath.Join(basePath, hash)
+func NewSessionStoreWithInterval(projectPath string, flushInterval time.Duration) (*SessionStore, error) {
+	projectDir := filepath.Join(projectPath, ".gasoline")
 
 	s := &SessionStore{
-		basePath:      basePath,
 		projectPath:   projectPath,
-		projectHash:   hash,
 		projectDir:    projectDir,
 		dirty:         make(map[string][]byte),
 		flushInterval: flushInterval,
 		stopCh:        make(chan struct{}),
 	}
 
-	// Create project directory
+	// Create .gasoline directory
 	if err := os.MkdirAll(projectDir, dirPermissions); err != nil {
-		return nil, fmt.Errorf("failed to create project directory: %w", err)
+		return nil, fmt.Errorf("failed to create .gasoline directory: %w", err)
 	}
+
+	// Ensure .gasoline is in .gitignore
+	s.ensureGitignore()
 
 	// Load or create meta
 	if err := s.loadOrCreateMeta(); err != nil {
@@ -138,6 +131,34 @@ func NewSessionStoreWithInterval(basePath, projectPath string, flushInterval tim
 	go s.backgroundFlush()
 
 	return s, nil
+}
+
+// ensureGitignore adds .gasoline/ to .gitignore if not already present.
+func (s *SessionStore) ensureGitignore() {
+	gitignorePath := filepath.Join(s.projectPath, ".gitignore")
+
+	// Check if .gitignore exists and already contains .gasoline
+	if data, err := os.ReadFile(gitignorePath); err == nil { //nolint:gosec // G304: path constructed from internal fields
+		scanner := bufio.NewScanner(strings.NewReader(string(data)))
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == ".gasoline" || line == ".gasoline/" {
+				return // already present
+			}
+		}
+		// Append to existing file
+		f, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_WRONLY, filePermissions) //nolint:gosec // G304: path constructed from internal fields
+		if err != nil {
+			return
+		}
+		// Add newline before if file doesn't end with one
+		if len(data) > 0 && data[len(data)-1] != '\n' {
+			_, _ = f.WriteString("\n")
+		}
+		_, _ = f.WriteString(".gasoline/\n")
+		_ = f.Close()
+	}
+	// If .gitignore doesn't exist, don't create one (might not be a git repo)
 }
 
 // ============================================
@@ -151,7 +172,7 @@ func (s *SessionStore) loadOrCreateMeta() error {
 		// Fresh store
 		now := time.Now()
 		s.meta = &ProjectMeta{
-			ProjectID:    s.projectHash,
+			ProjectID:    s.projectPath,
 			ProjectPath:  s.projectPath,
 			FirstCreated: now,
 			LastSession:  now,
@@ -165,7 +186,7 @@ func (s *SessionStore) loadOrCreateMeta() error {
 		// Corrupted JSON: start fresh
 		now := time.Now()
 		s.meta = &ProjectMeta{
-			ProjectID:    s.projectHash,
+			ProjectID:    s.projectPath,
 			ProjectPath:  s.projectPath,
 			FirstCreated: now,
 			LastSession:  now,
@@ -346,7 +367,7 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 	defer s.mu.RUnlock()
 
 	ctx := SessionContext{
-		ProjectID:    s.projectHash,
+		ProjectID:    s.projectPath,
 		SessionCount: s.meta.SessionCount,
 		Baselines:    []string{},
 		ErrorHistory: []ErrorHistoryEntry{},

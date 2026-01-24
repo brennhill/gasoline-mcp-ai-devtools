@@ -12,29 +12,57 @@ import (
 )
 
 // ============================================
-// Test Scenario 1: Same path always produces the same hash
+// Test Scenario 1: Store created at .gasoline/ in project directory
 // ============================================
 
-func TestPersistHashDeterministic(t *testing.T) {
-	hash1 := projectHash("/home/user/my-project")
-	hash2 := projectHash("/home/user/my-project")
-	if hash1 != hash2 {
-		t.Errorf("same path produced different hashes: %s vs %s", hash1, hash2)
+func TestPersistStoreCreatedAtProjectRoot(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore failed: %v", err)
 	}
-	if len(hash1) != 16 {
-		t.Errorf("expected 16-char hash, got %d chars: %s", len(hash1), hash1)
+	defer store.Shutdown()
+
+	gasolineDir := filepath.Join(dir, ".gasoline")
+	info, err := os.Stat(gasolineDir)
+	if err != nil {
+		t.Fatalf(".gasoline dir not created: %v", err)
+	}
+	if !info.IsDir() {
+		t.Errorf(".gasoline is not a directory")
 	}
 }
 
 // ============================================
-// Test Scenario 2: Different paths produce different hashes
+// Test Scenario 2: .gasoline/ added to .gitignore if present
 // ============================================
 
-func TestPersistHashUnique(t *testing.T) {
-	hash1 := projectHash("/home/user/project-a")
-	hash2 := projectHash("/home/user/project-b")
-	if hash1 == hash2 {
-		t.Errorf("different paths produced same hash: %s", hash1)
+func TestPersistGitignoreUpdated(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create a .gitignore without .gasoline
+	gitignorePath := filepath.Join(dir, ".gitignore")
+	os.WriteFile(gitignorePath, []byte("node_modules/\n.env\n"), 0o644)
+
+	_, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore failed: %v", err)
+	}
+
+	data, _ := os.ReadFile(gitignorePath)
+	if !strings.Contains(string(data), ".gasoline/") {
+		t.Errorf(".gitignore should contain .gasoline/, got: %s", string(data))
+	}
+
+	// Create a second store - shouldn't duplicate the entry
+	_, err = NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore (2) failed: %v", err)
+	}
+	data, _ = os.ReadFile(gitignorePath)
+	count := strings.Count(string(data), ".gasoline")
+	if count != 1 {
+		t.Errorf("expected .gasoline to appear once, got %d times", count)
 	}
 }
 
@@ -44,7 +72,7 @@ func TestPersistHashUnique(t *testing.T) {
 
 func TestPersistSaveAndLoad(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -95,7 +123,7 @@ func TestPersistSaveAndLoad(t *testing.T) {
 
 func TestPersistLoadNonexistent(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -113,7 +141,7 @@ func TestPersistLoadNonexistent(t *testing.T) {
 
 func TestPersistListKeys(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -158,7 +186,7 @@ func TestPersistListKeys(t *testing.T) {
 
 func TestPersistDelete(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -191,7 +219,7 @@ func TestPersistDelete(t *testing.T) {
 
 func TestPersistStats(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -234,7 +262,7 @@ func TestPersistStats(t *testing.T) {
 
 func TestPersistSaveExceedsMaxSize(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -265,14 +293,14 @@ func TestPersistSessionCountIncrement(t *testing.T) {
 	dir := t.TempDir()
 
 	// First session
-	store1, err := NewSessionStore(dir, "/fake/project")
+	store1, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore (1) failed: %v", err)
 	}
 	store1.Shutdown()
 
 	// Second session
-	store2, err := NewSessionStore(dir, "/fake/project")
+	store2, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore (2) failed: %v", err)
 	}
@@ -296,7 +324,7 @@ func TestPersistSessionCountIncrement(t *testing.T) {
 
 func TestPersistFreshStore(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -325,7 +353,7 @@ func TestPersistFreshStore(t *testing.T) {
 
 func TestPersistExistingDataSummaries(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -355,7 +383,7 @@ func TestPersistExistingDataSummaries(t *testing.T) {
 	store.Shutdown()
 
 	// Reload
-	store2, err := NewSessionStore(dir, "/fake/project")
+	store2, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore (reload) failed: %v", err)
 	}
@@ -382,7 +410,7 @@ func TestPersistExistingDataSummaries(t *testing.T) {
 
 func TestPersistNoiseConfigActive(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -401,7 +429,7 @@ func TestPersistNoiseConfigActive(t *testing.T) {
 	store.Shutdown()
 
 	// Reload
-	store2, err := NewSessionStore(dir, "/fake/project")
+	store2, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore (reload) failed: %v", err)
 	}
@@ -426,7 +454,7 @@ func TestPersistNoiseConfigActive(t *testing.T) {
 
 func TestPersistConcurrentAccess(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -472,7 +500,7 @@ func TestPersistConcurrentAccess(t *testing.T) {
 
 func TestPersistShutdownFlush(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -484,8 +512,7 @@ func TestPersistShutdownFlush(t *testing.T) {
 	store.Shutdown()
 
 	// Verify the file was written
-	hash := projectHash("/fake/project")
-	filePath := filepath.Join(dir, hash, "errors", "history.json")
+	filePath := filepath.Join(dir, ".gasoline", "errors", "history.json")
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		t.Fatalf("expected dirty data to be flushed on shutdown, file not found: %v", err)
@@ -501,7 +528,7 @@ func TestPersistShutdownFlush(t *testing.T) {
 
 func TestPersistFlushInterval(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStoreWithInterval(dir, "/fake/project", 100*time.Millisecond)
+	store, err := NewSessionStoreWithInterval(dir, 100*time.Millisecond)
 	if err != nil {
 		t.Fatalf("NewSessionStoreWithInterval failed: %v", err)
 	}
@@ -514,8 +541,7 @@ func TestPersistFlushInterval(t *testing.T) {
 	time.Sleep(300 * time.Millisecond)
 
 	// Verify the file was written
-	hash := projectHash("/fake/project")
-	filePath := filepath.Join(dir, hash, "perf", "metrics.json")
+	filePath := filepath.Join(dir, ".gasoline", "perf", "metrics.json")
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		t.Fatalf("expected data to be flushed by periodic goroutine: %v", err)
@@ -533,27 +559,26 @@ func TestPersistReadOnlyDirectory(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create the store directory, then make it read-only
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
 	store.Shutdown()
 
 	// Make the namespace directory read-only
-	hash := projectHash("/fake/project")
-	projectDir := filepath.Join(dir, hash)
-	readOnlyDir := filepath.Join(projectDir, "readonly_ns")
+	gasolineDir := filepath.Join(dir, ".gasoline")
+	readOnlyDir := filepath.Join(gasolineDir, "readonly_ns")
 	os.MkdirAll(readOnlyDir, 0755)
 	os.Chmod(readOnlyDir, 0555)
-	// Also make project dir read-only so new dirs can't be created
-	os.Chmod(projectDir, 0555)
+	// Also make gasoline dir read-only so new dirs can't be created
+	os.Chmod(gasolineDir, 0555)
 	defer func() {
-		os.Chmod(projectDir, 0755)
+		os.Chmod(gasolineDir, 0755)
 		os.Chmod(readOnlyDir, 0755)
 	}()
 
 	// Re-open store
-	store2, err := NewSessionStore(dir, "/fake/project")
+	store2, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore (readonly) failed: %v", err)
 	}
@@ -578,7 +603,7 @@ func TestPersistReadOnlyDirectory(t *testing.T) {
 
 func TestPersistErrorHistoryCap(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -618,7 +643,7 @@ func TestPersistErrorHistoryCap(t *testing.T) {
 
 func TestPersistErrorHistoryStaleEviction(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -679,7 +704,7 @@ func TestPersistErrorHistoryStaleEviction(t *testing.T) {
 
 func TestPersistListEmptyNamespace(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -700,18 +725,17 @@ func TestPersistListEmptyNamespace(t *testing.T) {
 
 func TestPersistMetaFields(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/my/cool/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
 
 	meta := store.GetMeta()
-	if meta.ProjectPath != "/my/cool/project" {
-		t.Errorf("expected project_path=/my/cool/project, got %s", meta.ProjectPath)
+	if meta.ProjectPath != dir {
+		t.Errorf("expected project_path=%s, got %s", dir, meta.ProjectPath)
 	}
-	expectedHash := projectHash("/my/cool/project")
-	if meta.ProjectID != expectedHash {
-		t.Errorf("expected project_id=%s, got %s", expectedHash, meta.ProjectID)
+	if meta.ProjectID != dir {
+		t.Errorf("expected project_id=%s, got %s", dir, meta.ProjectID)
 	}
 	if meta.FirstCreated.IsZero() {
 		t.Error("expected first_created to be set")
@@ -726,7 +750,7 @@ func TestPersistMetaFields(t *testing.T) {
 
 func TestPersistProjectSizeLimit(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -763,7 +787,7 @@ func TestPersistProjectSizeLimit(t *testing.T) {
 
 func TestPersistMCPToolSave(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -800,7 +824,7 @@ func TestPersistMCPToolSave(t *testing.T) {
 
 func TestPersistMCPToolLoad(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -841,7 +865,7 @@ func TestPersistMCPToolLoad(t *testing.T) {
 
 func TestPersistMCPToolList(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -877,7 +901,7 @@ func TestPersistMCPToolList(t *testing.T) {
 
 func TestPersistMCPToolDelete(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -909,7 +933,7 @@ func TestPersistMCPToolDelete(t *testing.T) {
 
 func TestPersistMCPToolStats(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -942,7 +966,7 @@ func TestPersistMCPToolStats(t *testing.T) {
 
 func TestPersistMCPToolLoadContext(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
@@ -969,7 +993,7 @@ func TestPersistMCPToolLoadContext(t *testing.T) {
 
 func TestPersistMCPToolMissingParams(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewSessionStore(dir, "/fake/project")
+	store, err := NewSessionStore(dir)
 	if err != nil {
 		t.Fatalf("NewSessionStore failed: %v", err)
 	}
