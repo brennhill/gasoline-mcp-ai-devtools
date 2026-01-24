@@ -34,6 +34,16 @@ Specs: `docs/ai-first/tech-spec-persistent-memory.md`, `docs/ai-first/tech-spec-
 
 - [ ] **Web vitals capture** — Implement `startWebVitalsCapture`, `resetWebVitals`, `getWebVitals`, `stopWebVitalsCapture`, `sendWebVitals`. TDD stubs exist in `extension-tests/web-vitals.test.js` (10 tests, all currently failing).
 
+## Performance Intelligence (extends check_performance)
+
+Building on the existing performance budget monitor to provide proactive, contextual performance insights.
+
+- [ ] **Push notification on regression** — AI is alerted without polling. After a reload, if baselines are exceeded, the server proactively signals "your last reload regressed load by 800ms". Requires MCP notifications or a status field in `get_changes_since`.
+- [ ] **SPA route measurement** — Observe `pushState`/`replaceState` and `popstate` events. Measure time-to-interactive per route transition. Extend performance snapshots to include per-route metrics.
+- [ ] **Causal diffing** — Compare resource lists (scripts, stylesheets, fonts) between baseline and current snapshot. Report what changed: "3 new scripts totaling 400KB added since baseline". File: `performance.go`.
+- [ ] **Workflow integration** — Auto-run `check_performance` after each AI-initiated code change. Include performance delta in PR summaries. Integrates with codegen/reproduction scripts.
+- [ ] **Budget thresholds as config** — Developer sets constraints ("load < 2s, bundle < 500KB") in a `.gasoline.json` or via MCP tool. AI enforces as hard constraints during development. Persisted via `session_store`.
+
 ## Ecosystem Exports
 
 Standard format exports that make Gasoline data consumable by other tools. All are new files with zero overlap on existing code.
