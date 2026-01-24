@@ -317,8 +317,11 @@ const (
 	maxResponseBodySize = 16384           // 16KB
 	wsBufferMemoryLimit = 4 * 1024 * 1024 // 4MB
 	nbBufferMemoryLimit = 8 * 1024 * 1024 // 8MB
-	rateLimitThreshold  = 1000
-	memoryHardLimit     = 50 * 1024 * 1024 // 50MB
+	rateLimitThreshold      = 1000
+	memoryHardLimit         = 50 * 1024 * 1024 // 50MB
+	circuitOpenStreakCount  = 5                 // consecutive seconds over threshold to open circuit
+	circuitCloseSeconds     = 10               // seconds below threshold to close circuit
+	circuitCloseMemoryLimit = 30 * 1024 * 1024 // 30MB - memory must be below this to close circuit
 	defaultQueryTimeout = 10 * time.Second
 	rateWindow          = 5 * time.Second // rolling window for msg/s calculation
 )
@@ -357,7 +360,17 @@ type Capture struct {
 	queryCond      *sync.Cond
 	queryIDCounter int
 
-	// Rate limiting
+	// Rate limiting (sliding window)
+	windowEventCount       int       // Events in current 1-second window
+	rateWindowStart        time.Time // When current window started (monotonic)
+	rateLimitStreak        int       // Consecutive seconds over threshold
+	lastBelowThresholdAt   time.Time // When rate first dropped below threshold
+	circuitOpen            bool      // Circuit breaker state
+	circuitOpenedAt        time.Time // When circuit was opened
+	circuitReason          string    // Why circuit opened ("rate_exceeded" or "memory_exceeded")
+	lastRateLimitTime      time.Time // When server last returned 429
+
+	// Legacy rate limiting fields (kept for backwards compat with existing code)
 	eventCount    int
 	rateResetTime time.Time
 
@@ -397,24 +410,27 @@ type a11yInflightEntry struct {
 
 // NewCapture creates a new v4 server instance
 func NewCapture() *Capture {
+	now := time.Now()
 	c := &Capture{
-		wsEvents:          make([]WebSocketEvent, 0, maxWSEvents),
-		networkBodies:     make([]NetworkBody, 0, maxNetworkBodies),
-		enhancedActions:   make([]EnhancedAction, 0, maxEnhancedActions),
-		connections:       make(map[string]*connectionState),
-		closedConns:       make([]WebSocketClosedConnection, 0),
-		connOrder:         make([]string, 0),
-		pendingQueries:    make([]pendingQueryEntry, 0),
-		queryResults:      make(map[string]json.RawMessage),
-		rateResetTime:     time.Now(),
-		queryTimeout:      defaultQueryTimeout,
-		perfSnapshots:     make(map[string]PerformanceSnapshot),
-		perfSnapshotOrder: make([]string, 0),
-		perfBaselines:     make(map[string]PerformanceBaseline),
-		perfBaselineOrder: make([]string, 0),
-		a11yCache:         make(map[string]*a11yCacheEntry),
-		a11yCacheOrder:    make([]string, 0),
-		a11yInflight:      make(map[string]*a11yInflightEntry),
+		wsEvents:               make([]WebSocketEvent, 0, maxWSEvents),
+		networkBodies:          make([]NetworkBody, 0, maxNetworkBodies),
+		enhancedActions:        make([]EnhancedAction, 0, maxEnhancedActions),
+		connections:            make(map[string]*connectionState),
+		closedConns:            make([]WebSocketClosedConnection, 0),
+		connOrder:              make([]string, 0),
+		pendingQueries:         make([]pendingQueryEntry, 0),
+		queryResults:           make(map[string]json.RawMessage),
+		rateResetTime:          now,
+		rateWindowStart:        now,
+		lastBelowThresholdAt:   now,
+		queryTimeout:           defaultQueryTimeout,
+		perfSnapshots:          make(map[string]PerformanceSnapshot),
+		perfSnapshotOrder:      make([]string, 0),
+		perfBaselines:          make(map[string]PerformanceBaseline),
+		perfBaselineOrder:      make([]string, 0),
+		a11yCache:              make(map[string]*a11yCacheEntry),
+		a11yCacheOrder:         make([]string, 0),
+		a11yInflight:           make(map[string]*a11yInflightEntry),
 	}
 	c.queryCond = sync.NewCond(&c.mu)
 	return c

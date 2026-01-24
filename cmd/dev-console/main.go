@@ -732,6 +732,7 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 		http.HandleFunc("/a11y-result", corsMiddleware(capture.HandleA11yResult))
 		http.HandleFunc("/enhanced-actions", corsMiddleware(capture.HandleEnhancedActions))
 		http.HandleFunc("/performance-snapshot", corsMiddleware(capture.HandlePerformanceSnapshot))
+		http.HandleFunc("/v4/health", corsMiddleware(capture.HandleHealth))
 	}
 
 	// MCP over HTTP endpoint

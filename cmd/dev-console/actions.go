@@ -64,6 +64,12 @@ func (v *Capture) GetEnhancedActions(filter EnhancedActionFilter) []EnhancedActi
 }
 
 func (v *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) {
+	// Check rate limit and circuit breaker
+	if v.CheckRateLimit() {
+		v.WriteRateLimitResponse(w)
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -75,6 +81,15 @@ func (v *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Record batch size for rate limiting
+	v.RecordEvents(len(payload.Actions))
+
+	// Re-check after recording
+	if v.CheckRateLimit() {
+		v.WriteRateLimitResponse(w)
 		return
 	}
 
