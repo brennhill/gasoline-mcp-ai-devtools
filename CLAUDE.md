@@ -155,7 +155,9 @@ Every function, endpoint, and capture handler MUST have tests written BEFORE imp
 
 ### File Headers (Mandatory)
 
-Every Go source file in `cmd/dev-console/` MUST have a descriptive header comment before `package main`. The header declares the file's purpose and key design decisions.
+Every source file MUST have a descriptive header comment declaring the file's purpose and key design decisions.
+
+**Go files** (`cmd/dev-console/*.go`, excluding tests):
 
 ```go
 // filename.go — One-line purpose summary.
@@ -165,8 +167,19 @@ Every Go source file in `cmd/dev-console/` MUST have a descriptive header commen
 package main
 ```
 
+**JavaScript files** (`extension/*.js`, `extension-tests/*.js`):
+
+```javascript
+// @ts-nocheck
+/**
+ * @fileoverview filename.js — One-line purpose summary.
+ * 1-2 sentences expanding on scope, responsibilities, and system role.
+ * Design: Key architectural decisions (communication patterns, buffer limits, etc).
+ */
+```
+
 **Requirements:**
-- First line: `// filename.go — Purpose` (em-dash, not hyphen)
+- First descriptive line: `filename — Purpose` (em-dash, not hyphen)
 - 2-4 additional lines explaining scope and design decisions
 - No version labels (v4, v5) or phase labels (Phase 1, Phase 2) in comments — these become stale
 - Comments must describe current behavior, not historical development phases

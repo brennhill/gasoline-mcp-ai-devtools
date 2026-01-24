@@ -1,7 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for Performance Marks capture feature
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview performance-marks.test.js — Tests for performance mark/measure capture.
+ * Verifies PerformanceObserver-based collection of user timing marks and measures,
+ * 60-second time window enforcement, 50-entry buffer cap, and integration with
+ * the performance snapshot message format.
  */
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'

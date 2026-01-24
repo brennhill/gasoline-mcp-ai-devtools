@@ -1,7 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for network response body capture, header sanitization, and truncation
- * TDD: These tests are written BEFORE implementation (v4 feature)
+ * @fileoverview network-bodies.test.js — Tests for network response body capture.
+ * Covers fetch response cloning, body size truncation, header sanitization
+ * (stripping auth/cookie headers), content-type detection, and the
+ * GASOLINE_NETWORK_BODY message format posted to the content script.
  */
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'

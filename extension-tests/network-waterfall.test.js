@@ -1,7 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for Network Waterfall feature
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview network-waterfall.test.js — Tests for network waterfall capture.
+ * Verifies timing-ordered network request recording, 30-second time window
+ * enforcement, 50-entry buffer cap, and the waterfall data structure with
+ * start/duration/status fields for visualizing request concurrency.
  */
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'

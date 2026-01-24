@@ -1,7 +1,8 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for options page deferral toggle
- * TDD: Tests written BEFORE implementation
+ * @fileoverview options.test.js — Tests for the extension options/settings page.
+ * Covers server URL persistence, domain filter management, toggle states
+ * (screenshot, source maps, deferral), and chrome.storage.local integration.
  */
 
 import { test, describe, mock, beforeEach } from 'node:test'

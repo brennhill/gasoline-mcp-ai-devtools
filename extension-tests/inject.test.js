@@ -1,7 +1,8 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for inject script (page capture logic)
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview inject.test.js — Tests for page-level capture (inject.js).
+ * Verifies console interception, fetch/XHR wrapping, error/rejection handlers,
+ * user action recording, context annotations, and the window.__gasoline API.
  */
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'

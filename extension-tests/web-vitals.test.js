@@ -1,8 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for Web Vitals / Performance Observer capture
- * Tests the actual exported API: installPerfObservers, uninstallPerfObservers,
- * getFCP, getLCP, getCLS, sendPerformanceSnapshot
+ * @fileoverview web-vitals.test.js — Tests for Web Vitals capture via PerformanceObserver.
+ * Verifies the exported API (installPerfObservers, uninstallPerfObservers,
+ * getFCP, getLCP, getCLS, sendPerformanceSnapshot) and validates that Core Web
+ * Vitals metrics are correctly collected, stored, and included in snapshots.
  */
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'

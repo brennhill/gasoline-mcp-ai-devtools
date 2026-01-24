@@ -1,7 +1,8 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for popup UI functionality
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview popup.test.js — Tests for the extension popup UI.
+ * Covers connection status display, entry count formatting, error messaging,
+ * log level selector, clear-logs button, and troubleshooting hint visibility.
  */
 
 import { test, describe, mock, beforeEach } from 'node:test'

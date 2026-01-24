@@ -1,7 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Performance benchmarks for Gasoline extension
- * These tests ensure the extension doesn't degrade page performance
+ * @fileoverview performance.test.js — Performance budget enforcement tests.
+ * Validates that capture operations stay within SLO budgets to ensure the
+ * extension doesn't degrade browsing performance. Measures per-operation
+ * latency and fails if budgets are exceeded.
  *
  * SLOs (Service Level Objectives):
  * - Console interception: < 0.1ms per call
