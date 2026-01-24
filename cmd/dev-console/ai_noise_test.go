@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -1049,5 +1051,185 @@ func TestNoiseMatchSpecLevelFilter(t *testing.T) {
 	}
 	if nc.IsConsoleNoise(errorEntry) {
 		t.Error("error-level should NOT be noise (level filter is warn)")
+	}
+}
+
+// ============================================
+// Coverage Gap Tests
+// ============================================
+
+func TestDismissNoise_WebSocketCategory(t *testing.T) {
+	nc := NewNoiseConfig()
+
+	nc.DismissNoise("wss://example\\.com/socket", "websocket", "noisy socket")
+
+	rules := nc.ListRules()
+	var found bool
+	for _, r := range rules {
+		if r.Category == "websocket" && r.MatchSpec.URLRegex == "wss://example\\.com/socket" {
+			found = true
+			if r.Classification != "dismissed" {
+				t.Errorf("Expected classification 'dismissed', got %q", r.Classification)
+			}
+			if r.Reason != "noisy socket" {
+				t.Errorf("Expected reason 'noisy socket', got %q", r.Reason)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected a websocket dismiss rule to be created")
+	}
+
+	// Verify the rule actually matches websocket events
+	event := WebSocketEvent{
+		URL: "wss://example.com/socket",
+	}
+	if !nc.IsWebSocketNoise(event) {
+		t.Error("Dismissed websocket URL should be noise")
+	}
+}
+
+func TestIsCoveredLocked_LevelMismatch(t *testing.T) {
+	nc := NewNoiseConfig()
+
+	// Add a rule with a message regex (but the rule also has Level set).
+	// isConsoleCoveredLocked does NOT check level — it only checks messageRegex.
+	// So a message matching the regex is "covered" regardless of level.
+	rule := NoiseRule{
+		Category:       "console",
+		Classification: "cosmetic",
+		MatchSpec: NoiseMatchSpec{
+			MessageRegex: "experimental feature",
+			Level:        "warn",
+		},
+	}
+	_ = nc.AddRules([]NoiseRule{rule})
+
+	// isConsoleCoveredLocked is called inside AutoDetect to prevent duplicate proposals.
+	// Even though the rule has Level=warn, the coverage check matches by regex alone.
+	entries := []LogEntry{
+		{"message": "experimental feature", "level": "error", "source": "app.js"},
+	}
+
+	// Feed enough entries to trigger frequency detection
+	manyEntries := make([]LogEntry, 15)
+	for i := range manyEntries {
+		manyEntries[i] = entries[0]
+	}
+
+	proposals := nc.AutoDetect(manyEntries, nil, nil)
+
+	// The message is already covered by the existing rule (messageRegex match),
+	// so no new proposal should be generated for it
+	for _, p := range proposals {
+		if p.Rule.MatchSpec.MessageRegex == "experimental feature" ||
+			p.Rule.MatchSpec.MessageRegex == "experimental\\ feature" {
+			t.Error("Should not propose a rule for an already-covered message")
+		}
+	}
+}
+
+func TestIsSourceCoveredLocked_RegexMatch(t *testing.T) {
+	nc := NewNoiseConfig()
+
+	// Add a rule with sourceRegex matching node_modules paths
+	rule := NoiseRule{
+		Category:       "console",
+		Classification: "extension",
+		MatchSpec: NoiseMatchSpec{
+			SourceRegex: `node_modules/react`,
+		},
+	}
+	_ = nc.AddRules([]NoiseRule{rule})
+
+	// Create entries from the covered source (node_modules is required for source analysis)
+	entries := make([]LogEntry, 5)
+	for i := range entries {
+		entries[i] = LogEntry{
+			"message": fmt.Sprintf("react warning %d", i),
+			"source":  "http://localhost:3000/node_modules/react/cjs/react.development.js",
+			"level":   "warn",
+		}
+	}
+
+	proposals := nc.AutoDetect(entries, nil, nil)
+
+	// The source is already covered, so no proposal should be generated for it
+	for _, p := range proposals {
+		if strings.Contains(p.Rule.MatchSpec.SourceRegex, "node_modules/react") {
+			t.Error("Should not propose a rule for an already-covered source")
+		}
+	}
+}
+
+func TestIsURLCoveredLocked_RegexMatch(t *testing.T) {
+	nc := NewNoiseConfig()
+
+	// Add a rule with URLRegex matching health endpoint
+	rule := NoiseRule{
+		Category:       "network",
+		Classification: "infrastructure",
+		MatchSpec: NoiseMatchSpec{
+			URLRegex: `/health`,
+		},
+	}
+	_ = nc.AddRules([]NoiseRule{rule})
+
+	// Create enough network bodies to trigger frequency detection (>= 20)
+	bodies := make([]NetworkBody, 25)
+	for i := range bodies {
+		bodies[i] = NetworkBody{
+			URL:    "http://localhost:3000/health",
+			Method: "GET",
+			Status: 200,
+		}
+	}
+
+	proposals := nc.AutoDetect(nil, bodies, nil)
+
+	// The URL is already covered, so no proposal should be generated for it
+	for _, p := range proposals {
+		if strings.Contains(p.Rule.MatchSpec.URLRegex, "health") {
+			t.Error("Should not propose a rule for an already-covered URL path")
+		}
+	}
+}
+
+func TestIsURLCoveredLocked_StatusMinMaxRange(t *testing.T) {
+	nc := NewNoiseConfig()
+
+	// The built-in sourcemap rule has URLRegex=`\.map(\?|$)` with StatusMin=400, StatusMax=499
+	// Verify the URL coverage check works regardless of status range (isURLCoveredLocked
+	// only checks urlRegex, not status ranges)
+
+	// Create enough .map requests to trigger frequency detection
+	bodies := make([]NetworkBody, 25)
+	for i := range bodies {
+		bodies[i] = NetworkBody{
+			URL:    "http://localhost:3000/__webpack_hmr",
+			Method: "GET",
+			Status: 200,
+		}
+	}
+
+	// Add a network rule covering /__webpack_hmr
+	rule := NoiseRule{
+		Category:       "network",
+		Classification: "infrastructure",
+		MatchSpec: NoiseMatchSpec{
+			URLRegex:  `__webpack_hmr`,
+			StatusMin: 200,
+			StatusMax: 299,
+		},
+	}
+	_ = nc.AddRules([]NoiseRule{rule})
+
+	proposals := nc.AutoDetect(nil, bodies, nil)
+
+	for _, p := range proposals {
+		if strings.Contains(p.Rule.MatchSpec.URLRegex, "__webpack_hmr") {
+			t.Error("Should not propose a rule for a URL already covered by urlRegex")
+		}
 	}
 }

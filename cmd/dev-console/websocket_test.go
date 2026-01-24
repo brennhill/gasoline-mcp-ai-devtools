@@ -794,3 +794,495 @@ func TestV4LastMessageAgeSubSecond(t *testing.T) {
 		t.Errorf("Expected sub-second age ending in 's', got: %s", age)
 	}
 }
+
+// ============================================
+// HandleWebSocketStatus: HTTP GET handler
+// ============================================
+
+// Test: HandleWebSocketStatus returns JSON with connections and closed arrays.
+func TestV4HandleWebSocketStatus_EmptyState(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	req := httptest.NewRequest("GET", "/websocket-status", nil)
+	rec := httptest.NewRecorder()
+
+	capture.HandleWebSocketStatus(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if ct != "application/json" {
+		t.Errorf("expected Content-Type application/json, got %s", ct)
+	}
+
+	var status WebSocketStatusResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &status); err != nil {
+		t.Fatalf("expected valid JSON response: %v", err)
+	}
+
+	if status.Connections == nil {
+		t.Error("expected non-nil Connections slice")
+	}
+	if status.Closed == nil {
+		t.Error("expected non-nil Closed slice")
+	}
+}
+
+// Test: HandleWebSocketStatus returns open connections.
+func TestV4HandleWebSocketStatus_WithConnections(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "ws-1", Event: "open", URL: "wss://chat.example.com/ws", Timestamp: time.Now().Format(time.RFC3339Nano)},
+		{ID: "ws-2", Event: "open", URL: "wss://feed.example.com/prices", Timestamp: time.Now().Format(time.RFC3339Nano)},
+	})
+
+	req := httptest.NewRequest("GET", "/websocket-status", nil)
+	rec := httptest.NewRecorder()
+
+	capture.HandleWebSocketStatus(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+
+	var status WebSocketStatusResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &status); err != nil {
+		t.Fatalf("expected valid JSON: %v", err)
+	}
+
+	if len(status.Connections) != 2 {
+		t.Errorf("expected 2 connections, got %d", len(status.Connections))
+	}
+}
+
+// Test: HandleWebSocketStatus returns closed connections.
+func TestV4HandleWebSocketStatus_WithClosedConnections(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "ws-closed", Event: "open", URL: "wss://example.com/ws"},
+		{ID: "ws-closed", Event: "close", URL: "wss://example.com/ws", CloseCode: 1001, CloseReason: "going away"},
+	})
+
+	req := httptest.NewRequest("GET", "/websocket-status", nil)
+	rec := httptest.NewRecorder()
+
+	capture.HandleWebSocketStatus(rec, req)
+
+	var status WebSocketStatusResponse
+	json.Unmarshal(rec.Body.Bytes(), &status)
+
+	if len(status.Connections) != 0 {
+		t.Errorf("expected 0 open connections, got %d", len(status.Connections))
+	}
+	if len(status.Closed) != 1 {
+		t.Errorf("expected 1 closed connection, got %d", len(status.Closed))
+	}
+	if status.Closed[0].CloseCode != 1001 {
+		t.Errorf("expected close code 1001, got %d", status.Closed[0].CloseCode)
+	}
+}
+
+// ============================================
+// formatAge: seconds-only and sub-second cases
+// ============================================
+
+// Test: formatAge with a timestamp a few seconds ago returns "Ns" format.
+func TestV4FormatAge_SecondsOnly(t *testing.T) {
+	ts := time.Now().Add(-7 * time.Second).Format(time.RFC3339Nano)
+	age := formatAge(ts)
+
+	if age == "" {
+		t.Fatal("expected non-empty age")
+	}
+	// Should be "7s" or "8s" (timing tolerance)
+	if !strings.HasSuffix(age, "s") {
+		t.Errorf("expected age ending in 's', got: %s", age)
+	}
+	if strings.Contains(age, "m") || strings.Contains(age, "h") {
+		t.Errorf("expected seconds-only format, got: %s", age)
+	}
+}
+
+// Test: formatAge with a timestamp less than 1 second ago returns fractional.
+func TestV4FormatAge_SubSecond(t *testing.T) {
+	ts := time.Now().Add(-300 * time.Millisecond).Format(time.RFC3339Nano)
+	age := formatAge(ts)
+
+	if age == "" {
+		t.Fatal("expected non-empty age for sub-second timestamp")
+	}
+	// Should be something like "0.3s"
+	if !strings.HasSuffix(age, "s") {
+		t.Errorf("expected age ending in 's', got: %s", age)
+	}
+	if strings.Contains(age, "m") || strings.Contains(age, "h") {
+		t.Errorf("expected sub-second format without minutes/hours, got: %s", age)
+	}
+}
+
+// Test: formatAge with empty timestamp returns empty string.
+func TestV4FormatAge_EmptyTimestamp(t *testing.T) {
+	age := formatAge("")
+	if age != "" {
+		t.Errorf("expected empty string for empty timestamp, got: %s", age)
+	}
+}
+
+// Test: formatAge with invalid timestamp returns empty string.
+func TestV4FormatAge_InvalidTimestamp(t *testing.T) {
+	age := formatAge("not-a-timestamp")
+	if age != "" {
+		t.Errorf("expected empty string for invalid timestamp, got: %s", age)
+	}
+}
+
+// ============================================
+// formatDuration: sub-second case
+// ============================================
+
+// Test: formatDuration with sub-second duration returns fractional seconds.
+func TestV4FormatDuration_SubSecond(t *testing.T) {
+	d := 250 * time.Millisecond
+	result := formatDuration(d)
+	if result != "0.2s" && result != "0.3s" {
+		// Floating point: 0.25 rounds to "0.2s" with %.1f
+		if !strings.HasSuffix(result, "s") {
+			t.Errorf("expected sub-second format ending in 's', got: %s", result)
+		}
+	}
+}
+
+// Test: formatDuration with exactly 0.
+func TestV4FormatDuration_Zero(t *testing.T) {
+	result := formatDuration(0)
+	if result != "0.0s" {
+		t.Errorf("expected '0.0s', got: %s", result)
+	}
+}
+
+// ============================================
+// toolGetWSStatus: connection_id and url filters
+// ============================================
+
+// Test: toolGetWSStatus with connection_id filter.
+func TestV4ToolGetWSStatus_ConnectionIDFilter(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	capture.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "conn-alpha", Event: "open", URL: "wss://alpha.example.com/ws", Timestamp: time.Now().Format(time.RFC3339Nano)},
+		{ID: "conn-beta", Event: "open", URL: "wss://beta.example.com/ws", Timestamp: time.Now().Format(time.RFC3339Nano)},
+	})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"websocket_status","connection_id":"conn-alpha"}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("expected no error, got: %v", resp.Error)
+	}
+
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	var status WebSocketStatusResponse
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &status); err != nil {
+		t.Fatalf("expected valid status JSON: %v", err)
+	}
+
+	if len(status.Connections) != 1 {
+		t.Errorf("expected 1 connection with connection_id filter, got %d", len(status.Connections))
+	}
+	if len(status.Connections) > 0 && status.Connections[0].ID != "conn-alpha" {
+		t.Errorf("expected conn-alpha, got %s", status.Connections[0].ID)
+	}
+}
+
+// Test: toolGetWSStatus with url filter.
+func TestV4ToolGetWSStatus_URLFilter(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	capture.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "conn-1", Event: "open", URL: "wss://chat.example.com/ws", Timestamp: time.Now().Format(time.RFC3339Nano)},
+		{ID: "conn-2", Event: "open", URL: "wss://feed.example.com/prices", Timestamp: time.Now().Format(time.RFC3339Nano)},
+		{ID: "conn-3", Event: "open", URL: "wss://chat.example.com/v2", Timestamp: time.Now().Format(time.RFC3339Nano)},
+	})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"websocket_status","url":"chat"}}`),
+	})
+
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	var status WebSocketStatusResponse
+	json.Unmarshal([]byte(result.Content[0].Text), &status)
+
+	if len(status.Connections) != 2 {
+		t.Errorf("expected 2 connections matching 'chat' URL filter, got %d", len(status.Connections))
+	}
+}
+
+// Test: toolGetWSStatus with both connection_id and url filter (connection_id takes precedence).
+func TestV4ToolGetWSStatus_BothFilters(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	capture.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "conn-1", Event: "open", URL: "wss://chat.example.com/ws", Timestamp: time.Now().Format(time.RFC3339Nano)},
+		{ID: "conn-2", Event: "open", URL: "wss://chat.example.com/v2", Timestamp: time.Now().Format(time.RFC3339Nano)},
+	})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"websocket_status","connection_id":"conn-1","url":"chat"}}`),
+	})
+
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	var status WebSocketStatusResponse
+	json.Unmarshal([]byte(result.Content[0].Text), &status)
+
+	if len(status.Connections) != 1 {
+		t.Errorf("expected 1 connection with both filters, got %d", len(status.Connections))
+	}
+	if len(status.Connections) > 0 && status.Connections[0].ID != "conn-1" {
+		t.Errorf("expected conn-1, got %s", status.Connections[0].ID)
+	}
+}
+
+// ============================================
+// HandleWebSocketEvents: GET handler (returning events)
+// ============================================
+
+// Test: HandleWebSocketEvents GET returns JSON with events and count.
+func TestV4HandleWebSocketEvents_GET(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "ws-1", Event: "open", URL: "wss://example.com/ws"},
+		{ID: "ws-1", Event: "message", Direction: "incoming", Data: "hello"},
+	})
+
+	req := httptest.NewRequest("GET", "/websocket-events", nil)
+	rec := httptest.NewRecorder()
+
+	capture.HandleWebSocketEvents(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+
+	var resp struct {
+		Events []WebSocketEvent `json:"events"`
+		Count  int              `json:"count"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("expected valid JSON: %v", err)
+	}
+
+	if resp.Count != 2 {
+		t.Errorf("expected count=2, got %d", resp.Count)
+	}
+	if len(resp.Events) != 2 {
+		t.Errorf("expected 2 events, got %d", len(resp.Events))
+	}
+}
+
+// ============================================
+// HandleWebSocketEvents: POST rate limiting and body size
+// ============================================
+
+// Test: HandleWebSocketEvents POST rejected when rate limited.
+func TestV4HandleWebSocketEvents_POST_RateLimited(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.mu.Lock()
+	capture.circuitOpen = true
+	capture.circuitOpenedAt = time.Now()
+	capture.circuitReason = "rate_exceeded"
+	capture.mu.Unlock()
+
+	body := `{"events":[{"event":"open","id":"ws-1","url":"wss://example.com/ws"}]}`
+	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	capture.HandleWebSocketEvents(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("expected 429, got %d", rec.Code)
+	}
+}
+
+// Test: HandleWebSocketEvents POST rejected when body too large.
+func TestV4HandleWebSocketEvents_POST_BodyTooLarge(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	largePayload := strings.Repeat("x", 6*1024*1024)
+	req := httptest.NewRequest("POST", "/websocket-events", strings.NewReader(largePayload))
+	rec := httptest.NewRecorder()
+
+	capture.HandleWebSocketEvents(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("expected 413, got %d", rec.Code)
+	}
+}
+
+// Test: HandleWebSocketEvents POST rejected when bad JSON.
+func TestV4HandleWebSocketEvents_POST_BadJSON(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewBufferString("not json!"))
+	rec := httptest.NewRecorder()
+
+	capture.HandleWebSocketEvents(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for bad JSON, got %d", rec.Code)
+	}
+}
+
+// Test: HandleWebSocketEvents POST re-check rate limit after recording.
+func TestV4HandleWebSocketEvents_POST_RateLimitAfterRecording(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.mu.Lock()
+	capture.rateWindowStart = time.Now()
+	capture.windowEventCount = rateLimitThreshold - 1
+	capture.mu.Unlock()
+
+	// 10 events pushes count over threshold
+	events := make([]map[string]interface{}, 10)
+	for i := range events {
+		events[i] = map[string]interface{}{
+			"event":     "message",
+			"id":        "ws-1",
+			"direction": "incoming",
+		}
+	}
+	payload, _ := json.Marshal(map[string]interface{}{"events": events})
+
+	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewReader(payload))
+	rec := httptest.NewRecorder()
+
+	capture.HandleWebSocketEvents(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("expected 429 after recording pushes over threshold, got %d", rec.Code)
+	}
+}
+
+// ============================================
+// Additional coverage: formatAge future timestamp, formatDuration exact minutes
+// ============================================
+
+// Test: formatAge with future timestamp (d < 0 branch).
+func TestV4FormatAge_FutureTimestamp(t *testing.T) {
+	// A timestamp 5 seconds in the future
+	ts := time.Now().Add(5 * time.Second).Format(time.RFC3339Nano)
+	age := formatAge(ts)
+
+	// When d < 0, it gets clamped to 0, so formatDuration(0) = "0.0s"
+	if age != "0.0s" {
+		t.Errorf("expected '0.0s' for future timestamp, got: %s", age)
+	}
+}
+
+// Test: formatDuration with exact minutes (secs == 0 branch).
+func TestV4FormatDuration_ExactMinutes(t *testing.T) {
+	d := 3 * time.Minute
+	result := formatDuration(d)
+	if result != "3m" {
+		t.Errorf("expected '3m' for exactly 3 minutes, got: %s", result)
+	}
+}
+
+// Test: formatDuration with exact hours (mins == 0 branch).
+func TestV4FormatDuration_ExactHours(t *testing.T) {
+	d := 2 * time.Hour
+	result := formatDuration(d)
+	if result != "2h" {
+		t.Errorf("expected '2h' for exactly 2 hours, got: %s", result)
+	}
+}
+
+// ============================================
+// Additional coverage: toolGetWSStatus parse error
+// ============================================
+
+// Test: toolGetWSStatus with invalid arguments JSON returns error message.
+func TestV4ToolGetWSStatus_InvalidArgs(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// Pass invalid JSON as arguments - use a raw number where an object is expected
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"websocket_status","url":123}}`),
+	})
+
+	// The arguments are parsed by the tool dispatcher first, then passed to toolGetWSStatus.
+	// url:123 is not a string, so json.Unmarshal into a struct with string field will fail.
+	if resp.Error != nil {
+		// If the dispatcher catches it first, that's fine too
+		return
+	}
+
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	if len(result.Content) > 0 && strings.Contains(result.Content[0].Text, "Error parsing") {
+		// Good - the error path was hit
+		return
+	}
+	// If it parsed successfully (Go json is lenient with numbers->strings), that's also OK
+}

@@ -751,28 +751,6 @@ func (h *ToolHandler) toolGetChangesSince(req JSONRPCRequest, args json.RawMessa
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(diffJSON))}
 }
 
-// ============================================
-// Persistent Memory MCP Tool Implementations
-// ============================================
-
-func (h *ToolHandler) toolSessionStore(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if h.sessionStore == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Session store not initialized")}
-	}
-
-	var storeArgs SessionStoreArgs
-	if err := json.Unmarshal(args, &storeArgs); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Error parsing arguments: " + err.Error())}
-	}
-
-	result, err := h.sessionStore.HandleSessionStore(storeArgs)
-	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Error: " + err.Error())}
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(result))}
-}
-
 func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.sessionStore == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Session store not initialized")}

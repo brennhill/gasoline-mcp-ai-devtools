@@ -7,31 +7,34 @@ const DEFAULT_SERVER_URL = 'http://localhost:7890'
 
 // Load saved options
 export function loadOptions() {
-  chrome.storage.local.get(['serverUrl', 'domainFilters', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled'], (result) => {
-    // Set server URL
-    document.getElementById('server-url-input').value = result.serverUrl || DEFAULT_SERVER_URL
+  chrome.storage.local.get(
+    ['serverUrl', 'domainFilters', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled'],
+    (result) => {
+      // Set server URL
+      document.getElementById('server-url-input').value = result.serverUrl || DEFAULT_SERVER_URL
 
-    const filters = result.domainFilters || []
-    document.getElementById('domain-filters').value = filters.join('\n')
+      const filters = result.domainFilters || []
+      document.getElementById('domain-filters').value = filters.join('\n')
 
-    // Set screenshot toggle state
-    const screenshotToggle = document.getElementById('screenshot-toggle')
-    if (result.screenshotOnError) {
-      screenshotToggle.classList.add('active')
-    }
+      // Set screenshot toggle state
+      const screenshotToggle = document.getElementById('screenshot-toggle')
+      if (result.screenshotOnError) {
+        screenshotToggle.classList.add('active')
+      }
 
-    // Set source map toggle state
-    const sourcemapToggle = document.getElementById('sourcemap-toggle')
-    if (result.sourceMapEnabled) {
-      sourcemapToggle.classList.add('active')
-    }
+      // Set source map toggle state
+      const sourcemapToggle = document.getElementById('sourcemap-toggle')
+      if (result.sourceMapEnabled) {
+        sourcemapToggle.classList.add('active')
+      }
 
-    // Set deferral toggle state (default: enabled/active)
-    const deferralToggle = document.getElementById('deferral-toggle')
-    if (result.deferralEnabled !== false) {
-      deferralToggle.classList.add('active')
-    }
-  })
+      // Set deferral toggle state (default: enabled/active)
+      const deferralToggle = document.getElementById('deferral-toggle')
+      if (result.deferralEnabled !== false) {
+        deferralToggle.classList.add('active')
+      }
+    },
+  )
 }
 
 // Save options
@@ -48,23 +51,26 @@ export function saveOptions() {
   const sourceMapEnabled = document.getElementById('sourcemap-toggle').classList.contains('active')
   const deferralEnabled = document.getElementById('deferral-toggle').classList.contains('active')
 
-  chrome.storage.local.set({ serverUrl, domainFilters: filters, screenshotOnError, sourceMapEnabled, deferralEnabled }, () => {
-    // Show saved message
-    const message = document.getElementById('saved-message')
-    message.classList.add('show')
+  chrome.storage.local.set(
+    { serverUrl, domainFilters: filters, screenshotOnError, sourceMapEnabled, deferralEnabled },
+    () => {
+      // Show saved message
+      const message = document.getElementById('saved-message')
+      message.classList.add('show')
 
-    // Notify background
-    chrome.runtime.sendMessage({ type: 'setServerUrl', url: serverUrl })
-    chrome.runtime.sendMessage({ type: 'setDomainFilters', filters })
-    chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
-    chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
-    chrome.runtime.sendMessage({ type: 'setDeferralEnabled', enabled: deferralEnabled })
+      // Notify background
+      chrome.runtime.sendMessage({ type: 'setServerUrl', url: serverUrl })
+      chrome.runtime.sendMessage({ type: 'setDomainFilters', filters })
+      chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
+      chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
+      chrome.runtime.sendMessage({ type: 'setDeferralEnabled', enabled: deferralEnabled })
 
-    // Hide message after 2 seconds
-    setTimeout(() => {
-      message.classList.remove('show')
-    }, 2000)
-  })
+      // Hide message after 2 seconds
+      setTimeout(() => {
+        message.classList.remove('show')
+      }, 2000)
+    },
+  )
 }
 
 // Toggle screenshot setting

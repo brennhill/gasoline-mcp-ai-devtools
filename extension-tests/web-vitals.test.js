@@ -235,9 +235,9 @@ describe('Web Vitals Capture', () => {
     assert.ok(eventObs, 'Event observer should exist')
 
     eventObs._emit([
-      { duration: 500, interactionId: 0 },  // falsy interactionId
-      { duration: 300 },                      // no interactionId
-      { duration: 100, interactionId: 1 },   // valid
+      { duration: 500, interactionId: 0 }, // falsy interactionId
+      { duration: 300 }, // no interactionId
+      { duration: 100, interactionId: 1 }, // valid
     ])
 
     assert.strictEqual(mod.getINP(), 100)
@@ -354,17 +354,13 @@ describe('Performance Snapshot Message Flow', () => {
     mod.installPerfObservers()
 
     // Simulate FCP capture
-    const paintObs = MockPerformanceObserver._instances.find((obs) =>
-      obs._types.includes('paint')
-    )
+    const paintObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('paint'))
     if (paintObs) paintObs._emit([{ name: 'first-contentful-paint', startTime: 800 }])
 
     mod.sendPerformanceSnapshot()
 
     const calls = globalThis.window.postMessage.mock.calls
-    const snapshotMessage = calls.find(
-      (c) => c.arguments[0]?.type === 'GASOLINE_PERFORMANCE_SNAPSHOT'
-    )
+    const snapshotMessage = calls.find((c) => c.arguments[0]?.type === 'GASOLINE_PERFORMANCE_SNAPSHOT')
     assert.ok(snapshotMessage, 'Should post GASOLINE_PERFORMANCE_SNAPSHOT message')
     assert.ok(snapshotMessage.arguments[0].payload.timing, 'Payload should include timing')
   })
@@ -391,22 +387,18 @@ describe('Performance Snapshot Message Flow', () => {
     mod.installPerfObservers()
 
     // Simulate INP capture
-    const eventObs = MockPerformanceObserver._instances.find((obs) =>
-      obs._types.includes('event')
-    )
+    const eventObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('event'))
     if (eventObs) eventObs._emit([{ duration: 175, interactionId: 1 }])
 
     mod.sendPerformanceSnapshot()
 
     const calls = globalThis.window.postMessage.mock.calls
-    const snapshotMessage = calls.find(
-      (c) => c.arguments[0]?.type === 'GASOLINE_PERFORMANCE_SNAPSHOT'
-    )
+    const snapshotMessage = calls.find((c) => c.arguments[0]?.type === 'GASOLINE_PERFORMANCE_SNAPSHOT')
     assert.ok(snapshotMessage, 'Should post GASOLINE_PERFORMANCE_SNAPSHOT message')
     assert.strictEqual(
       snapshotMessage.arguments[0].payload.timing.interactionToNextPaint,
       175,
-      'Payload timing should include interactionToNextPaint'
+      'Payload timing should include interactionToNextPaint',
     )
   })
 

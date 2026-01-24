@@ -36,9 +36,15 @@ function createMockDocument() {
           textContent: '',
           classList: {
             _classes: new Set(),
-            add(c) { this._classes.add(c) },
-            remove(c) { this._classes.delete(c) },
-            contains(c) { return this._classes.has(c) },
+            add(c) {
+              this._classes.add(c)
+            },
+            remove(c) {
+              this._classes.delete(c)
+            },
+            contains(c) {
+              return this._classes.has(c)
+            },
             toggle(c) {
               if (this._classes.has(c)) {
                 this._classes.delete(c)
@@ -126,9 +132,7 @@ describe('Options Deferral Toggle', () => {
     // Toggle is active by default
     saveOptions()
 
-    assert.ok(
-      mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].deferralEnabled === true),
-    )
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].deferralEnabled === true))
   })
 
   test('should save deferralEnabled=false when toggle is inactive', () => {
@@ -137,9 +141,7 @@ describe('Options Deferral Toggle', () => {
 
     saveOptions()
 
-    assert.ok(
-      mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].deferralEnabled === false),
-    )
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].deferralEnabled === false))
   })
 
   test('should send setDeferralEnabled message on save', () => {

@@ -2,7 +2,7 @@
   "protocolVersion": "2024-11-05",
   "serverInfo": {
     "name": "gasoline",
-    "version": "4.5.0"
+    "version": "4.6.0"
   },
   "capabilities": {
     "tools": {}

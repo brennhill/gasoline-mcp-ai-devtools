@@ -1478,3 +1478,214 @@ func TestMCPGetBrowserErrorsGolden(t *testing.T) {
 
 	assertGolden(t, "mcp-get-browser-errors", resp.Result)
 }
+
+// ============================================
+// Coverage Gap Tests
+// ============================================
+
+// TestHandleRequest_Initialized tests the "initialized" method handler
+func TestHandleRequest_Initialized(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "initialized",
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error for 'initialized', got: %v", resp.Error)
+	}
+	if resp.ID != 1 {
+		t.Errorf("Expected ID 1, got %v", resp.ID)
+	}
+	// Result should be an empty object
+	if string(resp.Result) != "{}" {
+		t.Errorf("Expected empty object result, got: %s", string(resp.Result))
+	}
+}
+
+// TestHandleToolsCall_NilToolHandler tests tools/call with nil toolHandler
+func TestHandleToolsCall_NilToolHandler(t *testing.T) {
+	server, _ := setupTestServer(t)
+
+	// Create MCPHandler directly with nil toolHandler (no NewToolHandler)
+	mcp := NewMCPHandler(server)
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{}}`),
+	})
+
+	if resp.Error == nil {
+		t.Fatal("Expected error for nil toolHandler")
+	}
+	if resp.Error.Code != -32601 {
+		t.Errorf("Expected error code -32601, got %d", resp.Error.Code)
+	}
+	if !strings.Contains(resp.Error.Message, "Unknown tool") {
+		t.Errorf("Expected 'Unknown tool' in error, got: %s", resp.Error.Message)
+	}
+}
+
+// TestHandleToolsCall_UnknownTool tests tools/call with an unrecognized tool name
+func TestHandleToolsCall_UnknownTool(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"nonexistent_tool_xyz","arguments":{}}`),
+	})
+
+	if resp.Error == nil {
+		t.Fatal("Expected error for unknown tool")
+	}
+	if resp.Error.Code != -32601 {
+		t.Errorf("Expected error code -32601, got %d", resp.Error.Code)
+	}
+	if !strings.Contains(resp.Error.Message, "Unknown tool") {
+		t.Errorf("Expected 'Unknown tool' in error, got: %s", resp.Error.Message)
+	}
+}
+
+// TestLoadEntries_MalformedJSON tests that malformed JSON lines are skipped
+func TestLoadEntries_MalformedJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "malformed.jsonl")
+
+	// Write a file with mixed valid/invalid JSON lines
+	content := `{"level":"error","msg":"valid entry 1"}
+this is not json
+{"level":"info","msg":"valid entry 2"}
+{broken json here
+{"level":"warn","msg":"valid entry 3"}
+`
+	if err := os.WriteFile(logFile, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	server, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer failed: %v", err)
+	}
+
+	// Should have loaded only the 3 valid entries, skipping malformed lines
+	if server.getEntryCount() != 3 {
+		t.Errorf("Expected 3 valid entries, got %d", server.getEntryCount())
+	}
+}
+
+// TestLoadEntries_EmptyLines tests that empty lines are skipped
+func TestLoadEntries_EmptyLines(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "empty-lines.jsonl")
+
+	content := `{"level":"error","msg":"entry 1"}
+
+   
+{"level":"info","msg":"entry 2"}
+
+`
+	if err := os.WriteFile(logFile, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	server, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer failed: %v", err)
+	}
+
+	if server.getEntryCount() != 2 {
+		t.Errorf("Expected 2 entries (empty lines skipped), got %d", server.getEntryCount())
+	}
+}
+
+// TestValidateLogEntry_OversizedEntry tests rejection of entries exceeding 1MB
+func TestValidateLogEntry_OversizedEntry(t *testing.T) {
+	// Create an entry with a value larger than 1MB
+	largeValue := strings.Repeat("x", maxEntrySize+1)
+	entry := LogEntry{
+		"level": "error",
+		"msg":   largeValue,
+	}
+
+	if validateLogEntry(entry) {
+		t.Error("Expected oversized entry to be rejected")
+	}
+}
+
+// TestValidateLogEntry_ExactMaxSize tests an entry at exactly the max size boundary
+func TestValidateLogEntry_ExactMaxSize(t *testing.T) {
+	// An entry that is just under the limit should pass
+	// The overhead of {"level":"error","msg":"..."} is about 22 bytes
+	overhead := len(`{"level":"error","msg":""}`)
+	value := strings.Repeat("a", maxEntrySize-overhead-1)
+	entry := LogEntry{
+		"level": "error",
+		"msg":   value,
+	}
+
+	if !validateLogEntry(entry) {
+		t.Error("Expected entry at boundary to be accepted")
+	}
+}
+
+// TestClearEntries_SaveError tests clearEntries when save fails (read-only file)
+func TestClearEntries_SaveError(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "readonly-test.jsonl")
+
+	server, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer failed: %v", err)
+	}
+
+	// Add some entries
+	server.addEntries([]LogEntry{
+		{"level": "error", "msg": "test"},
+	})
+
+	// Make the file read-only to trigger a save error
+	if err := os.Chmod(logFile, 0444); err != nil {
+		t.Fatalf("Failed to chmod: %v", err)
+	}
+	t.Cleanup(func() {
+		os.Chmod(logFile, 0644) // restore for cleanup
+	})
+
+	// clearEntries should not panic even though save fails
+	server.clearEntries()
+
+	// Entries should still be cleared in memory
+	if server.getEntryCount() != 0 {
+		t.Errorf("Expected 0 entries after clear, got %d", server.getEntryCount())
+	}
+}
+
+// TestSaveEntries_WriteError tests saveEntries when the file cannot be written
+func TestSaveEntries_WriteError(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Use a path inside a non-existent directory to trigger create error
+	logFile := filepath.Join(tmpDir, "nonexistent-subdir", "test.jsonl")
+
+	server := &Server{
+		logFile:    logFile,
+		maxEntries: 100,
+		entries: []LogEntry{
+			{"level": "error", "msg": "test"},
+		},
+	}
+
+	err := server.saveEntries()
+	if err == nil {
+		t.Error("Expected error when directory doesn't exist")
+	}
+}

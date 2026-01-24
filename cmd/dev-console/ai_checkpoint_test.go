@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -1745,5 +1746,1085 @@ func TestPushRegression_DetectedAtTimestamp(t *testing.T) {
 	}
 	if detectedAt.Before(before) || detectedAt.After(after) {
 		t.Errorf("DetectedAt %v not between %v and %v", detectedAt, before, after)
+	}
+}
+
+// ============================================
+// Coverage Gap Tests
+// ============================================
+
+// TestContainsString_FoundTrue exercises the return-true path of containsString
+func TestContainsString_FoundTrue(t *testing.T) {
+	slice := []string{"/api/users", "/api/posts", "/api/comments"}
+	if !containsString(slice, "/api/posts") {
+		t.Error("Expected containsString to return true for existing element")
+	}
+	if !containsString(slice, "/api/users") {
+		t.Error("Expected containsString to return true for first element")
+	}
+	if !containsString(slice, "/api/comments") {
+		t.Error("Expected containsString to return true for last element")
+	}
+}
+
+func TestContainsString_NotFound(t *testing.T) {
+	slice := []string{"/api/users", "/api/posts"}
+	if containsString(slice, "/api/unknown") {
+		t.Error("Expected containsString to return false for missing element")
+	}
+}
+
+func TestContainsString_EmptySlice(t *testing.T) {
+	if containsString(nil, "anything") {
+		t.Error("Expected containsString to return false for nil slice")
+	}
+	if containsString([]string{}, "anything") {
+		t.Error("Expected containsString to return false for empty slice")
+	}
+}
+
+// TestBuildAlertSummary_MultipleCategories tests the fallback path
+// when the "load" metric is not present, covering the for-range fallback.
+func TestBuildAlertSummary_MultipleCategories(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	// No "load" metric: should use fallback path
+	metrics := map[string]AlertMetricDelta{
+		"fcp": {Baseline: 200, Current: 500, DeltaMs: 300, DeltaPct: 150.0},
+		"lcp": {Baseline: 800, Current: 1200, DeltaMs: 400, DeltaPct: 50.0},
+	}
+
+	summary := cm.buildAlertSummary("http://example.com/page", metrics)
+
+	// The fallback picks the first metric from the map iteration — it should contain the URL
+	if !strings.Contains(summary, "http://example.com/page") {
+		t.Errorf("Expected summary to contain URL, got: %s", summary)
+	}
+	// It should mention "regressed" in the fallback format
+	if !strings.Contains(summary, "regressed") {
+		t.Errorf("Expected summary to contain 'regressed', got: %s", summary)
+	}
+}
+
+// TestBuildAlertSummary_LoadMetricPresent tests the primary path
+func TestBuildAlertSummary_LoadMetricPresent(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	metrics := map[string]AlertMetricDelta{
+		"load": {Baseline: 1000, Current: 1500, DeltaMs: 500, DeltaPct: 50.0},
+		"fcp":  {Baseline: 200, Current: 400, DeltaMs: 200, DeltaPct: 100.0},
+	}
+
+	summary := cm.buildAlertSummary("http://example.com", metrics)
+
+	if !strings.Contains(summary, "Load time regressed") {
+		t.Errorf("Expected 'Load time regressed' in summary, got: %s", summary)
+	}
+	if !strings.Contains(summary, "500ms") {
+		t.Errorf("Expected '500ms' delta in summary, got: %s", summary)
+	}
+}
+
+// TestBuildAlertSummary_EmptyMetrics tests the final fallback
+func TestBuildAlertSummary_EmptyMetrics(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	summary := cm.buildAlertSummary("http://example.com", map[string]AlertMetricDelta{})
+	expected := "Performance regression detected on http://example.com"
+	if summary != expected {
+		t.Errorf("Expected %q, got %q", expected, summary)
+	}
+}
+
+// TestComputeWebSocketDiff_DirectionFilter tests WS events with various event types
+func TestComputeWebSocketDiff_DirectionFilter(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Create checkpoint before adding events
+	cm.CreateCheckpoint("ws-test")
+
+	// Add WS events with different event types
+	capture.AddWebSocketEvents([]WebSocketEvent{
+		{Event: "open", URL: "ws://example.com/ws", ID: "conn-1", Direction: "incoming"},
+		{Event: "close", URL: "ws://example.com/ws", ID: "conn-1", CloseCode: 1000, CloseReason: "normal"},
+		{Event: "error", URL: "ws://example.com/ws2", ID: "conn-2", Data: "connection failed"},
+	})
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{
+		Checkpoint: "ws-test",
+		Include:    []string{"websocket"},
+	})
+
+	if resp.WebSocket == nil {
+		t.Fatal("Expected WebSocket diff to be non-nil")
+	}
+	if resp.WebSocket.TotalNew != 3 {
+		t.Errorf("Expected 3 total new WS events, got %d", resp.WebSocket.TotalNew)
+	}
+	if len(resp.WebSocket.Connections) != 1 {
+		t.Errorf("Expected 1 connection, got %d", len(resp.WebSocket.Connections))
+	}
+	if resp.WebSocket.Connections[0].URL != "ws://example.com/ws" {
+		t.Errorf("Expected connection URL 'ws://example.com/ws', got '%s'", resp.WebSocket.Connections[0].URL)
+	}
+	if len(resp.WebSocket.Disconnections) != 1 {
+		t.Errorf("Expected 1 disconnection, got %d", len(resp.WebSocket.Disconnections))
+	}
+	if resp.WebSocket.Disconnections[0].CloseCode != 1000 {
+		t.Errorf("Expected close code 1000, got %d", resp.WebSocket.Disconnections[0].CloseCode)
+	}
+	if resp.WebSocket.Disconnections[0].CloseReason != "normal" {
+		t.Errorf("Expected close reason 'normal', got '%s'", resp.WebSocket.Disconnections[0].CloseReason)
+	}
+	if len(resp.WebSocket.Errors) != 1 {
+		t.Errorf("Expected 1 error, got %d", len(resp.WebSocket.Errors))
+	}
+	if resp.WebSocket.Errors[0].Message != "connection failed" {
+		t.Errorf("Expected error message 'connection failed', got '%s'", resp.WebSocket.Errors[0].Message)
+	}
+}
+
+// TestComputeWebSocketDiff_ErrorsOnly tests that severity=errors_only suppresses disconnections
+func TestComputeWebSocketDiff_ErrorsOnly(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	cm.CreateCheckpoint("ws-errors")
+
+	capture.AddWebSocketEvents([]WebSocketEvent{
+		{Event: "close", URL: "ws://example.com/ws", ID: "conn-1", CloseCode: 1006},
+		{Event: "error", URL: "ws://example.com/ws", ID: "conn-1", Data: "abnormal closure"},
+	})
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{
+		Checkpoint: "ws-errors",
+		Include:    []string{"websocket"},
+		Severity:   "errors_only",
+	})
+
+	if resp.WebSocket == nil {
+		t.Fatal("Expected WebSocket diff because there are errors")
+	}
+	if len(resp.WebSocket.Disconnections) != 0 {
+		t.Errorf("Expected 0 disconnections with errors_only, got %d", len(resp.WebSocket.Disconnections))
+	}
+	if len(resp.WebSocket.Errors) != 1 {
+		t.Errorf("Expected 1 error, got %d", len(resp.WebSocket.Errors))
+	}
+}
+
+// TestComputeNetworkDiff_ResponseBodies tests network bodies with response bodies present
+func TestComputeNetworkDiff_ResponseBodies(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Set up known endpoints in a checkpoint
+	cm.mu.Lock()
+	cm.autoCheckpoint = &Checkpoint{
+		CreatedAt:    time.Now().Add(-1 * time.Minute),
+		NetworkTotal: 0,
+		KnownEndpoints: map[string]endpointState{
+			"/api/users": {Status: 200, Duration: 50},
+		},
+	}
+	cm.mu.Unlock()
+
+	// Add network bodies with response body content
+	capture.AddNetworkBodies([]NetworkBody{
+		{Method: "GET", URL: "http://example.com/api/users", Status: 200, Duration: 200, ResponseBody: `{"users":[]}`},
+		{Method: "POST", URL: "http://example.com/api/new-endpoint", Status: 201, ResponseBody: `{"id":1}`},
+	})
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{Include: []string{"network"}})
+
+	if resp.Network == nil {
+		t.Fatal("Expected Network diff to be non-nil")
+	}
+	if resp.Network.TotalNew != 2 {
+		t.Errorf("Expected 2 total new, got %d", resp.Network.TotalNew)
+	}
+	// /api/users has duration 200 vs baseline 50, factor 4x > 3x threshold
+	if len(resp.Network.Degraded) != 1 {
+		t.Errorf("Expected 1 degraded endpoint, got %d", len(resp.Network.Degraded))
+	}
+	if len(resp.Network.NewEndpoints) != 1 {
+		t.Errorf("Expected 1 new endpoint, got %d", len(resp.Network.NewEndpoints))
+	}
+}
+
+// TestComputeActionsDiff_DifferentTypes tests actions with various types
+func TestComputeActionsDiff_DifferentTypes(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	cm.CreateCheckpoint("actions-test")
+
+	capture.AddEnhancedActions([]EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "http://example.com/page1"},
+		{Type: "input", Timestamp: 2000, URL: "http://example.com/page1"},
+		{Type: "navigation", Timestamp: 3000, URL: "http://example.com/page2"},
+		{Type: "scroll", Timestamp: 4000, URL: "http://example.com/page2"},
+	})
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{
+		Checkpoint: "actions-test",
+		Include:    []string{"actions"},
+	})
+
+	if resp.Actions == nil {
+		t.Fatal("Expected Actions diff to be non-nil")
+	}
+	if resp.Actions.TotalNew != 4 {
+		t.Errorf("Expected 4 total new actions, got %d", resp.Actions.TotalNew)
+	}
+	if len(resp.Actions.Actions) != 4 {
+		t.Fatalf("Expected 4 action entries, got %d", len(resp.Actions.Actions))
+	}
+
+	types := map[string]bool{}
+	for _, a := range resp.Actions.Actions {
+		types[a.Type] = true
+	}
+	for _, expected := range []string{"click", "input", "navigation", "scroll"} {
+		if !types[expected] {
+			t.Errorf("Expected action type %q in diff", expected)
+		}
+	}
+}
+
+// TestFindPositionAtTime_TimeBeforeAll tests findPositionAtTime when all entries are after t
+func TestFindPositionAtTime_TimeBeforeAll(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	// Create timestamps all in the future relative to our query time
+	now := time.Now()
+	addedAt := []time.Time{
+		now.Add(1 * time.Second),
+		now.Add(2 * time.Second),
+		now.Add(3 * time.Second),
+	}
+
+	// Query for a time before all entries
+	pos := cm.findPositionAtTime(addedAt, 10, now.Add(-1*time.Second))
+
+	// All 3 entries are after the query time, so position = 10 - 3 = 7
+	if pos != 7 {
+		t.Errorf("Expected position 7, got %d", pos)
+	}
+}
+
+// TestFindPositionAtTime_EmptySlice tests findPositionAtTime with empty addedAt
+func TestFindPositionAtTime_EmptySlice(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	pos := cm.findPositionAtTime([]time.Time{}, 5, time.Now())
+	if pos != 5 {
+		t.Errorf("Expected currentTotal (5), got %d", pos)
+	}
+}
+
+// TestFindPositionAtTime_TimeAfterAll tests findPositionAtTime when all entries are before t
+func TestFindPositionAtTime_TimeAfterAll(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	now := time.Now()
+	addedAt := []time.Time{
+		now.Add(-3 * time.Second),
+		now.Add(-2 * time.Second),
+		now.Add(-1 * time.Second),
+	}
+
+	pos := cm.findPositionAtTime(addedAt, 10, now.Add(1*time.Second))
+
+	// All entries are before query time, so entriesAfter=0, pos = 10
+	if pos != 10 {
+		t.Errorf("Expected position 10, got %d", pos)
+	}
+}
+
+// TestFindPositionAtTime_PositionClampsToZero tests the pos<0 guard
+func TestFindPositionAtTime_PositionClampsToZero(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	now := time.Now()
+	addedAt := []time.Time{
+		now.Add(1 * time.Second),
+		now.Add(2 * time.Second),
+		now.Add(3 * time.Second),
+	}
+
+	// currentTotal=2, but 3 entries are after query time -> 2-3 = -1 -> clamp to 0
+	pos := cm.findPositionAtTime(addedAt, 2, now.Add(-1*time.Second))
+	if pos != 0 {
+		t.Errorf("Expected position to be clamped to 0, got %d", pos)
+	}
+}
+
+// ============================================
+// Coverage: computeWebSocketDiff — open, error, close events and capping
+// ============================================
+
+func TestComputeWebSocketDiff_OpenEvents(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Establish checkpoint
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Add WebSocket open events
+	capture.mu.Lock()
+	capture.wsEvents = append(capture.wsEvents, WebSocketEvent{
+		Event: "open",
+		URL:   "ws://example.com/socket",
+		ID:    "conn-1",
+	})
+	capture.wsTotalAdded = 1
+	capture.mu.Unlock()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.WebSocket == nil {
+		t.Fatal("Expected WebSocket diff to be non-nil")
+	}
+	if resp.WebSocket.TotalNew != 1 {
+		t.Errorf("Expected TotalNew=1, got %d", resp.WebSocket.TotalNew)
+	}
+	if len(resp.WebSocket.Connections) != 1 {
+		t.Fatalf("Expected 1 connection, got %d", len(resp.WebSocket.Connections))
+	}
+	if resp.WebSocket.Connections[0].URL != "ws://example.com/socket" {
+		t.Errorf("Expected URL ws://example.com/socket, got %s", resp.WebSocket.Connections[0].URL)
+	}
+	if resp.WebSocket.Connections[0].ID != "conn-1" {
+		t.Errorf("Expected ID conn-1, got %s", resp.WebSocket.Connections[0].ID)
+	}
+}
+
+func TestComputeWebSocketDiff_ErrorEvents(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Establish checkpoint
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Add WebSocket error events
+	capture.mu.Lock()
+	capture.wsEvents = append(capture.wsEvents, WebSocketEvent{
+		Event: "error",
+		URL:   "ws://example.com/socket",
+		Data:  "Connection refused",
+	})
+	capture.wsTotalAdded = 1
+	capture.mu.Unlock()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.WebSocket == nil {
+		t.Fatal("Expected WebSocket diff to be non-nil")
+	}
+	if len(resp.WebSocket.Errors) != 1 {
+		t.Fatalf("Expected 1 error, got %d", len(resp.WebSocket.Errors))
+	}
+	if resp.WebSocket.Errors[0].URL != "ws://example.com/socket" {
+		t.Errorf("Expected URL ws://example.com/socket, got %s", resp.WebSocket.Errors[0].URL)
+	}
+	if resp.WebSocket.Errors[0].Message != "Connection refused" {
+		t.Errorf("Expected message 'Connection refused', got '%s'", resp.WebSocket.Errors[0].Message)
+	}
+}
+
+func TestComputeWebSocketDiff_CloseEvents(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Establish checkpoint
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Add WebSocket close events
+	capture.mu.Lock()
+	capture.wsEvents = append(capture.wsEvents, WebSocketEvent{
+		Event:       "close",
+		URL:         "ws://example.com/socket",
+		CloseCode:   1006,
+		CloseReason: "Abnormal closure",
+	})
+	capture.wsTotalAdded = 1
+	capture.mu.Unlock()
+
+	// Default severity (not errors_only) should include disconnections
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.WebSocket == nil {
+		t.Fatal("Expected WebSocket diff to be non-nil")
+	}
+	if len(resp.WebSocket.Disconnections) != 1 {
+		t.Fatalf("Expected 1 disconnection, got %d", len(resp.WebSocket.Disconnections))
+	}
+	if resp.WebSocket.Disconnections[0].CloseCode != 1006 {
+		t.Errorf("Expected close code 1006, got %d", resp.WebSocket.Disconnections[0].CloseCode)
+	}
+}
+
+func TestComputeWebSocketDiff_CapsConnections(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Establish checkpoint
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Add more than maxDiffEntriesPerCat (50) open events
+	capture.mu.Lock()
+	for i := 0; i < 60; i++ {
+		capture.wsEvents = append(capture.wsEvents, WebSocketEvent{
+			Event: "open",
+			URL:   fmt.Sprintf("ws://example.com/socket-%d", i),
+			ID:    fmt.Sprintf("conn-%d", i),
+		})
+	}
+	capture.wsTotalAdded = 60
+	capture.mu.Unlock()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.WebSocket == nil {
+		t.Fatal("Expected WebSocket diff to be non-nil")
+	}
+	if len(resp.WebSocket.Connections) != 50 {
+		t.Errorf("Expected connections capped at 50, got %d", len(resp.WebSocket.Connections))
+	}
+}
+
+func TestComputeWebSocketDiff_CapsErrors(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Establish checkpoint
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Add more than maxDiffEntriesPerCat (50) error events
+	capture.mu.Lock()
+	for i := 0; i < 55; i++ {
+		capture.wsEvents = append(capture.wsEvents, WebSocketEvent{
+			Event: "error",
+			URL:   fmt.Sprintf("ws://example.com/socket-%d", i),
+			Data:  fmt.Sprintf("error-%d", i),
+		})
+	}
+	capture.wsTotalAdded = 55
+	capture.mu.Unlock()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.WebSocket == nil {
+		t.Fatal("Expected WebSocket diff to be non-nil")
+	}
+	if len(resp.WebSocket.Errors) != 50 {
+		t.Errorf("Expected errors capped at 50, got %d", len(resp.WebSocket.Errors))
+	}
+}
+
+func TestComputeWebSocketDiff_CapsDisconnections(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Establish checkpoint
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Add more than maxDiffEntriesPerCat (50) close events
+	capture.mu.Lock()
+	for i := 0; i < 55; i++ {
+		capture.wsEvents = append(capture.wsEvents, WebSocketEvent{
+			Event:     "close",
+			URL:       fmt.Sprintf("ws://example.com/socket-%d", i),
+			CloseCode: 1000,
+		})
+	}
+	capture.wsTotalAdded = 55
+	capture.mu.Unlock()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.WebSocket == nil {
+		t.Fatal("Expected WebSocket diff to be non-nil")
+	}
+	if len(resp.WebSocket.Disconnections) != 50 {
+		t.Errorf("Expected disconnections capped at 50, got %d", len(resp.WebSocket.Disconnections))
+	}
+}
+
+// ============================================
+// Coverage: computeActionsDiff — various action types
+// ============================================
+
+func TestComputeActionsDiff_VariousActionTypes(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Establish checkpoint
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Add actions of various types
+	capture.mu.Lock()
+	capture.enhancedActions = append(capture.enhancedActions,
+		EnhancedAction{Type: "click", Timestamp: 1000, URL: "/page1"},
+		EnhancedAction{Type: "keypress", Timestamp: 1001, URL: "/page1"},
+		EnhancedAction{Type: "scroll", Timestamp: 1002, URL: "/page1"},
+		EnhancedAction{Type: "input", Timestamp: 1003, URL: "/page2"},
+		EnhancedAction{Type: "navigation", Timestamp: 1004, URL: "/page3"},
+	)
+	capture.actionTotalAdded = 5
+	capture.mu.Unlock()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.Actions == nil {
+		t.Fatal("Expected Actions diff to be non-nil")
+	}
+	if resp.Actions.TotalNew != 5 {
+		t.Errorf("Expected TotalNew=5, got %d", resp.Actions.TotalNew)
+	}
+	if len(resp.Actions.Actions) != 5 {
+		t.Fatalf("Expected 5 actions, got %d", len(resp.Actions.Actions))
+	}
+
+	// Verify action types are preserved
+	expectedTypes := []string{"click", "keypress", "scroll", "input", "navigation"}
+	for i, expected := range expectedTypes {
+		if resp.Actions.Actions[i].Type != expected {
+			t.Errorf("Action[%d]: expected type '%s', got '%s'", i, expected, resp.Actions.Actions[i].Type)
+		}
+	}
+}
+
+func TestComputeActionsDiff_CapsAtMax(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Establish checkpoint
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Add more than maxDiffEntriesPerCat (50) actions
+	capture.mu.Lock()
+	for i := 0; i < 60; i++ {
+		capture.enhancedActions = append(capture.enhancedActions,
+			EnhancedAction{Type: "click", Timestamp: int64(1000 + i), URL: fmt.Sprintf("/page-%d", i)},
+		)
+	}
+	capture.actionTotalAdded = 60
+	capture.mu.Unlock()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.Actions == nil {
+		t.Fatal("Expected Actions diff to be non-nil")
+	}
+	if resp.Actions.TotalNew != 60 {
+		t.Errorf("Expected TotalNew=60, got %d", resp.Actions.TotalNew)
+	}
+	if len(resp.Actions.Actions) != 50 {
+		t.Errorf("Expected actions capped at 50, got %d", len(resp.Actions.Actions))
+	}
+}
+
+// ============================================
+// Coverage: DetectAndStoreAlerts — various regression types
+// ============================================
+
+func TestDetectAndStoreAlerts_CLSRegression(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	baselineCLS := 0.05
+	snapshotCLS := 0.25 // >0.1 absolute increase
+
+	baseline := PerformanceBaseline{
+		SampleCount: 3,
+		Timing: BaselineTiming{
+			Load: 1000,
+		},
+		CLS: &baselineCLS,
+	}
+
+	snapshot := PerformanceSnapshot{
+		URL: "/test-page",
+		Timing: PerformanceTiming{
+			Load: 1000, // No load regression
+		},
+		CLS: &snapshotCLS,
+	}
+
+	cm.DetectAndStoreAlerts(snapshot, baseline)
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	if len(cm.pendingAlerts) != 1 {
+		t.Fatalf("Expected 1 alert, got %d", len(cm.pendingAlerts))
+	}
+	alert := cm.pendingAlerts[0]
+	if _, ok := alert.Metrics["cls"]; !ok {
+		t.Error("Expected CLS metric in alert")
+	}
+	if alert.URL != "/test-page" {
+		t.Errorf("Expected URL '/test-page', got '%s'", alert.URL)
+	}
+}
+
+func TestDetectAndStoreAlerts_FCPRegression(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	baselineFCP := 200.0
+	snapshotFCP := 300.0 // >20% increase (50%)
+
+	baseline := PerformanceBaseline{
+		SampleCount: 3,
+		Timing: BaselineTiming{
+			Load:                 1000,
+			FirstContentfulPaint: &baselineFCP,
+		},
+	}
+
+	snapshot := PerformanceSnapshot{
+		URL: "/fcp-page",
+		Timing: PerformanceTiming{
+			Load:                 1000, // No load regression
+			FirstContentfulPaint: &snapshotFCP,
+		},
+	}
+
+	cm.DetectAndStoreAlerts(snapshot, baseline)
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	if len(cm.pendingAlerts) != 1 {
+		t.Fatalf("Expected 1 alert, got %d", len(cm.pendingAlerts))
+	}
+	if _, ok := cm.pendingAlerts[0].Metrics["fcp"]; !ok {
+		t.Error("Expected FCP metric in alert")
+	}
+}
+
+func TestDetectAndStoreAlerts_TransferSizeRegression(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	baseline := PerformanceBaseline{
+		SampleCount: 3,
+		Timing: BaselineTiming{
+			Load: 1000,
+		},
+		Network: BaselineNetwork{
+			TransferSize: 100000,
+		},
+	}
+
+	snapshot := PerformanceSnapshot{
+		URL: "/bundle-page",
+		Timing: PerformanceTiming{
+			Load: 1000, // No load regression
+		},
+		Network: NetworkSummary{
+			TransferSize: 150000, // >25% increase (50%)
+		},
+	}
+
+	cm.DetectAndStoreAlerts(snapshot, baseline)
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	if len(cm.pendingAlerts) != 1 {
+		t.Fatalf("Expected 1 alert, got %d", len(cm.pendingAlerts))
+	}
+	if _, ok := cm.pendingAlerts[0].Metrics["transfer_bytes"]; !ok {
+		t.Error("Expected transfer_bytes metric in alert")
+	}
+}
+
+func TestDetectAndStoreAlerts_BaselineTooFew(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	baseline := PerformanceBaseline{
+		SampleCount: 0, // Less than 1, should early-return
+		Timing: BaselineTiming{
+			Load: 500,
+		},
+	}
+
+	snapshot := PerformanceSnapshot{
+		URL: "/new-page",
+		Timing: PerformanceTiming{
+			Load: 5000, // Would be a huge regression but baseline too few
+		},
+	}
+
+	cm.DetectAndStoreAlerts(snapshot, baseline)
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	if len(cm.pendingAlerts) != 0 {
+		t.Errorf("Expected 0 alerts when baseline SampleCount<1, got %d", len(cm.pendingAlerts))
+	}
+}
+
+func TestDetectAndStoreAlerts_NoRegression_ResolvesExisting(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	// First: create a regression alert
+	baseline := PerformanceBaseline{
+		SampleCount: 3,
+		Timing: BaselineTiming{
+			Load: 500,
+		},
+	}
+	snapshot := PerformanceSnapshot{
+		URL: "/resolve-page",
+		Timing: PerformanceTiming{
+			Load: 1500, // >20% regression
+		},
+	}
+	cm.DetectAndStoreAlerts(snapshot, baseline)
+
+	cm.mu.Lock()
+	if len(cm.pendingAlerts) != 1 {
+		t.Fatalf("Expected 1 alert after regression, got %d", len(cm.pendingAlerts))
+	}
+	cm.mu.Unlock()
+
+	// Now: send a snapshot that does NOT regress — should resolve the alert
+	goodSnapshot := PerformanceSnapshot{
+		URL: "/resolve-page",
+		Timing: PerformanceTiming{
+			Load: 500, // Same as baseline
+		},
+	}
+	cm.DetectAndStoreAlerts(goodSnapshot, baseline)
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	if len(cm.pendingAlerts) != 0 {
+		t.Errorf("Expected alert to be resolved, got %d pending", len(cm.pendingAlerts))
+	}
+}
+
+func TestDetectAndStoreAlerts_LCPRegression(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	baselineLCP := 1000.0
+	snapshotLCP := 1500.0 // >20% increase (50%)
+
+	baseline := PerformanceBaseline{
+		SampleCount: 3,
+		Timing: BaselineTiming{
+			Load:                   1000,
+			LargestContentfulPaint: &baselineLCP,
+		},
+	}
+
+	snapshot := PerformanceSnapshot{
+		URL: "/lcp-page",
+		Timing: PerformanceTiming{
+			Load:                   1000, // No load regression
+			LargestContentfulPaint: &snapshotLCP,
+		},
+	}
+
+	cm.DetectAndStoreAlerts(snapshot, baseline)
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	if len(cm.pendingAlerts) != 1 {
+		t.Fatalf("Expected 1 alert, got %d", len(cm.pendingAlerts))
+	}
+	if _, ok := cm.pendingAlerts[0].Metrics["lcp"]; !ok {
+		t.Error("Expected LCP metric in alert")
+	}
+}
+
+func TestDetectAndStoreAlerts_TTFBRegression(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	baseline := PerformanceBaseline{
+		SampleCount: 3,
+		Timing: BaselineTiming{
+			Load:            1000,
+			TimeToFirstByte: 100,
+		},
+	}
+
+	snapshot := PerformanceSnapshot{
+		URL: "/ttfb-page",
+		Timing: PerformanceTiming{
+			Load:            1000, // No load regression
+			TimeToFirstByte: 200,  // >50% increase (100%)
+		},
+	}
+
+	cm.DetectAndStoreAlerts(snapshot, baseline)
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	if len(cm.pendingAlerts) != 1 {
+		t.Fatalf("Expected 1 alert, got %d", len(cm.pendingAlerts))
+	}
+	if _, ok := cm.pendingAlerts[0].Metrics["ttfb"]; !ok {
+		t.Error("Expected TTFB metric in alert")
+	}
+}
+
+// ============================================
+// Coverage: buildAlertSummary — fallback metrics
+// ============================================
+
+func TestBuildAlertSummary_FallbackToNonLoadMetric(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	// When there's no "load" metric, buildAlertSummary should use a fallback
+	metrics := map[string]AlertMetricDelta{
+		"cls": {
+			Baseline: 0.05,
+			Current:  0.25,
+			DeltaMs:  0.2,
+			DeltaPct: 400.0,
+		},
+	}
+
+	summary := cm.buildAlertSummary("/test", metrics)
+
+	if !strings.Contains(summary, "cls") {
+		t.Errorf("Expected summary to mention 'cls', got '%s'", summary)
+	}
+	if !strings.Contains(summary, "/test") {
+		t.Errorf("Expected summary to mention URL '/test', got '%s'", summary)
+	}
+}
+
+func TestBuildAlertSummary_LoadMetricPreferred(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	// When "load" metric is present, it should be used for the summary
+	metrics := map[string]AlertMetricDelta{
+		"load": {
+			Baseline: 500,
+			Current:  1000,
+			DeltaMs:  500,
+			DeltaPct: 100.0,
+		},
+		"cls": {
+			Baseline: 0.05,
+			Current:  0.2,
+			DeltaMs:  0.15,
+			DeltaPct: 300.0,
+		},
+	}
+
+	summary := cm.buildAlertSummary("/page", metrics)
+
+	if !strings.Contains(summary, "Load time regressed") {
+		t.Errorf("Expected summary to start with 'Load time regressed', got '%s'", summary)
+	}
+	if !strings.Contains(summary, "500ms") {
+		t.Errorf("Expected summary to mention delta ms, got '%s'", summary)
+	}
+}
+
+// ============================================
+// Coverage: computeNetworkDiff — capping branches
+// ============================================
+
+func TestComputeNetworkDiff_CapsFailures(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Establish checkpoint
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Add more than 50 network failures (all new endpoints with status >= 400)
+	capture.mu.Lock()
+	for i := 0; i < 55; i++ {
+		capture.networkBodies = append(capture.networkBodies, NetworkBody{
+			URL:    fmt.Sprintf("https://example.com/api/fail-%d", i),
+			Status: 500,
+		})
+	}
+	capture.networkTotalAdded = 55
+	capture.mu.Unlock()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.Network == nil {
+		t.Fatal("Expected Network diff to be non-nil")
+	}
+	if len(resp.Network.Failures) > 50 {
+		t.Errorf("Expected failures capped at 50, got %d", len(resp.Network.Failures))
+	}
+}
+
+func TestComputeNetworkDiff_CapsNewEndpoints(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Establish checkpoint
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Add more than 50 new successful endpoints
+	capture.mu.Lock()
+	for i := 0; i < 55; i++ {
+		capture.networkBodies = append(capture.networkBodies, NetworkBody{
+			URL:    fmt.Sprintf("https://example.com/api/new-%d", i),
+			Status: 200,
+		})
+	}
+	capture.networkTotalAdded = 55
+	capture.mu.Unlock()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.Network == nil {
+		t.Fatal("Expected Network diff to be non-nil")
+	}
+	if len(resp.Network.NewEndpoints) > 50 {
+		t.Errorf("Expected new endpoints capped at 50, got %d", len(resp.Network.NewEndpoints))
+	}
+}
+
+func TestComputeNetworkDiff_CapsDegraded(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// First, establish a checkpoint with known endpoints
+	capture.mu.Lock()
+	for i := 0; i < 55; i++ {
+		capture.networkBodies = append(capture.networkBodies, NetworkBody{
+			URL:      fmt.Sprintf("https://example.com/api/slow-%d", i),
+			Status:   200,
+			Duration: 100,
+		})
+	}
+	capture.networkTotalAdded = 55
+	capture.mu.Unlock()
+
+	// Get changes to establish checkpoint with known endpoints
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Now add the same endpoints but much slower (>2x baseline)
+	capture.mu.Lock()
+	capture.networkBodies = capture.networkBodies[:0]
+	for i := 0; i < 55; i++ {
+		capture.networkBodies = append(capture.networkBodies, NetworkBody{
+			URL:      fmt.Sprintf("https://example.com/api/slow-%d", i),
+			Status:   200,
+			Duration: 500, // Much slower than baseline of 100
+		})
+	}
+	capture.networkTotalAdded = 110
+	capture.mu.Unlock()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.Network == nil {
+		t.Fatal("Expected Network diff to be non-nil")
+	}
+	if len(resp.Network.Degraded) > 50 {
+		t.Errorf("Expected degraded capped at 50, got %d", len(resp.Network.Degraded))
+	}
+}
+
+// ============================================
+// Coverage: computeNetworkDiff — toRead > available branch
+// ============================================
+
+func TestComputeNetworkDiff_ToReadExceedsAvailable(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Establish checkpoint
+	cm.GetChangesSince(GetChangesSinceParams{})
+
+	// Set networkTotalAdded high but only have a few bodies in the buffer
+	// This simulates ring buffer eviction
+	capture.mu.Lock()
+	capture.networkBodies = append(capture.networkBodies, NetworkBody{
+		URL:    "https://example.com/api/test",
+		Status: 200,
+	})
+	capture.networkTotalAdded = 100 // Says 100 were added, but only 1 in buffer
+	capture.mu.Unlock()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+
+	if resp.Network == nil {
+		t.Fatal("Expected Network diff to be non-nil")
+	}
+	// Should still work with the available bodies
+	if resp.Network.TotalNew != 1 {
+		t.Errorf("Expected TotalNew=1 (clamped to available), got %d", resp.Network.TotalNew)
+	}
+}
+
+// ============================================
+// Coverage: CLS regression with baseline CLS == 0
+// ============================================
+
+func TestDetectAndStoreAlerts_CLSRegressionWithZeroBaseline(t *testing.T) {
+	cm, _, _ := setupCheckpointTest(t)
+
+	baselineCLS := 0.0   // Zero baseline CLS
+	snapshotCLS := 0.15  // >0.1 absolute increase
+
+	baseline := PerformanceBaseline{
+		SampleCount: 3,
+		Timing: BaselineTiming{
+			Load: 1000,
+		},
+		CLS: &baselineCLS,
+	}
+
+	snapshot := PerformanceSnapshot{
+		URL: "/cls-zero-baseline",
+		Timing: PerformanceTiming{
+			Load: 1000,
+		},
+		CLS: &snapshotCLS,
+	}
+
+	cm.DetectAndStoreAlerts(snapshot, baseline)
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	if len(cm.pendingAlerts) != 1 {
+		t.Fatalf("Expected 1 alert, got %d", len(cm.pendingAlerts))
+	}
+	clsMetric, ok := cm.pendingAlerts[0].Metrics["cls"]
+	if !ok {
+		t.Fatal("Expected CLS metric in alert")
+	}
+	// When baseline is 0, DeltaPct should be 0 (special case in code)
+	if clsMetric.DeltaPct != 0 {
+		t.Errorf("Expected DeltaPct=0 when baseline CLS is 0, got %f", clsMetric.DeltaPct)
+	}
+}
+
+
+// ============================================
+// Coverage: buildAlertSummary in alerts.go — singular count
+// ============================================
+
+func TestBuildAlertSummaryAlerts_SingleCategory(t *testing.T) {
+	alerts := []Alert{
+		{Category: "regression", Title: "test"},
+	}
+	summary := buildAlertSummary(alerts)
+	if !strings.Contains(summary, "1 regression") {
+		t.Errorf("Expected '1 regression' in summary, got '%s'", summary)
+	}
+	if !strings.Contains(summary, "1 alerts:") {
+		t.Errorf("Expected '1 alerts:' prefix, got '%s'", summary)
+	}
+}
+
+func TestBuildAlertSummaryAlerts_MultipleCategoriesWithSingulars(t *testing.T) {
+	alerts := []Alert{
+		{Category: "regression", Title: "r1"},
+		{Category: "anomaly", Title: "a1"},
+		{Category: "ci", Title: "c1"},
+	}
+	summary := buildAlertSummary(alerts)
+	if !strings.Contains(summary, "1 regression") {
+		t.Errorf("Expected '1 regression' in summary, got '%s'", summary)
+	}
+	if !strings.Contains(summary, "1 anomaly") {
+		t.Errorf("Expected '1 anomaly' in summary, got '%s'", summary)
+	}
+	if !strings.Contains(summary, "1 ci") {
+		t.Errorf("Expected '1 ci' in summary, got '%s'", summary)
 	}
 }
