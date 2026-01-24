@@ -17,6 +17,9 @@ func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	// Enforce memory limits before adding
+	v.enforceMemory()
+
 	v.networkTotalAdded += int64(len(bodies))
 	now := time.Now()
 	for i := range bodies {
@@ -34,13 +37,14 @@ func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
 		v.networkAddedAt = append(v.networkAddedAt, now)
 	}
 
-	// Enforce max count
-	if len(v.networkBodies) > maxNetworkBodies {
-		v.networkBodies = v.networkBodies[len(v.networkBodies)-maxNetworkBodies:]
-		v.networkAddedAt = v.networkAddedAt[len(v.networkAddedAt)-maxNetworkBodies:]
+	// Enforce max count (respecting minimal mode)
+	cap := v.effectiveNBCapacity()
+	if len(v.networkBodies) > cap {
+		v.networkBodies = v.networkBodies[len(v.networkBodies)-cap:]
+		v.networkAddedAt = v.networkAddedAt[len(v.networkAddedAt)-cap:]
 	}
 
-	// Enforce memory limit
+	// Enforce per-buffer memory limit
 	v.evictNBForMemory()
 }
 
@@ -54,14 +58,6 @@ func (v *Capture) evictNBForMemory() {
 	}
 }
 
-// calcNBMemory approximates memory usage of network bodies buffer
-func (v *Capture) calcNBMemory() int64 {
-	var total int64
-	for _, b := range v.networkBodies {
-		total += int64(len(b.RequestBody) + len(b.ResponseBody) + len(b.URL) + len(b.Method) + 64)
-	}
-	return total
-}
 
 // GetNetworkBodyCount returns the current number of buffered bodies
 func (v *Capture) GetNetworkBodyCount() int {

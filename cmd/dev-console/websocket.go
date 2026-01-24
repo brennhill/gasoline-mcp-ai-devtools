@@ -18,6 +18,9 @@ func (v *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	// Enforce memory limits before adding
+	v.enforceMemory()
+
 	v.wsTotalAdded += int64(len(events))
 	now := time.Now()
 	for i := range events {
@@ -29,13 +32,14 @@ func (v *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 		v.wsAddedAt = append(v.wsAddedAt, now)
 	}
 
-	// Enforce max count
-	if len(v.wsEvents) > maxWSEvents {
-		v.wsEvents = v.wsEvents[len(v.wsEvents)-maxWSEvents:]
-		v.wsAddedAt = v.wsAddedAt[len(v.wsAddedAt)-maxWSEvents:]
+	// Enforce max count (respecting minimal mode)
+	cap := v.effectiveWSCapacity()
+	if len(v.wsEvents) > cap {
+		v.wsEvents = v.wsEvents[len(v.wsEvents)-cap:]
+		v.wsAddedAt = v.wsAddedAt[len(v.wsAddedAt)-cap:]
 	}
 
-	// Enforce memory limit
+	// Enforce per-buffer memory limit
 	v.evictWSForMemory()
 }
 
@@ -49,14 +53,6 @@ func (v *Capture) evictWSForMemory() {
 	}
 }
 
-// calcWSMemory approximates memory usage of WS buffer
-func (v *Capture) calcWSMemory() int64 {
-	var total int64
-	for i := range v.wsEvents {
-		total += int64(len(v.wsEvents[i].Data) + len(v.wsEvents[i].URL) + len(v.wsEvents[i].ID) + len(v.wsEvents[i].Timestamp) + len(v.wsEvents[i].Direction) + len(v.wsEvents[i].Event) + 64)
-	}
-	return total
-}
 
 // GetWebSocketEventCount returns the current number of buffered events
 func (v *Capture) GetWebSocketEventCount() int {
