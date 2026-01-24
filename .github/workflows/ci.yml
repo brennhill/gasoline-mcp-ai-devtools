@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: "0 6 * * *" # Daily at 6 AM UTC
+  workflow_dispatch: # Manual trigger
 
 jobs:
   go:
@@ -19,6 +22,11 @@ jobs:
 
       - name: Vet
         run: go vet ./cmd/dev-console/
+
+      - name: Vulnerability check
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./cmd/dev-console/
 
       - name: Test (with race detector)
         run: make test-race
@@ -106,3 +114,17 @@ jobs:
           npx eslint -c eslint.config.js \
             --rule '{"security/detect-eval-with-expression": "error", "security/detect-non-literal-regexp": "error", "security/detect-possible-timing-attacks": "error"}' \
             extension/
+
+  fuzz:
+    name: Fuzz Testing (Nightly)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Fuzz all targets (30s each)
+        run: make ci-fuzz

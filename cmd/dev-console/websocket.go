@@ -8,7 +8,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -48,13 +47,21 @@ func (v *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	v.evictWSForMemory()
 }
 
-// evictWSForMemory removes oldest events if memory exceeds limit
+// evictWSForMemory removes oldest events if memory exceeds limit.
+// Calculates how many entries to drop in a single pass to avoid O(n²) re-scanning.
 func (v *Capture) evictWSForMemory() {
-	for v.calcWSMemory() > wsBufferMemoryLimit && len(v.wsEvents) > 0 {
-		v.wsEvents = v.wsEvents[1:]
-		if len(v.wsAddedAt) > 0 {
-			v.wsAddedAt = v.wsAddedAt[1:]
-		}
+	excess := v.calcWSMemory() - wsBufferMemoryLimit
+	if excess <= 0 {
+		return
+	}
+	drop := 0
+	for drop < len(v.wsEvents) && excess > 0 {
+		excess -= int64(len(v.wsEvents[drop].Data)) + wsEventOverhead
+		drop++
+	}
+	v.wsEvents = v.wsEvents[drop:]
+	if len(v.wsAddedAt) >= drop {
+		v.wsAddedAt = v.wsAddedAt[drop:]
 	}
 }
 
@@ -90,16 +97,10 @@ func (v *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 		filtered = append(filtered, v.wsEvents[i])
 	}
 
-	// Reverse for newest first
-	for i, j := 0, len(filtered)-1; i < j; i, j = i+1, j-1 {
-		filtered[i], filtered[j] = filtered[j], filtered[i]
-	}
-
-	// Apply limit
+	reverseSlice(filtered)
 	if len(filtered) > limit {
 		filtered = filtered[:limit]
 	}
-
 	return filtered
 }
 
@@ -349,19 +350,10 @@ func (v *Capture) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Check rate limit and circuit breaker (POST only)
-	if v.CheckRateLimit() {
-		v.WriteRateLimitResponse(w)
+	body, ok := v.readIngestBody(w, r)
+	if !ok {
 		return
 	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
-		return
-	}
-
 	var payload struct {
 		Events []WebSocketEvent `json:"events"`
 	}
@@ -369,16 +361,9 @@ func (v *Capture) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	// Record batch size for rate limiting
-	v.RecordEvents(len(payload.Events))
-
-	// Re-check after recording (the batch itself might push us over)
-	if v.CheckRateLimit() {
-		v.WriteRateLimitResponse(w)
+	if !v.recordAndRecheck(w, len(payload.Events)) {
 		return
 	}
-
 	v.AddWebSocketEvents(payload.Events)
 	w.WriteHeader(http.StatusOK)
 }

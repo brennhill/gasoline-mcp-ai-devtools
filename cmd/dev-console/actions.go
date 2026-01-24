@@ -7,7 +7,6 @@ package main
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -73,19 +72,10 @@ func (v *Capture) GetEnhancedActions(filter EnhancedActionFilter) []EnhancedActi
 }
 
 func (v *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) {
-	// Check rate limit and circuit breaker
-	if v.CheckRateLimit() {
-		v.WriteRateLimitResponse(w)
+	body, ok := v.readIngestBody(w, r)
+	if !ok {
 		return
 	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
-		return
-	}
-
 	var payload struct {
 		Actions []EnhancedAction `json:"actions"`
 	}
@@ -93,16 +83,9 @@ func (v *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	// Record batch size for rate limiting
-	v.RecordEvents(len(payload.Actions))
-
-	// Re-check after recording
-	if v.CheckRateLimit() {
-		v.WriteRateLimitResponse(w)
+	if !v.recordAndRecheck(w, len(payload.Actions)) {
 		return
 	}
-
 	v.AddEnhancedActions(payload.Actions)
 	w.WriteHeader(http.StatusOK)
 }

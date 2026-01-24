@@ -1187,6 +1187,67 @@ func FuzzScreenshotEndpoint(f *testing.F) {
 	})
 }
 
+func FuzzNetworkBodies(f *testing.F) {
+	f.Add([]byte(`{"bodies":[{"url":"https://api.example.com/users","method":"GET","status":200,"responseBody":"{}"}]}`))
+	f.Add([]byte(`{"bodies":[]}`))
+	f.Add([]byte(`{}`))
+	f.Add([]byte(`not json`))
+	f.Add([]byte(`{"bodies":[{"url":"","method":"","status":0}]}`))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		capture := NewCapture()
+		req := httptest.NewRequest("POST", "/network-bodies", bytes.NewReader(data))
+		w := httptest.NewRecorder()
+		capture.HandleNetworkBodies(w, req)
+	})
+}
+
+func FuzzWebSocketEvents(f *testing.F) {
+	f.Add([]byte(`{"events":[{"id":"ws-1","event":"open","url":"wss://example.com/ws"}]}`))
+	f.Add([]byte(`{"events":[{"id":"ws-1","event":"message","direction":"incoming","data":"hello"}]}`))
+	f.Add([]byte(`{"events":[]}`))
+	f.Add([]byte(`{}`))
+	f.Add([]byte(`not json`))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		capture := NewCapture()
+		req := httptest.NewRequest("POST", "/websocket-events", bytes.NewReader(data))
+		w := httptest.NewRecorder()
+		capture.HandleWebSocketEvents(w, req)
+	})
+}
+
+func FuzzEnhancedActions(f *testing.F) {
+	f.Add([]byte(`{"actions":[{"type":"click","selector":"#btn","timestamp":"2024-01-01T00:00:00Z"}]}`))
+	f.Add([]byte(`{"actions":[]}`))
+	f.Add([]byte(`{}`))
+	f.Add([]byte(`not json`))
+	f.Add([]byte(`{"actions":[{"type":"input","inputType":"password","value":"secret"}]}`))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		capture := NewCapture()
+		req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewReader(data))
+		w := httptest.NewRecorder()
+		capture.HandleEnhancedActions(w, req)
+	})
+}
+
+func FuzzValidateLogEntry(f *testing.F) {
+	f.Add(`{"level":"error","msg":"test"}`)
+	f.Add(`{"level":"warn","msg":"` + strings.Repeat("a", 600000) + `"}`)
+	f.Add(`{"level":"invalid"}`)
+	f.Add(`{}`)
+	f.Add(`{"level":"error"}`)
+
+	f.Fuzz(func(t *testing.T, data string) {
+		var entry LogEntry
+		if json.Unmarshal([]byte(data), &entry) != nil {
+			return
+		}
+		validateLogEntry(entry)
+	})
+}
+
 // ============================================
 // Benchmarks
 // ============================================

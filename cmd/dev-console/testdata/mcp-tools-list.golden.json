@@ -387,6 +387,143 @@
         ],
         "type": "object"
       }
+    },
+    {
+      "name": "generate_csp",
+      "description": "Generate a Content-Security-Policy header from observed network origins. Accumulates origins over time and produces a CSP with confidence scoring.",
+      "inputSchema": {
+        "properties": {
+          "exclude_origins": {
+            "description": "Origins to exclude from the generated CSP",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "include_report_uri": {
+            "description": "Include report-uri directive in the generated CSP",
+            "type": "boolean"
+          },
+          "mode": {
+            "description": "CSP strictness mode",
+            "enum": [
+              "strict",
+              "moderate",
+              "report_only"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "security_audit",
+      "description": "Scan captured network traffic and console logs for security issues: exposed credentials, PII leakage, missing security headers, insecure cookies, transport security, and auth patterns.",
+      "inputSchema": {
+        "properties": {
+          "checks": {
+            "description": "Which checks to run (default: all)",
+            "items": {
+              "enum": [
+                "credentials",
+                "pii",
+                "headers",
+                "cookies",
+                "transport",
+                "auth"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "severity_min": {
+            "description": "Minimum severity to report",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "info"
+            ],
+            "type": "string"
+          },
+          "url_filter": {
+            "description": "Only scan requests matching this URL substring",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "_meta": {
+        "data_counts": {
+          "console_logs": 0,
+          "network_bodies": 0
+        }
+      }
+    },
+    {
+      "name": "get_audit_log",
+      "description": "Query the enterprise audit trail of MCP tool invocations. Returns entries filtered by session, tool name, or time range.",
+      "inputSchema": {
+        "properties": {
+          "limit": {
+            "description": "Maximum number of entries to return (default: 100)",
+            "type": "number"
+          },
+          "session_id": {
+            "description": "Filter by MCP session ID",
+            "type": "string"
+          },
+          "since": {
+            "description": "Only return entries after this ISO 8601 timestamp",
+            "type": "string"
+          },
+          "tool_name": {
+            "description": "Filter by tool name",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "diff_sessions",
+      "description": "Capture browser state snapshots and compare them to detect regressions. Supports capture, compare, list, and delete actions.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "Action to perform",
+            "enum": [
+              "capture",
+              "compare",
+              "list",
+              "delete"
+            ],
+            "type": "string"
+          },
+          "compare_a": {
+            "description": "First snapshot name for comparison",
+            "type": "string"
+          },
+          "compare_b": {
+            "description": "Second snapshot name for comparison",
+            "type": "string"
+          },
+          "name": {
+            "description": "Snapshot name (required for capture and delete)",
+            "type": "string"
+          },
+          "url_filter": {
+            "description": "Only include network requests matching this URL substring",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

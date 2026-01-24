@@ -1,0 +1,530 @@
+// clustering.go — Error clustering by root cause using 2-of-3 signal matching.
+// Groups related console errors by comparing normalized messages, application-level
+// stack frames (excluding framework code), and temporal proximity (<2s).
+// Design: Clusters form when 2+ signals match between errors. Capped at 50 clusters
+// with 20 instances each. Clusters expire after 5 minutes of inactivity. Alerts fire
+// at 3 instances. Message normalization replaces UUIDs, URLs, timestamps, and numeric
+// IDs with placeholders for stable comparison across dynamic error content.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+)
+
+// --- Stack Frame Parsing ---
+
+// StackFrame represents a parsed stack trace frame.
+type StackFrame struct {
+	Function    string
+	File        string
+	Line        int
+	Column      int
+	IsFramework bool
+}
+
+// Framework path patterns — frames from these paths are excluded from similarity comparison.
+var frameworkPatterns = []string{
+	"node_modules/react",
+	"node_modules/vue",
+	"node_modules/@angular",
+	"node_modules/svelte",
+	"webpack/bootstrap",
+	"webpack/runtime",
+	"zone.js",
+	"node_modules/rxjs",
+	"node_modules/core-js",
+}
+
+var (
+	// "    at FunctionName (file.js:line:col)"
+	stackFrameWithFunc = regexp.MustCompile(`^\s*at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)`)
+	// "    at file.js:line:col"
+	stackFrameAnon = regexp.MustCompile(`^\s*at\s+(.+?):(\d+):(\d+)\s*$`)
+)
+
+// parseStackFrame parses a single stack trace line into a StackFrame.
+func parseStackFrame(line string) StackFrame {
+	line = strings.TrimSpace(line)
+
+	// Try "at Function (file:line:col)"
+	if m := stackFrameWithFunc.FindStringSubmatch(line); m != nil {
+		lineNum, _ := strconv.Atoi(m[3])
+		colNum, _ := strconv.Atoi(m[4])
+		frame := StackFrame{
+			Function: m[1],
+			File:     m[2],
+			Line:     lineNum,
+			Column:   colNum,
+		}
+		frame.IsFramework = isFrameworkPath(frame.File)
+		return frame
+	}
+
+	// Try "at file:line:col" (anonymous)
+	if m := stackFrameAnon.FindStringSubmatch(line); m != nil {
+		lineNum, _ := strconv.Atoi(m[2])
+		colNum, _ := strconv.Atoi(m[3])
+		frame := StackFrame{
+			Function: "<anonymous>",
+			File:     m[1],
+			Line:     lineNum,
+			Column:   colNum,
+		}
+		frame.IsFramework = isFrameworkPath(frame.File)
+		return frame
+	}
+
+	return StackFrame{Function: "<unknown>", File: line}
+}
+
+// isFrameworkPath returns true if the file path matches a known framework pattern.
+func isFrameworkPath(path string) bool {
+	for _, pattern := range frameworkPatterns {
+		if strings.Contains(path, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// parseStack parses a multi-line stack trace into frames.
+func parseStack(stack string) []StackFrame {
+	if stack == "" {
+		return nil
+	}
+	lines := strings.Split(strings.TrimSpace(stack), "\n")
+	frames := make([]StackFrame, 0, len(lines))
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		frames = append(frames, parseStackFrame(line))
+	}
+	return frames
+}
+
+// appFrames returns only non-framework frames.
+func appFrames(frames []StackFrame) []StackFrame {
+	result := make([]StackFrame, 0)
+	for _, f := range frames {
+		if !f.IsFramework {
+			result = append(result, f)
+		}
+	}
+	return result
+}
+
+// --- Message Normalization ---
+
+var (
+	clusterUUIDRegex      = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
+	clusterURLRegex       = regexp.MustCompile(`https?://[^\s"']+`)
+	clusterTimestampRegex = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[^\s]*`)
+	clusterNumericIDRegex = regexp.MustCompile(`\b\d{3,}\b`) // 3+ digit numbers as IDs
+)
+
+// normalizeErrorMessage replaces variable content with placeholders.
+func normalizeErrorMessage(msg string) string {
+	// Order matters: UUIDs before numeric IDs (UUIDs contain digits)
+	result := clusterUUIDRegex.ReplaceAllString(msg, "{uuid}")
+	result = clusterURLRegex.ReplaceAllString(result, "{url}")
+	result = clusterTimestampRegex.ReplaceAllString(result, "{timestamp}")
+	result = clusterNumericIDRegex.ReplaceAllString(result, "{id}")
+	return result
+}
+
+// --- Error Instance ---
+
+// ErrorInstance represents a single error received from the extension.
+type ErrorInstance struct {
+	Message   string
+	Stack     string
+	Source    string // file:line extracted from first app frame
+	Timestamp time.Time
+	ErrorType string // TypeError, ReferenceError, etc.
+	Severity  string // error, warning
+}
+
+// --- Cluster ---
+
+// ErrorCluster groups related errors by root cause.
+type ErrorCluster struct {
+	ID               string
+	Representative   ErrorInstance
+	NormalizedMsg    string
+	CommonFrames     []StackFrame
+	RootCause        string
+	Instances        []ErrorInstance
+	InstanceCount    int
+	FirstSeen        time.Time
+	LastSeen         time.Time
+	AffectedFiles    []string
+	Severity         string
+	alertedAt3       bool // track if we already alerted for this cluster
+}
+
+// --- Cluster Manager ---
+
+// ClusterManager manages error clustering with session-scoped lifecycle.
+type ClusterManager struct {
+	mu              sync.RWMutex
+	clusters        []*ErrorCluster
+	unclustered     []ErrorInstance
+	nextID          int
+	expiryDuration  time.Duration
+	pendingAlert    *Alert
+	totalErrors     int
+}
+
+// NewClusterManager creates an empty cluster manager.
+func NewClusterManager() *ClusterManager {
+	return &ClusterManager{
+		clusters:       make([]*ErrorCluster, 0),
+		unclustered:    make([]ErrorInstance, 0),
+		expiryDuration: 5 * time.Minute,
+	}
+}
+
+// AddError processes a new error, either adding it to an existing cluster or leaving it unclustered.
+func (cm *ClusterManager) AddError(err ErrorInstance) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	cm.totalErrors++
+
+	// Parse the error's stack
+	frames := parseStack(err.Stack)
+	appFr := appFrames(frames)
+	normMsg := normalizeErrorMessage(err.Message)
+
+	// Try to match against existing clusters
+	for _, cluster := range cm.clusters {
+		if cm.matchesCluster(cluster, err, appFr, normMsg) {
+			cm.addToCluster(cluster, err)
+			return
+		}
+	}
+
+	// Try to match against unclustered errors
+	for i, unc := range cm.unclustered {
+		signals := cm.countSignals(unc, err, appFr, normMsg)
+		if signals >= 2 || (signals >= 1 && unc.Stack == "" && err.Stack == "") {
+			// Form a new cluster
+			cluster := cm.createCluster(unc, err, normMsg)
+			cm.clusters = append(cm.clusters, cluster)
+			// Remove from unclustered
+			cm.unclustered = append(cm.unclustered[:i], cm.unclustered[i+1:]...)
+			// Enforce cluster cap
+			if len(cm.clusters) > 50 {
+				cm.clusters = cm.clusters[1:] // Remove oldest
+			}
+			return
+		}
+	}
+
+	// No match — add to unclustered
+	cm.unclustered = append(cm.unclustered, err)
+}
+
+// matchesCluster checks if an error matches an existing cluster.
+func (cm *ClusterManager) matchesCluster(cluster *ErrorCluster, err ErrorInstance, appFr []StackFrame, normMsg string) bool {
+	signals := 0
+
+	// Signal 1: Message similarity
+	if cluster.NormalizedMsg == normMsg {
+		signals++
+	}
+
+	// Signal 2: Stack frame similarity (2+ shared app frames)
+	if len(appFr) > 0 && len(cluster.CommonFrames) > 0 {
+		shared := countSharedFrames(appFr, cluster.CommonFrames)
+		if shared >= 1 {
+			signals++
+		}
+	}
+
+	// Signal 3: Temporal proximity (within 2 seconds of last cluster error)
+	if !cluster.LastSeen.IsZero() && err.Timestamp.Sub(cluster.LastSeen) < 2*time.Second {
+		signals++
+	}
+
+	// For errors without stacks, message match alone is sufficient
+	if err.Stack == "" && cluster.Instances[0].Stack == "" && cluster.NormalizedMsg == normMsg {
+		return true
+	}
+
+	return signals >= 2
+}
+
+// countSignals counts matching signals between two errors.
+func (cm *ClusterManager) countSignals(existing, new ErrorInstance, newAppFr []StackFrame, newNormMsg string) int {
+	signals := 0
+
+	// Message similarity
+	existingNorm := normalizeErrorMessage(existing.Message)
+	if existingNorm == newNormMsg {
+		signals++
+	}
+
+	// Stack similarity
+	existingFrames := appFrames(parseStack(existing.Stack))
+	if len(existingFrames) > 0 && len(newAppFr) > 0 {
+		if countSharedFrames(existingFrames, newAppFr) >= 1 {
+			signals++
+		}
+	}
+
+	// Temporal proximity
+	if new.Timestamp.Sub(existing.Timestamp) < 2*time.Second {
+		signals++
+	}
+
+	return signals
+}
+
+// countSharedFrames counts frames that appear in both slices (by file:line).
+func countSharedFrames(a, b []StackFrame) int {
+	bSet := make(map[string]bool)
+	for _, f := range b {
+		bSet[fmt.Sprintf("%s:%d", f.File, f.Line)] = true
+	}
+	count := 0
+	for _, f := range a {
+		if bSet[fmt.Sprintf("%s:%d", f.File, f.Line)] {
+			count++
+		}
+	}
+	return count
+}
+
+// createCluster forms a new cluster from two matching errors.
+func (cm *ClusterManager) createCluster(first, second ErrorInstance, normMsg string) *ErrorCluster {
+	cm.nextID++
+	id := fmt.Sprintf("cluster_%d", cm.nextID)
+
+	// Compute common frames
+	frames1 := appFrames(parseStack(first.Stack))
+	frames2 := appFrames(parseStack(second.Stack))
+	common := findCommonFrames(frames1, frames2)
+
+	// Determine root cause
+	rootCause := inferRootCause(common, normMsg)
+
+	// Collect affected files
+	files := collectAffectedFiles(frames1, frames2)
+
+	severity := "error"
+	if first.Severity == "warning" && second.Severity == "warning" {
+		severity = "warning"
+	}
+
+	return &ErrorCluster{
+		ID:             id,
+		Representative: first,
+		NormalizedMsg:  normMsg,
+		CommonFrames:   common,
+		RootCause:      rootCause,
+		Instances:      []ErrorInstance{first, second},
+		InstanceCount:  2,
+		FirstSeen:      first.Timestamp,
+		LastSeen:       second.Timestamp,
+		AffectedFiles:  files,
+		Severity:       severity,
+	}
+}
+
+// addToCluster adds an error to an existing cluster.
+func (cm *ClusterManager) addToCluster(cluster *ErrorCluster, err ErrorInstance) {
+	cluster.InstanceCount++
+	cluster.LastSeen = err.Timestamp
+
+	// Cap instances at 20
+	if len(cluster.Instances) < 20 {
+		cluster.Instances = append(cluster.Instances, err)
+	}
+
+	// Update affected files
+	frames := appFrames(parseStack(err.Stack))
+	for _, f := range frames {
+		found := false
+		for _, existing := range cluster.AffectedFiles {
+			if existing == f.File {
+				found = true
+				break
+			}
+		}
+		if !found {
+			cluster.AffectedFiles = append(cluster.AffectedFiles, f.File)
+		}
+	}
+
+	// Alert at 3 instances (once per cluster)
+	if cluster.InstanceCount == 3 && !cluster.alertedAt3 {
+		cluster.alertedAt3 = true
+		cm.pendingAlert = &Alert{
+			Severity:  "error",
+			Category:  "error_cluster",
+			Title:     fmt.Sprintf("Error cluster: %d related errors from %s", cluster.InstanceCount, cluster.RootCause),
+			Detail:    fmt.Sprintf("Cluster %s: %s", cluster.ID, cluster.Representative.Message),
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			Source:    "clustering",
+		}
+	}
+}
+
+// findCommonFrames returns frames present in both slices.
+func findCommonFrames(a, b []StackFrame) []StackFrame {
+	bSet := make(map[string]StackFrame)
+	for _, f := range b {
+		key := fmt.Sprintf("%s:%d", f.File, f.Line)
+		bSet[key] = f
+	}
+	var common []StackFrame
+	for _, f := range a {
+		key := fmt.Sprintf("%s:%d", f.File, f.Line)
+		if _, ok := bSet[key]; ok {
+			common = append(common, f)
+		}
+	}
+	return common
+}
+
+// inferRootCause returns the deepest common app-code frame, or the normalized message.
+func inferRootCause(commonFrames []StackFrame, normMsg string) string {
+	// The deepest frame (first in the list, since stacks go from deepest to shallowest)
+	for _, f := range commonFrames {
+		if !f.IsFramework {
+			if f.Function != "<anonymous>" && f.Function != "<unknown>" {
+				return fmt.Sprintf("%s (%s:%d)", f.Function, f.File, f.Line)
+			}
+			return fmt.Sprintf("%s:%d", f.File, f.Line)
+		}
+	}
+	return normMsg
+}
+
+// collectAffectedFiles returns unique source files from two frame sets.
+func collectAffectedFiles(a, b []StackFrame) []string {
+	seen := make(map[string]bool)
+	var files []string
+	for _, frames := range [][]StackFrame{a, b} {
+		for _, f := range frames {
+			if f.File != "" && !f.IsFramework && !seen[f.File] {
+				seen[f.File] = true
+				files = append(files, f.File)
+			}
+		}
+	}
+	return files
+}
+
+// --- Query Methods ---
+
+// GetClusters returns all active clusters.
+func (cm *ClusterManager) GetClusters() []*ErrorCluster {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+	result := make([]*ErrorCluster, len(cm.clusters))
+	copy(result, cm.clusters)
+	return result
+}
+
+// UnclusteredCount returns the number of errors not in any cluster.
+func (cm *ClusterManager) UnclusteredCount() int {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+	return len(cm.unclustered)
+}
+
+// DrainAlert returns and clears the pending alert.
+func (cm *ClusterManager) DrainAlert() *Alert {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	alert := cm.pendingAlert
+	cm.pendingAlert = nil
+	return alert
+}
+
+// Cleanup removes expired clusters (no new instances for expiryDuration).
+func (cm *ClusterManager) Cleanup() {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	now := time.Now()
+	active := make([]*ErrorCluster, 0, len(cm.clusters))
+	for _, c := range cm.clusters {
+		if now.Sub(c.LastSeen) < cm.expiryDuration {
+			active = append(active, c)
+		}
+	}
+	cm.clusters = active
+}
+
+// --- Analysis Response ---
+
+// ClusterAnalysisResponse is the response for analyze(target: "errors").
+type ClusterAnalysisResponse struct {
+	Clusters         []ClusterSummary `json:"clusters"`
+	UnclusteredErrors int             `json:"unclustered_errors"`
+	TotalErrors      int              `json:"total_errors"`
+	Summary          string           `json:"summary"`
+}
+
+// ClusterSummary is a single cluster in the analysis response.
+type ClusterSummary struct {
+	ID               string          `json:"id"`
+	RepresentativeMsg string         `json:"representative_error"`
+	RootCause        string          `json:"root_cause"`
+	InstanceCount    int             `json:"instance_count"`
+	FirstSeen        string          `json:"first_seen"`
+	LastSeen         string          `json:"last_seen"`
+	AffectedFiles    []string        `json:"affected_components"`
+	Severity         string          `json:"severity"`
+}
+
+// toolAnalyzeErrors handles the analyze(target: "errors") MCP call.
+func (h *ToolHandler) toolAnalyzeErrors(req JSONRPCRequest) JSONRPCResponse {
+	resp := h.clusters.GetAnalysisResponse()
+	data, _ := json.Marshal(resp)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(data))}
+}
+
+// GetAnalysisResponse builds the response for analyze(target: "errors").
+func (cm *ClusterManager) GetAnalysisResponse() ClusterAnalysisResponse {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
+	clusters := make([]ClusterSummary, 0, len(cm.clusters))
+	for _, c := range cm.clusters {
+		clusters = append(clusters, ClusterSummary{
+			ID:               c.ID,
+			RepresentativeMsg: c.Representative.Message,
+			RootCause:        c.RootCause,
+			InstanceCount:    c.InstanceCount,
+			FirstSeen:        c.FirstSeen.UTC().Format(time.RFC3339),
+			LastSeen:         c.LastSeen.UTC().Format(time.RFC3339),
+			AffectedFiles:    c.AffectedFiles,
+			Severity:         c.Severity,
+		})
+	}
+
+	summary := fmt.Sprintf("%d error clusters identified. %d unclustered errors. %d total errors.",
+		len(clusters), len(cm.unclustered), cm.totalErrors)
+	if len(cm.clusters) > 0 {
+		top := cm.clusters[0]
+		summary = fmt.Sprintf("%d error clusters. Primary: %s (%d instances). %d unclustered.",
+			len(clusters), top.RootCause, top.InstanceCount, len(cm.unclustered))
+	}
+
+	return ClusterAnalysisResponse{
+		Clusters:         clusters,
+		UnclusteredErrors: len(cm.unclustered),
+		TotalErrors:      cm.totalErrors,
+		Summary:          summary,
+	}
+}

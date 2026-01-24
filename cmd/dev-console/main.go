@@ -23,7 +23,7 @@ import (
 const (
 	defaultPort       = 7890
 	defaultMaxEntries = 1000
-	version           = "4.6.0"
+	version           = "4.7.0"
 )
 
 // LogEntry represents a single log entry
@@ -195,6 +195,7 @@ type Server struct {
 	logAddedAt    []time.Time // parallel slice: when each entry was added
 	mu            sync.RWMutex
 	logTotalAdded int64 // monotonic counter of total entries ever added
+	onEntries     func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
 }
 
 // NewServer creates a new server instance
@@ -243,6 +244,11 @@ func (s *Server) loadEntries() error {
 			continue // Skip malformed lines
 		}
 		s.entries = append(s.entries, entry)
+	}
+
+	// Bound entries (file may have more from append-only writes between rotations)
+	if len(s.entries) > s.maxEntries {
+		s.entries = s.entries[len(s.entries)-s.maxEntries:]
 	}
 
 	return scanner.Err()
@@ -360,7 +366,6 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 // addEntries adds new entries and rotates if needed
 func (s *Server) addEntries(newEntries []LogEntry) int {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	s.logTotalAdded += int64(len(newEntries))
 	now := time.Now()
@@ -369,16 +374,55 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 	}
 	s.entries = append(s.entries, newEntries...)
 
-	// Rotate if needed
-	if len(s.entries) > s.maxEntries {
+	// Rotate if needed — requires full rewrite
+	rotated := len(s.entries) > s.maxEntries
+	if rotated {
 		s.entries = s.entries[len(s.entries)-s.maxEntries:]
 		s.logAddedAt = s.logAddedAt[len(s.logAddedAt)-s.maxEntries:]
 	}
 
-	if err := s.saveEntries(); err != nil {
+	var err error
+	if rotated {
+		err = s.saveEntries()
+	} else {
+		err = s.appendToFile(newEntries)
+	}
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
 	}
+
+	cb := s.onEntries
+	s.mu.Unlock()
+
+	// Notify listeners outside the lock (e.g., cluster manager)
+	if cb != nil {
+		cb(newEntries)
+	}
+
 	return len(newEntries)
+}
+
+// appendToFile writes only the new entries to the file (append-only, no rewrite)
+func (s *Server) appendToFile(entries []LogEntry) error {
+	f, err := os.OpenFile(s.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G304: logFile is set at startup, not from user input
+	if err != nil {
+		return err
+	}
+	defer f.Close() //nolint:errcheck // deferred close
+
+	for _, entry := range entries {
+		data, err := json.Marshal(entry)
+		if err != nil {
+			continue
+		}
+		if _, err := f.Write(data); err != nil {
+			return err
+		}
+		if _, err := f.WriteString("\n"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // clearEntries removes all entries
@@ -429,16 +473,24 @@ func validateLogEntry(entry LogEntry) bool {
 		return false
 	}
 
-	// Size check: entry must not exceed maxEntrySize when serialized
+	// Fast path: if total string content is under half the limit,
+	// the entry can't exceed maxEntrySize even with JSON escaping overhead
+	var stringBytes int
+	for _, v := range entry {
+		if s, ok := v.(string); ok {
+			stringBytes += len(s)
+		}
+	}
+	if stringBytes < maxEntrySize/2 {
+		return true
+	}
+
+	// Slow path: might be large — check precisely via marshal
 	data, err := json.Marshal(entry)
 	if err != nil {
 		return false
 	}
-	if len(data) > maxEntrySize {
-		return false
-	}
-
-	return true
+	return len(data) <= maxEntrySize
 }
 
 // validateLogEntries filters entries, returning only valid ones and a count of rejected.
@@ -655,6 +707,19 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 	// CI/CD webhook endpoint for push-based alerts
 	if mcp.toolHandler != nil {
 		http.HandleFunc("/ci-result", corsMiddleware(mcp.toolHandler.handleCIWebhook))
+	}
+
+	// Settings endpoint for extension polling (capture overrides)
+	if mcp.toolHandler != nil && mcp.toolHandler.captureOverrides != nil {
+		overrides := mcp.toolHandler.captureOverrides
+		http.HandleFunc("/settings", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != "GET" {
+				jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+				return
+			}
+			resp := buildSettingsResponse(overrides)
+			jsonResponse(w, http.StatusOK, resp)
+		}))
 	}
 
 	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {

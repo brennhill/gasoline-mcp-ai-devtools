@@ -210,9 +210,7 @@ func (v *Capture) ExportHAR(filter NetworkBodyFilter) HARLog {
 	bodies := v.GetNetworkBodies(exportFilter)
 
 	// GetNetworkBodies returns newest-first; reverse for chronological order
-	for i, j := 0, len(bodies)-1; i < j; i, j = i+1, j-1 {
-		bodies[i], bodies[j] = bodies[j], bodies[i]
-	}
+	reverseSlice(bodies)
 
 	entries := make([]HAREntry, 0, len(bodies))
 	for _, body := range bodies {

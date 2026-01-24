@@ -10,9 +10,9 @@ import (
 // Composite Tool Surface Tests (Phase 1: 24 → 5)
 // ============================================
 
-// TestCompositeToolsListReturnsExactly5Tools verifies that tools/list
-// returns only the 5 composite tools, not the 24 granular ones.
-func TestCompositeToolsListReturnsExactly5Tools(t *testing.T) {
+// TestCompositeToolsListReturnsAllTools verifies that tools/list
+// returns the 5 composite tools plus the 4 v6 tools.
+func TestCompositeToolsListReturnsAllTools(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -32,19 +32,23 @@ func TestCompositeToolsListReturnsExactly5Tools(t *testing.T) {
 	}
 
 	expected := map[string]bool{
-		"observe":   true,
-		"analyze":   true,
-		"generate":  true,
-		"configure": true,
-		"query_dom": true,
+		"observe":        true,
+		"analyze":        true,
+		"generate":       true,
+		"configure":      true,
+		"query_dom":      true,
+		"generate_csp":   true,
+		"security_audit": true,
+		"get_audit_log":  true,
+		"diff_sessions":  true,
 	}
 
-	if len(result.Tools) != 5 {
+	if len(result.Tools) != 9 {
 		names := make([]string, len(result.Tools))
 		for i, tool := range result.Tools {
 			names[i] = tool.Name
 		}
-		t.Fatalf("Expected exactly 5 tools, got %d: %v", len(result.Tools), names)
+		t.Fatalf("Expected exactly 9 tools, got %d: %v", len(result.Tools), names)
 	}
 
 	for _, tool := range result.Tools {
@@ -1134,13 +1138,13 @@ func TestToolsListGoldenMatchesWithMeta(t *testing.T) {
 		JSONRPC: "2.0", ID: 2, Method: "tools/list",
 	})
 
-	// Verify it still returns 5 tools with proper structure
+	// Verify it returns 9 tools with proper structure (5 composite + 4 v6)
 	var result MCPToolsListResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("Failed to parse tools list: %v", err)
 	}
-	if len(result.Tools) != 5 {
-		t.Fatalf("Expected 5 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 9 {
+		t.Fatalf("Expected 9 tools, got %d", len(result.Tools))
 	}
 
 	// Verify _meta doesn't break standard MCPTool parsing

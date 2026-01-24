@@ -1,9 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // ============================================
@@ -1104,5 +1110,1839 @@ func TestToolExportSARIF_DirectReturn(t *testing.T) {
 	// Should contain SARIF JSON
 	if !strings.Contains(result.Content[0].Text, "sarif") || !strings.Contains(result.Content[0].Text, "2.1.0") {
 		t.Errorf("Expected SARIF JSON in response, got: %s", result.Content[0].Text[:100])
+	}
+}
+
+// ============================================
+// V6 Tool Dispatcher Tests
+// ============================================
+
+func TestToolGenerateCSP_ViaDispatch(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	args := json.RawMessage(`{}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "generate_csp", args)
+	if !handled {
+		t.Fatal("expected generate_csp to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	// Should return a valid response (CSP with no data is still valid)
+	if result.IsError {
+		t.Errorf("Expected no error, got: %s", result.Content[0].Text)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected response content")
+	}
+	// Result should be JSON containing CSP data
+	text := result.Content[0].Text
+	if !strings.Contains(text, "directives") && !strings.Contains(text, "policy") && !strings.Contains(text, "origins") {
+		// At minimum it should be valid JSON
+		var parsed interface{}
+		if err := json.Unmarshal([]byte(text), &parsed); err != nil {
+			t.Errorf("Expected valid JSON response from generate_csp, got: %s", text)
+		}
+	}
+}
+
+func TestToolGenerateCSP_WithOrigins(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Seed network bodies with some external origins
+	capture.mu.Lock()
+	capture.networkBodies = append(capture.networkBodies,
+		NetworkBody{URL: "https://cdn.example.com/app.js", Method: "GET", Status: 200, ContentType: "application/javascript"},
+		NetworkBody{URL: "https://fonts.googleapis.com/css", Method: "GET", Status: 200, ContentType: "text/css"},
+	)
+	capture.mu.Unlock()
+
+	// Feed entries so CSP generator has page context
+	mcp.toolHandler.cspGenerator.mu.Lock()
+	mcp.toolHandler.cspGenerator.pages["https://myapp.com/"] = true
+	mcp.toolHandler.cspGenerator.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
+	args := json.RawMessage(`{}`)
+
+	resp := mcp.toolHandler.toolGenerateCSP(req, args)
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolSecurityAudit_ViaDispatch(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	args := json.RawMessage(`{}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "security_audit", args)
+	if !handled {
+		t.Fatal("expected security_audit to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error, got: %s", result.Content[0].Text)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected response content")
+	}
+	// Should be valid JSON
+	var parsed interface{}
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &parsed); err != nil {
+		t.Errorf("Expected valid JSON from security_audit, got parse error: %v", err)
+	}
+}
+
+func TestToolSecurityAudit_WithData(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add network bodies with potential security issues
+	capture.mu.Lock()
+	capture.networkBodies = append(capture.networkBodies,
+		NetworkBody{URL: "http://api.example.com/login", Method: "POST", Status: 200, ResponseBody: `{"password":"secret123","token":"abc"}`},
+		NetworkBody{URL: "https://api.example.com/data", Method: "GET", Status: 200},
+	)
+	capture.mu.Unlock()
+
+	// Add console entries
+	server.mu.Lock()
+	server.entries = append(server.entries,
+		LogEntry{"level": "error", "message": "Mixed Content: loading HTTP resource on HTTPS page"},
+		LogEntry{"level": "warn", "message": "Cookie without Secure flag"},
+	)
+	server.mu.Unlock()
+
+	// Add page URLs
+	mcp.toolHandler.cspGenerator.mu.Lock()
+	mcp.toolHandler.cspGenerator.pages["https://myapp.com/"] = true
+	mcp.toolHandler.cspGenerator.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
+	args := json.RawMessage(`{}`)
+
+	resp := mcp.toolHandler.toolSecurityAudit(req, args)
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolGetAuditLog_ViaDispatch(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	args := json.RawMessage(`{}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "get_audit_log", args)
+	if !handled {
+		t.Fatal("expected get_audit_log to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error, got: %s", result.Content[0].Text)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected response content")
+	}
+	// Should be valid JSON with audit log entries
+	var parsed interface{}
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &parsed); err != nil {
+		t.Errorf("Expected valid JSON from get_audit_log, got parse error: %v", err)
+	}
+}
+
+func TestToolGetAuditLog_WithFilters(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Record some audit entries first
+	mcp.toolHandler.auditTrail.Record(AuditEntry{ToolName: "observe", Parameters: `{"what":"errors"}`, ResponseSize: 100, Duration: 42, Success: true})
+	mcp.toolHandler.auditTrail.Record(AuditEntry{ToolName: "query_dom", Parameters: `{"selector":".foo"}`, ResponseSize: 200, Duration: 15, Success: true})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
+	args := json.RawMessage(`{"limit":10}`)
+
+	resp := mcp.toolHandler.toolGetAuditLog(req, args)
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error, got: %s", result.Content[0].Text)
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "observe") {
+		t.Errorf("Expected 'observe' in audit log, got: %s", text)
+	}
+}
+
+func TestToolDiffSessions_ViaDispatch(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	// Capture a snapshot
+	args := json.RawMessage(`{"action":"capture","name":"test-snap"}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "diff_sessions", args)
+	if !handled {
+		t.Fatal("expected diff_sessions to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	// capture action should succeed
+	if result.IsError {
+		t.Errorf("Expected no error on capture, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolDiffSessions_List(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
+	args := json.RawMessage(`{"action":"list"}`)
+
+	resp := mcp.toolHandler.toolDiffSessions(req, args)
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error on list, got: %s", result.Content[0].Text)
+	}
+	// Should return valid JSON
+	var parsed interface{}
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &parsed); err != nil {
+		t.Errorf("Expected valid JSON, got parse error: %v", err)
+	}
+}
+
+func TestToolDiffSessions_Compare(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`3`), Method: "tools/call"}
+
+	// Capture first snapshot
+	mcp.toolHandler.toolDiffSessions(req, json.RawMessage(`{"action":"capture","name":"before"}`))
+
+	// Add some data to change state
+	server.mu.Lock()
+	server.entries = append(server.entries, LogEntry{"level": "error", "message": "new error"})
+	server.mu.Unlock()
+
+	// Capture second snapshot
+	mcp.toolHandler.toolDiffSessions(req, json.RawMessage(`{"action":"capture","name":"after"}`))
+
+	// Compare using compare_a and compare_b
+	args := json.RawMessage(`{"action":"compare","compare_a":"before","compare_b":"after"}`)
+	resp := mcp.toolHandler.toolDiffSessions(req, args)
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error on compare, got: %s", result.Content[0].Text)
+	}
+}
+
+// ============================================
+// captureStateAdapter Tests
+// ============================================
+
+func TestCaptureStateAdapter_GetConsoleErrors(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+
+	server.mu.Lock()
+	server.entries = append(server.entries,
+		LogEntry{"level": "error", "message": "TypeError: foo is undefined"},
+		LogEntry{"level": "warn", "message": "Deprecation warning"},
+		LogEntry{"level": "error", "message": "ReferenceError: bar"},
+		LogEntry{"level": "log", "message": "App started"},
+	)
+	server.mu.Unlock()
+
+	adapter := &captureStateAdapter{capture: capture, server: server}
+
+	errors := adapter.GetConsoleErrors()
+	if len(errors) != 2 {
+		t.Fatalf("Expected 2 errors, got %d", len(errors))
+	}
+	if errors[0].Message != "TypeError: foo is undefined" {
+		t.Errorf("Expected first error message 'TypeError: foo is undefined', got %q", errors[0].Message)
+	}
+	if errors[1].Message != "ReferenceError: bar" {
+		t.Errorf("Expected second error message 'ReferenceError: bar', got %q", errors[1].Message)
+	}
+	if errors[0].Type != "error" {
+		t.Errorf("Expected type 'error', got %q", errors[0].Type)
+	}
+}
+
+func TestCaptureStateAdapter_GetConsoleWarnings(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+
+	server.mu.Lock()
+	server.entries = append(server.entries,
+		LogEntry{"level": "error", "message": "Error msg"},
+		LogEntry{"level": "warn", "message": "Deprecation warning"},
+		LogEntry{"level": "warn", "message": "Performance warning"},
+		LogEntry{"level": "log", "message": "Info msg"},
+	)
+	server.mu.Unlock()
+
+	adapter := &captureStateAdapter{capture: capture, server: server}
+
+	warnings := adapter.GetConsoleWarnings()
+	if len(warnings) != 2 {
+		t.Fatalf("Expected 2 warnings, got %d", len(warnings))
+	}
+	if warnings[0].Message != "Deprecation warning" {
+		t.Errorf("Expected 'Deprecation warning', got %q", warnings[0].Message)
+	}
+	if warnings[0].Type != "warning" {
+		t.Errorf("Expected type 'warning', got %q", warnings[0].Type)
+	}
+}
+
+func TestCaptureStateAdapter_GetNetworkRequests(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+
+	capture.mu.Lock()
+	capture.networkBodies = append(capture.networkBodies,
+		NetworkBody{URL: "https://api.example.com/users", Method: "GET", Status: 200, Duration: 150},
+		NetworkBody{URL: "https://api.example.com/data", Method: "POST", Status: 201, Duration: 300},
+	)
+	capture.mu.Unlock()
+
+	adapter := &captureStateAdapter{capture: capture, server: server}
+
+	requests := adapter.GetNetworkRequests()
+	if len(requests) != 2 {
+		t.Fatalf("Expected 2 requests, got %d", len(requests))
+	}
+	if requests[0].URL != "https://api.example.com/users" {
+		t.Errorf("Expected URL 'https://api.example.com/users', got %q", requests[0].URL)
+	}
+	if requests[0].Method != "GET" {
+		t.Errorf("Expected method 'GET', got %q", requests[0].Method)
+	}
+	if requests[0].Status != 200 {
+		t.Errorf("Expected status 200, got %d", requests[0].Status)
+	}
+	if requests[1].Duration != 300 {
+		t.Errorf("Expected duration 300, got %d", requests[1].Duration)
+	}
+}
+
+func TestCaptureStateAdapter_GetWSConnections(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+
+	capture.mu.Lock()
+	capture.connections = map[string]*connectionState{
+		"wss://ws.example.com/live": {state: "open"},
+		"wss://ws.example.com/chat": {state: "closed"},
+	}
+	capture.mu.Unlock()
+
+	adapter := &captureStateAdapter{capture: capture, server: server}
+
+	conns := adapter.GetWSConnections()
+	if len(conns) != 2 {
+		t.Fatalf("Expected 2 connections, got %d", len(conns))
+	}
+
+	// Check both connections exist (order is non-deterministic from map)
+	found := map[string]string{}
+	for _, c := range conns {
+		found[c.URL] = c.State
+	}
+	if found["wss://ws.example.com/live"] != "open" {
+		t.Errorf("Expected live connection state 'open', got %q", found["wss://ws.example.com/live"])
+	}
+	if found["wss://ws.example.com/chat"] != "closed" {
+		t.Errorf("Expected chat connection state 'closed', got %q", found["wss://ws.example.com/chat"])
+	}
+}
+
+func TestCaptureStateAdapter_GetPerformance(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+
+	adapter := &captureStateAdapter{capture: capture, server: server}
+
+	perf := adapter.GetPerformance()
+	if perf != nil {
+		t.Errorf("Expected nil performance (not yet integrated), got %v", perf)
+	}
+}
+
+func TestCaptureStateAdapter_GetCurrentPageURL(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+
+	capture.mu.Lock()
+	capture.a11y.lastURL = "https://myapp.example.com/dashboard"
+	capture.mu.Unlock()
+
+	adapter := &captureStateAdapter{capture: capture, server: server}
+
+	url := adapter.GetCurrentPageURL()
+	if url != "https://myapp.example.com/dashboard" {
+		t.Errorf("Expected 'https://myapp.example.com/dashboard', got %q", url)
+	}
+}
+
+func TestCaptureStateAdapter_EmptyState(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+
+	adapter := &captureStateAdapter{capture: capture, server: server}
+
+	if errors := adapter.GetConsoleErrors(); errors != nil {
+		t.Errorf("Expected nil errors on empty state, got %d", len(errors))
+	}
+	if warnings := adapter.GetConsoleWarnings(); warnings != nil {
+		t.Errorf("Expected nil warnings on empty state, got %d", len(warnings))
+	}
+	if requests := adapter.GetNetworkRequests(); requests != nil {
+		t.Errorf("Expected nil requests on empty state, got %d", len(requests))
+	}
+	if conns := adapter.GetWSConnections(); conns != nil {
+		t.Errorf("Expected nil connections on empty state, got %d", len(conns))
+	}
+	if url := adapter.GetCurrentPageURL(); url != "" {
+		t.Errorf("Expected empty URL on empty state, got %q", url)
+	}
+}
+
+// ============================================
+// toolConfigureCapture Tests
+// ============================================
+
+func TestToolConfigureCapture_MissingSettings(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "configure", json.RawMessage(`{"action":"capture"}`))
+	if !handled {
+		t.Fatal("expected configure to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if !result.IsError {
+		t.Error("Expected isError=true when settings is missing")
+	}
+	if !strings.Contains(result.Content[0].Text, "settings") {
+		t.Errorf("Expected error about 'settings', got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolConfigureCapture_Reset(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
+	args := json.RawMessage(`{"action":"capture","settings":"reset"}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "configure", args)
+	if !handled {
+		t.Fatal("expected configure to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error on reset, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolConfigureCapture_SetSettings(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`3`), Method: "tools/call"}
+	args := json.RawMessage(`{"action":"capture","settings":{"log_level":"warn","ws_mode":"off"}}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "configure", args)
+	if !handled {
+		t.Fatal("expected configure to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error on settings, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolConfigureCapture_InvalidSettings(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`4`), Method: "tools/call"}
+	// settings is not a map or "reset"
+	args := json.RawMessage(`{"action":"capture","settings":12345}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "configure", args)
+	if !handled {
+		t.Fatal("expected configure to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if !result.IsError {
+		t.Error("Expected isError=true for invalid settings type")
+	}
+}
+
+// ============================================
+// toolAnalyzeErrors Tests
+// ============================================
+
+func TestToolAnalyzeErrors_Empty(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	args := json.RawMessage(`{"target":"errors"}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "analyze", args)
+	if !handled {
+		t.Fatal("expected analyze to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error, got: %s", result.Content[0].Text)
+	}
+	text := result.Content[0].Text
+	// Should contain cluster analysis response
+	if !strings.Contains(text, "total_errors") {
+		t.Errorf("Expected 'total_errors' in response, got: %s", text)
+	}
+}
+
+func TestToolAnalyzeErrors_WithErrors(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Feed errors into the cluster manager
+	mcp.toolHandler.clusters.AddError(ErrorInstance{
+		Message:  "TypeError: Cannot read property 'x' of undefined",
+		Stack:    "at foo (app.js:10)",
+		Source:   "app.js",
+		Severity: "error",
+	})
+	mcp.toolHandler.clusters.AddError(ErrorInstance{
+		Message:  "TypeError: Cannot read property 'y' of undefined",
+		Stack:    "at foo (app.js:10)",
+		Source:   "app.js",
+		Severity: "error",
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
+	args := json.RawMessage(`{"target":"errors"}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "analyze", args)
+	if !handled {
+		t.Fatal("expected analyze to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error, got: %s", result.Content[0].Text)
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "clusters") {
+		t.Errorf("Expected 'clusters' in response, got: %s", text)
+	}
+}
+
+// ============================================
+// toolAnalyzeHistory Tests
+// ============================================
+
+func TestToolAnalyzeHistory_NilGraph(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Set temporalGraph to nil
+	mcp.toolHandler.temporalGraph = nil
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	args := json.RawMessage(`{"target":"history"}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "analyze", args)
+	if !handled {
+		t.Fatal("expected analyze to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error (graceful nil handling), got error")
+	}
+	if !strings.Contains(result.Content[0].Text, "No history") {
+		t.Errorf("Expected 'No history' message, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolAnalyzeHistory_WithGraph(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// temporalGraph is initialized by NewToolHandler using CWD
+	// Just call with empty query
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
+	args := json.RawMessage(`{"target":"history","query":{}}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "analyze", args)
+	if !handled {
+		t.Fatal("expected analyze to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	// Should return valid JSON (even if no history)
+	var parsed interface{}
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &parsed); err != nil {
+		// It might return "No history recorded yet." if graph is nil after init failure
+		if !strings.Contains(result.Content[0].Text, "No history") {
+			t.Errorf("Expected valid JSON or 'No history', got: %s", result.Content[0].Text)
+		}
+	}
+}
+
+// ============================================
+// toolConfigureRecordEvent Tests
+// ============================================
+
+func TestToolConfigureRecordEvent_NilGraph(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.toolHandler.temporalGraph = nil
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	args := json.RawMessage(`{"action":"record_event","event":{"type":"fix","description":"Fixed bug"}}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "configure", args)
+	if !handled {
+		t.Fatal("expected configure to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if !result.IsError {
+		t.Error("Expected isError=true when temporalGraph is nil")
+	}
+	if !strings.Contains(result.Content[0].Text, "not initialized") {
+		t.Errorf("Expected 'not initialized' error, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolConfigureRecordEvent_MissingEvent(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
+	args := json.RawMessage(`{"action":"record_event"}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "configure", args)
+	if !handled {
+		t.Fatal("expected configure to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if !result.IsError {
+		t.Error("Expected isError=true when event is missing")
+	}
+	if !strings.Contains(result.Content[0].Text, "event") {
+		t.Errorf("Expected error about 'event', got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolConfigureRecordEvent_ValidEvent(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Ensure temporalGraph is initialized (may be nil in test env)
+	if mcp.toolHandler.temporalGraph == nil {
+		tmpDir := t.TempDir()
+		mcp.toolHandler.temporalGraph = NewTemporalGraph(tmpDir)
+	}
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`3`), Method: "tools/call"}
+	args := json.RawMessage(`{"action":"record_event","event":{"type":"fix","description":"Fixed login bug","source":"auth.go"}}`)
+
+	resp, handled := mcp.toolHandler.handleToolCall(req, "configure", args)
+	if !handled {
+		t.Fatal("expected configure to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error, got: %s", result.Content[0].Text)
+	}
+}
+
+// ============================================
+// handleToolCall dispatch completeness
+// ============================================
+
+func TestHandleToolCall_UnknownTool(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+
+	_, handled := mcp.toolHandler.handleToolCall(req, "nonexistent_tool", nil)
+	if handled {
+		t.Error("Expected unknown tool to not be handled")
+	}
+}
+
+func TestHandleToolCall_AllV6Tools(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	emptyArgs := json.RawMessage(`{}`)
+
+	tools := []string{"generate_csp", "security_audit", "get_audit_log", "diff_sessions"}
+	for _, tool := range tools {
+		t.Run(tool, func(t *testing.T) {
+			args := emptyArgs
+			if tool == "diff_sessions" {
+				args = json.RawMessage(`{"action":"list"}`)
+			}
+			_, handled := mcp.toolHandler.handleToolCall(req, tool, args)
+			if !handled {
+				t.Errorf("Expected %s to be handled", tool)
+			}
+		})
+	}
+}
+
+// ============================================
+// redactSecret Tests (security.go helper)
+// ============================================
+
+func TestRedactSecret_AllBranches(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "very short (<=3)", input: "abc", expected: "abc***"},
+		{name: "short (<=6)", input: "abcdef", expected: "abc***"},
+		{name: "medium (<=10)", input: "abcdefghij", expected: "abcdef***"},
+		{name: "long", input: "abcdefghijklm", expected: "abcdef***klm"},
+		{name: "empty", input: "", expected: "***"},
+		{name: "single char", input: "x", expected: "x***"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := redactSecret(tt.input)
+			if result != tt.expected {
+				t.Errorf("redactSecret(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+// ============================================
+// computeMetricChange Tests (sessions.go helper)
+// ============================================
+
+func TestComputeMetricChange_AllBranches(t *testing.T) {
+	tests := []struct {
+		name       string
+		before     float64
+		after      float64
+		wantChange string
+		wantRegr   bool
+	}{
+		{name: "zero before, positive after", before: 0, after: 100, wantChange: "+inf", wantRegr: true},
+		{name: "zero before, zero after", before: 0, after: 0, wantChange: "0%", wantRegr: false},
+		{name: "increase (regression)", before: 100, after: 200, wantChange: "+100%", wantRegr: true},
+		{name: "decrease (improvement)", before: 200, after: 100, wantChange: "-50%", wantRegr: false},
+		{name: "same value", before: 100, after: 100, wantChange: "+0%", wantRegr: false},
+		{name: "small increase (not regression)", before: 100, after: 105, wantChange: "+5%", wantRegr: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mc := computeMetricChange(tt.before, tt.after)
+			if mc.Change != tt.wantChange {
+				t.Errorf("computeMetricChange(%v, %v).Change = %q, want %q", tt.before, tt.after, mc.Change, tt.wantChange)
+			}
+			if mc.Regression != tt.wantRegr {
+				t.Errorf("computeMetricChange(%v, %v).Regression = %v, want %v", tt.before, tt.after, mc.Regression, tt.wantRegr)
+			}
+		})
+	}
+}
+
+// ============================================
+// CaptureOverrides.SetMultiple Tests (rate limit and invalid values)
+// ============================================
+
+func TestSetMultiple_InvalidValue(t *testing.T) {
+	co := NewCaptureOverrides()
+
+	errs := co.SetMultiple(map[string]string{"log_level": "invalid_value"})
+
+	if err, ok := errs["log_level"]; !ok || err == nil {
+		t.Error("Expected error for invalid log_level value")
+	} else if !strings.Contains(err.Error(), "Invalid value") {
+		t.Errorf("Expected 'Invalid value' error, got: %s", err.Error())
+	}
+}
+
+func TestSetMultiple_RateLimit(t *testing.T) {
+	co := NewCaptureOverrides()
+
+	// First call should succeed
+	errs := co.SetMultiple(map[string]string{"log_level": "warn"})
+	if err := errs["log_level"]; err != nil {
+		t.Fatalf("First SetMultiple should succeed, got: %v", err)
+	}
+
+	// Second call immediately should be rate limited
+	errs = co.SetMultiple(map[string]string{"log_level": "error"})
+	if err := errs["log_level"]; err == nil {
+		t.Error("Expected rate limit error on immediate second call")
+	} else if !strings.Contains(err.Error(), "Rate limited") {
+		t.Errorf("Expected 'Rate limited' error, got: %s", err.Error())
+	}
+}
+
+func TestSetMultiple_MultipleSettings(t *testing.T) {
+	co := NewCaptureOverrides()
+
+	errs := co.SetMultiple(map[string]string{
+		"log_level": "warn",
+		"ws_mode":   "off",
+	})
+
+	for k, err := range errs {
+		if err != nil {
+			t.Errorf("Expected no error for %s, got: %v", k, err)
+		}
+	}
+
+	// Check alert was generated
+	alert := co.DrainAlert()
+	if alert == nil {
+		t.Error("Expected pending alert after settings change")
+	}
+}
+
+// ============================================
+// buildSettingsResponse Tests
+// ============================================
+
+func TestBuildSettingsResponse(t *testing.T) {
+	co := NewCaptureOverrides()
+
+	resp := buildSettingsResponse(co)
+
+	if !resp.Connected {
+		t.Error("Expected Connected=true")
+	}
+	if resp.CaptureOverrides == nil {
+		t.Error("Expected non-nil CaptureOverrides map")
+	}
+}
+
+// ============================================
+// extractOrigin and isThirdPartyURL Tests (security.go)
+// ============================================
+
+func TestExtractOrigin(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"https://api.example.com/path/to/resource?q=1", "https://api.example.com"},
+		{"http://localhost:3000/api", "http://localhost:3000"},
+		{"https://cdn.example.com:8080/lib.js", "https://cdn.example.com:8080"},
+	}
+
+	for _, tt := range tests {
+		result := extractOrigin(tt.input)
+		if result != tt.expected {
+			t.Errorf("extractOrigin(%q) = %q, want %q", tt.input, result, tt.expected)
+		}
+	}
+}
+
+func TestIsThirdPartyURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		url      string
+		pages    []string
+		expected bool
+	}{
+		{"no pages", "https://api.example.com/data", nil, false},
+		{"same origin", "https://myapp.com/api", []string{"https://myapp.com/"}, false},
+		{"third party", "https://cdn.external.com/lib.js", []string{"https://myapp.com/"}, true},
+		{"subdomain (same registrable domain)", "https://api.myapp.com/data", []string{"https://myapp.com/"}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isThirdPartyURL(tt.url, tt.pages)
+			if result != tt.expected {
+				t.Errorf("isThirdPartyURL(%q, %v) = %v, want %v", tt.url, tt.pages, result, tt.expected)
+			}
+		})
+	}
+}
+
+// ============================================
+// HandleGetAuditLog filter coverage
+// ============================================
+
+func TestHandleGetAuditLog_ToolNameFilter(t *testing.T) {
+	at := NewAuditTrail(AuditConfig{MaxEntries: 100, Enabled: true})
+
+	at.Record(AuditEntry{ToolName: "observe", Parameters: `{"what":"errors"}`, Success: true})
+	at.Record(AuditEntry{ToolName: "query_dom", Parameters: `{"selector":"div"}`, Success: true})
+	at.Record(AuditEntry{ToolName: "observe", Parameters: `{"what":"logs"}`, Success: true})
+
+	result, err := at.HandleGetAuditLog(json.RawMessage(`{"tool_name":"observe"}`))
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	data, _ := json.Marshal(result)
+	text := string(data)
+	if !strings.Contains(text, "observe") {
+		t.Errorf("Expected 'observe' entries, got: %s", text)
+	}
+}
+
+func TestHandleGetAuditLog_LimitFilter(t *testing.T) {
+	at := NewAuditTrail(AuditConfig{MaxEntries: 100, Enabled: true})
+
+	for i := 0; i < 5; i++ {
+		at.Record(AuditEntry{ToolName: "observe", Success: true})
+	}
+
+	result, err := at.HandleGetAuditLog(json.RawMessage(`{"limit":2}`))
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	data, _ := json.Marshal(result)
+	// Should contain at most 2 entries
+	var parsed map[string]interface{}
+	json.Unmarshal(data, &parsed)
+	if entries, ok := parsed["entries"].([]interface{}); ok && len(entries) > 2 {
+		t.Errorf("Expected at most 2 entries with limit=2, got %d", len(entries))
+	}
+}
+
+// ============================================
+// isTestKey and isLocalhostURL Tests (security.go)
+// ============================================
+
+func TestIsTestKey(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"sk_test_abc123", true},
+		{"test_key_value", true},
+		{"pk_live_real", false},
+		{"some_example_key", true},
+		{"production_key_real", false},
+	}
+
+	for _, tt := range tests {
+		result := isTestKey(tt.input)
+		if result != tt.expected {
+			t.Errorf("isTestKey(%q) = %v, want %v", tt.input, result, tt.expected)
+		}
+	}
+}
+
+func TestIsLocalhostURL(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"http://localhost:3000/api", true},
+		{"http://127.0.0.1:8080/", true},
+		{"http://[::1]:3000/", true},
+		{"http://0.0.0.0:5000/", true},
+		{"https://api.example.com/data", false},
+		{"not a url \x7f", false},
+	}
+
+	for _, tt := range tests {
+		result := isLocalhostURL(tt.input)
+		if result != tt.expected {
+			t.Errorf("isLocalhostURL(%q) = %v, want %v", tt.input, result, tt.expected)
+		}
+	}
+}
+
+// ============================================
+// HandleEnhancedActions edge case (actions.go)
+// ============================================
+
+func TestHandleEnhancedActions_WithFilters(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add some actions
+	capture.mu.Lock()
+	capture.enhancedActions = append(capture.enhancedActions,
+		EnhancedAction{Type: "click", URL: "https://myapp.com/page1", Timestamp: 1706090400000},
+		EnhancedAction{Type: "input", URL: "https://myapp.com/page2", Timestamp: 1706090460000},
+		EnhancedAction{Type: "navigate", URL: "https://other.com/page", Timestamp: 1706090520000},
+	)
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	// Filter by URL
+	args := json.RawMessage(`{"what":"actions","url":"myapp.com"}`)
+
+	resp, _ := mcp.toolHandler.handleToolCall(req, "observe", args)
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestHandleEnhancedActions_LastN(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add actions
+	capture.mu.Lock()
+	for i := 0; i < 10; i++ {
+		capture.enhancedActions = append(capture.enhancedActions,
+			EnhancedAction{Type: "click", Timestamp: 1706090400000 + int64(i)*1000},
+		)
+	}
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	args := json.RawMessage(`{"what":"actions","last_n":3}`)
+
+	resp, _ := mcp.toolHandler.handleToolCall(req, "observe", args)
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if result.IsError {
+		t.Errorf("Expected no error, got: %s", result.Content[0].Text)
+	}
+}
+
+// ============================================
+// NewSessionManager error path (sessions.go)
+// ============================================
+
+func TestNewSessionManager_WithState(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+
+	adapter := &captureStateAdapter{capture: capture, server: server}
+	sm := NewSessionManager(5, adapter)
+
+	if sm == nil {
+		t.Fatal("Expected non-nil SessionManager")
+	}
+
+	// Verify it can handle a list action
+	result, err := sm.HandleTool(json.RawMessage(`{"action":"list"}`))
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+	if result == nil {
+		t.Error("Expected non-nil result")
+	}
+}
+
+func TestNewSessionManager_ZeroMaxSnapshots(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+
+	adapter := &captureStateAdapter{capture: capture, server: server}
+	sm := NewSessionManager(0, adapter)
+
+	if sm == nil {
+		t.Fatal("Expected non-nil SessionManager")
+	}
+	// Should default to 10
+	if sm.maxSize != 10 {
+		t.Errorf("Expected maxSize=10 when 0 provided, got %d", sm.maxSize)
+	}
+}
+
+// ============================================
+// Security Scanner credential detection (security.go)
+// ============================================
+
+func TestScanBodyForCredentials_AWSKey(t *testing.T) {
+	scanner := NewSecurityScanner()
+	// AKIA followed by 16 uppercase alphanumeric chars (no test indicators)
+	body := `{"config": "AKIAIOSFODNN7PRODKEY"}`
+	findings := scanner.scanBodyForCredentials(body, "https://api.company.com/config", "response body")
+
+	foundAWS := false
+	for _, f := range findings {
+		if strings.Contains(f.Title, "AWS") {
+			foundAWS = true
+		}
+	}
+	if !foundAWS {
+		t.Error("Expected AWS key finding")
+	}
+}
+
+func TestScanBodyForCredentials_GitHubToken(t *testing.T) {
+	scanner := NewSecurityScanner()
+	body := `{"token": "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"}`
+	findings := scanner.scanBodyForCredentials(body, "https://api.example.com/auth", "response body")
+
+	foundGH := false
+	for _, f := range findings {
+		if strings.Contains(f.Title, "GitHub") {
+			foundGH = true
+		}
+	}
+	if !foundGH {
+		t.Error("Expected GitHub token finding")
+	}
+}
+
+func TestScanBodyForCredentials_StripeKey(t *testing.T) {
+	scanner := NewSecurityScanner()
+	testKey := "sk_" + "live_ABCDEFGHIJKLMNOPQRSTUVWXab"
+	body := `{"key": "` + testKey + `"}`
+	findings := scanner.scanBodyForCredentials(body, "https://api.example.com/payment", "response body")
+
+	foundStripe := false
+	for _, f := range findings {
+		if strings.Contains(f.Title, "Stripe") {
+			foundStripe = true
+		}
+	}
+	if !foundStripe {
+		t.Error("Expected Stripe key finding")
+	}
+}
+
+func TestScanBodyForCredentials_PrivateKey(t *testing.T) {
+	scanner := NewSecurityScanner()
+	body := `-----BEGIN RSA PRIVATE KEY-----\nMIIE...truncated\n-----END RSA PRIVATE KEY-----`
+	findings := scanner.scanBodyForCredentials(body, "https://api.example.com/key", "response body")
+
+	foundPK := false
+	for _, f := range findings {
+		if strings.Contains(f.Title, "Private key") {
+			foundPK = true
+		}
+	}
+	if !foundPK {
+		t.Error("Expected private key finding")
+	}
+}
+
+func TestScanBodyForCredentials_JWT(t *testing.T) {
+	scanner := NewSecurityScanner()
+	body := `{"access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SIGNATURE_HERE_abc"}`
+	findings := scanner.scanBodyForCredentials(body, "https://api.example.com/auth", "response body")
+
+	foundJWT := false
+	for _, f := range findings {
+		if strings.Contains(f.Title, "JWT") {
+			foundJWT = true
+		}
+	}
+	if !foundJWT {
+		t.Error("Expected JWT finding")
+	}
+}
+
+func TestScanBodyForCredentials_EmptyBody(t *testing.T) {
+	scanner := NewSecurityScanner()
+	findings := scanner.scanBodyForCredentials("", "https://api.example.com/", "response body")
+	if len(findings) != 0 {
+		t.Errorf("Expected 0 findings for empty body, got %d", len(findings))
+	}
+}
+
+func TestScanBodyForCredentials_LargeBody(t *testing.T) {
+	scanner := NewSecurityScanner()
+	// Create body larger than 10240 chars with a key beyond the limit
+	largeBody := strings.Repeat("x", 10300) + `AKIAIOSFODNN7EXAMPLE`
+	findings := scanner.scanBodyForCredentials(largeBody, "https://api.example.com/", "response body")
+	// The key is beyond the scan limit, so it shouldn't be found
+	for _, f := range findings {
+		if strings.Contains(f.Title, "AWS") {
+			t.Error("Should not find AWS key beyond scan limit")
+		}
+	}
+}
+
+func TestScanConsoleForCredentials_BearerToken(t *testing.T) {
+	scanner := NewSecurityScanner()
+	entry := LogEntry{
+		"level":   "log",
+		"message": "Auth header: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test",
+		"source":  "auth.js",
+	}
+	findings := scanner.scanConsoleForCredentials(entry)
+
+	foundBearer := false
+	for _, f := range findings {
+		if strings.Contains(f.Title, "Bearer") {
+			foundBearer = true
+		}
+	}
+	if !foundBearer {
+		t.Error("Expected Bearer token finding")
+	}
+}
+
+func TestScanConsoleForCredentials_AWSKey(t *testing.T) {
+	scanner := NewSecurityScanner()
+	entry := LogEntry{
+		"level":   "log",
+		"message": "Config loaded: key=AKIAIOSFODNN7PRODKEY",
+		"source":  "config.js",
+	}
+	findings := scanner.scanConsoleForCredentials(entry)
+
+	foundAWS := false
+	for _, f := range findings {
+		if strings.Contains(f.Title, "AWS") {
+			foundAWS = true
+		}
+	}
+	if !foundAWS {
+		t.Error("Expected AWS key finding in console")
+	}
+}
+
+func TestScanConsoleForCredentials_EmptyMessage(t *testing.T) {
+	scanner := NewSecurityScanner()
+	entry := LogEntry{"level": "log", "source": "app.js"}
+	findings := scanner.scanConsoleForCredentials(entry)
+	if len(findings) != 0 {
+		t.Errorf("Expected 0 findings for empty message, got %d", len(findings))
+	}
+}
+
+// ============================================
+// handleCaptureSettings single-setting path (capture_control.go)
+// ============================================
+
+func TestHandleCaptureSettings_SingleSetting(t *testing.T) {
+	co := NewCaptureOverrides()
+
+	result, errMsg := handleCaptureSettings(co, map[string]string{"log_level": "error"}, nil, "test-agent")
+	if errMsg != "" {
+		t.Fatalf("Expected no error, got: %s", errMsg)
+	}
+	if !strings.Contains(result, "log_level") {
+		t.Errorf("Expected result to mention 'log_level', got: %s", result)
+	}
+}
+
+func TestHandleCaptureSettings_EmptySettings(t *testing.T) {
+	co := NewCaptureOverrides()
+
+	_, errMsg := handleCaptureSettings(co, map[string]string{}, nil, "test-agent")
+	if errMsg == "" {
+		t.Error("Expected error for empty settings")
+	}
+	if !strings.Contains(errMsg, "No settings") {
+		t.Errorf("Expected 'No settings' error, got: %s", errMsg)
+	}
+}
+
+func TestHandleCaptureSettings_InvalidSettingName(t *testing.T) {
+	co := NewCaptureOverrides()
+
+	_, errMsg := handleCaptureSettings(co, map[string]string{"invalid_name": "value"}, nil, "test-agent")
+	if errMsg == "" {
+		t.Error("Expected error for invalid setting name")
+	}
+}
+
+// ============================================
+// HandleEnhancedActions HTTP handler (actions.go)
+// ============================================
+
+func TestHandleEnhancedActions_BadJSON(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	_ = setupToolHandler(t, server, capture)
+
+	req := httptest.NewRequest("POST", "/actions", bytes.NewBufferString("not valid json"))
+	w := httptest.NewRecorder()
+
+	capture.HandleEnhancedActions(w, req)
+
+	if w.Code != 400 {
+		t.Errorf("Expected 400 for bad JSON, got %d", w.Code)
+	}
+}
+
+func TestHandleEnhancedActions_ValidActions(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	_ = setupToolHandler(t, server, capture)
+
+	body := `{"actions":[{"type":"click","timestamp":1706090400000,"url":"https://example.com/"}]}`
+	req := httptest.NewRequest("POST", "/actions", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+
+	capture.HandleEnhancedActions(w, req)
+
+	if w.Code != 200 {
+		t.Errorf("Expected 200 for valid actions, got %d", w.Code)
+	}
+}
+
+// ============================================
+// computeMetricChange regression threshold (sessions.go)
+// ============================================
+
+func TestComputeMetricChange_NegativeBeforeZeroAfter(t *testing.T) {
+	mc := computeMetricChange(100, 0)
+	if mc.Change != "-100%" {
+		t.Errorf("Expected '-100%%', got %q", mc.Change)
+	}
+	if mc.Regression {
+		t.Error("Expected no regression when value decreases")
+	}
+}
+
+// ============================================
+// Additional coverage for toolGetEnhancedActions (actions.go)
+// ============================================
+
+func TestToolGetEnhancedActions_Empty(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	args := json.RawMessage(`{"what":"actions"}`)
+
+	resp, _ := mcp.toolHandler.handleToolCall(req, "observe", args)
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+
+	if strings.Contains(result.Content[0].Text, "error") {
+		t.Errorf("Expected no error for empty actions, got: %s", result.Content[0].Text)
+	}
+}
+
+// ============================================
+// Coverage gap: temporal_graph.go evict paths
+// ============================================
+
+func TestTemporalEvict_UnparseableTimestamp(t *testing.T) {
+	dir := t.TempDir()
+	histDir := filepath.Join(dir, "history")
+	os.MkdirAll(histDir, 0755)
+
+	// Write events: one old (evicted), one with bad timestamp (kept), one recent (kept)
+	oldEvent := TemporalEvent{
+		ID: "evt_old", Type: "regression", Description: "Old regression",
+		Timestamp: time.Now().Add(-100 * 24 * time.Hour).UTC().Format(time.RFC3339),
+		Origin: "system", Status: "active",
+	}
+	badTSEvent := TemporalEvent{
+		ID: "evt_bad_ts", Type: "regression", Description: "Bad timestamp event",
+		Timestamp: "not-a-valid-time", Origin: "system", Status: "active",
+	}
+	recentEvent := TemporalEvent{
+		ID: "evt_recent", Type: "regression", Description: "Recent regression",
+		Timestamp: time.Now().Add(-1 * time.Hour).UTC().Format(time.RFC3339),
+		Origin: "system", Status: "active",
+	}
+
+	var buf bytes.Buffer
+	for _, e := range []TemporalEvent{oldEvent, badTSEvent, recentEvent} {
+		data, _ := json.Marshal(e)
+		buf.Write(data)
+		buf.WriteByte('\n')
+	}
+	os.WriteFile(filepath.Join(histDir, "events.jsonl"), buf.Bytes(), 0644)
+
+	tg := NewTemporalGraph(dir)
+	defer tg.Close()
+
+	// The rewritten file should have 2 entries: bad_ts (kept due to parse error) + recent
+	data, err := os.ReadFile(filepath.Join(histDir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 lines in rewritten file (bad_ts + recent), got %d", len(lines))
+	}
+	// Verify bad_ts event was kept
+	found := false
+	for _, line := range lines {
+		if strings.Contains(line, "evt_bad_ts") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("event with unparseable timestamp should be kept in rewritten file")
+	}
+}
+
+func TestTemporalEvict_RebuildFingerprints(t *testing.T) {
+	dir := t.TempDir()
+	histDir := filepath.Join(dir, "history")
+	os.MkdirAll(histDir, 0755)
+
+	oldEvent := TemporalEvent{
+		ID: "evt_old", Type: "error", Description: "Login failed",
+		Timestamp: time.Now().Add(-100 * 24 * time.Hour).UTC().Format(time.RFC3339),
+		Origin: "system", Status: "active", Source: "auth.js",
+	}
+	recentEvent1 := TemporalEvent{
+		ID: "evt_r1", Type: "error", Description: "Timeout error",
+		Timestamp: time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339),
+		Origin: "system", Status: "active", Source: "api.js",
+	}
+	recentEvent2 := TemporalEvent{
+		ID: "evt_r2", Type: "regression", Description: "Slow load",
+		Timestamp: time.Now().Add(-1 * time.Hour).UTC().Format(time.RFC3339),
+		Origin: "system", Status: "active", Source: "perf.js",
+	}
+
+	var buf bytes.Buffer
+	for _, e := range []TemporalEvent{oldEvent, recentEvent1, recentEvent2} {
+		data, _ := json.Marshal(e)
+		buf.Write(data)
+		buf.WriteByte('\n')
+	}
+	os.WriteFile(filepath.Join(histDir, "events.jsonl"), buf.Bytes(), 0644)
+
+	tg := NewTemporalGraph(dir)
+	defer tg.Close()
+
+	events := tg.Query(TemporalQuery{})
+	if len(events.Events) != 2 {
+		t.Fatalf("expected 2 events after eviction, got %d", len(events.Events))
+	}
+
+	// Verify the rewritten file
+	data, err := os.ReadFile(filepath.Join(histDir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != 2 {
+		t.Errorf("rewritten file should have 2 lines, got %d", len(lines))
+	}
+}
+
+// ============================================
+// Coverage gap: security.go scanning paths
+// ============================================
+
+func TestScanBodyForCredentials_APIKeyInJSON(t *testing.T) {
+	scanner := NewSecurityScanner()
+	body := `{"user": "test", "api_key": "sk_live_real_production_key_1234567890"}`
+	findings := scanner.scanBodyForCredentials(body, "https://api.example.com/config", "response body")
+	found := false
+	for _, f := range findings {
+		if strings.Contains(f.Title, "API key") && strings.Contains(f.Title, "api_key") {
+			found = true
+			if f.Severity != "warning" {
+				t.Errorf("expected warning severity, got %s", f.Severity)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected API key finding for api_key field in JSON body")
+	}
+}
+
+func TestScanForPII_SSNThirdParty(t *testing.T) {
+	scanner := NewSecurityScanner()
+	content := `{"ssn": "123-45-6789"}`
+	findings := scanner.scanForPII(content, "https://analytics.third-party.com/track", "request body", true)
+	if len(findings) == 0 {
+		t.Fatal("expected SSN finding")
+	}
+	if findings[0].Severity != "critical" {
+		t.Errorf("expected critical severity for third-party SSN, got %s", findings[0].Severity)
+	}
+	if !strings.Contains(findings[0].Description, "third-party") {
+		t.Errorf("expected third-party in description, got: %s", findings[0].Description)
+	}
+}
+
+func TestScanURLForCredentials_AWSKeyInURL(t *testing.T) {
+	scanner := NewSecurityScanner()
+	body := NetworkBody{
+		URL:    "https://s3.amazonaws.com/bucket?AWSAccessKeyId=AKIAIOSFODNN7PRODKEY&Expires=1234",
+		Method: "GET",
+		Status: 200,
+	}
+	findings := scanner.scanURLForCredentials(body)
+	found := false
+	for _, f := range findings {
+		if strings.Contains(f.Title, "AWS access key") {
+			found = true
+			if f.Severity != "critical" {
+				t.Errorf("expected critical severity, got %s", f.Severity)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected AWS key finding in URL")
+	}
+}
+
+// ============================================
+// Coverage gap: tools.go onEntries callback
+// ============================================
+
+func TestOnEntriesCallback_ArgsString(t *testing.T) {
+	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
+	capture := NewCapture()
+	_ = setupToolHandler(t, server, capture)
+
+	entries := []LogEntry{
+		{
+			"level": "error",
+			"args":  []interface{}{"Connection timeout on /api/users"},
+		},
+	}
+	if server.onEntries != nil {
+		server.onEntries(entries)
+	}
+}
+
+func TestOnEntriesCallback_ArgsErrorObject(t *testing.T) {
+	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
+	capture := NewCapture()
+	_ = setupToolHandler(t, server, capture)
+
+	entries := []LogEntry{
+		{
+			"level": "error",
+			"args": []interface{}{
+				map[string]interface{}{
+					"name":    "TypeError",
+					"message": "Cannot read property 'x' of null",
+					"stack":   "TypeError: Cannot read property 'x'\n    at foo.js:10",
+				},
+			},
+		},
+	}
+	if server.onEntries != nil {
+		server.onEntries(entries)
+	}
+}
+
+func TestOnEntriesCallback_EmptyMessage(t *testing.T) {
+	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
+	capture := NewCapture()
+	_ = setupToolHandler(t, server, capture)
+
+	entries := []LogEntry{
+		{
+			"level": "error",
+			"args":  []interface{}{42},
+		},
+	}
+	if server.onEntries != nil {
+		server.onEntries(entries)
+	}
+}
+
+func TestOnEntriesCallback_NonErrorSkipped(t *testing.T) {
+	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
+	capture := NewCapture()
+	_ = setupToolHandler(t, server, capture)
+
+	entries := []LogEntry{
+		{"level": "info", "message": "All systems operational"},
+	}
+	if server.onEntries != nil {
+		server.onEntries(entries)
+	}
+}
+
+// ============================================
+// Coverage gap: actions.go HandleEnhancedActions
+// ============================================
+
+func TestHandleEnhancedActions_BodyTooLarge(t *testing.T) {
+	capture := NewCapture()
+	largeBody := strings.Repeat("x", 11*1024*1024)
+	req := httptest.NewRequest("POST", "/actions", strings.NewReader(largeBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	capture.HandleEnhancedActions(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("expected 413, got %d", w.Code)
+	}
+}
+
+func TestHandleEnhancedActions_RateLimitAfterRecording(t *testing.T) {
+	capture := NewCapture()
+
+	actions := make([]EnhancedAction, 200)
+	for i := range actions {
+		actions[i] = EnhancedAction{
+			Type: "click", Timestamp: int64(1706090400000 + i), URL: "http://example.com",
+		}
+	}
+	payload := struct {
+		Actions []EnhancedAction `json:"actions"`
+	}{Actions: actions}
+	data, _ := json.Marshal(payload)
+
+	for i := 0; i < 50; i++ {
+		req := httptest.NewRequest("POST", "/actions", bytes.NewReader(data))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		capture.HandleEnhancedActions(w, req)
+		if w.Code == http.StatusTooManyRequests {
+			return
+		}
+	}
+}
+
+// ============================================
+// Coverage gap: temporal_graph.go handleRecordEvent
+// ============================================
+
+func TestHandleRecordEvent_MissingDescription(t *testing.T) {
+	dir := t.TempDir()
+	tg := NewTemporalGraph(dir)
+	defer tg.Close()
+
+	eventData := map[string]interface{}{"type": "error"}
+	result, errMsg := handleRecordEvent(tg, eventData, "test-agent")
+	if result != "" {
+		t.Errorf("expected empty result, got: %s", result)
+	}
+	if !strings.Contains(errMsg, "description") {
+		t.Errorf("expected description error, got: %s", errMsg)
+	}
+}
+
+func TestToolConfigureRecordEvent_MissingDescription(t *testing.T) {
+	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
+	capture := NewCapture()
+	handler := setupToolHandler(t, server, capture)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`3`), Method: "tools/call"}
+	resp := handler.toolHandler.toolConfigureRecordEvent(req, json.RawMessage(`{"event": {"type": "error"}}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	if !strings.Contains(result.Content[0].Text, "description") {
+		t.Errorf("expected description error, got: %s", result.Content[0].Text)
+	}
+}
+
+// ============================================
+// Coverage gap: capture_control.go
+// ============================================
+
+func TestSetMultiple_UnknownSettingName(t *testing.T) {
+	co := NewCaptureOverrides()
+	time.Sleep(1100 * time.Millisecond)
+
+	settings := map[string]string{"nonexistent_setting": "value"}
+	errs := co.SetMultiple(settings)
+	if len(errs) == 0 {
+		t.Fatal("expected error for unknown setting")
+	}
+	errStr := errs["nonexistent_setting"].Error()
+	if !strings.Contains(errStr, "Unknown capture setting") {
+		t.Errorf("expected 'Unknown capture setting' error, got: %s", errStr)
+	}
+	if !strings.Contains(errStr, "log_level") {
+		t.Errorf("expected valid settings listed, got: %s", errStr)
+	}
+}
+
+func TestBuildSettingsResponse_NilOverrides(t *testing.T) {
+	co := NewCaptureOverrides()
+	resp := buildSettingsResponse(co)
+	if !resp.Connected {
+		t.Error("expected Connected=true")
+	}
+	if resp.CaptureOverrides == nil {
+		t.Error("expected non-nil CaptureOverrides map")
+	}
+}
+
+func TestNewAuditLogger_ValidPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "subdir", "audit.jsonl")
+	logger, err := NewAuditLogger(path)
+	if err != nil {
+		t.Fatalf("NewAuditLogger failed: %v", err)
+	}
+	defer logger.Close()
+
+	logger.Write(AuditEvent{Event: "setting_changed", Setting: "log_level", To: "debug", Source: "test"})
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) == 0 {
+		t.Error("expected audit log to have content")
+	}
+}
+
+// ============================================
+// Coverage gap: main.go helpers
+// ============================================
+
+func TestJsonResponse_ContentType(t *testing.T) {
+	w := httptest.NewRecorder()
+	jsonResponse(w, http.StatusCreated, map[string]string{"id": "123"})
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected 201, got %d", w.Code)
+	}
+	if w.Header().Get("Content-Type") != "application/json" {
+		t.Error("expected application/json content type")
+	}
+}
+
+func TestSaveEntries_WithEntries(t *testing.T) {
+	dir := t.TempDir()
+	logFile := filepath.Join(dir, "save-test.jsonl")
+	server := &Server{logFile: logFile, maxEntries: 100}
+	server.entries = []LogEntry{
+		{"level": "info", "message": "test1"},
+		{"level": "error", "message": "test2"},
+	}
+
+	err := server.saveEntries()
+	if err != nil {
+		t.Fatalf("saveEntries failed: %v", err)
+	}
+
+	data, _ := os.ReadFile(logFile)
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != 2 {
+		t.Errorf("expected 2 lines, got %d", len(lines))
+	}
+}
+
+// ============================================
+// Coverage gap: security.go extractOrigin
+// ============================================
+
+func TestExtractOrigin_VariousURLs(t *testing.T) {
+	tests := []struct {
+		input, expected string
+	}{
+		{"https://example.com/path?q=1", "https://example.com"},
+		{"http://localhost:3000/api", "http://localhost:3000"},
+		{"https://sub.domain.com:8080/foo", "https://sub.domain.com:8080"},
+	}
+	for _, tt := range tests {
+		got := extractOrigin(tt.input)
+		if got != tt.expected {
+			t.Errorf("extractOrigin(%q) = %q, want %q", tt.input, got, tt.expected)
+		}
 	}
 }

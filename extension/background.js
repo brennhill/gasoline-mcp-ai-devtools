@@ -68,6 +68,10 @@ let lastMemoryCheck = 0
 let networkBodyCaptureDisabled = false
 let reducedCapacities = false
 
+// AI capture control state
+let captureOverrides = {} // Current AI-set overrides from /settings
+let aiControlled = false // Whether AI has active overrides
+
 // Context annotation monitoring state
 const CONTEXT_SIZE_THRESHOLD = 20 * 1024 // 20KB threshold
 const CONTEXT_WARNING_WINDOW_MS = 60000 // 60-second window
@@ -208,7 +212,7 @@ export function exportDebugLog() {
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      version: '4.6.0',
+      version: '4.7.0',
       debugMode,
       connectionStatus,
       settings: {
@@ -1887,11 +1891,57 @@ async function checkConnectionAndUpdate() {
     })
   }
 
+  // Poll capture settings when connected
+  if (health.connected) {
+    const overrides = await pollCaptureSettings(serverUrl)
+    if (overrides !== null) {
+      applyCaptureOverrides(overrides)
+    }
+  }
+
   // Notify popup if open
   if (typeof chrome !== 'undefined' && chrome.runtime) {
-    chrome.runtime.sendMessage({ type: 'statusUpdate', status: connectionStatus }).catch(() => {
+    chrome.runtime.sendMessage({
+      type: 'statusUpdate',
+      status: { ...connectionStatus, aiControlled },
+    }).catch(() => {
       // Popup not open, ignore
     })
+  }
+}
+
+/**
+ * Poll the server's /settings endpoint for AI capture overrides.
+ * @param {string} url - Server base URL
+ * @returns {Promise<Object|null>} Overrides map or null on error
+ */
+export async function pollCaptureSettings(url) {
+  try {
+    const response = await fetch(`${url}/settings`)
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.capture_overrides || {}
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Apply AI capture overrides to the extension's settings.
+ * @param {Object} overrides - Map of setting name to value
+ */
+export function applyCaptureOverrides(overrides) {
+  captureOverrides = overrides
+  aiControlled = Object.keys(overrides).length > 0
+
+  if (overrides.log_level !== undefined) {
+    currentLogLevel = overrides.log_level
+  }
+  if (overrides.network_bodies !== undefined) {
+    networkBodyCaptureDisabled = overrides.network_bodies === 'false'
+  }
+  if (overrides.screenshot_on_error !== undefined) {
+    screenshotOnError = overrides.screenshot_on_error === 'true'
   }
 }
 

@@ -17,7 +17,7 @@ toc_sticky: true
 npx gasoline-mcp
 ```
 
-You'll see: `Gasoline v4.6.0` and `Server: http://127.0.0.1:7890`
+You'll see: `Gasoline v4.7.0` and `Server: http://127.0.0.1:7890`
 
 Leave this burning. No global install — `npx` handles everything.
 

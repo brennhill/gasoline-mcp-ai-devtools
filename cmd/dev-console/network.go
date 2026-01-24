@@ -7,7 +7,6 @@ package main
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -64,13 +63,21 @@ func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	}
 }
 
-// evictNBForMemory removes oldest bodies if memory exceeds limit
+// evictNBForMemory removes oldest bodies if memory exceeds limit.
+// Calculates how many entries to drop in a single pass to avoid O(n²) re-scanning.
 func (v *Capture) evictNBForMemory() {
-	for v.calcNBMemory() > nbBufferMemoryLimit && len(v.networkBodies) > 0 {
-		v.networkBodies = v.networkBodies[1:]
-		if len(v.networkAddedAt) > 0 {
-			v.networkAddedAt = v.networkAddedAt[1:]
-		}
+	excess := v.calcNBMemory() - nbBufferMemoryLimit
+	if excess <= 0 {
+		return
+	}
+	drop := 0
+	for drop < len(v.networkBodies) && excess > 0 {
+		excess -= int64(len(v.networkBodies[drop].RequestBody)+len(v.networkBodies[drop].ResponseBody)) + networkBodyOverhead
+		drop++
+	}
+	v.networkBodies = v.networkBodies[drop:]
+	if len(v.networkAddedAt) >= drop {
+		v.networkAddedAt = v.networkAddedAt[drop:]
 	}
 }
 
@@ -108,33 +115,18 @@ func (v *Capture) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
 		filtered = append(filtered, b)
 	}
 
-	// Reverse for newest first
-	for i, j := 0, len(filtered)-1; i < j; i, j = i+1, j-1 {
-		filtered[i], filtered[j] = filtered[j], filtered[i]
-	}
-
-	// Apply limit
+	reverseSlice(filtered)
 	if len(filtered) > limit {
 		filtered = filtered[:limit]
 	}
-
 	return filtered
 }
 
 func (v *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
-	// Check rate limit and circuit breaker
-	if v.CheckRateLimit() {
-		v.WriteRateLimitResponse(w)
+	body, ok := v.readIngestBody(w, r)
+	if !ok {
 		return
 	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
-		return
-	}
-
 	var payload struct {
 		Bodies []NetworkBody `json:"bodies"`
 	}
@@ -142,16 +134,9 @@ func (v *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	// Record batch size for rate limiting
-	v.RecordEvents(len(payload.Bodies))
-
-	// Re-check after recording
-	if v.CheckRateLimit() {
-		v.WriteRateLimitResponse(w)
+	if !v.recordAndRecheck(w, len(payload.Bodies)) {
 		return
 	}
-
 	v.AddNetworkBodies(payload.Bodies)
 	w.WriteHeader(http.StatusOK)
 }

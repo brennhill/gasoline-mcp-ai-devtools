@@ -1,6 +1,6 @@
 # gasoline-mcp
 
-**Browser observability for AI coding agents.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time.
+**Browser observability for AI coding agents - autonomously debug and fix issues in real time.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.
 
 ## Setup (2 Steps)
 

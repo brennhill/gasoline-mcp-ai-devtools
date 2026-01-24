@@ -103,6 +103,149 @@ Server-side intelligence that makes the AI smarter about browser state it can't 
 
 ---
 
+## Phase 5: Security & Analysis
+
+Analysis and security hardening tools that operate on data Gasoline already captures. No new browser capture mechanisms needed.
+
+### Enterprise Adoption Blockers (ship first)
+
+Without these, security teams will block the tool in enterprise environments.
+
+- [ ] **Configurable Redaction Patterns** — User-defined regex patterns for redacting sensitive data from tool responses (tokens, SSNs, card numbers, custom patterns). Security teams won't approve a tool that passes raw tokens/PII to AI context.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 2.4
+  - Branch: `feature/redaction-patterns`
+
+- [ ] **Tool Invocation Log (`get_audit_log`)** — Ring-buffer log of every MCP tool call with timestamp, tool name, parameters, response size, duration, and client identity.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 1.1
+  - Branch: `feature/audit-log`
+
+- [ ] **Client Identification** — Identify which AI client (Claude Code, Cursor, Windsurf, etc.) is connected via MCP, recorded on every audit entry.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 1.2
+  - Branch: `feature/client-id`
+
+- [ ] **Session ID Assignment** — Unique session ID per MCP connection, correlating all tool calls within a session.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 1.3
+  - Branch: `feature/session-id`
+
+- [ ] **TTL-Based Retention** — Configurable time-to-live for all captured data; buffers automatically evict entries older than TTL.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 2.1
+  - Branch: `feature/ttl-retention`
+
+- [ ] **API Key Authentication** — Optional shared-secret authentication for the HTTP API, preventing unauthorized tools from connecting.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 3.1
+  - Branch: `feature/api-key-auth`
+
+### Market Differentiators (ship second)
+
+Features no other tool provides — these justify Gasoline's existence beyond "just another MCP server."
+
+- [ ] **CSP Generator (`generate_csp`)** — Generate a Content-Security-Policy from observed resource origins. No other tool generates CSP passively from browser observation.
+  - Spec: ai-first/tech-spec-security-hardening.md § Tool 1
+  - Branch: `feature/generate-csp`
+
+- [ ] **Third-Party Risk Audit (`audit_third_parties`)** — Map all external domains, classify by risk level, domain reputation scoring, enterprise custom lists. Bundled reputation lists (Disconnect.me, Tranco 10K, curated CDNs), domain heuristics, optional external enrichment (RDAP, CT, Safe Browsing).
+  - Spec: ai-first/tech-spec-security-hardening.md § Tool 2
+  - Branch: `feature/audit-third-parties`
+
+- [ ] **Security Scanner (`security_audit`)** — Detect exposed credentials, missing auth, PII leaks, insecure transport, missing security headers (incl. CSP analysis), insecure cookies. Proactive: context streaming pushes alerts for credential exposure, CSP violations, insecure cookies, and missing security headers as they are observed.
+  - Spec: v6-specification.md § Feature 1 (checks 1-6)
+  - Branch: `feature/security-audit`
+
+- [ ] **Security Regression Detection (`diff_security`)** — Compare security posture before/after code changes. Removed headers, lost cookie flags, dropped auth requirements flagged with severity.
+  - Spec: ai-first/tech-spec-security-hardening.md § Tool 3
+  - Branch: `feature/diff-security`
+  - Depends on: `diff_sessions`
+
+### Operational Intelligence (ship third)
+
+- [ ] **API Contract Validation (`validate_api`)** — Track response shapes, detect contract violations.
+  - Spec: v6-specification.md § Feature 4
+  - Branch: `feature/validate-api`
+
+- [ ] **Configuration Profiles** — Named configuration bundles (short-lived, restricted, paranoid) that set TTL, redaction, and rate limits to common security postures.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 2.2
+  - Branch: `feature/config-profiles`
+
+- [ ] **Per-Tool Rate Limits** — Configurable rate limits per MCP tool (e.g., `query_dom` limited to 10/min) to prevent runaway AI loops.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 3.2
+  - Branch: `feature/per-tool-rate-limits`
+
+- [ ] **Data Export** — MCP tool to export current buffer state and audit entries as JSON Lines for offline retention.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 2.3
+  - Branch: `feature/data-export`
+
+- [ ] **Verification Loop (`verify_fix`)** — Before/after session comparison for fix verification.
+  - Spec: v6-specification.md § Feature 2
+  - Branch: `feature/verify-fix`
+
+- [ ] **Session Comparison (`diff_sessions`)** — Named snapshot storage and comparison.
+  - Spec: v6-specification.md § Feature 3
+  - Branch: `feature/diff-sessions`
+
+- [ ] **Performance Budget Monitor (`check_performance`)** — Baseline regression detection with budget thresholds.
+  - Spec: performance-budget-spec.md
+  - Branch: `feature/performance-budget-monitor`
+
+### Scale & Polish (ship last)
+
+- [ ] **Context Streaming** — Push significant events to AI via MCP notifications. Depends on MCP client notification support maturing.
+  - Spec: v6-specification.md § Feature 5
+  - Branch: `feature/context-streaming`
+
+- [ ] **Test Generation v2 (`generate_test`)** — DOM assertions, fixtures, visual snapshots.
+  - Spec: generate-test-v2.md
+  - Branch: `feature/generate-test-v2`
+
+- [ ] **SRI Hash Generator (`generate_sri`)** — Generate Subresource Integrity hashes for third-party resources.
+  - Spec: ai-first/tech-spec-security-hardening.md § Tool 4
+  - Branch: `feature/generate-sri`
+
+- [ ] **Redaction Audit Log** — Log every time data is redacted (what pattern matched, what field, what tool response), without storing the redacted content itself.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 1.4
+  - Branch: `feature/redaction-audit`
+
+- [ ] **Configurable Thresholds** — All server limits (buffer sizes, memory caps, rate limits) configurable via CLI flags or config file.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 3.3
+  - Branch: `feature/configurable-thresholds`
+
+- [ ] **Health & SLA Metrics (`get_health`)** — MCP tool exposing server uptime, buffer utilization, memory usage, request counts, and error rates.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 3.4
+  - Branch: `feature/health-metrics`
+
+- [ ] **Project Isolation** — Multiple isolated capture contexts (projects) on a single server, each with independent buffers and configuration.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 4.1
+  - Branch: `feature/project-isolation`
+
+- [ ] **Read-Only Mode** — Server mode that accepts capture data but disables all mutation tools (clear, dismiss, checkpoint delete).
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 4.2
+  - Branch: `feature/read-only-mode`
+
+- [ ] **Tool Allowlisting** — Configuration to restrict which MCP tools are available, hiding sensitive tools from untrusted clients.
+  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 4.3
+  - Branch: `feature/tool-allowlist`
+
+### Internal Quality: Fuzz Tests
+
+Go fuzz tests for protocol parsing and input handling. Not user-facing — improves Gasoline's own resilience.
+
+- [ ] **FuzzJSONRPCParse** — Fuzz the MCP JSON-RPC message parser. Goal: No panics, no unbounded allocations.
+- [ ] **FuzzHTTPBodyParse** — Fuzz the `/logs` and `/network-body` HTTP endpoints. Goal: All malformed bodies return 400, never panic.
+- [ ] **FuzzSecurityPatterns** — Fuzz the credential/PII regex patterns. Goal: No catastrophic backtracking.
+- [ ] **FuzzWebSocketFrame** — Fuzz WebSocket message handling. Goal: Malformed frames handled gracefully.
+- [ ] **FuzzNetworkBodyStorage** — Fuzz large/malformed network body storage. Goal: Memory limits enforced, no OOM.
+
+**When to run:** Fuzz tests run in CI with `-fuzztime=30s`. Extended fuzzing (`-fuzztime=5m`) runs as part of the release PR skill.
+
+### Dependencies
+
+- Enterprise Adoption Blockers can be implemented in parallel (no cross-feature deps)
+- Client ID + Session ID are prerequisites for meaningful audit logs
+- Configuration Profiles depend on TTL + Redaction being implemented first
+- `diff_security` depends on `diff_sessions`
+- Context Streaming depends on MCP notification support in clients
+
+---
+
 ## Tech Debt: Consolidation (code quality)
 
 Codebase grew feature-by-feature without periodic pattern extraction. Locally consistent, globally drifting. Two parallel streams since Go and Extension files don't overlap.
@@ -167,3 +310,49 @@ These don't serve the thesis. The AI IS the interface — exporting to other too
 | Cross-session temporal graph | `ai_persistence.go` (extend) | All others |
 | SPA route measurement | `inject.js`, `performance.go` | All except Budgets |
 | Budget thresholds | `performance.go`, config loader (new) | All except SPA routes |
+
+### Phase 5: Enterprise Adoption Blockers
+
+| Feature | Primary files | Can parallel with |
+|---------|--------------|-------------------|
+| Redaction patterns | `redaction.go` (new), `tools.go` | Audit log, TTL, API key |
+| Audit log | `audit.go` (new), `tools.go` | Redaction, TTL, API key |
+| Client identification | `audit.go`, `main.go` | All (pairs with Session ID) |
+| Session ID | `audit.go`, `main.go` | All (pairs with Client ID) |
+| TTL retention | `memory.go` (extend), `types.go` | Redaction, Audit log, API key |
+| API key auth | `main.go`, `auth.go` (new) | Redaction, Audit log, TTL |
+
+### Phase 5: Market Differentiators
+
+| Feature | Primary files | Can parallel with |
+|---------|--------------|-------------------|
+| CSP generator | `security_csp.go` (new), `tools.go` | All others |
+| Third-party audit | `security_thirdparty.go` (new), `tools.go` | All others |
+| Security scanner | `security.go` (new), `tools.go` | All except diff_security |
+| Security regression | `security_diff.go` (new), `tools.go` | Needs diff_sessions first |
+
+### Phase 5: Operational Intelligence
+
+| Feature | Primary files | Can parallel with |
+|---------|--------------|-------------------|
+| API contract validation | `contracts.go` (new), `tools.go` | All others |
+| Configuration profiles | `config.go` (new), `main.go` | Needs TTL + Redaction first |
+| Per-tool rate limits | `rate_limit.go` (extend), `tools.go` | All others |
+| Data export | `export.go` (new), `tools.go` | All others |
+| Verify fix | `verify.go` (new), `tools.go` | All others |
+| Session comparison | `sessions.go` (new), `tools.go` | All others |
+| Performance budget | `performance.go` (extend), `tools.go` | All others |
+
+### Phase 5: Scale & Polish
+
+| Feature | Primary files | Can parallel with |
+|---------|--------------|-------------------|
+| Context streaming | `streaming.go` (new), `main.go` | All others |
+| Test generation v2 | `codegen.go` (extend) | All others |
+| SRI generator | `security_sri.go` (new), `tools.go` | All others |
+| Redaction audit log | `audit.go` (extend) | Needs Redaction + Audit log first |
+| Configurable thresholds | `config.go` (extend), `main.go` | All others |
+| Health metrics | `health.go` (new), `tools.go` | All others |
+| Project isolation | `projects.go` (new), all domain files | Standalone (large scope) |
+| Read-only mode | `main.go`, `tools.go` | All others |
+| Tool allowlisting | `tools.go`, `config.go` | All others |

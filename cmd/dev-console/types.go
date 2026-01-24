@@ -138,6 +138,8 @@ type NetworkBody struct {
 	Duration          int    `json:"duration,omitempty"`
 	RequestTruncated  bool   `json:"requestTruncated,omitempty"`
 	ResponseTruncated bool   `json:"responseTruncated,omitempty"`
+	ResponseHeaders   map[string]string `json:"responseHeaders,omitempty"`
+	HasAuthHeader     bool              `json:"hasAuthHeader,omitempty"`
 }
 
 // NetworkBodyFilter defines filtering criteria for network bodies
