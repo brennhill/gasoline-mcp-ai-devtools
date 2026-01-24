@@ -54,6 +54,21 @@ docs/
 └── product-description.md  # Product overview
 ```
 
+## Git Subrepos (DO NOT DELETE)
+
+This project uses git submodules for shared configuration. These are **separate repositories** embedded in the project tree:
+
+| Path | Repository | Purpose |
+|------|-----------|---------|
+| `.claude/` | gasoline-claude | Claude Code skills, docs, and quality gates |
+| `docs/marketing/` | gasoline-marketing | Marketing site (Jekyll) |
+
+**Rules:**
+- NEVER delete or recreate these directories — they are independent repos with their own history
+- To update: `cd` into the subrepo, commit, and push to its own remote
+- After committing inside a subrepo, update the parent repo's submodule reference: `git add <path> && git commit`
+- Both the subrepo push and the parent ref update are required for changes to propagate
+
 ## Quick Commands
 
 ```bash
@@ -391,6 +406,7 @@ Tech specs MUST be written in natural language. They are human-readable document
 - Log sensitive data (auth tokens, cookies, passwords)
 - Skip performance budget checks
 - Commit code without corresponding tests
+- Delete or recreate git subrepos (`.claude/`, `docs/marketing/`) — update them in place
 
 ## Do This
 
