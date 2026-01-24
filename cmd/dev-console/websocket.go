@@ -85,6 +85,10 @@ func (v *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 	// Filter events
 	var filtered []WebSocketEvent
 	for i := range v.wsEvents {
+		// TTL filtering: skip entries older than TTL
+		if v.TTL > 0 && i < len(v.wsAddedAt) && isExpiredByTTL(v.wsAddedAt[i], v.TTL) {
+			continue
+		}
 		if filter.ConnectionID != "" && v.wsEvents[i].ID != filter.ConnectionID {
 			continue
 		}

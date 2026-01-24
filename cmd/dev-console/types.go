@@ -392,6 +392,8 @@ type MemoryState struct {
 type Capture struct {
 	mu sync.RWMutex
 
+	// TTL for read-time filtering (0 means unlimited)
+	TTL time.Duration
 	// WebSocket event ring buffer
 	wsEvents     []WebSocketEvent
 	wsAddedAt    []time.Time // parallel: when each event was added

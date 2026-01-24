@@ -99,7 +99,11 @@ func (v *Capture) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
 	}
 
 	var filtered []NetworkBody
-	for _, b := range v.networkBodies {
+	for i, b := range v.networkBodies {
+		// TTL filtering: skip entries older than TTL
+		if v.TTL > 0 && i < len(v.networkAddedAt) && isExpiredByTTL(v.networkAddedAt[i], v.TTL) {
+			continue
+		}
 		if filter.URLFilter != "" && !strings.Contains(b.URL, filter.URLFilter) {
 			continue
 		}

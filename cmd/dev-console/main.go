@@ -196,6 +196,7 @@ type Server struct {
 	mu            sync.RWMutex
 	logTotalAdded int64 // monotonic counter of total entries ever added
 	onEntries     func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
+	TTL           time.Duration // TTL for read-time filtering (0 means unlimited)
 }
 
 // NewServer creates a new server instance
