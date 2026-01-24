@@ -13,15 +13,15 @@ func TestNoiseNewConfigHasBuiltinRules(t *testing.T) {
 	nc := NewNoiseConfig()
 	rules := nc.ListRules()
 
-	// Should have ~13 built-in rules
+	// Should have ~45 built-in rules
 	builtinCount := 0
 	for _, r := range rules {
-		if r.ID[:8] == "builtin_" {
+		if len(r.ID) >= 8 && r.ID[:8] == "builtin_" {
 			builtinCount++
 		}
 	}
-	if builtinCount < 10 {
-		t.Errorf("expected at least 10 built-in rules, got %d", builtinCount)
+	if builtinCount < 40 {
+		t.Errorf("expected at least 40 built-in rules, got %d", builtinCount)
 	}
 
 	// Verify specific built-in IDs exist
@@ -33,10 +33,14 @@ func TestNoiseNewConfigHasBuiltinRules(t *testing.T) {
 		"builtin_hmr_network",
 		"builtin_react_devtools",
 		"builtin_cors_preflight",
-		"builtin_analytics",
+		"builtin_google_analytics",
+		"builtin_segment",
+		"builtin_sentry",
 		"builtin_service_worker",
 		"builtin_passive_listener",
 		"builtin_deprecation",
+		"builtin_devtools_sourcemap",
+		"builtin_ws_hmr",
 	}
 	ruleMap := make(map[string]bool)
 	for _, r := range rules {
@@ -411,8 +415,8 @@ func TestNoiseReset(t *testing.T) {
 	}
 
 	// Verify built-ins are still there
-	if len(rules) < 10 {
-		t.Errorf("expected at least 10 built-in rules after reset, got %d", len(rules))
+	if len(rules) < 40 {
+		t.Errorf("expected at least 40 built-in rules after reset, got %d", len(rules))
 	}
 }
 
