@@ -79,23 +79,15 @@ Server attaches unsolicited context to responses instead of requiring separate t
 - [x] **CI/CD webhook receiver** — `POST /ci-result` endpoint. Build failures, test results, and deploy status surface through alerts without a dedicated tool. Idempotent, capped at 10 results. File: `alerts.go`, route in `main.go`.
 - [x] **Anomaly detection** — Error frequency spike (>3x rolling average in 10s window) generates anomaly alert. File: `alerts.go`.
 
-### Phase 4: External Signal Ingestion
+### Phase 4: Deeper Browser Intelligence
 
-Broader context sources beyond the browser, all surfacing through the existing 5-tool interface.
+Server-side intelligence that makes the AI smarter about browser state it can't get any other way.
 
-- [ ] **Spec ingestion** — `configure(action: "ingest_spec")` parses markdown specs into structured requirements. AI checks runtime behavior against spec.
-- [ ] **Production error bridge** — Sentry/Datadog webhook receiver. Production errors correlated with code the AI is modifying surface in `observe` alerts.
-- [ ] **Git context** — `analyze(target: "git")` shows recent commits, blame info, and PR history for files involved in current errors.
-- [ ] **Cross-session temporal graph** — Persistent memory v2: not just key-value but "error X first appeared at time T, correlated with change Y, resolved by fix Z."
-
-### Phase 5: Autonomous AI Behavior
-
-Server-side intelligence that acts without the AI needing to poll.
-
-- [x] **Anomaly detection** — Error frequency spike detection (>3x rolling average) surfaces in alerts. Future: background thread for metrics beyond error counts.
-- [ ] **Error clustering** — Group related errors across sessions: "These 4 stack traces share a common root cause."
-- [ ] **Predictive warnings** — Pattern matching against known failure modes: "This code pattern caused issues in 3 prior sessions."
-- [ ] **Agent-to-agent channel** — `configure(action: "post_observation")` / `observe(what: "observations")` for multi-agent handoff.
+- [x] **Anomaly detection** — Error frequency spike detection (>3x rolling average) surfaces in alerts.
+- [ ] **Error clustering** — Group related errors across sessions: "These 4 stack traces share a common root cause." Reduces noise, surfaces root causes.
+- [ ] **Cross-session temporal graph** — Persistent memory v2: not just key-value but "error X first appeared at time T, correlated with change Y, resolved by fix Z." Browser state history that survives context resets.
+- [ ] **SPA route measurement** — `pushState`/`popstate` observation, per-route time-to-interactive. Real browser state the AI can't get without instrumentation.
+- [ ] **Budget thresholds as config** — Developer sets "load < 2s, bundle < 500KB" in `.gasoline.json`, AI enforces. Clear pass/fail criteria tighten the feedback loop.
 
 ### Files Modified
 - `cmd/dev-console/tools.go` — Composite dispatchers, `_meta` data counts, alert piggyback on observe
@@ -134,20 +126,23 @@ Sequential (message naming cascades into test assertions):
 - [x] **Remove JS dead code** — Delete `_TEXT_CONTENT_TYPES`, no-op references in popup.js. Files: `inject.js`, `popup.js`.
 - [x] **Shared test infrastructure** — Extract `createMockWindow()`, `createMockChrome()`, `createMockDocument()` into `extension-tests/helpers.js`.
 
-## P4: Nice-to-have (someday, maybe)
+## P5: Nice-to-have (someday, maybe)
 
 Useful but not thesis-critical. Only if there's nothing higher to work on.
 
-- [ ] **SPA route measurement** — `pushState`/`popstate` observation, per-route time-to-interactive.
-- [ ] **Budget thresholds as config** — Developer sets "load < 2s, bundle < 500KB" in `.gasoline.json`, AI enforces.
 - [ ] **Binary format detection** — Identify protobuf/MessagePack via magic bytes instead of hex dump.
 - [ ] **Network body E2E tests** — E2E coverage for body capture (large bodies, binary, header sanitization).
 - [ ] **Reproduction script enhancements** — Screenshot insertion, data fixture generation, visual assertions.
 
 ## Discarded
 
-These don't serve the thesis. The AI IS the interface — exporting to other tools assumes a non-AI workflow.
+These don't serve the thesis. The AI IS the interface — exporting to other tools assumes a non-AI workflow. Features that duplicate what the AI can already do natively, or that aren't browser state, don't belong in Gasoline.
 
+- ~~**Spec ingestion**~~ — AI already reads markdown files natively. Gasoline captures browser state, not documents.
+- ~~**Git context**~~ — AI already has `git log`, `git blame`, `gh pr`. Not browser state.
+- ~~**Production error bridge**~~ — Not browser state. Requires external infra pointing at localhost. AI can query Sentry/Datadog APIs directly.
+- ~~**Predictive warnings**~~ — Gasoline sees browser errors, not code patterns. Can't meaningfully say "this code pattern caused issues" without seeing code.
+- ~~**Agent-to-agent channel**~~ — MCP already shares server state across clients. Premature abstraction for a workflow that doesn't exist yet.
 - ~~**Prometheus metrics**~~ — Enterprise observability for a dev-time tool. Nobody runs Grafana dashboards for their debugger.
 - ~~**Webhook/event stream**~~ — Slack alerts for localhost console errors. The AI is already watching in real-time.
 - ~~**Sentry-compatible export**~~ — Sentry is for production. Dev-time errors are transient and the AI handles them directly.
@@ -162,10 +157,11 @@ These don't serve the thesis. The AI IS the interface — exporting to other too
 
 ## Parallel Assignment Guide
 
-### Feature work (P1)
+### Phase 4 Features
 
 | Feature | Primary files | Can parallel with |
 |---------|--------------|-------------------|
-| Persistent memory | `ai_persistence.go` (new) | Noise, API schema |
-| Noise filtering | `ai_noise.go` (new) | Persistent, API schema |
-| API schema inference | `api_schema.go` (new) | Persistent, Noise |
+| Error clustering | `clustering.go` (new) | Temporal graph, SPA routes, Budgets |
+| Cross-session temporal graph | `ai_persistence.go` (extend) | Clustering, SPA routes, Budgets |
+| SPA route measurement | `inject.js`, `performance.go` | Clustering, Temporal graph, Budgets |
+| Budget thresholds | `performance.go`, config loader (new) | Clustering, Temporal graph, SPA routes |
