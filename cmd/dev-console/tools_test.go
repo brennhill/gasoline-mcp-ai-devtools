@@ -13,9 +13,7 @@ func TestV4RateLimitWebSocketEvents(t *testing.T) {
 	capture := setupTestCapture(t)
 
 	// Simulate flooding: > 1000 events in rapid succession
-	for i := 0; i < 1100; i++ {
-		capture.RecordEventReceived()
-	}
+	capture.RecordEvents(1100)
 
 	// Next request should be rate limited
 	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewBufferString(`{"events":[{"event":"message"}]}`))
@@ -42,8 +40,8 @@ func TestV4MemoryLimitRejectsNetworkBodies(t *testing.T) {
 
 	capture.HandleNetworkBodies(rec, req)
 
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Errorf("Expected 503, got %d", rec.Code)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("Expected 429, got %d", rec.Code)
 	}
 }
 
@@ -306,9 +304,9 @@ func TestV4MemoryExceededRejectsWSEvents(t *testing.T) {
 
 	capture.HandleWebSocketEvents(rec, req)
 
-	// Should return 503 when global memory is exceeded
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Errorf("Expected 503 when memory exceeded, got %d", rec.Code)
+	// Should return 429 when global memory is exceeded (rate limit protection)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("Expected 429 when memory exceeded, got %d", rec.Code)
 	}
 }
 

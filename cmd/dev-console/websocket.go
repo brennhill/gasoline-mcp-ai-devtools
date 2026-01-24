@@ -354,18 +354,9 @@ func (v *Capture) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	v.mu.RLock()
-	rateLimited := v.isRateLimited()
-	memExceeded := v.isMemoryExceeded()
-	v.mu.RUnlock()
-
-	if rateLimited {
-		w.WriteHeader(http.StatusTooManyRequests)
-		return
-	}
-
-	if memExceeded {
-		w.WriteHeader(http.StatusServiceUnavailable)
+	// Check rate limit and circuit breaker (POST only)
+	if v.CheckRateLimit() {
+		v.WriteRateLimitResponse(w)
 		return
 	}
 
@@ -380,6 +371,15 @@ func (v *Capture) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Record batch size for rate limiting
+	v.RecordEvents(len(payload.Events))
+
+	// Re-check after recording (the batch itself might push us over)
+	if v.CheckRateLimit() {
+		v.WriteRateLimitResponse(w)
 		return
 	}
 

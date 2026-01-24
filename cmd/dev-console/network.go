@@ -111,12 +111,9 @@ func (v *Capture) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
 }
 
 func (v *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
-	v.mu.RLock()
-	memExceeded := v.isMemoryExceeded()
-	v.mu.RUnlock()
-
-	if memExceeded {
-		w.WriteHeader(http.StatusServiceUnavailable)
+	// Check rate limit and circuit breaker
+	if v.CheckRateLimit() {
+		v.WriteRateLimitResponse(w)
 		return
 	}
 
@@ -131,6 +128,15 @@ func (v *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Record batch size for rate limiting
+	v.RecordEvents(len(payload.Bodies))
+
+	// Re-check after recording
+	if v.CheckRateLimit() {
+		v.WriteRateLimitResponse(w)
 		return
 	}
 
