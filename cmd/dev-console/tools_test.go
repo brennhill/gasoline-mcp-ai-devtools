@@ -350,14 +350,14 @@ func TestMCPToolsListIncludesV5Tools(t *testing.T) {
 		toolNames[tool.Name] = true
 	}
 
-	v5Tools := []string{
+	expectedTools := []string{
 		"observe",
 		"generate",
 	}
 
-	for _, name := range v5Tools {
+	for _, name := range expectedTools {
 		if !toolNames[name] {
-			t.Errorf("Expected v5 tool '%s' in tools list", name)
+			t.Errorf("Expected tool '%s' in tools list", name)
 		}
 	}
 }

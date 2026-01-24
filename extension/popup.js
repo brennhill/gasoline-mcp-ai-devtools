@@ -339,12 +339,28 @@ export async function handleClearLogs() {
  * Initialize the popup
  */
 export async function initPopup() {
-  // Request current status
-  chrome.runtime.sendMessage({ type: 'getStatus' }, (status) => {
-    if (status) {
-      updateConnectionStatus(status)
-    }
-  })
+  // Request current status from background - may fail if service worker is inactive
+  try {
+    chrome.runtime.sendMessage({ type: 'getStatus' }, (status) => {
+      if (chrome.runtime.lastError) {
+        // Background service worker may be inactive or restarting
+        updateConnectionStatus({
+          connected: false,
+          error: 'Extension restarting - please wait a moment and reopen popup',
+        })
+        return
+      }
+      if (status) {
+        updateConnectionStatus(status)
+      }
+    })
+  } catch {
+    // Extension context invalidated or other critical error
+    updateConnectionStatus({
+      connected: false,
+      error: 'Extension error - try reloading the extension',
+    })
+  }
 
   // Initialize log level selector
   await initLogLevelSelector()

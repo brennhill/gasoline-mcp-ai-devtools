@@ -11,7 +11,7 @@ import (
 )
 
 // ============================================
-// Phase 3: Push-Based Alerts Tests
+// Push-Based Alerts Tests
 // ============================================
 
 // TestObserveNoAlertsOnFreshServer verifies that observe responses have

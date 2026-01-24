@@ -85,7 +85,7 @@ Enterprise-readiness features that provide auditability, data governance, and op
 
 #### Tier 1: AI Audit Trail
 
-- [ ] **12. Tool Invocation Log (`get_audit_log`)** — Append-only log of every MCP tool call with timestamp, tool name, parameters, response size, duration, and client identity
+- [ ] **12. Tool Invocation Log (`get_audit_log`)** — Ring-buffer log of every MCP tool call with timestamp, tool name, parameters, response size, duration, and client identity
   - Branch: `feature/audit-log`
   - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 1.1
   - Status: Specified
@@ -112,12 +112,12 @@ Enterprise-readiness features that provide auditability, data governance, and op
   - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 2.1
   - Status: Specified
 
-- [ ] **17. Compliance Presets** — Named configuration bundles (SOC2, HIPAA, PCI-DSS) that set TTL, redaction patterns, and audit verbosity to meet compliance frameworks
-  - Branch: `feature/compliance-presets`
+- [ ] **17. Configuration Profiles** — Named configuration bundles (short-lived, restricted, paranoid) that set TTL, redaction, and rate limits to common security postures
+  - Branch: `feature/config-profiles`
   - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 2.2
   - Status: Specified
 
-- [ ] **18. Data Export & Archive** — Export captured data and audit logs to structured formats (JSON Lines, CSV) for offline retention or SIEM ingestion
+- [ ] **18. Data Export** — MCP tool to export current buffer state and audit entries as JSON Lines for offline retention
   - Branch: `feature/data-export`
   - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 2.3
   - Status: Specified
@@ -170,7 +170,7 @@ Enterprise-readiness features that provide auditability, data governance, and op
 
 Features within a phase can be implemented in parallel. Phases can also be parallelized since there are no hard cross-feature dependencies, though completing Phase 1 before Phase 3 is recommended (context streaming's security alerts use the security audit patterns). Phase 5 tools are independent of each other; `diff_security` benefits from Phase 2's snapshot infrastructure but can be implemented standalone.
 
-Phase 6 features are largely independent of Phases 1-5. Within Phase 6, Tier 1 (audit trail) should be implemented first as Tiers 2-4 reference audit entries. Client identification and session IDs are prerequisites for meaningful audit logs. Compliance presets depend on TTL and redaction patterns being implemented first.
+Phase 6 features are largely independent of Phases 1-5. Within Phase 6, Tier 1 (audit trail) should be implemented first as Tiers 2-4 reference audit entries. Client identification and session IDs are prerequisites for meaningful audit logs. Configuration profiles depend on TTL and redaction patterns being implemented first.
 
 ## In Progress
 

@@ -164,93 +164,39 @@ func (v *Capture) enforceMemory() {
 
 // evictSoft removes oldest 25% from each buffer (prioritizing network bodies)
 func (v *Capture) evictSoft() {
-	var evicted int
-
-	// Network bodies first (largest per entry)
-	if len(v.networkBodies) > 0 {
-		removeCount := len(v.networkBodies) / 4
-		if removeCount == 0 {
-			removeCount = 1
-		}
-		v.networkBodies = v.networkBodies[removeCount:]
-		v.networkAddedAt = v.networkAddedAt[removeCount:]
-		evicted += removeCount
-	}
-
-	// Check if still above soft limit
-	if v.calcTotalMemory() > memorySoftLimit {
-		// WS events
-		if len(v.wsEvents) > 0 {
-			removeCount := len(v.wsEvents) / 4
-			if removeCount == 0 {
-				removeCount = 1
-			}
-			v.wsEvents = v.wsEvents[removeCount:]
-			v.wsAddedAt = v.wsAddedAt[removeCount:]
-			evicted += removeCount
-		}
-	}
-
-	// Check if still above soft limit
-	if v.calcTotalMemory() > memorySoftLimit {
-		// Enhanced actions
-		if len(v.enhancedActions) > 0 {
-			removeCount := len(v.enhancedActions) / 4
-			if removeCount == 0 {
-				removeCount = 1
-			}
-			v.enhancedActions = v.enhancedActions[removeCount:]
-			v.actionAddedAt = v.actionAddedAt[removeCount:]
-			evicted += removeCount
-		}
-	}
-
-	v.mem.lastEvictionTime = time.Now()
-	v.mem.totalEvictions++
-	v.mem.evictedEntries += evicted
+	v.evictBuffers(4, memorySoftLimit)
 }
 
 // evictHard removes oldest 50% from each buffer (prioritizing network bodies)
 func (v *Capture) evictHard() {
+	v.evictBuffers(2, memoryHardLimit)
+}
+
+// evictBuffers removes oldest 1/denominator entries from each buffer in priority order
+// (network bodies → WS events → actions), stopping early if memory drops below limit.
+func (v *Capture) evictBuffers(denominator int, limit int64) {
 	var evicted int
 
 	// Network bodies first (largest per entry)
 	if len(v.networkBodies) > 0 {
-		removeCount := len(v.networkBodies) / 2
-		if removeCount == 0 {
-			removeCount = 1
-		}
-		v.networkBodies = v.networkBodies[removeCount:]
-		v.networkAddedAt = v.networkAddedAt[removeCount:]
-		evicted += removeCount
+		n := max(len(v.networkBodies)/denominator, 1)
+		v.networkBodies = v.networkBodies[n:]
+		v.networkAddedAt = v.networkAddedAt[n:]
+		evicted += n
 	}
 
-	// Check if still above hard limit
-	if v.calcTotalMemory() > memoryHardLimit {
-		// WS events
-		if len(v.wsEvents) > 0 {
-			removeCount := len(v.wsEvents) / 2
-			if removeCount == 0 {
-				removeCount = 1
-			}
-			v.wsEvents = v.wsEvents[removeCount:]
-			v.wsAddedAt = v.wsAddedAt[removeCount:]
-			evicted += removeCount
-		}
+	if v.calcTotalMemory() > limit && len(v.wsEvents) > 0 {
+		n := max(len(v.wsEvents)/denominator, 1)
+		v.wsEvents = v.wsEvents[n:]
+		v.wsAddedAt = v.wsAddedAt[n:]
+		evicted += n
 	}
 
-	// Check if still above hard limit
-	if v.calcTotalMemory() > memoryHardLimit {
-		// Enhanced actions
-		if len(v.enhancedActions) > 0 {
-			removeCount := len(v.enhancedActions) / 2
-			if removeCount == 0 {
-				removeCount = 1
-			}
-			v.enhancedActions = v.enhancedActions[removeCount:]
-			v.actionAddedAt = v.actionAddedAt[removeCount:]
-			evicted += removeCount
-		}
+	if v.calcTotalMemory() > limit && len(v.enhancedActions) > 0 {
+		n := max(len(v.enhancedActions)/denominator, 1)
+		v.enhancedActions = v.enhancedActions[n:]
+		v.actionAddedAt = v.actionAddedAt[n:]
+		evicted += n
 	}
 
 	v.mem.lastEvictionTime = time.Now()

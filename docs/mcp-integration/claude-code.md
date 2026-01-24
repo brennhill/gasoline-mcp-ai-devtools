@@ -20,7 +20,7 @@ Create `.mcp.json` in your project root:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--mcp"]
+      "args": ["gasoline-mcp"]
     }
   }
 }
@@ -37,7 +37,7 @@ Available in all projects — add to `~/.claude/settings.json`:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--mcp"]
+      "args": ["gasoline-mcp"]
     }
   }
 }

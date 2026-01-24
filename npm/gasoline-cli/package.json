@@ -1,7 +1,7 @@
 {
   "name": "gasoline-mcp",
-  "version": "4.6.0",
-  "description": "Browser observability for AI coding agents. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time.",
+  "version": "5.0.0",
+  "description": "Browser observability for AI coding agents - autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
   "license": "AGPL-3.0-only",
   "bin": {
     "gasoline-mcp": "bin/gasoline-cli"
@@ -11,11 +11,11 @@
     "lib"
   ],
   "optionalDependencies": {
-    "@brennhill/gasoline-darwin-arm64": "3.5.0",
-    "@brennhill/gasoline-darwin-x64": "3.5.0",
-    "@brennhill/gasoline-linux-arm64": "3.5.0",
-    "@brennhill/gasoline-linux-x64": "3.5.0",
-    "@brennhill/gasoline-win32-x64": "3.5.0"
+    "@brennhill/gasoline-darwin-arm64": "5.0.0",
+    "@brennhill/gasoline-darwin-x64": "5.0.0",
+    "@brennhill/gasoline-linux-arm64": "5.0.0",
+    "@brennhill/gasoline-linux-x64": "5.0.0",
+    "@brennhill/gasoline-win32-x64": "5.0.0"
   },
   "keywords": [
     "mcp",

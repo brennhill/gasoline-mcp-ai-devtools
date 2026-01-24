@@ -1,8 +1,9 @@
 # Gasoline Build Makefile
 
-VERSION := 4.6.0
+VERSION := 5.0.0
 BINARY_NAME := gasoline
 BUILD_DIR := dist
+LDFLAGS := -s -w -X main.version=$(VERSION)
 
 # Build targets
 PLATFORMS := \
@@ -15,7 +16,8 @@ PLATFORMS := \
 .PHONY: all clean build test test-race test-cover test-bench test-fuzz \
 	dev run checksums verify-zero-deps verify-imports verify-size \
 	lint lint-go lint-js format format-fix typecheck check ci \
-	ci-local ci-go ci-js ci-security ci-e2e release-check install-hooks \
+	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
+	release-check install-hooks bench-baseline sync-version \
 	$(PLATFORMS)
 
 all: clean build
@@ -61,23 +63,23 @@ build: $(PLATFORMS)
 
 darwin-amd64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 ./cmd/dev-console
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 ./cmd/dev-console
 
 darwin-arm64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./cmd/dev-console
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./cmd/dev-console
 
 linux-amd64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 ./cmd/dev-console
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 ./cmd/dev-console
 
 linux-arm64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 ./cmd/dev-console
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 ./cmd/dev-console
 
 windows-amd64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe ./cmd/dev-console
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe ./cmd/dev-console
 
 # Build for current platform only (for development)
 dev:
@@ -127,11 +129,24 @@ ci-local: ci-go ci-js ci-security
 ci-e2e:
 	cd e2e-tests && npm ci && npx playwright install chromium --with-deps && npx playwright test
 
+extension-zip:
+	@mkdir -p $(BUILD_DIR)
+	@rm -f $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip
+	cd extension && zip -r ../$(BUILD_DIR)/gasoline-extension-v$(VERSION).zip \
+		manifest.json background.js content.js inject.js \
+		popup.html popup.js options.html options.js \
+		icons/ lib/ \
+		-x "*.DS_Store" "package.json"
+	@echo "Built $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip"
+	@ls -lh $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip
+
 release-check: ci-local ci-e2e
 	@echo "All release checks passed (CI + E2E)"
 
 ci-go:
 	go vet ./cmd/dev-console/
+	@command -v govulncheck >/dev/null 2>&1 || { echo "govulncheck not found. Install: go install golang.org/x/vuln/cmd/govulncheck@latest"; exit 1; }
+	govulncheck ./cmd/dev-console/
 	make test-race
 	make test-cover
 	golangci-lint run ./cmd/dev-console/
@@ -149,7 +164,81 @@ ci-security:
 	@command -v gosec >/dev/null 2>&1 || { echo "gosec not found. Install: go install github.com/securego/gosec/v2/cmd/gosec@latest"; exit 1; }
 	gosec -exclude=G104,G114,G204,G301,G304,G306 ./cmd/dev-console/
 
+ci-bench:
+	@command -v benchstat >/dev/null 2>&1 || { echo "benchstat not found. Install: go install golang.org/x/perf/cmd/benchstat@latest"; exit 1; }
+	@test -f benchmarks/baseline.txt || { echo "FAIL: No baseline. Run 'make bench-baseline' first."; exit 1; }
+	go test -bench=. -benchmem -count=6 -run=^$$ ./cmd/dev-console/ > /tmp/gasoline-bench-current.txt
+	benchstat benchmarks/baseline.txt /tmp/gasoline-bench-current.txt
+
+ci-fuzz:
+	go test -fuzz=FuzzPostLogs -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzMCPRequest -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzNetworkBodies -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzWebSocketEvents -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzEnhancedActions -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzValidateLogEntry -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzScreenshotEndpoint -fuzztime=30s ./cmd/dev-console/
+
+bench-baseline:
+	@mkdir -p benchmarks
+	go test -bench=. -benchmem -count=6 -run=^$$ ./cmd/dev-console/ > benchmarks/baseline.txt
+	@echo "Baseline saved to benchmarks/baseline.txt"
+
 install-hooks:
 	@cp scripts/hooks/pre-push .git/hooks/pre-push
 	@chmod +x .git/hooks/pre-push
 	@echo "Git hooks installed."
+
+# Update all version references to match VERSION (single source of truth)
+sync-version:
+	@echo "Syncing version to $(VERSION)..."
+	@# JSON "version" fields
+	@perl -pi -e 's/"version": "[0-9]+\.[0-9]+\.[0-9]+"/"version": "$(VERSION)"/g' \
+		extension/manifest.json extension/package.json server/package.json \
+		npm/gasoline-cli/package.json npm/darwin-x64/package.json \
+		npm/darwin-arm64/package.json npm/linux-x64/package.json \
+		npm/linux-arm64/package.json npm/win32-x64/package.json \
+		cmd/dev-console/testdata/mcp-initialize.golden.json
+	@# NPM optionalDependencies versions
+	@perl -pi -e 's/("@brennhill\/gasoline-[^"]+": ")[0-9]+\.[0-9]+\.[0-9]+(")/$${1}$(VERSION)$$2/g' \
+		npm/gasoline-cli/package.json
+	@# JS version strings
+	@perl -pi -e "s/version: '[0-9]+\.[0-9]+\.[0-9]+'/version: '$(VERSION)'/g" \
+		extension/inject.js extension-tests/popup.test.js
+	@perl -pi -e "s/(parsed\.version, )'[0-9]+\.[0-9]+\.[0-9]+'/\$$1'$(VERSION)'/g" \
+		extension-tests/background.test.js
+	@perl -pi -e "s/VERSION = '[0-9]+\.[0-9]+\.[0-9]+'/VERSION = '$(VERSION)'/g" \
+		server/scripts/install.js
+	@# Go version fallback
+	@perl -pi -e 's/var version = "[0-9]+\.[0-9]+\.[0-9]+"/var version = "$(VERSION)"/' \
+		cmd/dev-console/main.go
+	@# README badge and benchmark
+	@perl -pi -e 's/version-[0-9]+\.[0-9]+\.[0-9]+-green/version-$(VERSION)-green/' README.md
+	@perl -pi -e 's/\(v[0-9]+\.[0-9]+\.[0-9]+\)/(v$(VERSION))/' README.md
+	@# Docs and benchmarks
+	@perl -pi -e 's/Gasoline v[0-9]+\.[0-9]+\.[0-9]+/Gasoline v$(VERSION)/g' docs/getting-started.md
+	@perl -pi -e 's/"version": "[0-9]+\.[0-9]+\.[0-9]+"/"version": "$(VERSION)"/g' docs/har-export.md
+	@perl -pi -e 's/\*\*Version:\*\* [0-9]+\.[0-9]+\.[0-9]+/**Version:** $(VERSION)/' benchmarks/latest-benchmark.md
+	@echo "All files synced to $(VERSION)"
+
+context-size:
+	@echo "=== Claude Code Initial Context Size ==="
+	@echo ""
+	@total=0; \
+	for f in CLAUDE.md $$(find .claude -name "*.md" -not -path "*commands*" -type f 2>/dev/null); do \
+		chars=$$(wc -c < "$$f"); \
+		tokens=$$((chars / 4)); \
+		total=$$((total + chars)); \
+		printf "%6d tokens  %s\n" "$$tokens" "$$f"; \
+	done; \
+	echo ""; \
+	printf "%6d tokens  TOTAL (always loaded)\n" "$$((total / 4))"; \
+	echo ""; \
+	cmd_total=0; \
+	for f in $$(find .claude/commands -name "*.md" -type f 2>/dev/null); do \
+		chars=$$(wc -c < "$$f"); \
+		cmd_total=$$((cmd_total + chars)); \
+	done; \
+	printf "%6d tokens  Commands (loaded on invoke only)\n" "$$((cmd_total / 4))"; \
+	echo ""; \
+	echo "Budget: <5K lean | 5-15K normal | 15-30K heavy | >30K too large"

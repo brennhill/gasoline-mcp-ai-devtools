@@ -17,7 +17,7 @@ toc_sticky: true
 npx gasoline-mcp
 ```
 
-You'll see: `Gasoline v4.6.0` and `Server: http://127.0.0.1:7890`
+You'll see: `[gasoline] v4.8.0 — HTTP on port 7890`
 
 Leave this burning. No global install — `npx` handles everything.
 
@@ -45,7 +45,7 @@ Drop this config and your AI tool fires up Gasoline automatically:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--mcp"]
+      "args": ["gasoline-mcp"]
     }
   }
 }

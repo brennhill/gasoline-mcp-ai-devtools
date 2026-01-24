@@ -1,6 +1,6 @@
 ---
 title: "Gasoline — Browser Observability for AI Coding Agents"
-description: "Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time."
+description: "Autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready."
 keywords: "autonomous coding agent, browser debugging, MCP server, AI coding assistant, agentic debugging, vendor neutral MCP, local AI debugging, Claude Code, Cursor, Windsurf"
 layout: splash
 permalink: /
@@ -11,7 +11,7 @@ header:
       url: /getting-started/
     - label: "GitHub"
       url: "https://github.com/brennhill/gasoline"
-excerpt: "<div style='display: flex; align-items: center; gap: 2rem;'><div>Browser observability for AI coding agents. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant—letting it autonomously debug and fix issues in real time.<br><br><span style='color: #fb923c; font-size: 0.85em; font-style: italic;'>Pouring fuel on the AI development fire</span></div><img src='/assets/images/sparky-grill-vector.svg' alt='Sparky the mascot grilling' style='width: 200px; height: auto; flex-shrink: 0;'></div>"
+excerpt: "<div style='display: flex; align-items: center; gap: 2rem;'><div>Browser observability for AI coding agents - autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.<br><br><span style='color: #fb923c; font-size: 0.85em; font-style: italic;'>Pouring fuel on the AI development fire</span></div><img src='/assets/images/sparky-grill-vector.svg' alt='Sparky the mascot grilling' style='width: 200px; height: auto; flex-shrink: 0;'></div>"
 ---
 
 ## Now You're Cooking
@@ -105,7 +105,7 @@ Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your agent spe
 1. The extension passively captures your browser activity
 2. Data flows to a local server — never the internet
 3. Your AI tool reads it via MCP (stdio, not network)
-4. **Nothing leaves your machine** — compliant by design
+4. **Nothing leaves your machine** — private by architecture
 
 ## What Gets Captured
 

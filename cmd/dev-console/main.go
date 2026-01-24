@@ -9,10 +9,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -20,10 +22,13 @@ import (
 	"time"
 )
 
+// version is set at build time via -ldflags "-X main.version=..."
+// Fallback used for `go run` and `make dev` (no ldflags).
+var version = "5.0.0"
+
 const (
 	defaultPort       = 7890
 	defaultMaxEntries = 1000
-	version           = "4.6.0"
 )
 
 // LogEntry represents a single log entry
@@ -173,6 +178,10 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 
 	if h.toolHandler != nil {
 		if resp, handled := h.toolHandler.handleToolCall(req, params.Name, params.Arguments); handled {
+			// Apply redaction to tool response before returning to AI client
+			if h.toolHandler.redactionEngine != nil && resp.Result != nil {
+				resp.Result = h.toolHandler.redactionEngine.RedactJSON(resp.Result)
+			}
 			return resp
 		}
 	}
@@ -195,6 +204,9 @@ type Server struct {
 	logAddedAt    []time.Time // parallel slice: when each entry was added
 	mu            sync.RWMutex
 	logTotalAdded int64 // monotonic counter of total entries ever added
+	onEntries     func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
+	TTL                 time.Duration // TTL for read-time filtering (0 means unlimited)
+	redactionConfigPath string        // path to redaction config JSON file (optional)
 }
 
 // NewServer creates a new server instance
@@ -243,6 +255,11 @@ func (s *Server) loadEntries() error {
 			continue // Skip malformed lines
 		}
 		s.entries = append(s.entries, entry)
+	}
+
+	// Bound entries (file may have more from append-only writes between rotations)
+	if len(s.entries) > s.maxEntries {
+		s.entries = s.entries[len(s.entries)-s.maxEntries:]
 	}
 
 	return scanner.Err()
@@ -360,7 +377,6 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 // addEntries adds new entries and rotates if needed
 func (s *Server) addEntries(newEntries []LogEntry) int {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	s.logTotalAdded += int64(len(newEntries))
 	now := time.Now()
@@ -369,16 +385,55 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 	}
 	s.entries = append(s.entries, newEntries...)
 
-	// Rotate if needed
-	if len(s.entries) > s.maxEntries {
+	// Rotate if needed — requires full rewrite
+	rotated := len(s.entries) > s.maxEntries
+	if rotated {
 		s.entries = s.entries[len(s.entries)-s.maxEntries:]
 		s.logAddedAt = s.logAddedAt[len(s.logAddedAt)-s.maxEntries:]
 	}
 
-	if err := s.saveEntries(); err != nil {
+	var err error
+	if rotated {
+		err = s.saveEntries()
+	} else {
+		err = s.appendToFile(newEntries)
+	}
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
 	}
+
+	cb := s.onEntries
+	s.mu.Unlock()
+
+	// Notify listeners outside the lock (e.g., cluster manager)
+	if cb != nil {
+		cb(newEntries)
+	}
+
 	return len(newEntries)
+}
+
+// appendToFile writes only the new entries to the file (append-only, no rewrite)
+func (s *Server) appendToFile(entries []LogEntry) error {
+	f, err := os.OpenFile(s.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G304: logFile is set at startup, not from user input
+	if err != nil {
+		return err
+	}
+	defer f.Close() //nolint:errcheck // deferred close
+
+	for _, entry := range entries {
+		data, err := json.Marshal(entry)
+		if err != nil {
+			continue
+		}
+		if _, err := f.Write(data); err != nil {
+			return err
+		}
+		if _, err := f.WriteString("\n"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // clearEntries removes all entries
@@ -429,16 +484,24 @@ func validateLogEntry(entry LogEntry) bool {
 		return false
 	}
 
-	// Size check: entry must not exceed maxEntrySize when serialized
+	// Fast path: if total string content is under half the limit,
+	// the entry can't exceed maxEntrySize even with JSON escaping overhead
+	var stringBytes int
+	for _, v := range entry {
+		if s, ok := v.(string); ok {
+			stringBytes += len(s)
+		}
+	}
+	if stringBytes < maxEntrySize/2 {
+		return true
+	}
+
+	// Slow path: might be large — check precisely via marshal
 	data, err := json.Marshal(entry)
 	if err != nil {
 		return false
 	}
-	if len(data) > maxEntrySize {
-		return false
-	}
-
-	return true
+	return len(data) <= maxEntrySize
 }
 
 // validateLogEntries filters entries, returning only valid ones and a count of rejected.
@@ -459,7 +522,7 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Gasoline-Key")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusNoContent)
@@ -487,6 +550,7 @@ func main() {
 	showVersion := flag.Bool("version", false, "Show version")
 	showHelp := flag.Bool("help", false, "Show help")
 	serverOnly := flag.Bool("server", false, "Run in HTTP-only mode (no MCP)")
+	apiKey := flag.String("api-key", "", "API key for HTTP authentication (optional)")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 
 	flag.Parse()
@@ -529,7 +593,11 @@ func main() {
 		if isTTY {
 			// User ran "gasoline" directly - start server as background process
 			exe, _ := os.Executable()
-			cmd := exec.Command(exe, "--server", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)) //nolint:gosec,noctx // G204: exe is our own binary path; no context needed for daemon fork
+			args := []string{"--server", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)}
+			if *apiKey != "" {
+				args = append(args, "--api-key", *apiKey)
+			}
+			cmd := exec.Command(exe, args...) //nolint:gosec,noctx // G204: exe is our own binary path; no context needed for daemon fork
 			cmd.Stdout = nil
 			cmd.Stderr = nil
 			cmd.Stdin = nil
@@ -544,7 +612,7 @@ func main() {
 		}
 
 		// stdin is piped → MCP mode
-		runMCPMode(server, *port)
+		runMCPMode(server, *port, *apiKey)
 		return
 	}
 
@@ -572,6 +640,7 @@ func main() {
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
+		Handler:      AuthMiddleware(*apiKey)(http.DefaultServeMux),
 	}
 	if err := srv.ListenAndServe(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting server: %v\n", err)
@@ -582,20 +651,34 @@ func main() {
 // runMCPMode runs the server in MCP mode:
 // - HTTP server runs in a goroutine (for browser extension)
 // - MCP protocol runs over stdin/stdout (for Claude Code)
-func runMCPMode(server *Server, port int) {
-	fmt.Fprintf(os.Stderr, "[gasoline] Starting MCP server, HTTP on port %d, log file: %s\n", port, server.logFile)
-
+// If stdin closes (EOF), the HTTP server keeps running until killed.
+func runMCPMode(server *Server, port int, apiKey string) {
 	// Create capture buffers for WebSocket, network, and actions
 	capture := NewCapture()
 
 	// Start HTTP server in background for browser extension
+	httpReady := make(chan error, 1)
 	go func() {
 		setupHTTPRoutes(server, capture)
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
-		if err := http.ListenAndServe(addr, nil); err != nil { //nolint:gosec // G114: MCP mode background server
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			httpReady <- err
+			return
+		}
+		httpReady <- nil
+		if err := http.Serve(ln, AuthMiddleware(apiKey)(http.DefaultServeMux)); err != nil { //nolint:gosec // G114: MCP mode background server
 			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
 		}
 	}()
+
+	// Wait for HTTP server to bind before proceeding
+	if err := <-httpReady; err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Fatal: cannot bind port %d: %v\n", port, err)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stderr, "[gasoline] v%s — HTTP on port %d, log: %s\n", version, port, server.logFile)
+	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "startup", "version": version, "port": port, "timestamp": time.Now().UTC().Format(time.RFC3339)}})
 
 	// Run MCP protocol over stdin/stdout
 	mcp := NewToolHandler(server, capture)
@@ -632,6 +715,24 @@ func runMCPMode(server *Server, port int) {
 		respJSON, _ := json.Marshal(resp)
 		fmt.Println(string(respJSON))
 	}
+
+	// stdin closed (MCP client disconnected) — exit after grace period
+	// This frees the port so the next AI session can spawn a fresh process.
+	// The extension will auto-reconnect to the new instance.
+	fmt.Fprintf(os.Stderr, "[gasoline] MCP disconnected, shutting down in 2s (port %d will be freed)\n", port)
+	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "mcp_disconnect", "timestamp": time.Now().UTC().Format(time.RFC3339), "port": port}})
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+
+	select {
+	case s := <-sig:
+		fmt.Fprintf(os.Stderr, "[gasoline] Received %s, shutting down\n", s)
+		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
+	case <-time.After(2 * time.Second):
+		fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
+		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": "mcp_disconnect_grace", "timestamp": time.Now().UTC().Format(time.RFC3339)}})
+	}
 }
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
@@ -655,6 +756,19 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 	// CI/CD webhook endpoint for push-based alerts
 	if mcp.toolHandler != nil {
 		http.HandleFunc("/ci-result", corsMiddleware(mcp.toolHandler.handleCIWebhook))
+	}
+
+	// Settings endpoint for extension polling (capture overrides)
+	if mcp.toolHandler != nil && mcp.toolHandler.captureOverrides != nil {
+		overrides := mcp.toolHandler.captureOverrides
+		http.HandleFunc("/settings", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != "GET" {
+				jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+				return
+			}
+			resp := buildSettingsResponse(overrides)
+			jsonResponse(w, http.StatusOK, resp)
+		}))
 	}
 
 	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -778,7 +892,7 @@ MCP Configuration:
     "mcpServers": {
       "gasoline": {
         "command": "npx",
-        "args": ["gasoline-cli"]
+        "args": ["gasoline-mcp"]
       }
     }
   }

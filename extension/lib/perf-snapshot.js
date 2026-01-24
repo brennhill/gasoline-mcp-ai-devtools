@@ -1,0 +1,275 @@
+// @ts-nocheck
+/**
+ * @fileoverview Performance snapshot capture.
+ * Observes web vitals (FCP, LCP, CLS, INP), long tasks, and resource timing
+ * to build comprehensive performance snapshots.
+ */
+
+import { MAX_LONG_TASKS, MAX_SLOWEST_REQUESTS, MAX_URL_LENGTH } from './constants.js'
+
+// Performance snapshot state
+let perfSnapshotEnabled = true
+let longTaskEntries = []
+let longTaskObserver = null
+let paintObserver = null
+let lcpObserver = null
+let clsObserver = null
+let inpObserver = null
+let fcpValue = null
+let lcpValue = null
+let clsValue = 0
+let inpValue = null
+
+/**
+ * Map resource initiator types to standard categories
+ */
+export function mapInitiatorType(type) {
+  switch (type) {
+    case 'script':
+      return 'script'
+    case 'link':
+    case 'css':
+      return 'style'
+    case 'img':
+      return 'image'
+    case 'fetch':
+    case 'xmlhttprequest':
+      return 'fetch'
+    case 'font':
+      return 'font'
+    default:
+      return 'other'
+  }
+}
+
+/**
+ * Aggregate resource timing entries into a network summary
+ */
+export function aggregateResourceTiming() {
+  const resources = performance.getEntriesByType('resource')
+  const byType = {}
+  let transferSize = 0
+  let decodedSize = 0
+
+  for (const entry of resources) {
+    const category = mapInitiatorType(entry.initiatorType)
+    if (!byType[category]) {
+      byType[category] = { count: 0, size: 0 }
+    }
+    byType[category].count++
+    byType[category].size += entry.transferSize || 0
+    transferSize += entry.transferSize || 0
+    decodedSize += entry.decodedBodySize || 0
+  }
+
+  // Top N slowest requests
+  const sorted = [...resources].sort((a, b) => b.duration - a.duration)
+  const slowestRequests = sorted.slice(0, MAX_SLOWEST_REQUESTS).map((r) => ({
+    url: r.name.length > MAX_URL_LENGTH ? r.name.slice(0, MAX_URL_LENGTH) : r.name,
+    duration: r.duration,
+    size: r.transferSize || 0,
+  }))
+
+  return {
+    requestCount: resources.length,
+    transferSize,
+    decodedSize,
+    byType,
+    slowestRequests,
+  }
+}
+
+/**
+ * Capture a performance snapshot with navigation timing and network summary
+ */
+export function capturePerformanceSnapshot() {
+  const navEntries = performance.getEntriesByType('navigation')
+  if (!navEntries || navEntries.length === 0) return null
+
+  const nav = navEntries[0]
+  const timing = {
+    domContentLoaded: nav.domContentLoadedEventEnd,
+    load: nav.loadEventEnd,
+    firstContentfulPaint: getFCP(),
+    largestContentfulPaint: getLCP(),
+    interactionToNextPaint: getINP(),
+    timeToFirstByte: nav.responseStart - nav.requestStart,
+    domInteractive: nav.domInteractive,
+  }
+
+  const network = aggregateResourceTiming()
+  const longTasks = getLongTaskMetrics()
+
+  return {
+    url: window.location.pathname,
+    timestamp: new Date().toISOString(),
+    timing,
+    network,
+    longTasks,
+    cumulativeLayoutShift: getCLS(),
+  }
+}
+
+/**
+ * Install performance observers for long tasks, paint, LCP, and CLS
+ */
+export function installPerfObservers() {
+  longTaskEntries = []
+  fcpValue = null
+  lcpValue = null
+  clsValue = 0
+  inpValue = null
+
+  // Long task observer
+  longTaskObserver = new PerformanceObserver((list) => {
+    const entries = list.getEntries()
+    for (const entry of entries) {
+      if (longTaskEntries.length < MAX_LONG_TASKS) {
+        longTaskEntries.push(entry)
+      }
+    }
+  })
+  longTaskObserver.observe({ type: 'longtask' })
+
+  // Paint observer (FCP)
+  paintObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      if (entry.name === 'first-contentful-paint') {
+        fcpValue = entry.startTime
+      }
+    }
+  })
+  paintObserver.observe({ type: 'paint' })
+
+  // LCP observer
+  lcpObserver = new PerformanceObserver((list) => {
+    const entries = list.getEntries()
+    if (entries.length > 0) {
+      lcpValue = entries[entries.length - 1].startTime
+    }
+  })
+  lcpObserver.observe({ type: 'largest-contentful-paint' })
+
+  // CLS observer
+  clsObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      if (!entry.hadRecentInput) {
+        clsValue += entry.value
+      }
+    }
+  })
+  clsObserver.observe({ type: 'layout-shift' })
+
+  // INP observer (Interaction to Next Paint)
+  inpObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      if (entry.interactionId) {
+        if (inpValue === null || entry.duration > inpValue) {
+          inpValue = entry.duration
+        }
+      }
+    }
+  })
+  inpObserver.observe({ type: 'event', durationThreshold: 40 })
+}
+
+/**
+ * Disconnect all performance observers
+ */
+export function uninstallPerfObservers() {
+  if (longTaskObserver) {
+    longTaskObserver.disconnect()
+    longTaskObserver = null
+  }
+  if (paintObserver) {
+    paintObserver.disconnect()
+    paintObserver = null
+  }
+  if (lcpObserver) {
+    lcpObserver.disconnect()
+    lcpObserver = null
+  }
+  if (clsObserver) {
+    clsObserver.disconnect()
+    clsObserver = null
+  }
+  if (inpObserver) {
+    inpObserver.disconnect()
+    inpObserver = null
+  }
+  longTaskEntries = []
+}
+
+/**
+ * Get accumulated long task metrics
+ */
+export function getLongTaskMetrics() {
+  let totalBlockingTime = 0
+  let longest = 0
+
+  for (const entry of longTaskEntries) {
+    const blocking = entry.duration - 50
+    if (blocking > 0) totalBlockingTime += blocking
+    if (entry.duration > longest) longest = entry.duration
+  }
+
+  return {
+    count: longTaskEntries.length,
+    totalBlockingTime,
+    longest,
+  }
+}
+
+/**
+ * Get First Contentful Paint value
+ */
+export function getFCP() {
+  return fcpValue
+}
+
+/**
+ * Get Largest Contentful Paint value
+ */
+export function getLCP() {
+  return lcpValue
+}
+
+/**
+ * Get Cumulative Layout Shift value
+ */
+export function getCLS() {
+  return clsValue
+}
+
+/**
+ * Get Interaction to Next Paint value
+ */
+export function getINP() {
+  return inpValue
+}
+
+/**
+ * Send performance snapshot via postMessage to content script
+ */
+export function sendPerformanceSnapshot() {
+  if (!perfSnapshotEnabled) return
+
+  const snapshot = capturePerformanceSnapshot()
+  if (!snapshot) return
+
+  window.postMessage({ type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: snapshot }, '*')
+}
+
+/**
+ * Check if performance snapshot capture is enabled
+ */
+export function isPerformanceSnapshotEnabled() {
+  return perfSnapshotEnabled
+}
+
+/**
+ * Enable or disable performance snapshot capture
+ */
+export function setPerformanceSnapshotEnabled(enabled) {
+  perfSnapshotEnabled = enabled
+}

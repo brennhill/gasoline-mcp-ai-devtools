@@ -138,6 +138,8 @@ type NetworkBody struct {
 	Duration          int    `json:"duration,omitempty"`
 	RequestTruncated  bool   `json:"requestTruncated,omitempty"`
 	ResponseTruncated bool   `json:"responseTruncated,omitempty"`
+	ResponseHeaders   map[string]string `json:"responseHeaders,omitempty"`
+	HasAuthHeader     bool              `json:"hasAuthHeader,omitempty"`
 }
 
 // NetworkBodyFilter defines filtering criteria for network bodies
@@ -390,6 +392,8 @@ type MemoryState struct {
 type Capture struct {
 	mu sync.RWMutex
 
+	// TTL for read-time filtering (0 means unlimited)
+	TTL time.Duration
 	// WebSocket event ring buffer
 	wsEvents     []WebSocketEvent
 	wsAddedAt    []time.Time // parallel: when each event was added
@@ -434,6 +438,7 @@ type Capture struct {
 	session     SessionTracker
 	mem         MemoryState
 	schemaStore *SchemaStore
+	cspGen      *CSPGenerator
 }
 
 // NewCapture creates a new Capture instance with initialized buffers

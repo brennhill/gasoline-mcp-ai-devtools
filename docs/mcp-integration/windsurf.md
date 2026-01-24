@@ -20,7 +20,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--mcp"]
+      "args": ["gasoline-mcp"]
     }
   }
 }

@@ -68,6 +68,10 @@ let lastMemoryCheck = 0
 let networkBodyCaptureDisabled = false
 let reducedCapacities = false
 
+// AI capture control state
+let _captureOverrides = {} // Current AI-set overrides from /settings
+let aiControlled = false // Whether AI has active overrides
+
 // Context annotation monitoring state
 const CONTEXT_SIZE_THRESHOLD = 20 * 1024 // 20KB threshold
 const CONTEXT_WARNING_WINDOW_MS = 60000 // 60-second window
@@ -208,7 +212,7 @@ export function exportDebugLog() {
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      version: '4.6.0',
+      version: chrome.runtime.getManifest().version,
       debugMode,
       connectionStatus,
       settings: {
@@ -437,12 +441,11 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
       cb.reset()
       return result
     } catch (err) {
-      // Record failure on shared CB by calling execute (its sendFn will fail too,
-      // which correctly increments the failure counter)
+      // Trigger shared circuit breaker's failure counter
       try {
         await cb.execute(entries)
       } catch {
-        /* expected - records the failure */
+        /* expected */
       }
       throw err
     }
@@ -751,7 +754,16 @@ export async function checkServerHealth() {
       return { connected: false, error: `HTTP ${response.status}` }
     }
 
-    const data = await response.json()
+    let data
+    try {
+      data = await response.json()
+    } catch {
+      // Server returned non-JSON response (possibly wrong endpoint or proxy)
+      return {
+        connected: false,
+        error: 'Server returned invalid response - check Server URL in options',
+      }
+    }
     return {
       ...data,
       connected: true,
@@ -1259,8 +1271,22 @@ export async function fetchSourceMap(scriptUrl) {
     if (sourceMapUrl.startsWith('data:')) {
       const base64Match = sourceMapUrl.match(/^data:application\/json;base64,(.+)$/)
       if (base64Match) {
-        const jsonStr = atob(base64Match[1])
-        const sourceMap = JSON.parse(jsonStr)
+        let jsonStr
+        try {
+          jsonStr = atob(base64Match[1])
+        } catch {
+          debugLog(DebugCategory.SOURCEMAP, 'Invalid base64 in inline source map', { scriptUrl })
+          sourceMapCache.set(scriptUrl, null)
+          return null
+        }
+        let sourceMap
+        try {
+          sourceMap = JSON.parse(jsonStr)
+        } catch {
+          debugLog(DebugCategory.SOURCEMAP, 'Invalid JSON in inline source map', { scriptUrl })
+          sourceMapCache.set(scriptUrl, null)
+          return null
+        }
         const parsed = parseSourceMapData(sourceMap)
         sourceMapCache.set(scriptUrl, parsed)
         return parsed
@@ -1287,11 +1313,26 @@ export async function fetchSourceMap(scriptUrl) {
       return null
     }
 
-    const sourceMap = await mapResponse.json()
+    let sourceMap
+    try {
+      sourceMap = await mapResponse.json()
+    } catch {
+      debugLog(DebugCategory.SOURCEMAP, 'Invalid JSON in external source map', {
+        scriptUrl,
+        sourceMapUrl,
+      })
+      sourceMapCache.set(scriptUrl, null)
+      return null
+    }
     const parsed = parseSourceMapData(sourceMap)
     sourceMapCache.set(scriptUrl, parsed)
     return parsed
-  } catch {
+  } catch (err) {
+    // Network errors, timeouts, or other fetch failures
+    debugLog(DebugCategory.SOURCEMAP, 'Source map fetch failed', {
+      scriptUrl,
+      error: err.message,
+    })
     sourceMapCache.set(scriptUrl, null)
     return null
   }
@@ -1660,8 +1701,18 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.tabs.query({}, (tabs) => {
         for (const tab of tabs) {
           if (tab.id) {
-            chrome.tabs.sendMessage(tab.id, message).catch(() => {
-              // Tab may not have content script, ignore
+            chrome.tabs.sendMessage(tab.id, message).catch((err) => {
+              // Expected: tabs without content scripts (chrome://, edge://, file://, etc.)
+              // Log unexpected errors for debugging
+              if (
+                !err.message?.includes('Receiving end does not exist') &&
+                !err.message?.includes('Could not establish connection')
+              ) {
+                debugLog(DebugCategory.ERROR, 'Unexpected error forwarding setting to tab', {
+                  tabId: tab.id,
+                  error: err.message,
+                })
+              }
             })
           }
         }
@@ -1702,9 +1753,6 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
           aggregatedEntries.forEach((entry) => logBatcher.add(entry))
         }
       } else if (alarm.name === 'memoryCheck') {
-        // Memory pressure check runs every 30 seconds
-        // In production, this would collect buffer sizes from the batchers
-        // The checkMemoryPressure function is the main entry point
         debugLog(DebugCategory.LIFECYCLE, 'Memory check alarm fired')
       }
     })
@@ -1717,6 +1765,11 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   chrome.storage.local.get(
     ['serverUrl', 'logLevel', 'screenshotOnError', 'sourceMapEnabled', 'debugMode'],
     (result) => {
+      if (chrome.runtime.lastError) {
+        console.warn('[Gasoline] Could not load saved settings:', chrome.runtime.lastError.message, '- using defaults')
+        // Continue with defaults already set at module level
+        return
+      }
       serverUrl = result.serverUrl || DEFAULT_SERVER_URL
       currentLogLevel = result.logLevel || 'error'
       screenshotOnError = result.screenshotOnError || false
@@ -1887,16 +1940,64 @@ async function checkConnectionAndUpdate() {
     })
   }
 
+  // Poll capture settings when connected
+  if (health.connected) {
+    const overrides = await pollCaptureSettings(serverUrl)
+    if (overrides !== null) {
+      applyCaptureOverrides(overrides)
+    }
+  }
+
   // Notify popup if open
   if (typeof chrome !== 'undefined' && chrome.runtime) {
-    chrome.runtime.sendMessage({ type: 'statusUpdate', status: connectionStatus }).catch(() => {
-      // Popup not open, ignore
-    })
+    chrome.runtime
+      .sendMessage({
+        type: 'statusUpdate',
+        status: { ...connectionStatus, aiControlled },
+      })
+      .catch(() => {
+        // Popup not open, ignore
+      })
+  }
+}
+
+/**
+ * Poll the server's /settings endpoint for AI capture overrides.
+ * @param {string} url - Server base URL
+ * @returns {Promise<Object|null>} Overrides map or null on error
+ */
+export async function pollCaptureSettings(url) {
+  try {
+    const response = await fetch(`${url}/settings`)
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.capture_overrides || {}
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Apply AI capture overrides to the extension's settings.
+ * @param {Object} overrides - Map of setting name to value
+ */
+export function applyCaptureOverrides(overrides) {
+  _captureOverrides = overrides
+  aiControlled = Object.keys(overrides).length > 0
+
+  if (overrides.log_level !== undefined) {
+    currentLogLevel = overrides.log_level
+  }
+  if (overrides.network_bodies !== undefined) {
+    networkBodyCaptureDisabled = overrides.network_bodies === 'false'
+  }
+  if (overrides.screenshot_on_error !== undefined) {
+    screenshotOnError = overrides.screenshot_on_error === 'true'
   }
 }
 
 // =============================================================================
-// ON-DEMAND QUERY POLLING (v4)
+// ON-DEMAND QUERY POLLING
 // =============================================================================
 
 let queryPollingInterval = null

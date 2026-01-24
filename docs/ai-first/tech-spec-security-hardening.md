@@ -354,7 +354,7 @@ Gasoline sees every network request, making it trivial to build a complete map o
 1. **Developer integrates analytics or A/B testing SDK**
 2. **SDK automatically captures form data, including PII fields** (email, name, phone number)
 3. **PII is transmitted to third-party servers** without user consent
-4. **GDPR/CCPA violation occurs** — fines up to 4% of annual revenue (GDPR) or $7,500 per violation (CCPA)
+4. **Data protection violation occurs** — regulatory fines can reach 4% of annual revenue or $7,500 per violation depending on jurisdiction
 
 **Real-world example:** In 2022, Meta Pixel was found to be collecting health data from hospital websites, tax information from tax prep sites, and financial data from banking apps — all via automatic form capture that developers didn't realize was active.
 

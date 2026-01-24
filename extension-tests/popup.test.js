@@ -585,7 +585,7 @@ describe('Debug Logging', () => {
         callback({
           log: JSON.stringify({
             exportedAt: '2024-01-22T12:00:00Z',
-            version: '4.6.0',
+            version: '5.0.0',
             entries: [{ ts: '2024-01-22T12:00:00Z', category: 'lifecycle', message: 'Test' }],
           }),
         })

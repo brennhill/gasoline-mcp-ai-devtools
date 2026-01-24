@@ -30,10 +30,6 @@ export default [
       security,
     },
     rules: {
-      // Style enforcement (match existing conventions)
-      semi: ['error', 'never'],
-      quotes: ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }],
-      indent: ['error', 2, { SwitchCase: 1 }],
       'no-var': 'error',
       'prefer-const': ['error', { destructuring: 'all' }],
       eqeqeq: ['error', 'always'],
@@ -79,10 +75,6 @@ export default [
       security,
     },
     rules: {
-      // Style enforcement (same as extension)
-      semi: ['error', 'never'],
-      quotes: ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }],
-      indent: ['error', 2, { SwitchCase: 1 }],
       'no-var': 'error',
       'prefer-const': ['error', { destructuring: 'all' }],
       eqeqeq: ['error', 'always'],

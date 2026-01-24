@@ -409,7 +409,7 @@ func (h *ToolHandler) recordErrorForAnomaly(t time.Time) {
 	}
 	h.errorTimes = pruned
 
-	// Need at least 10 seconds of history to detect anomalies
+	// Need at least 2 data points to compute a rate
 	if len(h.errorTimes) < 2 {
 		return
 	}

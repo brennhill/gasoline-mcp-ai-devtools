@@ -2,9 +2,19 @@
 
 ## Purpose
 
-Gasoline captures sensitive browser state — console logs, network bodies, WebSocket payloads, DOM content, and accessibility trees. In enterprise environments, AI tools accessing this data create compliance and security concerns: Who called which tool? What data was exposed? How long is it retained? Can runaway AI agents be constrained?
+Gasoline captures sensitive browser state — console logs, network bodies, WebSocket payloads, DOM content, and accessibility trees. In enterprise environments, AI tools accessing this data create legitimate questions: Who called which tool? What data was exposed? How long is it retained? Can runaway AI agents be constrained?
 
-This specification defines four tiers of enterprise-readiness features that give security teams visibility, control, and auditability over how AI agents interact with captured browser data through Gasoline's MCP interface.
+This specification defines four tiers of enterprise-readiness features that give teams visibility, control, and auditability over how AI agents interact with captured browser data through Gasoline's MCP interface.
+
+---
+
+## Compliance Posture
+
+Gasoline runs exclusively on the developer's machine. Data never leaves localhost. This architecture provides a natural compliance advantage: captured browser state is never transmitted to external services, never stored in cloud infrastructure, and never accessible to other users or processes.
+
+The enterprise features in this spec do not claim to make Gasoline "SOC2-compliant" or "HIPAA-compliant" — compliance is an organizational property, not a tool property. What these features provide is **evidence and control**: audit trails that demonstrate what data an AI agent accessed, retention policies that limit exposure windows, and redaction that prevents sensitive patterns from reaching AI clients. These are building blocks that help organizations satisfy their own compliance requirements, not compliance certifications themselves.
+
+For teams operating in regulated environments, Gasoline's localhost-only architecture means it sits outside the scope of most data-handling regulations (data is not "in transit" or "at rest" in a regulated sense — it is ephemeral runtime state on a developer workstation). The audit and governance features exist to satisfy internal security policies and provide forensic evidence if needed, not to meet external audit frameworks.
 
 ---
 
@@ -12,11 +22,11 @@ This specification defines four tiers of enterprise-readiness features that give
 
 ### 1.1 Tool Invocation Log
 
-Every MCP tool call produces an audit entry in an append-only log. The log captures what was called, by whom, when, and the outcome — without storing the full response content (which may be large and sensitive).
+Every MCP tool call produces an audit entry. The log captures what was called, by whom, when, and the outcome — without storing the full response content (which may be large and sensitive).
 
 #### How It Works
 
-When the MCP dispatcher receives a tool call, it records an entry before executing the tool. After execution, it updates the entry with the result metadata (duration, response size, error if any). The log is a fixed-size ring buffer (configurable, default 10,000 entries) stored in memory, with optional file persistence.
+When the MCP dispatcher receives a tool call, it records an entry before executing the tool. After execution, it updates the entry with the result metadata (duration, response size, error if any). The log is a fixed-size ring buffer (configurable, default 10,000 entries) stored in memory. When the buffer is full, the oldest entries are evicted — this is a recent-history query tool, not a permanent archive.
 
 Each audit entry contains:
 - Timestamp (ISO 8601 with millisecond precision)
@@ -40,9 +50,9 @@ The log is queryable via a new MCP tool `get_audit_log` that accepts filters: ti
 
 The log stores metadata about access, not the accessed data itself. This keeps the audit log small and non-sensitive while still providing a complete access trail.
 
-#### Persistence
+#### Lifecycle
 
-By default, the audit log lives in memory and is lost on server restart. When file persistence is enabled (via `--audit-file` flag), entries are appended to a JSON Lines file. The file is append-only — entries are never modified or deleted. File rotation is the operator's responsibility (standard logrotate works).
+The audit log lives in memory and is lost on server restart. This matches Gasoline's ephemeral design — the server is spawned for a session and dies when done. For teams that need a durable record, the `export_data` tool (see 2.3) can dump the current audit buffer to a file before the session ends. This is an explicit action, not a background persistence mechanism.
 
 ---
 
@@ -52,15 +62,12 @@ Each MCP connection identifies the connecting client. This information is record
 
 #### How It Works
 
-When an MCP client connects (over stdio), Gasoline identifies it through a handshake mechanism. During the MCP `initialize` request, the client sends its `clientInfo` object (part of the MCP specification). Gasoline extracts:
+When an MCP client connects (over stdio), Gasoline identifies it through the MCP handshake. During the MCP `initialize` request, the client sends its `clientInfo` object (part of the MCP specification). Gasoline extracts:
 
 - Client name (e.g., "claude-code", "cursor", "windsurf", "continue")
 - Client version
-- Process ID of the connecting client (from the stdio parent process)
 
-If the client doesn't send `clientInfo` (older clients), Gasoline labels the connection as "unknown" with the process ID.
-
-For HTTP API connections (extension, direct API calls), Gasoline uses the `User-Agent` header and optionally a custom `X-Gasoline-Client` header for explicit identification.
+If the client doesn't send `clientInfo` (older clients), Gasoline labels the connection as "unknown".
 
 #### Storage
 
@@ -74,7 +81,7 @@ Each MCP connection receives a unique session ID that correlates all tool calls 
 
 #### How It Works
 
-When an MCP client sends the `initialize` request, Gasoline generates a session ID using a compact format: a base-36 timestamp prefix plus 4 random characters (e.g., `s_m5kq2a_7f3x`). This provides chronological sortability, uniqueness, and human-readability.
+When an MCP client sends the `initialize` request, Gasoline generates a session ID using a compact format: a base-36 timestamp prefix plus 6 random characters (e.g., `s_m5kq2a_7f3xab`). This provides chronological sortability, uniqueness (36^6 = 2.2 billion combinations per timestamp unit), and human-readability.
 
 The session ID is:
 - Returned in the `initialize` response as a server capability extension
@@ -84,9 +91,13 @@ The session ID is:
 
 Sessions end when the stdio pipe closes (MCP client disconnects or process dies). The server detects this via EOF on stdin.
 
-#### Multiple Concurrent Sessions
+#### Current Limitation: Single Session
 
-The server supports multiple simultaneous MCP sessions (e.g., two Claude Code instances connected in parallel). Each gets its own session ID. The audit log distinguishes which session made which call. Rate limits (Tier 3) apply per-session independently.
+The current architecture supports exactly one MCP session over stdio (one `bufio.Scanner` reading stdin). This means one AI client per Gasoline server instance. The session ID is still valuable for correlating tool calls within that session's lifetime and distinguishing across server restarts.
+
+#### Future: Multi-Session Support
+
+To support multiple concurrent AI clients, the server would need to move from stdio-based MCP to an HTTP-based MCP transport (JSON-RPC over HTTP POST). Each HTTP connection would carry a session token (assigned during `initialize`), and the server would maintain a map of active sessions. This is a protocol-layer change that does not affect the audit, redaction, or rate-limiting logic — those already reference session IDs abstractly. Multi-session support is not in scope for the initial implementation.
 
 ---
 
@@ -120,14 +131,12 @@ All captured data (console logs, network entries, WebSocket events, actions, net
 
 #### How It Works
 
-The server maintains a TTL value (default: unlimited, meaning data lives until buffer rotation evicts it). When TTL is set (via `--ttl` flag or config), every buffer read and write operation includes an age check. Entries with timestamps older than `now - TTL` are skipped on read and proactively evicted during periodic maintenance.
-
-The eviction runs on a timer (every 30 seconds) and also piggybacks on buffer writes. This ensures stale data doesn't persist even if no new data arrives.
+The server maintains a TTL value (default: unlimited, meaning data lives until buffer rotation evicts it). When TTL is set (via `--ttl` flag or config), every buffer read operation includes an age check. Entries with timestamps older than `now - TTL` are skipped on read — they are effectively invisible to tool responses even though they may still occupy buffer space briefly until the next write evicts them.
 
 TTL values:
 - Minimum: 1 minute
 - Default: unlimited (existing behavior — buffer size limits still apply)
-- Recommended for compliance: 1 hour for development, 15 minutes for sensitive environments
+- Typical values: 1 hour for normal use, 15 minutes for sensitive environments
 
 TTL applies to:
 - Console log entries
@@ -143,79 +152,59 @@ TTL does NOT apply to:
 - Noise rules (configuration, not captured data)
 - Server configuration state
 
-#### Behavior on TTL Change
+#### TTL is Set at Startup
 
-When TTL is reduced at runtime (via a future config reload mechanism), the next eviction pass removes all entries that exceed the new TTL. This is an immediate effect — there's no grace period for existing data.
+TTL is configured at server start and does not change during a session. This matches the ephemeral server design — if you need a different TTL, restart the server with the new value. Runtime configuration changes add complexity without clear value for a tool that runs for the duration of a coding session.
 
 ---
 
-### 2.2 Compliance Presets
+### 2.2 Configuration Profiles
 
-Named configuration bundles that set multiple enterprise features to values appropriate for specific compliance frameworks. Presets are a convenience — they set the same flags that operators could set individually.
+Named configuration bundles that set multiple enterprise features to sensible defaults for common security postures. Profiles are a convenience — they set the same flags that operators could set individually. They describe a behavior level, not a compliance framework.
 
-#### Available Presets
+#### Available Profiles
 
-**`soc2`** — SOC 2 Type II audit requirements:
-- TTL: 4 hours (retain enough for a work session, not overnight)
-- Audit log: enabled, file persistence on
-- Redaction: bearer tokens, API keys, session cookies
-- Rate limits: default (no additional restriction)
-- Client ID: required (reject connections without `clientInfo`)
+**`short-lived`** — Minimal data retention for sensitive work:
+- TTL: 15 minutes
+- Redaction: bearer tokens, API keys, JWTs, session cookies
+- Rate limits: default
 
-**`hipaa`** — HIPAA covered entity requirements:
-- TTL: 15 minutes (minimize PHI exposure window)
-- Audit log: enabled, file persistence on
-- Redaction: SSN, MRN, date-of-birth, email, phone, plus all `soc2` patterns
-- Rate limits: `query_dom` limited to 5/min (DOM may contain PHI)
-- Client ID: required
-
-**`pci-dss`** — PCI DSS cardholder data environment:
+**`restricted`** — Limited AI access, aggressive redaction:
 - TTL: 30 minutes
-- Audit log: enabled, file persistence on
-- Redaction: credit card (Luhn-validated), CVV, cardholder name patterns, plus all `soc2` patterns
-- Rate limits: `get_network_bodies` limited to 10/min (bodies may contain card data)
-- Client ID: required
-- Network body storage: disabled entirely (cardholder data must never be stored)
-
-**`strict`** — Maximum restriction (custom environments):
-- TTL: 5 minutes
-- Audit log: enabled, file persistence on
-- Redaction: all known patterns enabled
-- Rate limits: 30 calls/min per tool (global)
-- Client ID: required
+- Redaction: all built-in patterns enabled
+- Rate limits: `query_dom` limited to 10/min, `get_network_bodies` limited to 10/min
 - Read-only mode: enabled (no mutation tools)
 
-#### How Presets Work
+**`paranoid`** — Maximum restriction:
+- TTL: 5 minutes
+- Redaction: all built-in patterns enabled
+- Rate limits: 30 calls/min per tool (global cap)
+- Read-only mode: enabled
+- Tool allowlist: `observe`, `analyze`, `get_health` only
 
-Presets are applied at server start via `--compliance-preset=soc2`. They set defaults for all related flags. Individual flags can still override preset values (e.g., `--compliance-preset=hipaa --ttl=30m` uses HIPAA defaults but overrides TTL to 30 minutes).
+#### How Profiles Work
 
-Presets are not runtime-changeable — they're a startup configuration. The active preset name is exposed in the health endpoint and audit log header.
+Profiles are applied at server start via `--profile=restricted`. They set defaults for all related flags. Individual flags can still override profile values (e.g., `--profile=restricted --ttl=1h` uses restricted defaults but overrides TTL to 1 hour).
+
+Profiles are not runtime-changeable — they are a startup configuration. The active profile name is exposed in the health endpoint.
 
 ---
 
-### 2.3 Data Export & Archive
+### 2.3 Data Export
 
-Operators can export captured data and audit logs to structured file formats for offline retention, SIEM ingestion, or compliance archives.
+An MCP tool for exporting current buffer state and audit entries as structured data. This keeps the server ephemeral — no background file writes, no persistent state — while still allowing teams to preserve session data when needed.
 
 #### How It Works
 
-A new MCP tool `export_data` generates an export file containing the requested data scope. The tool accepts:
+A new MCP tool `export_data` returns the requested data as the tool response (JSON Lines format, one JSON object per line). The tool accepts:
 - Scope: `audit`, `captures`, `all`
-- Format: `jsonl` (JSON Lines), `csv`
 - Time range: start/end timestamps (optional, defaults to all available data)
-- Output: returns the file path where the export was written
 
-Exports are written to a configurable directory (`--export-dir`, default: `./exports/`). Each export file is named with a timestamp and scope: `gasoline-export-audit-2026-01-24T10-30-00.jsonl`.
+For `captures` scope, the response includes all buffer contents (console, network, WebSocket, actions, performance) serialized as JSON objects, one per line. Each line includes a `type` field identifying the data category.
 
-For `captures` scope, the export includes all buffer contents (console, network, WebSocket, actions, performance) serialized as JSON objects, one per line. Each line includes a `type` field identifying the data category.
+For `audit` scope, the response includes all audit log entries currently in the ring buffer.
 
-For `audit` scope, the export includes all audit log entries.
-
-The export is a point-in-time snapshot — data continues to be captured and evicted normally during the export.
-
-#### SIEM Integration
-
-The JSON Lines format is chosen specifically for SIEM compatibility. Each line is a self-contained JSON object that can be ingested by Splunk, Elastic, Datadog, or any log aggregator without custom parsing. Field names follow ECS (Elastic Common Schema) conventions where applicable.
+The export is a point-in-time snapshot — data continues to be captured and evicted normally during the export. The AI client receiving the response can write it to a file, send it to a log aggregator, or process it however the team's tooling requires. Gasoline does not write files or manage export directories.
 
 ---
 
@@ -233,17 +222,25 @@ Redaction patterns are configured via a JSON configuration file (`--redaction-co
 
 Patterns are applied after the tool generates its response but before serialization to the MCP client. The server walks all string fields in the response JSON, applying each active pattern. Matches are replaced with the configured replacement string.
 
+#### Limitation: No Retroactive Protection
+
+Redaction only applies to tool responses generated after patterns are configured. If an AI client has already received unredacted data from earlier tool calls (before redaction was enabled), that data is already in the client's context and cannot be recalled. This is an inherent limitation of response-boundary redaction.
+
+To avoid this gap, configure redaction patterns at server start (via `--redaction-config` or `--profile`) rather than enabling them mid-session. When patterns are active from the first tool call, no unredacted data is ever exposed to the AI client through MCP.
+
 #### Built-In Patterns
 
-The server ships with these patterns (disabled by default, enabled by compliance presets or explicit config):
+The server ships with these patterns (disabled by default, enabled by profiles or explicit config):
 
 - `bearer-token`: `Bearer [A-Za-z0-9\-._~+/]+=*` — OAuth bearer tokens
 - `api-key`: `(?i)(api[_-]?key|apikey|secret[_-]?key)\s*[:=]\s*\S+` — API keys in various formats
-- `credit-card`: `\b[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}\b` — Credit card numbers (with optional Luhn validation)
+- `credit-card`: `\b[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}\b` — Credit card number patterns
 - `ssn`: `\b[0-9]{3}-[0-9]{2}-[0-9]{4}\b` — US Social Security Numbers
-- `email`: `\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z]{2,}\b` — Email addresses
+- `email`: `(?i)\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b` — Email addresses
 - `jwt`: `eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*` — JSON Web Tokens
 - `session-cookie`: `(?i)(session|sid|token)\s*=\s*[A-Za-z0-9+/=_-]{16,}` — Session identifiers
+
+All patterns are pure RE2 regex — no post-match validation functions. This keeps the redaction path simple and predictable. False positives are acceptable for a dev tool (better to over-redact than under-redact).
 
 #### Custom Patterns
 
@@ -260,7 +257,7 @@ Operators add custom patterns in the config file:
 
 #### Performance
 
-Redaction adds latency to tool responses. With the built-in patterns on a typical response (2KB of text), the overhead should be under 1ms. Large responses (network bodies, full DOM trees) may see 2-5ms overhead. This is acceptable given the security benefit, but is bounded by only scanning string fields (not binary data or numeric arrays).
+Redaction adds latency to tool responses. With the built-in patterns on a typical response (< 5KB text), the overhead is under 2ms. Large responses (100KB+ network bodies, full DOM trees) may see 10-30ms. This is acceptable given the security benefit and because these large responses are already slow to generate. RE2 guarantees linear-time matching — no catastrophic backtracking regardless of input.
 
 ---
 
@@ -290,11 +287,11 @@ To rotate the key, restart the server with the new key and update the extension 
 
 ### 3.2 Per-Tool Rate Limits
 
-Configurable rate limits that apply per MCP tool per session. This prevents a malfunctioning or malicious AI agent from hammering expensive tools (like `query_dom` or `get_network_bodies`) in a tight loop.
+Configurable rate limits that apply per MCP tool. This prevents a malfunctioning or malicious AI agent from hammering expensive tools (like `query_dom` or `get_network_bodies`) in a tight loop.
 
 #### How It Works
 
-Each tool has a configurable maximum calls per minute per session. When exceeded, the tool responds with an MCP error containing a retry-after hint. The rate limit resets every 60 seconds on a sliding window.
+Each tool has a configurable maximum calls per minute. When exceeded, the tool responds with an MCP error containing a retry-after hint. The rate limit resets every 60 seconds on a sliding window.
 
 Default limits (can be overridden):
 - `observe`: 60/min (high — common read operation)
@@ -302,7 +299,7 @@ Default limits (can be overridden):
 - `generate`: 30/min (moderate — codegen is CPU-bound)
 - `analyze`: 30/min (moderate)
 - `get_audit_log`: 10/min (low — audit queries shouldn't be in hot loops)
-- `export_data`: 2/min (very low — exports are expensive and produce files)
+- `export_data`: 2/min (very low — exports serialize all buffer data)
 
 Limits are configured via `--rate-limits` flag or config file:
 ```
@@ -323,6 +320,15 @@ When rate-limited, the tool returns a standard MCP error response:
 ```
 
 The error code -32029 is in the MCP application error range. Well-behaved AI clients should respect the retry hint.
+
+#### Interaction with Global Rate Limiter
+
+Per-tool rate limits operate at the MCP tool layer (calls per minute). The existing global rate limiter operates at the HTTP event layer (events per second for data ingestion). These are independent:
+
+- Per-tool limits constrain how often an AI client can query data
+- Global rate limits constrain how fast the extension can push data
+
+If the global circuit breaker opens (HTTP 429), MCP tool calls are unaffected — they read from in-memory buffers, not from incoming HTTP data. If a per-tool limit is hit, it does not affect other tools or the global rate limiter. The two systems do not conflict because they operate on different paths (MCP reads vs. HTTP writes).
 
 ---
 
@@ -349,29 +355,29 @@ All hardcoded server limits become configurable via CLI flags, environment varia
 
 #### Config File
 
-As an alternative to flags, a TOML config file can be specified via `--config`:
+As an alternative to flags, a JSON config file can be specified via `--config`:
 
-```toml
-[buffers]
-console = 2000
-network = 1000
-websocket = 5000
-actions = 500
-
-[memory]
-soft_limit = "40MB"
-hard_limit = "100MB"
-
-[retention]
-ttl = "2h"
-audit_size = 50000
-
-[auth]
-api_key = "sk-gasoline-prod-abc123"
-
-[compliance]
-preset = "soc2"
+```json
+{
+  "buffers": {
+    "console": 2000,
+    "network": 1000,
+    "websocket": 5000,
+    "actions": 500
+  },
+  "memory": {
+    "soft_limit": "40MB",
+    "hard_limit": "100MB"
+  },
+  "retention": {
+    "ttl": "2h",
+    "audit_size": 50000
+  },
+  "profile": "restricted"
+}
 ```
+
+JSON is used because `encoding/json` is in Go stdlib — no parsing library needed. The config file should NOT contain secrets (API keys, etc.) — those belong in environment variables.
 
 Priority order: CLI flags > environment variables > config file > defaults.
 
@@ -388,17 +394,15 @@ The tool returns:
 - **Memory**: current allocation, buffer breakdown by category, percent of hard limit used
 - **Buffers**: entries/capacity for each buffer type, eviction counts since startup
 - **Rate limiting**: current event rate, circuit breaker state, total 429s issued
-- **Sessions**: active MCP session count, list of session IDs with client identity and connection duration
+- **Session**: session ID, client identity, connection duration, tool call count
 - **Audit**: total tool calls since startup, calls per tool breakdown, error count
-- **Compliance**: active preset name (if any), TTL value, redaction patterns active count
-- **Retention**: oldest entry timestamp per buffer, next eviction scheduled
+- **Configuration**: active profile name (if any), TTL value, redaction patterns active count, read-only status
 
 #### Use Cases
 
-- **Monitoring dashboards**: Poll `get_health` to track memory and rate trends
-- **Alerting**: Trigger on memory > 80% of hard limit, circuit breaker open, or high error rate
 - **Debugging**: When an AI agent reports missing data, check buffer utilization and eviction counts
-- **Compliance reporting**: Verify TTL is enforced, redaction is active, audit log is persisting
+- **Monitoring**: Track memory usage trends across long sessions
+- **Configuration verification**: Confirm TTL, redaction, and rate limits are active as expected
 
 ---
 
@@ -406,7 +410,7 @@ The tool returns:
 
 ### 4.1 Project Isolation
 
-Multiple isolated capture contexts on a single Gasoline server. Each project has independent buffers, configuration, and access. This supports scenarios where multiple developers or applications share a single server instance.
+Multiple isolated capture contexts on a single Gasoline server. Each project has independent buffers and noise rules. The primary use case is a developer working on multiple applications simultaneously (e.g., a frontend and a backend admin panel in separate browser tabs) who wants clean separation of captured data.
 
 #### How It Works
 
@@ -414,18 +418,22 @@ Projects are created via a new HTTP endpoint `POST /projects` with a name and op
 - Independent buffer sets (console, network, WebSocket, actions, performance)
 - Independent checkpoint storage
 - Independent noise rules
-- Optional per-project TTL and rate limits
+- Optional per-project TTL
 
 The extension specifies which project to send data to via a project ID in its configuration (options page). MCP clients specify the project via a parameter on the `initialize` request.
 
 Default behavior (no project specified) uses a "default" project, maintaining backward compatibility with existing single-project deployments.
 
-#### Resource Limits
+#### Memory Model
 
-Each project consumes memory from the global pool. The server enforces:
-- Maximum number of projects: configurable (default 10)
-- Per-project memory cap: global hard limit / max projects (fair share)
-- Projects exceeding their share trigger eviction in that project only
+Projects share a single global memory budget — they do not each get an independent hard limit. The server maintains one global allocator that tracks total memory across all projects. When total memory approaches the hard limit, eviction is triggered in the project with the highest memory usage (largest-first eviction).
+
+This means:
+- 1 project uses up to 50MB (the full hard limit) — identical to today
+- 3 projects share 50MB with largest-first eviction — each effectively gets ~16MB under balanced load
+- The global hard limit is never exceeded regardless of project count
+
+Maximum number of projects is configurable (default 5, max 10). Each project has a minimum guaranteed allocation of 2MB — if adding a project would drop per-project minimums below 2MB, creation fails. This prevents the "10 projects × 5MB = useless" problem — fewer, larger projects are better than many tiny ones.
 
 #### Project Lifecycle
 
@@ -487,9 +495,6 @@ If both are specified, the allowlist takes priority (blocklist is ignored).
 
 Hidden tools don't appear in the MCP `tools/list` response. An AI client that doesn't see a tool in the list won't try to call it. If somehow called directly, the server responds with the standard MCP "method not found" error — it doesn't reveal that the tool exists but is blocked.
 
-#### Per-Session Overrides
-
-Future extension: allowlists could be set per-client identity (e.g., "Cursor gets all tools, but the CI integration only gets observe and analyze"). This is not in the initial implementation but the data model supports it.
 
 ---
 
@@ -500,19 +505,17 @@ All enterprise features are opt-in. A default Gasoline installation behaves iden
 ### Minimal Enterprise Setup
 
 ```bash
-gasoline --audit-file=./audit.jsonl --api-key=$GASOLINE_KEY --ttl=1h
+gasoline --api-key=$GASOLINE_KEY --ttl=1h
 ```
 
-### Full Compliance Setup
+### Restricted Setup
 
 ```bash
 gasoline \
-  --compliance-preset=soc2 \
-  --audit-file=/var/log/gasoline/audit.jsonl \
+  --profile=restricted \
   --api-key=$GASOLINE_KEY \
-  --export-dir=/var/log/gasoline/exports/ \
   --redaction-config=./redaction-rules.json \
-  --config=./gasoline.toml
+  --config=./gasoline.json
 ```
 
 ---
@@ -520,14 +523,15 @@ gasoline \
 ## Performance Constraints
 
 Enterprise features must not violate existing SLOs:
-- Audit logging adds < 0.1ms per tool call (append to in-memory buffer)
-- Redaction adds < 5ms worst case per tool response (regex scan of string fields)
-- TTL eviction runs on a background timer, never blocking request processing
+- Audit logging adds < 0.1ms per tool call (append to in-memory ring buffer)
+- Redaction on typical responses (< 5KB text): < 2ms (7 compiled RE2 patterns)
+- Redaction on large responses (100KB+ DOM/network bodies): may add 10-30ms — this is acceptable as these responses are already slow to generate
+- TTL eviction piggybacks on buffer reads, never blocking request processing
 - Rate limit checks add < 0.01ms per tool call (atomic counter read)
 - Config file parsing happens once at startup (not on every request)
 - Health metrics are computed on-demand when the tool is called (no background polling overhead)
 
-Total overhead for all Tier 1-3 features combined: < 6ms per tool call worst case.
+Total overhead for typical tool calls with all Tier 1-3 features active: < 3ms.
 
 ---
 
@@ -536,22 +540,23 @@ Total overhead for all Tier 1-3 features combined: < 6ms per tool call worst cas
 ### Tier 1
 - Verify audit log records every tool call with correct metadata
 - Verify client identity is extracted from MCP `initialize` request
-- Verify session IDs are unique across concurrent connections
+- Verify session IDs are unique across server restarts
+- Verify session ID format is sortable and human-readable
 - Verify redaction events are logged without storing redacted content
-- Verify audit log respects buffer size limit (oldest entries evicted)
-- Verify file persistence writes valid JSON Lines
-- Verify `get_audit_log` filters work (time range, tool name, session)
+- Verify audit log ring buffer evicts oldest entries when full
+- Verify `get_audit_log` filters work (time range, tool name, status)
 
 ### Tier 2
-- Verify TTL eviction removes entries older than configured TTL
-- Verify TTL reduction takes immediate effect
-- Verify compliance presets set all expected values
-- Verify preset values can be overridden by explicit flags
-- Verify export produces valid JSON Lines with all buffer types
+- Verify TTL eviction skips entries older than configured TTL on read
+- Verify TTL of zero (default) means no eviction (existing behavior)
+- Verify profiles set all expected values for each level
+- Verify profile values can be overridden by explicit flags
+- Verify export_data returns valid JSON Lines with all buffer types
 - Verify redaction patterns match and replace correctly
 - Verify redacted responses don't contain original sensitive data
-- Verify custom redaction patterns load from config file
-- Verify Luhn validation on credit card pattern (reduces false positives)
+- Verify custom redaction patterns load from JSON config file
+- Verify redaction does not apply retroactively to prior responses (limitation test)
+- Verify RE2 patterns run in linear time on adversarial input (no backtracking)
 
 ### Tier 3
 - Verify API key auth rejects requests without key
@@ -559,14 +564,17 @@ Total overhead for all Tier 1-3 features combined: < 6ms per tool call worst cas
 - Verify MCP stdio connections bypass API key auth
 - Verify per-tool rate limits enforce configured thresholds
 - Verify rate limit error response includes retry hint
+- Verify per-tool rate limits and global circuit breaker do not conflict (global wins)
 - Verify configurable thresholds override defaults
-- Verify config file parsing with all supported values
+- Verify JSON config file parsing with all supported values
 - Verify priority order: CLI > env > config file > defaults
 - Verify health metrics report accurate values for all categories
+- Verify API key is NOT accepted from JSON config file (must be env var or flag)
 
 ### Tier 4
 - Verify project isolation (data in project A not visible in project B)
-- Verify per-project memory caps are enforced
+- Verify global memory limit is respected across all projects (largest-first eviction)
+- Verify project creation fails when minimum 2MB per-project guarantee would be violated
 - Verify read-only mode blocks all mutation operations
 - Verify read-only mode allows all read/analyze/generate operations
 - Verify tool allowlisting hides tools from `tools/list`
@@ -579,25 +587,25 @@ Total overhead for all Tier 1-3 features combined: < 6ms per tool call worst cas
 ## Zero-Dependency Constraint
 
 All enterprise features are implemented using Go stdlib only. Specific implications:
-- Regex: `regexp` package (no PCRE, no lookahead — patterns must be RE2-compatible)
-- JSON: `encoding/json` for config parsing and export
-- File I/O: `os` package for audit log persistence
+- Regex: `regexp` package (RE2 engine — guaranteed linear time, no catastrophic backtracking)
+- JSON: `encoding/json` for config file parsing, export serialization, and audit entries
 - Crypto: `crypto/rand` for session ID generation
-- Config: custom TOML parser (simple key-value, no nested tables beyond one level) or flag-based only
+- Config: JSON config file parsed with `encoding/json` — no custom parser needed
 - No external auth libraries — API key is a simple string comparison
+- No external logging libraries — audit entries are JSON-serialized structs
 
-The TOML config file support is the only architectural decision that may benefit from a library. If RE2-compatible TOML parsing proves too complex with stdlib alone, fall back to a simpler INI-style format or JSON config file. Never add a dependency.
+The config file format is JSON specifically because it requires zero implementation effort with Go stdlib. No TOML, no YAML, no INI — those all require custom parsers or third-party libraries.
 
 ---
 
 ## Migration & Backward Compatibility
 
 All features are additive. No existing behavior changes without explicit opt-in. Specifically:
-- No audit log is written unless `--audit-file` is set
+- No audit entries are recorded unless the server sees tool calls (passive — always active but zero-cost if unused)
 - No TTL is enforced unless `--ttl` is set
-- No redaction occurs unless patterns are configured
+- No redaction occurs unless patterns are configured (via `--redaction-config` or `--profile`)
 - No auth is required unless `--api-key` is set
-- No rate limits apply unless configured
+- No per-tool rate limits apply unless configured
 - All tools remain available unless allowlisting is configured
 - The extension works unchanged — new auth header is only sent if configured
 

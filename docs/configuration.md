@@ -20,7 +20,7 @@ Options:
   --port <number>        Port to listen on (default: 7890)
   --log-file <path>      Path to log file (default: ~/gasoline-logs.jsonl)
   --max-entries <number> Max log entries before rotation (default: 1000)
-  --mcp                  Run in MCP mode for AI tool integration
+  --mcp                  No-op (MCP mode is the default, kept for backwards compatibility)
   --help, -h             Show help message
 ```
 

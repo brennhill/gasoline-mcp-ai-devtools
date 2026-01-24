@@ -245,7 +245,7 @@ shasum -a 256 bin/gasoline-*
 
 For teams evaluating Gasoline:
 
-- **Compliance:** No data egress — compatible with SOC 2, HIPAA environments (debugging data stays local)
+- **Data governance:** No data egress — all debugging data stays on the developer's machine, never transmitted externally
 - **Audit trail:** Open source, reproducible builds, no telemetry to verify absence of
 - **IT approval:** Single binary, no runtime deps, no outbound network, minimal permissions
 - **Onboarding:** `npx gasoline-mcp` — no accounts, no API keys, no license management

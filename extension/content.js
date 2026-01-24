@@ -19,58 +19,60 @@ function injectScript() {
   ;(document.head || document.documentElement).appendChild(script)
 }
 
+// Dispatch table: page postMessage type -> background message type
+const MESSAGE_MAP = {
+  GASOLINE_LOG: 'log',
+  GASOLINE_WS: 'ws_event',
+  GASOLINE_NETWORK_BODY: 'network_body',
+  GASOLINE_ENHANCED_ACTION: 'enhanced_action',
+  GASOLINE_PERFORMANCE_SNAPSHOT: 'performance_snapshot',
+}
+
+// Track whether the extension context is still valid
+let contextValid = true
+
+function safeSendMessage(msg) {
+  if (!contextValid) return
+  try {
+    chrome.runtime.sendMessage(msg)
+  } catch (e) {
+    if (e.message?.includes('Extension context invalidated')) {
+      contextValid = false
+      console.warn(
+        '[Gasoline] Please refresh this page. The Gasoline extension was reloaded ' +
+          'and this page still has the old content script. A page refresh will ' +
+          'reconnect capture automatically.',
+      )
+    }
+  }
+}
+
 // Listen for messages from the injected script
 window.addEventListener('message', (event) => {
   // Only accept messages from this window
   if (event.source !== window) return
 
-  // Only handle our messages
-  if (event.data?.type === 'GASOLINE_LOG') {
-    // Forward to background service worker
-    chrome.runtime.sendMessage({
-      type: 'log',
-      payload: event.data.payload,
-    })
-  } else if (event.data?.type === 'GASOLINE_WS') {
-    // Forward WebSocket events to background service worker
-    chrome.runtime.sendMessage({
-      type: 'ws_event',
-      payload: event.data.payload,
-    })
-  } else if (event.data?.type === 'GASOLINE_NETWORK_BODY') {
-    // Forward network body captures to background service worker
-    chrome.runtime.sendMessage({
-      type: 'network_body',
-      payload: event.data.payload,
-    })
-  } else if (event.data?.type === 'GASOLINE_ENHANCED_ACTION') {
-    // Forward enhanced action events to background service worker
-    chrome.runtime.sendMessage({
-      type: 'enhanced_action',
-      payload: event.data.payload,
-    })
-  } else if (event.data?.type === 'GASOLINE_PERFORMANCE_SNAPSHOT') {
-    // Forward performance snapshot to background service worker
-    chrome.runtime.sendMessage({
-      type: 'performance_snapshot',
-      payload: event.data.payload,
-    })
+  const mapped = MESSAGE_MAP[event.data?.type]
+  if (mapped && event.data.payload && typeof event.data.payload === 'object') {
+    safeSendMessage({ type: mapped, payload: event.data.payload })
   }
 })
 
+// Feature toggle message types forwarded from background to inject.js
+const TOGGLE_MESSAGES = new Set([
+  'setNetworkWaterfallEnabled',
+  'setPerformanceMarksEnabled',
+  'setActionReplayEnabled',
+  'setWebSocketCaptureEnabled',
+  'setWebSocketCaptureMode',
+  'setPerformanceSnapshotEnabled',
+  'setDeferralEnabled',
+  'setNetworkBodyCaptureEnabled',
+])
+
 // Listen for feature toggle messages from background
 chrome.runtime.onMessage.addListener((message) => {
-  // Forward feature toggle messages to inject.js via postMessage
-  if (
-    message.type === 'setNetworkWaterfallEnabled' ||
-    message.type === 'setPerformanceMarksEnabled' ||
-    message.type === 'setActionReplayEnabled' ||
-    message.type === 'setWebSocketCaptureEnabled' ||
-    message.type === 'setWebSocketCaptureMode' ||
-    message.type === 'setPerformanceSnapshotEnabled' ||
-    message.type === 'setDeferralEnabled' ||
-    message.type === 'setNetworkBodyCaptureEnabled'
-  ) {
+  if (TOGGLE_MESSAGES.has(message.type)) {
     const payload = { type: 'GASOLINE_SETTING', setting: message.type }
     if (message.type === 'setWebSocketCaptureMode') {
       payload.mode = message.mode
