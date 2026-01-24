@@ -1,3 +1,9 @@
+// alerts.go — Push-based alert system for proactive error notification.
+// Monitors incoming browser events and surfaces new errors, network failures,
+// and performance regressions via the MCP tool response metadata.
+// Design: Alert buffer with deduplication and delivery tracking. Alerts are
+// appended to observe/analyze responses so the AI learns about issues without
+// needing to poll. Configurable severity thresholds.
 package main
 
 import (
@@ -12,7 +18,7 @@ import (
 )
 
 // ============================================
-// Phase 3: Push-Based Alerts
+// Push-Based Alerts
 // ============================================
 
 const (

@@ -1,3 +1,9 @@
+// performance.go — Web Vitals collection, baseline tracking, and regression detection.
+// Stores performance snapshots per URL with adaptive baselines that stabilize
+// after ~5 samples using weighted averaging (80/20 split).
+// Design: LRU eviction for both snapshots and baselines. Regression alerts
+// fire when metrics exceed 2x the baseline. Vitals assessed against Google's
+// Core Web Vitals thresholds (FCP, LCP, CLS, INP).
 package main
 
 import (

@@ -1,3 +1,8 @@
+// actions.go — User action recording buffer and MCP tool handler.
+// Captures browser interactions (click, input, navigate, scroll, select)
+// with smart selectors (testId, role, ariaLabel, text, id, cssPath).
+// Design: Fixed-size ring buffer. Sensitive input values are redacted
+// at capture time. Selectors prioritized for Playwright compatibility.
 package main
 
 import (
@@ -9,7 +14,7 @@ import (
 )
 
 // ============================================
-// Enhanced Actions (v5)
+// Enhanced Actions
 // ============================================
 
 // AddEnhancedActions adds enhanced actions to the buffer

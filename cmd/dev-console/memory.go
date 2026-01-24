@@ -1,3 +1,8 @@
+// memory.go — Memory enforcement with soft/hard limits and eviction policies.
+// Periodic goroutine checks memory usage and evicts oldest entries when the
+// soft limit (20MB) is exceeded. Hard limit (50MB) triggers aggressive eviction.
+// Design: Each buffer (logs, network, websocket, actions) is evicted
+// independently based on its contribution to total memory pressure.
 package main
 
 import (

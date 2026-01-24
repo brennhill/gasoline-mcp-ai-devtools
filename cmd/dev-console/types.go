@@ -1,3 +1,8 @@
+// types.go — Core types, constants, and the Capture struct.
+// All shared data structures live here: buffer types, MCP protocol types,
+// performance baselines, and configuration constants.
+// Design: Single file avoids scattered type definitions. Buffer sizes and
+// limits are constants at the top for easy tuning.
 package main
 
 import (
@@ -7,7 +12,7 @@ import (
 )
 
 // ============================================
-// v4 Types
+// Types
 // ============================================
 
 // WebSocketEvent represents a captured WebSocket event
@@ -380,7 +385,8 @@ type MemoryState struct {
 // Capture
 // ============================================
 
-// Capture handles v4-specific state and operations
+// Capture manages all buffered browser state: WebSocket events, network
+// bodies, user actions, connections, queries, rate limiting, and performance.
 type Capture struct {
 	mu sync.RWMutex
 
@@ -394,7 +400,7 @@ type Capture struct {
 	networkAddedAt    []time.Time // parallel: when each body was added
 	networkTotalAdded int64       // monotonic counter
 
-	// Enhanced actions ring buffer (v5)
+	// Enhanced actions ring buffer
 	enhancedActions  []EnhancedAction
 	actionAddedAt    []time.Time // parallel: when each action was added
 	actionTotalAdded int64       // monotonic counter
@@ -430,7 +436,7 @@ type Capture struct {
 	schemaStore *SchemaStore
 }
 
-// NewCapture creates a new v4 server instance
+// NewCapture creates a new Capture instance with initialized buffers
 func NewCapture() *Capture {
 	now := time.Now()
 	c := &Capture{

@@ -1,3 +1,9 @@
+// codegen.go — Playwright script generation, test generation, and session timeline.
+// Produces runnable Playwright scripts from captured user actions, with
+// smart locator selection (testId > role > label > text > id > cssPath).
+// Also merges actions, network, and console into a sorted session timeline.
+// Design: Scripts capped at 50KB. Timing gaps annotated as comments.
+// Test generation adds network assertions and response shape validation.
 package main
 
 import (
@@ -8,7 +14,7 @@ import (
 )
 
 // ============================================
-// Playwright Script Generation (v5)
+// Playwright Script Generation
 // ============================================
 
 // generatePlaywrightScript generates a Playwright test script from enhanced actions
@@ -173,7 +179,7 @@ func replaceOrigin(original, baseURL string) string {
 }
 
 // ============================================
-// Session Timeline (v5)
+// Session Timeline
 // ============================================
 
 // TimelineFilter defines filtering criteria for timeline queries

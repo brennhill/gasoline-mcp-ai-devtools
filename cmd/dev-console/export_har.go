@@ -1,3 +1,8 @@
+// export_har.go — HTTP Archive (HAR 1.2) export from captured network traffic.
+// Converts the internal network body buffer into standard HAR format,
+// compatible with Chrome DevTools, Charles Proxy, and other HAR viewers.
+// Design: Filtering by URL, method, and status range before export.
+// Auth headers stripped from output. Optional save_to for file output.
 package main
 
 import (

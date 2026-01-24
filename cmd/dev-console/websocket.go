@@ -1,3 +1,8 @@
+// websocket.go — WebSocket connection tracking and event buffering.
+// Captures connection lifecycle (open/close/error) and message payloads
+// with adaptive sampling for high-frequency streams.
+// Design: Ring buffer with LRU eviction per connection. Messages are
+// truncated at 4KB to bound memory. Connection map keyed by unique ID.
 package main
 
 import (

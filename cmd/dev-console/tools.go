@@ -1,3 +1,10 @@
+// tools.go — MCP tool definitions, dispatch, and response helpers.
+// Defines 5 composite tools (observe, analyze, generate, configure, query_dom)
+// that replace the original 24 granular tools, reducing AI decision space by 79%.
+// Each tool has a mode parameter that selects the sub-operation.
+// Design: Tool schemas include live data_counts in _meta so the AI knows what
+// data is available before calling. Dispatch is a single switch on tool name +
+// mode parameter, keeping the handler flat and predictable.
 package main
 
 import (
@@ -75,20 +82,20 @@ func mcpErrorResponse(text string) json.RawMessage {
 }
 
 // ============================================
-// MCP Handler V4
+// MCP Handler
 // ============================================
 
-// ToolHandler extends MCPHandler with v4 tools
+// ToolHandler extends MCPHandler with composite tool dispatch
 type ToolHandler struct {
 	*MCPHandler
 	capture      *Capture
 	checkpoints  *CheckpointManager
 	sessionStore *SessionStore
 	noise        *NoiseConfig
-	AlertBuffer  // Embedded alert state (Phase 3)
+	AlertBuffer  // Embedded alert state for push-based notifications
 }
 
-// NewToolHandler creates an MCP handler with v4 capabilities
+// NewToolHandler creates an MCP handler with composite tool capabilities
 func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 	handler := &ToolHandler{
 		MCPHandler:  NewMCPHandler(server),
@@ -933,5 +940,4 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(sarifJSON))}
 }
 
-// ============================================
-// v5 MCP Tool Implementations
+
