@@ -117,6 +117,8 @@ make dev                               # Build for current platform
 
 **[cookwithgasoline.com](https://cookwithgasoline.com)**
 
+*Pouring fuel on the AI development fire*
+
 If you find Gasoline useful, please consider giving it a star!
 
 [![Star on GitHub](https://img.shields.io/github/stars/brennhill/gasoline.svg?style=social)](https://github.com/brennhill/gasoline)

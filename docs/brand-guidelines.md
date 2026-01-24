@@ -157,6 +157,7 @@ Sparky is the Gasoline brand character — a friendly anthropomorphic salamander
 
 - **Product:** Gasoline (capital G, no "the")
 - **Tagline:** Browser observability for AI coding agents
+- **Motto:** Pouring fuel on the AI development fire
 - **Action verbs:** "streams", "captures", "fuels", "fires up"
 - **Domain voice:** "Cook with Gasoline" — as in "now we're cooking"
 
