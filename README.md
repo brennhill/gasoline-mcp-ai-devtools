@@ -61,17 +61,17 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 | **DOM queries** | ✅ | ✅ | ✅ | ✅ |
 | **Screenshots** | ✅ | ✅ | ✅ | ✅ |
 | | | | | |
-| **Web Vitals** | ✅ LCP, CLS, INP, FCP | ❌ | ❌ | ❌ |
-| **Regression detection** | ✅ Automatic | ❌ | ❌ | ❌ |
-| **API schema inference** | ✅ OpenAPI from traffic | ❌ | ❌ | ❌ |
-| **Accessibility audits** | ✅ WCAG + SARIF | ❌ | ❌ | ❌ |
-| **Session checkpoints** | ✅ Named + auto | ❌ | ❌ | ❌ |
-| **Noise filtering** | ✅ Auto-detect | ❌ | ❌ | ❌ |
+| **[Web Vitals](https://cookwithgasoline.com/web-vitals/)** | ✅ LCP, CLS, INP, FCP | ❌ | ❌ | ❌ |
+| **[Regression detection](https://cookwithgasoline.com/regression-detection/)** | ✅ Automatic | ❌ | ❌ | ❌ |
+| **[API schema inference](https://cookwithgasoline.com/api-schema/)** | ✅ OpenAPI from traffic | ❌ | ❌ | ❌ |
+| **[Accessibility audits](https://cookwithgasoline.com/accessibility-audit/)** | ✅ WCAG + SARIF | ❌ | ❌ | ❌ |
+| **[Session checkpoints](https://cookwithgasoline.com/session-checkpoints/)** | ✅ Named + auto | ❌ | ❌ | ❌ |
+| **[Noise filtering](https://cookwithgasoline.com/noise-filtering/)** | ✅ Auto-detect | ❌ | ❌ | ❌ |
 | | | | | |
-| **Test generation** | ✅ Playwright | ❌ | ❌ | ❌ |
-| **Reproduction scripts** | ✅ From actions | ❌ | ❌ | ❌ |
-| **PR summaries** | ✅ Perf impact | ❌ | ❌ | ❌ |
-| **HAR export** | ✅ | ❌ | ❌ | ❌ |
+| **[Test generation](https://cookwithgasoline.com/generate-test/)** | ✅ Playwright | ❌ | ❌ | ❌ |
+| **[Reproduction scripts](https://cookwithgasoline.com/reproduction-scripts/)** | ✅ From actions | ❌ | ❌ | ❌ |
+| **[PR summaries](https://cookwithgasoline.com/pr-summaries/)** | ✅ Perf impact | ❌ | ❌ | ❌ |
+| **[HAR export](https://cookwithgasoline.com/har-export/)** | ✅ | ❌ | ❌ | ❌ |
 | | | | | |
 | **Zero dependencies** | ✅ Single Go binary | ❌ Node.js + Chrome flags | ❌ Node.js + Puppeteer | ❌ Electron |
 | **Vendor neutral** | ✅ Any MCP tool | ⚠️ Any MCP tool | ⚠️ Any MCP tool | ❌ Cursor only |
@@ -116,6 +116,12 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 **[Privacy details →](https://cookwithgasoline.com/privacy/)**
 
+## Performance
+
+See [latest benchmarks](benchmarks/latest-benchmark.md) for current performance data.
+
+Last benchmarked: 2026-01-24 on darwin/arm64 (v4.6.0)
+
 ## Development
 
 ```bash
@@ -123,6 +129,8 @@ make test                              # Go server tests
 node --test extension-tests/*.test.js  # Extension tests
 make dev                               # Build for current platform
 ```
+
+**[Release process & quality gates →](RELEASE.md)**
 
 ## License
 
