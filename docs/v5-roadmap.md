@@ -84,6 +84,7 @@ Server attaches unsolicited context to responses instead of requiring separate t
 Server-side intelligence that makes the AI smarter about browser state it can't get any other way.
 
 - [x] **Anomaly detection** — Error frequency spike detection (>3x rolling average) surfaces in alerts.
+- [ ] **AI capture control** — AI adjusts extension settings via `configure(action: "capture", settings: {...})`. Session-scoped (resets on restart). Settings: log_level, ws_mode, network_bodies, screenshot_on_error, action_replay. Changes emit info-level alert + structured audit log (`~/.gasoline/audit.jsonl`, rotating JSONL, fluentbit-compatible).
 - [ ] **Error clustering** — Group related errors across sessions: "These 4 stack traces share a common root cause." Reduces noise, surfaces root causes.
 - [ ] **Cross-session temporal graph** — Persistent memory v2: not just key-value but "error X first appeared at time T, correlated with change Y, resolved by fix Z." Browser state history that survives context resets.
 - [ ] **SPA route measurement** — `pushState`/`popstate` observation, per-route time-to-interactive. Real browser state the AI can't get without instrumentation.
@@ -161,7 +162,8 @@ These don't serve the thesis. The AI IS the interface — exporting to other too
 
 | Feature | Primary files | Can parallel with |
 |---------|--------------|-------------------|
-| Error clustering | `clustering.go` (new) | Temporal graph, SPA routes, Budgets |
-| Cross-session temporal graph | `ai_persistence.go` (extend) | Clustering, SPA routes, Budgets |
-| SPA route measurement | `inject.js`, `performance.go` | Clustering, Temporal graph, Budgets |
-| Budget thresholds | `performance.go`, config loader (new) | Clustering, Temporal graph, SPA routes |
+| AI capture control | `tools.go`, `main.go`, `audit.go` (new) | All others |
+| Error clustering | `clustering.go` (new) | All others |
+| Cross-session temporal graph | `ai_persistence.go` (extend) | All others |
+| SPA route measurement | `inject.js`, `performance.go` | All except Budgets |
+| Budget thresholds | `performance.go`, config loader (new) | All except SPA routes |
