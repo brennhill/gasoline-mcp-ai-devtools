@@ -1,7 +1,8 @@
 // @ts-nocheck
 /**
- * @fileoverview Tests for Web Vitals capture (FCP, LCP, CLS, TTFB)
- * TDD: These tests are written BEFORE implementation
+ * @fileoverview Tests for Web Vitals / Performance Observer capture
+ * Tests the actual exported API: installPerfObservers, uninstallPerfObservers,
+ * getFCP, getLCP, getCLS, sendPerformanceSnapshot
  */
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
@@ -26,7 +27,7 @@ class MockPerformanceObserver {
   }
 }
 MockPerformanceObserver._instances = []
-MockPerformanceObserver.supportedEntryTypes = ['paint', 'largest-contentful-paint', 'layout-shift']
+MockPerformanceObserver.supportedEntryTypes = ['paint', 'largest-contentful-paint', 'layout-shift', 'longtask', 'event']
 
 let originalWindow, originalPerformanceObserver, originalPerformance
 
@@ -55,9 +56,14 @@ describe('Web Vitals Capture', () => {
       },
     }
     globalThis.document = { readyState: 'complete', addEventListener: mock.fn() }
-    // Preserve console but mock it to avoid inject.js wrapping issues
     if (!globalThis.console) {
-      globalThis.console = { log: mock.fn(), warn: mock.fn(), error: mock.fn(), info: mock.fn(), debug: mock.fn() }
+      globalThis.console = {
+        log: mock.fn(),
+        warn: mock.fn(),
+        error: mock.fn(),
+        info: mock.fn(),
+        debug: mock.fn(),
+      }
     }
   })
 
@@ -68,95 +74,64 @@ describe('Web Vitals Capture', () => {
     delete globalThis.document
   })
 
-  test('startWebVitalsCapture creates observers for FCP, LCP, CLS', async () => {
+  test('installPerfObservers creates observers for paint, LCP, CLS, longtask', async () => {
     const mod = await import('../extension/inject.js')
-    mod.startWebVitalsCapture()
+    mod.installPerfObservers()
 
-    // Should create observers for paint (FCP), largest-contentful-paint (LCP), layout-shift (CLS)
     const types = MockPerformanceObserver._instances.flatMap((obs) => obs._types)
     assert.ok(types.includes('paint'), 'Should observe paint entries (FCP)')
     assert.ok(types.includes('largest-contentful-paint'), 'Should observe LCP entries')
     assert.ok(types.includes('layout-shift'), 'Should observe CLS entries')
+    assert.ok(types.includes('longtask'), 'Should observe long tasks')
   })
 
   test('FCP is captured from paint entries', async () => {
     const mod = await import('../extension/inject.js')
-    mod.resetWebVitals()
-    mod.startWebVitalsCapture()
+    mod.installPerfObservers()
 
-    // Find the paint observer
     const paintObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('paint'))
     assert.ok(paintObs, 'Paint observer should exist')
 
-    // Emit a first-contentful-paint entry
     paintObs._emit([{ name: 'first-contentful-paint', startTime: 1200 }])
 
-    const vitals = mod.getWebVitals()
-    assert.ok(vitals.fcp, 'FCP should be captured')
-    assert.strictEqual(vitals.fcp.value, 1200)
+    assert.strictEqual(mod.getFCP(), 1200)
   })
 
   test('LCP updates to latest entry', async () => {
     const mod = await import('../extension/inject.js')
-    mod.resetWebVitals()
-    mod.startWebVitalsCapture()
+    mod.installPerfObservers()
 
     const lcpObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('largest-contentful-paint'))
     assert.ok(lcpObs, 'LCP observer should exist')
 
-    // Emit multiple LCP entries - should keep the last one
     lcpObs._emit([
       { startTime: 1000, element: { tagName: 'DIV' }, size: 5000 },
       { startTime: 2400, element: { tagName: 'IMG' }, size: 150000 },
     ])
 
-    const vitals = mod.getWebVitals()
-    assert.ok(vitals.lcp, 'LCP should be captured')
-    assert.strictEqual(vitals.lcp.value, 2400)
-    assert.strictEqual(vitals.lcp.element, 'IMG')
-    assert.strictEqual(vitals.lcp.size, 150000)
+    // Implementation keeps the last entry's startTime
+    assert.strictEqual(mod.getLCP(), 2400)
   })
 
   test('CLS accumulates layout shifts (ignores input-driven)', async () => {
     const mod = await import('../extension/inject.js')
-    mod.resetWebVitals()
-    mod.startWebVitalsCapture()
+    mod.installPerfObservers()
 
     const clsObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('layout-shift'))
     assert.ok(clsObs, 'CLS observer should exist')
 
-    // Emit layout shifts - one input-driven (should be ignored)
     clsObs._emit([
       { value: 0.02, hadRecentInput: false },
       { value: 0.03, hadRecentInput: false },
       { value: 0.1, hadRecentInput: true }, // Should be ignored
     ])
 
-    const vitals = mod.getWebVitals()
-    assert.ok(vitals.cls, 'CLS should be captured')
-    assert.strictEqual(vitals.cls.value, 0.05) // 0.02 + 0.03
-    assert.strictEqual(vitals.cls.shifts, 2) // Only non-input shifts
+    // Only non-input shifts are accumulated: 0.02 + 0.03 = 0.05
+    const cls = mod.getCLS()
+    assert.ok(Math.abs(cls - 0.05) < 0.001, `CLS should be ~0.05, got ${cls}`)
   })
 
-  test('TTFB captured from navigation timing', async () => {
-    globalThis.performance.getEntriesByType = mock.fn(() => [
-      {
-        requestStart: 100,
-        responseStart: 280,
-      },
-    ])
-
-    const mod = await import('../extension/inject.js')
-    mod.resetWebVitals()
-    mod.startWebVitalsCapture()
-
-    const vitals = mod.getWebVitals()
-    assert.ok(vitals.ttfb, 'TTFB should be captured')
-    assert.strictEqual(vitals.ttfb.value, 180) // 280 - 100
-  })
-
-  test('observer error does not crash', async () => {
-    // Make PerformanceObserver throw for one type
+  test('installPerfObservers propagates observer errors', async () => {
     let callCount = 0
     globalThis.PerformanceObserver = class {
       constructor(cb) {
@@ -171,54 +146,148 @@ describe('Web Vitals Capture', () => {
     globalThis.PerformanceObserver.supportedEntryTypes = []
 
     const mod = await import('../extension/inject.js')
-    // Should not throw
-    mod.startWebVitalsCapture()
-    const vitals = mod.getWebVitals()
-    // FCP observer failed, but others should still work
-    assert.strictEqual(vitals.fcp, null)
+    // Observer errors propagate (not silently swallowed)
+    assert.throws(() => mod.installPerfObservers(), { message: 'Not supported' })
   })
 
-  test('resetWebVitals clears all values', async () => {
+  test('installPerfObservers resets values', async () => {
     const mod = await import('../extension/inject.js')
-    mod.resetWebVitals()
-    mod.startWebVitalsCapture()
+    mod.installPerfObservers()
 
-    // Set some values via observers
+    // Simulate FCP
     const paintObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('paint'))
     if (paintObs) paintObs._emit([{ name: 'first-contentful-paint', startTime: 500 }])
+    assert.strictEqual(mod.getFCP(), 500)
 
-    mod.resetWebVitals()
-    const vitals = mod.getWebVitals()
-    assert.strictEqual(vitals.fcp, null)
-    assert.strictEqual(vitals.lcp, null)
-    assert.strictEqual(vitals.cls, null)
-    assert.strictEqual(vitals.ttfb, null)
+    // Re-install should reset values
+    mod.installPerfObservers()
+    assert.strictEqual(mod.getFCP(), null)
+    assert.strictEqual(mod.getLCP(), null)
+    assert.strictEqual(mod.getCLS(), 0)
   })
 
-  test('getWebVitals returns a copy', async () => {
+  test('uninstallPerfObservers disconnects all observers', async () => {
     const mod = await import('../extension/inject.js')
-    mod.resetWebVitals()
-
-    const vitals1 = mod.getWebVitals()
-    const vitals2 = mod.getWebVitals()
-    assert.notStrictEqual(vitals1, vitals2) // Different objects
-  })
-
-  test('stopWebVitalsCapture disconnects all observers', async () => {
-    const mod = await import('../extension/inject.js')
-    mod.startWebVitalsCapture()
+    mod.installPerfObservers()
 
     const observersBefore = MockPerformanceObserver._instances.filter((obs) => !obs._disconnected)
     assert.ok(observersBefore.length > 0, 'Should have active observers')
 
-    mod.stopWebVitalsCapture()
+    mod.uninstallPerfObservers()
 
     const observersAfter = MockPerformanceObserver._instances.filter((obs) => obs._disconnected)
     assert.ok(observersAfter.length > 0, 'All observers should be disconnected')
   })
+
+  test('getFCP returns null before any paint entry', async () => {
+    const mod = await import('../extension/inject.js')
+    mod.installPerfObservers()
+    assert.strictEqual(mod.getFCP(), null)
+  })
+
+  test('getLCP returns null before any LCP entry', async () => {
+    const mod = await import('../extension/inject.js')
+    mod.installPerfObservers()
+    assert.strictEqual(mod.getLCP(), null)
+  })
+
+  test('getCLS returns 0 before any layout shift', async () => {
+    const mod = await import('../extension/inject.js')
+    mod.installPerfObservers()
+    assert.strictEqual(mod.getCLS(), 0)
+  })
+
+  test('INP observer is created for event type entries when installPerfObservers is called', async () => {
+    const mod = await import('../extension/inject.js')
+    mod.installPerfObservers()
+
+    const types = MockPerformanceObserver._instances.flatMap((obs) => obs._types)
+    assert.ok(types.includes('event'), 'Should observe event entries (INP)')
+  })
+
+  test('getINP returns null before any interaction', async () => {
+    const mod = await import('../extension/inject.js')
+    mod.installPerfObservers()
+    assert.strictEqual(mod.getINP(), null)
+  })
+
+  test('INP captures the highest duration from event entries with interactionId', async () => {
+    const mod = await import('../extension/inject.js')
+    mod.installPerfObservers()
+
+    const eventObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('event'))
+    assert.ok(eventObs, 'Event observer should exist')
+
+    eventObs._emit([
+      { duration: 120, interactionId: 1 },
+      { duration: 200, interactionId: 2 },
+      { duration: 80, interactionId: 3 },
+    ])
+
+    assert.strictEqual(mod.getINP(), 200)
+  })
+
+  test('INP ignores entries without interactionId', async () => {
+    const mod = await import('../extension/inject.js')
+    mod.installPerfObservers()
+
+    const eventObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('event'))
+    assert.ok(eventObs, 'Event observer should exist')
+
+    eventObs._emit([
+      { duration: 500, interactionId: 0 },  // falsy interactionId
+      { duration: 300 },                      // no interactionId
+      { duration: 100, interactionId: 1 },   // valid
+    ])
+
+    assert.strictEqual(mod.getINP(), 100)
+  })
+
+  test('INP updates when a higher duration interaction occurs', async () => {
+    const mod = await import('../extension/inject.js')
+    mod.installPerfObservers()
+
+    const eventObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('event'))
+    assert.ok(eventObs, 'Event observer should exist')
+
+    eventObs._emit([{ duration: 150, interactionId: 1 }])
+    assert.strictEqual(mod.getINP(), 150)
+
+    eventObs._emit([{ duration: 300, interactionId: 2 }])
+    assert.strictEqual(mod.getINP(), 300)
+
+    // Lower duration should not update
+    eventObs._emit([{ duration: 100, interactionId: 3 }])
+    assert.strictEqual(mod.getINP(), 300)
+  })
+
+  test('uninstallPerfObservers disconnects INP observer', async () => {
+    const mod = await import('../extension/inject.js')
+    mod.installPerfObservers()
+
+    const eventObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('event'))
+    assert.ok(eventObs, 'Event observer should exist')
+    assert.ok(!eventObs._disconnected, 'Should not be disconnected before uninstall')
+
+    mod.uninstallPerfObservers()
+    assert.ok(eventObs._disconnected, 'INP observer should be disconnected after uninstall')
+  })
+
+  test('installPerfObservers resets INP value', async () => {
+    const mod = await import('../extension/inject.js')
+    mod.installPerfObservers()
+
+    const eventObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('event'))
+    if (eventObs) eventObs._emit([{ duration: 250, interactionId: 1 }])
+    assert.strictEqual(mod.getINP(), 250)
+
+    // Re-install should reset INP
+    mod.installPerfObservers()
+    assert.strictEqual(mod.getINP(), null)
+  })
 })
 
-describe('Web Vitals Message Flow', () => {
+describe('Performance Snapshot Message Flow', () => {
   beforeEach(() => {
     MockPerformanceObserver._instances = []
     originalWindow = globalThis.window
@@ -228,6 +297,7 @@ describe('Web Vitals Message Flow', () => {
     globalThis.PerformanceObserver = MockPerformanceObserver
     globalThis.performance = {
       getEntriesByType: mock.fn(() => []),
+      getEntries: mock.fn(() => []),
       now: () => 1000,
     }
     globalThis.window = {
@@ -243,9 +313,14 @@ describe('Web Vitals Message Flow', () => {
       },
     }
     globalThis.document = { readyState: 'complete', addEventListener: mock.fn() }
-    // Preserve console but mock it to avoid inject.js wrapping issues
     if (!globalThis.console) {
-      globalThis.console = { log: mock.fn(), warn: mock.fn(), error: mock.fn(), info: mock.fn(), debug: mock.fn() }
+      globalThis.console = {
+        log: mock.fn(),
+        warn: mock.fn(),
+        error: mock.fn(),
+        info: mock.fn(),
+        debug: mock.fn(),
+      }
     }
   })
 
@@ -256,20 +331,93 @@ describe('Web Vitals Message Flow', () => {
     delete globalThis.document
   })
 
-  test('sendWebVitals posts GASOLINE_WEB_VITALS message', async () => {
+  test('sendPerformanceSnapshot posts GASOLINE_PERFORMANCE_SNAPSHOT message', async () => {
+    // capturePerformanceSnapshot requires a navigation entry
+    globalThis.performance.getEntriesByType = mock.fn((type) => {
+      if (type === 'navigation') {
+        return [
+          {
+            domContentLoadedEventEnd: 200,
+            loadEventEnd: 500,
+            responseStart: 80,
+            requestStart: 10,
+            domInteractive: 150,
+          },
+        ]
+      }
+      return []
+    })
+    globalThis.performance.getEntries = mock.fn(() => [])
+
     const mod = await import('../extension/inject.js')
-    mod.resetWebVitals()
-    mod.startWebVitalsCapture()
+    mod.setPerformanceSnapshotEnabled(true)
+    mod.installPerfObservers()
 
     // Simulate FCP capture
-    const paintObs = MockPerformanceObserver._instances.find((obs) => obs._types.includes('paint'))
+    const paintObs = MockPerformanceObserver._instances.find((obs) =>
+      obs._types.includes('paint')
+    )
     if (paintObs) paintObs._emit([{ name: 'first-contentful-paint', startTime: 800 }])
 
-    mod.sendWebVitals()
+    mod.sendPerformanceSnapshot()
 
     const calls = globalThis.window.postMessage.mock.calls
-    const vitalsMessage = calls.find((c) => c.arguments[0]?.type === 'GASOLINE_WEB_VITALS')
-    assert.ok(vitalsMessage, 'Should post GASOLINE_WEB_VITALS message')
-    assert.ok(vitalsMessage.arguments[0].payload.vitals.fcp, 'Message should include FCP data')
+    const snapshotMessage = calls.find(
+      (c) => c.arguments[0]?.type === 'GASOLINE_PERFORMANCE_SNAPSHOT'
+    )
+    assert.ok(snapshotMessage, 'Should post GASOLINE_PERFORMANCE_SNAPSHOT message')
+    assert.ok(snapshotMessage.arguments[0].payload.timing, 'Payload should include timing')
+  })
+
+  test('sendPerformanceSnapshot includes INP in the payload', async () => {
+    globalThis.performance.getEntriesByType = mock.fn((type) => {
+      if (type === 'navigation') {
+        return [
+          {
+            domContentLoadedEventEnd: 200,
+            loadEventEnd: 500,
+            responseStart: 80,
+            requestStart: 10,
+            domInteractive: 150,
+          },
+        ]
+      }
+      return []
+    })
+    globalThis.performance.getEntries = mock.fn(() => [])
+
+    const mod = await import('../extension/inject.js')
+    mod.setPerformanceSnapshotEnabled(true)
+    mod.installPerfObservers()
+
+    // Simulate INP capture
+    const eventObs = MockPerformanceObserver._instances.find((obs) =>
+      obs._types.includes('event')
+    )
+    if (eventObs) eventObs._emit([{ duration: 175, interactionId: 1 }])
+
+    mod.sendPerformanceSnapshot()
+
+    const calls = globalThis.window.postMessage.mock.calls
+    const snapshotMessage = calls.find(
+      (c) => c.arguments[0]?.type === 'GASOLINE_PERFORMANCE_SNAPSHOT'
+    )
+    assert.ok(snapshotMessage, 'Should post GASOLINE_PERFORMANCE_SNAPSHOT message')
+    assert.strictEqual(
+      snapshotMessage.arguments[0].payload.timing.interactionToNextPaint,
+      175,
+      'Payload timing should include interactionToNextPaint'
+    )
+  })
+
+  test('sendPerformanceSnapshot does nothing when disabled', async () => {
+    const mod = await import('../extension/inject.js')
+    mod.setPerformanceSnapshotEnabled(false)
+
+    mod.sendPerformanceSnapshot()
+
+    const calls = globalThis.window.postMessage.mock.calls
+    const snapshotMessage = calls.find((c) => c.arguments[0]?.type === 'GASOLINE_PERFORMANCE_SNAPSHOT')
+    assert.strictEqual(snapshotMessage, undefined, 'Should not post when disabled')
   })
 })

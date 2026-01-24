@@ -1041,3 +1041,252 @@ func TestPersistMCPToolMissingParams(t *testing.T) {
 		t.Fatal("expected error for invalid action")
 	}
 }
+
+// ============================================
+// Test: Corrupted JSON in meta.json starts fresh
+// ============================================
+
+func TestPersistCorruptedMetaStartsFresh(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create .gasoline dir with corrupted meta.json
+	gasolineDir := filepath.Join(dir, ".gasoline")
+	os.MkdirAll(gasolineDir, 0755)
+	os.WriteFile(filepath.Join(gasolineDir, "meta.json"), []byte("{corrupted json!!!"), 0644)
+
+	store, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore should not fail on corrupted meta: %v", err)
+	}
+	defer store.Shutdown()
+
+	meta := store.GetMeta()
+	if meta.SessionCount != 1 {
+		t.Errorf("expected fresh session_count=1 after corrupted meta, got %d", meta.SessionCount)
+	}
+}
+
+// ============================================
+// Test: Corrupted JSON in namespace file is silently skipped
+// ============================================
+
+func TestPersistCorruptedNamespaceFileSkipped(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create store with some valid data
+	store, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore failed: %v", err)
+	}
+	store.Save("baselines", "valid", []byte(`{"name":"valid"}`))
+	store.Shutdown()
+
+	// Corrupt the error history file
+	errDir := filepath.Join(dir, ".gasoline", "errors")
+	os.MkdirAll(errDir, 0755)
+	os.WriteFile(filepath.Join(errDir, "history.json"), []byte("not valid json at all"), 0644)
+
+	// Reload store and load context
+	store2, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore (reload) failed: %v", err)
+	}
+	defer store2.Shutdown()
+
+	ctx := store2.LoadSessionContext()
+	// Error history should be empty (corrupted file skipped)
+	if len(ctx.ErrorHistory) != 0 {
+		t.Errorf("expected 0 error history entries after corruption, got %d", len(ctx.ErrorHistory))
+	}
+	// But valid baselines should still load
+	if len(ctx.Baselines) != 1 {
+		t.Errorf("expected 1 baseline, got %d", len(ctx.Baselines))
+	}
+}
+
+// ============================================
+// Test: MCP tool handler returns error when store not initialized
+// ============================================
+
+func TestPersistMCPToolStoreNotInitialized(t *testing.T) {
+	server := &Server{
+		entries:    make([]LogEntry, 0),
+		maxEntries: 1000,
+	}
+	capture := NewCapture()
+
+	// Create a ToolHandler with nil sessionStore
+	handler := &ToolHandler{
+		MCPHandler:  NewMCPHandler(server),
+		capture:     capture,
+		checkpoints: NewCheckpointManager(server, capture),
+		noise:       NewNoiseConfig(),
+		// sessionStore intentionally nil
+	}
+
+	// Test session_store tool
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1), Method: "tools/call"}
+	args := json.RawMessage(`{"action":"stats"}`)
+	resp, handled := handler.handleToolCall(req, "session_store", args)
+	if !handled {
+		t.Fatal("expected session_store to be handled")
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	if !result.IsError {
+		t.Error("expected error result when store not initialized")
+	}
+	if len(result.Content) == 0 || !strings.Contains(result.Content[0].Text, "not initialized") {
+		t.Errorf("expected 'not initialized' error message, got: %v", result.Content)
+	}
+
+	// Test load_session_context tool
+	resp, handled = handler.handleToolCall(req, "load_session_context", json.RawMessage(`{}`))
+	if !handled {
+		t.Fatal("expected load_session_context to be handled")
+	}
+
+	json.Unmarshal(resp.Result, &result)
+	if !result.IsError {
+		t.Error("expected error result when store not initialized for load_session_context")
+	}
+	if len(result.Content) == 0 || !strings.Contains(result.Content[0].Text, "not initialized") {
+		t.Errorf("expected 'not initialized' error message, got: %v", result.Content)
+	}
+}
+
+// ============================================
+// Test: MCP tool integration - session_store through ToolHandler
+// ============================================
+
+func TestPersistMCPToolHandlerIntegration(t *testing.T) {
+	dir := t.TempDir()
+	server := &Server{
+		entries:    make([]LogEntry, 0),
+		maxEntries: 1000,
+	}
+	capture := NewCapture()
+
+	store, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore failed: %v", err)
+	}
+	defer store.Shutdown()
+
+	handler := &ToolHandler{
+		MCPHandler:   NewMCPHandler(server),
+		capture:      capture,
+		checkpoints:  NewCheckpointManager(server, capture),
+		sessionStore: store,
+		noise:        NewNoiseConfig(),
+	}
+
+	// Test save through handler
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1), Method: "tools/call"}
+	saveArgs := json.RawMessage(`{"action":"save","namespace":"test_ns","key":"test_key","data":{"hello":"world"}}`)
+	resp, handled := handler.handleToolCall(req, "session_store", saveArgs)
+	if !handled {
+		t.Fatal("expected session_store to be handled")
+	}
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %v", resp.Error)
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", result.Content[0].Text)
+	}
+
+	// Test load through handler
+	loadArgs := json.RawMessage(`{"action":"load","namespace":"test_ns","key":"test_key"}`)
+	resp, handled = handler.handleToolCall(req, "session_store", loadArgs)
+	if !handled {
+		t.Fatal("expected session_store to be handled")
+	}
+
+	json.Unmarshal(resp.Result, &result)
+	if result.IsError {
+		t.Fatalf("unexpected tool error on load: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(result.Content[0].Text, "hello") {
+		t.Errorf("expected loaded data to contain 'hello', got: %s", result.Content[0].Text)
+	}
+
+	// Test load_session_context through handler
+	resp, handled = handler.handleToolCall(req, "load_session_context", json.RawMessage(`{}`))
+	if !handled {
+		t.Fatal("expected load_session_context to be handled")
+	}
+
+	json.Unmarshal(resp.Result, &result)
+	if result.IsError {
+		t.Fatalf("unexpected tool error on load_session_context: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(result.Content[0].Text, "session_count") {
+		t.Errorf("expected session context to contain session_count, got: %s", result.Content[0].Text)
+	}
+}
+
+// ============================================
+// Test: NewToolHandler initializes SessionStore with CWD
+// ============================================
+
+func TestPersistNewToolHandlerInitializesStore(t *testing.T) {
+	dir := t.TempDir()
+
+	// Change to temp dir so NewToolHandler uses it as project root
+	originalDir, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(originalDir)
+
+	server := &Server{
+		entries:    make([]LogEntry, 0),
+		maxEntries: 1000,
+	}
+	capture := NewCapture()
+
+	mcpHandler := NewToolHandler(server, capture)
+
+	// Verify the tool handler has a session store by calling load_session_context
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1), Method: "tools/call",
+		Params: json.RawMessage(`{"name":"load_session_context","arguments":{}}`)}
+	resp := mcpHandler.HandleRequest(req)
+
+	if resp.Error != nil {
+		t.Fatalf("unexpected JSON-RPC error: %v", resp.Error)
+	}
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	if result.IsError {
+		t.Fatalf("expected successful load_session_context, got error: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(result.Content[0].Text, "session_count") {
+		t.Errorf("expected session context, got: %s", result.Content[0].Text)
+	}
+
+	// Verify .gasoline directory was created
+	gasolineDir := filepath.Join(dir, ".gasoline")
+	if _, err := os.Stat(gasolineDir); os.IsNotExist(err) {
+		t.Error("expected .gasoline directory to be created by NewToolHandler")
+	}
+}
+
+// ============================================
+// Test: SessionStore Shutdown is idempotent (double shutdown)
+// ============================================
+
+func TestPersistShutdownIdempotent(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore failed: %v", err)
+	}
+
+	// First shutdown
+	store.Shutdown()
+	// Second shutdown should not panic
+	store.Shutdown()
+}

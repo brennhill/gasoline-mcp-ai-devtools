@@ -300,6 +300,16 @@
         padding: 12px;
         margin-bottom: 16px;
       }
+
+      .health-error {
+        background: rgba(248, 81, 73, 0.1);
+        color: #f85149;
+      }
+
+      .health-warning {
+        background: rgba(210, 153, 34, 0.1);
+        color: #d29922;
+      }
     </style>
   </head>
   <body>
@@ -375,6 +385,28 @@
       </div>
     </div>
 
+    <div id="health-indicators" style="display: none; margin-bottom: 12px">
+      <div
+        id="health-circuit-breaker"
+        style="
+          display: none;
+          padding: 6px 10px;
+          border-radius: 4px;
+          font-size: 12px;
+          margin-bottom: 4px;
+        "
+      ></div>
+      <div
+        id="health-memory-pressure"
+        style="
+          display: none;
+          padding: 6px 10px;
+          border-radius: 4px;
+          font-size: 12px;
+        "
+      ></div>
+    </div>
+
     <div class="section">
       <div class="section-title">Capture Level</div>
       <select id="log-level">
@@ -431,6 +463,17 @@
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="toggle-network-waterfall" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Network Bodies</span>
+            <span class="toggle-desc">Capture request/response bodies</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-network-body-capture" checked />
             <span class="toggle-slider"></span>
           </label>
         </div>

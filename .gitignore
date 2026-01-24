@@ -1,6 +1,7 @@
 # Build artifacts
 dist/
 /dev-console
+*.test
 *.zip
 
 # Local config
@@ -34,3 +35,9 @@ e2e-tests/playwright-report/
 # Claude Code local state (not instructions)
 .claude/sessions/
 coverage.out
+
+# Runtime state
+.gasoline/
+
+# Marketing (private)
+docs/marketing/

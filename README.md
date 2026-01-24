@@ -3,13 +3,14 @@
 <img src="chrome_store_files/readme-banner.png" alt="Gasoline - Fuel for the AI Fire" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.5.0-green.svg)](https://github.com/brennhill/gasoline/releases)
+[![Version](https://img.shields.io/badge/version-4.5.0-green.svg)](https://github.com/brennhill/gasoline/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline)
 [![Linux](https://img.shields.io/badge/Linux-supported-FCC624.svg?logo=linux&logoColor=black)](https://github.com/brennhill/gasoline)
 [![Windows](https://img.shields.io/badge/Windows-supported-0078D6.svg?logo=windows&logoColor=white)](https://github.com/brennhill/gasoline)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/gasoline/pulls)
+[![X Follow](https://img.shields.io/badge/follow-%40gasolinedev-000000.svg?logo=x&logoColor=white)](https://x.com/gasolinedev)
 
 **Stop copy-pasting browser errors.** Gasoline captures console logs, network errors, exceptions, WebSocket events, and more from your browser and makes them available to your AI coding assistant via MCP.
 

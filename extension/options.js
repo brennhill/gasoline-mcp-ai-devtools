@@ -6,8 +6,8 @@
 const DEFAULT_SERVER_URL = 'http://localhost:7890'
 
 // Load saved options
-function loadOptions() {
-  chrome.storage.local.get(['serverUrl', 'domainFilters', 'screenshotOnError', 'sourceMapEnabled'], (result) => {
+export function loadOptions() {
+  chrome.storage.local.get(['serverUrl', 'domainFilters', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled'], (result) => {
     // Set server URL
     document.getElementById('server-url-input').value = result.serverUrl || DEFAULT_SERVER_URL
 
@@ -25,11 +25,17 @@ function loadOptions() {
     if (result.sourceMapEnabled) {
       sourcemapToggle.classList.add('active')
     }
+
+    // Set deferral toggle state (default: enabled/active)
+    const deferralToggle = document.getElementById('deferral-toggle')
+    if (result.deferralEnabled !== false) {
+      deferralToggle.classList.add('active')
+    }
   })
 }
 
 // Save options
-function saveOptions() {
+export function saveOptions() {
   const serverUrl = document.getElementById('server-url-input').value.trim() || DEFAULT_SERVER_URL
 
   const textarea = document.getElementById('domain-filters')
@@ -40,8 +46,9 @@ function saveOptions() {
 
   const screenshotOnError = document.getElementById('screenshot-toggle').classList.contains('active')
   const sourceMapEnabled = document.getElementById('sourcemap-toggle').classList.contains('active')
+  const deferralEnabled = document.getElementById('deferral-toggle').classList.contains('active')
 
-  chrome.storage.local.set({ serverUrl, domainFilters: filters, screenshotOnError, sourceMapEnabled }, () => {
+  chrome.storage.local.set({ serverUrl, domainFilters: filters, screenshotOnError, sourceMapEnabled, deferralEnabled }, () => {
     // Show saved message
     const message = document.getElementById('saved-message')
     message.classList.add('show')
@@ -51,6 +58,7 @@ function saveOptions() {
     chrome.runtime.sendMessage({ type: 'setDomainFilters', filters })
     chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
     chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
+    chrome.runtime.sendMessage({ type: 'setDeferralEnabled', enabled: deferralEnabled })
 
     // Hide message after 2 seconds
     setTimeout(() => {
@@ -71,10 +79,17 @@ function toggleSourceMap() {
   toggle.classList.toggle('active')
 }
 
+// Toggle deferral setting
+export function toggleDeferral() {
+  const toggle = document.getElementById('deferral-toggle')
+  toggle.classList.toggle('active')
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   loadOptions()
   document.getElementById('save-btn').addEventListener('click', saveOptions)
   document.getElementById('screenshot-toggle').addEventListener('click', toggleScreenshot)
   document.getElementById('sourcemap-toggle').addEventListener('click', toggleSourceMap)
+  document.getElementById('deferral-toggle').addEventListener('click', toggleDeferral)
 })

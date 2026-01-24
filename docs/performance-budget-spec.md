@@ -157,7 +157,7 @@ function capturePerformanceSnapshot() {
   }
 
   window.postMessage({
-    type: 'DEV_CONSOLE_PERFORMANCE_SNAPSHOT',
+    type: 'GASOLINE_PERFORMANCE_SNAPSHOT',
     payload: snapshot,
   }, '*')
 }
@@ -248,9 +248,9 @@ function aggregateResourceTiming() {
 
 Performance snapshot capture is **enabled by default** (unlike performance marks/waterfall which are opt-in). It has negligible overhead: one snapshot per navigation, collected passively.
 
-The `DEV_CONSOLE_SETTING` message can disable it:
+The `GASOLINE_SETTING` message can disable it:
 ```javascript
-{ type: 'DEV_CONSOLE_SETTING', key: 'performanceSnapshotEnabled', value: false }
+{ type: 'GASOLINE_SETTING', key: 'performanceSnapshotEnabled', value: false }
 ```
 
 ---

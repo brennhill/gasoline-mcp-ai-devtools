@@ -619,3 +619,441 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(script)}
 }
+
+// ============================================
+// Workflow Integration (Session Summary + PR Summary)
+// ============================================
+
+// TrackPerformanceSnapshot records a performance snapshot with session tracking.
+// It wraps AddPerformanceSnapshot to also record the first snapshot per URL for delta computation.
+func (v *Capture) TrackPerformanceSnapshot(snapshot PerformanceSnapshot) {
+	v.mu.Lock()
+	if _, exists := v.session.firstSnapshots[snapshot.URL]; !exists {
+		v.session.firstSnapshots[snapshot.URL] = snapshot
+	}
+	v.session.snapshotCount++
+	v.mu.Unlock()
+
+	v.AddPerformanceSnapshot(snapshot)
+}
+
+// GenerateSessionSummary compiles a session summary from performance snapshots and actions.
+func (v *Capture) GenerateSessionSummary() SessionSummary {
+	return v.GenerateSessionSummaryWithEntries(nil)
+}
+
+// GenerateSessionSummaryWithEntries compiles a session summary including console error analysis.
+func (v *Capture) GenerateSessionSummaryWithEntries(entries []LogEntry) SessionSummary {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	summary := SessionSummary{
+		Status: "ok",
+	}
+
+	// Compute metadata from enhanced actions
+	if len(v.enhancedActions) > 0 {
+		first := v.enhancedActions[0].Timestamp
+		last := v.enhancedActions[len(v.enhancedActions)-1].Timestamp
+		summary.Metadata.DurationMs = last - first
+
+		for i := range v.enhancedActions {
+			if v.enhancedActions[i].Type == "navigate" {
+				summary.Metadata.ReloadCount++
+			}
+		}
+	}
+
+	// Performance delta computation
+	snapshotCount := len(v.perf.snapshotOrder)
+	if snapshotCount == 0 {
+		summary.Status = "no_performance_data"
+		return summary
+	}
+	if v.session.snapshotCount == 1 || (v.session.snapshotCount == 0 && snapshotCount == 1) {
+		summary.Status = "insufficient_data"
+		return summary
+	}
+
+	summary.Metadata.PerformanceCheckCount = v.session.snapshotCount
+	if summary.Metadata.PerformanceCheckCount == 0 {
+		summary.Metadata.PerformanceCheckCount = snapshotCount
+	}
+
+	// Get latest snapshot
+	latestURL := v.perf.snapshotOrder[len(v.perf.snapshotOrder)-1]
+	latestSnapshot := v.perf.snapshots[latestURL]
+
+	// Get first snapshot (session-tracked or baseline fallback)
+	firstSnapshot, hasFirst := v.session.firstSnapshots[latestURL]
+	if !hasFirst {
+		baseline, hasBaseline := v.perf.baselines[latestURL]
+		if hasBaseline && baseline.SampleCount >= 2 {
+			firstSnapshot = PerformanceSnapshot{
+				URL: latestURL,
+				Timing: PerformanceTiming{
+					Load:                   baseline.Timing.Load,
+					FirstContentfulPaint:   baseline.Timing.FirstContentfulPaint,
+					LargestContentfulPaint: baseline.Timing.LargestContentfulPaint,
+					TimeToFirstByte:        baseline.Timing.TimeToFirstByte,
+					DomContentLoaded:       baseline.Timing.DomContentLoaded,
+					DomInteractive:         baseline.Timing.DomInteractive,
+				},
+				Network: NetworkSummary{
+					TransferSize: baseline.Network.TransferSize,
+					RequestCount: baseline.Network.RequestCount,
+				},
+				CLS: baseline.CLS,
+			}
+			hasFirst = true
+		}
+	}
+
+	if !hasFirst {
+		summary.Status = "insufficient_data"
+		return summary
+	}
+
+	// Compute delta between first and latest
+	delta := &PerformanceDelta{}
+	delta.LoadTimeBefore = firstSnapshot.Timing.Load
+	delta.LoadTimeAfter = latestSnapshot.Timing.Load
+	delta.LoadTimeDelta = latestSnapshot.Timing.Load - firstSnapshot.Timing.Load
+
+	if latestSnapshot.Timing.FirstContentfulPaint != nil && firstSnapshot.Timing.FirstContentfulPaint != nil {
+		delta.FCPBefore = *firstSnapshot.Timing.FirstContentfulPaint
+		delta.FCPAfter = *latestSnapshot.Timing.FirstContentfulPaint
+		delta.FCPDelta = *latestSnapshot.Timing.FirstContentfulPaint - *firstSnapshot.Timing.FirstContentfulPaint
+	}
+
+	if latestSnapshot.Timing.LargestContentfulPaint != nil && firstSnapshot.Timing.LargestContentfulPaint != nil {
+		delta.LCPBefore = *firstSnapshot.Timing.LargestContentfulPaint
+		delta.LCPAfter = *latestSnapshot.Timing.LargestContentfulPaint
+		delta.LCPDelta = *latestSnapshot.Timing.LargestContentfulPaint - *firstSnapshot.Timing.LargestContentfulPaint
+	}
+
+	if latestSnapshot.CLS != nil && firstSnapshot.CLS != nil {
+		delta.CLSBefore = *firstSnapshot.CLS
+		delta.CLSAfter = *latestSnapshot.CLS
+		delta.CLSDelta = *latestSnapshot.CLS - *firstSnapshot.CLS
+	}
+
+	delta.BundleSizeBefore = firstSnapshot.Network.TransferSize
+	delta.BundleSizeAfter = latestSnapshot.Network.TransferSize
+	delta.BundleSizeDelta = latestSnapshot.Network.TransferSize - firstSnapshot.Network.TransferSize
+
+	summary.PerformanceDelta = delta
+
+	// Extract errors from console entries
+	if entries != nil {
+		for _, entry := range entries {
+			level, _ := entry["level"].(string)
+			if level != "error" {
+				continue
+			}
+			msg, _ := entry["message"].(string)
+			source, _ := entry["source"].(string)
+			summary.Errors = append(summary.Errors, SessionError{
+				Message: msg,
+				Source:  source,
+			})
+		}
+	}
+
+	return summary
+}
+
+// GeneratePRSummary generates a markdown-formatted performance summary for PR descriptions.
+func (v *Capture) GeneratePRSummary(errors []SessionError) string {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	var sb strings.Builder
+
+	snapshotCount := len(v.perf.snapshotOrder)
+	if snapshotCount == 0 {
+		sb.WriteString("## Performance Impact\n\n")
+		sb.WriteString("No performance data collected during this session.\n\n")
+		sb.WriteString("---\n*Generated by Gasoline*\n")
+		return sb.String()
+	}
+
+	// Get latest snapshot and first snapshot
+	latestURL := v.perf.snapshotOrder[len(v.perf.snapshotOrder)-1]
+	latestSnapshot := v.perf.snapshots[latestURL]
+
+	firstSnapshot, hasFirst := v.session.firstSnapshots[latestURL]
+	if !hasFirst {
+		baseline, hasBaseline := v.perf.baselines[latestURL]
+		if hasBaseline && baseline.SampleCount >= 2 {
+			firstSnapshot = PerformanceSnapshot{
+				URL: latestURL,
+				Timing: PerformanceTiming{
+					Load:                   baseline.Timing.Load,
+					FirstContentfulPaint:   baseline.Timing.FirstContentfulPaint,
+					LargestContentfulPaint: baseline.Timing.LargestContentfulPaint,
+				},
+				Network: NetworkSummary{
+					TransferSize: baseline.Network.TransferSize,
+				},
+				CLS: baseline.CLS,
+			}
+			hasFirst = true
+		}
+	}
+
+	sb.WriteString("## Performance Impact\n\n")
+
+	if !hasFirst || (v.session.snapshotCount < 2 && snapshotCount < 2) {
+		sb.WriteString("No performance data collected during this session.\n\n")
+		sb.WriteString("---\n*Generated by Gasoline*\n")
+		return sb.String()
+	}
+
+	sb.WriteString("| Metric | Before | After | Delta |\n")
+	sb.WriteString("|--------|--------|-------|-------|\n")
+
+	// Load Time
+	loadDelta := latestSnapshot.Timing.Load - firstSnapshot.Timing.Load
+	loadPct := 0.0
+	if firstSnapshot.Timing.Load > 0 {
+		loadPct = loadDelta / firstSnapshot.Timing.Load * 100
+	}
+	sb.WriteString(fmt.Sprintf("| Load Time | %.1fs | %.1fs | %s |\n",
+		firstSnapshot.Timing.Load/1000, latestSnapshot.Timing.Load/1000,
+		formatDeltaMs(loadDelta, loadPct)))
+
+	// FCP
+	if latestSnapshot.Timing.FirstContentfulPaint != nil && firstSnapshot.Timing.FirstContentfulPaint != nil {
+		fcpDelta := *latestSnapshot.Timing.FirstContentfulPaint - *firstSnapshot.Timing.FirstContentfulPaint
+		fcpPct := 0.0
+		if *firstSnapshot.Timing.FirstContentfulPaint > 0 {
+			fcpPct = fcpDelta / *firstSnapshot.Timing.FirstContentfulPaint * 100
+		}
+		sb.WriteString(fmt.Sprintf("| FCP | %.1fs | %.1fs | %s |\n",
+			*firstSnapshot.Timing.FirstContentfulPaint/1000, *latestSnapshot.Timing.FirstContentfulPaint/1000,
+			formatDeltaMs(fcpDelta, fcpPct)))
+	}
+
+	// LCP
+	if latestSnapshot.Timing.LargestContentfulPaint != nil && firstSnapshot.Timing.LargestContentfulPaint != nil {
+		lcpDelta := *latestSnapshot.Timing.LargestContentfulPaint - *firstSnapshot.Timing.LargestContentfulPaint
+		lcpPct := 0.0
+		if *firstSnapshot.Timing.LargestContentfulPaint > 0 {
+			lcpPct = lcpDelta / *firstSnapshot.Timing.LargestContentfulPaint * 100
+		}
+		sb.WriteString(fmt.Sprintf("| LCP | %.1fs | %.1fs | %s |\n",
+			*firstSnapshot.Timing.LargestContentfulPaint/1000, *latestSnapshot.Timing.LargestContentfulPaint/1000,
+			formatDeltaMs(lcpDelta, lcpPct)))
+	}
+
+	// CLS
+	if latestSnapshot.CLS != nil && firstSnapshot.CLS != nil {
+		clsDelta := *latestSnapshot.CLS - *firstSnapshot.CLS
+		if clsDelta == 0 {
+			sb.WriteString(fmt.Sprintf("| CLS | %.2f | %.2f | — |\n",
+				*firstSnapshot.CLS, *latestSnapshot.CLS))
+		} else {
+			sb.WriteString(fmt.Sprintf("| CLS | %.2f | %.2f | %+.2f |\n",
+				*firstSnapshot.CLS, *latestSnapshot.CLS, clsDelta))
+		}
+	}
+
+	// Bundle Size
+	sizeDelta := latestSnapshot.Network.TransferSize - firstSnapshot.Network.TransferSize
+	sizePct := 0.0
+	if firstSnapshot.Network.TransferSize > 0 {
+		sizePct = float64(sizeDelta) / float64(firstSnapshot.Network.TransferSize) * 100
+	}
+	sb.WriteString(fmt.Sprintf("| Bundle Size | %s | %s | %s |\n",
+		formatBytes(firstSnapshot.Network.TransferSize), formatBytes(latestSnapshot.Network.TransferSize),
+		formatDeltaBytes(sizeDelta, sizePct)))
+
+	sb.WriteString("\n")
+
+	// Errors section
+	if errors != nil {
+		sb.WriteString("### Errors\n")
+		if len(errors) == 0 {
+			sb.WriteString("- No errors detected\n")
+		} else {
+			for _, e := range errors {
+				if e.Resolved {
+					src := ""
+					if e.Source != "" {
+						src = " (" + e.Source + ")"
+					}
+					sb.WriteString(fmt.Sprintf("- **Fixed**: `%s`%s\n", e.Message, src))
+				}
+			}
+			newCount := 0
+			for _, e := range errors {
+				if !e.Resolved {
+					newCount++
+					src := ""
+					if e.Source != "" {
+						src = " (" + e.Source + ")"
+					}
+					sb.WriteString(fmt.Sprintf("- **New**: `%s`%s\n", e.Message, src))
+				}
+			}
+			if newCount == 0 {
+				sb.WriteString("- **New**: None\n")
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString("---\n")
+	totalSamples := v.session.snapshotCount
+	if totalSamples == 0 {
+		totalSamples = snapshotCount
+	}
+	sb.WriteString(fmt.Sprintf("*Generated by Gasoline from %d performance samples*\n", totalSamples))
+
+	return sb.String()
+}
+
+// GenerateOneLiner generates a compact one-liner summary for git hook annotations.
+func (v *Capture) GenerateOneLiner(errors []SessionError) string {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	var parts []string
+
+	snapshotCount := len(v.perf.snapshotOrder)
+	if v.session.snapshotCount < 2 && snapshotCount < 2 {
+		parts = append(parts, "no perf data")
+	} else {
+		latestURL := v.perf.snapshotOrder[len(v.perf.snapshotOrder)-1]
+		latestSnapshot := v.perf.snapshots[latestURL]
+
+		firstSnapshot, hasFirst := v.session.firstSnapshots[latestURL]
+		if !hasFirst {
+			baseline, hasBaseline := v.perf.baselines[latestURL]
+			if hasBaseline && baseline.SampleCount >= 2 {
+				firstSnapshot = PerformanceSnapshot{
+					Timing:  PerformanceTiming{Load: baseline.Timing.Load},
+					Network: NetworkSummary{TransferSize: baseline.Network.TransferSize},
+				}
+				hasFirst = true
+			}
+		}
+
+		if hasFirst {
+			loadDelta := latestSnapshot.Timing.Load - firstSnapshot.Timing.Load
+			sizeDelta := latestSnapshot.Network.TransferSize - firstSnapshot.Network.TransferSize
+
+			perfParts := []string{}
+			if loadDelta != 0 {
+				perfParts = append(perfParts, fmt.Sprintf("%+.0fms load", loadDelta))
+			}
+			if sizeDelta != 0 {
+				perfParts = append(perfParts, fmt.Sprintf("%s bundle", formatSignedBytes(sizeDelta)))
+			}
+
+			if len(perfParts) > 0 {
+				parts = append(parts, "perf: "+strings.Join(perfParts, ", "))
+			} else {
+				parts = append(parts, "perf: no change")
+			}
+		} else {
+			parts = append(parts, "no perf data")
+		}
+	}
+
+	// Errors section
+	if errors != nil {
+		fixedCount := 0
+		newCount := 0
+		for _, e := range errors {
+			if e.Resolved {
+				fixedCount++
+			} else {
+				newCount++
+			}
+		}
+		errParts := []string{}
+		if fixedCount > 0 {
+			errParts = append(errParts, fmt.Sprintf("%d fixed", fixedCount))
+		}
+		if newCount > 0 {
+			errParts = append(errParts, fmt.Sprintf("%d new", newCount))
+		}
+		if len(errParts) > 0 {
+			parts = append(parts, "errors: "+strings.Join(errParts, ", "))
+		} else {
+			parts = append(parts, "errors: clean")
+		}
+	}
+
+	return "[" + strings.Join(parts, " | ") + "]"
+}
+
+// formatDeltaMs formats a millisecond delta with sign and percentage.
+func formatDeltaMs(deltaMs float64, pct float64) string {
+	if deltaMs == 0 {
+		return "—"
+	}
+	sign := "+"
+	if deltaMs < 0 {
+		sign = ""
+	}
+	return fmt.Sprintf("%s%.0fms (%s%.0f%%)", sign, deltaMs, sign, pct)
+}
+
+// formatDeltaBytes formats a byte delta with sign and percentage.
+func formatDeltaBytes(deltaBytes int64, pct float64) string {
+	if deltaBytes == 0 {
+		return "—"
+	}
+	sign := "+"
+	if deltaBytes < 0 {
+		sign = ""
+	}
+	return fmt.Sprintf("%s%s (%s%.0f%%)", sign, formatBytes(abs64(deltaBytes)), sign, pct)
+}
+
+// formatSignedBytes formats bytes with a sign prefix.
+func formatSignedBytes(b int64) string {
+	sign := "+"
+	if b < 0 {
+		sign = "-"
+		b = -b
+	}
+	return sign + formatBytes(b)
+}
+
+// abs64 returns the absolute value of an int64.
+func abs64(n int64) int64 {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+
+// toolGeneratePRSummary handles the generate_pr_summary MCP tool.
+func (h *ToolHandler) toolGeneratePRSummary(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	// Gather console errors for the summary
+	h.server.mu.RLock()
+	entries := make([]LogEntry, len(h.server.entries))
+	copy(entries, h.server.entries)
+	h.server.mu.RUnlock()
+
+	var errors []SessionError
+	for _, entry := range entries {
+		level, _ := entry["level"].(string)
+		if level == "error" {
+			msg, _ := entry["message"].(string)
+			source, _ := entry["source"].(string)
+			errors = append(errors, SessionError{
+				Message: msg,
+				Source:  source,
+			})
+		}
+	}
+
+	markdown := h.capture.GeneratePRSummary(errors)
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(markdown)}
+}

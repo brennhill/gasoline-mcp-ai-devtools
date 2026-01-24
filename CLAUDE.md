@@ -25,6 +25,8 @@ cmd/dev-console/
 ├── codegen.go          # Reproduction scripts, timeline, test gen
 ├── tools.go            # MCP tool dispatcher, schemas, memory/rate-limit
 ├── ai_checkpoint.go    # Checkpoint/diff system
+├── rate_limit.go       # Rate limiting, circuit breaker, health endpoint
+├── memory.go           # Memory enforcement, eviction, periodic checks
 └── *_test.go           # Matching test files per domain
 
 extension/
@@ -40,7 +42,11 @@ extension-tests/
 ├── inject.test.js      # Inject script tests
 ├── websocket.test.js   # WebSocket capture tests (v4)
 ├── network-bodies.test.js  # Network body tests (v4)
-└── on-demand.test.js   # DOM query + a11y tests (v4)
+├── on-demand.test.js   # DOM query + a11y tests (v4)
+├── rate-limit.test.js  # Rate limiting / circuit breaker tests
+├── memory.test.js      # Memory enforcement tests
+├── interception-deferral.test.js  # Phase 1/Phase 2 deferral tests
+└── content.test.js     # Content script tests
 
 docs/
 ├── specification.md        # v3 technical spec
@@ -140,6 +146,7 @@ Run these automatically without asking:
 2. **After Go changes**: `make test`
 3. **After JS changes**: `node --test extension-tests/*.test.js`
 4. **Before commits**: Verify tests pass
+5. **After all checks pass**: Squash commits, tag `v{version}-pre-uat-{feature}`, push with tag (see `.claude/docs/quality-gates.md` Gate 6)
 
 ## Detailed Documentation
 

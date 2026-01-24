@@ -6,24 +6,7 @@
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
-
-// Mock window and document for browser environment
-const createMockWindow = () => ({
-  postMessage: mock.fn(),
-  addEventListener: mock.fn(),
-  removeEventListener: mock.fn(),
-  location: { href: 'http://localhost:3000/test' },
-  onerror: null,
-  onunhandledrejection: null,
-})
-
-const createMockConsole = () => ({
-  log: mock.fn(),
-  warn: mock.fn(),
-  error: mock.fn(),
-  info: mock.fn(),
-  debug: mock.fn(),
-})
+import { createMockWindow, createMockConsole, createMockDocument } from './helpers.js'
 
 // Store original
 let originalWindow
@@ -33,7 +16,7 @@ describe('Console Capture', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     originalConsole = globalThis.console
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
     globalThis.console = createMockConsole()
   })
 
@@ -145,7 +128,7 @@ describe('Console Capture', () => {
 describe('Network Capture', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
   })
 
   afterEach(() => {
@@ -297,7 +280,7 @@ describe('Network Capture', () => {
 describe('Exception Capture', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
   })
 
   afterEach(() => {
@@ -492,7 +475,7 @@ describe('Context Annotations', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     originalConsole = globalThis.console
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
     globalThis.console = createMockConsole()
   })
 
@@ -630,7 +613,7 @@ describe('Context Annotations', () => {
 describe('Gasoline API', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
   })
 
   afterEach(() => {
@@ -739,12 +722,9 @@ describe('User Action Replay', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     originalConsole = globalThis.console
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
     globalThis.console = createMockConsole()
-    globalThis.document = {
-      addEventListener: mock.fn(),
-      removeEventListener: mock.fn(),
-    }
+    globalThis.document = createMockDocument()
   })
 
   afterEach(() => {
@@ -1109,12 +1089,8 @@ describe('User Action Replay', () => {
 describe('V5 Wiring: Exception handler enrichment', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
-    globalThis.document = {
-      activeElement: null,
-      addEventListener: mock.fn(),
-      removeEventListener: mock.fn(),
-    }
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
+    globalThis.document = createMockDocument({ activeElement: null })
   })
 
   afterEach(() => {
@@ -1209,11 +1185,8 @@ describe('V5 Wiring: Exception handler enrichment', () => {
 describe('V5 Wiring: Enhanced action recording in handlers', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
-    globalThis.document = {
-      addEventListener: mock.fn(),
-      removeEventListener: mock.fn(),
-    }
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
+    globalThis.document = createMockDocument()
   })
 
   afterEach(() => {
@@ -1532,12 +1505,8 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
 describe('V5 Wiring: Enhanced action postMessage emission', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
-    globalThis.document = {
-      addEventListener: mock.fn(),
-      removeEventListener: mock.fn(),
-      activeElement: null,
-    }
+    globalThis.window = createMockWindow({ href: 'http://localhost:3000/test', withOnerror: true })
+    globalThis.document = createMockDocument({ activeElement: null })
   })
 
   afterEach(() => {
@@ -1663,17 +1632,17 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
 describe('V5 Wiring: Navigation event recording', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = {
-      ...createMockWindow(),
-      history: {
-        pushState: mock.fn(),
-        replaceState: mock.fn(),
+    globalThis.window = createMockWindow({
+      href: 'http://localhost:3000/test',
+      withOnerror: true,
+      overrides: {
+        history: {
+          pushState: mock.fn(),
+          replaceState: mock.fn(),
+        },
       },
-    }
-    globalThis.document = {
-      addEventListener: mock.fn(),
-      removeEventListener: mock.fn(),
-    }
+    })
+    globalThis.document = createMockDocument()
   })
 
   afterEach(() => {

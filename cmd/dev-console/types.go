@@ -191,6 +191,7 @@ type PerformanceSnapshot struct {
 	Network   NetworkSummary    `json:"network"`
 	LongTasks LongTaskMetrics   `json:"longTasks"`
 	CLS       *float64          `json:"cumulativeLayoutShift,omitempty"`
+	Resources []ResourceEntry   `json:"resources,omitempty"`
 }
 
 // PerformanceTiming holds navigation timing metrics
@@ -199,6 +200,7 @@ type PerformanceTiming struct {
 	Load                   float64  `json:"load"`
 	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`
 	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`
+	InteractionToNextPaint *float64 `json:"interactionToNextPaint,omitempty"`
 	TimeToFirstByte        float64  `json:"timeToFirstByte"`
 	DomInteractive         float64  `json:"domInteractive"`
 }
@@ -241,6 +243,7 @@ type PerformanceBaseline struct {
 	Network     BaselineNetwork `json:"network"`
 	LongTasks   LongTaskMetrics `json:"longTasks"`
 	CLS         *float64        `json:"cumulativeLayoutShift,omitempty"`
+	Resources []ResourceEntry   `json:"resources,omitempty"`
 }
 
 // BaselineTiming holds averaged timing metrics
@@ -313,7 +316,8 @@ const (
 	maxPerfBaselines        = 20
 	defaultWSLimit          = 50
 	defaultBodyLimit        = 20
-	maxRequestBodySize      = 8192            // 8KB
+	maxPostBodySize         = 5 << 20         // 5MB - max size for incoming POST request bodies
+	maxRequestBodySize      = 8192            // 8KB - truncation limit for captured request bodies
 	maxResponseBodySize     = 16384           // 16KB
 	wsBufferMemoryLimit     = 4 * 1024 * 1024 // 4MB
 	nbBufferMemoryLimit     = 8 * 1024 * 1024 // 8MB
@@ -415,17 +419,15 @@ type Capture struct {
 	circuitOpenedAt      time.Time // When circuit was opened
 	circuitReason        string    // Why circuit opened ("rate_exceeded" or "memory_exceeded")
 
-	// Legacy rate limiting fields (kept for backwards compat with existing code)
-	eventCount    int
-	rateResetTime time.Time
-
 	// Query timeout
 	queryTimeout time.Duration
 
 	// Composed sub-structs
 	a11y A11yCache
 	perf PerformanceStore
-	mem  MemoryState
+	session SessionTracker
+	mem         MemoryState
+	schemaStore *SchemaStore
 }
 
 // NewCapture creates a new v4 server instance
@@ -440,7 +442,6 @@ func NewCapture() *Capture {
 		connOrder:            make([]string, 0),
 		pendingQueries:       make([]pendingQueryEntry, 0),
 		queryResults:         make(map[string]json.RawMessage),
-		rateResetTime:        now,
 		rateWindowStart:      now,
 		lastBelowThresholdAt: now,
 		queryTimeout:         defaultQueryTimeout,
@@ -450,6 +451,9 @@ func NewCapture() *Capture {
 			baselines:     make(map[string]PerformanceBaseline),
 			baselineOrder: make([]string, 0),
 		},
+		session: SessionTracker{
+			firstSnapshots: make(map[string]PerformanceSnapshot),
+		},
 		a11y: A11yCache{
 			cache:      make(map[string]*a11yCacheEntry),
 			cacheOrder: make([]string, 0),
@@ -457,5 +461,156 @@ func NewCapture() *Capture {
 		},
 	}
 	c.queryCond = sync.NewCond(&c.mu)
+	c.schemaStore = NewSchemaStore()
 	return c
+}
+
+// ============================================
+// Workflow Integration Types
+// ============================================
+
+// SessionSummary represents a compiled summary of a development session
+type SessionSummary struct {
+	Status           string            `json:"status"` // "ok", "no_performance_data", "insufficient_data"
+	PerformanceDelta *PerformanceDelta `json:"performanceDelta,omitempty"`
+	Errors           []SessionError    `json:"errors,omitempty"`
+	Metadata         SessionMetadata   `json:"metadata"`
+}
+
+// PerformanceDelta represents the net change in performance metrics during a session
+type PerformanceDelta struct {
+	LoadTimeBefore  float64 `json:"loadTimeBefore"`
+	LoadTimeAfter   float64 `json:"loadTimeAfter"`
+	LoadTimeDelta   float64 `json:"loadTimeDelta"`
+	FCPBefore       float64 `json:"fcpBefore,omitempty"`
+	FCPAfter        float64 `json:"fcpAfter,omitempty"`
+	FCPDelta        float64 `json:"fcpDelta,omitempty"`
+	LCPBefore       float64 `json:"lcpBefore,omitempty"`
+	LCPAfter        float64 `json:"lcpAfter,omitempty"`
+	LCPDelta        float64 `json:"lcpDelta,omitempty"`
+	CLSBefore       float64 `json:"clsBefore,omitempty"`
+	CLSAfter        float64 `json:"clsAfter,omitempty"`
+	CLSDelta        float64 `json:"clsDelta,omitempty"`
+	BundleSizeBefore int64  `json:"bundleSizeBefore"`
+	BundleSizeAfter  int64  `json:"bundleSizeAfter"`
+	BundleSizeDelta  int64  `json:"bundleSizeDelta"`
+}
+
+// SessionError represents an error observed during a session
+type SessionError struct {
+	Message  string `json:"message"`
+	Source   string `json:"source,omitempty"`
+	Resolved bool   `json:"resolved"`
+}
+
+// SessionMetadata holds session-level aggregate stats
+type SessionMetadata struct {
+	DurationMs            int64 `json:"durationMs"`
+	ReloadCount           int   `json:"reloadCount"`
+	PerformanceCheckCount int   `json:"performanceCheckCount"`
+}
+
+// ============================================
+// Push Regression Alert Types
+// ============================================
+
+// PerformanceAlert represents a pending regression alert to be delivered via get_changes_since
+type PerformanceAlert struct {
+	ID             int64                       `json:"id"`
+	Type           string                      `json:"type"`
+	URL            string                      `json:"url"`
+	DetectedAt     string                      `json:"detected_at"`
+	Summary        string                      `json:"summary"`
+	Metrics        map[string]AlertMetricDelta `json:"metrics"`
+	Recommendation string                      `json:"recommendation"`
+	// Internal tracking (not serialized to JSON response)
+	deliveredAt int64 // checkpoint counter at which this was delivered
+	resolved    bool  // cleared by subsequent non-regressing snapshot
+}
+
+// AlertMetricDelta describes the delta for a single regressed metric
+type AlertMetricDelta struct {
+	Baseline float64 `json:"baseline"`
+	Current  float64 `json:"current"`
+	DeltaMs  float64 `json:"delta_ms"`
+	DeltaPct float64 `json:"delta_pct"`
+}
+
+// ============================================
+// Causal Diffing Types
+// ============================================
+
+// ResourceEntry represents a single resource in a performance snapshot fingerprint
+type ResourceEntry struct {
+	URL            string  `json:"url"`
+	Type           string  `json:"type"`
+	TransferSize   int64   `json:"transferSize"`
+	Duration       float64 `json:"duration"`
+	RenderBlocking bool    `json:"renderBlocking,omitempty"`
+}
+
+// ResourceDiff holds the categorized differences between baseline and current resources
+type ResourceDiff struct {
+	Added   []AddedResource   `json:"added"`
+	Removed []RemovedResource `json:"removed"`
+	Resized []ResizedResource `json:"resized"`
+	Retimed []RetimedResource `json:"retimed"`
+}
+
+// AddedResource is a resource present in current but not in baseline
+type AddedResource struct {
+	URL            string `json:"url"`
+	Type           string `json:"type"`
+	SizeBytes      int64  `json:"size_bytes"`
+	DurationMs     float64 `json:"duration_ms"`
+	RenderBlocking bool   `json:"render_blocking"`
+}
+
+// RemovedResource is a resource present in baseline but not in current
+type RemovedResource struct {
+	URL      string `json:"url"`
+	Type     string `json:"type"`
+	SizeBytes int64  `json:"size_bytes"`
+}
+
+// ResizedResource is a resource present in both with significant size change
+type ResizedResource struct {
+	URL           string `json:"url"`
+	BaselineBytes int64  `json:"baseline_bytes"`
+	CurrentBytes  int64  `json:"current_bytes"`
+	DeltaBytes    int64  `json:"delta_bytes"`
+}
+
+// RetimedResource is a resource present in both with significant duration change
+type RetimedResource struct {
+	URL        string  `json:"url"`
+	BaselineMs float64 `json:"baseline_ms"`
+	CurrentMs  float64 `json:"current_ms"`
+	DeltaMs    float64 `json:"delta_ms"`
+}
+
+// TimingDelta holds the timing differences between baseline and current
+type TimingDelta struct {
+	LoadMs float64 `json:"load_ms"`
+	FCPMs  float64 `json:"fcp_ms"`
+	LCPMs  float64 `json:"lcp_ms"`
+}
+
+// CausalDiffResult is the full response from the get_causal_diff tool
+type CausalDiffResult struct {
+	URL             string       `json:"url"`
+	TimingDelta     TimingDelta  `json:"timing_delta"`
+	ResourceChanges ResourceDiff `json:"resource_changes"`
+	ProbableCause   string       `json:"probable_cause"`
+	Recommendations []string     `json:"recommendations"`
+}
+
+// ============================================
+// Session Tracking (for workflow integration)
+// ============================================
+
+// SessionTracker records the first and last performance snapshots for delta computation
+type SessionTracker struct {
+	firstSnapshots map[string]PerformanceSnapshot // first snapshot per URL
+	snapshotCount  int                            // total snapshots added this session
 }

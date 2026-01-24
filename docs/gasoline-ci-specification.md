@@ -70,7 +70,7 @@ The core capture logic in `inject.js` is already pure JavaScript with no Chrome 
 
 ```javascript
 // Current inject.js transport (extension-dependent):
-window.postMessage({ type: 'DEV_CONSOLE_LOG', payload }, '*')
+window.postMessage({ type: 'GASOLINE_LOG', payload }, '*')
 
 // CI transport (direct HTTP):
 fetch('http://127.0.0.1:7890/logs', {
@@ -171,7 +171,7 @@ fetch('http://127.0.0.1:7890/logs', {
   // Replaces window.postMessage with server POST
   function emit(type, payload) {
     switch (type) {
-      case 'DEV_CONSOLE_LOG':
+      case 'GASOLINE_LOG':
         logBatch.push(payload);
         break;
       case 'GASOLINE_WS':
@@ -239,7 +239,7 @@ fetch('http://127.0.0.1:7890/logs', {
       console[level] = function(...args) {
         originals[level].apply(console, args);
 
-        emit('DEV_CONSOLE_LOG', {
+        emit('GASOLINE_LOG', {
           level,
           message: args.map(a => typeof a === 'string' ? a : safeSerialize(a)).join(' '),
           args: args.map(a => safeSerialize(a)),
@@ -254,7 +254,7 @@ fetch('http://127.0.0.1:7890/logs', {
   // === Exception Capture ===
   function installExceptionCapture() {
     window.addEventListener('error', (event) => {
-      emit('DEV_CONSOLE_LOG', {
+      emit('GASOLINE_LOG', {
         level: 'error',
         message: event.message || 'Unknown error',
         args: [safeSerialize(event.error)],
@@ -270,7 +270,7 @@ fetch('http://127.0.0.1:7890/logs', {
 
     window.addEventListener('unhandledrejection', (event) => {
       const reason = event.reason;
-      emit('DEV_CONSOLE_LOG', {
+      emit('GASOLINE_LOG', {
         level: 'error',
         message: reason?.message || String(reason) || 'Unhandled Promise rejection',
         args: [safeSerialize(reason)],
@@ -325,7 +325,7 @@ fetch('http://127.0.0.1:7890/logs', {
 
         // Always log errors to console stream
         if (response.status >= 400) {
-          emit('DEV_CONSOLE_LOG', {
+          emit('GASOLINE_LOG', {
             level: response.status >= 500 ? 'error' : 'warn',
             message: `${method.toUpperCase()} ${url} → ${response.status}`,
             timestamp: new Date().toISOString(),
@@ -337,7 +337,7 @@ fetch('http://127.0.0.1:7890/logs', {
 
         return response;
       } catch (error) {
-        emit('DEV_CONSOLE_LOG', {
+        emit('GASOLINE_LOG', {
           level: 'error',
           message: `${method.toUpperCase()} ${url} → Network Error: ${error.message}`,
           timestamp: new Date().toISOString(),
@@ -1306,7 +1306,7 @@ test('gasoline-ci.js produces same payload format as extension', () => {
 });
 
 test('extension message types match CI emit types', () => {
-  // DEV_CONSOLE_LOG, GASOLINE_WS, GASOLINE_NETWORK_BODY all handled
+  // GASOLINE_LOG, GASOLINE_WS, GASOLINE_NETWORK_BODY all handled
 });
 
 test('safeSerialize output matches between extension and CI', () => {

@@ -6,8 +6,9 @@
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
+import { createMockWindow } from './helpers.js'
 
-// Mock PerformanceObserver
+// Mock PerformanceObserver (specialized - only needed by this test file)
 class MockPerformanceObserver {
   constructor(callback) {
     MockPerformanceObserver.instances.push(this)
@@ -21,7 +22,7 @@ class MockPerformanceObserver {
 }
 MockPerformanceObserver.instances = []
 
-// Mock performance API
+// Mock performance API (specialized - only needed by this test file)
 const createMockPerformance = () => ({
   getEntriesByType: mock.fn((type) => {
     if (type === 'navigation') {
@@ -71,13 +72,6 @@ const createMockPerformance = () => ({
   }),
 })
 
-const createMockWindow = () => ({
-  postMessage: mock.fn(),
-  addEventListener: mock.fn(),
-  removeEventListener: mock.fn(),
-  location: { href: 'http://localhost:3000/dashboard', pathname: '/dashboard' },
-})
-
 let originalWindow, originalPerformance, originalPerformanceObserver
 
 describe('Performance Snapshot Capture', () => {
@@ -86,7 +80,10 @@ describe('Performance Snapshot Capture', () => {
     originalPerformance = globalThis.performance
     originalPerformanceObserver = globalThis.PerformanceObserver
     MockPerformanceObserver.instances = []
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({
+      href: 'http://localhost:3000/dashboard',
+      pathname: '/dashboard',
+    })
     globalThis.performance = createMockPerformance()
     globalThis.PerformanceObserver = MockPerformanceObserver
   })
@@ -237,7 +234,10 @@ describe('Long Task Observer', () => {
     originalPerformance = globalThis.performance
     originalPerformanceObserver = globalThis.PerformanceObserver
     MockPerformanceObserver.instances = []
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({
+      href: 'http://localhost:3000/dashboard',
+      pathname: '/dashboard',
+    })
     globalThis.performance = createMockPerformance()
     globalThis.PerformanceObserver = MockPerformanceObserver
   })
@@ -313,7 +313,10 @@ describe('Web Vitals Observers', () => {
     originalPerformance = globalThis.performance
     originalPerformanceObserver = globalThis.PerformanceObserver
     MockPerformanceObserver.instances = []
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({
+      href: 'http://localhost:3000/dashboard',
+      pathname: '/dashboard',
+    })
     globalThis.performance = createMockPerformance()
     globalThis.PerformanceObserver = MockPerformanceObserver
   })
@@ -421,7 +424,10 @@ describe('Performance Snapshot Message', () => {
     originalPerformance = globalThis.performance
     originalPerformanceObserver = globalThis.PerformanceObserver
     MockPerformanceObserver.instances = []
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({
+      href: 'http://localhost:3000/dashboard',
+      pathname: '/dashboard',
+    })
     globalThis.performance = createMockPerformance()
     globalThis.PerformanceObserver = MockPerformanceObserver
   })
@@ -476,7 +482,10 @@ describe('Performance Snapshot Toggle', () => {
     originalPerformance = globalThis.performance
     originalPerformanceObserver = globalThis.PerformanceObserver
     MockPerformanceObserver.instances = []
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({
+      href: 'http://localhost:3000/dashboard',
+      pathname: '/dashboard',
+    })
     globalThis.performance = createMockPerformance()
     globalThis.PerformanceObserver = MockPerformanceObserver
   })

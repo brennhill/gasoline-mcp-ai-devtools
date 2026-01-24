@@ -6,12 +6,7 @@
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
-
-const createMockWindow = () => ({
-  postMessage: mock.fn(),
-  addEventListener: mock.fn(),
-  fetch: mock.fn(),
-})
+import { createMockWindow } from './helpers.js'
 
 const createMockResponse = (options = {}) => ({
   ok: options.ok !== undefined ? options.ok : true,
@@ -49,7 +44,7 @@ let originalWindow
 describe('Network Body Capture - Fetch Wrapper', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ withFetch: true })
     globalThis.Headers = MockHeaders
   })
 

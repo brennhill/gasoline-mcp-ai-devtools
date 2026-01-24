@@ -144,12 +144,7 @@ func (v *Capture) trackConnection(event WebSocketEvent) {
 
 		delete(v.connections, event.ID)
 		// Remove from order
-		for i, id := range v.connOrder {
-			if id == event.ID {
-				v.connOrder = append(v.connOrder[:i], v.connOrder[i+1:]...)
-				break
-			}
-		}
+		v.connOrder = removeFromSlice(v.connOrder, event.ID)
 
 	case "error":
 		conn := v.connections[event.ID]
@@ -355,9 +350,10 @@ func (v *Capture) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 

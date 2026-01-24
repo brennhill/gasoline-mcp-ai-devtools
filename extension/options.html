@@ -323,6 +323,14 @@
           </div>
           <div id="sourcemap-toggle" class="toggle"></div>
         </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Defer Heavy Interceptors</span>
+            <span class="toggle-description">Delays console/fetch/WS/error interception until after page load</span>
+          </div>
+          <div id="deferral-toggle" class="toggle"></div>
+        </div>
       </div>
     </div>
 
@@ -331,6 +339,6 @@
       <span id="saved-message" class="saved-message">Saved!</span>
     </div>
 
-    <script src="options.js"></script>
+    <script src="options.js" type="module"></script>
   </body>
 </html>

@@ -1205,3 +1205,553 @@ func TestMCPGenerateTestToolInToolsList(t *testing.T) {
 		t.Error("Expected generate_test in tools list")
 	}
 }
+
+// ============================================
+// Workflow Integration Tests (Session Summary + PR Summary)
+// ============================================
+
+func TestSessionSummaryWithTwoSnapshots(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	fcp1 := 800.0
+	lcp1 := 1000.0
+	cls1 := 0.02
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL:       "http://localhost:3000/",
+		Timestamp: "2026-01-24T10:00:00Z",
+		Timing: PerformanceTiming{
+			Load:                   1200,
+			FirstContentfulPaint:   &fcp1,
+			LargestContentfulPaint: &lcp1,
+			TimeToFirstByte:        100,
+			DomContentLoaded:       900,
+			DomInteractive:         800,
+		},
+		Network: NetworkSummary{
+			RequestCount: 20,
+			TransferSize: 340 * 1024,
+		},
+		LongTasks: LongTaskMetrics{Count: 1, TotalBlockingTime: 80},
+		CLS:       &cls1,
+	})
+
+	fcp2 := 900.0
+	lcp2 := 1100.0
+	cls2 := 0.02
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL:       "http://localhost:3000/",
+		Timestamp: "2026-01-24T10:05:00Z",
+		Timing: PerformanceTiming{
+			Load:                   1400,
+			FirstContentfulPaint:   &fcp2,
+			LargestContentfulPaint: &lcp2,
+			TimeToFirstByte:        120,
+			DomContentLoaded:       1100,
+			DomInteractive:         900,
+		},
+		Network: NetworkSummary{
+			RequestCount: 22,
+			TransferSize: 385 * 1024,
+		},
+		LongTasks: LongTaskMetrics{Count: 2, TotalBlockingTime: 150},
+		CLS:       &cls2,
+	})
+
+	summary := capture.GenerateSessionSummary()
+
+	if summary.PerformanceDelta == nil {
+		t.Fatal("Expected performance delta to be present")
+	}
+	if summary.PerformanceDelta.LoadTimeDelta != 200 {
+		t.Errorf("Expected load time delta of 200ms, got %.0f", summary.PerformanceDelta.LoadTimeDelta)
+	}
+	if summary.PerformanceDelta.FCPDelta != 100 {
+		t.Errorf("Expected FCP delta of 100ms, got %.0f", summary.PerformanceDelta.FCPDelta)
+	}
+	if summary.PerformanceDelta.LCPDelta != 100 {
+		t.Errorf("Expected LCP delta of 100ms, got %.0f", summary.PerformanceDelta.LCPDelta)
+	}
+	expectedSizeDelta := int64(45 * 1024)
+	if summary.PerformanceDelta.BundleSizeDelta != expectedSizeDelta {
+		t.Errorf("Expected bundle size delta of %d, got %d", expectedSizeDelta, summary.PerformanceDelta.BundleSizeDelta)
+	}
+}
+
+func TestSessionSummaryNoSnapshots(t *testing.T) {
+	capture := setupTestCapture(t)
+	summary := capture.GenerateSessionSummary()
+
+	if summary.PerformanceDelta != nil {
+		t.Error("Expected no performance delta when no snapshots exist")
+	}
+	if summary.Status != "no_performance_data" {
+		t.Errorf("Expected status 'no_performance_data', got '%s'", summary.Status)
+	}
+}
+
+func TestSessionSummarySingleSnapshot(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	fcp := 800.0
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL:       "http://localhost:3000/",
+		Timestamp: "2026-01-24T10:00:00Z",
+		Timing:    PerformanceTiming{Load: 1200, FirstContentfulPaint: &fcp},
+		Network:   NetworkSummary{RequestCount: 20, TransferSize: 340 * 1024},
+	})
+
+	summary := capture.GenerateSessionSummary()
+
+	if summary.Status != "insufficient_data" {
+		t.Errorf("Expected status 'insufficient_data', got '%s'", summary.Status)
+	}
+}
+
+func TestSessionSummaryWithErrors(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	entries := []LogEntry{
+		{"level": "error", "message": "TypeError: Cannot read property 'map' of undefined", "source": "dashboard.js:142", "ts": "2026-01-24T10:01:00Z"},
+		{"level": "error", "message": "ReferenceError: foo is not defined", "source": "app.js:10", "ts": "2026-01-24T10:02:00Z"},
+		{"level": "warn", "message": "Deprecated API call", "source": "lib.js:5", "ts": "2026-01-24T10:01:30Z"},
+	}
+
+	// Add snapshots so we get past the "no performance data" check
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:00:00Z",
+		Timing: PerformanceTiming{Load: 1200}, Network: NetworkSummary{TransferSize: 340 * 1024},
+	})
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:05:00Z",
+		Timing: PerformanceTiming{Load: 1400}, Network: NetworkSummary{TransferSize: 385 * 1024},
+	})
+
+	summary := capture.GenerateSessionSummaryWithEntries(entries)
+
+	if len(summary.Errors) != 2 {
+		t.Errorf("Expected 2 errors, got %d", len(summary.Errors))
+	}
+}
+
+func TestSessionSummaryReloadCount(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.AddEnhancedActions([]EnhancedAction{
+		{Type: "navigate", Timestamp: 1000, ToURL: "http://localhost:3000/"},
+		{Type: "click", Timestamp: 2000, URL: "http://localhost:3000/"},
+		{Type: "navigate", Timestamp: 3000, ToURL: "http://localhost:3000/about"},
+		{Type: "navigate", Timestamp: 4000, ToURL: "http://localhost:3000/"},
+	})
+
+	summary := capture.GenerateSessionSummary()
+
+	if summary.Metadata.ReloadCount != 3 {
+		t.Errorf("Expected 3 navigations (reload count), got %d", summary.Metadata.ReloadCount)
+	}
+}
+
+func TestSessionSummaryDuration(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.AddEnhancedActions([]EnhancedAction{
+		{Type: "click", Timestamp: 1000},
+		{Type: "click", Timestamp: 6000},
+	})
+
+	summary := capture.GenerateSessionSummary()
+
+	if summary.Metadata.DurationMs != 5000 {
+		t.Errorf("Expected duration 5000ms, got %d", summary.Metadata.DurationMs)
+	}
+}
+
+func TestGeneratePRSummaryMarkdownTable(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	fcp1 := 800.0
+	lcp1 := 1000.0
+	cls1 := 0.02
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL:       "http://localhost:3000/",
+		Timestamp: "2026-01-24T10:00:00Z",
+		Timing: PerformanceTiming{
+			Load:                   1200,
+			FirstContentfulPaint:   &fcp1,
+			LargestContentfulPaint: &lcp1,
+			DomContentLoaded:       900,
+		},
+		Network: NetworkSummary{RequestCount: 20, TransferSize: 340 * 1024},
+		CLS:     &cls1,
+	})
+
+	fcp2 := 900.0
+	lcp2 := 1100.0
+	cls2 := 0.02
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL:       "http://localhost:3000/",
+		Timestamp: "2026-01-24T10:05:00Z",
+		Timing: PerformanceTiming{
+			Load:                   1400,
+			FirstContentfulPaint:   &fcp2,
+			LargestContentfulPaint: &lcp2,
+			DomContentLoaded:       1100,
+		},
+		Network: NetworkSummary{RequestCount: 22, TransferSize: 385 * 1024},
+		CLS:     &cls2,
+	})
+
+	markdown := capture.GeneratePRSummary(nil)
+
+	if !strings.Contains(markdown, "## Performance Impact") {
+		t.Error("Expected '## Performance Impact' header in PR summary")
+	}
+	if !strings.Contains(markdown, "| Metric | Before | After | Delta |") {
+		t.Error("Expected table header in PR summary")
+	}
+	if !strings.Contains(markdown, "Load Time") {
+		t.Error("Expected 'Load Time' row in PR summary")
+	}
+	if !strings.Contains(markdown, "FCP") {
+		t.Error("Expected 'FCP' row in PR summary")
+	}
+	if !strings.Contains(markdown, "Bundle Size") {
+		t.Error("Expected 'Bundle Size' row in PR summary")
+	}
+}
+
+func TestGeneratePRSummaryNoPerformanceData(t *testing.T) {
+	capture := setupTestCapture(t)
+	markdown := capture.GeneratePRSummary(nil)
+
+	if !strings.Contains(markdown, "No performance data collected") {
+		t.Error("Expected 'No performance data collected' message")
+	}
+}
+
+func TestGeneratePRSummaryWithErrors(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:00:00Z",
+		Timing: PerformanceTiming{Load: 1200}, Network: NetworkSummary{TransferSize: 340 * 1024},
+	})
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:05:00Z",
+		Timing: PerformanceTiming{Load: 1400}, Network: NetworkSummary{TransferSize: 385 * 1024},
+	})
+
+	errors := []SessionError{
+		{Message: "TypeError: Cannot read property 'map' of undefined", Source: "dashboard.js:142", Resolved: true},
+		{Message: "ReferenceError: foo is not defined", Source: "app.js:10", Resolved: false},
+	}
+
+	markdown := capture.GeneratePRSummary(errors)
+
+	if !strings.Contains(markdown, "### Errors") {
+		t.Error("Expected '### Errors' section")
+	}
+	if !strings.Contains(markdown, "Fixed") {
+		t.Error("Expected 'Fixed' in errors section")
+	}
+}
+
+func TestGeneratePRSummaryWithNoErrors(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:00:00Z",
+		Timing: PerformanceTiming{Load: 1200}, Network: NetworkSummary{TransferSize: 340 * 1024},
+	})
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:05:00Z",
+		Timing: PerformanceTiming{Load: 1400}, Network: NetworkSummary{TransferSize: 385 * 1024},
+	})
+
+	markdown := capture.GeneratePRSummary([]SessionError{})
+
+	if !strings.Contains(markdown, "No errors") {
+		t.Error("Expected 'No errors' message when error list is empty")
+	}
+}
+
+func TestOneLinerFormat(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	fcp1 := 800.0
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL:       "http://localhost:3000/",
+		Timestamp: "2026-01-24T10:00:00Z",
+		Timing:    PerformanceTiming{Load: 1200, FirstContentfulPaint: &fcp1},
+		Network:   NetworkSummary{TransferSize: 340 * 1024},
+	})
+
+	fcp2 := 900.0
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL:       "http://localhost:3000/",
+		Timestamp: "2026-01-24T10:05:00Z",
+		Timing:    PerformanceTiming{Load: 1400, FirstContentfulPaint: &fcp2},
+		Network:   NetworkSummary{TransferSize: 385 * 1024},
+	})
+
+	errors := []SessionError{
+		{Message: "TypeError: x is undefined", Resolved: true},
+	}
+
+	oneliner := capture.GenerateOneLiner(errors)
+
+	if !strings.Contains(oneliner, "perf:") {
+		t.Error("Expected 'perf:' in one-liner")
+	}
+	if !strings.Contains(oneliner, "+200ms load") {
+		t.Error("Expected '+200ms load' in one-liner")
+	}
+	if !strings.Contains(oneliner, "bundle") {
+		t.Error("Expected bundle info in one-liner")
+	}
+	if !strings.Contains(oneliner, "errors:") {
+		t.Error("Expected 'errors:' in one-liner")
+	}
+	if !strings.Contains(oneliner, "1 fixed") {
+		t.Error("Expected '1 fixed' in one-liner")
+	}
+}
+
+func TestOneLinerNoPerformanceData(t *testing.T) {
+	capture := setupTestCapture(t)
+	oneliner := capture.GenerateOneLiner(nil)
+
+	if !strings.Contains(oneliner, "no perf data") {
+		t.Error("Expected 'no perf data' in one-liner when no snapshots")
+	}
+}
+
+func TestMCPGeneratePRSummaryTool(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
+
+	fcp1 := 800.0
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL:       "http://localhost:3000/",
+		Timestamp: "2026-01-24T10:00:00Z",
+		Timing:    PerformanceTiming{Load: 1200, FirstContentfulPaint: &fcp1},
+		Network:   NetworkSummary{TransferSize: 340 * 1024},
+	})
+
+	fcp2 := 900.0
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL:       "http://localhost:3000/",
+		Timestamp: "2026-01-24T10:05:00Z",
+		Timing:    PerformanceTiming{Load: 1400, FirstContentfulPaint: &fcp2},
+		Network:   NetworkSummary{TransferSize: 385 * 1024},
+	})
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: json.RawMessage(`{"name":"generate_pr_summary","arguments":{}}`),
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got: %v", resp.Error)
+	}
+
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	text := result.Content[0].Text
+	if !strings.Contains(text, "## Performance Impact") {
+		t.Error("Expected performance impact section in MCP tool response")
+	}
+}
+
+func TestMCPGeneratePRSummaryToolInToolsList(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := NewToolHandler(server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/list",
+	})
+
+	var result struct {
+		Tools []MCPTool `json:"tools"`
+	}
+	json.Unmarshal(resp.Result, &result)
+
+	found := false
+	for _, tool := range result.Tools {
+		if tool.Name == "generate_pr_summary" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Error("Expected generate_pr_summary in tools list")
+	}
+}
+
+func TestSessionSummaryMultipleURLs(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:00:00Z",
+		Timing: PerformanceTiming{Load: 1200}, Network: NetworkSummary{TransferSize: 340 * 1024},
+	})
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:05:00Z",
+		Timing: PerformanceTiming{Load: 1400}, Network: NetworkSummary{TransferSize: 385 * 1024},
+	})
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/about", Timestamp: "2026-01-24T10:06:00Z",
+		Timing: PerformanceTiming{Load: 800}, Network: NetworkSummary{TransferSize: 200 * 1024},
+	})
+
+	summary := capture.GenerateSessionSummary()
+
+	if summary.PerformanceDelta == nil {
+		t.Fatal("Expected performance delta to be present")
+	}
+}
+
+func TestSessionSummaryPerformanceCheckCount(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:00:00Z",
+		Timing: PerformanceTiming{Load: 1200}, Network: NetworkSummary{TransferSize: 340 * 1024},
+	})
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:01:00Z",
+		Timing: PerformanceTiming{Load: 1300}, Network: NetworkSummary{TransferSize: 350 * 1024},
+	})
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:02:00Z",
+		Timing: PerformanceTiming{Load: 1400}, Network: NetworkSummary{TransferSize: 385 * 1024},
+	})
+
+	summary := capture.GenerateSessionSummary()
+
+	if summary.Metadata.PerformanceCheckCount < 2 {
+		t.Errorf("Expected at least 2 performance checks, got %d", summary.Metadata.PerformanceCheckCount)
+	}
+}
+
+func TestSessionSummaryBundleSizeDelta(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:00:00Z",
+		Timing: PerformanceTiming{Load: 1000}, Network: NetworkSummary{TransferSize: 280 * 1024},
+	})
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:05:00Z",
+		Timing: PerformanceTiming{Load: 1200}, Network: NetworkSummary{TransferSize: 385 * 1024},
+	})
+
+	summary := capture.GenerateSessionSummary()
+
+	if summary.PerformanceDelta == nil {
+		t.Fatal("Expected performance delta to be present")
+	}
+	expectedDelta := int64(105 * 1024)
+	if summary.PerformanceDelta.BundleSizeDelta != expectedDelta {
+		t.Errorf("Expected bundle size delta of %d, got %d", expectedDelta, summary.PerformanceDelta.BundleSizeDelta)
+	}
+}
+
+func TestHTTPSessionSummaryEndpoint(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	fcp1 := 800.0
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:00:00Z",
+		Timing: PerformanceTiming{Load: 1200, FirstContentfulPaint: &fcp1},
+		Network: NetworkSummary{TransferSize: 340 * 1024},
+	})
+	fcp2 := 900.0
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:05:00Z",
+		Timing: PerformanceTiming{Load: 1400, FirstContentfulPaint: &fcp2},
+		Network: NetworkSummary{TransferSize: 385 * 1024},
+	})
+
+	summary := capture.GenerateSessionSummary()
+
+	summaryJSON, err := json.Marshal(summary)
+	if err != nil {
+		t.Fatalf("Failed to marshal session summary: %v", err)
+	}
+
+	var parsed SessionSummary
+	if err := json.Unmarshal(summaryJSON, &parsed); err != nil {
+		t.Fatalf("Failed to unmarshal session summary: %v", err)
+	}
+
+	if parsed.PerformanceDelta == nil {
+		t.Error("Expected performance delta in parsed summary")
+	}
+}
+
+func TestGeneratePRSummaryGeneratedByLine(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	fcp1 := 800.0
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:00:00Z",
+		Timing: PerformanceTiming{Load: 1200, FirstContentfulPaint: &fcp1},
+		Network: NetworkSummary{TransferSize: 340 * 1024},
+	})
+	fcp2 := 900.0
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:05:00Z",
+		Timing: PerformanceTiming{Load: 1400, FirstContentfulPaint: &fcp2},
+		Network: NetworkSummary{TransferSize: 385 * 1024},
+	})
+
+	markdown := capture.GeneratePRSummary(nil)
+
+	if !strings.Contains(markdown, "Generated by Gasoline") {
+		t.Error("Expected 'Generated by Gasoline' attribution line")
+	}
+}
+
+func TestSessionSummaryCLSDelta(t *testing.T) {
+	capture := setupTestCapture(t)
+
+	cls1 := 0.02
+	cls2 := 0.08
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:00:00Z",
+		Timing: PerformanceTiming{Load: 1200}, Network: NetworkSummary{TransferSize: 340 * 1024},
+		CLS: &cls1,
+	})
+	capture.TrackPerformanceSnapshot(PerformanceSnapshot{
+		URL: "http://localhost:3000/", Timestamp: "2026-01-24T10:05:00Z",
+		Timing: PerformanceTiming{Load: 1400}, Network: NetworkSummary{TransferSize: 385 * 1024},
+		CLS: &cls2,
+	})
+
+	summary := capture.GenerateSessionSummary()
+
+	if summary.PerformanceDelta == nil {
+		t.Fatal("Expected performance delta to be present")
+	}
+	if summary.PerformanceDelta.CLSDelta == 0 {
+		t.Error("Expected non-zero CLS delta")
+	}
+}

@@ -46,6 +46,17 @@ func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
 
 	// Enforce per-buffer memory limit
 	v.evictNBForMemory()
+
+	// Notify schema inference (non-blocking, separate lock)
+	if v.schemaStore != nil {
+		bodiesCopy := make([]NetworkBody, len(bodies))
+		copy(bodiesCopy, bodies)
+		go func() {
+			for _, b := range bodiesCopy {
+				v.schemaStore.Observe(b)
+			}
+		}()
+	}
 }
 
 // evictNBForMemory removes oldest bodies if memory exceeds limit
@@ -112,9 +123,10 @@ func (v *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 

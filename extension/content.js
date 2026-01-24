@@ -61,7 +61,9 @@ chrome.runtime.onMessage.addListener((message) => {
     message.type === 'setActionReplayEnabled' ||
     message.type === 'setWebSocketCaptureEnabled' ||
     message.type === 'setWebSocketCaptureMode' ||
-    message.type === 'setPerformanceSnapshotEnabled'
+    message.type === 'setPerformanceSnapshotEnabled' ||
+    message.type === 'setDeferralEnabled' ||
+    message.type === 'setNetworkBodyCaptureEnabled'
   ) {
     const payload = { type: 'GASOLINE_SETTING', setting: message.type }
     if (message.type === 'setWebSocketCaptureMode') {

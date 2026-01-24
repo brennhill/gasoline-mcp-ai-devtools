@@ -16,18 +16,11 @@ Thesis: AI reads browser state → AI writes code → human verifies. Every feat
 - [x] **Schema variant tracking** — WebSocket connections track message variants (e.g., "message 89%, typing 8%").
 - [x] **WebSocket payload spec compliance** — Added `type: "websocket"` field to all WS event payloads per spec log format.
 - [x] **Contract-first testing process** — Shape tests enforce spec field presence before behavioral tests. Rule codified in `.claude/docs/tdd.md`.
+- [x] **Rate limiting / circuit breaker** — Server 429 at >1000 events/sec; extension exponential-backoff (100→500→2000ms) with 5-failure circuit break, 30s pause. Files: `rate_limit.go`, `extension-tests/rate-limit.test.js`.
+- [x] **Memory enforcement** — Three thresholds (20MB soft, 50MB hard, 100MB critical) with progressive eviction. Extension memory estimation + pressure checking. Files: `memory.go`, `extension-tests/memory.test.js`.
+- [x] **Interception deferral** — Phase 1 (immediate: API, PerfObservers) / Phase 2 (deferred: console, fetch, WS, errors, actions). Trigger: load + 100ms, 10s timeout fallback. File: `inject.js`, `extension-tests/interception-deferral.test.js`.
 
 ---
-
-## P0: Reliability (ship-blockers)
-
-Without these, the server crashes under real-world load. Nothing else matters until these ship.
-
-Specs: `docs/ai-first/tech-spec-rate-limiting.md`, `docs/ai-first/tech-spec-memory-enforcement.md`
-
-- [ ] **Rate limiting / circuit breaker** — Server responds 429 at >1000 events/sec; extension exponential-backoff (100ms→500ms→2s) with 5-failure circuit break. File: `rate_limit.go`.
-- [ ] **Memory enforcement** — Three thresholds (20MB soft, 50MB hard, 100MB critical) with progressive eviction. Minimal mode at critical. File: `memory.go`.
-- [ ] **Interception deferral** — Defer intercepts (WS constructor, fetch body capture) until after `load` event + 100ms. Gasoline must not slow the app it debugs.
 
 ## P1: AI Intelligence (the AI gets smarter)
 
@@ -35,25 +28,25 @@ These make the AI a competent collaborator instead of a stateless tool.
 
 Specs: `docs/ai-first/tech-spec-persistent-memory.md`, `docs/ai-first/tech-spec-noise-filtering.md`
 
-- [ ] **Persistent memory** — Cross-session storage (`session_store`, `load_session_context`). Baselines, noise rules, API schemas, error history survive restarts. File: `ai_persistence.go`.
-- [ ] **Noise filtering** — Built-in heuristics + agent-configurable rules (`configure_noise`, `dismiss_noise`). Auto-detection from buffer frequency analysis. File: `ai_noise.go`.
-- [ ] **API schema inference** — Auto-detect endpoints, request/response shapes, auth patterns from network traffic. The AI understands your API without documentation. File: `api_schema.go`. Spec: `docs/ai-first/tech-spec-api-schema.md`.
+- [x] **Persistent memory** — Cross-session storage (`session_store`, `load_session_context`). Baselines, noise rules, API schemas, error history survive restarts. File: `ai_persistence.go`.
+- [x] **Noise filtering** — Built-in heuristics + agent-configurable rules (`configure_noise`, `dismiss_noise`). Auto-detection from buffer frequency analysis. File: `ai_noise.go`.
+- [x] **API schema inference** — Auto-detect endpoints, request/response shapes, auth patterns from network traffic. The AI understands your API without documentation. File: `api_schema.go`. Spec: `docs/ai-first/tech-spec-api-schema.md`.
 
 ## P2: Feedback Loop (AI learns from its own changes)
 
 The core thesis loop: AI changes code → Gasoline detects impact → AI adjusts.
 
-- [ ] **Push notification on regression** — AI is alerted without polling. After a reload, if baselines are exceeded, the server signals "your last reload regressed load by 800ms" via a status field in `get_changes_since`.
-- [ ] **Causal diffing** — Compare resource lists (scripts, stylesheets, fonts) between baseline and current. Report what changed: "3 new scripts totaling 400KB added since baseline". File: `performance.go`.
-- [ ] **Workflow integration** — Auto-run `check_performance` after each AI-initiated code change. Include performance delta in PR summaries. Integrates with codegen/reproduction scripts.
+- [x] **Push notification on regression** — AI is alerted without polling. After a reload, if baselines are exceeded, the server signals "your last reload regressed load by 800ms" via a status field in `get_changes_since`.
+- [x] **Causal diffing** — Compare resource lists (scripts, stylesheets, fonts) between baseline and current. Report what changed: "3 new scripts totaling 400KB added since baseline". File: `performance.go`.
+- [x] **Workflow integration** — Auto-run `check_performance` after each AI-initiated code change. Include performance delta in PR summaries. Integrates with codegen/reproduction scripts.
 
 ## P3: Measurement & Verification (human audits AI work)
 
 Help the human verify what the AI observed and decided.
 
-- [ ] **Web vitals capture** — FCP, LCP, CLS, INP via extension. Standardized performance data the AI can reference. TDD stubs exist in `extension-tests/web-vitals.test.js`.
-- [ ] **SARIF export** — `export_sarif` MCP tool. A11y audit results → GitHub Code Scanning format. Human sees AI-detected issues in PR review. File: `export_sarif.go`.
-- [ ] **HAR export** — `export_har` MCP tool. Network bodies + timing → HTTP Archive format. Human can inspect in Charles Proxy / DevTools. File: `export_har.go`.
+- [x] **Web vitals capture** — FCP, LCP, CLS, INP via extension. Standardized performance data the AI can reference. TDD stubs exist in `extension-tests/web-vitals.test.js`.
+- [x] **SARIF export** — `export_sarif` MCP tool. A11y audit results → GitHub Code Scanning format. Human sees AI-detected issues in PR review. File: `export_sarif.go`.
+- [x] **HAR export** — `export_har` MCP tool. Network bodies + timing → HTTP Archive format. Human can inspect in Charles Proxy / DevTools. File: `export_har.go`.
 
 ## Tech Debt: Consolidation (code quality)
 
@@ -63,21 +56,21 @@ Codebase grew feature-by-feature without periodic pattern extraction. Locally co
 
 Sequential (each touches overlapping files):
 
-- [ ] **MCP response helper** — Extract `mcpTextResponse(text)` to eliminate 25+ identical response constructions across tool handlers. File: `tools.go`.
-- [ ] **Decompose Capture struct** — Extract `RateLimiter`, `A11yCache`, `PerformanceStore` from the 67-field God Object. Files: `types.go`, all domain files.
-- [ ] **Remove Go dead code** — Delete `RecordEventReceived()`, legacy `eventCount`/`rateResetTime` fields, unused `initialized` field. Files: `queries.go`, `types.go`, `main.go`.
-- [ ] **Add request body limits** — `http.MaxBytesReader` on all POST handlers to prevent unbounded `io.ReadAll`. Files: `websocket.go`, `network.go`, `actions.go`, `performance.go`.
-- [ ] **Deduplicate utilities** — Consolidate `extractPath`/`ExtractURLPath`, timestamp parsers, ring buffer pattern. Files: `ai_noise.go`, `ai_checkpoint.go`, `codegen.go`.
+- [x] **MCP response helper** — Extract `mcpTextResponse(text)` to eliminate 25+ identical response constructions across tool handlers. File: `tools.go`.
+- [x] **Decompose Capture struct** — Extract `A11yCache`, `PerformanceStore`, `MemoryState` from the God Object. Files: `types.go`, all domain files.
+- [x] **Remove Go dead code** — Delete `RecordEventReceived()`, legacy `eventCount`/`rateResetTime` fields, unused `initialized` field. Files: `queries.go`, `types.go`, `main.go`.
+- [x] **Add request body limits** — `http.MaxBytesReader` on all POST handlers to prevent unbounded reads. Files: `websocket.go`, `network.go`, `actions.go`, `performance.go`, `queries.go`, `main.go`.
+- [x] **Deduplicate utilities** — Consolidate `extractPath`/`ExtractURLPath`, `removeFromSlice`. File: `helpers.go`.
 
 ### Stream B: Extension + Tests
 
 Sequential (message naming cascades into test assertions):
 
-- [ ] **Normalize message naming** — Replace `DEV_CONSOLE_*` with `GASOLINE_*` throughout. Incomplete rename from "Dev Console" to "Gasoline". Files: `inject.js`, `content.js`, `background.js`.
-- [ ] **Fix truncateArg** — Replace dangerous `JSON.parse(sliced + '"} [truncated]')` with safe truncation. File: `background.js:551`.
-- [ ] **Replace setInterval with chrome.alarms** — `setInterval` is unreliable in MV3 service workers. File: `background.js:1325`.
-- [ ] **Remove JS dead code** — Delete `_TEXT_CONTENT_TYPES`, no-op references in popup.js. Files: `inject.js`, `popup.js`.
-- [ ] **Shared test infrastructure** — Extract `createMockWindow()`, `createMockChrome()`, `findPostedMessage()` into `extension-tests/helpers.js`. All test files reinvent mocks independently today.
+- [x] **Normalize message naming** — Replace `DEV_CONSOLE_*` with `GASOLINE_*` throughout. Files: `inject.js`, `content.js`, `background.js`, docs.
+- [x] **Fix truncateArg** — Replace dangerous `JSON.parse(sliced + '"} [truncated]')` with safe truncation. File: `background.js`.
+- [x] **Replace setInterval with chrome.alarms** — `setInterval` is unreliable in MV3 service workers. File: `background.js`.
+- [x] **Remove JS dead code** — Delete `_TEXT_CONTENT_TYPES`, no-op references in popup.js. Files: `inject.js`, `popup.js`.
+- [x] **Shared test infrastructure** — Extract `createMockWindow()`, `createMockChrome()`, `createMockDocument()` into `extension-tests/helpers.js`.
 
 ## P4: Nice-to-have (someday, maybe)
 
@@ -107,26 +100,10 @@ These don't serve the thesis. The AI IS the interface — exporting to other too
 
 ## Parallel Assignment Guide
 
-### Feature work (P0–P1)
+### Feature work (P1)
 
 | Feature | Primary files | Can parallel with |
 |---------|--------------|-------------------|
-| Rate limiting | `rate_limit.go`, `extension/background.js` | Memory, Persistent, Noise |
-| Memory enforcement | `memory.go`, `queries.go` | Rate, Persistent, Noise |
-| Persistent memory | `ai_persistence.go` (new) | Rate, Memory, Noise |
-| Noise filtering | `ai_noise.go` (new) | Rate, Memory, Persistent |
-| API schema inference | `api_schema.go` (new) | All of the above |
-| Interception deferral | `extension/inject.js`, `extension/content.js` | All server-side features |
-
-### Consolidation work (Tech Debt)
-
-Two independent streams — can run simultaneously:
-
-| Stream | Items (sequential within stream) | Files touched |
-|--------|----------------------------------|---------------|
-| A: Go Server | MCP helper → Decompose Capture → Dead code → Body limits → Dedup utilities | `tools.go`, `types.go`, all `cmd/dev-console/*.go` |
-| B: Extension + Tests | Message naming → truncateArg + setInterval → JS dead code → Test helpers | `inject.js`, `content.js`, `background.js`, `extension-tests/*.test.js` |
-
-Stream A and Stream B can run in parallel (no file overlap). Items within each stream are sequential due to cascading dependencies.
-
-**Ordering constraint:** Feature work on `inject.js` (Interception deferral) conflicts with Stream B. Run one or the other, not both.
+| Persistent memory | `ai_persistence.go` (new) | Noise, API schema |
+| Noise filtering | `ai_noise.go` (new) | Persistent, API schema |
+| API schema inference | `api_schema.go` (new) | Persistent, Noise |

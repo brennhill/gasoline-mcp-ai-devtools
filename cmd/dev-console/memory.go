@@ -345,3 +345,10 @@ func (v *Capture) StartMemoryEnforcement() func() {
 	}()
 	return func() { close(stop) }
 }
+
+// SetMemoryUsage sets simulated memory usage for testing
+func (v *Capture) SetMemoryUsage(bytes int64) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.mem.simulatedMemory = bytes
+}

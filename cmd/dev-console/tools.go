@@ -1,6 +1,9 @@
 package main
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"os"
+)
 
 // ============================================
 // MCP Typed Response Structs
@@ -92,10 +95,19 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 		checkpoints: NewCheckpointManager(server, capture),
 		noise:       NewNoiseConfig(),
 	}
+
+	// Initialize persistent session store using CWD as project root.
+	// If initialization fails (e.g., read-only filesystem), the server
+	// continues without persistence — tool handlers check for nil.
+	if cwd, err := os.Getwd(); err == nil {
+		if store, err := NewSessionStore(cwd); err == nil {
+			handler.sessionStore = store
+		}
+	}
+
 	// Return as MCPHandler but with overridden methods via the wrapper
 	return &MCPHandler{
 		server:      server,
-		initialized: false,
 		toolHandler: handler,
 	}
 }
@@ -322,6 +334,14 @@ func (h *ToolHandler) toolsList() []MCPTool {
 			},
 		},
 		{
+			Name:        "generate_pr_summary",
+			Description: "Generate a markdown-formatted performance summary suitable for inclusion in a PR description or comment. Includes performance deltas, error status, and session metadata.",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
+		{
 			Name:        "get_changes_since",
 			Description: "Get a compressed diff of browser activity since the last checkpoint. Returns only new console errors, network failures, WebSocket disconnections, and user actions — deduplicated and severity-ranked. Call with no arguments for auto-advancing behavior, or pass a named checkpoint to compare against a stable reference point.",
 			InputSchema: map[string]interface{}{
@@ -451,6 +471,86 @@ func (h *ToolHandler) toolsList() []MCPTool {
 				"required": []string{"pattern"},
 			},
 		},
+		{
+			Name:        "get_api_schema",
+			Description: "Get the inferred API schema from observed network traffic. Returns endpoint shapes, query parameters, auth patterns, and timing stats without reading backend code.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"url_filter": map[string]interface{}{
+						"type":        "string",
+						"description": "Only include endpoints whose path contains this string",
+					},
+					"min_observations": map[string]interface{}{
+						"type":        "number",
+						"description": "Minimum times an endpoint must be observed to be included (default: 1)",
+					},
+					"format": map[string]interface{}{
+						"type":        "string",
+						"description": "Output format: gasoline (default, structured JSON) or openapi_stub (minimal OpenAPI 3.0 YAML)",
+						"enum":        []string{"gasoline", "openapi_stub"},
+					},
+				},
+			},
+		},
+		{
+			Name:        "export_sarif",
+			Description: "Export accessibility audit results as SARIF (GitHub Code Scanning format).",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"scope": map[string]interface{}{
+						"type":        "string",
+						"description": "CSS selector to scope the audit (same as run_accessibility_audit)",
+					},
+					"include_passes": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Include passing rules as 'pass' results (default: false)",
+					},
+					"save_to": map[string]interface{}{
+						"type":        "string",
+						"description": "File path to save SARIF file. If omitted, returns JSON in response.",
+					},
+				},
+			},
+		},
+		{
+			Name:        "export_har",
+			Description: "Export captured network traffic as a HAR (HTTP Archive) file. Supported by Chrome DevTools, Postman, Charles Proxy.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"url": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter to requests matching this URL substring",
+					},
+					"method": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter to this HTTP method (GET, POST, etc.)",
+					},
+					"status_min": map[string]interface{}{
+						"type":        "number",
+						"description": "Minimum status code to include",
+					},
+					"status_max": map[string]interface{}{
+						"type":        "number",
+						"description": "Maximum status code to include",
+					},
+					"save_to": map[string]interface{}{
+						"type":        "string",
+						"description": "File path to save HAR file. If omitted, returns JSON in response.",
+					},
+				},
+			},
+		},
+		{
+			Name:        "get_web_vitals",
+			Description: "Get current Core Web Vitals (FCP, LCP, CLS, INP) with performance assessments (good/needs-improvement/poor) based on standard thresholds.",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
 	}
 }
 
@@ -479,6 +579,8 @@ func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.
 		return h.toolGetSessionTimeline(req, args), true
 	case "generate_test":
 		return h.toolGenerateTest(req, args), true
+	case "generate_pr_summary":
+		return h.toolGeneratePRSummary(req, args), true
 	case "get_changes_since":
 		return h.toolGetChangesSince(req, args), true
 	case "session_store":
@@ -489,6 +591,14 @@ func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.
 		return h.toolConfigureNoise(req, args), true
 	case "dismiss_noise":
 		return h.toolDismissNoise(req, args), true
+	case "get_api_schema":
+		return h.toolGetAPISchema(req, args), true
+	case "export_sarif":
+		return h.toolExportSARIF(req, args), true
+	case "export_har":
+		return h.toolExportHAR(req, args), true
+	case "get_web_vitals":
+		return h.toolGetWebVitals(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
@@ -672,6 +782,53 @@ func (h *ToolHandler) toolDismissNoise(req JSONRPCRequest, args json.RawMessage)
 	}
 	respJSON, _ := json.Marshal(responseData)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+}
+
+// ============================================
+// SARIF Export Tool Implementation
+// ============================================
+
+func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		Scope         string `json:"scope"`
+		IncludePasses bool   `json:"include_passes"`
+		SaveTo        string `json:"save_to"`
+	}
+	_ = json.Unmarshal(args, &arguments)
+
+	// Look for cached a11y result
+	cacheKey := h.capture.a11yCacheKey(arguments.Scope, nil)
+	cached := h.capture.getA11yCacheEntry(cacheKey)
+	if cached == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("No accessibility audit results available. Run run_accessibility_audit first.")}
+	}
+
+	opts := SARIFExportOptions{
+		Scope:         arguments.Scope,
+		IncludePasses: arguments.IncludePasses,
+		SaveTo:        arguments.SaveTo,
+	}
+
+	sarifLog, err := ExportSARIF(cached, opts)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("SARIF export failed: " + err.Error())}
+	}
+
+	if arguments.SaveTo != "" {
+		// File was saved, return summary
+		responseData := map[string]interface{}{
+			"status":  "ok",
+			"path":    arguments.SaveTo,
+			"rules":   len(sarifLog.Runs[0].Tool.Driver.Rules),
+			"results": len(sarifLog.Runs[0].Results),
+		}
+		respJSON, _ := json.Marshal(responseData)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+	}
+
+	// Return SARIF JSON directly
+	sarifJSON, _ := json.MarshalIndent(sarifLog, "", "  ")
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(sarifJSON))}
 }
 
 // ============================================

@@ -57,6 +57,51 @@ export function updateConnectionStatus(status) {
     errorCountEl.textContent = String(status.errorCount)
   }
 
+  // Health indicators (circuit breaker + memory pressure)
+  const healthSection = document.getElementById('health-indicators')
+  const cbEl = document.getElementById('health-circuit-breaker')
+  const mpEl = document.getElementById('health-memory-pressure')
+
+  if (healthSection && cbEl && mpEl) {
+    const cbState = status.circuitBreakerState || 'closed'
+    const mpState = status.memoryPressure?.memoryPressureLevel || 'normal'
+
+    // Circuit breaker indicator
+    cbEl.classList.remove('health-error', 'health-warning')
+    if (!status.connected || cbState === 'closed') {
+      cbEl.style.display = 'none'
+      cbEl.textContent = ''
+    } else if (cbState === 'open') {
+      cbEl.style.display = ''
+      cbEl.classList.add('health-error')
+      cbEl.textContent = 'Server: open (paused)'
+    } else if (cbState === 'half-open') {
+      cbEl.style.display = ''
+      cbEl.classList.add('health-warning')
+      cbEl.textContent = 'Server: half-open (probing)'
+    }
+
+    // Memory pressure indicator
+    mpEl.classList.remove('health-error', 'health-warning')
+    if (!status.connected || mpState === 'normal') {
+      mpEl.style.display = 'none'
+      mpEl.textContent = ''
+    } else if (mpState === 'soft') {
+      mpEl.style.display = ''
+      mpEl.classList.add('health-warning')
+      mpEl.textContent = 'Memory: elevated (reduced capacities)'
+    } else if (mpState === 'hard') {
+      mpEl.style.display = ''
+      mpEl.classList.add('health-error')
+      mpEl.textContent = 'Memory: critical (bodies disabled)'
+    }
+
+    // Show/hide entire section
+    const cbVisible = status.connected && cbState !== 'closed'
+    const mpVisible = status.connected && mpState !== 'normal'
+    healthSection.style.display = (cbVisible || mpVisible) ? '' : 'none'
+  }
+
   // Context annotation warning
   const contextWarningEl = document.getElementById('context-warning')
   const contextWarningTextEl = document.getElementById('context-warning-text')
@@ -78,7 +123,7 @@ export function updateConnectionStatus(status) {
 /**
  * Feature toggle configuration
  */
-const FEATURE_TOGGLES = [
+export const FEATURE_TOGGLES = [
   {
     id: 'toggle-websocket',
     storageKey: 'webSocketCaptureEnabled',
@@ -105,6 +150,12 @@ const FEATURE_TOGGLES = [
   },
   { id: 'toggle-screenshot', storageKey: 'screenshotOnError', messageType: 'setScreenshotOnError', default: false },
   { id: 'toggle-source-maps', storageKey: 'sourceMapEnabled', messageType: 'setSourceMapEnabled', default: false },
+  {
+    id: 'toggle-network-body-capture',
+    storageKey: 'networkBodyCaptureEnabled',
+    messageType: 'setNetworkBodyCaptureEnabled',
+    default: true,
+  },
   { id: 'toggle-debug-mode', storageKey: 'debugMode', messageType: 'setDebugMode', default: false },
 ]
 
@@ -375,14 +426,6 @@ export async function initPopup() {
       updateConnectionStatus(message.status)
     }
   })
-
-  // Ensure these elements exist for tests
-  const openLogLink = document.getElementById('open-log-file')
-  const optionsLink = document.getElementById('options-link')
-
-  // These are created by the HTML, just ensuring they're referenced
-  if (openLogLink) openLogLink // no-op
-  if (optionsLink) optionsLink // no-op
 }
 
 // Initialize when DOM is ready

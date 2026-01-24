@@ -23,7 +23,7 @@ import (
 const (
 	defaultPort       = 7890
 	defaultMaxEntries = 1000
-	version           = "3.5.0"
+	version           = "4.5.0"
 )
 
 // LogEntry represents a single log entry
@@ -65,15 +65,13 @@ type MCPTool struct {
 // MCPHandler handles MCP protocol messages
 type MCPHandler struct {
 	server      *Server
-	initialized bool
 	toolHandler *ToolHandler
 }
 
 // NewMCPHandler creates a new MCP handler
 func NewMCPHandler(server *Server) *MCPHandler {
 	return &MCPHandler{
-		server:      server,
-		initialized: false,
+		server: server,
 	}
 }
 
@@ -129,8 +127,6 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
-	h.initialized = true
-
 	result := MCPInitializeResult{
 		ProtocolVersion: "2024-11-05",
 		ServerInfo: MCPServerInfo{
@@ -408,6 +404,7 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	var body struct {
 		DataUrl   string `json:"dataUrl"`
 		URL       string `json:"url"`
@@ -797,6 +794,7 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 			})
 
 		case "POST":
+			r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 			var body struct {
 				Entries []LogEntry `json:"entries"`
 			}

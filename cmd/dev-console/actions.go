@@ -74,9 +74,10 @@ func (v *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 

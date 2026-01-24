@@ -6,21 +6,14 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
+import { createMockChrome } from './helpers.js'
 
 describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
   let messageHandler
   let mockChrome
 
   beforeEach(() => {
-    mockChrome = {
-      runtime: {
-        getURL: mock.fn((path) => `chrome-extension://abc123/${path}`),
-        sendMessage: mock.fn(),
-        onMessage: {
-          addListener: mock.fn(),
-        },
-      },
-    }
+    mockChrome = createMockChrome()
     globalThis.chrome = mockChrome
 
     // Capture the message handler that content.js registers

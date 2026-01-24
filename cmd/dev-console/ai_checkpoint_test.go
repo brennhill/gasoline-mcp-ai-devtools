@@ -1125,3 +1125,625 @@ func TestExtractURLPath(t *testing.T) {
 		}
 	}
 }
+
+// ============================================
+// Push Regression Notification Tests
+// ============================================
+
+// Helper: creates a PerformanceSnapshot and detects regressions against the current baseline.
+// Captures the baseline BEFORE adding the snapshot (simulating real-time detection).
+func addSnapshotAndDetect(cm *CheckpointManager, capture *Capture, snapshot PerformanceSnapshot) {
+	baseline, hasBaseline := capture.GetPerformanceBaseline(snapshot.URL)
+	capture.AddPerformanceSnapshot(snapshot)
+	if hasBaseline {
+		cm.DetectAndStoreAlerts(snapshot, baseline)
+	}
+}
+
+func floatPtr(v float64) *float64 {
+	return &v
+}
+
+// Helper: creates a baseline snapshot for a given URL and adds it to the capture.
+func addBaselineSnapshot(capture *Capture, url string, load float64, fcp *float64, lcp *float64, ttfb float64, transferSize int64, cls *float64) {
+	snapshot := PerformanceSnapshot{
+		URL:       url,
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load:                   load,
+			FirstContentfulPaint:   fcp,
+			LargestContentfulPaint: lcp,
+			TimeToFirstByte:        ttfb,
+			DomContentLoaded:       load * 0.8,
+			DomInteractive:         load * 0.6,
+		},
+		Network: NetworkSummary{TransferSize: transferSize, RequestCount: 10},
+		CLS:     cls,
+	}
+	capture.AddPerformanceSnapshot(snapshot)
+}
+
+// Test 1: Snapshot within threshold -> no alert generated
+func TestPushRegression_WithinThreshold_NoAlert(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Create baseline (first snapshot)
+	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, floatPtr(0.05))
+
+	// Add a second snapshot within threshold (15% regression, under 20%)
+	withinThreshold := PerformanceSnapshot{
+		URL:       "/dashboard",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load:                   1150,
+			FirstContentfulPaint:   floatPtr(575),
+			LargestContentfulPaint: floatPtr(920),
+			TimeToFirstByte:        230,
+			DomContentLoaded:       920,
+			DomInteractive:         690,
+		},
+		Network: NetworkSummary{TransferSize: 230000, RequestCount: 10},
+		CLS:     floatPtr(0.06),
+	}
+	addSnapshotAndDetect(cm, capture, withinThreshold)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	if resp.PerformanceAlerts != nil && len(resp.PerformanceAlerts) > 0 {
+		t.Errorf("Expected no performance alerts for within-threshold snapshot, got %d", len(resp.PerformanceAlerts))
+	}
+}
+
+// Test 2: Snapshot with load time 30% over baseline -> alert generated with correct delta
+func TestPushRegression_LoadTimeRegression_AlertGenerated(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	// Create baseline
+	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, floatPtr(0.05))
+
+	// Trigger regression: 30% load time increase (1000 -> 1300)
+	regressing := PerformanceSnapshot{
+		URL:       "/dashboard",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load:                   1300,
+			FirstContentfulPaint:   floatPtr(500),
+			LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte:        200,
+			DomContentLoaded:       1040,
+			DomInteractive:         780,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	if resp.PerformanceAlerts == nil || len(resp.PerformanceAlerts) == 0 {
+		t.Fatal("Expected performance alert for load time regression")
+	}
+
+	alert := resp.PerformanceAlerts[0]
+	if alert.Type != "regression" {
+		t.Errorf("Expected alert type 'regression', got '%s'", alert.Type)
+	}
+	if alert.URL != "/dashboard" {
+		t.Errorf("Expected alert URL '/dashboard', got '%s'", alert.URL)
+	}
+
+	loadMetric, ok := alert.Metrics["load"]
+	if !ok {
+		t.Fatal("Expected 'load' metric in alert")
+	}
+	if loadMetric.Baseline != 1000 {
+		t.Errorf("Expected baseline 1000, got %f", loadMetric.Baseline)
+	}
+	if loadMetric.Current != 1300 {
+		t.Errorf("Expected current 1300, got %f", loadMetric.Current)
+	}
+	if loadMetric.DeltaMs != 300 {
+		t.Errorf("Expected delta_ms 300, got %f", loadMetric.DeltaMs)
+	}
+	if loadMetric.DeltaPct < 29 || loadMetric.DeltaPct > 31 {
+		t.Errorf("Expected delta_pct ~30, got %f", loadMetric.DeltaPct)
+	}
+}
+
+// Test 3: Alert appears in get_changes_since JSON response
+func TestPushRegression_AlertInResponse(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	regressing := PerformanceSnapshot{
+		URL:       "/page",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1500, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 200, DomContentLoaded: 1200, DomInteractive: 900,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	respJSON, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(respJSON, &parsed); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := parsed["performance_alerts"]; !ok {
+		t.Error("Expected 'performance_alerts' key in response JSON")
+	}
+}
+
+// Test 4: Alert not repeated on subsequent auto-advancing call
+func TestPushRegression_AlertNotRepeated(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	regressing := PerformanceSnapshot{
+		URL:       "/dashboard",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1500, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 200, DomContentLoaded: 1200, DomInteractive: 900,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resp1 := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp1.PerformanceAlerts) == 0 {
+		t.Fatal("Expected alert on first call")
+	}
+
+	resp2 := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp2.PerformanceAlerts) > 0 {
+		t.Errorf("Expected no alerts on second call, got %d", len(resp2.PerformanceAlerts))
+	}
+}
+
+// Test 5: Multiple regressions on different URLs -> multiple alerts
+func TestPushRegression_MultipleAlerts(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/page-a", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+	addBaselineSnapshot(capture, "/page-b", 800, floatPtr(400), floatPtr(600), 150, 150000, nil)
+
+	snapshotA := PerformanceSnapshot{
+		URL:       "/page-a",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1500, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 200, DomContentLoaded: 1200, DomInteractive: 900,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+	}
+	snapshotB := PerformanceSnapshot{
+		URL:       "/page-b",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1400, FirstContentfulPaint: floatPtr(400), LargestContentfulPaint: floatPtr(600),
+			TimeToFirstByte: 150, DomContentLoaded: 1120, DomInteractive: 840,
+		},
+		Network: NetworkSummary{TransferSize: 150000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, snapshotA)
+	addSnapshotAndDetect(cm, capture, snapshotB)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp.PerformanceAlerts) < 2 {
+		t.Errorf("Expected at least 2 alerts, got %d", len(resp.PerformanceAlerts))
+	}
+}
+
+// Test 6: Max 10 pending alerts, oldest dropped
+func TestPushRegression_MaxAlertsCapped(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	for i := 0; i < 11; i++ {
+		url := fmt.Sprintf("/page-%d", i)
+		addBaselineSnapshot(capture, url, 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+	}
+
+	for i := 0; i < 11; i++ {
+		url := fmt.Sprintf("/page-%d", i)
+		snapshot := PerformanceSnapshot{
+			URL:       url,
+			Timestamp: time.Now().Format(time.RFC3339),
+			Timing: PerformanceTiming{
+				Load: 1500, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+				TimeToFirstByte: 200, DomContentLoaded: 1200, DomInteractive: 900,
+			},
+			Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+		}
+		addSnapshotAndDetect(cm, capture, snapshot)
+	}
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp.PerformanceAlerts) > 10 {
+		t.Errorf("Expected max 10 alerts, got %d", len(resp.PerformanceAlerts))
+	}
+
+	foundOldest := false
+	foundNewest := false
+	for _, alert := range resp.PerformanceAlerts {
+		if alert.URL == "/page-0" {
+			foundOldest = true
+		}
+		if alert.URL == "/page-10" {
+			foundNewest = true
+		}
+	}
+	if foundOldest {
+		t.Error("Expected oldest alert (page-0) to be dropped")
+	}
+	if !foundNewest {
+		t.Error("Expected newest alert (page-10) to be present")
+	}
+}
+
+// Test 7: Regression resolved by subsequent good snapshot
+func TestPushRegression_RegressionResolved(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	regressing := PerformanceSnapshot{
+		URL:       "/dashboard",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1500, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 200, DomContentLoaded: 1200, DomInteractive: 900,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resolved := PerformanceSnapshot{
+		URL:       "/dashboard",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1050, FirstContentfulPaint: floatPtr(520), LargestContentfulPaint: floatPtr(830),
+			TimeToFirstByte: 210, DomContentLoaded: 840, DomInteractive: 630,
+		},
+		Network: NetworkSummary{TransferSize: 210000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, resolved)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	for _, alert := range resp.PerformanceAlerts {
+		if alert.URL == "/dashboard" {
+			t.Error("Expected resolved regression alert to be cleared")
+		}
+	}
+}
+
+// Test 8: No baseline -> no alert
+func TestPushRegression_NoBaseline_NoAlert(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	snapshot := PerformanceSnapshot{
+		URL:       "/new-page",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 2000, FirstContentfulPaint: floatPtr(1000), LargestContentfulPaint: floatPtr(1500),
+			TimeToFirstByte: 500, DomContentLoaded: 1600, DomInteractive: 1200,
+		},
+		Network: NetworkSummary{TransferSize: 500000, RequestCount: 20},
+	}
+	addSnapshotAndDetect(cm, capture, snapshot)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp.PerformanceAlerts) > 0 {
+		t.Errorf("Expected no alerts for first snapshot (no baseline), got %d", len(resp.PerformanceAlerts))
+	}
+}
+
+// Test 9: Only regressed metrics included
+func TestPushRegression_OnlyRegressedMetrics(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	regressing := PerformanceSnapshot{
+		URL:       "/dashboard",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1300, FirstContentfulPaint: floatPtr(550), LargestContentfulPaint: floatPtr(880),
+			TimeToFirstByte: 220, DomContentLoaded: 1040, DomInteractive: 780,
+		},
+		Network: NetworkSummary{TransferSize: 220000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp.PerformanceAlerts) == 0 {
+		t.Fatal("Expected alert for load regression")
+	}
+
+	alert := resp.PerformanceAlerts[0]
+	if _, ok := alert.Metrics["load"]; !ok {
+		t.Error("Expected 'load' metric in alert")
+	}
+	if _, ok := alert.Metrics["fcp"]; ok {
+		t.Error("Expected 'fcp' metric to be omitted (within threshold)")
+	}
+	if _, ok := alert.Metrics["lcp"]; ok {
+		t.Error("Expected 'lcp' metric to be omitted (within threshold)")
+	}
+	if _, ok := alert.Metrics["ttfb"]; ok {
+		t.Error("Expected 'ttfb' metric to be omitted (within threshold)")
+	}
+	if _, ok := alert.Metrics["transfer_bytes"]; ok {
+		t.Error("Expected 'transfer_bytes' metric to be omitted (within threshold)")
+	}
+}
+
+// Test 10: Recommendation field is populated
+func TestPushRegression_RecommendationField(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	regressing := PerformanceSnapshot{
+		URL:       "/dashboard",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1500, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 200, DomContentLoaded: 1200, DomInteractive: 900,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp.PerformanceAlerts) == 0 {
+		t.Fatal("Expected alert")
+	}
+	if resp.PerformanceAlerts[0].Recommendation == "" {
+		t.Error("Expected non-empty recommendation")
+	}
+}
+
+// Test 11: Query from earlier named checkpoint includes alert
+func TestPushRegression_CheckpointTracking_Included(t *testing.T) {
+	cm, server, capture := setupCheckpointTest(t)
+
+	addLogEntries(server, LogEntry{"level": "info", "msg": "setup"})
+	cm.CreateCheckpoint("before")
+
+	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	regressing := PerformanceSnapshot{
+		URL:       "/page",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1500, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 200, DomContentLoaded: 1200, DomInteractive: 900,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{Checkpoint: "before"})
+	if len(resp.PerformanceAlerts) == 0 {
+		t.Error("Expected alert when querying from earlier checkpoint")
+	}
+}
+
+// Test 12: Query from checkpoint after alert -> not included
+func TestPushRegression_CheckpointTracking_NotIncluded(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	regressing := PerformanceSnapshot{
+		URL:       "/page",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1500, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 200, DomContentLoaded: 1200, DomInteractive: 900,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resp1 := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp1.PerformanceAlerts) == 0 {
+		t.Fatal("Expected alert on first call")
+	}
+
+	cm.CreateCheckpoint("after")
+
+	resp2 := cm.GetChangesSince(GetChangesSinceParams{Checkpoint: "after"})
+	if len(resp2.PerformanceAlerts) > 0 {
+		t.Errorf("Expected no alerts from checkpoint after alert, got %d", len(resp2.PerformanceAlerts))
+	}
+}
+
+// Test 13: CLS regression (absolute increase > 0.1) -> alert
+func TestPushRegression_CLSRegression(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, floatPtr(0.05))
+
+	regressing := PerformanceSnapshot{
+		URL:       "/page",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1000, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 200, DomContentLoaded: 800, DomInteractive: 600,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+		CLS:     floatPtr(0.2),
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp.PerformanceAlerts) == 0 {
+		t.Fatal("Expected alert for CLS regression")
+	}
+
+	clsMetric, ok := resp.PerformanceAlerts[0].Metrics["cls"]
+	if !ok {
+		t.Fatal("Expected 'cls' metric in alert")
+	}
+	if clsMetric.DeltaMs < 0.14 || clsMetric.DeltaMs > 0.16 {
+		t.Errorf("Expected CLS delta ~0.15, got %f", clsMetric.DeltaMs)
+	}
+}
+
+// Test 14: TTFB under 50% threshold -> no alert
+func TestPushRegression_TTFBUnderThreshold_NoAlert(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	regressing := PerformanceSnapshot{
+		URL:       "/page",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1000, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 290, DomContentLoaded: 800, DomInteractive: 600,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	for _, alert := range resp.PerformanceAlerts {
+		if _, ok := alert.Metrics["ttfb"]; ok {
+			t.Error("Expected no TTFB alert for under-50% regression")
+		}
+	}
+}
+
+// Test 15: Summary field populated
+func TestPushRegression_SummaryField(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	regressing := PerformanceSnapshot{
+		URL:       "/dashboard",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1500, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 200, DomContentLoaded: 1200, DomInteractive: 900,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp.PerformanceAlerts) == 0 {
+		t.Fatal("Expected alert")
+	}
+	if resp.PerformanceAlerts[0].Summary == "" {
+		t.Error("Expected non-empty alert summary")
+	}
+}
+
+// Test 16: Transfer size regression (>25%) -> alert
+func TestPushRegression_TransferSizeRegression(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	regressing := PerformanceSnapshot{
+		URL:       "/page",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1000, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 200, DomContentLoaded: 800, DomInteractive: 600,
+		},
+		Network: NetworkSummary{TransferSize: 260000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp.PerformanceAlerts) == 0 {
+		t.Fatal("Expected alert for transfer size regression")
+	}
+
+	transferMetric, ok := resp.PerformanceAlerts[0].Metrics["transfer_bytes"]
+	if !ok {
+		t.Fatal("Expected 'transfer_bytes' metric in alert")
+	}
+	if transferMetric.DeltaMs != 60000 {
+		t.Errorf("Expected transfer delta 60000, got %f", transferMetric.DeltaMs)
+	}
+}
+
+// Test 17: Concurrent access safety
+func TestPushRegression_ConcurrentAccess(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(2)
+		go func(idx int) {
+			defer wg.Done()
+			snapshot := PerformanceSnapshot{
+				URL:       "/page",
+				Timestamp: time.Now().Format(time.RFC3339),
+				Timing: PerformanceTiming{
+					Load: 1500, TimeToFirstByte: 200, DomContentLoaded: 1200, DomInteractive: 900,
+				},
+				Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+			}
+			baseline, hasBaseline := capture.GetPerformanceBaseline(snapshot.URL)
+			capture.AddPerformanceSnapshot(snapshot)
+			if hasBaseline {
+				cm.DetectAndStoreAlerts(snapshot, baseline)
+			}
+		}(i)
+		go func() {
+			defer wg.Done()
+			cm.GetChangesSince(GetChangesSinceParams{})
+		}()
+	}
+	wg.Wait()
+}
+
+// Test 18: DetectedAt timestamp is reasonable
+func TestPushRegression_DetectedAtTimestamp(t *testing.T) {
+	cm, _, capture := setupCheckpointTest(t)
+
+	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
+
+	before := time.Now()
+
+	regressing := PerformanceSnapshot{
+		URL:       "/page",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Timing: PerformanceTiming{
+			Load: 1500, FirstContentfulPaint: floatPtr(500), LargestContentfulPaint: floatPtr(800),
+			TimeToFirstByte: 200, DomContentLoaded: 1200, DomInteractive: 900,
+		},
+		Network: NetworkSummary{TransferSize: 200000, RequestCount: 10},
+	}
+	addSnapshotAndDetect(cm, capture, regressing)
+
+	after := time.Now()
+
+	resp := cm.GetChangesSince(GetChangesSinceParams{})
+	if len(resp.PerformanceAlerts) == 0 {
+		t.Fatal("Expected alert")
+	}
+
+	detectedAt, err := time.Parse(time.RFC3339Nano, resp.PerformanceAlerts[0].DetectedAt)
+	if err != nil {
+		t.Fatalf("Failed to parse DetectedAt: %v", err)
+	}
+	if detectedAt.Before(before) || detectedAt.After(after) {
+		t.Errorf("DetectedAt %v not between %v and %v", detectedAt, before, after)
+	}
+}

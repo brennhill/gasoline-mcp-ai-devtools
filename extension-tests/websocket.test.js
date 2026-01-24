@@ -6,44 +6,7 @@
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
-
-// Mock window and crypto for browser environment
-const createMockWindow = () => {
-  class MockWebSocket {
-    constructor(url, protocols) {
-      this.url = url
-      this.protocols = protocols
-      this.readyState = 0
-      this._listeners = {}
-    }
-    addEventListener(event, handler) {
-      if (!this._listeners[event]) this._listeners[event] = []
-      this._listeners[event].push(handler)
-    }
-    send(_data) {}
-    close(_code, _reason) {}
-    // Helper for tests to simulate events
-    _emit(event, data) {
-      if (this._listeners[event]) {
-        this._listeners[event].forEach((h) => h(data))
-      }
-    }
-  }
-  MockWebSocket.CONNECTING = 0
-  MockWebSocket.OPEN = 1
-  MockWebSocket.CLOSING = 2
-  MockWebSocket.CLOSED = 3
-
-  return {
-    postMessage: mock.fn(),
-    addEventListener: mock.fn(),
-    WebSocket: MockWebSocket,
-  }
-}
-
-const createMockCrypto = () => ({
-  randomUUID: mock.fn(() => 'test-uuid-' + Math.random().toString(36).slice(2)),
-})
+import { createMockWindow, createMockCrypto } from './helpers.js'
 
 let originalWindow, originalCrypto
 
@@ -51,7 +14,7 @@ describe('WebSocket Interception', () => {
   beforeEach(async () => {
     originalWindow = globalThis.window
     originalCrypto = globalThis.crypto
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ withWebSocket: true })
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
     // Force uninstall to reset module state in case a previous test crashed before cleanup
     const { setWebSocketCaptureMode, setWebSocketCaptureEnabled, uninstallWebSocketCapture } =
@@ -397,7 +360,7 @@ describe('Adaptive Sampling', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     originalCrypto = globalThis.crypto
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ withWebSocket: true })
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
   })
 
@@ -524,7 +487,7 @@ describe('Schema Detection', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     originalCrypto = globalThis.crypto
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ withWebSocket: true })
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
   })
 
@@ -619,7 +582,7 @@ describe('Binary Message Handling', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     originalCrypto = globalThis.crypto
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ withWebSocket: true })
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
   })
 
@@ -719,7 +682,7 @@ describe('WebSocket Message Truncation', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     originalCrypto = globalThis.crypto
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ withWebSocket: true })
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
   })
 
@@ -753,7 +716,7 @@ describe('Connection Stats', () => {
   beforeEach(() => {
     originalWindow = globalThis.window
     originalCrypto = globalThis.crypto
-    globalThis.window = createMockWindow()
+    globalThis.window = createMockWindow({ withWebSocket: true })
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
   })
 

@@ -145,30 +145,6 @@ func (v *Capture) SetQueryTimeout(timeout time.Duration) {
 	v.queryTimeout = timeout
 }
 
-// ============================================
-// Rate Limiting & Memory
-// ============================================
-
-// RecordEventReceived records an event for rate limiting
-func (v *Capture) RecordEventReceived() {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	now := time.Now()
-	if now.Sub(v.rateResetTime) > time.Second {
-		v.eventCount = 0
-		v.rateResetTime = now
-	}
-	v.eventCount++
-}
-
-// SetMemoryUsage sets simulated memory usage for testing
-func (v *Capture) SetMemoryUsage(bytes int64) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-	v.mem.simulatedMemory = bytes
-}
-
 func (v *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
 	queries := v.GetPendingQueries()
 	if queries == nil {
@@ -196,9 +172,10 @@ func (v *Capture) HandleA11yResult(w http.ResponseWriter, r *http.Request) {
 
 // handleQueryResult handles a query result POST (shared between DOM and A11y)
 func (v *Capture) handleQueryResult(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 

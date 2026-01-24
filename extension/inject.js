@@ -57,6 +57,15 @@ let originalPerformanceMeasure = null
 let performanceObserver = null
 let performanceCaptureActive = false
 
+// Network body capture state
+let networkBodyCaptureEnabled = true // Default: capture request/response bodies
+
+// Interception deferral state (Phase 1/Phase 2 split)
+let deferralEnabled = true // Default: defer heavy interceptors
+let phase2Installed = false // Whether Phase 2 (heavy interceptors) has fired
+let injectionTimestamp = 0 // performance.now() at Phase 1
+let phase2Timestamp = 0 // performance.now() at Phase 2
+
 /**
  * Safely serialize a value, handling circular references and special types
  */
@@ -1388,7 +1397,7 @@ export function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: '3.5.0',
+    version: '4.5.0',
   }
 }
 
@@ -1854,8 +1863,6 @@ const BODY_READ_TIMEOUT_MS = 5
 const SENSITIVE_HEADER_PATTERNS =
   /^(authorization|cookie|set-cookie|x-api-key|x-auth-token|x-secret|x-password|.*token.*|.*secret.*|.*key.*|.*password.*)$/i
 const BINARY_CONTENT_TYPES = /^(image|video|audio|font)\/|^application\/(wasm|octet-stream|zip|gzip|pdf)/
-const _TEXT_CONTENT_TYPES =
-  /^(text\/|application\/json|application\/xml|application\/javascript|application\/x-www-form-urlencoded)/
 
 /**
  * Check if a URL should be captured (not gasoline server or extension)
@@ -2013,7 +2020,7 @@ export function wrapFetchWithBodies(fetchFn) {
         const { body: truncResp } = truncateResponseBody(responseBody)
         const { body: truncReq } = truncateRequestBody(typeof requestBody === 'string' ? requestBody : null)
 
-        if (win) {
+        if (win && networkBodyCaptureEnabled) {
           win.postMessage(
             {
               type: 'GASOLINE_NETWORK_BODY',
@@ -3186,9 +3193,11 @@ let longTaskObserver = null
 let paintObserver = null
 let lcpObserver = null
 let clsObserver = null
+let inpObserver = null
 let fcpValue = null
 let lcpValue = null
 let clsValue = 0
+let inpValue = null
 
 /**
  * Map resource initiator types to standard categories
@@ -3262,6 +3271,7 @@ export function capturePerformanceSnapshot() {
     load: nav.loadEventEnd,
     firstContentfulPaint: getFCP(),
     largestContentfulPaint: getLCP(),
+    interactionToNextPaint: getINP(),
     timeToFirstByte: nav.responseStart - nav.requestStart,
     domInteractive: nav.domInteractive,
   }
@@ -3287,6 +3297,7 @@ export function installPerfObservers() {
   fcpValue = null
   lcpValue = null
   clsValue = 0
+  inpValue = null
 
   // Long task observer
   longTaskObserver = new PerformanceObserver((list) => {
@@ -3327,6 +3338,18 @@ export function installPerfObservers() {
     }
   })
   clsObserver.observe({ type: 'layout-shift' })
+
+  // INP observer (Interaction to Next Paint)
+  inpObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      if (entry.interactionId) {
+        if (inpValue === null || entry.duration > inpValue) {
+          inpValue = entry.duration
+        }
+      }
+    }
+  })
+  inpObserver.observe({ type: 'event', durationThreshold: 40 })
 }
 
 /**
@@ -3348,6 +3371,10 @@ export function uninstallPerfObservers() {
   if (clsObserver) {
     clsObserver.disconnect()
     clsObserver = null
+  }
+  if (inpObserver) {
+    inpObserver.disconnect()
+    inpObserver = null
   }
   longTaskEntries = []
 }
@@ -3391,6 +3418,13 @@ export function getLCP() {
  */
 export function getCLS() {
   return clsValue
+}
+
+/**
+ * Get Interaction to Next Paint value
+ */
+export function getINP() {
+  return inpValue
 }
 
 /**
@@ -3456,15 +3490,99 @@ if (typeof window !== 'undefined') {
         case 'setPerformanceSnapshotEnabled':
           setPerformanceSnapshotEnabled(event.data.enabled)
           break
+        case 'setDeferralEnabled':
+          setDeferralEnabled(event.data.enabled)
+          break
+        case 'setNetworkBodyCaptureEnabled':
+          networkBodyCaptureEnabled = event.data.enabled
+          break
       }
     }
   })
 }
 
+/**
+ * Phase 1 (Immediate): Lightweight, non-intercepting setup.
+ * - Registers window.__gasoline API
+ * - Sets up message listener (already done above)
+ * - Starts PerformanceObservers for paint timing and CLS
+ * - Records injection timestamp
+ * - Triggers Phase 2 based on deferral settings
+ */
+export function installPhase1() {
+  injectionTimestamp = performance.now()
+  phase2Installed = false
+  phase2Timestamp = 0
+
+  // Install the __gasoline API (lightweight, no interception)
+  installGasolineAPI()
+
+  // Start PerformanceObservers (passive observers, no prototype modification)
+  installPerfObservers()
+
+  // Now handle Phase 2 scheduling
+  if (!deferralEnabled) {
+    // Deferral disabled: install Phase 2 immediately
+    installPhase2()
+  } else {
+    const installDeferred = () => {
+      if (!phase2Installed) setTimeout(installPhase2, 100)
+    }
+    if (document.readyState === 'complete') {
+      // Page already loaded, defer by 100ms
+      installDeferred()
+    } else {
+      // Wait for load event, then defer by 100ms
+      window.addEventListener('load', installDeferred, { once: true })
+      // 10-second timeout fallback
+      setTimeout(() => { if (!phase2Installed) installPhase2() }, 10000)
+    }
+  }
+}
+
+/**
+ * Phase 2 (Deferred): Heavy interceptors.
+ * Installs console wrapping, fetch wrapping, WebSocket replacement,
+ * error handlers, action capture, and navigation capture.
+ */
+export function installPhase2() {
+  // Double-injection guard
+  if (phase2Installed) return
+
+  // Environment guard: ensure window/document still exist (protects against
+  // test teardown or edge cases where the environment is destroyed)
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+
+  phase2Timestamp = performance.now()
+  phase2Installed = true
+
+  // Install all heavy interceptors (console, fetch, WS, errors, actions, navigation)
+  install()
+}
+
+/**
+ * Get the current deferral state for diagnostics and testing.
+ */
+export function getDeferralState() {
+  return {
+    deferralEnabled,
+    phase2Installed,
+    injectionTimestamp,
+    phase2Timestamp,
+  }
+}
+
+/**
+ * Set whether interception deferral is enabled.
+ * When false, Phase 2 runs immediately (matching pre-deferral behavior).
+ */
+export function setDeferralEnabled(enabled) {
+  deferralEnabled = enabled
+}
+
 // Auto-install when loaded in browser
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-  install()
-  installGasolineAPI()
+  installPhase1()
 
   // Send performance snapshot after page load + 2s settling time
   window.addEventListener('load', () => {

@@ -846,7 +846,7 @@ func (nc *NoiseConfig) AutoDetect(consoleEntries []LogEntry, networkBodies []Net
 		urlCounts := make(map[string]int)
 		for _, body := range networkBodies {
 			// Extract path from URL
-			path := extractPath(body.URL)
+			path := extractURLPath(body.URL)
 			if path != "" {
 				urlCounts[path]++
 			}
@@ -959,24 +959,4 @@ func (nc *NoiseConfig) isURLCoveredLocked(path string) bool {
 		}
 	}
 	return false
-}
-
-// extractPath extracts the path portion from a URL string
-func extractPath(rawURL string) string {
-	// Simple extraction: find the path after the host
-	idx := strings.Index(rawURL, "://")
-	if idx < 0 {
-		return rawURL
-	}
-	rest := rawURL[idx+3:]
-	slashIdx := strings.Index(rest, "/")
-	if slashIdx < 0 {
-		return "/"
-	}
-	path := rest[slashIdx:]
-	// Remove query string
-	if qIdx := strings.Index(path, "?"); qIdx >= 0 {
-		path = path[:qIdx]
-	}
-	return path
 }
