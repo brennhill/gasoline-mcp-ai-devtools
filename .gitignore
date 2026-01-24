@@ -33,3 +33,4 @@ e2e-tests/playwright-report/
 
 # Claude Code local state (not instructions)
 .claude/sessions/
+coverage.out
