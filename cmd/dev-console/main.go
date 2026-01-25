@@ -745,6 +745,7 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 		http.HandleFunc("/pending-queries", corsMiddleware(capture.HandlePendingQueries))
 		http.HandleFunc("/dom-result", corsMiddleware(capture.HandleDOMResult))
 		http.HandleFunc("/a11y-result", corsMiddleware(capture.HandleA11yResult))
+		http.HandleFunc("/execute-result", corsMiddleware(capture.HandleExecuteResult))
 		http.HandleFunc("/enhanced-actions", corsMiddleware(capture.HandleEnhancedActions))
 		http.HandleFunc("/performance-snapshot", corsMiddleware(capture.HandlePerformanceSnapshot))
 	}

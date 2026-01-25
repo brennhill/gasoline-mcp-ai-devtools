@@ -2038,7 +2038,7 @@ export async function pollPendingQueries(serverUrl) {
  * @param {Object} query - { id, type, params }
  * @param {string} serverUrl - The server base URL
  */
-export async function handlePendingQuery(query, _serverUrl) {
+export async function handlePendingQuery(query, srvUrl) {
   try {
     const tabs = await new Promise((resolve) => {
       chrome.tabs.query({ active: true, currentWindow: true }, resolve)
@@ -2047,15 +2047,51 @@ export async function handlePendingQuery(query, _serverUrl) {
     if (!tabs || tabs.length === 0) return
 
     const tabId = tabs[0].id
-    const messageType = query.type === 'a11y' ? 'GASOLINE_A11Y_AUDIT' : 'GASOLINE_DOM_QUERY'
 
-    await chrome.tabs.sendMessage(tabId, {
+    // Determine message type based on query type
+    let messageType
+    if (query.type === 'a11y') {
+      messageType = 'GASOLINE_A11Y_AUDIT'
+    } else if (query.type === 'execute') {
+      messageType = 'GASOLINE_EXECUTE_QUERY'
+    } else {
+      messageType = 'GASOLINE_DOM_QUERY'
+    }
+
+    // For execute queries, check AI Web Pilot toggle first
+    if (query.type === 'execute') {
+      const enabled = await isAiWebPilotEnabled()
+      if (!enabled) {
+        // Post error result back to server
+        await postQueryResult(srvUrl, query.id, 'execute', {
+          success: false,
+          error: 'ai_web_pilot_disabled',
+          message: 'AI Web Pilot is not enabled in the extension popup',
+        })
+        return
+      }
+    }
+
+    // Send to content script and wait for result
+    const result = await chrome.tabs.sendMessage(tabId, {
       type: messageType,
       queryId: query.id,
       params: query.params,
     })
-  } catch {
-    // Tab communication failed
+
+    // For execute queries, post the result back to the server
+    if (query.type === 'execute' && result) {
+      await postQueryResult(srvUrl, query.id, 'execute', result)
+    }
+  } catch (err) {
+    // Tab communication failed - for execute queries, report error
+    if (query.type === 'execute') {
+      await postQueryResult(srvUrl, query.id, 'execute', {
+        success: false,
+        error: 'extension_error',
+        message: err.message || 'Tab communication failed',
+      })
+    }
   }
 }
 
@@ -2063,11 +2099,18 @@ export async function handlePendingQuery(query, _serverUrl) {
  * Post query results back to the server
  * @param {string} serverUrl - The server base URL
  * @param {string} queryId - The query ID
- * @param {string} type - Query type ('dom' or 'a11y')
+ * @param {string} type - Query type ('dom', 'a11y', or 'execute')
  * @param {Object} result - The query result
  */
 export async function postQueryResult(serverUrl, queryId, type, result) {
-  const endpoint = type === 'a11y' ? '/a11y-result' : '/dom-result'
+  let endpoint
+  if (type === 'a11y') {
+    endpoint = '/a11y-result'
+  } else if (type === 'execute') {
+    endpoint = '/execute-result'
+  } else {
+    endpoint = '/dom-result'
+  }
 
   await fetch(`${serverUrl}${endpoint}`, {
     method: 'POST',

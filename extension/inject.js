@@ -500,6 +500,140 @@ export function uninstallGasolineAPI() {
 }
 
 // =============================================================================
+// AI WEB PILOT: EXECUTE JAVASCRIPT
+// =============================================================================
+
+/**
+ * Safe serialization for complex objects returned from executeJavaScript.
+ * Handles circular references, DOM nodes, functions, and large objects.
+ * @param {any} value - Value to serialize
+ * @param {number} depth - Current recursion depth
+ * @param {WeakSet} seen - Set of already-seen objects for circular detection
+ * @returns {any} Serialized value
+ */
+export function safeSerializeForExecute(value, depth = 0, seen = new WeakSet()) {
+  if (depth > 10) return '[max depth exceeded]'
+  if (value === null) return null
+  if (value === undefined) return undefined
+
+  const type = typeof value
+  if (type === 'string' || type === 'number' || type === 'boolean') {
+    return value
+  }
+
+  if (type === 'function') {
+    return `[Function: ${value.name || 'anonymous'}]`
+  }
+
+  if (type === 'symbol') {
+    return value.toString()
+  }
+
+  if (type === 'object') {
+    if (seen.has(value)) return '[Circular]'
+    seen.add(value)
+
+    if (Array.isArray(value)) {
+      return value.slice(0, 100).map((v) => safeSerializeForExecute(v, depth + 1, seen))
+    }
+
+    if (value instanceof Error) {
+      return { error: value.message, stack: value.stack }
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString()
+    }
+
+    if (value instanceof RegExp) {
+      return value.toString()
+    }
+
+    // DOM nodes
+    if (typeof Node !== 'undefined' && value instanceof Node) {
+      return `[${value.nodeName}${value.id ? '#' + value.id : ''}]`
+    }
+
+    // Plain objects
+    const result = {}
+    const keys = Object.keys(value).slice(0, 50)
+    for (const key of keys) {
+      try {
+        result[key] = safeSerializeForExecute(value[key], depth + 1, seen)
+      } catch {
+        result[key] = '[unserializable]'
+      }
+    }
+    if (Object.keys(value).length > 50) {
+      result['...'] = `[${Object.keys(value).length - 50} more keys]`
+    }
+    return result
+  }
+
+  return String(value)
+}
+
+/**
+ * Execute arbitrary JavaScript in the page context with timeout handling.
+ * Used by the AI Web Pilot execute_javascript tool.
+ * @param {string} script - JavaScript expression to evaluate
+ * @param {number} timeoutMs - Timeout in milliseconds (default 5000)
+ * @returns {Promise<Object>} Result with success/result or error details
+ */
+export function executeJavaScript(script, timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      resolve({
+        success: false,
+        error: 'execution_timeout',
+        message: `Script exceeded ${timeoutMs}ms timeout`,
+      })
+    }, timeoutMs)
+
+    try {
+      // Use Function constructor to execute in global scope
+      // This runs in page context (inject.js), not extension context
+      const fn = new Function(`
+        "use strict";
+        return (${script});
+      `)
+
+      const result = fn()
+
+      // Handle promises - keep timeout active until promise settles
+      if (result && typeof result.then === 'function') {
+        result
+          .then((value) => {
+            clearTimeout(timeoutId)
+            resolve({ success: true, result: safeSerializeForExecute(value) })
+          })
+          .catch((err) => {
+            clearTimeout(timeoutId)
+            resolve({
+              success: false,
+              error: 'promise_rejected',
+              message: err.message,
+              stack: err.stack,
+            })
+          })
+      } else {
+        // Synchronous result - clear timeout immediately
+        clearTimeout(timeoutId)
+        resolve({ success: true, result: safeSerializeForExecute(result) })
+      }
+    } catch (err) {
+      clearTimeout(timeoutId)
+      resolve({
+        success: false,
+        error: 'execution_error',
+        message: err.message,
+        stack: err.stack,
+      })
+    }
+  })
+}
+
+// =============================================================================
 // LIFECYCLE & MEMORY
 // =============================================================================
 
@@ -581,6 +715,21 @@ if (typeof window !== 'undefined') {
           setNetworkBodyCaptureEnabled(event.data.enabled)
           break
       }
+    }
+
+    // Handle GASOLINE_EXECUTE_JS from content script
+    if (event.data?.type === 'GASOLINE_EXECUTE_JS') {
+      const { requestId, script, timeoutMs } = event.data
+      executeJavaScript(script, timeoutMs).then((result) => {
+        window.postMessage(
+          {
+            type: 'GASOLINE_EXECUTE_JS_RESULT',
+            requestId,
+            result,
+          },
+          '*',
+        )
+      })
     }
   })
 }
