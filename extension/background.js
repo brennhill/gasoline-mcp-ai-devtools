@@ -2040,6 +2040,12 @@ export async function pollPendingQueries(serverUrl) {
  */
 export async function handlePendingQuery(query, serverUrl) {
   try {
+    // Handle state management queries locally (in background script)
+    if (query.type.startsWith('state_')) {
+      await handleStateQuery(query, serverUrl)
+      return
+    }
+
     const tabs = await new Promise((resolve) => {
       chrome.tabs.query({ active: true, currentWindow: true }, resolve)
     })
@@ -2070,16 +2076,119 @@ export async function handlePendingQuery(query, serverUrl) {
 }
 
 /**
+ * Handle state management queries (save, load, list, delete).
+ * These queries manage browser state snapshots.
+ * @param {Object} query - { id, type, params }
+ * @param {string} serverUrl - The server base URL
+ */
+async function handleStateQuery(query, serverUrl) {
+  // Check if AI Web Pilot is enabled
+  const enabled = await isAiWebPilotEnabled()
+  if (!enabled) {
+    await postQueryResult(serverUrl, query.id, 'state', { error: 'ai_web_pilot_disabled' })
+    return
+  }
+
+  const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+  const action = params.action
+
+  try {
+    let result
+
+    switch (action) {
+      case 'save': {
+        // First capture state from the active tab
+        const tabs = await new Promise((resolve) => {
+          chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+        })
+
+        if (!tabs || tabs.length === 0) {
+          await postQueryResult(serverUrl, query.id, 'state', { error: 'no_active_tab' })
+          return
+        }
+
+        // Forward to content script to capture state
+        const captureResult = await chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'GASOLINE_MANAGE_STATE',
+          params: { action: 'capture' },
+        })
+
+        if (captureResult.error) {
+          await postQueryResult(serverUrl, query.id, 'state', { error: captureResult.error })
+          return
+        }
+
+        // Save the captured state
+        result = await saveStateSnapshot(params.name, captureResult)
+        break
+      }
+
+      case 'load': {
+        const snapshot = await loadStateSnapshot(params.name)
+        if (!snapshot) {
+          await postQueryResult(serverUrl, query.id, 'state', { error: `Snapshot '${params.name}' not found` })
+          return
+        }
+
+        // Forward to content script to restore state
+        const tabs = await new Promise((resolve) => {
+          chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+        })
+
+        if (!tabs || tabs.length === 0) {
+          await postQueryResult(serverUrl, query.id, 'state', { error: 'no_active_tab' })
+          return
+        }
+
+        const restoreResult = await chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'GASOLINE_MANAGE_STATE',
+          params: {
+            action: 'restore',
+            state: snapshot,
+            include_url: params.include_url !== false,
+          },
+        })
+
+        result = restoreResult
+        break
+      }
+
+      case 'list':
+        result = { snapshots: await listStateSnapshots() }
+        break
+
+      case 'delete':
+        result = await deleteStateSnapshot(params.name)
+        break
+
+      default:
+        result = { error: `Unknown action: ${action}` }
+    }
+
+    await postQueryResult(serverUrl, query.id, 'state', result)
+  } catch (err) {
+    await postQueryResult(serverUrl, query.id, 'state', { error: err.message })
+  }
+}
+
+/**
  * Post query results back to the server
  * @param {string} serverUrl - The server base URL
  * @param {string} queryId - The query ID
- * @param {string} type - Query type ('dom', 'a11y', or 'highlight')
+ * @param {string} type - Query type ('dom', 'a11y', 'highlight', or 'state')
  * @param {Object} result - The query result
  */
 export async function postQueryResult(serverUrl, queryId, type, result) {
-  // All query types use /dom-result endpoint for posting results
-  // The server uses the query ID to match results to pending queries
-  const endpoint = type === 'a11y' ? '/a11y-result' : '/dom-result'
+  let endpoint
+  if (type === 'a11y') {
+    endpoint = '/a11y-result'
+  } else if (type === 'state') {
+    endpoint = '/state-result'
+  } else if (type === 'highlight') {
+    endpoint = '/highlight-result'
+  } else {
+    endpoint = '/dom-result'
+  }
 
   await fetch(`${serverUrl}${endpoint}`, {
     method: 'POST',
@@ -2163,4 +2272,86 @@ export async function handlePilotCommand(command, params) {
   } catch (err) {
     return { error: err.message || 'command_failed' }
   }
+}
+
+// =============================================================================
+// AI WEB PILOT: STATE SNAPSHOT STORAGE
+// =============================================================================
+
+const SNAPSHOT_KEY = 'gasoline_state_snapshots'
+
+/**
+ * Save a state snapshot to chrome.storage.local.
+ * @param {string} name - Snapshot name
+ * @param {Object} state - State object from captureState()
+ * @returns {Promise<Object>} Result with success, snapshot_name, size_bytes
+ */
+export async function saveStateSnapshot(name, state) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      snapshots[name] = {
+        ...state,
+        name,
+        size_bytes: JSON.stringify(state).length,
+      }
+      chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
+        resolve({
+          success: true,
+          snapshot_name: name,
+          size_bytes: snapshots[name].size_bytes,
+        })
+      })
+    })
+  })
+}
+
+/**
+ * Load a state snapshot from chrome.storage.local.
+ * @param {string} name - Snapshot name
+ * @returns {Promise<Object|null>} Snapshot or null if not found
+ */
+export async function loadStateSnapshot(name) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      resolve(snapshots[name] || null)
+    })
+  })
+}
+
+/**
+ * List all state snapshots with metadata.
+ * @returns {Promise<Array>} Array of snapshot metadata objects
+ */
+export async function listStateSnapshots() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      const list = Object.values(snapshots).map((s) => ({
+        name: s.name,
+        url: s.url,
+        timestamp: s.timestamp,
+        size_bytes: s.size_bytes,
+      }))
+      resolve(list)
+    })
+  })
+}
+
+/**
+ * Delete a state snapshot from chrome.storage.local.
+ * @param {string} name - Snapshot name
+ * @returns {Promise<Object>} Result with success and deleted name
+ */
+export async function deleteStateSnapshot(name) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      delete snapshots[name]
+      chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
+        resolve({ success: true, deleted: name })
+      })
+    })
+  })
 }

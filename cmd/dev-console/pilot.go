@@ -1,12 +1,14 @@
 // pilot.go — AI Web Pilot feature handlers.
 // Implements highlight_element, manage_state, execute_javascript.
 // All features require human opt-in via extension popup.
-// Phase 1: Stubs only — returns "not enabled" until Phase 2 agents implement handlers.
+// Phase 2: Forwards commands to extension via pending queries.
 package main
 
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"time"
 )
 
 // ErrPilotDisabled returned when toggle is off
@@ -22,6 +24,7 @@ type PilotHighlightParams struct {
 type PilotManageStateParams struct {
 	Action       string `json:"action"`
 	SnapshotName string `json:"snapshot_name"`
+	IncludeUrl   *bool  `json:"include_url,omitempty"`
 }
 
 // PilotExecuteJSParams for execute_javascript tool
@@ -112,7 +115,7 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 }
 
 // handlePilotManageState handles the manage_state tool call.
-// Phase 1: Returns not enabled error until toggle and handlers are implemented.
+// Forwards state management commands to extension via pending queries.
 func (h *ToolHandler) handlePilotManageState(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params PilotManageStateParams
 	_ = json.Unmarshal(args, &params)
@@ -135,11 +138,77 @@ func (h *ToolHandler) handlePilotManageState(req JSONRPCRequest, args json.RawMe
 		}
 	}
 
-	// Phase 1: Always return not enabled error
+	// Validate snapshot_name for actions that require it
+	if (params.Action == "save" || params.Action == "load" || params.Action == "delete") && params.SnapshotName == "" {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse(fmt.Sprintf("snapshot_name required for %s action", params.Action)),
+		}
+	}
+
+	// Build query params
+	includeUrl := true
+	if params.IncludeUrl != nil {
+		includeUrl = *params.IncludeUrl
+	}
+
+	queryParams := map[string]any{
+		"action": params.Action,
+	}
+	if params.SnapshotName != "" {
+		queryParams["name"] = params.SnapshotName
+	}
+	if params.Action == "load" {
+		queryParams["include_url"] = includeUrl
+	}
+
+	// Determine query type based on action
+	queryType := "state_" + params.Action
+
+	// Send pilot command via pending query mechanism
+	queryParamsJSON, _ := json.Marshal(queryParams)
+	queryID := h.capture.CreatePendingQueryWithTimeout(PendingQuery{
+		Type:   queryType,
+		Params: queryParamsJSON,
+	}, 10*time.Second)
+
+	// Wait for result from extension
+	result, err := h.capture.WaitForResult(queryID, 10*time.Second)
+	if err != nil {
+		// Check if timeout due to pilot being disabled
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+		}
+	}
+
+	// Parse result
+	var stateResult map[string]any
+	if err := json.Unmarshal(result, &stateResult); err != nil {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse("Failed to parse state result"),
+		}
+	}
+
+	// Check for error in result
+	if errMsg, ok := stateResult["error"].(string); ok && errMsg != "" {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse(errMsg),
+		}
+	}
+
+	// Return success result
+	resultJSON, _ := json.MarshalIndent(stateResult, "", "  ")
 	return JSONRPCResponse{
 		JSONRPC: "2.0",
 		ID:      req.ID,
-		Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+		Result:  mcpTextResponse(string(resultJSON)),
 	}
 }
 

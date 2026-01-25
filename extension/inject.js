@@ -582,6 +582,36 @@ if (typeof window !== 'undefined') {
           break
       }
     }
+
+    // Handle state management commands from content script
+    if (event.data?.type === 'GASOLINE_STATE_COMMAND') {
+      const { messageId, action } = event.data
+      let result
+
+      try {
+        if (action === 'capture') {
+          result = captureState()
+        } else if (action === 'restore') {
+          const state = event.data.state
+          const includeUrl = event.data.include_url !== false
+          result = restoreState(state, includeUrl)
+        } else {
+          result = { error: `Unknown action: ${action}` }
+        }
+      } catch (err) {
+        result = { error: err.message }
+      }
+
+      // Send response back to content script
+      window.postMessage(
+        {
+          type: 'GASOLINE_STATE_RESPONSE',
+          messageId,
+          result,
+        },
+        '*',
+      )
+    }
   })
 }
 
@@ -773,6 +803,87 @@ if (typeof window !== 'undefined') {
       )
     }
   })
+}
+
+// ============================================================================
+// AI WEB PILOT: STATE MANAGEMENT
+// ============================================================================
+
+/**
+ * Capture browser state (localStorage, sessionStorage, cookies).
+ * Returns a snapshot that can be restored later.
+ * @returns {Object} State snapshot with url, timestamp, localStorage, sessionStorage, cookies
+ */
+export function captureState() {
+  const state = {
+    url: window.location.href,
+    timestamp: Date.now(),
+    localStorage: {},
+    sessionStorage: {},
+    cookies: document.cookie,
+  }
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    state.localStorage[key] = localStorage.getItem(key)
+  }
+
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i)
+    state.sessionStorage[key] = sessionStorage.getItem(key)
+  }
+
+  return state
+}
+
+/**
+ * Restore browser state from a snapshot.
+ * Clears existing state before restoring.
+ * @param {Object} state - State snapshot from captureState()
+ * @param {boolean} includeUrl - Whether to navigate to the saved URL (default true)
+ * @returns {Object} Result with success and restored counts
+ */
+export function restoreState(state, includeUrl = true) {
+  // Clear existing
+  localStorage.clear()
+  sessionStorage.clear()
+
+  // Restore localStorage
+  for (const [key, value] of Object.entries(state.localStorage || {})) {
+    localStorage.setItem(key, value)
+  }
+
+  // Restore sessionStorage
+  for (const [key, value] of Object.entries(state.sessionStorage || {})) {
+    sessionStorage.setItem(key, value)
+  }
+
+  // Restore cookies (clear then set)
+  document.cookie.split(';').forEach((c) => {
+    const name = c.split('=')[0].trim()
+    if (name) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+    }
+  })
+
+  if (state.cookies) {
+    state.cookies.split(';').forEach((c) => {
+      document.cookie = c.trim()
+    })
+  }
+
+  const restored = {
+    localStorage: Object.keys(state.localStorage || {}).length,
+    sessionStorage: Object.keys(state.sessionStorage || {}).length,
+    cookies: (state.cookies || '').split(';').filter((c) => c.trim()).length,
+  }
+
+  // Navigate if requested
+  if (includeUrl && state.url && state.url !== window.location.href) {
+    window.location.href = state.url
+  }
+
+  return { success: true, restored }
 }
 
 // Auto-install when loaded in browser
