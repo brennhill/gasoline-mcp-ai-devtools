@@ -8,6 +8,18 @@ Full specification: [v6-specification.md](v6-specification.md)
 
 ## Features
 
+### Phase 0: Autonomous Tab Control
+
+- [ ] **0. Tab Targeting (`tab_id` parameter)** — All AI Web Pilot tools accept optional `tab_id` to target specific tabs, enabling autonomous testing without requiring user to stay on the page
+  - Branch: `feature/tab-targeting`
+  - Status: Proposed
+  - Changes:
+    - Add `observe {what: "tabs"}` to list all tabs with IDs, URLs, titles
+    - Add `browser_action {action: "open", url: "..."}` to open new tab, returns `tab_id`
+    - Add optional `tab_id` param to: `execute_javascript`, `highlight_element`, `manage_state`, `browser_action`, `query_dom`
+    - Extension targets specified tab or falls back to active tab
+    - Enables: "Test example.com" workflow where AI opens tab, runs tests, user continues working elsewhere
+
 ### Phase 1: Analysis Layer
 
 - [ ] **1. Security Scanner (`security_audit`)** — Detect exposed credentials, missing auth, PII leaks, insecure transport, missing security headers (incl. CSP analysis), insecure cookies
