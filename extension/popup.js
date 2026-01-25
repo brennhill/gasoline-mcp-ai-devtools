@@ -203,6 +203,37 @@ export function handleFeatureToggle(storageKey, messageType, enabled) {
 }
 
 /**
+ * Initialize the AI Web Pilot toggle.
+ * Uses chrome.storage.sync for cross-device persistence.
+ */
+export async function initAiWebPilotToggle() {
+  const toggle = document.getElementById('aiWebPilotEnabled')
+  if (!toggle) return
+
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['aiWebPilotEnabled'], (result) => {
+      // Default to false (disabled) for safety
+      toggle.checked = result.aiWebPilotEnabled === true
+
+      // Set up change handler
+      toggle.addEventListener('change', () => {
+        handleAiWebPilotToggle(toggle.checked)
+      })
+
+      resolve()
+    })
+  })
+}
+
+/**
+ * Handle AI Web Pilot toggle change.
+ * Saves to chrome.storage.sync for cross-device persistence.
+ */
+export async function handleAiWebPilotToggle(enabled) {
+  chrome.storage.sync.set({ aiWebPilotEnabled: enabled })
+}
+
+/**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode) {
@@ -370,6 +401,9 @@ export async function initPopup() {
 
   // Initialize WebSocket mode selector
   await initWebSocketModeSelector()
+
+  // Initialize AI Web Pilot toggle
+  await initAiWebPilotToggle()
 
   // Show/hide WebSocket mode selector based on toggle
   const wsToggle = document.getElementById('toggle-websocket')

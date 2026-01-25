@@ -32,20 +32,24 @@ func TestCompositeToolsListReturnsAllTools(t *testing.T) {
 	}
 
 	expected := map[string]bool{
-		"observe":        true,
-		"analyze":        true,
-		"generate":       true,
-		"configure":      true,
-		"query_dom":      true,
+		"observe":              true,
+		"analyze":              true,
+		"generate":             true,
+		"configure":            true,
+		"query_dom":            true,
 		"generate_csp":         true,
 		"security_audit":       true,
 		"audit_third_parties":  true,
 		"diff_security":        true,
 		"get_audit_log":        true,
 		"diff_sessions":        true,
+		// AI Web Pilot tools (Phase 1 stubs)
+		"highlight_element":    true,
+		"manage_state":         true,
+		"execute_javascript":   true,
 	}
 
-	if len(result.Tools) != 11 {
+	if len(result.Tools) != 14 {
 		names := make([]string, len(result.Tools))
 		for i, tool := range result.Tools {
 			names[i] = tool.Name
@@ -1140,13 +1144,13 @@ func TestToolsListGoldenMatchesWithMeta(t *testing.T) {
 		JSONRPC: "2.0", ID: 2, Method: "tools/list",
 	})
 
-	// Verify it returns 11 tools with proper structure
+	// Verify it returns 14 tools with proper structure (11 core + 3 pilot stubs)
 	var result MCPToolsListResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("Failed to parse tools list: %v", err)
 	}
-	if len(result.Tools) != 11 {
-		t.Fatalf("Expected 11 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 14 {
+		t.Fatalf("Expected 14 tools, got %d", len(result.Tools))
 	}
 
 	// Verify _meta doesn't break standard MCPTool parsing

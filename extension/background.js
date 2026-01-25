@@ -2094,3 +2094,61 @@ export function stopQueryPolling() {
     queryPollingInterval = null
   }
 }
+
+// =============================================================================
+// AI WEB PILOT SAFETY GATE
+// =============================================================================
+
+/**
+ * Check if AI Web Pilot is enabled in the extension popup.
+ * Uses chrome.storage.sync for cross-device persistence.
+ * @returns {Promise<boolean>} True if AI Web Pilot is enabled
+ */
+export async function isAiWebPilotEnabled() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['aiWebPilotEnabled'], (result) => {
+      // Default to false (disabled) for safety
+      resolve(result.aiWebPilotEnabled === true)
+    })
+  })
+}
+
+/**
+ * Handle pilot commands (GASOLINE_HIGHLIGHT, GASOLINE_MANAGE_STATE, GASOLINE_EXECUTE_JS).
+ * Checks the AI Web Pilot toggle before forwarding to content scripts.
+ * @param {string} command - The pilot command type
+ * @param {Object} params - Command parameters
+ * @returns {Promise<Object>} Result or error response
+ */
+export async function handlePilotCommand(command, params) {
+  // Check if AI Web Pilot is enabled
+  const enabled = await isAiWebPilotEnabled()
+
+  if (!enabled) {
+    return { error: 'ai_web_pilot_disabled' }
+  }
+
+  // Phase 1: Stub - just acknowledge the command is accepted
+  // Phase 2 will implement actual forwarding to content scripts
+  try {
+    const tabs = await new Promise((resolve) => {
+      chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+    })
+
+    if (!tabs || tabs.length === 0) {
+      return { error: 'no_active_tab' }
+    }
+
+    const tabId = tabs[0].id
+
+    // Forward command to content script
+    const result = await chrome.tabs.sendMessage(tabId, {
+      type: command,
+      params,
+    })
+
+    return result || { success: true }
+  } catch (err) {
+    return { error: err.message || 'command_failed' }
+  }
+}
