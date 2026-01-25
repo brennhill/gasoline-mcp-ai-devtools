@@ -31,7 +31,8 @@ type PilotExecuteJSParams struct {
 }
 
 // handlePilotHighlight handles the highlight_element tool call.
-// Phase 1: Returns not enabled error until toggle and handlers are implemented.
+// Forwards highlight command to the browser extension via pending query mechanism.
+// The extension checks the AI Web Pilot toggle and executes if enabled.
 func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params PilotHighlightParams
 	_ = json.Unmarshal(args, &params)
@@ -45,12 +46,68 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 		}
 	}
 
-	// Phase 1: Always return not enabled error
-	// Phase 2 will check extension toggle and forward to content script
+	// Set default duration if not specified
+	if params.DurationMs <= 0 {
+		params.DurationMs = 5000
+	}
+
+	// Create pending query to send to extension
+	queryParams, _ := json.Marshal(map[string]interface{}{
+		"selector":    params.Selector,
+		"duration_ms": params.DurationMs,
+	})
+
+	id := h.capture.CreatePendingQuery(PendingQuery{
+		Type:   "highlight",
+		Params: queryParams,
+	})
+
+	// Wait for extension to execute and return result
+	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
+	if err != nil {
+		// Timeout or no extension connected — likely pilot not enabled
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+		}
+	}
+
+	// Parse the result to check for success/error
+	var highlightResult struct {
+		Success  bool   `json:"success"`
+		Error    string `json:"error,omitempty"`
+		Selector string `json:"selector,omitempty"`
+		Bounds   struct {
+			X      float64 `json:"x"`
+			Y      float64 `json:"y"`
+			Width  float64 `json:"width"`
+			Height float64 `json:"height"`
+		} `json:"bounds,omitempty"`
+	}
+
+	if err := json.Unmarshal(result, &highlightResult); err != nil {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse("Invalid response from extension"),
+		}
+	}
+
+	// Check for pilot disabled error from extension
+	if highlightResult.Error == "ai_web_pilot_disabled" {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+		}
+	}
+
+	// Return the result as JSON
 	return JSONRPCResponse{
 		JSONRPC: "2.0",
 		ID:      req.ID,
-		Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+		Result:  mcpTextResponse(string(result)),
 	}
 }
 
