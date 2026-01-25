@@ -20,6 +20,7 @@
 | 1.5 | Click a button/link | `observe {what: "actions"}` captures interaction | [ ] |
 | 1.6 | Check page info | `observe {what: "page"}` returns URL, title, viewport | [ ] |
 | 1.7 | Navigate to different page | Page info updates on next call | [ ] |
+| 1.8 | Enable "Screenshot on Error" in popup, trigger error | Screenshot captured in JSONL log | [ ] |
 
 ## Phase 2: Composite Tools
 

@@ -1114,6 +1114,17 @@ export async function captureScreenshot(tabId, relatedErrorId, errorType) {
     return { success: true, entry: screenshotEntry }
   } catch (error) {
     debugLog(DebugCategory.ERROR, 'Screenshot capture failed', { error: error.message })
+    // Log screenshot failure to server so it's visible in the JSONL log
+    const failureEntry = {
+      ts: new Date().toISOString(),
+      type: 'screenshot',
+      level: 'warning',
+      _screenshotFailed: true,
+      error: error.message,
+      trigger: relatedErrorId ? 'error' : 'manual',
+      relatedErrorId: relatedErrorId || undefined,
+    }
+    logBatcher.add(failureEntry)
     return { success: false, error: error.message }
   }
 }
