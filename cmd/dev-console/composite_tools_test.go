@@ -43,18 +43,19 @@ func TestCompositeToolsListReturnsAllTools(t *testing.T) {
 		"diff_security":        true,
 		"get_audit_log":        true,
 		"diff_sessions":        true,
-		// AI Web Pilot tools (Phase 1 stubs)
+		// AI Web Pilot tools
 		"highlight_element":    true,
 		"manage_state":         true,
 		"execute_javascript":   true,
+		"browser_action":       true,
 	}
 
-	if len(result.Tools) != 14 {
+	if len(result.Tools) != 15 {
 		names := make([]string, len(result.Tools))
 		for i, tool := range result.Tools {
 			names[i] = tool.Name
 		}
-		t.Fatalf("Expected exactly 11 tools, got %d: %v", len(result.Tools), names)
+		t.Fatalf("Expected exactly 15 tools, got %d: %v", len(result.Tools), names)
 	}
 
 	for _, tool := range result.Tools {
@@ -1144,13 +1145,13 @@ func TestToolsListGoldenMatchesWithMeta(t *testing.T) {
 		JSONRPC: "2.0", ID: 2, Method: "tools/list",
 	})
 
-	// Verify it returns 14 tools with proper structure (11 core + 3 pilot stubs)
+	// Verify it returns 15 tools with proper structure (11 core + 4 pilot tools)
 	var result MCPToolsListResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("Failed to parse tools list: %v", err)
 	}
-	if len(result.Tools) != 14 {
-		t.Fatalf("Expected 14 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 15 {
+		t.Fatalf("Expected 15 tools, got %d", len(result.Tools))
 	}
 
 	// Verify _meta doesn't break standard MCPTool parsing

@@ -258,8 +258,10 @@ func TestExecuteJavascriptSchema(t *testing.T) {
 	}
 }
 
-// TestPilotToolsReturnNotEnabledError tests that stub pilot tools return appropriate error.
-func TestPilotToolsReturnNotEnabledError(t *testing.T) {
+// TestPilotToolsReturnTimeoutWithoutExtension tests that pilot tools return timeout error when no extension is connected.
+// Note: The "ai_web_pilot_disabled" error is only returned when the extension explicitly reports it's disabled.
+// Timeout != disabled. We don't guess - the extension actively tells the server when the toggle is off.
+func TestPilotToolsReturnTimeoutWithoutExtension(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -269,19 +271,19 @@ func TestPilotToolsReturnNotEnabledError(t *testing.T) {
 		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// highlight_element and manage_state are still stubs, should return not enabled error
+	// Without an extension connected, pilot tools should timeout (not return "disabled")
 	tests := []struct {
 		name   string
 		tool   string
 		params string
 	}{
 		{
-			name:   "highlight_element returns not enabled error",
+			name:   "highlight_element returns timeout error",
 			tool:   "highlight_element",
 			params: `{"selector":".test","duration_ms":5000}`,
 		},
 		{
-			name:   "manage_state returns not enabled error",
+			name:   "manage_state returns timeout error",
 			tool:   "manage_state",
 			params: `{"action":"save","snapshot_name":"test"}`,
 		},
@@ -307,11 +309,11 @@ func TestPilotToolsReturnNotEnabledError(t *testing.T) {
 
 			responseText := result.Content[0].Text
 
-			// Should contain error about pilot not enabled
-			if !strings.Contains(responseText, "ai_web_pilot_disabled") &&
-				!strings.Contains(responseText, "AI Web Pilot") &&
-				!strings.Contains(responseText, "not enabled") {
-				t.Errorf("Expected pilot disabled error, got: %s", responseText)
+			// Should contain timeout error (NOT "ai_web_pilot_disabled" - that requires explicit extension response)
+			if !strings.Contains(responseText, "Timeout") &&
+				!strings.Contains(responseText, "timeout") &&
+				!strings.Contains(responseText, "extension") {
+				t.Errorf("Expected timeout error, got: %s", responseText)
 			}
 		})
 	}

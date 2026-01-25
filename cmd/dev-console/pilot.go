@@ -74,11 +74,11 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	// Wait for extension to execute and return result
 	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
 	if err != nil {
-		// Timeout or no extension connected — likely pilot not enabled
+		// Timeout - don't assume disabled, report accurately
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+			Result:  mcpErrorResponse("Timeout waiting for extension response. Check that the extension is connected and the page is focused."),
 		}
 	}
 
@@ -182,11 +182,11 @@ func (h *ToolHandler) handlePilotManageState(req JSONRPCRequest, args json.RawMe
 	// Wait for result from extension
 	result, err := h.capture.WaitForResult(queryID, 10*time.Second)
 	if err != nil {
-		// Check if timeout due to pilot being disabled
+		// Timeout - don't assume disabled, report accurately
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+			Result:  mcpErrorResponse("Timeout waiting for extension response. Check that the extension is connected and the page is focused."),
 		}
 	}
 
@@ -202,6 +202,14 @@ func (h *ToolHandler) handlePilotManageState(req JSONRPCRequest, args json.RawMe
 
 	// Check for error in result
 	if errMsg, ok := stateResult["error"].(string); ok && errMsg != "" {
+		// Check for pilot disabled error specifically
+		if errMsg == "ai_web_pilot_disabled" {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+			}
+		}
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -254,10 +262,11 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 	// Wait for the result from the extension
 	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
 	if err != nil {
+		// Timeout - don't assume disabled, report accurately
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Result:  mcpErrorResponse("Timeout waiting for script execution. Is the browser extension connected and AI Web Pilot enabled?"),
+			Result:  mcpErrorResponse("Timeout waiting for extension response. Check that the extension is connected and the page is focused."),
 		}
 	}
 
@@ -319,10 +328,11 @@ func (h *ToolHandler) handleBrowserAction(req JSONRPCRequest, args json.RawMessa
 	// Wait for result from extension
 	result, err := h.capture.WaitForResult(queryID, 10*time.Second)
 	if err != nil {
+		// Timeout - don't assume disabled, report accurately
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+			Result:  mcpErrorResponse("Timeout waiting for extension response. Check that the extension is connected and the page is focused."),
 		}
 	}
 
@@ -338,6 +348,14 @@ func (h *ToolHandler) handleBrowserAction(req JSONRPCRequest, args json.RawMessa
 
 	// Check for error in result
 	if errMsg, ok := actionResult["error"].(string); ok && errMsg != "" {
+		// Check for pilot disabled error specifically
+		if errMsg == "ai_web_pilot_disabled" {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+			}
+		}
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,

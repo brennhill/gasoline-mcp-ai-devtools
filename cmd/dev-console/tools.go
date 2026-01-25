@@ -832,7 +832,7 @@ func (h *ToolHandler) toolsList() []MCPTool {
 		},
 		{
 			Name:        "execute_javascript",
-			Description: "Execute JavaScript code in the page context. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+			Description: "Execute arbitrary JavaScript in the page context and return the result. Can access DOM, globals, and page state. SECURITY: Requires 'AI Web Pilot' toggle enabled. Only use for debugging on trusted pages.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{

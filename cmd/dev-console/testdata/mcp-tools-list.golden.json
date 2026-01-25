@@ -672,7 +672,7 @@
     },
     {
       "name": "execute_javascript",
-      "description": "Execute JavaScript code in the page context. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+      "description": "Execute arbitrary JavaScript in the page context and return the result. Can access DOM, globals, and page state. SECURITY: Requires 'AI Web Pilot' toggle enabled. Only use for debugging on trusted pages.",
       "inputSchema": {
         "properties": {
           "script": {
@@ -686,6 +686,32 @@
         },
         "required": [
           "script"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "browser_action",
+      "description": "Perform browser navigation actions: refresh the page, navigate to URL, go back, or go forward. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "Browser action to perform",
+            "enum": [
+              "refresh",
+              "navigate",
+              "back",
+              "forward"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "description": "URL to navigate to (required for 'navigate' action)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
         ],
         "type": "object"
       }

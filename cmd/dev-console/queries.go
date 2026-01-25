@@ -197,6 +197,11 @@ func (v *Capture) HandleExecuteResult(w http.ResponseWriter, r *http.Request) {
 	v.handleQueryResult(w, r)
 }
 
+// HandleHighlightResult handles POST /highlight-result (pilot highlight commands)
+func (v *Capture) HandleHighlightResult(w http.ResponseWriter, r *http.Request) {
+	v.handleQueryResult(w, r)
+}
+
 // handleQueryResult handles a query result POST (shared between DOM and A11y)
 func (v *Capture) handleQueryResult(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
