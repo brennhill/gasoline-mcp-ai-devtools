@@ -82,7 +82,7 @@ let pendingHighlightResolve = null
  * @param {Object} message - The GASOLINE_HIGHLIGHT message
  * @returns {Promise<Object>} Result from inject.js
  */
-export function forwardHighlightMessage(message) {
+function forwardHighlightMessage(message) {
   return new Promise((resolve) => {
     pendingHighlightResolve = resolve
 
