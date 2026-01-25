@@ -32,6 +32,13 @@ Specs: `docs/ai-first/tech-spec-persistent-memory.md`, `docs/ai-first/tech-spec-
 - [x] **Noise filtering** — Built-in heuristics + agent-configurable rules (`configure_noise`, `dismiss_noise`). Auto-detection from buffer frequency analysis. File: `ai_noise.go`.
 - [x] **API schema inference** — Auto-detect endpoints, request/response shapes, auth patterns from network traffic. The AI understands your API without documentation. File: `api_schema.go`. Spec: `docs/ai-first/tech-spec-api-schema.md`.
 
+### Suggestions from Gemini
+Feature Area,Current Standard (MCP Basics),"Gasoline ""Supercharged"" Future"
+Vision,See DOM / Accessibility Tree,Visual Screenshots + Network Logs + Console Errors
+Action,Click / Type,Inject State (Cookies) + Mock API Responses
+Output,"""I finished the task""","""Here is a Playwright test to prevent this bug from returning"""
+Memory,Stateless (Context window only),Semantic Cache (Remembering how to navigate your specific app)
+
 ## P2: Feedback Loop (AI learns from its own changes)
 
 The core thesis loop: AI changes code → Gasoline detects impact → AI adjusts.
@@ -129,6 +136,13 @@ Sequential (message naming cascades into test assertions):
 - [x] **Replace setInterval with chrome.alarms** — `setInterval` is unreliable in MV3 service workers. File: `background.js`.
 - [x] **Remove JS dead code** — Delete `_TEXT_CONTENT_TYPES`, no-op references in popup.js. Files: `inject.js`, `popup.js`.
 - [x] **Shared test infrastructure** — Extract `createMockWindow()`, `createMockChrome()`, `createMockDocument()` into `extension-tests/helpers.js`.
+
+## P4: Bi-Directional Actions (capture → interact)
+
+Gasoline is capture-only by design. These features break that rule intentionally — they let the AI act on the page, not just observe it. Useful for human verification and faster reproduction.
+
+- [ ] **Highlight element (`highlight_element`)** — Inject a red overlay on a DOM element so AI can point at things on screen. Helps human verify "this is the button I'm talking about." Extension injects `#gasoline-highlighter` div, positions via `getBoundingClientRect()`. MCP tool accepts selector + duration.
+- [ ] **Browser state snapshots (`manage_state`)** — Save/restore `localStorage`, `sessionStorage`, `document.cookie`. Lets AI checkpoint "cart full" state and restore it instantly instead of clicking through the flow again. MCP tool with `action: "save"|"load"|"list"` + `snapshot_name`.
 
 ## P5: Nice-to-have (someday, maybe)
 
