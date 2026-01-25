@@ -15,6 +15,8 @@ Gasoline is built for teams that can't afford data leaks. Every design decision 
 
 ## <i class="fas fa-shield-alt"></i> Automatic Credential Stripping
 
+<img src="/assets/images/sparky/features/sparky-shield-web.webp" alt="Sparky standing guard with a shield" style="float: left; width: 140px; margin: 0 20px 20px 0; border-radius: 6px;" />
+
 Network requests are sanitized **before they're ever written to disk**. The extension strips any header matching:
 
 ```

@@ -13,6 +13,8 @@ toc_sticky: true
 
 ## <i class="fas fa-fire"></i> 1. Ignite the Server
 
+<img src="/assets/images/sparky/features/sparky-fight-fire-web.webp" alt="Sparky firing up the server" style="float: right; width: 140px; margin: 0 0 20px 20px; border-radius: 6px;" />
+
 ```bash
 npx gasoline-mcp
 ```
@@ -22,6 +24,8 @@ You'll see: `[gasoline] v4.8.0 — HTTP on port 7890`
 Leave this burning. No global install — `npx` handles everything.
 
 ## <i class="fas fa-puzzle-piece"></i> 2. Install the Extension
+
+<img src="/assets/images/sparky/features/sparky-wave-web.webp" alt="Sparky waving from the toolbar" style="float: left; width: 140px; margin: 0 20px 20px 0; border-radius: 6px;" />
 
 Grab it from the [Chrome Web Store](https://chromewebstore.google.com) (search "Gasoline"). Click the icon in your toolbar — it should show **Connected**.
 
@@ -33,6 +37,8 @@ Grab it from the [Chrome Web Store](https://chromewebstore.google.com) (search "
 3. Click **Load unpacked** → select the `extension/` folder
 
 </details>
+
+<img src="/assets/images/sparky/features/sparky-presents-browser-web.webp" alt="Sparky presenting the connected browser" style="float: right; width: 140px; margin: 0 0 20px 20px; border-radius: 6px;" />
 
 ## <i class="fas fa-plug"></i> 3. Connect Your AI Tool
 

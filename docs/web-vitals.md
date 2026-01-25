@@ -21,6 +21,8 @@ Running Lighthouse manually is slow, requires context-switching, and only shows 
 
 ## <i class="fas fa-heartbeat"></i> What Gets Measured
 
+<img src="/assets/images/sparky/features/sparky-running-web.webp" alt="Sparky running for performance" style="float: right; width: 140px; margin: 0 0 20px 20px; border-radius: 6px;" />
+
 | Metric | What It Measures | Good | Poor |
 |--------|-----------------|------|------|
 | **FCP** | First Contentful Paint — time until first text/image renders | < 1.8s | ≥ 3.0s |

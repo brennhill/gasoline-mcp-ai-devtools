@@ -15,6 +15,8 @@ Other tools that give AI coding assistants access to browser state via MCP:
 
 ## <i class="fas fa-balance-scale"></i> Comparison Table
 
+<img src="/assets/images/sparky/features/sparky-thumbs-up-web.webp" alt="Sparky confidently giving a thumbs up" style="float: right; width: 140px; margin: 0 0 20px 20px; border-radius: 6px;" />
+
 | Tool | Architecture | Approach | Dependencies |
 |------|-------------|----------|--------------|
 | **Gasoline** | Extension + Go binary | Passive capture | None (single binary) |
@@ -25,6 +27,8 @@ Other tools that give AI coding assistants access to browser state via MCP:
 ## <i class="fas fa-not-equal"></i> Key Differences
 
 ### Vendor Neutral
+
+<img src="/assets/images/sparky/features/sparky-running-web.webp" alt="Sparky running freely" style="float: left; width: 140px; margin: 0 20px 20px 0; border-radius: 6px;" />
 
 Gasoline is independent and open-source. It works with **any** MCP-compatible AI tool — Claude Code, Cursor, Windsurf, Zed, Continue — without favoring any vendor.
 
