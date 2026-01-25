@@ -114,7 +114,33 @@ window.addEventListener('message', (event) => {
   }
 })
 
-// Listen for feature toggle messages from background
+// ============================================================================
+// AI WEB PILOT: EXECUTE JS REQUEST TRACKING
+// ============================================================================
+
+// Pending execute requests waiting for responses from inject.js
+const pendingExecuteRequests = new Map()
+let executeRequestId = 0
+
+// Listen for execute results from inject.js
+window.addEventListener('message', (event) => {
+  if (event.source !== window) return
+
+  if (event.data?.type === 'GASOLINE_EXECUTE_JS_RESULT') {
+    const { requestId, result } = event.data
+    const sendResponse = pendingExecuteRequests.get(requestId)
+    if (sendResponse) {
+      pendingExecuteRequests.delete(requestId)
+      sendResponse(result)
+    }
+  }
+})
+
+// ============================================================================
+// MESSAGE HANDLERS FROM BACKGROUND
+// ============================================================================
+
+// Listen for messages from background (feature toggles and pilot commands)
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (TOGGLE_MESSAGES.has(message.type)) {
     const payload = { type: 'GASOLINE_SETTING', setting: message.type }
@@ -140,6 +166,62 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((result) => sendResponse(result))
       .catch((err) => sendResponse({ error: err.message }))
     return true // Keep channel open for async response
+  }
+
+  // Handle GASOLINE_EXECUTE_JS from background (direct pilot command)
+  if (message.type === 'GASOLINE_EXECUTE_JS') {
+    const requestId = ++executeRequestId
+    const params = message.params || {}
+
+    // Store the sendResponse callback for when we get the result
+    pendingExecuteRequests.set(requestId, sendResponse)
+
+    // Forward to inject.js via postMessage
+    window.postMessage(
+      {
+        type: 'GASOLINE_EXECUTE_JS',
+        requestId,
+        script: params.script,
+        timeoutMs: params.timeout_ms || 5000,
+      },
+      '*',
+    )
+
+    // Return true to indicate we'll respond asynchronously
+    return true
+  }
+
+  // Handle GASOLINE_EXECUTE_QUERY from background (polling system)
+  if (message.type === 'GASOLINE_EXECUTE_QUERY') {
+    const requestId = ++executeRequestId
+    const params = message.params || {}
+
+    // Parse params if it's a string (from JSON)
+    let parsedParams = params
+    if (typeof params === 'string') {
+      try {
+        parsedParams = JSON.parse(params)
+      } catch {
+        parsedParams = {}
+      }
+    }
+
+    // Store the sendResponse callback for when we get the result
+    pendingExecuteRequests.set(requestId, sendResponse)
+
+    // Forward to inject.js via postMessage
+    window.postMessage(
+      {
+        type: 'GASOLINE_EXECUTE_JS',
+        requestId,
+        script: parsedParams.script,
+        timeoutMs: parsedParams.timeout_ms || 5000,
+      },
+      '*',
+    )
+
+    // Return true to indicate we'll respond asynchronously
+    return true
   }
 })
 

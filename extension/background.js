@@ -2063,15 +2063,50 @@ export async function handlePendingQuery(query, serverUrl) {
       return
     }
 
-    const messageType = query.type === 'a11y' ? 'GASOLINE_A11Y_AUDIT' : 'GASOLINE_DOM_QUERY'
+    // Determine message type based on query type
+    let messageType
+    if (query.type === 'a11y') {
+      messageType = 'GASOLINE_A11Y_AUDIT'
+    } else if (query.type === 'execute') {
+      messageType = 'GASOLINE_EXECUTE_QUERY'
+    } else {
+      messageType = 'GASOLINE_DOM_QUERY'
+    }
 
-    await chrome.tabs.sendMessage(tabId, {
+    // For execute queries, check AI Web Pilot toggle first
+    if (query.type === 'execute') {
+      const enabled = await isAiWebPilotEnabled()
+      if (!enabled) {
+        // Post error result back to server
+        await postQueryResult(serverUrl, query.id, 'execute', {
+          success: false,
+          error: 'ai_web_pilot_disabled',
+          message: 'AI Web Pilot is not enabled in the extension popup',
+        })
+        return
+      }
+    }
+
+    // Send to content script and wait for result
+    const result = await chrome.tabs.sendMessage(tabId, {
       type: messageType,
       queryId: query.id,
       params: query.params,
     })
-  } catch {
-    // Tab communication failed
+
+    // For execute queries, post the result back to the server
+    if (query.type === 'execute' && result) {
+      await postQueryResult(serverUrl, query.id, 'execute', result)
+    }
+  } catch (err) {
+    // Tab communication failed - for execute queries, report error
+    if (query.type === 'execute') {
+      await postQueryResult(serverUrl, query.id, 'execute', {
+        success: false,
+        error: 'extension_error',
+        message: err.message || 'Tab communication failed',
+      })
+    }
   }
 }
 
@@ -2175,7 +2210,7 @@ async function handleStateQuery(query, serverUrl) {
  * Post query results back to the server
  * @param {string} serverUrl - The server base URL
  * @param {string} queryId - The query ID
- * @param {string} type - Query type ('dom', 'a11y', 'highlight', or 'state')
+ * @param {string} type - Query type ('dom', 'a11y', 'highlight', 'state', or 'execute')
  * @param {Object} result - The query result
  */
 export async function postQueryResult(serverUrl, queryId, type, result) {
@@ -2186,6 +2221,8 @@ export async function postQueryResult(serverUrl, queryId, type, result) {
     endpoint = '/state-result'
   } else if (type === 'highlight') {
     endpoint = '/highlight-result'
+  } else if (type === 'execute') {
+    endpoint = '/execute-result'
   } else {
     endpoint = '/dom-result'
   }

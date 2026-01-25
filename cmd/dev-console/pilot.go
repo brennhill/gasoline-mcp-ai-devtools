@@ -213,7 +213,7 @@ func (h *ToolHandler) handlePilotManageState(req JSONRPCRequest, args json.RawMe
 }
 
 // handlePilotExecuteJS handles the execute_javascript tool call.
-// Phase 1: Returns not enabled error until toggle and handlers are implemented.
+// Creates a pending query for the extension to pick up and execute.
 func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params PilotExecuteJSParams
 	_ = json.Unmarshal(args, &params)
@@ -227,11 +227,37 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 		}
 	}
 
-	// Phase 1: Always return not enabled error
-	// Phase 2 will check extension toggle and execute in sandboxed context
+	// Set default timeout
+	timeoutMs := params.TimeoutMs
+	if timeoutMs <= 0 {
+		timeoutMs = 5000
+	}
+
+	// Create a pending query for the extension to execute
+	queryParams := map[string]interface{}{
+		"script":     params.Script,
+		"timeout_ms": timeoutMs,
+	}
+	paramsJSON, _ := json.Marshal(queryParams)
+
+	id := h.capture.CreatePendingQuery(PendingQuery{
+		Type:   "execute",
+		Params: paramsJSON,
+	})
+
+	// Wait for the result from the extension
+	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
+	if err != nil {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse("Timeout waiting for script execution. Is the browser extension connected and AI Web Pilot enabled?"),
+		}
+	}
+
 	return JSONRPCResponse{
 		JSONRPC: "2.0",
 		ID:      req.ID,
-		Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+		Result:  mcpTextResponse(string(result)),
 	}
 }

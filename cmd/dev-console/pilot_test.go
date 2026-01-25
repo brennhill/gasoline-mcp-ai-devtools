@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestPilotToolSchemaExists verifies that pilot tool schemas are registered.
@@ -257,7 +258,7 @@ func TestExecuteJavascriptSchema(t *testing.T) {
 	}
 }
 
-// TestPilotToolsReturnNotEnabledError tests that pilot tools return appropriate error.
+// TestPilotToolsReturnNotEnabledError tests that stub pilot tools return appropriate error.
 func TestPilotToolsReturnNotEnabledError(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -268,6 +269,7 @@ func TestPilotToolsReturnNotEnabledError(t *testing.T) {
 		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
+	// highlight_element and manage_state are still stubs, should return not enabled error
 	tests := []struct {
 		name   string
 		tool   string
@@ -282,11 +284,6 @@ func TestPilotToolsReturnNotEnabledError(t *testing.T) {
 			name:   "manage_state returns not enabled error",
 			tool:   "manage_state",
 			params: `{"action":"save","snapshot_name":"test"}`,
-		},
-		{
-			name:   "execute_javascript returns not enabled error",
-			tool:   "execute_javascript",
-			params: `{"script":"return 1","timeout_ms":5000}`,
 		},
 	}
 
@@ -317,6 +314,45 @@ func TestPilotToolsReturnNotEnabledError(t *testing.T) {
 				t.Errorf("Expected pilot disabled error, got: %s", responseText)
 			}
 		})
+	}
+}
+
+// TestExecuteJavaScriptTimeout tests that execute_javascript returns timeout error when no extension.
+func TestExecuteJavaScriptTimeout(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	// Set a short timeout for testing
+	capture.SetQueryTimeout(100 * time.Millisecond)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      3,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"execute_javascript","arguments":{"script":"return 1","timeout_ms":100}}`),
+	})
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	if len(result.Content) == 0 {
+		t.Fatal("Expected content in response")
+	}
+
+	responseText := result.Content[0].Text
+
+	// Should contain timeout error when no extension connected
+	if !strings.Contains(responseText, "Timeout") &&
+		!strings.Contains(responseText, "timeout") &&
+		!strings.Contains(responseText, "AI Web Pilot") {
+		t.Errorf("Expected timeout or connection error, got: %s", responseText)
 	}
 }
 
