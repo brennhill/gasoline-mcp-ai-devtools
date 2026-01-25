@@ -22,6 +22,7 @@ One command. Your AI agent can see your browser.
 npx gasoline-mcp
 ```
 
+
 Gasoline is a **browser extension + local MCP server** that streams real-time browser data to autonomous coding agents. Console errors, failed API calls, uncaught exceptions, WebSocket traffic, live DOM state — your AI sees it all and fixes issues without you lifting a finger.
 
 ## Smart Teams Cook With Gasoline
