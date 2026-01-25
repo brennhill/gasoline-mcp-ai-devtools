@@ -28,6 +28,14 @@ func (v *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	v.wsTotalAdded += int64(len(events))
 	now := time.Now()
 	for i := range events {
+		// Detect binary format in message data
+		if events[i].Event == "message" && events[i].BinaryFormat == "" && len(events[i].Data) > 0 {
+			if format := DetectBinaryFormat([]byte(events[i].Data)); format != nil {
+				events[i].BinaryFormat = format.Name
+				events[i].FormatConfidence = format.Confidence
+			}
+		}
+
 		// Track connection state
 		v.trackConnection(events[i])
 
