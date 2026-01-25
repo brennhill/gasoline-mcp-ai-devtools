@@ -593,10 +593,23 @@ export function executeJavaScript(script, timeoutMs = 5000) {
     try {
       // Use Function constructor to execute in global scope
       // This runs in page context (inject.js), not extension context
-      const fn = new Function(`
-        "use strict";
-        return (${script});
-      `)
+      let cleanScript = script.trim()
+
+      // Detect if this is a multi-statement script (contains semicolons or already has return)
+      const hasMultipleStatements = cleanScript.includes(';')
+      const hasExplicitReturn = /\breturn\b/.test(cleanScript)
+
+      let fnBody
+      if (hasMultipleStatements || hasExplicitReturn) {
+        // Multi-statement or explicit return: use script as-is
+        // User must provide their own return statement
+        fnBody = `"use strict"; ${cleanScript}`
+      } else {
+        // Single expression: wrap in return
+        fnBody = `"use strict"; return (${cleanScript});`
+      }
+
+      const fn = new Function(fnBody)
 
       const result = fn()
 
@@ -623,12 +636,23 @@ export function executeJavaScript(script, timeoutMs = 5000) {
       }
     } catch (err) {
       clearTimeout(timeoutId)
-      resolve({
-        success: false,
-        error: 'execution_error',
-        message: err.message,
-        stack: err.stack,
-      })
+
+      // Detect CSP blocking eval
+      if (err.message && (err.message.includes('Content Security Policy') || err.message.includes('unsafe-eval'))) {
+        resolve({
+          success: false,
+          error: 'csp_blocked',
+          message: 'This page has a Content Security Policy that blocks script execution. Try on a different page (e.g., localhost, about:blank, or a page without strict CSP).',
+          original_error: err.message,
+        })
+      } else {
+        resolve({
+          success: false,
+          error: 'execution_error',
+          message: err.message,
+          stack: err.stack,
+        })
+      }
     }
   })
 }

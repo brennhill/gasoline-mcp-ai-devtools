@@ -13,6 +13,9 @@
 const DEFAULT_SERVER_URL = 'http://localhost:7890'
 let serverUrl = DEFAULT_SERVER_URL
 const RECONNECT_INTERVAL = 5000 // 5 seconds
+
+// Startup verification (always logs, regardless of debug mode)
+console.log('[Gasoline] Background service worker loaded');
 const DEFAULT_DEBOUNCE_MS = 100
 const DEFAULT_MAX_BATCH_SIZE = 50
 
@@ -1957,6 +1960,11 @@ async function checkConnectionAndUpdate() {
     if (overrides !== null) {
       applyCaptureOverrides(overrides)
     }
+    // Start polling for pending queries (execute_javascript, highlight, etc.)
+    startQueryPolling(serverUrl)
+  } else {
+    // Stop polling when disconnected
+    stopQueryPolling()
   }
 
   // Notify popup if open
@@ -2020,16 +2028,65 @@ let queryPollingInterval = null
 export async function pollPendingQueries(serverUrl) {
   try {
     const response = await fetch(`${serverUrl}/pending-queries`)
-    if (!response.ok) return
+    if (!response.ok) {
+      debugLog(DebugCategory.CONNECTION, 'Poll pending-queries failed', { status: response.status })
+      return
+    }
 
     const data = await response.json()
     if (!data.queries || data.queries.length === 0) return
 
+    debugLog(DebugCategory.CONNECTION, 'Got pending queries', { count: data.queries.length })
     for (const query of data.queries) {
       await handlePendingQuery(query, serverUrl)
     }
-  } catch {
-    // Server unavailable, silently ignore
+  } catch (err) {
+    debugLog(DebugCategory.CONNECTION, 'Poll pending-queries error', { error: err.message })
+  }
+}
+
+/**
+ * Handle browser action commands (refresh, navigate, go back/forward).
+ * These run in the background script and don't require content scripts.
+ * @param {number} tabId - The tab ID to act on
+ * @param {Object} params - { action, url? }
+ * @returns {Promise<Object>} Result with success/error
+ */
+async function handleBrowserAction(tabId, params) {
+  const { action, url } = params || {}
+
+  // Check AI Web Pilot toggle for safety
+  const enabled = await isAiWebPilotEnabled()
+  if (!enabled) {
+    return { success: false, error: 'ai_web_pilot_disabled', message: 'AI Web Pilot is not enabled' }
+  }
+
+  try {
+    switch (action) {
+      case 'refresh':
+        await chrome.tabs.reload(tabId)
+        return { success: true, action: 'refresh' }
+
+      case 'navigate':
+        if (!url) {
+          return { success: false, error: 'missing_url', message: 'URL required for navigate action' }
+        }
+        await chrome.tabs.update(tabId, { url })
+        return { success: true, action: 'navigate', url }
+
+      case 'back':
+        await chrome.tabs.goBack(tabId)
+        return { success: true, action: 'back' }
+
+      case 'forward':
+        await chrome.tabs.goForward(tabId)
+        return { success: true, action: 'forward' }
+
+      default:
+        return { success: false, error: 'unknown_action', message: `Unknown action: ${action}` }
+    }
+  } catch (err) {
+    return { success: false, error: 'browser_action_failed', message: err.message }
   }
 }
 
@@ -2053,6 +2110,14 @@ export async function handlePendingQuery(query, serverUrl) {
     if (!tabs || tabs.length === 0) return
 
     const tabId = tabs[0].id
+
+    // Handle browser action queries (refresh, navigate, etc.)
+    if (query.type === 'browser_action') {
+      const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      const result = await handleBrowserAction(tabId, params)
+      await postQueryResult(serverUrl, query.id, 'browser_action', result)
+      return
+    }
 
     // Handle highlight queries via the pilot command system
     if (query.type === 'highlight') {
@@ -2101,10 +2166,15 @@ export async function handlePendingQuery(query, serverUrl) {
   } catch (err) {
     // Tab communication failed - for execute queries, report error
     if (query.type === 'execute') {
+      // Provide helpful error message for common issues
+      let message = err.message || 'Tab communication failed'
+      if (message.includes('Receiving end does not exist')) {
+        message = 'Content script not loaded. Please refresh the page to enable AI Web Pilot.'
+      }
       await postQueryResult(serverUrl, query.id, 'execute', {
         success: false,
-        error: 'extension_error',
-        message: err.message || 'Tab communication failed',
+        error: 'content_script_not_loaded',
+        message,
       })
     }
   }
@@ -2240,6 +2310,7 @@ export async function postQueryResult(serverUrl, queryId, type, result) {
  */
 export function startQueryPolling(serverUrl) {
   stopQueryPolling()
+  debugLog(DebugCategory.CONNECTION, 'Starting query polling', { serverUrl })
   queryPollingInterval = setInterval(() => pollPendingQueries(serverUrl), 1000)
 }
 

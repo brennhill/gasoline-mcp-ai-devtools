@@ -436,6 +436,9 @@ type Capture struct {
 	// Query timeout
 	queryTimeout time.Duration
 
+	// Extension polling tracking
+	lastPollAt time.Time // When extension last polled /pending-queries
+
 	// Composed sub-structs
 	a11y        A11yCache
 	perf        PerformanceStore

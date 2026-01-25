@@ -848,6 +848,25 @@ func (h *ToolHandler) toolsList() []MCPTool {
 				"required": []string{"script"},
 			},
 		},
+		{
+			Name:        "browser_action",
+			Description: "Perform browser navigation actions: refresh the page, navigate to URL, go back, or go forward. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "Browser action to perform",
+						"enum":        []string{"refresh", "navigate", "back", "forward"},
+					},
+					"url": map[string]interface{}{
+						"type":        "string",
+						"description": "URL to navigate to (required for 'navigate' action)",
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
 	}
 }
 
@@ -883,6 +902,8 @@ func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.
 		return h.handlePilotManageState(req, args), true
 	case "execute_javascript":
 		return h.handlePilotExecuteJS(req, args), true
+	case "browser_action":
+		return h.handleBrowserAction(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }

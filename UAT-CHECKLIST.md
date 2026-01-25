@@ -101,12 +101,23 @@
 | 4B.25 | Runtime error: `return undefined.foo` | Returns error with message | [ ] |
 | 4B.26 | No return value: `console.log('test')` | Returns `{result: undefined}` or success | [ ] |
 
+### browser_action Tool
+| # | Tool Call | Expected | Pass |
+|---|-----------|----------|------|
+| 4B.27 | `browser_action {action: "refresh"}` | Page reloads, returns success | [ ] |
+| 4B.28 | `browser_action {action: "navigate", url: "https://example.com"}` | Navigates to URL, returns success | [ ] |
+| 4B.29 | `browser_action {action: "back"}` | Goes back in history | [ ] |
+| 4B.30 | `browser_action {action: "forward"}` | Goes forward in history | [ ] |
+| 4B.31 | `browser_action {action: "navigate"}` (no URL) | Returns error: URL required | [ ] |
+| 4B.32 | `browser_action` with toggle OFF | Returns `ai_web_pilot_disabled` error | [ ] |
+
 ### Integration Workflow
 | # | Workflow | Expected | Pass |
 |---|----------|----------|------|
-| 4B.27 | Highlight → Execute to read value → Verify | AI can see what it's about to interact with | [ ] |
-| 4B.28 | Save state → Execute to modify DOM → Restore | State rollback works after AI changes | [ ] |
-| 4B.29 | Disable toggle mid-session → Call tool | Immediately returns disabled error | [ ] |
+| 4B.33 | Highlight → Execute to read value → Verify | AI can see what it's about to interact with | [ ] |
+| 4B.34 | Save state → Execute to modify DOM → Restore | State rollback works after AI changes | [ ] |
+| 4B.35 | Disable toggle mid-session → Call tool | Immediately returns disabled error | [ ] |
+| 4B.36 | Navigate → Wait → Check page title changed | browser_action + execute_javascript work together | [ ] |
 
 ## Phase 5: Edge Cases & Resilience
 

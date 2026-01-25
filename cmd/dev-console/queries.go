@@ -119,6 +119,13 @@ func (v *Capture) GetQueryResult(id string) (json.RawMessage, bool) {
 	return result, found
 }
 
+// GetLastPollAt returns when the extension last polled /pending-queries
+func (v *Capture) GetLastPollAt() time.Time {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return v.lastPollAt
+}
+
 // WaitForResult blocks until a result is available or timeout, then deletes it
 func (v *Capture) WaitForResult(id string, timeout time.Duration) (json.RawMessage, error) {
 	deadline := time.Now().Add(timeout)
@@ -151,6 +158,11 @@ func (v *Capture) SetQueryTimeout(timeout time.Duration) {
 }
 
 func (v *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
+	// Track when extension last polled
+	v.mu.Lock()
+	v.lastPollAt = time.Now()
+	v.mu.Unlock()
+
 	queries := v.GetPendingQueries()
 	if queries == nil {
 		queries = make([]PendingQueryResponse, 0)

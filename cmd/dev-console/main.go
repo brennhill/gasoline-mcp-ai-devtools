@@ -868,7 +868,28 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 			resp["config"] = map[string]interface{}{
 				"query_timeout": capture.queryTimeout.String(),
 			}
+
+			// Extension polling info
+			lastPoll := capture.lastPollAt
 			capture.mu.RUnlock()
+
+			// Extension status for debugging
+			if lastPoll.IsZero() {
+				resp["extension"] = map[string]interface{}{
+					"polling":      false,
+					"last_poll_at": nil,
+					"status":       "Extension has not polled /pending-queries yet. Reload extension and refresh page.",
+				}
+			} else {
+				sincePoll := time.Since(lastPoll)
+				polling := sincePoll < 3*time.Second // Should poll every 1s
+				resp["extension"] = map[string]interface{}{
+					"polling":         polling,
+					"last_poll_at":    lastPoll.Format(time.RFC3339),
+					"seconds_ago":     int(sincePoll.Seconds()),
+					"status":          map[bool]string{true: "connected", false: "stale - extension may have disconnected"}[polling],
+				}
+			}
 
 			// Circuit breaker state
 			resp["circuit"] = map[string]interface{}{

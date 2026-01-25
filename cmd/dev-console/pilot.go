@@ -1,5 +1,5 @@
 // pilot.go — AI Web Pilot feature handlers.
-// Implements highlight_element, manage_state, execute_javascript.
+// Implements highlight_element, manage_state, execute_javascript, browser_action.
 // All features require human opt-in via extension popup.
 // Phase 2: Forwards commands to extension via pending queries.
 package main
@@ -31,6 +31,12 @@ type PilotManageStateParams struct {
 type PilotExecuteJSParams struct {
 	Script    string `json:"script"`
 	TimeoutMs int    `json:"timeout_ms"`
+}
+
+// BrowserActionParams for browser_action tool
+type BrowserActionParams struct {
+	Action string `json:"action"` // refresh, navigate, back, forward
+	URL    string `json:"url"`    // for navigate action
 }
 
 // handlePilotHighlight handles the highlight_element tool call.
@@ -259,5 +265,91 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 		JSONRPC: "2.0",
 		ID:      req.ID,
 		Result:  mcpTextResponse(string(result)),
+	}
+}
+
+// handleBrowserAction handles the browser_action tool call.
+// Forwards browser navigation commands to extension via pending queries.
+func (h *ToolHandler) handleBrowserAction(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params BrowserActionParams
+	_ = json.Unmarshal(args, &params)
+
+	// Validate action parameter
+	validActions := map[string]bool{"refresh": true, "navigate": true, "back": true, "forward": true}
+	if params.Action == "" {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse("Required parameter 'action' is missing"),
+		}
+	}
+
+	if !validActions[params.Action] {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse("Invalid action: must be refresh, navigate, back, or forward"),
+		}
+	}
+
+	// Validate URL for navigate action
+	if params.Action == "navigate" && params.URL == "" {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse("URL required for navigate action"),
+		}
+	}
+
+	// Build query params
+	queryParams := map[string]interface{}{
+		"action": params.Action,
+	}
+	if params.URL != "" {
+		queryParams["url"] = params.URL
+	}
+
+	// Send browser action command via pending query mechanism
+	queryParamsJSON, _ := json.Marshal(queryParams)
+	queryID := h.capture.CreatePendingQueryWithTimeout(PendingQuery{
+		Type:   "browser_action",
+		Params: queryParamsJSON,
+	}, 10*time.Second)
+
+	// Wait for result from extension
+	result, err := h.capture.WaitForResult(queryID, 10*time.Second)
+	if err != nil {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse(ErrPilotDisabled.Error()),
+		}
+	}
+
+	// Parse result
+	var actionResult map[string]interface{}
+	if err := json.Unmarshal(result, &actionResult); err != nil {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse("Failed to parse browser action result"),
+		}
+	}
+
+	// Check for error in result
+	if errMsg, ok := actionResult["error"].(string); ok && errMsg != "" {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpErrorResponse(errMsg),
+		}
+	}
+
+	// Return success result
+	resultJSON, _ := json.MarshalIndent(actionResult, "", "  ")
+	return JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result:  mcpTextResponse(string(resultJSON)),
 	}
 }
