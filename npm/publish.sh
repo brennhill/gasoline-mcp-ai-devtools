@@ -61,6 +61,5 @@ npm publish --access public $DRY_RUN
 echo ""
 echo "Done! All packages published."
 echo ""
-echo "Users can now install with:"
-echo "  npm install -g gasoline-cli"
-echo "  npx gasoline-cli --mcp"
+echo "Users can now run with:"
+echo "  npx gasoline-mcp"
