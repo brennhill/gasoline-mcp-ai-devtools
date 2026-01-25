@@ -229,7 +229,8 @@ test.describe('AI Web Pilot: highlight_element', () => {
 
     expect(styles).not.toBeNull()
     expect(styles.position).toBe('fixed')
-    expect(styles.border).toContain('red')
+    // Browser may return 'red' or 'rgb(255, 0, 0)' depending on environment
+    expect(styles.border).toMatch(/red|rgb\(255,\s*0,\s*0\)/)
     expect(styles.pointerEvents).toBe('none')
   })
 
@@ -321,7 +322,7 @@ test.describe('AI Web Pilot: manage_state', () => {
     // Save a snapshot
     const saveResult = await mcpToolCall(serverUrl, 'manage_state', {
       action: 'save',
-      name: 'test-snapshot-1',
+      snapshot_name: 'test-snapshot-1',
     })
 
     expect(saveResult.data?.success || saveResult.text).toBeTruthy()
@@ -348,7 +349,7 @@ test.describe('AI Web Pilot: manage_state', () => {
     // Save snapshot
     await mcpToolCall(serverUrl, 'manage_state', {
       action: 'save',
-      name: 'restore-test',
+      snapshot_name: 'restore-test',
     })
 
     // Modify state
@@ -360,8 +361,8 @@ test.describe('AI Web Pilot: manage_state', () => {
 
     // Restore snapshot
     const restoreResult = await mcpToolCall(serverUrl, 'manage_state', {
-      action: 'restore',
-      name: 'restore-test',
+      action: 'load',
+      snapshot_name: 'restore-test',
     })
 
     expect(restoreResult.data?.success || restoreResult.text).toBeTruthy()
@@ -374,13 +375,13 @@ test.describe('AI Web Pilot: manage_state', () => {
     // Save a snapshot
     await mcpToolCall(serverUrl, 'manage_state', {
       action: 'save',
-      name: 'delete-test',
+      snapshot_name: 'delete-test',
     })
 
     // Delete it
     const deleteResult = await mcpToolCall(serverUrl, 'manage_state', {
       action: 'delete',
-      name: 'delete-test',
+      snapshot_name: 'delete-test',
     })
 
     expect(deleteResult.data?.success || deleteResult.text).toBeTruthy()
@@ -472,7 +473,7 @@ test.describe('AI Web Pilot: execute_javascript', () => {
     await page.waitForTimeout(1000)
 
     const result = await mcpToolCall(serverUrl, 'execute_javascript', {
-      script: 'return {{{invalid syntax',
+      script: 'return {{{invalid syntax', // triple braces intentional for invalid syntax test
     })
 
     expect(result.data?.error || result.text).toBeTruthy()
@@ -551,7 +552,7 @@ test.describe('AI Web Pilot: Integration', () => {
     // Capture initial state
     await mcpToolCall(serverUrl, 'manage_state', {
       action: 'save',
-      name: 'workflow-test',
+      snapshot_name: 'workflow-test',
     })
 
     // Use execute_javascript to modify state
@@ -565,8 +566,8 @@ test.describe('AI Web Pilot: Integration', () => {
 
     // Restore
     await mcpToolCall(serverUrl, 'manage_state', {
-      action: 'restore',
-      name: 'workflow-test',
+      action: 'load',
+      snapshot_name: 'workflow-test',
     })
   })
 })

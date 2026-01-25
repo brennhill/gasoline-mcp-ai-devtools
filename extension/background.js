@@ -15,7 +15,34 @@ let serverUrl = DEFAULT_SERVER_URL
 const RECONNECT_INTERVAL = 5000 // 5 seconds
 
 // Startup verification (always logs, regardless of debug mode)
-console.log('[Gasoline] Background service worker loaded');
+console.log('[Gasoline] Background service worker loaded - BUILD v100-toggle-with-fallback');
+
+// Initialize AI Web Pilot toggle cache on startup - create a promise that resolves when ready
+let _aiWebPilotInitResolve
+const _aiWebPilotInitPromise = new Promise((resolve) => {
+  _aiWebPilotInitResolve = resolve
+})
+
+// Try local storage first (more reliable), then sync
+// Note: Callback executes after module loads, so _aiWebPilotEnabledCache is accessible
+chrome.storage.local.get(['aiWebPilotEnabled'], (localResult) => {
+  if (localResult.aiWebPilotEnabled !== undefined) {
+    const enabled = localResult.aiWebPilotEnabled === true
+    globalThis._aiWebPilotStartupValue = enabled
+    _aiWebPilotEnabledCache = enabled // Set cache immediately
+    console.log('[Gasoline] AI Web Pilot startup cache (local):', enabled)
+    _aiWebPilotInitResolve(enabled)
+    return
+  }
+  // Fall back to sync storage
+  chrome.storage.sync.get(['aiWebPilotEnabled'], (syncResult) => {
+    const enabled = syncResult.aiWebPilotEnabled === true
+    globalThis._aiWebPilotStartupValue = enabled
+    _aiWebPilotEnabledCache = enabled // Set cache immediately
+    console.log('[Gasoline] AI Web Pilot startup cache (sync):', enabled)
+    _aiWebPilotInitResolve(enabled)
+  })
+})
 const DEFAULT_DEBOUNCE_MS = 100
 const DEFAULT_MAX_BATCH_SIZE = 50
 
@@ -45,6 +72,9 @@ let connectionStatus = {
 
 let currentLogLevel = 'all'
 let screenshotOnError = false // Auto-capture screenshot on error (off by default)
+
+// AI Web Pilot toggle cache (survives service worker restarts via startup init and messages)
+let _aiWebPilotEnabledCache = null
 
 // Error grouping state
 const errorGroups = new Map() // signature -> { entry, count, firstSeen, lastSeen }
@@ -1679,6 +1709,15 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       screenshotOnError = message.enabled
       chrome.storage.local.set({ screenshotOnError: message.enabled })
       sendResponse({ success: true })
+    } else if (message.type === 'setAiWebPilotEnabled') {
+      // Update the AI Web Pilot cache immediately
+      _aiWebPilotEnabledCache = message.enabled === true
+      globalThis._aiWebPilotStartupValue = _aiWebPilotEnabledCache
+      // Persist to all storage types for maximum reliability
+      chrome.storage.session.set({ aiWebPilotEnabled: _aiWebPilotEnabledCache })
+      chrome.storage.local.set({ aiWebPilotEnabled: _aiWebPilotEnabledCache })
+      console.log('[Gasoline] AI Web Pilot toggle set via message:', _aiWebPilotEnabledCache)
+      sendResponse({ success: true })
     } else if (message.type === 'captureScreenshot') {
       // Manual screenshot capture
       chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
@@ -2020,6 +2059,8 @@ export function applyCaptureOverrides(overrides) {
 // =============================================================================
 
 let queryPollingInterval = null
+// Track queries currently being processed to prevent duplicate processing
+const _processingQueries = new Set()
 
 /**
  * Poll the server for pending queries (DOM queries, a11y audits)
@@ -2038,7 +2079,19 @@ export async function pollPendingQueries(serverUrl) {
 
     debugLog(DebugCategory.CONNECTION, 'Got pending queries', { count: data.queries.length })
     for (const query of data.queries) {
-      await handlePendingQuery(query, serverUrl)
+      // Skip queries already being processed
+      if (_processingQueries.has(query.id)) {
+        debugLog(DebugCategory.CONNECTION, 'Skipping already processing query', { id: query.id })
+        continue
+      }
+      // Mark as processing
+      _processingQueries.add(query.id)
+      try {
+        await handlePendingQuery(query, serverUrl)
+      } finally {
+        // Remove from processing set when done
+        _processingQueries.delete(query.id)
+      }
     }
   } catch (err) {
     debugLog(DebugCategory.CONNECTION, 'Poll pending-queries error', { error: err.message })
@@ -2201,6 +2254,27 @@ async function handleStateQuery(query, serverUrl) {
     let result
 
     switch (action) {
+      case 'capture': {
+        // Capture current state from the active tab without saving
+        const tabs = await new Promise((resolve) => {
+          chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+        })
+
+        if (!tabs || tabs.length === 0) {
+          await postQueryResult(serverUrl, query.id, 'state', { error: 'no_active_tab' })
+          return
+        }
+
+        // Forward to content script to capture state
+        const captureResult = await chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'GASOLINE_MANAGE_STATE',
+          params: { action: 'capture' },
+        })
+
+        result = captureResult
+        break
+      }
+
       case 'save': {
         // First capture state from the active tab
         const tabs = await new Promise((resolve) => {
@@ -2328,18 +2402,31 @@ export function stopQueryPolling() {
 // AI WEB PILOT SAFETY GATE
 // =============================================================================
 
+// Listen for storage changes to update cache immediately (session, local, and sync)
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if ((areaName === 'sync' || areaName === 'local' || areaName === 'session') && changes.aiWebPilotEnabled) {
+    _aiWebPilotEnabledCache = changes.aiWebPilotEnabled.newValue === true
+    console.log('[Gasoline] aiWebPilotEnabled cache updated from', areaName, ':', _aiWebPilotEnabledCache)
+  }
+})
+
 /**
  * Check if AI Web Pilot is enabled in the extension popup.
- * Uses chrome.storage.sync for cross-device persistence.
+ * Waits for startup init to complete, then uses cached values.
  * @returns {Promise<boolean>} True if AI Web Pilot is enabled
  */
 export async function isAiWebPilotEnabled() {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(['aiWebPilotEnabled'], (result) => {
-      // Default to false (disabled) for safety
-      resolve(result.aiWebPilotEnabled === true)
-    })
-  })
+  // If we have a cached value in memory, use it
+  if (_aiWebPilotEnabledCache !== null) {
+    console.log('[Gasoline] ▶▶▶ isAiWebPilotEnabled returning CACHED:', _aiWebPilotEnabledCache)
+    return _aiWebPilotEnabledCache
+  }
+
+  // Wait for startup init to complete (set by chrome.storage read at module load)
+  const startupValue = await _aiWebPilotInitPromise
+  _aiWebPilotEnabledCache = startupValue
+  console.log('[Gasoline] ▶▶▶ isAiWebPilotEnabled returning STARTUP:', startupValue)
+  return startupValue
 }
 
 /**
@@ -2350,8 +2437,18 @@ export async function isAiWebPilotEnabled() {
  * @returns {Promise<Object>} Result or error response
  */
 export async function handlePilotCommand(command, params) {
-  // Check if AI Web Pilot is enabled
-  const enabled = await isAiWebPilotEnabled()
+  // Check if AI Web Pilot is enabled with fallback to direct storage read
+  let enabled = await isAiWebPilotEnabled()
+
+  // Fail-safe: if initial check returns false, verify directly with storage
+  if (!enabled) {
+    const localResult = await new Promise((resolve) => chrome.storage.local.get(['aiWebPilotEnabled'], resolve))
+    if (localResult.aiWebPilotEnabled === true) {
+      // Storage says true but cache said false - fix the cache and proceed
+      _aiWebPilotEnabledCache = true
+      enabled = true
+    }
+  }
 
   if (!enabled) {
     return { error: 'ai_web_pilot_disabled' }

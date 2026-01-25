@@ -646,12 +646,13 @@
     },
     {
       "name": "manage_state",
-      "description": "Save, load, list, or delete page state snapshots. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+      "description": "Capture, save, load, list, or delete page state snapshots. Requires 'AI Web Pilot' to be enabled in the extension popup.",
       "inputSchema": {
         "properties": {
           "action": {
             "description": "Action to perform",
             "enum": [
+              "capture",
               "save",
               "load",
               "list",

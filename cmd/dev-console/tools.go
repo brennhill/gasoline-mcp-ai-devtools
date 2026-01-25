@@ -813,14 +813,14 @@ func (h *ToolHandler) toolsList() []MCPTool {
 		},
 		{
 			Name:        "manage_state",
-			Description: "Save, load, list, or delete page state snapshots. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+			Description: "Capture, save, load, list, or delete page state snapshots. Requires 'AI Web Pilot' to be enabled in the extension popup.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
 					"action": map[string]interface{}{
 						"type":        "string",
 						"description": "Action to perform",
-						"enum":        []string{"save", "load", "list", "delete"},
+						"enum":        []string{"capture", "save", "load", "list", "delete"},
 					},
 					"snapshot_name": map[string]interface{}{
 						"type":        "string",

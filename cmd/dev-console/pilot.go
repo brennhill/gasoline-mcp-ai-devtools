@@ -95,6 +95,9 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 		} `json:"bounds,omitempty"`
 	}
 
+	// DEBUG: Log raw result from extension
+	fmt.Printf("[DEBUG] highlight_element raw result from extension: %s\n", string(result))
+
 	if err := json.Unmarshal(result, &highlightResult); err != nil {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -104,6 +107,7 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	}
 
 	// Check for pilot disabled error from extension
+	fmt.Printf("[DEBUG] highlight_element parsed: success=%v, error=%q\n", highlightResult.Success, highlightResult.Error)
 	if highlightResult.Error == "ai_web_pilot_disabled" {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -127,7 +131,7 @@ func (h *ToolHandler) handlePilotManageState(req JSONRPCRequest, args json.RawMe
 	_ = json.Unmarshal(args, &params)
 
 	// Validate action parameter
-	validActions := map[string]bool{"save": true, "load": true, "list": true, "delete": true}
+	validActions := map[string]bool{"capture": true, "save": true, "load": true, "list": true, "delete": true}
 	if params.Action == "" {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -140,11 +144,11 @@ func (h *ToolHandler) handlePilotManageState(req JSONRPCRequest, args json.RawMe
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Result:  mcpErrorResponse("Invalid action: must be save, load, list, or delete"),
+			Result:  mcpErrorResponse("Invalid action: must be capture, save, load, list, or delete"),
 		}
 	}
 
-	// Validate snapshot_name for actions that require it
+	// Validate snapshot_name for actions that require it (capture and list don't need it)
 	if (params.Action == "save" || params.Action == "load" || params.Action == "delete") && params.SnapshotName == "" {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
