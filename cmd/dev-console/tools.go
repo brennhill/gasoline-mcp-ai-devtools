@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -109,6 +110,9 @@ type ToolHandler struct {
 	auditTrail        *AuditTrail
 	sessionManager    *SessionManager
 
+	// API contract validation
+	contractValidator *APIContractValidator
+
 	// Redaction engine for scrubbing sensitive data from tool responses
 	redactionEngine *RedactionEngine
 }
@@ -155,6 +159,7 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 	handler.securityDiffMgr = NewSecurityDiffManager()
 	handler.auditTrail = NewAuditTrail(AuditConfig{MaxEntries: 10000, Enabled: true, RedactParams: true})
 	handler.sessionManager = NewSessionManager(10, &captureStateAdapter{capture: capture, server: server})
+	handler.contractValidator = NewAPIContractValidator()
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.
 	server.onEntries = func(entries []LogEntry) {
@@ -792,6 +797,35 @@ func (h *ToolHandler) toolsList() []MCPTool {
 				"required": []string{"action"},
 			},
 		},
+		{
+			Name:        "validate_api",
+			Description: "Track API response shapes across a session and detect contract violations. Identifies when response structures change unexpectedly, fields go missing, types change, or error responses replace success responses.",
+			Meta: map[string]interface{}{
+				"data_counts": map[string]interface{}{
+					"network_bodies": networkCount,
+				},
+			},
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "'analyze' processes current network bodies and returns violations. 'report' shows all tracked endpoint shapes. 'clear' resets shape tracking.",
+						"enum":        []string{"analyze", "report", "clear"},
+					},
+					"url_filter": map[string]interface{}{
+						"type":        "string",
+						"description": "Only analyze endpoints matching this URL substring",
+					},
+					"ignore_endpoints": map[string]interface{}{
+						"type":        "array",
+						"description": "URL substrings to exclude from analysis (e.g., '/health', '/metrics')",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
 		// AI Web Pilot tools (Phase 1: stubs only)
 		{
 			Name:        "highlight_element",
@@ -895,6 +929,8 @@ func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.
 		return h.toolGetAuditLog(req, args), true
 	case "diff_sessions":
 		return h.toolDiffSessions(req, args), true
+	case "validate_api":
+		return h.toolValidateAPI(req, args), true
 	// AI Web Pilot tools
 	case "highlight_element":
 		return h.handlePilotHighlight(req, args), true
@@ -1484,5 +1520,64 @@ func (h *ToolHandler) toolDiffSecurity(req JSONRPCRequest, args json.RawMessage)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(err.Error())}
 	}
 	respJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+}
+
+func (h *ToolHandler) toolValidateAPI(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Action          string   `json:"action"`
+		URLFilter       string   `json:"url_filter"`
+		IgnoreEndpoints []string `json:"ignore_endpoints"`
+	}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &params)
+	}
+
+	filter := APIContractFilter{
+		URLFilter:       params.URLFilter,
+		IgnoreEndpoints: params.IgnoreEndpoints,
+	}
+
+	// Process network bodies into contract validator before analysis
+	h.capture.mu.RLock()
+	bodies := make([]NetworkBody, len(h.capture.networkBodies))
+	copy(bodies, h.capture.networkBodies)
+	h.capture.mu.RUnlock()
+
+	// Feed captured network bodies into the validator for learning
+	for _, body := range bodies {
+		// Only learn from responses with JSON content
+		if body.ResponseBody != "" && (body.ContentType == "" || strings.Contains(body.ContentType, "json")) {
+			h.contractValidator.Learn(body)
+		}
+	}
+
+	var respJSON []byte
+	switch params.Action {
+	case "analyze":
+		// Also validate the bodies to detect violations
+		for _, body := range bodies {
+			if body.ResponseBody != "" && (body.ContentType == "" || strings.Contains(body.ContentType, "json")) {
+				h.contractValidator.Validate(body)
+			}
+		}
+		result := h.contractValidator.Analyze(filter)
+		respJSON, _ = json.Marshal(result)
+
+	case "report":
+		result := h.contractValidator.Report(filter)
+		respJSON, _ = json.Marshal(result)
+
+	case "clear":
+		h.contractValidator.Clear()
+		respJSON, _ = json.Marshal(map[string]interface{}{
+			"action": "cleared",
+			"status": "ok",
+		})
+
+	default:
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("action parameter must be 'analyze', 'report', or 'clear'")}
+	}
+
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
 }

@@ -625,6 +625,43 @@
       }
     },
     {
+      "name": "validate_api",
+      "description": "Track API response shapes across a session and detect contract violations. Identifies when response structures change unexpectedly, fields go missing, types change, or error responses replace success responses.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "'analyze' processes current network bodies and returns violations. 'report' shows all tracked endpoint shapes. 'clear' resets shape tracking.",
+            "enum": [
+              "analyze",
+              "report",
+              "clear"
+            ],
+            "type": "string"
+          },
+          "ignore_endpoints": {
+            "description": "URL substrings to exclude from analysis (e.g., '/health', '/metrics')",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "url_filter": {
+            "description": "Only analyze endpoints matching this URL substring",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "_meta": {
+        "data_counts": {
+          "network_bodies": 0
+        }
+      }
+    },
+    {
       "name": "highlight_element",
       "description": "Highlight a DOM element on the page. Requires 'AI Web Pilot' to be enabled in the extension popup.",
       "inputSchema": {
