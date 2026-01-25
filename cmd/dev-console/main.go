@@ -1145,7 +1145,11 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 
 			valid, rejected := validateLogEntries(body.Entries)
 			received := server.addEntries(valid)
-			jsonResponse(w, http.StatusOK, map[string]int{"received": received, "rejected": rejected})
+			jsonResponse(w, http.StatusOK, map[string]int{
+				"received": received,
+				"rejected": rejected,
+				"entries":  server.getEntryCount(),
+			})
 
 		case "DELETE":
 			server.clearEntries()

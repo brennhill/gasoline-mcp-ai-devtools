@@ -206,7 +206,10 @@ func TestPostLogsEndpoint(t *testing.T) {
 		}
 
 		received := server.addEntries(body.Entries)
-		jsonResponse(w, http.StatusOK, map[string]int{"received": received})
+		jsonResponse(w, http.StatusOK, map[string]int{
+			"received": received,
+			"entries":  server.getEntryCount(),
+		})
 	})
 
 	body := `{"entries":[{"level":"error","msg":"test1"},{"level":"warn","msg":"test2"}]}`
@@ -225,6 +228,10 @@ func TestPostLogsEndpoint(t *testing.T) {
 
 	if resp["received"] != 2 {
 		t.Errorf("Expected received 2, got %d", resp["received"])
+	}
+
+	if resp["entries"] != 2 {
+		t.Errorf("Expected entries 2 in response, got %d", resp["entries"])
 	}
 
 	if server.getEntryCount() != 2 {
