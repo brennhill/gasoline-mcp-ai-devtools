@@ -1,20 +1,26 @@
 ---
-title: "Gasoline — Browser Observability for AI Coding Agents"
-description: "Autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready."
-keywords: "autonomous coding agent, browser debugging, MCP server, AI coding assistant, agentic debugging, vendor neutral MCP, local AI debugging, Claude Code, Cursor, Windsurf"
-layout: splash
+title: "Browser Observability for AI Coding Agents"
+description: "Autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant."
+layout: home
 permalink: /
-header:
-  overlay_color: "#1a1f2e"
-  actions:
-    - label: "Fire It Up"
-      url: /getting-started/
-    - label: "GitHub"
-      url: "https://github.com/brennhill/gasoline"
-excerpt: "<div style='display: flex; align-items: center; gap: 2rem;'><div>Browser observability for AI coding agents - autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.<br><br><span style='color: #fb923c; font-size: 0.85em; font-style: italic;'>Pouring fuel on the AI development fire</span></div><img src='/assets/images/sparky-grill-vector.svg' alt='Sparky the mascot grilling' style='width: 200px; height: auto; flex-shrink: 0;'></div>"
 ---
 
+<div class="hero">
+  <div class="hero-content">
+    <h1>Browser Observability for AI Coding Agents</h1>
+    <p>Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.</p>
+    <p><em style="color: #fb923c;">Pouring fuel on the AI development fire</em></p>
+    <p><a href="/getting-started/" class="btn">Get Started</a></p>
+  </div>
+  <img src="/assets/images/sparky-working-laptop-web.webp" alt="Sparky coding" class="hero-sparky">
+</div>
+
 ## Now You're Cooking
+
+<div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem;">
+  <img src="/assets/images/sparky-wave-web.webp" alt="Sparky waving" style="width: clamp(40px, 10vw, 80px); height: auto; border-radius: 6px;">
+  <span style="font-size: 1.1em; color: #fb923c;">Welcome! Sparky is here to help you fire up your AI-powered browser debugging.</span>
+</div>
 
 One command. Your AI agent can see your browser.
 
@@ -27,6 +33,12 @@ npx gasoline-mcp
 Gasoline is a **browser extension + local MCP server** that streams real-time browser data to autonomous coding agents. Console errors, failed API calls, uncaught exceptions, WebSocket traffic, live DOM state — your AI sees it all and fixes issues without you lifting a finger.
 
 ## Smart Teams Cook With Gasoline
+
+<img src="/assets/images/sparky-cook-with-gasoline-1.png" alt="Sparky cooking with gasoline" style="float: right; width: clamp(60px, 15vw, 120px); height: auto; margin: 0 0 1rem 1.5rem; border-radius: 8px;">
+
+<span style="color: #22c55e;">Sparky says: No more copy-paste debugging. Just code, fix, and ship.</span>
+
+<div style="clear: both;"></div>
 
 **No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline uses a standard extension — your browser stays secure and unmodified.
 
@@ -72,6 +84,10 @@ Gasoline is a **browser extension + local MCP server** that streams real-time br
 
 ## Enterprise Ready — Zero Data Leakage
 
+<div class="section-with-sparky">
+<img src="/assets/images/sparky-shield-web.webp" alt="Sparky with shield" class="section-sparky">
+<div>
+
 **No browser data is ever shared with any AI provider.** Gasoline runs entirely on your machine:
 
 - **Localhost only** — the server binds to `127.0.0.1`, unreachable from the network
@@ -82,6 +98,9 @@ Gasoline is a **browser extension + local MCP server** that streams real-time br
 Your browser logs stay on your hardware. The AI reads a local file via stdio. At no point does debugging data touch a third-party server — making Gasoline safe for regulated environments, proprietary codebases, and enterprise security policies.
 
 [Full Security Details →](/security/)
+
+</div>
+</div>
 
 ## Ecosystem Neutral — No Vendor Lock-In
 
@@ -136,8 +155,10 @@ Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your agent spe
 
 ---
 
-<i class="fas fa-shield-alt"></i> [Security & Privacy](/security/) · <i class="fas fa-building"></i> [Enterprise Ready](/security/#enterprise-ready) · <i class="fas fa-bolt"></i> [Performance SLOs](/performance-slos/) · <i class="fas fa-map"></i> [Roadmap](/roadmap/) · <i class="fas fa-code-branch"></i> [Developer API](/developer-api/) · <i class="fas fa-balance-scale"></i> [Alternatives Compared](/alternatives/) · <i class="fab fa-github"></i> [GitHub](https://github.com/brennhill/gasoline)
-
-[Fire It Up →](/getting-started/){: .btn .btn--primary .btn--large}
-
-<em style="color: #fb923c;">Pouring fuel on the AI development fire</em>
+<div class="cta-footer">
+  <img src="/assets/images/sparky-firefighter-happy-web.webp" alt="Sparky ready to help" class="cta-sparky">
+  <div>
+    <h3>Ready to Fire It Up?</h3>
+    <p><a href="/getting-started/" class="btn">Get Started</a></p>
+  </div>
+</div>
