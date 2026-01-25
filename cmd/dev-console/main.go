@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +26,9 @@ import (
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
 var version = "5.0.0"
+
+// startTime tracks when the server started for uptime calculation
+var startTime = time.Now()
 
 const (
 	defaultPort       = 7890
@@ -805,6 +809,73 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 				"memory_bytes": health.MemoryBytes,
 				"reason":       health.Reason,
 				"opened_at":    health.OpenedAt,
+			}
+		}
+
+		jsonResponse(w, http.StatusOK, resp)
+	}))
+
+	// Diagnostics endpoint for bug reports - comprehensive server state dump
+	http.HandleFunc("/diagnostics", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+			return
+		}
+
+		now := time.Now()
+		resp := map[string]interface{}{
+			"generated_at":   now.Format(time.RFC3339),
+			"version":        version,
+			"uptime_seconds": int(now.Sub(startTime).Seconds()),
+			"system": map[string]interface{}{
+				"os":         runtime.GOOS,
+				"arch":       runtime.GOARCH,
+				"go_version": runtime.Version(),
+				"goroutines": runtime.NumGoroutine(),
+			},
+			"logs": map[string]interface{}{
+				"entries":     server.getEntryCount(),
+				"max_entries": server.maxEntries,
+				"log_file":    server.logFile,
+			},
+		}
+
+		if capture != nil {
+			health := capture.GetHealthStatus()
+
+			// Buffer counts
+			capture.mu.RLock()
+			resp["buffers"] = map[string]interface{}{
+				"websocket_events": len(capture.wsEvents),
+				"network_bodies":   len(capture.networkBodies),
+				"actions":          len(capture.enhancedActions),
+				"pending_queries":  len(capture.pendingQueries),
+				"query_results":    len(capture.queryResults),
+			}
+
+			// WebSocket connection info (sanitized - no sensitive data)
+			wsConnections := make([]map[string]interface{}, 0, len(capture.connections))
+			for connID, conn := range capture.connections {
+				wsConnections = append(wsConnections, map[string]interface{}{
+					"id":    connID,
+					"url":   conn.url,
+					"state": conn.state,
+				})
+			}
+			resp["websocket_connections"] = wsConnections
+
+			// Query timeout config
+			resp["config"] = map[string]interface{}{
+				"query_timeout": capture.queryTimeout.String(),
+			}
+			capture.mu.RUnlock()
+
+			// Circuit breaker state
+			resp["circuit"] = map[string]interface{}{
+				"open":         health.CircuitOpen,
+				"current_rate": health.CurrentRate,
+				"memory_bytes": health.MemoryBytes,
+				"reason":       health.Reason,
 			}
 		}
 
