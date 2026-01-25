@@ -15,13 +15,32 @@ toc_sticky: true
 
 <img src="/assets/images/sparky/features/sparky-fight-fire-web.webp" alt="Sparky firing up the server" style="float: right; width: 140px; margin: 0 0 20px 20px; border-radius: 6px;" />
 
+
 ```bash
-npx gasoline-mcp
+# Until the Chrome extension is approved, install manually:
+git clone https://github.com/brennhill/gasoline.git
+cd gasoline
+go run ./cmd/dev-console
 ```
 
 You'll see: `[gasoline] v4.8.0 — HTTP on port 7890`
 
-Leave this burning. No global install — `npx` handles everything.
+Leave this burning. No global install needed.
+
+**Extension install:**
+
+1. Open `chrome://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked** and select the `extension/` folder in this repo
+
+---
+
+**Once the Chrome extension is approved:**
+
+```bash
+npx gasoline-mcp
+# Then install from the Chrome Web Store
+```
 
 ## <i class="fas fa-puzzle-piece"></i> 2. Install the Extension
 
@@ -50,8 +69,8 @@ Drop this config and your AI tool fires up Gasoline automatically:
 {
   "mcpServers": {
     "gasoline": {
-      "command": "npx",
-      "args": ["gasoline-mcp"]
+      "command": "go",
+      "args": ["run", "./cmd/dev-console"]
     }
   }
 }

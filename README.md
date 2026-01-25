@@ -23,23 +23,40 @@
 
 ---
 
+
 ## Quick Start
 
+**Until the Chrome Web Store listing is approved, install manually:**
+
 ```bash
-# 1. Start the server
-npx gasoline-mcp
+# 1. Clone the repo
+git clone https://github.com/brennhill/gasoline.git
+cd gasoline
 
-# 2. Install the Chrome extension from the Chrome Web Store
+# 2. Start the server
+go run ./cmd/dev-console
 
-# 3. Add to your AI tool (.mcp.json in project root)
+# 3. Load the extension manually:
+#    - Open chrome://extensions
+#    - Enable Developer mode
+#    - Click "Load unpacked" and select the `extension/` folder in this repo
 ```
+
+**Once the Chrome extension is approved:**
+
+```bash
+npx gasoline-mcp
+# Then install from the Chrome Web Store
+```
+
+**MCP config example:**
 
 ```json
 {
   "mcpServers": {
     "gasoline": {
-      "command": "npx",
-      "args": ["gasoline-mcp"]
+      "command": "go",
+      "args": ["run", "./cmd/dev-console"]
     }
   }
 }
