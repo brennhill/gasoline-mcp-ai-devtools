@@ -141,6 +141,8 @@ Sequential (message naming cascades into test assertions):
 
 Gasoline is capture-only by design. These features break that rule intentionally — they let the AI act on the page, not just observe it. Useful for human verification and faster reproduction.
 
+**Safety constraint:** All P4 features require human opt-in via extension popup settings. The AI cannot enable these programmatically — MCP tools return "not enabled" errors until the human toggles the setting. This prevents runaway agents from self-authorizing code execution.
+
 - [ ] **Highlight element (`highlight_element`)** — Inject a red overlay on a DOM element so AI can point at things on screen. Helps human verify "this is the button I'm talking about." Extension injects `#gasoline-highlighter` div, positions via `getBoundingClientRect()`. MCP tool accepts selector + duration.
 - [ ] **Browser state snapshots (`manage_state`)** — Save/restore `localStorage`, `sessionStorage`, `document.cookie`. Lets AI checkpoint "cart full" state and restore it instantly instead of clicking through the flow again. MCP tool with `action: "save"|"load"|"list"` + `snapshot_name`.
 - [ ] **Execute JavaScript (`execute_javascript`)** — Run arbitrary JS in browser context and return JSON-serialized result. Lets AI inspect Redux/Zustand stores, check globals (`window.__NEXT_DATA__`), test expressions before writing code. Localhost-only (already enforced). MCP tool accepts `script` string, returns serialized result or error.
