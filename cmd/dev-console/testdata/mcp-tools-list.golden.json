@@ -611,6 +611,72 @@
         ],
         "type": "object"
       }
+    },
+    {
+      "name": "highlight_element",
+      "description": "Highlight a DOM element on the page. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+      "inputSchema": {
+        "properties": {
+          "duration_ms": {
+            "description": "How long to show the highlight in milliseconds (default: 5000)",
+            "type": "number"
+          },
+          "selector": {
+            "description": "CSS selector for the element to highlight",
+            "type": "string"
+          }
+        },
+        "required": [
+          "selector"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "manage_state",
+      "description": "Save, load, list, or delete page state snapshots. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "Action to perform",
+            "enum": [
+              "save",
+              "load",
+              "list",
+              "delete"
+            ],
+            "type": "string"
+          },
+          "snapshot_name": {
+            "description": "Name of the snapshot (required for save, load, delete)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "execute_javascript",
+      "description": "Execute JavaScript code in the page context. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+      "inputSchema": {
+        "properties": {
+          "script": {
+            "description": "JavaScript code to execute",
+            "type": "string"
+          },
+          "timeout_ms": {
+            "description": "Execution timeout in milliseconds (default: 5000)",
+            "type": "number"
+          }
+        },
+        "required": [
+          "script"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

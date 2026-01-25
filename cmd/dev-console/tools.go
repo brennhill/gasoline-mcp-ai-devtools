@@ -780,6 +780,62 @@ func (h *ToolHandler) toolsList() []MCPTool {
 				"required": []string{"action"},
 			},
 		},
+		// AI Web Pilot tools (Phase 1: stubs only)
+		{
+			Name:        "highlight_element",
+			Description: "Highlight a DOM element on the page. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"selector": map[string]interface{}{
+						"type":        "string",
+						"description": "CSS selector for the element to highlight",
+					},
+					"duration_ms": map[string]interface{}{
+						"type":        "number",
+						"description": "How long to show the highlight in milliseconds (default: 5000)",
+					},
+				},
+				"required": []string{"selector"},
+			},
+		},
+		{
+			Name:        "manage_state",
+			Description: "Save, load, list, or delete page state snapshots. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "Action to perform",
+						"enum":        []string{"save", "load", "list", "delete"},
+					},
+					"snapshot_name": map[string]interface{}{
+						"type":        "string",
+						"description": "Name of the snapshot (required for save, load, delete)",
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
+		{
+			Name:        "execute_javascript",
+			Description: "Execute JavaScript code in the page context. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"script": map[string]interface{}{
+						"type":        "string",
+						"description": "JavaScript code to execute",
+					},
+					"timeout_ms": map[string]interface{}{
+						"type":        "number",
+						"description": "Execution timeout in milliseconds (default: 5000)",
+					},
+				},
+				"required": []string{"script"},
+			},
+		},
 	}
 }
 
@@ -808,6 +864,13 @@ func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.
 		return h.toolGetAuditLog(req, args), true
 	case "diff_sessions":
 		return h.toolDiffSessions(req, args), true
+	// AI Web Pilot tools
+	case "highlight_element":
+		return h.handlePilotHighlight(req, args), true
+	case "manage_state":
+		return h.handlePilotManageState(req, args), true
+	case "execute_javascript":
+		return h.handlePilotExecuteJS(req, args), true
 	}
 	return JSONRPCResponse{}, false
 }
