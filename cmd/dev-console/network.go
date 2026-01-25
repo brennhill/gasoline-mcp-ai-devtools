@@ -37,6 +37,13 @@ func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
 			bodies[i].ResponseBody = bodies[i].ResponseBody[:maxResponseBodySize] //nolint:gosec // G602: i is bounded by range
 			bodies[i].ResponseTruncated = true
 		}
+		// Detect binary format in response body
+		if bodies[i].BinaryFormat == "" && len(bodies[i].ResponseBody) > 0 {
+			if format := DetectBinaryFormat([]byte(bodies[i].ResponseBody)); format != nil {
+				bodies[i].BinaryFormat = format.Name
+				bodies[i].FormatConfidence = format.Confidence
+			}
+		}
 		v.networkBodies = append(v.networkBodies, bodies[i])
 		v.networkAddedAt = append(v.networkAddedAt, now)
 	}

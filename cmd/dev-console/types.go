@@ -17,17 +17,19 @@ import (
 
 // WebSocketEvent represents a captured WebSocket event
 type WebSocketEvent struct {
-	Timestamp   string        `json:"ts,omitempty"`
-	Type        string        `json:"type,omitempty"`
-	Event       string        `json:"event"`
-	ID          string        `json:"id"`
-	URL         string        `json:"url,omitempty"`
-	Direction   string        `json:"direction,omitempty"`
-	Data        string        `json:"data,omitempty"`
-	Size        int           `json:"size,omitempty"`
-	CloseCode   int           `json:"code,omitempty"`
-	CloseReason string        `json:"reason,omitempty"`
-	Sampled     *SamplingInfo `json:"sampled,omitempty"`
+	Timestamp        string        `json:"ts,omitempty"`
+	Type             string        `json:"type,omitempty"`
+	Event            string        `json:"event"`
+	ID               string        `json:"id"`
+	URL              string        `json:"url,omitempty"`
+	Direction        string        `json:"direction,omitempty"`
+	Data             string        `json:"data,omitempty"`
+	Size             int           `json:"size,omitempty"`
+	CloseCode        int           `json:"code,omitempty"`
+	CloseReason      string        `json:"reason,omitempty"`
+	Sampled          *SamplingInfo `json:"sampled,omitempty"`
+	BinaryFormat     string        `json:"binary_format,omitempty"`
+	FormatConfidence float64       `json:"format_confidence,omitempty"`
 }
 
 // SamplingInfo describes the sampling state when a message was captured
@@ -128,18 +130,20 @@ type WebSocketSamplingStatus struct {
 
 // NetworkBody represents a captured network request/response
 type NetworkBody struct {
-	Timestamp         string `json:"ts,omitempty"`
-	Method            string `json:"method"`
-	URL               string `json:"url"`
-	Status            int    `json:"status"`
-	RequestBody       string `json:"requestBody,omitempty"`
-	ResponseBody      string `json:"responseBody,omitempty"`
-	ContentType       string `json:"contentType,omitempty"`
-	Duration          int    `json:"duration,omitempty"`
-	RequestTruncated  bool   `json:"requestTruncated,omitempty"`
-	ResponseTruncated bool   `json:"responseTruncated,omitempty"`
-	ResponseHeaders   map[string]string `json:"responseHeaders,omitempty"`
-	HasAuthHeader     bool              `json:"hasAuthHeader,omitempty"`
+	Timestamp          string  `json:"ts,omitempty"`
+	Method             string  `json:"method"`
+	URL                string  `json:"url"`
+	Status             int     `json:"status"`
+	RequestBody        string  `json:"requestBody,omitempty"`
+	ResponseBody       string  `json:"responseBody,omitempty"`
+	ContentType        string  `json:"contentType,omitempty"`
+	Duration           int     `json:"duration,omitempty"`
+	RequestTruncated   bool    `json:"requestTruncated,omitempty"`
+	ResponseTruncated  bool    `json:"responseTruncated,omitempty"`
+	ResponseHeaders    map[string]string `json:"responseHeaders,omitempty"`
+	HasAuthHeader      bool              `json:"hasAuthHeader,omitempty"`
+	BinaryFormat       string  `json:"binary_format,omitempty"`
+	FormatConfidence   float64 `json:"format_confidence,omitempty"`
 }
 
 // NetworkBodyFilter defines filtering criteria for network bodies
