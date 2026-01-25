@@ -137,15 +137,15 @@ Sequential (message naming cascades into test assertions):
 - [x] **Remove JS dead code** — Delete `_TEXT_CONTENT_TYPES`, no-op references in popup.js. Files: `inject.js`, `popup.js`.
 - [x] **Shared test infrastructure** — Extract `createMockWindow()`, `createMockChrome()`, `createMockDocument()` into `extension-tests/helpers.js`.
 
-## P4: Bi-Directional Actions (capture → interact)
+## P4: AI Web Pilot
 
-Gasoline is capture-only by design. These features break that rule intentionally — they let the AI act on the page, not just observe it. Useful for human verification and faster reproduction.
+Spec: [`docs/ai-first/tech-spec-ai-web-pilot.md`](ai-first/tech-spec-ai-web-pilot.md)
 
-**Safety constraint:** All P4 features require human opt-in via extension popup settings. The AI cannot enable these programmatically — MCP tools return "not enabled" errors until the human toggles the setting. This prevents runaway agents from self-authorizing code execution.
+Breaks the "capture-only" rule to let AI interact with the page. Human opt-in required via extension popup — AI cannot self-authorize.
 
-- [ ] **Highlight element (`highlight_element`)** — Inject a red overlay on a DOM element so AI can point at things on screen. Helps human verify "this is the button I'm talking about." Extension injects `#gasoline-highlighter` div, positions via `getBoundingClientRect()`. MCP tool accepts selector + duration.
-- [ ] **Browser state snapshots (`manage_state`)** — Save/restore `localStorage`, `sessionStorage`, `document.cookie`. Lets AI checkpoint "cart full" state and restore it instantly instead of clicking through the flow again. MCP tool with `action: "save"|"load"|"list"` + `snapshot_name`.
-- [ ] **Execute JavaScript (`execute_javascript`)** — Run arbitrary JS in browser context and return JSON-serialized result. Lets AI inspect Redux/Zustand stores, check globals (`window.__NEXT_DATA__`), test expressions before writing code. Localhost-only (already enforced). MCP tool accepts `script` string, returns serialized result or error.
+- [ ] **`highlight_element`** — Visual pointer for human verification
+- [ ] **`manage_state`** — Save/restore localStorage, sessionStorage, cookies
+- [ ] **`execute_javascript`** — Run JS to inspect Redux, globals, framework state
 
 ## P5: Nice-to-have (someday, maybe)
 
