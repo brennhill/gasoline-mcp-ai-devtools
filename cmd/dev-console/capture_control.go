@@ -235,11 +235,12 @@ type AuditLogger struct {
 // Creates parent directories if they don't exist.
 func NewAuditLogger(path string) (*AuditLogger, error) {
 	dir := filepath.Dir(path)
+	// #nosec G301 -- 0755 for log directory is appropriate
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create audit log directory: %w", err)
 	}
 
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644) // #nosec G302 G304 -- audit logs are world-readable; path from caller
 	if err != nil {
 		return nil, fmt.Errorf("failed to open audit log: %w", err)
 	}
@@ -266,7 +267,7 @@ func (al *AuditLogger) Write(event AuditEvent) {
 	}
 
 	line := append(data, '\n')
-	al.file.Write(line)
+	_, _ = al.file.Write(line) // #nosec G104 -- best-effort audit logging
 
 	// Check if rotation is needed
 	if info, err := al.file.Stat(); err == nil && info.Size() >= al.maxSize {
@@ -282,26 +283,26 @@ func (al *AuditLogger) Close() {
 	al.mu.Lock()
 	defer al.mu.Unlock()
 	if al.file != nil {
-		al.file.Close()
+		_ = al.file.Close() // #nosec G104 -- best-effort close
 	}
 }
 
 // rotate renames current file and shifts existing rotations.
 func (al *AuditLogger) rotate() {
-	al.file.Close()
+	_ = al.file.Close() // #nosec G104 -- best-effort close before rotation
 
 	// Shift .2 → .3, .1 → .2
 	for i := 2; i >= 1; i-- {
 		old := fmt.Sprintf("%s.%d", al.path, i)
 		new := fmt.Sprintf("%s.%d", al.path, i+1)
-		os.Rename(old, new) // Ignore errors — files may not exist
+		_ = os.Rename(old, new) // #nosec G104 -- files may not exist, that's OK
 	}
 
 	// Current → .1
-	os.Rename(al.path, al.path+".1")
+	_ = os.Rename(al.path, al.path+".1") // #nosec G104 -- best-effort rotation
 
 	// Open new file
-	f, err := os.OpenFile(al.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(al.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644) // #nosec G302 G304 -- audit logs are world-readable; path from internal field
 	if err != nil {
 		return
 	}

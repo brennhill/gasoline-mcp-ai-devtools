@@ -117,7 +117,7 @@ func NewRedactionEngine(configPath string) *RedactionEngine {
 
 // loadConfig reads and parses the JSON config file, compiling valid patterns.
 func (e *RedactionEngine) loadConfig(path string) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is from trusted config location
 	if err != nil {
 		return // file not found or unreadable — use built-ins only
 	}

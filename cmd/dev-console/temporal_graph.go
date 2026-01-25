@@ -10,9 +10,10 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -76,7 +77,7 @@ type TemporalGraph struct {
 // NewTemporalGraph creates or loads a temporal graph from the given project directory.
 func NewTemporalGraph(projectDir string) *TemporalGraph {
 	histDir := filepath.Join(projectDir, "history")
-	os.MkdirAll(histDir, 0755)
+	_ = os.MkdirAll(histDir, 0755) // #nosec G301 -- 0755 for log directory is appropriate
 
 	tg := &TemporalGraph{
 		events:        make([]TemporalEvent, 0),
@@ -93,7 +94,7 @@ func NewTemporalGraph(projectDir string) *TemporalGraph {
 	tg.evict()
 
 	// Open file for appending
-	f, err := os.OpenFile(eventsPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(eventsPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644) // #nosec G302 G304 -- log files are intentionally world-readable; path from internal field
 	if err == nil {
 		tg.file = f
 	}
@@ -103,7 +104,7 @@ func NewTemporalGraph(projectDir string) *TemporalGraph {
 
 // loadFromFile reads events from the JSONL file.
 func (tg *TemporalGraph) loadFromFile(path string) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path is constructed from internal projectDir field
 	if err != nil {
 		return // No file yet
 	}
@@ -160,14 +161,14 @@ func (tg *TemporalGraph) evict() {
 // rewriteFile writes all current events to the JSONL file.
 func (tg *TemporalGraph) rewriteFile() {
 	path := filepath.Join(tg.dir, "history", "events.jsonl")
-	f, err := os.Create(path)
+	f, err := os.Create(path) // #nosec G304 -- path is constructed from internal dir field
 	if err != nil {
 		return
 	}
 	defer f.Close()
 	for _, e := range tg.events {
 		data, _ := json.Marshal(e)
-		f.Write(append(data, '\n'))
+		_, _ = f.Write(append(data, '\n')) // #nosec G104 -- best-effort write to log file
 	}
 }
 
@@ -232,7 +233,7 @@ func (tg *TemporalGraph) writeEvent(event TemporalEvent) {
 	if err != nil {
 		return
 	}
-	tg.file.Write(append(data, '\n'))
+	_, _ = tg.file.Write(append(data, '\n')) // #nosec G104 -- best-effort write to log file
 }
 
 // Query returns events matching the given filters.
@@ -300,7 +301,7 @@ func (tg *TemporalGraph) Close() {
 	tg.mu.Lock()
 	defer tg.mu.Unlock()
 	if tg.file != nil {
-		tg.file.Close()
+		_ = tg.file.Close() // #nosec G104 -- best-effort close
 		tg.file = nil
 	}
 }
@@ -319,7 +320,9 @@ func eventFingerprint(e TemporalEvent) string {
 // generateEventID creates a unique event ID.
 func generateEventID() string {
 	ts := time.Now().UnixMilli()
-	r := rand.Intn(10000)
+	var b [2]byte
+	_, _ = rand.Read(b[:]) // #nosec G104 -- best-effort randomness for non-security event ID
+	r := binary.LittleEndian.Uint16(b[:]) % 10000
 	return fmt.Sprintf("evt_%d_%04d", ts, r)
 }
 

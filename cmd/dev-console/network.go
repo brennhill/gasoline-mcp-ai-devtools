@@ -29,12 +29,12 @@ func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	for i := range bodies {
 		// Truncate request body
 		if len(bodies[i].RequestBody) > maxRequestBodySize {
-			bodies[i].RequestBody = bodies[i].RequestBody[:maxRequestBodySize] //nolint:gosec // G602: i is bounded by range
+			bodies[i].RequestBody = bodies[i].RequestBody[:maxRequestBodySize] // #nosec G602 -- i is bounded by range
 			bodies[i].RequestTruncated = true
 		}
 		// Truncate response body
 		if len(bodies[i].ResponseBody) > maxResponseBodySize {
-			bodies[i].ResponseBody = bodies[i].ResponseBody[:maxResponseBodySize] //nolint:gosec // G602: i is bounded by range
+			bodies[i].ResponseBody = bodies[i].ResponseBody[:maxResponseBodySize] // #nosec G602 -- i is bounded by range
 			bodies[i].ResponseTruncated = true
 		}
 		// Detect binary format in response body

@@ -301,6 +301,7 @@ func saveSARIFToFile(log *SARIFLog, path string) error {
 
 	// Ensure parent directory exists
 	dir := filepath.Dir(absPath)
+	// #nosec G301 -- 0755 for export directory is appropriate
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
@@ -310,6 +311,7 @@ func saveSARIFToFile(log *SARIFLog, path string) error {
 		return fmt.Errorf("failed to marshal SARIF: %w", err)
 	}
 
+	// #nosec G306 -- export files are intentionally world-readable
 	if err := os.WriteFile(absPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write SARIF file: %w", err)
 	}

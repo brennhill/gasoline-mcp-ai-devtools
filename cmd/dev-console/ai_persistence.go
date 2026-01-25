@@ -144,7 +144,8 @@ func (s *SessionStore) ensureGitignore() {
 	gitignorePath := filepath.Join(s.projectPath, ".gitignore")
 
 	// Check if .gitignore exists and already contains .gasoline
-	if data, err := os.ReadFile(gitignorePath); err == nil { //nolint:gosec // G304: path constructed from internal fields
+	// #nosec G304 -- path is constructed from internal projectPath field
+	if data, err := os.ReadFile(gitignorePath); err == nil {
 		scanner := bufio.NewScanner(strings.NewReader(string(data)))
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
@@ -153,7 +154,7 @@ func (s *SessionStore) ensureGitignore() {
 			}
 		}
 		// Append to existing file
-		f, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_WRONLY, filePermissions) //nolint:gosec // G304: path constructed from internal fields
+		f, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_WRONLY, filePermissions) // #nosec G304 -- path is constructed from internal projectPath field
 		if err != nil {
 			return
 		}
@@ -173,7 +174,7 @@ func (s *SessionStore) ensureGitignore() {
 
 func (s *SessionStore) loadOrCreateMeta() error {
 	metaPath := filepath.Join(s.projectDir, "meta.json")
-	data, err := os.ReadFile(metaPath) //nolint:gosec // G304: path constructed from internal fields
+	data, err := os.ReadFile(metaPath) // #nosec G304 -- path is constructed from internal projectDir field
 	if err != nil || len(data) == 0 {
 		// Fresh store
 		now := time.Now()
@@ -265,7 +266,7 @@ func (s *SessionStore) Load(namespace, key string) ([]byte, error) {
 	defer s.mu.RUnlock()
 
 	filePath := filepath.Join(s.projectDir, namespace, key+".json")
-	data, err := os.ReadFile(filePath) //nolint:gosec // G304: path constructed from internal fields
+	data, err := os.ReadFile(filePath) // #nosec G304 -- path is constructed from internal projectDir field
 	if err != nil {
 		return nil, fmt.Errorf("key not found: %s/%s", namespace, key)
 	}
@@ -391,7 +392,8 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 
 	// Load noise config
 	noisePath := filepath.Join(s.projectDir, "noise", "config.json")
-	if data, err := os.ReadFile(noisePath); err == nil { //nolint:gosec // G304: path constructed from internal fields
+	// #nosec G304 -- path is constructed from internal projectDir field
+	if data, err := os.ReadFile(noisePath); err == nil {
 		var config map[string]interface{}
 		if json.Unmarshal(data, &config) == nil {
 			ctx.NoiseConfig = config
@@ -400,7 +402,8 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 
 	// Load error history
 	errPath := filepath.Join(s.projectDir, "errors", "history.json")
-	if data, err := os.ReadFile(errPath); err == nil { //nolint:gosec // G304: path constructed from internal fields
+	// #nosec G304 -- path is constructed from internal projectDir field
+	if data, err := os.ReadFile(errPath); err == nil {
 		// Try to unmarshal as []ErrorHistoryEntry first
 		var entries []ErrorHistoryEntry
 		if json.Unmarshal(data, &entries) == nil {
@@ -428,7 +431,8 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 
 	// Load API schema
 	schemaPath := filepath.Join(s.projectDir, "api_schema", "schema.json")
-	if data, err := os.ReadFile(schemaPath); err == nil { //nolint:gosec // G304: path constructed from internal fields
+	// #nosec G304 -- path is constructed from internal projectDir field
+	if data, err := os.ReadFile(schemaPath); err == nil {
 		var schema map[string]interface{}
 		if json.Unmarshal(data, &schema) == nil {
 			ctx.APISchema = schema
@@ -437,7 +441,8 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 
 	// Load performance
 	perfPath := filepath.Join(s.projectDir, "performance", "endpoints.json")
-	if data, err := os.ReadFile(perfPath); err == nil { //nolint:gosec // G304: path constructed from internal fields
+	// #nosec G304 -- path is constructed from internal projectDir field
+	if data, err := os.ReadFile(perfPath); err == nil {
 		var perf map[string]interface{}
 		if json.Unmarshal(data, &perf) == nil {
 			ctx.Performance = perf

@@ -392,13 +392,13 @@ func compileRedactionPatterns() []*redactionPattern {
 // generateAuditID creates a unique audit entry ID (16 hex chars).
 func generateAuditID() string {
 	b := make([]byte, 8)
-	rand.Read(b)
+	_, _ = rand.Read(b) // #nosec G104 -- best-effort randomness for non-security audit ID
 	return hex.EncodeToString(b)
 }
 
 // generateSessionID creates a unique session ID (32 hex chars from 16 random bytes).
 func generateSessionID() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	_, _ = rand.Read(b) // #nosec G104 -- best-effort randomness for non-security session ID
 	return hex.EncodeToString(b)
 }

@@ -225,7 +225,8 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 
 	// Ensure log directory exists
 	dir := filepath.Dir(logFile)
-	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // G301: 0o755 is appropriate for log directory
+	// #nosec G301 -- 0o755 is appropriate for log directory
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
@@ -369,7 +370,8 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	dir := filepath.Dir(s.logFile)
 	savePath := filepath.Join(dir, filename)
 
-	if err := os.WriteFile(savePath, imageData, 0o644); err != nil { //nolint:gosec // G306: 0o644 is appropriate for screenshot files
+	// #nosec G306 -- screenshots are intentionally world-readable
+	if err := os.WriteFile(savePath, imageData, 0o644); err != nil {
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "Failed to save screenshot"})
 		return
 	}
@@ -421,7 +423,7 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 
 // appendToFile writes only the new entries to the file (append-only, no rewrite)
 func (s *Server) appendToFile(entries []LogEntry) error {
-	f, err := os.OpenFile(s.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G304: logFile is set at startup, not from user input
+	f, err := os.OpenFile(s.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) // #nosec G302 G304 -- log files are intentionally world-readable; path set at startup
 	if err != nil {
 		return err
 	}
@@ -575,9 +577,10 @@ func main() {
 				"arch":       runtime.GOARCH,
 			}
 			if data, err := json.Marshal(entry); err == nil {
+				// #nosec G302 G304 -- crash logs are intentionally world-readable for debugging
 				if f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644); err == nil {
-					f.Write(append(data, '\n'))
-					f.Close()
+					_, _ = f.Write(append(data, '\n')) // #nosec G104 -- best-effort crash logging
+					_ = f.Close()                      // #nosec G104 -- best-effort crash logging
 				}
 			}
 
@@ -585,7 +588,7 @@ func main() {
 			crashFile := filepath.Join(home, "gasoline-crash.log")
 			crashContent := fmt.Sprintf("GASOLINE CRASH at %s\nPanic: %v\nStack:\n%s\n",
 				time.Now().Format(time.RFC3339), r, stack)
-			os.WriteFile(crashFile, []byte(crashContent), 0644)
+			_ = os.WriteFile(crashFile, []byte(crashContent), 0644) // #nosec G104 G306 -- best-effort crash logging; intentionally world-readable
 
 			fmt.Fprintf(os.Stderr, "[gasoline] Crash details written to: %s\n", crashFile)
 			os.Exit(1)
@@ -658,7 +661,7 @@ func main() {
 			if *apiKey != "" {
 				args = append(args, "--api-key", *apiKey)
 			}
-			cmd := exec.Command(exe, args...) //nolint:gosec,noctx // G204: exe is our own binary path; no context needed for daemon fork
+			cmd := exec.Command(exe, args...) // #nosec G204 -- exe is our own binary path from os.Executable()
 			cmd.Stdout = nil
 			cmd.Stderr = nil
 			cmd.Stdin = nil
@@ -752,7 +755,7 @@ func main() {
 		}})
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		srv.Shutdown(ctx)
+		_ = srv.Shutdown(ctx) // #nosec G104 -- shutdown error is logged but not actionable
 		fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
 	case err := <-serverErr:
 		fmt.Fprintf(os.Stderr, "[gasoline] Server error: %v\n", err)
@@ -787,7 +790,8 @@ func runMCPMode(server *Server, port int, apiKey string) {
 			return
 		}
 		httpReady <- nil
-		if err := http.Serve(ln, AuthMiddleware(apiKey)(http.DefaultServeMux)); err != nil { //nolint:gosec // G114: MCP mode background server
+		// #nosec G114 -- localhost-only MCP background server
+		if err := http.Serve(ln, AuthMiddleware(apiKey)(http.DefaultServeMux)); err != nil {
 			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
 		}
 	}()

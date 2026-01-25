@@ -242,6 +242,7 @@ func (v *Capture) ExportHARToFile(filter NetworkBodyFilter, path string) (HARExp
 		return HARExportResult{}, fmt.Errorf("failed to marshal HAR: %w", err)
 	}
 
+	// #nosec G306 -- export files are intentionally world-readable
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return HARExportResult{}, fmt.Errorf("failed to write file: %w", err)
 	}
