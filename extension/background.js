@@ -2038,7 +2038,7 @@ export async function pollPendingQueries(serverUrl) {
  * @param {Object} query - { id, type, params }
  * @param {string} serverUrl - The server base URL
  */
-export async function handlePendingQuery(query, _serverUrl) {
+export async function handlePendingQuery(query, serverUrl) {
   try {
     const tabs = await new Promise((resolve) => {
       chrome.tabs.query({ active: true, currentWindow: true }, resolve)
@@ -2047,6 +2047,16 @@ export async function handlePendingQuery(query, _serverUrl) {
     if (!tabs || tabs.length === 0) return
 
     const tabId = tabs[0].id
+
+    // Handle highlight queries via the pilot command system
+    if (query.type === 'highlight') {
+      const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params)
+      // Post result back to server
+      await postQueryResult(serverUrl, query.id, 'highlight', result)
+      return
+    }
+
     const messageType = query.type === 'a11y' ? 'GASOLINE_A11Y_AUDIT' : 'GASOLINE_DOM_QUERY'
 
     await chrome.tabs.sendMessage(tabId, {
@@ -2063,10 +2073,12 @@ export async function handlePendingQuery(query, _serverUrl) {
  * Post query results back to the server
  * @param {string} serverUrl - The server base URL
  * @param {string} queryId - The query ID
- * @param {string} type - Query type ('dom' or 'a11y')
+ * @param {string} type - Query type ('dom', 'a11y', or 'highlight')
  * @param {Object} result - The query result
  */
 export async function postQueryResult(serverUrl, queryId, type, result) {
+  // All query types use /dom-result endpoint for posting results
+  // The server uses the query ID to match results to pending queries
   const endpoint = type === 'a11y' ? '/a11y-result' : '/dom-result'
 
   await fetch(`${serverUrl}${endpoint}`, {

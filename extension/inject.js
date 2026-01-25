@@ -666,6 +666,115 @@ export function setDeferralEnabled(enabled) {
   deferralEnabled = enabled
 }
 
+// ============================================================================
+// AI WEB PILOT: HIGHLIGHT
+// ============================================================================
+
+let gasolineHighlighter = null
+
+/**
+ * Highlight a DOM element by injecting a red overlay div.
+ * @param {string} selector - CSS selector for the element to highlight
+ * @param {number} durationMs - How long to show the highlight (default 5000ms)
+ * @returns {Object} Result with success, bounds, or error
+ */
+export function highlightElement(selector, durationMs = 5000) {
+  // Remove existing highlight
+  if (gasolineHighlighter) {
+    gasolineHighlighter.remove()
+    gasolineHighlighter = null
+  }
+
+  const element = document.querySelector(selector)
+  if (!element) {
+    return { success: false, error: 'element_not_found', selector }
+  }
+
+  const rect = element.getBoundingClientRect()
+
+  gasolineHighlighter = document.createElement('div')
+  gasolineHighlighter.id = 'gasoline-highlighter'
+  gasolineHighlighter.dataset.selector = selector
+  Object.assign(gasolineHighlighter.style, {
+    position: 'fixed',
+    top: `${rect.top}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    border: '4px solid red',
+    borderRadius: '4px',
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    zIndex: '2147483647',
+    pointerEvents: 'none',
+    boxSizing: 'border-box',
+  })
+
+  document.body.appendChild(gasolineHighlighter)
+
+  setTimeout(() => {
+    if (gasolineHighlighter) {
+      gasolineHighlighter.remove()
+      gasolineHighlighter = null
+    }
+  }, durationMs)
+
+  return {
+    success: true,
+    selector,
+    bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+  }
+}
+
+/**
+ * Clear any existing highlight
+ */
+export function clearHighlight() {
+  if (gasolineHighlighter) {
+    gasolineHighlighter.remove()
+    gasolineHighlighter = null
+  }
+}
+
+// Handle scroll — update highlight position
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (gasolineHighlighter) {
+        const selector = gasolineHighlighter.dataset.selector
+        if (selector) {
+          const el = document.querySelector(selector)
+          if (el) {
+            const rect = el.getBoundingClientRect()
+            gasolineHighlighter.style.top = `${rect.top}px`
+            gasolineHighlighter.style.left = `${rect.left}px`
+          }
+        }
+      }
+    },
+    { passive: true },
+  )
+}
+
+// Handle GASOLINE_HIGHLIGHT_REQUEST messages from content script
+if (typeof window !== 'undefined') {
+  window.addEventListener('message', (event) => {
+    if (event.source !== window) return
+    if (event.data?.type === 'GASOLINE_HIGHLIGHT_REQUEST') {
+      const { selector, duration_ms } = event.data.params || {}
+      const result = highlightElement(selector, duration_ms)
+      // Post result back to content script
+      window.postMessage(
+        {
+          type: 'GASOLINE_HIGHLIGHT_RESPONSE',
+          result,
+        },
+        '*',
+      )
+    }
+  })
+}
+
 // Auto-install when loaded in browser
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   installPhase1()

@@ -70,8 +70,52 @@ const TOGGLE_MESSAGES = new Set([
   'setNetworkBodyCaptureEnabled',
 ])
 
+// ============================================================================
+// AI WEB PILOT: HIGHLIGHT MESSAGE FORWARDING
+// ============================================================================
+
+// Pending highlight response resolver
+let pendingHighlightResolve = null
+
+/**
+ * Forward a highlight message from background to inject.js
+ * @param {Object} message - The GASOLINE_HIGHLIGHT message
+ * @returns {Promise<Object>} Result from inject.js
+ */
+export function forwardHighlightMessage(message) {
+  return new Promise((resolve) => {
+    pendingHighlightResolve = resolve
+
+    // Post message to page context (inject.js)
+    window.postMessage(
+      {
+        type: 'GASOLINE_HIGHLIGHT_REQUEST',
+        params: message.params,
+      },
+      '*',
+    )
+
+    // Timeout fallback
+    setTimeout(() => {
+      if (pendingHighlightResolve) {
+        pendingHighlightResolve({ success: false, error: 'timeout' })
+        pendingHighlightResolve = null
+      }
+    }, 5000)
+  })
+}
+
+// Listen for highlight responses from inject.js
+window.addEventListener('message', (event) => {
+  if (event.source !== window) return
+  if (event.data?.type === 'GASOLINE_HIGHLIGHT_RESPONSE' && pendingHighlightResolve) {
+    pendingHighlightResolve(event.data.result)
+    pendingHighlightResolve = null
+  }
+})
+
 // Listen for feature toggle messages from background
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (TOGGLE_MESSAGES.has(message.type)) {
     const payload = { type: 'GASOLINE_SETTING', setting: message.type }
     if (message.type === 'setWebSocketCaptureMode') {
@@ -80,6 +124,14 @@ chrome.runtime.onMessage.addListener((message) => {
       payload.enabled = message.enabled
     }
     window.postMessage(payload, '*')
+  }
+
+  // Handle GASOLINE_HIGHLIGHT from background
+  if (message.type === 'GASOLINE_HIGHLIGHT') {
+    forwardHighlightMessage(message).then((result) => {
+      sendResponse(result)
+    })
+    return true // Will respond asynchronously
   }
 })
 
