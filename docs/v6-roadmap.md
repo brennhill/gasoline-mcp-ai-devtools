@@ -166,6 +166,30 @@ Enterprise-readiness features that provide auditability, data governance, and op
   - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 4.3
   - Status: Specified
 
+### Phase 7: Developer Experience & Self-Testing
+
+Features that improve the development workflow, enable automated testing, and reduce manual verification during UAT.
+
+- [ ] **27. Test Fixture Page** — Built-in HTML test page (`/test-page`) with buttons, forms, WebSocket demo, and error triggers for manual and automated testing
+  - Branch: `feature/test-fixture-page`
+  - Status: Proposed
+
+- [ ] **28. CLI Test Mode (`--test`)** — Run predefined test scenarios (console capture, network capture, action recording) and report pass/fail without browser interaction
+  - Branch: `feature/cli-test-mode`
+  - Status: Proposed
+
+- [ ] **29. Mock Extension Client** — Go package that simulates extension HTTP calls for integration testing without a real browser
+  - Branch: `feature/mock-extension`
+  - Status: Proposed
+
+- [ ] **30. Event Timestamps in Diagnostics** — Add `received_at` timestamps to `/diagnostics` last_events for verifying recency
+  - Branch: `feature/diagnostics-timestamps`
+  - Status: Proposed
+
+- [ ] **31. MCP Test Harness** — Utility to send MCP commands and verify responses from CLI, enabling scripted UAT
+  - Branch: `feature/mcp-test-harness`
+  - Status: Proposed
+
 ## Dependencies
 
 Features within a phase can be implemented in parallel. Phases can also be parallelized since there are no hard cross-feature dependencies, though completing Phase 1 before Phase 3 is recommended (context streaming's security alerts use the security audit patterns). Phase 5 tools are independent of each other; `diff_security` benefits from Phase 2's snapshot infrastructure but can be implemented standalone.

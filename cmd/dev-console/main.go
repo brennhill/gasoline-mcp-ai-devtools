@@ -879,6 +879,64 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 			}
 		}
 
+		// Last events - for verifying data flow without manual inspection
+		lastEvents := map[string]interface{}{}
+
+		// Last console log/error
+		server.mu.RLock()
+		if len(server.entries) > 0 {
+			last := server.entries[len(server.entries)-1]
+			// Truncate args for display
+			args := last["args"]
+			if argsSlice, ok := args.([]interface{}); ok && len(argsSlice) > 0 {
+				if s, ok := argsSlice[0].(string); ok && len(s) > 100 {
+					args = s[:100] + "..."
+				} else {
+					args = argsSlice[0]
+				}
+			}
+			lastEvents["console"] = map[string]interface{}{
+				"level":   last["level"],
+				"message": args,
+				"ts":      last["ts"],
+			}
+		}
+		server.mu.RUnlock()
+
+		// Last network request, action, websocket
+		if capture != nil {
+			capture.mu.RLock()
+			if len(capture.networkBodies) > 0 {
+				last := capture.networkBodies[len(capture.networkBodies)-1]
+				// Truncate URL for display
+				url := last.URL
+				if len(url) > 80 {
+					url = url[:80] + "..."
+				}
+				lastEvents["network"] = map[string]interface{}{
+					"method": last.Method,
+					"url":    url,
+					"status": last.Status,
+				}
+			}
+			if len(capture.enhancedActions) > 0 {
+				last := capture.enhancedActions[len(capture.enhancedActions)-1]
+				lastEvents["action"] = map[string]interface{}{
+					"type": last.Type,
+					"ts":   last.Timestamp,
+				}
+			}
+			if len(capture.wsEvents) > 0 {
+				last := capture.wsEvents[len(capture.wsEvents)-1]
+				lastEvents["websocket"] = map[string]interface{}{
+					"type":      last.Type,
+					"direction": last.Direction,
+				}
+			}
+			capture.mu.RUnlock()
+		}
+		resp["last_events"] = lastEvents
+
 		jsonResponse(w, http.StatusOK, resp)
 	}))
 
