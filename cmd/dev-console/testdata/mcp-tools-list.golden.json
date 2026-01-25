@@ -198,8 +198,16 @@
             ],
             "type": "string"
           },
+          "generate_fixtures": {
+            "description": "Generate fixtures/api-responses.json from captured network data (applies to reproduction, default: false)",
+            "type": "boolean"
+          },
           "include_passes": {
             "description": "Include passing rules (applies to sarif)",
+            "type": "boolean"
+          },
+          "include_screenshots": {
+            "description": "Insert page.screenshot() calls at key points (applies to reproduction, default: false)",
             "type": "boolean"
           },
           "last_n_actions": {
@@ -233,6 +241,10 @@
           "url": {
             "description": "Filter by URL substring (applies to har)",
             "type": "string"
+          },
+          "visual_assertions": {
+            "description": "Add toHaveScreenshot() assertions at key checkpoints (applies to reproduction, default: false)",
+            "type": "boolean"
           }
         },
         "required": [

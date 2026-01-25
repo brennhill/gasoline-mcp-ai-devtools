@@ -548,9 +548,12 @@ func extractShape(val interface{}, depth int) interface{} {
 
 func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
-		ErrorMessage string `json:"error_message"`
-		LastNActions int    `json:"last_n_actions"`
-		BaseURL      string `json:"base_url"`
+		ErrorMessage       string `json:"error_message"`
+		LastNActions       int    `json:"last_n_actions"`
+		BaseURL            string `json:"base_url"`
+		IncludeScreenshots bool   `json:"include_screenshots"`
+		GenerateFixtures   bool   `json:"generate_fixtures"`
+		VisualAssertions   bool   `json:"visual_assertions"`
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
@@ -565,9 +568,47 @@ func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.Ra
 		actions = actions[len(actions)-arguments.LastNActions:]
 	}
 
-	script := generatePlaywrightScript(actions, arguments.ErrorMessage, arguments.BaseURL)
+	// Check if any enhanced options are enabled
+	hasEnhancedOptions := arguments.IncludeScreenshots || arguments.GenerateFixtures || arguments.VisualAssertions
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(script)}
+	if !hasEnhancedOptions {
+		// Use original simple generation
+		script := generatePlaywrightScript(actions, arguments.ErrorMessage, arguments.BaseURL)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(script)}
+	}
+
+	// Get network bodies for fixture generation
+	var networkBodies []NetworkBody
+	if arguments.GenerateFixtures {
+		networkBodies = h.capture.GetNetworkBodies(NetworkBodyFilter{})
+	}
+
+	// Use enhanced generation
+	opts := ReproductionOptions{
+		ErrorMessage:       arguments.ErrorMessage,
+		LastNActions:       arguments.LastNActions,
+		BaseURL:            arguments.BaseURL,
+		IncludeScreenshots: arguments.IncludeScreenshots,
+		GenerateFixtures:   arguments.GenerateFixtures,
+		VisualAssertions:   arguments.VisualAssertions,
+	}
+
+	result := generateEnhancedPlaywrightScript(actions, networkBodies, opts)
+
+	// If fixtures were generated, return multiple content blocks
+	if arguments.GenerateFixtures && len(result.Fixtures) > 0 {
+		fixturesJSON, _ := json.MarshalIndent(result.Fixtures, "", "  ")
+		mcpResult := MCPToolResult{
+			Content: []MCPContentBlock{
+				{Type: "text", Text: result.Script},
+				{Type: "text", Text: string(fixturesJSON)},
+			},
+		}
+		resultJSON, _ := json.Marshal(mcpResult)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(resultJSON)}
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(result.Script)}
 }
 
 func (h *ToolHandler) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

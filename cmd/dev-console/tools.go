@@ -466,6 +466,18 @@ func (h *ToolHandler) toolsList() []MCPTool {
 						"type":        "string",
 						"description": "Replace origin in URLs (applies to reproduction, test)",
 					},
+					"include_screenshots": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Insert page.screenshot() calls at key points (applies to reproduction, default: false)",
+					},
+					"generate_fixtures": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Generate fixtures/api-responses.json from captured network data (applies to reproduction, default: false)",
+					},
+					"visual_assertions": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Add toHaveScreenshot() assertions at key checkpoints (applies to reproduction, default: false)",
+					},
 					"test_name": map[string]interface{}{
 						"type":        "string",
 						"description": "Name for the generated test (applies to test)",
