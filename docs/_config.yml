@@ -45,6 +45,7 @@ defaults:
 
 # Exclude internal spec files from the site build
 exclude:
+  - .claude
   - specification.md
   - v4-specification.md
   - v5-specification.md
