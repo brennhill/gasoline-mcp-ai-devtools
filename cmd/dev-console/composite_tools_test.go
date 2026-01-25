@@ -44,6 +44,9 @@ func TestCompositeToolsListReturnsAllTools(t *testing.T) {
 		"get_audit_log":        true,
 		"diff_sessions":        true,
 		"validate_api":         true,
+		"get_health":           true,
+		"generate_sri":         true,
+		"verify_fix":           true,
 		// AI Web Pilot tools
 		"highlight_element":    true,
 		"manage_state":         true,
@@ -51,12 +54,12 @@ func TestCompositeToolsListReturnsAllTools(t *testing.T) {
 		"browser_action":       true,
 	}
 
-	if len(result.Tools) != 16 {
+	if len(result.Tools) != 19 {
 		names := make([]string, len(result.Tools))
 		for i, tool := range result.Tools {
 			names[i] = tool.Name
 		}
-		t.Fatalf("Expected exactly 16 tools, got %d: %v", len(result.Tools), names)
+		t.Fatalf("Expected exactly 19 tools, got %d: %v", len(result.Tools), names)
 	}
 
 	for _, tool := range result.Tools {
@@ -164,7 +167,7 @@ func TestCompositeToolsModeEnumValues(t *testing.T) {
 	json.Unmarshal(resp.Result, &result)
 
 	expectedEnums := map[string][]string{
-		"observe":   {"errors", "logs", "network", "websocket_events", "websocket_status", "actions", "vitals", "page"},
+		"observe":   {"errors", "logs", "network", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs"},
 		"analyze":   {"performance", "api", "accessibility", "changes", "timeline"},
 		"generate":  {"reproduction", "test", "pr_summary", "sarif", "har"},
 		"configure": {"store", "load", "noise_rule", "dismiss", "clear"},
@@ -1146,13 +1149,13 @@ func TestToolsListGoldenMatchesWithMeta(t *testing.T) {
 		JSONRPC: "2.0", ID: 2, Method: "tools/list",
 	})
 
-	// Verify it returns 16 tools with proper structure (12 core + 4 pilot tools)
+	// Verify it returns 19 tools with proper structure (15 core + 4 pilot tools)
 	var result MCPToolsListResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("Failed to parse tools list: %v", err)
 	}
-	if len(result.Tools) != 16 {
-		t.Fatalf("Expected 16 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 19 {
+		t.Fatalf("Expected 19 tools, got %d", len(result.Tools))
 	}
 
 	// Verify _meta doesn't break standard MCPTool parsing

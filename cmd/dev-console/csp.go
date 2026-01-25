@@ -138,6 +138,18 @@ func (g *CSPGenerator) Reset() {
 	g.pages = make(map[string]bool)
 }
 
+// GetPages returns a copy of all observed page URLs.
+func (g *CSPGenerator) GetPages() []string {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	pages := make([]string, 0, len(g.pages))
+	for p := range g.pages {
+		pages = append(pages, p)
+	}
+	return pages
+}
+
 // ============================================
 // CSP Generation
 // ============================================

@@ -51,7 +51,8 @@
               "websocket_status",
               "actions",
               "vitals",
-              "page"
+              "page",
+              "tabs"
             ],
             "type": "string"
           }
@@ -392,6 +393,10 @@
           "selector": {
             "description": "CSS selector to query",
             "type": "string"
+          },
+          "tab_id": {
+            "description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
+            "type": "number"
           }
         },
         "required": [
@@ -662,6 +667,72 @@
       }
     },
     {
+      "name": "get_health",
+      "description": "Get server health and operational metrics: uptime, memory usage, buffer utilization, request counts, and error rates.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      }
+    },
+    {
+      "name": "generate_sri",
+      "description": "Generate Subresource Integrity (SRI) hashes for third-party scripts and stylesheets observed in network traffic. Returns SHA-384 hashes and ready-to-use HTML tag templates with integrity attributes.",
+      "inputSchema": {
+        "properties": {
+          "origins": {
+            "description": "Filter by specific origins. Default: all third-party origins.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "resource_types": {
+            "description": "Filter by resource type: 'script', 'stylesheet'. Default: both.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "_meta": {
+        "data_counts": {
+          "network_bodies": 0
+        }
+      }
+    },
+    {
+      "name": "verify_fix",
+      "description": "Verification loop for bug fixes. Start a session before fixing, then check after to verify the fix worked. Compares console errors, network failures, and page state between before and after snapshots.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "description": "'start' captures baseline state before fix. 'check' captures current state and compares to baseline. 'status' shows current verification sessions. 'cancel' aborts a session.",
+            "enum": [
+              "start",
+              "check",
+              "status",
+              "cancel"
+            ],
+            "type": "string"
+          },
+          "description": {
+            "description": "Optional description of what's being verified (for start action).",
+            "type": "string"
+          },
+          "session_id": {
+            "description": "Session identifier. Required for start (creates new), check (compares), and cancel (aborts).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "highlight_element",
       "description": "Highlight a DOM element on the page. Requires 'AI Web Pilot' to be enabled in the extension popup.",
       "inputSchema": {
@@ -673,6 +744,10 @@
           "selector": {
             "description": "CSS selector for the element to highlight",
             "type": "string"
+          },
+          "tab_id": {
+            "description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
+            "type": "number"
           }
         },
         "required": [
@@ -700,6 +775,10 @@
           "snapshot_name": {
             "description": "Name of the snapshot (required for save, load, delete)",
             "type": "string"
+          },
+          "tab_id": {
+            "description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
+            "type": "number"
           }
         },
         "required": [
@@ -717,6 +796,10 @@
             "description": "JavaScript code to execute",
             "type": "string"
           },
+          "tab_id": {
+            "description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
+            "type": "number"
+          },
           "timeout_ms": {
             "description": "Execution timeout in milliseconds (default: 5000)",
             "type": "number"
@@ -730,12 +813,13 @@
     },
     {
       "name": "browser_action",
-      "description": "Perform browser navigation actions: refresh the page, navigate to URL, go back, or go forward. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+      "description": "Perform browser navigation actions: open new tab, refresh the page, navigate to URL, go back, or go forward. Requires 'AI Web Pilot' to be enabled in the extension popup.",
       "inputSchema": {
         "properties": {
           "action": {
             "description": "Browser action to perform",
             "enum": [
+              "open",
               "refresh",
               "navigate",
               "back",
@@ -743,8 +827,12 @@
             ],
             "type": "string"
           },
+          "tab_id": {
+            "description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab. Not applicable for 'open' action.",
+            "type": "number"
+          },
           "url": {
-            "description": "URL to navigate to (required for 'navigate' action)",
+            "description": "URL to navigate to (required for 'navigate' and 'open' actions)",
             "type": "string"
           }
         },

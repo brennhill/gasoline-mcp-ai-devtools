@@ -113,6 +113,12 @@ type ToolHandler struct {
 	// API contract validation
 	contractValidator *APIContractValidator
 
+	// Health metrics monitoring
+	healthMetrics *HealthMetrics
+
+	// Verification loop for fix verification
+	verificationMgr *VerificationManager
+
 	// Redaction engine for scrubbing sensitive data from tool responses
 	redactionEngine *RedactionEngine
 }
@@ -160,6 +166,8 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 	handler.auditTrail = NewAuditTrail(AuditConfig{MaxEntries: 10000, Enabled: true, RedactParams: true})
 	handler.sessionManager = NewSessionManager(10, &captureStateAdapter{capture: capture, server: server})
 	handler.contractValidator = NewAPIContractValidator()
+	handler.healthMetrics = NewHealthMetrics()
+	handler.verificationMgr = NewVerificationManager(&captureStateAdapter{capture: capture, server: server})
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.
 	server.onEntries = func(entries []LogEntry) {
@@ -332,7 +340,7 @@ func (h *ToolHandler) toolsList() []MCPTool {
 					"what": map[string]interface{}{
 						"type":        "string",
 						"description": "What to observe",
-						"enum":        []string{"errors", "logs", "network", "websocket_events", "websocket_status", "actions", "vitals", "page"},
+						"enum":        []string{"errors", "logs", "network", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs"},
 					},
 					"limit": map[string]interface{}{
 						"type":        "number",
@@ -618,6 +626,10 @@ func (h *ToolHandler) toolsList() []MCPTool {
 						"type":        "string",
 						"description": "CSS selector to query",
 					},
+					"tab_id": map[string]interface{}{
+						"type":        "number",
+						"description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
+					},
 				},
 				"required": []string{"selector"},
 			},
@@ -826,6 +838,61 @@ func (h *ToolHandler) toolsList() []MCPTool {
 				"required": []string{"action"},
 			},
 		},
+		{
+			Name:        "get_health",
+			Description: "Get server health and operational metrics: uptime, memory usage, buffer utilization, request counts, and error rates.",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
+		{
+			Name:        "generate_sri",
+			Description: "Generate Subresource Integrity (SRI) hashes for third-party scripts and stylesheets observed in network traffic. Returns SHA-384 hashes and ready-to-use HTML tag templates with integrity attributes.",
+			Meta: map[string]interface{}{
+				"data_counts": map[string]interface{}{
+					"network_bodies": networkCount,
+				},
+			},
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"resource_types": map[string]interface{}{
+						"type":        "array",
+						"description": "Filter by resource type: 'script', 'stylesheet'. Default: both.",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+					"origins": map[string]interface{}{
+						"type":        "array",
+						"description": "Filter by specific origins. Default: all third-party origins.",
+						"items":       map[string]interface{}{"type": "string"},
+					},
+				},
+			},
+		},
+		{
+			Name:        "verify_fix",
+			Description: "Verification loop for bug fixes. Start a session before fixing, then check after to verify the fix worked. Compares console errors, network failures, and page state between before and after snapshots.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"action": map[string]interface{}{
+						"type":        "string",
+						"description": "'start' captures baseline state before fix. 'check' captures current state and compares to baseline. 'status' shows current verification sessions. 'cancel' aborts a session.",
+						"enum":        []string{"start", "check", "status", "cancel"},
+					},
+					"session_id": map[string]interface{}{
+						"type":        "string",
+						"description": "Session identifier. Required for start (creates new), check (compares), and cancel (aborts).",
+					},
+					"description": map[string]interface{}{
+						"type":        "string",
+						"description": "Optional description of what's being verified (for start action).",
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
 		// AI Web Pilot tools (Phase 1: stubs only)
 		{
 			Name:        "highlight_element",
@@ -840,6 +907,10 @@ func (h *ToolHandler) toolsList() []MCPTool {
 					"duration_ms": map[string]interface{}{
 						"type":        "number",
 						"description": "How long to show the highlight in milliseconds (default: 5000)",
+					},
+					"tab_id": map[string]interface{}{
+						"type":        "number",
+						"description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
 					},
 				},
 				"required": []string{"selector"},
@@ -860,6 +931,10 @@ func (h *ToolHandler) toolsList() []MCPTool {
 						"type":        "string",
 						"description": "Name of the snapshot (required for save, load, delete)",
 					},
+					"tab_id": map[string]interface{}{
+						"type":        "number",
+						"description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
+					},
 				},
 				"required": []string{"action"},
 			},
@@ -878,24 +953,32 @@ func (h *ToolHandler) toolsList() []MCPTool {
 						"type":        "number",
 						"description": "Execution timeout in milliseconds (default: 5000)",
 					},
+					"tab_id": map[string]interface{}{
+						"type":        "number",
+						"description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
+					},
 				},
 				"required": []string{"script"},
 			},
 		},
 		{
 			Name:        "browser_action",
-			Description: "Perform browser navigation actions: refresh the page, navigate to URL, go back, or go forward. Requires 'AI Web Pilot' to be enabled in the extension popup.",
+			Description: "Perform browser navigation actions: open new tab, refresh the page, navigate to URL, go back, or go forward. Requires 'AI Web Pilot' to be enabled in the extension popup.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
 					"action": map[string]interface{}{
 						"type":        "string",
 						"description": "Browser action to perform",
-						"enum":        []string{"refresh", "navigate", "back", "forward"},
+						"enum":        []string{"open", "refresh", "navigate", "back", "forward"},
 					},
 					"url": map[string]interface{}{
 						"type":        "string",
-						"description": "URL to navigate to (required for 'navigate' action)",
+						"description": "URL to navigate to (required for 'navigate' and 'open' actions)",
+					},
+					"tab_id": map[string]interface{}{
+						"type":        "number",
+						"description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab. Not applicable for 'open' action.",
 					},
 				},
 				"required": []string{"action"},
@@ -931,6 +1014,12 @@ func (h *ToolHandler) handleToolCall(req JSONRPCRequest, name string, args json.
 		return h.toolDiffSessions(req, args), true
 	case "validate_api":
 		return h.toolValidateAPI(req, args), true
+	case "get_health":
+		return h.toolGetHealth(req), true
+	case "generate_sri":
+		return h.toolGenerateSRI(req, args), true
+	case "verify_fix":
+		return h.toolVerifyFix(req, args), true
 	// AI Web Pilot tools
 	case "highlight_element":
 		return h.handlePilotHighlight(req, args), true
@@ -976,6 +1065,8 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		resp = h.toolGetWebVitals(req, args)
 	case "page":
 		resp = h.toolGetPageInfo(req, args)
+	case "tabs":
+		resp = h.toolGetTabs(req, args)
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Unknown observe mode: " + params.What)}
 	}
@@ -1579,5 +1670,52 @@ func (h *ToolHandler) toolValidateAPI(req JSONRPCRequest, args json.RawMessage) 
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("action parameter must be 'analyze', 'report', or 'clear'")}
 	}
 
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+}
+
+// ============================================
+// SRI Hash Generator Tool
+// ============================================
+
+// toolGenerateSRI generates Subresource Integrity hashes for third-party scripts/styles.
+func (h *ToolHandler) toolGenerateSRI(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	// Get network bodies from capture
+	h.capture.mu.RLock()
+	bodies := make([]NetworkBody, len(h.capture.networkBodies))
+	copy(bodies, h.capture.networkBodies)
+	h.capture.mu.RUnlock()
+
+	// Get page URLs from CSP generator (tracks all visited pages)
+	var pageURLs []string
+	if h.cspGenerator != nil {
+		pageURLs = h.cspGenerator.GetPages()
+	}
+
+	// Call the handler
+	result, err := HandleGenerateSRI(args, bodies, pageURLs)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(err.Error())}
+	}
+
+	respJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+}
+
+// ============================================
+// Verification Loop Tool
+// ============================================
+
+// toolVerifyFix handles the verify_fix MCP tool for before/after fix verification.
+func (h *ToolHandler) toolVerifyFix(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if h.verificationMgr == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Verification manager not initialized")}
+	}
+
+	result, err := h.verificationMgr.HandleTool(args)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(err.Error())}
+	}
+
+	respJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
 }

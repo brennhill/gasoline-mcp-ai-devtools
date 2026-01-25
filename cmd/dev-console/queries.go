@@ -44,6 +44,7 @@ func (v *Capture) CreatePendingQueryWithTimeout(query PendingQuery, timeout time
 			ID:     id,
 			Type:   query.Type,
 			Params: query.Params,
+			TabID:  query.TabID,
 		},
 		expires: time.Now().Add(timeout),
 	}
@@ -265,6 +266,7 @@ func (v *Capture) handleQueryResult(w http.ResponseWriter, r *http.Request) {
 func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		Selector string `json:"selector"`
+		TabID    int    `json:"tab_id"`
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
@@ -272,6 +274,7 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 	id := h.capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: params,
+		TabID:  arguments.TabID,
 	})
 
 	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
@@ -291,6 +294,23 @@ func (h *ToolHandler) toolGetPageInfo(req JSONRPCRequest, args json.RawMessage) 
 	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Timeout waiting for page info")}
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(result))}
+}
+
+// toolGetTabs requests the list of all open browser tabs from the extension.
+// This is used by AI Web Pilot to enable tab targeting - allowing tools to
+// operate on specific tabs rather than just the active tab.
+func (h *ToolHandler) toolGetTabs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	id := h.capture.CreatePendingQuery(PendingQuery{
+		Type:   "tabs",
+		Params: json.RawMessage(`{}`),
+	})
+
+	result, err := h.capture.WaitForResult(id, h.capture.queryTimeout)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Timeout waiting for tabs list")}
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(result))}

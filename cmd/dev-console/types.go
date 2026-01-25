@@ -159,6 +159,7 @@ type NetworkBodyFilter struct {
 type PendingQuery struct {
 	Type   string          `json:"type"`
 	Params json.RawMessage `json:"params"`
+	TabID  int             `json:"tab_id,omitempty"` // Target tab ID (0 = active tab)
 }
 
 // PendingQueryResponse is the response format for pending queries
@@ -166,6 +167,7 @@ type PendingQueryResponse struct {
 	ID     string          `json:"id"`
 	Type   string          `json:"type"`
 	Params json.RawMessage `json:"params"`
+	TabID  int             `json:"tab_id,omitempty"` // Target tab ID (0 = active tab)
 }
 
 // EnhancedAction represents a captured user action with multi-strategy selectors

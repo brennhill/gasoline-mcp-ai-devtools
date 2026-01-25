@@ -18,6 +18,7 @@ var ErrPilotDisabled = errors.New("ai_web_pilot_disabled: enable 'AI Web Pilot' 
 type PilotHighlightParams struct {
 	Selector   string `json:"selector"`
 	DurationMs int    `json:"duration_ms"`
+	TabID      int    `json:"tab_id"` // Target tab ID (0 = active tab)
 }
 
 // PilotManageStateParams for manage_state tool
@@ -25,18 +26,21 @@ type PilotManageStateParams struct {
 	Action       string `json:"action"`
 	SnapshotName string `json:"snapshot_name"`
 	IncludeUrl   *bool  `json:"include_url,omitempty"`
+	TabID        int    `json:"tab_id"` // Target tab ID (0 = active tab)
 }
 
 // PilotExecuteJSParams for execute_javascript tool
 type PilotExecuteJSParams struct {
 	Script    string `json:"script"`
 	TimeoutMs int    `json:"timeout_ms"`
+	TabID     int    `json:"tab_id"` // Target tab ID (0 = active tab)
 }
 
 // BrowserActionParams for browser_action tool
 type BrowserActionParams struct {
-	Action string `json:"action"` // refresh, navigate, back, forward
-	URL    string `json:"url"`    // for navigate action
+	Action string `json:"action"` // open, refresh, navigate, back, forward
+	URL    string `json:"url"`    // for navigate and open actions
+	TabID  int    `json:"tab_id"` // Target tab ID (0 = active tab, not applicable for open)
 }
 
 // handlePilotHighlight handles the highlight_element tool call.
@@ -69,6 +73,7 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	id := h.capture.CreatePendingQuery(PendingQuery{
 		Type:   "highlight",
 		Params: queryParams,
+		TabID:  params.TabID,
 	})
 
 	// Wait for extension to execute and return result
@@ -181,6 +186,7 @@ func (h *ToolHandler) handlePilotManageState(req JSONRPCRequest, args json.RawMe
 	queryID := h.capture.CreatePendingQueryWithTimeout(PendingQuery{
 		Type:   queryType,
 		Params: queryParamsJSON,
+		TabID:  params.TabID,
 	}, 10*time.Second)
 
 	// Wait for result from extension
@@ -261,6 +267,7 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 	id := h.capture.CreatePendingQuery(PendingQuery{
 		Type:   "execute",
 		Params: paramsJSON,
+		TabID:  params.TabID,
 	})
 
 	// Wait for the result from the extension
@@ -288,7 +295,7 @@ func (h *ToolHandler) handleBrowserAction(req JSONRPCRequest, args json.RawMessa
 	_ = json.Unmarshal(args, &params)
 
 	// Validate action parameter
-	validActions := map[string]bool{"refresh": true, "navigate": true, "back": true, "forward": true}
+	validActions := map[string]bool{"open": true, "refresh": true, "navigate": true, "back": true, "forward": true}
 	if params.Action == "" {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -301,16 +308,16 @@ func (h *ToolHandler) handleBrowserAction(req JSONRPCRequest, args json.RawMessa
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Result:  mcpErrorResponse("Invalid action: must be refresh, navigate, back, or forward"),
+			Result:  mcpErrorResponse("Invalid action: must be open, refresh, navigate, back, or forward"),
 		}
 	}
 
-	// Validate URL for navigate action
-	if params.Action == "navigate" && params.URL == "" {
+	// Validate URL for navigate and open actions
+	if (params.Action == "navigate" || params.Action == "open") && params.URL == "" {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Result:  mcpErrorResponse("URL required for navigate action"),
+			Result:  mcpErrorResponse("URL required for " + params.Action + " action"),
 		}
 	}
 
@@ -327,6 +334,7 @@ func (h *ToolHandler) handleBrowserAction(req JSONRPCRequest, args json.RawMessa
 	queryID := h.capture.CreatePendingQueryWithTimeout(PendingQuery{
 		Type:   "browser_action",
 		Params: queryParamsJSON,
+		TabID:  params.TabID, // Note: for "open" action, TabID is ignored by extension
 	}, 10*time.Second)
 
 	// Wait for result from extension
