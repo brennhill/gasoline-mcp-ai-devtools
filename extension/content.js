@@ -71,7 +71,7 @@ const TOGGLE_MESSAGES = new Set([
 ])
 
 // Listen for feature toggle messages from background
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (TOGGLE_MESSAGES.has(message.type)) {
     const payload = { type: 'GASOLINE_SETTING', setting: message.type }
     if (message.type === 'setWebSocketCaptureMode') {
@@ -81,7 +81,53 @@ chrome.runtime.onMessage.addListener((message) => {
     }
     window.postMessage(payload, '*')
   }
+
+  // Handle state management commands from background
+  if (message.type === 'GASOLINE_MANAGE_STATE') {
+    handleStateCommand(message.params)
+      .then((result) => sendResponse(result))
+      .catch((err) => sendResponse({ error: err.message }))
+    return true // Keep channel open for async response
+  }
 })
+
+// Handle state capture/restore commands
+async function handleStateCommand(params) {
+  const { action, name, include_url } = params || {}
+
+  // Create a promise to receive response from inject.js
+  return new Promise((resolve) => {
+    const messageId = `state_${Date.now()}_${Math.random().toString(36).slice(2)}`
+
+    // Set up listener for response from inject.js
+    const responseHandler = (event) => {
+      if (event.source !== window) return
+      if (event.data?.type === 'GASOLINE_STATE_RESPONSE' && event.data?.messageId === messageId) {
+        window.removeEventListener('message', responseHandler)
+        resolve(event.data.result)
+      }
+    }
+    window.addEventListener('message', responseHandler)
+
+    // Send command to inject.js
+    window.postMessage(
+      {
+        type: 'GASOLINE_STATE_COMMAND',
+        messageId,
+        action,
+        name,
+        include_url,
+      },
+      '*',
+    )
+
+    // Timeout after 5 seconds
+    setTimeout(() => {
+      window.removeEventListener('message', responseHandler)
+      resolve({ error: 'State command timeout' })
+    }, 5000)
+  })
+}
 
 // Inject when DOM is ready
 if (document.readyState === 'loading') {

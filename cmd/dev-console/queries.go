@@ -175,6 +175,11 @@ func (v *Capture) HandleA11yResult(w http.ResponseWriter, r *http.Request) {
 	v.handleQueryResult(w, r)
 }
 
+// HandleStateResult handles POST /state-result (pilot state management)
+func (v *Capture) HandleStateResult(w http.ResponseWriter, r *http.Request) {
+	v.handleQueryResult(w, r)
+}
+
 // handleQueryResult handles a query result POST (shared between DOM and A11y)
 func (v *Capture) handleQueryResult(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
