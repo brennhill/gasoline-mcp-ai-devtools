@@ -5,6 +5,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -20,6 +21,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -547,6 +549,49 @@ func jsonResponse(w http.ResponseWriter, status int, data interface{}) {
 }
 
 func main() {
+	// Install panic recovery with diagnostic logging
+	defer func() {
+		if r := recover(); r != nil {
+			// Get stack trace
+			stack := make([]byte, 4096)
+			n := runtime.Stack(stack, false)
+			stack = stack[:n]
+
+			// Log to stderr
+			fmt.Fprintf(os.Stderr, "\n[gasoline] FATAL PANIC: %v\n", r)
+			fmt.Fprintf(os.Stderr, "[gasoline] Stack trace:\n%s\n", stack)
+
+			// Try to log to file
+			home, _ := os.UserHomeDir()
+			logFile := filepath.Join(home, "gasoline-logs.jsonl")
+			entry := map[string]interface{}{
+				"type":       "lifecycle",
+				"event":      "crash",
+				"reason":     fmt.Sprintf("%v", r),
+				"stack":      string(stack),
+				"timestamp":  time.Now().UTC().Format(time.RFC3339),
+				"go_version": runtime.Version(),
+				"os":         runtime.GOOS,
+				"arch":       runtime.GOARCH,
+			}
+			if data, err := json.Marshal(entry); err == nil {
+				if f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644); err == nil {
+					f.Write(append(data, '\n'))
+					f.Close()
+				}
+			}
+
+			// Also write to a dedicated crash file for easy discovery
+			crashFile := filepath.Join(home, "gasoline-crash.log")
+			crashContent := fmt.Sprintf("GASOLINE CRASH at %s\nPanic: %v\nStack:\n%s\n",
+				time.Now().Format(time.RFC3339), r, stack)
+			os.WriteFile(crashFile, []byte(crashContent), 0644)
+
+			fmt.Fprintf(os.Stderr, "[gasoline] Crash details written to: %s\n", crashFile)
+			os.Exit(1)
+		}
+	}()
+
 	// Parse flags
 	port := flag.Int("port", defaultPort, "Port to listen on")
 	logFile := flag.String("log-file", "", "Path to log file (default: ~/gasoline-logs.jsonl)")
@@ -593,6 +638,18 @@ func main() {
 	if !*serverOnly {
 		stat, _ := os.Stdin.Stat()
 		isTTY := (stat.Mode() & os.ModeCharDevice) != 0
+		stdinMode := stat.Mode()
+
+		// Log mode detection for diagnostics
+		_ = server.appendToFile([]LogEntry{{
+			"type":       "lifecycle",
+			"event":      "mode_detection",
+			"is_tty":     isTTY,
+			"stdin_mode": fmt.Sprintf("%v", stdinMode),
+			"server_flag": *serverOnly,
+			"pid":        os.Getpid(),
+			"timestamp":  time.Now().UTC().Format(time.RFC3339),
+		}})
 
 		if isTTY {
 			// User ran "gasoline" directly - start server as background process
@@ -615,10 +672,21 @@ func main() {
 			os.Exit(0)
 		}
 
-		// stdin is piped → MCP mode
+		// stdin is piped → MCP mode (will shut down when stdin closes)
+		fmt.Fprintf(os.Stderr, "[gasoline] Starting in MCP mode (stdin is pipe, will exit when MCP client disconnects)\n")
 		runMCPMode(server, *port, *apiKey)
 		return
 	}
+
+	// Log that we're starting in server-only mode
+	_ = server.appendToFile([]LogEntry{{
+		"type":      "lifecycle",
+		"event":     "mode_detection",
+		"mode":      "http_only",
+		"server_flag": true,
+		"pid":       os.Getpid(),
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}})
 
 	// HTTP-only server mode (--server)
 	// Setup routes
@@ -627,7 +695,7 @@ func main() {
 
 	// Print banner
 	fmt.Println()
-	fmt.Printf("  Gasoline v%s\n", version)
+	fmt.Printf("  Gasoline v%s (pid %d)\n", version, os.Getpid())
 	fmt.Println("  Browser observability for AI coding agents")
 	fmt.Println()
 	fmt.Printf("  Server:  http://127.0.0.1:%d\n", *port)
@@ -636,6 +704,21 @@ func main() {
 	fmt.Println()
 	fmt.Println("  Ready. Press Ctrl+C to stop.")
 	fmt.Println()
+
+	// Log startup
+	_ = server.appendToFile([]LogEntry{{
+		"type":      "lifecycle",
+		"event":     "startup",
+		"mode":      "http_only",
+		"version":   version,
+		"port":      *port,
+		"pid":       os.Getpid(),
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}})
+
+	// Setup graceful shutdown on signals
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
 	// Start server (localhost only for security)
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
@@ -646,8 +729,41 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 		Handler:      AuthMiddleware(*apiKey)(http.DefaultServeMux),
 	}
-	if err := srv.ListenAndServe(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error starting server: %v\n", err)
+
+	// Run server in goroutine
+	serverErr := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			serverErr <- err
+		}
+	}()
+
+	// Wait for signal or server error
+	select {
+	case s := <-sig:
+		fmt.Fprintf(os.Stderr, "\n[gasoline] Received %s, shutting down gracefully...\n", s)
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "shutdown",
+			"reason":    s.String(),
+			"mode":      "http_only",
+			"pid":       os.Getpid(),
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		srv.Shutdown(ctx)
+		fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
+	case err := <-serverErr:
+		fmt.Fprintf(os.Stderr, "[gasoline] Server error: %v\n", err)
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "crash",
+			"reason":    err.Error(),
+			"mode":      "http_only",
+			"pid":       os.Getpid(),
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
 		os.Exit(1)
 	}
 }
@@ -803,7 +919,39 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 				"actions":          len(capture.enhancedActions),
 				"connections":      len(capture.connections),
 			}
+			lastPoll := capture.lastPollAt
+			extSession := capture.extensionSession
+			sessionChangedAt := capture.sessionChangedAt
 			capture.mu.RUnlock()
+
+			// Extension connection status (critical for debugging)
+			if lastPoll.IsZero() {
+				resp["extension"] = map[string]interface{}{
+					"connected": false,
+					"status":    "not_polled",
+					"message":   "Extension has not connected. Reload extension or refresh page.",
+				}
+			} else {
+				sincePoll := time.Since(lastPoll)
+				connected := sincePoll < 3*time.Second
+				capture.mu.RLock()
+				pilotEnabled := capture.pilotEnabled
+				capture.mu.RUnlock()
+				extInfo := map[string]interface{}{
+					"connected":     connected,
+					"status":        map[bool]string{true: "connected", false: "stale"}[connected],
+					"last_poll_ms":  int(sincePoll.Milliseconds()),
+					"pilot_enabled": pilotEnabled,
+				}
+				if extSession != "" {
+					extInfo["session_id"] = extSession
+					if !sessionChangedAt.IsZero() {
+						extInfo["session_started"] = sessionChangedAt.Format(time.RFC3339)
+					}
+				}
+				resp["extension"] = extInfo
+			}
+
 			resp["circuit"] = map[string]interface{}{
 				"open":         health.CircuitOpen,
 				"current_rate": health.CurrentRate,
@@ -884,11 +1032,15 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 			} else {
 				sincePoll := time.Since(lastPoll)
 				polling := sincePoll < 3*time.Second // Should poll every 1s
+				capture.mu.RLock()
+				pilotEnabled := capture.pilotEnabled
+				capture.mu.RUnlock()
 				resp["extension"] = map[string]interface{}{
-					"polling":         polling,
-					"last_poll_at":    lastPoll.Format(time.RFC3339),
-					"seconds_ago":     int(sincePoll.Seconds()),
-					"status":          map[bool]string{true: "connected", false: "stale - extension may have disconnected"}[polling],
+					"polling":       polling,
+					"last_poll_at":  lastPoll.Format(time.RFC3339),
+					"seconds_ago":   int(sincePoll.Seconds()),
+					"status":        map[bool]string{true: "connected", false: "stale - extension may have disconnected"}[polling],
+					"pilot_enabled": pilotEnabled,
 				}
 			}
 

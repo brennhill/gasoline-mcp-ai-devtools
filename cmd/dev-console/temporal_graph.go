@@ -247,7 +247,7 @@ func (tg *TemporalGraph) Query(q TemporalQuery) TemporalQueryResponse {
 	sinceDuration := parseSinceDuration(sinceStr)
 	cutoff := time.Now().Add(-sinceDuration)
 
-	var result []TemporalEvent
+	result := make([]TemporalEvent, 0)
 	for _, e := range tg.events {
 		// Time filter
 		ts, err := time.Parse(time.RFC3339, e.Timestamp)

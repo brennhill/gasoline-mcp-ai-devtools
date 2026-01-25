@@ -14,8 +14,11 @@ const DEFAULT_SERVER_URL = 'http://localhost:7890'
 let serverUrl = DEFAULT_SERVER_URL
 const RECONNECT_INTERVAL = 5000 // 5 seconds
 
+// Session ID for detecting extension reloads - generated fresh each time service worker starts
+const EXTENSION_SESSION_ID = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
 // Startup verification (always logs, regardless of debug mode)
-console.log('[Gasoline] Background service worker loaded - BUILD v100-toggle-with-fallback');
+console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`);
 
 // Initialize AI Web Pilot toggle cache on startup - create a promise that resolves when ready
 let _aiWebPilotInitResolve
@@ -2068,7 +2071,12 @@ const _processingQueries = new Set()
  */
 export async function pollPendingQueries(serverUrl) {
   try {
-    const response = await fetch(`${serverUrl}/pending-queries`)
+    const response = await fetch(`${serverUrl}/pending-queries`, {
+      headers: {
+        'X-Gasoline-Session': EXTENSION_SESSION_ID,
+        'X-Gasoline-Pilot': _aiWebPilotEnabledCache === true ? '1' : '0',
+      },
+    })
     if (!response.ok) {
       debugLog(DebugCategory.CONNECTION, 'Poll pending-queries failed', { status: response.status })
       return
@@ -2099,8 +2107,47 @@ export async function pollPendingQueries(serverUrl) {
 }
 
 /**
+ * Ping content script to check if it's loaded
+ * @param {number} tabId - The tab ID to ping
+ * @param {number} timeoutMs - Timeout in milliseconds
+ * @returns {Promise<boolean>} True if content script responds
+ */
+async function pingContentScript(tabId, timeoutMs = 500) {
+  try {
+    const response = await Promise.race([
+      chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+    ])
+    return response?.status === 'alive'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Wait for tab to finish loading
+ * @param {number} tabId - The tab ID to wait for
+ * @param {number} timeoutMs - Maximum wait time
+ * @returns {Promise<boolean>} True if tab loaded successfully
+ */
+async function waitForTabLoad(tabId, timeoutMs = 5000) {
+  const startTime = Date.now()
+  while (Date.now() - startTime < timeoutMs) {
+    try {
+      const tab = await chrome.tabs.get(tabId)
+      if (tab.status === 'complete') return true
+    } catch {
+      return false
+    }
+    await new Promise((r) => setTimeout(r, 100))
+  }
+  return false
+}
+
+/**
  * Handle browser action commands (refresh, navigate, go back/forward).
  * These run in the background script and don't require content scripts.
+ * For navigate: auto-detects if content script is loaded and refreshes if needed.
  * @param {number} tabId - The tab ID to act on
  * @param {Object} params - { action, url? }
  * @returns {Promise<Object>} Result with success/error
@@ -2118,14 +2165,88 @@ async function handleBrowserAction(tabId, params) {
     switch (action) {
       case 'refresh':
         await chrome.tabs.reload(tabId)
+        await waitForTabLoad(tabId)
         return { success: true, action: 'refresh' }
 
-      case 'navigate':
+      case 'navigate': {
         if (!url) {
           return { success: false, error: 'missing_url', message: 'URL required for navigate action' }
         }
+
+        // Check for restricted URLs
+        if (url.startsWith('chrome://') || url.startsWith('chrome-extension://')) {
+          return {
+            success: false,
+            error: 'restricted_url',
+            message: 'Cannot navigate to Chrome internal pages',
+          }
+        }
+
+        // Navigate to the URL
         await chrome.tabs.update(tabId, { url })
-        return { success: true, action: 'navigate', url }
+
+        // Wait for page to load
+        await waitForTabLoad(tabId)
+
+        // Brief delay for content script initialization
+        await new Promise((r) => setTimeout(r, 500))
+
+        // Check if content script is loaded
+        const contentScriptLoaded = await pingContentScript(tabId)
+
+        if (contentScriptLoaded) {
+          return {
+            success: true,
+            action: 'navigate',
+            url,
+            content_script_status: 'loaded',
+            message: 'Content script ready',
+          }
+        }
+
+        // Content script not loaded - check if it's a file:// URL
+        const tab = await chrome.tabs.get(tabId)
+        if (tab.url?.startsWith('file://')) {
+          return {
+            success: true,
+            action: 'navigate',
+            url,
+            content_script_status: 'unavailable',
+            message:
+              'Content script cannot load on file:// URLs. Enable "Allow access to file URLs" in extension settings (chrome://extensions).',
+          }
+        }
+
+        // Auto-refresh to inject content script
+        debugLog(DebugCategory.CAPTURE, 'Content script not loaded after navigate, refreshing', { tabId, url })
+        await chrome.tabs.reload(tabId)
+        await waitForTabLoad(tabId)
+
+        // Wait for content script after refresh
+        await new Promise((r) => setTimeout(r, 1000))
+
+        // Check again
+        const loadedAfterRefresh = await pingContentScript(tabId)
+
+        if (loadedAfterRefresh) {
+          return {
+            success: true,
+            action: 'navigate',
+            url,
+            content_script_status: 'refreshed',
+            message: 'Page refreshed to load content script',
+          }
+        }
+
+        // Still not loaded - return with warning
+        return {
+          success: true,
+          action: 'navigate',
+          url,
+          content_script_status: 'failed',
+          message: 'Navigation complete but content script could not be loaded. AI Web Pilot tools may not work.',
+        }
+      }
 
       case 'back':
         await chrome.tabs.goBack(tabId)
@@ -2178,6 +2299,23 @@ export async function handlePendingQuery(query, serverUrl) {
       const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params)
       // Post result back to server
       await postQueryResult(serverUrl, query.id, 'highlight', result)
+      return
+    }
+
+    // Handle page_info queries - get page info from tab
+    if (query.type === 'page_info') {
+      const tab = tabs[0]
+      const result = {
+        url: tab.url,
+        title: tab.title,
+        favicon: tab.favIconUrl,
+        status: tab.status,
+        viewport: {
+          width: tab.width,
+          height: tab.height,
+        },
+      }
+      await postQueryResult(serverUrl, query.id, 'page_info', result)
       return
     }
 

@@ -142,6 +142,12 @@ window.addEventListener('message', (event) => {
 
 // Listen for messages from background (feature toggles and pilot commands)
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Handle ping to check if content script is loaded
+  if (message.type === 'GASOLINE_PING') {
+    sendResponse({ status: 'alive', timestamp: Date.now() })
+    return true
+  }
+
   if (TOGGLE_MESSAGES.has(message.type)) {
     const payload = { type: 'GASOLINE_SETTING', setting: message.type }
     if (message.type === 'setWebSocketCaptureMode') {
@@ -227,7 +233,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Handle state capture/restore commands
 async function handleStateCommand(params) {
-  const { action, name, include_url } = params || {}
+  const { action, name, state, include_url } = params || {}
 
   // Create a promise to receive response from inject.js
   return new Promise((resolve) => {
@@ -243,13 +249,14 @@ async function handleStateCommand(params) {
     }
     window.addEventListener('message', responseHandler)
 
-    // Send command to inject.js
+    // Send command to inject.js (include state for restore action)
     window.postMessage(
       {
         type: 'GASOLINE_STATE_COMMAND',
         messageId,
         action,
         name,
+        state,
         include_url,
       },
       '*',

@@ -437,7 +437,10 @@ type Capture struct {
 	queryTimeout time.Duration
 
 	// Extension polling tracking
-	lastPollAt time.Time // When extension last polled /pending-queries
+	lastPollAt        time.Time // When extension last polled /pending-queries
+	extensionSession  string    // Current extension session ID (for reload detection)
+	sessionChangedAt  time.Time // When session ID last changed (extension reload)
+	pilotEnabled      bool      // AI Web Pilot toggle state from extension
 
 	// Composed sub-structs
 	a11y        A11yCache

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -158,9 +159,25 @@ func (v *Capture) SetQueryTimeout(timeout time.Duration) {
 }
 
 func (v *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
-	// Track when extension last polled
+	now := time.Now()
+	sessionID := r.Header.Get("X-Gasoline-Session")
+	pilotHeader := r.Header.Get("X-Gasoline-Pilot")
+
+	// Track when extension last polled and detect session changes (reloads)
 	v.mu.Lock()
-	v.lastPollAt = time.Now()
+	v.lastPollAt = now
+	v.pilotEnabled = pilotHeader == "1"
+	if sessionID != "" && sessionID != v.extensionSession {
+		if v.extensionSession != "" {
+			// Session changed - extension was reloaded
+			fmt.Fprintf(os.Stderr, "[gasoline] Extension reloaded: %s -> %s\n", v.extensionSession, sessionID)
+		} else {
+			// First connection
+			fmt.Fprintf(os.Stderr, "[gasoline] Extension connected: %s\n", sessionID)
+		}
+		v.extensionSession = sessionID
+		v.sessionChangedAt = now
+	}
 	v.mu.Unlock()
 
 	queries := v.GetPendingQueries()
