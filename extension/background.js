@@ -20,6 +20,10 @@ const EXTENSION_SESSION_ID = `ext_${Date.now()}_${Math.random().toString(36).sli
 // Startup verification (always logs, regardless of debug mode)
 console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`);
 
+// AI Web Pilot toggle cache (survives service worker restarts via startup init and messages)
+// Declared here (before storage callbacks) to avoid temporal dead zone in tests
+let _aiWebPilotEnabledCache = null
+
 // Initialize AI Web Pilot toggle cache on startup - create a promise that resolves when ready
 let _aiWebPilotInitResolve
 const _aiWebPilotInitPromise = new Promise((resolve) => {
@@ -27,25 +31,30 @@ const _aiWebPilotInitPromise = new Promise((resolve) => {
 })
 
 // Try local storage first (more reliable), then sync
-// Note: Callback executes after module loads, so _aiWebPilotEnabledCache is accessible
-chrome.storage.local.get(['aiWebPilotEnabled'], (localResult) => {
-  if (localResult.aiWebPilotEnabled !== undefined) {
-    const enabled = localResult.aiWebPilotEnabled === true
-    globalThis._aiWebPilotStartupValue = enabled
-    _aiWebPilotEnabledCache = enabled // Set cache immediately
-    console.log('[Gasoline] AI Web Pilot startup cache (local):', enabled)
-    _aiWebPilotInitResolve(enabled)
-    return
-  }
-  // Fall back to sync storage
-  chrome.storage.sync.get(['aiWebPilotEnabled'], (syncResult) => {
-    const enabled = syncResult.aiWebPilotEnabled === true
-    globalThis._aiWebPilotStartupValue = enabled
-    _aiWebPilotEnabledCache = enabled // Set cache immediately
-    console.log('[Gasoline] AI Web Pilot startup cache (sync):', enabled)
-    _aiWebPilotInitResolve(enabled)
+// Guard against test environment where chrome may not be defined
+if (typeof chrome !== 'undefined' && chrome.storage) {
+  chrome.storage.local.get(['aiWebPilotEnabled'], (localResult) => {
+    if (localResult.aiWebPilotEnabled !== undefined) {
+      const enabled = localResult.aiWebPilotEnabled === true
+      globalThis._aiWebPilotStartupValue = enabled
+      _aiWebPilotEnabledCache = enabled // Set cache immediately
+      console.log('[Gasoline] AI Web Pilot startup cache (local):', enabled)
+      _aiWebPilotInitResolve(enabled)
+      return
+    }
+    // Fall back to sync storage
+    chrome.storage.sync.get(['aiWebPilotEnabled'], (syncResult) => {
+      const enabled = syncResult.aiWebPilotEnabled === true
+      globalThis._aiWebPilotStartupValue = enabled
+      _aiWebPilotEnabledCache = enabled // Set cache immediately
+      console.log('[Gasoline] AI Web Pilot startup cache (sync):', enabled)
+      _aiWebPilotInitResolve(enabled)
+    })
   })
-})
+} else {
+  // Test environment: resolve immediately with false
+  _aiWebPilotInitResolve(false)
+}
 const DEFAULT_DEBOUNCE_MS = 100
 const DEFAULT_MAX_BATCH_SIZE = 50
 
@@ -75,9 +84,6 @@ let connectionStatus = {
 
 let currentLogLevel = 'all'
 let screenshotOnError = false // Auto-capture screenshot on error (off by default)
-
-// AI Web Pilot toggle cache (survives service worker restarts via startup init and messages)
-let _aiWebPilotEnabledCache = null
 
 // Error grouping state
 const errorGroups = new Map() // signature -> { entry, count, firstSeen, lastSeen }
@@ -2541,12 +2547,15 @@ export function stopQueryPolling() {
 // =============================================================================
 
 // Listen for storage changes to update cache immediately (session, local, and sync)
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if ((areaName === 'sync' || areaName === 'local' || areaName === 'session') && changes.aiWebPilotEnabled) {
-    _aiWebPilotEnabledCache = changes.aiWebPilotEnabled.newValue === true
-    console.log('[Gasoline] aiWebPilotEnabled cache updated from', areaName, ':', _aiWebPilotEnabledCache)
-  }
-})
+// Guard against test environment where chrome may not be defined
+if (typeof chrome !== 'undefined' && chrome.storage) {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if ((areaName === 'sync' || areaName === 'local' || areaName === 'session') && changes.aiWebPilotEnabled) {
+      _aiWebPilotEnabledCache = changes.aiWebPilotEnabled.newValue === true
+      console.log('[Gasoline] aiWebPilotEnabled cache updated from', areaName, ':', _aiWebPilotEnabledCache)
+    }
+  })
+}
 
 /**
  * Check if AI Web Pilot is enabled in the extension popup.

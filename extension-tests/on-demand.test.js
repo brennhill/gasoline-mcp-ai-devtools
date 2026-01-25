@@ -31,6 +31,14 @@ const createMockChrome = () => ({
           captureNetworkBodies: false,
         }),
       ),
+      set: mock.fn((data, callback) => callback && callback()),
+    },
+    sync: {
+      get: mock.fn((keys, callback) => callback({})),
+      set: mock.fn((data, callback) => callback && callback()),
+    },
+    onChanged: {
+      addListener: mock.fn(),
     },
   },
 })
