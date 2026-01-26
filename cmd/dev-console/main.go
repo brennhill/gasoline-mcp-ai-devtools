@@ -126,6 +126,10 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) JSONRPCResponse {
 		return h.handleToolsList(req)
 	case "tools/call":
 		return h.handleToolsCall(req)
+	case "resources/list":
+		return h.handleResourcesList(req)
+	case "resources/read":
+		return h.handleResourcesRead(req)
 	default:
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -146,10 +150,118 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 			Version: version,
 		},
 		Capabilities: MCPCapabilities{
-			Tools: MCPToolsCapability{},
+			Tools:     MCPToolsCapability{},
+			Resources: MCPResourcesCapability{},
 		},
 	}
 
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+func (h *MCPHandler) handleResourcesList(req JSONRPCRequest) JSONRPCResponse {
+	resources := []MCPResource{
+		{
+			URI:         "gasoline://guide",
+			Name:        "Gasoline Usage Guide",
+			Description: "How to use Gasoline MCP tools for browser debugging",
+			MimeType:    "text/markdown",
+		},
+	}
+	result := MCPResourcesListResult{Resources: resources}
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
+	var params struct {
+		URI string `json:"uri"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &JSONRPCError{
+				Code:    -32602,
+				Message: "Invalid params: " + err.Error(),
+			},
+		}
+	}
+
+	if params.URI != "gasoline://guide" {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &JSONRPCError{
+				Code:    -32602,
+				Message: "Resource not found: " + params.URI,
+			},
+		}
+	}
+
+	guide := `# Gasoline MCP Tools
+
+Browser observability for AI coding agents. See console errors, network failures, DOM state, and more.
+
+## Quick Reference
+
+| Tool | Purpose | Key Parameter |
+|------|---------|---------------|
+| ` + "`observe`" + ` | Get browser state | ` + "`what`" + `: errors, logs, network, websocket_events, websocket_status, actions, vitals, page |
+| ` + "`analyze`" + ` | Analyze data | ` + "`target`" + `: performance, accessibility, changes, timeline, api |
+| ` + "`generate`" + ` | Create artifacts | ` + "`format`" + `: test, reproduction, pr_summary, sarif, har |
+| ` + "`configure`" + ` | Manage session | ` + "`action`" + `: store, noise_rule, dismiss, clear |
+| ` + "`query_dom`" + ` | Query live DOM | ` + "`selector`" + `: CSS selector |
+
+## Common Workflows
+
+### See browser errors
+` + "```" + `json
+{ "tool": "observe", "arguments": { "what": "errors" } }
+` + "```" + `
+
+### Check failed network requests
+` + "```" + `json
+{ "tool": "observe", "arguments": { "what": "network", "status_min": 400 } }
+` + "```" + `
+
+### Run accessibility audit
+` + "```" + `json
+{ "tool": "analyze", "arguments": { "target": "accessibility" } }
+` + "```" + `
+
+### Query DOM element
+` + "```" + `json
+{ "tool": "query_dom", "arguments": { "selector": ".error-message" } }
+` + "```" + `
+
+### Generate Playwright test from session
+` + "```" + `json
+{ "tool": "generate", "arguments": { "format": "test", "test_name": "user_login" } }
+` + "```" + `
+
+### Check Web Vitals (LCP, CLS, INP, FCP)
+` + "```" + `json
+{ "tool": "observe", "arguments": { "what": "vitals" } }
+` + "```" + `
+
+## Tips
+
+- Start with ` + "`observe`" + ` ` + "`what: \"errors\"`" + ` to see what's broken
+- Use ` + "`what: \"page\"`" + ` to confirm which URL the browser is on
+- The browser extension must show "Connected" for tools to work
+- Data comes from the active browser tab
+`
+
+	result := MCPResourcesReadResult{
+		Contents: []MCPResourceContent{
+			{
+				URI:      "gasoline://guide",
+				MimeType: "text/markdown",
+				Text:     guide,
+			},
+		},
+	}
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
@@ -799,9 +911,12 @@ func runMCPMode(server *Server, port int, apiKey string) {
 	// Wait for HTTP server to bind before proceeding
 	if err := <-httpReady; err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] Fatal: cannot bind port %d: %v\n", port, err)
+		fmt.Fprintf(os.Stderr, "[gasoline] Fix: kill existing process with: lsof -ti :%d | xargs kill\n", port)
+		fmt.Fprintf(os.Stderr, "[gasoline] Or use a different port: --port %d\n", port+1)
 		os.Exit(1)
 	}
 	fmt.Fprintf(os.Stderr, "[gasoline] v%s — HTTP on port %d, log: %s\n", version, port, server.logFile)
+	fmt.Fprintf(os.Stderr, "[gasoline] Verify: curl http://localhost:%d/health\n", port)
 	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "startup", "version": version, "port": port, "timestamp": time.Now().UTC().Format(time.RFC3339)}})
 
 	// Run MCP protocol over stdin/stdout
@@ -840,10 +955,11 @@ func runMCPMode(server *Server, port int, apiKey string) {
 		fmt.Println(string(respJSON))
 	}
 
-	// stdin closed (MCP client disconnected) — exit after grace period
+	// stdin closed (MCP client disconnected) — exit after brief grace period
 	// This frees the port so the next AI session can spawn a fresh process.
 	// The extension will auto-reconnect to the new instance.
-	fmt.Fprintf(os.Stderr, "[gasoline] MCP disconnected, shutting down in 2s (port %d will be freed)\n", port)
+	// Grace period is kept short (100ms) to avoid race conditions when starting new sessions.
+	fmt.Fprintf(os.Stderr, "[gasoline] MCP disconnected, shutting down in 100ms (port %d will be freed)\n", port)
 	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "mcp_disconnect", "timestamp": time.Now().UTC().Format(time.RFC3339), "port": port}})
 
 	sig := make(chan os.Signal, 1)
@@ -853,7 +969,7 @@ func runMCPMode(server *Server, port int, apiKey string) {
 	case s := <-sig:
 		fmt.Fprintf(os.Stderr, "[gasoline] Received %s, shutting down\n", s)
 		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
-	case <-time.After(2 * time.Second):
+	case <-time.After(100 * time.Millisecond):
 		fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
 		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": "mcp_disconnect_grace", "timestamp": time.Now().UTC().Format(time.RFC3339)}})
 	}

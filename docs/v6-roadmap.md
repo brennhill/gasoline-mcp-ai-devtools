@@ -1,212 +1,231 @@
 # v6 Roadmap
 
-## Overview
+## Thesis
 
-v6 adds analysis, verification, proactive intelligence, and security hardening layers on top of existing capture infrastructure. All features operate on data Gasoline already captures — no new browser capture mechanisms needed.
+**AI will be the driving force in development.**
 
-Full specification: [v6-specification.md](v6-specification.md)
+Gasoline's strategic differentiator is enabling AI to **close the feedback loop autonomously** — observe, diagnose, and repair without human intervention. Every feature is evaluated against this thesis.
 
-## Features
+---
 
-### Phase 0: Autonomous Tab Control
+## Completed
 
-- [ ] **0. Tab Targeting (`tab_id` parameter)** — All AI Web Pilot tools accept optional `tab_id` to target specific tabs, enabling autonomous testing without requiring user to stay on the page
-  - Branch: `feature/tab-targeting`
-  - Status: Proposed
-  - Changes:
-    - Add `observe {what: "tabs"}` to list all tabs with IDs, URLs, titles
-    - Add `browser_action {action: "open", url: "..."}` to open new tab, returns `tab_id`
-    - Add optional `tab_id` param to: `execute_javascript`, `highlight_element`, `manage_state`, `browser_action`, `query_dom`
-    - Extension targets specified tab or falls back to active tab
-    - Enables: "Test example.com" workflow where AI opens tab, runs tests, user continues working elsewhere
+| Feature | Description | Merged |
+|---------|-------------|--------|
+| Tab Targeting (Phase 0) | `tab_id` parameter on all pilot tools, `observe {what: "tabs"}`, `browser_action {action: "open"}` | 2025-01-25 |
+| API Contract Validation | `validate_api` tool - track response shapes, detect contract violations | 2025-01-25 |
+| Verification Loop | `verify_fix` tool - before/after session comparison for fix verification | 2025-01-25 |
+| SRI Hash Generator | `generate_sri` tool - Subresource Integrity hashes for third-party resources | 2025-01-25 |
+| Health Metrics | `get_health` tool - server uptime, buffer utilization, memory usage | 2025-01-25 |
+| Security Scanner | `security_audit` - credentials, PII, insecure transport, headers, cookies | Pre-v6 |
+| CSP Generator | `generate_csp` - Content-Security-Policy from observed origins | Pre-v6 |
+| Third-Party Audit | `audit_third_parties` - external domain mapping, risk classification | Pre-v6 |
+| Security Diff | `diff_security` - security posture comparison before/after changes | Pre-v6 |
+| Session Comparison | `diff_sessions` - named snapshot storage and comparison | Pre-v6 |
+| Audit Log | `get_audit_log` - ring-buffer log of MCP tool calls | Pre-v6 |
 
-### Phase 1: Analysis Layer
+---
 
-- [ ] **1. Security Scanner (`security_audit`)** — Detect exposed credentials, missing auth, PII leaks, insecure transport, missing security headers (incl. CSP analysis), insecure cookies
-  - Branch: `feature/security-audit`
-  - Spec: v6-specification.md § Feature 1 (checks 1-6)
-  - Status: Specified
-  - Proactive: Context streaming pushes alerts for credential exposure, CSP violations, insecure cookies, and missing security headers as they are observed
+## Priority 0: Usability (Adoption Blocker)
 
-- [ ] **2. API Contract Validation (`validate_api`)** — Track response shapes, detect contract violations
-  - Branch: `feature/validate-api`
-  - Spec: v6-specification.md § Feature 4
-  - Status: Specified
+New users struggle to get Gasoline running. This blocks all adoption and must be fixed first.
 
-### Phase 2: Verification Layer
+- [ ] **Usability Improvements** — 5-minute setup goal
+  - Spec: [specs/usability.md](specs/usability.md)
+  - Critical: NPM package naming, binary install errors, MCP config path issues
+  - High: Extension install friction, no setup verification, confusing startup options
+  - Effort: 1-2 days
 
-- [ ] **3. Verification Loop (`verify_fix`)** — Before/after session comparison for fix verification
-  - Branch: `feature/verify-fix`
-  - Spec: v6-specification.md § Feature 2
-  - Status: Specified
+---
 
-- [ ] **4. Session Comparison (`diff_sessions`)** — Named snapshot storage and comparison
-  - Branch: `feature/diff-sessions`
-  - Spec: v6-specification.md § Feature 3
-  - Status: Specified
+## Priority 1: Agentic CI/CD (Thesis Validation)
 
-### Phase 3: Proactive Intelligence
+These features prove the thesis. Build now.
+
+### Parallelization
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     CAN BUILD IN PARALLEL                        │
+├─────────────────────┬─────────────────────┬─────────────────────┤
+│  Agent A            │  Agent B            │  Agent C            │
+│                     │                     │                     │
+│  33. Self-Healing   │  Gasoline CI        │  5. Context         │
+│      Tests          │  Infrastructure     │     Streaming       │
+│                     │                     │                     │
+│  - Claude Code      │  - /snapshot        │  - MCP notifications│
+│    integration      │  - /clear           │  - Push alerts      │
+│  - Failure diagnosis│  - /test-boundary   │  - Event filtering  │
+│  - Auto-fix loop    │  - gasoline-ci.js   │                     │
+│                     │  - Playwright fix   │                     │
+└─────────────────────┴─────────────────────┴─────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     THEN IN PARALLEL                             │
+├─────────────────────┬─────────────────────┬─────────────────────┤
+│  Agent A            │  Agent B            │  Agent C            │
+│                     │                     │                     │
+│  35. PR Preview     │  34. Agentic E2E    │  36. Deployment     │
+│      Exploration    │      Repair         │      Watchdog       │
+│                     │                     │                     │
+│  - Requires: 33     │  - Requires: 33     │  - Requires: 5, CI  │
+│  - Preview deploy   │  - Contract drift   │  - Post-deploy mon  │
+│  - Auto-explore     │  - Test/mock update │  - Auto-rollback    │
+└─────────────────────┴─────────────────────┴─────────────────────┘
+```
+
+### Features
+
+- [ ] **33. Self-Healing Tests** — AI observes test failure, diagnoses via Gasoline context, fixes test or code autonomously
+  - Branch: `feature/self-healing-tests`
+  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
+  - Prerequisites: ✅ Tab targeting, ✅ Verification loop
+  - Unlocks: CI that unblocks itself
+
+- [ ] **Gasoline CI Infrastructure** — Headless browser capture for CI/CD pipelines
+  - Spec: [gasoline-ci-specification.md](gasoline-ci-specification.md)
+  - Components:
+    - [ ] `/snapshot` endpoint - return all captured state
+    - [ ] `/clear` endpoint - reset between tests
+    - [ ] `/test-boundary` endpoint - correlate entries to tests
+    - [ ] `gasoline-ci.js` - standalone capture script (extract from inject.js)
+    - [ ] `@gasoline/playwright` fixture - auto-inject, auto-clear, failure attachment
+  - Unlocks: Phase 8 features in CI, not just local browser
 
 - [ ] **5. Context Streaming** — Push significant events to AI via MCP notifications
   - Branch: `feature/context-streaming`
   - Spec: v6-specification.md § Feature 5
-  - Status: Specified
+  - Prerequisites: None
+  - Unlocks: Proactive alerts, enables Deployment Watchdog
 
-### Phase 4: Enhanced Generation (pre-existing specs)
+- [ ] **35. PR Preview Exploration** — Deploy preview → agent explores app → discovers bugs → proposes fixes pre-merge
+  - Branch: `feature/pr-preview-exploration`
+  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
+  - Prerequisites: ✅ Tab targeting, Self-Healing Tests (33)
+  - Unlocks: Automated QA on every PR
 
-- [ ] **6. Test Generation v2 (`generate_test`)** — DOM assertions, fixtures, visual snapshots
+- [ ] **34. Agentic E2E Repair** — AI detects API contract drift, updates tests/mocks automatically
+  - Branch: `feature/agentic-e2e-repair`
+  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
+  - Prerequisites: ✅ API contract validation, Self-Healing Tests (33)
+  - Unlocks: Zero-maintenance E2E suites
+
+- [ ] **36. Deployment Watchdog** — Post-deploy monitoring; AI detects regressions, triggers rollback
+  - Branch: `feature/deployment-watchdog`
+  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
+  - Prerequisites: ✅ Session comparison, Context Streaming (5), Gasoline CI
+  - Unlocks: Self-healing production
+
+---
+
+## Priority 2: Enterprise Unlock
+
+Required for team/enterprise sales. Build when pursuing those customers.
+
+### Parallelization
+
+All enterprise features are independent — can build 4+ in parallel.
+
+```
+┌───────────────┬───────────────┬───────────────┬───────────────┐
+│  Agent A      │  Agent B      │  Agent C      │  Agent D      │
+│               │               │               │               │
+│  16. TTL      │  19. Custom   │  20. API Key  │  21. Rate     │
+│  Retention    │  Redaction    │  Auth         │  Limits       │
+└───────────────┴───────────────┴───────────────┴───────────────┘
+```
+
+### Features
+
+- [ ] **16. TTL-Based Retention** — Configurable time-to-live; buffers auto-evict old entries
+  - Branch: `feature/ttl-retention`
+  - Complexity: Easy
+  - Sales unlock: Compliance, data governance
+
+- [ ] **19. Configurable Redaction Patterns** — User-defined regex for sensitive data (SSNs, card numbers)
+  - Branch: `feature/redaction-patterns`
+  - Complexity: Easy
+  - Sales unlock: Privacy requirements
+
+- [ ] **20. API Key Authentication** — Optional shared-secret for HTTP API
+  - Branch: `feature/api-key-auth`
+  - Complexity: Easy
+  - Sales unlock: Security-conscious orgs
+
+- [ ] **21. Per-Tool Rate Limits** — Prevent runaway AI loops (e.g., `query_dom` limited to 10/min)
+  - Branch: `feature/per-tool-rate-limits`
+  - Complexity: Easy
+  - Sales unlock: Operational safety
+
+- [ ] **17. Configuration Profiles** — Named bundles (short-lived, restricted, paranoid)
+  - Branch: `feature/config-profiles`
+  - Complexity: Medium
+  - Prerequisites: 16, 19, 21
+  - Sales unlock: "Bank mode" one-click setup
+
+---
+
+## Priority 3: Enhanced Generation
+
+Improves quality of AI-generated artifacts. Build when self-healing is working.
+
+- [ ] **6. Test Generation v2** — DOM assertions, fixtures, visual snapshots
   - Branch: `feature/generate-test-v2`
   - Spec: generate-test-v2.md
-  - Status: Specified
+  - Thesis connection: Better generated tests = better self-healing input
 
-- [ ] **7. Performance Budget Monitor (`check_performance`)** — Baseline regression detection
+- [ ] **7. Performance Budget Monitor** — Baseline regression detection
   - Branch: `feature/performance-budget-monitor`
   - Spec: performance-budget-spec.md
-  - Status: Specified, partially implemented
+  - Thesis connection: Weak — perf monitoring isn't AI-native
 
-### Phase 5: Security Hardening (opt-in)
+---
 
-Developer-triggered tools that generate security configurations from observed traffic. These don't detect problems — they produce solutions.
+## Priority 4: Operational Polish
 
-- [ ] **8. CSP Generator (`generate_csp`)** — Generate a Content-Security-Policy from observed resource origins
-  - Branch: `feature/generate-csp`
-  - Spec: ai-first/tech-spec-security-hardening.md § Tool 1
-  - Status: Specified
-  - Unique value: No other tool generates CSP passively from browser observation
+Build as needed. Low thesis impact.
 
-- [ ] **9. Third-Party Risk Audit (`audit_third_parties`)** — Map all external domains, classify by risk level, domain reputation scoring, enterprise custom lists
-  - Branch: `feature/audit-third-parties`
-  - Spec: ai-first/tech-spec-security-hardening.md § Tool 2
-  - Status: Specified
-  - Includes: Bundled reputation lists (Disconnect.me, Tranco 10K, curated CDNs), domain heuristics, enterprise custom allow/block lists, optional external enrichment (RDAP, CT, Safe Browsing)
+### Enterprise Audit (Tier 1 extras)
 
-- [ ] **10. Security Regression Detection (`diff_security`)** — Compare security posture before/after code changes
-  - Branch: `feature/diff-security`
-  - Spec: ai-first/tech-spec-security-hardening.md § Tool 3
-  - Status: Specified
-  - Depends on: `diff_sessions` infrastructure (Phase 2)
+- [ ] **13. Client Identification** — Identify which AI client (Claude Code, Cursor, etc.)
+- [ ] **14. Session ID Assignment** — Unique session ID per MCP connection
+- [ ] **15. Redaction Audit Log** — Log when data is redacted (pattern, field, tool)
 
-- [ ] **11. SRI Hash Generator (`generate_sri`)** — Generate Subresource Integrity hashes for third-party resources
-  - Branch: `feature/generate-sri`
-  - Spec: ai-first/tech-spec-security-hardening.md § Tool 4
-  - Status: Specified
+### Enterprise Multi-Tenant (Tier 4)
 
-### Phase 6: Enterprise Audit & Governance
+- [ ] **24. Project Isolation** — Multiple isolated capture contexts on one server
+- [ ] **25. Read-Only Mode** — Accept capture data, disable mutation tools
+- [ ] **26. Tool Allowlisting** — Restrict which MCP tools are available
 
-Enterprise-readiness features that provide auditability, data governance, and operational safety for teams using Gasoline in regulated or security-conscious environments.
+### Developer Experience (Phase 7)
 
-#### Tier 1: AI Audit Trail
+- [ ] **27. Test Fixture Page** — Built-in `/test-page` with error triggers
+- [ ] **28. CLI Test Mode** — `--test` flag for automated validation
+- [ ] **29. Mock Extension Client** — Go package simulating extension calls
+- [ ] **30. Event Timestamps in Diagnostics** — `received_at` in `/diagnostics`
+- [ ] **31. MCP Test Harness** — CLI for scripted MCP testing
+- [ ] **32. CLI Lifecycle Commands** — `gasoline stop`, `restart`, `status`
 
-- [ ] **12. Tool Invocation Log (`get_audit_log`)** — Ring-buffer log of every MCP tool call with timestamp, tool name, parameters, response size, duration, and client identity
-  - Branch: `feature/audit-log`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 1.1
-  - Status: Specified
+### Data Export
 
-- [ ] **13. Client Identification** — Identify which AI client (Claude Code, Cursor, Windsurf, etc.) is connected via MCP, recorded on every audit entry
-  - Branch: `feature/client-id`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 1.2
-  - Status: Specified
+- [ ] **18. Data Export** — Export buffer state as JSON Lines
 
-- [ ] **14. Session ID Assignment** — Unique session ID per MCP connection, correlating all tool calls within a session
-  - Branch: `feature/session-id`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 1.3
-  - Status: Specified
+---
 
-- [ ] **15. Redaction Audit Log** — Log every time data is redacted (what pattern matched, what field, what tool response), without storing the redacted content itself
-  - Branch: `feature/redaction-audit`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 1.4
-  - Status: Specified
+## Internal Quality
 
-#### Tier 2: Data Governance
+### Fuzz Tests
 
-- [ ] **16. TTL-Based Retention** — Configurable time-to-live for all captured data; buffers automatically evict entries older than TTL
-  - Branch: `feature/ttl-retention`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 2.1
-  - Status: Specified
+Build incrementally as attack surface grows.
 
-- [ ] **17. Configuration Profiles** — Named configuration bundles (short-lived, restricted, paranoid) that set TTL, redaction, and rate limits to common security postures
-  - Branch: `feature/config-profiles`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 2.2
-  - Status: Specified
+- [ ] **FuzzJSONRPCParse** — MCP message parser (no panics, no unbounded alloc)
+- [ ] **FuzzHTTPBodyParse** — `/logs`, `/network-body` endpoints
+- [ ] **FuzzSecurityPatterns** — Credential/PII regex (no catastrophic backtracking)
+- [ ] **FuzzWebSocketFrame** — WS message handling
+- [ ] **FuzzNetworkBodyStorage** — Large/malformed body storage
 
-- [ ] **18. Data Export** — MCP tool to export current buffer state and audit entries as JSON Lines for offline retention
-  - Branch: `feature/data-export`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 2.3
-  - Status: Specified
-
-- [ ] **19. Configurable Redaction Patterns** — User-defined regex patterns for redacting sensitive data from tool responses (tokens, SSNs, card numbers, custom patterns)
-  - Branch: `feature/redaction-patterns`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 2.4
-  - Status: Specified
-
-#### Tier 3: Operational Safety
-
-- [ ] **20. API Key Authentication** — Optional shared-secret authentication for the HTTP API, preventing unauthorized tools from connecting
-  - Branch: `feature/api-key-auth`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 3.1
-  - Status: Specified
-
-- [ ] **21. Per-Tool Rate Limits** — Configurable rate limits per MCP tool (e.g., `query_dom` limited to 10/min) to prevent runaway AI loops
-  - Branch: `feature/per-tool-rate-limits`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 3.2
-  - Status: Specified
-
-- [ ] **22. Configurable Thresholds** — All server limits (buffer sizes, memory caps, rate limits) configurable via CLI flags or config file
-  - Branch: `feature/configurable-thresholds`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 3.3
-  - Status: Specified
-
-- [ ] **23. Health & SLA Metrics (`get_health`)** — MCP tool exposing server uptime, buffer utilization, memory usage, request counts, and error rates
-  - Branch: `feature/health-metrics`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 3.4
-  - Status: Specified
-
-#### Tier 4: Multi-Tenant & Access Control
-
-- [ ] **24. Project Isolation** — Multiple isolated capture contexts (projects) on a single server, each with independent buffers and configuration
-  - Branch: `feature/project-isolation`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 4.1
-  - Status: Specified
-
-- [ ] **25. Read-Only Mode** — Server mode that accepts capture data but disables all mutation tools (clear, dismiss, checkpoint delete)
-  - Branch: `feature/read-only-mode`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 4.2
-  - Status: Specified
-
-- [ ] **26. Tool Allowlisting** — Configuration to restrict which MCP tools are available, hiding sensitive tools from untrusted clients
-  - Branch: `feature/tool-allowlist`
-  - Spec: ai-first/tech-spec-enterprise-audit.md § Tier 4.3
-  - Status: Specified
-
-### Phase 7: Developer Experience & Self-Testing
-
-Features that improve the development workflow, enable automated testing, and reduce manual verification during UAT.
-
-- [ ] **27. Test Fixture Page** — Built-in HTML test page (`/test-page`) with buttons, forms, WebSocket demo, and error triggers for manual and automated testing
-  - Branch: `feature/test-fixture-page`
-  - Status: Proposed
-
-- [ ] **28. CLI Test Mode (`--test`)** — Run predefined test scenarios (console capture, network capture, action recording) and report pass/fail without browser interaction
-  - Branch: `feature/cli-test-mode`
-  - Status: Proposed
-
-- [ ] **29. Mock Extension Client** — Go package that simulates extension HTTP calls for integration testing without a real browser
-  - Branch: `feature/mock-extension`
-  - Status: Proposed
-
-- [ ] **30. Event Timestamps in Diagnostics** — Add `received_at` timestamps to `/diagnostics` last_events for verifying recency
-  - Branch: `feature/diagnostics-timestamps`
-  - Status: Proposed
-
-- [ ] **31. MCP Test Harness** — Utility to send MCP commands and verify responses from CLI, enabling scripted UAT
-  - Branch: `feature/mcp-test-harness`
-  - Status: Proposed
-
-## Dependencies
-
-Features within a phase can be implemented in parallel. Phases can also be parallelized since there are no hard cross-feature dependencies, though completing Phase 1 before Phase 3 is recommended (context streaming's security alerts use the security audit patterns). Phase 5 tools are independent of each other; `diff_security` benefits from Phase 2's snapshot infrastructure but can be implemented standalone.
-
-Phase 6 features are largely independent of Phases 1-5. Within Phase 6, Tier 1 (audit trail) should be implemented first as Tiers 2-4 reference audit entries. Client identification and session IDs are prerequisites for meaningful audit logs. Configuration profiles depend on TTL and redaction patterns being implemented first.
+---
 
 ## In Progress
 
@@ -214,36 +233,57 @@ Phase 6 features are largely independent of Phases 1-5. Within Phase 6, Tier 1 (
 |---------|--------|-------|
 | (none yet) | | |
 
-## Internal Quality
+---
 
-### Fuzz Tests
+## Dependency Graph
 
-Go fuzz tests (`Fuzz*` functions) for protocol parsing and input handling surfaces. These aren't user-facing features — they improve Gasoline's own resilience.
+```
+                    ┌──────────────────────────────────────────────────────┐
+                    │                   COMPLETED                           │
+                    │  Tab Targeting, API Validation, Verify Fix,          │
+                    │  Session Diff, Security Tools, Audit Log             │
+                    └──────────────────────────────────────────────────────┘
+                                            │
+                    ┌───────────────────────┼───────────────────────┐
+                    │                       │                       │
+                    ▼                       ▼                       ▼
+            ┌───────────────┐       ┌───────────────┐       ┌───────────────┐
+            │ 33. Self-     │       │ Gasoline CI   │       │ 5. Context    │
+            │ Healing Tests │       │ Infrastructure│       │ Streaming     │
+            └───────┬───────┘       └───────┬───────┘       └───────┬───────┘
+                    │                       │                       │
+        ┌───────────┴───────────┐           │               ┌───────┴───────┐
+        │                       │           │               │               │
+        ▼                       ▼           │               │               │
+┌───────────────┐       ┌───────────────┐   │               │               │
+│ 35. PR Preview│       │ 34. Agentic   │   │               │               │
+│ Exploration   │       │ E2E Repair    │   │               │               │
+└───────────────┘       └───────────────┘   │               │               │
+                                            │               │               │
+                                            └───────┬───────┘               │
+                                                    │                       │
+                                                    ▼                       │
+                                            ┌───────────────┐               │
+                                            │ 36. Deployment│◄──────────────┘
+                                            │ Watchdog      │
+                                            └───────────────┘
+```
 
-- [ ] **FuzzJSONRPCParse** — Fuzz the MCP JSON-RPC message parser with malformed payloads
-  - Target: `cmd/dev-console/main.go` (MCP handler)
-  - Goal: No panics, no unbounded allocations on arbitrary input
+---
 
-- [ ] **FuzzHTTPBodyParse** — Fuzz the `/logs` and `/network-body` HTTP endpoints
-  - Target: `cmd/dev-console/main.go` (HTTP handlers)
-  - Goal: All malformed bodies return 400, never panic
+## Maximum Parallelization
 
-- [ ] **FuzzSecurityPatterns** — Fuzz the credential/PII regex patterns
-  - Target: `cmd/dev-console/security.go` (when implemented)
-  - Goal: No regex catastrophic backtracking on adversarial input
+**Wave 1 (Now):** 3 agents
+- Agent A: Self-Healing Tests (33)
+- Agent B: Gasoline CI Infrastructure
+- Agent C: Context Streaming (5)
 
-- [ ] **FuzzWebSocketFrame** — Fuzz WebSocket message handling
-  - Target: `cmd/dev-console/websocket.go`
-  - Goal: Malformed frames handled gracefully, buffer limits respected
+**Wave 2 (After Wave 1):** 3 agents
+- Agent A: PR Preview Exploration (35)
+- Agent B: Agentic E2E Repair (34)
+- Agent C: Deployment Watchdog (36)
 
-- [ ] **FuzzNetworkBodyStorage** — Fuzz large/malformed network body storage
-  - Target: `cmd/dev-console/network.go`
-  - Goal: Memory limits enforced, no OOM on adversarial payloads
+**Wave 3 (Enterprise, anytime):** 4 agents
+- Agents A-D: TTL, Redaction, API Key, Rate Limits (16, 19, 20, 21)
 
-**When to run:** Fuzz tests run in CI with a short corpus seed (`-fuzztime=30s`). Extended fuzzing (`-fuzztime=5m`) runs as part of the release PR skill.
-
-## Completed
-
-| Feature | Branch | Merged |
-|---------|--------|--------|
-| (none yet) | | |
+**Total: Up to 4 parallel agents** can work productively on v6 at any time.

@@ -26,7 +26,19 @@
 
 ## Quick Start
 
-**Until the Chrome Web Store listing is approved, install manually:**
+**Option A: NPM (recommended)**
+
+```bash
+# 1. Install and run the server
+npx gasoline-mcp
+
+# 2. Load the extension manually (until Chrome Web Store approval):
+#    - Open chrome://extensions
+#    - Enable Developer mode
+#    - Click "Load unpacked" and select the `extension/` folder
+```
+
+**Option B: From source** (requires [Go 1.21+](https://go.dev/))
 
 ```bash
 # 1. Clone the repo
@@ -42,15 +54,26 @@ go run ./cmd/dev-console
 #    - Click "Load unpacked" and select the `extension/` folder in this repo
 ```
 
-**Once the Chrome extension is approved:**
-
+**Verify setup:**
 ```bash
-npx gasoline-mcp
-# Then install from the Chrome Web Store
+curl http://localhost:7890/health
+# Should return: {"status":"ok","version":"5.0.0",...}
 ```
 
-**MCP config example:**
+**MCP config** (add to your `.mcp.json` or Claude Code settings):
 
+```json
+{
+  "mcpServers": {
+    "gasoline": {
+      "command": "npx",
+      "args": ["-y", "gasoline-mcp"]
+    }
+  }
+}
+```
+
+*Alternative for local development (must run from repo root):*
 ```json
 {
   "mcpServers": {
