@@ -43,7 +43,7 @@ type VerificationSession struct {
 	ID        string    `json:"session_id"`
 	Label     string    `json:"label"`
 	Status    string    `json:"status"` // "baseline_captured", "watching", "compared", "cancelled"
-	URLFilter string    `json:"url_filter,omitempty"`
+	URLFilter string    `json:"url,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 
 	// Baseline snapshot (captured at "start")
@@ -712,7 +712,10 @@ func normalizeVerifyErrorMessage(msg string) string {
 func (vm *VerificationManager) removeFromOrder(sessionID string) {
 	for i, id := range vm.order {
 		if id == sessionID {
-			vm.order = append(vm.order[:i], vm.order[i+1:]...)
+			newOrder := make([]string, len(vm.order)-1)
+			copy(newOrder, vm.order[:i])
+			copy(newOrder[i:], vm.order[i+1:])
+			vm.order = newOrder
 			return
 		}
 	}
@@ -744,7 +747,7 @@ type verifyFixParams struct {
 	Action    string `json:"action"`
 	SessionID string `json:"session_id,omitempty"`
 	Label     string `json:"label,omitempty"`
-	URLFilter string `json:"url_filter,omitempty"`
+	URLFilter string `json:"url,omitempty"`
 }
 
 // HandleTool dispatches the verify_fix MCP tool call

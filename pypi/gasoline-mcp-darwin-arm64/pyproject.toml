@@ -1,0 +1,21 @@
+[project]
+name = "gasoline-mcp-darwin-arm64"
+version = "5.1.0"
+description = "Gasoline MCP binary for darwin-arm64"
+requires-python = ">=3.8"
+license = {text = "AGPL-3.0-only"}
+authors = [
+    {name = "Brennan Hill", email = "noreply@cookwithgasoline.com"}
+]
+
+[project.urls]
+Homepage = "https://cookwithgasoline.com"
+Repository = "https://github.com/brennhill/gasoline-mcp-ai-devtools"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["gasoline_mcp_darwin_arm64"]
+package-data = {"gasoline_mcp_darwin_arm64" = ["gasoline*"]}

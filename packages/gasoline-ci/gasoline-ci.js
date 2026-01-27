@@ -1,0 +1,453 @@
+/**
+ * Gasoline CI - Standalone browser capture for CI/CD pipelines
+ *
+ * Self-contained JavaScript file extracted from inject.js that runs in any
+ * browser context without Chrome extension APIs. Replaces window.postMessage
+ * with direct HTTP POST to the Gasoline server.
+ *
+ * Usage:
+ *   await page.addInitScript({ path: require.resolve('@anthropic/gasoline-ci') })
+ *
+ * Configuration (set via window globals before this script runs):
+ *   window.__GASOLINE_PORT  (default: 7890)
+ *   window.__GASOLINE_HOST  (default: '127.0.0.1')
+ *   window.__GASOLINE_TEST_ID - current test identifier for correlation
+ */
+
+;(function () {
+  'use strict'
+
+  // === Configuration ===
+  const GASOLINE_HOST = window.__GASOLINE_HOST || '127.0.0.1'
+  const GASOLINE_PORT = window.__GASOLINE_PORT || 7890
+  const BASE_URL = `http://${GASOLINE_HOST}:${GASOLINE_PORT}`
+
+  // Guard against double initialization
+  if (window.__GASOLINE_CI_INITIALIZED) return
+  window.__GASOLINE_CI_INITIALIZED = true
+
+  // Batch settings (avoid flooding server)
+  const BATCH_INTERVAL_MS = 100 // Flush every 100ms
+  const MAX_BATCH_SIZE = 50 // Max entries per flush
+  const MAX_BATCH_BUFFER = 1000 // Max buffered entries per type (prevents OOM if server is down)
+
+  // === Shared constants (from inject.js) ===
+  const MAX_STRING_LENGTH = 10240
+  const MAX_RESPONSE_LENGTH = 5120
+  const MAX_DEPTH = 10
+  const SENSITIVE_HEADERS = [
+    'authorization',
+    'cookie',
+    'set-cookie',
+    'x-auth-token',
+    'x-api-key',
+    'x-csrf-token',
+    'proxy-authorization',
+  ]
+
+  // === Batching Layer ===
+  let logBatch = []
+  let wsBatch = []
+  let networkBatch = []
+  let flushTimer = null
+
+  function scheduleFlush() {
+    if (flushTimer) return
+    flushTimer = setTimeout(flush, BATCH_INTERVAL_MS)
+  }
+
+  function flush() {
+    flushTimer = null
+
+    if (logBatch.length > 0) {
+      const entries = logBatch.splice(0, MAX_BATCH_SIZE)
+      sendToServer('/logs', { entries })
+    }
+    if (wsBatch.length > 0) {
+      const events = wsBatch.splice(0, MAX_BATCH_SIZE)
+      sendToServer('/websocket-events', { events })
+    }
+    if (networkBatch.length > 0) {
+      const bodies = networkBatch.splice(0, MAX_BATCH_SIZE)
+      sendToServer('/network-bodies', { bodies })
+    }
+
+    // If there's still data, schedule another flush
+    if (logBatch.length > 0 || wsBatch.length > 0 || networkBatch.length > 0) {
+      scheduleFlush()
+    }
+  }
+
+  function sendToServer(endpoint, data) {
+    // Use sendBeacon for reliability (won't be cancelled on page unload)
+    var url = `${BASE_URL}${endpoint}`
+    var body = JSON.stringify(data)
+
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }))
+    } else {
+      // Fallback to fetch (fire-and-forget)
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+      }).catch(function () {}) // Swallow errors — never interfere with the app
+    }
+  }
+
+  // === Transport Adapter ===
+  // Replaces window.postMessage with server POST
+  function emit(type, payload) {
+    switch (type) {
+      case 'GASOLINE_LOG':
+        if (logBatch.length < MAX_BATCH_BUFFER) logBatch.push(payload)
+        break
+      case 'GASOLINE_WS':
+        if (wsBatch.length < MAX_BATCH_BUFFER) wsBatch.push(payload)
+        break
+      case 'GASOLINE_NETWORK_BODY':
+        if (networkBatch.length < MAX_BATCH_BUFFER) networkBatch.push(payload)
+        break
+      // Enhanced actions and web vitals go to logs
+      case 'GASOLINE_ENHANCED_ACTION':
+      case 'GASOLINE_WEB_VITALS':
+        if (logBatch.length < MAX_BATCH_BUFFER) logBatch.push({ type: type, ...payload })
+        break
+    }
+    scheduleFlush()
+  }
+
+  // === safeSerialize (identical to inject.js) ===
+  function safeSerialize(value, depth, seen) {
+    if (depth === undefined) depth = 0
+    if (seen === undefined) seen = new WeakSet()
+    if (value === null) return null
+    if (value === undefined) return undefined
+    var type = typeof value
+    if (type === 'string') {
+      return value.length > MAX_STRING_LENGTH ? value.slice(0, MAX_STRING_LENGTH) + '... [truncated]' : value
+    }
+    if (type === 'number' || type === 'boolean') return value
+    if (type === 'function') return '[Function: ' + (value.name || 'anonymous') + ']'
+    if (type === 'symbol') return value.toString()
+    if (type === 'bigint') return value.toString() + 'n'
+    if (depth >= MAX_DEPTH) return '[max depth reached]'
+    if (value instanceof Error) {
+      return { name: value.name, message: value.message, stack: value.stack }
+    }
+    if (value instanceof RegExp) return value.toString()
+    if (value instanceof Date) return value.toISOString()
+    if (typeof value === 'object') {
+      if (seen.has(value)) return '[Circular]'
+      seen.add(value)
+      if (Array.isArray(value)) {
+        return value.slice(0, 100).map(function (v) {
+          return safeSerialize(v, depth + 1, seen)
+        })
+      }
+      if (
+        (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement) ||
+        (typeof Node !== 'undefined' && value instanceof Node)
+      ) {
+        return '[' + value.constructor.name + ': ' + (value.tagName || value.nodeName) + ']'
+      }
+      var result = {}
+      var keys = Object.keys(value).slice(0, 50)
+      for (var i = 0; i < keys.length; i++) {
+        try {
+          result[keys[i]] = safeSerialize(value[keys[i]], depth + 1, seen)
+        } catch (e) {
+          result[keys[i]] = '[unserializable]'
+        }
+      }
+      return result
+    }
+    return String(value)
+  }
+
+  // === Console Capture ===
+  function installConsoleCapture() {
+    var levels = ['log', 'warn', 'error', 'info', 'debug']
+    var originals = {}
+
+    levels.forEach(function (level) {
+      originals[level] = console[level]
+      console[level] = function () {
+        var args = Array.prototype.slice.call(arguments)
+        originals[level].apply(console, args)
+
+        emit('GASOLINE_LOG', {
+          level: level,
+          message: args
+            .map(function (a) {
+              if (typeof a === 'string') return a
+              var serialized = safeSerialize(a)
+              return typeof serialized === 'object' ? JSON.stringify(serialized) : String(serialized)
+            })
+            .join(' '),
+          args: args.map(function (a) {
+            return safeSerialize(a)
+          }),
+          timestamp: new Date().toISOString(),
+          url: window.location.href,
+          source: 'console',
+        })
+      }
+    })
+  }
+
+  // === Exception Capture ===
+  function installExceptionCapture() {
+    window.addEventListener('error', function (event) {
+      emit('GASOLINE_LOG', {
+        level: 'error',
+        message: event.message || 'Unknown error',
+        args: [safeSerialize(event.error)],
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        source: 'exception',
+        stack: event.error ? event.error.stack : undefined,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+      })
+    })
+
+    window.addEventListener('unhandledrejection', function (event) {
+      var reason = event.reason
+      emit('GASOLINE_LOG', {
+        level: 'error',
+        message: (reason && reason.message) || String(reason) || 'Unhandled Promise rejection',
+        args: [safeSerialize(reason)],
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        source: 'unhandledrejection',
+        stack: reason ? reason.stack : undefined,
+      })
+    })
+  }
+
+  // === Fetch/XHR Capture ===
+  function installNetworkCapture() {
+    var originalFetch = window.fetch
+
+    window.fetch = function (input, init) {
+      if (!init) init = {}
+      var url = typeof input === 'string' ? input : input.url
+      var method = init.method || (input.method ? input.method : 'GET')
+      var startTime = Date.now()
+
+      // Skip requests to the Gasoline server itself
+      if (url && url.indexOf(BASE_URL) === 0) {
+        return originalFetch.apply(this, arguments)
+      }
+
+      var requestBody = null
+      if (init.body) {
+        try {
+          requestBody = typeof init.body === 'string' ? init.body.slice(0, MAX_RESPONSE_LENGTH) : '[non-string body]'
+        } catch (e) {
+          requestBody = '[unreadable]'
+        }
+      }
+
+      return originalFetch.apply(this, arguments).then(
+        function (response) {
+          var duration = Date.now() - startTime
+
+          // Capture network body for non-2xx responses
+          if (response.status >= 400) {
+            var clone = response.clone()
+            clone
+              .text()
+              .then(function (text) {
+                emit('GASOLINE_NETWORK_BODY', {
+                  url: url,
+                  method: method.toUpperCase(),
+                  status: response.status,
+                  requestBody: requestBody,
+                  responseBody: text.slice(0, MAX_RESPONSE_LENGTH),
+                  duration: duration,
+                  timestamp: new Date().toISOString(),
+                  contentType: response.headers.get('content-type') || '',
+                  requestHeaders: filterHeaders(init.headers),
+                  responseHeaders: filterHeaders(Object.fromEntries(response.headers.entries())),
+                })
+              })
+              .catch(function () {})
+          }
+
+          // Always log errors to console stream
+          if (response.status >= 400) {
+            emit('GASOLINE_LOG', {
+              level: response.status >= 500 ? 'error' : 'warn',
+              message: method.toUpperCase() + ' ' + url + ' \u2192 ' + response.status,
+              timestamp: new Date().toISOString(),
+              url: window.location.href,
+              source: 'network',
+              metadata: { status: response.status, duration: duration },
+            })
+          }
+
+          return response
+        },
+        function (error) {
+          emit('GASOLINE_LOG', {
+            level: 'error',
+            message: method.toUpperCase() + ' ' + url + ' \u2192 Network Error: ' + error.message,
+            timestamp: new Date().toISOString(),
+            url: window.location.href,
+            source: 'network',
+            metadata: {
+              error: error.message,
+              duration: Date.now() - startTime,
+            },
+          })
+          throw error
+        },
+      )
+    }
+  }
+
+  // === WebSocket Capture ===
+  function installWebSocketCapture() {
+    var OriginalWebSocket = window.WebSocket
+
+    window.WebSocket = function (url, protocols) {
+      var ws = new OriginalWebSocket(url, protocols)
+      var id =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : 'ws_' + Date.now() + '_' + Math.random().toString(36).slice(2)
+
+      emit('GASOLINE_WS', {
+        event: 'connecting',
+        id: id,
+        url: url,
+        ts: new Date().toISOString(),
+      })
+
+      ws.addEventListener('open', function () {
+        emit('GASOLINE_WS', {
+          event: 'open',
+          id: id,
+          url: url,
+          ts: new Date().toISOString(),
+        })
+      })
+
+      ws.addEventListener('message', function (event) {
+        var data = typeof event.data === 'string' ? event.data : '[binary]'
+        emit('GASOLINE_WS', {
+          event: 'message',
+          id: id,
+          url: url,
+          direction: 'incoming',
+          data: data.slice(0, MAX_STRING_LENGTH),
+          size: event.data.length || 0,
+          ts: new Date().toISOString(),
+        })
+      })
+
+      ws.addEventListener('close', function (event) {
+        emit('GASOLINE_WS', {
+          event: 'close',
+          id: id,
+          url: url,
+          code: event.code,
+          reason: event.reason,
+          ts: new Date().toISOString(),
+        })
+      })
+
+      ws.addEventListener('error', function () {
+        emit('GASOLINE_WS', {
+          event: 'error',
+          id: id,
+          url: url,
+          ts: new Date().toISOString(),
+        })
+      })
+
+      // Wrap send
+      var originalSend = ws.send.bind(ws)
+      ws.send = function (data) {
+        var payload = typeof data === 'string' ? data : '[binary]'
+        emit('GASOLINE_WS', {
+          event: 'message',
+          id: id,
+          url: url,
+          direction: 'outgoing',
+          data: payload.slice(0, MAX_STRING_LENGTH),
+          size: data.length || 0,
+          ts: new Date().toISOString(),
+        })
+        return originalSend(data)
+      }
+
+      return ws
+    }
+
+    // Preserve static properties
+    window.WebSocket.CONNECTING = OriginalWebSocket.CONNECTING
+    window.WebSocket.OPEN = OriginalWebSocket.OPEN
+    window.WebSocket.CLOSING = OriginalWebSocket.CLOSING
+    window.WebSocket.CLOSED = OriginalWebSocket.CLOSED
+    window.WebSocket.prototype = OriginalWebSocket.prototype
+  }
+
+  // === Helpers ===
+  function filterHeaders(headers) {
+    if (!headers) return {}
+    var filtered = {}
+    var entries
+    if (typeof Headers !== 'undefined' && headers instanceof Headers) {
+      entries = Array.from(headers.entries())
+    } else if (headers && typeof headers === 'object') {
+      entries = Object.entries(headers)
+    } else {
+      return {}
+    }
+    for (var i = 0; i < entries.length; i++) {
+      var key = entries[i][0]
+      var value = entries[i][1]
+      if (SENSITIVE_HEADERS.indexOf(key.toLowerCase()) !== -1) {
+        filtered[key] = '[REDACTED]'
+      } else {
+        filtered[key] = value
+      }
+    }
+    return filtered
+  }
+
+  // === Lifecycle Hooks ===
+
+  // Flush on page unload
+  window.addEventListener('beforeunload', function () {
+    flush()
+  })
+
+  // Signal to server that this page loaded (useful for test correlation)
+  sendToServer('/logs', {
+    entries: [
+      {
+        level: 'info',
+        message: '[gasoline-ci] Capture initialized',
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        source: 'gasoline-ci',
+        metadata: {
+          testId: window.__GASOLINE_TEST_ID || null,
+          captureVersion: '5.1.0',
+        },
+      },
+    ],
+  })
+
+  // === Install All Captures ===
+  installConsoleCapture()
+  installExceptionCapture()
+  installNetworkCapture()
+  installWebSocketCapture()
+})()

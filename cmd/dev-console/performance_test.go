@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -1337,8 +1338,14 @@ func TestGetWebVitalsMCPTool(t *testing.T) {
 		t.Fatal("expected content in response")
 	}
 
+	// Strip summary line before parsing JSON
+	text := result.Content[0].Text
+	jsonPart := text
+	if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
+		jsonPart = lines[1]
+	}
 	var vitals WebVitalsResult
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &vitals); err != nil {
+	if err := json.Unmarshal([]byte(jsonPart), &vitals); err != nil {
 		t.Fatalf("response text should be valid JSON WebVitalsResult: %v", err)
 	}
 
@@ -1731,223 +1738,8 @@ func TestFormatPerformanceReportNilFCPLCP(t *testing.T) {
 	}
 }
 
-// --- HandlePerformanceSnapshot (line 476, 0% covered) ---
-
-func TestHandlePerformanceSnapshotGETNoSnapshot(t *testing.T) {
-	capture := NewCapture()
-
-	req := httptest.NewRequest("GET", "/performance-snapshot", nil)
-	w := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(w, req)
-
-	if w.Code != 200 {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-
-	var resp map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
-	}
-	if resp["snapshot"] != nil {
-		t.Error("expected snapshot to be nil when no data")
-	}
-	if resp["baseline"] != nil {
-		t.Error("expected baseline to be nil when no data")
-	}
-}
-
-func TestHandlePerformanceSnapshotGETLatest(t *testing.T) {
-	capture := NewCapture()
-	capture.AddPerformanceSnapshot(PerformanceSnapshot{
-		URL:       "/page-a",
-		Timestamp: "2024-01-15T10:00:00Z",
-		Timing: PerformanceTiming{
-			DomContentLoaded: 600,
-			Load:             1200,
-			TimeToFirstByte:  80,
-			DomInteractive:   500,
-		},
-		Network:   NetworkSummary{RequestCount: 5, TransferSize: 30000, DecodedSize: 60000, ByType: map[string]TypeSummary{}},
-		LongTasks: LongTaskMetrics{},
-	})
-
-	req := httptest.NewRequest("GET", "/performance-snapshot", nil)
-	w := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(w, req)
-
-	if w.Code != 200 {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-
-	var resp map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
-	}
-	if resp["snapshot"] == nil {
-		t.Fatal("expected snapshot to be present")
-	}
-	snapshot := resp["snapshot"].(map[string]interface{})
-	if snapshot["url"] != "/page-a" {
-		t.Errorf("expected url /page-a, got %v", snapshot["url"])
-	}
-}
-
-func TestHandlePerformanceSnapshotGETWithURLFilter(t *testing.T) {
-	capture := NewCapture()
-	capture.AddPerformanceSnapshot(PerformanceSnapshot{
-		URL:       "/page-a",
-		Timestamp: "2024-01-15T10:00:00Z",
-		Timing:    PerformanceTiming{Load: 1000, DomContentLoaded: 500, TimeToFirstByte: 50, DomInteractive: 400},
-		Network:   NetworkSummary{ByType: map[string]TypeSummary{}},
-		LongTasks: LongTaskMetrics{},
-	})
-	capture.AddPerformanceSnapshot(PerformanceSnapshot{
-		URL:       "/page-b",
-		Timestamp: "2024-01-15T10:01:00Z",
-		Timing:    PerformanceTiming{Load: 2000, DomContentLoaded: 800, TimeToFirstByte: 100, DomInteractive: 600},
-		Network:   NetworkSummary{ByType: map[string]TypeSummary{}},
-		LongTasks: LongTaskMetrics{},
-	})
-
-	req := httptest.NewRequest("GET", "/performance-snapshot?url=/page-a", nil)
-	w := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(w, req)
-
-	if w.Code != 200 {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-
-	var resp map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
-	}
-	snapshot := resp["snapshot"].(map[string]interface{})
-	if snapshot["url"] != "/page-a" {
-		t.Errorf("expected url /page-a from filter, got %v", snapshot["url"])
-	}
-}
-
-func TestHandlePerformanceSnapshotGETWithBaseline(t *testing.T) {
-	capture := NewCapture()
-	// Add two snapshots to same URL to build a baseline
-	capture.AddPerformanceSnapshot(PerformanceSnapshot{
-		URL:       "/page",
-		Timestamp: "2024-01-15T10:00:00Z",
-		Timing:    PerformanceTiming{Load: 1000, DomContentLoaded: 500, TimeToFirstByte: 50, DomInteractive: 400},
-		Network:   NetworkSummary{RequestCount: 10, TransferSize: 50000, ByType: map[string]TypeSummary{}},
-		LongTasks: LongTaskMetrics{Count: 1, TotalBlockingTime: 60},
-	})
-	capture.AddPerformanceSnapshot(PerformanceSnapshot{
-		URL:       "/page",
-		Timestamp: "2024-01-15T10:01:00Z",
-		Timing:    PerformanceTiming{Load: 1100, DomContentLoaded: 520, TimeToFirstByte: 55, DomInteractive: 420},
-		Network:   NetworkSummary{RequestCount: 11, TransferSize: 52000, ByType: map[string]TypeSummary{}},
-		LongTasks: LongTaskMetrics{Count: 1, TotalBlockingTime: 55},
-	})
-
-	req := httptest.NewRequest("GET", "/performance-snapshot", nil)
-	w := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(w, req)
-
-	var resp map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
-	}
-	if resp["baseline"] == nil {
-		t.Error("expected baseline to be present after multiple snapshots")
-	}
-}
-
-func TestHandlePerformanceSnapshotPOST(t *testing.T) {
-	capture := NewCapture()
-
-	body := `{"url":"/posted","timestamp":"2024-01-15T10:00:00Z","timing":{"domContentLoaded":600,"load":1200,"timeToFirstByte":80,"domInteractive":500},"network":{"requestCount":5,"transferSize":30000,"decodedSize":60000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}}`
-
-	req := httptest.NewRequest("POST", "/performance-snapshot", strings.NewReader(body))
-	w := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(w, req)
-
-	if w.Code != 200 {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-
-	var resp map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
-	}
-	if resp["received"] != true {
-		t.Error("expected received: true")
-	}
-	if resp["baseline_updated"] != true {
-		t.Error("expected baseline_updated: true")
-	}
-
-	// Verify snapshot was stored
-	snap, found := capture.GetPerformanceSnapshot("/posted")
-	if !found {
-		t.Error("snapshot should be retrievable after POST")
-	}
-	if snap.Timing.Load != 1200 {
-		t.Errorf("expected load 1200, got %f", snap.Timing.Load)
-	}
-}
-
-func TestHandlePerformanceSnapshotPOSTInvalidJSON(t *testing.T) {
-	capture := NewCapture()
-
-	req := httptest.NewRequest("POST", "/performance-snapshot", strings.NewReader("not json"))
-	w := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(w, req)
-
-	if w.Code != 400 {
-		t.Fatalf("expected 400 for invalid JSON, got %d", w.Code)
-	}
-}
-
-func TestHandlePerformanceSnapshotDELETE(t *testing.T) {
-	capture := NewCapture()
-	capture.AddPerformanceSnapshot(PerformanceSnapshot{
-		URL:       "/page",
-		Timestamp: "2024-01-15T10:00:00Z",
-		Timing:    PerformanceTiming{Load: 1000, DomContentLoaded: 500, TimeToFirstByte: 50, DomInteractive: 400},
-		Network:   NetworkSummary{ByType: map[string]TypeSummary{}},
-		LongTasks: LongTaskMetrics{},
-	})
-
-	req := httptest.NewRequest("DELETE", "/performance-snapshot", nil)
-	w := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(w, req)
-
-	if w.Code != 200 {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-
-	var resp map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
-	}
-	if resp["cleared"] != true {
-		t.Error("expected cleared: true")
-	}
-
-	// Verify data was cleared
-	_, found := capture.GetPerformanceSnapshot("/page")
-	if found {
-		t.Error("snapshot should be cleared after DELETE")
-	}
-}
-
-func TestHandlePerformanceSnapshotMethodNotAllowed(t *testing.T) {
-	capture := NewCapture()
-
-	req := httptest.NewRequest("PATCH", "/performance-snapshot", nil)
-	w := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(w, req)
-
-	if w.Code != 405 {
-		t.Fatalf("expected 405 for PATCH, got %d", w.Code)
-	}
-}
+// Old HandlePerformanceSnapshot (singular) tests removed — endpoint deleted in Phase 6 (W6).
+// See TestHandlePerformanceSnapshots_* (plural) and TestOldPerformanceSnapshotEndpoint_Gone below.
 
 // --- DetectRegressions: load regression ---
 
@@ -3324,124 +3116,7 @@ func TestUpdateBaselineResourcesFontType(t *testing.T) {
 	}
 }
 
-// ============================================
-// Additional coverage: HandlePerformanceSnapshot
-// ============================================
-
-func TestHandlePerformanceSnapshotDELETEClearsAll(t *testing.T) {
-	capture := setupTestCapture(t)
-
-	// Add some snapshots first
-	capture.AddPerformanceSnapshot(PerformanceSnapshot{
-		URL:       "http://localhost:3000/page1",
-		Timestamp: "2026-01-24T10:00:00Z",
-		Timing:    PerformanceTiming{Load: 1000},
-		Network:   NetworkSummary{TransferSize: 50000},
-	})
-	capture.AddPerformanceSnapshot(PerformanceSnapshot{
-		URL:       "http://localhost:3000/page2",
-		Timestamp: "2026-01-24T10:01:00Z",
-		Timing:    PerformanceTiming{Load: 1200},
-		Network:   NetworkSummary{TransferSize: 60000},
-	})
-
-	// Verify data exists
-	_, found := capture.GetLatestPerformanceSnapshot()
-	if !found {
-		t.Fatal("Expected snapshot to exist before DELETE")
-	}
-
-	// Send DELETE request
-	req := httptest.NewRequest("DELETE", "/performance-snapshot", nil)
-	rec := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(rec, req)
-
-	if rec.Code != 200 {
-		t.Errorf("Expected status 200, got %d", rec.Code)
-	}
-
-	var resp map[string]interface{}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("Failed to parse response: %v", err)
-	}
-	if resp["cleared"] != true {
-		t.Error("Expected cleared=true in response")
-	}
-
-	// Verify snapshots are cleared
-	_, found = capture.GetLatestPerformanceSnapshot()
-	if found {
-		t.Error("Expected no snapshots after DELETE")
-	}
-
-	// Verify baselines are also cleared
-	_, baselineFound := capture.GetPerformanceBaseline("http://localhost:3000/page1")
-	if baselineFound {
-		t.Error("Expected no baselines after DELETE")
-	}
-}
-
-func TestHandlePerformanceSnapshotGETWithURL(t *testing.T) {
-	capture := setupTestCapture(t)
-
-	// Add snapshots for different URLs
-	capture.AddPerformanceSnapshot(PerformanceSnapshot{
-		URL:       "http://localhost:3000/page1",
-		Timestamp: "2026-01-24T10:00:00Z",
-		Timing:    PerformanceTiming{Load: 1000},
-		Network:   NetworkSummary{TransferSize: 50000},
-	})
-	capture.AddPerformanceSnapshot(PerformanceSnapshot{
-		URL:       "http://localhost:3000/page2",
-		Timestamp: "2026-01-24T10:01:00Z",
-		Timing:    PerformanceTiming{Load: 1500},
-		Network:   NetworkSummary{TransferSize: 80000},
-	})
-
-	// GET with ?url parameter for page1
-	req := httptest.NewRequest("GET", "/performance-snapshot?url=http://localhost:3000/page1", nil)
-	rec := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(rec, req)
-
-	if rec.Code != 200 {
-		t.Errorf("Expected status 200, got %d", rec.Code)
-	}
-
-	var resp map[string]interface{}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("Failed to parse response: %v", err)
-	}
-
-	snapshot, ok := resp["snapshot"].(map[string]interface{})
-	if !ok {
-		t.Fatal("Expected snapshot in response")
-	}
-	if snapshot["url"] != "http://localhost:3000/page1" {
-		t.Errorf("Expected url 'http://localhost:3000/page1', got '%v'", snapshot["url"])
-	}
-}
-
-func TestHandlePerformanceSnapshotGETNotFound(t *testing.T) {
-	capture := setupTestCapture(t)
-
-	// GET with ?url that doesn't exist
-	req := httptest.NewRequest("GET", "/performance-snapshot?url=http://localhost:3000/nonexistent", nil)
-	rec := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(rec, req)
-
-	if rec.Code != 200 {
-		t.Errorf("Expected status 200, got %d", rec.Code)
-	}
-
-	var resp map[string]interface{}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("Failed to parse response: %v", err)
-	}
-
-	if resp["snapshot"] != nil {
-		t.Error("Expected snapshot to be nil for nonexistent URL")
-	}
-}
+// Old HandlePerformanceSnapshot GET/DELETE coverage tests removed — endpoint deleted in Phase 6 (W6).
 
 // ============================================
 // Additional coverage: normalizeDynamicAPIPath
@@ -3497,63 +3172,7 @@ func TestNormalizeDynamicAPIPathRootOnly(t *testing.T) {
 	}
 }
 
-// ============================================
-// Coverage: HandlePerformanceSnapshot — baseline not found branch (line 504)
-// ============================================
-
-func TestHandlePerformanceSnapshotGETWithSnapshotButNoBaseline(t *testing.T) {
-	capture := NewCapture()
-
-	// Directly set a snapshot without going through AddPerformanceSnapshot
-	// (which would auto-create a baseline). This simulates snapshot without baseline.
-	capture.mu.Lock()
-	capture.perf.snapshots["/no-baseline"] = PerformanceSnapshot{
-		URL:       "/no-baseline",
-		Timestamp: "2024-01-15T10:00:00Z",
-		Timing:    PerformanceTiming{Load: 1000, DomContentLoaded: 500, TimeToFirstByte: 50, DomInteractive: 400},
-		Network:   NetworkSummary{RequestCount: 5, TransferSize: 30000, ByType: map[string]TypeSummary{}},
-	}
-	capture.perf.snapshotOrder = append(capture.perf.snapshotOrder, "/no-baseline")
-	capture.mu.Unlock()
-
-	req := httptest.NewRequest("GET", "/performance-snapshot?url=/no-baseline", nil)
-	w := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(w, req)
-
-	if w.Code != 200 {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-
-	var resp map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
-	}
-	if resp["snapshot"] == nil {
-		t.Error("expected snapshot to be non-nil")
-	}
-	if resp["baseline"] != nil {
-		t.Error("expected baseline to be nil when no baseline exists")
-	}
-}
-
-// ============================================
-// Coverage: HandlePerformanceSnapshot POST body too large (lines 516-518)
-// ============================================
-
-func TestHandlePerformanceSnapshotPOSTBodyTooLarge(t *testing.T) {
-	capture := NewCapture()
-
-	// maxPostBodySize is 5MB. Create a body larger than that.
-	largeBody := strings.Repeat("x", 6*1024*1024) // 6MB
-
-	req := httptest.NewRequest("POST", "/performance-snapshot", strings.NewReader(largeBody))
-	w := httptest.NewRecorder()
-	capture.HandlePerformanceSnapshot(w, req)
-
-	if w.Code != 413 {
-		t.Fatalf("expected 413 for body too large, got %d", w.Code)
-	}
-}
+// Old HandlePerformanceSnapshot baseline/body-too-large coverage tests removed — endpoint deleted in Phase 6 (W6).
 
 // ============================================
 // Coverage: GetCausalDiff — render-blocking resources in computeProbableCause (line 880)
@@ -4014,5 +3633,180 @@ func TestUpdateBaselineResourcesEmptySnapshot(t *testing.T) {
 
 	if len(baseline.Resources) != 1 {
 		t.Errorf("Expected baseline to remain unchanged with empty snapshot, got %d resources", len(baseline.Resources))
+	}
+}
+
+// ============================================
+// Phase 6 (W6): Batch Performance Snapshots Endpoint
+// ============================================
+
+func TestHandlePerformanceSnapshots_SingleSnapshot(t *testing.T) {
+	capture := NewCapture()
+
+	body := `{"snapshots":[{"url":"/single","timestamp":"2024-01-15T10:00:00Z","timing":{"domContentLoaded":600,"load":1200,"timeToFirstByte":80,"domInteractive":500},"network":{"requestCount":5,"transferSize":30000,"decodedSize":60000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}}]}`
+
+	req := httptest.NewRequest("POST", "/performance-snapshots", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	capture.HandlePerformanceSnapshots(w, req)
+
+	if w.Code != 200 {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if resp["received"] != float64(1) {
+		t.Errorf("expected received: 1, got %v", resp["received"])
+	}
+}
+
+func TestHandlePerformanceSnapshots_MultipleBatched(t *testing.T) {
+	capture := NewCapture()
+
+	body := `{"snapshots":[` +
+		`{"url":"/page1","timestamp":"2024-01-15T10:00:00Z","timing":{"domContentLoaded":600,"load":1200,"timeToFirstByte":80,"domInteractive":500},"network":{"requestCount":5,"transferSize":30000,"decodedSize":60000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}},` +
+		`{"url":"/page2","timestamp":"2024-01-15T10:01:00Z","timing":{"domContentLoaded":700,"load":1300,"timeToFirstByte":90,"domInteractive":600},"network":{"requestCount":6,"transferSize":35000,"decodedSize":70000,"byType":{}},"longTasks":{"count":1,"totalBlockingTime":50,"longest":50}},` +
+		`{"url":"/page3","timestamp":"2024-01-15T10:02:00Z","timing":{"domContentLoaded":500,"load":1100,"timeToFirstByte":70,"domInteractive":400},"network":{"requestCount":4,"transferSize":25000,"decodedSize":50000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}},` +
+		`{"url":"/page4","timestamp":"2024-01-15T10:03:00Z","timing":{"domContentLoaded":650,"load":1250,"timeToFirstByte":85,"domInteractive":550},"network":{"requestCount":7,"transferSize":40000,"decodedSize":80000,"byType":{}},"longTasks":{"count":2,"totalBlockingTime":100,"longest":60}},` +
+		`{"url":"/page5","timestamp":"2024-01-15T10:04:00Z","timing":{"domContentLoaded":800,"load":1500,"timeToFirstByte":100,"domInteractive":700},"network":{"requestCount":8,"transferSize":45000,"decodedSize":90000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}}` +
+		`]}`
+
+	req := httptest.NewRequest("POST", "/performance-snapshots", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	capture.HandlePerformanceSnapshots(w, req)
+
+	if w.Code != 200 {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if resp["received"] != float64(5) {
+		t.Errorf("expected received: 5, got %v", resp["received"])
+	}
+
+	// Verify all 5 snapshots were stored
+	for _, url := range []string{"/page1", "/page2", "/page3", "/page4", "/page5"} {
+		if _, found := capture.GetPerformanceSnapshot(url); !found {
+			t.Errorf("snapshot for %s should be stored", url)
+		}
+	}
+}
+
+func TestHandlePerformanceSnapshots_EmptyArray(t *testing.T) {
+	capture := NewCapture()
+
+	body := `{"snapshots":[]}`
+
+	req := httptest.NewRequest("POST", "/performance-snapshots", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	capture.HandlePerformanceSnapshots(w, req)
+
+	if w.Code != 200 {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if resp["received"] != float64(0) {
+		t.Errorf("expected received: 0, got %v", resp["received"])
+	}
+}
+
+func TestHandlePerformanceSnapshots_BadJSON(t *testing.T) {
+	capture := NewCapture()
+
+	req := httptest.NewRequest("POST", "/performance-snapshots", strings.NewReader("not json"))
+	w := httptest.NewRecorder()
+	capture.HandlePerformanceSnapshots(w, req)
+
+	if w.Code != 400 {
+		t.Fatalf("expected 400 for invalid JSON, got %d", w.Code)
+	}
+}
+
+func TestHandlePerformanceSnapshots_GET(t *testing.T) {
+	capture := NewCapture()
+
+	req := httptest.NewRequest("GET", "/performance-snapshots", nil)
+	w := httptest.NewRecorder()
+	capture.HandlePerformanceSnapshots(w, req)
+
+	if w.Code != 405 {
+		t.Fatalf("expected 405 for GET, got %d", w.Code)
+	}
+}
+
+func TestOldPerformanceSnapshotEndpoint_Gone(t *testing.T) {
+	// This test verifies the old singular endpoint is no longer registered.
+	// We set up routes the same way main.go does and confirm /performance-snapshot returns 404.
+	capture := NewCapture()
+
+	// Create a fresh mux to avoid interference from other tests
+	mux := http.NewServeMux()
+	mux.HandleFunc("/performance-snapshots", corsMiddleware(capture.HandlePerformanceSnapshots))
+	// Do NOT register /performance-snapshot (singular) — that's the point
+
+	req := httptest.NewRequest("POST", "/performance-snapshot",
+		strings.NewReader(`{"url":"/test","timestamp":"2024-01-15T10:00:00Z","timing":{"domContentLoaded":600,"load":1200,"timeToFirstByte":80,"domInteractive":500},"network":{"requestCount":5,"transferSize":30000,"decodedSize":60000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}}`))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != 404 {
+		t.Fatalf("expected 404 for old singular endpoint, got %d", w.Code)
+	}
+}
+
+func TestHandlePerformanceSnapshots_DataRetrievable(t *testing.T) {
+	capture := NewCapture()
+
+	body := `{"snapshots":[` +
+		`{"url":"/data-test-1","timestamp":"2024-01-15T10:00:00Z","timing":{"domContentLoaded":600,"load":1200,"timeToFirstByte":80,"domInteractive":500},"network":{"requestCount":5,"transferSize":30000,"decodedSize":60000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}},` +
+		`{"url":"/data-test-2","timestamp":"2024-01-15T10:01:00Z","timing":{"domContentLoaded":700,"load":1500,"timeToFirstByte":90,"domInteractive":600},"network":{"requestCount":8,"transferSize":50000,"decodedSize":100000,"byType":{}},"longTasks":{"count":1,"totalBlockingTime":75,"longest":75}}` +
+		`]}`
+
+	req := httptest.NewRequest("POST", "/performance-snapshots", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	capture.HandlePerformanceSnapshots(w, req)
+
+	if w.Code != 200 {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	// Verify first snapshot is stored and retrievable
+	snap1, found1 := capture.GetPerformanceSnapshot("/data-test-1")
+	if !found1 {
+		t.Fatal("snapshot for /data-test-1 should be retrievable")
+	}
+	if snap1.Timing.Load != 1200 {
+		t.Errorf("expected load 1200, got %f", snap1.Timing.Load)
+	}
+
+	// Verify second snapshot is stored and retrievable
+	snap2, found2 := capture.GetPerformanceSnapshot("/data-test-2")
+	if !found2 {
+		t.Fatal("snapshot for /data-test-2 should be retrievable")
+	}
+	if snap2.Timing.Load != 1500 {
+		t.Errorf("expected load 1500, got %f", snap2.Timing.Load)
+	}
+	if snap2.LongTasks.Count != 1 {
+		t.Errorf("expected longTasks.count 1, got %d", snap2.LongTasks.Count)
+	}
+
+	// Verify baselines were created
+	_, baselineFound := capture.GetPerformanceBaseline("/data-test-1")
+	if !baselineFound {
+		t.Error("baseline for /data-test-1 should exist after batch POST")
+	}
+	_, baselineFound2 := capture.GetPerformanceBaseline("/data-test-2")
+	if !baselineFound2 {
+		t.Error("baseline for /data-test-2 should exist after batch POST")
 	}
 }

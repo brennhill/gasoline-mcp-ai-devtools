@@ -1,6 +1,6 @@
 # Gasoline Build Makefile
 
-VERSION := 5.0.0
+VERSION := 5.1.0
 BINARY_NAME := gasoline
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION)
@@ -13,11 +13,12 @@ PLATFORMS := \
 	linux-arm64 \
 	windows-amd64
 
-.PHONY: all clean build test test-race test-cover test-bench test-fuzz \
+.PHONY: all clean build test test-js test-fast test-all test-race test-cover test-bench test-fuzz \
 	dev run checksums verify-zero-deps verify-imports verify-size \
 	lint lint-go lint-js format format-fix typecheck check ci \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
 	release-check install-hooks bench-baseline sync-version \
+	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
 	$(PLATFORMS)
 
 all: clean build
@@ -27,6 +28,15 @@ clean:
 
 test:
 	CGO_ENABLED=0 go test -v ./cmd/dev-console/...
+
+test-js:
+	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 tests/extension/*.test.js
+
+test-fast:
+	go vet ./cmd/dev-console/
+	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 tests/extension/*.test.js
+
+test-all: test test-js
 
 test-race:
 	go test -race -v ./cmd/dev-console/...
@@ -102,7 +112,7 @@ lint-go:
 	golangci-lint run ./cmd/dev-console/
 
 lint-js:
-	npx eslint extension/ extension-tests/
+	npx eslint extension/ tests/extension/
 
 format:
 	@echo "Checking Go formatting..."
@@ -118,8 +128,7 @@ typecheck:
 
 check: lint format typecheck
 
-ci: check test
-	node --test extension-tests/*.test.js
+ci: check test test-js
 
 # --- Local CI (mirrors GitHub Actions) ---
 
@@ -127,7 +136,7 @@ ci-local: ci-go ci-js ci-security
 	@echo "All CI checks passed locally"
 
 ci-e2e:
-	cd e2e-tests && npm ci && npx playwright install chromium --with-deps && npx playwright test
+	cd tests/e2e && npm ci && npx playwright install chromium --with-deps && npx playwright test
 
 extension-zip:
 	@mkdir -p $(BUILD_DIR)
@@ -166,9 +175,9 @@ ci-security:
 
 ci-bench:
 	@command -v benchstat >/dev/null 2>&1 || { echo "benchstat not found. Install: go install golang.org/x/perf/cmd/benchstat@latest"; exit 1; }
-	@test -f benchmarks/baseline.txt || { echo "FAIL: No baseline. Run 'make bench-baseline' first."; exit 1; }
+	@test -f docs/benchmarks/baseline.txt || { echo "FAIL: No baseline. Run 'make bench-baseline' first."; exit 1; }
 	go test -bench=. -benchmem -count=6 -run=^$$ ./cmd/dev-console/ > /tmp/gasoline-bench-current.txt
-	benchstat benchmarks/baseline.txt /tmp/gasoline-bench-current.txt
+	benchstat docs/benchmarks/baseline.txt /tmp/gasoline-bench-current.txt
 
 ci-fuzz:
 	go test -fuzz=FuzzPostLogs -fuzztime=30s ./cmd/dev-console/
@@ -181,8 +190,8 @@ ci-fuzz:
 
 bench-baseline:
 	@mkdir -p benchmarks
-	go test -bench=. -benchmem -count=6 -run=^$$ ./cmd/dev-console/ > benchmarks/baseline.txt
-	@echo "Baseline saved to benchmarks/baseline.txt"
+	go test -bench=. -benchmem -count=6 -run=^$$ ./cmd/dev-console/ > docs/benchmarks/baseline.txt
+	@echo "Baseline saved to docs/benchmarks/baseline.txt"
 
 install-hooks:
 	@cp scripts/hooks/pre-push .git/hooks/pre-push
@@ -195,18 +204,37 @@ sync-version:
 	@# JSON "version" fields
 	@perl -pi -e 's/"version": "[0-9]+\.[0-9]+\.[0-9]+"/"version": "$(VERSION)"/g' \
 		extension/manifest.json extension/package.json server/package.json \
-		npm/gasoline-cli/package.json npm/darwin-x64/package.json \
+		npm/gasoline-mcp/package.json npm/darwin-x64/package.json \
 		npm/darwin-arm64/package.json npm/linux-x64/package.json \
 		npm/linux-arm64/package.json npm/win32-x64/package.json \
 		cmd/dev-console/testdata/mcp-initialize.golden.json
 	@# NPM optionalDependencies versions
 	@perl -pi -e 's/("@brennhill\/gasoline-[^"]+": ")[0-9]+\.[0-9]+\.[0-9]+(")/$${1}$(VERSION)$$2/g' \
-		npm/gasoline-cli/package.json
+		npm/gasoline-mcp/package.json
+	@# PyPI version fields in pyproject.toml
+	@perl -pi -e 's/^version = "[0-9]+\.[0-9]+\.[0-9]+"/version = "$(VERSION)"/' \
+		pypi/gasoline-mcp/pyproject.toml \
+		pypi/gasoline-mcp-darwin-arm64/pyproject.toml \
+		pypi/gasoline-mcp-darwin-x64/pyproject.toml \
+		pypi/gasoline-mcp-linux-arm64/pyproject.toml \
+		pypi/gasoline-mcp-linux-x64/pyproject.toml \
+		pypi/gasoline-mcp-win32-x64/pyproject.toml
+	@# PyPI optional dependencies versions
+	@perl -pi -e 's/(gasoline-mcp-[^"]+==)[0-9]+\.[0-9]+\.[0-9]+/$${1}$(VERSION)/g' \
+		pypi/gasoline-mcp/pyproject.toml
+	@# PyPI __init__.py versions
+	@perl -pi -e 's/__version__ = "[0-9]+\.[0-9]+\.[0-9]+"/__version__ = "$(VERSION)"/' \
+		pypi/gasoline-mcp/gasoline_mcp/__init__.py \
+		pypi/gasoline-mcp-darwin-arm64/gasoline_mcp_darwin_arm64/__init__.py \
+		pypi/gasoline-mcp-darwin-x64/gasoline_mcp_darwin_x64/__init__.py \
+		pypi/gasoline-mcp-linux-arm64/gasoline_mcp_linux_arm64/__init__.py \
+		pypi/gasoline-mcp-linux-x64/gasoline_mcp_linux_x64/__init__.py \
+		pypi/gasoline-mcp-win32-x64/gasoline_mcp_win32_x64/__init__.py
 	@# JS version strings
 	@perl -pi -e "s/version: '[0-9]+\.[0-9]+\.[0-9]+'/version: '$(VERSION)'/g" \
-		extension/inject.js extension-tests/popup.test.js
+		extension/inject.js tests/extension/popup.test.js
 	@perl -pi -e "s/(parsed\.version, )'[0-9]+\.[0-9]+\.[0-9]+'/\$$1'$(VERSION)'/g" \
-		extension-tests/background.test.js
+		tests/extension/background.test.js
 	@perl -pi -e "s/VERSION = '[0-9]+\.[0-9]+\.[0-9]+'/VERSION = '$(VERSION)'/g" \
 		server/scripts/install.js
 	@# Go version fallback
@@ -218,7 +246,7 @@ sync-version:
 	@# Docs and benchmarks
 	@perl -pi -e 's/Gasoline v[0-9]+\.[0-9]+\.[0-9]+/Gasoline v$(VERSION)/g' docs/getting-started.md
 	@perl -pi -e 's/"version": "[0-9]+\.[0-9]+\.[0-9]+"/"version": "$(VERSION)"/g' docs/har-export.md
-	@perl -pi -e 's/\*\*Version:\*\* [0-9]+\.[0-9]+\.[0-9]+/**Version:** $(VERSION)/' benchmarks/latest-benchmark.md
+	@perl -pi -e 's/\*\*Version:\*\* [0-9]+\.[0-9]+\.[0-9]+/**Version:** $(VERSION)/' docs/benchmarks/latest-benchmark.md
 	@echo "All files synced to $(VERSION)"
 
 context-size:
@@ -242,3 +270,61 @@ context-size:
 	printf "%6d tokens  Commands (loaded on invoke only)\n" "$$((cmd_total / 4))"; \
 	echo ""; \
 	echo "Budget: <5K lean | 5-15K normal | 15-30K heavy | >30K too large"
+
+# --- PyPI Distribution ---
+
+pypi-binaries: build
+	@echo "Copying binaries to PyPI platform packages..."
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 pypi/gasoline-mcp-darwin-arm64/gasoline_mcp_darwin_arm64/
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 pypi/gasoline-mcp-darwin-x64/gasoline_mcp_darwin_x64/
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/gasoline-mcp-linux-arm64/gasoline_mcp_linux_arm64/
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/gasoline-mcp-linux-x64/gasoline_mcp_linux_x64/
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-mcp-win32-x64/gasoline_mcp_win32_x64/
+	@echo "Binaries copied successfully"
+
+pypi-build: pypi-binaries
+	@echo "Building PyPI wheels..."
+	@for pkg in pypi/gasoline-mcp-*/; do \
+		echo "Building $$pkg..."; \
+		cd $$pkg && python3 -m build && cd ../..; \
+	done
+	@echo "Building main package..."
+	@cd pypi/gasoline-mcp && python3 -m build
+	@echo "All PyPI packages built successfully"
+	@echo ""
+	@echo "Wheels created:"
+	@find pypi -name "*.whl" -type f
+
+pypi-test-publish: pypi-build
+	@echo "Publishing to Test PyPI..."
+	@echo "NOTE: Requires TWINE_USERNAME and TWINE_PASSWORD environment variables"
+	@for pkg in pypi/gasoline-mcp-*/; do \
+		echo "Uploading $$pkg..."; \
+		cd $$pkg && python3 -m twine upload --repository testpypi dist/* && cd ../..; \
+	done
+	@echo "Uploading main package..."
+	@cd pypi/gasoline-mcp && python3 -m twine upload --repository testpypi dist/*
+	@echo "All packages published to Test PyPI"
+	@echo "Test installation: pip install --index-url https://test.pypi.org/simple/ gasoline-mcp"
+
+pypi-publish: pypi-build
+	@echo "Publishing to PyPI..."
+	@echo "NOTE: Requires TWINE_USERNAME and TWINE_PASSWORD environment variables"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read dummy
+	@for pkg in pypi/gasoline-mcp-*/; do \
+		echo "Uploading $$pkg..."; \
+		cd $$pkg && python3 -m twine upload dist/* && cd ../..; \
+	done
+	@echo "Uploading main package..."
+	@cd pypi/gasoline-mcp && python3 -m twine upload dist/*
+	@echo "All packages published to PyPI"
+	@echo "Installation: pip install gasoline-mcp"
+
+pypi-clean:
+	@echo "Cleaning PyPI build artifacts..."
+	@find pypi -type d -name "build" -exec rm -rf {} + 2>/dev/null || true
+	@find pypi -type d -name "dist" -exec rm -rf {} + 2>/dev/null || true
+	@find pypi -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	@find pypi -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@echo "PyPI artifacts cleaned"

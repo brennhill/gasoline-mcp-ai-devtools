@@ -419,14 +419,10 @@ func TestMCPGetWebSocketEvents(t *testing.T) {
 		t.Fatal("Expected content in response")
 	}
 
-	// Should contain events as JSON
-	var events []WebSocketEvent
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &events); err != nil {
-		t.Fatalf("Expected valid JSON events, got error: %v", err)
-	}
-
-	if len(events) != 2 {
-		t.Errorf("Expected 2 events, got %d", len(events))
+	// New format: summary line + markdown table
+	text := result.Content[0].Text
+	if !strings.Contains(text, "2 WebSocket event(s)") {
+		t.Errorf("Expected summary with '2 WebSocket event(s)', got: %s", text)
 	}
 }
 
@@ -458,11 +454,10 @@ func TestMCPGetWebSocketEventsWithFilter(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
-	var events []WebSocketEvent
-	json.Unmarshal([]byte(result.Content[0].Text), &events)
-
-	if len(events) != 1 {
-		t.Errorf("Expected 1 filtered event, got %d", len(events))
+	// New format: summary line + markdown table
+	text := result.Content[0].Text
+	if !strings.Contains(text, "1 WebSocket event(s)") {
+		t.Errorf("Expected summary with '1 WebSocket event(s)', got: %s", text)
 	}
 }
 
@@ -497,8 +492,14 @@ func TestMCPGetWebSocketStatus(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
+	// Strip summary line before parsing JSON
+	text := result.Content[0].Text
+	jsonPart := text
+	if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
+		jsonPart = lines[1]
+	}
 	var status WebSocketStatusResponse
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &status); err != nil {
+	if err := json.Unmarshal([]byte(jsonPart), &status); err != nil {
 		t.Fatalf("Expected valid status JSON: %v", err)
 	}
 
@@ -529,13 +530,8 @@ func TestMCPGetWebSocketEventsEmpty(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
-	if result.Content[0].Text != "No WebSocket events captured" {
-		var events []WebSocketEvent
-		if err := json.Unmarshal([]byte(result.Content[0].Text), &events); err == nil {
-			if len(events) != 0 {
-				t.Error("Expected empty events or message")
-			}
-		}
+	if !strings.HasPrefix(result.Content[0].Text, "No WebSocket events captured") {
+		t.Errorf("Expected text starting with 'No WebSocket events captured', got: %s", result.Content[0].Text)
 	}
 }
 
@@ -1000,8 +996,14 @@ func TestV4ToolGetWSStatus_ConnectionIDFilter(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
+	// Strip summary line before parsing JSON
+	text := result.Content[0].Text
+	jsonPart := text
+	if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
+		jsonPart = lines[1]
+	}
 	var status WebSocketStatusResponse
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &status); err != nil {
+	if err := json.Unmarshal([]byte(jsonPart), &status); err != nil {
 		t.Fatalf("expected valid status JSON: %v", err)
 	}
 
@@ -1042,8 +1044,14 @@ func TestV4ToolGetWSStatus_URLFilter(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
+	// Strip summary line before parsing JSON
+	text2 := result.Content[0].Text
+	jsonPart2 := text2
+	if lines := strings.SplitN(text2, "\n", 2); len(lines) == 2 {
+		jsonPart2 = lines[1]
+	}
 	var status WebSocketStatusResponse
-	json.Unmarshal([]byte(result.Content[0].Text), &status)
+	json.Unmarshal([]byte(jsonPart2), &status)
 
 	if len(status.Connections) != 2 {
 		t.Errorf("expected 2 connections matching 'chat' URL filter, got %d", len(status.Connections))
@@ -1078,8 +1086,14 @@ func TestV4ToolGetWSStatus_BothFilters(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
+	// Strip summary line before parsing JSON
+	text3 := result.Content[0].Text
+	jsonPart3 := text3
+	if lines := strings.SplitN(text3, "\n", 2); len(lines) == 2 {
+		jsonPart3 = lines[1]
+	}
 	var status WebSocketStatusResponse
-	json.Unmarshal([]byte(result.Content[0].Text), &status)
+	json.Unmarshal([]byte(jsonPart3), &status)
 
 	if len(status.Connections) != 1 {
 		t.Errorf("expected 1 connection with both filters, got %d", len(status.Connections))

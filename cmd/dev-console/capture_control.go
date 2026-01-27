@@ -266,8 +266,8 @@ func (al *AuditLogger) Write(event AuditEvent) {
 		return
 	}
 
-	line := append(data, '\n')
-	_, _ = al.file.Write(line) // #nosec G104 -- best-effort audit logging
+	_, _ = al.file.Write(data)         // #nosec G104 -- best-effort audit logging
+	_, _ = al.file.Write([]byte{'\n'}) // #nosec G104 -- best-effort audit logging
 
 	// Check if rotation is needed
 	if info, err := al.file.Stat(); err == nil && info.Size() >= al.maxSize {

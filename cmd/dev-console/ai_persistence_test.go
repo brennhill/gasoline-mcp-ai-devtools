@@ -2641,3 +2641,174 @@ func TestSessionStoreHandleStatsError(t *testing.T) {
 	os.Chmod(gasolineDir, 0o755)
 	store.Shutdown()
 }
+
+// ============================================
+// Path Traversal Security Tests
+// ============================================
+
+func TestPersist_PathTraversal_Save(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore failed: %v", err)
+	}
+	defer store.Shutdown()
+
+	// Attempt path traversal via namespace
+	err = store.Save("../../etc", "passwd", []byte(`{"evil": true}`))
+	if err == nil {
+		t.Error("Expected error for path traversal in namespace, got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "path traversal") {
+		t.Errorf("Expected path traversal error, got: %v", err)
+	}
+
+	// Attempt path traversal via key
+	err = store.Save("safe", "../../etc/passwd", []byte(`{"evil": true}`))
+	if err == nil {
+		t.Error("Expected error for path traversal in key, got nil")
+	}
+
+	// Attempt path separator in namespace
+	err = store.Save("ns/sub", "key", []byte(`{"evil": true}`))
+	if err == nil {
+		t.Error("Expected error for path separator in namespace, got nil")
+	}
+
+	// Attempt path separator in key
+	err = store.Save("ns", "sub/key", []byte(`{"evil": true}`))
+	if err == nil {
+		t.Error("Expected error for path separator in key, got nil")
+	}
+}
+
+func TestPersist_PathTraversal_Load(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore failed: %v", err)
+	}
+	defer store.Shutdown()
+
+	_, err = store.Load("../../etc", "passwd")
+	if err == nil {
+		t.Error("Expected error for path traversal in Load namespace")
+	}
+
+	_, err = store.Load("safe", "../../etc/passwd")
+	if err == nil {
+		t.Error("Expected error for path traversal in Load key")
+	}
+}
+
+func TestPersist_PathTraversal_List(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore failed: %v", err)
+	}
+	defer store.Shutdown()
+
+	_, err = store.List("../../etc")
+	if err == nil {
+		t.Error("Expected error for path traversal in List namespace")
+	}
+}
+
+func TestPersist_PathTraversal_Delete(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore failed: %v", err)
+	}
+	defer store.Shutdown()
+
+	err = store.Delete("../../etc", "passwd")
+	if err == nil {
+		t.Error("Expected error for path traversal in Delete namespace")
+	}
+
+	err = store.Delete("safe", "../../etc/passwd")
+	if err == nil {
+		t.Error("Expected error for path traversal in Delete key")
+	}
+}
+
+func TestPersist_PathTraversal_MarkDirty(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewSessionStore(dir)
+	if err != nil {
+		t.Fatalf("NewSessionStore failed: %v", err)
+	}
+	defer store.Shutdown()
+
+	// MarkDirty with traversal should silently drop
+	store.MarkDirty("../../etc", "passwd", []byte(`{"evil": true}`))
+
+	// Flush and verify nothing was written outside project dir
+	store.flushDirty()
+
+	// Verify the dirty map is empty (item was dropped at MarkDirty)
+	store.dirtyMu.Lock()
+	dirtyCount := len(store.dirty)
+	store.dirtyMu.Unlock()
+	if dirtyCount != 0 {
+		t.Errorf("Expected empty dirty map after dropping traversal input, got %d entries", dirtyCount)
+	}
+}
+
+func TestPersist_ValidateStoreInput(t *testing.T) {
+	tests := []struct {
+		value   string
+		label   string
+		wantErr bool
+	}{
+		{"normal", "namespace", false},
+		{"my-key_123", "key", false},
+		{"", "namespace", false}, // empty handled by callers
+		{"..", "namespace", true},
+		{"../etc", "namespace", true},
+		{"foo/../bar", "key", true},
+		{"ns/sub", "namespace", true},
+		{"key/name", "key", true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.value, func(t *testing.T) {
+			err := validateStoreInput(tc.value, tc.label)
+			if tc.wantErr && err == nil {
+				t.Errorf("validateStoreInput(%q, %q) expected error, got nil", tc.value, tc.label)
+			}
+			if !tc.wantErr && err != nil {
+				t.Errorf("validateStoreInput(%q, %q) unexpected error: %v", tc.value, tc.label, err)
+			}
+		})
+	}
+}
+
+func TestPersist_ValidatePathInDir(t *testing.T) {
+	tests := []struct {
+		base    string
+		target  string
+		wantErr bool
+	}{
+		{"/foo/bar", "/foo/bar/baz", false},
+		{"/foo/bar", "/foo/bar/sub/file.json", false},
+		{"/foo/bar", "/foo/baz", true},     // sibling
+		{"/foo/bar", "/etc/passwd", true},   // completely outside
+		{"/foo/bar", "/foo/bar", true},      // base itself (no trailing separator match)
+		{"/foo/bar", "/foo/bar/../baz", true}, // traversal
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.target, func(t *testing.T) {
+			err := validatePathInDir(tc.base, tc.target)
+			if tc.wantErr && err == nil {
+				t.Errorf("validatePathInDir(%q, %q) expected error, got nil", tc.base, tc.target)
+			}
+			if !tc.wantErr && err != nil {
+				t.Errorf("validatePathInDir(%q, %q) unexpected error: %v", tc.base, tc.target, err)
+			}
+		})
+	}
+}

@@ -17,44 +17,117 @@ const RECONNECT_INTERVAL = 5000 // 5 seconds
 // Session ID for detecting extension reloads - generated fresh each time service worker starts
 const EXTENSION_SESSION_ID = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
+// Debug mode flag - initialized here, later fully loaded from storage
+let debugMode = false // Controls all diagnostic logging ([DIAGNOSTIC] logs and extDebugLog)
+
+/**
+ * Log a diagnostic message only when debug mode is enabled
+ * Gated behind debugMode flag to avoid console spam in production
+ * @param {string} message - Diagnostic message to log
+ */
+function diagnosticLog(message) {
+  if (debugMode) {
+    console.log(message)
+  }
+}
+
+// DIAGNOSTIC: Measure initialization timing
+const _moduleLoadTime = performance.now()
+diagnosticLog(`[DIAGNOSTIC] Module load start at ${_moduleLoadTime.toFixed(2)}ms (${new Date().toISOString()})`)
+
 // Startup verification (always logs, regardless of debug mode)
-console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`);
+console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`)
 
-// AI Web Pilot toggle cache (survives service worker restarts via startup init and messages)
-// Declared here (before storage callbacks) to avoid temporal dead zone in tests
-let _aiWebPilotEnabledCache = null
-
-// Initialize AI Web Pilot toggle cache on startup - create a promise that resolves when ready
-let _aiWebPilotInitResolve
-const _aiWebPilotInitPromise = new Promise((resolve) => {
-  _aiWebPilotInitResolve = resolve
+// Load debug mode setting from storage (early load for startup diagnostics)
+chrome.storage.local.get(['debugMode'], (result) => {
+  debugMode = result.debugMode === true
+  if (debugMode) {
+    console.log('[Gasoline] Debug mode enabled on startup')
+  }
 })
 
-// Try local storage first (more reliable), then sync
-// Guard against test environment where chrome may not be defined
+// ============================================================================
+// TAB TRACKING: Clear on Browser Restart
+// ============================================================================
+// Tab IDs are invalidated after a browser restart. Clear tracking state
+// to enter "no tracking" mode until the user explicitly re-enables it.
+if (chrome.runtime && chrome.runtime.onStartup) {
+  chrome.runtime.onStartup.addListener(() => {
+    console.log('[Gasoline] Browser restarted - clearing tracking state')
+    chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl'])
+  })
+}
+
+/**
+ * ============================================================================
+ * AI WEB PILOT STATE HANDLING — SINGLE SOURCE OF TRUTH
+ * ============================================================================
+ * ARCHITECTURE PRINCIPLE: background.js _aiWebPilotEnabledCache is the
+ * authoritative source for whether AI Web Pilot is enabled. All other
+ * components (popup, content scripts, server) query this cache or the
+ * underlying storage.
+ *
+ * STATE FLOW:
+ * 1. User toggles in popup.html checkbox
+ * 2. Popup sends message: { type: 'setAiWebPilotEnabled', enabled: boolean }
+ * 3. Background receives message, updates _aiWebPilotEnabledCache
+ * 4. Background persists to chrome.storage (sync/local/session)
+ * 5. Storage change listener keeps cache in sync if storage changes
+ * 6. Pilot commands (execute_js, highlight, etc.) check cache
+ *
+ * CRITICAL: DO NOT let popup or content scripts write to chrome.storage
+ * directly. Only background.js updates storage to prevent race conditions
+ * where cache gets out of sync.
+ *
+ * WHY THIS MATTERS:
+ * - Chrome storage APIs are async with unpredictable ordering
+ * - Multiple writers create race conditions where cache != storage
+ * - This caused a persistent UAT bug where UI showed "on" but cache was "off"
+ * - Solution: single writer (background) + listener for sync guarantees
+ *
+ * ============================================================================
+ */
+
+// AI Web Pilot toggle - stored in chrome.storage.local only (no sync/session complexity)
+// SIMPLIFIED: One storage area, one cache, defaults to false if not found
+let _aiWebPilotEnabledCache = false
+let _aiWebPilotCacheInitialized = false // Track when async init completes
+let _pilotInitCallback = null // Callback to invoke when init is complete
+const _pilotLoadStartTime = performance.now()
+
+// Load AI Web Pilot state from chrome.storage.local on startup
+// CRITICAL: This is async, so polling won't start until this callback fires
 if (typeof chrome !== 'undefined' && chrome.storage) {
-  chrome.storage.local.get(['aiWebPilotEnabled'], (localResult) => {
-    if (localResult.aiWebPilotEnabled !== undefined) {
-      const enabled = localResult.aiWebPilotEnabled === true
-      globalThis._aiWebPilotStartupValue = enabled
-      _aiWebPilotEnabledCache = enabled // Set cache immediately
-      console.log('[Gasoline] AI Web Pilot startup cache (local):', enabled)
-      _aiWebPilotInitResolve(enabled)
-      return
+  chrome.storage.local.get(['aiWebPilotEnabled'], (result) => {
+    // If not set in storage, cache is already false. If set, use that value.
+    const wasLoaded = result.aiWebPilotEnabled === true
+    _aiWebPilotEnabledCache = wasLoaded
+    _aiWebPilotCacheInitialized = true // Mark as initialized
+    const loadTime = performance.now() - _pilotLoadStartTime
+    console.log(`[Gasoline] AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`)
+    console.log('[Gasoline] Storage value:', result.aiWebPilotEnabled, '| Cache value:', _aiWebPilotEnabledCache)
+
+    // Invoke callback if one is waiting
+    if (_pilotInitCallback) {
+      _pilotInitCallback()
+      _pilotInitCallback = null
     }
-    // Fall back to sync storage
-    chrome.storage.sync.get(['aiWebPilotEnabled'], (syncResult) => {
-      const enabled = syncResult.aiWebPilotEnabled === true
-      globalThis._aiWebPilotStartupValue = enabled
-      _aiWebPilotEnabledCache = enabled // Set cache immediately
-      console.log('[Gasoline] AI Web Pilot startup cache (sync):', enabled)
-      _aiWebPilotInitResolve(enabled)
+
+    // POST settings to server immediately after cache loads (protocol: POST on init)
+    // See docs/plugin-server-communications.md
+    chrome.storage.local.get(['serverUrl'], (serverResult) => {
+      if (serverResult.serverUrl) {
+        postSettings(serverResult.serverUrl)
+      }
     })
   })
-} else {
-  // Test environment: resolve immediately with false
-  _aiWebPilotInitResolve(false)
 }
+
+// Reset pilot cache for testing (module-level state persists across Node.js cached imports)
+export function _resetPilotCacheForTesting(value) {
+  _aiWebPilotEnabledCache = value !== undefined ? value : null
+}
+
 const DEFAULT_DEBOUNCE_MS = 100
 const DEFAULT_MAX_BATCH_SIZE = 50
 
@@ -87,6 +160,16 @@ let screenshotOnError = false // Auto-capture screenshot on error (off by defaul
 
 // Error grouping state
 const errorGroups = new Map() // signature -> { entry, count, firstSeen, lastSeen }
+
+/**
+ * Log a diagnostic message only if debug mode is enabled
+ * Usage: extDebugLog('message', obj)
+ */
+function extDebugLog(...args) {
+  if (debugMode) {
+    console.log('[Gasoline DEBUG]', ...args)
+  }
+}
 
 // Rate limiting state
 const screenshotTimestamps = new Map() // tabId -> [timestamps]
@@ -186,8 +269,9 @@ export function resetContextWarning() {
 // =============================================================================
 
 const DEBUG_LOG_MAX_ENTRIES = 200 // Max debug log entries to keep
-let debugMode = false // Debug logging (off by default)
+// debugMode is now declared at the top of the file
 const debugLogBuffer = [] // Circular buffer of debug entries
+const extensionLogQueue = [] // Queue for sending to server
 
 /**
  * Log categories for debug output
@@ -198,6 +282,8 @@ export const DebugCategory = {
   ERROR: 'error',
   LIFECYCLE: 'lifecycle',
   SETTINGS: 'settings',
+  SOURCEMAP: 'sourcemap',
+  QUERY: 'query',
 }
 
 /**
@@ -207,8 +293,9 @@ export const DebugCategory = {
  * @param {Object} data - Optional additional data
  */
 export function debugLog(category, message, data = null) {
+  const timestamp = new Date().toISOString()
   const entry = {
-    ts: new Date().toISOString(),
+    ts: timestamp,
     category,
     message,
     ...(data ? { data } : {}),
@@ -218,6 +305,18 @@ export function debugLog(category, message, data = null) {
   debugLogBuffer.push(entry)
   if (debugLogBuffer.length > DEBUG_LOG_MAX_ENTRIES) {
     debugLogBuffer.shift()
+  }
+
+  // Queue for server (if connected)
+  if (connectionStatus.connected) {
+    extensionLogQueue.push({
+      timestamp,
+      level: 'debug',
+      message,
+      source: 'background',
+      category,
+      ...(data ? { data } : {}),
+    })
   }
 
   // Only log to console if debug mode is on
@@ -385,7 +484,18 @@ export function createCircuitBreaker(sendFn, options = {}) {
     }
   }
 
-  return { execute, getState, getStats, reset }
+  function recordFailure() {
+    consecutiveFailures++
+    totalFailures++
+    lastFailureTime = Date.now()
+    if (consecutiveFailures >= maxFailures) {
+      state = 'open'
+    }
+    currentBackoff =
+      consecutiveFailures >= 2 ? Math.min(initialBackoff * Math.pow(2, consecutiveFailures - 2), maxBackoff) : 0
+  }
+
+  return { execute, getState, getStats, reset, recordFailure }
 }
 
 /**
@@ -401,6 +511,9 @@ export const RATE_LIMIT_CONFIG = {
   backoffSchedule: [100, 500, 2000],
   retryBudget: 3,
 }
+
+// Maximum pending buffer size to prevent unbounded growth when circuit breaker is open
+export const MAX_PENDING_BUFFER = 1000
 
 /**
  * Creates a batcher wired with circuit breaker logic for rate limiting.
@@ -483,12 +596,8 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
       cb.reset()
       return result
     } catch (err) {
-      // Trigger shared circuit breaker's failure counter
-      try {
-        await cb.execute(entries)
-      } catch {
-        /* expected */
-      }
+      // Record failure on shared circuit breaker without re-sending
+      cb.recordFailure()
       throw err
     }
   }
@@ -509,9 +618,9 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
 
     const currentState = cb.getState()
 
-    // If circuit is open, put entries back into pending buffer
+    // If circuit is open, put entries back into pending buffer (capped)
     if (currentState === 'open') {
-      pending = entries.concat(pending)
+      pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER)
       return
     }
 
@@ -523,9 +632,9 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
     } catch {
       localConnectionStatus.connected = false
 
-      // If circuit opened, buffer the entries for later draining
+      // If circuit opened, buffer the entries for later draining (capped)
       if (cb.getState() === 'open') {
-        pending = entries.concat(pending)
+        pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER)
         return
       }
 
@@ -550,9 +659,9 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
         } catch {
           localConnectionStatus.connected = false
 
-          // If circuit opened during retry, buffer entries
+          // If circuit opened during retry, buffer entries (capped)
           if (cb.getState() === 'open') {
-            pending = entries.concat(pending)
+            pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER)
             return
           }
         }
@@ -572,6 +681,7 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
 
   const batcher = {
     add(entry) {
+      if (pending.length >= MAX_PENDING_BUFFER) return // Cap pending buffer
       pending.push(entry)
       if (pending.length >= maxBatchSize) {
         flushWithCircuitBreaker()
@@ -647,6 +757,7 @@ export function createLogBatcher(flushFn, options = {}) {
 
   return {
     add(entry) {
+      if (pending.length >= MAX_PENDING_BUFFER) return // Cap pending buffer
       pending.push(entry)
 
       const effectiveMax = getEffectiveMaxBatchSize()
@@ -743,6 +854,30 @@ export async function sendNetworkBodiesToServer(bodies) {
 }
 
 /**
+ * Send network waterfall data to server (PerformanceResourceTiming entries)
+ * @param {Object} payload - Waterfall payload with entries and pageURL
+ */
+export async function sendNetworkWaterfallToServer(payload) {
+  debugLog(DebugCategory.CONNECTION, `Sending ${payload.entries.length} waterfall entries to server`)
+
+  const response = await fetch(`${serverUrl}/network-waterfall`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    const error = `Server error (network waterfall): ${response.status} ${response.statusText}`
+    debugLog(DebugCategory.ERROR, error)
+    throw new Error(error)
+  }
+
+  debugLog(DebugCategory.CONNECTION, `Server accepted ${payload.entries.length} waterfall entries`)
+}
+
+/**
  * Send enhanced actions to server
  * @param {Array} actions - Array of enhanced action objects
  */
@@ -767,22 +902,25 @@ export async function sendEnhancedActionsToServer(actions) {
 }
 
 /**
- * Send performance snapshot to server
- * @param {Object} snapshot - Performance snapshot object
+ * Send performance snapshots to server (batch endpoint)
+ * @param {Array} snapshots - Array of performance snapshot objects
  */
-export async function sendPerformanceSnapshotToServer(snapshot) {
-  try {
-    const response = await fetch(`${serverUrl}/performance-snapshot`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(snapshot),
-    })
-    if (!response.ok) {
-      debugLog(DebugCategory.ERROR, `Server error (performance snapshot): ${response.status}`)
-    }
-  } catch (err) {
-    debugLog(DebugCategory.ERROR, `Failed to send performance snapshot: ${err.message}`)
+export async function sendPerformanceSnapshotsToServer(snapshots) {
+  debugLog(DebugCategory.CONNECTION, `Sending ${snapshots.length} performance snapshots to server`)
+
+  const response = await fetch(`${serverUrl}/performance-snapshots`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ snapshots }),
+  })
+
+  if (!response.ok) {
+    const error = `Server error (performance snapshots): ${response.status} ${response.statusText}`
+    debugLog(DebugCategory.ERROR, error)
+    throw new Error(error)
   }
+
+  debugLog(DebugCategory.CONNECTION, `Server accepted ${snapshots.length} performance snapshots`)
 }
 
 /**
@@ -1687,6 +1825,12 @@ async function maybeAutoScreenshot(errorEntry, sender) {
 if (typeof chrome !== 'undefined' && chrome.runtime) {
   // Message handler
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // Content scripts can't access chrome.tabs — provide tab ID on request
+    if (message.type === 'GET_TAB_ID') {
+      sendResponse({ tabId: sender.tab?.id })
+      return true
+    }
+
     if (message.type === 'ws_event') {
       wsBatcher.add(message.payload)
     } else if (message.type === 'enhanced_action') {
@@ -1694,9 +1838,17 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
     } else if (message.type === 'network_body') {
       networkBodyBatcher.add(message.payload)
     } else if (message.type === 'performance_snapshot') {
-      sendPerformanceSnapshotToServer(message.payload)
+      perfBatcher.add(message.payload)
     } else if (message.type === 'log') {
+      extDebugLog('Received error message, adding to logBatcher', message.payload?.level)
       handleLogMessage(message.payload, sender)
+        .then(() => {
+          // Async complete, but no response needed
+        })
+        .catch((err) => {
+          console.error('[Gasoline] Failed to handle log message:', err)
+        })
+      return true // Async handler
     } else if (message.type === 'getStatus') {
       sendResponse({
         ...connectionStatus,
@@ -1709,7 +1861,12 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
         memoryPressure: getMemoryPressureState(),
       })
     } else if (message.type === 'clearLogs') {
-      handleClearLogs().then(sendResponse)
+      handleClearLogs()
+        .then(sendResponse)
+        .catch((err) => {
+          console.error('[Gasoline] Failed to clear logs:', err)
+          sendResponse({ error: err.message })
+        })
       return true // async response
     } else if (message.type === 'setLogLevel') {
       currentLogLevel = message.level
@@ -1719,14 +1876,41 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.storage.local.set({ screenshotOnError: message.enabled })
       sendResponse({ success: true })
     } else if (message.type === 'setAiWebPilotEnabled') {
-      // Update the AI Web Pilot cache immediately
-      _aiWebPilotEnabledCache = message.enabled === true
-      globalThis._aiWebPilotStartupValue = _aiWebPilotEnabledCache
-      // Persist to all storage types for maximum reliability
-      chrome.storage.session.set({ aiWebPilotEnabled: _aiWebPilotEnabledCache })
-      chrome.storage.local.set({ aiWebPilotEnabled: _aiWebPilotEnabledCache })
-      console.log('[Gasoline] AI Web Pilot toggle set via message:', _aiWebPilotEnabledCache)
+      // Update cache and persist to chrome.storage.local (single source of truth)
+      // CRITICAL: Cache is updated AFTER storage write succeeds to prevent race condition
+      // on service worker restart. DO NOT move cache update before storage.local.set callback.
+      const newValue = message.enabled === true
+      const oldValue = _aiWebPilotEnabledCache
+      console.log(`[Gasoline] AI Web Pilot toggle: ${oldValue} -> ${newValue}`)
+
+      // Persist to storage, then update cache and POST to server on success
+      chrome.storage.local.set({ aiWebPilotEnabled: newValue }, () => {
+        _aiWebPilotEnabledCache = newValue
+        console.log(`[Gasoline] AI Web Pilot persisted to storage: ${newValue}`)
+
+        // Immediately POST to server (protocol: POST on toggle change)
+        // See docs/plugin-server-communications.md
+        chrome.storage.local.get(['serverUrl'], (result) => {
+          if (result.serverUrl) {
+            postSettings(result.serverUrl)
+          }
+        })
+      })
+
       sendResponse({ success: true })
+    } else if (message.type === 'getAiWebPilotEnabled') {
+      // Return cached value immediately (cache is always initialized)
+      sendResponse({ enabled: _aiWebPilotEnabledCache === true })
+    } else if (message.type === 'getDiagnosticState') {
+      // Return diagnostic info about current cache and storage state
+      chrome.storage.local.get(['aiWebPilotEnabled'], (result) => {
+        sendResponse({
+          cache: _aiWebPilotEnabledCache,
+          storage: result.aiWebPilotEnabled,
+          timestamp: new Date().toISOString(),
+        })
+      })
+      return true // Indicate async response
     } else if (message.type === 'captureScreenshot') {
       // Manual screenshot capture
       chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
@@ -1794,6 +1978,14 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       serverUrl = message.url || DEFAULT_SERVER_URL
       chrome.storage.local.set({ serverUrl })
       debugLog(DebugCategory.SETTINGS, `Server URL changed to: ${serverUrl}`)
+      // Broadcast to all content scripts so inject.js can filter captures
+      chrome.tabs.query({}, (tabs) => {
+        for (const tab of tabs) {
+          if (tab.id) {
+            chrome.tabs.sendMessage(tab.id, { type: 'setServerUrl', url: serverUrl }).catch(() => {})
+          }
+        }
+      })
       // Re-check connection with new URL
       checkConnectionAndUpdate()
       sendResponse({ success: true })
@@ -1820,8 +2012,15 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
     })
   }
 
-  // Initial connection check
-  checkConnectionAndUpdate()
+  // Initial connection check - WAIT for AI Web Pilot cache to initialize first
+  // This prevents a race condition where polling would start before storage is loaded
+  if (_aiWebPilotCacheInitialized) {
+    // Already initialized (shouldn't happen, but handle it)
+    checkConnectionAndUpdate()
+  } else {
+    // Wait for initialization before checking connection
+    _pilotInitCallback = checkConnectionAndUpdate
+  }
 
   // Load saved settings
   chrome.storage.local.get(
@@ -1848,9 +2047,18 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   )
 
   // Clean up screenshot rate limits when tabs are closed
+  // Also clear tracking if the tracked tab is closed
   if (chrome.tabs && chrome.tabs.onRemoved) {
     chrome.tabs.onRemoved.addListener((tabId) => {
       screenshotTimestamps.delete(tabId)
+
+      // If the tracked tab was closed, clear tracking state
+      chrome.storage.local.get(['trackedTabId'], (result) => {
+        if (result.trackedTabId === tabId) {
+          console.log('[Gasoline] Tracked tab closed (id:', tabId, '), clearing tracking')
+          chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl'])
+        }
+      })
     })
   }
 }
@@ -1923,8 +2131,17 @@ const networkBodyBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionS
 })
 const networkBodyBatcher = networkBodyBatcherWithCB.batcher
 
+// Performance snapshot batcher instance with circuit breaker
+const perfBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(sendPerformanceSnapshotsToServer), {
+  debounceMs: 500,
+  maxBatchSize: 10,
+  sharedCircuitBreaker: sharedServerCircuitBreaker,
+})
+const perfBatcher = perfBatcherWithCB.batcher
+
 async function handleLogMessage(payload, sender) {
   if (!shouldCaptureLog(payload.level, currentLogLevel, payload.type)) {
+    extDebugLog('Error filtered out:', { level: payload.level, type: payload.type, currentLogLevel })
     debugLog(DebugCategory.CAPTURE, `Log filtered out: level=${payload.level}, type=${payload.type}`)
     return
   }
@@ -1960,6 +2177,7 @@ async function handleLogMessage(payload, sender) {
   const { shouldSend, entry: processedEntry } = processErrorGroup(entry)
 
   if (shouldSend && processedEntry) {
+    extDebugLog('Adding to logBatcher:', { level: processedEntry.level, message: processedEntry.message })
     logBatcher.add(processedEntry)
     debugLog(DebugCategory.CAPTURE, `Log queued for server: type=${processedEntry.type}`, {
       aggregatedCount: processedEntry._aggregatedCount,
@@ -1968,6 +2186,7 @@ async function handleLogMessage(payload, sender) {
     // Try to auto-screenshot on error (if enabled)
     maybeAutoScreenshot(processedEntry, sender)
   } else {
+    extDebugLog('Log deduplicated (error grouping):', { level: payload.level, message: payload.message })
     debugLog(DebugCategory.CAPTURE, 'Log deduplicated (error grouping)')
   }
 }
@@ -1992,6 +2211,25 @@ async function checkConnectionAndUpdate() {
     ...health,
     connected: health.connected,
   }
+
+  // Promote nested log info to top-level for popup display
+  if (health.logs) {
+    connectionStatus.logFile = health.logs.logFile || connectionStatus.logFile
+    connectionStatus.logFileSize = health.logs.logFileSize
+    connectionStatus.entries = health.logs.entries ?? connectionStatus.entries
+    connectionStatus.maxEntries = health.logs.maxEntries ?? connectionStatus.maxEntries
+  }
+
+  // Check version compatibility between extension and server
+  if (health.connected && health.version) {
+    const extVersion = chrome.runtime.getManifest().version
+    const serverMajor = health.version.split('.')[0]
+    const extMajor = extVersion.split('.')[0]
+    connectionStatus.serverVersion = health.version
+    connectionStatus.extensionVersion = extVersion
+    connectionStatus.versionMismatch = serverMajor !== extMajor
+  }
+
   updateBadge(connectionStatus)
 
   // Log connection status changes
@@ -1999,6 +2237,7 @@ async function checkConnectionAndUpdate() {
     debugLog(DebugCategory.CONNECTION, health.connected ? 'Connected to server' : 'Disconnected from server', {
       entries: connectionStatus.entries,
       error: health.error || null,
+      serverVersion: health.version || null,
     })
   }
 
@@ -2008,11 +2247,32 @@ async function checkConnectionAndUpdate() {
     if (overrides !== null) {
       applyCaptureOverrides(overrides)
     }
+
+    // ⚠️ CRITICAL BUG FIX: Service Worker Restart Race Condition
+    //
+    // When service worker restarts (Chrome suspends/resumes background script),
+    // the cache initialization from chrome.storage.local.get() is async via callback.
+    // If polling starts before the callback fires, first polls report the wrong state!
+    //
+    // SYMPTOM: Toggle shows "on" in popup, but server sees "pilot_enabled: false"
     // Start polling for pending queries (execute_javascript, highlight, etc.)
     startQueryPolling(serverUrl)
+    // Start settings heartbeat (POST /settings every 2s)
+    // See docs/plugin-server-communications.md
+    startSettingsHeartbeat(serverUrl)
+    // Start network waterfall posting (POST /network-waterfall every 10s)
+    startWaterfallPosting(serverUrl)
+    // Start extension logs posting (POST /extension-logs every 5s)
+    startExtensionLogsPosting(serverUrl)
+    // Start status ping (POST /api/extension-status every 30s)
+    startStatusPing(serverUrl)
   } else {
     // Stop polling when disconnected
     stopQueryPolling()
+    stopSettingsHeartbeat()
+    stopWaterfallPosting()
+    stopExtensionLogsPosting()
+    stopStatusPing()
   }
 
   // Notify popup if open
@@ -2077,10 +2337,18 @@ const _processingQueries = new Set()
  */
 export async function pollPendingQueries(serverUrl) {
   try {
+    // Determine pilot state for header (cache is always initialized)
+    const pilotState = _aiWebPilotEnabledCache === true ? '1' : '0'
+
+    // DIAGNOSTIC: Log every poll request with cache state
+    diagnosticLog(`[Diagnostic] Poll request: cache=${_aiWebPilotEnabledCache}, header=${pilotState}`)
+
     const response = await fetch(`${serverUrl}/pending-queries`, {
       headers: {
         'X-Gasoline-Session': EXTENSION_SESSION_ID,
-        'X-Gasoline-Pilot': _aiWebPilotEnabledCache === true ? '1' : '0',
+        // DEPRECATED: X-Gasoline-Pilot header kept for backward compatibility only
+        // Server now uses POST /settings for pilot state (see docs/plugin-server-communications.md)
+        'X-Gasoline-Pilot': pilotState,
       },
     })
     if (!response.ok) {
@@ -2122,7 +2390,9 @@ async function pingContentScript(tabId, timeoutMs = 500) {
   try {
     const response = await Promise.race([
       chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('timeout')), timeoutMs)
+      }),
     ])
     return response?.status === 'alive'
   } catch {
@@ -2145,7 +2415,9 @@ async function waitForTabLoad(tabId, timeoutMs = 5000) {
     } catch {
       return false
     }
-    await new Promise((r) => setTimeout(r, 100))
+    await new Promise((r) => {
+      setTimeout(r, 100)
+    })
   }
   return false
 }
@@ -2195,7 +2467,9 @@ async function handleBrowserAction(tabId, params) {
         await waitForTabLoad(tabId)
 
         // Brief delay for content script initialization
-        await new Promise((r) => setTimeout(r, 500))
+        await new Promise((r) => {
+          setTimeout(r, 500)
+        })
 
         // Check if content script is loaded
         const contentScriptLoaded = await pingContentScript(tabId)
@@ -2229,7 +2503,9 @@ async function handleBrowserAction(tabId, params) {
         await waitForTabLoad(tabId)
 
         // Wait for content script after refresh
-        await new Promise((r) => setTimeout(r, 1000))
+        await new Promise((r) => {
+          setTimeout(r, 1000)
+        })
 
         // Check again
         const loadedAfterRefresh = await pingContentScript(tabId)
@@ -2283,17 +2559,48 @@ export async function handlePendingQuery(query, serverUrl) {
       return
     }
 
-    const tabs = await new Promise((resolve) => {
-      chrome.tabs.query({ active: true, currentWindow: true }, resolve)
-    })
+    // Check if we're tracking a specific tab
+    const storage = await chrome.storage.local.get(['trackedTabId'])
+    let tabs
+    let tabId
 
-    if (!tabs || tabs.length === 0) return
-
-    const tabId = tabs[0].id
+    if (storage.trackedTabId) {
+      // Use the tracked tab
+      diagnosticLog(`[Diagnostic] Using tracked tab ${storage.trackedTabId} for query ${query.type}`)
+      try {
+        const trackedTab = await chrome.tabs.get(storage.trackedTabId)
+        tabs = [trackedTab]
+        tabId = storage.trackedTabId
+      } catch {
+        // Tracked tab no longer exists - clear tracking and fall back to active tab
+        diagnosticLog(`[Diagnostic] Tracked tab ${storage.trackedTabId} no longer exists, clearing tracking`)
+        await chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl'])
+        tabs = await new Promise((resolve) => {
+          chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+        })
+        if (!tabs || tabs.length === 0) return
+        tabId = tabs[0].id
+      }
+    } else {
+      // No tracking - use active tab
+      tabs = await new Promise((resolve) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+      })
+      if (!tabs || tabs.length === 0) return
+      tabId = tabs[0].id
+    }
 
     // Handle browser action queries (refresh, navigate, etc.)
     if (query.type === 'browser_action') {
       const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+
+      // ASYNC COMMAND EXECUTION: If query has correlation_id, use async pattern
+      if (query.correlation_id) {
+        handleAsyncBrowserAction(query, tabId, params, serverUrl)
+        return
+      }
+
+      // LEGACY SYNC PATH: No correlation_id, use old synchronous behavior
       const result = await handleBrowserAction(tabId, params)
       await postQueryResult(serverUrl, query.id, 'browser_action', result)
       return
@@ -2325,55 +2632,112 @@ export async function handlePendingQuery(query, serverUrl) {
       return
     }
 
-    // Determine message type based on query type
-    let messageType
-    if (query.type === 'a11y') {
-      messageType = 'GASOLINE_A11Y_AUDIT'
-    } else if (query.type === 'execute') {
-      messageType = 'GASOLINE_EXECUTE_QUERY'
-    } else {
-      messageType = 'GASOLINE_DOM_QUERY'
+    // ============================================================================
+    // BUGFIX 2026-01-26: Handle tabs queries - get all browser tabs
+    // ============================================================================
+    // PROBLEM: Server sent 'tabs' queries but extension had no handler, causing
+    // MCP tools to timeout with "extension_timeout" error. Extension was connected
+    // and polling but never responded to observe({what: "tabs"}) requests.
+    //
+    // SOLUTION: Added explicit handler that queries all tabs and posts result back
+    // to server via postQueryResult(). Critical: MUST call postQueryResult() or
+    // server will timeout waiting for response.
+    //
+    // DO NOT CHANGE: This handler is required for observe({what: "tabs"}) to work.
+    // ============================================================================
+    if (query.type === 'tabs') {
+      const allTabs = await new Promise((resolve) => {
+        chrome.tabs.query({}, resolve)
+      })
+      const tabsList = allTabs.map((tab) => ({
+        id: tab.id,
+        url: tab.url,
+        title: tab.title,
+        active: tab.active,
+        windowId: tab.windowId,
+        index: tab.index,
+      }))
+      await postQueryResult(serverUrl, query.id, 'dom', { tabs: tabsList })
+      return
     }
 
-    // For execute queries, check AI Web Pilot toggle first
+    // TODO: dom queries need proper implementation
+    if (query.type === 'dom') {
+      await postQueryResult(serverUrl, query.id, 'dom', {
+        success: false,
+        error: 'not_implemented',
+      })
+      return
+    }
+
+    // Handle a11y queries - forward to content script for axe-core audit
+    if (query.type === 'a11y') {
+      try {
+        const result = await chrome.tabs.sendMessage(tabId, {
+          type: 'A11Y_QUERY',
+          params: query.params,
+        })
+        await postQueryResult(serverUrl, query.id, 'a11y', result)
+      } catch (err) {
+        await postQueryResult(serverUrl, query.id, 'a11y', {
+          error: 'a11y_audit_failed',
+          message: err.message || 'Failed to execute accessibility audit',
+        })
+      }
+      return
+    }
+
+    // Handle execute queries - for AI Web Pilot commands
     if (query.type === 'execute') {
       const enabled = await isAiWebPilotEnabled()
       if (!enabled) {
-        // Post error result back to server
-        await postQueryResult(serverUrl, query.id, 'execute', {
-          success: false,
-          error: 'ai_web_pilot_disabled',
-          message: 'AI Web Pilot is not enabled in the extension popup',
-        })
+        // ASYNC: If query has correlation_id, use async result posting
+        if (query.correlation_id) {
+          await postAsyncCommandResult(serverUrl, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled')
+        } else {
+          await postQueryResult(serverUrl, query.id, 'execute', {
+            success: false,
+            error: 'ai_web_pilot_disabled',
+            message: 'AI Web Pilot is not enabled in the extension popup',
+          })
+        }
         return
       }
-    }
 
-    // Send to content script and wait for result
-    const result = await chrome.tabs.sendMessage(tabId, {
-      type: messageType,
-      queryId: query.id,
-      params: query.params,
-    })
+      // ASYNC COMMAND EXECUTION (v6.0.0)
+      // If query has correlation_id, use async pattern with 2s/10s timeouts
+      if (query.correlation_id) {
+        handleAsyncExecuteCommand(query, tabId, serverUrl)
+        return
+      }
 
-    // For execute queries, post the result back to the server
-    if (query.type === 'execute' && result) {
-      await postQueryResult(serverUrl, query.id, 'execute', result)
+      // LEGACY SYNC PATH: No correlation_id, use old synchronous behavior
+      try {
+        const result = await chrome.tabs.sendMessage(tabId, {
+          type: 'GASOLINE_EXECUTE_QUERY',
+          queryId: query.id,
+          params: query.params,
+        })
+        await postQueryResult(serverUrl, query.id, 'execute', result)
+      } catch (err) {
+        let message = err.message || 'Tab communication failed'
+        if (message.includes('Receiving end does not exist')) {
+          message = 'Content script not loaded. REQUIRED ACTION: Refresh the page first using this command:\n\ninteract({action: "refresh"})\n\nThen retry your command.'
+        }
+        await postQueryResult(serverUrl, query.id, 'execute', {
+          success: false,
+          error: 'content_script_not_loaded',
+          message,
+        })
+      }
+      return
     }
   } catch (err) {
-    // Tab communication failed - for execute queries, report error
-    if (query.type === 'execute') {
-      // Provide helpful error message for common issues
-      let message = err.message || 'Tab communication failed'
-      if (message.includes('Receiving end does not exist')) {
-        message = 'Content script not loaded. Please refresh the page to enable AI Web Pilot.'
-      }
-      await postQueryResult(serverUrl, query.id, 'execute', {
-        success: false,
-        error: 'content_script_not_loaded',
-        message,
-      })
-    }
+    debugLog(DebugCategory.CONNECTION, 'Error handling pending query', {
+      type: query.type,
+      id: query.id,
+      error: err.message,
+    })
   }
 }
 
@@ -2509,7 +2873,7 @@ export async function postQueryResult(serverUrl, queryId, type, result) {
     endpoint = '/state-result'
   } else if (type === 'highlight') {
     endpoint = '/highlight-result'
-  } else if (type === 'execute') {
+  } else if (type === 'execute' || type === 'browser_action') {
     endpoint = '/execute-result'
   } else {
     endpoint = '/dom-result'
@@ -2520,6 +2884,429 @@ export async function postQueryResult(serverUrl, queryId, type, result) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id: queryId, result }),
   })
+}
+
+/**
+ * POST async command result to server using correlation_id (v6.0.0)
+ * @param {string} serverUrl - The server base URL
+ * @param {string} correlationId - Correlation ID for async command tracking
+ * @param {string} status - "pending", "complete", or "timeout"
+ * @param {any} result - Command result (if complete)
+ * @param {string} error - Error message (if failed)
+ */
+async function postAsyncCommandResult(serverUrl, correlationId, status, result = null, error = null) {
+  const payload = {
+    correlation_id: correlationId,
+    status: status,
+  }
+  if (result !== null) {
+    payload.result = result
+  }
+  if (error !== null) {
+    payload.error = error
+  }
+
+  try {
+    await fetch(`${serverUrl}/execute-result`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch (err) {
+    debugLog(DebugCategory.CONNECTION, 'Failed to post async command result', {
+      correlationId,
+      status,
+      error: err.message,
+    })
+  }
+}
+
+/**
+ * Handle async execute command with 2s/10s timeout pattern (v6.0.0)
+ * @param {Object} query - Query object with correlation_id
+ * @param {number} tabId - Target tab ID
+ * @param {string} serverUrl - Server base URL
+ */
+async function handleAsyncExecuteCommand(query, tabId, serverUrl) {
+  const startTime = Date.now()
+  let completed = false
+  let pendingPosted = false
+
+  // Start command execution
+  const executionPromise = chrome.tabs
+    .sendMessage(tabId, {
+      type: 'GASOLINE_EXECUTE_QUERY',
+      queryId: query.id,
+      params: query.params,
+    })
+    .then((result) => {
+      completed = true
+      return { success: true, result }
+    })
+    .catch((err) => {
+      completed = true
+      let message = err.message || 'Tab communication failed'
+      if (message.includes('Receiving end does not exist')) {
+        message = 'Content script not loaded. REQUIRED ACTION: Refresh the page first using this command:\n\ninteract({action: "refresh"})\n\nThen retry your command.'
+      }
+      return {
+        success: false,
+        error: 'content_script_not_loaded',
+        message,
+      }
+    })
+
+  // 2s decision point: return result or post "pending" status
+  const twoSecondTimer = setTimeout(async () => {
+    if (!completed && !pendingPosted) {
+      pendingPosted = true
+      await postAsyncCommandResult(serverUrl, query.correlation_id, 'pending')
+      debugLog(DebugCategory.CONNECTION, 'Posted pending status for async command', {
+        correlationId: query.correlation_id,
+        elapsed: Date.now() - startTime,
+      })
+    }
+  }, 2000)
+
+  // Wait for execution (up to 10s total timeout)
+  try {
+    const execResult = await Promise.race([
+      executionPromise,
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Execution timeout')), 10000)
+      }),
+    ])
+
+    clearTimeout(twoSecondTimer)
+
+    // Post final result
+    if (execResult.success) {
+      await postAsyncCommandResult(serverUrl, query.correlation_id, 'complete', execResult.result)
+    } else {
+      await postAsyncCommandResult(serverUrl, query.correlation_id, 'complete', null, execResult.error || execResult.message)
+    }
+
+    debugLog(DebugCategory.CONNECTION, 'Completed async command', {
+      correlationId: query.correlation_id,
+      elapsed: Date.now() - startTime,
+      success: execResult.success,
+    })
+  } catch (timeoutErr) {
+    clearTimeout(twoSecondTimer)
+
+    // Post timeout error with actionable guidance
+    const timeoutMessage = `JavaScript execution exceeded 10s timeout. RECOMMENDED ACTIONS:
+
+1. Break your task into smaller discrete steps that execute in < 2s for best results
+2. Check your script for infinite loops or blocking operations
+3. Simplify the operation or target a smaller DOM scope
+
+Example: Instead of processing 1000 elements at once, process 100 at a time.`
+
+    await postAsyncCommandResult(serverUrl, query.correlation_id, 'timeout', null, timeoutMessage)
+
+    debugLog(DebugCategory.CONNECTION, 'Async command timeout', {
+      correlationId: query.correlation_id,
+      elapsed: Date.now() - startTime,
+    })
+  }
+}
+
+/**
+ * Handle browser action with async pattern (2s/10s timeouts)
+ * @param {Object} query - The query object with correlation_id
+ * @param {number} tabId - The tab ID to execute in
+ * @param {Object} params - The browser action parameters
+ * @param {string} serverUrl - The server base URL
+ */
+async function handleAsyncBrowserAction(query, tabId, params, serverUrl) {
+  const startTime = Date.now()
+  let completed = false
+  let pendingPosted = false
+
+  // Start command execution
+  const executionPromise = handleBrowserAction(tabId, params)
+    .then((result) => {
+      completed = true
+      return result
+    })
+    .catch((err) => {
+      completed = true
+      return {
+        success: false,
+        error: err.message || 'Browser action failed',
+      }
+    })
+
+  // 2s decision point: return result or post "pending" status
+  const twoSecondTimer = setTimeout(async () => {
+    if (!completed && !pendingPosted) {
+      pendingPosted = true
+      await postAsyncCommandResult(serverUrl, query.correlation_id, 'pending')
+      debugLog(DebugCategory.CONNECTION, 'Posted pending status for async browser action', {
+        correlationId: query.correlation_id,
+        elapsed: Date.now() - startTime,
+      })
+    }
+  }, 2000)
+
+  // Wait for execution (up to 10s total timeout)
+  try {
+    const execResult = await Promise.race([
+      executionPromise,
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Execution timeout')), 10000)
+      }),
+    ])
+
+    clearTimeout(twoSecondTimer)
+
+    // Post final result
+    if (execResult.success !== false) {
+      await postAsyncCommandResult(serverUrl, query.correlation_id, 'complete', execResult)
+    } else {
+      await postAsyncCommandResult(serverUrl, query.correlation_id, 'complete', null, execResult.error)
+    }
+
+    debugLog(DebugCategory.CONNECTION, 'Completed async browser action', {
+      correlationId: query.correlation_id,
+      elapsed: Date.now() - startTime,
+      success: execResult.success !== false,
+    })
+  } catch (timeoutErr) {
+    clearTimeout(twoSecondTimer)
+
+    // Post timeout error with diagnostic guidance
+    const timeoutMessage = `Browser action exceeded 10s timeout. DIAGNOSTIC STEPS:
+
+1. Check page status: observe({what: 'page'})
+2. Check for console errors: observe({what: 'errors'})
+3. Check network requests: observe({what: 'network', status_min: 400})
+
+Possible causes: slow page load, navigation blocked by popup, network issues, or page JavaScript errors.`
+
+    await postAsyncCommandResult(serverUrl, query.correlation_id, 'timeout', null, timeoutMessage)
+
+    debugLog(DebugCategory.CONNECTION, 'Async browser action timeout', {
+      correlationId: query.correlation_id,
+      elapsed: Date.now() - startTime,
+    })
+  }
+}
+
+/**
+ * POST current settings to the server
+ * Implements the protocol documented in docs/plugin-server-communications.md
+ * @param {string} serverUrl - The server base URL
+ */
+export async function postSettings(serverUrl) {
+  // Only send if cache initialized (don't send null/undefined values)
+  if (!_aiWebPilotCacheInitialized) {
+    debugLog(DebugCategory.CONNECTION, 'Skipping settings POST: cache not initialized')
+    return
+  }
+
+  try {
+    // Read all config toggles from storage for diagnostics
+    const result = await chrome.storage.local.get([
+      'aiWebPilotEnabled',
+      'webSocketCaptureEnabled',
+      'networkWaterfallEnabled',
+      'performanceMarksEnabled',
+      'actionReplayEnabled',
+      'screenshotOnError',
+      'sourceMapEnabled',
+      'networkBodyCaptureEnabled',
+    ])
+
+    // Build settings object with all available config values
+    const settings = {}
+
+    // Include all settings that are defined (even if false)
+    if (result.aiWebPilotEnabled !== null && result.aiWebPilotEnabled !== undefined) {
+      settings.aiWebPilotEnabled = result.aiWebPilotEnabled
+    } else if (_aiWebPilotEnabledCache !== null && _aiWebPilotEnabledCache !== undefined) {
+      // Fallback to cache for aiWebPilot (already tracked separately)
+      settings.aiWebPilotEnabled = _aiWebPilotEnabledCache
+    }
+
+    if (result.webSocketCaptureEnabled !== null && result.webSocketCaptureEnabled !== undefined) {
+      settings.webSocketCaptureEnabled = result.webSocketCaptureEnabled
+    }
+
+    if (result.networkWaterfallEnabled !== null && result.networkWaterfallEnabled !== undefined) {
+      settings.networkWaterfallEnabled = result.networkWaterfallEnabled
+    }
+
+    if (result.performanceMarksEnabled !== null && result.performanceMarksEnabled !== undefined) {
+      settings.performanceMarksEnabled = result.performanceMarksEnabled
+    }
+
+    if (result.actionReplayEnabled !== null && result.actionReplayEnabled !== undefined) {
+      settings.actionReplayEnabled = result.actionReplayEnabled
+    }
+
+    if (result.screenshotOnError !== null && result.screenshotOnError !== undefined) {
+      settings.screenshotOnError = result.screenshotOnError
+    }
+
+    if (result.sourceMapEnabled !== null && result.sourceMapEnabled !== undefined) {
+      settings.sourceMapEnabled = result.sourceMapEnabled
+    }
+
+    if (result.networkBodyCaptureEnabled !== null && result.networkBodyCaptureEnabled !== undefined) {
+      settings.networkBodyCaptureEnabled = result.networkBodyCaptureEnabled
+    }
+
+    await fetch(`${serverUrl}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: EXTENSION_SESSION_ID,
+        settings: settings,
+      }),
+    })
+    debugLog(DebugCategory.CONNECTION, 'Posted settings to server', settings)
+  } catch (err) {
+    debugLog(DebugCategory.CONNECTION, 'Failed to post settings', { error: err.message })
+  }
+}
+
+// Settings heartbeat interval (POST /settings every 2 seconds)
+let settingsHeartbeatInterval = null
+
+/**
+ * Start settings heartbeat: POST /settings every 2 seconds
+ * @param {string} serverUrl - The server base URL
+ */
+export function startSettingsHeartbeat(serverUrl) {
+  stopSettingsHeartbeat()
+  debugLog(DebugCategory.CONNECTION, 'Starting settings heartbeat', { serverUrl })
+  // Post immediately, then every 2 seconds
+  postSettings(serverUrl)
+  settingsHeartbeatInterval = setInterval(() => postSettings(serverUrl), 2000)
+}
+
+/**
+ * Stop settings heartbeat
+ */
+export function stopSettingsHeartbeat() {
+  if (settingsHeartbeatInterval) {
+    clearInterval(settingsHeartbeatInterval)
+    settingsHeartbeatInterval = null
+    debugLog(DebugCategory.CONNECTION, 'Stopped settings heartbeat')
+  }
+}
+
+// ============================================================================
+// EXTENSION STATUS PING (Tracking State)
+// ============================================================================
+
+const STATUS_PING_INTERVAL = 30000 // 30 seconds
+
+/**
+ * Send a status ping to the server with current tracking state.
+ * This tells the server (and LLM) whether tab tracking is enabled,
+ * which tab is being tracked, and the extension connection status.
+ */
+async function sendStatusPing() {
+  try {
+    const storage = await chrome.storage.local.get(['trackedTabId', 'trackedTabUrl'])
+
+    const statusMessage = {
+      type: 'status',
+      tracking_enabled: !!storage.trackedTabId,
+      tracked_tab_id: storage.trackedTabId || null,
+      tracked_tab_url: storage.trackedTabUrl || null,
+      message: storage.trackedTabId ? 'tracking enabled' : 'no tab tracking enabled',
+      extension_connected: true,
+      timestamp: new Date().toISOString(),
+    }
+
+    await fetch(`${serverUrl}/api/extension-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(statusMessage),
+    })
+  } catch (err) {
+    // Silent failure - status ping is non-critical
+    diagnosticLog('[Gasoline] Status ping error: ' + err.message)
+  }
+}
+
+// Status ping interval
+let statusPingInterval = null
+
+/**
+ * Start status ping: POST /api/extension-status every 30 seconds
+ * @param {string} serverUrl - The server base URL
+ */
+export function startStatusPing(serverUrl) {
+  stopStatusPing()
+  sendStatusPing() // Send immediately on start
+  statusPingInterval = setInterval(() => sendStatusPing(), STATUS_PING_INTERVAL)
+}
+
+/**
+ * Stop status ping
+ */
+export function stopStatusPing() {
+  if (statusPingInterval) {
+    clearInterval(statusPingInterval)
+    statusPingInterval = null
+  }
+}
+
+// Also send immediate status ping when tracking changes
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.trackedTabId) {
+    sendStatusPing()
+  }
+})
+
+/**
+ * Post queued extension logs to server
+ * @param {string} serverUrl - The server base URL
+ */
+async function postExtensionLogs(serverUrl) {
+  if (extensionLogQueue.length === 0) return
+
+  // Drain queue (take all logs)
+  const logsToSend = extensionLogQueue.splice(0)
+
+  try {
+    await fetch(`${serverUrl}/extension-logs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ logs: logsToSend }),
+    })
+  } catch (err) {
+    // Silent failure - don't create infinite loop
+    console.error('[Gasoline] Failed to post extension logs', err)
+  }
+}
+
+// Extension logs posting interval (POST /extension-logs every 5 seconds)
+let extensionLogsInterval = null
+
+/**
+ * Start extension logs posting: POST /extension-logs every 5 seconds
+ * @param {string} serverUrl - The server base URL
+ */
+export function startExtensionLogsPosting(serverUrl) {
+  stopExtensionLogsPosting()
+  // Post every 5 seconds (batch logs to reduce overhead)
+  extensionLogsInterval = setInterval(() => postExtensionLogs(serverUrl), 5000)
+}
+
+/**
+ * Stop extension logs posting
+ */
+export function stopExtensionLogsPosting() {
+  if (extensionLogsInterval) {
+    clearInterval(extensionLogsInterval)
+    extensionLogsInterval = null
+  }
 }
 
 /**
@@ -2542,58 +3329,134 @@ export function stopQueryPolling() {
   }
 }
 
+/**
+ * Network waterfall posting interval (every 10 seconds)
+ */
+let waterfallPostingInterval = null
+
+/**
+ * Post network waterfall data to server (collects PerformanceResourceTiming data)
+ * @param {string} serverUrl - The server base URL
+ */
+async function postNetworkWaterfall(serverUrl) {
+  try {
+    // Query active tab for waterfall data
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tabs || tabs.length === 0) return
+
+    const tabId = tabs[0].id
+    const pageURL = tabs[0].url
+
+    // Request waterfall data from content script
+    const result = await chrome.tabs.sendMessage(tabId, {
+      type: 'GET_NETWORK_WATERFALL',
+    })
+
+    if (!result || !result.entries || result.entries.length === 0) {
+      debugLog(DebugCategory.CAPTURE, 'No waterfall entries to send')
+      return
+    }
+
+    // Send to server
+    await sendNetworkWaterfallToServer({
+      entries: result.entries,
+      pageURL: pageURL,
+    })
+  } catch (err) {
+    // Silently fail - tab may have closed or content script not ready
+    debugLog(DebugCategory.CAPTURE, 'Failed to post waterfall', { error: err.message })
+  }
+}
+
+/**
+ * Start network waterfall posting: POST /network-waterfall every 10 seconds
+ * @param {string} serverUrl - The server base URL
+ */
+export function startWaterfallPosting(serverUrl) {
+  stopWaterfallPosting()
+  debugLog(DebugCategory.CONNECTION, 'Starting waterfall posting', { serverUrl })
+  // Post immediately, then every 10 seconds
+  postNetworkWaterfall(serverUrl)
+  waterfallPostingInterval = setInterval(() => postNetworkWaterfall(serverUrl), 10000)
+}
+
+/**
+ * Stop network waterfall posting
+ */
+export function stopWaterfallPosting() {
+  if (waterfallPostingInterval) {
+    clearInterval(waterfallPostingInterval)
+    waterfallPostingInterval = null
+    debugLog(DebugCategory.CONNECTION, 'Stopped waterfall posting')
+  }
+}
+
 // =============================================================================
 // AI WEB PILOT SAFETY GATE
 // =============================================================================
 
-// Listen for storage changes to update cache immediately (session, local, and sync)
-// Guard against test environment where chrome may not be defined
+/**
+ * STORAGE CONSISTENCY LISTENER — Critical for maintaining cache accuracy
+ * This listener is the failsafe that keeps _aiWebPilotEnabledCache in sync
+ * with the underlying storage. If storage ever changes (e.g., external update
+ * or content script indirect write), this listener ensures the cache reflects it.
+ *
+ * WHY THIS EXISTS: Although background.js is the only writer (via
+ * setAiWebPilotEnabled), external events (content scripts, tests, other
+ * extensions) might update storage. This listener guarantees cache consistency.
+ */
 if (typeof chrome !== 'undefined' && chrome.storage) {
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if ((areaName === 'sync' || areaName === 'local' || areaName === 'session') && changes.aiWebPilotEnabled) {
+    if (areaName === 'local' && changes.aiWebPilotEnabled) {
       _aiWebPilotEnabledCache = changes.aiWebPilotEnabled.newValue === true
-      console.log('[Gasoline] aiWebPilotEnabled cache updated from', areaName, ':', _aiWebPilotEnabledCache)
+      console.log('[Gasoline] AI Web Pilot cache updated from storage:', _aiWebPilotEnabledCache)
     }
   })
 }
 
 /**
- * Check if AI Web Pilot is enabled in the extension popup.
- * Waits for startup init to complete, then uses cached values.
- * @returns {Promise<boolean>} True if AI Web Pilot is enabled
+ * Check if AI Web Pilot is enabled.
+ * Returns the cached value (defaults to false if not set in storage).
+ * @returns {boolean} True if AI Web Pilot is enabled
  */
-export async function isAiWebPilotEnabled() {
-  // If we have a cached value in memory, use it
-  if (_aiWebPilotEnabledCache !== null) {
-    console.log('[Gasoline] ▶▶▶ isAiWebPilotEnabled returning CACHED:', _aiWebPilotEnabledCache)
-    return _aiWebPilotEnabledCache
-  }
-
-  // Wait for startup init to complete (set by chrome.storage read at module load)
-  const startupValue = await _aiWebPilotInitPromise
-  _aiWebPilotEnabledCache = startupValue
-  console.log('[Gasoline] ▶▶▶ isAiWebPilotEnabled returning STARTUP:', startupValue)
-  return startupValue
+export function isAiWebPilotEnabled() {
+  return _aiWebPilotEnabledCache === true
 }
 
 /**
  * Handle pilot commands (GASOLINE_HIGHLIGHT, GASOLINE_MANAGE_STATE, GASOLINE_EXECUTE_JS).
- * Checks the AI Web Pilot toggle before forwarding to content scripts.
+ *
+ * CRITICAL: This function checks _aiWebPilotEnabledCache (via isAiWebPilotEnabled()).
+ * The cache is the source of truth. If cache != storage, this is caught by the
+ * fail-safe below and corrected.
+ *
+ * State checking flow:
+ * 1. Check cache via isAiWebPilotEnabled()
+ * 2. If cache says false, verify with storage as fail-safe
+ * 3. If storage says true but cache says false: fix cache and proceed
+ *    (This shouldn't happen with proper message handling, but it's a safety net)
+ * 4. If both agree it's false: return error
+ *
  * @param {string} command - The pilot command type
  * @param {Object} params - Command parameters
  * @returns {Promise<Object>} Result or error response
  */
 export async function handlePilotCommand(command, params) {
-  // Check if AI Web Pilot is enabled with fallback to direct storage read
+  // Check if AI Web Pilot is enabled (reads from cache, not storage)
   let enabled = await isAiWebPilotEnabled()
 
-  // Fail-safe: if initial check returns false, verify directly with storage
+  // Fail-safe: if cache says false, double-check storage in case of sync issues
+  // This catches the case where cache got out of sync from storage
   if (!enabled) {
-    const localResult = await new Promise((resolve) => chrome.storage.local.get(['aiWebPilotEnabled'], resolve))
+    const localResult = await new Promise((resolve) => {
+      chrome.storage.local.get(['aiWebPilotEnabled'], resolve)
+    })
     if (localResult.aiWebPilotEnabled === true) {
-      // Storage says true but cache said false - fix the cache and proceed
+      // Storage says true but cache said false - cache was out of sync
+      // Fix it and proceed (this should be rare if message handling is correct)
       _aiWebPilotEnabledCache = true
       enabled = true
+      extDebugLog('[Gasoline] Cache/storage mismatch: corrected cache from storage')
     }
   }
 

@@ -7,6 +7,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -17,14 +18,14 @@ import (
 // ============================================
 
 // AddNetworkBodies adds network bodies to the buffer
-func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
+func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	// Enforce memory limits before adding
-	v.enforceMemory()
+	c.enforceMemory()
 
-	v.networkTotalAdded += int64(len(bodies))
+	c.networkTotalAdded += int64(len(bodies))
 	now := time.Now()
 	for i := range bodies {
 		// Truncate request body
@@ -44,73 +45,81 @@ func (v *Capture) AddNetworkBodies(bodies []NetworkBody) {
 				bodies[i].FormatConfidence = format.Confidence
 			}
 		}
-		v.networkBodies = append(v.networkBodies, bodies[i])
-		v.networkAddedAt = append(v.networkAddedAt, now)
+		c.networkBodies = append(c.networkBodies, bodies[i])
+		c.networkAddedAt = append(c.networkAddedAt, now)
 	}
 
 	// Enforce max count (respecting minimal mode)
-	capacity := v.effectiveNBCapacity()
-	if len(v.networkBodies) > capacity {
-		v.networkBodies = v.networkBodies[len(v.networkBodies)-capacity:]
-		v.networkAddedAt = v.networkAddedAt[len(v.networkAddedAt)-capacity:]
+	capacity := c.effectiveNBCapacity()
+	if len(c.networkBodies) > capacity {
+		keep := len(c.networkBodies) - capacity
+		newBodies := make([]NetworkBody, capacity)
+		copy(newBodies, c.networkBodies[keep:])
+		c.networkBodies = newBodies
+		newAddedAt := make([]time.Time, capacity)
+		copy(newAddedAt, c.networkAddedAt[keep:])
+		c.networkAddedAt = newAddedAt
 	}
 
 	// Enforce per-buffer memory limit
-	v.evictNBForMemory()
+	c.evictNBForMemory()
 
-	// Notify schema inference (non-blocking, separate lock)
-	if v.schemaStore != nil || v.cspGen != nil {
+	// Notify schema inference and CSP (non-blocking, separate locks, bounded)
+	if c.schemaStore != nil || c.cspGen != nil {
 		bodiesCopy := make([]NetworkBody, len(bodies))
 		copy(bodiesCopy, bodies)
-		if v.schemaStore != nil {
+		select {
+		case c.observeSem <- struct{}{}:
 			go func() {
+				defer func() { <-c.observeSem }()
 				for _, b := range bodiesCopy {
-					v.schemaStore.Observe(b)
+					if c.schemaStore != nil {
+						c.schemaStore.Observe(b)
+					}
+					if c.cspGen != nil {
+						c.cspGen.RecordOriginFromBody(b, b.URL)
+					}
 				}
 			}()
-		}
-		// Feed CSP origin accumulator (non-blocking, separate lock)
-		if v.cspGen != nil {
-			go func() {
-				for _, b := range bodiesCopy {
-					// Use the request URL's origin as pageURL for non-HTML;
-					// for HTML responses (the page itself), use the request URL
-					v.cspGen.RecordOriginFromBody(b, b.URL)
-				}
-			}()
+		default:
+			// Too many observers in flight; drop to avoid goroutine accumulation
 		}
 	}
 }
 
 // evictNBForMemory removes oldest bodies if memory exceeds limit.
 // Calculates how many entries to drop in a single pass to avoid O(n²) re-scanning.
-func (v *Capture) evictNBForMemory() {
-	excess := v.calcNBMemory() - nbBufferMemoryLimit
+func (c *Capture) evictNBForMemory() {
+	excess := c.calcNBMemory() - nbBufferMemoryLimit
 	if excess <= 0 {
 		return
 	}
 	drop := 0
-	for drop < len(v.networkBodies) && excess > 0 {
-		excess -= int64(len(v.networkBodies[drop].RequestBody)+len(v.networkBodies[drop].ResponseBody)) + networkBodyOverhead
+	for drop < len(c.networkBodies) && excess > 0 {
+		excess -= int64(len(c.networkBodies[drop].RequestBody)+len(c.networkBodies[drop].ResponseBody)) + networkBodyOverhead
 		drop++
 	}
-	v.networkBodies = v.networkBodies[drop:]
-	if len(v.networkAddedAt) >= drop {
-		v.networkAddedAt = v.networkAddedAt[drop:]
+	surviving := make([]NetworkBody, len(c.networkBodies)-drop)
+	copy(surviving, c.networkBodies[drop:])
+	c.networkBodies = surviving
+	if len(c.networkAddedAt) >= drop {
+		survivingAt := make([]time.Time, len(c.networkAddedAt)-drop)
+		copy(survivingAt, c.networkAddedAt[drop:])
+		c.networkAddedAt = survivingAt
 	}
 }
 
 // GetNetworkBodyCount returns the current number of buffered bodies
-func (v *Capture) GetNetworkBodyCount() int {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	return len(v.networkBodies)
+func (c *Capture) GetNetworkBodyCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.networkBodies)
 }
 
 // GetNetworkBodies returns filtered network bodies (newest first)
-func (v *Capture) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+func (c *Capture) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	limit := filter.Limit
 	if limit <= 0 {
@@ -118,9 +127,9 @@ func (v *Capture) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
 	}
 
 	var filtered []NetworkBody
-	for i, b := range v.networkBodies {
+	for i, b := range c.networkBodies {
 		// TTL filtering: skip entries older than TTL
-		if v.TTL > 0 && i < len(v.networkAddedAt) && isExpiredByTTL(v.networkAddedAt[i], v.TTL) {
+		if c.TTL > 0 && i < len(c.networkAddedAt) && isExpiredByTTL(c.networkAddedAt[i], c.TTL) {
 			continue
 		}
 		if filter.URLFilter != "" && !strings.Contains(b.URL, filter.URLFilter) {
@@ -145,8 +154,8 @@ func (v *Capture) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
 	return filtered
 }
 
-func (v *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
-	body, ok := v.readIngestBody(w, r)
+func (c *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
+	body, ok := c.readIngestBody(w, r)
 	if !ok {
 		return
 	}
@@ -157,10 +166,10 @@ func (v *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if !v.recordAndRecheck(w, len(payload.Bodies)) {
+	if !c.recordAndRecheck(w, len(payload.Bodies)) {
 		return
 	}
-	v.AddNetworkBodies(payload.Bodies)
+	c.AddNetworkBodies(payload.Bodies)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -195,13 +204,197 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		bodies = filtered
 	}
 
-	var contentText string
 	if len(bodies) == 0 {
-		contentText = "No network bodies captured"
-	} else {
-		bodiesJSON, _ := json.Marshal(bodies)
-		contentText = string(bodiesJSON)
+		data := map[string]interface{}{
+			"networkRequestResponsePairs": []interface{}{},
+			"count":                       0,
+			"maxRequestBodyBytes":         8192,
+			"maxResponseBodyBytes":        16384,
+		}
+		if h.captureOverrides != nil {
+			overrides := h.captureOverrides.GetAll()
+			if overrides["network_bodies"] == "false" {
+				data["hint"] = "Network body capture is OFF. To enable, call: configure({action: \"capture\", settings: {network_bodies: \"true\"}})"
+			}
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("", data)}
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(contentText)}
+	// Build JSON entries
+	jsonPairs := make([]map[string]interface{}, len(bodies))
+	for i, b := range bodies {
+		jsonPairs[i] = map[string]interface{}{
+			"url":        b.URL,
+			"method":     b.Method,
+			"status":     b.Status,
+			"durationMs": b.Duration,
+		}
+
+		// Add timestamp if present (renamed capturedAt)
+		if b.Timestamp != "" {
+			jsonPairs[i]["capturedAt"] = b.Timestamp
+		}
+
+		// Add content type if present
+		if b.ContentType != "" {
+			jsonPairs[i]["contentType"] = b.ContentType
+		}
+
+		// Include request body if present
+		if b.RequestBody != "" {
+			jsonPairs[i]["requestBody"] = b.RequestBody
+			jsonPairs[i]["requestBodySizeBytes"] = len(b.RequestBody)
+			if b.RequestTruncated {
+				jsonPairs[i]["requestBodyTruncated"] = true
+			}
+		}
+
+		// Include response body if present
+		if b.ResponseBody != "" {
+			jsonPairs[i]["responseBody"] = b.ResponseBody
+			jsonPairs[i]["responseBodySizeBytes"] = len(b.ResponseBody)
+			if b.ResponseTruncated {
+				jsonPairs[i]["responseBodyTruncated"] = true
+			}
+		}
+
+		// Add response headers if present
+		if len(b.ResponseHeaders) > 0 {
+			jsonPairs[i]["responseHeaders"] = b.ResponseHeaders
+		}
+
+		// Add binary format detection if present with confidence interpretation
+		if b.BinaryFormat != "" {
+			jsonPairs[i]["binaryFormat"] = b.BinaryFormat
+			jsonPairs[i]["binaryFormatConfidence"] = b.FormatConfidence
+
+			// Add interpretation based on confidence level
+			var interpretation string
+			if b.FormatConfidence >= 0.8 {
+				interpretation = "high_confidence"
+			} else if b.FormatConfidence >= 0.5 {
+				interpretation = "medium_confidence"
+			} else {
+				interpretation = "low_confidence"
+			}
+			jsonPairs[i]["binaryFormatInterpretation"] = interpretation
+		}
+	}
+
+	data := map[string]interface{}{
+		"networkRequestResponsePairs": jsonPairs,
+		"count":                       len(bodies),
+		"maxRequestBodyBytes":         8192,
+		"maxResponseBodyBytes":        16384,
+	}
+
+	summary := fmt.Sprintf("%d network request-response pair(s)", len(bodies))
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
+}
+
+// toolGetNetworkWaterfall retrieves PerformanceResourceTiming waterfall data
+func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	// Parse parameters
+	var params struct {
+		URL   string `json:"url"`   // Substring filter
+		Limit int    `json:"limit"` // Max entries to return
+	}
+	json.Unmarshal(args, &params)
+
+	h.capture.mu.RLock()
+	entries := make([]NetworkWaterfallEntry, len(h.capture.networkWaterfall))
+	copy(entries, h.capture.networkWaterfall)
+	h.capture.mu.RUnlock()
+
+	// Apply URL filter
+	if params.URL != "" {
+		filtered := []NetworkWaterfallEntry{}
+		for _, entry := range entries {
+			if strings.Contains(entry.URL, params.URL) {
+				filtered = append(filtered, entry)
+			}
+		}
+		entries = filtered
+	}
+
+	// Apply limit (last N entries)
+	if params.Limit > 0 && len(entries) > params.Limit {
+		entries = entries[len(entries)-params.Limit:]
+	}
+
+	// Empty buffer case
+	if len(entries) == 0 {
+		data := map[string]interface{}{
+			"entries":     []interface{}{},
+			"count":       0,
+			"limitations": []string{
+				"No HTTP status codes (use network_bodies for 404s/500s/401s)",
+				"No request methods (GET/POST/etc.)",
+				"No request/response headers or bodies",
+			},
+			"hint": "Network waterfall data comes from the PerformanceResourceTiming API. Ensure the extension is active and a page is loaded.",
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("", data)}
+	}
+
+	// Calculate time range
+	oldestTime := entries[0].Timestamp
+	newestTime := entries[len(entries)-1].Timestamp
+	timeRange := newestTime.Sub(oldestTime)
+
+	// Build JSON entries with unit suffixes and computed fields
+	jsonEntries := make([]map[string]interface{}, len(entries))
+	for i, entry := range entries {
+		// Calculate compression ratio
+		compressionRatio := 0.0
+		if entry.DecodedBodySize > 0 {
+			compressionRatio = float64(entry.EncodedBodySize) / float64(entry.DecodedBodySize)
+		}
+
+		jsonEntries[i] = map[string]interface{}{
+			"url":                   entry.URL,
+			"initiatorType":         entry.InitiatorType,
+			"durationMs":            entry.Duration,
+			"startTimeMs":           entry.StartTime,
+			"fetchStartMs":          entry.FetchStart,
+			"responseEndMs":         entry.ResponseEnd,
+			"transferSizeBytes":     entry.TransferSize,
+			"decodedBodySizeBytes":  entry.DecodedBodySize,
+			"encodedBodySizeBytes":  entry.EncodedBodySize,
+			"compressionRatio":      compressionRatio,
+			"cached":                entry.TransferSize == 0 && entry.DecodedBodySize > 0,
+			"pageURL":               entry.PageURL,
+			"capturedAt":            entry.Timestamp.Format(time.RFC3339),
+		}
+	}
+
+	data := map[string]interface{}{
+		"entries":          jsonEntries,
+		"count":            len(entries),
+		"timespan":         formatDuration(timeRange),
+		"oldestTimestamp":  oldestTime.Format(time.RFC3339),
+		"newestTimestamp":  newestTime.Format(time.RFC3339),
+		"limitations": []string{
+			"No HTTP status codes (use network_bodies for 404s/500s/401s)",
+			"No request methods (GET/POST/etc.)",
+			"No request/response headers or bodies",
+		},
+	}
+
+	summary := fmt.Sprintf("%d network waterfall entries (timespan: %s)", len(entries), formatDuration(timeRange))
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
+}
+
+// entryStr extracts a string value from a LogEntry map, returning "" if the
+// key is missing or the value is not a string.
+func entryStr(entry LogEntry, key string) string {
+	v, ok := entry[key]
+	if !ok {
+		return ""
+	}
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
 }

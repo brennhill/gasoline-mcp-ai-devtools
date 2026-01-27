@@ -7,6 +7,9 @@
 
 import { WS_MAX_BODY_SIZE, WS_PREVIEW_LIMIT } from './constants.js'
 
+// Cached TextEncoder instance to avoid per-call allocation in getSize() hot path
+const _textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null
+
 // WebSocket capture state
 let originalWebSocket = null
 let webSocketCaptureEnabled = false
@@ -18,7 +21,9 @@ let webSocketCaptureMode = 'lifecycle' // 'lifecycle' or 'messages'
  * @returns {number} Size in bytes
  */
 export function getSize(data) {
-  if (typeof data === 'string') return data.length
+  if (typeof data === 'string') {
+    return _textEncoder ? _textEncoder.encode(data).length : data.length
+  }
   if (data instanceof ArrayBuffer) return data.byteLength
   if (data && typeof data === 'object' && 'size' in data) return data.size
   return 0
@@ -144,14 +149,17 @@ export function createConnectionTracker(id, url) {
         }
       }
 
-      // Track variants for messages beyond the first 5
+      // Track variants for messages beyond the first 5 (cap at 50 to bound memory)
       if (direction === 'incoming' && data && typeof data === 'string' && this._schemaDetected) {
         try {
           const parsed = JSON.parse(data)
           if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
             const keys = Object.keys(parsed).sort()
             const keyStr = keys.join(',')
-            this._schemaVariants.set(keyStr, (this._schemaVariants.get(keyStr) || 0) + 1)
+            // Only add new variants if under cap; always increment existing
+            if (this._schemaVariants.has(keyStr) || this._schemaVariants.size < 50) {
+              this._schemaVariants.set(keyStr, (this._schemaVariants.get(keyStr) || 0) + 1)
+            }
           }
         } catch {
           // Not JSON
@@ -231,12 +239,6 @@ export function createConnectionTracker(id, url) {
      */
     getSchema() {
       if (this._schemaKeys.length === 0) {
-        return { detectedKeys: null, consistent: true }
-      }
-
-      // Check if all recorded schemas are non-JSON
-      const hasKeys = this._schemaKeys.length > 0
-      if (!hasKeys) {
         return { detectedKeys: null, consistent: true }
       }
 

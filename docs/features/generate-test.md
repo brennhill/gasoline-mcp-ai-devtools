@@ -202,7 +202,7 @@ The `base_url` parameter rewrites captured URLs (e.g., from `https://staging.exa
 
 ## Getting Started
 
-1. Install [Gasoline](https://github.com/brennhill/gasoline) (extension + server)
+1. Install [Gasoline](https://github.com/brennhill/gasoline-mcp-ai-devtools) (extension + server)
 2. Use your app normally — Gasoline captures actions in the background
 3. Ask your AI assistant: *"Generate a regression test from my session"*
 4. Save the output as a `.spec.ts` file and run with `npx playwright test`

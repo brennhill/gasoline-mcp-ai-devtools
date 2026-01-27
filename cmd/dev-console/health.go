@@ -6,7 +6,6 @@
 package main
 
 import (
-	"encoding/json"
 	"os"
 	"runtime"
 	"sync"
@@ -102,6 +101,7 @@ type MCPHealthResponse struct {
 	Buffers      BuffersInfo      `json:"buffers"`
 	RateLimiting RateLimitingInfo `json:"rate_limiting"`
 	Audit        AuditInfo        `json:"audit"`
+	Pilot        PilotInfo        `json:"pilot"`
 }
 
 // ServerInfo contains server identification and uptime.
@@ -162,13 +162,21 @@ type AuditInfo struct {
 	CallsPerTool map[string]int64 `json:"calls_per_tool"`
 }
 
+// PilotInfo contains AI Web Pilot toggle state and connection status.
+type PilotInfo struct {
+	Enabled            bool   `json:"enabled"`
+	Source             string `json:"source"` // "extension_poll", "stale", or "never_connected"
+	ExtensionConnected bool   `json:"extension_connected"`
+	LastPollAgo        string `json:"last_poll_ago,omitempty"`
+}
+
 // ============================================
 // GetHealth
 // ============================================
 
 // GetHealth computes and returns the current health metrics.
 // This is called on-demand when the get_health tool is invoked.
-func (hm *HealthMetrics) GetHealth(capture *Capture, ver string) MCPHealthResponse {
+func (hm *HealthMetrics) GetHealth(capture *Capture, server *Server, ver string) MCPHealthResponse {
 	// Server info
 	serverInfo := ServerInfo{
 		Version:       ver,
@@ -189,13 +197,29 @@ func (hm *HealthMetrics) GetHealth(capture *Capture, ver string) MCPHealthRespon
 		usedPct = 100
 	}
 
-	// Buffer memory breakdown from capture
+	// Read all capture state under a single lock for atomic snapshot
 	var wsMem, nbMem, actionMem int64
+	var networkEntries, wsEntries, actionEntries int
+	var consoleEntries int
+	var currentRate int
+	var circuitOpen bool
+	var circuitReason string
+	if server != nil {
+		server.mu.RLock()
+		consoleEntries = len(server.entries)
+		server.mu.RUnlock()
+	}
 	if capture != nil {
 		capture.mu.RLock()
 		wsMem = capture.calcWSMemory()
 		nbMem = capture.calcNBMemory()
 		actionMem = capture.calcActionMemory()
+		networkEntries = len(capture.networkBodies)
+		wsEntries = len(capture.wsEvents)
+		actionEntries = len(capture.enhancedActions)
+		currentRate = capture.windowEventCount
+		circuitOpen = capture.circuitOpen
+		circuitReason = capture.circuitReason
 		capture.mu.RUnlock()
 	}
 
@@ -212,21 +236,15 @@ func (hm *HealthMetrics) GetHealth(capture *Capture, ver string) MCPHealthRespon
 		},
 	}
 
-	// Buffer utilization
-	var consoleEntries, networkEntries, wsEntries, actionEntries int
-	if capture != nil {
-		capture.mu.RLock()
-		networkEntries = len(capture.networkBodies)
-		wsEntries = len(capture.wsEvents)
-		actionEntries = len(capture.enhancedActions)
-		capture.mu.RUnlock()
+	consoleCapacity := defaultMaxEntries
+	if server != nil {
+		consoleCapacity = server.maxEntries
 	}
-
 	buffersInfo := BuffersInfo{
 		Console: BufferStats{
 			Entries:        consoleEntries,
-			Capacity:       defaultMaxEntries,
-			UtilizationPct: calcUtilization(consoleEntries, defaultMaxEntries),
+			Capacity:       consoleCapacity,
+			UtilizationPct: calcUtilization(consoleEntries, consoleCapacity),
 		},
 		Network: BufferStats{
 			Entries:        networkEntries,
@@ -243,18 +261,6 @@ func (hm *HealthMetrics) GetHealth(capture *Capture, ver string) MCPHealthRespon
 			Capacity:       maxEnhancedActions,
 			UtilizationPct: calcUtilization(actionEntries, maxEnhancedActions),
 		},
-	}
-
-	// Rate limiting info
-	var currentRate int
-	var circuitOpen bool
-	var circuitReason string
-	if capture != nil {
-		capture.mu.RLock()
-		currentRate = capture.windowEventCount
-		circuitOpen = capture.circuitOpen
-		circuitReason = capture.circuitReason
-		capture.mu.RUnlock()
 	}
 
 	rateLimitInfo := RateLimitingInfo{
@@ -290,12 +296,29 @@ func (hm *HealthMetrics) GetHealth(capture *Capture, ver string) MCPHealthRespon
 		CallsPerTool: callsPerTool,
 	}
 
+	// Pilot info
+	pilotStatus := PilotInfo{
+		Enabled:            false,
+		Source:             "never_connected",
+		ExtensionConnected: false,
+	}
+	if capture != nil {
+		status := capture.GetPilotStatus()
+		pilotStatus = PilotInfo{
+			Enabled:            status.Enabled,
+			Source:             status.Source,
+			ExtensionConnected: status.ExtensionConnected,
+			LastPollAgo:        status.LastPollAgo,
+		}
+	}
+
 	return MCPHealthResponse{
 		Server:       serverInfo,
 		Memory:       memInfo,
 		Buffers:      buffersInfo,
 		RateLimiting: rateLimitInfo,
 		Audit:        auditInfo,
+		Pilot:        pilotStatus,
 	}
 }
 
@@ -315,10 +338,9 @@ func calcUtilization(entries, capacity int) float64 {
 // It returns comprehensive server health metrics.
 func (h *ToolHandler) toolGetHealth(req JSONRPCRequest) JSONRPCResponse {
 	if h.healthMetrics == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Health metrics not initialized")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Health metrics not initialized", "Internal server error — do not retry")}
 	}
 
-	response := h.healthMetrics.GetHealth(h.capture, version)
-	respJSON, _ := json.Marshal(response)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(respJSON))}
+	response := h.healthMetrics.GetHealth(h.capture, h.server, version)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Server health", response)}
 }

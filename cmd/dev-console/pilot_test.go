@@ -7,357 +7,6 @@ import (
 	"time"
 )
 
-// TestPilotToolSchemaExists verifies that pilot tool schemas are registered.
-func TestPilotToolSchemaExists(t *testing.T) {
-	server, _ := setupTestServer(t)
-	capture := setupTestCapture(t)
-	mcp := setupToolHandler(t, server, capture)
-
-	// Initialize MCP
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// Get tools list
-	resp := mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 2, Method: "tools/list",
-	})
-
-	var result struct {
-		Tools []struct {
-			Name        string                 `json:"name"`
-			Description string                 `json:"description"`
-			InputSchema map[string]interface{} `json:"inputSchema"`
-		} `json:"tools"`
-	}
-
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("Failed to parse tools list: %v", err)
-	}
-
-	// Check for pilot tools
-	toolNames := make(map[string]bool)
-	for _, tool := range result.Tools {
-		toolNames[tool.Name] = true
-	}
-
-	expectedTools := []string{"highlight_element", "manage_state", "execute_javascript"}
-	for _, name := range expectedTools {
-		if !toolNames[name] {
-			t.Errorf("Expected pilot tool %q to be in tools list", name)
-		}
-	}
-}
-
-// TestHighlightElementSchema validates the highlight_element tool schema.
-func TestHighlightElementSchema(t *testing.T) {
-	server, _ := setupTestServer(t)
-	capture := setupTestCapture(t)
-	mcp := setupToolHandler(t, server, capture)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	resp := mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 2, Method: "tools/list",
-	})
-
-	var result struct {
-		Tools []struct {
-			Name        string                 `json:"name"`
-			InputSchema map[string]interface{} `json:"inputSchema"`
-		} `json:"tools"`
-	}
-
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("Failed to parse tools list: %v", err)
-	}
-
-	var highlightTool struct {
-		Name        string                 `json:"name"`
-		InputSchema map[string]interface{} `json:"inputSchema"`
-	}
-
-	for _, tool := range result.Tools {
-		if tool.Name == "highlight_element" {
-			highlightTool.Name = tool.Name
-			highlightTool.InputSchema = tool.InputSchema
-			break
-		}
-	}
-
-	if highlightTool.Name == "" {
-		t.Fatal("highlight_element tool not found")
-	}
-
-	// Check schema has required properties
-	props, ok := highlightTool.InputSchema["properties"].(map[string]interface{})
-	if !ok {
-		t.Fatal("highlight_element should have properties")
-	}
-
-	if _, ok := props["selector"]; !ok {
-		t.Error("highlight_element should have 'selector' parameter")
-	}
-
-	if _, ok := props["duration_ms"]; !ok {
-		t.Error("highlight_element should have 'duration_ms' parameter")
-	}
-
-	// Check selector is required
-	required, ok := highlightTool.InputSchema["required"].([]interface{})
-	if !ok {
-		t.Fatal("highlight_element should have required array")
-	}
-
-	selectorRequired := false
-	for _, r := range required {
-		if r == "selector" {
-			selectorRequired = true
-			break
-		}
-	}
-
-	if !selectorRequired {
-		t.Error("selector should be required for highlight_element")
-	}
-}
-
-// TestManageStateSchema validates the manage_state tool schema.
-func TestManageStateSchema(t *testing.T) {
-	server, _ := setupTestServer(t)
-	capture := setupTestCapture(t)
-	mcp := setupToolHandler(t, server, capture)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	resp := mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 2, Method: "tools/list",
-	})
-
-	var result struct {
-		Tools []struct {
-			Name        string                 `json:"name"`
-			InputSchema map[string]interface{} `json:"inputSchema"`
-		} `json:"tools"`
-	}
-
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("Failed to parse tools list: %v", err)
-	}
-
-	var manageStateTool struct {
-		Name        string                 `json:"name"`
-		InputSchema map[string]interface{} `json:"inputSchema"`
-	}
-
-	for _, tool := range result.Tools {
-		if tool.Name == "manage_state" {
-			manageStateTool.Name = tool.Name
-			manageStateTool.InputSchema = tool.InputSchema
-			break
-		}
-	}
-
-	if manageStateTool.Name == "" {
-		t.Fatal("manage_state tool not found")
-	}
-
-	props, ok := manageStateTool.InputSchema["properties"].(map[string]interface{})
-	if !ok {
-		t.Fatal("manage_state should have properties")
-	}
-
-	if _, ok := props["action"]; !ok {
-		t.Error("manage_state should have 'action' parameter")
-	}
-
-	if _, ok := props["snapshot_name"]; !ok {
-		t.Error("manage_state should have 'snapshot_name' parameter")
-	}
-}
-
-// TestExecuteJavascriptSchema validates the execute_javascript tool schema.
-func TestExecuteJavascriptSchema(t *testing.T) {
-	server, _ := setupTestServer(t)
-	capture := setupTestCapture(t)
-	mcp := setupToolHandler(t, server, capture)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	resp := mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 2, Method: "tools/list",
-	})
-
-	var result struct {
-		Tools []struct {
-			Name        string                 `json:"name"`
-			InputSchema map[string]interface{} `json:"inputSchema"`
-		} `json:"tools"`
-	}
-
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("Failed to parse tools list: %v", err)
-	}
-
-	var execJsTool struct {
-		Name        string                 `json:"name"`
-		InputSchema map[string]interface{} `json:"inputSchema"`
-	}
-
-	for _, tool := range result.Tools {
-		if tool.Name == "execute_javascript" {
-			execJsTool.Name = tool.Name
-			execJsTool.InputSchema = tool.InputSchema
-			break
-		}
-	}
-
-	if execJsTool.Name == "" {
-		t.Fatal("execute_javascript tool not found")
-	}
-
-	props, ok := execJsTool.InputSchema["properties"].(map[string]interface{})
-	if !ok {
-		t.Fatal("execute_javascript should have properties")
-	}
-
-	if _, ok := props["script"]; !ok {
-		t.Error("execute_javascript should have 'script' parameter")
-	}
-
-	if _, ok := props["timeout_ms"]; !ok {
-		t.Error("execute_javascript should have 'timeout_ms' parameter")
-	}
-
-	// Check script is required
-	required, ok := execJsTool.InputSchema["required"].([]interface{})
-	if !ok {
-		t.Fatal("execute_javascript should have required array")
-	}
-
-	scriptRequired := false
-	for _, r := range required {
-		if r == "script" {
-			scriptRequired = true
-			break
-		}
-	}
-
-	if !scriptRequired {
-		t.Error("script should be required for execute_javascript")
-	}
-}
-
-// TestPilotToolsReturnTimeoutWithoutExtension tests that pilot tools return timeout error when no extension is connected.
-// Note: The "ai_web_pilot_disabled" error is only returned when the extension explicitly reports it's disabled.
-// Timeout != disabled. We don't guess - the extension actively tells the server when the toggle is off.
-func TestPilotToolsReturnTimeoutWithoutExtension(t *testing.T) {
-	server, _ := setupTestServer(t)
-	capture := setupTestCapture(t)
-	mcp := setupToolHandler(t, server, capture)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	// Without an extension connected, pilot tools should timeout (not return "disabled")
-	tests := []struct {
-		name   string
-		tool   string
-		params string
-	}{
-		{
-			name:   "highlight_element returns timeout error",
-			tool:   "highlight_element",
-			params: `{"selector":".test","duration_ms":5000}`,
-		},
-		{
-			name:   "manage_state returns timeout error",
-			tool:   "manage_state",
-			params: `{"action":"save","snapshot_name":"test"}`,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			resp := mcp.HandleRequest(JSONRPCRequest{
-				JSONRPC: "2.0",
-				ID:      3,
-				Method:  "tools/call",
-				Params:  json.RawMessage(`{"name":"` + tc.tool + `","arguments":` + tc.params + `}`),
-			})
-
-			var result MCPToolResult
-			if err := json.Unmarshal(resp.Result, &result); err != nil {
-				t.Fatalf("Failed to parse response: %v", err)
-			}
-
-			if len(result.Content) == 0 {
-				t.Fatal("Expected content in response")
-			}
-
-			responseText := result.Content[0].Text
-
-			// Should contain timeout error (NOT "ai_web_pilot_disabled" - that requires explicit extension response)
-			if !strings.Contains(responseText, "Timeout") &&
-				!strings.Contains(responseText, "timeout") &&
-				!strings.Contains(responseText, "extension") {
-				t.Errorf("Expected timeout error, got: %s", responseText)
-			}
-		})
-	}
-}
-
-// TestExecuteJavaScriptTimeout tests that execute_javascript returns timeout error when no extension.
-func TestExecuteJavaScriptTimeout(t *testing.T) {
-	server, _ := setupTestServer(t)
-	capture := setupTestCapture(t)
-	// Set a short timeout for testing
-	capture.SetQueryTimeout(100 * time.Millisecond)
-	mcp := setupToolHandler(t, server, capture)
-
-	mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0", ID: 1, Method: "initialize",
-		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
-	})
-
-	resp := mcp.HandleRequest(JSONRPCRequest{
-		JSONRPC: "2.0",
-		ID:      3,
-		Method:  "tools/call",
-		Params:  json.RawMessage(`{"name":"execute_javascript","arguments":{"script":"return 1","timeout_ms":100}}`),
-	})
-
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("Failed to parse response: %v", err)
-	}
-
-	if len(result.Content) == 0 {
-		t.Fatal("Expected content in response")
-	}
-
-	responseText := result.Content[0].Text
-
-	// Should contain timeout error when no extension connected
-	if !strings.Contains(responseText, "Timeout") &&
-		!strings.Contains(responseText, "timeout") &&
-		!strings.Contains(responseText, "AI Web Pilot") {
-		t.Errorf("Expected timeout or connection error, got: %s", responseText)
-	}
-}
-
 // TestErrPilotDisabledMessage tests the error message format.
 func TestErrPilotDisabledMessage(t *testing.T) {
 	if ErrPilotDisabled == nil {
@@ -372,5 +21,423 @@ func TestErrPilotDisabledMessage(t *testing.T) {
 
 	if !strings.Contains(errMsg, "AI Web Pilot") {
 		t.Errorf("Error message should mention 'AI Web Pilot', got: %s", errMsg)
+	}
+}
+
+// ============================================
+// Pilot Status Tests (NEW)
+// ============================================
+
+// TestObservePilotMode verifies that observe tool supports "pilot" mode.
+func TestObservePilotMode(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 2, Method: "tools/list",
+	})
+
+	var result struct {
+		Tools []struct {
+			Name        string                 `json:"name"`
+			InputSchema map[string]interface{} `json:"inputSchema"`
+		} `json:"tools"`
+	}
+
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to parse tools list: %v", err)
+	}
+
+	// Find observe tool
+	var observeTool struct {
+		Name        string                 `json:"name"`
+		InputSchema map[string]interface{} `json:"inputSchema"`
+	}
+
+	for _, tool := range result.Tools {
+		if tool.Name == "observe" {
+			observeTool.Name = tool.Name
+			observeTool.InputSchema = tool.InputSchema
+			break
+		}
+	}
+
+	if observeTool.Name == "" {
+		t.Fatal("observe tool not found")
+	}
+
+	// Check that "pilot" is in the what enum
+	props, ok := observeTool.InputSchema["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("observe should have properties")
+	}
+
+	whatProp, ok := props["what"].(map[string]interface{})
+	if !ok {
+		t.Fatal("observe should have 'what' parameter")
+	}
+
+	enum, ok := whatProp["enum"].([]interface{})
+	if !ok {
+		t.Fatal("what parameter should have enum")
+	}
+
+	hasPilot := false
+	for _, val := range enum {
+		if val == "pilot" {
+			hasPilot = true
+			break
+		}
+	}
+
+	if !hasPilot {
+		t.Error("'pilot' should be in observe 'what' enum")
+	}
+}
+
+// TestObservePilotResponseSchema verifies the response schema of observe {what: "pilot"}.
+func TestObservePilotResponseSchema(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// Call observe tool with what: "pilot"
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      3,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"pilot"}}`),
+	})
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	if len(result.Content) == 0 {
+		t.Fatal("Expected content in response")
+	}
+
+	// Parse the JSON response
+	var statusResp struct {
+		Enabled            bool   `json:"enabled"`
+		Source             string `json:"source"`
+		ExtensionConnected bool   `json:"extension_connected"`
+		LastPollAgo        string `json:"last_poll_ago,omitempty"`
+		LastUpdate         string `json:"last_update,omitempty"`
+	}
+
+	pilotText := result.Content[0].Text
+	pilotJSON := pilotText
+	if pLines := strings.SplitN(pilotText, "\n", 2); len(pLines) == 2 {
+		pilotJSON = pLines[1]
+	}
+	if err := json.Unmarshal([]byte(pilotJSON), &statusResp); err != nil {
+		t.Fatalf("Failed to parse pilot status response: %v", err)
+	}
+
+	// Verify required fields exist
+	if statusResp.Source == "" {
+		t.Error("Source field should not be empty")
+	}
+
+	validSources := map[string]bool{
+		"extension_poll":    true,
+		"stale":             true,
+		"never_connected":   true,
+	}
+	if !validSources[statusResp.Source] {
+		t.Errorf("Source should be one of: extension_poll, stale, never_connected. Got: %s", statusResp.Source)
+	}
+}
+
+// TestGetPilotStatusWithExtensionConnected verifies enabled state when extension polled recently.
+func TestGetPilotStatusWithExtensionConnected(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// Simulate extension poll by updating lastPollAt and setting pilotEnabled
+	capture.mu.Lock()
+	capture.lastPollAt = time.Now()
+	capture.pilotEnabled = true
+	capture.mu.Unlock()
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      3,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"pilot"}}`),
+	})
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	var statusResp struct {
+		Enabled            bool   `json:"enabled"`
+		Source             string `json:"source"`
+		ExtensionConnected bool   `json:"extension_connected"`
+	}
+
+	pilotText := result.Content[0].Text
+	pilotJSON := pilotText
+	if pLines := strings.SplitN(pilotText, "\n", 2); len(pLines) == 2 {
+		pilotJSON = pLines[1]
+	}
+	if err := json.Unmarshal([]byte(pilotJSON), &statusResp); err != nil {
+		t.Fatalf("Failed to parse pilot status response: %v", err)
+	}
+
+	if !statusResp.Enabled {
+		t.Error("Expected enabled=true when pilotEnabled is true")
+	}
+
+	if statusResp.Source != "extension_poll" {
+		t.Errorf("Expected source='extension_poll' for recent poll, got: %s", statusResp.Source)
+	}
+
+	if !statusResp.ExtensionConnected {
+		t.Error("Expected extension_connected=true for recent poll")
+	}
+}
+
+// TestGetPilotStatusStale verifies source='stale' when last poll is old.
+func TestGetPilotStatusStale(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// Simulate extension poll that happened 5 seconds ago
+	capture.mu.Lock()
+	capture.lastPollAt = time.Now().Add(-5 * time.Second)
+	capture.pilotEnabled = true
+	capture.mu.Unlock()
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      3,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"pilot"}}`),
+	})
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	var statusResp struct {
+		Enabled            bool   `json:"enabled"`
+		Source             string `json:"source"`
+		ExtensionConnected bool   `json:"extension_connected"`
+	}
+
+	pilotText := result.Content[0].Text
+	pilotJSON := pilotText
+	if pLines := strings.SplitN(pilotText, "\n", 2); len(pLines) == 2 {
+		pilotJSON = pLines[1]
+	}
+	if err := json.Unmarshal([]byte(pilotJSON), &statusResp); err != nil {
+		t.Fatalf("Failed to parse pilot status response: %v", err)
+	}
+
+	if statusResp.Source != "stale" {
+		t.Errorf("Expected source='stale' for old poll, got: %s", statusResp.Source)
+	}
+
+	if statusResp.ExtensionConnected {
+		t.Error("Expected extension_connected=false for stale poll")
+	}
+}
+
+// TestGetPilotStatusNeverConnected verifies source='never_connected' when no polls.
+func TestGetPilotStatusNeverConnected(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// Don't set lastPollAt - leave it as zero value
+	// Verify it's zero
+	capture.mu.RLock()
+	isZero := capture.lastPollAt.IsZero()
+	capture.mu.RUnlock()
+
+	if !isZero {
+		t.Fatal("Expected lastPollAt to be zero value for fresh capture")
+	}
+
+	resp := mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      3,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"pilot"}}`),
+	})
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	var statusResp struct {
+		Source string `json:"source"`
+	}
+
+	pilotText := result.Content[0].Text
+	pilotJSON := pilotText
+	if pLines := strings.SplitN(pilotText, "\n", 2); len(pLines) == 2 {
+		pilotJSON = pLines[1]
+	}
+	if err := json.Unmarshal([]byte(pilotJSON), &statusResp); err != nil {
+		t.Fatalf("Failed to parse pilot status response: %v", err)
+	}
+
+	if statusResp.Source != "never_connected" {
+		t.Errorf("Expected source='never_connected' for zero lastPollAt, got: %s", statusResp.Source)
+	}
+}
+
+// TestGetPilotStatusThreadSafety verifies concurrent access is safe.
+func TestGetPilotStatusThreadSafety(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	// Simulate concurrent access from multiple goroutines
+	done := make(chan bool, 200)
+
+	// Goroutines that call the MCP tool
+	for i := 0; i < 100; i++ {
+		go func() {
+			resp := mcp.HandleRequest(JSONRPCRequest{
+				JSONRPC: "2.0",
+				ID:      3,
+				Method:  "tools/call",
+				Params:  json.RawMessage(`{"name":"get_pilot_status","arguments":{}}`),
+			})
+			var result MCPToolResult
+			_ = json.Unmarshal(resp.Result, &result)
+			done <- true
+		}()
+	}
+
+	// Goroutines that modify capture state
+	for i := 0; i < 100; i++ {
+		go func(idx int) {
+			capture.mu.Lock()
+			capture.lastPollAt = time.Now()
+			capture.pilotEnabled = idx%2 == 0
+			capture.mu.Unlock()
+			done <- true
+		}(i)
+	}
+
+	// Wait for all goroutines to finish
+	for i := 0; i < 200; i++ {
+		<-done
+	}
+	// If we get here without a race condition, test passes
+}
+
+// TestHealthResponseIncludesPilot verifies that get_health includes pilot field.
+func TestHealthResponseIncludesPilot(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Set pilot state
+	capture.mu.Lock()
+	capture.lastPollAt = time.Now()
+	capture.pilotEnabled = true
+	capture.mu.Unlock()
+
+	// Call toolGetHealth directly (it's a helper function, not an MCP tool)
+	resp := mcp.toolHandler.toolGetHealth(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("toolGetHealth returned error: %d %s", resp.Error.Code, resp.Error.Message)
+	}
+
+	if len(resp.Result) == 0 {
+		t.Fatal("toolGetHealth response has empty result")
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to parse response: %v (raw: %s)", err, string(resp.Result))
+	}
+
+	if len(result.Content) == 0 {
+		t.Fatal("Expected content in health response")
+	}
+
+	// Strip summary line before parsing JSON
+	text := result.Content[0].Text
+	jsonPart := text
+	if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
+		jsonPart = lines[1]
+	}
+	var healthResp map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonPart), &healthResp); err != nil {
+		t.Fatalf("Failed to parse health response: %v", err)
+	}
+
+	// Verify pilot field exists
+	if _, ok := healthResp["pilot"]; !ok {
+		t.Error("Health response should include 'pilot' field")
+	}
+
+	// Verify pilot field structure
+	if pilotData, ok := healthResp["pilot"]; ok {
+		pilotMap, ok := pilotData.(map[string]interface{})
+		if !ok {
+			t.Fatal("pilot field should be an object")
+		}
+
+		if _, ok := pilotMap["enabled"]; !ok {
+			t.Error("pilot.enabled field should exist")
+		}
+
+		if _, ok := pilotMap["source"]; !ok {
+			t.Error("pilot.source field should exist")
+		}
+
+		if _, ok := pilotMap["extension_connected"]; !ok {
+			t.Error("pilot.extension_connected field should exist")
+		}
 	}
 }

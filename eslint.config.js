@@ -6,7 +6,7 @@ import prettier from 'eslint-config-prettier'
 export default [
   // Ignore patterns
   {
-    ignores: ['node_modules/', 'dist/', 'e2e-tests/', 'npm/', 'server/', 'docs/', 'chrome_store_files/', 'demo/'],
+    ignores: ['node_modules/', 'dist/', 'tests/e2e/', 'npm/', 'server/', 'docs/', 'demo/'],
   },
 
   // Base recommended rules
@@ -61,7 +61,7 @@ export default [
 
   // Extension test files (run in Node.js)
   {
-    files: ['extension-tests/**/*.js'],
+    files: ['tests/extension/**/*.js', 'tests/extension/**/*.mjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',

@@ -6,7 +6,183 @@
 - **Branch:** `feature/github-pages-site`
 - **Summary:** SEO-optimized documentation site for cookwithgasoline.com using Jekyll minimal-mistakes theme. Splits monolithic README into targeted pages for search discoverability.
 
+## Immediate - Feature Competitive (BrowserTools MCP Parity)
+
+### SEO Audit Tool
+- **Tool:** `generate {type: "seo_audit"}`
+- **Capabilities:**
+  - Metadata validation (title, description, og tags, canonical)
+  - Heading structure (H1-H6 hierarchy)
+  - Link structure (internal/external, broken links, nofollow)
+  - Image optimization (alt text, dimensions, format)
+  - Structured data validation (JSON-LD, schema.org)
+  - Mobile-friendliness indicators
+- **Effort:** ~300 lines Go + 150 lines extension JS
+
+### Performance Audit Tool (Comprehensive Lighthouse-Style)
+- **Tool:** `generate {type: "performance_audit"}`
+- **Capabilities:**
+  - Render-blocking resource detection (CSS/JS in `<head>`)
+  - DOM size analysis (total nodes, depth, child count)
+  - Image optimization (uncompressed, wrong format, missing dimensions)
+  - JavaScript bundle analysis (size, unused code estimation)
+  - CSS analysis (unused rules, specificity issues)
+  - Third-party script impact
+  - Cache policy effectiveness
+  - Resource compression detection
+- **Effort:** ~400 lines Go + 200 lines extension JS
+- **Note:** Extends existing performance metrics (FCP, LCP, CLS) to comprehensive analysis
+
+### Best Practices Audit Tool
+- **Tool:** `generate {type: "best_practices_audit"}`
+- **Capabilities:**
+  - HTTPS usage verification
+  - Deprecated API usage detection (via console warnings)
+  - Browser error log analysis
+  - Security headers validation (CSP, HSTS, X-Frame-Options)
+  - Document metadata completeness
+  - JavaScript error rate
+  - Console noise level
+  - Mixed content detection
+- **Effort:** ~250 lines Go + 100 lines extension JS
+
+### Enhanced WCAG Accessibility Audit
+- **Tool:** Enhance `observe {what: "accessibility"}` with `wcag_level` and `detailed: true` options
+- **Capabilities (beyond current axe-core):**
+  - Color contrast analysis (all text/background combinations)
+  - Keyboard navigation trap detection (tab order simulation)
+  - ARIA attribute validation (role hierarchy, required attributes)
+  - Form label completeness
+  - Heading hierarchy validation
+  - Skip link detection
+  - Focus indicator visibility
+  - Screen reader text sufficiency
+- **Effort:** ~200 lines extension JS (enhanced axe-core configuration + post-processing)
+
+### Auto-Paste Screenshots to IDE
+- **Tool:** Add `include_screenshots: true` option to `observe {what: "errors"}` and other relevant tools
+- **Capabilities:**
+  - Encode screenshot as base64 in MCP responses
+  - Add "copy to clipboard" button in extension popup
+  - Automatic attachment to error observations
+- **Effort:** ~100 lines Go + 50 lines extension JS
+
+### Annotated Screenshots
+- **Tool:** `observe {what: "page", annotate_screenshot: true}`
+- **Capabilities:**
+  - Overlay element labels, bounding boxes, interaction hints on screenshots
+  - Help AI vision models understand clickable/visible elements
+  - Interactive element highlighting with selector hints
+  - ARIA role and label annotations
+- **Effort:** ~150 lines extension JS (canvas overlay)
+
+### Form Filling Automation (High-Level API)
+- **Tool:** `interact {action: "fill_form", selector: "form", fields: {...}}`
+- **Capabilities:**
+  - Auto-detect input types (text, email, password, checkbox, radio, select)
+  - Handle common validation patterns (email format, required fields)
+  - Trigger appropriate events (input, change, blur) for framework reactivity
+  - Support for nested field paths (e.g., `fields: {"user.email": "..."}`)
+  - Automatic wait for form elements to be interactive
+  - Return validation errors if form submission fails
+- **Rationale:** More ergonomic than `execute_js` for common form automation tasks
+- **Effort:** ~200 lines extension JS
+
+### E2E Testing Integration (CI/CD)
+- **Tool:** `generate {type: "playwright_fixture"}` and CI integration guide
+- **Capabilities:**
+  - Export Gasoline state as Playwright fixtures
+  - Attach browser state (console, network, WebSocket) to test failures automatically
+  - Script injection via Playwright's `addInitScript()` (no extension needed in CI)
+  - Extension loading support for headed CI runs (`--load-extension`)
+  - GitHub Actions / GitLab CI examples
+  - Test failure enrichment (network bodies, WS messages, DOM state on failure)
+- **Rationale:** 26% of developer time goes to CI failure investigation. Browser-level observability in CI eliminates "pull branch, reproduce locally, fail to reproduce" loops.
+- **Effort:** ~300 lines Go + 200 lines CI integration + documentation
+- **Economic impact:** $30-60K/year per 10-person team in recovered engineering time
+
+**Total estimated effort:** ~2600 lines of code
+
+---
+
 ## Planned
+
+### CPU/Network Emulation (Chrome DevTools MCP Feature)
+- **Tool:** `configure {action: "emulate", cpu_rate: 4, network: "Slow 3G"}`
+- **Capabilities:**
+  - Throttle CPU (1x-6x slowdown) to simulate low-end devices
+  - Network profiles: Slow 3G, Fast 3G, 4G, Offline, No throttling
+  - Test performance on low-end hardware
+  - Verify graceful degradation under poor network
+  - Reproduce mobile-specific performance issues
+  - Test offline functionality
+- **Implementation:** Chrome DevTools Protocol `Emulation` domain
+- **Rationale:** Complements existing performance monitoring with device/network simulation
+- **Effort:** ~150 lines Go (CDP integration) + 50 lines extension JS
+- **Priority:** MEDIUM - Nice-to-have for comprehensive performance testing
+
+### Dialog Handling (Chrome DevTools MCP Feature)
+- **Tool:** `interact {action: "handle_dialog", accept: true, prompt_text: "..."}`
+- **Capabilities:**
+  - Handle alert, confirm, prompt, beforeunload dialogs
+  - Auto-respond or queue for AI decision
+  - Prevent blocking during automation workflows
+- **Implementation:** Intercept dialog events via Chrome APIs
+- **Rationale:** Currently dialogs block interactions; this enables smooth automation
+- **Effort:** ~100 lines extension JS
+- **Priority:** MEDIUM - Good addition to AI Web Pilot
+
+### Drag & Drop Automation (Chrome DevTools MCP Feature)
+- **Tool:** `interact {action: "drag", from_selector: "...", to_selector: "..."}`
+- **Capabilities:**
+  - Programmatic drag-and-drop interactions
+  - HTML5 drag API + legacy mouse events
+  - Common UI pattern support (kanban boards, file uploads, reordering)
+- **Implementation:** Synthesize drag events (dragstart, dragover, drop)
+- **Rationale:** Common UI pattern in modern apps; currently requires `execute_js` workarounds
+- **Effort:** ~150 lines extension JS
+- **Priority:** MEDIUM - Nice-to-have for comprehensive automation
+
+### A11y Tree Snapshots (Chrome DevTools MCP Feature)
+- **Tool:** `observe {what: "a11y_tree"}`
+- **Capabilities:**
+  - Export accessibility tree as text with unique element IDs
+  - Semantic representation (roles, labels) vs structural DOM
+  - More token-efficient than full HTML for LLMs
+  - Allow actions by uid reference (e.g., "click button uid=123")
+- **Implementation:** Chrome Accessibility API traversal + text serialization
+- **Rationale:** AI-first page representation; complements existing DOM queries and annotated screenshots
+- **Effort:** ~200 lines extension JS
+- **Priority:** LOW-MEDIUM - Interesting but not critical; existing features may cover use case
+
+### Local Web Scraping & Automation (LLM-Controlled)
+- **Tool:** `interact {action: "scrape"}` with multi-step automation capabilities
+- **Capabilities:**
+  - Use Gasoline to control browser as logged-in user (leverage existing sessions/cookies)
+  - Navigate, interact, extract structured data from pages
+  - Multi-step workflows (login → navigate → paginate → extract)
+  - Extract data from authenticated/paywalled content
+  - Forward extracted data to external destinations (files, APIs, databases)
+  - Maintain privacy: localhost-only, no cloud service dependency
+  - Session replay: Record workflows, replay for repeated scraping
+- **Use cases:**
+  - Scrape personal data from services you're logged into (banking, social media exports)
+  - Extract structured data from internal company tools
+  - Automate data entry across multiple systems
+  - Pull reports from authenticated dashboards
+  - Monitor competitor sites with login-required access
+- **Differentiation from cloud scrapers (Hyperbrowser):**
+  - Uses YOUR browser with YOUR logged-in sessions
+  - Localhost-only, no data sent to third parties
+  - LLM-controlled via MCP (Claude, Cursor, etc.)
+  - Integrated with existing Gasoline telemetry (errors, network, WS)
+- **Architecture:**
+  - Extends existing `interact` tool with scraping actions
+  - Builds on `execute_js`, `navigate`, `query_dom` primitives
+  - Add workflow recording/replay mechanism
+  - Structured data extraction with schema hints
+- **Effort:** ~500 lines Go + 300 lines extension JS + workflow engine
+- **Status:** Longer-term, after core audit features ship
 
 ### Capture Profiles
 - Configurable capture modes (minimal, standard, verbose)

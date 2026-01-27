@@ -935,3 +935,555 @@ func TestAPIContractViolation_JSONSerialization(t *testing.T) {
 		t.Error("Expected 'type' field in JSON")
 	}
 }
+
+// ============================================
+// Schema Improvement Tests (LLM-Optimized Responses)
+// ============================================
+
+// Test 1: analyzedAt timestamp in RFC3339 format
+func TestAPIContractAnalyze_AnalyzedAtTimestamp(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	before := time.Now().Truncate(time.Second)
+	result := v.Analyze(APIContractFilter{})
+	after := time.Now().Add(time.Second).Truncate(time.Second)
+
+	if result.AnalyzedAt == "" {
+		t.Fatal("Expected analyzedAt to be set")
+	}
+
+	parsed, err := time.Parse(time.RFC3339, result.AnalyzedAt)
+	if err != nil {
+		t.Fatalf("Expected RFC3339 format for analyzedAt, got %q: %v", result.AnalyzedAt, err)
+	}
+
+	if parsed.Before(before) || parsed.After(after) {
+		t.Errorf("analyzedAt %v not in expected range [%v, %v]", parsed, before, after)
+	}
+}
+
+// Test 2: dataWindowStartedAt timestamp (when data collection began)
+func TestAPIContractAnalyze_DataWindowStartedAt(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	// No data yet - should be empty string
+	result := v.Analyze(APIContractFilter{})
+	if result.DataWindowStartedAt != "" {
+		t.Errorf("Expected empty dataWindowStartedAt when no data, got %q", result.DataWindowStartedAt)
+	}
+
+	// Add some data
+	v.Learn(NetworkBody{
+		Method:       "GET",
+		URL:          "http://localhost:3000/api/users/1",
+		Status:       200,
+		ResponseBody: `{"id":1}`,
+		ContentType:  "application/json",
+	})
+
+	result = v.Analyze(APIContractFilter{})
+	if result.DataWindowStartedAt == "" {
+		t.Fatal("Expected dataWindowStartedAt to be set after learning data")
+	}
+
+	_, err := time.Parse(time.RFC3339, result.DataWindowStartedAt)
+	if err != nil {
+		t.Fatalf("Expected RFC3339 format for dataWindowStartedAt, got %q: %v", result.DataWindowStartedAt, err)
+	}
+}
+
+// Test 3: appliedFilter echo
+func TestAPIContractAnalyze_AppliedFilter(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	// No filter
+	result := v.Analyze(APIContractFilter{})
+	if result.AppliedFilter != nil {
+		t.Errorf("Expected nil appliedFilter when no filter, got %v", result.AppliedFilter)
+	}
+
+	// With URL filter
+	result = v.Analyze(APIContractFilter{URLFilter: "users"})
+	if result.AppliedFilter == nil {
+		t.Fatal("Expected appliedFilter to be set when URL filter provided")
+	}
+	if result.AppliedFilter.URL != "users" {
+		t.Errorf("Expected appliedFilter.url='users', got %q", result.AppliedFilter.URL)
+	}
+
+	// With ignore_endpoints filter
+	result = v.Analyze(APIContractFilter{IgnoreEndpoints: []string{"/health"}})
+	if result.AppliedFilter == nil {
+		t.Fatal("Expected appliedFilter to be set when ignore filter provided")
+	}
+	if len(result.AppliedFilter.IgnoreEndpoints) != 1 || result.AppliedFilter.IgnoreEndpoints[0] != "/health" {
+		t.Errorf("Expected appliedFilter.ignoreEndpoints=['/health'], got %v", result.AppliedFilter.IgnoreEndpoints)
+	}
+}
+
+// Test 4: summary object with counts
+func TestAPIContractAnalyze_SummaryObject(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	// Learn 3 consistent responses to establish the shape
+	for i := 0; i < 3; i++ {
+		v.Learn(NetworkBody{
+			Method:       "GET",
+			URL:          "http://localhost:3000/api/users/1",
+			Status:       200,
+			ResponseBody: `{"id":1,"name":"Alice"}`,
+			ContentType:  "application/json",
+		})
+	}
+
+	// Cause a violation
+	v.Validate(NetworkBody{
+		Method:       "GET",
+		URL:          "http://localhost:3000/api/users/1",
+		Status:       200,
+		ResponseBody: `{"id":1}`, // Missing 'name'
+		ContentType:  "application/json",
+	})
+
+	result := v.Analyze(APIContractFilter{})
+
+	if result.Summary == nil {
+		t.Fatal("Expected summary object")
+	}
+	if result.Summary.Violations == 0 {
+		t.Error("Expected non-zero violation count in summary")
+	}
+	if result.Summary.Endpoints != 1 {
+		t.Errorf("Expected 1 endpoint in summary, got %d", result.Summary.Endpoints)
+	}
+	if result.Summary.TotalRequests == 0 {
+		t.Error("Expected non-zero total requests in summary")
+	}
+	if result.Summary.CleanEndpoints < 0 {
+		t.Error("Expected non-negative clean endpoints in summary")
+	}
+}
+
+// Test 5: violationType and severity on violations
+func TestAPIContractAnalyze_ViolationTypeAndSeverity(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	for i := 0; i < 3; i++ {
+		v.Learn(NetworkBody{
+			Method:       "GET",
+			URL:          "http://localhost:3000/api/users/1",
+			Status:       200,
+			ResponseBody: `{"id":1,"name":"Alice"}`,
+			ContentType:  "application/json",
+		})
+	}
+
+	// Cause a shape_change violation
+	v.Validate(NetworkBody{
+		Method:       "GET",
+		URL:          "http://localhost:3000/api/users/1",
+		Status:       200,
+		ResponseBody: `{"id":1}`, // Missing 'name'
+		ContentType:  "application/json",
+	})
+
+	result := v.Analyze(APIContractFilter{})
+
+	if len(result.Violations) == 0 {
+		t.Fatal("Expected violations")
+	}
+
+	viol := result.Violations[0]
+	// violationType should be set (same as Type for backward compatibility)
+	if viol.ViolationType == "" {
+		t.Error("Expected violationType to be set")
+	}
+	if viol.ViolationType != viol.Type {
+		t.Errorf("Expected violationType=%q to match type=%q", viol.ViolationType, viol.Type)
+	}
+	// severity should be set
+	if viol.Severity == "" {
+		t.Error("Expected severity to be set")
+	}
+	// severity should be one of: critical, high, medium, low
+	validSeverities := map[string]bool{"critical": true, "high": true, "medium": true, "low": true}
+	if !validSeverities[viol.Severity] {
+		t.Errorf("Expected severity to be one of critical/high/medium/low, got %q", viol.Severity)
+	}
+}
+
+// Test 6: affectedCallCount on violations
+func TestAPIContractAnalyze_AffectedCallCount(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	for i := 0; i < 3; i++ {
+		v.Learn(NetworkBody{
+			Method:       "GET",
+			URL:          "http://localhost:3000/api/users/1",
+			Status:       200,
+			ResponseBody: `{"id":1,"name":"Alice"}`,
+			ContentType:  "application/json",
+		})
+	}
+
+	// Cause violations
+	v.Validate(NetworkBody{
+		Method:       "GET",
+		URL:          "http://localhost:3000/api/users/1",
+		Status:       200,
+		ResponseBody: `{"id":1}`,
+		ContentType:  "application/json",
+	})
+
+	result := v.Analyze(APIContractFilter{})
+
+	if len(result.Violations) == 0 {
+		t.Fatal("Expected violations")
+	}
+
+	for _, viol := range result.Violations {
+		if viol.AffectedCallCount < 1 {
+			t.Errorf("Expected affectedCallCount >= 1, got %d", viol.AffectedCallCount)
+		}
+	}
+}
+
+// Test 7: firstSeenAt and lastSeenAt timestamps on violations
+func TestAPIContractAnalyze_ViolationTimestamps(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	for i := 0; i < 3; i++ {
+		v.Learn(NetworkBody{
+			Method:       "GET",
+			URL:          "http://localhost:3000/api/users/1",
+			Status:       200,
+			ResponseBody: `{"id":1,"name":"Alice"}`,
+			ContentType:  "application/json",
+		})
+	}
+
+	before := time.Now().Truncate(time.Second)
+	v.Validate(NetworkBody{
+		Method:       "GET",
+		URL:          "http://localhost:3000/api/users/1",
+		Status:       200,
+		ResponseBody: `{"id":1}`,
+		ContentType:  "application/json",
+	})
+	after := time.Now().Add(time.Second).Truncate(time.Second)
+
+	result := v.Analyze(APIContractFilter{})
+
+	if len(result.Violations) == 0 {
+		t.Fatal("Expected violations")
+	}
+
+	viol := result.Violations[0]
+	if viol.FirstSeenAt == "" {
+		t.Error("Expected firstSeenAt to be set")
+	}
+	if viol.LastSeenAt == "" {
+		t.Error("Expected lastSeenAt to be set")
+	}
+
+	firstSeen, err := time.Parse(time.RFC3339, viol.FirstSeenAt)
+	if err != nil {
+		t.Fatalf("Expected RFC3339 for firstSeenAt, got %q: %v", viol.FirstSeenAt, err)
+	}
+	lastSeen, err := time.Parse(time.RFC3339, viol.LastSeenAt)
+	if err != nil {
+		t.Fatalf("Expected RFC3339 for lastSeenAt, got %q: %v", viol.LastSeenAt, err)
+	}
+
+	if firstSeen.Before(before) || firstSeen.After(after) {
+		t.Errorf("firstSeenAt %v not in expected range [%v, %v]", firstSeen, before, after)
+	}
+	if lastSeen.Before(firstSeen) {
+		t.Errorf("lastSeenAt should be >= firstSeenAt")
+	}
+}
+
+// Test 8: possibleViolationTypes metadata array
+func TestAPIContractAnalyze_PossibleViolationTypes(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	result := v.Analyze(APIContractFilter{})
+
+	if result.PossibleViolationTypes == nil {
+		t.Fatal("Expected possibleViolationTypes metadata array")
+	}
+
+	expected := map[string]bool{
+		"shape_change": true,
+		"type_change":  true,
+		"error_spike":  true,
+		"new_field":    true,
+		"null_field":   true,
+	}
+	for _, vt := range result.PossibleViolationTypes {
+		if !expected[vt] {
+			t.Errorf("Unexpected violation type in metadata: %q", vt)
+		}
+		delete(expected, vt)
+	}
+	if len(expected) > 0 {
+		t.Errorf("Missing violation types in metadata: %v", expected)
+	}
+}
+
+// Test 9: hint when no violations found
+func TestAPIContractAnalyze_HintWhenNoViolations(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	// Learn consistent data
+	for i := 0; i < 3; i++ {
+		v.Learn(NetworkBody{
+			Method:       "GET",
+			URL:          "http://localhost:3000/api/users/1",
+			Status:       200,
+			ResponseBody: `{"id":1,"name":"Alice"}`,
+			ContentType:  "application/json",
+		})
+	}
+
+	result := v.Analyze(APIContractFilter{})
+
+	if len(result.Violations) != 0 {
+		t.Fatal("Expected no violations for consistent data")
+	}
+	if result.Hint == "" {
+		t.Error("Expected hint when no violations found")
+	}
+	if !strings.Contains(result.Hint, "No violations") || !strings.Contains(result.Hint, "consistent") {
+		t.Errorf("Expected hint to mention 'No violations' and 'consistent', got %q", result.Hint)
+	}
+}
+
+// Test 10: lastCalled renamed to lastCalledAt in report
+func TestAPIContractReport_LastCalledAtRename(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	v.Learn(NetworkBody{
+		Method:       "GET",
+		URL:          "http://localhost:3000/api/users/1",
+		Status:       200,
+		ResponseBody: `{"id":1}`,
+		ContentType:  "application/json",
+	})
+
+	result := v.Report(APIContractFilter{})
+	if len(result.Endpoints) == 0 {
+		t.Fatal("Expected endpoints in report")
+	}
+
+	ep := result.Endpoints[0]
+
+	// lastCalledAt should be set (renamed from lastCalled)
+	if ep.LastCalledAt == "" {
+		t.Error("Expected lastCalledAt to be set")
+	}
+	_, err := time.Parse(time.RFC3339, ep.LastCalledAt)
+	if err != nil {
+		t.Fatalf("Expected RFC3339 for lastCalledAt, got %q: %v", ep.LastCalledAt, err)
+	}
+
+	// Verify JSON serialization uses last_called_at (not last_called)
+	data, _ := json.Marshal(ep)
+	var parsed map[string]interface{}
+	_ = json.Unmarshal(data, &parsed)
+	if _, ok := parsed["last_called_at"]; !ok {
+		t.Error("Expected 'last_called_at' key in JSON output")
+	}
+	if _, ok := parsed["last_called"]; ok {
+		t.Error("Old 'last_called' key should not be in JSON output")
+	}
+}
+
+// Test 11: firstCalledAt added to report
+func TestAPIContractReport_FirstCalledAt(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	v.Learn(NetworkBody{
+		Method:       "GET",
+		URL:          "http://localhost:3000/api/users/1",
+		Status:       200,
+		ResponseBody: `{"id":1}`,
+		ContentType:  "application/json",
+	})
+
+	result := v.Report(APIContractFilter{})
+	if len(result.Endpoints) == 0 {
+		t.Fatal("Expected endpoints in report")
+	}
+
+	ep := result.Endpoints[0]
+	if ep.FirstCalledAt == "" {
+		t.Error("Expected firstCalledAt to be set")
+	}
+	_, err := time.Parse(time.RFC3339, ep.FirstCalledAt)
+	if err != nil {
+		t.Fatalf("Expected RFC3339 for firstCalledAt, got %q: %v", ep.FirstCalledAt, err)
+	}
+}
+
+// Test 12: consistencyScore numeric 0-1
+func TestAPIContractReport_ConsistencyScore(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	// 8 consistent, then 2 inconsistent = 80% = 0.8
+	for i := 0; i < 8; i++ {
+		v.Learn(NetworkBody{
+			Method:       "GET",
+			URL:          "http://localhost:3000/api/users/1",
+			Status:       200,
+			ResponseBody: `{"id":1,"name":"Alice"}`,
+			ContentType:  "application/json",
+		})
+	}
+	for i := 0; i < 2; i++ {
+		v.Validate(NetworkBody{
+			Method:       "GET",
+			URL:          "http://localhost:3000/api/users/1",
+			Status:       200,
+			ResponseBody: `{"id":1}`, // Missing 'name'
+			ContentType:  "application/json",
+		})
+	}
+
+	result := v.Report(APIContractFilter{})
+	if len(result.Endpoints) == 0 {
+		t.Fatal("Expected endpoints in report")
+	}
+
+	ep := result.Endpoints[0]
+	if ep.ConsistencyScore < 0 || ep.ConsistencyScore > 1 {
+		t.Errorf("Expected consistencyScore in [0,1], got %f", ep.ConsistencyScore)
+	}
+	// 8 consistent / 10 total = 0.8
+	if ep.ConsistencyScore < 0.79 || ep.ConsistencyScore > 0.81 {
+		t.Errorf("Expected consistencyScore ~0.8, got %f", ep.ConsistencyScore)
+	}
+}
+
+// Test 13: consistencyLevels explanation metadata in report
+func TestAPIContractReport_ConsistencyLevels(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	result := v.Report(APIContractFilter{})
+
+	if result.ConsistencyLevels == nil {
+		t.Fatal("Expected consistencyLevels metadata in report")
+	}
+
+	// Should explain the consistency score ranges
+	if len(result.ConsistencyLevels) == 0 {
+		t.Error("Expected non-empty consistencyLevels")
+	}
+
+	// Should contain keys mapping score ranges to descriptions
+	data, _ := json.Marshal(result.ConsistencyLevels)
+	var parsed map[string]interface{}
+	_ = json.Unmarshal(data, &parsed)
+
+	// Should have at least some standard level descriptions
+	if len(parsed) == 0 {
+		t.Error("Expected consistencyLevels to have entries")
+	}
+}
+
+// Test: Report also has analyzedAt
+func TestAPIContractReport_AnalyzedAtTimestamp(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	before := time.Now().Truncate(time.Second)
+	result := v.Report(APIContractFilter{})
+	after := time.Now().Add(time.Second).Truncate(time.Second)
+
+	if result.AnalyzedAt == "" {
+		t.Fatal("Expected analyzedAt to be set in report")
+	}
+
+	parsed, err := time.Parse(time.RFC3339, result.AnalyzedAt)
+	if err != nil {
+		t.Fatalf("Expected RFC3339 format for analyzedAt in report, got %q: %v", result.AnalyzedAt, err)
+	}
+
+	if parsed.Before(before) || parsed.After(after) {
+		t.Errorf("analyzedAt %v not in expected range [%v, %v]", parsed, before, after)
+	}
+}
+
+// Test: Report also has appliedFilter
+func TestAPIContractReport_AppliedFilter(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	result := v.Report(APIContractFilter{URLFilter: "users"})
+
+	if result.AppliedFilter == nil {
+		t.Fatal("Expected appliedFilter to be set in report")
+	}
+	if result.AppliedFilter.URL != "users" {
+		t.Errorf("Expected appliedFilter.url='users', got %q", result.AppliedFilter.URL)
+	}
+}
+
+// Test: EndpointTracker stores FirstCalled timestamp
+func TestAPIContractValidator_FirstCalledTracking(t *testing.T) {
+	v := NewAPIContractValidator()
+
+	before := time.Now()
+	v.Learn(NetworkBody{
+		Method:       "GET",
+		URL:          "http://localhost:3000/api/users/1",
+		Status:       200,
+		ResponseBody: `{"id":1}`,
+		ContentType:  "application/json",
+	})
+	after := time.Now()
+
+	tracker := v.GetTrackers()["GET /api/users/{id}"]
+	if tracker.FirstCalled.IsZero() {
+		t.Error("Expected FirstCalled to be set")
+	}
+	if tracker.FirstCalled.Before(before) || tracker.FirstCalled.After(after) {
+		t.Error("FirstCalled not in expected range")
+	}
+
+	// Second call should NOT update FirstCalled
+	time.Sleep(time.Millisecond)
+	v.Learn(NetworkBody{
+		Method:       "GET",
+		URL:          "http://localhost:3000/api/users/2",
+		Status:       200,
+		ResponseBody: `{"id":2}`,
+		ContentType:  "application/json",
+	})
+
+	tracker = v.GetTrackers()["GET /api/users/{id}"]
+	if tracker.FirstCalled.After(after) {
+		t.Error("FirstCalled should not be updated on subsequent calls")
+	}
+}
+
+// Test: Violation severity mapping
+func TestAPIContractViolation_SeverityMapping(t *testing.T) {
+	tests := []struct {
+		violationType    string
+		expectedSeverity string
+	}{
+		{"shape_change", "high"},
+		{"type_change", "high"},
+		{"error_spike", "critical"},
+		{"new_field", "low"},
+		{"null_field", "medium"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.violationType, func(t *testing.T) {
+			severity := violationSeverity(tt.violationType)
+			if severity != tt.expectedSeverity {
+				t.Errorf("Expected severity %q for type %q, got %q", tt.expectedSeverity, tt.violationType, severity)
+			}
+		})
+	}
+}

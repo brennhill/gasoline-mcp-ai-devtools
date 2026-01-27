@@ -1,15 +1,15 @@
 <div align="center">
 
-<img src="chrome_store_files/readme-banner.png" alt="Gasoline - Browser Observability for AI Coding Agents" width="100%" />
+<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-5.0.0-green.svg)](https://github.com/brennhill/gasoline/releases)
+[![Version](https://img.shields.io/badge/version-5.1.0-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
-[![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline)
-[![Linux](https://img.shields.io/badge/Linux-supported-FCC624.svg?logo=linux&logoColor=black)](https://github.com/brennhill/gasoline)
-[![Windows](https://img.shields.io/badge/Windows-supported-0078D6.svg?logo=windows&logoColor=white)](https://github.com/brennhill/gasoline)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/gasoline/pulls)
+[![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
+[![Linux](https://img.shields.io/badge/Linux-supported-FCC624.svg?logo=linux&logoColor=black)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
+[![Windows](https://img.shields.io/badge/Windows-supported-0078D6.svg?logo=windows&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/pulls)
 [![X Follow](https://img.shields.io/badge/follow-%40gasolinedev-000000.svg?logo=x&logoColor=white)](https://x.com/gasolinedev)
 
 **Browser observability for AI coding agents - autonomously debug and fix issues in real time.** Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.
@@ -38,11 +38,24 @@ npx gasoline-mcp
 #    - Click "Load unpacked" and select the `extension/` folder
 ```
 
-**Option B: From source** (requires [Go 1.21+](https://go.dev/))
+**Option B: PyPI (Python)**
+
+```bash
+# 1. Install and run the server
+pip install gasoline-mcp
+gasoline-mcp
+
+# 2. Load the extension manually (until Chrome Web Store approval):
+#    - Open chrome://extensions
+#    - Enable Developer mode
+#    - Click "Load unpacked" and select the `extension/` folder
+```
+
+**Option C: From source** (requires [Go 1.21+](https://go.dev/))
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/brennhill/gasoline.git
+git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
 cd gasoline
 
 # 2. Start the server
@@ -62,24 +75,46 @@ curl http://localhost:7890/health
 
 **MCP config** (add to your `.mcp.json` or Claude Code settings):
 
+*Option A: NPM*
 ```json
 {
   "mcpServers": {
     "gasoline": {
+      "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp"]
+      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
     }
   }
 }
 ```
 
-*Alternative for local development (must run from repo root):*
+*Option B: PyPI*
 ```json
 {
   "mcpServers": {
     "gasoline": {
+      "type": "stdio",
+      "command": "gasoline-mcp",
+      "args": ["--port", "7890", "--persist"]
+    }
+  }
+}
+```
+
+**Architecture:** The MCP system spawns a single Gasoline process that runs both:
+- HTTP server on port 7890 (for browser extension)
+- stdio MCP protocol (for AI tool)
+
+Both interfaces share the same browser telemetry state. Do NOT manually start Gasoline — let the MCP system manage the process lifecycle.
+
+*Option C: Local development (must run from repo root)*
+```json
+{
+  "mcpServers": {
+    "gasoline": {
+      "type": "stdio",
       "command": "go",
-      "args": ["run", "./cmd/dev-console"]
+      "args": ["run", "./cmd/dev-console", "--port", "7890", "--persist"]
     }
   }
 }
@@ -88,6 +123,18 @@ curl http://localhost:7890/health
 Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed**, and any MCP-compatible tool.
 
 **[Full setup guide →](https://cookwithgasoline.com/getting-started/)**
+
+**CLI options:**
+
+| Flag | Description |
+|------|-------------|
+| `--port <n>` | Port to listen on (default: 7890) |
+| `--server` | HTTP-only mode (no MCP) |
+| `--persist` | Keep running after MCP disconnect |
+| `--api-key <key>` | Require API key for HTTP requests |
+| `--connect` | Connect to existing server (multi-client) |
+| `--check` | Verify setup before running |
+| `--help` | Show all options |
 
 ## Comparison
 
@@ -158,19 +205,23 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 ## Performance
 
-See [latest benchmarks](benchmarks/latest-benchmark.md) for current performance data.
+See [latest benchmarks](docs/benchmarks/latest-benchmark.md) for current performance data.
 
-Last benchmarked: 2026-01-24 on darwin/arm64 (v5.0.0)
+Last benchmarked: 2026-01-28 on darwin/arm64 (v5.1.0)
+
+## Known Issues
+
+See [KNOWN-ISSUES.md](KNOWN-ISSUES.md) for current known issues and the v5.2 roadmap.
 
 ## Development
 
 ```bash
 make test                              # Go server tests
-node --test extension-tests/*.test.js  # Extension tests
+node --test tests/extension/*.test.js  # Extension tests
 make dev                               # Build for current platform
 ```
 
-**[Release process & quality gates →](RELEASE.md)**
+**[Release process & quality gates →](RELEASE.md)** · **[Changelog →](CHANGELOG.md)**
 
 ## License
 
@@ -180,12 +231,14 @@ make dev                               # Build for current platform
 
 <div align="center">
 
+<img src="docs/assets/images/sparky-wave.png" alt="Sparky the Salamander" width="120" />
+
 **[cookwithgasoline.com](https://cookwithgasoline.com)**
 
 *Pouring fuel on the AI development fire*
 
 If you find Gasoline useful, please consider giving it a star!
 
-[![Star on GitHub](https://img.shields.io/github/stars/brennhill/gasoline.svg?style=social)](https://github.com/brennhill/gasoline)
+[![Star on GitHub](https://img.shields.io/github/stars/brennhill/gasoline.svg?style=social)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
 
 </div>

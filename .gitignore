@@ -21,9 +21,9 @@ Thumbs.db
 *.swo
 
 # E2E test artifacts
-e2e-tests/.tmp/
-e2e-tests/test-results/
-e2e-tests/playwright-report/
+tests/e2e/.tmp/
+tests/e2e/test-results/
+tests/e2e/playwright-report/
 
 # Lint/build caches
 .eslintcache
@@ -37,7 +37,7 @@ e2e-tests/playwright-report/
 coverage.out
 
 # Benchmark intermediate files (only latest-benchmark.md is tracked)
-benchmarks/*.txt
+docs/benchmarks/*.txt
 
 # Runtime state
 .gasoline/

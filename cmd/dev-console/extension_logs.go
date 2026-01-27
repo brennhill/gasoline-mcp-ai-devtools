@@ -1,0 +1,62 @@
+package main
+
+import (
+	"encoding/json"
+	"net/http"
+	"time"
+)
+
+// ============================================
+// Extension Logs Handler
+// ============================================
+// Receives log entries from the browser extension's background script,
+// content script, and other extension contexts.
+//
+// This enables AI debugging of extension-internal behavior that isn't
+// visible through page-level console capture.
+
+// HandleExtensionLogs processes log entries from extension contexts
+func (c *Capture) HandleExtensionLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		Logs []ExtensionLog `json:"logs"`
+	}
+
+	// Parse JSON payload
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	now := time.Now()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Process each log entry
+	for _, log := range payload.Logs {
+		// Set server-side timestamp if not provided
+		if log.Timestamp.IsZero() {
+			log.Timestamp = now
+		}
+
+		// Append to ring buffer with capacity enforcement
+		c.extensionLogs = append(c.extensionLogs, log)
+
+		// Evict oldest entries if over capacity
+		if len(c.extensionLogs) > maxExtensionLogs {
+			c.extensionLogs = c.extensionLogs[len(c.extensionLogs)-maxExtensionLogs:]
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":       "ok",
+		"logs_stored":  len(payload.Logs),
+	})
+}

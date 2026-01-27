@@ -1140,7 +1140,7 @@ func TestHandleDiffSessions_URLFilter(t *testing.T) {
 	params := map[string]interface{}{
 		"action":     "capture",
 		"name":       "filtered",
-		"url_filter": "/api/",
+		"url": "/api/",
 	}
 	paramsJSON, _ := json.Marshal(params)
 

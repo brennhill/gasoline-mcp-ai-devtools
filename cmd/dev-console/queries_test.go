@@ -87,7 +87,7 @@ func TestV4PendingQueryResult(t *testing.T) {
 	}
 
 	// Result should be retrievable
-	got, found := capture.GetQueryResult(id)
+	got, found := capture.GetQueryResult(id, "")
 	if !found {
 		t.Fatal("Expected to find query result")
 	}
@@ -100,7 +100,7 @@ func TestV4PendingQueryResult(t *testing.T) {
 func TestV4PendingQueryResultNotFound(t *testing.T) {
 	capture := setupTestCapture(t)
 
-	_, found := capture.GetQueryResult("nonexistent-id")
+	_, found := capture.GetQueryResult("nonexistent-id", "")
 	if found {
 		t.Error("Expected not found for nonexistent query")
 	}
@@ -143,7 +143,7 @@ func TestV4DOMQueryWaitsForResult(t *testing.T) {
 	}()
 
 	// WaitForResult should block until result arrives
-	result, err := capture.WaitForResult(id, 1*time.Second)
+	result, err := capture.WaitForResult(id, 1*time.Second, "")
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
@@ -162,7 +162,7 @@ func TestV4DOMQueryWaitTimeout(t *testing.T) {
 	})
 
 	// WaitForResult should timeout
-	_, err := capture.WaitForResult(id, 50*time.Millisecond)
+	_, err := capture.WaitForResult(id, 50*time.Millisecond, "")
 	if err == nil {
 		t.Error("Expected timeout error")
 	}
@@ -237,7 +237,7 @@ func TestV4PostDOMResultEndpoint(t *testing.T) {
 	}
 
 	// Result should be stored
-	result, found := capture.GetQueryResult(id)
+	result, found := capture.GetQueryResult(id, "")
 	if !found {
 		t.Error("Expected result to be stored")
 	}
@@ -296,7 +296,7 @@ func TestMCPQueryDOM(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"query_dom","arguments":{"selector":"h1"}}`),
+			Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"h1"}}`),
 		})
 		done <- resp
 	}()
@@ -308,7 +308,7 @@ func TestMCPQueryDOM(t *testing.T) {
 		t.Fatal("Expected pending query to be created")
 	}
 
-	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"matches":[{"tag":"h1","text":"Hello World"}],"matchCount":1,"returnedCount":1}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Test","matchCount":1,"returnedCount":1,"matches":[{"tag":"h1","text":"Hello World"}]}`))
 
 	// Wait for response
 	resp := <-done
@@ -348,7 +348,7 @@ func TestMCPQueryDOMTimeout(t *testing.T) {
 	// Query with no extension to respond - should timeout
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"query_dom","arguments":{"selector":"h1"}}`),
+		Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"h1"}}`),
 	})
 
 	// Should return an error in the content (not protocol error)
@@ -415,7 +415,7 @@ func TestMCPRunAccessibilityAudit(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#main"}}`),
 		})
 		done <- resp
 	}()
@@ -464,7 +464,7 @@ func TestMCPRunAccessibilityAuditWithTags(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","tags":["wcag2a","wcag2aa"]}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","tags":["wcag2a","wcag2aa"]}}`),
 		})
 		done <- resp
 	}()
@@ -495,7 +495,7 @@ func TestV4QueryResultDeletedAfterRetrieval(t *testing.T) {
 	capture.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
 
 	// First retrieval should succeed
-	result, found := capture.GetQueryResult(id)
+	result, found := capture.GetQueryResult(id, "")
 	if !found {
 		t.Fatal("Expected result to be found on first read")
 	}
@@ -504,7 +504,7 @@ func TestV4QueryResultDeletedAfterRetrieval(t *testing.T) {
 	}
 
 	// Second retrieval should fail (result deleted after read)
-	_, found2 := capture.GetQueryResult(id)
+	_, found2 := capture.GetQueryResult(id, "")
 	if found2 {
 		t.Error("Expected result to be deleted after first retrieval")
 	}
@@ -525,7 +525,7 @@ func TestV4QueryResultDeletedAfterWaitForResult(t *testing.T) {
 	}()
 
 	// WaitForResult should succeed
-	result, err := capture.WaitForResult(id, time.Second)
+	result, err := capture.WaitForResult(id, time.Second, "")
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
@@ -534,7 +534,7 @@ func TestV4QueryResultDeletedAfterWaitForResult(t *testing.T) {
 	}
 
 	// Result should be cleaned up after WaitForResult returns
-	_, found := capture.GetQueryResult(id)
+	_, found := capture.GetQueryResult(id, "")
 	if found {
 		t.Error("Expected result to be cleaned up after WaitForResult")
 	}
@@ -551,7 +551,7 @@ func TestV4QueryResultMapDoesNotGrowUnbounded(t *testing.T) {
 		})
 		capture.SetQueryResult(id, json.RawMessage(`{"matches":[]}`))
 		// Read the result (should delete it)
-		capture.GetQueryResult(id)
+		capture.GetQueryResult(id, "")
 	}
 
 	// queryResults map should be empty
@@ -579,7 +579,7 @@ func TestA11yCacheMiss(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main","tags":["wcag2aa"]}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#main","tags":["wcag2aa"]}}`),
 		})
 		done <- resp
 	}()
@@ -625,7 +625,7 @@ func TestA11yCacheHit(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main","tags":["wcag2aa"]}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#main","tags":["wcag2aa"]}}`),
 		})
 		done <- resp
 	}()
@@ -641,7 +641,7 @@ func TestA11yCacheHit(t *testing.T) {
 	// Second call (should be cache hit — no pending query, immediate response)
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 3, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main","tags":["wcag2aa"]}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#main","tags":["wcag2aa"]}}`),
 	})
 
 	// Verify no new pending query was created
@@ -678,7 +678,7 @@ func TestA11yCacheTTLExpiry(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#main"}}`),
 		})
 		done <- resp
 	}()
@@ -696,7 +696,7 @@ func TestA11yCacheTTLExpiry(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 4, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#main"}}`),
 		})
 		done2 <- resp
 	}()
@@ -737,7 +737,7 @@ func TestA11yCacheTagNormalization(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","tags":["wcag2aa","wcag2a"]}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","tags":["wcag2aa","wcag2a"]}}`),
 		})
 		done <- resp
 	}()
@@ -753,7 +753,7 @@ func TestA11yCacheTagNormalization(t *testing.T) {
 	// Second call with tags in different order ["wcag2a", "wcag2aa"] — should hit cache
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 3, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","tags":["wcag2a","wcag2aa"]}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","tags":["wcag2a","wcag2aa"]}}`),
 	})
 
 	pending = capture.GetPendingQueries()
@@ -788,7 +788,7 @@ func TestA11yCacheForceRefresh(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#main"}}`),
 		})
 		done <- resp
 	}()
@@ -803,7 +803,7 @@ func TestA11yCacheForceRefresh(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main","force_refresh":true}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#main","force_refresh":true}}`),
 		})
 		done2 <- resp
 	}()
@@ -843,7 +843,7 @@ func TestA11yCacheErrorNotCached(t *testing.T) {
 	// First call — let it time out (don't provide result)
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#timeout-test"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#timeout-test"}}`),
 	})
 
 	var errResult struct {
@@ -862,7 +862,7 @@ func TestA11yCacheErrorNotCached(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#timeout-test"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#timeout-test"}}`),
 		})
 		done <- resp
 	}()
@@ -893,7 +893,7 @@ func TestA11yCacheDifferentParams(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#main"}}`),
 		})
 		done1 <- resp
 	}()
@@ -908,7 +908,7 @@ func TestA11yCacheDifferentParams(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#footer"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#footer"}}`),
 		})
 		done2 <- resp
 	}()
@@ -937,7 +937,7 @@ func TestA11yCacheMaxEntries(t *testing.T) {
 	// Populate 10 cache entries with different scopes
 	for i := 0; i < 10; i++ {
 		scope := fmt.Sprintf("#section-%d", i)
-		args := fmt.Sprintf(`{"name":"analyze","arguments":{"target":"accessibility","scope":"%s"}}`, scope)
+		args := fmt.Sprintf(`{"name":"observe","arguments":{"what":"accessibility","scope":"%s"}}`, scope)
 
 		done := make(chan JSONRPCResponse)
 		go func() {
@@ -967,7 +967,7 @@ func TestA11yCacheMaxEntries(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 100, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#section-new"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#section-new"}}`),
 		})
 		done <- resp
 	}()
@@ -987,7 +987,7 @@ func TestA11yCacheMaxEntries(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 101, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#section-0"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#section-0"}}`),
 		})
 		done2 <- resp
 	}()
@@ -1020,7 +1020,7 @@ func TestA11yCacheNavigationInvalidation(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#main"}}`),
 		})
 		done <- resp
 	}()
@@ -1038,7 +1038,7 @@ func TestA11yCacheNavigationInvalidation(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#main"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#main"}}`),
 		})
 		done2 <- resp
 	}()
@@ -1071,7 +1071,7 @@ func TestA11yCacheConcurrentDedup(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#concurrent"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#concurrent"}}`),
 		})
 		done1 <- resp
 	}()
@@ -1079,7 +1079,7 @@ func TestA11yCacheConcurrentDedup(t *testing.T) {
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 3, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"accessibility","scope":"#concurrent"}}`),
+			Params: json.RawMessage(`{"name":"observe","arguments":{"what":"accessibility","scope":"#concurrent"}}`),
 		})
 		done2 <- resp
 	}()
@@ -1139,13 +1139,13 @@ func TestA11yCacheForceRefreshParam(t *testing.T) {
 
 	var found bool
 	for _, tool := range toolsResult.Tools {
-		if tool.Name == "analyze" {
+		if tool.Name == "observe" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Fatal("analyze tool not found in tools list")
+		t.Fatal("observe tool not found in tools list")
 	}
 }
 
@@ -1230,7 +1230,7 @@ func TestHandleQueryResultSuccess(t *testing.T) {
 	}
 
 	// The result should be stored and query removed from pending
-	result, found := capture.GetQueryResult(id)
+	result, found := capture.GetQueryResult(id, "")
 	if !found {
 		t.Error("Expected query result to be stored")
 	}
@@ -1250,7 +1250,7 @@ func TestHandleQueryResultNotifiesWaiters(t *testing.T) {
 	// Start a goroutine waiting for the result
 	done := make(chan json.RawMessage, 1)
 	go func() {
-		result, err := capture.WaitForResult(id, 2*time.Second)
+		result, err := capture.WaitForResult(id, 2*time.Second, "")
 		if err != nil {
 			return
 		}
@@ -1345,7 +1345,7 @@ func TestSetQueryResultUnknownID(t *testing.T) {
 	capture.SetQueryResult("q-nonexistent", json.RawMessage(`{"data":"test"}`))
 
 	// The result should still be stored in queryResults
-	result, found := capture.GetQueryResult("q-nonexistent")
+	result, found := capture.GetQueryResult("q-nonexistent", "")
 	if !found {
 		t.Error("Expected result to be stored even for unknown ID")
 	}
@@ -1374,7 +1374,7 @@ func TestHandleA11yResultSameAsDOM(t *testing.T) {
 		t.Errorf("Expected 200, got %d", w.Code)
 	}
 
-	result, found := capture.GetQueryResult(id)
+	result, found := capture.GetQueryResult(id, "")
 	if !found {
 		t.Error("Expected a11y result to be stored")
 	}
@@ -1463,6 +1463,439 @@ func TestRemoveA11yCacheEntry_NonExistent(t *testing.T) {
 	}
 }
 
+// ============================================
+// query_dom Schema Improvement Tests
+// ============================================
+
+func TestQueryDOM_SchemaHasURLAndPageTitle(t *testing.T) {
+	// Verify the improved response includes url and pageTitle from extension
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"h1"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := capture.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query")
+	}
+
+	// Extension returns url and title
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com/page","title":"Test Page","matchCount":1,"returnedCount":1,"matches":[{"tag":"h1","text":"Hello"}]}`))
+
+	resp := <-done
+	text := extractMCPText(t, resp)
+
+	// Parse the JSON portion (after the summary line)
+	jsonStart := strings.Index(text, "\n")
+	if jsonStart < 0 {
+		t.Fatalf("Expected summary + JSON, got: %s", text)
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
+		t.Fatalf("Failed to parse JSON response: %v\nText: %s", err, text)
+	}
+
+	// Check url field
+	if url, ok := data["url"].(string); !ok || url != "https://example.com/page" {
+		t.Errorf("Expected url='https://example.com/page', got: %v", data["url"])
+	}
+
+	// Check pageTitle field
+	if title, ok := data["pageTitle"].(string); !ok || title != "Test Page" {
+		t.Errorf("Expected pageTitle='Test Page', got: %v", data["pageTitle"])
+	}
+}
+
+func TestQueryDOM_SchemaHasSelectorEcho(t *testing.T) {
+	// Verify the response echoes back the selector that was queried
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"div.user-card"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := capture.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query")
+	}
+
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","matchCount":2,"returnedCount":2,"matches":[{"tag":"div","text":"User 1"},{"tag":"div","text":"User 2"}]}`))
+
+	resp := <-done
+	text := extractMCPText(t, resp)
+
+	jsonStart := strings.Index(text, "\n")
+	if jsonStart < 0 {
+		t.Fatalf("Expected summary + JSON, got: %s", text)
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	if selector, ok := data["selector"].(string); !ok || selector != "div.user-card" {
+		t.Errorf("Expected selector='div.user-card', got: %v", data["selector"])
+	}
+}
+
+func TestQueryDOM_SchemaHasMatchCounts(t *testing.T) {
+	// Verify totalMatchCount and returnedMatchCount are present
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"li"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := capture.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query")
+	}
+
+	// Extension found 100 matches but only returned 50
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","matchCount":100,"returnedCount":50,"matches":[{"tag":"li","text":"item"}]}`))
+
+	resp := <-done
+	text := extractMCPText(t, resp)
+
+	jsonStart := strings.Index(text, "\n")
+	if jsonStart < 0 {
+		t.Fatalf("Expected summary + JSON, got: %s", text)
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	// Check totalMatchCount
+	if total, ok := data["totalMatchCount"].(float64); !ok || total != 100 {
+		t.Errorf("Expected totalMatchCount=100, got: %v", data["totalMatchCount"])
+	}
+
+	// Check returnedMatchCount
+	if returned, ok := data["returnedMatchCount"].(float64); !ok || returned != 50 {
+		t.Errorf("Expected returnedMatchCount=50, got: %v", data["returnedMatchCount"])
+	}
+}
+
+func TestQueryDOM_SchemaHasMetadata(t *testing.T) {
+	// Verify metadata fields: maxElementsReturned, maxDepthQueried, maxTextLength
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"p"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := capture.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query")
+	}
+
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","matchCount":1,"returnedCount":1,"matches":[{"tag":"p","text":"Hello"}]}`))
+
+	resp := <-done
+	text := extractMCPText(t, resp)
+
+	jsonStart := strings.Index(text, "\n")
+	if jsonStart < 0 {
+		t.Fatalf("Expected summary + JSON, got: %s", text)
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	if v, ok := data["maxElementsReturned"].(float64); !ok || v != 50 {
+		t.Errorf("Expected maxElementsReturned=50, got: %v", data["maxElementsReturned"])
+	}
+
+	if v, ok := data["maxDepthQueried"].(float64); !ok || v != 5 {
+		t.Errorf("Expected maxDepthQueried=5, got: %v", data["maxDepthQueried"])
+	}
+
+	if v, ok := data["maxTextLength"].(float64); !ok || v != 500 {
+		t.Errorf("Expected maxTextLength=500, got: %v", data["maxTextLength"])
+	}
+}
+
+func TestQueryDOM_SchemaTextTruncated(t *testing.T) {
+	// Verify textTruncated boolean is added to match objects
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"p"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := capture.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query")
+	}
+
+	// Create a long text string (exactly 500 chars = maxTextLength, so truncated)
+	longText := strings.Repeat("a", 500)
+	shortText := "short"
+	extResult := fmt.Sprintf(`{"url":"https://example.com","title":"Page","matchCount":2,"returnedCount":2,"matches":[{"tag":"p","text":"%s"},{"tag":"p","text":"%s"}]}`, longText, shortText)
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(extResult))
+
+	resp := <-done
+	text := extractMCPText(t, resp)
+
+	jsonStart := strings.Index(text, "\n")
+	if jsonStart < 0 {
+		t.Fatalf("Expected summary + JSON, got: %s", text)
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	matches, ok := data["matches"].([]interface{})
+	if !ok || len(matches) != 2 {
+		t.Fatalf("Expected 2 matches, got: %v", data["matches"])
+	}
+
+	// First match has text at max length (500 chars) - should be flagged as truncated
+	match0 := matches[0].(map[string]interface{})
+	if truncated, ok := match0["textTruncated"].(bool); !ok || !truncated {
+		t.Errorf("Expected textTruncated=true for 500-char text, got: %v", match0["textTruncated"])
+	}
+
+	// Second match has short text - should NOT be flagged
+	match1 := matches[1].(map[string]interface{})
+	if truncated, ok := match1["textTruncated"].(bool); !ok || truncated {
+		t.Errorf("Expected textTruncated=false for short text, got: %v", match1["textTruncated"])
+	}
+}
+
+func TestQueryDOM_SchemaBboxPixelsRename(t *testing.T) {
+	// Verify boundingBox is renamed to bboxPixels
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"div"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := capture.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query")
+	}
+
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","matchCount":1,"returnedCount":1,"matches":[{"tag":"div","text":"Hello","boundingBox":{"x":10,"y":20,"width":100,"height":50}}]}`))
+
+	resp := <-done
+	text := extractMCPText(t, resp)
+
+	jsonStart := strings.Index(text, "\n")
+	if jsonStart < 0 {
+		t.Fatalf("Expected summary + JSON, got: %s", text)
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	matches := data["matches"].([]interface{})
+	match0 := matches[0].(map[string]interface{})
+
+	// Should have bboxPixels, NOT boundingBox
+	if _, ok := match0["bboxPixels"]; !ok {
+		t.Error("Expected 'bboxPixels' field in match object")
+	}
+	if _, ok := match0["boundingBox"]; ok {
+		t.Error("Expected 'boundingBox' to be renamed to 'bboxPixels'")
+	}
+
+	// Verify the values are preserved
+	bbox := match0["bboxPixels"].(map[string]interface{})
+	if bbox["x"].(float64) != 10 || bbox["y"].(float64) != 20 {
+		t.Errorf("Expected bbox x=10, y=20, got: x=%v, y=%v", bbox["x"], bbox["y"])
+	}
+}
+
+func TestQueryDOM_SchemaEmptyHint(t *testing.T) {
+	// Verify helpful hint when matches is empty
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"#nonexistent"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := capture.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query")
+	}
+
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://example.com","title":"Page","matchCount":0,"returnedCount":0,"matches":[]}`))
+
+	resp := <-done
+	text := extractMCPText(t, resp)
+
+	jsonStart := strings.Index(text, "\n")
+	if jsonStart < 0 {
+		t.Fatalf("Expected summary + JSON, got: %s", text)
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	// Verify hint is present
+	hint, ok := data["hint"].(string)
+	if !ok || hint == "" {
+		t.Error("Expected 'hint' field when matches is empty")
+	}
+
+	// Hint should mention the selector
+	if !strings.Contains(hint, "#nonexistent") {
+		t.Errorf("Expected hint to mention the selector, got: %s", hint)
+	}
+}
+
+func TestQueryDOM_SchemaFullResponse(t *testing.T) {
+	// Integration test: verify the full improved response structure
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	mcp.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0", ID: 1, Method: "initialize",
+		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
+	})
+
+	done := make(chan JSONRPCResponse)
+	go func() {
+		resp := mcp.HandleRequest(JSONRPCRequest{
+			JSONRPC: "2.0", ID: 2, Method: "tools/call",
+			Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"h1"}}`),
+		})
+		done <- resp
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	pending := capture.GetPendingQueries()
+	if len(pending) == 0 {
+		t.Fatal("Expected pending query")
+	}
+
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"url":"https://app.example.com/dashboard","title":"Dashboard","matchCount":3,"returnedCount":3,"matches":[{"tag":"h1","text":"Welcome","visible":true,"boundingBox":{"x":0,"y":10,"width":200,"height":40}},{"tag":"h1","text":"Features","visible":true},{"tag":"h1","text":"About","visible":false}]}`))
+
+	resp := <-done
+	text := extractMCPText(t, resp)
+
+	// Verify summary line
+	if !strings.Contains(text, "3") {
+		t.Errorf("Expected summary to mention match count, got: %s", strings.Split(text, "\n")[0])
+	}
+
+	jsonStart := strings.Index(text, "\n")
+	var data map[string]interface{}
+	json.Unmarshal([]byte(text[jsonStart+1:]), &data)
+
+	// All top-level fields must be present
+	requiredFields := []string{"url", "pageTitle", "selector", "totalMatchCount", "returnedMatchCount", "maxElementsReturned", "maxDepthQueried", "maxTextLength", "matches"}
+	for _, field := range requiredFields {
+		if _, ok := data[field]; !ok {
+			t.Errorf("Missing required field: %s", field)
+		}
+	}
+
+	// No hint when matches is non-empty
+	if _, ok := data["hint"]; ok {
+		t.Error("Expected NO hint when matches are present")
+	}
+}
+
 func TestSetQueryResult_ConcurrentSetAndWait(t *testing.T) {
 	capture := setupTestCapture(t)
 
@@ -1477,7 +1910,7 @@ func TestSetQueryResult_ConcurrentSetAndWait(t *testing.T) {
 	resultCh := make(chan json.RawMessage, 1)
 	errCh := make(chan error, 1)
 	go func() {
-		result, err := capture.WaitForResult(id, 2*time.Second)
+		result, err := capture.WaitForResult(id, 2*time.Second, "")
 		resultCh <- result
 		errCh <- err
 	}()

@@ -109,10 +109,9 @@ func TestMCPToolsListIncludesV4Tools(t *testing.T) {
 
 	expectedTools := []string{
 		"observe",
-		"analyze",
 		"generate",
 		"configure",
-		"query_dom",
+		"interact",
 	}
 
 	for _, name := range expectedTools {
@@ -131,6 +130,7 @@ func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
 	entry := LogEntry{
 		"level":   "error",
 		"message": "Cannot read property 'user' of undefined",
+		"source":  "app.js:42",
 		"stack":   "TypeError: Cannot read property 'user' of undefined\n    at UserProfile.render (app.js:42:15)",
 		"_aiContext": map[string]interface{}{
 			"summary": "TypeError in UserProfile.render at app.js:42. React component: UserProfile > App.",
@@ -173,16 +173,21 @@ func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
 		t.Fatal("Expected content in response")
 	}
 
-	// The _aiContext should be preserved in the output
+	// After W1 migration, errors are returned as markdown table with summary.
+	// The error message and source should appear in the table columns.
 	responseText := result.Content[0].Text
-	if !strings.Contains(responseText, "_aiContext") {
-		t.Error("Expected _aiContext field to be preserved in observe(what:errors) output")
+	if !strings.Contains(responseText, "1 browser error(s)") {
+		t.Error("Expected summary line with error count")
 	}
-	if !strings.Contains(responseText, "componentAncestry") {
-		t.Error("Expected componentAncestry in _aiContext to be preserved")
+	if !strings.Contains(responseText, "Cannot read property") {
+		t.Error("Expected error message in markdown table")
 	}
-	if !strings.Contains(responseText, "UserProfile") {
-		t.Error("Expected component name to be preserved in _aiContext")
+	if !strings.Contains(responseText, "app.js:42") {
+		t.Error("Expected source in markdown table")
+	}
+	// Markdown table should have pipe delimiters
+	if !strings.Contains(responseText, "| ") {
+		t.Error("Expected markdown table format with pipe delimiters")
 	}
 }
 

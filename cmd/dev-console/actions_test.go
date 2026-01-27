@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -255,13 +256,13 @@ func TestMCPGetEnhancedActions(t *testing.T) {
 		t.Fatal("Expected content in response")
 	}
 
-	var actions []EnhancedAction
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &actions); err != nil {
-		t.Fatalf("Expected valid JSON actions, got error: %v", err)
+	// New format: summary line + markdown table
+	text := result.Content[0].Text
+	if !strings.Contains(text, "2 user action(s)") {
+		t.Errorf("Expected summary with '2 user action(s)', got: %s", text)
 	}
-
-	if len(actions) != 2 {
-		t.Errorf("Expected 2 actions, got %d", len(actions))
+	if !strings.Contains(text, "click") {
+		t.Error("Expected table to contain 'click' action type")
 	}
 }
 
@@ -293,11 +294,10 @@ func TestMCPGetEnhancedActionsWithLastN(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
-	var actions []EnhancedAction
-	json.Unmarshal([]byte(result.Content[0].Text), &actions)
-
-	if len(actions) != 5 {
-		t.Errorf("Expected 5 actions with last_n filter, got %d", len(actions))
+	// New format: summary line + markdown table
+	text := result.Content[0].Text
+	if !strings.Contains(text, "5 user action(s)") {
+		t.Errorf("Expected summary with '5 user action(s)', got: %s", text)
 	}
 }
 
@@ -323,7 +323,7 @@ func TestMCPGetEnhancedActionsEmpty(t *testing.T) {
 	}
 	json.Unmarshal(resp.Result, &result)
 
-	if result.Content[0].Text != "No enhanced actions captured" {
+	if !strings.Contains(result.Content[0].Text, "No user actions captured") {
 		t.Errorf("Expected empty message, got: %s", result.Content[0].Text)
 	}
 }

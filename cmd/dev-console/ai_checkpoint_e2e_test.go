@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -25,25 +26,25 @@ func initMCP(t *testing.T, mcp *MCPHandler) {
 	}
 }
 
-// helper: call analyze with target:"changes" and given arguments JSON
+// helper: call observe with what:"changes" and given arguments JSON
 func callGetChangesSince(t *testing.T, mcp *MCPHandler, argsJSON string) DiffResponse {
 	t.Helper()
-	// Inject "target":"changes" into the arguments
+	// Inject "what":"changes" into the arguments
 	var args map[string]interface{}
 	if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
 		t.Fatalf("Failed to unmarshal argsJSON: %v", err)
 	}
-	args["target"] = "changes"
+	args["what"] = "changes"
 	mergedArgs, err := json.Marshal(args)
 	if err != nil {
 		t.Fatalf("Failed to marshal merged args: %v", err)
 	}
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":` + string(mergedArgs) + `}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":` + string(mergedArgs) + `}`),
 	})
 	if resp.Error != nil {
-		t.Fatalf("analyze(target:changes) failed: %s", resp.Error.Message)
+		t.Fatalf("observe(what:changes) failed: %s", resp.Error.Message)
 	}
 
 	var result struct {
@@ -59,9 +60,15 @@ func callGetChangesSince(t *testing.T, mcp *MCPHandler, argsJSON string) DiffRes
 		t.Fatal("Expected content in response")
 	}
 
+	// Strip the summary prefix line added by mcpJSONResponse
+	text := result.Content[0].Text
+	if idx := strings.Index(text, "\n"); idx >= 0 {
+		text = text[idx+1:]
+	}
+
 	var diff DiffResponse
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &diff); err != nil {
-		t.Fatalf("Failed to unmarshal DiffResponse: %v\nRaw: %s", err, result.Content[0].Text)
+	if err := json.Unmarshal([]byte(text), &diff); err != nil {
+		t.Fatalf("Failed to unmarshal DiffResponse: %v\nRaw: %s", err, text)
 	}
 	return diff
 }
@@ -91,13 +98,13 @@ func TestE2E_ToolAppearsInToolsList(t *testing.T) {
 
 	found := false
 	for _, tool := range toolsList.Tools {
-		if tool.Name == "analyze" {
+		if tool.Name == "observe" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("analyze not found in tools/list")
+		t.Error("observe not found in tools/list")
 	}
 }
 

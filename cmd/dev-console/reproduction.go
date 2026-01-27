@@ -16,7 +16,7 @@ import (
 // ReproductionOptions configures enhanced reproduction script generation
 type ReproductionOptions struct {
 	ErrorMessage       string `json:"error_message"`
-	LastNActions       int    `json:"last_n_actions"`
+	LastNActions       int    `json:"last_n"`
 	BaseURL            string `json:"base_url"`
 	IncludeScreenshots bool   `json:"include_screenshots"`
 	GenerateFixtures   bool   `json:"generate_fixtures"`

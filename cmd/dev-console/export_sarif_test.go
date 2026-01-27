@@ -928,6 +928,111 @@ func TestSaveSARIFToFile_UnwritableDir(t *testing.T) {
 // Coverage: ensureRule deduplication (line 199)
 // ============================================
 
+// ============================================
+// Coverage: resolveExistingPath
+// ============================================
+
+func TestResolveExistingPath_ExistingPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	resolved := resolveExistingPath(tmpDir)
+	// Should resolve to the real path (EvalSymlinks on existing dir)
+	expected, _ := filepath.EvalSymlinks(tmpDir)
+	if resolved != expected {
+		t.Errorf("resolveExistingPath(%q) = %q, want %q", tmpDir, resolved, expected)
+	}
+}
+
+func TestResolveExistingPath_NonExistentFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	target := filepath.Join(tmpDir, "nonexistent", "file.sarif")
+	resolved := resolveExistingPath(target)
+	// Parent doesn't exist, grandparent (tmpDir) does.
+	// Should resolve tmpDir's real path + "nonexistent/file.sarif"
+	resolvedTmp, _ := filepath.EvalSymlinks(tmpDir)
+	expected := filepath.Join(resolvedTmp, "nonexistent", "file.sarif")
+	if resolved != expected {
+		t.Errorf("resolveExistingPath(%q) = %q, want %q", target, resolved, expected)
+	}
+}
+
+func TestResolveExistingPath_SymlinkInPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	targetDir := t.TempDir()
+
+	// Create a symlink inside tmpDir pointing to targetDir
+	symlinkPath := filepath.Join(tmpDir, "link")
+	if err := os.Symlink(targetDir, symlinkPath); err != nil {
+		t.Skipf("Cannot create symlinks: %v", err)
+	}
+
+	// Resolve a file path through the symlink
+	filePath := filepath.Join(symlinkPath, "output.sarif")
+	resolved := resolveExistingPath(filePath)
+
+	// The resolved path should be under targetDir, not under tmpDir
+	resolvedTarget, _ := filepath.EvalSymlinks(targetDir)
+	expected := filepath.Join(resolvedTarget, "output.sarif")
+	if resolved != expected {
+		t.Errorf("resolveExistingPath(%q) = %q, want %q (should follow symlink)", filePath, resolved, expected)
+	}
+}
+
+func TestSaveSARIFToFile_SymlinkResolution(t *testing.T) {
+	// Verify that saveSARIFToFile resolves symlinks before checking allowed paths.
+	// On macOS, t.TempDir() dirs are all under the OS temp dir, so symlinks
+	// between temp dirs are legitimately allowed by the temp dir check.
+	// This test verifies that symlink resolution works correctly by checking
+	// that the file is written to the RESOLVED target (not the symlink path).
+	cwdDir := t.TempDir()
+	targetDir := t.TempDir()
+
+	symlinkPath := filepath.Join(cwdDir, "link")
+	if err := os.Symlink(targetDir, symlinkPath); err != nil {
+		t.Skipf("Cannot create symlinks: %v", err)
+	}
+
+	// Change to cwdDir
+	originalDir, _ := os.Getwd()
+	os.Chdir(cwdDir)
+	defer os.Chdir(originalDir)
+
+	// Verify resolveExistingPath follows the symlink correctly
+	filePath := filepath.Join(symlinkPath, "result.sarif")
+	resolvedFile := resolveExistingPath(filePath)
+
+	resolvedTarget, _ := filepath.EvalSymlinks(targetDir)
+	expected := filepath.Join(resolvedTarget, "result.sarif")
+	if resolvedFile != expected {
+		t.Errorf("resolveExistingPath through symlink: got %q, want %q", resolvedFile, expected)
+	}
+
+	// The resolved path is under the OS temp dir, so the write should succeed.
+	// This validates that the resolution + allowed-dir check work together.
+	log := &SARIFLog{Version: "2.1.0", Schema: "test", Runs: []SARIFRun{}}
+	err := saveSARIFToFile(log, filePath)
+	if err != nil {
+		t.Fatalf("saveSARIFToFile through symlink under temp should succeed: %v", err)
+	}
+
+	// Verify the file was written to the resolved target
+	resolvedTargetFile := filepath.Join(resolvedTarget, "result.sarif")
+	if _, err := os.Stat(resolvedTargetFile); os.IsNotExist(err) {
+		t.Error("Expected file to be written at resolved symlink target")
+	}
+}
+
+func TestSaveSARIFToFile_OutsideAllowedDirs(t *testing.T) {
+	// Test that paths outside both cwd and temp dir are rejected.
+	log := &SARIFLog{Version: "2.1.0", Schema: "test", Runs: []SARIFRun{}}
+	err := saveSARIFToFile(log, "/nonexistent/path/evil.sarif")
+	if err == nil {
+		t.Error("Expected error for path outside allowed directories")
+	}
+	if err != nil && !strings.Contains(err.Error(), "save_to path must be under") {
+		t.Errorf("Expected 'save_to path must be under' error, got: %v", err)
+	}
+}
+
 func TestEnsureRule_Deduplication(t *testing.T) {
 	run := &SARIFRun{
 		Tool: SARIFTool{

@@ -1211,6 +1211,86 @@ func TestMemory_EvictHard_SingleEntryWS(t *testing.T) {
 	}
 }
 
+// ============================================
+// Tests: Eviction actually frees backing arrays (P0 fix)
+// After eviction, cap(slice) should equal len(slice) since
+// survivors are copied to new slices.
+// ============================================
+
+func TestMemory_EvictBuffers_FreesBackingArray(t *testing.T) {
+	c := NewCapture()
+
+	// Fill above soft limit with network bodies
+	c.mu.Lock()
+	for i := 0; i < 110; i++ {
+		c.networkBodies = append(c.networkBodies, makeNetworkBody(100000, 100000))
+		c.networkAddedAt = append(c.networkAddedAt, time.Now())
+	}
+	c.mu.Unlock()
+
+	// Trigger soft eviction
+	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(100)})
+
+	c.mu.RLock()
+	nbLen := len(c.networkBodies)
+	nbCap := cap(c.networkBodies)
+	nbAtLen := len(c.networkAddedAt)
+	nbAtCap := cap(c.networkAddedAt)
+	c.mu.RUnlock()
+
+	// After copy-to-new-slice, cap should equal len (no wasted capacity)
+	if nbCap != nbLen {
+		t.Errorf("networkBodies: cap(%d) != len(%d) — backing array not freed", nbCap, nbLen)
+	}
+	if nbAtCap != nbAtLen {
+		t.Errorf("networkAddedAt: cap(%d) != len(%d) — backing array not freed", nbAtCap, nbAtLen)
+	}
+}
+
+func TestMemory_EvictCritical_FreesBackingArray(t *testing.T) {
+	c := NewCapture()
+
+	// Fill above critical limit
+	c.mu.Lock()
+	for i := 0; i < 600; i++ {
+		c.networkBodies = append(c.networkBodies, makeNetworkBody(100000, 100000))
+		c.networkAddedAt = append(c.networkAddedAt, time.Now())
+	}
+	for i := 0; i < 10; i++ {
+		c.wsEvents = append(c.wsEvents, makeWSEvent(1000))
+		c.wsAddedAt = append(c.wsAddedAt, time.Now())
+	}
+	for i := 0; i < 5; i++ {
+		c.enhancedActions = append(c.enhancedActions, makeAction())
+		c.actionAddedAt = append(c.actionAddedAt, time.Now())
+	}
+	c.mu.Unlock()
+
+	// Trigger critical eviction
+	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(100)})
+
+	c.mu.RLock()
+	// After critical eviction with nil assignment, slices should be nil
+	nbIsNil := c.networkBodies == nil
+	nbAtIsNil := c.networkAddedAt == nil
+	actionsIsNil := c.enhancedActions == nil
+	actionsAtIsNil := c.actionAddedAt == nil
+	c.mu.RUnlock()
+
+	if !nbIsNil {
+		t.Error("networkBodies should be nil after critical eviction")
+	}
+	if !nbAtIsNil {
+		t.Error("networkAddedAt should be nil after critical eviction")
+	}
+	if !actionsIsNil {
+		t.Error("enhancedActions should be nil after critical eviction")
+	}
+	if !actionsAtIsNil {
+		t.Error("actionAddedAt should be nil after critical eviction")
+	}
+}
+
 // Test: evictSoft with exactly 1 action entry (exercises removeCount=0->1 for actions)
 func TestMemory_EvictSoft_SingleEntryAction(t *testing.T) {
 	c := NewCapture()

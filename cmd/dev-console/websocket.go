@@ -18,14 +18,14 @@ import (
 // ============================================
 
 // AddWebSocketEvents adds WebSocket events to the buffer
-func (v *Capture) AddWebSocketEvents(events []WebSocketEvent) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
+func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	// Enforce memory limits before adding
-	v.enforceMemory()
+	c.enforceMemory()
 
-	v.wsTotalAdded += int64(len(events))
+	c.wsTotalAdded += int64(len(events))
 	now := time.Now()
 	for i := range events {
 		// Detect binary format in message data
@@ -37,53 +37,62 @@ func (v *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 		}
 
 		// Track connection state
-		v.trackConnection(events[i])
+		c.trackConnection(events[i])
 
 		// Add to ring buffer
-		v.wsEvents = append(v.wsEvents, events[i])
-		v.wsAddedAt = append(v.wsAddedAt, now)
+		c.wsEvents = append(c.wsEvents, events[i])
+		c.wsAddedAt = append(c.wsAddedAt, now)
 	}
 
 	// Enforce max count (respecting minimal mode)
-	capacity := v.effectiveWSCapacity()
-	if len(v.wsEvents) > capacity {
-		v.wsEvents = v.wsEvents[len(v.wsEvents)-capacity:]
-		v.wsAddedAt = v.wsAddedAt[len(v.wsAddedAt)-capacity:]
+	capacity := c.effectiveWSCapacity()
+	if len(c.wsEvents) > capacity {
+		keep := len(c.wsEvents) - capacity
+		newEvents := make([]WebSocketEvent, capacity)
+		copy(newEvents, c.wsEvents[keep:])
+		c.wsEvents = newEvents
+		newAddedAt := make([]time.Time, capacity)
+		copy(newAddedAt, c.wsAddedAt[keep:])
+		c.wsAddedAt = newAddedAt
 	}
 
 	// Enforce per-buffer memory limit
-	v.evictWSForMemory()
+	c.evictWSForMemory()
 }
 
 // evictWSForMemory removes oldest events if memory exceeds limit.
 // Calculates how many entries to drop in a single pass to avoid O(n²) re-scanning.
-func (v *Capture) evictWSForMemory() {
-	excess := v.calcWSMemory() - wsBufferMemoryLimit
+func (c *Capture) evictWSForMemory() {
+	excess := c.calcWSMemory() - wsBufferMemoryLimit
 	if excess <= 0 {
 		return
 	}
 	drop := 0
-	for drop < len(v.wsEvents) && excess > 0 {
-		excess -= int64(len(v.wsEvents[drop].Data)) + wsEventOverhead
+	for drop < len(c.wsEvents) && excess > 0 {
+		excess -= int64(len(c.wsEvents[drop].Data)) + wsEventOverhead
 		drop++
 	}
-	v.wsEvents = v.wsEvents[drop:]
-	if len(v.wsAddedAt) >= drop {
-		v.wsAddedAt = v.wsAddedAt[drop:]
+	surviving := make([]WebSocketEvent, len(c.wsEvents)-drop)
+	copy(surviving, c.wsEvents[drop:])
+	c.wsEvents = surviving
+	if len(c.wsAddedAt) >= drop {
+		survivingAt := make([]time.Time, len(c.wsAddedAt)-drop)
+		copy(survivingAt, c.wsAddedAt[drop:])
+		c.wsAddedAt = survivingAt
 	}
 }
 
 // GetWebSocketEventCount returns the current number of buffered events
-func (v *Capture) GetWebSocketEventCount() int {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	return len(v.wsEvents)
+func (c *Capture) GetWebSocketEventCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.wsEvents)
 }
 
 // GetWebSocketEvents returns filtered WebSocket events (newest first)
-func (v *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEvent {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+func (c *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEvent {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	limit := filter.Limit
 	if limit <= 0 {
@@ -92,21 +101,21 @@ func (v *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 
 	// Filter events
 	var filtered []WebSocketEvent
-	for i := range v.wsEvents {
+	for i := range c.wsEvents {
 		// TTL filtering: skip entries older than TTL
-		if v.TTL > 0 && i < len(v.wsAddedAt) && isExpiredByTTL(v.wsAddedAt[i], v.TTL) {
+		if c.TTL > 0 && i < len(c.wsAddedAt) && isExpiredByTTL(c.wsAddedAt[i], c.TTL) {
 			continue
 		}
-		if filter.ConnectionID != "" && v.wsEvents[i].ID != filter.ConnectionID {
+		if filter.ConnectionID != "" && c.wsEvents[i].ID != filter.ConnectionID {
 			continue
 		}
-		if filter.URLFilter != "" && !strings.Contains(v.wsEvents[i].URL, filter.URLFilter) {
+		if filter.URLFilter != "" && !strings.Contains(c.wsEvents[i].URL, filter.URLFilter) {
 			continue
 		}
-		if filter.Direction != "" && v.wsEvents[i].Direction != filter.Direction {
+		if filter.Direction != "" && c.wsEvents[i].Direction != filter.Direction {
 			continue
 		}
-		filtered = append(filtered, v.wsEvents[i])
+		filtered = append(filtered, c.wsEvents[i])
 	}
 
 	reverseSlice(filtered)
@@ -117,28 +126,30 @@ func (v *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 }
 
 // trackConnection updates connection state from events
-func (v *Capture) trackConnection(event WebSocketEvent) {
+func (c *Capture) trackConnection(event WebSocketEvent) {
 	switch event.Event {
 	case "open":
 		// Enforce max active connections
-		if len(v.connections) >= maxActiveConns {
+		if len(c.connections) >= maxActiveConns {
 			// Evict oldest
-			if len(v.connOrder) > 0 {
-				oldestID := v.connOrder[0]
-				delete(v.connections, oldestID)
-				v.connOrder = v.connOrder[1:]
+			if len(c.connOrder) > 0 {
+				oldestID := c.connOrder[0]
+				delete(c.connections, oldestID)
+				newOrder := make([]string, len(c.connOrder)-1)
+				copy(newOrder, c.connOrder[1:])
+				c.connOrder = newOrder
 			}
 		}
-		v.connections[event.ID] = &connectionState{
+		c.connections[event.ID] = &connectionState{
 			id:       event.ID,
 			url:      event.URL,
 			state:    "open",
 			openedAt: event.Timestamp,
 		}
-		v.connOrder = append(v.connOrder, event.ID)
+		c.connOrder = append(c.connOrder, event.ID)
 
 	case "close":
-		conn := v.connections[event.ID]
+		conn := c.connections[event.ID]
 		if conn == nil {
 			return
 		}
@@ -155,23 +166,26 @@ func (v *Capture) trackConnection(event WebSocketEvent) {
 		closed.TotalMessages.Incoming = conn.incoming.total
 		closed.TotalMessages.Outgoing = conn.outgoing.total
 
-		v.closedConns = append(v.closedConns, closed)
-		if len(v.closedConns) > maxClosedConns {
-			v.closedConns = v.closedConns[len(v.closedConns)-maxClosedConns:]
+		c.closedConns = append(c.closedConns, closed)
+		if len(c.closedConns) > maxClosedConns {
+			keep := len(c.closedConns) - maxClosedConns
+			surviving := make([]WebSocketClosedConnection, maxClosedConns)
+			copy(surviving, c.closedConns[keep:])
+			c.closedConns = surviving
 		}
 
-		delete(v.connections, event.ID)
+		delete(c.connections, event.ID)
 		// Remove from order
-		v.connOrder = removeFromSlice(v.connOrder, event.ID)
+		c.connOrder = removeFromSlice(c.connOrder, event.ID)
 
 	case "error":
-		conn := v.connections[event.ID]
+		conn := c.connections[event.ID]
 		if conn != nil {
 			conn.state = "error"
 		}
 
 	case "message":
-		conn := v.connections[event.ID]
+		conn := c.connections[event.ID]
 		if conn == nil {
 			return
 		}
@@ -214,11 +228,12 @@ func appendAndPrune(times []time.Time, t time.Time) []time.Time {
 	for start < len(times) && times[start].Before(cutoff) {
 		start++
 	}
-	pruned := times[start:]
+	surviving := make([]time.Time, len(times)-start)
+	copy(surviving, times[start:])
 	if !t.IsZero() {
-		pruned = append(pruned, t)
+		surviving = append(surviving, t)
 	}
-	return pruned
+	return surviving
 }
 
 // calcRate returns messages per second from recent timestamps within the rate window
@@ -275,16 +290,16 @@ func formatAge(ts string) string {
 }
 
 // GetWebSocketStatus returns current connection states
-func (v *Capture) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStatusResponse {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+func (c *Capture) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStatusResponse {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	resp := WebSocketStatusResponse{
 		Connections: make([]WebSocketConnection, 0),
 		Closed:      make([]WebSocketClosedConnection, 0),
 	}
 
-	for _, conn := range v.connections {
+	for _, conn := range c.connections {
 		if filter.URLFilter != "" && !strings.Contains(conn.url, filter.URLFilter) {
 			continue
 		}
@@ -338,7 +353,7 @@ func (v *Capture) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStat
 		resp.Connections = append(resp.Connections, wc)
 	}
 
-	for _, closed := range v.closedConns {
+	for _, closed := range c.closedConns {
 		if filter.URLFilter != "" && !strings.Contains(closed.URL, filter.URLFilter) {
 			continue
 		}
@@ -351,9 +366,9 @@ func (v *Capture) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStat
 	return resp
 }
 
-func (v *Capture) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) {
+func (c *Capture) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		events := v.GetWebSocketEvents(WebSocketEventFilter{})
+		events := c.GetWebSocketEvents(WebSocketEventFilter{})
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"events": events,
@@ -362,7 +377,7 @@ func (v *Capture) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	body, ok := v.readIngestBody(w, r)
+	body, ok := c.readIngestBody(w, r)
 	if !ok {
 		return
 	}
@@ -373,16 +388,16 @@ func (v *Capture) HandleWebSocketEvents(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if !v.recordAndRecheck(w, len(payload.Events)) {
+	if !c.recordAndRecheck(w, len(payload.Events)) {
 		return
 	}
-	v.AddWebSocketEvents(payload.Events)
+	c.AddWebSocketEvents(payload.Events)
 	w.WriteHeader(http.StatusOK)
 }
 
 // HandleWebSocketStatus handles GET /websocket-status
-func (v *Capture) HandleWebSocketStatus(w http.ResponseWriter, r *http.Request) {
-	status := v.GetWebSocketStatus(WebSocketStatusFilter{})
+func (c *Capture) HandleWebSocketStatus(w http.ResponseWriter, r *http.Request) {
+	status := c.GetWebSocketStatus(WebSocketStatusFilter{})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(status)
 }
@@ -395,7 +410,7 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 		Limit        int    `json:"limit"`
 	}
 	if err := json.Unmarshal(args, &arguments); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Error parsing arguments: " + err.Error())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
 	events := h.capture.GetWebSocketEvents(WebSocketEventFilter{
@@ -416,15 +431,38 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 		events = filtered
 	}
 
-	var contentText string
 	if len(events) == 0 {
-		contentText = "No WebSocket events captured"
-	} else {
-		eventsJSON, _ := json.Marshal(events)
-		contentText = string(eventsJSON)
+		msg := "No WebSocket events captured"
+		if h.captureOverrides != nil {
+			overrides := h.captureOverrides.GetAll()
+			wsMode := overrides["ws_mode"]
+			if wsMode == "" {
+				wsMode = "lifecycle" // default
+			}
+			switch wsMode {
+			case "off":
+				msg += "\n\nWebSocket capture is OFF. To enable, call:\nconfigure({action: \"capture\", settings: {ws_mode: \"lifecycle\"}})"
+			case "lifecycle":
+				msg += "\n\nws_mode is 'lifecycle' (open/close only, no message payloads). To capture message content, call:\nconfigure({action: \"capture\", settings: {ws_mode: \"messages\"}})"
+			}
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(msg)}
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(contentText)}
+	summary := fmt.Sprintf("%d WebSocket event(s)", len(events))
+	rows := make([][]string, len(events))
+	for i, e := range events {
+		rows[i] = []string{
+			e.ID,
+			e.Event,
+			truncate(e.URL, 60),
+			e.Direction,
+			fmt.Sprintf("%d", e.Size),
+			e.Timestamp,
+		}
+	}
+	table := markdownTable([]string{"ID", "Event", "URL", "Direction", "Size", "Time"}, rows)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
 }
 
 func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -433,7 +471,7 @@ func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) 
 		ConnectionID string `json:"connection_id"`
 	}
 	if err := json.Unmarshal(args, &arguments); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Error parsing arguments: " + err.Error())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
 	status := h.capture.GetWebSocketStatus(WebSocketStatusFilter{
@@ -441,6 +479,5 @@ func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) 
 		ConnectionID: arguments.ConnectionID,
 	})
 
-	statusJSON, _ := json.Marshal(status)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(statusJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("WebSocket connection status", status)}
 }

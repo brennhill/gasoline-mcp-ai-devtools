@@ -301,7 +301,7 @@ export function generatePlaywrightScript(actions, opts = {}) {
     }
     prevTimestamp = action.timestamp
 
-    const locator = getPlaywrightLocator(action.selectors || {}, baseUrl)
+    const locator = getPlaywrightLocator(action.selectors || {})
 
     switch (action.type) {
       case 'click':

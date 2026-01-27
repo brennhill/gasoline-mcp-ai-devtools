@@ -1,3 +1,6 @@
+// ttl.go — TTL (time-to-live) duration parsing and validation.
+// Supports Go duration strings with a minimum threshold of 1 minute.
+// Empty string means unlimited retention.
 package main
 
 import (
@@ -30,13 +33,17 @@ func ParseTTL(s string) (time.Duration, error) {
 
 // SetTTL sets the TTL on a Capture instance.
 // TTL=0 means unlimited (no filtering).
-func (v *Capture) SetTTL(ttl time.Duration) {
-	v.TTL = ttl
+func (c *Capture) SetTTL(ttl time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.TTL = ttl
 }
 
 // SetTTL sets the TTL on a Server instance.
 // TTL=0 means unlimited (no filtering).
 func (s *Server) SetTTL(ttl time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.TTL = ttl
 }
 

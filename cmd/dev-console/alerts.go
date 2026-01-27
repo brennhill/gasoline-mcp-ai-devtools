@@ -69,15 +69,22 @@ type AlertBuffer struct {
 }
 
 // addAlert appends an alert to the buffer, evicting the oldest if at capacity.
+// Also emits the alert as an MCP notification if streaming is enabled.
 func (h *ToolHandler) addAlert(a Alert) {
 	h.alertMu.Lock()
-	defer h.alertMu.Unlock()
-
 	if len(h.alerts) >= alertBufferCap {
-		// FIFO eviction: remove oldest
-		h.alerts = h.alerts[1:]
+		// FIFO eviction: remove oldest — make()+copy() to release old backing array
+		newAlerts := make([]Alert, len(h.alerts)-1)
+		copy(newAlerts, h.alerts[1:])
+		h.alerts = newAlerts
 	}
 	h.alerts = append(h.alerts, a)
+	h.alertMu.Unlock()
+
+	// Emit to active stream if configured (non-blocking, separate mutex)
+	if h.streamState != nil {
+		h.streamState.EmitAlert(a)
+	}
 }
 
 // drainAlerts returns all pending alerts (processed: deduped, sorted, correlated)
@@ -90,7 +97,7 @@ func (h *ToolHandler) drainAlerts() []Alert {
 	}
 	raw := make([]Alert, len(h.alerts))
 	copy(raw, h.alerts)
-	h.alerts = h.alerts[:0]
+	h.alerts = nil
 	h.alertMu.Unlock()
 
 	// Step 1: Deduplicate (same title + category → merge with count)
@@ -118,6 +125,7 @@ func formatAlertsBlock(alerts []Alert) string {
 		sb.WriteString("\n")
 	}
 
+	// Error impossible: result structure contains only serializable types
 	alertsJSON, _ := json.Marshal(alerts)
 	sb.Write(alertsJSON)
 
@@ -300,6 +308,11 @@ func severityRank(s string) int {
 // ============================================
 
 func (h *ToolHandler) handleCIWebhook(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
 	// Limit request body to 1MB
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 
@@ -315,11 +328,22 @@ func (h *ToolHandler) handleCIWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate required fields
+	if ciResult.Status == "" {
+		http.Error(w, `{"error":"missing required field: status"}`, http.StatusBadRequest)
+		return
+	}
+	if ciResult.Source == "" {
+		http.Error(w, `{"error":"missing required field: source"}`, http.StatusBadRequest)
+		return
+	}
+
 	ciResult.ReceivedAt = time.Now().UTC()
 
 	h.alertMu.Lock()
 
 	// Idempotency: check if same commit+status already exists
+	var newAlert *Alert
 	updated := false
 	for i := range h.ciResults {
 		if h.ciResults[i].Commit == ciResult.Commit && h.ciResults[i].Status == ciResult.Status {
@@ -339,19 +363,29 @@ func (h *ToolHandler) handleCIWebhook(w http.ResponseWriter, r *http.Request) {
 	if !updated {
 		// Cap CI results at 10
 		if len(h.ciResults) >= ciResultsCap {
-			h.ciResults = h.ciResults[1:]
+			newResults := make([]CIResult, len(h.ciResults)-1)
+			copy(newResults, h.ciResults[1:])
+			h.ciResults = newResults
 		}
 		h.ciResults = append(h.ciResults, ciResult)
 
-		// Generate alert (append without lock since we hold it)
+		// Generate alert
 		alert := h.buildCIAlert(ciResult)
 		if len(h.alerts) >= alertBufferCap {
-			h.alerts = h.alerts[1:]
+			newAlerts := make([]Alert, len(h.alerts)-1)
+			copy(newAlerts, h.alerts[1:])
+			h.alerts = newAlerts
 		}
 		h.alerts = append(h.alerts, alert)
+		newAlert = &alert
 	}
 
 	h.alertMu.Unlock()
+
+	// Emit to streaming outside the lock (fixes C1: bypass of addAlert streaming path)
+	if newAlert != nil && h.streamState != nil {
+		h.streamState.EmitAlert(*newAlert)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -393,15 +427,20 @@ func (h *ToolHandler) buildCIAlert(ci CIResult) Alert {
 // recordErrorForAnomaly tracks error timestamps for anomaly detection.
 // If error frequency exceeds 3x the rolling average in a 10-second window,
 // an anomaly alert is generated.
+// anomalyWindowSeconds is the sliding window for anomaly detection error tracking.
+const anomalyWindowSeconds = 60
+
+// anomalyBucketSeconds is the recent-error bucket size for spike detection.
+const anomalyBucketSeconds = 10
+
 func (h *ToolHandler) recordErrorForAnomaly(t time.Time) {
 	h.alertMu.Lock()
-	defer h.alertMu.Unlock()
 
 	h.errorTimes = append(h.errorTimes, t)
 
-	// Prune entries older than 60 seconds
-	cutoff := t.Add(-60 * time.Second)
-	pruned := h.errorTimes[:0]
+	// Prune entries older than the anomaly window
+	cutoff := t.Add(-time.Duration(anomalyWindowSeconds) * time.Second)
+	pruned := make([]time.Time, 0, len(h.errorTimes))
 	for _, et := range h.errorTimes {
 		if et.After(cutoff) {
 			pruned = append(pruned, et)
@@ -411,11 +450,12 @@ func (h *ToolHandler) recordErrorForAnomaly(t time.Time) {
 
 	// Need at least 2 data points to compute a rate
 	if len(h.errorTimes) < 2 {
+		h.alertMu.Unlock()
 		return
 	}
 
-	// Count errors in last 10 seconds
-	recentCutoff := t.Add(-10 * time.Second)
+	// Count errors in last bucket
+	recentCutoff := t.Add(-time.Duration(anomalyBucketSeconds) * time.Second)
 	recentCount := 0
 	for _, et := range h.errorTimes {
 		if et.After(recentCutoff) {
@@ -423,19 +463,20 @@ func (h *ToolHandler) recordErrorForAnomaly(t time.Time) {
 		}
 	}
 
-	// Rolling average: total errors in 60s window / 6 (number of 10s buckets)
+	// Rolling average: total errors in window / number of buckets
 	totalCount := len(h.errorTimes)
-	rollingAvg := float64(totalCount) / 6.0
+	numBuckets := float64(anomalyWindowSeconds) / float64(anomalyBucketSeconds)
+	rollingAvg := float64(totalCount) / numBuckets
 
 	// Spike detection: >3x the rolling average
+	var newAlert *Alert
 	if rollingAvg > 0 && float64(recentCount) > 3.0*rollingAvg {
 		// Check we haven't already generated an anomaly alert recently
 		alreadyAlerted := false
 		for _, a := range h.alerts {
 			if a.Category == "anomaly" && a.Source == "anomaly_detector" {
-				// Only skip if alert is from the last 10 seconds
 				if at, err := time.Parse(time.RFC3339, a.Timestamp); err == nil {
-					if t.Sub(at) < 10*time.Second {
+					if t.Sub(at) < time.Duration(anomalyBucketSeconds)*time.Second {
 						alreadyAlerted = true
 						break
 					}
@@ -448,14 +489,24 @@ func (h *ToolHandler) recordErrorForAnomaly(t time.Time) {
 				Severity:  "warning",
 				Category:  "anomaly",
 				Title:     "Error frequency spike detected",
-				Detail:    fmt.Sprintf("%d errors in last 10s vs %.1f rolling average", recentCount, rollingAvg),
+				Detail:    fmt.Sprintf("%d errors in last %ds vs %.1f rolling average", recentCount, anomalyBucketSeconds, rollingAvg),
 				Timestamp: t.Format(time.RFC3339),
 				Source:    "anomaly_detector",
 			}
 			if len(h.alerts) >= alertBufferCap {
-				h.alerts = h.alerts[1:]
+				newAlerts := make([]Alert, len(h.alerts)-1)
+				copy(newAlerts, h.alerts[1:])
+				h.alerts = newAlerts
 			}
 			h.alerts = append(h.alerts, alert)
+			newAlert = &alert
 		}
+	}
+
+	h.alertMu.Unlock()
+
+	// Emit to streaming outside the lock (fixes C1: bypass of addAlert streaming path)
+	if newAlert != nil && h.streamState != nil {
+		h.streamState.EmitAlert(*newAlert)
 	}
 }
