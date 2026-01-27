@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -174,7 +175,7 @@ func TestGetHealth_ResponseStructure(t *testing.T) {
 	// Create a mock capture for buffer data
 	capture := NewCapture()
 
-	response := hm.GetHealth(capture, version)
+	response := hm.GetHealth(capture, nil, version)
 
 	// Verify server info
 	if response.Server.Version == "" {
@@ -235,7 +236,7 @@ func TestGetHealth_MemoryStats(t *testing.T) {
 	hm := NewHealthMetrics()
 	capture := NewCapture()
 
-	response := hm.GetHealth(capture, version)
+	response := hm.GetHealth(capture, nil, version)
 
 	// Memory should be populated from runtime.MemStats
 	if response.Memory.CurrentMB == 0 && response.Memory.AllocMB == 0 {
@@ -259,7 +260,7 @@ func TestGetHealth_BufferUtilization(t *testing.T) {
 		{ID: "test2", Event: "message"},
 	})
 
-	response := hm.GetHealth(capture, version)
+	response := hm.GetHealth(capture, nil, version)
 
 	// WebSocket buffer should show 2 entries
 	if response.Buffers.WebSocket.Entries != 2 {
@@ -277,7 +278,7 @@ func TestGetHealth_RateLimiting(t *testing.T) {
 	hm := NewHealthMetrics()
 	capture := NewCapture()
 
-	response := hm.GetHealth(capture, version)
+	response := hm.GetHealth(capture, nil, version)
 
 	// Rate limiting info should be present
 	if response.RateLimiting.Threshold <= 0 {
@@ -298,7 +299,7 @@ func TestGetHealth_ErrorRate(t *testing.T) {
 	hm.IncrementError("observe")
 	hm.IncrementError("observe")
 
-	response := hm.GetHealth(capture, version)
+	response := hm.GetHealth(capture, nil, version)
 
 	expectedRate := 20.0 // 2/10 * 100
 	if response.Audit.ErrorRatePct != expectedRate {
@@ -311,7 +312,7 @@ func TestGetHealth_ZeroDivision(t *testing.T) {
 	capture := NewCapture()
 
 	// No requests yet - error rate should be 0, not NaN or panic
-	response := hm.GetHealth(capture, version)
+	response := hm.GetHealth(capture, nil, version)
 
 	if response.Audit.ErrorRatePct != 0 {
 		t.Errorf("expected 0%% error rate with no requests, got %.2f%%", response.Audit.ErrorRatePct)
@@ -322,7 +323,7 @@ func TestGetHealth_JSONSerialization(t *testing.T) {
 	hm := NewHealthMetrics()
 	capture := NewCapture()
 
-	response := hm.GetHealth(capture, version)
+	response := hm.GetHealth(capture, nil, version)
 
 	// Verify it serializes to valid JSON
 	data, err := json.Marshal(response)
@@ -386,9 +387,17 @@ func TestToolHandler_GetHealthTool(t *testing.T) {
 		t.Fatal("expected content in result")
 	}
 
-	// Parse the health response from the text content
+	// Parse the health response from the text content (strip summary line)
+	text := result.Content[0].Text
+	lines := strings.SplitN(text, "\n", 2)
+	if len(lines) < 2 {
+		t.Fatalf("expected summary + JSON, got: %s", text)
+	}
+	if lines[0] != "Server health" {
+		t.Errorf("expected summary 'Server health', got %q", lines[0])
+	}
 	var health MCPHealthResponse
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &health); err != nil {
+	if err := json.Unmarshal([]byte(lines[1]), &health); err != nil {
 		t.Fatalf("failed to unmarshal health response: %v", err)
 	}
 
@@ -421,9 +430,7 @@ func TestHealthMetrics_ManyTools(t *testing.T) {
 	hm := NewHealthMetrics()
 
 	tools := []string{
-		"observe", "analyze", "generate", "configure", "query_dom",
-		"generate_csp", "security_audit", "audit_third_parties",
-		"diff_security", "get_audit_log", "diff_sessions", "get_health",
+		"observe", "generate", "configure", "interact",
 	}
 
 	for _, tool := range tools {

@@ -50,26 +50,32 @@ type EndpointTracker struct {
 	StatusHistory    []int                  `json:"status_history"`    // Last N status codes
 	FieldPresence    map[string]int         `json:"field_presence"`    // field -> count of appearances
 	FieldTypes       map[string]string      `json:"field_types"`       // field -> inferred type
+	FirstCalled      time.Time              `json:"first_called"`      // When endpoint was first seen
 	LastCalled       time.Time              `json:"last_called"`
 	Violations       []APIContractViolation `json:"violations"`
 }
 
 // APIContractViolation represents a detected contract violation.
 type APIContractViolation struct {
-	Endpoint      string                 `json:"endpoint"`
-	Type          string                 `json:"type"` // "shape_change", "type_change", "error_spike", "new_field", "null_field"
-	Description   string                 `json:"description"`
-	ExpectedShape map[string]interface{} `json:"expected_shape,omitempty"`
-	ActualShape   map[string]interface{} `json:"actual_shape,omitempty"`
-	MissingFields []string               `json:"missing_fields,omitempty"`
-	NewFields     []string               `json:"new_fields,omitempty"`
-	Field         string                 `json:"field,omitempty"`
-	ExpectedType  string                 `json:"expected_type,omitempty"`
-	ActualType    string                 `json:"actual_type,omitempty"`
-	SampleValue   interface{}            `json:"sample_value,omitempty"`
-	StatusHistory []int                  `json:"status_history,omitempty"`
-	LastErrorBody map[string]interface{} `json:"last_error_body,omitempty"`
-	Occurrences   *ViolationOccurrences  `json:"occurrences,omitempty"`
+	Endpoint          string                 `json:"endpoint"`
+	Type              string                 `json:"type"`           // "shape_change", "type_change", "error_spike", "new_field", "null_field"
+	ViolationType     string                 `json:"violation_type"` // Same as Type, explicit for LLM consumption
+	Severity          string                 `json:"severity"`       // "critical", "high", "medium", "low"
+	Description       string                 `json:"description"`
+	AffectedCallCount int                    `json:"affected_call_count"`        // How many calls violated this rule
+	FirstSeenAt       string                 `json:"first_seen_at,omitempty"`    // RFC3339 when violation first detected
+	LastSeenAt        string                 `json:"last_seen_at,omitempty"`     // RFC3339 when violation last detected
+	ExpectedShape     map[string]interface{} `json:"expected_shape,omitempty"`
+	ActualShape       map[string]interface{} `json:"actual_shape,omitempty"`
+	MissingFields     []string               `json:"missing_fields,omitempty"`
+	NewFields         []string               `json:"new_fields,omitempty"`
+	Field             string                 `json:"field,omitempty"`
+	ExpectedType      string                 `json:"expected_type,omitempty"`
+	ActualType        string                 `json:"actual_type,omitempty"`
+	SampleValue       interface{}            `json:"sample_value,omitempty"`
+	StatusHistory     []int                  `json:"status_history,omitempty"`
+	LastErrorBody     map[string]interface{} `json:"last_error_body,omitempty"`
+	Occurrences       *ViolationOccurrences  `json:"occurrences,omitempty"`
 }
 
 // ViolationOccurrences tracks when a violation was first seen and how often.
@@ -82,23 +88,46 @@ type ViolationOccurrences struct {
 
 // APIContractFilter controls which endpoints are analyzed.
 type APIContractFilter struct {
-	URLFilter       string   `json:"url_filter,omitempty"`
+	URLFilter       string   `json:"url,omitempty"`
 	IgnoreEndpoints []string `json:"ignore_endpoints,omitempty"`
+}
+
+// AnalyzeSummary provides aggregate counts for LLM consumption.
+type AnalyzeSummary struct {
+	Violations     int `json:"violations"`
+	Endpoints      int `json:"endpoints"`
+	TotalRequests  int `json:"totalRequests"`
+	CleanEndpoints int `json:"cleanEndpoints"`
+}
+
+// AppliedFilterEcho echoes back the filter parameters that were applied.
+type AppliedFilterEcho struct {
+	URL             string   `json:"url,omitempty"`
+	IgnoreEndpoints []string `json:"ignoreEndpoints,omitempty"`
 }
 
 // APIContractAnalyzeResult is the response from the analyze action.
 type APIContractAnalyzeResult struct {
-	Action                string                 `json:"action"`
-	Violations            []APIContractViolation `json:"violations"`
-	TrackedEndpoints      int                    `json:"tracked_endpoints"`
-	TotalRequestsAnalyzed int                    `json:"total_requests_analyzed"`
-	CleanEndpoints        int                    `json:"clean_endpoints"`
+	Action                 string                 `json:"action"`
+	AnalyzedAt             string                 `json:"analyzedAt"`                    // RFC3339 timestamp
+	DataWindowStartedAt    string                 `json:"dataWindowStartedAt,omitempty"` // RFC3339 when data collection began
+	AppliedFilter          *AppliedFilterEcho     `json:"appliedFilter,omitempty"`       // Echo of filter parameters
+	Summary                *AnalyzeSummary        `json:"summary"`                       // Aggregate counts
+	Violations             []APIContractViolation `json:"violations"`
+	TrackedEndpoints       int                    `json:"tracked_endpoints"`
+	TotalRequestsAnalyzed  int                    `json:"total_requests_analyzed"`
+	CleanEndpoints         int                    `json:"clean_endpoints"`
+	PossibleViolationTypes []string               `json:"possibleViolationTypes"` // Metadata: what types of violations are detected
+	Hint                   string                 `json:"hint,omitempty"`         // Helpful hint when no violations found
 }
 
 // APIContractReportResult is the response from the report action.
 type APIContractReportResult struct {
-	Action    string                   `json:"action"`
-	Endpoints []EndpointContractReport `json:"endpoints"`
+	Action            string                   `json:"action"`
+	AnalyzedAt        string                   `json:"analyzedAt"`              // RFC3339 timestamp
+	AppliedFilter     *AppliedFilterEcho       `json:"appliedFilter,omitempty"` // Echo of filter parameters
+	Endpoints         []EndpointContractReport `json:"endpoints"`
+	ConsistencyLevels map[string]string        `json:"consistencyLevels"` // Metadata: score range explanations
 }
 
 // EndpointContractReport summarizes a single endpoint's contract state.
@@ -109,7 +138,9 @@ type EndpointContractReport struct {
 	StatusCodes      map[string]int         `json:"status_codes"`
 	EstablishedShape map[string]interface{} `json:"established_shape,omitempty"`
 	Consistency      string                 `json:"consistency"`
-	LastCalled       string                 `json:"last_called"`
+	ConsistencyScore float64                `json:"consistency_score"` // Numeric 0-1
+	FirstCalledAt    string                 `json:"first_called_at"`
+	LastCalledAt     string                 `json:"last_called_at"`
 }
 
 // ============================================
@@ -189,12 +220,18 @@ func (v *APIContractValidator) Learn(body NetworkBody) {
 
 	tracker := v.getOrCreateTracker(endpoint)
 	tracker.CallCount++
-	tracker.LastCalled = time.Now()
+	now := time.Now()
+	if tracker.FirstCalled.IsZero() {
+		tracker.FirstCalled = now
+	}
+	tracker.LastCalled = now
 
 	// Track status code
 	tracker.StatusHistory = append(tracker.StatusHistory, body.Status)
 	if len(tracker.StatusHistory) > maxStatusHistory {
-		tracker.StatusHistory = tracker.StatusHistory[1:]
+		newHistory := make([]int, len(tracker.StatusHistory)-1)
+		copy(newHistory, tracker.StatusHistory[1:])
+		tracker.StatusHistory = newHistory
 	}
 
 	// Only learn shape from successful responses
@@ -331,12 +368,18 @@ func (v *APIContractValidator) Validate(body NetworkBody) []APIContractViolation
 	endpoint := normalizeEndpoint(body.Method, body.URL)
 	tracker := v.getOrCreateTracker(endpoint)
 	tracker.CallCount++
-	tracker.LastCalled = time.Now()
+	now := time.Now()
+	if tracker.FirstCalled.IsZero() {
+		tracker.FirstCalled = now
+	}
+	tracker.LastCalled = now
 
 	// Track status
 	tracker.StatusHistory = append(tracker.StatusHistory, body.Status)
 	if len(tracker.StatusHistory) > maxStatusHistory {
-		tracker.StatusHistory = tracker.StatusHistory[1:]
+		newHistory := make([]int, len(tracker.StatusHistory)-1)
+		copy(newHistory, tracker.StatusHistory[1:])
+		tracker.StatusHistory = newHistory
 	}
 
 	var violations []APIContractViolation
@@ -536,11 +579,50 @@ func (v *APIContractValidator) compareShapes(endpoint string, expected, actual, 
 }
 
 func (v *APIContractValidator) addViolation(tracker *EndpointTracker, violation APIContractViolation) {
+	// Enrich violation with metadata
+	now := time.Now().Format(time.RFC3339)
+	violation.ViolationType = violation.Type
+	violation.Severity = violationSeverity(violation.Type)
+	violation.AffectedCallCount = 1
+
+	// Check for existing violation of same type to update timestamps
+	for i := range tracker.Violations {
+		if tracker.Violations[i].Type == violation.Type && tracker.Violations[i].Endpoint == violation.Endpoint {
+			// Update existing: bump count and lastSeenAt
+			tracker.Violations[i].AffectedCallCount++
+			tracker.Violations[i].LastSeenAt = now
+			return
+		}
+	}
+
+	// New violation: set firstSeenAt and lastSeenAt
+	violation.FirstSeenAt = now
+	violation.LastSeenAt = now
+
 	if len(tracker.Violations) >= maxViolationsPerEndpoint {
-		// Remove oldest
-		tracker.Violations = tracker.Violations[1:]
+		newViolations := make([]APIContractViolation, len(tracker.Violations)-1)
+		copy(newViolations, tracker.Violations[1:])
+		tracker.Violations = newViolations
 	}
 	tracker.Violations = append(tracker.Violations, violation)
+}
+
+// violationSeverity maps violation types to severity levels.
+func violationSeverity(violationType string) string {
+	switch violationType {
+	case "error_spike":
+		return "critical"
+	case "shape_change":
+		return "high"
+	case "type_change":
+		return "high"
+	case "null_field":
+		return "medium"
+	case "new_field":
+		return "low"
+	default:
+		return "medium"
+	}
 }
 
 // ============================================
@@ -556,6 +638,7 @@ func (v *APIContractValidator) Analyze(filter APIContractFilter) APIContractAnal
 	totalRequests := 0
 	cleanEndpoints := 0
 	trackedEndpoints := 0
+	var earliestCall time.Time
 
 	for endpoint, tracker := range v.trackers {
 		if !v.matchesFilter(endpoint, filter) {
@@ -563,6 +646,11 @@ func (v *APIContractValidator) Analyze(filter APIContractFilter) APIContractAnal
 		}
 		trackedEndpoints++
 		totalRequests += tracker.CallCount
+
+		// Track earliest call for dataWindowStartedAt
+		if !tracker.FirstCalled.IsZero() && (earliestCall.IsZero() || tracker.FirstCalled.Before(earliestCall)) {
+			earliestCall = tracker.FirstCalled
+		}
 
 		if len(tracker.Violations) > 0 {
 			violations = append(violations, tracker.Violations...)
@@ -576,13 +664,45 @@ func (v *APIContractValidator) Analyze(filter APIContractFilter) APIContractAnal
 		return violations[i].Endpoint < violations[j].Endpoint
 	})
 
-	return APIContractAnalyzeResult{
+	result := APIContractAnalyzeResult{
 		Action:                "analyzed",
+		AnalyzedAt:            time.Now().Format(time.RFC3339),
 		Violations:            violations,
 		TrackedEndpoints:      trackedEndpoints,
 		TotalRequestsAnalyzed: totalRequests,
 		CleanEndpoints:        cleanEndpoints,
+		Summary: &AnalyzeSummary{
+			Violations:     len(violations),
+			Endpoints:      trackedEndpoints,
+			TotalRequests:  totalRequests,
+			CleanEndpoints: cleanEndpoints,
+		},
+		PossibleViolationTypes: []string{"shape_change", "type_change", "error_spike", "new_field", "null_field"},
 	}
+
+	// dataWindowStartedAt: when data collection began
+	if !earliestCall.IsZero() {
+		result.DataWindowStartedAt = earliestCall.Format(time.RFC3339)
+	}
+
+	// appliedFilter echo
+	if filter.URLFilter != "" || len(filter.IgnoreEndpoints) > 0 {
+		result.AppliedFilter = &AppliedFilterEcho{
+			URL:             filter.URLFilter,
+			IgnoreEndpoints: filter.IgnoreEndpoints,
+		}
+	}
+
+	// Helpful hint when no violations found
+	if len(violations) == 0 {
+		if trackedEndpoints > 0 {
+			result.Hint = fmt.Sprintf("No violations detected. All %d tracked endpoint(s) have consistent response shapes.", trackedEndpoints)
+		} else {
+			result.Hint = "No violations detected. No endpoints tracked yet — browse your application to capture API traffic."
+		}
+	}
+
+	return result
 }
 
 // Report returns the current state of all tracked endpoint schemas.
@@ -611,20 +731,31 @@ func (v *APIContractValidator) Report(filter APIContractFilter) APIContractRepor
 			consistency = fmt.Sprintf("%.0f%%", pct)
 		}
 
+		// Calculate consistency score (0-1)
+		consistencyScore := 1.0
+		if tracker.CallCount > 0 {
+			consistencyScore = float64(tracker.ConsistentCount) / float64(tracker.CallCount)
+		}
+
 		// Extract method from endpoint
 		parts := strings.SplitN(endpoint, " ", 2)
 		method := parts[0]
 
 		report := EndpointContractReport{
-			Endpoint:    endpoint,
-			Method:      method,
-			CallCount:   tracker.CallCount,
-			StatusCodes: statusCodes,
-			Consistency: consistency,
+			Endpoint:         endpoint,
+			Method:           method,
+			CallCount:        tracker.CallCount,
+			StatusCodes:      statusCodes,
+			Consistency:      consistency,
+			ConsistencyScore: consistencyScore,
 		}
 
 		if !tracker.LastCalled.IsZero() {
-			report.LastCalled = tracker.LastCalled.Format(time.RFC3339)
+			report.LastCalledAt = tracker.LastCalled.Format(time.RFC3339)
+		}
+
+		if !tracker.FirstCalled.IsZero() {
+			report.FirstCalledAt = tracker.FirstCalled.Format(time.RFC3339)
 		}
 
 		if tracker.EstablishedShape != nil {
@@ -641,10 +772,27 @@ func (v *APIContractValidator) Report(filter APIContractFilter) APIContractRepor
 		return endpoints[i].CallCount > endpoints[j].CallCount
 	})
 
-	return APIContractReportResult{
-		Action:    "report",
-		Endpoints: endpoints,
+	result := APIContractReportResult{
+		Action:     "report",
+		AnalyzedAt: time.Now().Format(time.RFC3339),
+		Endpoints:  endpoints,
+		ConsistencyLevels: map[string]string{
+			"1.0":       "Perfect — all responses match established schema",
+			"0.9-0.99":  "Good — occasional minor deviations",
+			"0.7-0.89":  "Degraded — frequent schema mismatches, investigate",
+			"below 0.7": "Poor — endpoint contract is unstable",
+		},
 	}
+
+	// appliedFilter echo
+	if filter.URLFilter != "" || len(filter.IgnoreEndpoints) > 0 {
+		result.AppliedFilter = &AppliedFilterEcho{
+			URL:             filter.URLFilter,
+			IgnoreEndpoints: filter.IgnoreEndpoints,
+		}
+	}
+
+	return result
 }
 
 // Clear resets all tracked endpoint data.

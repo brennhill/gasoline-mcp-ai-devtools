@@ -937,7 +937,7 @@ func TestHandleSecurityAudit_WithChecksParam(t *testing.T) {
 
 func TestHandleSecurityAudit_URLFilter(t *testing.T) {
 	scanner := NewSecurityScanner()
-	params := json.RawMessage(`{"url_filter": "api.example.com"}`)
+	params := json.RawMessage(`{"url": "api.example.com"}`)
 	bodies := []NetworkBody{
 		{
 			Method: "GET",

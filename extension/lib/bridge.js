@@ -26,6 +26,12 @@ export function postLog(payload) {
       payload: {
         ts: new Date().toISOString(),
         url: window.location.href,
+        // Extract message from multiple possible sources
+        message: payload.message || payload.error || (payload.args?.[0] != null ? String(payload.args[0]) : ''),
+        // Derive source from url (filename:line if available)
+        source: payload.filename
+          ? `${payload.filename}:${payload.lineno || 0}`
+          : '',
         ...(enrichments.length > 0 ? { _enrichments: enrichments } : {}),
         ...(context && payload.level === 'error' ? { _context: context } : {}),
         ...(actions && actions.length > 0 ? { _actions: actions } : {}),

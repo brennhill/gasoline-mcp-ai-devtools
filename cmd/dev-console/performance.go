@@ -9,7 +9,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 )
@@ -19,25 +18,27 @@ import (
 // ============================================
 
 // AddPerformanceSnapshot stores a performance snapshot and updates baselines
-func (v *Capture) AddPerformanceSnapshot(snapshot PerformanceSnapshot) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
+func (c *Capture) AddPerformanceSnapshot(snapshot PerformanceSnapshot) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	url := snapshot.URL
 
 	// LRU eviction for snapshots
-	if _, exists := v.perf.snapshots[url]; exists {
-		v.perf.snapshotOrder = removeFromSlice(v.perf.snapshotOrder, url)
-	} else if len(v.perf.snapshotOrder) >= maxPerfSnapshots {
-		oldest := v.perf.snapshotOrder[0]
-		delete(v.perf.snapshots, oldest)
-		v.perf.snapshotOrder = v.perf.snapshotOrder[1:]
+	if _, exists := c.perf.snapshots[url]; exists {
+		c.perf.snapshotOrder = removeFromSlice(c.perf.snapshotOrder, url)
+	} else if len(c.perf.snapshotOrder) >= maxPerfSnapshots {
+		oldest := c.perf.snapshotOrder[0]
+		delete(c.perf.snapshots, oldest)
+		newOrder := make([]string, len(c.perf.snapshotOrder)-1)
+		copy(newOrder, c.perf.snapshotOrder[1:])
+		c.perf.snapshotOrder = newOrder
 	}
-	v.perf.snapshots[url] = snapshot
-	v.perf.snapshotOrder = append(v.perf.snapshotOrder, url)
+	c.perf.snapshots[url] = snapshot
+	c.perf.snapshotOrder = append(c.perf.snapshotOrder, url)
 
 	// Update baseline
-	v.updateBaseline(snapshot)
+	c.updateBaseline(snapshot)
 }
 
 // avgOptionalFloat computes a simple running average for nullable float64 pointers
@@ -67,16 +68,18 @@ func weightedOptionalFloat(baseline *float64, snapshot *float64, baseWeight, new
 }
 
 // updateBaseline updates the running average baseline for a URL
-func (v *Capture) updateBaseline(snapshot PerformanceSnapshot) {
+func (c *Capture) updateBaseline(snapshot PerformanceSnapshot) {
 	url := snapshot.URL
-	baseline, exists := v.perf.baselines[url]
+	baseline, exists := c.perf.baselines[url]
 
 	if !exists {
 		// LRU eviction for baselines
-		if len(v.perf.baselineOrder) >= maxPerfBaselines {
-			oldest := v.perf.baselineOrder[0]
-			delete(v.perf.baselines, oldest)
-			v.perf.baselineOrder = v.perf.baselineOrder[1:]
+		if len(c.perf.baselineOrder) >= maxPerfBaselines {
+			oldest := c.perf.baselineOrder[0]
+			delete(c.perf.baselines, oldest)
+			newOrder := make([]string, len(c.perf.baselineOrder)-1)
+			copy(newOrder, c.perf.baselineOrder[1:])
+			c.perf.baselineOrder = newOrder
 		}
 
 		// First sample: use snapshot values directly
@@ -100,14 +103,14 @@ func (v *Capture) updateBaseline(snapshot PerformanceSnapshot) {
 			CLS:       snapshot.CLS,
 			Resources: filterTopResources(snapshot.Resources),
 		}
-		v.perf.baselines[url] = baseline
-		v.perf.baselineOrder = append(v.perf.baselineOrder, url)
+		c.perf.baselines[url] = baseline
+		c.perf.baselineOrder = append(c.perf.baselineOrder, url)
 		return
 	}
 
 	// Remove from order and re-append (LRU touch)
-	v.perf.baselineOrder = removeFromSlice(v.perf.baselineOrder, url)
-	v.perf.baselineOrder = append(v.perf.baselineOrder, url)
+	c.perf.baselineOrder = removeFromSlice(c.perf.baselineOrder, url)
+	c.perf.baselineOrder = append(c.perf.baselineOrder, url)
 
 	baseline.SampleCount++
 	baseline.LastUpdated = snapshot.Timestamp
@@ -144,27 +147,27 @@ func (v *Capture) updateBaseline(snapshot PerformanceSnapshot) {
 	}
 
 	// Update resource fingerprint with moving average
-	v.updateBaselineResources(&baseline, snapshot.Resources)
-	v.perf.baselines[url] = baseline
+	c.updateBaselineResources(&baseline, snapshot.Resources)
+	c.perf.baselines[url] = baseline
 }
 
 // GetPerformanceSnapshot returns the snapshot for a given URL
-func (v *Capture) GetPerformanceSnapshot(url string) (PerformanceSnapshot, bool) {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	s, ok := v.perf.snapshots[url]
+func (c *Capture) GetPerformanceSnapshot(url string) (PerformanceSnapshot, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	s, ok := c.perf.snapshots[url]
 	return s, ok
 }
 
 // GetLatestPerformanceSnapshot returns the most recently added snapshot
-func (v *Capture) GetLatestPerformanceSnapshot() (PerformanceSnapshot, bool) {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	if len(v.perf.snapshotOrder) == 0 {
+func (c *Capture) GetLatestPerformanceSnapshot() (PerformanceSnapshot, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if len(c.perf.snapshotOrder) == 0 {
 		return PerformanceSnapshot{}, false
 	}
-	url := v.perf.snapshotOrder[len(v.perf.snapshotOrder)-1]
-	return v.perf.snapshots[url], true
+	url := c.perf.snapshotOrder[len(c.perf.snapshotOrder)-1]
+	return c.perf.snapshots[url], true
 }
 
 // ============================================
@@ -236,18 +239,18 @@ func assessINP(value float64) string {
 }
 
 // GetWebVitals returns the current core web vitals from the latest performance snapshot
-func (v *Capture) GetWebVitals() WebVitalsResult {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+func (c *Capture) GetWebVitals() WebVitalsResult {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	result := WebVitalsResult{}
 
-	if len(v.perf.snapshotOrder) == 0 {
+	if len(c.perf.snapshotOrder) == 0 {
 		return result
 	}
 
-	url := v.perf.snapshotOrder[len(v.perf.snapshotOrder)-1]
-	snapshot := v.perf.snapshots[url]
+	url := c.perf.snapshotOrder[len(c.perf.snapshotOrder)-1]
+	snapshot := c.perf.snapshots[url]
 	result.URL = snapshot.URL
 
 	// FCP
@@ -288,15 +291,15 @@ func (v *Capture) GetWebVitals() WebVitalsResult {
 }
 
 // GetPerformanceBaseline returns the baseline for a given URL
-func (v *Capture) GetPerformanceBaseline(url string) (PerformanceBaseline, bool) {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-	b, ok := v.perf.baselines[url]
+func (c *Capture) GetPerformanceBaseline(url string) (PerformanceBaseline, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	b, ok := c.perf.baselines[url]
 	return b, ok
 }
 
 // DetectRegressions compares a snapshot against its baseline and returns regressions
-func (v *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline PerformanceBaseline) []PerformanceRegression {
+func (c *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline PerformanceBaseline) []PerformanceRegression {
 	var regressions []PerformanceRegression
 
 	// Load time: >50% increase AND >200ms absolute
@@ -408,7 +411,7 @@ func (v *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline Perfo
 }
 
 // FormatPerformanceReport generates a human-readable performance report
-func (v *Capture) FormatPerformanceReport(snapshot PerformanceSnapshot, baseline *PerformanceBaseline) string {
+func (c *Capture) FormatPerformanceReport(snapshot PerformanceSnapshot, baseline *PerformanceBaseline) string {
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf("## Performance Snapshot: %s\n", snapshot.URL))
@@ -443,7 +446,7 @@ func (v *Capture) FormatPerformanceReport(snapshot PerformanceSnapshot, baseline
 	sb.WriteString(fmt.Sprintf("- Total Blocking Time: %.0fms\n", snapshot.LongTasks.TotalBlockingTime))
 
 	if baseline != nil {
-		regressions := v.DetectRegressions(snapshot, *baseline)
+		regressions := c.DetectRegressions(snapshot, *baseline)
 		if len(regressions) > 0 {
 			sb.WriteString("\n### ⚠️ Regressions Detected\n")
 			for _, r := range regressions {
@@ -477,84 +480,33 @@ func formatBytes(b int64) string {
 // HTTP Handlers
 // ============================================
 
-// HandlePerformanceSnapshot handles GET, POST, and DELETE /performance-snapshot
-func (v *Capture) HandlePerformanceSnapshot(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		urlFilter := r.URL.Query().Get("url")
-
-		var snapshot PerformanceSnapshot
-		var found bool
-		if urlFilter != "" {
-			snapshot, found = v.GetPerformanceSnapshot(urlFilter)
-		} else {
-			snapshot, found = v.GetLatestPerformanceSnapshot()
-		}
-
-		if !found {
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"snapshot": nil,
-				"baseline": nil,
-			})
-			return
-		}
-
-		baseline, baselineFound := v.GetPerformanceBaseline(snapshot.URL)
-
-		resp := map[string]interface{}{
-			"snapshot": snapshot,
-		}
-		if baselineFound {
-			resp["baseline"] = &baseline
-		} else {
-			resp["baseline"] = nil
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(resp)
+// HandlePerformanceSnapshots handles POST /performance-snapshots (batch endpoint).
+// Accepts {"snapshots": [...]} and stores all snapshots, updating baselines.
+// Returns {"received": N, "baseline_updated": true}.
+func (c *Capture) HandlePerformanceSnapshots(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-
-	if r.Method == "POST" {
-		r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
-			return
-		}
-
-		var snapshot PerformanceSnapshot
-		if err := json.Unmarshal(body, &snapshot); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		v.AddPerformanceSnapshot(snapshot)
-
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"received":         true,
-			"baseline_updated": true,
-		})
+	body, ok := c.readIngestBody(w, r)
+	if !ok {
 		return
 	}
-
-	if r.Method == "DELETE" {
-		v.mu.Lock()
-		v.perf.snapshots = make(map[string]PerformanceSnapshot)
-		v.perf.snapshotOrder = nil
-		v.perf.baselines = make(map[string]PerformanceBaseline)
-		v.perf.baselineOrder = nil
-		v.mu.Unlock()
-
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"cleared": true,
-		})
+	var payload struct {
+		Snapshots []PerformanceSnapshot `json:"snapshots"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	for _, snap := range payload.Snapshots {
+		c.AddPerformanceSnapshot(snap)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"received":         len(payload.Snapshots),
+		"baseline_updated": true,
+	})
 }
 
 func (h *ToolHandler) toolCheckPerformance(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -588,8 +540,7 @@ func (h *ToolHandler) toolCheckPerformance(req JSONRPCRequest, args json.RawMess
 
 func (h *ToolHandler) toolGetWebVitals(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	result := h.capture.GetWebVitals()
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(resultJSON))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Web Vitals", result)}
 }
 
 func (h *ToolHandler) toolGetCausalDiff(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -601,6 +552,7 @@ func (h *ToolHandler) toolGetCausalDiff(req JSONRPCRequest, args json.RawMessage
 
 	result := h.capture.GetCausalDiff(arguments.URL, arguments.BaselineID)
 
+	// Error impossible: result structure contains only serializable types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(resultJSON))}
 }
@@ -651,7 +603,6 @@ func normalizeDynamicAPIPath(path string) string {
 
 	// Count path segments
 	segments := 0
-	lastSlash := -1
 	secondSlash := -1
 	for i, ch := range path {
 		if ch == '/' {
@@ -659,10 +610,8 @@ func normalizeDynamicAPIPath(path string) string {
 			if segments == 3 {
 				secondSlash = i
 			}
-			lastSlash = i
 		}
 	}
-	_ = lastSlash
 
 	// If fewer than 3 slashes (meaning <= 2 segments after root), keep as-is
 	if secondSlash == -1 {
@@ -941,29 +890,29 @@ func computeRecommendations(diff ResourceDiff) []string {
 }
 
 // GetCausalDiff computes the causal diff for a URL, comparing current snapshot against baseline
-func (v *Capture) GetCausalDiff(url string, baselineID string) CausalDiffResult {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+func (c *Capture) GetCausalDiff(url string, baselineID string) CausalDiffResult {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	// Resolve URL
 	if url == "" {
-		if len(v.perf.snapshotOrder) == 0 {
+		if len(c.perf.snapshotOrder) == 0 {
 			return CausalDiffResult{ProbableCause: "No snapshots available."}
 		}
-		url = v.perf.snapshotOrder[len(v.perf.snapshotOrder)-1]
+		url = c.perf.snapshotOrder[len(c.perf.snapshotOrder)-1]
 	}
 
 	result := CausalDiffResult{URL: url}
 
 	// Get baseline
-	baseline, baselineExists := v.perf.baselines[url]
+	baseline, baselineExists := c.perf.baselines[url]
 	if !baselineExists {
 		result.ProbableCause = "No baseline available for this URL."
 		return result
 	}
 
 	// Get current snapshot
-	snapshot, snapshotExists := v.perf.snapshots[url]
+	snapshot, snapshotExists := c.perf.snapshots[url]
 	if !snapshotExists {
 		result.ProbableCause = "No current snapshot available for this URL."
 		return result
@@ -1010,7 +959,7 @@ func (v *Capture) GetCausalDiff(url string, baselineID string) CausalDiffResult 
 }
 
 // updateBaselineResources updates the resource fingerprint in the baseline with moving average
-func (v *Capture) updateBaselineResources(baseline *PerformanceBaseline, snapshotResources []ResourceEntry) {
+func (c *Capture) updateBaselineResources(baseline *PerformanceBaseline, snapshotResources []ResourceEntry) {
 	if len(snapshotResources) == 0 {
 		return
 	}

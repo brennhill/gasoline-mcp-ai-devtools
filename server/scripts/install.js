@@ -9,8 +9,8 @@ const fs = require('fs')
 const path = require('path')
 const { execSync } = require('child_process')
 
-const VERSION = '5.0.0'
-const GITHUB_REPO = 'brennhill/gasoline'
+const VERSION = '5.1.0'
+const GITHUB_REPO = 'brennhill/gasoline-mcp-ai-devtools'
 const BINARY_NAME = 'gasoline'
 
 // Map Node.js platform/arch to binary names
@@ -107,15 +107,25 @@ async function main() {
       fs.copyFileSync(localBinary, binaryPath)
     } else {
       console.error('')
-      console.error('Could not download or find gasoline binary.')
+      console.error('╔════════════════════════════════════════════════════════════════╗')
+      console.error('║  GASOLINE BINARY NOT AVAILABLE                                 ║')
+      console.error('╚════════════════════════════════════════════════════════════════╝')
       console.error('')
-      console.error('For development, build the binary first:')
-      console.error('  cd apps/dev-console && make build')
+      console.error('No pre-built binary found for your platform.')
       console.error('')
-      console.error(
-        'Or run directly with Go:',
-      )
+      console.error('OPTION 1: Build from source (requires Go 1.21+)')
+      console.error('  git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git')
+      console.error('  cd gasoline')
+      console.error('  go build -o /usr/local/bin/gasoline ./cmd/dev-console')
+      console.error('')
+      console.error('OPTION 2: Run directly with Go')
       console.error('  go run ./cmd/dev-console')
+      console.error('')
+      console.error('OPTION 3: Use MCP config with Go (Claude Code / Cursor)')
+      console.error('  Add to .mcp.json:')
+      console.error('  {"mcpServers":{"gasoline":{"command":"go","args":["run","./cmd/dev-console"]}}}')
+      console.error('')
+      console.error('For help: https://github.com/brennhill/gasoline-mcp-ai-devtools#quick-start')
       console.error('')
       process.exit(1)
     }

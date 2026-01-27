@@ -8,7 +8,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -218,18 +217,28 @@ func (cm *ClusterManager) AddError(err ErrorInstance) {
 			// Form a new cluster
 			cluster := cm.createCluster(unc, err, normMsg)
 			cm.clusters = append(cm.clusters, cluster)
-			// Remove from unclustered
-			cm.unclustered = append(cm.unclustered[:i], cm.unclustered[i+1:]...)
+			// Remove from unclustered — allocate new slice to avoid GC pinning
+			newUnclustered := make([]ErrorInstance, len(cm.unclustered)-1)
+			copy(newUnclustered, cm.unclustered[:i])
+			copy(newUnclustered[i:], cm.unclustered[i+1:])
+			cm.unclustered = newUnclustered
 			// Enforce cluster cap
 			if len(cm.clusters) > 50 {
-				cm.clusters = cm.clusters[1:] // Remove oldest
+				newClusters := make([]*ErrorCluster, len(cm.clusters)-1)
+				copy(newClusters, cm.clusters[1:])
+				cm.clusters = newClusters
 			}
 			return
 		}
 	}
 
-	// No match — add to unclustered
+	// No match — add to unclustered (capped at 100, FIFO eviction)
 	cm.unclustered = append(cm.unclustered, err)
+	if len(cm.unclustered) > 100 {
+		newUnclustered := make([]ErrorInstance, 100)
+		copy(newUnclustered, cm.unclustered[len(cm.unclustered)-100:])
+		cm.unclustered = newUnclustered
+	}
 }
 
 // matchesCluster checks if an error matches an existing cluster.
@@ -430,8 +439,14 @@ func collectAffectedFiles(a, b []StackFrame) []string {
 func (cm *ClusterManager) GetClusters() []*ErrorCluster {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
-	result := make([]*ErrorCluster, len(cm.clusters))
-	copy(result, cm.clusters)
+	result := make([]*ErrorCluster, 0, len(cm.clusters))
+	for _, c := range cm.clusters {
+		clone := *c
+		clone.Instances = append([]ErrorInstance(nil), c.Instances...)
+		clone.CommonFrames = append([]StackFrame(nil), c.CommonFrames...)
+		clone.AffectedFiles = append([]string(nil), c.AffectedFiles...)
+		result = append(result, &clone)
+	}
 	return result
 }
 
@@ -490,8 +505,7 @@ type ClusterSummary struct {
 // toolAnalyzeErrors handles the analyze(target: "errors") MCP call.
 func (h *ToolHandler) toolAnalyzeErrors(req JSONRPCRequest) JSONRPCResponse {
 	resp := h.clusters.GetAnalysisResponse()
-	data, _ := json.Marshal(resp)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(data))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Error cluster analysis", resp)}
 }
 
 // GetAnalysisResponse builds the response for analyze(target: "errors").
@@ -508,7 +522,7 @@ func (cm *ClusterManager) GetAnalysisResponse() ClusterAnalysisResponse {
 			InstanceCount:    c.InstanceCount,
 			FirstSeen:        c.FirstSeen.UTC().Format(time.RFC3339),
 			LastSeen:         c.LastSeen.UTC().Format(time.RFC3339),
-			AffectedFiles:    c.AffectedFiles,
+			AffectedFiles:    append([]string(nil), c.AffectedFiles...),
 			Severity:         c.Severity,
 		})
 	}

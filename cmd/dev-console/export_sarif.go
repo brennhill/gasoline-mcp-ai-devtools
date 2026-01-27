@@ -276,6 +276,23 @@ func extractWCAGTags(tags []string) []string {
 	return result
 }
 
+// resolveExistingPath resolves symlinks on the longest existing prefix of the path.
+// For paths where the file doesn't exist yet, it resolves the nearest existing
+// ancestor and appends the remaining path components.
+func resolveExistingPath(path string) string {
+	path = filepath.Clean(path)
+	resolved, err := filepath.EvalSymlinks(path)
+	if err == nil {
+		return resolved
+	}
+	// Path doesn't exist; resolve parent and append this component
+	parent := filepath.Dir(path)
+	if parent == path {
+		return path // reached root
+	}
+	return filepath.Join(resolveExistingPath(parent), filepath.Base(path))
+}
+
 // saveSARIFToFile writes the SARIF log to the specified path with security checks.
 func saveSARIFToFile(log *SARIFLog, path string) error {
 	// Resolve to absolute path
@@ -284,19 +301,35 @@ func saveSARIFToFile(log *SARIFLog, path string) error {
 		return fmt.Errorf("failed to resolve path: %w", err)
 	}
 
-	// Security: only allow paths under cwd or /tmp
+	// Security: resolve symlinks to prevent symlink-based path traversal.
+	// We resolve the target path and the allowed base directories, then compare
+	// the resolved paths to ensure the target stays within allowed boundaries.
+	resolvedPath := resolveExistingPath(absPath)
+
 	allowed := false
-	if strings.HasPrefix(absPath, "/tmp") || strings.HasPrefix(absPath, os.TempDir()) {
-		allowed = true
-	}
-	if !allowed {
-		cwd, err := os.Getwd()
-		if err == nil && strings.HasPrefix(absPath, cwd) {
+
+	// Check temp directory (resolved to handle symlinks in temp path itself)
+	tmpDir := os.TempDir()
+	if resolvedTmp, err := filepath.EvalSymlinks(tmpDir); err == nil {
+		if strings.HasPrefix(resolvedPath, resolvedTmp+string(os.PathSeparator)) {
 			allowed = true
 		}
 	}
+
+	// Check current working directory
 	if !allowed {
-		return fmt.Errorf("save_to path must be under the current working directory or /tmp: %s", absPath)
+		cwd, err := os.Getwd()
+		if err == nil {
+			if resolvedCwd, err := filepath.EvalSymlinks(cwd); err == nil {
+				if strings.HasPrefix(resolvedPath, resolvedCwd+string(os.PathSeparator)) {
+					allowed = true
+				}
+			}
+		}
+	}
+
+	if !allowed {
+		return fmt.Errorf("save_to path must be under the current working directory or temp directory: %s", absPath)
 	}
 
 	// Ensure parent directory exists

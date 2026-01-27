@@ -296,7 +296,7 @@ func (tg *TemporalGraph) Query(q TemporalQuery) TemporalQueryResponse {
 	}
 }
 
-// Close flushes and closes the file handle.
+// Close persists dedup counts and closes the file handle.
 func (tg *TemporalGraph) Close() {
 	tg.mu.Lock()
 	defer tg.mu.Unlock()
@@ -304,6 +304,8 @@ func (tg *TemporalGraph) Close() {
 		_ = tg.file.Close() // #nosec G104 -- best-effort close
 		tg.file = nil
 	}
+	// Rewrite to persist dedup counts updated during this session
+	tg.rewriteFile()
 }
 
 // --- Helpers ---
@@ -390,7 +392,7 @@ func handleRecordEvent(tg *TemporalGraph, eventData map[string]interface{}, agen
 // toolAnalyzeHistory handles analyze(target: "history") MCP calls.
 func (h *ToolHandler) toolAnalyzeHistory(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.temporalGraph == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("No history recorded yet.")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "No history recorded yet", "Navigate and interact with a page first")}
 	}
 
 	var params struct {
@@ -399,28 +401,28 @@ func (h *ToolHandler) toolAnalyzeHistory(req JSONRPCRequest, args json.RawMessag
 	_ = json.Unmarshal(args, &params)
 
 	resp := h.temporalGraph.Query(params.Query)
-	data, _ := json.Marshal(resp)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(string(data))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Temporal analysis", resp)}
 }
 
 // toolConfigureRecordEvent handles configure(action: "record_event") MCP calls.
 func (h *ToolHandler) toolConfigureRecordEvent(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.temporalGraph == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse("Temporal graph not initialized.")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Temporal graph not initialized", "Internal server error — do not retry")}
 	}
 
 	var params struct {
 		Event map[string]interface{} `json:"event"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil || params.Event == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(
-			"Required parameter 'event' is missing. Provide {type, description, [source], [related_to]}.")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam,
+			"Required parameter 'event' is missing. Provide {type, description, [source], [related_to]}.",
+			"Add the 'event' parameter and call again", withParam("event"))}
 	}
 
 	agent := "unknown"
 	result, errMsg := handleRecordEvent(h.temporalGraph, params.Event, agent)
 	if errMsg != "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpErrorResponse(errMsg)}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, errMsg, "Fix the event parameters and call again")}
 	}
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(result)}
 }

@@ -13,6 +13,6 @@
     "skipLibCheck": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"]
   },
-  "include": ["extension/**/*.js", "extension-tests/**/*.js", "types/**/*.d.ts"],
-  "exclude": ["node_modules", "dist", "e2e-tests"]
+  "include": ["extension/**/*.js", "tests/extension/**/*.js", "extension/types/**/*.d.ts"],
+  "exclude": ["node_modules", "dist", "tests"]
 }

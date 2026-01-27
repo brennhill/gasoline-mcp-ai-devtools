@@ -1,583 +1,541 @@
----
-title: "Roadmap"
-description: "Gasoline roadmap: endpoint catalog, time-windowed diffs, noise dismissal, performance budgets, and infrastructure hardening."
-keywords: "gasoline roadmap, endpoint catalog, compressed diffs, noise filtering, performance budget, MCP browser debugging"
-permalink: /roadmap/
-header:
-  overlay_image: /assets/images/hero-banner.png
-  overlay_filter: 0.85
-  excerpt: "What's next: capture more, interpret less."
-toc: true
-toc_sticky: true
----
+# v6 Roadmap
 
-Every feature follows the [product philosophy](/docs/product-philosophy/): capture and organize for AI agents, but keep output human-verifiable. We don't interpret data the AI reads better than us.
+## Thesis
+
+**AI will be the driving force in development.**
+
+Gasoline's strategic differentiator is enabling AI to **close the feedback loop autonomously** — observe, diagnose, and repair without human intervention. Every feature is evaluated against this thesis.
 
 ---
 
-## Phase 1: Discovery & Infrastructure
+## Strategic Problem Space
 
-Low effort, high value. Ship first.
+### A. Context / Token Inefficiency
 
-### <i class="fas fa-sitemap"></i> Endpoint Catalog
+**The problem**
 
-**Status:** Specified
-{: .notice--info}
+Chrome DevTools MCP and similar tools shove raw browser state at the model:
 
-`get_endpoint_catalog` — list every API endpoint the app talks to, with call counts, status codes, and latency.
+- Massive DOM trees
+- Accessibility dumps
+- Screenshots
+- Long console/network logs
 
-```json
-{
-  "endpoints": [
-    {"method": "GET", "path": "/api/users", "status_codes_seen": [200, 401], "call_count": 47, "avg_latency_ms": 142},
-    {"method": "POST", "path": "/api/users", "status_codes_seen": [201, 422], "call_count": 3, "avg_latency_ms": 289}
-  ]
-}
-```
+This blows context windows and makes AI "forget" what it's debugging halfway through.
 
-**Why:** AI agents can analyze JSON, but they can't discover endpoints they haven't seen. This gives the agent a map of the API surface in one call. No type inference, no schema learning — just aggregated facts.
+**Why competitors fail**
 
-**Effort:** ~150 lines Go. Zero extension changes.
+They expose everything, but interpret nothing. MCP is plumbing, not intelligence.
 
----
+**Your opportunity**
 
-### <i class="fas fa-shield-alt"></i> Infrastructure Hardening
+Semantic debugging context. You decide what matters before the model sees it.
 
-**Status:** Partially complete (circuit breaker done in extension)
-{: .notice--info}
+Examples:
 
-- **Server rate limiting (429)** — Reject > 1000 events/sec
-- **Memory enforcement** — Automatic buffer clearing when limits hit
-- **Interception deferral** — Enforce post-`load` + 100ms delay for v4 intercepts
+- Only DOM nodes involved in the failing interaction
+- Only network requests tied to the error
+- Collapsed/abstracted logs with causal hints
 
-**Why:** Reliability. Without these, the extension can overwhelm the server or degrade the page.
+✅ **We KNOW it's solved when:**
 
-**Effort:** Small, targeted fixes. Must-do before new features.
+- A typical debugging session fits in <25% of a model's context window
+- The model can explain the bug without re-requesting browser state
+- You can show: "Same bug, 10× less context than Chrome DevTools MCP"
+
+**This becomes a killer internal metric:** "Tokens per resolved bug"
 
 ---
 
-### <i class="fas fa-tachometer-alt"></i> Performance Capture Basics
+### B. Shallow Debugging (Symptoms, Not Causes)
 
-**Status:** Partially implemented
-{: .notice--info}
+**The problem**
 
-- Include FCP/LCP/CLS in performance snapshots (observers exist, values aren't sent)
-- Resource fingerprint in snapshots (top-20-by-size for causal diffing)
-- URL path normalization (`/users/123` → `/users/:id`)
+Most tools surface:
 
-**Why:** Pure capture. The extension already observes these metrics — we're just not sending them to the server yet.
+- "There's a console error"
+- "This request failed"
+- "This selector didn't match"
 
-**Effort:** Small. Extension + server changes.
+But they don't answer why.
 
----
+**Why competitors fail**
 
-## Phase 2: Agent Efficiency
+They stop at observation. Root-cause analysis is left to the human.
 
-Medium effort. Ship after Phase 1.
+**Your opportunity**
 
-### <i class="fas fa-bolt"></i> Time-Windowed Diffs
+Causal debugging, not observational debugging. Your system should connect:
 
-**Status:** Redesigning (simplified from original spec)
-{: .notice--warning}
+User action → DOM mutation → network call → backend response → frontend failure
 
-`get_changes_since` — return only log entries, network events, and WebSocket messages that arrived after a given checkpoint.
+✅ **We KNOW it's solved when:**
 
-```json
-{
-  "checkpoint_from": "2026-01-23T10:30:00.000Z",
-  "checkpoint_to": "2026-01-23T10:30:45.123Z",
-  "console": {
-    "new_entries": [
-      {"level": "error", "message": "TypeError: Cannot read property 'id' of undefined", "source": "app.js:42"}
-    ]
-  },
-  "network": {
-    "new_failures": [
-      {"method": "POST", "url": "/api/users", "status": 500}
-    ]
-  }
-}
-```
+- The AI can answer: "The bug exists because X changed, which broke Y, which surfaces as Z."
+- Fix suggestions reference specific causal links, not generic advice
+- Engineers stop asking "but how do you know that's the cause?"
 
-**Why:** Agents re-reading full buffers waste tokens. Time-windowed filtering is pure aggregation — just "show me what's new." No summaries, no severity classification, no token counting. The AI summarizes.
-
-**Design note:** Original spec included `summary`, `severity`, and `token_count` fields. These are interpretation — removed. The checkpoint mechanism is the value.
-
-**Effort:** ~200 lines Go.
+**Internal metric:** % of bugs with a single, confident root cause vs multiple guesses
 
 ---
 
-### <i class="fas fa-filter"></i> Noise Dismissal
+### C. Weak Feedback Loops (No "Fix → Verify → Done")
 
-**Status:** Redesigning (simplified from original spec)
-{: .notice--warning}
+**The problem**
 
-`dismiss_noise` — agent-driven pattern exclusion. The agent decides what's noise, Gasoline applies the filter to future reads.
+Most AI debugging flows look like:
 
-```json
-{"pattern": "chrome-extension://.*", "category": "console", "reason": "Browser extension logs"}
-```
+1. Observe bug
+2. Suggest fix
+3. 🤞 Hope it worked
 
-**Why:** Reduces tokens on subsequent tool calls by excluding entries the agent has already classified as irrelevant. The agent makes the judgment — we just apply it.
+Verification is manual or flaky.
 
-**Design note:** Original spec included `auto_detect` with confidence scores. Removed — the AI already knows extension errors are noise. The value is in *applying* the exclusion, not detecting it.
+**Why competitors fail**
 
-**Effort:** ~100 lines Go.
+They treat debugging as a one-shot analysis, not a loop.
 
----
+**Your opportunity**
 
-### <i class="fas fa-chart-line"></i> Performance Diffing
+Closed-loop debugging. The system should automatically:
 
-**Status:** Specified
-{: .notice--info}
+- Apply or simulate the fix
+- Re-run the failing scenario
+- Confirm the bug no longer occurs
 
-- Resource fingerprint comparison (added/grew/slowed/removed)
-- AI auto-check hints in tool descriptions ("call after code changes")
-- Cross-tool regression warnings
+✅ **We KNOW it's solved when:**
 
-**Why:** Structured comparison of observable data. No judgment about whether performance is "good" — just "here's what changed."
+- Bugs are marked "resolved" automatically, not manually
+- The AI can say: "This fix removed the error across 3 retries"
+- Engineers trust the system enough to merge with confidence
 
-**Effort:** Medium. Builds on Phase 1 perf basics.
-
----
-
-## <i class="fas fa-globe"></i> Platform Expansion
-
-**Status:** Future
-{: .notice}
-
-### Firefox Extension
-
-The Chrome extension's WebExtensions API is ~90% compatible with Firefox. Main porting work: service worker → event page, `chrome.scripting` API differences.
-
-**Effort:** Low-medium. 1-2 days of porting + testing.
-
-**Note:** Edge, Brave, Arc, Vivaldi, and Opera already work — they're Chromium-based and run the Chrome extension unmodified.
-
-### React Native
-
-Tap into React Native's debug bridge to capture LogBox errors, network requests, and component tree state. Forward to the Gasoline MCP server over the local network.
-
-**Effort:** Medium. New companion package, not an extension.
-
-### Flutter
-
-Dart DevTools extension or `debugPrint` interceptor that forwards runtime events to the Gasoline MCP server.
-
-**Effort:** Medium. Dart package + DevTools integration.
-
-### Native iOS / Android
-
-Stream system logs (`os_log` on iOS, Logcat on Android) to the Gasoline MCP server via a CLI companion tool. Zero app modification required — purely observational.
-
-**Effort:** Low per platform. CLI tool that pipes structured log output to the existing server.
+**Metric:** % of fixes with automated verification, reduction in "fix didn't actually fix it" reopens
 
 ---
 
-## Priority Order
+### D. Garbage In → Garbage Out Selectors & Tests
 
-Low effort. Ship when convenient.
+**The problem**
 
-## <i class="fas fa-shield-alt"></i> Engineering Resilience
+AI generates brittle selectors:
 
-**Status:** Planned
-{: .notice}
+- `div:nth-child(7)`
+- Random class names
+- Over-fit Playwright steps
 
-Infrastructure hardening that prevents regressions, catches integration drift, and enforces invariants mechanically — without burning agent context.
+**Why competitors fail**
 
-### Contract & Schema Validation
+They don't understand UI semantics — only DOM structure.
 
-The extension-to-server interface has an implicit contract (`POST /logs` expects `{ entries: [{ level, message, timestamp, ... }] }`). Make it explicit:
+**Your opportunity**
 
-- JSON Schema files defining every HTTP endpoint's request/response format
-- Go struct validation that rejects malformed entries at the boundary (not `map[string]interface{}`)
-- Extension-side contract tests that verify emitted payloads match the schema
-- Shared schema file that both Go and JS tests validate against
+Selector intelligence + semantic anchoring
 
-**Why:** Prevents silent data corruption when either side drifts. An AI modifying `inject.js` can't accidentally break the server contract without CI catching it.
+- Prefer roles, labels, stable attributes
+- Fall back gracefully
+- Explain why a selector is stable
 
-### End-to-End Integration Tests
+✅ **We KNOW it's solved when:**
 
-All current tests are unit tests (mocked Chrome APIs, `httptest` recorders). Nothing exercises the full pipeline:
+- Generated tests survive minor UI refactors
+- Engineers stop rewriting AI-generated selectors
+- Test flakiness drops materially
 
-```
-Browser page → inject.js → content.js → background.js → HTTP POST → Go server → MCP tool response
-```
-
-- Playwright-based E2E suite that starts a real server, loads the real extension, and verifies MCP tool output
-- Covers: console capture, network errors, WebSocket events, DOM queries, accessibility audits, screenshots
-- Runs in CI with `xvfb-run` for headless extension loading
-
-**Why:** Unit tests can't catch message-passing bugs, serialization mismatches, or timing issues between components.
-
-### Zero-Dependency Verification
-
-The Go server's zero-dependency guarantee is documented but not enforced:
-
-- CI step that parses `go.mod` and fails if any `require` directive exists
-- CI step that verifies `go.sum` is empty or absent
-- Extension check: no `node_modules` imports, no CDN script tags (except optional axe-core)
-
-**Why:** A single accidental `import "github.com/..."` breaks the "single binary, no supply chain risk" promise.
-
-### Typed Response Structs
-
-MCP tool responses currently use `map[string]interface{}`:
-
-```go
-// Current (fragile):
-result := map[string]interface{}{"entries": entries, "count": len(entries)}
-
-// Target (typed):
-type GetLogsResult struct {
-    Entries []LogEntry `json:"entries"`
-    Count   int        `json:"count"`
-}
-```
-
-- Replace all MCP tool response construction with typed structs
-- Compiler catches missing fields, typos, type mismatches
-- JSON tags serve as documentation of the wire format
-
-**Why:** `map[string]interface{}` silently accepts any structure. Typed structs make response format changes a compile error.
-
-### Performance Benchmarks
-
-SLOs are documented but not enforced in CI:
-
-- Go benchmarks for hot paths: `addEntries`, `getEntries`, WebSocket event ingestion, `/snapshot` aggregation
-- Baseline file checked into repo (`benchstat` format)
-- CI step that runs benchmarks and fails on > 20% regression
-- Extension: Playwright performance measurement for intercept overhead
-
-**Why:** Performance regressions are invisible without measurement. A seemingly-innocent refactor can 10x the cost of a hot path.
-
-### Race Detection
-
-Go tests currently run with `go test -v` — no race detector. Add `-race` flag:
-
-```makefile
-test:
-    CGO_ENABLED=1 go test -race -v ./cmd/dev-console/...
-```
-
-- Catches data races in concurrent buffer access under real load patterns
-- Server uses `sync.RWMutex` everywhere but `-race` catches any missed paths
-- Runs in CI on every push (adds ~30% test runtime)
-
-**Why:** Race conditions are the hardest bugs to reproduce. The race detector catches them deterministically at test time.
-
-### Test Coverage Gate
-
-No coverage measurement exists. Add threshold enforcement:
-
-- `go test -coverprofile=coverage.out` in CI
-- Fail if total coverage drops below 70%
-- Report per-package coverage breakdown
-- Track coverage trend over time (no ratchet — just floor)
-
-**Why:** Prevents large code additions with zero test coverage from merging.
-
-### Fuzz Testing
-
-Go's built-in fuzz testing (since 1.18) for HTTP input parsing:
-
-- Fuzz `POST /logs` with arbitrary JSON → must never panic
-- Fuzz `POST /websocket-events` → must never panic
-- Fuzz `POST /network-bodies` → must never panic
-- Fuzz MCP JSON-RPC request parsing → must never panic
-- Corpus seeded with real-world payloads
-
-**Why:** Manual test cases can't cover all malformed input combinations. Fuzzing finds panics on edge-case JSON that would crash the server in production.
-
-### Binary Size Gate
-
-The Go binary should stay small (currently ~8MB). Add a CI size check:
-
-- Fail if binary exceeds 15MB (indicates dependency smuggling or bloat)
-- Track size per-commit for trend detection
-- Separate check per platform (cross-compilation shouldn't inflate)
-
-**Why:** Binary size is a proxy for dependency smuggling. A jump from 8MB to 25MB means something got linked in.
-
-### Import Path Verification
-
-Stronger than zero-dep check — verify every Go import is from stdlib:
-
-```bash
-go list -f '{{join .Imports "\n"}}' ./cmd/dev-console/ | grep "\." && exit 1
-```
-
-- Catches internal package paths that might pull in transitive deps
-- Runs alongside the `go.sum` absence check
-- Extension equivalent: verify no `import` statements reference `node_modules`
-
-**Why:** `go.mod` can be clean while code still imports something that triggers `go mod tidy` to add a dep on next build.
-
-### Goroutine Leak Detection
-
-After tests complete, verify no goroutines leaked:
-
-- `TestMain` wrapper checks goroutine count before/after test suite
-- Allow small delta (±5) for runtime internals
-- Fail loudly if goroutines accumulate (indicates unclosed HTTP connections, blocked channels)
-
-**Why:** Leaked goroutines accumulate over server lifetime. In long-running dev sessions, they cause memory growth and eventual OOM.
-
-### Response Snapshot Tests
-
-Golden file comparison for every MCP tool response:
-
-- Serialize each MCP tool's response to JSON
-- Compare against checked-in `testdata/*.golden.json` files
-- `go test -update` flag regenerates goldens intentionally
-- Any unintentional format change fails CI
-
-**Why:** Typed structs prevent wrong types, but golden files catch unintentional field additions, removals, or ordering changes that break MCP clients.
+**Metric:** Test survival rate across UI changes, manual edits required per generated test
 
 ---
 
-## <i class="fas fa-dollar-sign"></i> Economic Impact
+### E. Raw Data Instead of Developer-Ready Output
 
-Canonical first-call sequence for AI agents connecting to Gasoline. Reduces wasted tokens on discovery.
+**The problem**
 
-Not code — just a recommended tool call sequence baked into tool descriptions or an MCP resource.
+Tools dump:
 
-**Effort:** Documentation only.
+- Logs
+- Traces
+- Screenshots
+
+Developers still have to think.
+
+**Why competitors fail**
+
+They optimize for machine access, not human comprehension.
+
+**Your opportunity**
+
+First-class bug reports written by AI. Readable by humans, trusted by teams.
+
+✅ **We KNOW it's solved when:**
+
+- Bug reports can be pasted directly into GitHub/Jira
+- Engineers don't ask follow-up clarification questions
+- PMs can understand bugs without running the app
+
+**Metric:** % of bug reports accepted without edits, time from bug detection → ticket creation
 
 ---
 
-### <i class="fas fa-bookmark"></i> Named Checkpoints
+### F. Unsafe / Awkward Production Debugging
 
-`create_checkpoint` — MCP tool to create named markers for `get_changes_since`.
+**The problem**
+
+Most tools assume:
+
+- Local dev
+- No sensitive data
+- One user at a time
+
+Reality says otherwise.
+
+**Why competitors fail**
+
+They weren't designed for prod safety from day one.
+
+**Your opportunity**
+
+Production-safe AI debugging
+
+- Data redaction
+- Session isolation
+- Read-only or replay-based debugging
+
+✅ **We KNOW it's solved when:**
+
+- Security teams approve usage in prod
+- Engineers can debug "real user bugs" safely
+- No "turn it off in production" footguns
+
+**Metric:** Security approvals, production incidents debugged safely
+
+---
+
+## v6 Roadmap of Priorities
+
+This is sequenced to maximize trust → leverage → defensibility.
+
+### Phase 1: Trust & Core Value (Foundational)
+
+**Goal:** "This actually debugs better than me."
+
+**Must-have**
+
+1. Semantic context reduction (token efficiency)
+2. Causal root-cause analysis
+3. Human-readable bug summaries
+
+If you fail here, nothing else matters.
+
+### Phase 2: Closed-Loop Power
+
+**Goal:** "This fixes bugs, not just explains them."
+
+**Build next**
+
+4. Automated fix + verify loop
+5. Stable selector generation
+6. Replayable failing scenarios
+
+This is where competitors really fall off.
+
+### Phase 3: Workflow & Adoption
+
+**Goal:** "This fits how teams actually work."
+
+**Then add**
+
+7. GitHub/Jira-ready bug reports
+8. CI/CD integration
+9. IDE handoff (VS Code, etc.)
+
+### Phase 4: Moat & Enterprise Pull
+
+**Goal:** "You can't replace this with another MCP."
+
+**Differentiators**
+
+10. Production-safe debugging modes
+11. Cross-browser / mobile
+12. Historical learning ("we've seen this bug before")
+
+---
+
+## Completed
+
+| Feature | Description | Merged |
+|---------|-------------|--------|
+| Tab Targeting (Phase 0) | `tab_id` parameter on all pilot tools, `observe {what: "tabs"}`, `browser_action {action: "open"}` | 2025-01-25 |
+| API Contract Validation | `validate_api` tool - track response shapes, detect contract violations | 2025-01-25 |
+| Verification Loop | `verify_fix` tool - before/after session comparison for fix verification | 2025-01-25 |
+| SRI Hash Generator | `generate_sri` tool - Subresource Integrity hashes for third-party resources | 2025-01-25 |
+| Health Metrics | `get_health` tool - server uptime, buffer utilization, memory usage | 2025-01-25 |
+| Security Scanner | `security_audit` - credentials, PII, insecure transport, headers, cookies | Pre-v6 |
+| CSP Generator | `generate_csp` - Content-Security-Policy from observed origins | Pre-v6 |
+| Third-Party Audit | `audit_third_parties` - external domain mapping, risk classification | Pre-v6 |
+| Security Diff | `diff_security` - security posture comparison before/after changes | Pre-v6 |
+| Session Comparison | `diff_sessions` - named snapshot storage and comparison | Pre-v6 |
+| Audit Log | `get_audit_log` - ring-buffer log of MCP tool calls | Pre-v6 |
+
+---
+
+## Priority 0: Usability (Adoption Blocker)
+
+New users struggle to get Gasoline running. This blocks all adoption and must be fixed first.
+
+- [x] **Usability Improvements** — 5-minute setup goal
+  - Spec: [specs/usability.md](specs/usability.md)
+  - Done: NPM rename, install errors, MCP config, --check, --persist, first-run banner, version check, inline troubleshooting
+  - Remaining: Chrome Web Store approval (external dependency)
+
+---
+
+## Priority 1: Agentic CI/CD (Thesis Validation)
+
+These features prove the thesis. Build now.
+
+### Parallelization
 
 ```
-create_checkpoint(name: "before_refactor")
-// ... make changes ...
-get_changes_since(checkpoint: "before_refactor")
+┌─────────────────────────────────────────────────────────────────┐
+│                     CAN BUILD IN PARALLEL                        │
+├─────────────────────┬─────────────────────┬─────────────────────┤
+│  Agent A            │  Agent B            │  Agent C            │
+│                     │                     │                     │
+│  33. Self-Healing   │  Gasoline CI        │  5. Context         │
+│      Tests          │  Infrastructure     │     Streaming       │
+│                     │                     │                     │
+│  - Claude Code      │  - /snapshot        │  - MCP notifications│
+│    integration      │  - /clear           │  - Push alerts      │
+│  - Failure diagnosis│  - /test-boundary   │  - Event filtering  │
+│  - Auto-fix loop    │  - gasoline-ci.js   │                     │
+│                     │  - Playwright fix   │                     │
+└─────────────────────┴─────────────────────┴─────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     THEN IN PARALLEL                             │
+├─────────────────────┬─────────────────────┬─────────────────────┤
+│  Agent A            │  Agent B            │  Agent C            │
+│                     │                     │                     │
+│  35. PR Preview     │  34. Agentic E2E    │  36. Deployment     │
+│      Exploration    │      Repair         │      Watchdog       │
+│                     │                     │                     │
+│  - Requires: 33     │  - Requires: 33     │  - Requires: 5, CI  │
+│  - Preview deploy   │  - Contract drift   │  - Post-deploy mon  │
+│  - Auto-explore     │  - Test/mock update │  - Auto-rollback    │
+└─────────────────────┴─────────────────────┴─────────────────────┘
 ```
 
-**Why:** Pure utility. 20 lines of code (map of name → timestamp).
+### Features
 
-**Effort:** Trivial. Ships with time-windowed diffs.
+- [ ] **33. Self-Healing Tests** — AI observes test failure, diagnoses via Gasoline context, fixes test or code autonomously
+  - Branch: `feature/self-healing-tests`
+  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
+  - Prerequisites: ✅ Tab targeting, ✅ Verification loop
+  - Unlocks: CI that unblocks itself
 
----
+- [ ] **Gasoline CI Infrastructure** — Headless browser capture for CI/CD pipelines
+  - Spec: [gasoline-ci-specification.md](gasoline-ci-specification.md)
+  - Components:
+    - [ ] `/snapshot` endpoint - return all captured state
+    - [ ] `/clear` endpoint - reset between tests
+    - [ ] `/test-boundary` endpoint - correlate entries to tests
+    - [ ] `gasoline-ci.js` - standalone capture script (extract from inject.js)
+    - [ ] `@gasoline/playwright` fixture - auto-inject, auto-clear, failure attachment
+  - Unlocks: Phase 8 features in CI, not just local browser
 
-## Deferred
+- [ ] **5. Context Streaming** — Push significant events to AI via MCP notifications
+  - Branch: `feature/context-streaming`
+  - Spec: v6-specification.md § Feature 5
+  - Prerequisites: None
+  - Unlocks: Proactive alerts, enables Deployment Watchdog
 
-### <i class="fas fa-brain"></i> Persistent Memory
+- [ ] **35. PR Preview Exploration** — Deploy preview → agent explores app → discovers bugs → proposes fixes pre-merge
+  - Branch: `feature/pr-preview-exploration`
+  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
+  - Prerequisites: ✅ Tab targeting, Self-Healing Tests (33)
+  - Unlocks: Automated QA on every PR
 
-Cross-session storage for noise rules and other state.
+- [ ] **34. Agentic E2E Repair** — AI detects API contract drift, updates tests/mocks automatically
+  - Branch: `feature/agentic-e2e-repair`
+  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
+  - Prerequisites: ✅ API contract validation, Self-Healing Tests (33)
+  - Unlocks: Zero-maintenance E2E suites
 
-**Why deferred:** Without noise dismissal shipping first, there's nothing to persist. If noise rules prove useful, a simple `save_noise_config` / `load_noise_config` tool pair covers the use case without building a generic persistence framework.
-
-**Revisit:** After noise dismissal has real-world usage data.
-
----
-
-### <i class="fas fa-stream"></i> Context Streaming
-
-Push significant browser events via MCP notifications.
-
-**Why deferred:** MCP notification support in AI clients (Claude Code, Cursor, Windsurf) is not mature enough. Building for a spec with no consumers is premature. The same value is achieved by agents calling `get_changes_since` in their feedback loop.
-
-**Revisit:** When MCP notification handling is reliable across major clients.
-
----
-
-## Killed
-
-### ~~Behavioral Baselines~~
-
-`save_baseline` / `compare_baseline` — snapshot browser state, detect regressions.
-
-**Why killed:**
-- **Interprets rather than reports.** Tolerance thresholds (`timing_tolerance_percent: 20`) are judgments Gasoline shouldn't make. The AI compares states better than hardcoded thresholds.
-- **Solved by simpler tools.** Time-windowed diffs + the agent's own context = regression detection without a baseline system.
-- **Session lifetime mismatch.** Baselines assume long sessions with save/edit/compare cycles. Most real sessions don't have that lifecycle.
-- **Stale cross-session.** Yesterday's baseline breaks on legitimate API changes today.
-
-### ~~API Schema Inference~~
-
-Removed — AI reads JSON natively. Inferred types add noise, not signal.
-
-### ~~DOM Fingerprinting~~
-
-Removed — opaque hashes aren't human-verifiable. DOM queries already provide discovery.
+- [ ] **36. Deployment Watchdog** — Post-deploy monitoring; AI detects regressions, triggers rollback
+  - Branch: `feature/deployment-watchdog`
+  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
+  - Prerequisites: ✅ Session comparison, Context Streaming (5), Gasoline CI
+  - Unlocks: Self-healing production
 
 ---
 
-## Priority Summary
+## Priority 2: Enterprise Unlock
 
-| # | Feature | Effort | Value | Status |
-|---|---------|--------|-------|--------|
-| 1 | Endpoint Catalog | Low | High | Specified |
-| 2 | Infrastructure (429, memory, deferral) | Low | High | Partial |
-| 3 | Perf capture basics (FCP/LCP/CLS) | Low | Medium | Partial |
-| 4 | Time-Windowed Diffs | Medium | Medium | Redesigning |
-| 5 | Noise Dismissal | Low | Medium-High | Redesigning |
-| 6 | Performance Diffing | Medium | Medium | Specified |
-| 7 | Workflow Recipe | Negligible | Low-Medium | To specify |
-| 8 | Named Checkpoints | Trivial | Medium | To specify |
-| — | Persistent Memory | High | Low (now) | Deferred |
-| — | Context Streaming | High | Zero (now) | Deferred |
-| 9 | Sparky Rollout (Wave 1) | Low | High | Planned |
-| 10 | Sparky Rollout (Waves 2-4) | Medium | Medium | Planned |
-| ~~—~~ | ~~Behavioral Baselines~~ | High | Low | Killed |
+Required for team/enterprise sales. Build when pursuing those customers.
 
----
+### Parallelization
 
-## <i class="fas fa-fire"></i> Marketing & Brand: Sparky Rollout
+All enterprise features are independent — can build 4+ in parallel.
 
-**Status:** Planned
-{: .notice}
-
-Sparky is the Gasoline mascot — a friendly anthropomorphic salamander with fire-colored gradient skin and thick outlines, distinct from the abstract logo flame. See [Brand Guidelines](/brand/#mascot-sparky) for design specs. Minimum size: 48px. Only appears where there's room for a pose.
-
-### Wave 1: High-Traffic Pages
-
-| Page | Location | Pose |
-|------|----------|------|
-| Homepage | Hero section, beside "Gasoline" title | Leaning against the "G", arms crossed, one eyebrow raised |
-| Homepage | Pipeline diagram, in the arrow between Server → AI | Riding the arrow like a log flume, arms up |
-| Getting Started | "Ignite the Server" header | Striking a match on his own head |
-| Getting Started | "Verify the Flame" header | Peeking out from behind a terminal, thumbs-up |
-| Getting Started | Bottom of page | Chef's kiss, tiny chef hat — "now you're cooking" |
-| 404 Page | Center, large | Holding a crumpled map upside-down, flame flickering low |
-
-### Wave 2: Feature & Trust Pages
-
-| Page | Location | Pose |
-|------|----------|------|
-| Features | Page hero | Holding a magnifying glass, squinting |
-| Features | WebSocket section header | Two tin cans connected by wire, listening |
-| Features | Screenshots section header | Posing with camera, flash going off |
-| Security | Page hero | Wearing sunglasses, bouncer stance |
-| Security | Data flow diagram boundary line | Sitting on the line, legs dangling |
-| Security | "Zero Network Calls" header | Unplugging an ethernet cable, smirking |
-| Privacy | "100% Local" header | Hugging a tiny server rack protectively |
-
-### Wave 3: Secondary Pages
-
-| Page | Location | Pose |
-|------|----------|------|
-| Configuration | Page hero | Turning a dial/knob, tongue out in concentration |
-| Alternatives | Comparison table area | Standing on #1 podium, tiny trophy, waving |
-| MCP Integration | "How MCP Mode Works" flow | Riding a fuel pipe like a waterslide |
-| Roadmap | Phase headers (3x) | Growing from tiny ember → medium flame → roaring fire |
-| Blog | Index header | Sitting at a tiny desk, quill pen, ink spot on cheek |
-| Troubleshooting | Page hero | Hard hat, holding a wrench bigger than himself |
-
-### Wave 4: Demo App
-
-| Page | Location | Pose |
-|------|----------|------|
-| Error states | Toast/banner | Wincing, one eye closed, holding a fire extinguisher |
-| Empty states | "No data" messages | Sitting cross-legged, meditating, eyes closed |
-| WebSocket disconnect | Status indicator | Flickering/dimming, reaching toward a severed wire |
-| Homepage footer | Below nav | Asleep on a campfire, single "z" ember rising |
-
-**Effort:** Asset creation (illustration), then drop-in placement. No code architecture changes.
-
----
-
-## Lifecycle Integration — Beyond Local Dev
-
-Gasoline today works in local development. The three largest gaps in the web development lifecycle are places where browser observability doesn't exist at all.
-
----
-
-### <i class="fas fa-cogs"></i> CI Browser Observability
-
-**Status:** To specify
-{: .notice--warning}
-
-**The gap:** CI pipelines run browsers but provide zero browser-level observability. When an E2E test fails, you get the test framework's error and maybe a screenshot. No console logs, no network responses, no WebSocket state, no DOM context. 26% of developer time goes to CI failure investigation. 30% of CI failures are flaky.
-
-**The solution:** Run Gasoline alongside Playwright/Cypress in CI. On test failure, the AI reads console errors, network bodies, and DOM state — skipping the "pull branch, reproduce locally, fail to reproduce, add logging, push, wait" loop.
-
-**Architecture:** The capture logic in `inject.js` is pure JavaScript with no Chrome API dependencies in the core. Two paths:
-
-1. **Script injection** — inject via Playwright's `addInitScript()`, POST directly to the Gasoline server (no extension needed, works in true headless)
-2. **Extension loading** — load the extension in CI Chrome (`--load-extension`, requires `--headless=new`)
-
-```typescript
-// Playwright integration concept
-import { gasolineFixture } from '@aspect-fuel/playwright';
-
-test.afterEach(async ({}, testInfo) => {
-  if (testInfo.status === 'failed') {
-    const state = await fetch('http://localhost:7890/snapshot').then(r => r.json());
-    testInfo.attach('gasoline-state', { body: JSON.stringify(state), contentType: 'application/json' });
-  }
-});
+```
+┌───────────────┬───────────────┬───────────────┬───────────────┐
+│  Agent A      │  Agent B      │  Agent C      │  Agent D      │
+│               │               │               │               │
+│  16. TTL      │  19. Custom   │  20. API Key  │  21. Rate     │
+│  Retention    │  Redaction    │  Auth         │  Limits       │
+└───────────────┴───────────────┴───────────────┴───────────────┘
 ```
 
-**Estimated value:** $30-60K/year per 10-person team in recovered engineering time.
+### Features
 
-**Effort:** Medium. Requires: standalone CI capture script (~200 lines), `/snapshot` server endpoint (~50 lines Go), Playwright fixture package.
+- [ ] **16. TTL-Based Retention** — Configurable time-to-live; buffers auto-evict old entries
+  - Branch: `feature/ttl-retention`
+  - Complexity: Easy
+  - Sales unlock: Compliance, data governance
 
----
+- [ ] **19. Configurable Redaction Patterns** — User-defined regex for sensitive data (SSNs, card numbers)
+  - Branch: `feature/redaction-patterns`
+  - Complexity: Easy
+  - Sales unlock: Privacy requirements
 
-### <i class="fas fa-eye"></i> Preview Deployment Observability
+- [ ] **20. Auto-Generated API Key Authentication** — Auth enabled by default with auto-generated key
+  - Branch: `feature/api-key-auth`
+  - Complexity: Easy
+  - Sales unlock: Security-conscious orgs
+  - Security context: Fixes Issue 2 from security audit (unauthenticated local access, CVSS 4.3)
+  - Behavior: Auto-generate 32-byte hex key on startup if no `--api-key` provided. Print to stderr. Add `--no-auth` flag to explicitly opt out. Existing `--api-key=custom` behavior unchanged.
 
-**Status:** To specify
-{: .notice--warning}
+- [ ] **21. Per-Tool Rate Limits** — Prevent runaway AI loops (e.g., `query_dom` limited to 10/min)
+  - Branch: `feature/per-tool-rate-limits`
+  - Complexity: Easy
+  - Sales unlock: Operational safety
 
-**The gap:** When someone tests a Vercel/Netlify preview deployment and finds a bug, the feedback is a screenshot + "it broke." The developer spends 15-30 minutes reproducing an environment-specific issue. No existing tool provides client-side observability on preview environments — Vercel's observability is server-side only, and session replay tools aren't deployed on previews.
-
-**The solution:** Run Gasoline during preview QA. When a bug is found, the full browser state (console, network, WebSocket, DOM) is already captured. Attach it to the PR as a structured artifact. The developer's AI reads it immediately — no reproduction needed.
-
-**Architecture:** The reviewer has the Gasoline extension installed. The preview deployment has a lightweight Gasoline server running (or the reviewer's local server captures from the preview URL). Captured state exports as a shareable JSON artifact.
-
-**Estimated value:** Eliminates 1-2 reproduction cycles per PR review (15-30 min each).
-
-**Effort:** Low-Medium. Extension already captures from any URL. Needs: export/share mechanism, artifact format spec.
-
----
-
-### <i class="fas fa-exchange-alt"></i> Production-to-Local Bridge
-
-**Status:** To specify
-{: .notice--warning}
-
-**The gap:** Production error monitoring (Sentry, DataDog) tells you *what* broke but not *how to reproduce it locally*. Developers spend 30-60 minutes per bug setting up local reproduction. Session replay tools show visual state but not developer state (no WebSocket payloads, no computed styles, no a11y tree).
-
-**The solution:** When reproducing a production issue locally, Gasoline captures the full browser context — network bodies, WebSocket messages, console logs, DOM state — so the AI can compare against the production error report and identify the exact trigger conditions.
-
-**Workflow:**
-1. Sentry alerts: "TypeError on `/dashboard`"
-2. Developer opens the page locally with Gasoline running
-3. AI reads Gasoline: API returned `null` instead of `[]`, WebSocket dropped 2s before the error, loading spinner never resolved
-4. Root cause identified without manual investigation
-
-**Estimated value:** 30-60 minutes saved per production bug investigation.
-
-**Effort:** Low. Gasoline already captures everything needed. Value comes from documentation, workflow recipes, and optional Sentry/DataDog integration guides.
+- [ ] **17. Configuration Profiles** — Named bundles (short-lived, restricted, paranoid)
+  - Branch: `feature/config-profiles`
+  - Complexity: Medium
+  - Prerequisites: 16, 19, 21
+  - Sales unlock: "Bank mode" one-click setup
 
 ---
 
-## Integration Opportunities
+## Priority 3: Enhanced Generation
 
-| Integration | Pain Point | Gasoline Value | Estimated Impact |
-|-------------|-----------|----------------|-----------------|
-| **E2E flaky test diagnosis** | Root cause is app-side (race conditions, API timing) but tests only show assertions | WS events + network timing + console logs reveal the actual race condition | -70% test failure investigation time |
-| **Visual regression context** | Percy/Chromatic show WHAT changed, not WHY | Network bodies reveal different API data; console shows CSS overrides | -50% visual regression triage time |
-| **Storybook observability** | Multiple addons needed (console, a11y, network) | Single MCP interface replaces all | Addon consolidation, unified AI access |
-| **API debugging** | Postman tests in isolation; browser has CORS, cookies, auth, ordering | Gasoline captures real browser API interactions with full context | Eliminates "copy from network tab" workflow |
-| **Code review context** | QA feedback is unstructured screenshots | Structured browser state attached to PR comments | -80% "can't reproduce reviewer's bug" time |
-| **Stale test maintenance** | Tests break on legitimate app changes, no way to tell expected vs unexpected | Gasoline state shows whether the app behavior actually changed or just the test is stale | Faster test update decisions |
+Improves quality of AI-generated artifacts. Build when self-healing is working.
+
+- [ ] **6. Test Generation v2** — DOM assertions, fixtures, visual snapshots
+  - Branch: `feature/generate-test-v2`
+  - Spec: generate-test-v2.md
+  - Thesis connection: Better generated tests = better self-healing input
+
+- [ ] **7. Performance Budget Monitor** — Baseline regression detection
+  - Branch: `feature/performance-budget-monitor`
+  - Spec: performance-budget-spec.md
+  - Thesis connection: Weak — perf monitoring isn't AI-native
 
 ---
 
-## Economic Impact
+## Priority 4: Operational Polish
 
-| Gap | Annual Cost (10-person team) | Gasoline Saves |
-|-----|------------------------------|---------------|
-| CI failure investigation | $75-150K (26% of eng time on debugging) | $30-60K (skip reproduce-locally loop) |
-| Preview QA reproduction | $15-30K (1-2 cycles/PR × 15-30 min) | $10-20K (zero reproduction needed) |
-| Production bug reproduction | $25-50K (30-60 min/bug × frequency) | $15-30K (instant context from Gasoline) |
-| Flaky test root cause | $20-40K (30% of CI failures × investigation) | $14-28K (browser state reveals race conditions) |
-| **Total addressable** | **$135-270K/year** | **$69-138K/year recovered** |
+Build as needed. Low thesis impact.
 
-Zero cost. Open source. No cloud dependency. The savings come from time — not from replacing paid tools.
+### Enterprise Audit (Tier 1 extras)
+
+- [ ] **13. Client Identification** — Identify which AI client (Claude Code, Cursor, etc.)
+- [ ] **14. Session ID Assignment** — Unique session ID per MCP connection
+- [ ] **15. Redaction Audit Log** — Log when data is redacted (pattern, field, tool)
+
+### Enterprise Multi-Tenant (Tier 4)
+
+- [ ] **24. Project Isolation** — Multiple isolated capture contexts on one server
+- [ ] **25. Read-Only Mode** — Accept capture data, disable mutation tools
+- [ ] **26. Tool Allowlisting** — Restrict which MCP tools are available
+
+### Developer Experience (Phase 7)
+
+- [ ] **27. Test Fixture Page** — Built-in `/test-page` with error triggers
+- [ ] **28. CLI Test Mode** — `--test` flag for automated validation
+- [ ] **29. Mock Extension Client** — Go package simulating extension calls
+- [ ] **30. Event Timestamps in Diagnostics** — `received_at` in `/diagnostics`
+- [ ] **31. MCP Test Harness** — CLI for scripted MCP testing
+- [ ] **32. CLI Lifecycle Commands** — `gasoline stop`, `restart`, `status`
+
+### Data Export
+
+- [ ] **18. Data Export** — Export buffer state as JSON Lines
+
+---
+
+## Internal Quality
+
+### Fuzz Tests
+
+Build incrementally as attack surface grows.
+
+- [ ] **FuzzJSONRPCParse** — MCP message parser (no panics, no unbounded alloc)
+- [ ] **FuzzHTTPBodyParse** — `/logs`, `/network-body` endpoints
+- [ ] **FuzzSecurityPatterns** — Credential/PII regex (no catastrophic backtracking)
+- [ ] **FuzzWebSocketFrame** — WS message handling
+- [ ] **FuzzNetworkBodyStorage** — Large/malformed body storage
+
+---
+
+## In Progress
+
+| Feature | Branch | Agent |
+|---------|--------|-------|
+| (none yet) | | |
+
+---
+
+## Dependency Graph
+
+```
+                    ┌──────────────────────────────────────────────────────┐
+                    │                   COMPLETED                           │
+                    │  Tab Targeting, API Validation, Verify Fix,          │
+                    │  Session Diff, Security Tools, Audit Log             │
+                    └──────────────────────────────────────────────────────┘
+                                            │
+                    ┌───────────────────────┼───────────────────────┐
+                    │                       │                       │
+                    ▼                       ▼                       ▼
+            ┌───────────────┐       ┌───────────────┐       ┌───────────────┐
+            │ 33. Self-     │       │ Gasoline CI   │       │ 5. Context    │
+            │ Healing Tests │       │ Infrastructure│       │ Streaming     │
+            └───────┬───────┘       └───────┬───────┘       └───────┬───────┘
+                    │                       │                       │
+        ┌───────────┴───────────┐           │               ┌───────┴───────┐
+        │                       │           │               │               │
+        ▼                       ▼           │               │               │
+┌───────────────┐       ┌───────────────┐   │               │               │
+│ 35. PR Preview│       │ 34. Agentic   │   │               │               │
+│ Exploration   │       │ E2E Repair    │   │               │               │
+└───────────────┘       └───────────────┘   │               │               │
+                                            │               │               │
+                                            └───────┬───────┘               │
+                                                    │                       │
+                                                    ▼                       │
+                                            ┌───────────────┐               │
+                                            │ 36. Deployment│◄──────────────┘
+                                            │ Watchdog      │
+                                            └───────────────┘
+```
+
+---
+
+## Maximum Parallelization
+
+**Wave 1 (Now):** 3 agents
+- Agent A: Self-Healing Tests (33)
+- Agent B: Gasoline CI Infrastructure
+- Agent C: Context Streaming (5)
+
+**Wave 2 (After Wave 1):** 3 agents
+- Agent A: PR Preview Exploration (35)
+- Agent B: Agentic E2E Repair (34)
+- Agent C: Deployment Watchdog (36)
+
+**Wave 3 (Enterprise, anytime):** 4 agents
+- Agents A-D: TTL, Redaction, API Key, Rate Limits (16, 19, 20, 21)
+
+**Total: Up to 4 parallel agents** can work productively on v6 at any time.

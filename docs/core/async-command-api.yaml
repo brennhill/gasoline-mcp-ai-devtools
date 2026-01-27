@@ -1,0 +1,625 @@
+openapi: 3.0.3
+info:
+  title: Gasoline Async Command API
+  version: 6.0.0
+  description: |
+    HTTP API for async command execution between MCP server and browser extension.
+
+    ## Architecture Overview
+
+    The async command API implements a 2-phase execution model with non-blocking semantics:
+
+    ```
+    ┌────────────┐                    ┌────────────┐                    ┌────────────┐
+    │    MCP     │                    │   Server   │                    │ Extension  │
+    │   Client   │                    │  (Go HTTP) │                    │ (Chrome)   │
+    └────────────┘                    └────────────┘                    └────────────┘
+         │                                   │                                 │
+         │ interact({action: "execute_js"})  │                                 │
+         ├──────────────────────────────────>│                                 │
+         │                                   │                                 │
+         │  {status: "queued",               │                                 │
+         │   correlation_id: "corr-123"}     │                                 │
+         │<──────────────────────────────────┤                                 │
+         │                                   │                                 │
+         │                                   │  GET /pending-queries           │
+         │                                   │<────────────────────────────────┤
+         │                                   │                                 │
+         │                                   │  [{type: "execute",             │
+         │                                   │    correlation_id: "corr-123"}] │
+         │                                   │─────────────────────────────────>
+         │                                   │                                 │
+         │                                   │                                 │ Execute JS
+         │                                   │                                 │ (2s-10s)
+         │                                   │                                 │
+         │                                   │  POST /execute-result           │
+         │                                   │  {correlation_id: "corr-123",   │
+         │                                   │   status: "complete",           │
+         │                                   │   result: {...}}                │
+         │                                   │<────────────────────────────────┤
+         │                                   │                                 │
+         │ observe({what: "command_result",  │                                 │
+         │          correlation_id: "..."})  │                                 │
+         ├──────────────────────────────────>│                                 │
+         │                                   │                                 │
+         │  {status: "complete",             │                                 │
+         │   result: {...}}                  │                                 │
+         │<──────────────────────────────────┤                                 │
+    ```
+
+    ## Timeout Architecture
+
+    - **HTTP Server**: 2s ReadTimeout, 2s WriteTimeout (fail fast)
+    - **Extension Execution**: 2s decision point, 10s total timeout
+    - **MCP Polling**: Client polls every 2s until status changes from "pending"
+
+    ## Status States
+
+    - `pending`: Command queued, extension hasn't completed execution
+    - `complete`: Command finished successfully or with error
+    - `timeout`: Extension exceeded 10s execution limit
+
+    ## Key Endpoints
+
+    - `GET /pending-queries` - Extension polls for commands to execute
+    - `POST /execute-result` - Extension posts command results
+    - `GET /pending-queries` returns empty array once result is posted
+
+servers:
+  - url: http://localhost:7890
+    description: Local Gasoline server
+
+paths:
+  /pending-queries:
+    get:
+      summary: Poll for pending commands
+      description: |
+        Extension polls this endpoint every 1-2 seconds to retrieve commands
+        queued by the MCP server. Commands include execute_js, navigate, etc.
+
+        Once a command result is posted via `/execute-result`, the command is
+        removed from the pending queue.
+      parameters:
+        - name: X-Gasoline-Session
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Extension session ID (UUID v4)
+        - name: X-Gasoline-Pilot
+          in: header
+          required: false
+          schema:
+            type: string
+            enum: ["0", "1"]
+          description: |
+            DEPRECATED: AI Web Pilot toggle state (0=off, 1=on).
+            Kept for backward compatibility only.
+            Server now uses POST /settings for pilot state.
+      responses:
+        "200":
+          description: List of pending commands
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PendingQuery"
+              examples:
+                no_commands:
+                  summary: No pending commands
+                  value:
+                    queries: []
+                execute_command:
+                  summary: Execute JavaScript command
+                  value:
+                    queries:
+                      - id: "q-1706123456"
+                        type: "execute"
+                        params: '{"script":"document.title","timeout_ms":5000}'
+                        correlation_id: "corr-1706123456-abc123"
+                        tab_id: 42
+                browser_action:
+                  summary: Browser navigation action
+                  value:
+                    queries:
+                      - id: "q-1706123457"
+                        type: "browser_action"
+                        params: '{"action":"navigate","url":"https://example.com"}'
+                        correlation_id: "corr-1706123457-def456"
+        "401":
+          description: Missing or invalid session ID
+        "500":
+          description: Server error
+
+  /execute-result:
+    post:
+      summary: Post command execution result
+      description: |
+        Extension posts command results to this endpoint. The correlation_id
+        links the result to the original command from `/pending-queries`.
+
+        This endpoint accepts both legacy sync results (with `id`) and
+        async results (with `correlation_id`). For async commands, the
+        `status` field indicates execution state.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommandResult"
+            examples:
+              success:
+                summary: Successful execution
+                value:
+                  correlation_id: "corr-1706123456-abc123"
+                  status: "complete"
+                  result:
+                    value: "Example Page"
+              error:
+                summary: Execution error
+                value:
+                  correlation_id: "corr-1706123456-abc123"
+                  status: "complete"
+                  error: "content_script_not_loaded"
+              timeout:
+                summary: Execution timeout
+                value:
+                  correlation_id: "corr-1706123456-abc123"
+                  status: "timeout"
+                  error: "JavaScript execution exceeded 10s"
+              pending:
+                summary: Still executing (2s checkpoint)
+                value:
+                  correlation_id: "corr-1706123456-abc123"
+                  status: "pending"
+      responses:
+        "200":
+          description: Result recorded successfully
+        "400":
+          description: Invalid request body
+        "413":
+          description: Request body too large (max 10MB)
+
+  /network-waterfall:
+    post:
+      summary: Receive network waterfall data
+      description: |
+        Extension posts PerformanceResourceTiming data from the browser's
+        performance API every 10 seconds. This data is used to:
+
+        - Generate complete Content Security Policy (CSP) headers
+        - Detect security threats (suspicious TLDs, mixed content, typosquatting)
+        - Build network performance profiles
+
+        The server stores entries in a ring buffer (capacity: 1000, FIFO eviction).
+        Each entry is timestamped server-side and analyzed for security flags.
+
+        Captured data includes:
+        - Full resource URLs and timing data
+        - Initiator types (script, stylesheet, img, fetch, etc.)
+        - Transfer sizes (original, compressed, decompressed)
+        - Page URL context
+
+        Security analysis detects:
+        - Suspicious TLDs (.xyz, .top, .loan, .download, etc.)
+        - Non-standard ports (excluding localhost dev ports)
+        - Mixed content (HTTP resources on HTTPS pages)
+        - IP address origins (potential compromised infrastructure)
+        - Typosquatting (domains similar to popular CDNs)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NetworkWaterfallPayload"
+            examples:
+              typical_page_load:
+                summary: Typical page load with multiple resources
+                value:
+                  pageURL: "https://myapp.com/dashboard"
+                  entries:
+                    - name: "https://cdn.example.com/library.js"
+                      url: "https://cdn.example.com/library.js"
+                      initiatorType: "script"
+                      duration: 123.45
+                      startTime: 456.78
+                      fetchStart: 450.0
+                      responseEnd: 573.45
+                      transferSize: 12345
+                      decodedBodySize: 24690
+                      encodedBodySize: 12345
+                    - name: "https://fonts.googleapis.com/css2?family=Roboto"
+                      url: "https://fonts.googleapis.com/css2?family=Roboto"
+                      initiatorType: "stylesheet"
+                      duration: 89.12
+                      startTime: 500.0
+                      fetchStart: 495.0
+                      responseEnd: 584.12
+                      transferSize: 5678
+                      decodedBodySize: 11356
+                      encodedBodySize: 5678
+              suspicious_resources:
+                summary: Resources that trigger security flags
+                value:
+                  pageURL: "https://myapp.com"
+                  entries:
+                    - name: "http://cdn-analytics.xyz:8443/tracker.js"
+                      url: "http://cdn-analytics.xyz:8443/tracker.js"
+                      initiatorType: "script"
+                      duration: 250.5
+                      startTime: 100.0
+                      fetchStart: 95.0
+                      responseEnd: 345.5
+                      transferSize: 8192
+                      decodedBodySize: 16384
+                      encodedBodySize: 8192
+      responses:
+        "200":
+          description: Waterfall data processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                    description: Processing status
+                  entries_stored:
+                    type: integer
+                    description: Number of entries successfully stored
+              example:
+                status: "ok"
+                entries_stored: 3
+        "400":
+          description: Invalid JSON payload
+
+  /settings:
+    post:
+      summary: Post extension configuration state
+      description: |
+        Extension posts its current configuration state every 2 seconds.
+        Used for diagnostics and AI Web Pilot safety gate.
+
+        Posted settings include:
+        - aiWebPilotEnabled: Whether AI can control browser
+        - networkWaterfallEnabled: Whether waterfall context is attached to errors
+        - networkBodyCaptureEnabled: Whether request/response bodies are captured
+        - performanceMarksEnabled: Whether performance marks are tracked
+        - webSocketCaptureEnabled: Whether WebSocket messages are captured
+
+        The session_id links settings to the extension's current session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+                  format: uuid
+                  description: Extension session ID (UUID v4)
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                settings:
+                  type: object
+                  properties:
+                    aiWebPilotEnabled:
+                      type: boolean
+                      description: AI Web Pilot toggle state (controls browser automation)
+                    networkWaterfallEnabled:
+                      type: boolean
+                      description: Include waterfall context in error logs
+                    networkBodyCaptureEnabled:
+                      type: boolean
+                      description: Capture request/response bodies
+                    performanceMarksEnabled:
+                      type: boolean
+                      description: Track performance marks
+                    webSocketCaptureEnabled:
+                      type: boolean
+                      description: Capture WebSocket messages
+              example:
+                session_id: "550e8400-e29b-41d4-a716-446655440000"
+                settings:
+                  aiWebPilotEnabled: true
+                  networkWaterfallEnabled: false
+                  networkBodyCaptureEnabled: true
+                  performanceMarksEnabled: true
+                  webSocketCaptureEnabled: true
+      responses:
+        "200":
+          description: Settings recorded successfully
+        "400":
+          description: Invalid request body
+
+  /extension-logs:
+    post:
+      summary: Receive extension internal logs
+      description: |
+        Extension posts internal log entries from background scripts, content scripts,
+        and service workers to enable AI debugging of extension behavior.
+
+        This endpoint captures logs that aren't visible through page-level console
+        capture, such as:
+        - debugLog() calls from background.js
+        - Connection state changes
+        - Settings heartbeat activity
+        - Waterfall posting events
+        - Extension lifecycle events
+
+        Posted logs include:
+        - Level: "debug", "info", "warn", "error"
+        - Source: "background", "content", "inject"
+        - Category: Debug category (CONNECTION, CAPTURE, ERROR, etc.)
+        - Message: Human-readable message
+        - Data: Structured additional data (optional)
+
+        The server stores logs in a ring buffer (capacity: 500, FIFO eviction).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                logs:
+                  type: array
+                  description: Array of extension log entries
+                  items:
+                    $ref: "#/components/schemas/ExtensionLog"
+              example:
+                logs:
+                  - level: "debug"
+                    source: "background"
+                    category: "CONNECTION"
+                    message: "Starting settings heartbeat"
+                    data:
+                      serverUrl: "http://localhost:7890"
+                    timestamp: "2026-01-27T14:20:00Z"
+                  - level: "debug"
+                    source: "background"
+                    category: "CONNECTION"
+                    message: "Posted settings to server"
+                    data:
+                      aiWebPilotEnabled: true
+                      networkWaterfallEnabled: false
+                    timestamp: "2026-01-27T14:20:00Z"
+      responses:
+        "200":
+          description: Logs recorded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  logs_stored:
+                    type: integer
+                    description: Number of log entries stored
+              example:
+                status: "ok"
+                logs_stored: 2
+        "400":
+          description: Invalid JSON payload
+
+components:
+  schemas:
+    PendingQuery:
+      type: object
+      required:
+        - id
+        - type
+        - params
+      properties:
+        id:
+          type: string
+          description: Legacy sync query ID
+          example: "q-1706123456"
+        type:
+          type: string
+          enum:
+            - execute
+            - browser_action
+            - highlight
+            - dom
+            - a11y
+            - tabs
+            - state_save_state
+            - state_load_state
+            - state_list_states
+            - state_delete_state
+          description: Command type determines which handler processes it
+        params:
+          type: string
+          description: JSON-encoded command parameters
+          example: '{"script":"document.title","timeout_ms":5000}'
+        correlation_id:
+          type: string
+          description: |
+            Async command correlation ID. If present, extension must use
+            async execution pattern (2s/10s timeouts) and post result
+            to /execute-result with this correlation_id.
+          example: "corr-1706123456-abc123"
+        tab_id:
+          type: integer
+          description: Target Chrome tab ID (optional, uses active tab if omitted)
+          example: 42
+
+    CommandResult:
+      type: object
+      description: |
+        Command execution result posted by extension. Supports both legacy
+        sync pattern (id field) and async pattern (correlation_id field).
+      properties:
+        id:
+          type: string
+          description: Legacy sync query ID (deprecated, use correlation_id)
+          example: "q-1706123456"
+        correlation_id:
+          type: string
+          description: Async command correlation ID
+          example: "corr-1706123456-abc123"
+        status:
+          type: string
+          enum:
+            - pending
+            - complete
+            - timeout
+          description: |
+            Execution status:
+            - `pending`: Still executing (posted at 2s checkpoint)
+            - `complete`: Finished (success or error)
+            - `timeout`: Exceeded 10s execution limit
+          example: "complete"
+        result:
+          type: object
+          description: Command result data (JSON, varies by command type)
+          example:
+            value: "Example Page"
+        error:
+          type: string
+          description: Error message if command failed
+          example: "content_script_not_loaded"
+      oneOf:
+        - required: [id, status]
+        - required: [correlation_id, status]
+
+    NetworkWaterfallPayload:
+      type: object
+      required:
+        - entries
+        - pageURL
+      properties:
+        entries:
+          type: array
+          description: Array of PerformanceResourceTiming entries
+          items:
+            $ref: "#/components/schemas/NetworkWaterfallEntry"
+        pageURL:
+          type: string
+          format: uri
+          description: URL of the page that loaded these resources
+          example: "https://myapp.com/dashboard"
+
+    NetworkWaterfallEntry:
+      type: object
+      required:
+        - name
+        - url
+        - initiatorType
+      properties:
+        name:
+          type: string
+          description: Full resource URL (same as url)
+          example: "https://cdn.example.com/library.js"
+        url:
+          type: string
+          format: uri
+          description: Full resource URL
+          example: "https://cdn.example.com/library.js"
+        initiatorType:
+          type: string
+          description: |
+            Resource type from PerformanceResourceTiming API.
+            Common values: script, stylesheet, img, xmlhttprequest, fetch,
+            link, css, beacon, other
+          example: "script"
+        duration:
+          type: number
+          format: float
+          description: Total duration in milliseconds
+          example: 123.45
+        startTime:
+          type: number
+          format: float
+          description: Time relative to navigationStart (ms)
+          example: 456.78
+        fetchStart:
+          type: number
+          format: float
+          description: When fetch began (ms)
+          example: 450.0
+        responseEnd:
+          type: number
+          format: float
+          description: When response completed (ms)
+          example: 573.45
+        transferSize:
+          type: integer
+          description: Bytes transferred over network (0 if cached)
+          example: 12345
+        decodedBodySize:
+          type: integer
+          description: Decompressed response body size in bytes
+          example: 24690
+        encodedBodySize:
+          type: integer
+          description: Compressed response body size in bytes
+          example: 12345
+        pageURL:
+          type: string
+          format: uri
+          description: |
+            Page URL (set server-side, not sent by extension).
+            Copied from payload.pageURL for each entry.
+          example: "https://myapp.com/dashboard"
+        timestamp:
+          type: string
+          format: date-time
+          description: |
+            Server-side timestamp when entry was received (set server-side,
+            not sent by extension).
+          example: "2024-01-27T10:30:00Z"
+
+    ExtensionLog:
+      type: object
+      required:
+        - level
+        - message
+        - source
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When the log entry was created
+          example: "2026-01-27T14:20:00Z"
+        level:
+          type: string
+          enum: ["debug", "info", "warn", "error"]
+          description: Log severity level
+          example: "debug"
+        message:
+          type: string
+          description: Human-readable log message
+          example: "Starting settings heartbeat"
+        source:
+          type: string
+          enum: ["background", "content", "inject"]
+          description: Extension context that generated the log
+          example: "background"
+        category:
+          type: string
+          description: |
+            Debug category from extension's DebugCategory enum.
+            Common values: CONNECTION, CAPTURE, ERROR, LIFECYCLE, QUERY
+          example: "CONNECTION"
+        data:
+          type: object
+          additionalProperties: true
+          description: Additional structured data associated with the log entry
+          example:
+            serverUrl: "http://localhost:7890"
+            aiWebPilotEnabled: true
+
+  securitySchemes: {}
+
+tags:
+  - name: Extension Polling
+    description: Endpoints for browser extension to poll and submit results

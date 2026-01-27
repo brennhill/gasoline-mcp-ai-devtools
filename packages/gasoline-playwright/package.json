@@ -1,0 +1,26 @@
+{
+  "name": "@anthropic/gasoline-playwright",
+  "version": "5.1.0",
+  "description": "Playwright fixture for Gasoline CI browser observability",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "peerDependencies": {
+    "@playwright/test": ">=1.40.0"
+  },
+  "dependencies": {
+    "@anthropic/gasoline-ci": "5.1.0"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "homepage": "https://cookwithgasoline.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brennhill/gasoline-mcp-ai-devtools"
+  },
+  "bugs": {
+    "url": "https://github.com/brennhill/gasoline-mcp-ai-devtools/issues"
+  },
+  "license": "MIT"
+}

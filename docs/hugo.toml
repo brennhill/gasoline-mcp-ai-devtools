@@ -1,0 +1,60 @@
+# Gasoline Documentation Site
+baseURL = "https://cookwithgasoline.com/"
+languageCode = "en-us"
+title = "Gasoline"
+theme = "gasoline"
+
+[params]
+  description = "Browser observability for AI coding agents. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant."
+  tagline = "Pouring fuel on the AI development fire"
+  github = "https://github.com/brennhill/gasoline-mcp-ai-devtools"
+  author = "Brenn Hill"
+
+[menu]
+  [[menu.main]]
+    name = "Get Started"
+    url = "/getting-started/"
+    weight = 1
+  [[menu.main]]
+    name = "Features"
+    url = "/features/"
+    weight = 2
+  [[menu.main]]
+    name = "Security"
+    url = "/security/"
+    weight = 3
+  [[menu.main]]
+    name = "Blog"
+    url = "/blog/"
+    weight = 4
+
+[markup]
+  [markup.highlight]
+    style = "dracula"
+    lineNos = false
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 3
+    ordered = false
+
+[outputs]
+  home = ["HTML", "RSS"]
+  section = ["HTML", "RSS"]
+
+# Ignore Jekyll and other non-Hugo files during build
+ignoreFiles = [
+  "_config\\.yml$",
+  "_layouts",
+  "_includes",
+  "_posts",
+  "_site",
+  "Gemfile",
+  "Gemfile\\.lock",
+  "\\.scss$",
+  "\\.ruby-version$",
+  "assets/css",
+  "404\\.md$"
+]

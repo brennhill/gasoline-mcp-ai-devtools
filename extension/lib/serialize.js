@@ -62,14 +62,14 @@ export function safeSerialize(value, depth = 0, seen = new WeakSet()) {
       return `[${tag}${id}${className}]`
     }
 
-    // Handle arrays
+    // Handle arrays (cap at 100 elements to prevent OOM)
     if (Array.isArray(value)) {
-      return value.map((item) => safeSerialize(item, depth + 1, seen))
+      return value.slice(0, 100).map((item) => safeSerialize(item, depth + 1, seen))
     }
 
-    // Handle plain objects
+    // Handle plain objects (cap at 50 keys to prevent OOM)
     const result = {}
-    for (const key of Object.keys(value)) {
+    for (const key of Object.keys(value).slice(0, 50)) {
       try {
         result[key] = safeSerialize(value[key], depth + 1, seen)
       } catch {

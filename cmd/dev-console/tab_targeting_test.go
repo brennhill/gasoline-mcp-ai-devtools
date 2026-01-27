@@ -1,6 +1,6 @@
 // tab_targeting_test.go - Tests for Tab Targeting feature (Phase 0)
 // Tests for: observe {what: "tabs"}, tab_id parameter on pending queries,
-// and browser_action {action: "open", url: "..."}.
+// and interact {action: "navigate", url: "..."}.
 package main
 
 import (
@@ -219,7 +219,7 @@ func TestPendingQueryTabIDInResponse(t *testing.T) {
 }
 
 // ============================================
-// Test: browser_action {action: "open", url: "..."}
+// Test: interact {action: "navigate", url: "..."}
 // ============================================
 
 func TestBrowserActionOpenSchema(t *testing.T) {
@@ -247,31 +247,31 @@ func TestBrowserActionOpenSchema(t *testing.T) {
 		t.Fatalf("Failed to parse tools list: %v", err)
 	}
 
-	// Find browser_action tool
-	var browserActionTool struct {
+	// Find interact tool
+	var interactTool struct {
 		Name        string                 `json:"name"`
 		InputSchema map[string]interface{} `json:"inputSchema"`
 	}
 	for _, tool := range result.Tools {
-		if tool.Name == "browser_action" {
-			browserActionTool = tool
+		if tool.Name == "interact" {
+			interactTool = tool
 			break
 		}
 	}
 
-	if browserActionTool.Name == "" {
-		t.Fatal("browser_action tool not found")
+	if interactTool.Name == "" {
+		t.Fatal("interact tool not found")
 	}
 
-	// Check that "open" is in the action enum
-	props, ok := browserActionTool.InputSchema["properties"].(map[string]interface{})
+	// Check that "navigate" is in the action enum
+	props, ok := interactTool.InputSchema["properties"].(map[string]interface{})
 	if !ok {
-		t.Fatal("browser_action should have properties")
+		t.Fatal("interact should have properties")
 	}
 
 	action, ok := props["action"].(map[string]interface{})
 	if !ok {
-		t.Fatal("browser_action should have 'action' property")
+		t.Fatal("interact should have 'action' property")
 	}
 
 	enum, ok := action["enum"].([]interface{})
@@ -279,16 +279,16 @@ func TestBrowserActionOpenSchema(t *testing.T) {
 		t.Fatal("'action' should have enum values")
 	}
 
-	openFound := false
+	navigateFound := false
 	for _, v := range enum {
-		if v == "open" {
-			openFound = true
+		if v == "navigate" {
+			navigateFound = true
 			break
 		}
 	}
 
-	if !openFound {
-		t.Error("Expected 'open' in browser_action action enum")
+	if !navigateFound {
+		t.Error("Expected 'navigate' in interact action enum")
 	}
 }
 
@@ -302,12 +302,17 @@ func TestBrowserActionOpenCreatesQuery(t *testing.T) {
 		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Start browser_action {action: "open", url: "..."} in a goroutine
+	// Simulate extension connection with pilot enabled
+	capture.lastPollAt = time.Now()
+	capture.pilotEnabled = true
+	capture.pilotUpdatedAt = time.Now()
+
+	// Start interact {action: "navigate", url: "..."} in a goroutine
 	done := make(chan JSONRPCResponse)
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"browser_action","arguments":{"action":"open","url":"https://example.com/test"}}`),
+			Params: json.RawMessage(`{"name":"interact","arguments":{"action":"navigate","url":"https://example.com/test"}}`),
 		})
 		done <- resp
 	}()
@@ -316,7 +321,7 @@ func TestBrowserActionOpenCreatesQuery(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	pending := capture.GetPendingQueries()
 	if len(pending) == 0 {
-		t.Fatal("Expected pending query for browser_action open")
+		t.Fatal("Expected pending query for interact navigate")
 	}
 
 	if pending[0].Type != "browser_action" {
@@ -329,15 +334,15 @@ func TestBrowserActionOpenCreatesQuery(t *testing.T) {
 		t.Fatalf("Failed to unmarshal params: %v", err)
 	}
 
-	if params["action"] != "open" {
-		t.Errorf("Expected action 'open', got %v", params["action"])
+	if params["action"] != "navigate" {
+		t.Errorf("Expected action 'navigate', got %v", params["action"])
 	}
 	if params["url"] != "https://example.com/test" {
 		t.Errorf("Expected url 'https://example.com/test', got %v", params["url"])
 	}
 
 	// Simulate extension response with new tab_id
-	openResponse := `{"success":true,"action":"open","tab_id":999,"url":"https://example.com/test"}`
+	openResponse := `{"success":true,"action":"navigate","tab_id":999,"url":"https://example.com/test"}`
 	capture.SetQueryResult(pending[0].ID, json.RawMessage(openResponse))
 
 	resp := <-done
@@ -370,10 +375,10 @@ func TestBrowserActionOpenRequiresURL(t *testing.T) {
 		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Call browser_action {action: "open"} without URL
+	// Call interact {action: "navigate"} without URL
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"browser_action","arguments":{"action":"open"}}`),
+		Params: json.RawMessage(`{"name":"interact","arguments":{"action":"navigate"}}`),
 	})
 
 	var result MCPToolResult
@@ -383,7 +388,7 @@ func TestBrowserActionOpenRequiresURL(t *testing.T) {
 
 	// Should return an error about missing URL
 	if !result.IsError {
-		t.Error("Expected isError to be true when URL is missing for open action")
+		t.Error("Expected isError to be true when URL is missing for navigate action")
 	}
 
 	if !strings.Contains(result.Content[0].Text, "URL") {
@@ -405,12 +410,12 @@ func TestQueryDOMWithTabID(t *testing.T) {
 		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Call query_dom with tab_id
+	// Call configure with action query_dom and tab_id
 	done := make(chan JSONRPCResponse)
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"query_dom","arguments":{"selector":"h1","tab_id":42}}`),
+			Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"h1","tab_id":42}}`),
 		})
 		done <- resp
 	}()
@@ -440,12 +445,17 @@ func TestExecuteJavaScriptWithTabID(t *testing.T) {
 		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Call execute_javascript with tab_id
+	// Simulate extension connection with pilot enabled
+	capture.lastPollAt = time.Now()
+	capture.pilotEnabled = true
+	capture.pilotUpdatedAt = time.Now()
+
+	// Call interact with action execute_js and tab_id
 	done := make(chan JSONRPCResponse)
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"execute_javascript","arguments":{"script":"return 1","tab_id":55}}`),
+			Params: json.RawMessage(`{"name":"interact","arguments":{"action":"execute_js","script":"return 1","tab_id":55}}`),
 		})
 		done <- resp
 	}()
@@ -475,12 +485,17 @@ func TestHighlightElementWithTabID(t *testing.T) {
 		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Call highlight_element with tab_id
+	// Simulate extension connection with pilot enabled
+	capture.lastPollAt = time.Now()
+	capture.pilotEnabled = true
+	capture.pilotUpdatedAt = time.Now()
+
+	// Call interact with action highlight and tab_id
 	done := make(chan JSONRPCResponse)
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"highlight_element","arguments":{"selector":"#test","tab_id":77}}`),
+			Params: json.RawMessage(`{"name":"interact","arguments":{"action":"highlight","selector":"#test","tab_id":77}}`),
 		})
 		done <- resp
 	}()
@@ -510,12 +525,17 @@ func TestManageStateWithTabID(t *testing.T) {
 		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Call manage_state with tab_id
+	// Simulate extension connection with pilot enabled
+	capture.lastPollAt = time.Now()
+	capture.pilotEnabled = true
+	capture.pilotUpdatedAt = time.Now()
+
+	// Call interact with action save_state and tab_id
 	done := make(chan JSONRPCResponse)
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"manage_state","arguments":{"action":"capture","tab_id":88}}`),
+			Params: json.RawMessage(`{"name":"interact","arguments":{"action":"save_state","tab_id":88}}`),
 		})
 		done <- resp
 	}()
@@ -545,12 +565,17 @@ func TestBrowserActionNavigateWithTabID(t *testing.T) {
 		Params: json.RawMessage(`{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}`),
 	})
 
-	// Call browser_action navigate with tab_id
+	// Simulate extension connection with pilot enabled
+	capture.lastPollAt = time.Now()
+	capture.pilotEnabled = true
+	capture.pilotUpdatedAt = time.Now()
+
+	// Call interact navigate with tab_id
 	done := make(chan JSONRPCResponse)
 	go func() {
 		resp := mcp.HandleRequest(JSONRPCRequest{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: json.RawMessage(`{"name":"browser_action","arguments":{"action":"navigate","url":"https://test.com","tab_id":99}}`),
+			Params: json.RawMessage(`{"name":"interact","arguments":{"action":"navigate","url":"https://test.com","tab_id":99}}`),
 		})
 		done <- resp
 	}()
@@ -599,20 +624,20 @@ func TestTabIDInQueryDOMSchema(t *testing.T) {
 		t.Fatalf("Failed to parse tools list: %v", err)
 	}
 
-	// Check query_dom has tab_id parameter
+	// Check configure has tab_id parameter
 	for _, tool := range result.Tools {
-		if tool.Name == "query_dom" {
+		if tool.Name == "configure" {
 			props, ok := tool.InputSchema["properties"].(map[string]interface{})
 			if !ok {
-				t.Fatal("query_dom should have properties")
+				t.Fatal("configure should have properties")
 			}
 			if _, ok := props["tab_id"]; !ok {
-				t.Error("query_dom should have 'tab_id' parameter")
+				t.Error("configure should have 'tab_id' parameter")
 			}
 			return
 		}
 	}
-	t.Fatal("query_dom tool not found")
+	t.Fatal("configure tool not found")
 }
 
 func TestTabIDInExecuteJavaScriptSchema(t *testing.T) {
@@ -640,18 +665,18 @@ func TestTabIDInExecuteJavaScriptSchema(t *testing.T) {
 		t.Fatalf("Failed to parse tools list: %v", err)
 	}
 
-	// Check execute_javascript has tab_id parameter
+	// Check interact has tab_id parameter
 	for _, tool := range result.Tools {
-		if tool.Name == "execute_javascript" {
+		if tool.Name == "interact" {
 			props, ok := tool.InputSchema["properties"].(map[string]interface{})
 			if !ok {
-				t.Fatal("execute_javascript should have properties")
+				t.Fatal("interact should have properties")
 			}
 			if _, ok := props["tab_id"]; !ok {
-				t.Error("execute_javascript should have 'tab_id' parameter")
+				t.Error("interact should have 'tab_id' parameter")
 			}
 			return
 		}
 	}
-	t.Fatal("execute_javascript tool not found")
+	t.Fatal("interact tool not found")
 }

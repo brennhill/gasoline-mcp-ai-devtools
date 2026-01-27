@@ -5,11 +5,11 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -27,7 +27,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "5.0.0"
+var version = "5.1.0"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -46,10 +46,11 @@ type LogEntry map[string]interface{}
 
 // JSONRPCRequest represents an incoming JSON-RPC 2.0 request
 type JSONRPCRequest struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      interface{}     `json:"id"`
-	Method  string          `json:"method"`
-	Params  json.RawMessage `json:"params,omitempty"`
+	JSONRPC  string          `json:"jsonrpc"`
+	ID       interface{}     `json:"id"`
+	Method   string          `json:"method"`
+	Params   json.RawMessage `json:"params,omitempty"`
+	ClientID string          `json:"-"` // per-request client ID for multi-client isolation (not serialized)
 }
 
 // JSONRPCResponse represents an outgoing JSON-RPC 2.0 response
@@ -89,13 +90,85 @@ func NewMCPHandler(server *Server) *MCPHandler {
 
 // HandleHTTP handles MCP requests over HTTP (POST /mcp)
 func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	sessionID := r.Header.Get("X-Gasoline-Session")
+	clientID := r.Header.Get("X-Gasoline-Client")
+
+	// Collect all headers for debug logging (redact auth)
+	headers := make(map[string]string)
+	for name, values := range r.Header {
+		if strings.Contains(strings.ToLower(name), "auth") || strings.Contains(strings.ToLower(name), "token") {
+			headers[name] = "[REDACTED]"
+		} else if len(values) > 0 {
+			headers[name] = values[0]
+		}
+	}
+
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
 
+	// Read body for logging
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		if h.toolHandler != nil && h.toolHandler.capture != nil {
+			duration := time.Since(startTime)
+			debugEntry := HTTPDebugEntry{
+				Timestamp:      startTime,
+				Endpoint:       "/mcp",
+				Method:         "POST",
+				SessionID:      sessionID,
+				ClientID:       clientID,
+				Headers:        headers,
+				ResponseStatus: http.StatusBadRequest,
+				DurationMs:     duration.Milliseconds(),
+				Error:          fmt.Sprintf("Could not read body: %v", err),
+			}
+			h.toolHandler.capture.mu.Lock()
+			h.toolHandler.capture.logHTTPDebugEntry(debugEntry)
+			h.toolHandler.capture.mu.Unlock()
+			printHTTPDebug(debugEntry)
+		}
+		resp := JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      nil,
+			Error: &JSONRPCError{
+				Code:    -32700,
+				Message: "Read error: " + err.Error(),
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	requestPreview := string(bodyBytes)
+	if len(requestPreview) > 1000 {
+		requestPreview = requestPreview[:1000] + "..."
+	}
+
 	var req JSONRPCRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
+		if h.toolHandler != nil && h.toolHandler.capture != nil {
+			duration := time.Since(startTime)
+			debugEntry := HTTPDebugEntry{
+				Timestamp:      startTime,
+				Endpoint:       "/mcp",
+				Method:         "POST",
+				SessionID:      sessionID,
+				ClientID:       clientID,
+				Headers:        headers,
+				RequestBody:    requestPreview,
+				ResponseStatus: http.StatusBadRequest,
+				DurationMs:     duration.Milliseconds(),
+				Error:          fmt.Sprintf("Parse error: %v", err),
+			}
+			h.toolHandler.capture.mu.Lock()
+			h.toolHandler.capture.logHTTPDebugEntry(debugEntry)
+			h.toolHandler.capture.mu.Unlock()
+			printHTTPDebug(debugEntry)
+		}
 		resp := JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      nil,
@@ -109,7 +182,38 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extract client ID for multi-client isolation (stored on the request, not the handler)
+	req.ClientID = clientID
+
 	resp := h.HandleRequest(req)
+
+	// Log debug entry
+	if h.toolHandler != nil && h.toolHandler.capture != nil {
+		duration := time.Since(startTime)
+		responseJSON, _ := json.Marshal(resp)
+		responsePreview := string(responseJSON)
+		if len(responsePreview) > 1000 {
+			responsePreview = responsePreview[:1000] + "..."
+		}
+
+		debugEntry := HTTPDebugEntry{
+			Timestamp:      startTime,
+			Endpoint:       "/mcp",
+			Method:         "POST",
+			SessionID:      sessionID,
+			ClientID:       clientID,
+			Headers:        headers,
+			RequestBody:    requestPreview,
+			ResponseStatus: http.StatusOK,
+			ResponseBody:   responsePreview,
+			DurationMs:     duration.Milliseconds(),
+		}
+		h.toolHandler.capture.mu.Lock()
+		h.toolHandler.capture.logHTTPDebugEntry(debugEntry)
+		h.toolHandler.capture.mu.Unlock()
+		printHTTPDebug(debugEntry)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
 }
@@ -130,6 +234,10 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) JSONRPCResponse {
 		return h.handleResourcesList(req)
 	case "resources/read":
 		return h.handleResourcesRead(req)
+	case "resources/templates/list":
+		return h.handleResourcesTemplatesList(req)
+	case "ping":
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{}`)}
 	default:
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -143,8 +251,24 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
+	const supportedVersion = "2024-11-05"
+
+	// Parse client's requested protocol version (best-effort; missing/empty is fine)
+	var initParams struct {
+		ProtocolVersion string `json:"protocolVersion"`
+	}
+	if len(req.Params) > 0 {
+		_ = json.Unmarshal(req.Params, &initParams)
+	}
+
+	// Negotiate: echo client's version if supported, otherwise respond with our latest
+	negotiatedVersion := supportedVersion
+	if initParams.ProtocolVersion == supportedVersion {
+		negotiatedVersion = initParams.ProtocolVersion
+	}
+
 	result := MCPInitializeResult{
-		ProtocolVersion: "2024-11-05",
+		ProtocolVersion: negotiatedVersion,
 		ServerInfo: MCPServerInfo{
 			Name:    "gasoline",
 			Version: version,
@@ -155,6 +279,7 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 		},
 	}
 
+	// Error impossible: MCPInitResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
@@ -169,6 +294,7 @@ func (h *MCPHandler) handleResourcesList(req JSONRPCRequest) JSONRPCResponse {
 		},
 	}
 	result := MCPResourcesListResult{Resources: resources}
+	// Error impossible: MCPResourcesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
@@ -193,7 +319,7 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Error: &JSONRPCError{
-				Code:    -32602,
+				Code:    -32002,
 				Message: "Resource not found: " + params.URI,
 			},
 		}
@@ -207,11 +333,10 @@ Browser observability for AI coding agents. See console errors, network failures
 
 | Tool | Purpose | Key Parameter |
 |------|---------|---------------|
-| ` + "`observe`" + ` | Get browser state | ` + "`what`" + `: errors, logs, network, websocket_events, websocket_status, actions, vitals, page |
-| ` + "`analyze`" + ` | Analyze data | ` + "`target`" + `: performance, accessibility, changes, timeline, api |
-| ` + "`generate`" + ` | Create artifacts | ` + "`format`" + `: test, reproduction, pr_summary, sarif, har |
-| ` + "`configure`" + ` | Manage session | ` + "`action`" + `: store, noise_rule, dismiss, clear |
-| ` + "`query_dom`" + ` | Query live DOM | ` + "`selector`" + `: CSS selector |
+| ` + "`observe`" + ` | Read browser state & analyze | ` + "`what`" + `: errors, logs, network, vitals, page, performance, accessibility, api, changes, timeline, security_audit |
+| ` + "`generate`" + ` | Create artifacts | ` + "`format`" + `: test, reproduction, pr_summary, sarif, har, csp, sri |
+| ` + "`configure`" + ` | Manage session & settings | ` + "`action`" + `: store, noise_rule, dismiss, clear, query_dom, health |
+| ` + "`interact`" + ` | Control the browser | ` + "`action`" + `: highlight, save_state, load_state, execute_js, navigate, refresh |
 
 ## Common Workflows
 
@@ -227,12 +352,12 @@ Browser observability for AI coding agents. See console errors, network failures
 
 ### Run accessibility audit
 ` + "```" + `json
-{ "tool": "analyze", "arguments": { "target": "accessibility" } }
+{ "tool": "observe", "arguments": { "what": "accessibility" } }
 ` + "```" + `
 
 ### Query DOM element
 ` + "```" + `json
-{ "tool": "query_dom", "arguments": { "selector": ".error-message" } }
+{ "tool": "configure", "arguments": { "action": "query_dom", "selector": ".error-message" } }
 ` + "```" + `
 
 ### Generate Playwright test from session
@@ -262,6 +387,14 @@ Browser observability for AI coding agents. See console errors, network failures
 			},
 		},
 	}
+	// Error impossible: MCPResourceContentResult is a simple struct with no circular refs or unsupported types
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+}
+
+func (h *MCPHandler) handleResourcesTemplatesList(req JSONRPCRequest) JSONRPCResponse {
+	result := MCPResourceTemplatesListResult{ResourceTemplates: []interface{}{}}
+	// Error impossible: MCPResourceTemplatesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
@@ -273,6 +406,7 @@ func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
 	}
 
 	result := MCPToolsListResult{Tools: tools}
+	// Error impossible: MCPToolsListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
@@ -291,6 +425,20 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 				Code:    -32602,
 				Message: "Invalid params: " + err.Error(),
 			},
+		}
+	}
+
+	// Check tool call rate limit before dispatch
+	if h.toolHandler != nil && h.toolHandler.toolCallLimiter != nil {
+		if !h.toolHandler.toolCallLimiter.Allow() {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Error: &JSONRPCError{
+					Code:    -32603,
+					Message: "Tool call rate limit exceeded (100 calls/minute). Please wait before retrying.",
+				},
+			}
 		}
 	}
 
@@ -353,6 +501,14 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 	return s, nil
 }
 
+// SetOnEntries sets the callback invoked when new log entries are added.
+// Thread-safe: acquires the write lock to avoid racing with addEntries.
+func (s *Server) SetOnEntries(cb func([]LogEntry)) {
+	s.mu.Lock()
+	s.onEntries = cb
+	s.mu.Unlock()
+}
+
 // loadEntries reads existing log entries from file
 func (s *Server) loadEntries() error {
 	file, err := os.Open(s.logFile)
@@ -378,21 +534,29 @@ func (s *Server) loadEntries() error {
 
 	// Bound entries (file may have more from append-only writes between rotations)
 	if len(s.entries) > s.maxEntries {
-		s.entries = s.entries[len(s.entries)-s.maxEntries:]
+		kept := make([]LogEntry, s.maxEntries)
+		copy(kept, s.entries[len(s.entries)-s.maxEntries:])
+		s.entries = kept
 	}
 
 	return scanner.Err()
 }
 
-// saveEntries writes all entries to file
+// saveEntries writes all entries to file (caller must hold s.mu)
 func (s *Server) saveEntries() error {
+	return s.saveEntriesCopy(s.entries)
+}
+
+// saveEntriesCopy writes the given entries to file without acquiring the lock.
+// The caller is responsible for providing a snapshot of the entries.
+func (s *Server) saveEntriesCopy(entries []LogEntry) error {
 	file, err := os.Create(s.logFile)
 	if err != nil {
 		return err
 	}
 	defer file.Close() //nolint:errcheck // deferred close
 
-	for _, entry := range s.entries {
+	for _, entry := range entries {
 		data, err := json.Marshal(entry)
 		if err != nil {
 			continue
@@ -428,10 +592,9 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	var body struct {
-		DataURL   string `json:"dataUrl"`
-		URL       string `json:"url"`
-		ErrorID   string `json:"errorId"`
-		ErrorType string `json:"errorType"`
+		DataURL       string `json:"dataUrl"`
+		URL           string `json:"url"`
+		CorrelationID string `json:"correlationId"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -457,7 +620,7 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build filename: [website]-[timestamp]-[errortype]-[errorid].jpg
+	// Build filename: [website]-[timestamp]-[correlationId].jpg or [website]-[timestamp].jpg
 	hostname := "unknown"
 	if body.URL != "" {
 		if u, err := url.Parse(body.URL); err == nil && u.Host != "" {
@@ -466,17 +629,18 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	timestamp := time.Now().Format("20060102-150405")
-	errorType := "unknown"
-	if body.ErrorType != "" {
-		errorType = sanitizeForFilename(body.ErrorType)
-	}
-	errorID := "manual"
-	if body.ErrorID != "" {
-		errorID = sanitizeForFilename(body.ErrorID)
-	}
 
-	filename := fmt.Sprintf("%s-%s-%s-%s.jpg",
-		sanitizeForFilename(hostname), timestamp, errorType, errorID)
+	var filename string
+	if body.CorrelationID != "" {
+		filename = fmt.Sprintf("%s-%s-%s.jpg",
+			sanitizeForFilename(hostname),
+			timestamp,
+			sanitizeForFilename(body.CorrelationID))
+	} else {
+		filename = fmt.Sprintf("%s-%s.jpg",
+			sanitizeForFilename(hostname),
+			timestamp)
+	}
 
 	// Save to same directory as log file
 	dir := filepath.Dir(s.logFile)
@@ -489,8 +653,9 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]string{
-		"filename": filename,
-		"path":     savePath,
+		"filename":       filename,
+		"path":           savePath,
+		"correlation_id": body.CorrelationID,
 	})
 }
 
@@ -505,25 +670,40 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 	}
 	s.entries = append(s.entries, newEntries...)
 
-	// Rotate if needed — requires full rewrite
+	// Rotate if needed — copy to new slice to allow GC of evicted entries
 	rotated := len(s.entries) > s.maxEntries
 	if rotated {
-		s.entries = s.entries[len(s.entries)-s.maxEntries:]
-		s.logAddedAt = s.logAddedAt[len(s.logAddedAt)-s.maxEntries:]
+		kept := make([]LogEntry, s.maxEntries)
+		copy(kept, s.entries[len(s.entries)-s.maxEntries:])
+		s.entries = kept
+		keptAt := make([]time.Time, s.maxEntries)
+		copy(keptAt, s.logAddedAt[len(s.logAddedAt)-s.maxEntries:])
+		s.logAddedAt = keptAt
 	}
 
-	var err error
+	// Snapshot data for file I/O outside the lock
+	var entriesToSave []LogEntry
+	var appendOnly []LogEntry
 	if rotated {
-		err = s.saveEntries()
+		entriesToSave = make([]LogEntry, len(s.entries))
+		copy(entriesToSave, s.entries)
 	} else {
-		err = s.appendToFile(newEntries)
+		appendOnly = make([]LogEntry, len(newEntries))
+		copy(appendOnly, newEntries)
 	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
-	}
-
 	cb := s.onEntries
 	s.mu.Unlock()
+
+	// File I/O outside lock
+	if rotated {
+		if err := s.saveEntriesCopy(entriesToSave); err != nil {
+			fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
+		}
+	} else {
+		if err := s.appendToFile(appendOnly); err != nil {
+			fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
+		}
+	}
 
 	// Notify listeners outside the lock (e.g., cluster manager)
 	if cb != nil {
@@ -559,11 +739,14 @@ func (s *Server) appendToFile(entries []LogEntry) error {
 // clearEntries removes all entries
 func (s *Server) clearEntries() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.entries = make([]LogEntry, 0)
-	if err := s.saveEntries(); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
+	s.entries = nil
+	s.logAddedAt = nil
+	s.mu.Unlock()
+	// Write empty file outside lock
+	if s.logFile != "" {
+		if err := os.WriteFile(s.logFile, []byte{}, 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "[gasoline] Error clearing log file: %v\n", err)
+		}
 	}
 }
 
@@ -637,10 +820,78 @@ func validateLogEntries(entries []LogEntry) (valid []LogEntry, rejected int) {
 	return valid, rejected
 }
 
-// CORS middleware
+// isAllowedOrigin checks if an Origin header value is from localhost or a browser extension.
+// Returns true for empty origin (CLI/curl), localhost variants, and browser extension origins.
+func isAllowedOrigin(origin string) bool {
+	if origin == "" {
+		return true
+	}
+
+	// Browser extension origins
+	if strings.HasPrefix(origin, "chrome-extension://") || strings.HasPrefix(origin, "moz-extension://") {
+		return true
+	}
+
+	// Parse the origin URL to extract the hostname
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+
+	hostname := u.Hostname()
+	return hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1"
+}
+
+// isAllowedHost checks if the Host header is a localhost variant.
+// Returns true for empty host (HTTP/1.0 clients), localhost, 127.0.0.1, and [::1]
+// with any port. This prevents DNS rebinding attacks where attacker.com resolves
+// to 127.0.0.1 — the browser sends Host: attacker.com which we reject.
+func isAllowedHost(host string) bool {
+	if host == "" {
+		return true
+	}
+
+	// Strip port if present. net.SplitHostPort fails for hosts without port,
+	// so we check both forms.
+	hostname := host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		hostname = h
+	}
+
+	// Strip IPv6 brackets (e.g., "[::1]" → "::1") for bare IPv6 without port
+	hostname = strings.TrimPrefix(hostname, "[")
+	hostname = strings.TrimSuffix(hostname, "]")
+
+	return hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1"
+}
+
+// CORS middleware with Host and Origin validation for DNS rebinding protection
+// (MCP spec §base/transports H-2/H-3).
+//
+// Security: Two layers of protection against DNS rebinding:
+//  1. Host header validation — rejects requests where Host is not a localhost variant.
+//  2. Origin validation — rejects requests from non-local, non-extension origins.
+//  3. CORS origin echo — returns the specific allowed origin, never wildcard "*".
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		// Layer 1: Validate Host header (DNS rebinding protection)
+		if !isAllowedHost(r.Host) {
+			http.Error(w, "Invalid Host header", http.StatusForbidden)
+			return
+		}
+
+		// Layer 2: Validate Origin header — if present and invalid, reject with 403
+		origin := r.Header.Get("Origin")
+		if origin != "" && !isAllowedOrigin(origin) {
+			http.Error(w, `{"error":"forbidden: invalid origin"}`, http.StatusForbidden)
+			return
+		}
+
+		// Layer 3: Echo back the specific allowed origin (never wildcard "*")
+		// Only set ACAO when an Origin header is present and valid.
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Gasoline-Key")
 
@@ -660,6 +911,40 @@ func jsonResponse(w http.ResponseWriter, status int, data interface{}) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] Error encoding JSON response: %v\n", err)
 	}
+}
+
+// findMCPConfig checks for MCP configuration files in common locations
+// Returns the path if found, empty string otherwise
+func findMCPConfig() string {
+	// Claude Code - project-local config
+	if _, err := os.Stat(".mcp.json"); err == nil {
+		return ".mcp.json"
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	// Check common MCP config locations
+	locations := []string{
+		filepath.Join(home, ".cursor", "mcp.json"),                // Cursor
+		filepath.Join(home, ".codeium", "windsurf", "mcp_config.json"), // Windsurf
+		filepath.Join(home, ".continue", "config.json"),            // Continue
+		filepath.Join(home, ".config", "zed", "settings.json"),     // Zed
+	}
+
+	for _, path := range locations {
+		if _, err := os.Stat(path); err == nil {
+			// Verify it actually contains gasoline config
+			data, err := os.ReadFile(path)
+			if err == nil && (strings.Contains(string(data), "gasoline") || strings.Contains(string(data), "gasoline-mcp")) {
+				return path
+			}
+		}
+	}
+
+	return ""
 }
 
 func main() {
@@ -691,8 +976,9 @@ func main() {
 			if data, err := json.Marshal(entry); err == nil {
 				// #nosec G302 G304 -- crash logs are intentionally world-readable for debugging
 				if f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644); err == nil {
-					_, _ = f.Write(append(data, '\n')) // #nosec G104 -- best-effort crash logging
-					_ = f.Close()                      // #nosec G104 -- best-effort crash logging
+					_, _ = f.Write(data)         // #nosec G104 -- best-effort crash logging
+					_, _ = f.Write([]byte{'\n'}) // #nosec G104 -- best-effort crash logging
+					_ = f.Close()                // #nosec G104 -- best-effort crash logging
 				}
 			}
 
@@ -713,8 +999,11 @@ func main() {
 	maxEntries := flag.Int("max-entries", defaultMaxEntries, "Max log entries before rotation")
 	showVersion := flag.Bool("version", false, "Show version")
 	showHelp := flag.Bool("help", false, "Show help")
-	serverOnly := flag.Bool("server", false, "Run in HTTP-only mode (no MCP)")
 	apiKey := flag.String("api-key", "", "API key for HTTP authentication (optional)")
+	checkSetup := flag.Bool("check", false, "Verify setup: check if port is available and print status")
+	persistMode := flag.Bool("persist", true, "Keep server running after MCP client disconnects (default: true)")
+	connectMode := flag.Bool("connect", false, "Connect to existing server (multi-client mode)")
+	clientID := flag.String("client-id", "", "Override client ID (default: derived from CWD)")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 
 	flag.Parse()
@@ -729,11 +1018,28 @@ func main() {
 		os.Exit(0)
 	}
 
+	if *checkSetup {
+		runSetupCheck(*port)
+		os.Exit(0)
+	}
+
+	// Connect mode: forward MCP to existing server
+	if *connectMode {
+		// Error acceptable: cwd defaults to empty string if inaccessible; DeriveClientID handles this
+		cwd, _ := os.Getwd()
+		id := *clientID
+		if id == "" {
+			id = DeriveClientID(cwd)
+		}
+		runConnectMode(*port, id, cwd)
+		return
+	}
+
 	// Default log file to home directory
 	if *logFile == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error getting home directory: %v\n", err)
+			fmt.Fprintf(os.Stderr, "[gasoline] Error getting home directory: %v\n", err)
 			os.Exit(1)
 		}
 		*logFile = filepath.Join(home, "gasoline-logs.jsonl")
@@ -742,159 +1048,233 @@ func main() {
 	// Create server
 	server, err := NewServer(*logFile, *maxEntries)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating server: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[gasoline] Error creating server: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Determine mode:
-	// 1. --server flag → foreground HTTP server with banner
-	// 2. stdin is a terminal (user typed "gasoline") → daemonize HTTP server
-	// 3. stdin is a pipe (MCP host launched us) → MCP mode
-	if !*serverOnly {
-		stat, _ := os.Stdin.Stat()
-		isTTY := (stat.Mode() & os.ModeCharDevice) != 0
-		stdinMode := stat.Mode()
+	// Always run in MCP mode: HTTP server for browser extension + MCP protocol over stdio
+	// Determine if stdin is TTY (user ran "gasoline" interactively) or piped (launched by MCP host)
+	stat, err := os.Stdin.Stat()
+	var isTTY bool
+	var stdinMode os.FileMode
+	if err == nil {
+		isTTY = (stat.Mode() & os.ModeCharDevice) != 0
+		stdinMode = stat.Mode()
+	}
 
-		// Log mode detection for diagnostics
+	// Log mode detection for diagnostics
+	_ = server.appendToFile([]LogEntry{{
+		"type":       "lifecycle",
+		"event":      "mode_detection",
+		"is_tty":     isTTY,
+		"stdin_mode": fmt.Sprintf("%v", stdinMode),
+		"pid":        os.Getpid(),
+		"timestamp":  time.Now().UTC().Format(time.RFC3339),
+	}})
+
+	if isTTY {
+		// User ran "gasoline" directly - start server as background process (MCP mode)
 		_ = server.appendToFile([]LogEntry{{
-			"type":       "lifecycle",
-			"event":      "mode_detection",
-			"is_tty":     isTTY,
-			"stdin_mode": fmt.Sprintf("%v", stdinMode),
-			"server_flag": *serverOnly,
-			"pid":        os.Getpid(),
-			"timestamp":  time.Now().UTC().Format(time.RFC3339),
+			"type":      "lifecycle",
+			"event":     "spawn_background",
+			"pid":       os.Getpid(),
+			"port":      *port,
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		}})
 
-		if isTTY {
-			// User ran "gasoline" directly - start server as background process
-			exe, _ := os.Executable()
-			args := []string{"--server", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)}
-			if *apiKey != "" {
-				args = append(args, "--api-key", *apiKey)
-			}
-			cmd := exec.Command(exe, args...) // #nosec G204 -- exe is our own binary path from os.Executable()
-			cmd.Stdout = nil
-			cmd.Stderr = nil
-			cmd.Stdin = nil
-			setDetachedProcess(cmd)
-			if err := cmd.Start(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error starting background server: %v\n", err)
+		// Pre-flight check: Warn if MCP config exists (manual start will conflict)
+		if mcpConfigPath := findMCPConfig(); mcpConfigPath != "" {
+			fmt.Fprintf(os.Stderr, "⚠️  Warning: MCP configuration detected at %s\n", mcpConfigPath)
+			fmt.Fprintf(os.Stderr, "   Manual start may conflict with MCP server management.\n")
+			fmt.Fprintf(os.Stderr, "   Recommended: Let your AI tool spawn gasoline automatically.\n")
+			fmt.Fprintf(os.Stderr, "   Continuing anyway...\n\n")
+			_ = server.appendToFile([]LogEntry{{
+				"type":        "lifecycle",
+				"event":       "mcp_config_detected",
+				"config_path": mcpConfigPath,
+				"pid":         os.Getpid(),
+				"timestamp":   time.Now().UTC().Format(time.RFC3339),
+			}})
+		}
+
+		// Pre-flight check: Is port already in use?
+		testAddr := fmt.Sprintf("127.0.0.1:%d", *port)
+		if ln, err := net.Listen("tcp", testAddr); err != nil {
+			fmt.Fprintf(os.Stderr, "✗ Port %d is already in use\n", *port)
+			fmt.Fprintf(os.Stderr, "  Fix: kill existing process with: lsof -ti :%d | xargs kill\n", *port)
+			fmt.Fprintf(os.Stderr, "  Or use a different port: gasoline --port %d\n", *port+1)
+			_ = server.appendToFile([]LogEntry{{
+				"type":      "lifecycle",
+				"event":     "preflight_failed",
+				"error":     "port already in use",
+				"port":      *port,
+				"pid":       os.Getpid(),
+				"timestamp": time.Now().UTC().Format(time.RFC3339),
+			}})
+			os.Exit(1)
+		} else {
+			ln.Close()
+		}
+
+		exe, _ := os.Executable()
+		args := []string{"--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)}
+		if !*persistMode {
+			args = append(args, "--persist=false")
+		}
+		if *apiKey != "" {
+			args = append(args, "--api-key", *apiKey)
+		}
+
+		// Spawn background process with piped stdin (so it detects as MCP mode, not TTY)
+		cmd := exec.Command(exe, args...) // #nosec G204 -- exe is our own binary path from os.Executable()
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+		// Create a pipe for stdin so child process sees piped input (not TTY)
+		_, err := cmd.StdinPipe()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "✗ Failed to create stdin pipe: %v\n", err)
+			os.Exit(1)
+		}
+		setDetachedProcess(cmd)
+		if err := cmd.Start(); err != nil {
+			fmt.Fprintf(os.Stderr, "✗ Failed to spawn background server: %v\n", err)
+			_ = server.appendToFile([]LogEntry{{
+				"type":      "lifecycle",
+				"event":     "spawn_failed",
+				"error":     err.Error(),
+				"pid":       os.Getpid(),
+				"timestamp": time.Now().UTC().Format(time.RFC3339),
+			}})
+			os.Exit(1)
+		}
+
+		backgroundPID := cmd.Process.Pid
+		_ = server.appendToFile([]LogEntry{{
+			"type":           "lifecycle",
+			"event":          "spawn_success",
+			"foreground_pid": os.Getpid(),
+			"background_pid": backgroundPID,
+			"port":           *port,
+			"timestamp":      time.Now().UTC().Format(time.RFC3339),
+		}})
+
+		// Wait for server to be ready (health check)
+		healthURL := fmt.Sprintf("http://127.0.0.1:%d/health", *port)
+		maxAttempts := 30 // 3 seconds total (100ms * 30)
+		fmt.Printf("⏳ Starting server (pid %d)...\n", backgroundPID)
+
+		for attempt := 0; attempt < maxAttempts; attempt++ {
+			time.Sleep(100 * time.Millisecond)
+
+			// Check if process is still alive
+			if err := cmd.Process.Signal(syscall.Signal(0)); err != nil {
+				fmt.Fprintf(os.Stderr, "✗ Background server (pid %d) died during startup\n", backgroundPID)
+				fmt.Fprintf(os.Stderr, "  Check logs: tail -20 %s\n", *logFile)
+				_ = server.appendToFile([]LogEntry{{
+					"type":      "lifecycle",
+					"event":     "startup_failed_process_died",
+					"pid":       backgroundPID,
+					"timestamp": time.Now().UTC().Format(time.RFC3339),
+				}})
 				os.Exit(1)
 			}
-			fmt.Printf("[gasoline] Server started (pid %d), HTTP on port %d, log file: %s\n", cmd.Process.Pid, *port, *logFile)
-			fmt.Println("[gasoline] Stop with: kill", cmd.Process.Pid)
-			os.Exit(0)
+
+			// Try health check
+			client := &http.Client{Timeout: 200 * time.Millisecond}
+			resp, err := client.Get(healthURL)
+			if err == nil && resp.StatusCode == 200 {
+				resp.Body.Close()
+				fmt.Printf("✓ Server ready on http://127.0.0.1:%d\n", *port)
+				fmt.Printf("  Log file: %s\n", *logFile)
+				fmt.Printf("  Stop with: kill %d\n", backgroundPID)
+				_ = server.appendToFile([]LogEntry{{
+					"type":      "lifecycle",
+					"event":     "startup_verified",
+					"pid":       backgroundPID,
+					"port":      *port,
+					"timestamp": time.Now().UTC().Format(time.RFC3339),
+				}})
+				os.Exit(0)
+			}
+			if resp != nil {
+				resp.Body.Close()
+			}
 		}
 
-		// stdin is piped → MCP mode (will shut down when stdin closes)
-		fmt.Fprintf(os.Stderr, "[gasoline] Starting in MCP mode (stdin is pipe, will exit when MCP client disconnects)\n")
-		runMCPMode(server, *port, *apiKey)
-		return
-	}
-
-	// Log that we're starting in server-only mode
-	_ = server.appendToFile([]LogEntry{{
-		"type":      "lifecycle",
-		"event":     "mode_detection",
-		"mode":      "http_only",
-		"server_flag": true,
-		"pid":       os.Getpid(),
-		"timestamp": time.Now().UTC().Format(time.RFC3339),
-	}})
-
-	// HTTP-only server mode (--server)
-	// Setup routes
-	capture := NewCapture()
-	setupHTTPRoutes(server, capture)
-
-	// Print banner
-	fmt.Println()
-	fmt.Printf("  Gasoline v%s (pid %d)\n", version, os.Getpid())
-	fmt.Println("  Browser observability for AI coding agents")
-	fmt.Println()
-	fmt.Printf("  Server:  http://127.0.0.1:%d\n", *port)
-	fmt.Printf("  Logs:    %s\n", *logFile)
-	fmt.Printf("  Max:     %d entries\n", *maxEntries)
-	fmt.Println()
-	fmt.Println("  Ready. Press Ctrl+C to stop.")
-	fmt.Println()
-
-	// Log startup
-	_ = server.appendToFile([]LogEntry{{
-		"type":      "lifecycle",
-		"event":     "startup",
-		"mode":      "http_only",
-		"version":   version,
-		"port":      *port,
-		"pid":       os.Getpid(),
-		"timestamp": time.Now().UTC().Format(time.RFC3339),
-	}})
-
-	// Setup graceful shutdown on signals
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
-
-	// Start server (localhost only for security)
-	addr := fmt.Sprintf("127.0.0.1:%d", *port)
-	srv := &http.Server{
-		Addr:         addr,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
-		Handler:      AuthMiddleware(*apiKey)(http.DefaultServeMux),
-	}
-
-	// Run server in goroutine
-	serverErr := make(chan error, 1)
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			serverErr <- err
-		}
-	}()
-
-	// Wait for signal or server error
-	select {
-	case s := <-sig:
-		fmt.Fprintf(os.Stderr, "\n[gasoline] Received %s, shutting down gracefully...\n", s)
+		// Timeout: server didn't become ready
+		fmt.Fprintf(os.Stderr, "✗ Server (pid %d) failed to respond within 3 seconds\n", backgroundPID)
+		fmt.Fprintf(os.Stderr, "  The process is still running but not responding to health checks\n")
+		fmt.Fprintf(os.Stderr, "  Check logs: tail -20 %s\n", *logFile)
+		fmt.Fprintf(os.Stderr, "  Kill it with: kill %d\n", backgroundPID)
 		_ = server.appendToFile([]LogEntry{{
 			"type":      "lifecycle",
-			"event":     "shutdown",
-			"reason":    s.String(),
-			"mode":      "http_only",
-			"pid":       os.Getpid(),
-			"timestamp": time.Now().UTC().Format(time.RFC3339),
-		}})
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = srv.Shutdown(ctx) // #nosec G104 -- shutdown error is logged but not actionable
-		fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
-	case err := <-serverErr:
-		fmt.Fprintf(os.Stderr, "[gasoline] Server error: %v\n", err)
-		_ = server.appendToFile([]LogEntry{{
-			"type":      "lifecycle",
-			"event":     "crash",
-			"reason":    err.Error(),
-			"mode":      "http_only",
-			"pid":       os.Getpid(),
+			"event":     "startup_timeout",
+			"pid":       backgroundPID,
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		}})
 		os.Exit(1)
 	}
+
+	// stdin is piped → MCP mode (HTTP + MCP protocol)
+	_ = server.appendToFile([]LogEntry{{
+		"type":      "lifecycle",
+		"event":     "mcp_mode_start",
+		"pid":       os.Getpid(),
+		"port":      *port,
+		"persist":   *persistMode,
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}})
+	fmt.Fprintf(os.Stderr, "[gasoline] Starting in MCP mode (HTTP + MCP protocol, persist=%v)\n", *persistMode)
+	runMCPMode(server, *port, *apiKey, *persistMode)
+	return
 }
 
 // runMCPMode runs the server in MCP mode:
 // - HTTP server runs in a goroutine (for browser extension)
 // - MCP protocol runs over stdin/stdout (for Claude Code)
 // If stdin closes (EOF), the HTTP server keeps running until killed.
-func runMCPMode(server *Server, port int, apiKey string) {
+func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 	// Create capture buffers for WebSocket, network, and actions
 	capture := NewCapture()
+
+	// Start async command result cleanup goroutine (60s TTL)
+	capture.startResultCleanup()
+
+	// Load cached settings from disk (pilot state, etc.)
+	// See docs/plugin-server-communications.md for protocol details
+	_ = server.appendToFile([]LogEntry{{
+		"type":      "lifecycle",
+		"event":     "loading_settings",
+		"pid":       os.Getpid(),
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}})
+	capture.LoadSettingsFromDisk()
+
+	// Log settings load result
+	capture.mu.RLock()
+	settingsLoaded := !capture.pilotUpdatedAt.IsZero()
+	pilotEnabled := capture.pilotEnabled
+	settingsAge := time.Since(capture.pilotUpdatedAt).Seconds()
+	capture.mu.RUnlock()
+
+	_ = server.appendToFile([]LogEntry{{
+		"type":            "lifecycle",
+		"event":           "settings_loaded",
+		"pid":             os.Getpid(),
+		"loaded":          settingsLoaded,
+		"pilot_enabled":   pilotEnabled,
+		"settings_age_s":  settingsAge,
+		"timestamp":       time.Now().UTC().Format(time.RFC3339),
+	}})
+
+	// Register HTTP routes before starting the goroutine.
+	// This avoids fragile ordering where route registration in a goroutine
+	// relies on implicit happens-before guarantees from the channel.
+	setupHTTPRoutes(server, capture)
 
 	// Start HTTP server in background for browser extension
 	httpReady := make(chan error, 1)
 	go func() {
-		setupHTTPRoutes(server, capture)
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
 		ln, err := net.Listen("tcp", addr)
 		if err != nil {
@@ -902,24 +1282,65 @@ func runMCPMode(server *Server, port int, apiKey string) {
 			return
 		}
 		httpReady <- nil
+		srv := &http.Server{
+			ReadTimeout:  2 * time.Second,  // Force fast request reads
+			WriteTimeout: 2 * time.Second,  // Force responses within 2s (async command pattern)
+			IdleTimeout:  120 * time.Second, // Keep-alive for polling connections
+			Handler:      AuthMiddleware(apiKey)(http.DefaultServeMux),
+		}
 		// #nosec G114 -- localhost-only MCP background server
-		if err := http.Serve(ln, AuthMiddleware(apiKey)(http.DefaultServeMux)); err != nil {
+		if err := srv.Serve(ln); err != nil {
 			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
 		}
 	}()
 
 	// Wait for HTTP server to bind before proceeding
 	if err := <-httpReady; err != nil {
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "http_bind_failed",
+			"pid":       os.Getpid(),
+			"port":      port,
+			"error":     err.Error(),
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
 		fmt.Fprintf(os.Stderr, "[gasoline] Fatal: cannot bind port %d: %v\n", port, err)
 		fmt.Fprintf(os.Stderr, "[gasoline] Fix: kill existing process with: lsof -ti :%d | xargs kill\n", port)
 		fmt.Fprintf(os.Stderr, "[gasoline] Or use a different port: --port %d\n", port+1)
 		os.Exit(1)
 	}
+
+	_ = server.appendToFile([]LogEntry{{
+		"type":      "lifecycle",
+		"event":     "http_bind_success",
+		"pid":       os.Getpid(),
+		"port":      port,
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}})
 	fmt.Fprintf(os.Stderr, "[gasoline] v%s — HTTP on port %d, log: %s\n", version, port, server.logFile)
 	fmt.Fprintf(os.Stderr, "[gasoline] Verify: curl http://localhost:%d/health\n", port)
+
+	// Show first-run help if log file is new/empty
+	if fi, err := os.Stat(server.logFile); err != nil || fi.Size() == 0 {
+		fmt.Fprintf(os.Stderr, "[gasoline] ─────────────────────────────────────────────────\n")
+		fmt.Fprintf(os.Stderr, "[gasoline] First run? Next steps:\n")
+		fmt.Fprintf(os.Stderr, "[gasoline]   1. Install extension: chrome://extensions → Load unpacked → extension/\n")
+		fmt.Fprintf(os.Stderr, "[gasoline]   2. Open any website in Chrome\n")
+		fmt.Fprintf(os.Stderr, "[gasoline]   3. Extension popup should show 'Connected'\n")
+		fmt.Fprintf(os.Stderr, "[gasoline] ─────────────────────────────────────────────────\n")
+	}
+
 	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "startup", "version": version, "port": port, "timestamp": time.Now().UTC().Format(time.RFC3339)}})
 
 	// Run MCP protocol over stdin/stdout
+	_ = server.appendToFile([]LogEntry{{
+		"type":      "lifecycle",
+		"event":     "mcp_stdio_start",
+		"pid":       os.Getpid(),
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}})
+	fmt.Fprintf(os.Stderr, "[gasoline] MCP stdio handler ready, waiting for requests...\n")
+
 	mcp := NewToolHandler(server, capture)
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -945,22 +1366,39 @@ func runMCPMode(server *Server, port int, apiKey string) {
 					Message: "Parse error: " + err.Error(),
 				},
 			}
+			// Error impossible: errResp is a simple JSONRPCResponse struct
 			respJSON, _ := json.Marshal(errResp)
+			mcpStdoutMu.Lock()
 			fmt.Println(string(respJSON))
+			mcpStdoutMu.Unlock()
 			continue
 		}
 
 		resp := mcp.HandleRequest(req)
+		// Error impossible: resp is a simple JSONRPCResponse struct
 		respJSON, _ := json.Marshal(resp)
+		mcpStdoutMu.Lock()
 		fmt.Println(string(respJSON))
+		mcpStdoutMu.Unlock()
 	}
 
-	// stdin closed (MCP client disconnected) — exit after brief grace period
-	// This frees the port so the next AI session can spawn a fresh process.
-	// The extension will auto-reconnect to the new instance.
-	// Grace period is kept short (100ms) to avoid race conditions when starting new sessions.
-	fmt.Fprintf(os.Stderr, "[gasoline] MCP disconnected, shutting down in 100ms (port %d will be freed)\n", port)
+	// stdin closed (MCP client disconnected)
 	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "mcp_disconnect", "timestamp": time.Now().UTC().Format(time.RFC3339), "port": port}})
+
+	if persist {
+		// --persist: keep HTTP server running for the extension, wait for signal
+		fmt.Fprintf(os.Stderr, "[gasoline] MCP disconnected, server persisting on port %d (Ctrl+C to stop)\n", port)
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+		s := <-sig
+		fmt.Fprintf(os.Stderr, "[gasoline] Received %s, shutting down\n", s)
+		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
+		return
+	}
+
+	// Default: exit after brief grace period to free the port
+	// The next AI session will spawn a fresh process; extension auto-reconnects.
+	fmt.Fprintf(os.Stderr, "[gasoline] MCP disconnected, shutting down in 100ms (port %d will be freed)\n", port)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
@@ -975,6 +1413,125 @@ func runMCPMode(server *Server, port int, apiKey string) {
 	}
 }
 
+// runConnectMode connects to an existing Gasoline server as an MCP client.
+// This enables multiple Claude Code sessions to share a single server.
+// The client ID is sent via X-Gasoline-Client header for state isolation.
+func runConnectMode(port int, clientID string, cwd string) {
+	serverURL := fmt.Sprintf("http://127.0.0.1:%d", port)
+
+	// Check if server is running
+	healthURL := serverURL + "/health"
+	resp, err := http.Get(healthURL) // #nosec G107 -- localhost URL constructed from port flag
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Cannot connect to server at %s: %v\n", serverURL, err)
+		fmt.Fprintf(os.Stderr, "[gasoline] Start a server first: gasoline --server --port %d\n", port)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "[gasoline] Server health check failed: %d\n", resp.StatusCode)
+		os.Exit(1)
+	}
+
+	// Register this client with the server
+	registerURL := serverURL + "/clients"
+	regBody, _ := json.Marshal(map[string]string{"cwd": cwd})
+	// Error unlikely: URL is constructed from port flag, method and header are literals
+	req, _ := http.NewRequest("POST", registerURL, strings.NewReader(string(regBody)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Gasoline-Client", clientID)
+	regResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		// Server might not have /clients endpoint yet (backwards compat)
+		fmt.Fprintf(os.Stderr, "[gasoline] Warning: could not register client: %v\n", err)
+	} else {
+		regResp.Body.Close()
+	}
+
+	fmt.Fprintf(os.Stderr, "[gasoline] Connected to %s (client: %s)\n", serverURL, clientID)
+
+	// Run MCP protocol over stdin/stdout, forwarding to HTTP server
+	scanner := bufio.NewScanner(os.Stdin)
+	const maxScanTokenSize = 10 * 1024 * 1024
+	buf := make([]byte, maxScanTokenSize)
+	scanner.Buffer(buf, maxScanTokenSize)
+
+	mcpURL := serverURL + "/mcp"
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		// Forward request to server with client ID header
+		req, err := http.NewRequest("POST", mcpURL, strings.NewReader(line))
+		if err != nil {
+			sendMCPError(nil, -32603, "Internal error: "+err.Error())
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Gasoline-Client", clientID)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			// Try to extract request ID for error response
+			var jsonReq JSONRPCRequest
+			if json.Unmarshal([]byte(line), &jsonReq) == nil {
+				sendMCPError(jsonReq.ID, -32603, "Server connection error: "+err.Error())
+			} else {
+				sendMCPError(nil, -32603, "Server connection error: "+err.Error())
+			}
+			continue
+		}
+
+		// Stream response back to stdout
+		var respData json.RawMessage
+		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+			resp.Body.Close()
+			var jsonReq JSONRPCRequest
+			if json.Unmarshal([]byte(line), &jsonReq) == nil {
+				sendMCPError(jsonReq.ID, -32603, "Invalid server response")
+			}
+			continue
+		}
+		resp.Body.Close()
+
+		fmt.Println(string(respData))
+	}
+
+	// stdin closed - unregister and exit
+	if clientID != "" {
+		unregURL := serverURL + "/clients/" + clientID
+		// Error unlikely: URL is constructed from port flag and clientID, method is literal
+		req, _ := http.NewRequest("DELETE", unregURL, nil)
+		req.Header.Set("X-Gasoline-Client", clientID)
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil {
+			resp.Body.Close()
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "[gasoline] Disconnected from %s\n", serverURL)
+}
+
+// sendMCPError sends a JSON-RPC error response to stdout
+func sendMCPError(id interface{}, code int, message string) {
+	resp := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Error: &JSONRPCError{
+			Code:    code,
+			Message: message,
+		},
+	}
+	respJSON, _ := json.Marshal(resp)
+	mcpStdoutMu.Lock()
+	fmt.Println(string(respJSON))
+	mcpStdoutMu.Unlock()
+}
+
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
 func setupHTTPRoutes(server *Server, capture *Capture) {
 	// V4 routes
@@ -982,14 +1539,89 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 		http.HandleFunc("/websocket-events", corsMiddleware(capture.HandleWebSocketEvents))
 		http.HandleFunc("/websocket-status", corsMiddleware(capture.HandleWebSocketStatus))
 		http.HandleFunc("/network-bodies", corsMiddleware(capture.HandleNetworkBodies))
+		http.HandleFunc("/network-waterfall", corsMiddleware(capture.HandleNetworkWaterfall))
+		http.HandleFunc("/extension-logs", corsMiddleware(capture.HandleExtensionLogs))
 		http.HandleFunc("/pending-queries", corsMiddleware(capture.HandlePendingQueries))
+		http.HandleFunc("/pilot-status", corsMiddleware(capture.HandlePilotStatus))
 		http.HandleFunc("/dom-result", corsMiddleware(capture.HandleDOMResult))
 		http.HandleFunc("/a11y-result", corsMiddleware(capture.HandleA11yResult))
 		http.HandleFunc("/state-result", corsMiddleware(capture.HandleStateResult))
 		http.HandleFunc("/execute-result", corsMiddleware(capture.HandleExecuteResult))
 		http.HandleFunc("/highlight-result", corsMiddleware(capture.HandleHighlightResult))
 		http.HandleFunc("/enhanced-actions", corsMiddleware(capture.HandleEnhancedActions))
-		http.HandleFunc("/performance-snapshot", corsMiddleware(capture.HandlePerformanceSnapshot))
+		http.HandleFunc("/performance-snapshots", corsMiddleware(capture.HandlePerformanceSnapshots))
+		http.HandleFunc("/api/extension-status", corsMiddleware(capture.HandleExtensionStatus))
+
+		// Multi-client management endpoints
+		http.HandleFunc("/clients", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case "GET":
+				// List all registered clients
+				clients := capture.clientRegistry.List()
+				jsonResponse(w, http.StatusOK, map[string]interface{}{
+					"clients": clients,
+					"count":   len(clients),
+				})
+			case "POST":
+				// Register a new client
+				var body struct {
+					CWD string `json:"cwd"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+					return
+				}
+				cs := capture.clientRegistry.Register(body.CWD)
+				jsonResponse(w, http.StatusOK, map[string]interface{}{
+					"id":         cs.ID,
+					"cwd":        cs.CWD,
+					"created_at": cs.CreatedAt.Format(time.RFC3339),
+				})
+			default:
+				jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+			}
+		}))
+
+		// Client-specific endpoint with ID in path
+		http.HandleFunc("/clients/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			// Extract client ID from path: /clients/{id}
+			clientID := strings.TrimPrefix(r.URL.Path, "/clients/")
+			if clientID == "" {
+				jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing client ID"})
+				return
+			}
+
+			switch r.Method {
+			case "GET":
+				// Get specific client
+				cs := capture.clientRegistry.Get(clientID)
+				if cs == nil {
+					jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Client not found"})
+					return
+				}
+				cs.mu.RLock()
+				info := ClientInfo{
+					ID:         cs.ID,
+					CWD:        cs.CWD,
+					CreatedAt:  cs.CreatedAt.Format(time.RFC3339),
+					LastSeenAt: cs.LastSeenAt.Format(time.RFC3339),
+					IdleFor:    time.Since(cs.LastSeenAt).Round(time.Second).String(),
+				}
+				cs.mu.RUnlock()
+				jsonResponse(w, http.StatusOK, info)
+			case "DELETE":
+				// Unregister client
+				capture.clientRegistry.Unregister(clientID)
+				jsonResponse(w, http.StatusOK, map[string]bool{"unregistered": true})
+			default:
+				jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+			}
+		}))
+
+		// CI Infrastructure endpoints
+		http.HandleFunc("/snapshot", corsMiddleware(handleSnapshot(server, capture)))
+		http.HandleFunc("/clear", corsMiddleware(handleClear(server, capture)))
+		http.HandleFunc("/test-boundary", corsMiddleware(handleTestBoundary(capture)))
 	}
 
 	// MCP over HTTP endpoint
@@ -1001,18 +1633,9 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 		http.HandleFunc("/ci-result", corsMiddleware(mcp.toolHandler.handleCIWebhook))
 	}
 
-	// Settings endpoint for extension polling (capture overrides)
-	if mcp.toolHandler != nil && mcp.toolHandler.captureOverrides != nil {
-		overrides := mcp.toolHandler.captureOverrides
-		http.HandleFunc("/settings", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != "GET" {
-				jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-				return
-			}
-			resp := buildSettingsResponse(overrides)
-			jsonResponse(w, http.StatusOK, resp)
-		}))
-	}
+	// Settings endpoint for extension settings synchronization
+	// Implements POST /settings protocol documented in docs/plugin-server-communications.md
+	http.HandleFunc("/settings", corsMiddleware(capture.HandleSettings))
 
 	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
@@ -1020,29 +1643,49 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 			return
 		}
 
+		logFileSize := int64(0)
+		if fi, err := os.Stat(server.logFile); err == nil {
+			logFileSize = fi.Size()
+		}
+
 		resp := map[string]interface{}{
 			"status":  "ok",
 			"version": version,
 			"logs": map[string]interface{}{
-				"entries":    server.getEntryCount(),
-				"maxEntries": server.maxEntries,
-				"logFile":    server.logFile,
+				"entries":     server.getEntryCount(),
+				"maxEntries":  server.maxEntries,
+				"logFile":     server.logFile,
+				"logFileSize": logFileSize,
 			},
 		}
 
 		if capture != nil {
-			health := capture.GetHealthStatus()
+			// Single lock acquisition for all capture state
 			capture.mu.RLock()
-			resp["buffers"] = map[string]interface{}{
-				"websocket_events": len(capture.wsEvents),
-				"network_bodies":   len(capture.networkBodies),
-				"actions":          len(capture.enhancedActions),
-				"connections":      len(capture.connections),
-			}
+			wsEventCount := len(capture.wsEvents)
+			nbCount := len(capture.networkBodies)
+			actionCount := len(capture.enhancedActions)
+			connCount := len(capture.connections)
 			lastPoll := capture.lastPollAt
 			extSession := capture.extensionSession
 			sessionChangedAt := capture.sessionChangedAt
+			pilotEnabled := capture.pilotEnabled
+			circuitOpen := capture.circuitOpen
+			currentRate := capture.windowEventCount
+			memoryBytes := capture.getMemoryForCircuit()
+			circuitReason := capture.circuitReason
+			var circuitOpenedAt string
+			if circuitOpen {
+				circuitOpenedAt = capture.circuitOpenedAt.Format(time.RFC3339)
+			}
 			capture.mu.RUnlock()
+
+			resp["buffers"] = map[string]interface{}{
+				"websocket_events": wsEventCount,
+				"network_bodies":   nbCount,
+				"actions":          actionCount,
+				"connections":      connCount,
+			}
 
 			// Extension connection status (critical for debugging)
 			if lastPoll.IsZero() {
@@ -1054,9 +1697,6 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 			} else {
 				sincePoll := time.Since(lastPoll)
 				connected := sincePoll < 3*time.Second
-				capture.mu.RLock()
-				pilotEnabled := capture.pilotEnabled
-				capture.mu.RUnlock()
 				extInfo := map[string]interface{}{
 					"connected":     connected,
 					"status":        map[bool]string{true: "connected", false: "stale"}[connected],
@@ -1073,11 +1713,11 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 			}
 
 			resp["circuit"] = map[string]interface{}{
-				"open":         health.CircuitOpen,
-				"current_rate": health.CurrentRate,
-				"memory_bytes": health.MemoryBytes,
-				"reason":       health.Reason,
-				"opened_at":    health.OpenedAt,
+				"open":         circuitOpen,
+				"current_rate": currentRate,
+				"memory_bytes": memoryBytes,
+				"reason":       circuitReason,
+				"opened_at":    circuitOpenedAt,
 			}
 		}
 
@@ -1110,9 +1750,7 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 		}
 
 		if capture != nil {
-			health := capture.GetHealthStatus()
-
-			// Buffer counts
+			// Single lock acquisition for all capture state
 			capture.mu.RLock()
 			resp["buffers"] = map[string]interface{}{
 				"websocket_events": len(capture.wsEvents),
@@ -1140,6 +1778,11 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 
 			// Extension polling info
 			lastPoll := capture.lastPollAt
+			pilotEnabled := capture.pilotEnabled
+			diagCircuitOpen := capture.circuitOpen
+			diagCurrentRate := capture.windowEventCount
+			diagMemoryBytes := capture.getMemoryForCircuit()
+			diagCircuitReason := capture.circuitReason
 			capture.mu.RUnlock()
 
 			// Extension status for debugging
@@ -1152,9 +1795,6 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 			} else {
 				sincePoll := time.Since(lastPoll)
 				polling := sincePoll < 3*time.Second // Should poll every 1s
-				capture.mu.RLock()
-				pilotEnabled := capture.pilotEnabled
-				capture.mu.RUnlock()
 				resp["extension"] = map[string]interface{}{
 					"polling":       polling,
 					"last_poll_at":  lastPoll.Format(time.RFC3339),
@@ -1166,10 +1806,10 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 
 			// Circuit breaker state
 			resp["circuit"] = map[string]interface{}{
-				"open":         health.CircuitOpen,
-				"current_rate": health.CurrentRate,
-				"memory_bytes": health.MemoryBytes,
-				"reason":       health.Reason,
+				"open":         diagCircuitOpen,
+				"current_rate": diagCurrentRate,
+				"memory_bytes": diagMemoryBytes,
+				"reason":       diagCircuitReason,
 			}
 		}
 
@@ -1230,6 +1870,15 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 			capture.mu.RUnlock()
 		}
 		resp["last_events"] = lastEvents
+
+		// HTTP debug log (last 50 requests/responses)
+		if capture != nil {
+			httpDebugLog := capture.GetHTTPDebugLog()
+			resp["http_debug_log"] = map[string]interface{}{
+				"count":   len(httpDebugLog),
+				"entries": httpDebugLog,
+			}
+		}
 
 		jsonResponse(w, http.StatusOK, resp)
 	}))
@@ -1302,17 +1951,25 @@ Options:
   --port <number>        Port to listen on (default: 7890)
   --log-file <path>      Path to log file (default: ~/gasoline-logs.jsonl)
   --max-entries <number> Max log entries before rotation (default: 1000)
-  --server               Run in HTTP-only mode (no MCP, just the log server)
+  --persist              Keep server running after MCP client disconnects (default: true)
+  --persist=false        Exit after MCP client disconnects
+  --api-key <key>        Require API key for HTTP requests (optional)
+  --connect              Connect to existing server (multi-client mode)
+  --client-id <id>       Override client ID (default: derived from CWD)
+  --check                Verify setup (check port availability, print status)
   --version              Show version
   --help                 Show this help message
 
-By default, gasoline runs in MCP mode: the HTTP server starts in the
-background (for the browser extension) and MCP protocol runs over stdio
-(for Claude Code, Cursor, etc.).
+Gasoline always runs in MCP mode: the HTTP server starts in the background
+(for the browser extension) and MCP protocol runs over stdio (for Claude Code, Cursor, etc.).
+The server persists by default, even after the MCP client disconnects.
 
-Example:
-  gasoline                           # MCP mode (default)
-  gasoline --server                  # HTTP-only server mode
+Examples:
+  gasoline                              # MCP mode (default, persist on)
+  gasoline --persist=false              # Exit when MCP client disconnects
+  gasoline --api-key s3cret             # MCP mode with API key auth
+  gasoline --connect --port 7890        # Connect to existing server
+  gasoline --check                      # Verify setup before running
   gasoline --port 8080 --max-entries 500
 
 MCP Configuration:
@@ -1326,4 +1983,61 @@ MCP Configuration:
     }
   }
 `)
+}
+
+// runSetupCheck verifies the setup and prints diagnostic information
+func runSetupCheck(port int) {
+	fmt.Println()
+	fmt.Println("╔════════════════════════════════════════════════════════════════╗")
+	fmt.Println("║  GASOLINE SETUP CHECK                                          ║")
+	fmt.Println("╚════════════════════════════════════════════════════════════════╝")
+	fmt.Println()
+	fmt.Printf("Version: %s\n", version)
+	fmt.Printf("Port:    %d\n", port)
+	fmt.Println()
+
+	// Check 1: Port availability
+	fmt.Print("Checking port availability... ")
+	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	if err != nil {
+		fmt.Println("FAILED")
+		fmt.Printf("  Port %d is already in use.\n", port)
+		fmt.Printf("  Fix: lsof -ti :%d | xargs kill\n", port)
+		fmt.Printf("  Or use a different port: --port %d\n", port+1)
+		fmt.Println()
+	} else {
+		ln.Close()
+		fmt.Println("OK")
+		fmt.Printf("  Port %d is available.\n", port)
+		fmt.Println()
+	}
+
+	// Check 2: Log file directory
+	fmt.Print("Checking log file directory... ")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println("FAILED")
+		fmt.Printf("  Cannot determine home directory: %v\n", err)
+		fmt.Println()
+	} else {
+		logFile := filepath.Join(home, "gasoline-logs.jsonl")
+		fmt.Println("OK")
+		fmt.Printf("  Log file: %s\n", logFile)
+		fmt.Println()
+	}
+
+	// Summary
+	fmt.Println("────────────────────────────────────────────────────────────────")
+	fmt.Println()
+	fmt.Println("Next steps:")
+	fmt.Println("  1. Start server:    npx gasoline-mcp")
+	fmt.Println("  2. Install extension:")
+	fmt.Println("     - Open chrome://extensions")
+	fmt.Println("     - Enable Developer mode")
+	fmt.Println("     - Click 'Load unpacked' → select extension/ folder")
+	fmt.Println("  3. Open any website")
+	fmt.Println("  4. Extension popup should show 'Connected'")
+	fmt.Println()
+	fmt.Printf("Verify:  curl http://localhost:%d/health\n", port)
+	fmt.Println()
 }

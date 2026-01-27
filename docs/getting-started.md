@@ -15,32 +15,36 @@ toc_sticky: true
 
 <img src="/assets/images/sparky/features/sparky-fight-fire-web.webp" alt="Sparky firing up the server" style="float: right; width: 140px; margin: 0 0 20px 20px; border-radius: 6px;" />
 
+**Option A: NPM (recommended)**
 
 ```bash
-# Until the Chrome extension is approved, install manually:
-git clone https://github.com/brennhill/gasoline.git
+npx gasoline-mcp
+```
+
+**Option B: PyPI (Python)**
+
+```bash
+pip install gasoline-mcp
+gasoline-mcp
+```
+
+**Option C: From source**
+
+```bash
+git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
 cd gasoline
 go run ./cmd/dev-console
 ```
 
-You'll see: `[gasoline] v4.8.0 — HTTP on port 7890`
+You'll see: `[gasoline] v5.1.0 — HTTP on port 7890`
 
 Leave this burning. No global install needed.
 
-**Extension install:**
+**Extension install** (until Chrome Web Store approval):
 
 1. Open `chrome://extensions`
 2. Enable **Developer mode**
 3. Click **Load unpacked** and select the `extension/` folder in this repo
-
----
-
-**Once the Chrome extension is approved:**
-
-```bash
-npx gasoline-mcp
-# Then install from the Chrome Web Store
-```
 
 ## <i class="fas fa-puzzle-piece"></i> 2. Install the Extension
 
@@ -51,7 +55,7 @@ Grab it from the [Chrome Web Store](https://chromewebstore.google.com) (search "
 <details>
 <summary><i class="fas fa-wrench"></i> Load Unpacked (Development)</summary>
 
-1. Clone the [repository](https://github.com/brennhill/gasoline)
+1. Clone the [repository](https://github.com/brennhill/gasoline-mcp-ai-devtools)
 2. Open `chrome://extensions` → enable **Developer mode**
 3. Click **Load unpacked** → select the `extension/` folder
 
@@ -65,12 +69,37 @@ Drop this config and your AI tool fires up Gasoline automatically:
 
 **Claude Code** — `.mcp.json` in your project root:
 
+*Option A: NPM (recommended)*
+```json
+{
+  "mcpServers": {
+    "gasoline": {
+      "command": "npx",
+      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+    }
+  }
+}
+```
+
+*Option B: PyPI (Python)*
+```json
+{
+  "mcpServers": {
+    "gasoline": {
+      "command": "gasoline-mcp",
+      "args": ["--port", "7890", "--persist"]
+    }
+  }
+}
+```
+
+*Option C: From source (development)*
 ```json
 {
   "mcpServers": {
     "gasoline": {
       "command": "go",
-      "args": ["run", "./cmd/dev-console"]
+      "args": ["run", "./cmd/dev-console", "--port", "7890", "--persist"]
     }
   }
 }

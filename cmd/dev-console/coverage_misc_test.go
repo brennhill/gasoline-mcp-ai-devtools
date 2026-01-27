@@ -399,7 +399,7 @@ func TestHandleScreenshot_Success(t *testing.T) {
 	server, _ := setupTestServer(t)
 
 	// Minimal valid base64 data (not a real JPEG but valid base64)
-	body := `{"dataUrl":"data:image/jpeg;base64,dGVzdGRhdGE=", "url":"http://example.com/page", "errorType":"TypeError", "errorId":"err-123"}`
+	body := `{"dataUrl":"data:image/jpeg;base64,dGVzdGRhdGE=", "url":"http://example.com/page", "correlationId":"TypeError-err-123"}`
 	req := httptest.NewRequest("POST", "/screenshot", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -977,8 +977,14 @@ func TestToolExportHAR_SaveTo_Success(t *testing.T) {
 		t.Fatalf("failed to parse result: %v", err)
 	}
 
+	// Strip summary line before parsing JSON
+	text := result.Content[0].Text
+	jsonPart := text
+	if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
+		jsonPart = lines[1]
+	}
 	var summary HARExportResult
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &summary); err != nil {
+	if err := json.Unmarshal([]byte(jsonPart), &summary); err != nil {
 		t.Fatalf("failed to parse summary: %v", err)
 	}
 	if summary.EntriesCount != 1 {
@@ -1015,9 +1021,14 @@ func TestToolExportHAR_NoSaveTo_ReturnsJSON(t *testing.T) {
 		t.Fatalf("failed to parse result: %v", err)
 	}
 
-	// The text should be valid HAR JSON
+	// Strip summary line before parsing JSON
+	text2 := result.Content[0].Text
+	jsonPart2 := text2
+	if lines := strings.SplitN(text2, "\n", 2); len(lines) == 2 {
+		jsonPart2 = lines[1]
+	}
 	var harLog HARLog
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &harLog); err != nil {
+	if err := json.Unmarshal([]byte(jsonPart2), &harLog); err != nil {
 		t.Fatalf("expected valid HAR JSON in response, got parse error: %v", err)
 	}
 	if harLog.Log.Version != "1.2" {

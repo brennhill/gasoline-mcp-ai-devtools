@@ -1123,11 +1123,11 @@ func TestToolGenerateCSP_ViaDispatch(t *testing.T) {
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
-	args := json.RawMessage(`{}`)
+	args := json.RawMessage(`{"format":"csp"}`)
 
-	resp, handled := mcp.toolHandler.handleToolCall(req, "generate_csp", args)
+	resp, handled := mcp.toolHandler.handleToolCall(req, "generate", args)
 	if !handled {
-		t.Fatal("expected generate_csp to be handled")
+		t.Fatal("expected generate to be handled")
 	}
 
 	var result MCPToolResult
@@ -1188,11 +1188,11 @@ func TestToolSecurityAudit_ViaDispatch(t *testing.T) {
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
-	args := json.RawMessage(`{}`)
+	args := json.RawMessage(`{"what":"security_audit"}`)
 
-	resp, handled := mcp.toolHandler.handleToolCall(req, "security_audit", args)
+	resp, handled := mcp.toolHandler.handleToolCall(req, "observe", args)
 	if !handled {
-		t.Fatal("expected security_audit to be handled")
+		t.Fatal("expected observe to be handled")
 	}
 
 	var result MCPToolResult
@@ -1204,9 +1204,14 @@ func TestToolSecurityAudit_ViaDispatch(t *testing.T) {
 	if len(result.Content) == 0 {
 		t.Fatal("Expected response content")
 	}
-	// Should be valid JSON
+	// Should contain valid JSON after summary prefix
+	text := result.Content[0].Text
+	jsonPart := text
+	if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
+		jsonPart = lines[1]
+	}
 	var parsed interface{}
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &parsed); err != nil {
+	if err := json.Unmarshal([]byte(jsonPart), &parsed); err != nil {
 		t.Errorf("Expected valid JSON from security_audit, got parse error: %v", err)
 	}
 }
@@ -1256,11 +1261,11 @@ func TestToolGetAuditLog_ViaDispatch(t *testing.T) {
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
-	args := json.RawMessage(`{}`)
+	args := json.RawMessage(`{"action":"audit_log"}`)
 
-	resp, handled := mcp.toolHandler.handleToolCall(req, "get_audit_log", args)
+	resp, handled := mcp.toolHandler.handleToolCall(req, "configure", args)
 	if !handled {
-		t.Fatal("expected get_audit_log to be handled")
+		t.Fatal("expected configure to be handled")
 	}
 
 	var result MCPToolResult
@@ -1272,9 +1277,14 @@ func TestToolGetAuditLog_ViaDispatch(t *testing.T) {
 	if len(result.Content) == 0 {
 		t.Fatal("Expected response content")
 	}
-	// Should be valid JSON with audit log entries
+	// Should contain valid JSON after summary prefix
+	text2 := result.Content[0].Text
+	jsonPart2 := text2
+	if lines := strings.SplitN(text2, "\n", 2); len(lines) == 2 {
+		jsonPart2 = lines[1]
+	}
 	var parsed interface{}
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &parsed); err != nil {
+	if err := json.Unmarshal([]byte(jsonPart2), &parsed); err != nil {
 		t.Errorf("Expected valid JSON from get_audit_log, got parse error: %v", err)
 	}
 }
@@ -1285,7 +1295,7 @@ func TestToolGetAuditLog_WithFilters(t *testing.T) {
 	mcp := setupToolHandler(t, server, capture)
 
 	// Record some audit entries first
-	mcp.toolHandler.auditTrail.Record(AuditEntry{ToolName: "observe", Parameters: `{"what":"errors"}`, ResponseSize: 100, Duration: 42, Success: true})
+	mcp.toolHandler.auditTrail.Record(AuditEntry{ToolName: "observe", Parameters: `{"what":"error_clusters"}`, ResponseSize: 100, Duration: 42, Success: true})
 	mcp.toolHandler.auditTrail.Record(AuditEntry{ToolName: "query_dom", Parameters: `{"selector":".foo"}`, ResponseSize: 200, Duration: 15, Success: true})
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
@@ -1312,11 +1322,11 @@ func TestToolDiffSessions_ViaDispatch(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
 	// Capture a snapshot
-	args := json.RawMessage(`{"action":"capture","name":"test-snap"}`)
+	args := json.RawMessage(`{"action":"diff_sessions","session_action":"capture","name":"test-snap"}`)
 
-	resp, handled := mcp.toolHandler.handleToolCall(req, "diff_sessions", args)
+	resp, handled := mcp.toolHandler.handleToolCall(req, "configure", args)
 	if !handled {
-		t.Fatal("expected diff_sessions to be handled")
+		t.Fatal("expected configure to be handled")
 	}
 
 	var result MCPToolResult
@@ -1344,9 +1354,14 @@ func TestToolDiffSessions_List(t *testing.T) {
 	if result.IsError {
 		t.Errorf("Expected no error on list, got: %s", result.Content[0].Text)
 	}
-	// Should return valid JSON
+	// Should contain valid JSON after summary prefix
+	text3 := result.Content[0].Text
+	jsonPart3 := text3
+	if lines := strings.SplitN(text3, "\n", 2); len(lines) == 2 {
+		jsonPart3 = lines[1]
+	}
 	var parsed interface{}
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &parsed); err != nil {
+	if err := json.Unmarshal([]byte(jsonPart3), &parsed); err != nil {
 		t.Errorf("Expected valid JSON, got parse error: %v", err)
 	}
 }
@@ -1479,8 +1494,8 @@ func TestCaptureStateAdapter_GetWSConnections(t *testing.T) {
 
 	capture.mu.Lock()
 	capture.connections = map[string]*connectionState{
-		"wss://ws.example.com/live": {state: "open"},
-		"wss://ws.example.com/chat": {state: "closed"},
+		"conn-1": {url: "wss://ws.example.com/live", state: "open"},
+		"conn-2": {url: "wss://ws.example.com/chat", state: "closed"},
 	}
 	capture.mu.Unlock()
 
@@ -1656,11 +1671,11 @@ func TestToolAnalyzeErrors_Empty(t *testing.T) {
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
-	args := json.RawMessage(`{"target":"errors"}`)
+	args := json.RawMessage(`{"what":"error_clusters"}`)
 
-	resp, handled := mcp.toolHandler.handleToolCall(req, "analyze", args)
+	resp, handled := mcp.toolHandler.handleToolCall(req, "observe", args)
 	if !handled {
-		t.Fatal("expected analyze to be handled")
+		t.Fatal("expected observe to be handled")
 	}
 
 	var result MCPToolResult
@@ -1696,11 +1711,11 @@ func TestToolAnalyzeErrors_WithErrors(t *testing.T) {
 	})
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
-	args := json.RawMessage(`{"target":"errors"}`)
+	args := json.RawMessage(`{"what":"error_clusters"}`)
 
-	resp, handled := mcp.toolHandler.handleToolCall(req, "analyze", args)
+	resp, handled := mcp.toolHandler.handleToolCall(req, "observe", args)
 	if !handled {
-		t.Fatal("expected analyze to be handled")
+		t.Fatal("expected observe to be handled")
 	}
 
 	var result MCPToolResult
@@ -1728,18 +1743,18 @@ func TestToolAnalyzeHistory_NilGraph(t *testing.T) {
 	mcp.toolHandler.temporalGraph = nil
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
-	args := json.RawMessage(`{"target":"history"}`)
+	args := json.RawMessage(`{"what":"history"}`)
 
-	resp, handled := mcp.toolHandler.handleToolCall(req, "analyze", args)
+	resp, handled := mcp.toolHandler.handleToolCall(req, "observe", args)
 	if !handled {
-		t.Fatal("expected analyze to be handled")
+		t.Fatal("expected observe to be handled")
 	}
 
 	var result MCPToolResult
 	json.Unmarshal(resp.Result, &result)
 
-	if result.IsError {
-		t.Errorf("Expected no error (graceful nil handling), got error")
+	if !result.IsError {
+		t.Errorf("Expected structured error for nil graph, got success")
 	}
 	if !strings.Contains(result.Content[0].Text, "No history") {
 		t.Errorf("Expected 'No history' message, got: %s", result.Content[0].Text)
@@ -1754,23 +1769,30 @@ func TestToolAnalyzeHistory_WithGraph(t *testing.T) {
 	// temporalGraph is initialized by NewToolHandler using CWD
 	// Just call with empty query
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
-	args := json.RawMessage(`{"target":"history","query":{}}`)
+	args := json.RawMessage(`{"what":"history","query":{}}`)
 
-	resp, handled := mcp.toolHandler.handleToolCall(req, "analyze", args)
+	resp, handled := mcp.toolHandler.handleToolCall(req, "observe", args)
 	if !handled {
-		t.Fatal("expected analyze to be handled")
+		t.Fatal("expected observe to be handled")
 	}
 
 	var result MCPToolResult
 	json.Unmarshal(resp.Result, &result)
 
-	// Should return valid JSON (even if no history)
+	// Should return valid JSON with summary prefix (or structured error for nil graph)
+	text := result.Content[0].Text
+	if strings.Contains(text, "No history") {
+		// nil graph case — structured error
+		return
+	}
+	// Strip summary line before parsing JSON
+	jsonPart := text
+	if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
+		jsonPart = lines[1]
+	}
 	var parsed interface{}
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &parsed); err != nil {
-		// It might return "No history recorded yet." if graph is nil after init failure
-		if !strings.Contains(result.Content[0].Text, "No history") {
-			t.Errorf("Expected valid JSON or 'No history', got: %s", result.Content[0].Text)
-		}
+	if err := json.Unmarshal([]byte(jsonPart), &parsed); err != nil {
+		t.Errorf("Expected valid JSON after summary, got: %s", text)
 	}
 }
 
@@ -1880,12 +1902,12 @@ func TestHandleToolCall_AllV6Tools(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
 	emptyArgs := json.RawMessage(`{}`)
 
-	tools := []string{"generate_csp", "security_audit", "get_audit_log", "diff_sessions"}
+	tools := []string{"observe", "generate", "configure", "interact"}
 	for _, tool := range tools {
 		t.Run(tool, func(t *testing.T) {
 			args := emptyArgs
-			if tool == "diff_sessions" {
-				args = json.RawMessage(`{"action":"list"}`)
+			if tool == "configure" {
+				args = json.RawMessage(`{"action":"health"}`)
 			}
 			_, handled := mcp.toolHandler.handleToolCall(req, tool, args)
 			if !handled {
@@ -2080,7 +2102,7 @@ func TestIsThirdPartyURL(t *testing.T) {
 func TestHandleGetAuditLog_ToolNameFilter(t *testing.T) {
 	at := NewAuditTrail(AuditConfig{MaxEntries: 100, Enabled: true})
 
-	at.Record(AuditEntry{ToolName: "observe", Parameters: `{"what":"errors"}`, Success: true})
+	at.Record(AuditEntry{ToolName: "observe", Parameters: `{"what":"error_clusters"}`, Success: true})
 	at.Record(AuditEntry{ToolName: "query_dom", Parameters: `{"selector":"div"}`, Success: true})
 	at.Record(AuditEntry{ToolName: "observe", Parameters: `{"what":"logs"}`, Success: true})
 

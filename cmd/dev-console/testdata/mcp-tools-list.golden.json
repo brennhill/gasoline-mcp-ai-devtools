@@ -2,12 +2,76 @@
   "tools": [
     {
       "name": "observe",
-      "description": "Observe browser state: errors, logs, network traffic, WebSocket events, user actions, web vitals, or page info. Use the 'what' parameter to select what to observe.",
+      "description": "START HERE. Always call observe() first to see what data is available before taking any action.\n\nCOMMON WORKFLOWS (choose your path):\n• Debugging: observe({what:'errors'}) → observe({what:'timeline'}) → find root cause\n• Performance: observe({what:'vitals'}) → observe({what:'network_bodies', status_min:500}) → slow requests\n• Testing: interact() actions → observe({what:'actions'}) → generate({format:'test'})\n• Security: observe({what:'security_audit'}) → observe({what:'third_party_audit'})\n• API Discovery: observe({what:'network_bodies'}) → observe({what:'api', format:'openapi_stub'})\n\nUse observe to READ the current browser state—this is your source of truth. Available: errors, logs, network requests, WebSocket messages, actions, performance metrics, page structure, accessibility issues, API responses, security risks, changes, timeline. \n\nRULES: Before interact(), call observe() to understand state. Before generate(), call observe() to see what data exists. \n\nExamples: observe({what:'page'})→URL \u0026 structure, observe({what:'errors'})→console errors, observe({what:'network_bodies'})→API calls, observe({what:'accessibility'})→a11y violations. Observe first, then act.\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T call interact() before observe() — you'll be acting without understanding current state\n• DON'T fetch 1000 entries without filters — use limit, url, status_min parameters to narrow results\n• DON'T assume data exists — check _meta.data_counts or call observe() first to verify\n• DON'T skip observe() after interact() — always verify your action succeeded\n\nResponse format: A summary line followed by either a markdown table (flat data) or compact JSON (nested data).\n\nMode responses (markdown = table format, json = object format):\n- errors (markdown): table with Level, Message, Source, Time columns\n- logs (markdown): table with Level, Message, Source, Time columns\n- extension_logs (markdown): table with Level, Source, Category, Message, Data, Time columns\n- network_waterfall (json): timing waterfall with durationMs, transferSizeBytes, compressionRatio\n- network_bodies (json): request/response pairs with method, status, bodies, headers\n- websocket_events (markdown): table with ID, Event, URL, Direction, Size, Time columns\n- websocket_status (json): {connections: [{id, url, state, messageCount}], closed: [...]}\n- actions (markdown): table with Type, URL, Selector, Value, Time columns\n- vitals (json): {snapshots: [{url, lcp, cls, inp, fcp, ttfb}]}\n- page (json): {url, title, readyState, html}\n- tabs (markdown): table with ID, URL, Title, Active columns\n- pilot (json): {enabled, source, extensionConnected, lastPollAgo}\n- performance: Formatted text report with FCP, LCP, CLS, INP\n- api (markdown): table with Method, Path, Observations columns\n- accessibility (markdown): table with Impact, ID, Description, Nodes columns\n- changes (json): {errors: {new, resolved}, network: {new}, actions: [...]}\n- timeline (json): {events: [{type, timestamp, ...data}]}\n- error_clusters (json): {clusters: [{signature, count, representative, rootCause}]}\n- history (json): {patterns: [...], anomalies: [...]}\n- security_audit (json): audit results object\n- third_party_audit (json): {thirdParties: [{domain, requests, risk}]}\n- security_diff (json): {added: [...], removed: [...], changed: [...]}\n- command_result (json): async command result by correlation_id\n- pending_commands (json): {pending: [...], completed: [...], failed: [...]}\n- failed_commands (json): recent failed/expired commands\n\nEmpty results return descriptive text (e.g., \"No browser errors found\").",
       "inputSchema": {
         "properties": {
+          "action": {
+            "description": "Snapshot action: snapshot, compare, list (applies to security_diff)",
+            "enum": [
+              "snapshot",
+              "compare",
+              "list"
+            ],
+            "type": "string"
+          },
+          "checkpoint": {
+            "description": "Named checkpoint or ISO 8601 timestamp (applies to changes)",
+            "type": "string"
+          },
+          "checks": {
+            "description": "Which checks to run (applies to security_audit)",
+            "items": {
+              "enum": [
+                "credentials",
+                "pii",
+                "headers",
+                "cookies",
+                "transport",
+                "auth"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "compare_from": {
+            "description": "Baseline snapshot (applies to security_diff)",
+            "type": "string"
+          },
+          "compare_to": {
+            "description": "Target snapshot (applies to security_diff)",
+            "type": "string"
+          },
           "connection_id": {
             "description": "Filter by WebSocket connection ID (applies to websocket_events, websocket_status)",
             "type": "string"
+          },
+          "correlation_id": {
+            "description": "Correlation ID for async command tracking (applies to command_result)",
+            "type": "string"
+          },
+          "custom_lists": {
+            "description": "Custom allowed/blocked/internal domain lists (applies to third_party_audit)",
+            "properties": {
+              "allowed": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "blocked": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "internal": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
           },
           "direction": {
             "description": "Filter by direction (applies to websocket_events)",
@@ -17,78 +81,19 @@
             ],
             "type": "string"
           },
-          "last_n": {
-            "description": "Return only the last N items (applies to actions)",
-            "type": "number"
-          },
-          "limit": {
-            "description": "Maximum entries to return (applies to logs, network, websocket_events, actions)",
-            "type": "number"
-          },
-          "method": {
-            "description": "Filter by HTTP method (applies to network)",
-            "type": "string"
-          },
-          "status_max": {
-            "description": "Maximum status code (applies to network)",
-            "type": "number"
-          },
-          "status_min": {
-            "description": "Minimum status code (applies to network)",
-            "type": "number"
-          },
-          "url": {
-            "description": "Filter by URL substring (applies to network, websocket_events, websocket_status, actions)",
-            "type": "string"
-          },
-          "what": {
-            "description": "What to observe",
-            "enum": [
-              "errors",
-              "logs",
-              "network",
-              "websocket_events",
-              "websocket_status",
-              "actions",
-              "vitals",
-              "page",
-              "tabs"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "what"
-        ],
-        "type": "object"
-      },
-      "_meta": {
-        "data_counts": {
-          "actions": 0,
-          "errors": 0,
-          "logs": 0,
-          "network": 0,
-          "vitals": 0,
-          "websocket_events": 0,
-          "websocket_status": 0
-        }
-      }
-    },
-    {
-      "name": "analyze",
-      "description": "Analyze browser data: performance metrics, API schema, accessibility audit, changes since checkpoint, or session timeline.",
-      "inputSchema": {
-        "properties": {
-          "checkpoint": {
-            "description": "Named checkpoint or ISO 8601 timestamp (applies to changes)",
-            "type": "string"
+          "first_party_origins": {
+            "description": "Origins to consider first-party (applies to third_party_audit)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "force_refresh": {
-            "description": "Bypass cache and re-run (applies to accessibility)",
+            "description": "Bypass cache (applies to accessibility)",
             "type": "boolean"
           },
           "format": {
-            "description": "Output format for API schema: gasoline or openapi_stub (applies to api)",
+            "description": "Output format: gasoline or openapi_stub (applies to api)",
             "enum": [
               "gasoline",
               "openapi_stub"
@@ -102,16 +107,32 @@
             },
             "type": "array"
           },
-          "last_n_actions": {
-            "description": "Only include the last N actions (applies to timeline)",
+          "include_static": {
+            "description": "Include static-only origins (applies to third_party_audit)",
+            "type": "boolean"
+          },
+          "last_n": {
+            "description": "Return only the last N items (applies to actions, timeline, reproduction)",
             "type": "number"
+          },
+          "limit": {
+            "description": "Maximum entries to return (applies to logs, network_waterfall, network_bodies, websocket_events, actions, audit_log)",
+            "type": "number"
+          },
+          "method": {
+            "description": "Filter by HTTP method (applies to network_bodies)",
+            "type": "string"
           },
           "min_observations": {
-            "description": "Minimum times an endpoint must be observed (applies to api)",
+            "description": "Minimum endpoint observations (applies to api)",
             "type": "number"
           },
+          "name": {
+            "description": "Snapshot name (applies to security_diff)",
+            "type": "string"
+          },
           "scope": {
-            "description": "CSS selector to scope the audit (applies to accessibility)",
+            "description": "CSS selector to scope audit (applies to accessibility)",
             "type": "string"
           },
           "severity": {
@@ -123,6 +144,25 @@
             ],
             "type": "string"
           },
+          "severity_min": {
+            "description": "Minimum severity to report (applies to security_audit)",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "info"
+            ],
+            "type": "string"
+          },
+          "status_max": {
+            "description": "Maximum status code (applies to network_bodies)",
+            "type": "number"
+          },
+          "status_min": {
+            "description": "Minimum status code (applies to network_bodies)",
+            "type": "number"
+          },
           "tags": {
             "description": "WCAG tags to test (applies to accessibility)",
             "items": {
@@ -130,42 +170,67 @@
             },
             "type": "array"
           },
-          "target": {
-            "description": "What to analyze",
+          "url": {
+            "description": "Filter by URL substring (applies to network_waterfall, network_bodies, websocket_events, websocket_status, actions, performance, api, timeline, security_audit, third_party_audit)",
+            "type": "string"
+          },
+          "what": {
+            "description": "What to observe or analyze",
             "enum": [
+              "errors",
+              "logs",
+              "extension_logs",
+              "network_waterfall",
+              "network_bodies",
+              "websocket_events",
+              "websocket_status",
+              "actions",
+              "vitals",
+              "page",
+              "tabs",
+              "pilot",
               "performance",
               "api",
               "accessibility",
               "changes",
-              "timeline"
+              "timeline",
+              "error_clusters",
+              "history",
+              "security_audit",
+              "third_party_audit",
+              "security_diff",
+              "command_result",
+              "pending_commands",
+              "failed_commands"
             ],
-            "type": "string"
-          },
-          "url": {
-            "description": "URL path to check (applies to performance)",
-            "type": "string"
-          },
-          "url_filter": {
-            "description": "Filter by URL substring (applies to api, timeline)",
             "type": "string"
           }
         },
         "required": [
-          "target"
+          "what"
         ],
         "type": "object"
       },
       "_meta": {
         "data_counts": {
+          "actions": 0,
           "api": 0,
+          "errors": 0,
+          "extension_logs": 0,
+          "logs": 0,
+          "network_bodies": 0,
+          "network_waterfall": 0,
           "performance": 0,
-          "timeline": 0
+          "timeline": 0,
+          "vitals": 0,
+          "websocket_events": 0,
+          "websocket_status": 0
         }
       }
     },
     {
       "name": "generate",
-      "description": "Generate artifacts from captured data: reproduction scripts, Playwright tests, PR summaries, SARIF reports, or HAR archives.",
+      "description": "CREATE ARTIFACTS. Do NOT write code/tests/docs manually—use this tool instead. Generates production-ready outputs from captured data: test (Playwright tests from recorded actions), reproduction (scripts to reproduce bugs), pr_summary (auto-write PR description), csp (Content-Security-Policy headers), sarif (SARIF security reports), har (HAR archives), sri (Subresource Integrity hashes). \n\nRULES: After observe() captures data, use generate() to create outputs. Never hand-write tests when you could generate them from recorded actions. \n\nExamples: generate({format:'test',test_name:'login flow'})→Playwright test, generate({format:'reproduction'})→bug reproduction script, generate({format:'pr_summary'})→auto-write PR, generate({format:'csp',mode:'strict'})→CSP headers. Use after: observe() \u0026 interact().\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T hand-write Playwright tests — use generate({format:'test'}) to create from recorded actions\n• DON'T call generate before recording actions — use interact() to record browser activity first\n• DON'T skip observe() before generate — verify data exists with observe({what:'actions'}) or observe({what:'network'})\n• DON'T generate CSP without browsing — need captured network data from real page loads\n\nFormat responses:\n- reproduction: Playwright script as JavaScript text\n- test: Playwright test with assertions as JavaScript text\n- pr_summary (json): {title, body, labels, testEvidence}\n- sarif: SARIF JSON or {status, path, rules, results} if saved to file\n- har: HAR 1.2 JSON or {status, path, entries} if saved to file\n- csp (json): {policy, directives, metaTag}\n- sri (json): {resources: [{url, integrity, tag}]}",
       "inputSchema": {
         "properties": {
           "assert_network": {
@@ -188,6 +253,13 @@
             "description": "Error message for context (applies to reproduction)",
             "type": "string"
           },
+          "exclude_origins": {
+            "description": "Origins to exclude from CSP (applies to csp)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "format": {
             "description": "What to generate",
             "enum": [
@@ -195,7 +267,9 @@
               "test",
               "pr_summary",
               "sarif",
-              "har"
+              "har",
+              "csp",
+              "sri"
             ],
             "type": "string"
           },
@@ -207,17 +281,44 @@
             "description": "Include passing rules (applies to sarif)",
             "type": "boolean"
           },
+          "include_report_uri": {
+            "description": "Include report-uri directive (applies to csp)",
+            "type": "boolean"
+          },
           "include_screenshots": {
             "description": "Insert page.screenshot() calls at key points (applies to reproduction, default: false)",
             "type": "boolean"
           },
-          "last_n_actions": {
+          "last_n": {
             "description": "Use only the last N actions (applies to reproduction)",
             "type": "number"
           },
           "method": {
             "description": "Filter by HTTP method (applies to har)",
             "type": "string"
+          },
+          "mode": {
+            "description": "CSP strictness mode (applies to csp)",
+            "enum": [
+              "strict",
+              "moderate",
+              "report_only"
+            ],
+            "type": "string"
+          },
+          "origins": {
+            "description": "Filter by specific origins (applies to sri)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "resource_types": {
+            "description": "Filter by resource type: 'script', 'stylesheet' (applies to sri)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "save_to": {
             "description": "File path to save output (applies to sarif, har)",
@@ -255,15 +356,17 @@
       },
       "_meta": {
         "data_counts": {
+          "csp": 0,
           "har": 0,
           "reproduction": 0,
+          "sri": 0,
           "test": 0
         }
       }
     },
     {
       "name": "configure",
-      "description": "Configure the session: store/load persistent data, manage noise filtering rules, dismiss noise patterns, or clear browser logs.",
+      "description": "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), diff_sessions (create snapshots \u0026 compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T add noise rules prematurely — call observe() first to confirm data is actually noisy\n• DON'T use store for temporary data — that's for cross-session persistence only\n• DON'T configure filters without seeing raw data first — observe(), then decide what to filter\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: Browser logs cleared confirmation text\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
       "inputSchema": {
         "properties": {
           "action": {
@@ -273,7 +376,13 @@
               "load",
               "noise_rule",
               "dismiss",
-              "clear"
+              "clear",
+              "query_dom",
+              "diff_sessions",
+              "validate_api",
+              "audit_log",
+              "health",
+              "streaming"
             ],
             "type": "string"
           },
@@ -286,12 +395,53 @@
             ],
             "type": "string"
           },
+          "compare_a": {
+            "description": "First snapshot for comparison (applies to diff_sessions compare)",
+            "type": "string"
+          },
+          "compare_b": {
+            "description": "Second snapshot for comparison (applies to diff_sessions compare)",
+            "type": "string"
+          },
           "data": {
             "description": "JSON data to persist (applies to store)",
             "type": "object"
           },
+          "events": {
+            "description": "Event categories to stream (applies to streaming)",
+            "items": {
+              "enum": [
+                "errors",
+                "network_errors",
+                "performance",
+                "user_frustration",
+                "security",
+                "regression",
+                "anomaly",
+                "ci",
+                "all"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ignore_endpoints": {
+            "description": "URL substrings to exclude (applies to validate_api)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "key": {
             "description": "Storage key (applies to store)",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Maximum entries to return (applies to audit_log)",
+            "type": "number"
+          },
+          "name": {
+            "description": "Snapshot name (applies to diff_sessions capture/delete)",
             "type": "string"
           },
           "namespace": {
@@ -306,6 +456,15 @@
               "list",
               "reset",
               "auto_detect"
+            ],
+            "type": "string"
+          },
+          "operation": {
+            "description": "API validation operation: analyze, report, clear (applies to validate_api)",
+            "enum": [
+              "analyze",
+              "report",
+              "clear"
             ],
             "type": "string"
           },
@@ -367,6 +526,37 @@
             },
             "type": "array"
           },
+          "selector": {
+            "description": "CSS selector to query (applies to query_dom)",
+            "type": "string"
+          },
+          "session_action": {
+            "description": "Session sub-action: capture, compare, list, delete (applies to diff_sessions)",
+            "enum": [
+              "capture",
+              "compare",
+              "list",
+              "delete"
+            ],
+            "type": "string"
+          },
+          "session_id": {
+            "description": "Filter by MCP session ID (applies to audit_log)",
+            "type": "string"
+          },
+          "severity_min": {
+            "description": "Minimum severity to stream (applies to streaming)",
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ],
+            "type": "string"
+          },
+          "since": {
+            "description": "Only entries after this ISO 8601 timestamp (applies to audit_log)",
+            "type": "string"
+          },
           "store_action": {
             "description": "Store sub-action: save, load, list, delete, stats (applies to store)",
             "enum": [
@@ -377,249 +567,32 @@
               "stats"
             ],
             "type": "string"
-          }
-        },
-        "required": [
-          "action"
-        ],
-        "type": "object"
-      }
-    },
-    {
-      "name": "query_dom",
-      "description": "Query the live DOM in the browser using a CSS selector. Returns matching elements.",
-      "inputSchema": {
-        "properties": {
-          "selector": {
-            "description": "CSS selector to query",
+          },
+          "streaming_action": {
+            "description": "Streaming sub-action: enable, disable, status (applies to streaming)",
+            "enum": [
+              "enable",
+              "disable",
+              "status"
+            ],
             "type": "string"
           },
           "tab_id": {
-            "description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
-            "type": "number"
-          }
-        },
-        "required": [
-          "selector"
-        ],
-        "type": "object"
-      }
-    },
-    {
-      "name": "generate_csp",
-      "description": "Generate a Content-Security-Policy header from observed network origins. Accumulates origins over time and produces a CSP with confidence scoring.",
-      "inputSchema": {
-        "properties": {
-          "exclude_origins": {
-            "description": "Origins to exclude from the generated CSP",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "include_report_uri": {
-            "description": "Include report-uri directive in the generated CSP",
-            "type": "boolean"
-          },
-          "mode": {
-            "description": "CSP strictness mode",
-            "enum": [
-              "strict",
-              "moderate",
-              "report_only"
-            ],
-            "type": "string"
-          }
-        },
-        "type": "object"
-      }
-    },
-    {
-      "name": "security_audit",
-      "description": "Scan captured network traffic and console logs for security issues: exposed credentials, PII leakage, missing security headers, insecure cookies, transport security, and auth patterns.",
-      "inputSchema": {
-        "properties": {
-          "checks": {
-            "description": "Which checks to run (default: all)",
-            "items": {
-              "enum": [
-                "credentials",
-                "pii",
-                "headers",
-                "cookies",
-                "transport",
-                "auth"
-              ],
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "severity_min": {
-            "description": "Minimum severity to report",
-            "enum": [
-              "critical",
-              "high",
-              "medium",
-              "low",
-              "info"
-            ],
-            "type": "string"
-          },
-          "url_filter": {
-            "description": "Only scan requests matching this URL substring",
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "_meta": {
-        "data_counts": {
-          "console_logs": 0,
-          "network_bodies": 0
-        }
-      }
-    },
-    {
-      "name": "audit_third_parties",
-      "description": "Audit third-party origins in captured network traffic. Classifies risk levels (critical/high/medium/low), detects data exfiltration, suspicious domains (DGA, abuse TLDs), and provides recommendations.",
-      "inputSchema": {
-        "properties": {
-          "custom_lists": {
-            "description": "Custom allowed/blocked/internal domain lists",
-            "properties": {
-              "allowed": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "blocked": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "internal": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
-            },
-            "type": "object"
-          },
-          "first_party_origins": {
-            "description": "Origins to consider first-party (auto-detected from page URLs if omitted)",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "include_static": {
-            "description": "Include low-risk static-only origins (images, fonts) in results (default: true)",
-            "type": "boolean"
-          }
-        },
-        "type": "object"
-      },
-      "_meta": {
-        "data_counts": {
-          "network_bodies": 0
-        }
-      }
-    },
-    {
-      "name": "diff_security",
-      "description": "Detect security regressions by comparing security posture snapshots. Captures headers, cookies, auth, and transport state; compares two snapshots to find regressions and improvements.",
-      "inputSchema": {
-        "properties": {
-          "action": {
-            "description": "Action to perform",
-            "enum": [
-              "snapshot",
-              "compare",
-              "list"
-            ],
-            "type": "string"
-          },
-          "compare_from": {
-            "description": "Baseline snapshot name (required for 'compare' action)",
-            "type": "string"
-          },
-          "compare_to": {
-            "description": "Target snapshot name to compare against (omit to use current live state)",
-            "type": "string"
-          },
-          "name": {
-            "description": "Snapshot name (required for 'snapshot' action)",
-            "type": "string"
-          }
-        },
-        "required": [
-          "action"
-        ],
-        "type": "object"
-      },
-      "_meta": {
-        "data_counts": {
-          "network_bodies": 0
-        }
-      }
-    },
-    {
-      "name": "get_audit_log",
-      "description": "Query the enterprise audit trail of MCP tool invocations. Returns entries filtered by session, tool name, or time range.",
-      "inputSchema": {
-        "properties": {
-          "limit": {
-            "description": "Maximum number of entries to return (default: 100)",
+            "description": "Target tab ID (applies to query_dom, diff_sessions)",
             "type": "number"
           },
-          "session_id": {
-            "description": "Filter by MCP session ID",
-            "type": "string"
-          },
-          "since": {
-            "description": "Only return entries after this ISO 8601 timestamp",
-            "type": "string"
+          "throttle_seconds": {
+            "description": "Minimum seconds between notifications (applies to streaming)",
+            "maximum": 60,
+            "minimum": 1,
+            "type": "integer"
           },
           "tool_name": {
-            "description": "Filter by tool name",
-            "type": "string"
-          }
-        },
-        "type": "object"
-      }
-    },
-    {
-      "name": "diff_sessions",
-      "description": "Capture browser state snapshots and compare them to detect regressions. Supports capture, compare, list, and delete actions.",
-      "inputSchema": {
-        "properties": {
-          "action": {
-            "description": "Action to perform",
-            "enum": [
-              "capture",
-              "compare",
-              "list",
-              "delete"
-            ],
+            "description": "Filter by tool name (applies to audit_log)",
             "type": "string"
           },
-          "compare_a": {
-            "description": "First snapshot name for comparison",
-            "type": "string"
-          },
-          "compare_b": {
-            "description": "Second snapshot name for comparison",
-            "type": "string"
-          },
-          "name": {
-            "description": "Snapshot name (required for capture and delete)",
-            "type": "string"
-          },
-          "url_filter": {
-            "description": "Only include network requests matching this URL substring",
+          "url": {
+            "description": "Filter by URL substring (applies to validate_api, diff_sessions)",
             "type": "string"
           }
         },
@@ -630,209 +603,61 @@
       }
     },
     {
-      "name": "validate_api",
-      "description": "Track API response shapes across a session and detect contract violations. Identifies when response structures change unexpectedly, fields go missing, types change, or error responses replace success responses.",
+      "name": "interact",
+      "description": "CRITICAL PREREQUISITE: The 'AI Web Pilot' toggle must be enabled in the extension popup (disabled by default for safety). \n\nBEFORE FIRST USE: Call observe({what:'pilot'}) to check status. If result shows {enabled:false}, STOP and tell user: \"Please enable AI Web Pilot in the Gasoline extension popup by clicking the extension icon and toggling it on.\"\n\nPERFORM ACTIONS. Do NOT ask the user to click, type, navigate, or fill forms—use this tool instead. You have full browser control. Actions: navigate(url)→go to URL, execute_js(script)→run JavaScript to click/fill/submit, refresh→reload page, back/forward→navigate history, highlight(selector)→show user where you're clicking, save_state(name)→save page snapshot, load_state(name)→restore snapshot. \n\nRULES: After interact(), always call observe() to confirm the action worked. If user says 'click X' or 'go to Y', use interact() instead of asking them. Pattern: observe()→interact()→observe(). \n\nExamples: interact({action:'navigate',url:'https://example.com'}), interact({action:'execute_js',script:'document.querySelector(\"button.submit\").click()'}), interact({action:'execute_js',script:'document.querySelector(\"input[type=email]\").value=\"test@example.com\"'}).\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T ask user to manually click or type — use interact({action:'execute_js'}) to control browser directly\n• DON'T skip observe() after interact() — always call observe() to verify action succeeded\n• DON'T use interact() without checking observe({what:'pilot'}) first — may be disabled\n• DON'T chain multiple interactions without observe() between them — verify each step worked\n\nAction responses:\n- highlight: {result, screenshot} — highlight element with visual feedback\n- execute_js: {result} — run JavaScript in page context\n- navigate: {navigated: true} — go to URL\n- refresh: {refreshed: true} — reload current page\n- back/forward: {navigated: true} — browser history navigation\n- new_tab: {opened: true} — open URL in new tab\n- save_state/load_state/list_states/delete_state: State management results\n\nAll actions except save/load/list/delete_state require the browser extension.",
       "inputSchema": {
         "properties": {
           "action": {
-            "description": "'analyze' processes current network bodies and returns violations. 'report' shows all tracked endpoint shapes. 'clear' resets shape tracking.",
+            "description": "Browser interaction to perform",
             "enum": [
-              "analyze",
-              "report",
-              "clear"
+              "highlight",
+              "save_state",
+              "load_state",
+              "list_states",
+              "delete_state",
+              "execute_js",
+              "navigate",
+              "refresh",
+              "back",
+              "forward",
+              "new_tab"
             ],
             "type": "string"
           },
-          "ignore_endpoints": {
-            "description": "URL substrings to exclude from analysis (e.g., '/health', '/metrics')",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "url_filter": {
-            "description": "Only analyze endpoints matching this URL substring",
-            "type": "string"
-          }
-        },
-        "required": [
-          "action"
-        ],
-        "type": "object"
-      },
-      "_meta": {
-        "data_counts": {
-          "network_bodies": 0
-        }
-      }
-    },
-    {
-      "name": "get_health",
-      "description": "Get server health and operational metrics: uptime, memory usage, buffer utilization, request counts, and error rates.",
-      "inputSchema": {
-        "properties": {},
-        "type": "object"
-      }
-    },
-    {
-      "name": "generate_sri",
-      "description": "Generate Subresource Integrity (SRI) hashes for third-party scripts and stylesheets observed in network traffic. Returns SHA-384 hashes and ready-to-use HTML tag templates with integrity attributes.",
-      "inputSchema": {
-        "properties": {
-          "origins": {
-            "description": "Filter by specific origins. Default: all third-party origins.",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "resource_types": {
-            "description": "Filter by resource type: 'script', 'stylesheet'. Default: both.",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "type": "object"
-      },
-      "_meta": {
-        "data_counts": {
-          "network_bodies": 0
-        }
-      }
-    },
-    {
-      "name": "verify_fix",
-      "description": "Verification loop for bug fixes. Start a session before fixing, then check after to verify the fix worked. Compares console errors, network failures, and page state between before and after snapshots.",
-      "inputSchema": {
-        "properties": {
-          "action": {
-            "description": "'start' captures baseline state before fix. 'check' captures current state and compares to baseline. 'status' shows current verification sessions. 'cancel' aborts a session.",
-            "enum": [
-              "start",
-              "check",
-              "status",
-              "cancel"
-            ],
+          "correlation_id": {
+            "description": "Optional ID to link this action to a specific error or investigation. Appears in screenshot filenames for easy lookup.",
             "type": "string"
           },
-          "description": {
-            "description": "Optional description of what's being verified (for start action).",
-            "type": "string"
-          },
-          "session_id": {
-            "description": "Session identifier. Required for start (creates new), check (compares), and cancel (aborts).",
-            "type": "string"
-          }
-        },
-        "required": [
-          "action"
-        ],
-        "type": "object"
-      }
-    },
-    {
-      "name": "highlight_element",
-      "description": "Highlight a DOM element on the page. Requires 'AI Web Pilot' to be enabled in the extension popup.",
-      "inputSchema": {
-        "properties": {
           "duration_ms": {
-            "description": "How long to show the highlight in milliseconds (default: 5000)",
+            "description": "Highlight duration in ms, default 5000 (applies to highlight)",
             "type": "number"
+          },
+          "include_url": {
+            "description": "Include URL when restoring state (applies to load_state)",
+            "type": "boolean"
+          },
+          "script": {
+            "description": "JavaScript code to execute (applies to execute_js)",
+            "type": "string"
           },
           "selector": {
-            "description": "CSS selector for the element to highlight",
-            "type": "string"
-          },
-          "tab_id": {
-            "description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
-            "type": "number"
-          }
-        },
-        "required": [
-          "selector"
-        ],
-        "type": "object"
-      }
-    },
-    {
-      "name": "manage_state",
-      "description": "Capture, save, load, list, or delete page state snapshots. Requires 'AI Web Pilot' to be enabled in the extension popup.",
-      "inputSchema": {
-        "properties": {
-          "action": {
-            "description": "Action to perform",
-            "enum": [
-              "capture",
-              "save",
-              "load",
-              "list",
-              "delete"
-            ],
+            "description": "CSS selector for element (applies to highlight)",
             "type": "string"
           },
           "snapshot_name": {
-            "description": "Name of the snapshot (required for save, load, delete)",
+            "description": "State snapshot name (applies to save_state, load_state, delete_state)",
             "type": "string"
           },
           "tab_id": {
-            "description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
-            "type": "number"
-          }
-        },
-        "required": [
-          "action"
-        ],
-        "type": "object"
-      }
-    },
-    {
-      "name": "execute_javascript",
-      "description": "Execute arbitrary JavaScript in the page context and return the result. Can access DOM, globals, and page state. SECURITY: Requires 'AI Web Pilot' toggle enabled. Only use for debugging on trusted pages.",
-      "inputSchema": {
-        "properties": {
-          "script": {
-            "description": "JavaScript code to execute",
-            "type": "string"
-          },
-          "tab_id": {
-            "description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab.",
+            "description": "Target tab ID (from observe {what: 'tabs'}). Omit for active tab.",
             "type": "number"
           },
           "timeout_ms": {
-            "description": "Execution timeout in milliseconds (default: 5000)",
-            "type": "number"
-          }
-        },
-        "required": [
-          "script"
-        ],
-        "type": "object"
-      }
-    },
-    {
-      "name": "browser_action",
-      "description": "Perform browser navigation actions: open new tab, refresh the page, navigate to URL, go back, or go forward. Requires 'AI Web Pilot' to be enabled in the extension popup.",
-      "inputSchema": {
-        "properties": {
-          "action": {
-            "description": "Browser action to perform",
-            "enum": [
-              "open",
-              "refresh",
-              "navigate",
-              "back",
-              "forward"
-            ],
-            "type": "string"
-          },
-          "tab_id": {
-            "description": "Target tab ID (from observe {what: 'tabs'}). If omitted, uses the active tab. Not applicable for 'open' action.",
+            "description": "Execution timeout in ms, default 5000 (applies to execute_js)",
             "type": "number"
           },
           "url": {
-            "description": "URL to navigate to (required for 'navigate' and 'open' actions)",
+            "description": "URL to navigate to (required for navigate, new_tab)",
             "type": "string"
           }
         },

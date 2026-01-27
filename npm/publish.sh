@@ -34,7 +34,7 @@ chmod +x npm/linux-arm64/bin/gasoline
 chmod +x npm/linux-x64/bin/gasoline
 
 # Ensure the main bin script is executable
-chmod +x npm/gasoline-cli/bin/gasoline-cli
+chmod +x npm/gasoline-mcp/bin/gasoline-mcp
 
 echo ""
 echo "Publishing platform packages..."
@@ -54,8 +54,8 @@ for pkg in "${PACKAGES[@]}"; do
 done
 
 echo ""
-echo "Publishing main package (gasoline-cli)..."
-cd "$SCRIPT_DIR/gasoline-cli"
+echo "Publishing main package (gasoline-mcp)..."
+cd "$SCRIPT_DIR/gasoline-mcp"
 npm publish --access public $DRY_RUN
 
 echo ""

@@ -139,7 +139,7 @@ func (s *SecurityScanner) Scan(input SecurityScanInput) SecurityScanResult {
 func (s *SecurityScanner) HandleSecurityAudit(params json.RawMessage, bodies []NetworkBody, entries []LogEntry, pageURLs []string) (interface{}, error) {
 	var toolParams struct {
 		Checks      []string `json:"checks"`
-		URLFilter   string   `json:"url_filter"`
+		URLFilter   string   `json:"url"`
 		SeverityMin string   `json:"severity_min"`
 	}
 	if len(params) > 0 {
@@ -356,7 +356,7 @@ func (s *SecurityScanner) scanBodyForCredentials(bodyContent, sourceURL, locatio
 		match := jwtPattern.FindString(scanContent)
 		findings = append(findings, SecurityFinding{
 			Check:       "credentials",
-			Severity:    "warning",
+			Severity:    "medium",
 			Title:       "JWT token in " + location,
 			Description: "A JWT token was detected in the " + location + ". Verify this is an intentional auth token delivery.",
 			Location:    sourceURL,
@@ -836,11 +836,32 @@ func isJavaScriptContent(contentType string) bool {
 	return strings.Contains(ct, "javascript")
 }
 
+// extractOrigin extracts the origin (scheme://host[:port]) from a URL
+// Returns empty string for data: URLs, blob: URLs (after extracting nested origin), and malformed URLs
 func extractOrigin(rawURL string) string {
+	// Handle data: URLs
+	if strings.HasPrefix(rawURL, "data:") {
+		return ""
+	}
+
+	// Handle blob: URLs - extract the nested origin
+	if strings.HasPrefix(rawURL, "blob:") {
+		// blob:https://example.com/uuid -> https://example.com
+		rawURL = strings.TrimPrefix(rawURL, "blob:")
+	}
+
+	// Parse URL
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return rawURL
+		return ""
 	}
+
+	// URL must have a scheme and host
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+
+	// Reconstruct origin: scheme://host[:port]
 	return parsed.Scheme + "://" + parsed.Host
 }
 

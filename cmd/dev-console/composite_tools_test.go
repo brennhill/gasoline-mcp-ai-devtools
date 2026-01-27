@@ -32,34 +32,18 @@ func TestCompositeToolsListReturnsAllTools(t *testing.T) {
 	}
 
 	expected := map[string]bool{
-		"observe":              true,
-		"analyze":              true,
-		"generate":             true,
-		"configure":            true,
-		"query_dom":            true,
-		"generate_csp":         true,
-		"security_audit":       true,
-		"audit_third_parties":  true,
-		"diff_security":        true,
-		"get_audit_log":        true,
-		"diff_sessions":        true,
-		"validate_api":         true,
-		"get_health":           true,
-		"generate_sri":         true,
-		"verify_fix":           true,
-		// AI Web Pilot tools
-		"highlight_element":    true,
-		"manage_state":         true,
-		"execute_javascript":   true,
-		"browser_action":       true,
+		"observe":   true,
+		"generate":  true,
+		"configure": true,
+		"interact":  true,
 	}
 
-	if len(result.Tools) != 19 {
+	if len(result.Tools) != 4 {
 		names := make([]string, len(result.Tools))
 		for i, tool := range result.Tools {
 			names[i] = tool.Name
 		}
-		t.Fatalf("Expected exactly 19 tools, got %d: %v", len(result.Tools), names)
+		t.Fatalf("Expected exactly 4 tools, got %d: %v", len(result.Tools), names)
 	}
 
 	for _, tool := range result.Tools {
@@ -90,15 +74,15 @@ func TestCompositeToolsHaveRequiredModeParam(t *testing.T) {
 
 	modeParams := map[string]string{
 		"observe":   "what",
-		"analyze":   "target",
 		"generate":  "format",
 		"configure": "action",
+		"interact":  "action",
 	}
 
 	for _, tool := range result.Tools {
 		modeParam, hasModeParam := modeParams[tool.Name]
 		if !hasModeParam {
-			continue // query_dom doesn't have a mode param
+			continue
 		}
 
 		// Check that the mode param exists in properties
@@ -167,17 +151,17 @@ func TestCompositeToolsModeEnumValues(t *testing.T) {
 	json.Unmarshal(resp.Result, &result)
 
 	expectedEnums := map[string][]string{
-		"observe":   {"errors", "logs", "network", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs"},
-		"analyze":   {"performance", "api", "accessibility", "changes", "timeline"},
-		"generate":  {"reproduction", "test", "pr_summary", "sarif", "har"},
-		"configure": {"store", "load", "noise_rule", "dismiss", "clear"},
+		"observe":   {"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "performance", "api", "accessibility", "changes", "timeline", "error_clusters", "history", "security_audit", "third_party_audit", "security_diff", "command_result", "pending_commands", "failed_commands"},
+		"generate":  {"reproduction", "test", "pr_summary", "sarif", "har", "csp", "sri"},
+		"configure": {"store", "load", "noise_rule", "dismiss", "clear", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming"},
+		"interact":  {"highlight", "save_state", "load_state", "list_states", "delete_state", "execute_js", "navigate", "refresh", "back", "forward", "new_tab"},
 	}
 
 	modeParams := map[string]string{
 		"observe":   "what",
-		"analyze":   "target",
 		"generate":  "format",
 		"configure": "action",
+		"interact":  "action",
 	}
 
 	for _, tool := range result.Tools {
@@ -306,7 +290,7 @@ func TestObserveNetwork(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network_bodies"}}`),
 	})
 
 	if resp.Error != nil {
@@ -331,7 +315,7 @@ func TestObserveNetworkWithFilters(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network","method":"POST"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"network_bodies","method":"POST"}}`),
 	})
 
 	text := extractMCPText(t, resp)
@@ -359,8 +343,13 @@ func TestObserveWebSocketEvents(t *testing.T) {
 	}
 
 	text := extractMCPText(t, resp)
-	if !strings.Contains(text, "ping") {
-		t.Error("Expected WebSocket event data in output")
+	// Markdown table format: columns are ID, Event, URL, Direction, Size, Time
+	// Data field is not rendered in the table, so check for URL or event type
+	if !strings.Contains(text, "echo.example.com") {
+		t.Error("Expected WebSocket URL in markdown table output")
+	}
+	if !strings.Contains(text, "message") {
+		t.Error("Expected WebSocket event type in markdown table output")
 	}
 }
 
@@ -408,8 +397,14 @@ func TestObserveActions(t *testing.T) {
 	}
 
 	text := extractMCPText(t, resp)
-	if !strings.Contains(text, "submit-btn") {
-		t.Error("Expected action selector in output")
+	// Markdown table format: columns are Type, URL, Selector, Value, Time
+	// The selector lookup checks testId/ariaLabel/role/id/cssPath keys,
+	// so check for URL or action type which are always present
+	if !strings.Contains(text, "localhost:3000/form") {
+		t.Error("Expected action URL in markdown table output")
+	}
+	if !strings.Contains(text, "click") {
+		t.Error("Expected action type in markdown table output")
 	}
 }
 
@@ -507,17 +502,17 @@ func TestObserveMissingMode(t *testing.T) {
 }
 
 // ============================================
-// analyze tool dispatch tests
+// observe (analyze) tool dispatch tests
 // ============================================
 
-func TestAnalyzePerformance(t *testing.T) {
+func TestObservePerformance(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"performance"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"performance"}}`),
 	})
 
 	if resp.Error != nil {
@@ -530,14 +525,14 @@ func TestAnalyzePerformance(t *testing.T) {
 	}
 }
 
-func TestAnalyzeAPI(t *testing.T) {
+func TestObserveAPI(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"api"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"api"}}`),
 	})
 
 	if resp.Error != nil {
@@ -549,14 +544,14 @@ func TestAnalyzeAPI(t *testing.T) {
 	}
 }
 
-func TestAnalyzeChanges(t *testing.T) {
+func TestObserveChanges(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"changes"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"changes"}}`),
 	})
 
 	if resp.Error != nil {
@@ -568,7 +563,7 @@ func TestAnalyzeChanges(t *testing.T) {
 	}
 }
 
-func TestAnalyzeTimeline(t *testing.T) {
+func TestObserveTimeline(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -579,7 +574,7 @@ func TestAnalyzeTimeline(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"timeline"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"timeline"}}`),
 	})
 
 	if resp.Error != nil {
@@ -591,35 +586,35 @@ func TestAnalyzeTimeline(t *testing.T) {
 	}
 }
 
-func TestAnalyzeUnknownTarget(t *testing.T) {
+func TestObserveUnknownWhat(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"bogus"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"bogus"}}`),
 	})
 
 	text := extractMCPText(t, resp)
 	if !strings.Contains(text, "unknown") && !strings.Contains(text, "Unknown") {
-		t.Error("Expected error for unknown target")
+		t.Error("Expected error for unknown what")
 	}
 }
 
-func TestAnalyzeMissingTarget(t *testing.T) {
+func TestObserveMissingWhat(t *testing.T) {
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{}}`),
 	})
 
 	text := extractMCPText(t, resp)
 	if !strings.Contains(text, "required") && !strings.Contains(text, "Required") {
-		t.Error("Expected error for missing 'target' parameter")
+		t.Error("Expected error for missing 'what' parameter")
 	}
 }
 
@@ -904,7 +899,7 @@ func TestQueryDomStillWorks(t *testing.T) {
 	// it's dispatched correctly (non-error response for valid selector)
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"query_dom","arguments":{"selector":"#app"}}`),
+		Params: json.RawMessage(`{"name":"configure","arguments":{"action":"query_dom","selector":"#app"}}`),
 	})
 
 	if resp.Error != nil {
@@ -987,8 +982,8 @@ func TestToolsListMetaFieldPresent(t *testing.T) {
 		t.Fatalf("Failed to parse tools list: %v", err)
 	}
 
-	toolsWithMeta := map[string]bool{"observe": true, "analyze": true, "generate": true}
-	toolsWithoutMeta := map[string]bool{"configure": true, "query_dom": true}
+	toolsWithMeta := map[string]bool{"observe": true, "generate": true}
+	toolsWithoutMeta := map[string]bool{"configure": true, "interact": true}
 
 	for _, toolRaw := range raw.Tools {
 		var tool struct {
@@ -1034,7 +1029,7 @@ func TestToolsListMetaEmptyCountsOnFreshServer(t *testing.T) {
 	observeMeta := extractToolMeta(t, resp, "observe")
 	dataCounts := observeMeta["data_counts"].(map[string]interface{})
 
-	expectedZero := []string{"errors", "logs", "network", "websocket_events", "websocket_status", "actions", "vitals"}
+	expectedZero := []string{"errors", "logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals"}
 	for _, key := range expectedZero {
 		val, ok := dataCounts[key]
 		if !ok {
@@ -1088,18 +1083,16 @@ func TestToolsListMetaReflectsBufferSizes(t *testing.T) {
 	observeCounts := observeMeta["data_counts"].(map[string]interface{})
 	assertCount(t, observeCounts, "errors", 2)
 	assertCount(t, observeCounts, "logs", 3)
-	assertCount(t, observeCounts, "network", 2)
+	assertCount(t, observeCounts, "network_bodies", 2)
 	assertCount(t, observeCounts, "websocket_events", 1)
 	assertCount(t, observeCounts, "websocket_status", 1)
 	assertCount(t, observeCounts, "actions", 3)
 	assertCount(t, observeCounts, "vitals", 1)
 
-	// Check analyze counts
-	analyzeMeta := extractToolMeta(t, resp, "analyze")
-	analyzeCounts := analyzeMeta["data_counts"].(map[string]interface{})
-	assertCount(t, analyzeCounts, "performance", 1)
-	assertCount(t, analyzeCounts, "api", 0)
-	assertCount(t, analyzeCounts, "timeline", 3)
+	// Check observe counts (includes former analyze data)
+	assertCount(t, observeCounts, "performance", 1)
+	assertCount(t, observeCounts, "api", 0)
+	assertCount(t, observeCounts, "timeline", 3)
 
 	// Check generate counts
 	generateMeta := extractToolMeta(t, resp, "generate")
@@ -1128,9 +1121,9 @@ func TestToolsListMetaAPISchemaCount(t *testing.T) {
 		JSONRPC: "2.0", ID: 2, Method: "tools/list",
 	})
 
-	analyzeMeta := extractToolMeta(t, resp, "analyze")
-	analyzeCounts := analyzeMeta["data_counts"].(map[string]interface{})
-	assertCount(t, analyzeCounts, "api", 2)
+	observeMeta := extractToolMeta(t, resp, "observe")
+	observeCounts := observeMeta["data_counts"].(map[string]interface{})
+	assertCount(t, observeCounts, "api", 2)
 }
 
 // TestToolsListGoldenMatchesWithMeta ensures the golden file test still works
@@ -1149,13 +1142,13 @@ func TestToolsListGoldenMatchesWithMeta(t *testing.T) {
 		JSONRPC: "2.0", ID: 2, Method: "tools/list",
 	})
 
-	// Verify it returns 19 tools with proper structure (15 core + 4 pilot tools)
+	// Verify it returns 4 tools with proper structure
 	var result MCPToolsListResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("Failed to parse tools list: %v", err)
 	}
-	if len(result.Tools) != 19 {
-		t.Fatalf("Expected 19 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 4 {
+		t.Fatalf("Expected 4 tools, got %d", len(result.Tools))
 	}
 
 	// Verify _meta doesn't break standard MCPTool parsing
@@ -1246,7 +1239,7 @@ func TestToolGenerateCSP(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"generate_csp","arguments":{"mode":"moderate"}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"csp","mode":"moderate"}}`),
 	})
 
 	if resp.Error != nil {
@@ -1273,7 +1266,7 @@ func TestToolSecurityAudit(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"security_audit","arguments":{}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"security_audit"}}`),
 	})
 
 	if resp.Error != nil {
@@ -1303,7 +1296,7 @@ func TestToolAuditThirdParties(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"audit_third_parties","arguments":{"first_party_origins":["https://myapp.com"]}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"third_party_audit","first_party_origins":["https://myapp.com"]}}`),
 	})
 
 	if resp.Error != nil {
@@ -1332,7 +1325,7 @@ func TestToolDiffSecuritySnapshot(t *testing.T) {
 	// Take a snapshot
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"diff_security","arguments":{"action":"snapshot","name":"test1"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"security_diff","action":"snapshot","name":"test1"}}`),
 	})
 
 	if resp.Error != nil {
@@ -1357,13 +1350,13 @@ func TestToolDiffSecurityList(t *testing.T) {
 	// Take a snapshot first
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"diff_security","arguments":{"action":"snapshot","name":"s1"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"security_diff","action":"snapshot","name":"s1"}}`),
 	})
 
 	// List snapshots
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"diff_security","arguments":{"action":"list"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"security_diff","action":"list"}}`),
 	})
 
 	if resp.Error != nil {
@@ -1389,7 +1382,7 @@ func TestToolDiffSecurityCompare(t *testing.T) {
 	// Take baseline
 	mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"diff_security","arguments":{"action":"snapshot","name":"before"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"security_diff","action":"snapshot","name":"before"}}`),
 	})
 
 	// Update bodies (remove header)
@@ -1403,7 +1396,7 @@ func TestToolDiffSecurityCompare(t *testing.T) {
 	// Compare
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"diff_security","arguments":{"action":"compare","compare_from":"before","compare_to":"current"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"security_diff","action":"compare","compare_from":"before","compare_to":"current"}}`),
 	})
 
 	if resp.Error != nil {

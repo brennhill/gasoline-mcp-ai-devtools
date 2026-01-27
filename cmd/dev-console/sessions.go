@@ -66,7 +66,7 @@ type SnapshotWSConnection struct {
 type NamedSnapshot struct {
 	Name                 string                   `json:"name"`
 	CapturedAt           time.Time                `json:"captured_at"`
-	URLFilter            string                   `json:"url_filter,omitempty"`
+	URLFilter            string                   `json:"url,omitempty"`
 	PageURL              string                   `json:"page_url"`
 	ConsoleErrors        []SnapshotError          `json:"console_errors"`
 	ConsoleWarnings      []SnapshotError          `json:"console_warnings"`
@@ -190,7 +190,9 @@ func (sm *SessionManager) Capture(name, urlFilter string) (*NamedSnapshot, error
 		for len(sm.order) >= sm.maxSize {
 			oldest := sm.order[0]
 			delete(sm.snaps, oldest)
-			sm.order = sm.order[1:]
+			newOrder := make([]string, len(sm.order)-1)
+			copy(newOrder, sm.order[1:])
+			sm.order = newOrder
 		}
 	}
 
@@ -578,7 +580,7 @@ type diffSessionsParams struct {
 	Name      string `json:"name,omitempty"`
 	CompareA  string `json:"compare_a,omitempty"`
 	CompareB  string `json:"compare_b,omitempty"`
-	URLFilter string `json:"url_filter,omitempty"`
+	URLFilter string `json:"url,omitempty"`
 }
 
 // HandleTool dispatches the diff_sessions MCP tool call.
@@ -674,7 +676,10 @@ func (sm *SessionManager) validateName(name string) error {
 func (sm *SessionManager) removeFromOrder(name string) {
 	for i, n := range sm.order {
 		if n == name {
-			sm.order = append(sm.order[:i], sm.order[i+1:]...)
+			newOrder := make([]string, len(sm.order)-1)
+			copy(newOrder, sm.order[:i])
+			copy(newOrder[i:], sm.order[i+1:])
+			sm.order = newOrder
 			return
 		}
 	}

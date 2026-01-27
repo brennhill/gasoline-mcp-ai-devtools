@@ -26,11 +26,12 @@ Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io
 
 ## <i class="fas fa-fire"></i> How MCP Mode Works
 
-Gasoline runs as a dual-mode server by default:
+**Critical:** Your AI tool spawns a SINGLE Gasoline process that handles both:
 
-- <i class="fas fa-server"></i> **HTTP server** — background process for the browser extension
-- <i class="fas fa-exchange-alt"></i> **MCP protocol** — stdio channel for your AI tool
-- <i class="fas fa-magic"></i> **Auto-managed** — your AI tool starts and stops the server
+- <i class="fas fa-server"></i> **HTTP server** (port 7890) — for browser extension telemetry capture
+- <i class="fas fa-exchange-alt"></i> **MCP stdio** — for AI tool commands (observe, generate, configure, interact)
+
+**Both interfaces share the same browser state.** Do NOT manually start Gasoline with `npx gasoline-mcp` or `go run` — let your AI tool's MCP system spawn and manage the process. If you have a manually-started Gasoline instance on port 7890, kill it first to avoid conflicts.
 
 ## <i class="fas fa-tools"></i> Available MCP Tools
 
@@ -137,3 +138,33 @@ Add to `~/.continue/config.json`:
 2. Gasoline server ignites automatically
 3. Extension popup shows "Connected"
 4. Ask your AI: _"What browser errors do you see?"_
+
+## <i class="fas fa-exclamation-triangle"></i> Troubleshooting
+
+### "bind: address already in use" error
+
+If MCP fails to start with a port conflict:
+
+```bash
+# Find and kill existing Gasoline process
+ps aux | grep gasoline | grep -v grep
+kill <PID>
+
+# Or if on macOS/Linux:
+pkill -f gasoline
+```
+
+Then reload your MCP connection. The MCP system will spawn a fresh instance.
+
+### Extension shows "Disconnected"
+
+- Check that your AI tool has started the MCP server (look for Gasoline in process list)
+- Verify the extension's Server URL matches the port in your MCP config (default: `http://localhost:7890`)
+- Try restarting your AI tool to re-initialize the MCP connection
+
+### No browser data appearing in AI responses
+
+1. Open the extension popup and verify "Connected" status
+2. Check capture level is not set to "Errors Only" if you expect all logs
+3. Refresh the browser page to ensure content script is injected
+4. Ask your AI to run: `observe({what: "page"})` to verify MCP communication

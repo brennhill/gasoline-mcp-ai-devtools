@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 // ============================================
@@ -183,8 +184,10 @@ func NewCheckpointManager(server *Server, capture *Capture) *CheckpointManager {
 // Public API
 // ============================================
 
-// CreateCheckpoint creates a named checkpoint at the current buffer positions
-func (cm *CheckpointManager) CreateCheckpoint(name string) error {
+// CreateCheckpoint creates a named checkpoint at the current buffer positions.
+// If clientID is provided, the checkpoint is namespaced as "clientID:name".
+// This enables multi-client isolation where each client has its own checkpoint space.
+func (cm *CheckpointManager) CreateCheckpoint(name string, clientID string) error {
 	if name == "" {
 		return fmt.Errorf("checkpoint name cannot be empty")
 	}
@@ -192,23 +195,31 @@ func (cm *CheckpointManager) CreateCheckpoint(name string) error {
 		return fmt.Errorf("checkpoint name exceeds %d characters", maxCheckpointNameLen)
 	}
 
+	// Namespace the checkpoint name with client ID
+	storedName := name
+	if clientID != "" {
+		storedName = clientID + ":" + name
+	}
+
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 
 	cp := cm.snapshotNow()
-	cp.Name = name
+	cp.Name = name // Store the original name, not the namespaced one
 	cp.AlertDelivery = cm.alertDelivery
 
 	// If name already exists, update it
-	if _, exists := cm.namedCheckpoints[name]; !exists {
-		cm.namedOrder = append(cm.namedOrder, name)
+	if _, exists := cm.namedCheckpoints[storedName]; !exists {
+		cm.namedOrder = append(cm.namedOrder, storedName)
 	}
-	cm.namedCheckpoints[name] = cp
+	cm.namedCheckpoints[storedName] = cp
 
 	// Enforce max named checkpoints (evict oldest)
 	for len(cm.namedCheckpoints) > maxNamedCheckpoints {
 		oldest := cm.namedOrder[0]
-		cm.namedOrder = cm.namedOrder[1:]
+		newOrder := make([]string, len(cm.namedOrder)-1)
+		copy(newOrder, cm.namedOrder[1:])
+		cm.namedOrder = newOrder
 		delete(cm.namedCheckpoints, oldest)
 	}
 
@@ -222,13 +233,20 @@ func (cm *CheckpointManager) GetNamedCheckpointCount() int {
 	return len(cm.namedCheckpoints)
 }
 
-// GetChangesSince computes a compressed diff since the specified checkpoint
-func (cm *CheckpointManager) GetChangesSince(params GetChangesSinceParams) DiffResponse {
+// GetChangesSince computes a compressed diff since the specified checkpoint.
+// If clientID is provided, checkpoint names are resolved with the client prefix.
+func (cm *CheckpointManager) GetChangesSince(params GetChangesSinceParams, clientID string) DiffResponse {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 
 	now := time.Now()
 	isNamedQuery := false
+
+	// Build the namespaced checkpoint name for lookup
+	namespacedCheckpoint := params.Checkpoint
+	if params.Checkpoint != "" && clientID != "" {
+		namespacedCheckpoint = clientID + ":" + params.Checkpoint
+	}
 
 	// Resolve checkpoint
 	var cp *Checkpoint
@@ -247,8 +265,12 @@ func (cm *CheckpointManager) GetChangesSince(params GetChangesSinceParams) DiffR
 		} else {
 			cp = cm.autoCheckpoint
 		}
+	} else if named, ok := cm.namedCheckpoints[namespacedCheckpoint]; ok {
+		// Named checkpoint (with client namespace)
+		cp = named
+		isNamedQuery = true
 	} else if named, ok := cm.namedCheckpoints[params.Checkpoint]; ok {
-		// Named checkpoint
+		// Fall back to global checkpoint (backwards compatibility)
 		cp = named
 		isNamedQuery = true
 	} else {
@@ -330,6 +352,7 @@ func (cm *CheckpointManager) GetChangesSince(params GetChangesSinceParams) DiffR
 	}
 
 	// Calculate token count
+	// Error impossible: result structure contains only serializable types
 	jsonBytes, _ := json.Marshal(resp)
 	resp.TokenCount = len(jsonBytes) / 4
 
@@ -350,6 +373,10 @@ func (cm *CheckpointManager) GetChangesSince(params GetChangesSinceParams) DiffR
 // Internal: Checkpoint resolution
 // ============================================
 
+// snapshotNow reads buffer positions under two separate locks (server.mu, capture.mu).
+// This is not globally atomic: a log entry could arrive between the two reads. This is
+// acceptable because checkpoints are advisory positions for "show me what changed" diffs,
+// and a ±1 entry variance has no correctness impact.
 func (cm *CheckpointManager) snapshotNow() *Checkpoint {
 	cm.server.mu.RLock()
 	logTotal := cm.server.logTotalAdded
@@ -441,25 +468,21 @@ func (cm *CheckpointManager) shouldInclude(include []string, category string) bo
 
 func (cm *CheckpointManager) computeConsoleDiff(cp *Checkpoint, severity string) *ConsoleDiff {
 	cm.server.mu.RLock()
-	entries := cm.server.entries
 	currentTotal := cm.server.logTotalAdded
-	cm.server.mu.RUnlock()
-
-	// Calculate how many entries to read
 	newCount := int(currentTotal - cp.LogTotal)
 	if newCount <= 0 {
+		cm.server.mu.RUnlock()
 		return &ConsoleDiff{}
 	}
-
-	// Best-effort: if more new entries than buffer holds, read all available
-	available := len(entries)
+	available := len(cm.server.entries)
 	toRead := newCount
 	if toRead > available {
 		toRead = available
 	}
-
-	// Get the last toRead entries
-	newEntries := entries[available-toRead:]
+	// Copy the slice subset under the lock to avoid data race on backing array
+	newEntries := make([]LogEntry, toRead)
+	copy(newEntries, cm.server.entries[available-toRead:])
+	cm.server.mu.RUnlock()
 
 	// Separate into errors and warnings, deduplicate by fingerprint
 	type fingerprintEntry struct {
@@ -541,22 +564,21 @@ func (cm *CheckpointManager) computeConsoleDiff(cp *Checkpoint, severity string)
 
 func (cm *CheckpointManager) computeNetworkDiff(cp *Checkpoint) *NetworkDiff {
 	cm.capture.mu.RLock()
-	bodies := cm.capture.networkBodies
 	currentTotal := cm.capture.networkTotalAdded
-	cm.capture.mu.RUnlock()
-
 	newCount := int(currentTotal - cp.NetworkTotal)
 	if newCount <= 0 {
+		cm.capture.mu.RUnlock()
 		return &NetworkDiff{}
 	}
-
-	available := len(bodies)
+	available := len(cm.capture.networkBodies)
 	toRead := newCount
 	if toRead > available {
 		toRead = available
 	}
-
-	newBodies := bodies[available-toRead:]
+	// Copy under lock to avoid data race on backing array
+	newBodies := make([]NetworkBody, toRead)
+	copy(newBodies, cm.capture.networkBodies[available-toRead:])
+	cm.capture.mu.RUnlock()
 
 	diff := &NetworkDiff{TotalNew: len(newBodies)}
 
@@ -617,22 +639,21 @@ func (cm *CheckpointManager) computeNetworkDiff(cp *Checkpoint) *NetworkDiff {
 
 func (cm *CheckpointManager) computeWebSocketDiff(cp *Checkpoint, severity string) *WebSocketDiff {
 	cm.capture.mu.RLock()
-	events := cm.capture.wsEvents
 	currentTotal := cm.capture.wsTotalAdded
-	cm.capture.mu.RUnlock()
-
 	newCount := int(currentTotal - cp.WSTotal)
 	if newCount <= 0 {
+		cm.capture.mu.RUnlock()
 		return &WebSocketDiff{}
 	}
-
-	available := len(events)
+	available := len(cm.capture.wsEvents)
 	toRead := newCount
 	if toRead > available {
 		toRead = available
 	}
-
-	newEvents := events[available-toRead:]
+	// Copy under lock to avoid data race on backing array
+	newEvents := make([]WebSocketEvent, toRead)
+	copy(newEvents, cm.capture.wsEvents[available-toRead:])
+	cm.capture.mu.RUnlock()
 
 	diff := &WebSocketDiff{TotalNew: len(newEvents)}
 
@@ -675,22 +696,21 @@ func (cm *CheckpointManager) computeWebSocketDiff(cp *Checkpoint, severity strin
 
 func (cm *CheckpointManager) computeActionsDiff(cp *Checkpoint) *ActionsDiff {
 	cm.capture.mu.RLock()
-	actions := cm.capture.enhancedActions
 	currentTotal := cm.capture.actionTotalAdded
-	cm.capture.mu.RUnlock()
-
 	newCount := int(currentTotal - cp.ActionTotal)
 	if newCount <= 0 {
+		cm.capture.mu.RUnlock()
 		return &ActionsDiff{}
 	}
-
-	available := len(actions)
+	available := len(cm.capture.enhancedActions)
 	toRead := newCount
 	if toRead > available {
 		toRead = available
 	}
-
-	newActions := actions[available-toRead:]
+	// Copy under lock to avoid data race on backing array
+	newActions := make([]EnhancedAction, toRead)
+	copy(newActions, cm.capture.enhancedActions[available-toRead:])
+	cm.capture.mu.RUnlock()
 
 	diff := &ActionsDiff{TotalNew: len(newActions)}
 
@@ -818,10 +838,15 @@ func FingerprintMessage(msg string) string {
 }
 
 func truncateMessage(msg string) string {
-	if len(msg) > maxMessageLen {
-		return msg[:maxMessageLen]
+	if len(msg) <= maxMessageLen {
+		return msg
 	}
-	return msg
+	// Truncate at a valid UTF-8 boundary to avoid splitting multi-byte characters
+	truncated := msg[:maxMessageLen]
+	for len(truncated) > 0 && !utf8.ValidString(truncated) {
+		truncated = truncated[:len(truncated)-1]
+	}
+	return truncated
 }
 
 func containsString(slice []string, s string) bool {
@@ -900,7 +925,10 @@ func (cm *CheckpointManager) DetectAndStoreAlerts(snapshot PerformanceSnapshot, 
 
 	// Cap at maxPendingAlerts, dropping oldest
 	if len(cm.pendingAlerts) > maxPendingAlerts {
-		cm.pendingAlerts = cm.pendingAlerts[len(cm.pendingAlerts)-maxPendingAlerts:]
+		keep := len(cm.pendingAlerts) - maxPendingAlerts
+		surviving := make([]PerformanceAlert, maxPendingAlerts)
+		copy(surviving, cm.pendingAlerts[keep:])
+		cm.pendingAlerts = surviving
 	}
 }
 
@@ -1001,7 +1029,8 @@ func (cm *CheckpointManager) detectPushRegressions(snapshot PerformanceSnapshot,
 
 // resolveAlertsForURL removes any pending alerts for the given URL
 func (cm *CheckpointManager) resolveAlertsForURL(url string) {
-	filtered := cm.pendingAlerts[:0]
+	// Use new slice to allow GC of resolved alerts (avoids [:0] backing-array pinning)
+	filtered := make([]PerformanceAlert, 0, len(cm.pendingAlerts))
 	for _, alert := range cm.pendingAlerts {
 		if alert.URL != url {
 			filtered = append(filtered, alert)

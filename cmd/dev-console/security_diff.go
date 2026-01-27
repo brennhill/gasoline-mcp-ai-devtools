@@ -139,7 +139,9 @@ func (m *SecurityDiffManager) TakeSnapshot(name string, bodies []NetworkBody) (*
 	// Evict oldest if at capacity
 	for len(m.order) >= m.maxSnaps {
 		oldest := m.order[0]
-		m.order = m.order[1:]
+		newOrder := make([]string, len(m.order)-1)
+		copy(newOrder, m.order[1:])
+		m.order = newOrder
 		delete(m.snapshots, oldest)
 	}
 
@@ -628,7 +630,10 @@ func (m *SecurityDiffManager) isExpired(snap *SecuritySnapshot) bool {
 func (m *SecurityDiffManager) removeFromOrder(name string) {
 	for i, n := range m.order {
 		if n == name {
-			m.order = append(m.order[:i], m.order[i+1:]...)
+			newOrder := make([]string, len(m.order)-1)
+			copy(newOrder, m.order[:i])
+			copy(newOrder[i:], m.order[i+1:])
+			m.order = newOrder
 			return
 		}
 	}

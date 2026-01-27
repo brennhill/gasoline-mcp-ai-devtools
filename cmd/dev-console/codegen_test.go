@@ -102,7 +102,7 @@ func TestMCPGetReproductionScriptWithLastN(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"reproduction","last_n_actions":3}}`),
+		Params: json.RawMessage(`{"name":"generate","arguments":{"format":"reproduction","last_n":3}}`),
 	})
 
 	var result struct {
@@ -117,7 +117,7 @@ func TestMCPGetReproductionScriptWithLastN(t *testing.T) {
 	// Should only have 3 click actions in the script
 	clickCount := strings.Count(script, ".click()")
 	if clickCount != 3 {
-		t.Errorf("Expected 3 click actions in script with last_n_actions=3, got %d", clickCount)
+		t.Errorf("Expected 3 click actions in script with last_n=3, got %d", clickCount)
 	}
 }
 
@@ -646,7 +646,7 @@ func TestGetSessionTimelineLastNActions(t *testing.T) {
 		}
 	}
 	if hasEarly {
-		t.Error("Should not include network events before the last_n_actions boundary")
+		t.Error("Should not include network events before the last_n boundary")
 	}
 	if resp.Summary.Actions != 2 {
 		t.Errorf("Expected 2 actions in summary, got %d", resp.Summary.Actions)
@@ -951,7 +951,7 @@ func TestMCPGetSessionTimeline(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"timeline"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"timeline"}}`),
 	})
 
 	if resp.Error != nil {
@@ -1006,7 +1006,7 @@ func TestMCPGetSessionTimelineWithLastN(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"timeline","last_n_actions":3}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"timeline","last_n":3}}`),
 	})
 
 	var result struct {
@@ -1020,7 +1020,7 @@ func TestMCPGetSessionTimelineWithLastN(t *testing.T) {
 	json.Unmarshal([]byte(result.Content[0].Text), &timelineResp)
 
 	if timelineResp.Summary.Actions != 3 {
-		t.Errorf("Expected 3 actions with last_n_actions=3, got %d", timelineResp.Summary.Actions)
+		t.Errorf("Expected 3 actions with last_n=3, got %d", timelineResp.Summary.Actions)
 	}
 }
 
@@ -1036,7 +1036,7 @@ func TestMCPGetSessionTimelineEmpty(t *testing.T) {
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: json.RawMessage(`{"name":"analyze","arguments":{"target":"timeline"}}`),
+		Params: json.RawMessage(`{"name":"observe","arguments":{"what":"timeline"}}`),
 	})
 
 	var result struct {
@@ -1190,7 +1190,7 @@ func TestMCPGenerateTestToolInToolsList(t *testing.T) {
 	foundAnalyze := false
 	foundGenerate := false
 	for _, tool := range result.Tools {
-		if tool.Name == "analyze" {
+		if tool.Name == "observe" {
 			foundAnalyze = true
 		}
 		if tool.Name == "generate" {

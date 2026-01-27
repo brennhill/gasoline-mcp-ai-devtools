@@ -586,9 +586,14 @@ func TestExportHARTool(t *testing.T) {
 			t.Fatal("expected content in response")
 		}
 
-		// Parse the HAR from the text content
+		// Strip summary line before parsing JSON
+		text := result.Content[0].Text
+		jsonPart := text
+		if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
+			jsonPart = lines[1]
+		}
 		var harLog HARLog
-		if err := json.Unmarshal([]byte(result.Content[0].Text), &harLog); err != nil {
+		if err := json.Unmarshal([]byte(jsonPart), &harLog); err != nil {
 			t.Fatalf("response text is not valid HAR JSON: %v", err)
 		}
 		if len(harLog.Log.Entries) != 1 {
@@ -627,9 +632,14 @@ func TestExportHARTool(t *testing.T) {
 			t.Fatalf("failed to parse result: %v", err)
 		}
 
-		// Parse the summary
+		// Strip summary line before parsing JSON
+		text := result.Content[0].Text
+		jsonPart := text
+		if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
+			jsonPart = lines[1]
+		}
 		var summary HARExportResult
-		if err := json.Unmarshal([]byte(result.Content[0].Text), &summary); err != nil {
+		if err := json.Unmarshal([]byte(jsonPart), &summary); err != nil {
 			t.Fatalf("response text is not valid summary JSON: %v", err)
 		}
 		if summary.SavedTo != tmpFile {
@@ -670,8 +680,14 @@ func TestExportHARTool(t *testing.T) {
 		var result MCPToolResult
 		json.Unmarshal(resp.Result, &result)
 
+		// Strip summary line before parsing JSON
+		text := result.Content[0].Text
+		jsonPart := text
+		if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
+			jsonPart = lines[1]
+		}
 		var harLog HARLog
-		json.Unmarshal([]byte(result.Content[0].Text), &harLog)
+		json.Unmarshal([]byte(jsonPart), &harLog)
 
 		if len(harLog.Log.Entries) != 1 {
 			t.Fatalf("expected 1 entry with filters, got %d", len(harLog.Log.Entries))
@@ -811,8 +827,13 @@ func TestToolExportHAR_MethodStatusFilters(t *testing.T) {
 		var result MCPToolResult
 		json.Unmarshal(resp.Result, &result)
 
+		text := result.Content[0].Text
+		jp := text
+		if ls := strings.SplitN(text, "\n", 2); len(ls) == 2 {
+			jp = ls[1]
+		}
 		var harLog HARLog
-		json.Unmarshal([]byte(result.Content[0].Text), &harLog)
+		json.Unmarshal([]byte(jp), &harLog)
 
 		if len(harLog.Log.Entries) != 1 {
 			t.Errorf("Expected 1 entry for method=POST, got %d", len(harLog.Log.Entries))
@@ -834,8 +855,13 @@ func TestToolExportHAR_MethodStatusFilters(t *testing.T) {
 		var result MCPToolResult
 		json.Unmarshal(resp.Result, &result)
 
+		text := result.Content[0].Text
+		jp := text
+		if ls := strings.SplitN(text, "\n", 2); len(ls) == 2 {
+			jp = ls[1]
+		}
 		var harLog HARLog
-		json.Unmarshal([]byte(result.Content[0].Text), &harLog)
+		json.Unmarshal([]byte(jp), &harLog)
 
 		if len(harLog.Log.Entries) != 1 {
 			t.Errorf("Expected 1 entry for status 4xx, got %d", len(harLog.Log.Entries))
@@ -857,8 +883,13 @@ func TestToolExportHAR_MethodStatusFilters(t *testing.T) {
 		var result MCPToolResult
 		json.Unmarshal(resp.Result, &result)
 
+		text := result.Content[0].Text
+		jp := text
+		if ls := strings.SplitN(text, "\n", 2); len(ls) == 2 {
+			jp = ls[1]
+		}
 		var harLog HARLog
-		json.Unmarshal([]byte(result.Content[0].Text), &harLog)
+		json.Unmarshal([]byte(jp), &harLog)
 
 		if len(harLog.Log.Entries) != 1 {
 			t.Errorf("Expected 1 entry for GET+2xx, got %d", len(harLog.Log.Entries))
@@ -922,8 +953,8 @@ func TestToolExportHAR_WriteFailure(t *testing.T) {
 	if !result.IsError {
 		t.Error("Expected isError=true when file write fails")
 	}
-	if len(result.Content) > 0 && !strings.Contains(result.Content[0].Text, "Failed") {
-		t.Errorf("Expected failure message, got: %s", result.Content[0].Text)
+	if len(result.Content) > 0 && !strings.Contains(result.Content[0].Text, "export_failed") {
+		t.Errorf("Expected structured error with export_failed code, got: %s", result.Content[0].Text)
 	}
 }
 
@@ -953,9 +984,15 @@ func TestToolExportHAR_NoSaveTo_EmptyCapture(t *testing.T) {
 	if result.IsError {
 		t.Errorf("Expected no error for empty HAR export, got: %s", result.Content[0].Text)
 	}
+	// Strip summary line before parsing JSON
+	text := result.Content[0].Text
+	jsonPart := text
+	if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
+		jsonPart = lines[1]
+	}
 	// Should still return valid HAR JSON with 0 entries
 	var harLog HARLog
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &harLog); err != nil {
+	if err := json.Unmarshal([]byte(jsonPart), &harLog); err != nil {
 		t.Fatalf("Expected valid HAR JSON, got parse error: %v", err)
 	}
 	if len(harLog.Log.Entries) != 0 {

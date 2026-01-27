@@ -1,0 +1,14 @@
+---
+feature: api-key-auth
+status: shipped
+tool: configure
+mode: request validation
+version: 5.0.0
+---
+# Product Spec: API Key Auth
+
+User-facing requirements, rationale, and deprecations for the API Key Auth feature.
+
+- See also: [Tech Spec](TECH_SPEC.md)
+- See also: [API Key Auth Review](api-key-auth-review.md)
+- See also: [Core Product Spec](../../../core/PRODUCT_SPEC.md)

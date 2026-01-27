@@ -37,6 +37,8 @@ const (
 
 // SessionStore provides persistent cross-session memory backed by disk.
 // Data is stored in .gasoline/ within the project directory.
+//
+// Lock ordering: mu before dirtyMu. Never hold dirtyMu while acquiring mu.
 type SessionStore struct {
 	mu          sync.RWMutex
 	projectPath string // project root directory (CWD)
@@ -45,7 +47,7 @@ type SessionStore struct {
 
 	// Dirty data buffer: namespace/key -> data
 	dirty   map[string][]byte
-	dirtyMu sync.Mutex
+	dirtyMu sync.Mutex // acquired independently; never nest with mu
 
 	// Background flush
 	flushInterval time.Duration
@@ -110,10 +112,22 @@ func NewSessionStore(projectPath string) (*SessionStore, error) {
 
 // NewSessionStoreWithInterval creates a new SessionStore with a custom flush interval.
 func NewSessionStoreWithInterval(projectPath string, flushInterval time.Duration) (*SessionStore, error) {
-	projectDir := filepath.Join(projectPath, ".gasoline")
+	// Validate and clean the path to prevent directory traversal
+	absPath, err := filepath.Abs(projectPath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid project path: %w", err)
+	}
+
+	// Ensure the resolved path doesn't contain suspicious patterns
+	// (This catches .. and symlink traversal)
+	if strings.Contains(absPath, "..") {
+		return nil, fmt.Errorf("project path contains '..': %s", absPath)
+	}
+
+	projectDir := filepath.Join(absPath, ".gasoline")
 
 	s := &SessionStore{
-		projectPath:   projectPath,
+		projectPath:   absPath,
 		projectDir:    projectDir,
 		dirty:         make(map[string][]byte),
 		flushInterval: flushInterval,
@@ -229,11 +243,48 @@ func (s *SessionStore) GetMeta() ProjectMeta {
 }
 
 // ============================================
+// Path Validation
+// ============================================
+
+// validateStoreInput checks that a namespace or key value is safe for use as a
+// filesystem path component. Rejects path traversal sequences and separators.
+func validateStoreInput(value, label string) error {
+	if value == "" {
+		return nil // empty values are handled by callers
+	}
+	if strings.Contains(value, "..") {
+		return fmt.Errorf("%s contains path traversal sequence", label)
+	}
+	if strings.ContainsRune(value, filepath.Separator) || strings.Contains(value, "/") {
+		return fmt.Errorf("%s contains path separator", label)
+	}
+	return nil
+}
+
+// validatePathInDir ensures the target path is within the base directory.
+// Defense-in-depth check applied after filepath.Join construction.
+func validatePathInDir(base, target string) error {
+	cleanBase := filepath.Clean(base) + string(os.PathSeparator)
+	cleanTarget := filepath.Clean(target)
+	if !strings.HasPrefix(cleanTarget, cleanBase) {
+		return fmt.Errorf("path escapes project directory")
+	}
+	return nil
+}
+
+// ============================================
 // Core Operations
 // ============================================
 
 // Save writes data as JSON to <namespace>/<key>.json.
 func (s *SessionStore) Save(namespace, key string, data []byte) error {
+	if err := validateStoreInput(namespace, "namespace"); err != nil {
+		return err
+	}
+	if err := validateStoreInput(key, "key"); err != nil {
+		return err
+	}
+
 	if len(data) > maxFileSize {
 		return fmt.Errorf("data exceeds maximum file size (1MB): %d bytes", len(data))
 	}
@@ -248,11 +299,19 @@ func (s *SessionStore) Save(namespace, key string, data []byte) error {
 	}
 
 	nsDir := filepath.Join(s.projectDir, namespace)
+	if err := validatePathInDir(s.projectDir, nsDir); err != nil {
+		return err
+	}
+
 	if err := os.MkdirAll(nsDir, dirPermissions); err != nil {
 		return fmt.Errorf("failed to create namespace directory: %w", err)
 	}
 
 	filePath := filepath.Join(nsDir, key+".json")
+	if err := validatePathInDir(s.projectDir, filePath); err != nil {
+		return err
+	}
+
 	if err := os.WriteFile(filePath, data, filePermissions); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
@@ -262,11 +321,22 @@ func (s *SessionStore) Save(namespace, key string, data []byte) error {
 
 // Load reads and returns the JSON from <namespace>/<key>.json.
 func (s *SessionStore) Load(namespace, key string) ([]byte, error) {
+	if err := validateStoreInput(namespace, "namespace"); err != nil {
+		return nil, err
+	}
+	if err := validateStoreInput(key, "key"); err != nil {
+		return nil, err
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	filePath := filepath.Join(s.projectDir, namespace, key+".json")
-	data, err := os.ReadFile(filePath) // #nosec G304 -- path is constructed from internal projectDir field
+	if err := validatePathInDir(s.projectDir, filePath); err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(filePath) // #nosec G304 -- path validated above
 	if err != nil {
 		return nil, fmt.Errorf("key not found: %s/%s", namespace, key)
 	}
@@ -275,10 +345,18 @@ func (s *SessionStore) Load(namespace, key string) ([]byte, error) {
 
 // List returns all keys in a namespace (file names without .json extension).
 func (s *SessionStore) List(namespace string) ([]string, error) {
+	if err := validateStoreInput(namespace, "namespace"); err != nil {
+		return nil, err
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	nsDir := filepath.Join(s.projectDir, namespace)
+	if err := validatePathInDir(s.projectDir, nsDir); err != nil {
+		return nil, err
+	}
+
 	entries, err := os.ReadDir(nsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -306,10 +384,21 @@ func (s *SessionStore) List(namespace string) ([]string, error) {
 
 // Delete removes the file for a given namespace/key.
 func (s *SessionStore) Delete(namespace, key string) error {
+	if err := validateStoreInput(namespace, "namespace"); err != nil {
+		return err
+	}
+	if err := validateStoreInput(key, "key"); err != nil {
+		return err
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	filePath := filepath.Join(s.projectDir, namespace, key+".json")
+	if err := validatePathInDir(s.projectDir, filePath); err != nil {
+		return err
+	}
+
 	if err := os.Remove(filePath); err != nil {
 		return fmt.Errorf("failed to delete: %s/%s: %w", namespace, key, err)
 	}
@@ -458,6 +547,9 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 
 // MarkDirty buffers data for background flush.
 func (s *SessionStore) MarkDirty(namespace, key string, data []byte) {
+	if validateStoreInput(namespace, "namespace") != nil || validateStoreInput(key, "key") != nil {
+		return // silently drop invalid inputs
+	}
 	s.dirtyMu.Lock()
 	defer s.dirtyMu.Unlock()
 	dirtyKey := namespace + "/" + key
@@ -500,12 +592,17 @@ func (s *SessionStore) flushDirty() {
 		}
 		namespace, name := parts[0], parts[1]
 
+		// Defense-in-depth: validate path stays within project dir
 		nsDir := filepath.Join(s.projectDir, namespace)
+		filePath := filepath.Join(nsDir, name+".json")
+		if validatePathInDir(s.projectDir, filePath) != nil {
+			continue
+		}
+
 		if err := os.MkdirAll(nsDir, dirPermissions); err != nil {
 			continue
 		}
 
-		filePath := filepath.Join(nsDir, name+".json")
 		_ = os.WriteFile(filePath, data, filePermissions)
 	}
 }
@@ -612,6 +709,7 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 		if err := s.Save(args.Namespace, args.Key, []byte(args.Data)); err != nil {
 			return nil, err
 		}
+		// Error impossible: map[string]interface{} with primitive values is always serializable
 		result, _ := json.Marshal(map[string]interface{}{
 			"status":    "saved",
 			"namespace": args.Namespace,
@@ -632,6 +730,7 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 		}
 		var parsed interface{}
 		_ = json.Unmarshal(data, &parsed)
+		// Error impossible: map[string]interface{} with primitive values is always serializable
 		result, _ := json.Marshal(map[string]interface{}{
 			"namespace": args.Namespace,
 			"key":       args.Key,
@@ -647,6 +746,7 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 		if err != nil {
 			return nil, err
 		}
+		// Error impossible: map[string]interface{} with primitive values is always serializable
 		result, _ := json.Marshal(map[string]interface{}{
 			"namespace": args.Namespace,
 			"keys":      keys,
@@ -663,6 +763,7 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 		if err := s.Delete(args.Namespace, args.Key); err != nil {
 			return nil, err
 		}
+		// Error impossible: map[string]interface{} with primitive values is always serializable
 		result, _ := json.Marshal(map[string]interface{}{
 			"status":    "deleted",
 			"namespace": args.Namespace,
@@ -675,6 +776,7 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 		if err != nil {
 			return nil, err
 		}
+		// Error impossible: map[string]interface{} with primitive values is always serializable
 		result, _ := json.Marshal(map[string]interface{}{
 			"total_bytes":   stats.TotalBytes,
 			"session_count": stats.SessionCount,
