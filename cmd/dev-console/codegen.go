@@ -405,7 +405,7 @@ func generateTestScript(timeline []TimelineEntry, opts TestGenerationOptions) st
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf("test('%s', async ({ page }) => {\n", testName))
+	sb.WriteString(fmt.Sprintf("test('%s', async ({ page }) => {\n", escapeJSString(testName)))
 
 	if opts.AssertNoErrors {
 		sb.WriteString("  const consoleErrors = []\n")

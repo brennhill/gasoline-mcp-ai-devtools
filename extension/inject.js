@@ -1306,18 +1306,60 @@ export function captureState() {
  * @param {boolean} includeUrl - Whether to navigate to the saved URL (default true)
  * @returns {Object} Result with success and restored counts
  */
+// Validates a storage key to prevent prototype pollution and other attacks
+function isValidStorageKey(key) {
+  if (typeof key !== 'string') return false
+  if (key.length === 0 || key.length > 256) return false
+
+  // Reject prototype pollution vectors
+  const dangerous = ['__proto__', 'constructor', 'prototype']
+  const lowerKey = key.toLowerCase()
+  for (const pattern of dangerous) {
+    if (lowerKey.includes(pattern)) return false
+  }
+
+  return true
+}
+
 export function restoreState(state, includeUrl = true) {
+  // Validate state object
+  if (!state || typeof state !== 'object') {
+    return { success: false, error: 'Invalid state object' }
+  }
+
   // Clear existing
   localStorage.clear()
   sessionStorage.clear()
 
-  // Restore localStorage
+  // Restore localStorage with validation
+  let skipped = 0
   for (const [key, value] of Object.entries(state.localStorage || {})) {
+    if (!isValidStorageKey(key)) {
+      skipped++
+      console.warn('[gasoline] Skipped localStorage key with invalid pattern:', key)
+      continue
+    }
+    // Limit value size (10MB max per item)
+    if (typeof value === 'string' && value.length > 10 * 1024 * 1024) {
+      skipped++
+      console.warn('[gasoline] Skipped localStorage value exceeding 10MB:', key)
+      continue
+    }
     localStorage.setItem(key, value)
   }
 
-  // Restore sessionStorage
+  // Restore sessionStorage with validation
   for (const [key, value] of Object.entries(state.sessionStorage || {})) {
+    if (!isValidStorageKey(key)) {
+      skipped++
+      console.warn('[gasoline] Skipped sessionStorage key with invalid pattern:', key)
+      continue
+    }
+    if (typeof value === 'string' && value.length > 10 * 1024 * 1024) {
+      skipped++
+      console.warn('[gasoline] Skipped sessionStorage value exceeding 10MB:', key)
+      continue
+    }
     sessionStorage.setItem(key, value)
   }
 
@@ -1336,14 +1378,29 @@ export function restoreState(state, includeUrl = true) {
   }
 
   const restored = {
-    localStorage: Object.keys(state.localStorage || {}).length,
+    localStorage: Object.keys(state.localStorage || {}).length - skipped,
     sessionStorage: Object.keys(state.sessionStorage || {}).length,
     cookies: (state.cookies || '').split(';').filter((c) => c.trim()).length,
+    skipped,
   }
 
-  // Navigate if requested
+  // Navigate if requested (with basic URL validation)
   if (includeUrl && state.url && state.url !== window.location.href) {
-    window.location.href = state.url
+    // Basic URL validation: must be http/https
+    try {
+      const url = new URL(state.url)
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        window.location.href = state.url
+      } else {
+        console.warn('[gasoline] Skipped navigation to non-HTTP(S) URL:', state.url)
+      }
+    } catch (e) {
+      console.warn('[gasoline] Invalid URL for navigation:', state.url, e)
+    }
+  }
+
+  if (skipped > 0) {
+    console.warn(`[gasoline] restoreState completed with ${skipped} skipped item(s)`)
   }
 
   return { success: true, restored }

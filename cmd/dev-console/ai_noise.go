@@ -66,6 +66,19 @@ type NoiseStatistics struct {
 }
 
 // NoiseConfig manages noise filtering rules and state
+// NoiseConfig manages noise filtering rules with dual-mutex concurrency control.
+//
+// LOCK ORDERING INVARIANT (H-5 documented):
+//   mu -> statsMu (always acquire mu before statsMu, never the reverse)
+//
+// This ordering is enforced throughout the codebase:
+//   - Filter methods (IsNoise, IsNetworkNoise, IsWSNoise) acquire mu.RLock first,
+//     then call recordMatch/recordSignal which acquire statsMu.
+//   - GetStatistics acquires only statsMu (no mu held).
+//   - AutoDetect acquires only mu (no statsMu held).
+//
+// If future code needs both locks simultaneously, it MUST acquire mu first.
+// Violating this ordering will cause deadlock.
 type NoiseConfig struct {
 	mu            sync.RWMutex
 	rules         []NoiseRule
@@ -537,10 +550,64 @@ func (nc *NoiseConfig) ListRules() []NoiseRule {
 	return result
 }
 
+// validateRegexPattern checks if a regex pattern is safe to compile.
+// Rejects patterns with excessive length or nested quantifiers that could
+// cause significant performance degradation.
+// Returns nil if the pattern is safe (even if it has invalid syntax - those are caught during compilation).
+func validateRegexPattern(pattern string) error {
+	const maxPatternLength = 512
+
+	if len(pattern) > maxPatternLength {
+		return fmt.Errorf("regex pattern exceeds maximum length of %d characters", maxPatternLength)
+	}
+
+	// Detect nested quantifiers: quantifier followed by another quantifier
+	// This pattern checks for: quantifier (+, *, ?, {n,m}) followed by optional whitespace/group close, then another quantifier
+	// Examples: (a+)+, (b*)+, (c?)+, (d{1,2})+, etc.
+	nestedQuantifierPatterns := []string{
+		`\+\s*\)?\s*[\+\*\?]`,    // + followed by optional ) and another quantifier
+		`\*\s*\)?\s*[\+\*\?]`,    // * followed by optional ) and another quantifier
+		`\?\s*\)?\s*[\+\*\?]`,    // ? followed by optional ) and another quantifier
+		`\}\s*\)?\s*[\+\*\?]`,    // {n,m} followed by optional ) and another quantifier
+	}
+
+	for _, np := range nestedQuantifierPatterns {
+		if matched, _ := regexp.MatchString(np, pattern); matched {
+			return fmt.Errorf("regex pattern contains nested quantifiers which can cause performance issues")
+		}
+	}
+
+	// NOTE: We do NOT reject patterns with invalid syntax here.
+	// Invalid syntax will fail during regexp.Compile() in recompile(),
+	// and those rules will be silently skipped (compiled field remains nil).
+	// This maintains backward compatibility with existing behavior.
+
+	return nil
+}
+
 // AddRules adds user rules to the config. Rules exceeding max are silently dropped.
 func (nc *NoiseConfig) AddRules(rules []NoiseRule) error {
 	nc.mu.Lock()
 	defer nc.mu.Unlock()
+
+	// Validate all rules before adding any
+	for i := range rules {
+		if rules[i].MatchSpec.MessageRegex != "" {
+			if err := validateRegexPattern(rules[i].MatchSpec.MessageRegex); err != nil {
+				return fmt.Errorf("invalid MessageRegex in rule: %w", err)
+			}
+		}
+		if rules[i].MatchSpec.SourceRegex != "" {
+			if err := validateRegexPattern(rules[i].MatchSpec.SourceRegex); err != nil {
+				return fmt.Errorf("invalid SourceRegex in rule: %w", err)
+			}
+		}
+		if rules[i].MatchSpec.URLRegex != "" {
+			if err := validateRegexPattern(rules[i].MatchSpec.URLRegex); err != nil {
+				return fmt.Errorf("invalid URLRegex in rule: %w", err)
+			}
+		}
+	}
 
 	for i := range rules {
 		if len(nc.rules) >= maxNoiseRules {
@@ -764,11 +831,13 @@ func (nc *NoiseConfig) DismissNoise(pattern string, category string, reason stri
 
 // AutoDetect analyzes buffers and proposes noise rules based on frequency and source analysis.
 // High-confidence proposals (>= 0.9) are automatically applied.
+// Note: This function holds a write lock for the entire analysis. It is designed for
+// infrequent manual invocation via the MCP tool, not for hot-path usage.
 func (nc *NoiseConfig) AutoDetect(consoleEntries []LogEntry, networkBodies []NetworkBody, wsEvents []WebSocketEvent) []NoiseProposal {
 	nc.mu.Lock()
 	defer nc.mu.Unlock()
 
-	var proposals []NoiseProposal
+	proposals := make([]NoiseProposal, 0)
 
 	// --- Frequency analysis for console messages ---
 	if len(consoleEntries) > 0 {

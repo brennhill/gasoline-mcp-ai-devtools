@@ -260,4 +260,10 @@ func (c *Capture) ClearAll() {
 	c.closedConns = nil
 	c.connOrder = nil
 	c.currentTestID = ""
+
+	// Reset performance data (H-6 fix)
+	c.perf.snapshots = make(map[string]PerformanceSnapshot)
+	c.perf.snapshotOrder = nil
+	c.perf.baselines = make(map[string]PerformanceBaseline)
+	c.perf.baselineOrder = nil
 }

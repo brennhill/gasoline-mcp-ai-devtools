@@ -258,23 +258,58 @@ func (c *Capture) ExportHARToFile(filter NetworkBodyFilter, path string) (HARExp
 // Path Validation
 // ============================================
 
+// resolvePathWithSymlinks resolves a file path, following symlinks in parent directories.
+// For paths where the file doesn't exist yet, it resolves the nearest existing
+// ancestor and appends the remaining path components.
+func resolvePathWithSymlinks(path string) string {
+	path = filepath.Clean(path)
+	resolved, err := filepath.EvalSymlinks(path)
+	if err == nil {
+		return resolved
+	}
+	// Path doesn't exist; resolve parent and append this component
+	parent := filepath.Dir(path)
+	if parent == path {
+		return path // reached root
+	}
+	return filepath.Join(resolvePathWithSymlinks(parent), filepath.Base(path))
+}
+
 // isPathSafe checks if a file path is safe to write to.
 // Only allows paths under /tmp, os.TempDir(), or relative paths
 // without traversal above the current working directory.
+// Resolves symlinks to prevent symlink-based path traversal attacks.
 func isPathSafe(path string) bool {
 	cleaned := filepath.Clean(path)
 
-	if filepath.IsAbs(cleaned) {
-		// Allow /tmp and os.TempDir()
-		if strings.HasPrefix(cleaned, "/tmp") {
-			return true
+	// Resolve symlinks to prevent traversal attacks
+	resolved := resolvePathWithSymlinks(cleaned)
+
+	if filepath.IsAbs(resolved) {
+		// Resolve /tmp symlink (e.g., /tmp -> /private/tmp on macOS)
+		tmpDirs := []string{"/tmp"}
+		if resolvedTmp, err := filepath.EvalSymlinks("/tmp"); err == nil {
+			tmpDirs = append(tmpDirs, resolvedTmp)
 		}
-		tmpDir := os.TempDir()
-		return strings.HasPrefix(cleaned, tmpDir)
+
+		// Also check os.TempDir()
+		osTmpDir := os.TempDir()
+		tmpDirs = append(tmpDirs, osTmpDir)
+		if resolvedOsTmp, err := filepath.EvalSymlinks(osTmpDir); err == nil && resolvedOsTmp != osTmpDir {
+			tmpDirs = append(tmpDirs, resolvedOsTmp)
+		}
+
+		// Check if resolved path is under any allowed tmpDir
+		for _, tmpDir := range tmpDirs {
+			if strings.HasPrefix(resolved, tmpDir) {
+				return true
+			}
+		}
+		return false
 	}
 
 	// Relative path - check no traversal above cwd
-	return !strings.Contains(cleaned, "..")
+	return !strings.Contains(resolved, "..")
 }
 
 // ============================================
