@@ -36,6 +36,11 @@ tests/e2e/playwright-report/
 .claude/sessions/
 coverage.out
 
+# Hugo/Jekyll (no longer used)
+docs/.hugo_build.lock
+docs/Gemfile
+docs/Gemfile.lock
+
 # Benchmark intermediate files (only latest-benchmark.md is tracked)
 docs/benchmarks/*.txt
 
