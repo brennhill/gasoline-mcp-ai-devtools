@@ -39,19 +39,22 @@ diagnosticLog(`[DIAGNOSTIC] Module load start at ${_moduleLoadTime.toFixed(2)}ms
 console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`)
 
 // Load debug mode setting from storage (early load for startup diagnostics)
-chrome.storage.local.get(['debugMode'], (result) => {
-  debugMode = result.debugMode === true
-  if (debugMode) {
-    console.log('[Gasoline] Debug mode enabled on startup')
-  }
-})
+// Guard chrome access for test environments where chrome is not yet defined at module load time
+if (typeof chrome !== 'undefined') {
+  chrome.storage.local.get(['debugMode'], (result) => {
+    debugMode = result.debugMode === true
+    if (debugMode) {
+      console.log('[Gasoline] Debug mode enabled on startup')
+    }
+  })
+}
 
 // ============================================================================
 // TAB TRACKING: Clear on Browser Restart
 // ============================================================================
 // Tab IDs are invalidated after a browser restart. Clear tracking state
 // to enter "no tracking" mode until the user explicitly re-enables it.
-if (chrome.runtime && chrome.runtime.onStartup) {
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onStartup) {
   chrome.runtime.onStartup.addListener(() => {
     console.log('[Gasoline] Browser restarted - clearing tracking state')
     chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl'])
@@ -3442,11 +3445,13 @@ export function stopStatusPing() {
 }
 
 // Also send immediate status ping when tracking changes
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.trackedTabId) {
-    sendStatusPing()
-  }
-})
+if (typeof chrome !== 'undefined') {
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.trackedTabId) {
+      sendStatusPing()
+    }
+  })
+}
 
 /**
  * Post queued extension logs to server
