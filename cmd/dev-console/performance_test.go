@@ -53,7 +53,7 @@ func TestPerformanceSnapshotJSONShape(t *testing.T) {
 	}
 
 	// Top-level fields
-	for _, field := range []string{"url", "timestamp", "timing", "network", "longTasks", "cumulativeLayoutShift"} {
+	for _, field := range []string{"url", "timestamp", "timing", "network", "long_tasks", "cumulative_layout_shift"} {
 		if _, ok := m[field]; !ok {
 			t.Errorf("missing top-level field: %s", field)
 		}
@@ -62,8 +62,8 @@ func TestPerformanceSnapshotJSONShape(t *testing.T) {
 	// Timing fields
 	timing := m["timing"].(map[string]interface{})
 	for _, field := range []string{
-		"domContentLoaded", "load", "firstContentfulPaint",
-		"largestContentfulPaint", "timeToFirstByte", "domInteractive",
+		"dom_content_loaded", "load", "first_contentful_paint",
+		"largest_contentful_paint", "time_to_first_byte", "dom_interactive",
 	} {
 		if _, ok := timing[field]; !ok {
 			t.Errorf("missing timing field: %s", field)
@@ -72,15 +72,15 @@ func TestPerformanceSnapshotJSONShape(t *testing.T) {
 
 	// Network fields
 	network := m["network"].(map[string]interface{})
-	for _, field := range []string{"requestCount", "transferSize", "decodedSize", "byType", "slowestRequests"} {
+	for _, field := range []string{"request_count", "transfer_size", "decoded_size", "by_type", "slowest_requests"} {
 		if _, ok := network[field]; !ok {
 			t.Errorf("missing network field: %s", field)
 		}
 	}
 
 	// LongTasks fields
-	longTasks := m["longTasks"].(map[string]interface{})
-	for _, field := range []string{"count", "totalBlockingTime", "longest"} {
+	longTasks := m["long_tasks"].(map[string]interface{})
+	for _, field := range []string{"count", "total_blocking_time", "longest"} {
 		if _, ok := longTasks[field]; !ok {
 			t.Errorf("missing longTasks field: %s", field)
 		}
@@ -127,7 +127,7 @@ func TestPerformanceBaselineJSONShape(t *testing.T) {
 	}
 
 	// Top-level fields
-	for _, field := range []string{"url", "sampleCount", "lastUpdated", "timing", "network", "longTasks", "cumulativeLayoutShift"} {
+	for _, field := range []string{"url", "sample_count", "last_updated", "timing", "network", "long_tasks", "cumulative_layout_shift"} {
 		if _, ok := m[field]; !ok {
 			t.Errorf("missing top-level field: %s", field)
 		}
@@ -136,8 +136,8 @@ func TestPerformanceBaselineJSONShape(t *testing.T) {
 	// Timing fields
 	timing := m["timing"].(map[string]interface{})
 	for _, field := range []string{
-		"domContentLoaded", "load", "firstContentfulPaint",
-		"largestContentfulPaint", "timeToFirstByte", "domInteractive",
+		"dom_content_loaded", "load", "first_contentful_paint",
+		"largest_contentful_paint", "time_to_first_byte", "dom_interactive",
 	} {
 		if _, ok := timing[field]; !ok {
 			t.Errorf("missing timing field: %s", field)
@@ -291,10 +291,10 @@ func TestPerformanceRegressionDetectsFCPLCP(t *testing.T) {
 	fcpFound := false
 	lcpFound := false
 	for _, r := range regressions {
-		if r.Metric == "firstContentfulPaint" {
+		if r.Metric == "first_contentful_paint" {
 			fcpFound = true
 		}
-		if r.Metric == "largestContentfulPaint" {
+		if r.Metric == "largest_contentful_paint" {
 			lcpFound = true
 		}
 	}
@@ -341,7 +341,7 @@ func TestPerformanceRegressionNoFalsePositiveFCPLCP(t *testing.T) {
 	regressions := server.DetectRegressions(snapshot, baseline)
 
 	for _, r := range regressions {
-		if r.Metric == "firstContentfulPaint" || r.Metric == "largestContentfulPaint" {
+		if r.Metric == "first_contentful_paint" || r.Metric == "largest_contentful_paint" {
 			t.Errorf("unexpected regression for %s (change too small)", r.Metric)
 		}
 	}
@@ -1473,11 +1473,11 @@ func TestPerformanceTimingINPField(t *testing.T) {
 		t.Fatalf("Failed to unmarshal: %v", err)
 	}
 
-	if _, ok := m["interactionToNextPaint"]; !ok {
+	if _, ok := m["interaction_to_next_paint"]; !ok {
 		t.Error("interactionToNextPaint field should be present in JSON")
 	}
-	if m["interactionToNextPaint"].(float64) != 175.0 {
-		t.Errorf("expected interactionToNextPaint 175, got %v", m["interactionToNextPaint"])
+	if m["interaction_to_next_paint"].(float64) != 175.0 {
+		t.Errorf("expected interactionToNextPaint 175, got %v", m["interaction_to_next_paint"])
 	}
 }
 
@@ -1500,7 +1500,7 @@ func TestPerformanceTimingINPOmittedWhenNil(t *testing.T) {
 		t.Fatalf("Failed to unmarshal: %v", err)
 	}
 
-	if _, ok := m["interactionToNextPaint"]; ok {
+	if _, ok := m["interaction_to_next_paint"]; ok {
 		t.Error("interactionToNextPaint field should be omitted when nil")
 	}
 }
@@ -1887,7 +1887,7 @@ func TestDetectRegressionsRequestCount(t *testing.T) {
 
 	found := false
 	for _, r := range regressions {
-		if r.Metric == "requestCount" {
+		if r.Metric == "request_count" {
 			found = true
 			if r.Current != 20 {
 				t.Errorf("expected current 20, got %f", r.Current)
@@ -1920,7 +1920,7 @@ func TestDetectRegressionsRequestCountNoFalsePositive(t *testing.T) {
 
 	regressions := capture.DetectRegressions(snapshot, baseline)
 	for _, r := range regressions {
-		if r.Metric == "requestCount" {
+		if r.Metric == "request_count" {
 			t.Error("requestCount regression should not fire when absolute change <= 5")
 		}
 	}
@@ -1953,7 +1953,7 @@ func TestDetectRegressionsTransferSize(t *testing.T) {
 
 	found := false
 	for _, r := range regressions {
-		if r.Metric == "transferSize" {
+		if r.Metric == "transfer_size" {
 			found = true
 			if r.Current != 350000 {
 				t.Errorf("expected current 350000, got %f", r.Current)
@@ -1983,7 +1983,7 @@ func TestDetectRegressionsTransferSizeNoFalsePositive(t *testing.T) {
 
 	regressions := capture.DetectRegressions(snapshot, baseline)
 	for _, r := range regressions {
-		if r.Metric == "transferSize" {
+		if r.Metric == "transfer_size" {
 			t.Error("transferSize regression should not fire when absolute change < 100KB")
 		}
 	}
@@ -2011,7 +2011,7 @@ func TestDetectRegressionsLongTasksFromZero(t *testing.T) {
 
 	found := false
 	for _, r := range regressions {
-		if r.Metric == "longTaskCount" {
+		if r.Metric == "long_task_count" {
 			found = true
 			if r.Current != 3 {
 				t.Errorf("expected current 3, got %f", r.Current)
@@ -2051,7 +2051,7 @@ func TestDetectRegressionsLongTasksOver100Percent(t *testing.T) {
 
 	found := false
 	for _, r := range regressions {
-		if r.Metric == "longTaskCount" {
+		if r.Metric == "long_task_count" {
 			found = true
 			if r.Current != 5 {
 				t.Errorf("expected current 5, got %f", r.Current)
@@ -2084,7 +2084,7 @@ func TestDetectRegressionsLongTasksNoFalsePositive(t *testing.T) {
 
 	regressions := capture.DetectRegressions(snapshot, baseline)
 	for _, r := range regressions {
-		if r.Metric == "longTaskCount" {
+		if r.Metric == "long_task_count" {
 			t.Error("longTaskCount regression should not fire when increase <= 100%")
 		}
 	}
@@ -2112,7 +2112,7 @@ func TestDetectRegressionsTBT(t *testing.T) {
 
 	found := false
 	for _, r := range regressions {
-		if r.Metric == "totalBlockingTime" {
+		if r.Metric == "total_blocking_time" {
 			found = true
 			if r.Current != 200 {
 				t.Errorf("expected current 200, got %f", r.Current)
@@ -2154,7 +2154,7 @@ func TestDetectRegressionsTBTFromZero(t *testing.T) {
 
 	found := false
 	for _, r := range regressions {
-		if r.Metric == "totalBlockingTime" {
+		if r.Metric == "total_blocking_time" {
 			found = true
 			// When baseline is 0, pct should be 0 (avoid divide by zero)
 			if r.ChangePercent != 0 {
@@ -2184,7 +2184,7 @@ func TestDetectRegressionsTBTNoFalsePositive(t *testing.T) {
 
 	regressions := capture.DetectRegressions(snapshot, baseline)
 	for _, r := range regressions {
-		if r.Metric == "totalBlockingTime" {
+		if r.Metric == "total_blocking_time" {
 			t.Error("TBT regression should not fire when absolute change <= 100ms")
 		}
 	}
@@ -2217,7 +2217,7 @@ func TestDetectRegressionsCLS(t *testing.T) {
 
 	found := false
 	for _, r := range regressions {
-		if r.Metric == "cumulativeLayoutShift" {
+		if r.Metric == "cumulative_layout_shift" {
 			found = true
 			if r.Current != 0.12 {
 				t.Errorf("expected current 0.12, got %f", r.Current)
@@ -2260,7 +2260,7 @@ func TestDetectRegressionsCLSFromZero(t *testing.T) {
 
 	found := false
 	for _, r := range regressions {
-		if r.Metric == "cumulativeLayoutShift" {
+		if r.Metric == "cumulative_layout_shift" {
 			found = true
 			// When baseline is 0, pct should be 0
 			if r.ChangePercent != 0 {
@@ -2295,7 +2295,7 @@ func TestDetectRegressionsCLSNoFalsePositive(t *testing.T) {
 
 	regressions := capture.DetectRegressions(snapshot, baseline)
 	for _, r := range regressions {
-		if r.Metric == "cumulativeLayoutShift" {
+		if r.Metric == "cumulative_layout_shift" {
 			t.Error("CLS regression should not fire when absolute change <= 0.05")
 		}
 	}
@@ -3749,7 +3749,7 @@ func TestHandlePerformanceSnapshots_SingleSnapshot(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 
-	body := `{"snapshots":[{"url":"/single","timestamp":"2024-01-15T10:00:00Z","timing":{"domContentLoaded":600,"load":1200,"timeToFirstByte":80,"domInteractive":500},"network":{"requestCount":5,"transferSize":30000,"decodedSize":60000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}}]}`
+	body := `{"snapshots":[{"url":"/single","timestamp":"2024-01-15T10:00:00Z","timing":{"dom_content_loaded":600,"load":1200,"time_to_first_byte":80,"dom_interactive":500},"network":{"request_count":5,"transfer_size":30000,"decoded_size":60000,"by_type":{}},"long_tasks":{"count":0,"total_blocking_time":0,"longest":0}}]}`
 
 	req := httptest.NewRequest("POST", "/performance-snapshots", strings.NewReader(body))
 	w := httptest.NewRecorder()
@@ -3773,11 +3773,11 @@ func TestHandlePerformanceSnapshots_MultipleBatched(t *testing.T) {
 	capture := NewCapture()
 
 	body := `{"snapshots":[` +
-		`{"url":"/page1","timestamp":"2024-01-15T10:00:00Z","timing":{"domContentLoaded":600,"load":1200,"timeToFirstByte":80,"domInteractive":500},"network":{"requestCount":5,"transferSize":30000,"decodedSize":60000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}},` +
-		`{"url":"/page2","timestamp":"2024-01-15T10:01:00Z","timing":{"domContentLoaded":700,"load":1300,"timeToFirstByte":90,"domInteractive":600},"network":{"requestCount":6,"transferSize":35000,"decodedSize":70000,"byType":{}},"longTasks":{"count":1,"totalBlockingTime":50,"longest":50}},` +
-		`{"url":"/page3","timestamp":"2024-01-15T10:02:00Z","timing":{"domContentLoaded":500,"load":1100,"timeToFirstByte":70,"domInteractive":400},"network":{"requestCount":4,"transferSize":25000,"decodedSize":50000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}},` +
-		`{"url":"/page4","timestamp":"2024-01-15T10:03:00Z","timing":{"domContentLoaded":650,"load":1250,"timeToFirstByte":85,"domInteractive":550},"network":{"requestCount":7,"transferSize":40000,"decodedSize":80000,"byType":{}},"longTasks":{"count":2,"totalBlockingTime":100,"longest":60}},` +
-		`{"url":"/page5","timestamp":"2024-01-15T10:04:00Z","timing":{"domContentLoaded":800,"load":1500,"timeToFirstByte":100,"domInteractive":700},"network":{"requestCount":8,"transferSize":45000,"decodedSize":90000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}}` +
+		`{"url":"/page1","timestamp":"2024-01-15T10:00:00Z","timing":{"dom_content_loaded":600,"load":1200,"time_to_first_byte":80,"dom_interactive":500},"network":{"request_count":5,"transfer_size":30000,"decoded_size":60000,"by_type":{}},"long_tasks":{"count":0,"total_blocking_time":0,"longest":0}},` +
+		`{"url":"/page2","timestamp":"2024-01-15T10:01:00Z","timing":{"dom_content_loaded":700,"load":1300,"time_to_first_byte":90,"dom_interactive":600},"network":{"request_count":6,"transfer_size":35000,"decoded_size":70000,"by_type":{}},"long_tasks":{"count":1,"total_blocking_time":50,"longest":50}},` +
+		`{"url":"/page3","timestamp":"2024-01-15T10:02:00Z","timing":{"dom_content_loaded":500,"load":1100,"time_to_first_byte":70,"dom_interactive":400},"network":{"request_count":4,"transfer_size":25000,"decoded_size":50000,"by_type":{}},"long_tasks":{"count":0,"total_blocking_time":0,"longest":0}},` +
+		`{"url":"/page4","timestamp":"2024-01-15T10:03:00Z","timing":{"dom_content_loaded":650,"load":1250,"time_to_first_byte":85,"dom_interactive":550},"network":{"request_count":7,"transfer_size":40000,"decoded_size":80000,"by_type":{}},"long_tasks":{"count":2,"total_blocking_time":100,"longest":60}},` +
+		`{"url":"/page5","timestamp":"2024-01-15T10:04:00Z","timing":{"dom_content_loaded":800,"load":1500,"time_to_first_byte":100,"dom_interactive":700},"network":{"request_count":8,"transfer_size":45000,"decoded_size":90000,"by_type":{}},"long_tasks":{"count":0,"total_blocking_time":0,"longest":0}}` +
 		`]}`
 
 	req := httptest.NewRequest("POST", "/performance-snapshots", strings.NewReader(body))
@@ -3865,7 +3865,7 @@ func TestOldPerformanceSnapshotEndpoint_Gone(t *testing.T) {
 	// Do NOT register /performance-snapshot (singular) — that's the point
 
 	req := httptest.NewRequest("POST", "/performance-snapshot",
-		strings.NewReader(`{"url":"/test","timestamp":"2024-01-15T10:00:00Z","timing":{"domContentLoaded":600,"load":1200,"timeToFirstByte":80,"domInteractive":500},"network":{"requestCount":5,"transferSize":30000,"decodedSize":60000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}}`))
+		strings.NewReader(`{"url":"/test","timestamp":"2024-01-15T10:00:00Z","timing":{"dom_content_loaded":600,"load":1200,"time_to_first_byte":80,"dom_interactive":500},"network":{"request_count":5,"transfer_size":30000,"decoded_size":60000,"by_type":{}},"long_tasks":{"count":0,"total_blocking_time":0,"longest":0}}`))
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -3879,8 +3879,8 @@ func TestHandlePerformanceSnapshots_DataRetrievable(t *testing.T) {
 	capture := NewCapture()
 
 	body := `{"snapshots":[` +
-		`{"url":"/data-test-1","timestamp":"2024-01-15T10:00:00Z","timing":{"domContentLoaded":600,"load":1200,"timeToFirstByte":80,"domInteractive":500},"network":{"requestCount":5,"transferSize":30000,"decodedSize":60000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}},` +
-		`{"url":"/data-test-2","timestamp":"2024-01-15T10:01:00Z","timing":{"domContentLoaded":700,"load":1500,"timeToFirstByte":90,"domInteractive":600},"network":{"requestCount":8,"transferSize":50000,"decodedSize":100000,"byType":{}},"longTasks":{"count":1,"totalBlockingTime":75,"longest":75}}` +
+		`{"url":"/data-test-1","timestamp":"2024-01-15T10:00:00Z","timing":{"dom_content_loaded":600,"load":1200,"time_to_first_byte":80,"dom_interactive":500},"network":{"request_count":5,"transfer_size":30000,"decoded_size":60000,"by_type":{}},"long_tasks":{"count":0,"total_blocking_time":0,"longest":0}},` +
+		`{"url":"/data-test-2","timestamp":"2024-01-15T10:01:00Z","timing":{"dom_content_loaded":700,"load":1500,"time_to_first_byte":90,"dom_interactive":600},"network":{"request_count":8,"transfer_size":50000,"decoded_size":100000,"by_type":{}},"long_tasks":{"count":1,"total_blocking_time":75,"longest":75}}` +
 		`]}`
 
 	req := httptest.NewRequest("POST", "/performance-snapshots", strings.NewReader(body))

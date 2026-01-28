@@ -1049,15 +1049,15 @@ func (h *ToolHandler) toolsList() []MCPTool {
 							"properties": map[string]interface{}{
 								"category":       map[string]interface{}{"type": "string", "enum": []string{"console", "network", "websocket"}},
 								"classification": map[string]interface{}{"type": "string"},
-								"matchSpec": map[string]interface{}{
+								"match_spec": map[string]interface{}{
 									"type": "object",
 									"properties": map[string]interface{}{
-										"messageRegex": map[string]interface{}{"type": "string"},
-										"sourceRegex":  map[string]interface{}{"type": "string"},
-										"urlRegex":     map[string]interface{}{"type": "string"},
+										"message_regex": map[string]interface{}{"type": "string"},
+										"source_regex":  map[string]interface{}{"type": "string"},
+										"url_regex":     map[string]interface{}{"type": "string"},
 										"method":       map[string]interface{}{"type": "string"},
-										"statusMin":    map[string]interface{}{"type": "number"},
-										"statusMax":    map[string]interface{}{"type": "number"},
+										"status_min":    map[string]interface{}{"type": "number"},
+										"status_max":    map[string]interface{}{"type": "number"},
 										"level":        map[string]interface{}{"type": "string"},
 									},
 								},
@@ -1839,14 +1839,14 @@ func (h *ToolHandler) toolConfigureNoise(req JSONRPCRequest, args json.RawMessag
 			Category       string `json:"category"`
 			Classification string `json:"classification"`
 			MatchSpec      struct {
-				MessageRegex string `json:"messageRegex"`
-				SourceRegex  string `json:"sourceRegex"`
-				URLRegex     string `json:"urlRegex"`
+				MessageRegex string `json:"message_regex"`
+				SourceRegex  string `json:"source_regex"`
+				URLRegex     string `json:"url_regex"`
 				Method       string `json:"method"`
-				StatusMin    int    `json:"statusMin"`
-				StatusMax    int    `json:"statusMax"`
+				StatusMin    int    `json:"status_min"`
+				StatusMax    int    `json:"status_max"`
 				Level        string `json:"level"`
-			} `json:"matchSpec"`
+			} `json:"match_spec"`
 		} `json:"rules"`
 		RuleID string `json:"rule_id"`
 	}

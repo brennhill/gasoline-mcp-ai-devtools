@@ -23,9 +23,9 @@ type SettingsPayload struct {
 
 // PersistedSettings is the disk format for ~/.gasoline-settings.json
 type PersistedSettings struct {
-	AIWebPilotEnabled *bool     `json:"aiWebPilotEnabled,omitempty"` // TODO v6.0: migrate to ai_web_pilot_enabled
+	AIWebPilotEnabled *bool     `json:"ai_web_pilot_enabled,omitempty"`
 	Timestamp         time.Time `json:"timestamp"`
-	SessionID         string    `json:"sessionId"` // TODO v6.0: migrate to session_id
+	SessionID         string    `json:"session_id"`
 }
 
 // getSettingsPath returns the path to the settings cache file

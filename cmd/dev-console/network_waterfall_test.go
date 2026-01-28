@@ -510,7 +510,7 @@ func TestToolGetNetworkWaterfall_PopulatedBuffer(t *testing.T) {
 	if !strings.Contains(entry1["url"].(string), "example.com/api/users") {
 		t.Error("Expected first URL to contain example.com/api/users")
 	}
-	if entry1["initiatorType"].(string) != "fetch" {
+	if entry1["initiator_type"].(string) != "fetch" {
 		t.Error("Expected first entry initiatorType=fetch")
 	}
 
@@ -519,7 +519,7 @@ func TestToolGetNetworkWaterfall_PopulatedBuffer(t *testing.T) {
 	if !strings.Contains(entry2["url"].(string), "cdn.example.com/script.js") {
 		t.Error("Expected second URL to contain cdn.example.com/script.js")
 	}
-	if entry2["initiatorType"].(string) != "script" {
+	if entry2["initiator_type"].(string) != "script" {
 		t.Error("Expected second entry initiatorType=script")
 	}
 	if cached, ok := entry2["cached"].(bool); !ok || !cached {

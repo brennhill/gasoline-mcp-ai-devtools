@@ -213,10 +213,10 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 
 	if len(bodies) == 0 {
 		data := map[string]interface{}{
-			"networkRequestResponsePairs": []interface{}{},
+			"network_request_response_pairs": []interface{}{},
 			"count":                       0,
-			"maxRequestBodyBytes":         8192,
-			"maxResponseBodyBytes":        16384,
+			"max_request_body_bytes":         8192,
+			"max_response_body_bytes":        16384,
 		}
 		if h.captureOverrides != nil {
 			overrides := h.captureOverrides.GetAll()
@@ -236,46 +236,46 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 			"url":        b.URL,
 			"method":     b.Method,
 			"status":     b.Status,
-			"durationMs": b.Duration,
+			"duration_ms": b.Duration,
 		}
 
 		// Add timestamp if present (renamed capturedAt)
 		if b.Timestamp != "" {
-			jsonPairs[i]["capturedAt"] = b.Timestamp
+			jsonPairs[i]["captured_at"] = b.Timestamp
 		}
 
 		// Add content type if present
 		if b.ContentType != "" {
-			jsonPairs[i]["contentType"] = b.ContentType
+			jsonPairs[i]["content_type"] = b.ContentType
 		}
 
 		// Include request body if present
 		if b.RequestBody != "" {
-			jsonPairs[i]["requestBody"] = b.RequestBody
-			jsonPairs[i]["requestBodySizeBytes"] = len(b.RequestBody)
+			jsonPairs[i]["request_body"] = b.RequestBody
+			jsonPairs[i]["request_body_size_bytes"] = len(b.RequestBody)
 			if b.RequestTruncated {
-				jsonPairs[i]["requestBodyTruncated"] = true
+				jsonPairs[i]["request_body_truncated"] = true
 			}
 		}
 
 		// Include response body if present
 		if b.ResponseBody != "" {
-			jsonPairs[i]["responseBody"] = b.ResponseBody
-			jsonPairs[i]["responseBodySizeBytes"] = len(b.ResponseBody)
+			jsonPairs[i]["response_body"] = b.ResponseBody
+			jsonPairs[i]["response_body_size_bytes"] = len(b.ResponseBody)
 			if b.ResponseTruncated {
-				jsonPairs[i]["responseBodyTruncated"] = true
+				jsonPairs[i]["response_body_truncated"] = true
 			}
 		}
 
 		// Add response headers if present
 		if len(b.ResponseHeaders) > 0 {
-			jsonPairs[i]["responseHeaders"] = b.ResponseHeaders
+			jsonPairs[i]["response_headers"] = b.ResponseHeaders
 		}
 
 		// Add binary format detection if present with confidence interpretation
 		if b.BinaryFormat != "" {
-			jsonPairs[i]["binaryFormat"] = b.BinaryFormat
-			jsonPairs[i]["binaryFormatConfidence"] = b.FormatConfidence
+			jsonPairs[i]["binary_format"] = b.BinaryFormat
+			jsonPairs[i]["binary_format_confidence"] = b.FormatConfidence
 
 			// Add interpretation based on confidence level
 			var interpretation string
@@ -286,15 +286,15 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 			} else {
 				interpretation = "low_confidence"
 			}
-			jsonPairs[i]["binaryFormatInterpretation"] = interpretation
+			jsonPairs[i]["binary_format_interpretation"] = interpretation
 		}
 	}
 
 	data := map[string]interface{}{
-		"networkRequestResponsePairs": jsonPairs,
+		"network_request_response_pairs": jsonPairs,
 		"count":                       len(bodies),
-		"maxRequestBodyBytes":         8192,
-		"maxResponseBodyBytes":        16384,
+		"max_request_body_bytes":         8192,
+		"max_response_body_bytes":        16384,
 	}
 
 	summary := fmt.Sprintf("%d network request-response pair(s)", len(bodies))
@@ -362,18 +362,18 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 
 		jsonEntries[i] = map[string]interface{}{
 			"url":                   entry.URL,
-			"initiatorType":         entry.InitiatorType,
-			"durationMs":            entry.Duration,
-			"startTimeMs":           entry.StartTime,
-			"fetchStartMs":          entry.FetchStart,
-			"responseEndMs":         entry.ResponseEnd,
-			"transferSizeBytes":     entry.TransferSize,
-			"decodedBodySizeBytes":  entry.DecodedBodySize,
-			"encodedBodySizeBytes":  entry.EncodedBodySize,
-			"compressionRatio":      compressionRatio,
+			"initiator_type":         entry.InitiatorType,
+			"duration_ms":            entry.Duration,
+			"start_time_ms":           entry.StartTime,
+			"fetch_start_ms":          entry.FetchStart,
+			"response_end_ms":         entry.ResponseEnd,
+			"transfer_size_bytes":     entry.TransferSize,
+			"decoded_body_size_bytes":  entry.DecodedBodySize,
+			"encoded_body_size_bytes":  entry.EncodedBodySize,
+			"compression_ratio":      compressionRatio,
 			"cached":                entry.TransferSize == 0 && entry.DecodedBodySize > 0,
-			"pageURL":               entry.PageURL,
-			"capturedAt":            entry.Timestamp.Format(time.RFC3339),
+			"page_url":               entry.PageURL,
+			"captured_at":            entry.Timestamp.Format(time.RFC3339),
 		}
 	}
 
@@ -381,8 +381,8 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 		"entries":          jsonEntries,
 		"count":            len(entries),
 		"timespan":         formatDuration(timeRange),
-		"oldestTimestamp":  oldestTime.Format(time.RFC3339),
-		"newestTimestamp":  newestTime.Format(time.RFC3339),
+		"oldest_timestamp":  oldestTime.Format(time.RFC3339),
+		"newest_timestamp":  newestTime.Format(time.RFC3339),
 		"limitations": []string{
 			"No HTTP status codes (use network_bodies for 404s/500s/401s)",
 			"No request methods (GET/POST/etc.)",

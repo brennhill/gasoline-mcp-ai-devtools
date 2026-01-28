@@ -22,12 +22,12 @@ const maxNoiseRules = 100
 
 // NoiseMatchSpec defines how a rule matches entries
 type NoiseMatchSpec struct {
-	MessageRegex string `json:"messageRegex,omitempty"` // TODO v6.0: migrate to message_regex
-	SourceRegex  string `json:"sourceRegex,omitempty"`  // TODO v6.0: migrate to source_regex
-	URLRegex     string `json:"urlRegex,omitempty"`     // TODO v6.0: migrate to url_regex
+	MessageRegex string `json:"message_regex,omitempty"`
+	SourceRegex  string `json:"source_regex,omitempty"` 
+	URLRegex     string `json:"url_regex,omitempty"`    
 	Method       string `json:"method,omitempty"`
-	StatusMin    int    `json:"statusMin,omitempty"` // TODO v6.0: migrate to status_min
-	StatusMax    int    `json:"statusMax,omitempty"` // TODO v6.0: migrate to status_max
+	StatusMin    int    `json:"status_min,omitempty"`
+	StatusMax    int    `json:"status_max,omitempty"`
 	Level        string `json:"level,omitempty"`
 }
 
@@ -36,9 +36,9 @@ type NoiseRule struct {
 	ID             string         `json:"id"`
 	Category       string         `json:"category"`       // "console", "network", "websocket"
 	Classification string         `json:"classification"` // "extension", "framework", "cosmetic", "analytics", "infrastructure", "repetitive", "dismissed"
-	MatchSpec      NoiseMatchSpec `json:"matchSpec"`      // TODO v6.0: migrate to match_spec
-	AutoDetected   bool           `json:"autoDetected,omitempty"` // TODO v6.0: migrate to auto_detected
-	CreatedAt      time.Time      `json:"createdAt"`      // TODO v6.0: migrate to created_at
+	MatchSpec      NoiseMatchSpec `json:"match_spec"`     
+	AutoDetected   bool           `json:"auto_detected,omitempty"`
+	CreatedAt      time.Time      `json:"created_at"`     
 	Reason         string         `json:"reason,omitempty"`
 }
 
@@ -59,10 +59,10 @@ type NoiseProposal struct {
 
 // NoiseStatistics tracks filtering metrics
 type NoiseStatistics struct {
-	TotalFiltered int64          `json:"totalFiltered"` // TODO v6.0: migrate to total_filtered
-	PerRule       map[string]int `json:"perRule"`       // TODO v6.0: migrate to per_rule
-	LastSignalAt  time.Time      `json:"lastSignalAt,omitempty"`  // TODO v6.0: migrate to last_signal_at
-	LastNoiseAt   time.Time      `json:"lastNoiseAt,omitempty"`   // TODO v6.0: migrate to last_noise_at
+	TotalFiltered int64          `json:"total_filtered"`
+	PerRule       map[string]int `json:"per_rule"`      
+	LastSignalAt  time.Time      `json:"last_signal_at,omitempty"` 
+	LastNoiseAt   time.Time      `json:"last_noise_at,omitempty"`  
 }
 
 // NoiseConfig manages noise filtering rules and state

@@ -261,7 +261,7 @@ func TestToolConfigureNoiseAddRules(t *testing.T) {
 		"rules": [{
 			"category": "console",
 			"classification": "known",
-			"matchSpec": {"messageRegex": "test.*noise"}
+			"match_spec": {"message_regex": "test.*noise"}
 		}]
 	}`)
 	resp := mcp.toolHandler.toolConfigureNoise(req, args)
@@ -300,7 +300,7 @@ func TestToolConfigureNoiseRemoveUserRule(t *testing.T) {
 	// First add a user rule so we have something removable
 	addArgs := json.RawMessage(`{
 		"action": "add",
-		"rules": [{"category": "console", "classification": "known", "matchSpec": {"messageRegex": "removable"}}]
+		"rules": [{"category": "console", "classification": "known", "match_spec": {"message_regex": "removable"}}]
 	}`)
 	mcp.toolHandler.toolConfigureNoise(req, addArgs)
 
@@ -1070,7 +1070,7 @@ func TestToolConfigureNoiseRemoveRule_Success(t *testing.T) {
 	// First add a rule
 	addArgs := json.RawMessage(`{
 		"action": "add",
-		"rules": [{"category": "console", "classification": "known", "matchSpec": {"messageRegex": "test-removal"}}]
+		"rules": [{"category": "console", "classification": "known", "match_spec": {"message_regex": "test-removal"}}]
 	}`)
 	mcp.toolHandler.toolConfigureNoise(req, addArgs)
 

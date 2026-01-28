@@ -598,8 +598,8 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 	var extResult struct {
 		URL           string                   `json:"url"`
 		Title         string                   `json:"title"`
-		MatchCount    int                      `json:"matchCount"`    // TODO v6.0: migrate to match_count
-		ReturnedCount int                      `json:"returnedCount"` // TODO v6.0: migrate to returned_count
+		MatchCount    int                      `json:"match_count"`   
+		ReturnedCount int                      `json:"returned_count"`
 		Matches       []map[string]interface{} `json:"matches"`
 	}
 	_ = json.Unmarshal(result, &extResult)
@@ -623,13 +623,13 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 	// Build structured response with metadata
 	data := map[string]interface{}{
 		"url":                 extResult.URL,
-		"pageTitle":           extResult.Title,
+		"page_title":           extResult.Title,
 		"selector":            arguments.Selector,
-		"totalMatchCount":     extResult.MatchCount,
-		"returnedMatchCount":  extResult.ReturnedCount,
-		"maxElementsReturned": domQueryMaxElements,
-		"maxDepthQueried":     domQueryMaxDepth,
-		"maxTextLength":       domQueryMaxText,
+		"total_match_count":     extResult.MatchCount,
+		"returned_match_count":  extResult.ReturnedCount,
+		"max_elements_returned": domQueryMaxElements,
+		"max_depth_queried":     domQueryMaxDepth,
+		"max_text_length":       domQueryMaxText,
 		"matches":             extResult.Matches,
 	}
 

@@ -378,7 +378,7 @@ func TestHandleScreenshot_InvalidBase64(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
 
-	body := `{"dataUrl":"data:image/jpeg;base64,!!!invalid!!!", "url":"http://example.com"}`
+	body := `{"data_url":"data:image/jpeg;base64,!!!invalid!!!", "url":"http://example.com"}`
 	req := httptest.NewRequest("POST", "/screenshot", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -408,7 +408,7 @@ func TestHandleScreenshot_InvalidDataUrlFormat(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
 
-	body := `{"dataUrl":"not-a-data-url"}`
+	body := `{"data_url":"not-a-data-url"}`
 	req := httptest.NewRequest("POST", "/screenshot", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -424,7 +424,7 @@ func TestHandleScreenshot_Success(t *testing.T) {
 	server, _ := setupTestServer(t)
 
 	// Minimal valid base64 data (not a real JPEG but valid base64)
-	body := `{"dataUrl":"data:image/jpeg;base64,dGVzdGRhdGE=", "url":"http://example.com/page", "correlationId":"TypeError-err-123"}`
+	body := `{"data_url":"data:image/jpeg;base64,dGVzdGRhdGE=", "url":"http://example.com/page", "correlation_id":"TypeError-err-123"}`
 	req := httptest.NewRequest("POST", "/screenshot", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -455,7 +455,7 @@ func TestHandleScreenshot_NoURL(t *testing.T) {
 	server, _ := setupTestServer(t)
 
 	// No URL means hostname defaults to "unknown"
-	body := `{"dataUrl":"data:image/jpeg;base64,dGVzdGRhdGE="}`
+	body := `{"data_url":"data:image/jpeg;base64,dGVzdGRhdGE="}`
 	req := httptest.NewRequest("POST", "/screenshot", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()

@@ -497,27 +497,27 @@
                 "classification": {
                   "type": "string"
                 },
-                "matchSpec": {
+                "match_spec": {
                   "properties": {
                     "level": {
                       "type": "string"
                     },
-                    "messageRegex": {
+                    "message_regex": {
                       "type": "string"
                     },
                     "method": {
                       "type": "string"
                     },
-                    "sourceRegex": {
+                    "source_regex": {
                       "type": "string"
                     },
-                    "statusMax": {
+                    "status_max": {
                       "type": "number"
                     },
-                    "statusMin": {
+                    "status_min": {
                       "type": "number"
                     },
-                    "urlRegex": {
+                    "url_regex": {
                       "type": "string"
                     }
                   },

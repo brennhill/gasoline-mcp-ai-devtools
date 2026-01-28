@@ -1208,9 +1208,9 @@ func TestScreenshotEndpoint(t *testing.T) {
 	jpegData := strings.Repeat("A", 1000) // base64 content
 
 	body := map[string]string{
-		"dataUrl":       "data:image/jpeg;base64," + jpegData,
+		"data_url":       "data:image/jpeg;base64," + jpegData,
 		"url":           "https://example.com/page",
-		"correlationId": "console-err_123_abc",
+		"correlation_id": "console-err_123_abc",
 	}
 	bodyJSON, _ := json.Marshal(body)
 
@@ -1534,8 +1534,8 @@ func FuzzMCPRequest(f *testing.F) {
 
 // FuzzScreenshotEndpoint fuzzes the screenshot upload handler.
 func FuzzScreenshotEndpoint(f *testing.F) {
-	f.Add([]byte(`{"dataUrl":"data:image/jpeg;base64,AAAA","url":"https://example.com","correlationId":"console-err1"}`))
-	f.Add([]byte(`{"dataUrl":"","url":""}`))
+	f.Add([]byte(`{"data_url":"data:image/jpeg;base64,AAAA","url":"https://example.com","correlation_id":"console-err1"}`))
+	f.Add([]byte(`{"data_url":"","url":""}`))
 	f.Add([]byte(`{}`))
 	f.Add([]byte(`not json`))
 
@@ -1556,7 +1556,7 @@ func FuzzScreenshotEndpoint(f *testing.F) {
 }
 
 func FuzzNetworkBodies(f *testing.F) {
-	f.Add([]byte(`{"bodies":[{"url":"https://api.example.com/users","method":"GET","status":200,"responseBody":"{}"}]}`))
+	f.Add([]byte(`{"bodies":[{"url":"https://api.example.com/users","method":"GET","status":200,"response_body":"{}"}]}`))
 	f.Add([]byte(`{"bodies":[]}`))
 	f.Add([]byte(`{}`))
 	f.Add([]byte(`not json`))

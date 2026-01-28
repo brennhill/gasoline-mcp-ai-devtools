@@ -35,7 +35,7 @@ func TestV4MemoryLimitRejectsNetworkBodies(t *testing.T) {
 	// Simulate exceeding memory limit
 	capture.SetMemoryUsage(55 * 1024 * 1024) // 55MB > 50MB limit
 
-	body := `{"bodies":[{"url":"/api/test","status":200,"responseBody":"data"}]}`
+	body := `{"bodies":[{"url":"/api/test","status":200,"response_body":"data"}]}`
 	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()

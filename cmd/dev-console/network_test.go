@@ -208,7 +208,7 @@ func TestV4PostNetworkBodiesEndpoint(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	body := `{"bodies":[{"ts":"2024-01-15T10:30:00.000Z","method":"GET","url":"/api/test","status":200,"responseBody":"{}","contentType":"application/json"}]}`
+	body := `{"bodies":[{"ts":"2024-01-15T10:30:00.000Z","method":"GET","url":"/api/test","status":200,"response_body":"{}","content_type":"application/json"}]}`
 	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()

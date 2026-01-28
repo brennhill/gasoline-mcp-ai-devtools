@@ -592,9 +592,9 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	var body struct {
-		DataURL       string `json:"dataUrl"`
+		DataURL       string `json:"data_url"`
 		URL           string `json:"url"`
-		CorrelationID string `json:"correlationId"`
+		CorrelationID string `json:"correlation_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {

@@ -260,13 +260,13 @@ func TestObserveNetwork_ColumnsMatchDocs(t *testing.T) {
 	}
 
 	// Verify expected fields exist
-	pairs, ok := data["networkRequestResponsePairs"].([]interface{})
+	pairs, ok := data["network_request_response_pairs"].([]interface{})
 	if !ok || len(pairs) != 1 {
 		t.Fatal("Expected networkRequestResponsePairs array with 1 entry")
 	}
 
 	pair := pairs[0].(map[string]interface{})
-	expectedFields := []string{"url", "method", "status", "durationMs"}
+	expectedFields := []string{"url", "method", "status", "duration_ms"}
 	for _, field := range expectedFields {
 		if _, ok := pair[field]; !ok {
 			t.Errorf("Expected field '%s' in pair object", field)
@@ -274,10 +274,10 @@ func TestObserveNetwork_ColumnsMatchDocs(t *testing.T) {
 	}
 
 	// Verify metadata fields
-	if _, ok := data["maxRequestBodyBytes"]; !ok {
+	if _, ok := data["max_request_body_bytes"]; !ok {
 		t.Error("Expected maxRequestBodyBytes metadata field")
 	}
-	if _, ok := data["maxResponseBodyBytes"]; !ok {
+	if _, ok := data["max_response_body_bytes"]; !ok {
 		t.Error("Expected maxResponseBodyBytes metadata field")
 	}
 }

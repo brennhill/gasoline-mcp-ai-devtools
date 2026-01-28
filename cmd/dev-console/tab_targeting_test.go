@@ -440,7 +440,7 @@ func TestQueryDOMWithTabID(t *testing.T) {
 		t.Errorf("Expected TabID 42 on pending query, got %d", pending[0].TabID)
 	}
 
-	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"matches":[],"matchCount":0}`))
+	capture.SetQueryResult(pending[0].ID, json.RawMessage(`{"matches":[],"match_count":0}`))
 	<-done
 }
 

@@ -198,20 +198,20 @@ type TimelineEntry struct {
 	Selectors     map[string]interface{} `json:"selectors,omitempty"`
 	Method        string                 `json:"method,omitempty"`
 	Status        int                    `json:"status,omitempty"`
-	ContentType   string                 `json:"contentType,omitempty"`   // TODO v6.0: migrate to content_type
-	ResponseShape interface{}            `json:"responseShape,omitempty"` // TODO v6.0: migrate to response_shape
+	ContentType   string                 `json:"content_type,omitempty"`  
+	ResponseShape interface{}            `json:"response_shape,omitempty"`
 	Message       string                 `json:"message,omitempty"`
 	Level         string                 `json:"level,omitempty"`
-	ToURL         string                 `json:"toUrl,omitempty"`         // TODO v6.0: migrate to to_url
+	ToURL         string                 `json:"to_url,omitempty"`        
 	Value         string                 `json:"value,omitempty"`
 }
 
 // TimelineSummary provides aggregate stats for the session timeline
 type TimelineSummary struct {
 	Actions         int   `json:"actions"`
-	NetworkRequests int   `json:"networkRequests"` // TODO v6.0: migrate to network_requests
-	ConsoleErrors   int   `json:"consoleErrors"`   // TODO v6.0: migrate to console_errors
-	DurationMs      int64 `json:"durationMs"`      // TODO v6.0: migrate to duration_ms
+	NetworkRequests int   `json:"network_requests"`
+	ConsoleErrors   int   `json:"console_errors"`  
+	DurationMs      int64 `json:"duration_ms"`     
 }
 
 // TimelineResponse is the internal response from GetSessionTimeline

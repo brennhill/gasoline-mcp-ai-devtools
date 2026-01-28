@@ -26,9 +26,9 @@ func TestScreenshot_FilenameWithCorrelationID(t *testing.T) {
 
 	jpegData := strings.Repeat("A", 1000)
 	body := map[string]string{
-		"dataUrl":       "data:image/jpeg;base64," + jpegData,
+		"data_url":       "data:image/jpeg;base64," + jpegData,
 		"url":           "https://example.com/page",
-		"correlationId": "err-42",
+		"correlation_id": "err-42",
 	}
 	bodyJSON, _ := json.Marshal(body)
 
@@ -64,7 +64,7 @@ func TestScreenshot_FilenameWithoutCorrelationID(t *testing.T) {
 
 	jpegData := strings.Repeat("A", 1000)
 	body := map[string]string{
-		"dataUrl": "data:image/jpeg;base64," + jpegData,
+		"data_url": "data:image/jpeg;base64," + jpegData,
 		"url":     "https://example.com/page",
 	}
 	bodyJSON, _ := json.Marshal(body)
@@ -106,9 +106,9 @@ func TestScreenshot_CorrelationIDSanitized(t *testing.T) {
 
 	jpegData := strings.Repeat("A", 1000)
 	body := map[string]string{
-		"dataUrl":       "data:image/jpeg;base64," + jpegData,
+		"data_url":       "data:image/jpeg;base64," + jpegData,
 		"url":           "https://example.com/page",
-		"correlationId": "foo/bar:baz",
+		"correlation_id": "foo/bar:baz",
 	}
 	bodyJSON, _ := json.Marshal(body)
 
@@ -146,9 +146,9 @@ func TestScreenshot_CorrelationIDEchoedInResponse(t *testing.T) {
 
 	jpegData := strings.Repeat("A", 1000)
 	body := map[string]string{
-		"dataUrl":       "data:image/jpeg;base64," + jpegData,
+		"data_url":       "data:image/jpeg;base64," + jpegData,
 		"url":           "https://example.com/page",
-		"correlationId": "err-42",
+		"correlation_id": "err-42",
 	}
 	bodyJSON, _ := json.Marshal(body)
 
