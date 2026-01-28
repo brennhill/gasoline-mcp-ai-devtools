@@ -12,7 +12,7 @@ import (
 )
 
 // ============================================
-// Coverage Group A — settings.go, status.go, pilot.go
+// Coverage Group A -- settings.go, status.go, pilot.go
 // Tests for 0%-coverage and low-coverage functions
 // ============================================
 
@@ -42,152 +42,181 @@ func TestCoverageGroupA_getSettingsPath(t *testing.T) {
 func TestCoverageGroupA_LoadSettingsFromDisk_NoFile(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
-	// LoadSettingsFromDisk should not panic when file doesn't exist
-	// It reads from the user's home dir; the file may or may not exist.
-	// This tests the "file not found" code path gracefully.
+	// LoadSettingsFromDisk should not panic regardless of whether the file exists.
+	// We only verify it doesn't crash -- the file may or may not exist on the test host.
 	capture.LoadSettingsFromDisk()
-	// Should not panic; pilot state should remain default (false)
-	capture.mu.RLock()
-	enabled := capture.pilotEnabled
-	capture.mu.RUnlock()
-	if enabled {
-		t.Error("expected pilotEnabled to remain false when no settings file exists")
-	}
+	// If we get here without panic, the function handled the file state gracefully.
 }
 
-func TestCoverageGroupA_LoadSettingsFromDisk_StaleSettings(t *testing.T) {
-	t.Parallel()
-	// Create a temp settings file with stale timestamp (>5s old)
-	tmpDir := t.TempDir()
-	settingsPath := filepath.Join(tmpDir, ".gasoline-settings.json")
+// TestCoverageGroupA_SettingsDiskIO groups all disk I/O tests that write to
+// ~/.gasoline-settings.json into a single serial test to avoid file races.
+func TestCoverageGroupA_SettingsDiskIO(t *testing.T) {
+	// NOT parallel: these tests write to the shared ~/.gasoline-settings.json
 
-	staleTime := time.Now().Add(-10 * time.Second)
-	settings := PersistedSettings{
-		AIWebPilotEnabled: boolPtr(true),
-		Timestamp:         staleTime,
-		SessionID:         "test-session-stale",
-	}
-	data, err := json.MarshalIndent(settings, "", "  ")
+	settingsPath, err := getSettingsPath()
 	if err != nil {
-		t.Fatalf("failed to marshal settings: %v", err)
-	}
-	if err := os.WriteFile(settingsPath, data, 0644); err != nil {
-		t.Fatalf("failed to write settings: %v", err)
+		t.Fatalf("getSettingsPath failed: %v", err)
 	}
 
-	// We can't easily override getSettingsPath, but we can test SaveSettingsToDisk
-	// and verify the file format. The LoadSettingsFromDisk uses the real home dir.
-	// Instead, test the logic indirectly by checking what SaveSettingsToDisk writes.
-	capture := NewCapture()
-	capture.mu.Lock()
-	capture.pilotEnabled = true
-	capture.pilotUpdatedAt = time.Now()
-	capture.extensionSession = "test-session-123"
-	capture.mu.Unlock()
-
-	err = capture.SaveSettingsToDisk()
-	if err != nil {
-		t.Fatalf("SaveSettingsToDisk failed: %v", err)
+	// Backup existing file if it exists, restore on cleanup
+	var backup []byte
+	if data, readErr := os.ReadFile(settingsPath); readErr == nil {
+		backup = data
 	}
+	t.Cleanup(func() {
+		if backup != nil {
+			os.WriteFile(settingsPath, backup, 0644) //nolint:errcheck
+		} else {
+			os.Remove(settingsPath)
+		}
+		os.Remove(settingsPath + ".tmp")
+	})
 
-	// Clean up the file we just wrote
-	path, _ := getSettingsPath()
-	defer os.Remove(path)
-	defer os.Remove(path + ".tmp")
+	t.Run("SaveSettingsToDisk", func(t *testing.T) {
+		capture := NewCapture()
+		now := time.Now()
 
-	// Verify the written file
-	written, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("failed to read saved settings: %v", err)
-	}
+		capture.mu.Lock()
+		capture.pilotEnabled = false
+		capture.pilotUpdatedAt = now
+		capture.extensionSession = "save-test-session"
+		capture.mu.Unlock()
 
-	var loaded PersistedSettings
-	if err := json.Unmarshal(written, &loaded); err != nil {
-		t.Fatalf("failed to parse saved settings: %v", err)
-	}
+		if err := capture.SaveSettingsToDisk(); err != nil {
+			t.Fatalf("SaveSettingsToDisk failed: %v", err)
+		}
 
-	if loaded.AIWebPilotEnabled == nil {
-		t.Fatal("AIWebPilotEnabled should not be nil")
-	}
-	if !*loaded.AIWebPilotEnabled {
-		t.Error("expected AIWebPilotEnabled to be true")
-	}
-	if loaded.SessionID != "test-session-123" {
-		t.Errorf("expected session ID test-session-123, got %s", loaded.SessionID)
-	}
-}
+		data, err := os.ReadFile(settingsPath)
+		if err != nil {
+			t.Fatalf("failed to read settings file: %v", err)
+		}
 
-func TestCoverageGroupA_SaveSettingsToDisk(t *testing.T) {
-	t.Parallel()
-	capture := NewCapture()
-	now := time.Now()
+		var settings PersistedSettings
+		if err := json.Unmarshal(data, &settings); err != nil {
+			t.Fatalf("failed to parse settings: %v", err)
+		}
 
-	capture.mu.Lock()
-	capture.pilotEnabled = false
-	capture.pilotUpdatedAt = now
-	capture.extensionSession = "save-test-session"
-	capture.mu.Unlock()
+		if settings.AIWebPilotEnabled == nil || *settings.AIWebPilotEnabled != false {
+			t.Error("expected AIWebPilotEnabled to be false")
+		}
+		if settings.SessionID != "save-test-session" {
+			t.Errorf("expected session ID save-test-session, got %s", settings.SessionID)
+		}
+	})
 
-	err := capture.SaveSettingsToDisk()
-	if err != nil {
-		t.Fatalf("SaveSettingsToDisk failed: %v", err)
-	}
+	t.Run("SaveAndVerifyFormat", func(t *testing.T) {
+		capture := NewCapture()
+		capture.mu.Lock()
+		capture.pilotEnabled = true
+		capture.pilotUpdatedAt = time.Now()
+		capture.extensionSession = "format-test-session"
+		capture.mu.Unlock()
 
-	path, _ := getSettingsPath()
-	defer os.Remove(path)
-	defer os.Remove(path + ".tmp")
+		if err := capture.SaveSettingsToDisk(); err != nil {
+			t.Fatalf("SaveSettingsToDisk failed: %v", err)
+		}
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("failed to read settings file: %v", err)
-	}
+		data, err := os.ReadFile(settingsPath)
+		if err != nil {
+			t.Fatalf("failed to read settings file: %v", err)
+		}
 
-	var settings PersistedSettings
-	if err := json.Unmarshal(data, &settings); err != nil {
-		t.Fatalf("failed to parse settings: %v", err)
-	}
+		var loaded PersistedSettings
+		if err := json.Unmarshal(data, &loaded); err != nil {
+			t.Fatalf("failed to parse saved settings: %v", err)
+		}
 
-	if settings.AIWebPilotEnabled == nil || *settings.AIWebPilotEnabled != false {
-		t.Error("expected AIWebPilotEnabled to be false")
-	}
-	if settings.SessionID != "save-test-session" {
-		t.Errorf("expected session ID save-test-session, got %s", settings.SessionID)
-	}
-}
+		if loaded.AIWebPilotEnabled == nil {
+			t.Fatal("AIWebPilotEnabled should not be nil")
+		}
+		if !*loaded.AIWebPilotEnabled {
+			t.Error("expected AIWebPilotEnabled to be true")
+		}
+		if loaded.SessionID != "format-test-session" {
+			t.Errorf("expected session ID format-test-session, got %s", loaded.SessionID)
+		}
+		if loaded.Timestamp.IsZero() {
+			t.Error("expected non-zero timestamp")
+		}
+	})
 
-func TestCoverageGroupA_LoadSettingsFromDisk_FreshSettings(t *testing.T) {
-	t.Parallel()
-	// Save fresh settings then load them
-	capture := NewCapture()
-	now := time.Now()
+	t.Run("LoadSettingsFromDisk_FreshSettings", func(t *testing.T) {
+		// Save fresh settings
+		capture := NewCapture()
+		now := time.Now()
 
-	capture.mu.Lock()
-	capture.pilotEnabled = true
-	capture.pilotUpdatedAt = now
-	capture.extensionSession = "fresh-session"
-	capture.mu.Unlock()
+		capture.mu.Lock()
+		capture.pilotEnabled = true
+		capture.pilotUpdatedAt = now
+		capture.extensionSession = "fresh-session"
+		capture.mu.Unlock()
 
-	err := capture.SaveSettingsToDisk()
-	if err != nil {
-		t.Fatalf("SaveSettingsToDisk failed: %v", err)
-	}
+		if err := capture.SaveSettingsToDisk(); err != nil {
+			t.Fatalf("SaveSettingsToDisk failed: %v", err)
+		}
 
-	path, _ := getSettingsPath()
-	defer os.Remove(path)
-	defer os.Remove(path + ".tmp")
+		// Create a new capture and load settings
+		capture2 := NewCapture()
+		capture2.LoadSettingsFromDisk()
 
-	// Create a new capture and load settings
-	capture2 := NewCapture()
-	capture2.LoadSettingsFromDisk()
+		capture2.mu.RLock()
+		enabled := capture2.pilotEnabled
+		capture2.mu.RUnlock()
 
-	capture2.mu.RLock()
-	enabled := capture2.pilotEnabled
-	capture2.mu.RUnlock()
+		// Settings should be loaded since they are fresh (< 5s old)
+		if !enabled {
+			t.Error("expected pilotEnabled to be true after loading fresh settings")
+		}
+	})
 
-	// Settings should be loaded since they are fresh (< 5s old)
-	if !enabled {
-		t.Error("expected pilotEnabled to be true after loading fresh settings")
-	}
+	t.Run("LoadSettingsFromDisk_StaleFile", func(t *testing.T) {
+		// Write a stale timestamp directly to the file
+		staleTime := time.Now().Add(-10 * time.Second)
+		pilotTrue := true
+		settings := PersistedSettings{
+			AIWebPilotEnabled: &pilotTrue,
+			Timestamp:         staleTime,
+			SessionID:         "stale-session",
+		}
+		data, err := json.MarshalIndent(settings, "", "  ")
+		if err != nil {
+			t.Fatalf("failed to marshal settings: %v", err)
+		}
+		if err := os.WriteFile(settingsPath, data, 0644); err != nil {
+			t.Fatalf("failed to write settings: %v", err)
+		}
+
+		capture := NewCapture()
+		capture.LoadSettingsFromDisk()
+
+		capture.mu.RLock()
+		enabled := capture.pilotEnabled
+		capture.mu.RUnlock()
+
+		// Stale settings (>5s) should be ignored
+		if enabled {
+			t.Error("expected pilotEnabled to remain false for stale settings")
+		}
+	})
+
+	t.Run("LoadSettingsFromDisk_InvalidJSON", func(t *testing.T) {
+		// Write invalid JSON to settings file
+		if err := os.WriteFile(settingsPath, []byte("not json"), 0644); err != nil {
+			t.Fatalf("failed to write: %v", err)
+		}
+
+		capture := NewCapture()
+		// Should not panic
+		capture.LoadSettingsFromDisk()
+
+		capture.mu.RLock()
+		enabled := capture.pilotEnabled
+		capture.mu.RUnlock()
+
+		if enabled {
+			t.Error("expected pilotEnabled to remain false for invalid JSON")
+		}
+	})
 }
 
 func TestCoverageGroupA_HandleSettings_POST(t *testing.T) {
@@ -347,7 +376,6 @@ func TestCoverageGroupA_HandleSettings_RedactsAuthHeaders(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
-	// Test passes if no panic - redaction is internal
 }
 
 // ============================================
@@ -436,7 +464,6 @@ func TestCoverageGroupA_HandleExtensionStatus_GET_StaleConnection(t *testing.T) 
 	t.Parallel()
 	capture := NewCapture()
 
-	// Set tracking updated to 3 minutes ago (stale)
 	capture.mu.Lock()
 	capture.trackingEnabled = true
 	capture.trackedTabID = 1
@@ -544,7 +571,6 @@ func TestCoverageGroupA_HandlePilotStatus(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 
-	// Test with default state (never connected)
 	req := httptest.NewRequest("GET", "/pilot-status", nil)
 	w := httptest.NewRecorder()
 
@@ -622,10 +648,9 @@ func TestCoverageGroupA_GetPilotStatus_SettingsHeartbeat(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 
-	// Settings POST is recent but polling is stale
 	capture.mu.Lock()
-	capture.lastPollAt = time.Now().Add(-10 * time.Second) // stale
-	capture.pilotUpdatedAt = time.Now()                     // fresh settings
+	capture.lastPollAt = time.Now().Add(-10 * time.Second)
+	capture.pilotUpdatedAt = time.Now()
 	capture.pilotEnabled = true
 	capture.mu.Unlock()
 
@@ -642,10 +667,9 @@ func TestCoverageGroupA_GetPilotStatus_StaleWithSettingsNewer(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 
-	// Both stale, but settings is newer
 	capture.mu.Lock()
 	capture.lastPollAt = time.Now().Add(-30 * time.Second)
-	capture.pilotUpdatedAt = time.Now().Add(-10 * time.Second) // newer than poll but still stale
+	capture.pilotUpdatedAt = time.Now().Add(-10 * time.Second)
 	capture.pilotEnabled = false
 	capture.mu.Unlock()
 
@@ -665,7 +689,6 @@ func TestCoverageGroupA_GetPilotStatus_StaleWithPollNewer(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 
-	// Both stale, but poll is newer
 	capture.mu.Lock()
 	capture.lastPollAt = time.Now().Add(-10 * time.Second)
 	capture.pilotUpdatedAt = time.Now().Add(-30 * time.Second)
@@ -717,7 +740,6 @@ func TestCoverageGroupA_toolObservePolling_WithEntries(t *testing.T) {
 	capture := NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
-	// Add some polling entries
 	capture.mu.Lock()
 	capture.logPollingActivity(PollingLogEntry{
 		Timestamp: time.Now(),
@@ -754,7 +776,7 @@ func TestCoverageGroupA_toolObservePolling_WithEntries(t *testing.T) {
 }
 
 // ============================================
-// pilot.go — checkPilotReady tests
+// pilot.go -- checkPilotReady tests
 // ============================================
 
 func TestCoverageGroupA_checkPilotReady_NeverConnected(t *testing.T) {
@@ -843,8 +865,8 @@ func TestCoverageGroupA_checkPilotReady_SettingsRecentPollingStale_Enabled(t *te
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
-	capture.lastPollAt = time.Now().Add(-10 * time.Second) // stale poll
-	capture.pilotUpdatedAt = time.Now()                     // recent settings
+	capture.lastPollAt = time.Now().Add(-10 * time.Second)
+	capture.pilotUpdatedAt = time.Now()
 	capture.pilotEnabled = true
 	capture.mu.Unlock()
 
@@ -869,8 +891,8 @@ func TestCoverageGroupA_checkPilotReady_SettingsRecentPollingStale_Disabled(t *t
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
-	capture.lastPollAt = time.Now().Add(-10 * time.Second) // stale poll
-	capture.pilotUpdatedAt = time.Now()                     // recent settings
+	capture.lastPollAt = time.Now().Add(-10 * time.Second)
+	capture.pilotUpdatedAt = time.Now()
 	capture.pilotEnabled = false
 	capture.mu.Unlock()
 
@@ -906,7 +928,6 @@ func TestCoverageGroupA_checkPilotReady_BothStale(t *testing.T) {
 	}
 
 	readiness := mcp.toolHandler.checkPilotReady(req)
-	// Optimistic: should still accept
 	if !readiness.ShouldAccept {
 		t.Error("expected ShouldAccept=true (optimistic) even when both stale")
 	}
@@ -924,9 +945,7 @@ func TestCoverageGroupA_checkPilotReady_BothStale_PollNewerZero(t *testing.T) {
 	capture := NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
-	// Only settings has been updated (no polls), both stale
 	capture.mu.Lock()
-	// lastPollAt stays zero
 	capture.pilotUpdatedAt = time.Now().Add(-20 * time.Second)
 	capture.pilotEnabled = true
 	capture.mu.Unlock()
@@ -946,23 +965,16 @@ func TestCoverageGroupA_checkPilotReady_BothStale_PollNewerZero(t *testing.T) {
 }
 
 // ============================================
-// pilot.go — browser action delegation handlers
+// pilot.go -- browser action delegation handlers
 // ============================================
-
-// These functions delegate to handleBrowserAction after setting action.
-// We test that they call handleBrowserAction with correct action, which creates a pending query.
-// Since the extension is not connected, they will return a timeout or pilot error.
-// We configure pilot as enabled+connected so the query is created, then verify it exists.
 
 func TestCoverageGroupA_handleBrowserActionRefresh(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := NewCapture()
-	// Use very short timeout so test doesn't hang
 	capture.queryTimeout = 50 * time.Millisecond
 	mcp := setupToolHandler(t, server, capture)
 
-	// Enable pilot and set recent poll
 	capture.mu.Lock()
 	capture.lastPollAt = time.Now()
 	capture.pilotEnabled = true
@@ -972,21 +984,17 @@ func TestCoverageGroupA_handleBrowserActionRefresh(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      json.RawMessage(`1`),
 	}
-	args := json.RawMessage(`{}`)
 
-	resp := mcp.toolHandler.handleBrowserActionRefresh(req, args)
-	// Should timeout (no extension), but the query should have been created
+	resp := mcp.toolHandler.handleBrowserActionRefresh(req, json.RawMessage(`{}`))
 	if resp.Error != nil {
 		t.Fatalf("unexpected JSONRPC error: %v", resp.Error)
 	}
 
-	// Parse the result to verify it's a timeout error (query was created but no response)
 	var result MCPToolResult
 	json.Unmarshal(resp.Result, &result)
 	if len(result.Content) == 0 {
 		t.Fatal("expected content in response")
 	}
-	// The response should mention timeout since no extension is running
 	found := false
 	for _, c := range result.Content {
 		if strings.Contains(c.Text, "extension_timeout") || strings.Contains(c.Text, "Timeout") {
@@ -1022,7 +1030,6 @@ func TestCoverageGroupA_handleBrowserActionBack(t *testing.T) {
 	if len(result.Content) == 0 {
 		t.Fatal("expected content in response")
 	}
-	// Verify we got a timeout (the action was dispatched correctly)
 	found := false
 	for _, c := range result.Content {
 		if strings.Contains(c.Text, "extension_timeout") || strings.Contains(c.Text, "Timeout") {
@@ -1087,14 +1094,12 @@ func TestCoverageGroupA_handleBrowserActionNewTab(t *testing.T) {
 		ID:      json.RawMessage(`4`),
 	}
 
-	// new_tab maps to "open" action which requires a URL
 	resp := mcp.toolHandler.handleBrowserActionNewTab(req, json.RawMessage(`{"url":"http://example.com"}`))
 	var result MCPToolResult
 	json.Unmarshal(resp.Result, &result)
 	if len(result.Content) == 0 {
 		t.Fatal("expected content in response")
 	}
-	// Should timeout since no extension
 	found := false
 	for _, c := range result.Content {
 		if strings.Contains(c.Text, "extension_timeout") || strings.Contains(c.Text, "Timeout") {
@@ -1123,14 +1128,12 @@ func TestCoverageGroupA_handleBrowserActionNewTab_NoURL(t *testing.T) {
 		ID:      json.RawMessage(`5`),
 	}
 
-	// "open" action requires URL
 	resp := mcp.toolHandler.handleBrowserActionNewTab(req, json.RawMessage(`{}`))
 	var result MCPToolResult
 	json.Unmarshal(resp.Result, &result)
 	if len(result.Content) == 0 {
 		t.Fatal("expected content in response")
 	}
-	// Should get missing_param error
 	found := false
 	for _, c := range result.Content {
 		if strings.Contains(c.Text, "missing_param") || strings.Contains(c.Text, "URL required") {
@@ -1144,7 +1147,7 @@ func TestCoverageGroupA_handleBrowserActionNewTab_NoURL(t *testing.T) {
 }
 
 // ============================================
-// pilot.go — manage_state delegation handlers
+// pilot.go -- manage_state delegation handlers
 // ============================================
 
 func TestCoverageGroupA_handlePilotManageStateLoad(t *testing.T) {
@@ -1170,7 +1173,6 @@ func TestCoverageGroupA_handlePilotManageStateLoad(t *testing.T) {
 	if len(result.Content) == 0 {
 		t.Fatal("expected content in response")
 	}
-	// Should timeout since no extension
 	found := false
 	for _, c := range result.Content {
 		if strings.Contains(c.Text, "extension_timeout") || strings.Contains(c.Text, "Timeout") {
@@ -1199,7 +1201,6 @@ func TestCoverageGroupA_handlePilotManageStateLoad_NoName(t *testing.T) {
 		ID:      json.RawMessage(`11`),
 	}
 
-	// load requires snapshot_name
 	resp := mcp.toolHandler.handlePilotManageStateLoad(req, json.RawMessage(`{}`))
 	var result MCPToolResult
 	json.Unmarshal(resp.Result, &result)
@@ -1241,7 +1242,6 @@ func TestCoverageGroupA_handlePilotManageStateList(t *testing.T) {
 	if len(result.Content) == 0 {
 		t.Fatal("expected content in response")
 	}
-	// Should timeout since no extension
 	found := false
 	for _, c := range result.Content {
 		if strings.Contains(c.Text, "extension_timeout") || strings.Contains(c.Text, "Timeout") {
@@ -1324,7 +1324,7 @@ func TestCoverageGroupA_handlePilotManageStateDelete_NoName(t *testing.T) {
 }
 
 // ============================================
-// pilot.go — browser action handler: pilot disabled path
+// pilot.go -- browser action: pilot disabled / never connected
 // ============================================
 
 func TestCoverageGroupA_handleBrowserAction_PilotDisabled(t *testing.T) {
@@ -1333,7 +1333,6 @@ func TestCoverageGroupA_handleBrowserAction_PilotDisabled(t *testing.T) {
 	capture := NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
-	// Extension connected but pilot disabled
 	capture.mu.Lock()
 	capture.lastPollAt = time.Now()
 	capture.pilotEnabled = false
@@ -1368,7 +1367,6 @@ func TestCoverageGroupA_handleBrowserAction_NeverConnected(t *testing.T) {
 	capture := NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
-	// Never connected (default state)
 	req := JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      json.RawMessage(`21`),
@@ -1393,7 +1391,7 @@ func TestCoverageGroupA_handleBrowserAction_NeverConnected(t *testing.T) {
 }
 
 // ============================================
-// pilot.go — handleBrowserAction invalid params
+// pilot.go -- handleBrowserAction validation
 // ============================================
 
 func TestCoverageGroupA_handleBrowserAction_InvalidJSON(t *testing.T) {
@@ -1504,7 +1502,7 @@ func TestCoverageGroupA_handleBrowserAction_NavigateNoURL(t *testing.T) {
 }
 
 // ============================================
-// pilot.go — handlePilotManageState validation paths
+// pilot.go -- handlePilotManageState validation
 // ============================================
 
 func TestCoverageGroupA_handlePilotManageState_InvalidJSON(t *testing.T) {
@@ -1601,7 +1599,6 @@ func TestCoverageGroupA_handlePilotManageState_SaveNoName(t *testing.T) {
 		ID:      json.RawMessage(`43`),
 	}
 
-	// "save" requires snapshot_name
 	resp := mcp.toolHandler.handlePilotManageState(req, json.RawMessage(`{"action":"save"}`))
 	var result MCPToolResult
 	json.Unmarshal(resp.Result, &result)
@@ -1618,7 +1615,7 @@ func TestCoverageGroupA_handlePilotManageState_SaveNoName(t *testing.T) {
 }
 
 // ============================================
-// pilot.go — handlePilotHighlight validation
+// pilot.go -- handlePilotHighlight validation
 // ============================================
 
 func TestCoverageGroupA_handlePilotHighlight_InvalidJSON(t *testing.T) {
@@ -1690,14 +1687,12 @@ func TestCoverageGroupA_handlePilotHighlight_WithDefaultDuration(t *testing.T) {
 		ID:      json.RawMessage(`52`),
 	}
 
-	// No duration_ms specified - should default to 5000
 	resp := mcp.toolHandler.handlePilotHighlight(req, json.RawMessage(`{"selector":".test-element"}`))
 	var result MCPToolResult
 	json.Unmarshal(resp.Result, &result)
 	if len(result.Content) == 0 {
 		t.Fatal("expected content in response")
 	}
-	// Should timeout since no extension
 	found := false
 	for _, c := range result.Content {
 		if strings.Contains(c.Text, "extension_timeout") || strings.Contains(c.Text, "Timeout") {
@@ -1711,7 +1706,7 @@ func TestCoverageGroupA_handlePilotHighlight_WithDefaultDuration(t *testing.T) {
 }
 
 // ============================================
-// pilot.go — handlePilotExecuteJS validation
+// pilot.go -- handlePilotExecuteJS validation
 // ============================================
 
 func TestCoverageGroupA_handlePilotExecuteJS_InvalidJSON(t *testing.T) {
@@ -1788,7 +1783,6 @@ func TestCoverageGroupA_handlePilotExecuteJS_AsyncResponse(t *testing.T) {
 	if len(result.Content) == 0 {
 		t.Fatal("expected content in response")
 	}
-	// Execute JS is async - should return queued status with correlation_id
 	found := false
 	for _, c := range result.Content {
 		if strings.Contains(c.Text, "queued") || strings.Contains(c.Text, "correlation_id") {
@@ -1807,7 +1801,6 @@ func TestCoverageGroupA_handlePilotExecuteJS_PilotDisabled(t *testing.T) {
 	capture := NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
-	// Connected but pilot disabled
 	capture.mu.Lock()
 	capture.lastPollAt = time.Now()
 	capture.pilotEnabled = false

@@ -166,6 +166,7 @@ func TestCoverageGroupC_jsonResponse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			rec := httptest.NewRecorder()
@@ -407,6 +408,7 @@ func TestCoverageGroupC_extractLocatorDesc(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := extractLocatorDesc(tt.locator)
@@ -439,6 +441,7 @@ func TestCoverageGroupC_extractPageName(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := extractPageName(tt.url)
@@ -709,6 +712,7 @@ func TestCoverageGroupC_detectCBOR(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := detectCBOR(tt.data)
@@ -768,6 +772,7 @@ func TestCoverageGroupC_detectProtobuf(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := detectProtobuf(tt.data)
@@ -820,6 +825,7 @@ func TestCoverageGroupC_detectBSON(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := detectBSON(tt.data)
@@ -898,6 +904,7 @@ func TestCoverageGroupC_detectMessagePack(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := detectMessagePack(tt.data)
@@ -1235,6 +1242,7 @@ func TestCoverageGroupC_calcUtilization(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := calcUtilization(tt.entries, tt.capacity)
@@ -1325,6 +1333,7 @@ func TestCoverageGroupC_entryDisplay(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := entryDisplay(tt.entry, tt.key)
@@ -1594,6 +1603,7 @@ func TestCoverageGroupC_isExpiredByTTL(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := isExpiredByTTL(tt.addedAt, tt.ttl)
