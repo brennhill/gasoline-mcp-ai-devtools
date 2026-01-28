@@ -1,7 +1,8 @@
 # Implementation Plan: Enhanced CLI Configuration Management
 
-**Timeline:** 12-16 hours (developer time)
+**Timeline:** 24-30 hours (developer time for both NPM + PyPI)
 **Test-Driven Approach:** Write tests first, implement after tests pass
+**Strategy:** Implement NPM wrapper first (fully tested), then port to Python with parallel testing
 
 ---
 
@@ -9,16 +10,25 @@
 
 | Phase | Task | Time | Status |
 |-------|------|------|--------|
-| **Phase 0** | Setup + Test Framework | 1 hour | TODO |
-| **Phase 1** | Refactor Existing Code | 1 hour | TODO |
-| **Phase 2** | Implement --dry-run | 2 hours | TODO |
-| **Phase 3** | Implement --doctor | 2 hours | TODO |
-| **Phase 4** | Implement --for-all | 1.5 hours | TODO |
-| **Phase 5** | Implement --env | 1.5 hours | TODO |
-| **Phase 6** | Implement --uninstall | 2 hours | TODO |
-| **Phase 7** | Error Messages + Testing | 2 hours | TODO |
-| **Phase 8** | Integration Testing + UAT | 3 hours | TODO |
-| **Total** | | **15.5 hours** | |
+| **Phase 0** | NPM Setup + Test Framework | 1 hour | TODO |
+| **Phase 1** | NPM Refactor Existing Code | 1 hour | TODO |
+| **Phase 2** | NPM Implement --dry-run | 2 hours | TODO |
+| **Phase 3** | NPM Implement --doctor | 2 hours | TODO |
+| **Phase 4** | NPM Implement --for-all | 1.5 hours | TODO |
+| **Phase 5** | NPM Implement --env | 1.5 hours | TODO |
+| **Phase 6** | NPM Implement --uninstall | 2 hours | TODO |
+| **Phase 7** | NPM Error Messages + Testing | 2 hours | TODO |
+| **Phase 8** | NPM Integration Testing + UAT | 2 hours | TODO |
+| **Phase 9** | Python Setup + Port from NPM | 1.5 hours | TODO |
+| **Phase 10** | Python Testing + UAT | 2 hours | TODO |
+| **Phase 11** | Feature Parity Verification | 1.5 hours | TODO |
+| **Total** | | **24 hours** | |
+
+**Notes:**
+- Phases 0-8: NPM wrapper (full implementation + testing)
+- Phases 9-11: Python wrapper (port + parity verification)
+- Both wrappers must produce identical output and behavior
+- Tests for Python written after implementation (mirroring NPM tests)
 
 ---
 
@@ -575,18 +585,196 @@ For each phase:
 
 ---
 
+## Phase 9: Python Setup + Port from NPM (1.5 hours)
+
+**Goal:** Create Python equivalents of all NPM modules with identical logic
+
+### Tasks
+
+1. **Create Python module structure**
+   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/config.py`
+     - Port `readConfigFile()`, `writeConfigFile()`, `validateMCPConfig()`, `getConfigCandidates()`
+     - Use Python `pathlib.Path` and `json` module
+     - Match Node.js behavior exactly (same defaults, same errors)
+
+   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/doctor.py`
+     - Port `runDiagnostics()`, `testBinary()`
+     - Use `subprocess.run()` for binary invocation
+     - Match Node.js error detection
+
+   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/install.py`
+     - Port `executeInstall()`, `mergeGassolineConfig()`
+     - Handle dryRun, forAll, envVars options identically
+
+   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/uninstall.py`
+     - Port `executeUninstall()`
+     - Preserve other MCP servers
+
+   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/output.py`
+     - Port all formatters: success, error, info, warning
+     - Ensure emoji output matches NPM version
+
+   - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/errors.py`
+     - Define error classes and messages
+     - Use same error message catalog as NPM
+
+2. **Update entry point**
+   - [ ] Modify `pypi/gasoline-mcp/gasoline_mcp/__main__.py`
+     - Add CLI argument parsing (similar to NPM)
+     - Route commands to handlers (--config, --install, --doctor, etc.)
+     - Call binary for non-config commands
+
+3. **Verify imports work**
+   - [ ] All Python modules import correctly
+   - [ ] No missing stdlib imports
+   - [ ] Entry point executable: `python -m gasoline_mcp`
+
+### Key Porting Rules
+
+1. **Use pathlib.Path over os.path**
+   ```python
+   # Python idiomatic
+   from pathlib import Path
+   home = Path.home()
+   config_path = home / '.claude' / 'claude.mcp.json'
+   ```
+
+2. **Use json module**
+   ```python
+   import json
+   with open(config_path) as f:
+       config = json.load(f)
+   ```
+
+3. **Atomic writes (same as Node.js)**
+   ```python
+   import tempfile
+   with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp:
+       json.dump(config, tmp)
+       temp_path = tmp.name
+   os.replace(temp_path, config_path)  # Atomic
+   ```
+
+4. **Subprocess for binary invocation**
+   ```python
+   import subprocess
+   result = subprocess.run([binary, '--version'], capture_output=True, text=True)
+   ```
+
+### Deliverables
+
+- 6 Python modules in `pypi/gasoline-mcp/gasoline_mcp/`
+- Updated `__main__.py` with CLI routing
+- All modules use stdlib only (no new dependencies)
+- Python code structure mirrors NPM logic
+
+---
+
+## Phase 10: Python Testing + UAT (2 hours)
+
+**Goal:** Verify Python implementation works correctly
+
+### Tasks
+
+1. **Unit tests (mirror NPM tests)**
+   - [ ] Create `tests/cli/python/` directory
+   - [ ] Create test files:
+     - `test_config.py` - Config utilities
+     - `test_install.py` - Install flow
+     - `test_doctor.py` - Doctor diagnostics
+     - `test_uninstall.py` - Uninstall flow
+     - `test_cli.py` - CLI argument parsing
+   - [ ] All tests pass (same coverage as NPM)
+
+2. **Manual UAT (same 7 scenarios)**
+   - [ ] Install via `pip install gasoline-mcp`
+   - [ ] Run all 7 UAT scenarios (Scenario 1-7 from QA_PLAN)
+   - [ ] Verify output matches NPM version exactly
+
+3. **Cross-platform testing**
+   - [ ] Python on macOS (if available)
+   - [ ] Python on Linux (CI should cover)
+   - [ ] Python on Windows (if available)
+
+### Deliverables
+
+- All unit tests passing
+- All 7 UAT scenarios passing
+- Cross-platform verification
+
+---
+
+## Phase 11: Feature Parity Verification (1.5 hours)
+
+**Goal:** Ensure NPM and Python wrappers are identical
+
+### Tasks
+
+1. **Output comparison**
+   - [ ] Run same command in NPM and Python wrapper
+   - [ ] Compare output byte-for-byte (same messages, emojis, line endings)
+   - [ ] Test cases:
+     - `--config` output identical
+     - `--install` messages identical
+     - `--doctor` report format identical
+     - `--help` text identical
+     - Error messages identical
+
+2. **Behavior verification**
+   - [ ] `--install` both update first tool (without --for-all)
+     - Verify only one config file modified
+   - [ ] `--install --for-all` both update all 4 tools
+     - Verify all configs modified
+   - [ ] `--dry-run` both preview without writing
+     - Verify no files written in both
+   - [ ] `--env` parsing identical
+     - Same validation, same error messages
+   - [ ] `--doctor` diagnostics identical
+     - Same checks, same status symbols
+
+3. **Error parity**
+   - [ ] Permission denied errors identical
+   - [ ] Invalid JSON errors identical
+   - [ ] Binary not found errors identical
+   - [ ] Recovery suggestions identical
+
+4. **CI/CD verification**
+   - [ ] Both npm and pip releases build correctly
+   - [ ] CI passes for both wrappers
+   - [ ] PyPI package installs without errors
+
+### Deliverables
+
+- Parity verification checklist complete
+- Both wrappers produce identical output
+- Both wrappers have identical behavior
+- CI/CD passes for both
+
+---
+
 ## Success Criteria
 
 ✅ **Implementation is complete when:**
 
-1. All 8 phases finished and tested
-2. All automated tests passing (unit + integration)
-3. All 7 UAT scenarios passing
-4. Backward compatibility verified (v5.2 still works)
-5. Cross-platform tested (macOS, Linux, Windows)
-6. Performance baselines met (all commands < 1 second)
-7. Code review passed
-8. Ready for v5.3.0 release
+1. **NPM Wrapper (Phases 0-8)**
+   - All 8 phases finished and tested
+   - All automated tests passing (unit + integration)
+   - All 7 UAT scenarios passing
+   - Backward compatibility verified
+
+2. **Python Wrapper (Phases 9-11)**
+   - All Python modules created and tested
+   - All 7 UAT scenarios passing with Python
+   - Feature parity verified (output identical)
+   - Python on multiple platforms tested
+
+3. **Cross-Wrapper**
+   - Both wrappers produce identical output
+   - Both wrappers have identical behavior
+   - Performance baselines met (all commands < 1 second)
+   - Code review passed for both
+   - CI/CD passes for both
+   - Ready for v5.3.0 release on both NPM and PyPI
 
 ---
 

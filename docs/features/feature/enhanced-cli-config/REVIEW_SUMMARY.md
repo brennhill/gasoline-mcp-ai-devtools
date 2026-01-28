@@ -8,9 +8,11 @@
 
 ## Executive Summary
 
-Both specs are **production-ready and implementable** with zero external dependencies. No critical gaps found. Feature solves genuine user pain points (multi-tool config, diagnostics, safe installation).
+Both specs are **production-ready and implementable** with zero external dependencies for **both NPM and PyPI wrappers**. No critical gaps found. Feature solves genuine user pain points (multi-tool config, diagnostics, safe installation).
 
-**Key Finding:** Message quality and a few edge case clarifications are the only improvements needed before implementation.
+**Key Finding:** Message quality and a few edge case clarifications are the only improvements needed before implementation. Both wrappers must be updated with feature parity.
+
+**Update:** Specs now clarify that both `npm/gasoline-mcp/` and `pypi/gasoline-mcp/` wrappers must be enhanced with identical CLI commands.
 
 ---
 
@@ -308,22 +310,45 @@ During implementation:
 
 ## Files to Update
 
-1. `/Users/brenn/dev/gasoline/docs/features/feature/enhanced-cli-config/TECH_SPEC.md`
-   - Add Windows, symlink, file size, env var security clarifications
+### Specs (Already Updated)
+1. ✅ `/Users/brenn/dev/gasoline/docs/features/feature/enhanced-cli-config/PRODUCT_SPEC.md`
+   - ✅ Clarified both NPM and PyPI wrappers
+   - ✅ Updated examples and error scenarios
 
-2. `/Users/brenn/dev/gasoline/docs/features/feature/enhanced-cli-config/PRODUCT_SPEC.md`
-   - Improve message examples (copy from this document)
-   - Add security caution for API keys
+2. ✅ `/Users/brenn/dev/gasoline/docs/features/feature/enhanced-cli-config/TECH_SPEC.md`
+   - ✅ Added Python wrapper implementation details
+   - ✅ Added Windows, symlink, file size clarifications
+   - ✅ Documented feature parity requirement
 
-3. `/Users/brenn/dev/gasoline/docs/features/feature/enhanced-cli-config/QA_PLAN.md`
-   - Add backward compat test cases
-   - Add race condition scenario
-   - Add time estimates
+3. ✅ `/Users/brenn/dev/gasoline/docs/features/feature/enhanced-cli-config/QA_PLAN.md`
+   - ✅ Added backward compat test cases
+   - ✅ Added race condition scenario
+   - ✅ Added time estimates for all scenarios
 
-4. Create new: `/Users/brenn/dev/gasoline/docs/features/feature/enhanced-cli-config/IMPLEMENTATION_PLAN.md`
-   - Error message catalog
-   - Module structure
-   - 7-phase implementation roadmap
+4. ✅ `/Users/brenn/dev/gasoline/docs/features/feature/enhanced-cli-config/IMPLEMENTATION_PLAN.md`
+   - ✅ Added Phase 9-11 for Python wrapper
+   - ✅ Extended timeline to 24 hours (both wrappers)
+   - ✅ Added Python porting rules and parity verification
+
+### Code Files to Implement
+
+**NPM Wrapper:**
+- `npm/gasoline-mcp/bin/gasoline-mcp` (CLI entry point)
+- `npm/gasoline-mcp/lib/config.js` (config utilities)
+- `npm/gasoline-mcp/lib/doctor.js` (diagnostics)
+- `npm/gasoline-mcp/lib/install.js` (install logic)
+- `npm/gasoline-mcp/lib/uninstall.js` (uninstall logic)
+- `npm/gasoline-mcp/lib/output.js` (formatters)
+- `npm/gasoline-mcp/lib/errors.js` (error classes)
+
+**PyPI Wrapper:**
+- `pypi/gasoline-mcp/gasoline_mcp/__main__.py` (CLI entry point)
+- `pypi/gasoline-mcp/gasoline_mcp/config.py` (config utilities)
+- `pypi/gasoline-mcp/gasoline_mcp/doctor.py` (diagnostics)
+- `pypi/gasoline-mcp/gasoline_mcp/install.py` (install logic)
+- `pypi/gasoline-mcp/gasoline_mcp/uninstall.py` (uninstall logic)
+- `pypi/gasoline-mcp/gasoline_mcp/output.py` (formatters)
+- `pypi/gasoline-mcp/gasoline_mcp/errors.py` (error classes)
 
 ---
 

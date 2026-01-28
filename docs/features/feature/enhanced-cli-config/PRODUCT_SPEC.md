@@ -10,14 +10,14 @@ version: v5.3
 
 ## Problem Statement
 
-Users installing Gasoline MCP need to:
+Users installing Gasoline MCP (via NPM or PyPI) need to:
 1. Configure it across multiple AI assistant tools (Claude Desktop, VSCode, Cursor, Codeium)
 2. Verify the configuration is correct before committing changes
 3. Diagnose connection/installation issues when things go wrong
 4. Manage environment variables for different deployment scenarios
 5. Uninstall Gasoline cleanly if needed
 
-The current implementation (`--config`, `--install`) is functional but incomplete:
+The current implementation (`--config`, `--install`) is functional but incomplete in both wrappers:
 - **No preview mode**: Users can't see what changes will be made before committing
 - **No diagnostics**: When installation fails, users have no way to troubleshoot
 - **Single-tool support**: Only first matching config file gets updated; other tools left out
@@ -270,7 +270,9 @@ gasoline-mcp --install
 
 ## Notes
 
-- Related: `.claude/docs/architecture.md` (4-tool MCP constraint)
-- Related: `npm/gasoline-mcp/package.json` (distribution)
-- Building on: v5.2.0 CLI foundation (`--config`, `--install`)
-- Test reference: `tests/extension/` (use as model for new tests)
+- **Distribution**: Both NPM (`npm/gasoline-mcp/`) and PyPI (`pypi/gasoline-mcp/`) wrappers must be updated with feature parity
+- **NPM Entry Point**: `npm/gasoline-mcp/bin/gasoline-mcp` (Node.js)
+- **PyPI Entry Point**: `pypi/gasoline-mcp/gasoline_mcp/__main__.py` (Python)
+- **Related**: `.claude/docs/architecture.md` (4-tool MCP constraint)
+- **Building on**: v5.2.0 CLI foundation (`--config`, `--install`)
+- **Test reference**: `tests/extension/` (use as model for new tests)

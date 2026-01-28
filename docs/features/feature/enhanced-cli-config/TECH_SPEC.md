@@ -9,21 +9,60 @@ status: proposed
 
 ## Architecture Overview
 
-The enhancement extends `npm/gasoline-mcp/bin/gasoline-mcp` (Node.js CLI entry point) with four new command handlers and shared utility functions for config management, validation, and file I/O.
+The enhancement extends **both wrappers** with the same CLI commands:
 
-Current structure:
+### NPM Wrapper (`npm/gasoline-mcp/bin/gasoline-mcp`)
+Node.js CLI entry point. Current structure:
 - **Lines 32-68**: `findBinary()` - Locates gasoline binary on disk
 - **Lines 70-81**: `generateMCPConfig()` - Builds MCP config object
 - **Lines 83-102**: `showConfigCommand()` - Displays config template + locations
 - **Lines 104-151**: `installCommand()` - Writes config to first matching location
 - **Lines 153-169**: Command routing (--config, --install, --help)
 
-New additions needed:
-- Shared utility functions for config file operations
+### PyPI Wrapper (`pypi/gasoline-mcp/gasoline_mcp/__main__.py`)
+Python CLI entry point. Current structure:
+- **Lines 1-12**: Entry point that calls `run()` function
+- Related: `pypi/gasoline-mcp/gasoline_mcp/platform.py` has `get_binary_path()` and `run()` functions
+
+### New additions (both wrappers)
+- Shared utility functions for config file operations (JSON read/write/validate)
 - Command handlers for: `--dry-run`, `--doctor`, `--uninstall`, `--for-all`, `--env`
-- Refactored `installCommand()` to support `--dry-run` and `--for-all`
+- Refactored install logic to support `--dry-run` and `--for-all`
 - New error handling with recovery suggestions
 - Verbose logging support
+- **Feature parity**: Both wrappers must behave identically
+
+## Implementation: NPM vs. Python
+
+### NPM (Node.js)
+- **Language**: JavaScript (Node.js stdlib)
+- **Location**: `npm/gasoline-mcp/bin/gasoline-mcp`
+- **Modules**: `lib/config.js`, `lib/doctor.js`, `lib/install.js`, `lib/uninstall.js`, `lib/output.js`, `lib/errors.js`
+- **File I/O**: `fs` module
+- **JSON**: Built-in `JSON.parse()` and `JSON.stringify()`
+
+### Python
+- **Language**: Python 3 (stdlib only)
+- **Location**: `pypi/gasoline-mcp/gasoline_mcp/__main__.py` (entry point) + new module files
+- **Modules**:
+  - `pypi/gasoline-mcp/gasoline_mcp/config.py` (config utilities)
+  - `pypi/gasoline-mcp/gasoline_mcp/doctor.py` (diagnostics)
+  - `pypi/gasoline-mcp/gasoline_mcp/install.py` (install logic)
+  - `pypi/gasoline-mcp/gasoline_mcp/uninstall.py` (uninstall logic)
+  - `pypi/gasoline-mcp/gasoline_mcp/output.py` (formatters)
+  - `pypi/gasoline-mcp/gasoline_mcp/errors.py` (error classes)
+- **File I/O**: `pathlib.Path` or `os`/`open()`
+- **JSON**: Built-in `json` module
+- **Entry Point**: Updated `__main__.py` to parse CLI args and route commands
+
+### Feature Parity Requirement
+Both wrappers must:
+- Accept same command flags (`--config`, `--install`, `--doctor`, `--uninstall`, `--dry-run`, `--for-all`, `--env`, `--verbose`, `--help`)
+- Produce identical output (same messages, same emojis, same error text)
+- Behave identically (same logic, same edge case handling)
+- Use same config file locations (hardcoded paths, not user input)
+
+---
 
 ## Key Components
 
