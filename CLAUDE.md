@@ -36,6 +36,7 @@ make dev                               # Build current platform
 ## Docs
 
 See `.claude/docs/` for:
+- **Spec Standards** — Where specs live, what they must contain. See [spec-standards.md](.claude/docs/spec-standards.md) — **START HERE** before creating any spec
 - **Spec Review** — MANDATORY principal engineer review before implementation
 - **Architecture** — 4-tool constraint, data flows, security, concurrency
 - **Development** — TDD workflow, testing, code style
