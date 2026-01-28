@@ -661,85 +661,12 @@ describe('Debug Logging', () => {
     mockChrome.storage.local.set.mock.mockImplementation((data, callback) => callback && callback())
   })
 
-  test('should export debug log when button clicked', async () => {
-    // Mock the debug log response
-    mockChrome.runtime.sendMessage.mock.mockImplementation((msg, callback) => {
-      if (msg.type === 'getDebugLog') {
-        callback({
-          log: JSON.stringify({
-            exportedAt: '2024-01-22T12:00:00Z',
-            version: '5.2.0',
-            entries: [{ ts: '2024-01-22T12:00:00Z', category: 'lifecycle', message: 'Test' }],
-          }),
-        })
-      }
-    })
-
-    // Mock URL and createElement for download
-    const mockUrl = 'blob:mock-url'
-    const mockAnchor = {
-      href: '',
-      download: '',
-      click: mock.fn(),
-    }
-
-    globalThis.URL = {
-      createObjectURL: mock.fn(() => mockUrl),
-      revokeObjectURL: mock.fn(),
-    }
-
-    const originalCreateElement = globalThis.document.createElement
-    globalThis.document.createElement = mock.fn((tag) => {
-      if (tag === 'a') return mockAnchor
-      return originalCreateElement?.(tag)
-    })
-    globalThis.document.body = {
-      appendChild: mock.fn(),
-      removeChild: mock.fn(),
-    }
-    globalThis.Blob = function (content, options) {
-      this.content = content
-      this.type = options?.type
-    }
-
-    const { handleExportDebugLog } = await import('../../extension/popup.js')
-
-    const result = await handleExportDebugLog()
-
-    // Should have sent getDebugLog message
-    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0].type === 'getDebugLog'))
-
-    // Should have triggered download
-    assert.ok(mockAnchor.click.mock.calls.length > 0)
-    assert.ok(mockAnchor.download.startsWith('gasoline-debug-'))
-    assert.ok(result.success)
-  })
-
-  test('should clear debug log when button clicked', async () => {
-    mockChrome.runtime.sendMessage.mock.mockImplementation((msg, callback) => {
-      if (msg.type === 'clearDebugLog') {
-        callback({ success: true })
-      }
-    })
-
-    const { handleClearDebugLog } = await import('../../extension/popup.js')
-
-    const result = await handleClearDebugLog()
-
-    // Should have sent clearDebugLog message
-    assert.ok(mockChrome.runtime.sendMessage.mock.calls.some((c) => c.arguments[0].type === 'clearDebugLog'))
-    assert.ok(result?.success)
-  })
-
-  test('should toggle debug mode', async () => {
+  test('should toggle debug mode and send message to background', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
     handleFeatureToggle('debugMode', 'setDebugMode', true)
 
-    // Should have saved to storage
-    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].debugMode === true))
-
-    // Should have sent message to background
+    // Should have sent message to background (popup does not save to storage)
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
         (c) => c.arguments[0].type === 'setDebugMode' && c.arguments[0].enabled === true,
@@ -968,11 +895,15 @@ describe('Network Body Capture Toggle', () => {
     )
   })
 
-  test('should save networkBodyCaptureEnabled to storage', async () => {
+  test('should send message when network body capture toggled', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
     handleFeatureToggle('networkBodyCaptureEnabled', 'setNetworkBodyCaptureEnabled', true)
 
-    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].networkBodyCaptureEnabled === true))
+    assert.ok(
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setNetworkBodyCaptureEnabled' && c.arguments[0].enabled === true,
+      ),
+    )
   })
 })

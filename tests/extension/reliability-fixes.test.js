@@ -11,7 +11,7 @@
  *   6. errorGroups periodic cleanup (TTL enforcement)
  */
 
-import { test, describe, mock, beforeEach, afterEach as _afterEach } from 'node:test'
+import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 
 // Mock Chrome APIs
@@ -86,6 +86,13 @@ describe('Issue 1: _processingQueries TTL-based cleanup', () => {
   beforeEach(async () => {
     mock.reset()
     bgModule = await import('../../extension/background.js')
+  })
+
+  afterEach(() => {
+    // Stop polling and clear any pending intervals to prevent async activity after test
+    if (bgModule?.stopQueryPolling) {
+      bgModule.stopQueryPolling()
+    }
   })
 
   test('should export getProcessingQueriesState for testing', () => {
