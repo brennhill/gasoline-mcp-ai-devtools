@@ -98,6 +98,10 @@ let _aiWebPilotCacheInitialized = false // Track when async init completes
 let _pilotInitCallback = null // Callback to invoke when init is complete
 const _pilotLoadStartTime = performance.now()
 
+// Issue 5 fix: Mutex flag to prevent multiple simultaneous checkConnectionAndUpdate executions
+// MOVED UP: Must be declared before module-level code that calls checkConnectionAndUpdate()
+let _connectionCheckRunning = false
+
 // Load AI Web Pilot state from chrome.storage.local on startup
 // CRITICAL: This is async, so polling won't start until this callback fires
 if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -2293,9 +2297,6 @@ async function handleClearLogs() {
     return { success: false, error: error.message }
   }
 }
-
-// Issue 5 fix: Mutex flag to prevent multiple simultaneous checkConnectionAndUpdate executions
-let _connectionCheckRunning = false
 
 /**
  * Check if a connection check is currently running (for testing)
