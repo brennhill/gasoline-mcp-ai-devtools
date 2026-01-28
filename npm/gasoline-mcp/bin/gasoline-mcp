@@ -67,10 +67,111 @@ function findBinary() {
   process.exit(1);
 }
 
+function generateMCPConfig() {
+  const config = {
+    mcpServers: {
+      gasoline: {
+        command: 'gasoline-mcp',
+        args: [],
+        env: {}
+      }
+    }
+  };
+  return config;
+}
+
+function showConfigCommand() {
+  const config = generateMCPConfig();
+  console.log('📋 Gasoline MCP Configuration\n');
+  console.log('Add this to your Claude settings file:\n');
+  console.log(JSON.stringify(config, null, 2));
+  console.log('\n📍 Configuration Locations:');
+  console.log('');
+  console.log('Claude Code (VSCode):');
+  console.log('  ~/.vscode/claude.mcp.json');
+  console.log('');
+  console.log('Claude Desktop App:');
+  console.log(`  ${os.platform() === 'win32' ? '%APPDATA%' : '~'}/.claude/claude.mcp.json`);
+  console.log('');
+  console.log('Cursor:');
+  console.log('  ~/.cursor/mcp.json');
+  console.log('');
+  console.log('Codeium:');
+  console.log('  ~/.codeium/mcp.json');
+  process.exit(0);
+}
+
+function installCommand() {
+  const config = generateMCPConfig();
+  const homeDir = os.homedir();
+
+  // Potential config file locations
+  const candidates = [
+    path.join(homeDir, '.claude', 'claude.mcp.json'),
+    path.join(homeDir, '.vscode', 'claude.mcp.json'),
+    path.join(homeDir, '.cursor', 'mcp.json'),
+    path.join(homeDir, '.codeium', 'mcp.json'),
+  ];
+
+  let installed = false;
+  for (const configPath of candidates) {
+    const dir = path.dirname(configPath);
+    if (fs.existsSync(configPath)) {
+      try {
+        const existing = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        existing.mcpServers = existing.mcpServers || {};
+        existing.mcpServers.gasoline = config.mcpServers.gasoline;
+        fs.writeFileSync(configPath, JSON.stringify(existing, null, 2));
+        console.log(`✅ Updated: ${configPath}`);
+        installed = true;
+        break;
+      } catch (e) {
+        console.error(`❌ Failed to update ${configPath}: ${e.message}`);
+      }
+    }
+  }
+
+  if (!installed) {
+    // Create in .claude directory
+    const defaultPath = path.join(homeDir, '.claude', 'claude.mcp.json');
+    try {
+      fs.mkdirSync(path.dirname(defaultPath), { recursive: true });
+      fs.writeFileSync(defaultPath, JSON.stringify(config, null, 2));
+      console.log(`✅ Created: ${defaultPath}`);
+    } catch (e) {
+      console.error(`❌ Failed to create config: ${e.message}`);
+      console.log('\nManually add this to your config:\n');
+      showConfigCommand();
+      process.exit(1);
+    }
+  }
+
+  console.log('\n✨ Gasoline MCP is ready to use!');
+  process.exit(0);
+}
+
+// Handle special commands
+const args = process.argv.slice(2);
+if (args.includes('--config') || args.includes('-c')) {
+  showConfigCommand();
+}
+if (args.includes('--install') || args.includes('-i')) {
+  installCommand();
+}
+if (args.includes('--help') || args.includes('-h')) {
+  console.log('Gasoline MCP Server\n');
+  console.log('Usage: gasoline-mcp [command]\n');
+  console.log('Commands:');
+  console.log('  --config, -c    Show MCP configuration and where to put it');
+  console.log('  --install, -i   Auto-install to your AI assistant config');
+  console.log('  --help, -h      Show this help message\n');
+  process.exit(0);
+}
+
 const binary = findBinary();
 
 try {
-  const result = execFileSync(binary, process.argv.slice(2), {
+  const result = execFileSync(binary, args, {
     stdio: 'inherit',
     env: process.env,
   });
