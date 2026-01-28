@@ -53,8 +53,8 @@ func TestCaptureOverridesInvalidSettingName(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid setting name")
 	}
-	if !strings.Contains(err.Error(), "Unknown capture setting") {
-		t.Fatalf("expected 'Unknown capture setting' error, got: %v", err)
+	if !strings.Contains(err.Error(), "unknown capture setting") {
+		t.Fatalf("expected 'unknown capture setting' error, got: %v", err)
 	}
 	if !strings.Contains(err.Error(), "log_level") {
 		t.Fatalf("error should list valid settings, got: %v", err)
@@ -68,8 +68,8 @@ func TestCaptureOverridesInvalidSettingValue(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid setting value")
 	}
-	if !strings.Contains(err.Error(), "Invalid value") {
-		t.Fatalf("expected 'Invalid value' error, got: %v", err)
+	if !strings.Contains(err.Error(), "invalid value") {
+		t.Fatalf("expected 'invalid value' error, got: %v", err)
 	}
 	if !strings.Contains(err.Error(), "error, warn, all") {
 		t.Fatalf("error should list valid values, got: %v", err)
@@ -165,7 +165,7 @@ func TestCaptureOverridesRateLimitSecondChangeWithinOneSecond(t *testing.T) {
 	if err == nil {
 		t.Fatal("second change within 1s should be rate-limited")
 	}
-	if !strings.Contains(err.Error(), "Rate limited") {
+	if !strings.Contains(err.Error(), "rate limited") {
 		t.Fatalf("expected rate limit error, got: %v", err)
 	}
 }
@@ -706,7 +706,7 @@ func TestConfigureCaptureRateLimited(t *testing.T) {
 	if err == "" {
 		t.Fatal("expected rate limit error on second call within 1s")
 	}
-	if !strings.Contains(err, "Rate limited") {
+	if !strings.Contains(err, "rate limited") {
 		t.Fatalf("expected rate limit error, got: %s", err)
 	}
 }
