@@ -18,6 +18,7 @@ const createMockChrome = () => ({
   },
   tabs: {
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1, url: 'http://localhost:3000' }])),
+    get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
     sendMessage: mock.fn((_tabId, _message) => Promise.resolve()),
   },
   scripting: {

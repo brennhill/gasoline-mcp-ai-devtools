@@ -62,7 +62,8 @@ const mockChrome = {
     },
   },
   tabs: {
-    query: mock.fn((query, callback) => callback([{ id: 1 }])),
+    query: mock.fn((query, callback) => callback([{ id: 1, url: 'http://localhost:3000' }])),
+    get: mock.fn((tabId) => Promise.resolve({ id: tabId, url: 'http://localhost:3000' })),
     sendMessage: mock.fn(() => Promise.resolve()),
     onRemoved: { addListener: mock.fn() },
   },
@@ -202,8 +203,9 @@ describe('AI Web Pilot Command Gating', () => {
       callback({ aiWebPilotEnabled: false })
     })
 
-    const { isAiWebPilotEnabled } = await import('../../extension/background.js')
+    const { isAiWebPilotEnabled, _resetPilotCacheForTesting } = await import('../../extension/background.js')
 
+    _resetPilotCacheForTesting(false)
     const enabled = await isAiWebPilotEnabled()
     assert.strictEqual(enabled, false, 'Should return false when toggle is off')
   })
@@ -213,8 +215,9 @@ describe('AI Web Pilot Command Gating', () => {
       callback({}) // No value set
     })
 
-    const { isAiWebPilotEnabled } = await import('../../extension/background.js')
+    const { isAiWebPilotEnabled, _resetPilotCacheForTesting } = await import('../../extension/background.js')
 
+    _resetPilotCacheForTesting(false)
     const enabled = await isAiWebPilotEnabled()
     assert.strictEqual(enabled, false, 'Should return false when toggle is undefined')
   })
@@ -246,6 +249,9 @@ describe('Pilot Commands Rejection When Disabled', () => {
     mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: false })
     })
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({ aiWebPilotEnabled: false })
+    })
 
     const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
     _resetPilotCacheForTesting(false)
@@ -260,6 +266,9 @@ describe('Pilot Commands Rejection When Disabled', () => {
     mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: false })
     })
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
+      callback({ aiWebPilotEnabled: false })
+    })
 
     const { handlePilotCommand, _resetPilotCacheForTesting } = await import('../../extension/background.js')
     _resetPilotCacheForTesting(false)
@@ -272,6 +281,9 @@ describe('Pilot Commands Rejection When Disabled', () => {
 
   test('GASOLINE_EXECUTE_JS command should return error when pilot disabled', async () => {
     mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
+      callback({ aiWebPilotEnabled: false })
+    })
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: false })
     })
 
