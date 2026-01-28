@@ -5,6 +5,18 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+// Import lib modules
+const config = require('../lib/config');
+const output = require('../lib/output');
+const install = require('../lib/install');
+const doctor = require('../lib/doctor');
+const uninstall = require('../lib/uninstall');
+const {
+  EnvWithoutInstallError,
+  ForAllWithoutInstallError,
+  InvalidEnvFormatError,
+} = require('../lib/errors');
+
 function getPlatformPackage() {
   const platform = os.platform();
   const arch = os.arch();
@@ -67,24 +79,11 @@ function findBinary() {
   process.exit(1);
 }
 
-function generateMCPConfig() {
-  const config = {
-    mcpServers: {
-      gasoline: {
-        command: 'gasoline-mcp',
-        args: [],
-        env: {}
-      }
-    }
-  };
-  return config;
-}
-
 function showConfigCommand() {
-  const config = generateMCPConfig();
+  const mcp = install.generateDefaultConfig();
   console.log('📋 Gasoline MCP Configuration\n');
   console.log('Add this to your Claude settings file:\n');
-  console.log(JSON.stringify(config, null, 2));
+  console.log(JSON.stringify(mcp, null, 2));
   console.log('\n📍 Configuration Locations:');
   console.log('');
   console.log('Claude Code (VSCode):');
@@ -101,73 +100,158 @@ function showConfigCommand() {
   process.exit(0);
 }
 
-function installCommand() {
-  const config = generateMCPConfig();
-  const homeDir = os.homedir();
+function installCommand(options) {
+  try {
+    const result = install.executeInstall(options);
 
-  // Potential config file locations
-  const candidates = [
-    path.join(homeDir, '.claude', 'claude.mcp.json'),
-    path.join(homeDir, '.vscode', 'claude.mcp.json'),
-    path.join(homeDir, '.cursor', 'mcp.json'),
-    path.join(homeDir, '.codeium', 'mcp.json'),
-  ];
+    if (result.success) {
+      if (options.dryRun) {
+        console.log(`ℹ️  Dry run: No files will be written\n`);
+      }
+      console.log(
+        output.installResult({
+          updated: result.updated,
+          total: result.total,
+          errors: result.errors,
+          notFound: result.updated.length > 0
+            ? []
+            : config.getConfigCandidates().map(config.getToolNameFromPath),
+        })
+      );
+      if (!options.dryRun) {
+        console.log('✨ Gasoline MCP is ready to use!');
+      }
+      process.exit(0);
+    } else {
+      console.error(output.error('Installation failed'));
+      result.errors.forEach(err => {
+        console.error(`  ${err.name}: ${err.message}`);
+        if (err.recovery) {
+          console.error(`  Recovery: ${err.recovery}`);
+        }
+      });
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error(err.format ? err.format() : `Error: ${err.message}`);
+    process.exit(1);
+  }
+}
 
-  let installed = false;
-  for (const configPath of candidates) {
-    const dir = path.dirname(configPath);
-    if (fs.existsSync(configPath)) {
+function doctorCommand(verbose) {
+  try {
+    const report = doctor.runDiagnostics(verbose);
+    console.log(output.diagnosticReport(report));
+    process.exit(0);
+  } catch (err) {
+    console.error(err.format ? err.format() : `Error: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+function uninstallCommand(dryRun, verbose) {
+  try {
+    const result = uninstall.executeUninstall({ dryRun, verbose });
+
+    if (dryRun) {
+      console.log(`ℹ️  Dry run: No files will be modified\n`);
+    }
+    console.log(output.uninstallResult(result));
+    process.exit(0);
+  } catch (err) {
+    console.error(err.format ? err.format() : `Error: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+function showHelp() {
+  console.log('Gasoline MCP Server\n');
+  console.log('Usage: gasoline-mcp [command] [options]\n');
+  console.log('Commands:');
+  console.log('  --config, -c          Show MCP configuration and where to put it');
+  console.log('  --install, -i         Auto-install to your AI assistant config');
+  console.log('  --doctor              Run diagnostics on installed configs');
+  console.log('  --uninstall           Remove Gasoline from configs');
+  console.log('  --help, -h            Show this help message\n');
+  console.log('Options (with --install):');
+  console.log('  --dry-run             Preview changes without writing files');
+  console.log('  --for-all             Install to all 4 tools (Claude, VSCode, Cursor, Codeium)');
+  console.log('  --env KEY=VALUE       Add environment variables to config (multiple allowed)');
+  console.log('  --verbose             Show detailed operation logs\n');
+  console.log('Options (with --uninstall):');
+  console.log('  --dry-run             Preview changes without writing files');
+  console.log('  --verbose             Show detailed operation logs\n');
+  console.log('Examples:');
+  console.log('  gasoline-mcp --install                # Install to first matching tool');
+  console.log('  gasoline-mcp --install --for-all      # Install to all 4 tools');
+  console.log('  gasoline-mcp --install --dry-run      # Preview without changes');
+  console.log('  gasoline-mcp --install --env DEBUG=1  # Install with env vars');
+  console.log('  gasoline-mcp --doctor                 # Check config health');
+  console.log('  gasoline-mcp --uninstall              # Remove from all tools\n');
+  process.exit(0);
+}
+
+// Parse CLI arguments
+const args = process.argv.slice(2);
+const verbose = args.includes('--verbose');
+const dryRun = args.includes('--dry-run');
+
+// Config command
+if (args.includes('--config') || args.includes('-c')) {
+  showConfigCommand();
+}
+
+// Install command
+if (args.includes('--install') || args.includes('-i')) {
+  // Validate flags
+  if (args.includes('--env') && !(args.includes('--install') || args.includes('-i'))) {
+    console.error(output.error('--env only works with --install', 'Usage: gasoline-mcp --install --env KEY=VALUE'));
+    process.exit(1);
+  }
+  if (args.includes('--for-all') && !(args.includes('--install') || args.includes('-i'))) {
+    console.error(output.error('--for-all only works with --install', 'Usage: gasoline-mcp --install --for-all'));
+    process.exit(1);
+  }
+
+  // Parse env vars
+  const envVars = {};
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--env' && i + 1 < args.length) {
       try {
-        const existing = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        existing.mcpServers = existing.mcpServers || {};
-        existing.mcpServers.gasoline = config.mcpServers.gasoline;
-        fs.writeFileSync(configPath, JSON.stringify(existing, null, 2));
-        console.log(`✅ Updated: ${configPath}`);
-        installed = true;
-        break;
-      } catch (e) {
-        console.error(`❌ Failed to update ${configPath}: ${e.message}`);
+        const parsed = config.parseEnvVar(args[i + 1]);
+        envVars[parsed.key] = parsed.value;
+      } catch (err) {
+        console.error(output.error(err.message, err.recovery));
+        process.exit(1);
       }
     }
   }
 
-  if (!installed) {
-    // Create in .claude directory
-    const defaultPath = path.join(homeDir, '.claude', 'claude.mcp.json');
-    try {
-      fs.mkdirSync(path.dirname(defaultPath), { recursive: true });
-      fs.writeFileSync(defaultPath, JSON.stringify(config, null, 2));
-      console.log(`✅ Created: ${defaultPath}`);
-    } catch (e) {
-      console.error(`❌ Failed to create config: ${e.message}`);
-      console.log('\nManually add this to your config:\n');
-      showConfigCommand();
-      process.exit(1);
-    }
-  }
-
-  console.log('\n✨ Gasoline MCP is ready to use!');
-  process.exit(0);
+  const options = {
+    dryRun,
+    forAll: args.includes('--for-all'),
+    envVars,
+    verbose,
+  };
+  installCommand(options);
 }
 
-// Handle special commands
-const args = process.argv.slice(2);
-if (args.includes('--config') || args.includes('-c')) {
-  showConfigCommand();
+// Doctor command
+if (args.includes('--doctor')) {
+  doctorCommand(verbose);
 }
-if (args.includes('--install') || args.includes('-i')) {
-  installCommand();
+
+// Uninstall command
+if (args.includes('--uninstall')) {
+  uninstallCommand(dryRun, verbose);
 }
+
+// Help command
 if (args.includes('--help') || args.includes('-h')) {
-  console.log('Gasoline MCP Server\n');
-  console.log('Usage: gasoline-mcp [command]\n');
-  console.log('Commands:');
-  console.log('  --config, -c    Show MCP configuration and where to put it');
-  console.log('  --install, -i   Auto-install to your AI assistant config');
-  console.log('  --help, -h      Show this help message\n');
-  process.exit(0);
+  showHelp();
 }
 
+// No config command, run the binary
 const binary = findBinary();
 
 try {
