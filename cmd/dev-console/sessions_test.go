@@ -61,6 +61,7 @@ func (m *mockCaptureState) GetCurrentPageURL() string {
 // ============================================
 
 func TestSessionManager_CaptureSnapshot(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "TypeError: cannot read null", Count: 1},
@@ -128,6 +129,7 @@ func TestSessionManager_CaptureSnapshot(t *testing.T) {
 }
 
 func TestSessionManager_CaptureWithURLFilter(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{
 		networkRequests: []SnapshotNetworkRequest{
 			{Method: "GET", URL: "/api/users", Status: 200},
@@ -152,6 +154,7 @@ func TestSessionManager_CaptureWithURLFilter(t *testing.T) {
 }
 
 func TestSessionManager_CaptureOverwritesDuplicate(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{
 		consoleErrors: []SnapshotError{
 			{Type: "console", Message: "Error one", Count: 1},
@@ -189,6 +192,7 @@ func TestSessionManager_CaptureOverwritesDuplicate(t *testing.T) {
 }
 
 func TestSessionManager_CaptureNameValidation(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -213,6 +217,7 @@ func TestSessionManager_CaptureNameValidation(t *testing.T) {
 }
 
 func TestSessionManager_CaptureEmptyState(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -237,6 +242,7 @@ func TestSessionManager_CaptureEmptyState(t *testing.T) {
 // ============================================
 
 func TestSessionManager_CompareDetectsNewErrors(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -267,6 +273,7 @@ func TestSessionManager_CompareDetectsNewErrors(t *testing.T) {
 }
 
 func TestSessionManager_CompareDetectsResolvedErrors(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -303,6 +310,7 @@ func TestSessionManager_CompareDetectsResolvedErrors(t *testing.T) {
 }
 
 func TestSessionManager_CompareDetectsNewNetworkCalls(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -331,6 +339,7 @@ func TestSessionManager_CompareDetectsNewNetworkCalls(t *testing.T) {
 }
 
 func TestSessionManager_CompareDetectsRemovedNetworkCalls(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -359,6 +368,7 @@ func TestSessionManager_CompareDetectsRemovedNetworkCalls(t *testing.T) {
 }
 
 func TestSessionManager_CompareDetectsStatusCodeChanges(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -390,6 +400,7 @@ func TestSessionManager_CompareDetectsStatusCodeChanges(t *testing.T) {
 }
 
 func TestSessionManager_CompareDetectsNewNetworkErrors(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -421,6 +432,7 @@ func TestSessionManager_CompareDetectsNewNetworkErrors(t *testing.T) {
 }
 
 func TestSessionManager_ComparePerformanceRegression(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -456,6 +468,7 @@ func TestSessionManager_ComparePerformanceRegression(t *testing.T) {
 }
 
 func TestSessionManager_CompareVsCurrent(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -485,6 +498,7 @@ func TestSessionManager_CompareVsCurrent(t *testing.T) {
 }
 
 func TestSessionManager_CompareNonExistentSnapshot(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -505,6 +519,7 @@ func TestSessionManager_CompareNonExistentSnapshot(t *testing.T) {
 // ============================================
 
 func TestSessionManager_VerdictImproved(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -528,6 +543,7 @@ func TestSessionManager_VerdictImproved(t *testing.T) {
 }
 
 func TestSessionManager_VerdictRegressed(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -550,6 +566,7 @@ func TestSessionManager_VerdictRegressed(t *testing.T) {
 }
 
 func TestSessionManager_VerdictRegressedByNetworkError(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -574,6 +591,7 @@ func TestSessionManager_VerdictRegressedByNetworkError(t *testing.T) {
 }
 
 func TestSessionManager_VerdictRegressedByPerformance(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -600,6 +618,7 @@ func TestSessionManager_VerdictRegressedByPerformance(t *testing.T) {
 }
 
 func TestSessionManager_VerdictUnchanged(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -624,6 +643,7 @@ func TestSessionManager_VerdictUnchanged(t *testing.T) {
 }
 
 func TestSessionManager_VerdictMixed(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -653,6 +673,7 @@ func TestSessionManager_VerdictMixed(t *testing.T) {
 // ============================================
 
 func TestSessionManager_List(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -684,6 +705,7 @@ func TestSessionManager_List(t *testing.T) {
 }
 
 func TestSessionManager_ListEmpty(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -698,6 +720,7 @@ func TestSessionManager_ListEmpty(t *testing.T) {
 // ============================================
 
 func TestSessionManager_Delete(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -719,6 +742,7 @@ func TestSessionManager_Delete(t *testing.T) {
 }
 
 func TestSessionManager_DeleteNonExistent(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -733,6 +757,7 @@ func TestSessionManager_DeleteNonExistent(t *testing.T) {
 // ============================================
 
 func TestSessionManager_MaxSnapshotsEviction(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(3, mock)
 
@@ -770,6 +795,7 @@ func TestSessionManager_MaxSnapshotsEviction(t *testing.T) {
 // ============================================
 
 func TestSessionManager_CaseSensitiveNames(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -790,6 +816,7 @@ func TestSessionManager_CaseSensitiveNames(t *testing.T) {
 // ============================================
 
 func TestSessionManager_ConcurrentSafety(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{
 		pageURL: "http://localhost:3000",
 		consoleErrors: []SnapshotError{
@@ -831,6 +858,7 @@ func TestSessionManager_ConcurrentSafety(t *testing.T) {
 }
 
 func TestSessionManager_ConcurrentSaveAndCompare(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{
 		pageURL:       "http://localhost:3000",
 		consoleErrors: []SnapshotError{{Type: "console", Message: "err", Count: 1}},
@@ -861,6 +889,7 @@ func TestSessionManager_ConcurrentSaveAndCompare(t *testing.T) {
 // ============================================
 
 func TestSessionManager_ComparePerformanceNoRegression(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -894,6 +923,7 @@ func TestSessionManager_ComparePerformanceNoRegression(t *testing.T) {
 }
 
 func TestSessionManager_CompareNoPerformanceData(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -916,6 +946,7 @@ func TestSessionManager_CompareNoPerformanceData(t *testing.T) {
 // ============================================
 
 func TestSessionDiff_JSONSerialization(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -949,6 +980,7 @@ func TestSessionDiff_JSONSerialization(t *testing.T) {
 // ============================================
 
 func TestHandleDiffSessions_Capture(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{
 		pageURL: "http://localhost:3000/test",
 		consoleErrors: []SnapshotError{
@@ -984,6 +1016,7 @@ func TestHandleDiffSessions_Capture(t *testing.T) {
 }
 
 func TestHandleDiffSessions_List(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -1015,6 +1048,7 @@ func TestHandleDiffSessions_List(t *testing.T) {
 }
 
 func TestHandleDiffSessions_Compare(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -1045,6 +1079,7 @@ func TestHandleDiffSessions_Compare(t *testing.T) {
 }
 
 func TestHandleDiffSessions_Delete(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -1076,6 +1111,7 @@ func TestHandleDiffSessions_Delete(t *testing.T) {
 }
 
 func TestHandleDiffSessions_InvalidAction(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -1089,6 +1125,7 @@ func TestHandleDiffSessions_InvalidAction(t *testing.T) {
 }
 
 func TestHandleDiffSessions_MissingAction(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -1102,6 +1139,7 @@ func TestHandleDiffSessions_MissingAction(t *testing.T) {
 }
 
 func TestHandleDiffSessions_CaptureRequiresName(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -1115,6 +1153,7 @@ func TestHandleDiffSessions_CaptureRequiresName(t *testing.T) {
 }
 
 func TestHandleDiffSessions_CompareRequiresParams(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -1128,6 +1167,7 @@ func TestHandleDiffSessions_CompareRequiresParams(t *testing.T) {
 }
 
 func TestHandleDiffSessions_URLFilter(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{
 		pageURL: "http://localhost:3000",
 		networkRequests: []SnapshotNetworkRequest{
@@ -1157,6 +1197,7 @@ func TestHandleDiffSessions_URLFilter(t *testing.T) {
 // ============================================
 
 func TestSessionManager_CompareMatchesByMethodAndURLPath(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -1186,6 +1227,7 @@ func TestSessionManager_CompareMatchesByMethodAndURLPath(t *testing.T) {
 }
 
 func TestSessionManager_CompareDifferentMethodsSameURL(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -1218,6 +1260,7 @@ func TestSessionManager_CompareDifferentMethodsSameURL(t *testing.T) {
 // ============================================
 
 func TestSessionManager_ConsoleEntriesLimit(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
@@ -1239,6 +1282,7 @@ func TestSessionManager_ConsoleEntriesLimit(t *testing.T) {
 }
 
 func TestSessionManager_NetworkRequestsLimit(t *testing.T) {
+	t.Parallel()
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 

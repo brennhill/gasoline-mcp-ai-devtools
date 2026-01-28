@@ -18,24 +18,24 @@ import (
 // NetworkWaterfallEntry represents a single network resource timing entry
 // from the browser's PerformanceResourceTiming API
 type NetworkWaterfallEntry struct {
-	Name            string    `json:"name"`              // Full URL
-	URL             string    `json:"url"`               // Same as name
-	InitiatorType   string    `json:"initiatorType"`     // "script", "stylesheet", "img", etc.
-	Duration        float64   `json:"duration"`          // Total duration in ms
-	StartTime       float64   `json:"startTime"`         // Relative to navigationStart
-	FetchStart      float64   `json:"fetchStart"`        // When fetch began
-	ResponseEnd     float64   `json:"responseEnd"`       // When response completed
-	TransferSize    int       `json:"transferSize"`      // Bytes transferred (0 if cached)
-	DecodedBodySize int       `json:"decodedBodySize"`   // Decompressed size
-	EncodedBodySize int       `json:"encodedBodySize"`   // Compressed size
-	PageURL         string    `json:"pageURL,omitempty"` // Page that loaded this resource
-	Timestamp       time.Time `json:"timestamp,omitempty"` // Server-side timestamp
+	Name            string    `json:"name"`                         // Full URL
+	URL             string    `json:"url"`                          // Same as name
+	InitiatorType   string    `json:"initiator_type"`                // snake_case (from browser PerformanceResourceTiming)
+	Duration        float64   `json:"duration"`                     // snake_case (from browser PerformanceResourceTiming)
+	StartTime       float64   `json:"start_time"`                    // snake_case (from browser PerformanceResourceTiming)
+	FetchStart      float64   `json:"fetch_start"`                   // snake_case (from browser PerformanceResourceTiming)
+	ResponseEnd     float64   `json:"response_end"`                  // snake_case (from browser PerformanceResourceTiming)
+	TransferSize    int       `json:"transfer_size"`                 // snake_case (from browser PerformanceResourceTiming)
+	DecodedBodySize int       `json:"decoded_body_size"`              // snake_case (from browser PerformanceResourceTiming)
+	EncodedBodySize int       `json:"encoded_body_size"`              // snake_case (from browser PerformanceResourceTiming)
+	PageURL         string    `json:"page_url,omitempty"`           
+	Timestamp       time.Time `json:"timestamp,omitempty"`          // Server-side timestamp
 }
 
 // NetworkWaterfallPayload is POSTed by the extension
 type NetworkWaterfallPayload struct {
 	Entries []NetworkWaterfallEntry `json:"entries"`
-	PageURL string                  `json:"pageURL"`
+	PageURL string                  `json:"page_url"`
 }
 
 // WebSocketEvent represents a captured WebSocket event
@@ -53,6 +53,7 @@ type WebSocketEvent struct {
 	Sampled          *SamplingInfo `json:"sampled,omitempty"`
 	BinaryFormat     string        `json:"binary_format,omitempty"`
 	FormatConfidence float64       `json:"format_confidence,omitempty"`
+	TabId            int           `json:"tab_id,omitempty"` // Chrome tab ID that produced this event
 }
 
 // SamplingInfo describes the sampling state when a message was captured
@@ -123,10 +124,10 @@ type WebSocketConnection struct {
 	ID          string                  `json:"id"`
 	URL         string                  `json:"url"`
 	State       string                  `json:"state"`
-	OpenedAt    string                  `json:"openedAt,omitempty"`
+	OpenedAt    string                  `json:"opened_at,omitempty"`  
 	Duration    string                  `json:"duration,omitempty"`
-	MessageRate WebSocketMessageRate    `json:"messageRate"`
-	LastMessage WebSocketLastMessage    `json:"lastMessage"`
+	MessageRate WebSocketMessageRate    `json:"message_rate"`         
+	LastMessage WebSocketLastMessage    `json:"last_message"`         
 	Schema      *WebSocketSchema        `json:"schema,omitempty"`
 	Sampling    WebSocketSamplingStatus `json:"sampling"`
 }
@@ -136,14 +137,14 @@ type WebSocketClosedConnection struct {
 	ID            string `json:"id"`
 	URL           string `json:"url"`
 	State         string `json:"state"`
-	OpenedAt      string `json:"openedAt,omitempty"`
-	ClosedAt      string `json:"closedAt,omitempty"`
-	CloseCode     int    `json:"closeCode"`
-	CloseReason   string `json:"closeReason"`
+	OpenedAt      string `json:"opened_at,omitempty"` 
+	ClosedAt      string `json:"closed_at,omitempty"` 
+	CloseCode     int    `json:"close_code"`          
+	CloseReason   string `json:"close_reason"`        
 	TotalMessages struct {
 		Incoming int `json:"incoming"`
 		Outgoing int `json:"outgoing"`
-	} `json:"totalMessages"`
+	} `json:"total_messages"`
 }
 
 // WebSocketMessageRate contains rate info for a direction
@@ -154,7 +155,7 @@ type WebSocketMessageRate struct {
 
 // WebSocketDirectionStats contains stats for a message direction
 type WebSocketDirectionStats struct {
-	PerSecond float64 `json:"perSecond"`
+	PerSecond float64 `json:"per_second"`
 	Total     int     `json:"total"`
 	Bytes     int     `json:"bytes"`
 }
@@ -174,8 +175,8 @@ type WebSocketMessagePreview struct {
 
 // WebSocketSchema describes detected message schema
 type WebSocketSchema struct {
-	DetectedKeys []string `json:"detectedKeys,omitempty"`
-	MessageCount int      `json:"messageCount"`
+	DetectedKeys []string `json:"detected_keys,omitempty"`
+	MessageCount int      `json:"message_count"`          
 	Consistent   bool     `json:"consistent"`
 	Variants     []string `json:"variants,omitempty"`
 }
@@ -193,16 +194,17 @@ type NetworkBody struct {
 	Method             string  `json:"method"`
 	URL                string  `json:"url"`
 	Status             int     `json:"status"`
-	RequestBody        string  `json:"requestBody,omitempty"`
-	ResponseBody       string  `json:"responseBody,omitempty"`
-	ContentType        string  `json:"contentType,omitempty"`
+	RequestBody        string  `json:"request_body,omitempty"`
+	ResponseBody       string  `json:"response_body,omitempty"`
+	ContentType        string  `json:"content_type,omitempty"`
 	Duration           int     `json:"duration,omitempty"`
-	RequestTruncated   bool    `json:"requestTruncated,omitempty"`
-	ResponseTruncated  bool    `json:"responseTruncated,omitempty"`
-	ResponseHeaders    map[string]string `json:"responseHeaders,omitempty"`
-	HasAuthHeader      bool              `json:"hasAuthHeader,omitempty"`
+	RequestTruncated   bool    `json:"request_truncated,omitempty"`
+	ResponseTruncated  bool    `json:"response_truncated,omitempty"`
+	ResponseHeaders    map[string]string `json:"response_headers,omitempty"`
+	HasAuthHeader      bool              `json:"has_auth_header,omitempty"`
 	BinaryFormat       string  `json:"binary_format,omitempty"`
 	FormatConfidence   float64 `json:"format_confidence,omitempty"`
+	TabId              int     `json:"tab_id,omitempty"` // Chrome tab ID that produced this request
 }
 
 // NetworkBodyFilter defines filtering criteria for network bodies
@@ -255,6 +257,7 @@ type EnhancedAction struct {
 	SelectedValue string                 `json:"selectedValue,omitempty"`
 	SelectedText  string                 `json:"selectedText,omitempty"`
 	ScrollY       int                    `json:"scrollY,omitempty"`
+	TabId         int                    `json:"tab_id,omitempty"` // Chrome tab ID that produced this action
 }
 
 // EnhancedActionFilter defines filtering criteria for enhanced actions
@@ -273,29 +276,29 @@ type PerformanceSnapshot struct {
 	Timestamp string            `json:"timestamp"`
 	Timing    PerformanceTiming `json:"timing"`
 	Network   NetworkSummary    `json:"network"`
-	LongTasks LongTaskMetrics   `json:"longTasks"`
-	CLS       *float64          `json:"cumulativeLayoutShift,omitempty"`
+	LongTasks LongTaskMetrics   `json:"long_tasks"`
+	CLS       *float64          `json:"cumulative_layout_shift,omitempty"` // snake_case (from browser LayoutShift)
 	Resources []ResourceEntry   `json:"resources,omitempty"`
 }
 
 // PerformanceTiming holds navigation timing metrics
 type PerformanceTiming struct {
-	DomContentLoaded       float64  `json:"domContentLoaded"`
-	Load                   float64  `json:"load"`
-	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`
-	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`
-	InteractionToNextPaint *float64 `json:"interactionToNextPaint,omitempty"`
-	TimeToFirstByte        float64  `json:"timeToFirstByte"`
-	DomInteractive         float64  `json:"domInteractive"`
+	DomContentLoaded       float64  `json:"dom_content_loaded"`              // snake_case (from browser PerformanceTiming)
+	Load                   float64  `json:"load"`                          // snake_case (from browser PerformanceTiming)
+	FirstContentfulPaint   *float64 `json:"first_contentful_paint"`          // snake_case (from browser PerformancePaintTiming)
+	LargestContentfulPaint *float64 `json:"largest_contentful_paint"`        // snake_case (from browser LargestContentfulPaint)
+	InteractionToNextPaint *float64 `json:"interaction_to_next_paint,omitempty"` // snake_case (from browser EventTiming)
+	TimeToFirstByte        float64  `json:"time_to_first_byte"`               // snake_case (from browser PerformanceTiming)
+	DomInteractive         float64  `json:"dom_interactive"`                // snake_case (from browser PerformanceTiming)
 }
 
 // NetworkSummary holds aggregated network resource metrics
 type NetworkSummary struct {
-	RequestCount    int                    `json:"requestCount"`
-	TransferSize    int64                  `json:"transferSize"`
-	DecodedSize     int64                  `json:"decodedSize"`
-	ByType          map[string]TypeSummary `json:"byType"`
-	SlowestRequests []SlowRequest          `json:"slowestRequests"`
+	RequestCount    int                    `json:"request_count"`   
+	TransferSize    int64                  `json:"transfer_size"`   
+	DecodedSize     int64                  `json:"decoded_size"`    
+	ByType          map[string]TypeSummary `json:"by_type"`         
+	SlowestRequests []SlowRequest          `json:"slowest_requests"`
 }
 
 // TypeSummary holds per-type resource metrics
@@ -314,36 +317,36 @@ type SlowRequest struct {
 // LongTaskMetrics holds accumulated long task data
 type LongTaskMetrics struct {
 	Count             int     `json:"count"`
-	TotalBlockingTime float64 `json:"totalBlockingTime"`
+	TotalBlockingTime float64 `json:"total_blocking_time"`
 	Longest           float64 `json:"longest"`
 }
 
 // PerformanceBaseline holds averaged performance data for a URL path
 type PerformanceBaseline struct {
 	URL         string          `json:"url"`
-	SampleCount int             `json:"sampleCount"`
-	LastUpdated string          `json:"lastUpdated"`
+	SampleCount int             `json:"sample_count"`
+	LastUpdated string          `json:"last_updated"`
 	Timing      BaselineTiming  `json:"timing"`
 	Network     BaselineNetwork `json:"network"`
-	LongTasks   LongTaskMetrics `json:"longTasks"`
-	CLS         *float64        `json:"cumulativeLayoutShift,omitempty"`
+	LongTasks   LongTaskMetrics `json:"long_tasks"`
+	CLS         *float64        `json:"cumulative_layout_shift,omitempty"` // snake_case (from browser LayoutShift)
 	Resources   []ResourceEntry `json:"resources,omitempty"`
 }
 
 // BaselineTiming holds averaged timing metrics
 type BaselineTiming struct {
-	DomContentLoaded       float64  `json:"domContentLoaded"`
-	Load                   float64  `json:"load"`
-	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`
-	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`
-	TimeToFirstByte        float64  `json:"timeToFirstByte"`
-	DomInteractive         float64  `json:"domInteractive"`
+	DomContentLoaded       float64  `json:"dom_content_loaded"`              // snake_case (from browser PerformanceTiming)
+	Load                   float64  `json:"load"`                          // snake_case (from browser PerformanceTiming)
+	FirstContentfulPaint   *float64 `json:"first_contentful_paint"`          // snake_case (from browser PerformancePaintTiming)
+	LargestContentfulPaint *float64 `json:"largest_contentful_paint"`        // snake_case (from browser LargestContentfulPaint)
+	TimeToFirstByte        float64  `json:"time_to_first_byte"`               // snake_case (from browser PerformanceTiming)
+	DomInteractive         float64  `json:"dom_interactive"`                // snake_case (from browser PerformanceTiming)
 }
 
 // BaselineNetwork holds averaged network metrics
 type BaselineNetwork struct {
-	RequestCount int   `json:"requestCount"`
-	TransferSize int64 `json:"transferSize"`
+	RequestCount int   `json:"request_count"`
+	TransferSize int64 `json:"transfer_size"`
 }
 
 // PerformanceRegression describes a detected performance regression
@@ -351,8 +354,8 @@ type PerformanceRegression struct {
 	Metric         string  `json:"metric"`
 	Current        float64 `json:"current"`
 	Baseline       float64 `json:"baseline"`
-	ChangePercent  float64 `json:"changePercent"`
-	AbsoluteChange float64 `json:"absoluteChange"`
+	ChangePercent  float64 `json:"change_percent"`
+	AbsoluteChange float64 `json:"absolute_change"`
 }
 
 // ============================================
@@ -478,99 +481,159 @@ type MemoryState struct {
 // Capture
 // ============================================
 
-// Capture manages all buffered browser state: WebSocket events, network
-// bodies, user actions, connections, queries, rate limiting, and performance.
+// Capture manages all buffered browser state: WebSocket events, network bodies,
+// user actions, connections, queries, rate limiting, and performance.
+//
+// All fields are protected by mu (sync.RWMutex) unless noted otherwise.
+// Lock hierarchy: Capture.mu is position 3 (after ClientRegistry, ClientState).
+// Release locks before calling external callbacks. Use RLock() for read-only access.
+// Sub-struct locks: a11y, perf, session, mem use parent mu. Only schemaStore and cspGen have own mutexes.
+//
+// Ring buffers (wsEvents, networkBodies, enhancedActions) maintain three parallel invariants:
+// 1. Parallel timestamp slices kept in perfect sync (wsAddedAt, networkAddedAt, actionAddedAt)
+// 2. Monotonic counters that survive eviction (wsTotalAdded, networkTotalAdded, actionTotalAdded)
+// 3. Memory totals that estimate buffer overhead (wsMemoryTotal, nbMemoryTotal)
+//
+// Rate limiting uses a sliding 1-second window with circuit breaker:
+// windowEventCount resets per window. rateLimitStreak tracks consecutive seconds over threshold.
+// Circuit opens after 5+ consecutive seconds or memory spike; closes after 10s below threshold + memory < 30MB.
+// lastBelowThresholdAt tracks when rate dropped below threshold (initialized at startup to prevent false close).
 type Capture struct {
 	mu sync.RWMutex
 
-	// TTL for read-time filtering (0 means unlimited)
+	// TTL for read-time filtering (0 = unlimited, no filtering applied).
+	// Applied during reads: events older than TTL are skipped.
 	TTL time.Duration
-	// WebSocket event ring buffer
-	wsEvents     []WebSocketEvent
-	wsAddedAt    []time.Time // parallel: when each event was added
-	wsTotalAdded int64       // monotonic counter
 
-	// Network bodies ring buffer
-	networkBodies     []NetworkBody
-	networkAddedAt    []time.Time // parallel: when each body was added
-	networkTotalAdded int64       // monotonic counter
+	// ============================================
+	// WebSocket Event Buffer (Ring Buffer)
+	// ============================================
 
-	// Enhanced actions ring buffer
-	enhancedActions  []EnhancedAction
-	actionAddedAt    []time.Time // parallel: when each action was added
-	actionTotalAdded int64       // monotonic counter
+	wsEvents      []WebSocketEvent // Ring buffer of WS events (cap: effectiveWSCapacity). Kept in sync with wsAddedAt.
+	wsAddedAt     []time.Time      // Parallel slice: insertion time for each wsEvents[i]. Used for TTL filtering and eviction order (oldest first).
+	wsTotalAdded  int64            // Monotonic counter: total events ever added (never reset/decremented). Survives eviction. Used for cursor-based delta queries.
+	wsMemoryTotal int64            // Approximate memory: sum of wsEventMemory(&wsEvents[i]). Estimate: len(Data)+200 bytes per event. Updated incrementally; recalc on critical eviction.
 
-	// Network waterfall ring buffer (PerformanceResourceTiming data)
-	networkWaterfall         []NetworkWaterfallEntry // Complete network request timing data
-	networkWaterfallCapacity int                     // Configurable capacity (default 1000)
+	// ============================================
+	// Network Body Buffer (Ring Buffer)
+	// ============================================
 
-	// Security flags ring buffer (detected threats from network waterfall)
-	securityFlags []SecurityFlag // Ring buffer of detected security issues (max 1000)
+	networkBodies     []NetworkBody   // Ring buffer of HTTP request/response bodies (cap: maxNetworkBodies=100). Parallel with networkAddedAt.
+	networkAddedAt    []time.Time     // Parallel slice: insertion time for each networkBodies[i]. Used for TTL filtering and LRU eviction.
+	networkTotalAdded int64           // Monotonic counter: total bodies ever added (never reset/decremented). Survives eviction. Used for cursor-based delta queries.
+	nbMemoryTotal     int64           // Approximate memory: len(RequestBody)+len(ResponseBody)+300 bytes per entry. Updated incrementally on append/eviction.
 
-	// Extension logs ring buffer (background/content script logs)
-	extensionLogs []ExtensionLog // Ring buffer of extension internal logs (max 500)
+	// ============================================
+	// Enhanced Actions Buffer (Ring Buffer)
+	// ============================================
 
-	// Connection tracker
-	connections map[string]*connectionState
-	observeSem  chan struct{} // bounds concurrent observer goroutines
-	closedConns []WebSocketClosedConnection
-	connOrder   []string // Track insertion order for eviction
+	enhancedActions  []EnhancedAction // Ring buffer of browser actions. Parallel with actionAddedAt.
+	actionAddedAt    []time.Time      // Parallel slice: insertion time for each enhancedActions[i].
+	actionTotalAdded int64            // Monotonic counter: total actions ever added (never reset/decremented). Survives eviction.
 
-	// Pending queries
-	pendingQueries []pendingQueryEntry
-	queryResults   map[string]queryResultEntry
-	queryCond      *sync.Cond
-	queryIDCounter int
+	// ============================================
+	// Timings and Performance Data
+	// ============================================
 
-	// Rate limiting (sliding window)
-	windowEventCount     int       // Events in current 1-second window
-	rateWindowStart      time.Time // When current window started (monotonic)
-	rateLimitStreak      int       // Consecutive seconds over threshold
-	lastBelowThresholdAt time.Time // When rate first dropped below threshold
-	circuitOpen          bool      // Circuit breaker state
-	circuitOpenedAt      time.Time // When circuit was opened
-	circuitReason        string    // Why circuit opened ("rate_exceeded" or "memory_exceeded")
+	networkWaterfall         []NetworkWaterfallEntry // Ring buffer of browser PerformanceResourceTiming data (cap: networkWaterfallCapacity, default 1000, reconfigurable).
+	networkWaterfallCapacity int                     // Configurable capacity for network waterfall (default DefaultNetworkWaterfallCapacity=1000).
+	securityFlags            []SecurityFlag          // Ring buffer of security threat flags detected from network waterfall (max 1000). FIFO eviction.
+	extensionLogs            []ExtensionLog          // Ring buffer of extension internal logs (max 500). FIFO eviction. No TTL filtering.
 
-	// Query timeout
-	queryTimeout time.Duration
+	// ============================================
+	// WebSocket Connection Tracking
+	// ============================================
 
-	// Async command tracking (correlation_id → result)
-	completedResults map[string]*CommandResult // Completed async commands (60s TTL)
-	failedCommands   []*CommandResult          // Failed/expired commands (circular buffer, max 100)
-	resultsMu        sync.RWMutex              // Separate lock for async result operations
+	connections map[string]*connectionState  // Active WS connections by ID (max 20 total). LRU eviction via connOrder.
+	observeSem  chan struct{}                // Semaphore limiting concurrent observer goroutines to 4. Prevents goroutine explosion.
+	closedConns []WebSocketClosedConnection  // Ring buffer of closed connections (max 10, maxClosedConns). Preserves history for a while.
+	connOrder   []string                     // Insertion order for LRU eviction of active connections.
 
-	// Extension communication tracking
-	lastPollAt        time.Time // When extension last polled GET /pending-queries (command polling)
-	extensionSession  string    // Current extension session ID (for reload detection)
-	sessionChangedAt  time.Time // When session ID last changed (extension reload)
-	pilotEnabled      bool      // AI Web Pilot toggle state from extension
-	pilotUpdatedAt    time.Time // When pilotEnabled was last updated (from POST /settings)
-	currentTestID     string    // Current test ID for CI test-boundary correlation
+	// ============================================
+	// Pending Queries (Extension ↔ Server RPC)
+	// ============================================
 
-	// Tab tracking status (from extension status pings)
-	trackingEnabled bool      // Whether tab tracking is active
-	trackedTabID    int       // The tracked tab's ID (0 = none)
-	trackedTabURL   string    // The tracked tab's URL
-	trackingUpdated time.Time // When tracking status was last updated
+	pendingQueries []pendingQueryEntry        // FIFO queue of pending queries awaiting extension response (max 5). Each has an expires timeout. Oldest dropped if full.
+	queryResults   map[string]queryResultEntry // Completed query results keyed by query ID (not correlation_id). 60s TTL. Cleaned by startResultCleanup goroutine.
+	queryCond      *sync.Cond                 // Condition var initialized with sync.NewCond(&c.mu). Broadcast when result arrives or cleanup happens.
+	queryIDCounter int                        // Monotonic ID for next query (format: "q-<counter>"). Incremented in CreatePendingQueryWithClient.
 
-	// Polling activity log (rotating buffer of 50 most recent GET /pending-queries and POST /settings calls)
-	pollingLog      []PollingLogEntry // Circular buffer, size 50
-	pollingLogIndex int               // Next write position (wraps at 50)
+	// ============================================
+	// Rate Limiting & Circuit Breaker
+	// ============================================
 
-	// HTTP debug log (rotating buffer of 50 most recent HTTP requests/responses)
-	httpDebugLog      []HTTPDebugEntry // Circular buffer, size 50
-	httpDebugLogIndex int              // Next write position (wraps at 50)
+	windowEventCount     int       // Events in current 1-second window. Reset to 0 when window expires. Compared to rateLimitThreshold (1000 events/sec).
+	rateWindowStart      time.Time // Monotonic time: when current window started. Used to detect expiration (now.Sub(rateWindowStart) > 1 second).
+	rateLimitStreak      int       // Consecutive seconds window was over threshold. Incremented per second if over, reset to 0 if below. Circuit opens at 5 consecutive seconds.
+	lastBelowThresholdAt time.Time // When rate first dropped below threshold. Initialized to time.Now() at startup (prevents false circuit-close on boot). Set to zero when over threshold. Used to measure "below threshold duration" for circuit close (10+ seconds required).
+	circuitOpen          bool      // Circuit breaker state. true=reject all with 429. false=accept if within rate/memory limits. Opened when rateLimitStreak>=5 or memory>hard(50MB). Closed when rate below threshold for 10+ seconds AND memory<30MB.
+	circuitOpenedAt      time.Time // Informational: when circuit was opened (display only, not used for enforcing minimum duration). Zero when circuit closed.
+	circuitReason        string    // Reason circuit opened: "rate_exceeded" or "memory_exceeded". Reflects reason AT OPEN TIME (not necessarily current state). Cleared when closed.
 
-	// Composed sub-structs
-	a11y        A11yCache
-	perf        PerformanceStore
-	session     SessionTracker
-	mem         MemoryState
-	schemaStore *SchemaStore
-	cspGen      *CSPGenerator
+	// ============================================
+	// Query Timeout
+	// ============================================
 
-	// Multi-client support
-	clientRegistry *ClientRegistry
+	queryTimeout time.Duration // Default: 2 seconds (defaultQueryTimeout=2*time.Second, types.go:427). Configurable. Applied to pending queries. Rationale: extension polls every 1-2s, fast timeout prevents MCP hangs.
+
+	// ============================================
+	// Async Command Results (Protected by resultsMu, NOT mu)
+	// ============================================
+
+	completedResults map[string]*CommandResult // Completed async results keyed by correlation_id (60s TTL). Protected by resultsMu. Cleaned by startResultCleanup goroutine every 10s. Expired entries moved to failedCommands.
+	failedCommands   []*CommandResult          // Ring buffer of failed/expired commands for diagnostics (pre-allocated 100). Protected by resultsMu. Trimmed to max 100.
+	resultsMu        sync.RWMutex              // SEPARATE lock protecting completedResults and failedCommands. Separate from mu to avoid blocking event ingest during async result operations. Observer goroutines use this lock.
+
+	// ============================================
+	// Extension Communication State
+	// ============================================
+
+	lastPollAt        time.Time // When extension last polled GET /pending-queries. Updated in HandlePendingQueries (line 373). Health endpoint uses 3s threshold to determine "connected" vs "stale".
+	extensionSession  string    // Extension session ID from header (changes when extension reloads). Detects browser restart or extension update. Session change logged but does NOT auto-clear pending queries.
+	sessionChangedAt  time.Time // When extensionSession last changed (used for display in health endpoint).
+	pilotEnabled      bool      // AI Web Pilot toggle from POST /settings (or GET header fallback if settings >10s stale). Check before dispatching browser actions.
+	pilotUpdatedAt    time.Time // When pilotEnabled was last updated from POST /settings. Staleness threshold: 10 seconds (queries.go:377-378). If >10s old, extension header takes priority.
+	currentTestID     string    // CI test boundary correlation ID. Set via /test-boundary endpoint. Tags all events with test context. Cleared when test ends.
+
+	// ============================================
+	// Tab Tracking
+	// ============================================
+
+	trackingEnabled bool      // Single-tab mode active. true=track specific tab. false=observe all tabs (multi-tab).
+	trackedTabID    int       // Browser tab ID when single-tab tracking (0=none). Invariant: if trackingEnabled then trackedTabID>0.
+	trackedTabURL   string    // Tracked tab URL (informational, may be stale).
+	trackingUpdated time.Time // When tracking status last refreshed from extension.
+
+	// ============================================
+	// Polling Activity Log (Circular Buffer, size 50)
+	// ============================================
+
+	pollingLog      []PollingLogEntry // Circular buffer of GET /pending-queries and POST /settings calls (50 entries). No TTL. For operator debugging.
+	pollingLogIndex int               // Next write position (0-49, wraps to 0 after 49).
+
+	// ============================================
+	// HTTP Debug Log (Circular Buffer, size 50)
+	// ============================================
+
+	httpDebugLog      []HTTPDebugEntry // Circular buffer of HTTP requests/responses (50 entries). No TTL. For operator debugging.
+	httpDebugLogIndex int              // Next write position (0-49, wraps to 0 after 49).
+
+	// ============================================
+	// Composed Sub-Structures
+	// ============================================
+
+	a11y        A11yCache        // Accessibility audit cache. Protected by parent mu (no separate lock). Accessed via getA11yCacheEntry/setA11yCacheEntry.
+	perf        PerformanceStore // Performance snapshots and baselines. Protected by parent mu (no separate lock).
+	session     SessionTracker   // Session-level performance aggregation. Protected by parent mu (no separate lock).
+	mem         MemoryState      // Memory tracking and enforcement state. Protected by parent mu (no separate lock).
+	schemaStore *SchemaStore     // API schema detection and tracking. HAS OWN LOCK (api_schema.go:199). Accessed by observer goroutines outside mu.
+	cspGen      *CSPGenerator    // CSP policy generation. HAS OWN LOCK (csp.go:36). Accessed by observer goroutines outside mu.
+
+	// ============================================
+	// Multi-Client Support
+	// ============================================
+
+	clientRegistry *ClientRegistry // Registry of connected MCP clients. HAS OWN LOCK. Lock hierarchy: ClientRegistry.mu is position 1 (outermost), before Capture.mu.
 }
 
 // NewCapture creates a new Capture instance with initialized buffers
@@ -625,28 +688,28 @@ func NewCapture() *Capture {
 // SessionSummary represents a compiled summary of a development session
 type SessionSummary struct {
 	Status           string            `json:"status"` // "ok", "no_performance_data", "insufficient_data"
-	PerformanceDelta *PerformanceDelta `json:"performanceDelta,omitempty"`
+	PerformanceDelta *PerformanceDelta `json:"performance_delta,omitempty"`
 	Errors           []SessionError    `json:"errors,omitempty"`
 	Metadata         SessionMetadata   `json:"metadata"`
 }
 
 // PerformanceDelta represents the net change in performance metrics during a session
 type PerformanceDelta struct {
-	LoadTimeBefore   float64 `json:"loadTimeBefore"`
-	LoadTimeAfter    float64 `json:"loadTimeAfter"`
-	LoadTimeDelta    float64 `json:"loadTimeDelta"`
-	FCPBefore        float64 `json:"fcpBefore,omitempty"`
-	FCPAfter         float64 `json:"fcpAfter,omitempty"`
-	FCPDelta         float64 `json:"fcpDelta,omitempty"`
-	LCPBefore        float64 `json:"lcpBefore,omitempty"`
-	LCPAfter         float64 `json:"lcpAfter,omitempty"`
-	LCPDelta         float64 `json:"lcpDelta,omitempty"`
-	CLSBefore        float64 `json:"clsBefore,omitempty"`
-	CLSAfter         float64 `json:"clsAfter,omitempty"`
-	CLSDelta         float64 `json:"clsDelta,omitempty"`
-	BundleSizeBefore int64   `json:"bundleSizeBefore"`
-	BundleSizeAfter  int64   `json:"bundleSizeAfter"`
-	BundleSizeDelta  int64   `json:"bundleSizeDelta"`
+	LoadTimeBefore   float64 `json:"load_time_before"`
+	LoadTimeAfter    float64 `json:"load_time_after"`
+	LoadTimeDelta    float64 `json:"load_time_delta"`
+	FCPBefore        float64 `json:"fcp_before,omitempty"`
+	FCPAfter         float64 `json:"fcp_after,omitempty"`
+	FCPDelta         float64 `json:"fcp_delta,omitempty"`
+	LCPBefore        float64 `json:"lcp_before,omitempty"`
+	LCPAfter         float64 `json:"lcp_after,omitempty"`
+	LCPDelta         float64 `json:"lcp_delta,omitempty"`
+	CLSBefore        float64 `json:"cls_before,omitempty"`
+	CLSAfter         float64 `json:"cls_after,omitempty"`
+	CLSDelta         float64 `json:"cls_delta,omitempty"`
+	BundleSizeBefore int64   `json:"bundle_size_before"`
+	BundleSizeAfter  int64   `json:"bundle_size_after"`
+	BundleSizeDelta  int64   `json:"bundle_size_delta"`
 }
 
 // SessionError represents an error observed during a session
@@ -658,9 +721,9 @@ type SessionError struct {
 
 // SessionMetadata holds session-level aggregate stats
 type SessionMetadata struct {
-	DurationMs            int64 `json:"durationMs"`
-	ReloadCount           int   `json:"reloadCount"`
-	PerformanceCheckCount int   `json:"performanceCheckCount"`
+	DurationMs            int64 `json:"duration_ms"`
+	ReloadCount           int   `json:"reload_count"`
+	PerformanceCheckCount int   `json:"performance_check_count"`
 }
 
 // ============================================
@@ -696,9 +759,9 @@ type AlertMetricDelta struct {
 type ResourceEntry struct {
 	URL            string  `json:"url"`
 	Type           string  `json:"type"`
-	TransferSize   int64   `json:"transferSize"`
-	Duration       float64 `json:"duration"`
-	RenderBlocking bool    `json:"renderBlocking,omitempty"`
+	TransferSize   int64   `json:"transfer_size"`              // snake_case (from browser PerformanceResourceTiming)
+	Duration       float64 `json:"duration"`                  // snake_case (from browser PerformanceResourceTiming)
+	RenderBlocking bool    `json:"renderBlocking,omitempty"`  // snake_case (from browser PerformanceResourceTiming)
 }
 
 // ResourceDiff holds the categorized differences between baseline and current resources

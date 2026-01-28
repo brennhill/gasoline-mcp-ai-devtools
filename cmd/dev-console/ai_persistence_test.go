@@ -16,6 +16,7 @@ import (
 // ============================================
 
 func TestPersistStoreCreatedAtProjectRoot(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -38,6 +39,7 @@ func TestPersistStoreCreatedAtProjectRoot(t *testing.T) {
 // ============================================
 
 func TestPersistGitignoreUpdated(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// Create a .gitignore without .gasoline
@@ -71,6 +73,7 @@ func TestPersistGitignoreUpdated(t *testing.T) {
 // ============================================
 
 func TestPersistSaveAndLoad(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -122,6 +125,7 @@ func TestPersistSaveAndLoad(t *testing.T) {
 // ============================================
 
 func TestPersistLoadNonexistent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -140,6 +144,7 @@ func TestPersistLoadNonexistent(t *testing.T) {
 // ============================================
 
 func TestPersistListKeys(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -185,6 +190,7 @@ func TestPersistListKeys(t *testing.T) {
 // ============================================
 
 func TestPersistDelete(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -218,6 +224,7 @@ func TestPersistDelete(t *testing.T) {
 // ============================================
 
 func TestPersistStats(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -261,6 +268,7 @@ func TestPersistStats(t *testing.T) {
 // ============================================
 
 func TestPersistSaveExceedsMaxSize(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -290,6 +298,7 @@ func TestPersistSaveExceedsMaxSize(t *testing.T) {
 // ============================================
 
 func TestPersistSessionCountIncrement(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// First session
@@ -323,6 +332,7 @@ func TestPersistSessionCountIncrement(t *testing.T) {
 // ============================================
 
 func TestPersistFreshStore(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -352,6 +362,7 @@ func TestPersistFreshStore(t *testing.T) {
 // ============================================
 
 func TestPersistExistingDataSummaries(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -409,6 +420,7 @@ func TestPersistExistingDataSummaries(t *testing.T) {
 // ============================================
 
 func TestPersistNoiseConfigActive(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -453,6 +465,7 @@ func TestPersistNoiseConfigActive(t *testing.T) {
 // ============================================
 
 func TestPersistConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -499,6 +512,7 @@ func TestPersistConcurrentAccess(t *testing.T) {
 // ============================================
 
 func TestPersistShutdownFlush(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -527,6 +541,7 @@ func TestPersistShutdownFlush(t *testing.T) {
 // ============================================
 
 func TestPersistFlushInterval(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStoreWithInterval(dir, 100*time.Millisecond)
 	if err != nil {
@@ -556,6 +571,7 @@ func TestPersistFlushInterval(t *testing.T) {
 // ============================================
 
 func TestPersistReadOnlyDirectory(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// Create the store directory, then make it read-only
@@ -602,6 +618,7 @@ func TestPersistReadOnlyDirectory(t *testing.T) {
 // ============================================
 
 func TestPersistErrorHistoryCap(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -642,6 +659,7 @@ func TestPersistErrorHistoryCap(t *testing.T) {
 // ============================================
 
 func TestPersistErrorHistoryStaleEviction(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -703,6 +721,7 @@ func TestPersistErrorHistoryStaleEviction(t *testing.T) {
 // ============================================
 
 func TestPersistListEmptyNamespace(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -724,6 +743,7 @@ func TestPersistListEmptyNamespace(t *testing.T) {
 // ============================================
 
 func TestPersistMetaFields(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -749,6 +769,7 @@ func TestPersistMetaFields(t *testing.T) {
 // ============================================
 
 func TestPersistProjectSizeLimit(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -786,6 +807,7 @@ func TestPersistProjectSizeLimit(t *testing.T) {
 // ============================================
 
 func TestPersistMCPToolSave(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -823,6 +845,7 @@ func TestPersistMCPToolSave(t *testing.T) {
 // ============================================
 
 func TestPersistMCPToolLoad(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -864,6 +887,7 @@ func TestPersistMCPToolLoad(t *testing.T) {
 // ============================================
 
 func TestPersistMCPToolList(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -900,6 +924,7 @@ func TestPersistMCPToolList(t *testing.T) {
 // ============================================
 
 func TestPersistMCPToolDelete(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -932,6 +957,7 @@ func TestPersistMCPToolDelete(t *testing.T) {
 // ============================================
 
 func TestPersistMCPToolStats(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -965,6 +991,7 @@ func TestPersistMCPToolStats(t *testing.T) {
 // ============================================
 
 func TestPersistMCPToolLoadContext(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -992,6 +1019,7 @@ func TestPersistMCPToolLoadContext(t *testing.T) {
 // ============================================
 
 func TestPersistMCPToolMissingParams(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1047,6 +1075,7 @@ func TestPersistMCPToolMissingParams(t *testing.T) {
 // ============================================
 
 func TestPersistCorruptedMetaStartsFresh(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// Create .gasoline dir with corrupted meta.json
@@ -1071,6 +1100,7 @@ func TestPersistCorruptedMetaStartsFresh(t *testing.T) {
 // ============================================
 
 func TestPersistCorruptedNamespaceFileSkipped(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// Create store with some valid data
@@ -1109,6 +1139,7 @@ func TestPersistCorruptedNamespaceFileSkipped(t *testing.T) {
 // ============================================
 
 func TestPersistMCPToolStoreNotInitialized(t *testing.T) {
+	t.Parallel()
 	server := &Server{
 		entries:    make([]LogEntry, 0),
 		maxEntries: 1000,
@@ -1161,6 +1192,7 @@ func TestPersistMCPToolStoreNotInitialized(t *testing.T) {
 // ============================================
 
 func TestPersistMCPToolHandlerIntegration(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	server := &Server{
 		entries:    make([]LogEntry, 0),
@@ -1234,6 +1266,7 @@ func TestPersistMCPToolHandlerIntegration(t *testing.T) {
 // ============================================
 
 func TestPersistNewToolHandlerInitializesStore(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// Change to temp dir so NewToolHandler uses it as project root
@@ -1279,6 +1312,7 @@ func TestPersistNewToolHandlerInitializesStore(t *testing.T) {
 // ============================================
 
 func TestPersistShutdownIdempotent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1298,6 +1332,7 @@ func TestPersistShutdownIdempotent(t *testing.T) {
 // --- LoadSessionContext: baselines directory with entries ---
 
 func TestLoadSessionContextBaselinesDir(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1332,6 +1367,7 @@ func TestLoadSessionContextBaselinesDir(t *testing.T) {
 // --- LoadSessionContext: noise config loading ---
 
 func TestLoadSessionContextNoiseConfig(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1360,6 +1396,7 @@ func TestLoadSessionContextNoiseConfig(t *testing.T) {
 // --- LoadSessionContext: error history loading (typed entries) ---
 
 func TestLoadSessionContextErrorHistoryTyped(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1408,6 +1445,7 @@ func TestLoadSessionContextErrorHistoryTyped(t *testing.T) {
 // --- LoadSessionContext: error history loading (raw JSON fallback path) ---
 
 func TestLoadSessionContextErrorHistoryRawFallback(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1440,6 +1478,7 @@ func TestLoadSessionContextErrorHistoryRawFallback(t *testing.T) {
 // --- LoadSessionContext: error history with truly invalid typed fields (forces raw fallback) ---
 
 func TestLoadSessionContextErrorHistoryForcedRawFallback(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1476,6 +1515,7 @@ func TestLoadSessionContextErrorHistoryForcedRawFallback(t *testing.T) {
 // --- LoadSessionContext: API schema loading ---
 
 func TestLoadSessionContextAPISchema(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1509,6 +1549,7 @@ func TestLoadSessionContextAPISchema(t *testing.T) {
 // --- LoadSessionContext: performance loading ---
 
 func TestLoadSessionContextPerformance(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1537,6 +1578,7 @@ func TestLoadSessionContextPerformance(t *testing.T) {
 // --- HandleSessionStore: additional action branches ---
 
 func TestSessionStoreHandleDeleteAction(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1571,6 +1613,7 @@ func TestSessionStoreHandleDeleteAction(t *testing.T) {
 }
 
 func TestSessionStoreHandleStatsAction(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1609,6 +1652,7 @@ func TestSessionStoreHandleStatsAction(t *testing.T) {
 }
 
 func TestSessionStoreHandleUnknownAction(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1626,6 +1670,7 @@ func TestSessionStoreHandleUnknownAction(t *testing.T) {
 }
 
 func TestSessionStoreHandleSaveMissingData(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1648,6 +1693,7 @@ func TestSessionStoreHandleSaveMissingData(t *testing.T) {
 }
 
 func TestSessionStoreHandleListAction(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1679,6 +1725,7 @@ func TestSessionStoreHandleListAction(t *testing.T) {
 }
 
 func TestSessionStoreHandleDeleteMissingNamespace(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1699,6 +1746,7 @@ func TestSessionStoreHandleDeleteMissingNamespace(t *testing.T) {
 }
 
 func TestSessionStoreHandleDeleteMissingKey(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1719,6 +1767,7 @@ func TestSessionStoreHandleDeleteMissingKey(t *testing.T) {
 }
 
 func TestSessionStoreHandleLoadMissingNamespace(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1736,6 +1785,7 @@ func TestSessionStoreHandleLoadMissingNamespace(t *testing.T) {
 }
 
 func TestSessionStoreHandleLoadMissingKey(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1753,6 +1803,7 @@ func TestSessionStoreHandleLoadMissingKey(t *testing.T) {
 }
 
 func TestSessionStoreHandleListMissingNamespace(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1771,6 +1822,7 @@ func TestSessionStoreHandleListMissingNamespace(t *testing.T) {
 // --- NewSessionStoreWithInterval: MkdirAll error path ---
 
 func TestSessionStoreNewMkdirAllError(t *testing.T) {
+	t.Parallel()
 	// Use a path where the parent is a file, not a directory
 	dir := t.TempDir()
 	blockingFile := filepath.Join(dir, "blocker")
@@ -1789,6 +1841,7 @@ func TestSessionStoreNewMkdirAllError(t *testing.T) {
 // --- ensureGitignore: file not ending with newline ---
 
 func TestPersistGitignoreNoTrailingNewline(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// Create .gitignore WITHOUT trailing newline
@@ -1812,6 +1865,7 @@ func TestPersistGitignoreNoTrailingNewline(t *testing.T) {
 // --- ensureGitignore: OpenFile error path ---
 
 func TestPersistGitignoreOpenFileError(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// Create a read-only .gitignore (can read but not write/append)
@@ -1835,6 +1889,7 @@ func TestPersistGitignoreOpenFileError(t *testing.T) {
 // --- GetMeta: nil meta path ---
 
 func TestPersistGetMetaNil(t *testing.T) {
+	t.Parallel()
 	// Create a store and then nil out meta to test the nil guard in GetMeta
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
@@ -1866,6 +1921,7 @@ func TestPersistGetMetaNil(t *testing.T) {
 // --- enforceErrorHistoryCap: entries exceeding maxErrorHistory with eviction ---
 
 func TestEnforceErrorHistoryCapEviction(t *testing.T) {
+	t.Parallel()
 	// Create maxErrorHistory + 10 entries with varying FirstSeen times
 	entries := make([]ErrorHistoryEntry, maxErrorHistory+10)
 	baseTime := time.Now().Add(-1000 * time.Hour)
@@ -1898,6 +1954,7 @@ func TestEnforceErrorHistoryCapEviction(t *testing.T) {
 // --- evictStaleErrors: all entries stale, returning nil -> empty slice ---
 
 func TestEvictStaleErrorsAllStale(t *testing.T) {
+	t.Parallel()
 	entries := []ErrorHistoryEntry{
 		{
 			Fingerprint: "old-1",
@@ -1924,6 +1981,7 @@ func TestEvictStaleErrorsAllStale(t *testing.T) {
 // --- List: directory entries (IsDir=true skipped), non-json files skipped ---
 
 func TestPersistListSkipsDirsAndNonJSON(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1957,6 +2015,7 @@ func TestPersistListSkipsDirsAndNonJSON(t *testing.T) {
 // --- Delete: error path (file doesn't exist) ---
 
 func TestPersistDeleteNonexistent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -1976,6 +2035,7 @@ func TestPersistDeleteNonexistent(t *testing.T) {
 // --- Stats: subdirectory traversal and file counting ---
 
 func TestPersistStatsSubdirTraversal(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2010,6 +2070,7 @@ func TestPersistStatsSubdirTraversal(t *testing.T) {
 // --- Stats: namespace subdirectory with subdirs (skipped) ---
 
 func TestPersistStatsSkipsNestedDirs(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2038,6 +2099,7 @@ func TestPersistStatsSkipsNestedDirs(t *testing.T) {
 // --- flushDirty: invalid key format (no slash) ---
 
 func TestPersistFlushDirtyInvalidKeyFormat(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2078,6 +2140,7 @@ func TestPersistFlushDirtyInvalidKeyFormat(t *testing.T) {
 // --- Save: size limit exceeded ---
 
 func TestPersistSaveSizeLimitExceeded(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2111,6 +2174,7 @@ func TestPersistSaveSizeLimitExceeded(t *testing.T) {
 }
 
 func TestPersistSaveExceedsMaxFileSizeExact(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2136,6 +2200,7 @@ func TestPersistSaveExceedsMaxFileSizeExact(t *testing.T) {
 // --- HandleSessionStore: save action with file too large ---
 
 func TestSessionStoreHandleSaveFileTooLarge(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2162,6 +2227,7 @@ func TestSessionStoreHandleSaveFileTooLarge(t *testing.T) {
 // --- HandleSessionStore: save with missing namespace ---
 
 func TestSessionStoreHandleSaveMissingNamespace(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2185,6 +2251,7 @@ func TestSessionStoreHandleSaveMissingNamespace(t *testing.T) {
 // --- HandleSessionStore: save with missing key ---
 
 func TestSessionStoreHandleSaveMissingKey(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2208,6 +2275,7 @@ func TestSessionStoreHandleSaveMissingKey(t *testing.T) {
 // --- HandleSessionStore: load nonexistent key ---
 
 func TestSessionStoreHandleLoadNonexistent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2231,6 +2299,7 @@ func TestSessionStoreHandleLoadNonexistent(t *testing.T) {
 // --- HandleSessionStore: delete nonexistent key ---
 
 func TestSessionStoreHandleDeleteNonexistent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2254,6 +2323,7 @@ func TestSessionStoreHandleDeleteNonexistent(t *testing.T) {
 // --- projectSize: Walk error path (unreadable directory) ---
 
 func TestPersistProjectSizeWalkError(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2290,6 +2360,7 @@ func TestPersistProjectSizeWalkError(t *testing.T) {
 // --- flushDirty: empty dirty map (no-op path) ---
 
 func TestPersistFlushDirtyEmpty(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2312,6 +2383,7 @@ func TestPersistFlushDirtyEmpty(t *testing.T) {
 // --- evictStaleErrors: empty input returns empty slice ---
 
 func TestEvictStaleErrorsEmptyInput(t *testing.T) {
+	t.Parallel()
 	result := evictStaleErrors([]ErrorHistoryEntry{}, staleErrorThreshold)
 	if result == nil {
 		t.Fatal("expected non-nil empty slice")
@@ -2324,6 +2396,7 @@ func TestEvictStaleErrorsEmptyInput(t *testing.T) {
 // --- evictStaleErrors: nil input returns empty slice ---
 
 func TestEvictStaleErrorsNilInput(t *testing.T) {
+	t.Parallel()
 	result := evictStaleErrors(nil, staleErrorThreshold)
 	if result == nil {
 		t.Fatal("expected non-nil empty slice for nil input")
@@ -2336,6 +2409,7 @@ func TestEvictStaleErrorsNilInput(t *testing.T) {
 // --- enforceErrorHistoryCap: under cap returns unchanged ---
 
 func TestEnforceErrorHistoryCapUnderLimit(t *testing.T) {
+	t.Parallel()
 	entries := []ErrorHistoryEntry{
 		{Fingerprint: "a", FirstSeen: time.Now()},
 		{Fingerprint: "b", FirstSeen: time.Now()},
@@ -2349,6 +2423,7 @@ func TestEnforceErrorHistoryCapUnderLimit(t *testing.T) {
 // --- enforceErrorHistoryCap: exactly at cap returns unchanged ---
 
 func TestEnforceErrorHistoryCapExactLimit(t *testing.T) {
+	t.Parallel()
 	entries := make([]ErrorHistoryEntry, maxErrorHistory)
 	for i := range entries {
 		entries[i] = ErrorHistoryEntry{
@@ -2365,6 +2440,7 @@ func TestEnforceErrorHistoryCapExactLimit(t *testing.T) {
 // --- MarkDirty and background flush integration ---
 
 func TestPersistMarkDirtyAndFlush(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStoreWithInterval(dir, 50*time.Millisecond)
 	if err != nil {
@@ -2391,6 +2467,7 @@ func TestPersistMarkDirtyAndFlush(t *testing.T) {
 // --- Concurrent MarkDirty + flushDirty safety ---
 
 func TestPersistConcurrentMarkDirtyFlush(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2436,6 +2513,7 @@ func TestPersistConcurrentMarkDirtyFlush(t *testing.T) {
 // ============================================
 
 func TestPersistFlushDirtyMkdirAllError(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2470,6 +2548,7 @@ func TestPersistFlushDirtyMkdirAllError(t *testing.T) {
 // ============================================
 
 func TestPersistStatsReadDirError(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2495,6 +2574,7 @@ func TestPersistStatsReadDirError(t *testing.T) {
 // ============================================
 
 func TestPersistStatsCountsAllFilesInNamespace(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2526,6 +2606,7 @@ func TestPersistStatsCountsAllFilesInNamespace(t *testing.T) {
 // ============================================
 
 func TestPersistStatsUnreadableNamespace(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2564,6 +2645,7 @@ func TestPersistStatsUnreadableNamespace(t *testing.T) {
 // ============================================
 
 func TestPersistListOnlyNonJSONFiles(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2594,6 +2676,7 @@ func TestPersistListOnlyNonJSONFiles(t *testing.T) {
 // ============================================
 
 func TestSessionStoreHandleListError(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2622,6 +2705,7 @@ func TestSessionStoreHandleListError(t *testing.T) {
 // ============================================
 
 func TestSessionStoreHandleStatsError(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2647,6 +2731,7 @@ func TestSessionStoreHandleStatsError(t *testing.T) {
 // ============================================
 
 func TestPersist_PathTraversal_Save(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2683,6 +2768,7 @@ func TestPersist_PathTraversal_Save(t *testing.T) {
 }
 
 func TestPersist_PathTraversal_Load(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2702,6 +2788,7 @@ func TestPersist_PathTraversal_Load(t *testing.T) {
 }
 
 func TestPersist_PathTraversal_List(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2716,6 +2803,7 @@ func TestPersist_PathTraversal_List(t *testing.T) {
 }
 
 func TestPersist_PathTraversal_Delete(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2735,6 +2823,7 @@ func TestPersist_PathTraversal_Delete(t *testing.T) {
 }
 
 func TestPersist_PathTraversal_MarkDirty(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	store, err := NewSessionStore(dir)
 	if err != nil {
@@ -2758,6 +2847,7 @@ func TestPersist_PathTraversal_MarkDirty(t *testing.T) {
 }
 
 func TestPersist_ValidateStoreInput(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		value   string
 		label   string
@@ -2787,6 +2877,7 @@ func TestPersist_ValidateStoreInput(t *testing.T) {
 }
 
 func TestPersist_ValidatePathInDir(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		base    string
 		target  string

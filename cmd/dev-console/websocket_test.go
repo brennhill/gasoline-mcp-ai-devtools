@@ -11,6 +11,7 @@ import (
 )
 
 func TestV4WebSocketEventBuffer(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	events := []WebSocketEvent{
@@ -26,6 +27,7 @@ func TestV4WebSocketEventBuffer(t *testing.T) {
 }
 
 func TestV4WebSocketEventBufferRotation(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add more than max (500) events
@@ -48,6 +50,7 @@ func TestV4WebSocketEventBufferRotation(t *testing.T) {
 }
 
 func TestV4WebSocketEventFilterByConnectionID(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -64,6 +67,7 @@ func TestV4WebSocketEventFilterByConnectionID(t *testing.T) {
 }
 
 func TestV4WebSocketEventFilterByURL(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -80,6 +84,7 @@ func TestV4WebSocketEventFilterByURL(t *testing.T) {
 }
 
 func TestV4WebSocketEventFilterByDirection(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -96,6 +101,7 @@ func TestV4WebSocketEventFilterByDirection(t *testing.T) {
 }
 
 func TestV4WebSocketEventFilterWithLimit(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	for i := 0; i < 10; i++ {
@@ -112,6 +118,7 @@ func TestV4WebSocketEventFilterWithLimit(t *testing.T) {
 }
 
 func TestV4WebSocketEventDefaultLimit(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	for i := 0; i < 100; i++ {
@@ -129,6 +136,7 @@ func TestV4WebSocketEventDefaultLimit(t *testing.T) {
 }
 
 func TestV4WebSocketEventNewestFirst(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -147,6 +155,7 @@ func TestV4WebSocketEventNewestFirst(t *testing.T) {
 }
 
 func TestV4WebSocketConnectionTracker(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -169,6 +178,7 @@ func TestV4WebSocketConnectionTracker(t *testing.T) {
 }
 
 func TestV4WebSocketConnectionClose(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -192,6 +202,7 @@ func TestV4WebSocketConnectionClose(t *testing.T) {
 }
 
 func TestV4WebSocketConnectionError(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -211,6 +222,7 @@ func TestV4WebSocketConnectionError(t *testing.T) {
 }
 
 func TestV4WebSocketConnectionMessageStats(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -245,6 +257,7 @@ func TestV4WebSocketConnectionMessageStats(t *testing.T) {
 }
 
 func TestV4WebSocketConnectionLastMessage(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -262,6 +275,7 @@ func TestV4WebSocketConnectionLastMessage(t *testing.T) {
 }
 
 func TestV4WebSocketMaxTrackedConnections(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Open 25 connections (max is 20 active)
@@ -279,6 +293,7 @@ func TestV4WebSocketMaxTrackedConnections(t *testing.T) {
 }
 
 func TestV4WebSocketClosedConnectionHistory(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Open and close 15 connections (max closed history is 10)
@@ -298,6 +313,7 @@ func TestV4WebSocketClosedConnectionHistory(t *testing.T) {
 }
 
 func TestV4WebSocketStatusFilterByURL(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -313,6 +329,7 @@ func TestV4WebSocketStatusFilterByURL(t *testing.T) {
 }
 
 func TestV4WebSocketStatusFilterByConnectionID(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -332,6 +349,7 @@ func TestV4WebSocketStatusFilterByConnectionID(t *testing.T) {
 }
 
 func TestV4WebSocketSamplingInfo(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -348,6 +366,7 @@ func TestV4WebSocketSamplingInfo(t *testing.T) {
 }
 
 func TestV4PostWebSocketEventsEndpoint(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	body := `{"events":[{"ts":"2024-01-15T10:30:00.000Z","type":"websocket","event":"open","id":"uuid-1","url":"wss://example.com/ws"}]}`
@@ -367,6 +386,7 @@ func TestV4PostWebSocketEventsEndpoint(t *testing.T) {
 }
 
 func TestV4PostWebSocketEventsInvalidJSON(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewBufferString("not json"))
@@ -381,6 +401,7 @@ func TestV4PostWebSocketEventsInvalidJSON(t *testing.T) {
 }
 
 func TestMCPGetWebSocketEvents(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -427,6 +448,7 @@ func TestMCPGetWebSocketEvents(t *testing.T) {
 }
 
 func TestMCPGetWebSocketEventsWithFilter(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -462,6 +484,7 @@ func TestMCPGetWebSocketEventsWithFilter(t *testing.T) {
 }
 
 func TestMCPGetWebSocketStatus(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -509,6 +532,7 @@ func TestMCPGetWebSocketStatus(t *testing.T) {
 }
 
 func TestMCPGetWebSocketEventsEmpty(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -536,6 +560,7 @@ func TestMCPGetWebSocketEventsEmpty(t *testing.T) {
 }
 
 func TestV4ConnectionDurationFormatted(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	openedAt := time.Now().Add(-5*time.Minute - 2*time.Second)
@@ -565,6 +590,7 @@ func TestV4ConnectionDurationFormatted(t *testing.T) {
 }
 
 func TestV4ConnectionDurationShortFormat(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	openedAt := time.Now().Add(-3 * time.Second)
@@ -587,6 +613,7 @@ func TestV4ConnectionDurationShortFormat(t *testing.T) {
 }
 
 func TestV4ConnectionDurationHourFormat(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	openedAt := time.Now().Add(-1*time.Hour - 15*time.Minute)
@@ -608,6 +635,7 @@ func TestV4ConnectionDurationHourFormat(t *testing.T) {
 }
 
 func TestV4MessageRateCalculation(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Open connection
@@ -640,6 +668,7 @@ func TestV4MessageRateCalculation(t *testing.T) {
 }
 
 func TestV4MessageRateZeroWhenNoRecentMessages(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Open connection long ago
@@ -665,6 +694,7 @@ func TestV4MessageRateZeroWhenNoRecentMessages(t *testing.T) {
 }
 
 func TestV4MessageRateOutgoing(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -689,6 +719,7 @@ func TestV4MessageRateOutgoing(t *testing.T) {
 }
 
 func TestV4LastMessageAgeFormatted(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Open connection
@@ -727,6 +758,7 @@ func TestV4LastMessageAgeFormatted(t *testing.T) {
 }
 
 func TestV4LastMessageAgeMinutesFormat(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -759,6 +791,7 @@ func TestV4LastMessageAgeMinutesFormat(t *testing.T) {
 }
 
 func TestV4LastMessageAgeSubSecond(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -797,6 +830,7 @@ func TestV4LastMessageAgeSubSecond(t *testing.T) {
 
 // Test: HandleWebSocketStatus returns JSON with connections and closed arrays.
 func TestV4HandleWebSocketStatus_EmptyState(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("GET", "/websocket-status", nil)
@@ -828,6 +862,7 @@ func TestV4HandleWebSocketStatus_EmptyState(t *testing.T) {
 
 // Test: HandleWebSocketStatus returns open connections.
 func TestV4HandleWebSocketStatus_WithConnections(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -856,6 +891,7 @@ func TestV4HandleWebSocketStatus_WithConnections(t *testing.T) {
 
 // Test: HandleWebSocketStatus returns closed connections.
 func TestV4HandleWebSocketStatus_WithClosedConnections(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -888,6 +924,7 @@ func TestV4HandleWebSocketStatus_WithClosedConnections(t *testing.T) {
 
 // Test: formatAge with a timestamp a few seconds ago returns "Ns" format.
 func TestV4FormatAge_SecondsOnly(t *testing.T) {
+	t.Parallel()
 	ts := time.Now().Add(-7 * time.Second).Format(time.RFC3339Nano)
 	age := formatAge(ts)
 
@@ -905,6 +942,7 @@ func TestV4FormatAge_SecondsOnly(t *testing.T) {
 
 // Test: formatAge with a timestamp less than 1 second ago returns fractional.
 func TestV4FormatAge_SubSecond(t *testing.T) {
+	t.Parallel()
 	ts := time.Now().Add(-300 * time.Millisecond).Format(time.RFC3339Nano)
 	age := formatAge(ts)
 
@@ -922,6 +960,7 @@ func TestV4FormatAge_SubSecond(t *testing.T) {
 
 // Test: formatAge with empty timestamp returns empty string.
 func TestV4FormatAge_EmptyTimestamp(t *testing.T) {
+	t.Parallel()
 	age := formatAge("")
 	if age != "" {
 		t.Errorf("expected empty string for empty timestamp, got: %s", age)
@@ -930,6 +969,7 @@ func TestV4FormatAge_EmptyTimestamp(t *testing.T) {
 
 // Test: formatAge with invalid timestamp returns empty string.
 func TestV4FormatAge_InvalidTimestamp(t *testing.T) {
+	t.Parallel()
 	age := formatAge("not-a-timestamp")
 	if age != "" {
 		t.Errorf("expected empty string for invalid timestamp, got: %s", age)
@@ -942,6 +982,7 @@ func TestV4FormatAge_InvalidTimestamp(t *testing.T) {
 
 // Test: formatDuration with sub-second duration returns fractional seconds.
 func TestV4FormatDuration_SubSecond(t *testing.T) {
+	t.Parallel()
 	d := 250 * time.Millisecond
 	result := formatDuration(d)
 	if result != "0.2s" && result != "0.3s" {
@@ -954,6 +995,7 @@ func TestV4FormatDuration_SubSecond(t *testing.T) {
 
 // Test: formatDuration with exactly 0.
 func TestV4FormatDuration_Zero(t *testing.T) {
+	t.Parallel()
 	result := formatDuration(0)
 	if result != "0.0s" {
 		t.Errorf("expected '0.0s', got: %s", result)
@@ -966,6 +1008,7 @@ func TestV4FormatDuration_Zero(t *testing.T) {
 
 // Test: toolGetWSStatus with connection_id filter.
 func TestV4ToolGetWSStatus_ConnectionIDFilter(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1017,6 +1060,7 @@ func TestV4ToolGetWSStatus_ConnectionIDFilter(t *testing.T) {
 
 // Test: toolGetWSStatus with url filter.
 func TestV4ToolGetWSStatus_URLFilter(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1060,6 +1104,7 @@ func TestV4ToolGetWSStatus_URLFilter(t *testing.T) {
 
 // Test: toolGetWSStatus with both connection_id and url filter (connection_id takes precedence).
 func TestV4ToolGetWSStatus_BothFilters(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1109,6 +1154,7 @@ func TestV4ToolGetWSStatus_BothFilters(t *testing.T) {
 
 // Test: HandleWebSocketEvents GET returns JSON with events and count.
 func TestV4HandleWebSocketEvents_GET(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -1147,6 +1193,7 @@ func TestV4HandleWebSocketEvents_GET(t *testing.T) {
 
 // Test: HandleWebSocketEvents POST rejected when rate limited.
 func TestV4HandleWebSocketEvents_POST_RateLimited(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.mu.Lock()
@@ -1168,6 +1215,7 @@ func TestV4HandleWebSocketEvents_POST_RateLimited(t *testing.T) {
 
 // Test: HandleWebSocketEvents POST rejected when body too large.
 func TestV4HandleWebSocketEvents_POST_BodyTooLarge(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	largePayload := strings.Repeat("x", 6*1024*1024)
@@ -1183,6 +1231,7 @@ func TestV4HandleWebSocketEvents_POST_BodyTooLarge(t *testing.T) {
 
 // Test: HandleWebSocketEvents POST rejected when bad JSON.
 func TestV4HandleWebSocketEvents_POST_BadJSON(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewBufferString("not json!"))
@@ -1197,6 +1246,7 @@ func TestV4HandleWebSocketEvents_POST_BadJSON(t *testing.T) {
 
 // Test: HandleWebSocketEvents POST re-check rate limit after recording.
 func TestV4HandleWebSocketEvents_POST_RateLimitAfterRecording(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.mu.Lock()
@@ -1231,6 +1281,7 @@ func TestV4HandleWebSocketEvents_POST_RateLimitAfterRecording(t *testing.T) {
 
 // Test: formatAge with future timestamp (d < 0 branch).
 func TestV4FormatAge_FutureTimestamp(t *testing.T) {
+	t.Parallel()
 	// A timestamp 5 seconds in the future
 	ts := time.Now().Add(5 * time.Second).Format(time.RFC3339Nano)
 	age := formatAge(ts)
@@ -1243,6 +1294,7 @@ func TestV4FormatAge_FutureTimestamp(t *testing.T) {
 
 // Test: formatDuration with exact minutes (secs == 0 branch).
 func TestV4FormatDuration_ExactMinutes(t *testing.T) {
+	t.Parallel()
 	d := 3 * time.Minute
 	result := formatDuration(d)
 	if result != "3m" {
@@ -1252,6 +1304,7 @@ func TestV4FormatDuration_ExactMinutes(t *testing.T) {
 
 // Test: formatDuration with exact hours (mins == 0 branch).
 func TestV4FormatDuration_ExactHours(t *testing.T) {
+	t.Parallel()
 	d := 2 * time.Hour
 	result := formatDuration(d)
 	if result != "2h" {
@@ -1265,6 +1318,7 @@ func TestV4FormatDuration_ExactHours(t *testing.T) {
 
 // Test: toolGetWSStatus with invalid arguments JSON returns error message.
 func TestV4ToolGetWSStatus_InvalidArgs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

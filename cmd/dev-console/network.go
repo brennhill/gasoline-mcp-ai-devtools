@@ -47,12 +47,17 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 		}
 		c.networkBodies = append(c.networkBodies, bodies[i])
 		c.networkAddedAt = append(c.networkAddedAt, now)
+		c.nbMemoryTotal += nbEntryMemory(&bodies[i])
 	}
 
 	// Enforce max count (respecting minimal mode)
 	capacity := c.effectiveNBCapacity()
 	if len(c.networkBodies) > capacity {
 		keep := len(c.networkBodies) - capacity
+		// Subtract memory for evicted entries
+		for j := 0; j < keep; j++ {
+			c.nbMemoryTotal -= nbEntryMemory(&c.networkBodies[j])
+		}
 		newBodies := make([]NetworkBody, capacity)
 		copy(newBodies, c.networkBodies[keep:])
 		c.networkBodies = newBodies
@@ -90,13 +95,15 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 // evictNBForMemory removes oldest bodies if memory exceeds limit.
 // Calculates how many entries to drop in a single pass to avoid O(n²) re-scanning.
 func (c *Capture) evictNBForMemory() {
-	excess := c.calcNBMemory() - nbBufferMemoryLimit
+	excess := c.nbMemoryTotal - nbBufferMemoryLimit
 	if excess <= 0 {
 		return
 	}
 	drop := 0
 	for drop < len(c.networkBodies) && excess > 0 {
-		excess -= int64(len(c.networkBodies[drop].RequestBody)+len(c.networkBodies[drop].ResponseBody)) + networkBodyOverhead
+		entryMem := nbEntryMemory(&c.networkBodies[drop])
+		excess -= entryMem
+		c.nbMemoryTotal -= entryMem
 		drop++
 	}
 	surviving := make([]NetworkBody, len(c.networkBodies)-drop)
@@ -182,6 +189,7 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		StatusMin int    `json:"status_min"`
 		StatusMax int    `json:"status_max"`
 		Limit     int    `json:"limit"`
+		TabId     int    `json:"tab_id"` // Filter by Chrome tab ID (0 = no filter)
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
@@ -204,17 +212,30 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		bodies = filtered
 	}
 
+	// Apply tab_id filter if specified
+	if arguments.TabId > 0 {
+		var filtered []NetworkBody
+		for _, b := range bodies {
+			if b.TabId == arguments.TabId {
+				filtered = append(filtered, b)
+			}
+		}
+		bodies = filtered
+	}
+
 	if len(bodies) == 0 {
 		data := map[string]interface{}{
-			"networkRequestResponsePairs": []interface{}{},
+			"network_request_response_pairs": []interface{}{},
 			"count":                       0,
-			"maxRequestBodyBytes":         8192,
-			"maxResponseBodyBytes":        16384,
+			"max_request_body_bytes":         8192,
+			"max_response_body_bytes":        16384,
 		}
 		if h.captureOverrides != nil {
 			overrides := h.captureOverrides.GetAll()
 			if overrides["network_bodies"] == "false" {
 				data["hint"] = "Network body capture is OFF. To enable, call: configure({action: \"capture\", settings: {network_bodies: \"true\"}})"
+			} else {
+				data["hint"] = "No network bodies captured. Ensure: (1) a tab is being tracked via the extension's 'Track This Tab' button, (2) the page has made network requests since tracking started."
 			}
 		}
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("", data)}
@@ -227,46 +248,51 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 			"url":        b.URL,
 			"method":     b.Method,
 			"status":     b.Status,
-			"durationMs": b.Duration,
+			"duration_ms": b.Duration,
+		}
+
+		// Add tab_id if present (0 means not set/unknown)
+		if b.TabId > 0 {
+			jsonPairs[i]["tab_id"] = b.TabId
 		}
 
 		// Add timestamp if present (renamed capturedAt)
 		if b.Timestamp != "" {
-			jsonPairs[i]["capturedAt"] = b.Timestamp
+			jsonPairs[i]["captured_at"] = b.Timestamp
 		}
 
 		// Add content type if present
 		if b.ContentType != "" {
-			jsonPairs[i]["contentType"] = b.ContentType
+			jsonPairs[i]["content_type"] = b.ContentType
 		}
 
 		// Include request body if present
 		if b.RequestBody != "" {
-			jsonPairs[i]["requestBody"] = b.RequestBody
-			jsonPairs[i]["requestBodySizeBytes"] = len(b.RequestBody)
+			jsonPairs[i]["request_body"] = b.RequestBody
+			jsonPairs[i]["request_body_size_bytes"] = len(b.RequestBody)
 			if b.RequestTruncated {
-				jsonPairs[i]["requestBodyTruncated"] = true
+				jsonPairs[i]["request_body_truncated"] = true
 			}
 		}
 
 		// Include response body if present
 		if b.ResponseBody != "" {
-			jsonPairs[i]["responseBody"] = b.ResponseBody
-			jsonPairs[i]["responseBodySizeBytes"] = len(b.ResponseBody)
+			jsonPairs[i]["response_body"] = b.ResponseBody
+			jsonPairs[i]["response_body_size_bytes"] = len(b.ResponseBody)
 			if b.ResponseTruncated {
-				jsonPairs[i]["responseBodyTruncated"] = true
+				jsonPairs[i]["response_body_truncated"] = true
 			}
 		}
 
 		// Add response headers if present
 		if len(b.ResponseHeaders) > 0 {
-			jsonPairs[i]["responseHeaders"] = b.ResponseHeaders
+			jsonPairs[i]["response_headers"] = b.ResponseHeaders
 		}
 
 		// Add binary format detection if present with confidence interpretation
 		if b.BinaryFormat != "" {
-			jsonPairs[i]["binaryFormat"] = b.BinaryFormat
-			jsonPairs[i]["binaryFormatConfidence"] = b.FormatConfidence
+			jsonPairs[i]["binary_format"] = b.BinaryFormat
+			jsonPairs[i]["binary_format_confidence"] = b.FormatConfidence
 
 			// Add interpretation based on confidence level
 			var interpretation string
@@ -277,15 +303,15 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 			} else {
 				interpretation = "low_confidence"
 			}
-			jsonPairs[i]["binaryFormatInterpretation"] = interpretation
+			jsonPairs[i]["binary_format_interpretation"] = interpretation
 		}
 	}
 
 	data := map[string]interface{}{
-		"networkRequestResponsePairs": jsonPairs,
+		"network_request_response_pairs": jsonPairs,
 		"count":                       len(bodies),
-		"maxRequestBodyBytes":         8192,
-		"maxResponseBodyBytes":        16384,
+		"max_request_body_bytes":         8192,
+		"max_response_body_bytes":        16384,
 	}
 
 	summary := fmt.Sprintf("%d network request-response pair(s)", len(bodies))
@@ -299,7 +325,8 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 		URL   string `json:"url"`   // Substring filter
 		Limit int    `json:"limit"` // Max entries to return
 	}
-	json.Unmarshal(args, &params)
+	//nolint:errcheck -- args already validated by MCP layer; fallback to zero values is safe
+	_ = json.Unmarshal(args, &params)
 
 	h.capture.mu.RLock()
 	entries := make([]NetworkWaterfallEntry, len(h.capture.networkWaterfall))
@@ -353,18 +380,18 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 
 		jsonEntries[i] = map[string]interface{}{
 			"url":                   entry.URL,
-			"initiatorType":         entry.InitiatorType,
-			"durationMs":            entry.Duration,
-			"startTimeMs":           entry.StartTime,
-			"fetchStartMs":          entry.FetchStart,
-			"responseEndMs":         entry.ResponseEnd,
-			"transferSizeBytes":     entry.TransferSize,
-			"decodedBodySizeBytes":  entry.DecodedBodySize,
-			"encodedBodySizeBytes":  entry.EncodedBodySize,
-			"compressionRatio":      compressionRatio,
+			"initiator_type":         entry.InitiatorType,
+			"duration_ms":            entry.Duration,
+			"start_time_ms":           entry.StartTime,
+			"fetch_start_ms":          entry.FetchStart,
+			"response_end_ms":         entry.ResponseEnd,
+			"transfer_size_bytes":     entry.TransferSize,
+			"decoded_body_size_bytes":  entry.DecodedBodySize,
+			"encoded_body_size_bytes":  entry.EncodedBodySize,
+			"compression_ratio":      compressionRatio,
 			"cached":                entry.TransferSize == 0 && entry.DecodedBodySize > 0,
-			"pageURL":               entry.PageURL,
-			"capturedAt":            entry.Timestamp.Format(time.RFC3339),
+			"page_url":               entry.PageURL,
+			"captured_at":            entry.Timestamp.Format(time.RFC3339),
 		}
 	}
 
@@ -372,8 +399,8 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 		"entries":          jsonEntries,
 		"count":            len(entries),
 		"timespan":         formatDuration(timeRange),
-		"oldestTimestamp":  oldestTime.Format(time.RFC3339),
-		"newestTimestamp":  newestTime.Format(time.RFC3339),
+		"oldest_timestamp":  oldestTime.Format(time.RFC3339),
+		"newest_timestamp":  newestTime.Format(time.RFC3339),
 		"limitations": []string{
 			"No HTTP status codes (use network_bodies for 404s/500s/401s)",
 			"No request methods (GET/POST/etc.)",
@@ -397,4 +424,25 @@ func entryStr(entry LogEntry, key string) string {
 		return ""
 	}
 	return s
+}
+
+// entryDisplay extracts a value from a LogEntry map and returns its string
+// representation. Unlike entryStr, it handles numeric types (e.g. tabId
+// arrives as float64 from JSON).
+func entryDisplay(entry LogEntry, key string) string {
+	v, ok := entry[key]
+	if !ok || v == nil {
+		return ""
+	}
+	switch tv := v.(type) {
+	case string:
+		return tv
+	case float64:
+		if tv == float64(int64(tv)) {
+			return fmt.Sprintf("%d", int64(tv))
+		}
+		return fmt.Sprintf("%g", tv)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }

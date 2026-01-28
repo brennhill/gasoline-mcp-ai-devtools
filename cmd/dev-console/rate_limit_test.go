@@ -14,6 +14,7 @@ import (
 // ============================================
 
 func TestRateLimitUnderThreshold(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Send 500 events (under 1000 threshold)
@@ -31,6 +32,7 @@ func TestRateLimitUnderThreshold(t *testing.T) {
 // ============================================
 
 func TestRateLimitAtThreshold(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Send exactly 1000 events - should still be fine
@@ -51,6 +53,7 @@ func TestRateLimitAtThreshold(t *testing.T) {
 // ============================================
 
 func TestRateLimitResetsAfterOneSecond(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Exceed threshold
@@ -75,6 +78,7 @@ func TestRateLimitResetsAfterOneSecond(t *testing.T) {
 // ============================================
 
 func TestCircuitOpensAfterFiveSeconds(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Simulate 5 consecutive seconds over threshold
@@ -102,6 +106,7 @@ func TestCircuitOpensAfterFiveSeconds(t *testing.T) {
 // ============================================
 
 func TestCircuitOpenRejects(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Manually open the circuit
@@ -151,6 +156,7 @@ func TestCircuitOpenRejects(t *testing.T) {
 // ============================================
 
 func TestCircuitClosesAfterRecovery(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Open the circuit
@@ -176,6 +182,7 @@ func TestCircuitClosesAfterRecovery(t *testing.T) {
 }
 
 func TestCircuitStaysOpenIfMemoryHigh(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Open the circuit
@@ -204,6 +211,7 @@ func TestCircuitStaysOpenIfMemoryHigh(t *testing.T) {
 // ============================================
 
 func TestRateLimitResponseFormat(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Exceed rate limit
@@ -260,6 +268,7 @@ func TestRateLimitResponseFormat(t *testing.T) {
 // ============================================
 
 func TestEventCountIncrementsByBatchSize(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Single request with 500 events
@@ -302,6 +311,7 @@ func TestEventCountIncrementsByBatchSize(t *testing.T) {
 // ============================================
 
 func TestHealthEndpointCircuitState(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Test when circuit is closed
@@ -340,6 +350,7 @@ func TestHealthEndpointCircuitState(t *testing.T) {
 }
 
 func TestHealthEndpointHTTP(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Open circuit for test
@@ -376,6 +387,7 @@ func TestHealthEndpointHTTP(t *testing.T) {
 // ============================================
 
 func TestCircuitDoesNotOpenOnSingleSpike(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Simulate only 3 consecutive seconds over threshold (not enough to open)
@@ -412,6 +424,7 @@ func TestCircuitDoesNotOpenOnSingleSpike(t *testing.T) {
 // ============================================
 
 func TestRateLimitGlobalAcrossEndpoints(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Send 400 events via WebSocket endpoint
@@ -462,6 +475,7 @@ func TestRateLimitGlobalAcrossEndpoints(t *testing.T) {
 // ============================================
 
 func TestNonIngestEndpointsNotRateLimited(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Exceed rate limit
@@ -498,6 +512,7 @@ func TestNonIngestEndpointsNotRateLimited(t *testing.T) {
 // ============================================
 
 func TestCircuitOpensOnMemoryExceeded(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Set memory over the hard limit (50MB)
@@ -516,6 +531,7 @@ func TestCircuitOpensOnMemoryExceeded(t *testing.T) {
 }
 
 func TestCircuitReasonMemoryExceeded(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	c.mu.Lock()
@@ -530,6 +546,7 @@ func TestCircuitReasonMemoryExceeded(t *testing.T) {
 }
 
 func TestCircuitReasonRateExceeded(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	c.mu.Lock()
@@ -544,6 +561,7 @@ func TestCircuitReasonRateExceeded(t *testing.T) {
 }
 
 func TestRateLimitStreakIncrementsCorrectly(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// First window: exceed threshold
@@ -572,6 +590,7 @@ func TestRateLimitStreakIncrementsCorrectly(t *testing.T) {
 }
 
 func TestRateLimitStreakResetsOnBelowThreshold(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Build up a streak
@@ -588,6 +607,7 @@ func TestRateLimitStreakResetsOnBelowThreshold(t *testing.T) {
 }
 
 func TestRecordEventsWithBatchSize(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Record a batch of 50
@@ -614,6 +634,7 @@ func TestRecordEventsWithBatchSize(t *testing.T) {
 }
 
 func TestRateLimitResponseWhenCircuitOpen(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Open the circuit
@@ -645,6 +666,7 @@ func TestRateLimitResponseWhenCircuitOpen(t *testing.T) {
 }
 
 func TestLastBelowThresholdTracking(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Start with circuit open

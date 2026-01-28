@@ -236,7 +236,7 @@ export function recordEnhancedAction(type, element, opts = {}) {
 
   // Emit to content script for server relay
   if (typeof window !== 'undefined' && window.postMessage) {
-    window.postMessage({ type: 'GASOLINE_ENHANCED_ACTION', payload: action }, '*')
+    window.postMessage({ type: 'GASOLINE_ENHANCED_ACTION', payload: action }, window.location.origin)
   }
 
   return action
@@ -404,5 +404,11 @@ function getPlaywrightLocator(selectors) {
  */
 function escapeString(str) {
   if (!str) return ''
-  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t')
+    .replace(/`/g, '\\`')
 }

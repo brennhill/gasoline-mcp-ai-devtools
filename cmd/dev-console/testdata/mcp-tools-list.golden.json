@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "observe",
-      "description": "START HERE. Always call observe() first to see what data is available before taking any action.\n\nCOMMON WORKFLOWS (choose your path):\n• Debugging: observe({what:'errors'}) → observe({what:'timeline'}) → find root cause\n• Performance: observe({what:'vitals'}) → observe({what:'network_bodies', status_min:500}) → slow requests\n• Testing: interact() actions → observe({what:'actions'}) → generate({format:'test'})\n• Security: observe({what:'security_audit'}) → observe({what:'third_party_audit'})\n• API Discovery: observe({what:'network_bodies'}) → observe({what:'api', format:'openapi_stub'})\n\nUse observe to READ the current browser state—this is your source of truth. Available: errors, logs, network requests, WebSocket messages, actions, performance metrics, page structure, accessibility issues, API responses, security risks, changes, timeline. \n\nRULES: Before interact(), call observe() to understand state. Before generate(), call observe() to see what data exists. \n\nExamples: observe({what:'page'})→URL \u0026 structure, observe({what:'errors'})→console errors, observe({what:'network_bodies'})→API calls, observe({what:'accessibility'})→a11y violations. Observe first, then act.\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T call interact() before observe() — you'll be acting without understanding current state\n• DON'T fetch 1000 entries without filters — use limit, url, status_min parameters to narrow results\n• DON'T assume data exists — check _meta.data_counts or call observe() first to verify\n• DON'T skip observe() after interact() — always verify your action succeeded\n\nResponse format: A summary line followed by either a markdown table (flat data) or compact JSON (nested data).\n\nMode responses (markdown = table format, json = object format):\n- errors (markdown): table with Level, Message, Source, Time columns\n- logs (markdown): table with Level, Message, Source, Time columns\n- extension_logs (markdown): table with Level, Source, Category, Message, Data, Time columns\n- network_waterfall (json): timing waterfall with durationMs, transferSizeBytes, compressionRatio\n- network_bodies (json): request/response pairs with method, status, bodies, headers\n- websocket_events (markdown): table with ID, Event, URL, Direction, Size, Time columns\n- websocket_status (json): {connections: [{id, url, state, messageCount}], closed: [...]}\n- actions (markdown): table with Type, URL, Selector, Value, Time columns\n- vitals (json): {snapshots: [{url, lcp, cls, inp, fcp, ttfb}]}\n- page (json): {url, title, readyState, html}\n- tabs (markdown): table with ID, URL, Title, Active columns\n- pilot (json): {enabled, source, extensionConnected, lastPollAgo}\n- performance: Formatted text report with FCP, LCP, CLS, INP\n- api (markdown): table with Method, Path, Observations columns\n- accessibility (markdown): table with Impact, ID, Description, Nodes columns\n- changes (json): {errors: {new, resolved}, network: {new}, actions: [...]}\n- timeline (json): {events: [{type, timestamp, ...data}]}\n- error_clusters (json): {clusters: [{signature, count, representative, rootCause}]}\n- history (json): {patterns: [...], anomalies: [...]}\n- security_audit (json): audit results object\n- third_party_audit (json): {thirdParties: [{domain, requests, risk}]}\n- security_diff (json): {added: [...], removed: [...], changed: [...]}\n- command_result (json): async command result by correlation_id\n- pending_commands (json): {pending: [...], completed: [...], failed: [...]}\n- failed_commands (json): recent failed/expired commands\n\nEmpty results return descriptive text (e.g., \"No browser errors found\").",
+      "description": "Read current browser state. Call observe() first before interact() or generate().\n\nModes (what parameter): errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit (max entries), url (substring match), method, status_min, status_max, connection_id, direction, last_n, format, severity.\n\nMode responses: markdown tables for flat data (errors, logs, actions, etc.) or JSON for nested data (network_bodies, vitals, page, etc.). Check _meta.data_counts for available data.",
       "inputSchema": {
         "properties": {
           "action": {
@@ -366,7 +366,7 @@
     },
     {
       "name": "configure",
-      "description": "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), diff_sessions (create snapshots \u0026 compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T add noise rules prematurely — call observe() first to confirm data is actually noisy\n• DON'T use store for temporary data — that's for cross-session persistence only\n• DON'T configure filters without seeing raw data first — observe(), then decide what to filter\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: Browser logs cleared confirmation text\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
+      "description": "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots \u0026 compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear browser logs), health (server health check). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: Browser logs cleared confirmation text\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
       "inputSchema": {
         "properties": {
           "action": {
@@ -377,6 +377,8 @@
               "noise_rule",
               "dismiss",
               "clear",
+              "capture",
+              "record_event",
               "query_dom",
               "diff_sessions",
               "validate_api",
@@ -495,27 +497,27 @@
                 "classification": {
                   "type": "string"
                 },
-                "matchSpec": {
+                "match_spec": {
                   "properties": {
                     "level": {
                       "type": "string"
                     },
-                    "messageRegex": {
+                    "message_regex": {
                       "type": "string"
                     },
                     "method": {
                       "type": "string"
                     },
-                    "sourceRegex": {
+                    "source_regex": {
                       "type": "string"
                     },
-                    "statusMax": {
+                    "status_max": {
                       "type": "number"
                     },
-                    "statusMin": {
+                    "status_min": {
                       "type": "number"
                     },
-                    "urlRegex": {
+                    "url_regex": {
                       "type": "string"
                     }
                   },

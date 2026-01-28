@@ -31,6 +31,7 @@ func setupToolHandler(t *testing.T, server *Server, capture *Capture) *MCPHandle
 // ============================================
 
 func TestExtractURLPath_UnparseableURL(t *testing.T) {
+	t.Parallel()
 	// url.Parse returns error for URLs with invalid control characters
 	rawURL := "http://example.com/path\x7f"
 	result := extractURLPath(rawURL)
@@ -41,6 +42,7 @@ func TestExtractURLPath_UnparseableURL(t *testing.T) {
 }
 
 func TestExtractURLPath_WithQueryString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string

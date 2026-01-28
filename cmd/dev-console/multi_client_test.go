@@ -36,6 +36,7 @@ func setupMultiClientTest(t *testing.T) (*Server, *Capture, *CheckpointManager) 
 // ============================================
 
 func TestMultiClient_CheckpointIsolation(t *testing.T) {
+	t.Parallel()
 	server, _, cm := setupMultiClientTest(t)
 
 	clientA := DeriveClientID("/home/alice/project")
@@ -96,6 +97,7 @@ func TestMultiClient_CheckpointIsolation(t *testing.T) {
 }
 
 func TestMultiClient_CheckpointNamespaceDoesNotLeak(t *testing.T) {
+	t.Parallel()
 	_, _, cm := setupMultiClientTest(t)
 
 	clientA := DeriveClientID("/home/alice/project")
@@ -119,6 +121,7 @@ func TestMultiClient_CheckpointNamespaceDoesNotLeak(t *testing.T) {
 }
 
 func TestMultiClient_CheckpointBackwardsCompat(t *testing.T) {
+	t.Parallel()
 	_, _, cm := setupMultiClientTest(t)
 
 	// Empty clientID should use global namespace (no prefix)
@@ -137,6 +140,7 @@ func TestMultiClient_CheckpointBackwardsCompat(t *testing.T) {
 }
 
 func TestMultiClient_CheckpointFallbackToGlobal(t *testing.T) {
+	t.Parallel()
 	_, _, cm := setupMultiClientTest(t)
 
 	// Create a global checkpoint (empty clientID)
@@ -157,6 +161,7 @@ func TestMultiClient_CheckpointFallbackToGlobal(t *testing.T) {
 }
 
 func TestMultiClient_SameNameDifferentClients(t *testing.T) {
+	t.Parallel()
 	_, _, cm := setupMultiClientTest(t)
 
 	clientA := DeriveClientID("/home/alice/project")
@@ -182,6 +187,7 @@ func TestMultiClient_SameNameDifferentClients(t *testing.T) {
 // ============================================
 
 func TestMultiClient_QueryResultIsolation(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	clientA := "client-aaa"
@@ -223,6 +229,7 @@ func TestMultiClient_QueryResultIsolation(t *testing.T) {
 }
 
 func TestMultiClient_QueryResultCrossClientDenied(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	clientA := "client-aaa"
@@ -245,6 +252,7 @@ func TestMultiClient_QueryResultCrossClientDenied(t *testing.T) {
 }
 
 func TestMultiClient_QueryResultLegacyClientCanReadAny(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Legacy client (empty clientID) creates a query
@@ -266,6 +274,7 @@ func TestMultiClient_QueryResultLegacyClientCanReadAny(t *testing.T) {
 }
 
 func TestMultiClient_WaitForResultIsolation(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	clientA := "client-aaa"
@@ -316,6 +325,7 @@ func TestMultiClient_WaitForResultIsolation(t *testing.T) {
 // ============================================
 
 func TestHTTP_ClientsRegister(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// POST /clients - register a new client
@@ -360,6 +370,7 @@ func TestHTTP_ClientsRegister(t *testing.T) {
 }
 
 func TestHTTP_ClientsList(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Register two clients
@@ -396,6 +407,7 @@ func TestHTTP_ClientsList(t *testing.T) {
 }
 
 func TestHTTP_ClientsGet(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	cs := capture.clientRegistry.Register("/home/alice/project")
@@ -415,6 +427,7 @@ func TestHTTP_ClientsGet(t *testing.T) {
 }
 
 func TestHTTP_ClientsGetNotFound(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	cs := capture.clientRegistry.Get("nonexistent-id")
@@ -424,6 +437,7 @@ func TestHTTP_ClientsGetNotFound(t *testing.T) {
 }
 
 func TestHTTP_ClientsDelete(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	cs := capture.clientRegistry.Register("/home/alice/project")
@@ -447,6 +461,7 @@ func TestHTTP_ClientsDelete(t *testing.T) {
 }
 
 func TestHTTP_ClientsReRegister(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Register same CWD twice — should return same ID, update LastSeenAt
@@ -474,6 +489,7 @@ func TestHTTP_ClientsReRegister(t *testing.T) {
 // ============================================
 
 func TestHTTP_MCPWithClientID(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer("", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
@@ -506,6 +522,7 @@ func TestHTTP_MCPWithClientID(t *testing.T) {
 }
 
 func TestHTTP_MCPToolCallSetsClientID(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer("", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
@@ -546,6 +563,7 @@ func TestHTTP_MCPToolCallSetsClientID(t *testing.T) {
 }
 
 func TestHTTP_MCPWithoutClientID(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer("", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
@@ -583,6 +601,7 @@ func TestHTTP_MCPWithoutClientID(t *testing.T) {
 // ============================================
 
 func TestIntegration_CheckpointWithMCPClientHeader(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer("", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
@@ -645,6 +664,7 @@ func TestIntegration_CheckpointWithMCPClientHeader(t *testing.T) {
 // ============================================
 
 func TestIntegration_ClientRegistryWithCheckpoints(t *testing.T) {
+	t.Parallel()
 	server, capture, cm := setupMultiClientTest(t)
 
 	// Register two clients
@@ -695,6 +715,7 @@ func TestIntegration_ClientRegistryWithCheckpoints(t *testing.T) {
 // ============================================
 
 func TestMultiClient_LRUEvictionPreservesActive(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Register maxClients clients
@@ -738,6 +759,7 @@ func TestMultiClient_LRUEvictionPreservesActive(t *testing.T) {
 // ============================================
 
 func TestMultiClient_ConcurrentCheckpointOperations(t *testing.T) {
+	t.Parallel()
 	server, _, cm := setupMultiClientTest(t)
 
 	const numClients = 5
@@ -776,6 +798,7 @@ func TestMultiClient_ConcurrentCheckpointOperations(t *testing.T) {
 }
 
 func TestMultiClient_ConcurrentQueryIsolation(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	const numClients = 5
@@ -817,6 +840,7 @@ func TestMultiClient_ConcurrentQueryIsolation(t *testing.T) {
 }
 
 func TestMultiClient_ConcurrentRegistrationAndEviction(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	const numGoroutines = 20
@@ -864,6 +888,7 @@ func TestMultiClient_ConcurrentRegistrationAndEviction(t *testing.T) {
 // ============================================
 
 func TestE2E_TwoClientsSameServer(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer("", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
@@ -967,6 +992,7 @@ func TestE2E_TwoClientsSameServer(t *testing.T) {
 }
 
 func TestE2E_NetworkAndWSIsolation(t *testing.T) {
+	t.Parallel()
 	server, capture, cm := setupMultiClientTest(t)
 
 	clientA := DeriveClientID("/home/alice/project")
@@ -1044,6 +1070,7 @@ func TestE2E_NetworkAndWSIsolation(t *testing.T) {
 // ============================================
 
 func TestMultiClient_EmptyClientIDBackwardsCompat(t *testing.T) {
+	t.Parallel()
 	server, _, cm := setupMultiClientTest(t)
 
 	// All operations with empty clientID should work (no prefix)
@@ -1068,6 +1095,7 @@ func TestMultiClient_EmptyClientIDBackwardsCompat(t *testing.T) {
 }
 
 func TestMultiClient_ClientIDDeterminism(t *testing.T) {
+	t.Parallel()
 	// Same CWD should always produce same ID
 	id1 := DeriveClientID("/home/alice/project")
 	id2 := DeriveClientID("/home/alice/project")
@@ -1088,6 +1116,7 @@ func TestMultiClient_ClientIDDeterminism(t *testing.T) {
 }
 
 func TestMultiClient_GetOrDefaultWithUnknownID(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// GetOrDefault with unknown ID should return a default state
@@ -1104,6 +1133,7 @@ func TestMultiClient_GetOrDefaultWithUnknownID(t *testing.T) {
 }
 
 func TestMultiClient_GetOrDefaultWithEmptyID(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// GetOrDefault with empty ID should return a default with no prefix
@@ -1120,6 +1150,7 @@ func TestMultiClient_GetOrDefaultWithEmptyID(t *testing.T) {
 }
 
 func TestMultiClient_MaxCheckpointsPerClient(t *testing.T) {
+	t.Parallel()
 	_, _, cm := setupMultiClientTest(t)
 
 	clientA := DeriveClientID("/home/alice/project")
@@ -1146,6 +1177,7 @@ func TestMultiClient_MaxCheckpointsPerClient(t *testing.T) {
 // TestConnectMode_FullLifecycle simulates the connect mode HTTP flow:
 // register → MCP initialize → tool calls → unregister
 func TestConnectMode_FullLifecycle(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer("", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
@@ -1240,6 +1272,7 @@ func TestConnectMode_FullLifecycle(t *testing.T) {
 // TestConnectMode_TwoClientsParallel simulates two connect-mode clients
 // making requests in parallel to the same server.
 func TestConnectMode_TwoClientsParallel(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer("", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
@@ -1308,6 +1341,7 @@ func TestConnectMode_TwoClientsParallel(t *testing.T) {
 // with concurrent requests from multiple clients. Designed to catch
 // race conditions when run with -race.
 func TestStress_ConcurrentMCPRequests(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer("", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
@@ -1381,6 +1415,7 @@ func TestStress_ConcurrentMCPRequests(t *testing.T) {
 // TestStress_CheckpointAndQueryMix tests concurrent checkpoint operations
 // and query isolation together — the most realistic stress scenario.
 func TestStress_CheckpointAndQueryMix(t *testing.T) {
+	t.Parallel()
 	server, err := NewServer("", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
@@ -1447,6 +1482,7 @@ func TestStress_CheckpointAndQueryMix(t *testing.T) {
 // TestStress_RapidRegisterUnregister tests rapid client churn
 // to verify the registry handles high-frequency add/remove without corruption.
 func TestStress_RapidRegisterUnregister(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	const numGoroutines = 10

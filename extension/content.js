@@ -132,6 +132,16 @@ window.addEventListener('message', (event) => {
     return
   }
 
+  // Handle DOM query results from inject.js
+  if (messageType === 'GASOLINE_DOM_QUERY_RESPONSE') {
+    const sendResponse = pendingDomRequests.get(requestId)
+    if (sendResponse) {
+      pendingDomRequests.delete(requestId)
+      sendResponse(result)
+    }
+    return
+  }
+
   // Tab isolation filter: only forward captured data from the tracked tab.
   // Response messages (highlight, execute JS, a11y) are NOT filtered because
   // they are responses to explicit commands from the background script.
@@ -140,6 +150,7 @@ window.addEventListener('message', (event) => {
   }
 
   // Handle MESSAGE_MAP forwarding — attach tabId to every message
+  // eslint-disable-next-line security/detect-object-injection -- messageType is from trusted inject.js, MESSAGE_MAP is module constant
   const mapped = MESSAGE_MAP[messageType]
   if (mapped && payload && typeof payload === 'object') {
     safeSendMessage({ type: mapped, payload, tabId: currentTabId })
@@ -214,6 +225,43 @@ let executeRequestId = 0
 // Pending a11y audit requests waiting for responses from inject.js
 const pendingA11yRequests = new Map()
 let a11yRequestId = 0
+
+// Pending DOM query requests waiting for responses from inject.js
+const pendingDomRequests = new Map()
+let domRequestId = 0
+
+// ============================================================================
+// ISSUE 2 FIX: PENDING REQUEST CLEANUP ON PAGE UNLOAD
+// ============================================================================
+
+/**
+ * Clear all pending request Maps on page unload (Issue 2 fix).
+ * Prevents memory leaks and stale request accumulation across navigations.
+ */
+export function clearPendingRequests() {
+  pendingHighlightRequests.clear()
+  pendingExecuteRequests.clear()
+  pendingA11yRequests.clear()
+  pendingDomRequests.clear()
+}
+
+/**
+ * Get statistics about pending requests (for testing/debugging)
+ * @returns {Object} Counts of pending requests by type
+ */
+export function getPendingRequestStats() {
+  return {
+    highlight: pendingHighlightRequests.size,
+    execute: pendingExecuteRequests.size,
+    a11y: pendingA11yRequests.size,
+    dom: pendingDomRequests.size,
+  }
+}
+
+// Register cleanup handlers for page unload/navigation (Issue 2 fix)
+// Using 'pagehide' (modern, fires on both close and navigation) + 'beforeunload' (legacy fallback)
+window.addEventListener('pagehide', clearPendingRequests)
+window.addEventListener('beforeunload', clearPendingRequests)
 
 // ============================================================================
 // MESSAGE HANDLERS FROM BACKGROUND
@@ -364,6 +412,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     window.postMessage(
       {
         type: 'GASOLINE_A11Y_QUERY',
+        requestId,
+        params: parsedParams,
+      },
+      window.location.origin,
+    )
+
+    return true // Will respond asynchronously
+  }
+
+  // Handle DOM_QUERY from background (execute CSS selector query in page context)
+  if (message.type === 'DOM_QUERY') {
+    const requestId = ++domRequestId
+    const params = message.params || {}
+
+    // Parse params if it's a string (from JSON)
+    let parsedParams = params
+    if (typeof params === 'string') {
+      try {
+        parsedParams = JSON.parse(params)
+      } catch {
+        parsedParams = {}
+      }
+    }
+
+    // Store the sendResponse callback for when we get the result
+    pendingDomRequests.set(requestId, sendResponse)
+
+    // Timeout fallback: respond with error and cleanup after 30 seconds
+    setTimeout(() => {
+      if (pendingDomRequests.has(requestId)) {
+        const cb = pendingDomRequests.get(requestId)
+        pendingDomRequests.delete(requestId)
+        cb({ error: 'DOM query timeout' })
+      }
+    }, 30000)
+
+    // Forward to inject.js via postMessage
+    window.postMessage(
+      {
+        type: 'GASOLINE_DOM_QUERY',
         requestId,
         params: parsedParams,
       },

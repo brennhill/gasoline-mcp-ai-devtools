@@ -14,6 +14,7 @@ import (
 // --- Functional Tests ---
 
 func TestCSPDefaultModeGeneratesAllDirectives(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Simulate an app loading resources from 5 different origins
@@ -69,6 +70,7 @@ func TestCSPDefaultModeGeneratesAllDirectives(t *testing.T) {
 }
 
 func TestCSPSameOriginProducesSelf(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Record same-origin resources (page origin matches resource origin)
@@ -83,6 +85,7 @@ func TestCSPSameOriginProducesSelf(t *testing.T) {
 }
 
 func TestCSPWebSocketConnectionsInConnectSrc(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("wss://realtime.example.com", "connect", "https://myapp.com/")
@@ -95,6 +98,7 @@ func TestCSPWebSocketConnectionsInConnectSrc(t *testing.T) {
 }
 
 func TestCSPDataURIsInImgSrc(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("data:", "img", "https://myapp.com/")
@@ -107,6 +111,7 @@ func TestCSPDataURIsInImgSrc(t *testing.T) {
 }
 
 func TestCSPEmptyAccumulatorReturnsHelpfulError(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	resp := gen.GenerateCSP(CSPParams{Mode: "moderate"})
@@ -133,6 +138,7 @@ func TestCSPEmptyAccumulatorReturnsHelpfulError(t *testing.T) {
 }
 
 func TestCSPExcludeOriginsParameter(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -155,6 +161,7 @@ func TestCSPExcludeOriginsParameter(t *testing.T) {
 }
 
 func TestCSPReportOnlyMode(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -169,6 +176,7 @@ func TestCSPReportOnlyMode(t *testing.T) {
 }
 
 func TestCSPEnforcingMode(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -183,6 +191,7 @@ func TestCSPEnforcingMode(t *testing.T) {
 }
 
 func TestCSPMetaTagGenerated(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -202,6 +211,7 @@ func TestCSPMetaTagGenerated(t *testing.T) {
 // --- Origin Accumulator Tests ---
 
 func TestCSPOriginAccumulatorPersistsAfterBufferWrap(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Record an early origin
@@ -221,6 +231,7 @@ func TestCSPOriginAccumulatorPersistsAfterBufferWrap(t *testing.T) {
 }
 
 func TestCSPObservationCountIncrements(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -241,6 +252,7 @@ func TestCSPObservationCountIncrements(t *testing.T) {
 }
 
 func TestCSPAccumulatorClearsOnReset(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -259,6 +271,7 @@ func TestCSPAccumulatorClearsOnReset(t *testing.T) {
 // --- Confidence Scoring Tests ---
 
 func TestCSPConfidenceHighOrigin(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Origin seen 5+ times across 3 pages -> high confidence
@@ -290,6 +303,7 @@ func TestCSPConfidenceHighOrigin(t *testing.T) {
 }
 
 func TestCSPConfidenceMediumOrigin(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Origin seen 2-4 times -> medium confidence
@@ -317,6 +331,7 @@ func TestCSPConfidenceMediumOrigin(t *testing.T) {
 }
 
 func TestCSPConfidenceLowOriginExcluded(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Origin seen exactly once -> low confidence -> excluded
@@ -352,6 +367,7 @@ func TestCSPConfidenceLowOriginExcluded(t *testing.T) {
 }
 
 func TestCSPConnectSrcRelaxedThreshold(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// API endpoint seen once — connect-src has relaxed threshold
@@ -379,6 +395,7 @@ func TestCSPConnectSrcRelaxedThreshold(t *testing.T) {
 }
 
 func TestCSPSingleInjectedRequestNotInCSP(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Simulate legitimate traffic
@@ -398,6 +415,7 @@ func TestCSPSingleInjectedRequestNotInCSP(t *testing.T) {
 }
 
 func TestCSPOriginOnThreePlusPages(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Origin seen on 3+ pages
@@ -429,6 +447,7 @@ func TestCSPOriginOnThreePlusPages(t *testing.T) {
 // --- Development Pollution Filtering Tests ---
 
 func TestCSPFiltersChromeExtension(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("chrome-extension://abcdef123456", "script", "https://myapp.com/")
@@ -457,6 +476,7 @@ func TestCSPFiltersChromeExtension(t *testing.T) {
 }
 
 func TestCSPFiltersMozExtension(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("moz-extension://abcdef123456", "script", "https://myapp.com/")
@@ -477,6 +497,7 @@ func TestCSPFiltersMozExtension(t *testing.T) {
 }
 
 func TestCSPFiltersLocalhostDevServer(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// ws://localhost:3001 on a different port from the page (page is on :3000)
@@ -498,6 +519,7 @@ func TestCSPFiltersLocalhostDevServer(t *testing.T) {
 }
 
 func TestCSPFiltersWebpackHMR(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://myapp.com", "connect", "https://myapp.com/")
@@ -513,6 +535,7 @@ func TestCSPFiltersWebpackHMR(t *testing.T) {
 }
 
 func TestCSPFiltersViteDevServer(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("http://localhost:5173", "connect", "https://myapp.com/")
@@ -525,6 +548,7 @@ func TestCSPFiltersViteDevServer(t *testing.T) {
 }
 
 func TestCSPFilteredOriginsListedInResponse(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("chrome-extension://abc123", "script", "https://myapp.com/")
@@ -545,6 +569,7 @@ func TestCSPFilteredOriginsListedInResponse(t *testing.T) {
 }
 
 func TestCSPFirstPartyLocalhostNotFiltered(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// If the page IS on localhost:3000, same-port localhost should not be filtered
@@ -566,6 +591,7 @@ func TestCSPFirstPartyLocalhostNotFiltered(t *testing.T) {
 // --- Resource Type Mapping Tests ---
 
 func TestCSPResourceTypeMapping(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	testCases := []struct {
@@ -605,6 +631,7 @@ func TestCSPResourceTypeMapping(t *testing.T) {
 // --- Observations / Reporting Tests ---
 
 func TestCSPPagesVisitedCount(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -622,6 +649,7 @@ func TestCSPPagesVisitedCount(t *testing.T) {
 }
 
 func TestCSPObservationsIncludeTotalResources(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -636,6 +664,7 @@ func TestCSPObservationsIncludeTotalResources(t *testing.T) {
 }
 
 func TestCSPObservationsUniqueOrigins(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -655,6 +684,7 @@ func TestCSPObservationsUniqueOrigins(t *testing.T) {
 // --- Security Hardening Safety Tests ---
 
 func TestCSPDefaultPolicyIncludesSecurityDirectives(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -668,6 +698,7 @@ func TestCSPDefaultPolicyIncludesSecurityDirectives(t *testing.T) {
 }
 
 func TestCSPWarningsGeneratedForLowCoverage(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Only 2 pages visited
@@ -683,6 +714,7 @@ func TestCSPWarningsGeneratedForLowCoverage(t *testing.T) {
 }
 
 func TestCSPRecommendedNextStep(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -699,6 +731,7 @@ func TestCSPRecommendedNextStep(t *testing.T) {
 // --- MCP Tool Handler Tests ---
 
 func TestCSPHandleGenerateCSPValid(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -716,6 +749,7 @@ func TestCSPHandleGenerateCSPValid(t *testing.T) {
 }
 
 func TestCSPHandleGenerateCSPEmptyParams(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -734,6 +768,7 @@ func TestCSPHandleGenerateCSPEmptyParams(t *testing.T) {
 }
 
 func TestCSPHandleGenerateCSPWithExclusions(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -762,6 +797,7 @@ func TestCSPHandleGenerateCSPWithExclusions(t *testing.T) {
 // --- Concurrent Access Test ---
 
 func TestCSPConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	done := make(chan bool, 10)
@@ -792,6 +828,7 @@ func TestCSPConcurrentAccess(t *testing.T) {
 // --- Inline Scripts NOT Hashed Tests ---
 
 func TestCSPInlineScriptHashesNotComputed(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Extension-injected inline scripts should not be hashed
@@ -814,6 +851,7 @@ func TestCSPInlineScriptHashesNotComputed(t *testing.T) {
 // --- Page URL Tracking Tests ---
 
 func TestCSPPageURLTrackingIncreasesConfidence(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Same origin on ONE page: low confidence
@@ -846,6 +884,7 @@ func TestCSPPageURLTrackingIncreasesConfidence(t *testing.T) {
 // --- Timestamp Tests ---
 
 func TestCSPFirstSeenTimestamp(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	before := time.Now()
@@ -862,6 +901,7 @@ func TestCSPFirstSeenTimestamp(t *testing.T) {
 }
 
 func TestCSPLastSeenUpdates(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	gen.RecordOrigin("https://cdn.example.com", "script", "https://myapp.com/")
@@ -902,6 +942,7 @@ func assertNotContains(t *testing.T, slice []string, value string) {
 // --- RecordOriginFromBody Tests ---
 
 func TestCSPRecordOriginFromBody(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// JavaScript resource → script-src
@@ -961,6 +1002,7 @@ func TestCSPRecordOriginFromBody(t *testing.T) {
 }
 
 func TestContentTypeToResourceType(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		contentType string
 		want        string
@@ -1000,6 +1042,7 @@ func TestContentTypeToResourceType(t *testing.T) {
 }
 
 func TestCSPRecordOriginFromBodyInvalidURL(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Empty URL should not panic
@@ -1023,6 +1066,7 @@ func TestCSPRecordOriginFromBodyInvalidURL(t *testing.T) {
 }
 
 func TestHandleGenerateCSPInvalidParams(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 
 	// Invalid JSON params should return error
@@ -1051,6 +1095,7 @@ func TestHandleGenerateCSPInvalidParams(t *testing.T) {
 }
 
 func TestCSPExtractPageOriginsInvalidURL(t *testing.T) {
+	t.Parallel()
 	gen := NewCSPGenerator()
 	gen.pages["://invalid-url"] = true
 	gen.pages["https://valid.com/path"] = true

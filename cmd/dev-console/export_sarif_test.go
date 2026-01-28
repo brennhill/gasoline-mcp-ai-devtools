@@ -13,6 +13,7 @@ import (
 // ============================================
 
 func TestAxeViolationToSARIFResult(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [{
 			"id": "color-contrast",
@@ -59,6 +60,7 @@ func TestAxeViolationToSARIFResult(t *testing.T) {
 }
 
 func TestAxeImpactToSARIFLevel(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		impact   string
 		expected string
@@ -82,6 +84,7 @@ func TestAxeImpactToSARIFLevel(t *testing.T) {
 }
 
 func TestAxeNodeToSARIFLocation(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [{
 			"id": "image-alt",
@@ -122,6 +125,7 @@ func TestAxeNodeToSARIFLocation(t *testing.T) {
 }
 
 func TestAxeViolationToSARIFRule(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [{
 			"id": "color-contrast",
@@ -168,6 +172,7 @@ func TestAxeViolationToSARIFRule(t *testing.T) {
 }
 
 func TestMultipleNodesCreateMultipleResults(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [{
 			"id": "color-contrast",
@@ -209,6 +214,7 @@ func TestMultipleNodesCreateMultipleResults(t *testing.T) {
 }
 
 func TestWCAGTagExtraction(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		tags     []string
@@ -253,6 +259,7 @@ func TestWCAGTagExtraction(t *testing.T) {
 }
 
 func TestPassesIncludedWhenRequested(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [],
 		"passes": [{
@@ -292,6 +299,7 @@ func TestPassesIncludedWhenRequested(t *testing.T) {
 }
 
 func TestPassesExcludedByDefault(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [],
 		"passes": [{
@@ -327,6 +335,7 @@ func TestPassesExcludedByDefault(t *testing.T) {
 // ============================================
 
 func TestExportSARIF_EmptyViolations(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [],
 		"passes": [],
@@ -358,6 +367,7 @@ func TestExportSARIF_EmptyViolations(t *testing.T) {
 }
 
 func TestExportSARIF_MultipleViolations(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [
 			{
@@ -407,6 +417,7 @@ func TestExportSARIF_MultipleViolations(t *testing.T) {
 }
 
 func TestExportSARIF_Schema(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [],
 		"passes": [],
@@ -438,6 +449,7 @@ func TestExportSARIF_Schema(t *testing.T) {
 }
 
 func TestExportSARIF_RulesDeduplication(t *testing.T) {
+	t.Parallel()
 	// Same rule ID appearing in multiple results should only produce 1 rule entry
 	a11yResult := json.RawMessage(`{
 		"violations": [{
@@ -477,6 +489,7 @@ func TestExportSARIF_RulesDeduplication(t *testing.T) {
 // ============================================
 
 func TestExportSARIF_SaveToFile(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [{
 			"id": "image-alt",
@@ -524,6 +537,7 @@ func TestExportSARIF_SaveToFile(t *testing.T) {
 }
 
 func TestExportSARIF_InvalidPath(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [],
 		"passes": [],
@@ -539,6 +553,7 @@ func TestExportSARIF_InvalidPath(t *testing.T) {
 }
 
 func TestExportSARIF_PathTraversal(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [],
 		"passes": [],
@@ -573,6 +588,7 @@ func TestExportSARIF_PathTraversal(t *testing.T) {
 // ============================================
 
 func TestExportSARIFTool(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Pre-populate the a11y cache with a result
@@ -641,6 +657,7 @@ func TestExportSARIFTool(t *testing.T) {
 }
 
 func TestExportSARIFTool_NoCachedResult(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	server, _ := NewServer(filepath.Join(t.TempDir(), "test.jsonl"), 100)
@@ -677,6 +694,7 @@ func TestExportSARIFTool_NoCachedResult(t *testing.T) {
 // ============================================
 
 func TestSaveSARIFToFile_ValidAbsPath(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [{
 			"id": "image-alt",
@@ -730,6 +748,7 @@ func TestSaveSARIFToFile_ValidAbsPath(t *testing.T) {
 }
 
 func TestSaveSARIFToFile_MkdirAllFailure(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [],
 		"passes": [],
@@ -761,6 +780,7 @@ func TestSaveSARIFToFile_MkdirAllFailure(t *testing.T) {
 }
 
 func TestEnsureRule_DedupPath(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [{
 			"id": "color-contrast",
@@ -806,6 +826,7 @@ func TestEnsureRule_DedupPath(t *testing.T) {
 // ============================================
 
 func TestExportSARIF_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	invalidJSON := json.RawMessage(`not valid json at all`)
 	_, err := ExportSARIF(invalidJSON, SARIFExportOptions{})
 	if err == nil {
@@ -821,6 +842,7 @@ func TestExportSARIF_InvalidJSON(t *testing.T) {
 // ============================================
 
 func TestExportSARIF_IncludePasses(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [{
 			"id": "color-contrast",
@@ -864,6 +886,7 @@ func TestExportSARIF_IncludePasses(t *testing.T) {
 // ============================================
 
 func TestExportSARIF_SaveToTempDir(t *testing.T) {
+	t.Parallel()
 	a11yResult := json.RawMessage(`{
 		"violations": [{
 			"id": "label",
@@ -904,6 +927,7 @@ func TestExportSARIF_SaveToTempDir(t *testing.T) {
 // ============================================
 
 func TestSaveSARIFToFile_UnwritableDir(t *testing.T) {
+	t.Parallel()
 	log := &SARIFLog{
 		Schema:  "https://example.com/schema",
 		Version: "2.1.0",
@@ -933,6 +957,7 @@ func TestSaveSARIFToFile_UnwritableDir(t *testing.T) {
 // ============================================
 
 func TestResolveExistingPath_ExistingPath(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	resolved := resolveExistingPath(tmpDir)
 	// Should resolve to the real path (EvalSymlinks on existing dir)
@@ -943,6 +968,7 @@ func TestResolveExistingPath_ExistingPath(t *testing.T) {
 }
 
 func TestResolveExistingPath_NonExistentFile(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	target := filepath.Join(tmpDir, "nonexistent", "file.sarif")
 	resolved := resolveExistingPath(target)
@@ -956,6 +982,7 @@ func TestResolveExistingPath_NonExistentFile(t *testing.T) {
 }
 
 func TestResolveExistingPath_SymlinkInPath(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	targetDir := t.TempDir()
 
@@ -978,6 +1005,7 @@ func TestResolveExistingPath_SymlinkInPath(t *testing.T) {
 }
 
 func TestSaveSARIFToFile_SymlinkResolution(t *testing.T) {
+	t.Parallel()
 	// Verify that saveSARIFToFile resolves symlinks before checking allowed paths.
 	// On macOS, t.TempDir() dirs are all under the OS temp dir, so symlinks
 	// between temp dirs are legitimately allowed by the temp dir check.
@@ -1022,6 +1050,7 @@ func TestSaveSARIFToFile_SymlinkResolution(t *testing.T) {
 }
 
 func TestSaveSARIFToFile_OutsideAllowedDirs(t *testing.T) {
+	t.Parallel()
 	// Test that paths outside both cwd and temp dir are rejected.
 	log := &SARIFLog{Version: "2.1.0", Schema: "test", Runs: []SARIFRun{}}
 	err := saveSARIFToFile(log, "/nonexistent/path/evil.sarif")
@@ -1034,6 +1063,7 @@ func TestSaveSARIFToFile_OutsideAllowedDirs(t *testing.T) {
 }
 
 func TestEnsureRule_Deduplication(t *testing.T) {
+	t.Parallel()
 	run := &SARIFRun{
 		Tool: SARIFTool{
 			Driver: SARIFDriver{

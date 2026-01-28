@@ -28,6 +28,7 @@ export async function executeDOMQuery(params) {
 
   const matches = []
   for (let i = 0; i < Math.min(elements.length, DOM_QUERY_MAX_ELEMENTS); i++) {
+    // eslint-disable-next-line security/detect-object-injection -- i is bounded loop index within NodeList
     const el = elements[i]
     const entry = serializeDOMElement(el, include_styles, properties, include_children, cappedDepth, 0)
     matches.push(entry)
@@ -72,6 +73,7 @@ function serializeDOMElement(el, includeStyles, styleProps, includeChildren, max
     entry.styles = {}
     if (styleProps && styleProps.length > 0) {
       for (const prop of styleProps) {
+        // eslint-disable-next-line security/detect-object-injection -- prop from caller-provided style properties array, computed is CSSStyleDeclaration
         entry.styles[prop] = computed[prop]
       }
     } else {
@@ -84,6 +86,7 @@ function serializeDOMElement(el, includeStyles, styleProps, includeChildren, max
     entry.children = []
     const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS)
     for (let i = 0; i < maxChildren; i++) {
+      // eslint-disable-next-line security/detect-object-injection -- i is bounded loop index within HTMLCollection
       entry.children.push(serializeDOMElement(el.children[i], false, null, true, maxDepth, currentDepth + 1))
     }
   }
@@ -132,7 +135,12 @@ export async function getPageInfo() {
 }
 
 /**
- * Load axe-core dynamically if not already present
+ * Load axe-core dynamically if not already present.
+ *
+ * IMPORTANT: axe-core MUST be loaded from the bundled local copy (lib/axe.min.js).
+ * Chrome Web Store policy prohibits loading remotely hosted code. All third-party
+ * libraries must be bundled with the extension package.
+ *
  * @returns {Promise<void>}
  */
 function loadAxeCore() {
@@ -143,12 +151,11 @@ function loadAxeCore() {
     }
 
     const script = document.createElement('script')
-    script.src =
-      typeof chrome !== 'undefined' && chrome.runtime
-        ? chrome.runtime.getURL('lib/axe.min.js')
-        : 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.8.4/axe.min.js'
+    // Always load from bundled extension copy — never from a CDN or remote URL.
+    // Chrome Web Store rejects extensions that load remotely hosted code.
+    script.src = chrome.runtime.getURL('lib/axe.min.js')
     script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Failed to load axe-core'))
+    script.onerror = () => reject(new Error('Failed to load axe-core from bundled extension copy'))
     const targetElement = document.head || document.body || document.documentElement
     if (targetElement) {
       targetElement.appendChild(script)

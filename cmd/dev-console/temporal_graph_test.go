@@ -12,6 +12,7 @@ import (
 // --- Event Recording ---
 
 func TestTemporalRecordError(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -36,6 +37,7 @@ func TestTemporalRecordError(t *testing.T) {
 }
 
 func TestTemporalRecordRegression(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -57,6 +59,7 @@ func TestTemporalRecordRegression(t *testing.T) {
 }
 
 func TestTemporalRecordAgentEvent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -78,6 +81,7 @@ func TestTemporalRecordAgentEvent(t *testing.T) {
 }
 
 func TestTemporalEventGetsID(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -98,6 +102,7 @@ func TestTemporalEventGetsID(t *testing.T) {
 }
 
 func TestTemporalEventGetsTimestamp(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -115,6 +120,7 @@ func TestTemporalEventGetsTimestamp(t *testing.T) {
 }
 
 func TestTemporalDuplicateByFingerprint(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -141,6 +147,7 @@ func TestTemporalDuplicateByFingerprint(t *testing.T) {
 // --- Event Links ---
 
 func TestTemporalEventWithLink(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -179,6 +186,7 @@ func TestTemporalEventWithLink(t *testing.T) {
 // --- Querying ---
 
 func TestTemporalQueryByType(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -194,6 +202,7 @@ func TestTemporalQueryByType(t *testing.T) {
 }
 
 func TestTemporalQueryBySince(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -222,6 +231,7 @@ func TestTemporalQueryBySince(t *testing.T) {
 }
 
 func TestTemporalQueryByRelatedTo(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -248,6 +258,7 @@ func TestTemporalQueryByRelatedTo(t *testing.T) {
 }
 
 func TestTemporalQueryByPattern(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -262,6 +273,7 @@ func TestTemporalQueryByPattern(t *testing.T) {
 }
 
 func TestTemporalQueryEmpty(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -278,6 +290,7 @@ func TestTemporalQueryEmpty(t *testing.T) {
 // --- Persistence ---
 
 func TestTemporalPersistence(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	tg.RecordEvent(TemporalEvent{Type: "error", Description: "Persisted error", Origin: "system"})
@@ -296,6 +309,7 @@ func TestTemporalPersistence(t *testing.T) {
 }
 
 func TestTemporalJSONLFormat(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	tg.RecordEvent(TemporalEvent{Type: "error", Description: "Test", Origin: "system"})
@@ -319,6 +333,7 @@ func TestTemporalJSONLFormat(t *testing.T) {
 // --- Retention ---
 
 func TestTemporalEviction90Days(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// Write an old event directly to the file
@@ -346,6 +361,7 @@ func TestTemporalEviction90Days(t *testing.T) {
 }
 
 func TestTemporalRetentionKeepsRecent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	histDir := filepath.Join(dir, "history")
@@ -373,6 +389,7 @@ func TestTemporalRetentionKeepsRecent(t *testing.T) {
 // --- Edge Cases ---
 
 func TestTemporalCorruptedLineSkipped(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	histDir := filepath.Join(dir, "history")
 	os.MkdirAll(histDir, 0755)
@@ -400,6 +417,7 @@ func TestTemporalCorruptedLineSkipped(t *testing.T) {
 }
 
 func TestTemporalNoHistoryFile(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -411,6 +429,7 @@ func TestTemporalNoHistoryFile(t *testing.T) {
 }
 
 func TestTemporalConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -434,6 +453,7 @@ func TestTemporalConcurrentAccess(t *testing.T) {
 // --- Configure record_event ---
 
 func TestConfigureRecordEventValid(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -460,6 +480,7 @@ func TestConfigureRecordEventValid(t *testing.T) {
 }
 
 func TestConfigureRecordEventMissingType(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -474,6 +495,7 @@ func TestConfigureRecordEventMissingType(t *testing.T) {
 }
 
 func TestConfigureRecordEventWithLink(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -497,6 +519,7 @@ func TestConfigureRecordEventWithLink(t *testing.T) {
 // --- Parse Since Duration ---
 
 func TestParseSinceDuration(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected time.Duration

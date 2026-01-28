@@ -14,10 +14,11 @@ const createMockChrome = () => ({
     onMessage: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
     getURL: mock.fn((path) => `chrome-extension://test-id/${path}`),
-    getManifest: () => ({ version: '5.1.0' }),
+    getManifest: () => ({ version: '5.2.0' }),
   },
   tabs: {
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1, url: 'http://localhost:3000' }])),
+    get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
     sendMessage: mock.fn((_tabId, _message) => Promise.resolve()),
   },
   scripting: {
@@ -30,9 +31,11 @@ const createMockChrome = () => ({
           serverUrl: 'http://localhost:7890',
           captureWebSockets: true,
           captureNetworkBodies: false,
+          trackedTabId: 1,
         }),
       ),
       set: mock.fn((data, callback) => callback && callback()),
+      remove: mock.fn((keys, callback) => callback && callback()),
     },
     sync: {
       get: mock.fn((keys, callback) => callback({})),
@@ -110,6 +113,7 @@ after(() => {
 
 describe('Pending Query Polling', () => {
   beforeEach(() => {
+    mock.reset()
     originalChrome = globalThis.chrome
     globalThis.chrome = createMockChrome()
   })

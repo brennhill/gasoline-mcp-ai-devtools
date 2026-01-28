@@ -6,7 +6,6 @@
 package main
 
 import (
-	"math"
 	"time"
 )
 
@@ -76,32 +75,26 @@ func (c *Capture) calcTotalMemory() int64 {
 	return c.calcWSMemory() + c.calcNBMemory() + c.calcActionMemory()
 }
 
-// calcWSMemory approximates memory usage of WS buffer (caller must hold lock)
+// calcWSMemory returns the running total of WS buffer memory (caller must hold lock).
+// O(1) — maintained incrementally by add/evict/clear operations.
 func (c *Capture) calcWSMemory() int64 {
-	var total int64
-	for i := range c.wsEvents {
-		size := int64(len(c.wsEvents[i].Data)) + wsEventOverhead
-		// Cap at max int64 to prevent overflow
-		if total > math.MaxInt64-size {
-			return math.MaxInt64
-		}
-		total += size
-	}
-	return total
+	return c.wsMemoryTotal
 }
 
-// calcNBMemory approximates memory usage of network bodies buffer (caller must hold lock)
+// calcNBMemory returns the running total of network bodies buffer memory (caller must hold lock).
+// O(1) — maintained incrementally by add/evict/clear operations.
 func (c *Capture) calcNBMemory() int64 {
-	var total int64
-	for i := range c.networkBodies {
-		size := int64(len(c.networkBodies[i].RequestBody)+len(c.networkBodies[i].ResponseBody)) + networkBodyOverhead
-		// Cap at max int64 to prevent overflow
-		if total > math.MaxInt64-size {
-			return math.MaxInt64
-		}
-		total += size
-	}
-	return total
+	return c.nbMemoryTotal
+}
+
+// wsEventMemory returns the memory estimate for a single WS event.
+func wsEventMemory(e *WebSocketEvent) int64 {
+	return int64(len(e.Data)) + wsEventOverhead
+}
+
+// nbEntryMemory returns the memory estimate for a single network body entry.
+func nbEntryMemory(b *NetworkBody) int64 {
+	return int64(len(b.RequestBody)+len(b.ResponseBody)) + networkBodyOverhead
 }
 
 // calcActionMemory approximates memory usage of enhanced actions buffer (caller must hold lock)
@@ -146,6 +139,14 @@ func (c *Capture) effectiveActionCapacity() int {
 
 // enforceMemory checks memory thresholds and evicts as needed (caller must hold lock).
 // This is the primary enforcement point, called on every ingest operation.
+//
+// Three-Tier Enforcement Strategy:
+//   1. Soft (20MB): Evict oldest 25% of each buffer (prioritize network bodies).
+//   2. Hard (50MB): Evict oldest 50% of each buffer (aggressive, still prioritized).
+//   3. Critical (100MB): Emergency mode — clear most buffers and enter minimal mode.
+//
+// Cooldown (1s) prevents thrashing when traffic approaches soft limit.
+// State: Updates c.mem.lastEvictionTime on each enforcement check (regardless of action taken).
 func (c *Capture) enforceMemory() {
 	// Respect cooldown
 	if !c.mem.lastEvictionTime.IsZero() && time.Since(c.mem.lastEvictionTime) < evictionCooldown {
@@ -173,19 +174,49 @@ func (c *Capture) enforceMemory() {
 	}
 }
 
-// evictSoft removes oldest 25% from each buffer (prioritizing network bodies)
+// evictSoft removes oldest 25% from each buffer (prioritizing network bodies).
+// denominator=4 means 1/4 of each buffer removed. Memory target: 20MB soft limit.
+// Called when total memory exceeds 20MB but is below hard limit (50MB).
+// Strategy: Gentle eviction, preserve most events, network bodies removed first (largest per-entry).
 func (c *Capture) evictSoft() {
-	c.evictBuffers(4, memorySoftLimit)
+	c.evictBuffers(4, memorySoftLimit)  // 1/4 removed from each buffer
 }
 
-// evictHard removes oldest 50% from each buffer (prioritizing network bodies)
+// evictHard removes oldest 50% from each buffer (prioritizing network bodies).
+// denominator=2 means 1/2 of each buffer removed. Memory target: 50MB hard limit.
+// Called when total memory exceeds 50MB but is below critical limit (100MB).
+// Strategy: Aggressive eviction, recover memory quickly, network bodies removed first.
+// Once memory drops below limit, early exit (don't evict actions unnecessarily).
 func (c *Capture) evictHard() {
-	c.evictBuffers(2, memoryHardLimit)
+	c.evictBuffers(2, memoryHardLimit)  // 1/2 removed from each buffer
 }
 
-// evictBuffers removes oldest 1/denominator entries from each buffer in priority order
-// (network bodies → WS events → actions), stopping early if memory drops below limit.
-// Survivors are copied to new slices so the GC can reclaim the old backing arrays.
+// evictBuffers removes oldest 1/denominator entries from each buffer in priority order.
+// This is the core eviction algorithm, used by both soft and hard limits.
+//
+// Algorithm (Single-Pass Proportional Eviction):
+//   1. Calculate drop count: n = max(len(buffer)/denominator, 1)
+//   2. Evict oldest n entries: copy survivors (entries from index n onward) to new slice
+//   3. Subtract evicted entries from memory total (subtract per-entry cost)
+//   4. Keep parallel slices in sync: wsAddedAt trimmed with wsEvents, etc.
+//   5. Early exit: Stop buffer eviction when total memory < limit (save cycles)
+//
+// Priority Order (why network bodies first?):
+//   - Network bodies are typically largest per-entry (request+response bodies)
+//   - Removing 10 network bodies frees more memory than 100 WS events
+//   - Early exit on memory satisfaction prevents unnecessary action eviction
+//
+// Memory Accounting (Single-Pass, O(n)):
+//   - Loop through evicted entries: subtract wsEventMemory(entry) from wsMemoryTotal
+//   - Maintains accurate memory totals without full recalculation
+//   - Parallel slice invariants maintained: new(buffer) and new(addedAt) same length
+//
+// GC Strategy:
+//   - Slice truncation alone (c.wsEvents = c.wsEvents[n:]) doesn't free backing array
+//   - Instead: make(new slice), copy survivors, assign to c.wsEvents
+//   - Old backing array becomes unreachable → GC reclaims it
+//
+// Caller must hold lock. Denominator typically 4 (soft) or 2 (hard).
 func (c *Capture) evictBuffers(denominator int, limit int64) {
 	var evicted int
 
@@ -195,6 +226,10 @@ func (c *Capture) evictBuffers(denominator int, limit int64) {
 		// Clamp n to actual array length to prevent panic
 		if n > len(c.networkBodies) {
 			n = len(c.networkBodies)
+		}
+		// Subtract memory for evicted entries
+		for j := 0; j < n; j++ {
+			c.nbMemoryTotal -= nbEntryMemory(&c.networkBodies[j])
 		}
 		surviving := make([]NetworkBody, len(c.networkBodies)-n)
 		copy(surviving, c.networkBodies[n:])
@@ -215,6 +250,10 @@ func (c *Capture) evictBuffers(denominator int, limit int64) {
 		// Clamp n to actual array length to prevent panic
 		if n > len(c.wsEvents) {
 			n = len(c.wsEvents)
+		}
+		// Subtract memory for evicted entries
+		for j := 0; j < n; j++ {
+			c.wsMemoryTotal -= wsEventMemory(&c.wsEvents[j])
 		}
 		surviving := make([]WebSocketEvent, len(c.wsEvents)-n)
 		copy(surviving, c.wsEvents[n:])
@@ -262,8 +301,10 @@ func (c *Capture) evictCritical() {
 
 	c.wsEvents = nil
 	c.wsAddedAt = nil
+	c.wsMemoryTotal = 0
 	c.networkBodies = nil
 	c.networkAddedAt = nil
+	c.nbMemoryTotal = 0
 	c.enhancedActions = nil
 	c.actionAddedAt = nil
 

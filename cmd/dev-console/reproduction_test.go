@@ -13,6 +13,7 @@ import (
 // ============================================
 
 func TestReproductionScriptWithScreenshots(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -64,6 +65,7 @@ func TestReproductionScriptWithScreenshots(t *testing.T) {
 }
 
 func TestReproductionScriptScreenshotsDefaultOff(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -103,6 +105,7 @@ func TestReproductionScriptScreenshotsDefaultOff(t *testing.T) {
 // ============================================
 
 func TestReproductionScriptWithFixtures(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -174,6 +177,7 @@ func TestReproductionScriptWithFixtures(t *testing.T) {
 }
 
 func TestReproductionScriptFixturesDefaultOff(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -220,6 +224,7 @@ func TestReproductionScriptFixturesDefaultOff(t *testing.T) {
 // ============================================
 
 func TestReproductionScriptWithVisualAssertions(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -264,6 +269,7 @@ func TestReproductionScriptWithVisualAssertions(t *testing.T) {
 }
 
 func TestReproductionScriptVisualAssertionsDefaultOff(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -302,6 +308,7 @@ func TestReproductionScriptVisualAssertionsDefaultOff(t *testing.T) {
 // ============================================
 
 func TestReproductionScriptCombinedOptions(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -368,6 +375,7 @@ func TestReproductionScriptCombinedOptions(t *testing.T) {
 // ============================================
 
 func TestFixtureGenerationMultipleEndpoints(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -431,6 +439,7 @@ func TestFixtureGenerationMultipleEndpoints(t *testing.T) {
 }
 
 func TestFixtureGenerationSkipsNonJSON(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -497,6 +506,7 @@ func TestFixtureGenerationSkipsNonJSON(t *testing.T) {
 // ============================================
 
 func TestScreenshotNaming(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

@@ -31,6 +31,7 @@ func addLogEntries(server *Server, entries ...LogEntry) {
 // ============================================
 
 func TestCheckpointEmptyServer(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	resp := cm.GetChangesSince(GetChangesSinceParams{}, "")
@@ -60,6 +61,7 @@ func TestCheckpointEmptyServer(t *testing.T) {
 // ============================================
 
 func TestCheckpointNewConsoleErrors(t *testing.T) {
+	t.Parallel()
 	cm, server, _ := setupCheckpointTest(t)
 
 	// First call establishes the auto-checkpoint
@@ -93,6 +95,7 @@ func TestCheckpointNewConsoleErrors(t *testing.T) {
 // ============================================
 
 func TestCheckpointMessageDeduplication(t *testing.T) {
+	t.Parallel()
 	cm, server, _ := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -125,6 +128,7 @@ func TestCheckpointMessageDeduplication(t *testing.T) {
 // ============================================
 
 func TestCheckpointNetworkFailure(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Add a successful request before checkpoint
@@ -168,6 +172,7 @@ func TestCheckpointNetworkFailure(t *testing.T) {
 // ============================================
 
 func TestCheckpointNewEndpoint(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint with known endpoints
@@ -199,6 +204,7 @@ func TestCheckpointNewEndpoint(t *testing.T) {
 // ============================================
 
 func TestCheckpointWebSocketDisconnection(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -233,6 +239,7 @@ func TestCheckpointWebSocketDisconnection(t *testing.T) {
 // ============================================
 
 func TestCheckpointAutoAdvancement(t *testing.T) {
+	t.Parallel()
 	cm, server, _ := setupCheckpointTest(t)
 
 	// Add errors
@@ -259,6 +266,7 @@ func TestCheckpointAutoAdvancement(t *testing.T) {
 // ============================================
 
 func TestCheckpointNamedStability(t *testing.T) {
+	t.Parallel()
 	cm, server, _ := setupCheckpointTest(t)
 
 	// Add initial error
@@ -298,6 +306,7 @@ func TestCheckpointNamedStability(t *testing.T) {
 // ============================================
 
 func TestCheckpointSeverityFilterErrorsOnly(t *testing.T) {
+	t.Parallel()
 	cm, server, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -332,6 +341,7 @@ func TestCheckpointSeverityFilterErrorsOnly(t *testing.T) {
 // ============================================
 
 func TestCheckpointIncludeFiltering(t *testing.T) {
+	t.Parallel()
 	cm, server, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -367,6 +377,7 @@ func TestCheckpointIncludeFiltering(t *testing.T) {
 // ============================================
 
 func TestCheckpointBufferOverflow(t *testing.T) {
+	t.Parallel()
 	cm, server, _ := setupCheckpointTest(t)
 
 	// Add some entries and establish checkpoint
@@ -399,6 +410,7 @@ func TestCheckpointBufferOverflow(t *testing.T) {
 // ============================================
 
 func TestCheckpointTimestampReference(t *testing.T) {
+	t.Parallel()
 	cm, server, _ := setupCheckpointTest(t)
 
 	// Add entries with timestamps
@@ -430,6 +442,7 @@ func TestCheckpointTimestampReference(t *testing.T) {
 // ============================================
 
 func TestCheckpointTokenCount(t *testing.T) {
+	t.Parallel()
 	cm, server, _ := setupCheckpointTest(t)
 
 	cm.GetChangesSince(GetChangesSinceParams{}, "")
@@ -455,6 +468,7 @@ func TestCheckpointTokenCount(t *testing.T) {
 // ============================================
 
 func TestCheckpointMaxEntriesCap(t *testing.T) {
+	t.Parallel()
 	cm, server, _ := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -486,6 +500,7 @@ func TestCheckpointMaxEntriesCap(t *testing.T) {
 // ============================================
 
 func TestCheckpointConcurrency(t *testing.T) {
+	t.Parallel()
 	cm, server, capture := setupCheckpointTest(t)
 
 	var wg sync.WaitGroup
@@ -528,6 +543,7 @@ func TestCheckpointConcurrency(t *testing.T) {
 // ============================================
 
 func TestCheckpointFingerprintNormalization(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		messages []string
@@ -602,6 +618,7 @@ func TestCheckpointFingerprintNormalization(t *testing.T) {
 // ============================================
 
 func TestCheckpointURLPathExtraction(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Multiple requests to same path with different query params
@@ -633,6 +650,7 @@ func TestCheckpointURLPathExtraction(t *testing.T) {
 // ============================================
 
 func TestCheckpointSeverityHierarchy(t *testing.T) {
+	t.Parallel()
 	// Test: error > warning > clean
 
 	t.Run("error beats warning", func(t *testing.T) {
@@ -706,6 +724,7 @@ func TestCheckpointSeverityHierarchy(t *testing.T) {
 // ============================================
 
 func TestCheckpointSummaryFormatting(t *testing.T) {
+	t.Parallel()
 	t.Run("console errors and network failures", func(t *testing.T) {
 		cm, server, capture := setupCheckpointTest(t)
 		capture.AddNetworkBodies([]NetworkBody{{URL: "http://localhost/api/a", Status: 200, Method: "GET"}})
@@ -760,6 +779,7 @@ func TestCheckpointSummaryFormatting(t *testing.T) {
 // ============================================
 
 func TestCheckpointNamedLimit(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	// Create 25 named checkpoints (limit is 20)
@@ -775,6 +795,7 @@ func TestCheckpointNamedLimit(t *testing.T) {
 }
 
 func TestCheckpointNamingValidation(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	// Valid names
@@ -802,6 +823,7 @@ func TestCheckpointNamingValidation(t *testing.T) {
 // ============================================
 
 func TestCheckpointMessageTruncation(t *testing.T) {
+	t.Parallel()
 	cm, server, _ := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
@@ -827,6 +849,7 @@ func TestCheckpointMessageTruncation(t *testing.T) {
 // ============================================
 
 func TestCheckpointDiffTimestamps(t *testing.T) {
+	t.Parallel()
 	cm, server, _ := setupCheckpointTest(t)
 
 	// First call sets the from timestamp
@@ -856,6 +879,7 @@ func TestCheckpointDiffTimestamps(t *testing.T) {
 // ============================================
 
 func TestCheckpointWebSocketNewConnections(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
@@ -881,6 +905,7 @@ func TestCheckpointWebSocketNewConnections(t *testing.T) {
 // ============================================
 
 func TestCheckpointActionsDiff(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
@@ -909,6 +934,7 @@ func TestCheckpointActionsDiff(t *testing.T) {
 // ============================================
 
 func TestCheckpointDegradedEndpoint(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Baseline: endpoint responds in 50ms
@@ -940,6 +966,7 @@ func TestCheckpointDegradedEndpoint(t *testing.T) {
 // ============================================
 
 func TestCheckpointFirstCallReturnsEverything(t *testing.T) {
+	t.Parallel()
 	cm, server, capture := setupCheckpointTest(t)
 
 	// Add data before any checkpoint call
@@ -970,6 +997,7 @@ func TestCheckpointFirstCallReturnsEverything(t *testing.T) {
 // ============================================
 
 func TestCheckpointSeverityFilterWarnings(t *testing.T) {
+	t.Parallel()
 	cm, server, _ := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
@@ -998,6 +1026,7 @@ func TestCheckpointSeverityFilterWarnings(t *testing.T) {
 // ============================================
 
 func TestCheckpointWebSocketErrors(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
@@ -1023,6 +1052,7 @@ func TestCheckpointWebSocketErrors(t *testing.T) {
 // ============================================
 
 func TestCheckpointNewEndpointWithFailure(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
@@ -1047,6 +1077,7 @@ func TestCheckpointNewEndpointWithFailure(t *testing.T) {
 // ============================================
 
 func TestCheckpointWebSocketTotalCount(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 	cm.GetChangesSince(GetChangesSinceParams{}, "")
 
@@ -1073,6 +1104,7 @@ func TestCheckpointWebSocketTotalCount(t *testing.T) {
 // ============================================
 
 func TestFingerprintMessage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -1108,6 +1140,7 @@ func TestFingerprintMessage(t *testing.T) {
 }
 
 func TestExtractURLPath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -1166,6 +1199,7 @@ func addBaselineSnapshot(capture *Capture, url string, load float64, fcp *float6
 
 // Test 1: Snapshot within threshold -> no alert generated
 func TestPushRegression_WithinThreshold_NoAlert(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Create baseline (first snapshot)
@@ -1196,6 +1230,7 @@ func TestPushRegression_WithinThreshold_NoAlert(t *testing.T) {
 
 // Test 2: Snapshot with load time 30% over baseline -> alert generated with correct delta
 func TestPushRegression_LoadTimeRegression_AlertGenerated(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Create baseline
@@ -1250,6 +1285,7 @@ func TestPushRegression_LoadTimeRegression_AlertGenerated(t *testing.T) {
 
 // Test 3: Alert appears in get_changes_since JSON response
 func TestPushRegression_AlertInResponse(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1282,6 +1318,7 @@ func TestPushRegression_AlertInResponse(t *testing.T) {
 
 // Test 4: Alert not repeated on subsequent auto-advancing call
 func TestPushRegression_AlertNotRepeated(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1310,6 +1347,7 @@ func TestPushRegression_AlertNotRepeated(t *testing.T) {
 
 // Test 5: Multiple regressions on different URLs -> multiple alerts
 func TestPushRegression_MultipleAlerts(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/page-a", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1344,6 +1382,7 @@ func TestPushRegression_MultipleAlerts(t *testing.T) {
 
 // Test 6: Max 10 pending alerts, oldest dropped
 func TestPushRegression_MaxAlertsCapped(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	for i := 0; i < 11; i++ {
@@ -1390,6 +1429,7 @@ func TestPushRegression_MaxAlertsCapped(t *testing.T) {
 
 // Test 7: Regression resolved by subsequent good snapshot
 func TestPushRegression_RegressionResolved(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1426,6 +1466,7 @@ func TestPushRegression_RegressionResolved(t *testing.T) {
 
 // Test 8: No baseline -> no alert
 func TestPushRegression_NoBaseline_NoAlert(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	snapshot := PerformanceSnapshot{
@@ -1447,6 +1488,7 @@ func TestPushRegression_NoBaseline_NoAlert(t *testing.T) {
 
 // Test 9: Only regressed metrics included
 func TestPushRegression_OnlyRegressedMetrics(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1487,6 +1529,7 @@ func TestPushRegression_OnlyRegressedMetrics(t *testing.T) {
 
 // Test 10: Recommendation field is populated
 func TestPushRegression_RecommendationField(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1513,6 +1556,7 @@ func TestPushRegression_RecommendationField(t *testing.T) {
 
 // Test 11: Query from earlier named checkpoint includes alert
 func TestPushRegression_CheckpointTracking_Included(t *testing.T) {
+	t.Parallel()
 	cm, server, capture := setupCheckpointTest(t)
 
 	addLogEntries(server, LogEntry{"level": "info", "msg": "setup"})
@@ -1539,6 +1583,7 @@ func TestPushRegression_CheckpointTracking_Included(t *testing.T) {
 
 // Test 12: Query from checkpoint after alert -> not included
 func TestPushRegression_CheckpointTracking_NotIncluded(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1569,6 +1614,7 @@ func TestPushRegression_CheckpointTracking_NotIncluded(t *testing.T) {
 
 // Test 13: CLS regression (absolute increase > 0.1) -> alert
 func TestPushRegression_CLSRegression(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, floatPtr(0.05))
@@ -1601,6 +1647,7 @@ func TestPushRegression_CLSRegression(t *testing.T) {
 
 // Test 14: TTFB under 50% threshold -> no alert
 func TestPushRegression_TTFBUnderThreshold_NoAlert(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1626,6 +1673,7 @@ func TestPushRegression_TTFBUnderThreshold_NoAlert(t *testing.T) {
 
 // Test 15: Summary field populated
 func TestPushRegression_SummaryField(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/dashboard", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1652,6 +1700,7 @@ func TestPushRegression_SummaryField(t *testing.T) {
 
 // Test 16: Transfer size regression (>25%) -> alert
 func TestPushRegression_TransferSizeRegression(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1683,6 +1732,7 @@ func TestPushRegression_TransferSizeRegression(t *testing.T) {
 
 // Test 17: Concurrent access safety
 func TestPushRegression_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1716,6 +1766,7 @@ func TestPushRegression_ConcurrentAccess(t *testing.T) {
 
 // Test 18: DetectedAt timestamp is reasonable
 func TestPushRegression_DetectedAtTimestamp(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	addBaselineSnapshot(capture, "/page", 1000, floatPtr(500), floatPtr(800), 200, 200000, nil)
@@ -1755,6 +1806,7 @@ func TestPushRegression_DetectedAtTimestamp(t *testing.T) {
 
 // TestContainsString_FoundTrue exercises the return-true path of containsString
 func TestContainsString_FoundTrue(t *testing.T) {
+	t.Parallel()
 	slice := []string{"/api/users", "/api/posts", "/api/comments"}
 	if !containsString(slice, "/api/posts") {
 		t.Error("Expected containsString to return true for existing element")
@@ -1768,6 +1820,7 @@ func TestContainsString_FoundTrue(t *testing.T) {
 }
 
 func TestContainsString_NotFound(t *testing.T) {
+	t.Parallel()
 	slice := []string{"/api/users", "/api/posts"}
 	if containsString(slice, "/api/unknown") {
 		t.Error("Expected containsString to return false for missing element")
@@ -1775,6 +1828,7 @@ func TestContainsString_NotFound(t *testing.T) {
 }
 
 func TestContainsString_EmptySlice(t *testing.T) {
+	t.Parallel()
 	if containsString(nil, "anything") {
 		t.Error("Expected containsString to return false for nil slice")
 	}
@@ -1786,6 +1840,7 @@ func TestContainsString_EmptySlice(t *testing.T) {
 // TestBuildAlertSummary_MultipleCategories tests the fallback path
 // when the "load" metric is not present, covering the for-range fallback.
 func TestBuildAlertSummary_MultipleCategories(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	// No "load" metric: should use fallback path
@@ -1808,6 +1863,7 @@ func TestBuildAlertSummary_MultipleCategories(t *testing.T) {
 
 // TestBuildAlertSummary_LoadMetricPresent tests the primary path
 func TestBuildAlertSummary_LoadMetricPresent(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	metrics := map[string]AlertMetricDelta{
@@ -1827,6 +1883,7 @@ func TestBuildAlertSummary_LoadMetricPresent(t *testing.T) {
 
 // TestBuildAlertSummary_EmptyMetrics tests the final fallback
 func TestBuildAlertSummary_EmptyMetrics(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	summary := cm.buildAlertSummary("http://example.com", map[string]AlertMetricDelta{})
@@ -1838,6 +1895,7 @@ func TestBuildAlertSummary_EmptyMetrics(t *testing.T) {
 
 // TestComputeWebSocketDiff_DirectionFilter tests WS events with various event types
 func TestComputeWebSocketDiff_DirectionFilter(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Create checkpoint before adding events
@@ -1886,6 +1944,7 @@ func TestComputeWebSocketDiff_DirectionFilter(t *testing.T) {
 
 // TestComputeWebSocketDiff_ErrorsOnly tests that severity=errors_only suppresses disconnections
 func TestComputeWebSocketDiff_ErrorsOnly(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	cm.CreateCheckpoint("ws-errors", "")
@@ -1914,6 +1973,7 @@ func TestComputeWebSocketDiff_ErrorsOnly(t *testing.T) {
 
 // TestComputeNetworkDiff_ResponseBodies tests network bodies with response bodies present
 func TestComputeNetworkDiff_ResponseBodies(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Set up known endpoints in a checkpoint
@@ -1952,6 +2012,7 @@ func TestComputeNetworkDiff_ResponseBodies(t *testing.T) {
 
 // TestComputeActionsDiff_DifferentTypes tests actions with various types
 func TestComputeActionsDiff_DifferentTypes(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	cm.CreateCheckpoint("actions-test", "")
@@ -1991,6 +2052,7 @@ func TestComputeActionsDiff_DifferentTypes(t *testing.T) {
 
 // TestFindPositionAtTime_TimeBeforeAll tests findPositionAtTime when all entries are after t
 func TestFindPositionAtTime_TimeBeforeAll(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	// Create timestamps all in the future relative to our query time
@@ -2012,6 +2074,7 @@ func TestFindPositionAtTime_TimeBeforeAll(t *testing.T) {
 
 // TestFindPositionAtTime_EmptySlice tests findPositionAtTime with empty addedAt
 func TestFindPositionAtTime_EmptySlice(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	pos := cm.findPositionAtTime([]time.Time{}, 5, time.Now())
@@ -2022,6 +2085,7 @@ func TestFindPositionAtTime_EmptySlice(t *testing.T) {
 
 // TestFindPositionAtTime_TimeAfterAll tests findPositionAtTime when all entries are before t
 func TestFindPositionAtTime_TimeAfterAll(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	now := time.Now()
@@ -2041,6 +2105,7 @@ func TestFindPositionAtTime_TimeAfterAll(t *testing.T) {
 
 // TestFindPositionAtTime_PositionClampsToZero tests the pos<0 guard
 func TestFindPositionAtTime_PositionClampsToZero(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	now := time.Now()
@@ -2062,6 +2127,7 @@ func TestFindPositionAtTime_PositionClampsToZero(t *testing.T) {
 // ============================================
 
 func TestComputeWebSocketDiff_OpenEvents(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -2097,6 +2163,7 @@ func TestComputeWebSocketDiff_OpenEvents(t *testing.T) {
 }
 
 func TestComputeWebSocketDiff_ErrorEvents(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -2129,6 +2196,7 @@ func TestComputeWebSocketDiff_ErrorEvents(t *testing.T) {
 }
 
 func TestComputeWebSocketDiff_CloseEvents(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -2160,6 +2228,7 @@ func TestComputeWebSocketDiff_CloseEvents(t *testing.T) {
 }
 
 func TestComputeWebSocketDiff_CapsConnections(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -2188,6 +2257,7 @@ func TestComputeWebSocketDiff_CapsConnections(t *testing.T) {
 }
 
 func TestComputeWebSocketDiff_CapsErrors(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -2216,6 +2286,7 @@ func TestComputeWebSocketDiff_CapsErrors(t *testing.T) {
 }
 
 func TestComputeWebSocketDiff_CapsDisconnections(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -2248,6 +2319,7 @@ func TestComputeWebSocketDiff_CapsDisconnections(t *testing.T) {
 // ============================================
 
 func TestComputeActionsDiff_VariousActionTypes(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -2287,6 +2359,7 @@ func TestComputeActionsDiff_VariousActionTypes(t *testing.T) {
 }
 
 func TestComputeActionsDiff_CapsAtMax(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -2320,6 +2393,7 @@ func TestComputeActionsDiff_CapsAtMax(t *testing.T) {
 // ============================================
 
 func TestDetectAndStoreAlerts_CLSRegression(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	baselineCLS := 0.05
@@ -2359,6 +2433,7 @@ func TestDetectAndStoreAlerts_CLSRegression(t *testing.T) {
 }
 
 func TestDetectAndStoreAlerts_FCPRegression(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	baselineFCP := 200.0
@@ -2394,6 +2469,7 @@ func TestDetectAndStoreAlerts_FCPRegression(t *testing.T) {
 }
 
 func TestDetectAndStoreAlerts_TransferSizeRegression(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	baseline := PerformanceBaseline{
@@ -2430,6 +2506,7 @@ func TestDetectAndStoreAlerts_TransferSizeRegression(t *testing.T) {
 }
 
 func TestDetectAndStoreAlerts_BaselineTooFew(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	baseline := PerformanceBaseline{
@@ -2457,6 +2534,7 @@ func TestDetectAndStoreAlerts_BaselineTooFew(t *testing.T) {
 }
 
 func TestDetectAndStoreAlerts_NoRegression_ResolvesExisting(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	// First: create a regression alert
@@ -2497,6 +2575,7 @@ func TestDetectAndStoreAlerts_NoRegression_ResolvesExisting(t *testing.T) {
 }
 
 func TestDetectAndStoreAlerts_LCPRegression(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	baselineLCP := 1000.0
@@ -2532,6 +2611,7 @@ func TestDetectAndStoreAlerts_LCPRegression(t *testing.T) {
 }
 
 func TestDetectAndStoreAlerts_TTFBRegression(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	baseline := PerformanceBaseline{
@@ -2568,6 +2648,7 @@ func TestDetectAndStoreAlerts_TTFBRegression(t *testing.T) {
 // ============================================
 
 func TestBuildAlertSummary_FallbackToNonLoadMetric(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	// When there's no "load" metric, buildAlertSummary should use a fallback
@@ -2591,6 +2672,7 @@ func TestBuildAlertSummary_FallbackToNonLoadMetric(t *testing.T) {
 }
 
 func TestBuildAlertSummary_LoadMetricPreferred(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	// When "load" metric is present, it should be used for the summary
@@ -2624,6 +2706,7 @@ func TestBuildAlertSummary_LoadMetricPreferred(t *testing.T) {
 // ============================================
 
 func TestComputeNetworkDiff_CapsFailures(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -2651,6 +2734,7 @@ func TestComputeNetworkDiff_CapsFailures(t *testing.T) {
 }
 
 func TestComputeNetworkDiff_CapsNewEndpoints(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -2678,6 +2762,7 @@ func TestComputeNetworkDiff_CapsNewEndpoints(t *testing.T) {
 }
 
 func TestComputeNetworkDiff_CapsDegraded(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// First, establish a checkpoint with known endpoints
@@ -2723,6 +2808,7 @@ func TestComputeNetworkDiff_CapsDegraded(t *testing.T) {
 // ============================================
 
 func TestComputeNetworkDiff_ToReadExceedsAvailable(t *testing.T) {
+	t.Parallel()
 	cm, _, capture := setupCheckpointTest(t)
 
 	// Establish checkpoint
@@ -2754,6 +2840,7 @@ func TestComputeNetworkDiff_ToReadExceedsAvailable(t *testing.T) {
 // ============================================
 
 func TestDetectAndStoreAlerts_CLSRegressionWithZeroBaseline(t *testing.T) {
+	t.Parallel()
 	cm, _, _ := setupCheckpointTest(t)
 
 	baselineCLS := 0.0  // Zero baseline CLS
@@ -2798,6 +2885,7 @@ func TestDetectAndStoreAlerts_CLSRegressionWithZeroBaseline(t *testing.T) {
 // ============================================
 
 func TestBuildAlertSummaryAlerts_SingleCategory(t *testing.T) {
+	t.Parallel()
 	alerts := []Alert{
 		{Category: "regression", Title: "test"},
 	}
@@ -2811,6 +2899,7 @@ func TestBuildAlertSummaryAlerts_SingleCategory(t *testing.T) {
 }
 
 func TestBuildAlertSummaryAlerts_MultipleCategoriesWithSingulars(t *testing.T) {
+	t.Parallel()
 	alerts := []Alert{
 		{Category: "regression", Title: "r1"},
 		{Category: "anomaly", Title: "a1"},

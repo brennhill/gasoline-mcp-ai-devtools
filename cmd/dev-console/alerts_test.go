@@ -17,6 +17,7 @@ import (
 // TestObserveNoAlertsOnFreshServer verifies that observe responses have
 // a single content block when no alerts exist.
 func TestObserveNoAlertsOnFreshServer(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -44,6 +45,7 @@ func TestObserveNoAlertsOnFreshServer(t *testing.T) {
 // TestAlertAppearsAfterObserve verifies that an alert generated between
 // observe calls is included in the next observe response.
 func TestAlertAppearsAfterObserve(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -88,6 +90,7 @@ func TestAlertAppearsAfterObserve(t *testing.T) {
 // TestAlertsDrainedAfterObserve verifies that alerts are cleared after
 // being returned in an observe response.
 func TestAlertsDrainedAfterObserve(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -134,6 +137,7 @@ func TestAlertsDrainedAfterObserve(t *testing.T) {
 // TestAlertBufferCap verifies that the alert buffer is capped at 50 entries
 // with FIFO eviction.
 func TestAlertBufferCap(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -163,6 +167,7 @@ func TestAlertBufferCap(t *testing.T) {
 // TestAlertPriorityOrdering verifies that alerts are sorted by severity
 // (error > warning > info) then by timestamp (newest first).
 func TestAlertPriorityOrdering(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -213,6 +218,7 @@ func TestAlertPriorityOrdering(t *testing.T) {
 // TestAlertDeduplication verifies that repeated identical regressions
 // are collapsed into a single alert with a count field.
 func TestAlertDeduplication(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -259,6 +265,7 @@ func TestAlertDeduplication(t *testing.T) {
 // TestAlertSummaryPrefix verifies that when more than 3 alerts exist,
 // the alerts block starts with a summary line.
 func TestAlertSummaryPrefix(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -294,6 +301,7 @@ func TestAlertSummaryPrefix(t *testing.T) {
 // TestCIWebhookValidRequest verifies that POST /ci-result with a valid body
 // generates a CI alert.
 func TestCIWebhookValidRequest(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -355,6 +363,7 @@ func TestCIWebhookValidRequest(t *testing.T) {
 
 // TestCIWebhookInvalidBody verifies that invalid JSON returns 400 and no alert.
 func TestCIWebhookInvalidBody(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -383,6 +392,7 @@ func TestCIWebhookInvalidBody(t *testing.T) {
 // TestCIWebhookIdempotent verifies that posting the same commit+status twice
 // updates rather than duplicates.
 func TestCIWebhookIdempotent(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -410,6 +420,7 @@ func TestCIWebhookIdempotent(t *testing.T) {
 // TestCIWebhookSuccessSeverity verifies that successful CI results
 // generate info-level alerts, not errors.
 func TestCIWebhookSuccessSeverity(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -433,6 +444,7 @@ func TestCIWebhookSuccessSeverity(t *testing.T) {
 
 // TestCIResultsCapped verifies that only the most recent 10 CI results are kept.
 func TestCIResultsCapped(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -458,6 +470,7 @@ func TestCIResultsCapped(t *testing.T) {
 // TestAlertCorrelation verifies that a performance regression and error spike
 // within the same 5-second window are grouped into a compound alert.
 func TestAlertCorrelation(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -510,6 +523,7 @@ func TestAlertCorrelation(t *testing.T) {
 // TestAnomalyDetectionErrorSpike verifies that error frequency >3x rolling average
 // triggers an anomaly alert.
 func TestAnomalyDetectionErrorSpike(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -545,6 +559,7 @@ func TestAnomalyDetectionErrorSpike(t *testing.T) {
 // TestAlertOnlyOnObserve verifies that alerts are ONLY appended to observe
 // tool responses, not analyze/generate/configure.
 func TestAlertOnlyOnObserve(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -587,6 +602,7 @@ func TestAlertOnlyOnObserve(t *testing.T) {
 
 // TestCIWebhookBodySizeLimit verifies that request bodies over 1MB are rejected.
 func TestCIWebhookBodySizeLimit(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -613,6 +629,7 @@ func TestCIWebhookBodySizeLimit(t *testing.T) {
 // TestCIWebhookMissingStatus verifies that a valid JSON body with empty status
 // returns 400. (Coverage hole CH1)
 func TestCIWebhookMissingStatus(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -645,6 +662,7 @@ func TestCIWebhookMissingStatus(t *testing.T) {
 // TestCIWebhookMissingSource verifies that a valid JSON body with empty source
 // returns 400. (Coverage hole CH2)
 func TestCIWebhookMissingSource(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -676,6 +694,7 @@ func TestCIWebhookMissingSource(t *testing.T) {
 
 // TestCIWebhookMethodNotAllowed verifies that non-POST methods are rejected. (CH3)
 func TestCIWebhookMethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

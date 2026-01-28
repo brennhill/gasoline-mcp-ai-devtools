@@ -439,7 +439,7 @@
         source: 'gasoline-ci',
         metadata: {
           testId: window.__GASOLINE_TEST_ID || null,
-          captureVersion: '5.1.0',
+          captureVersion: '5.2.0',
         },
       },
     ],

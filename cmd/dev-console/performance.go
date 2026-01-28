@@ -186,7 +186,7 @@ type WebVitalsResult struct {
 	LCP      WebVitalMetric `json:"lcp"`
 	CLS      WebVitalMetric `json:"cls"`
 	INP      WebVitalMetric `json:"inp"`
-	LoadTime WebVitalMetric `json:"loadTime"`
+	LoadTime WebVitalMetric `json:"load_time"`
 	URL      string         `json:"url,omitempty"`
 }
 
@@ -320,7 +320,7 @@ func (c *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline Perfo
 		pct := change / *baseline.Timing.FirstContentfulPaint * 100
 		if pct > 50 && change > 200 {
 			regressions = append(regressions, PerformanceRegression{
-				Metric: "firstContentfulPaint", Current: *snapshot.Timing.FirstContentfulPaint, Baseline: *baseline.Timing.FirstContentfulPaint,
+				Metric: "first_contentful_paint", Current: *snapshot.Timing.FirstContentfulPaint, Baseline: *baseline.Timing.FirstContentfulPaint,
 				ChangePercent: pct, AbsoluteChange: change,
 			})
 		}
@@ -332,7 +332,7 @@ func (c *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline Perfo
 		pct := change / *baseline.Timing.LargestContentfulPaint * 100
 		if pct > 50 && change > 200 {
 			regressions = append(regressions, PerformanceRegression{
-				Metric: "largestContentfulPaint", Current: *snapshot.Timing.LargestContentfulPaint, Baseline: *baseline.Timing.LargestContentfulPaint,
+				Metric: "largest_contentful_paint", Current: *snapshot.Timing.LargestContentfulPaint, Baseline: *baseline.Timing.LargestContentfulPaint,
 				ChangePercent: pct, AbsoluteChange: change,
 			})
 		}
@@ -344,7 +344,7 @@ func (c *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline Perfo
 		pct := change / float64(baseline.Network.RequestCount) * 100
 		if pct > 50 && change > 5 {
 			regressions = append(regressions, PerformanceRegression{
-				Metric: "requestCount", Current: float64(snapshot.Network.RequestCount), Baseline: float64(baseline.Network.RequestCount),
+				Metric: "request_count", Current: float64(snapshot.Network.RequestCount), Baseline: float64(baseline.Network.RequestCount),
 				ChangePercent: pct, AbsoluteChange: change,
 			})
 		}
@@ -356,7 +356,7 @@ func (c *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline Perfo
 		pct := change / float64(baseline.Network.TransferSize) * 100
 		if pct > 100 && change > 102400 {
 			regressions = append(regressions, PerformanceRegression{
-				Metric: "transferSize", Current: float64(snapshot.Network.TransferSize), Baseline: float64(baseline.Network.TransferSize),
+				Metric: "transfer_size", Current: float64(snapshot.Network.TransferSize), Baseline: float64(baseline.Network.TransferSize),
 				ChangePercent: pct, AbsoluteChange: change,
 			})
 		}
@@ -365,7 +365,7 @@ func (c *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline Perfo
 	// Long tasks: any increase from 0, or >100% increase
 	if baseline.LongTasks.Count == 0 && snapshot.LongTasks.Count > 0 {
 		regressions = append(regressions, PerformanceRegression{
-			Metric: "longTaskCount", Current: float64(snapshot.LongTasks.Count), Baseline: 0,
+			Metric: "long_task_count", Current: float64(snapshot.LongTasks.Count), Baseline: 0,
 			ChangePercent: 100, AbsoluteChange: float64(snapshot.LongTasks.Count),
 		})
 	} else if baseline.LongTasks.Count > 0 {
@@ -373,7 +373,7 @@ func (c *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline Perfo
 		pct := change / float64(baseline.LongTasks.Count) * 100
 		if pct > 100 {
 			regressions = append(regressions, PerformanceRegression{
-				Metric: "longTaskCount", Current: float64(snapshot.LongTasks.Count), Baseline: float64(baseline.LongTasks.Count),
+				Metric: "long_task_count", Current: float64(snapshot.LongTasks.Count), Baseline: float64(baseline.LongTasks.Count),
 				ChangePercent: pct, AbsoluteChange: change,
 			})
 		}
@@ -387,7 +387,7 @@ func (c *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline Perfo
 			pct = tbtChange / baseline.LongTasks.TotalBlockingTime * 100
 		}
 		regressions = append(regressions, PerformanceRegression{
-			Metric: "totalBlockingTime", Current: snapshot.LongTasks.TotalBlockingTime, Baseline: baseline.LongTasks.TotalBlockingTime,
+			Metric: "total_blocking_time", Current: snapshot.LongTasks.TotalBlockingTime, Baseline: baseline.LongTasks.TotalBlockingTime,
 			ChangePercent: pct, AbsoluteChange: tbtChange,
 		})
 	}
@@ -401,7 +401,7 @@ func (c *Capture) DetectRegressions(snapshot PerformanceSnapshot, baseline Perfo
 				pct = clsChange / *baseline.CLS * 100
 			}
 			regressions = append(regressions, PerformanceRegression{
-				Metric: "cumulativeLayoutShift", Current: *snapshot.CLS, Baseline: *baseline.CLS,
+				Metric: "cumulative_layout_shift", Current: *snapshot.CLS, Baseline: *baseline.CLS,
 				ChangePercent: pct, AbsoluteChange: clsChange,
 			})
 		}

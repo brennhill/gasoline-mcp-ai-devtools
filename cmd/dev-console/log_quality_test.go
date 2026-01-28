@@ -11,6 +11,7 @@ import (
 // ============================================
 
 func TestCheckLogQuality_AllFieldsPresent(t *testing.T) {
+	t.Parallel()
 	entries := []LogEntry{
 		{"ts": "2024-01-01T00:00:00Z", "message": "hello", "source": "app.js:1"},
 		{"ts": "2024-01-01T00:00:01Z", "message": "world", "source": "app.js:2"},
@@ -22,6 +23,7 @@ func TestCheckLogQuality_AllFieldsPresent(t *testing.T) {
 }
 
 func TestCheckLogQuality_MissingTimestamp(t *testing.T) {
+	t.Parallel()
 	entries := []LogEntry{
 		{"message": "no timestamp", "source": "app.js:1"},
 	}
@@ -35,6 +37,7 @@ func TestCheckLogQuality_MissingTimestamp(t *testing.T) {
 }
 
 func TestCheckLogQuality_MissingMessage(t *testing.T) {
+	t.Parallel()
 	entries := []LogEntry{
 		{"ts": "2024-01-01T00:00:00Z", "source": "app.js:1"},
 	}
@@ -48,6 +51,7 @@ func TestCheckLogQuality_MissingMessage(t *testing.T) {
 }
 
 func TestCheckLogQuality_MissingSource(t *testing.T) {
+	t.Parallel()
 	entries := []LogEntry{
 		{"ts": "2024-01-01T00:00:00Z", "message": "test"},
 	}
@@ -61,6 +65,7 @@ func TestCheckLogQuality_MissingSource(t *testing.T) {
 }
 
 func TestCheckLogQuality_AllThreeMissing_SingleEntry(t *testing.T) {
+	t.Parallel()
 	entries := []LogEntry{
 		{"level": "error"},
 	}
@@ -83,6 +88,7 @@ func TestCheckLogQuality_AllThreeMissing_SingleEntry(t *testing.T) {
 }
 
 func TestCheckLogQuality_MultipleEntries_Mixed(t *testing.T) {
+	t.Parallel()
 	entries := []LogEntry{
 		{"ts": "2024-01-01T00:00:00Z", "message": "ok", "source": "app.js:1"},
 		{"message": "no ts", "source": "app.js:2"},
@@ -98,6 +104,7 @@ func TestCheckLogQuality_MultipleEntries_Mixed(t *testing.T) {
 }
 
 func TestCheckLogQuality_EmptySlice(t *testing.T) {
+	t.Parallel()
 	result := checkLogQuality([]LogEntry{})
 	if result != "" {
 		t.Errorf("Expected empty string for empty slice, got %q", result)
@@ -109,6 +116,7 @@ func TestCheckLogQuality_EmptySlice(t *testing.T) {
 // ============================================
 
 func TestToolGetBrowserErrors_CleanData_NoWarning(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -130,6 +138,7 @@ func TestToolGetBrowserErrors_CleanData_NoWarning(t *testing.T) {
 }
 
 func TestToolGetBrowserErrors_MissingSource_ShowsWarning(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -153,6 +162,7 @@ func TestToolGetBrowserErrors_MissingSource_ShowsWarning(t *testing.T) {
 // TestToolGetBrowserErrors_LimitParameter verifies that the limit parameter
 // correctly restricts the number of errors returned (BUG-002).
 func TestToolGetBrowserErrors_LimitParameter(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -193,6 +203,7 @@ func TestToolGetBrowserErrors_LimitParameter(t *testing.T) {
 }
 
 func TestToolGetBrowserLogs_Warning_DoesNotBreakMarkdown(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

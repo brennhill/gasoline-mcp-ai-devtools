@@ -22,6 +22,7 @@ import (
 // ============================================
 
 func TestHandleNetworkWaterfall_AcceptsValidPayload(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	payload := NetworkWaterfallPayload{
@@ -59,6 +60,7 @@ func TestHandleNetworkWaterfall_AcceptsValidPayload(t *testing.T) {
 }
 
 func TestHandleNetworkWaterfall_RejectsMalformedJSON(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	req := httptest.NewRequest("POST", "/network-waterfall", strings.NewReader("{invalid json"))
@@ -72,6 +74,7 @@ func TestHandleNetworkWaterfall_RejectsMalformedJSON(t *testing.T) {
 }
 
 func TestHandleNetworkWaterfall_StoresTimestamp(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	payload := NetworkWaterfallPayload{
@@ -103,6 +106,7 @@ func TestHandleNetworkWaterfall_StoresTimestamp(t *testing.T) {
 }
 
 func TestHandleNetworkWaterfall_StoresPageURL(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	pageURL := "https://example.com/page"
@@ -137,6 +141,7 @@ func TestHandleNetworkWaterfall_StoresPageURL(t *testing.T) {
 // ============================================
 
 func TestNetworkWaterfall_RingBufferEviction(t *testing.T) {
+	t.Parallel()
 	// Create capture with small capacity
 	capture := NewCapture()
 	capture.networkWaterfallCapacity = 3
@@ -176,6 +181,7 @@ func TestNetworkWaterfall_RingBufferEviction(t *testing.T) {
 }
 
 func TestNetworkWaterfall_MultipleEntriesInSinglePayload(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	payload := NetworkWaterfallPayload{
@@ -207,6 +213,7 @@ func TestNetworkWaterfall_MultipleEntriesInSinglePayload(t *testing.T) {
 // ============================================
 
 func TestNetworkWaterfall_FeedsCSPGenerator(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Send 3 requests to cdn.example.com on 2 different pages to ensure high confidence
@@ -263,6 +270,7 @@ func TestNetworkWaterfall_FeedsCSPGenerator(t *testing.T) {
 // ============================================
 
 func TestExtractOrigin_StandardHTTPS(t *testing.T) {
+	t.Parallel()
 	origin := extractOrigin("https://example.com/path/to/resource")
 	if origin != "https://example.com" {
 		t.Errorf("Expected 'https://example.com', got '%s'", origin)
@@ -270,6 +278,7 @@ func TestExtractOrigin_StandardHTTPS(t *testing.T) {
 }
 
 func TestExtractOrigin_WithPort(t *testing.T) {
+	t.Parallel()
 	origin := extractOrigin("http://localhost:3000/api/data")
 	if origin != "http://localhost:3000" {
 		t.Errorf("Expected 'http://localhost:3000', got '%s'", origin)
@@ -277,6 +286,7 @@ func TestExtractOrigin_WithPort(t *testing.T) {
 }
 
 func TestExtractOrigin_DataURL(t *testing.T) {
+	t.Parallel()
 	origin := extractOrigin("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA")
 	if origin != "" {
 		t.Errorf("Data URLs should return empty string, got '%s'", origin)
@@ -284,6 +294,7 @@ func TestExtractOrigin_DataURL(t *testing.T) {
 }
 
 func TestExtractOrigin_BlobURL(t *testing.T) {
+	t.Parallel()
 	origin := extractOrigin("blob:https://example.com/550e8400-e29b-41d4-a716-446655440000")
 	if origin != "https://example.com" {
 		t.Errorf("Expected 'https://example.com', got '%s'", origin)
@@ -291,6 +302,7 @@ func TestExtractOrigin_BlobURL(t *testing.T) {
 }
 
 func TestExtractOrigin_MalformedURL(t *testing.T) {
+	t.Parallel()
 	origin := extractOrigin("not-a-valid-url")
 	if origin != "" {
 		t.Errorf("Malformed URLs should return empty string, got '%s'", origin)
@@ -302,6 +314,7 @@ func TestExtractOrigin_MalformedURL(t *testing.T) {
 // ============================================
 
 func TestNetworkWaterfall_DefaultCapacity(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Default should be 1000
@@ -312,6 +325,7 @@ func TestNetworkWaterfall_DefaultCapacity(t *testing.T) {
 }
 
 func TestNetworkWaterfall_CustomCapacity(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.networkWaterfallCapacity = 500
 
@@ -325,6 +339,7 @@ func TestNetworkWaterfall_CustomCapacity(t *testing.T) {
 // ============================================
 
 func TestNetworkWaterfall_ConcurrentWrites(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Write 100 entries concurrently
@@ -371,6 +386,7 @@ func TestNetworkWaterfall_ConcurrentWrites(t *testing.T) {
 
 // Test 1: Empty buffer returns helpful message
 func TestToolGetNetworkWaterfall_EmptyBuffer(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -413,6 +429,7 @@ func TestToolGetNetworkWaterfall_EmptyBuffer(t *testing.T) {
 
 // Test 2: Populated buffer returns markdown table
 func TestToolGetNetworkWaterfall_PopulatedBuffer(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -493,7 +510,7 @@ func TestToolGetNetworkWaterfall_PopulatedBuffer(t *testing.T) {
 	if !strings.Contains(entry1["url"].(string), "example.com/api/users") {
 		t.Error("Expected first URL to contain example.com/api/users")
 	}
-	if entry1["initiatorType"].(string) != "fetch" {
+	if entry1["initiator_type"].(string) != "fetch" {
 		t.Error("Expected first entry initiatorType=fetch")
 	}
 
@@ -502,7 +519,7 @@ func TestToolGetNetworkWaterfall_PopulatedBuffer(t *testing.T) {
 	if !strings.Contains(entry2["url"].(string), "cdn.example.com/script.js") {
 		t.Error("Expected second URL to contain cdn.example.com/script.js")
 	}
-	if entry2["initiatorType"].(string) != "script" {
+	if entry2["initiator_type"].(string) != "script" {
 		t.Error("Expected second entry initiatorType=script")
 	}
 	if cached, ok := entry2["cached"].(bool); !ok || !cached {
@@ -512,6 +529,7 @@ func TestToolGetNetworkWaterfall_PopulatedBuffer(t *testing.T) {
 
 // Test 3: limit parameter returns last N entries
 func TestToolGetNetworkWaterfall_LimitParameter(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -576,6 +594,7 @@ func TestToolGetNetworkWaterfall_LimitParameter(t *testing.T) {
 
 // Test 4: url filter parameter filters entries
 func TestToolGetNetworkWaterfall_URLFilter(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -640,6 +659,7 @@ func TestToolGetNetworkWaterfall_URLFilter(t *testing.T) {
 
 // Test 5: Concurrent access safety
 func TestToolGetNetworkWaterfall_ConcurrentAccessSafety(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

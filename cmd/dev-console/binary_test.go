@@ -8,6 +8,7 @@ import (
 )
 
 func TestDetectBinaryFormat_Empty(t *testing.T) {
+	t.Parallel()
 	result := DetectBinaryFormat(nil)
 	if result != nil {
 		t.Errorf("expected nil for empty input, got %+v", result)
@@ -20,6 +21,7 @@ func TestDetectBinaryFormat_Empty(t *testing.T) {
 }
 
 func TestDetectBinaryFormat_TextContent(t *testing.T) {
+	t.Parallel()
 	// Plain text should not be detected as binary format
 	tests := []string{
 		"hello world",
@@ -36,6 +38,7 @@ func TestDetectBinaryFormat_TextContent(t *testing.T) {
 }
 
 func TestDetectBinaryFormat_MessagePack(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		data []byte
@@ -91,6 +94,7 @@ func TestDetectBinaryFormat_MessagePack(t *testing.T) {
 }
 
 func TestDetectBinaryFormat_Protobuf(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		data []byte
@@ -123,6 +127,7 @@ func TestDetectBinaryFormat_Protobuf(t *testing.T) {
 }
 
 func TestDetectBinaryFormat_CBOR(t *testing.T) {
+	t.Parallel()
 	// Note: CBOR and MessagePack share overlapping byte ranges for arrays/maps.
 	// MessagePack is checked first, so those ranges are detected as MessagePack.
 	// CBOR-specific tests focus on non-overlapping markers.
@@ -158,6 +163,7 @@ func TestDetectBinaryFormat_CBOR(t *testing.T) {
 }
 
 func TestDetectBinaryFormat_CBOR_Overlapping(t *testing.T) {
+	t.Parallel()
 	// These CBOR markers overlap with MessagePack and are detected as MessagePack.
 	// This is by design - MessagePack is more commonly used in web contexts.
 	tests := []struct {
@@ -192,6 +198,7 @@ func TestDetectBinaryFormat_CBOR_Overlapping(t *testing.T) {
 }
 
 func TestDetectBinaryFormat_BSON(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		data []byte
@@ -239,6 +246,7 @@ func TestDetectBinaryFormat_BSON(t *testing.T) {
 }
 
 func TestDetectBinaryFormat_UnknownBinary(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		data []byte
@@ -260,6 +268,7 @@ func TestDetectBinaryFormat_UnknownBinary(t *testing.T) {
 }
 
 func TestDetectBinaryFormat_Priority(t *testing.T) {
+	t.Parallel()
 	// Test that MessagePack is detected over CBOR for ambiguous bytes
 	// 0x80 is both MessagePack fixmap(0) and CBOR array(0)
 	// MessagePack should take priority per the spec
@@ -274,6 +283,7 @@ func TestDetectBinaryFormat_Priority(t *testing.T) {
 }
 
 func TestDetectBinaryFormat_SingleByte(t *testing.T) {
+	t.Parallel()
 	// Single bytes that are valid format indicators
 	tests := []struct {
 		data     byte
@@ -310,6 +320,7 @@ func TestDetectBinaryFormat_SingleByte(t *testing.T) {
 }
 
 func TestBinaryFormat_Details(t *testing.T) {
+	t.Parallel()
 	// Test that Details field provides useful information
 	result := DetectBinaryFormat([]byte{0x08, 0x01}) // protobuf field 1, varint
 	if result == nil {
@@ -323,6 +334,7 @@ func TestBinaryFormat_Details(t *testing.T) {
 // Integration tests for binary format detection in network/websocket
 
 func TestNetworkBody_BinaryFormatIntegration(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Add a network body with MessagePack binary data
@@ -351,6 +363,7 @@ func TestNetworkBody_BinaryFormatIntegration(t *testing.T) {
 }
 
 func TestNetworkBody_TextNoFormat(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Add a network body with JSON text data
@@ -375,6 +388,7 @@ func TestNetworkBody_TextNoFormat(t *testing.T) {
 }
 
 func TestWebSocketEvent_BinaryFormatIntegration(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Add a WebSocket message with protobuf binary data
@@ -405,6 +419,7 @@ func TestWebSocketEvent_BinaryFormatIntegration(t *testing.T) {
 }
 
 func TestWebSocketEvent_OpenCloseNoFormat(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Add open/close events which shouldn't have binary format detection
@@ -433,6 +448,7 @@ func TestWebSocketEvent_OpenCloseNoFormat(t *testing.T) {
 }
 
 func TestWebSocketEvent_TextMessageNoFormat(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Add a text message

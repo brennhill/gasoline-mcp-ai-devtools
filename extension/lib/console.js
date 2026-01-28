@@ -18,8 +18,10 @@ export function installConsoleCapture() {
   const methods = ['log', 'warn', 'error', 'info', 'debug']
 
   methods.forEach((method) => {
+    // eslint-disable-next-line security/detect-object-injection -- method from known-safe local array of console methods
     originalConsole[method] = console[method]
 
+    // eslint-disable-next-line security/detect-object-injection -- method from known-safe local array of console methods
     console[method] = function (...args) {
       // Post to extension
       postLog({
@@ -29,6 +31,7 @@ export function installConsoleCapture() {
       })
 
       // Call original
+      // eslint-disable-next-line security/detect-object-injection -- method from known-safe local array of console methods
       originalConsole[method].apply(console, args)
     }
   })
@@ -39,6 +42,7 @@ export function installConsoleCapture() {
  */
 export function uninstallConsoleCapture() {
   Object.keys(originalConsole).forEach((method) => {
+    // eslint-disable-next-line security/detect-object-injection -- method from Object.keys of our own originalConsole storage
     console[method] = originalConsole[method]
   })
   originalConsole = {}

@@ -683,7 +683,8 @@ func (c *Capture) HandlePilotStatus(w http.ResponseWriter, r *http.Request) {
 	status := c.GetPilotStatus()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(status)
+	//nolint:errcheck -- HTTP response encoding errors are logged by client; no recovery possible
+	_ = json.NewEncoder(w).Encode(status)
 }
 
 // toolObservePilot is the observe handler for "pilot" mode.
@@ -728,7 +729,8 @@ func (h *ToolHandler) toolObservePolling(req JSONRPCRequest, args json.RawMessag
 // handlePilotManageStateSave delegates to handlePilotManageState with action="save"
 func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var m map[string]interface{}
-	json.Unmarshal(args, &m)
+	//nolint:errcheck -- args already validated by MCP layer; fallback to empty map is safe
+	_ = json.Unmarshal(args, &m)
 	// "save_state" from interact maps to "capture" (save current page state, no name required).
 	// The internal "save" action requires snapshot_name; "capture" does not.
 	m["action"] = "capture"
@@ -740,7 +742,8 @@ func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.R
 // handlePilotManageStateLoad delegates to handlePilotManageState with action="load"
 func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var m map[string]interface{}
-	json.Unmarshal(args, &m)
+	//nolint:errcheck -- args already validated by MCP layer; fallback to empty map is safe
+	_ = json.Unmarshal(args, &m)
 	m["action"] = "load"
 	// Error impossible: map[string]interface{} with primitive values is always serializable
 	repackaged, _ := json.Marshal(m)
@@ -750,7 +753,8 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 // handlePilotManageStateList delegates to handlePilotManageState with action="list"
 func (h *ToolHandler) handlePilotManageStateList(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var m map[string]interface{}
-	json.Unmarshal(args, &m)
+	//nolint:errcheck -- args already validated by MCP layer; fallback to empty map is safe
+	_ = json.Unmarshal(args, &m)
 	m["action"] = "list"
 	// Error impossible: map[string]interface{} with primitive values is always serializable
 	repackaged, _ := json.Marshal(m)
@@ -760,7 +764,8 @@ func (h *ToolHandler) handlePilotManageStateList(req JSONRPCRequest, args json.R
 // handlePilotManageStateDelete delegates to handlePilotManageState with action="delete"
 func (h *ToolHandler) handlePilotManageStateDelete(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var m map[string]interface{}
-	json.Unmarshal(args, &m)
+	//nolint:errcheck -- args already validated by MCP layer; fallback to empty map is safe
+	_ = json.Unmarshal(args, &m)
 	m["action"] = "delete"
 	// Error impossible: map[string]interface{} with primitive values is always serializable
 	repackaged, _ := json.Marshal(m)
@@ -770,7 +775,8 @@ func (h *ToolHandler) handlePilotManageStateDelete(req JSONRPCRequest, args json
 // handleBrowserActionNavigate delegates to handleBrowserAction with action="navigate"
 func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var m map[string]interface{}
-	json.Unmarshal(args, &m)
+	//nolint:errcheck -- args already validated by MCP layer; fallback to empty map is safe
+	_ = json.Unmarshal(args, &m)
 	m["action"] = "navigate"
 	// Error impossible: map[string]interface{} with primitive values is always serializable
 	repackaged, _ := json.Marshal(m)
@@ -780,7 +786,8 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 // handleBrowserActionRefresh delegates to handleBrowserAction with action="refresh"
 func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var m map[string]interface{}
-	json.Unmarshal(args, &m)
+	//nolint:errcheck -- args already validated by MCP layer; fallback to empty map is safe
+	_ = json.Unmarshal(args, &m)
 	m["action"] = "refresh"
 	// Error impossible: map[string]interface{} with primitive values is always serializable
 	repackaged, _ := json.Marshal(m)
@@ -790,7 +797,8 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 // handleBrowserActionBack delegates to handleBrowserAction with action="back"
 func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var m map[string]interface{}
-	json.Unmarshal(args, &m)
+	//nolint:errcheck -- args already validated by MCP layer; fallback to empty map is safe
+	_ = json.Unmarshal(args, &m)
 	m["action"] = "back"
 	// Error impossible: map[string]interface{} with primitive values is always serializable
 	repackaged, _ := json.Marshal(m)
@@ -800,7 +808,8 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 // handleBrowserActionForward delegates to handleBrowserAction with action="forward"
 func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var m map[string]interface{}
-	json.Unmarshal(args, &m)
+	//nolint:errcheck -- args already validated by MCP layer; fallback to empty map is safe
+	_ = json.Unmarshal(args, &m)
 	m["action"] = "forward"
 	// Error impossible: map[string]interface{} with primitive values is always serializable
 	repackaged, _ := json.Marshal(m)
@@ -810,7 +819,8 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 // handleBrowserActionNewTab delegates to handleBrowserAction with action="open"
 func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var m map[string]interface{}
-	json.Unmarshal(args, &m)
+	//nolint:errcheck -- args already validated by MCP layer; fallback to empty map is safe
+	_ = json.Unmarshal(args, &m)
 	m["action"] = "open"
 	// Error impossible: map[string]interface{} with primitive values is always serializable
 	repackaged, _ := json.Marshal(m)

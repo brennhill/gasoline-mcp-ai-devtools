@@ -15,6 +15,7 @@ import (
 // ============================================
 
 func TestStreamState_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 
 	if ss.Config.Enabled {
@@ -29,6 +30,7 @@ func TestStreamState_DefaultConfig(t *testing.T) {
 }
 
 func TestStreamState_Enable(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 
 	result := ss.Configure("enable", []string{"errors", "network_errors"}, 10, "", "error")
@@ -52,6 +54,7 @@ func TestStreamState_Enable(t *testing.T) {
 }
 
 func TestStreamState_Disable(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 
 	// Enable first with some pending alerts
@@ -75,6 +78,7 @@ func TestStreamState_Disable(t *testing.T) {
 }
 
 func TestStreamState_Status(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", []string{"errors"}, 15, "/api/", "warning")
 
@@ -93,6 +97,7 @@ func TestStreamState_Status(t *testing.T) {
 }
 
 func TestStreamState_EnableWithDefaults(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 
 	// Enable with zero values — should use defaults
@@ -117,6 +122,7 @@ func TestStreamState_EnableWithDefaults(t *testing.T) {
 // ============================================
 
 func TestStreamState_SeverityFilter(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", nil, 0, "", "error")
 
@@ -137,6 +143,7 @@ func TestStreamState_SeverityFilter(t *testing.T) {
 }
 
 func TestStreamState_CategoryFilter(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", []string{"errors", "ci"}, 0, "", "info")
 
@@ -157,6 +164,7 @@ func TestStreamState_CategoryFilter(t *testing.T) {
 }
 
 func TestStreamState_AllEventsFilter(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", []string{"all"}, 0, "", "info")
 
@@ -169,6 +177,7 @@ func TestStreamState_AllEventsFilter(t *testing.T) {
 }
 
 func TestStreamState_DisabledEmitsNothing(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	// Not enabled
 
@@ -182,6 +191,7 @@ func TestStreamState_DisabledEmitsNothing(t *testing.T) {
 // ============================================
 
 func TestStreamState_Throttling(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", nil, 5, "", "info")
 
@@ -206,6 +216,7 @@ func TestStreamState_Throttling(t *testing.T) {
 }
 
 func TestStreamState_RateLimit(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", nil, 1, "", "info") // 1 second throttle
 
@@ -226,6 +237,7 @@ func TestStreamState_RateLimit(t *testing.T) {
 }
 
 func TestStreamState_RateLimitResets(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", nil, 1, "", "info")
 
@@ -247,6 +259,7 @@ func TestStreamState_RateLimitResets(t *testing.T) {
 // ============================================
 
 func TestStreamState_Dedup(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", nil, 1, "", "info")
 
@@ -276,6 +289,7 @@ func TestStreamState_Dedup(t *testing.T) {
 // ============================================
 
 func TestStreamState_FormatNotification(t *testing.T) {
+	t.Parallel()
 	alert := Alert{
 		Severity:  "error",
 		Category:  "ci",
@@ -318,6 +332,7 @@ func TestStreamState_FormatNotification(t *testing.T) {
 // ============================================
 
 func TestStreamState_EmitToWriter(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", nil, 1, "", "info")
 
@@ -352,6 +367,7 @@ func TestStreamState_EmitToWriter(t *testing.T) {
 }
 
 func TestStreamState_EmitRespectsEnabled(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	// NOT enabled
 
@@ -376,6 +392,7 @@ func TestStreamState_EmitRespectsEnabled(t *testing.T) {
 // TestStreamState_PendingBatchOverflow verifies that when PendingBatch is at
 // maxPendingBatch, additional throttled alerts are silently dropped. (CH4)
 func TestStreamState_PendingBatchOverflow(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", nil, 1, "", "info")
 
@@ -416,6 +433,7 @@ func TestStreamState_PendingBatchOverflow(t *testing.T) {
 // TestStreamState_CategoryMatchesAllEvents verifies all 8 event-to-category
 // mappings in categoryMatchesEvent. (CH6)
 func TestStreamState_CategoryMatchesAllEvents(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		event    string
 		category string
@@ -461,6 +479,7 @@ func TestStreamState_CategoryMatchesAllEvents(t *testing.T) {
 
 // TestStreamState_MultipleEventFilter verifies OR-matching with multiple events. (G2)
 func TestStreamState_MultipleEventFilter(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", []string{"errors", "ci"}, 1, "", "info")
 
@@ -516,6 +535,7 @@ func TestStreamState_MultipleEventFilter(t *testing.T) {
 // TestStreamState_RecordEmission verifies recordEmission updates LastNotified
 // and increments NotifyCount. (G3)
 func TestStreamState_RecordEmission(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 
 	now := time.Now()
@@ -551,6 +571,7 @@ func TestStreamState_RecordEmission(t *testing.T) {
 // TestStreamState_CheckRateReset verifies the public checkRateReset method
 // resets the counter when a new minute starts. (G1)
 func TestStreamState_CheckRateReset(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 
 	// Set up state: 5 notifications in the current minute
@@ -578,6 +599,7 @@ func TestStreamState_CheckRateReset(t *testing.T) {
 }
 
 func TestStreamState_EmitRespectsSeverityFilter(t *testing.T) {
+	t.Parallel()
 	ss := NewStreamState()
 	ss.Configure("enable", nil, 1, "", "error")
 

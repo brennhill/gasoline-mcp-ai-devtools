@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -16,6 +17,7 @@ func dummyHandler() http.Handler {
 }
 
 func TestAuthNoKeyConfigured(t *testing.T) {
+	t.Parallel()
 	// When no API key is configured (empty string), all requests pass through
 	handler := AuthMiddleware("")(dummyHandler())
 
@@ -32,6 +34,7 @@ func TestAuthNoKeyConfigured(t *testing.T) {
 }
 
 func TestAuthKeyConfiguredNoHeader(t *testing.T) {
+	t.Parallel()
 	// When API key is configured but request has no header, return 401
 	handler := AuthMiddleware("my-secret-key")(dummyHandler())
 
@@ -45,6 +48,7 @@ func TestAuthKeyConfiguredNoHeader(t *testing.T) {
 }
 
 func TestAuthKeyConfiguredWrongKey(t *testing.T) {
+	t.Parallel()
 	// When API key is configured but request has wrong key, return 401
 	handler := AuthMiddleware("my-secret-key")(dummyHandler())
 
@@ -59,6 +63,7 @@ func TestAuthKeyConfiguredWrongKey(t *testing.T) {
 }
 
 func TestAuthKeyConfiguredCorrectKey(t *testing.T) {
+	t.Parallel()
 	// When API key is configured and request has correct key, pass through
 	handler := AuthMiddleware("my-secret-key")(dummyHandler())
 
@@ -76,6 +81,7 @@ func TestAuthKeyConfiguredCorrectKey(t *testing.T) {
 }
 
 func TestAuth401ResponseBody(t *testing.T) {
+	t.Parallel()
 	// 401 response body must be JSON {"error": "unauthorized"}
 	handler := AuthMiddleware("my-secret-key")(dummyHandler())
 
@@ -103,6 +109,7 @@ func TestAuth401ResponseBody(t *testing.T) {
 }
 
 func TestAuthApplesToLogsEndpoint(t *testing.T) {
+	t.Parallel()
 	handler := AuthMiddleware("secret123")(dummyHandler())
 
 	// Without key - should be rejected
@@ -126,6 +133,7 @@ func TestAuthApplesToLogsEndpoint(t *testing.T) {
 }
 
 func TestAuthAppliesToNetworkBodyEndpoint(t *testing.T) {
+	t.Parallel()
 	handler := AuthMiddleware("secret123")(dummyHandler())
 
 	// Without key - should be rejected
@@ -149,6 +157,7 @@ func TestAuthAppliesToNetworkBodyEndpoint(t *testing.T) {
 }
 
 func TestAuthAppliesToActionsEndpoint(t *testing.T) {
+	t.Parallel()
 	handler := AuthMiddleware("secret123")(dummyHandler())
 
 	// Without key - should be rejected
@@ -172,6 +181,7 @@ func TestAuthAppliesToActionsEndpoint(t *testing.T) {
 }
 
 func TestAuthEmptyKeyMeansDisabled(t *testing.T) {
+	t.Parallel()
 	// Empty string API key means auth is disabled
 	handler := AuthMiddleware("")(dummyHandler())
 
@@ -186,6 +196,7 @@ func TestAuthEmptyKeyMeansDisabled(t *testing.T) {
 }
 
 func TestAuthConstantTimeComparison(t *testing.T) {
+	t.Parallel()
 	// This test verifies that the auth middleware uses crypto/subtle
 	// for key comparison. We test this by ensuring that keys of different
 	// lengths still result in proper 401 (timing-safe comparison pads or
@@ -228,6 +239,7 @@ func TestAuthConstantTimeComparison(t *testing.T) {
 }
 
 func TestAuthMiddlewarePreservesCORSPreflight(t *testing.T) {
+	t.Parallel()
 	// OPTIONS requests (CORS preflight) should still work with auth enabled
 	// since browsers send preflight without custom headers first
 	handler := AuthMiddleware("my-key")(dummyHandler())
@@ -240,5 +252,123 @@ func TestAuthMiddlewarePreservesCORSPreflight(t *testing.T) {
 	// (CORS middleware runs before auth in the actual server stack)
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("OPTIONS without key: expected 401, got %d", rec.Code)
+	}
+}
+
+// ============================================
+// isAllowedOrigin: Extension ID Validation Tests
+// ============================================
+
+func TestIsAllowedOrigin_EmptyOrigin(t *testing.T) {
+	t.Parallel()
+	// Empty origin (CLI/curl) should always be allowed
+	if !isAllowedOrigin("") {
+		t.Error("empty origin should be allowed")
+	}
+}
+
+func TestIsAllowedOrigin_Localhost(t *testing.T) {
+	t.Parallel()
+	origins := []string{
+		"http://localhost",
+		"http://localhost:3000",
+		"http://127.0.0.1",
+		"http://127.0.0.1:8080",
+		"http://[::1]",
+		"http://[::1]:9000",
+	}
+	for _, origin := range origins {
+		if !isAllowedOrigin(origin) {
+			t.Errorf("localhost origin %q should be allowed", origin)
+		}
+	}
+}
+
+func TestIsAllowedOrigin_ExternalRejected(t *testing.T) {
+	t.Parallel()
+	origins := []string{
+		"https://evil.com",
+		"https://attacker.example.com",
+		"http://192.168.1.1",
+	}
+	for _, origin := range origins {
+		if isAllowedOrigin(origin) {
+			t.Errorf("external origin %q should be rejected", origin)
+		}
+	}
+}
+
+func TestIsAllowedOrigin_ChromeExtension_NoEnvVar(t *testing.T) {
+	t.Parallel()
+	// When GASOLINE_EXTENSION_ID is not set, any chrome-extension:// is allowed
+	original := os.Getenv("GASOLINE_EXTENSION_ID")
+	defer os.Setenv("GASOLINE_EXTENSION_ID", original)
+	os.Unsetenv("GASOLINE_EXTENSION_ID")
+
+	if !isAllowedOrigin("chrome-extension://abcdefghijklmnop") {
+		t.Error("chrome-extension origin should be allowed when env var is not set")
+	}
+	if !isAllowedOrigin("chrome-extension://anyrandomextensionid") {
+		t.Error("any chrome-extension origin should be allowed when env var is not set")
+	}
+}
+
+func TestIsAllowedOrigin_ChromeExtension_WithEnvVar_CorrectID(t *testing.T) {
+	t.Parallel()
+	// When GASOLINE_EXTENSION_ID is set, only that specific extension is allowed
+	original := os.Getenv("GASOLINE_EXTENSION_ID")
+	defer os.Setenv("GASOLINE_EXTENSION_ID", original)
+	os.Setenv("GASOLINE_EXTENSION_ID", "abcdefghijklmnop")
+
+	if !isAllowedOrigin("chrome-extension://abcdefghijklmnop") {
+		t.Error("chrome-extension with matching ID should be allowed")
+	}
+}
+
+func TestIsAllowedOrigin_ChromeExtension_WithEnvVar_WrongID(t *testing.T) {
+	t.Parallel()
+	// When GASOLINE_EXTENSION_ID is set, a different extension ID is rejected
+	original := os.Getenv("GASOLINE_EXTENSION_ID")
+	defer os.Setenv("GASOLINE_EXTENSION_ID", original)
+	os.Setenv("GASOLINE_EXTENSION_ID", "abcdefghijklmnop")
+
+	if isAllowedOrigin("chrome-extension://wrongextensionidhere") {
+		t.Error("chrome-extension with wrong ID should be rejected when env var is set")
+	}
+}
+
+func TestIsAllowedOrigin_FirefoxExtension_NoEnvVar(t *testing.T) {
+	t.Parallel()
+	// When GASOLINE_FIREFOX_EXTENSION_ID is not set, any moz-extension:// is allowed
+	original := os.Getenv("GASOLINE_FIREFOX_EXTENSION_ID")
+	defer os.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", original)
+	os.Unsetenv("GASOLINE_FIREFOX_EXTENSION_ID")
+
+	if !isAllowedOrigin("moz-extension://some-uuid-here") {
+		t.Error("moz-extension origin should be allowed when env var is not set")
+	}
+}
+
+func TestIsAllowedOrigin_FirefoxExtension_WithEnvVar_CorrectID(t *testing.T) {
+	t.Parallel()
+	// When GASOLINE_FIREFOX_EXTENSION_ID is set, only that specific extension is allowed
+	original := os.Getenv("GASOLINE_FIREFOX_EXTENSION_ID")
+	defer os.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", original)
+	os.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", "my-firefox-ext-uuid")
+
+	if !isAllowedOrigin("moz-extension://my-firefox-ext-uuid") {
+		t.Error("moz-extension with matching ID should be allowed")
+	}
+}
+
+func TestIsAllowedOrigin_FirefoxExtension_WithEnvVar_WrongID(t *testing.T) {
+	t.Parallel()
+	// When GASOLINE_FIREFOX_EXTENSION_ID is set, a different extension ID is rejected
+	original := os.Getenv("GASOLINE_FIREFOX_EXTENSION_ID")
+	defer os.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", original)
+	os.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", "my-firefox-ext-uuid")
+
+	if isAllowedOrigin("moz-extension://wrong-firefox-uuid") {
+		t.Error("moz-extension with wrong ID should be rejected when env var is set")
 	}
 }

@@ -11,6 +11,7 @@ import (
 // ============================================
 
 func TestDeriveClientID_Deterministic(t *testing.T) {
+	t.Parallel()
 	id1 := DeriveClientID("/Users/alice/project")
 	id2 := DeriveClientID("/Users/alice/project")
 	if id1 != id2 {
@@ -19,6 +20,7 @@ func TestDeriveClientID_Deterministic(t *testing.T) {
 }
 
 func TestDeriveClientID_UniquePerCWD(t *testing.T) {
+	t.Parallel()
 	id1 := DeriveClientID("/Users/alice/project-a")
 	id2 := DeriveClientID("/Users/alice/project-b")
 	if id1 == id2 {
@@ -27,6 +29,7 @@ func TestDeriveClientID_UniquePerCWD(t *testing.T) {
 }
 
 func TestDeriveClientID_Length(t *testing.T) {
+	t.Parallel()
 	id := DeriveClientID("/some/path")
 	if len(id) != clientIDLength {
 		t.Errorf("Expected ID length %d, got %d (%s)", clientIDLength, len(id), id)
@@ -34,6 +37,7 @@ func TestDeriveClientID_Length(t *testing.T) {
 }
 
 func TestDeriveClientID_EmptyInput(t *testing.T) {
+	t.Parallel()
 	id := DeriveClientID("")
 	if id != "" {
 		t.Errorf("Empty CWD should produce empty ID, got %s", id)
@@ -45,6 +49,7 @@ func TestDeriveClientID_EmptyInput(t *testing.T) {
 // ============================================
 
 func TestNewClientState(t *testing.T) {
+	t.Parallel()
 	cs := NewClientState("/Users/alice/project")
 
 	if cs.ID == "" {
@@ -65,6 +70,7 @@ func TestNewClientState(t *testing.T) {
 }
 
 func TestClientState_Touch(t *testing.T) {
+	t.Parallel()
 	cs := NewClientState("/test")
 	before := cs.GetLastSeen()
 
@@ -78,6 +84,7 @@ func TestClientState_Touch(t *testing.T) {
 }
 
 func TestClientState_CursorUpdates(t *testing.T) {
+	t.Parallel()
 	cs := NewClientState("/test")
 
 	// WS cursor
@@ -110,6 +117,7 @@ func TestClientState_CursorUpdates(t *testing.T) {
 // ============================================
 
 func TestClientRegistry_RegisterAndGet(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 
 	cs := r.Register("/Users/alice/project")
@@ -127,6 +135,7 @@ func TestClientRegistry_RegisterAndGet(t *testing.T) {
 }
 
 func TestClientRegistry_GetNonexistent(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 	got := r.Get("nonexistent-id")
 	if got != nil {
@@ -135,6 +144,7 @@ func TestClientRegistry_GetNonexistent(t *testing.T) {
 }
 
 func TestClientRegistry_RegisterIdempotent(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 
 	cs1 := r.Register("/Users/alice/project")
@@ -149,6 +159,7 @@ func TestClientRegistry_RegisterIdempotent(t *testing.T) {
 }
 
 func TestClientRegistry_Unregister(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 
 	cs := r.Register("/Users/alice/project")
@@ -163,12 +174,14 @@ func TestClientRegistry_Unregister(t *testing.T) {
 }
 
 func TestClientRegistry_UnregisterNonexistent(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 	// Should not panic
 	r.Unregister("nonexistent-id")
 }
 
 func TestClientRegistry_List(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 	r.Register("/project-a")
 	r.Register("/project-b")
@@ -194,6 +207,7 @@ func TestClientRegistry_List(t *testing.T) {
 }
 
 func TestClientRegistry_Count(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 	if r.Count() != 0 {
 		t.Errorf("Expected 0, got %d", r.Count())
@@ -217,6 +231,7 @@ func TestClientRegistry_Count(t *testing.T) {
 // ============================================
 
 func TestClientRegistry_LRUEviction(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 
 	// Register maxClients clients
@@ -250,6 +265,7 @@ func TestClientRegistry_LRUEviction(t *testing.T) {
 }
 
 func TestClientRegistry_LRUEvictionRespectsAccess(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 
 	// Register maxClients clients
@@ -281,6 +297,7 @@ func TestClientRegistry_LRUEvictionRespectsAccess(t *testing.T) {
 // ============================================
 
 func TestClientRegistry_GetOrDefault_EmptyID(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 	cs := r.GetOrDefault("")
 
@@ -293,6 +310,7 @@ func TestClientRegistry_GetOrDefault_EmptyID(t *testing.T) {
 }
 
 func TestClientRegistry_GetOrDefault_ExistingClient(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 	registered := r.Register("/test")
 
@@ -303,6 +321,7 @@ func TestClientRegistry_GetOrDefault_ExistingClient(t *testing.T) {
 }
 
 func TestClientRegistry_GetOrDefault_UnknownID(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 	got := r.GetOrDefault("unknown-id")
 
@@ -322,6 +341,7 @@ func TestClientRegistry_GetOrDefault_UnknownID(t *testing.T) {
 // ============================================
 
 func TestClientRegistry_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 	var wg sync.WaitGroup
 
@@ -358,6 +378,7 @@ func TestClientRegistry_ConcurrentAccess(t *testing.T) {
 }
 
 func TestClientRegistry_ConcurrentRegisterUnregister(t *testing.T) {
+	t.Parallel()
 	r := NewClientRegistry()
 	var wg sync.WaitGroup
 

@@ -6,6 +6,7 @@
 package main
 
 import (
+	crypto_rand "crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -128,18 +130,6 @@ func (c *Capture) CreatePendingQueryWithClient(query PendingQuery, timeout time.
 
 	c.pendingQueries = append(c.pendingQueries, entry)
 
-	// Schedule cleanup (guard: skip if no expired queries remain)
-	go func() {
-		time.Sleep(timeout + time.Second)
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		// Only clean if there are actually expired queries
-		if len(c.pendingQueries) > 0 {
-			c.cleanExpiredQueries()
-			c.queryCond.Broadcast()
-		}
-	}()
-
 	return id
 }
 
@@ -166,6 +156,31 @@ func (c *Capture) cleanExpiredQueries() {
 			delete(c.queryResults, id)
 		}
 	}
+}
+
+// startQueryCleanup starts a periodic goroutine that cleans expired pending queries
+// every 5 seconds. Returns a stop function to terminate the goroutine.
+// Replaces per-query goroutines with a single consolidated cleanup ticker.
+func (c *Capture) startQueryCleanup() func() {
+	stop := make(chan struct{})
+	ticker := time.NewTicker(5 * time.Second)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				c.mu.Lock()
+				if len(c.pendingQueries) > 0 {
+					c.cleanExpiredQueries()
+					c.queryCond.Broadcast()
+				}
+				c.mu.Unlock()
+			case <-stop:
+				return
+			}
+		}
+	}()
+	return func() { close(stop) }
 }
 
 // GetPendingQueries returns all pending queries
@@ -250,9 +265,11 @@ func (c *Capture) GetLastPollAt() time.Time {
 
 // WaitForResult blocks until a result is available or timeout, then deletes it.
 // If clientID is provided, only returns the result if it belongs to that client.
+// Uses a cancel channel to prevent goroutine leaks on timeout.
 func (c *Capture) WaitForResult(id string, timeout time.Duration, clientID string) (json.RawMessage, error) {
 	resultChan := make(chan json.RawMessage, 1)
 	errChan := make(chan error, 1)
+	var cancelled atomic.Bool
 
 	// Goroutine to wait for the result
 	go func() {
@@ -277,6 +294,10 @@ func (c *Capture) WaitForResult(id string, timeout time.Duration, clientID strin
 		defer c.mu.Unlock()
 
 		for {
+			// Check if cancelled before inspecting results
+			if cancelled.Load() {
+				return
+			}
 			if entry, found := c.queryResults[id]; found {
 				// Strict isolation: verify client ownership
 				if clientID == "" {
@@ -297,6 +318,10 @@ func (c *Capture) WaitForResult(id string, timeout time.Duration, clientID strin
 				return
 			}
 			c.queryCond.Wait()
+			// Check if cancelled after waking from Wait
+			if cancelled.Load() {
+				return
+			}
 		}
 	}()
 
@@ -307,6 +332,10 @@ func (c *Capture) WaitForResult(id string, timeout time.Duration, clientID strin
 	case err := <-errChan:
 		return nil, err
 	case <-time.After(timeout):
+		// Signal the inner goroutine to exit
+		cancelled.Store(true)
+		// Broadcast to wake the goroutine so it can observe the cancellation
+		c.queryCond.Broadcast()
 		return nil, fmt.Errorf("timeout waiting for result %s", id)
 	}
 }
@@ -569,8 +598,8 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 	var extResult struct {
 		URL           string                   `json:"url"`
 		Title         string                   `json:"title"`
-		MatchCount    int                      `json:"matchCount"`
-		ReturnedCount int                      `json:"returnedCount"`
+		MatchCount    int                      `json:"match_count"`   
+		ReturnedCount int                      `json:"returned_count"`
 		Matches       []map[string]interface{} `json:"matches"`
 	}
 	_ = json.Unmarshal(result, &extResult)
@@ -594,13 +623,13 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 	// Build structured response with metadata
 	data := map[string]interface{}{
 		"url":                 extResult.URL,
-		"pageTitle":           extResult.Title,
+		"page_title":           extResult.Title,
 		"selector":            arguments.Selector,
-		"totalMatchCount":     extResult.MatchCount,
-		"returnedMatchCount":  extResult.ReturnedCount,
-		"maxElementsReturned": domQueryMaxElements,
-		"maxDepthQueried":     domQueryMaxDepth,
-		"maxTextLength":       domQueryMaxText,
+		"total_match_count":     extResult.MatchCount,
+		"returned_match_count":  extResult.ReturnedCount,
+		"max_elements_returned": domQueryMaxElements,
+		"max_depth_queried":     domQueryMaxDepth,
+		"max_text_length":       domQueryMaxText,
 		"matches":             extResult.Matches,
 	}
 
@@ -850,8 +879,12 @@ func (c *Capture) SetLastKnownURL(url string) {
 
 // generateCorrelationID creates a unique correlation ID for async command tracking.
 // Format: corr-<timestamp-millis>-<random-hex>
+// Uses crypto/rand for the random component to ensure uniqueness.
 func generateCorrelationID() string {
-	return fmt.Sprintf("corr-%d-%x", time.Now().UnixMilli(), time.Now().UnixNano()&0xFFFFFFFF)
+	b := make([]byte, 8)
+	//nolint:errcheck -- crypto/rand.Read only fails if system entropy is unavailable (fatal anyway)
+	_, _ = crypto_rand.Read(b)
+	return fmt.Sprintf("corr-%d-%x", time.Now().UnixMilli(), b)
 }
 
 // SetCommandResult stores or updates an async command result.
@@ -930,41 +963,50 @@ func (c *Capture) GetFailedCommands() []*CommandResult {
 
 // startResultCleanup starts a goroutine that expires old command results after 60s.
 // Should be called once during server initialization.
-func (c *Capture) startResultCleanup() {
+// Returns a stop function that terminates the cleanup goroutine.
+func (c *Capture) startResultCleanup() func() {
+	stop := make(chan struct{})
 	ticker := time.NewTicker(10 * time.Second)
 	go func() {
-		for range ticker.C {
-			c.resultsMu.Lock()
-			now := time.Now()
-			for correlationID, result := range c.completedResults {
-				// Skip pending commands - they haven't completed yet
-				if result.Status == "pending" {
-					continue
-				}
-
-				age := now.Sub(result.CompletedAt)
-				if age > 60*time.Second {
-					// Move to failed_commands if never retrieved
-					c.failedCommands = append(c.failedCommands, &CommandResult{
-						CorrelationID: correlationID,
-						Status:        "expired",
-						Error:         "Result expired after 60s (LLM never retrieved)",
-						CompletedAt:   result.CompletedAt,
-						CreatedAt:     result.CreatedAt,
-					})
-
-					// Trim failedCommands to max 100 entries (circular buffer)
-					if len(c.failedCommands) > 100 {
-						c.failedCommands = c.failedCommands[len(c.failedCommands)-100:]
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				c.resultsMu.Lock()
+				now := time.Now()
+				for correlationID, result := range c.completedResults {
+					// Skip pending commands - they haven't completed yet
+					if result.Status == "pending" {
+						continue
 					}
 
-					delete(c.completedResults, correlationID)
+					age := now.Sub(result.CompletedAt)
+					if age > 60*time.Second {
+						// Move to failed_commands if never retrieved
+						c.failedCommands = append(c.failedCommands, &CommandResult{
+							CorrelationID: correlationID,
+							Status:        "expired",
+							Error:         "Result expired after 60s (LLM never retrieved)",
+							CompletedAt:   result.CompletedAt,
+							CreatedAt:     result.CreatedAt,
+						})
 
-					// Log for observability
-					fmt.Fprintf(os.Stderr, "[gasoline] Expired unretrieved result: correlation_id=%s\n", correlationID)
+						// Trim failedCommands to max 100 entries (circular buffer)
+						if len(c.failedCommands) > 100 {
+							c.failedCommands = c.failedCommands[len(c.failedCommands)-100:]
+						}
+
+						delete(c.completedResults, correlationID)
+
+						// Log for observability
+						fmt.Fprintf(os.Stderr, "[gasoline] Expired unretrieved result: correlation_id=%s\n", correlationID)
+					}
 				}
+				c.resultsMu.Unlock()
+			case <-stop:
+				return
 			}
-			c.resultsMu.Unlock()
 		}
 	}()
+	return func() { close(stop) }
 }

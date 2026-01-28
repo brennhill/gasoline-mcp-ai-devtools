@@ -447,7 +447,7 @@ describe('Performance Snapshot Message', () => {
     assert.strictEqual(globalThis.window.postMessage.mock.calls.length, 1)
     const [message, origin] = globalThis.window.postMessage.mock.calls[0].arguments
     assert.strictEqual(message.type, 'GASOLINE_PERFORMANCE_SNAPSHOT')
-    assert.strictEqual(origin, '*')
+    assert.strictEqual(origin, 'http://localhost:3000')
     assert.ok(message.payload, 'Should have payload')
     assert.strictEqual(message.payload.url, '/dashboard')
   })
