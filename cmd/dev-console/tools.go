@@ -1460,9 +1460,10 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 			truncate(entryStr(e, "message"), 80),
 			entryStr(e, "source"),
 			entryStr(e, "ts"),
+			entryDisplay(e, "tabId"),
 		}
 	}
-	table := markdownTable([]string{"Level", "Message", "Source", "Time"}, rows)
+	table := markdownTable([]string{"Level", "Message", "Source", "Time", "Tab"}, rows)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
 }
 
@@ -1523,9 +1524,10 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 			truncate(entryStr(e, "message"), 80),
 			entryStr(e, "source"),
 			entryStr(e, "ts"),
+			entryDisplay(e, "tabId"),
 		}
 	}
-	table := markdownTable([]string{"Level", "Message", "Source", "Time"}, rows)
+	table := markdownTable([]string{"Level", "Message", "Source", "Time", "Tab"}, rows)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
 }
 

@@ -2,7 +2,7 @@
   "content": [
     {
       "type": "text",
-      "text": "2 browser error(s)\nWARNING: 2/2 entries have incomplete fields (2 missing 'source'). This may indicate a browser extension issue or version mismatch.\n\n| Level | Message | Source | Time |\n| --- | --- | --- | --- |\n| error | ReferenceError: foo is not defined |  | 2024-01-22T10:00:00Z |\n| error | GET /api/data 500 |  | 2024-01-22T10:00:02Z |\n"
+      "text": "2 browser error(s)\nWARNING: 2/2 entries have incomplete fields (2 missing 'source'). This may indicate a browser extension issue or version mismatch.\n\n| Level | Message | Source | Time | Tab |\n| --- | --- | --- | --- | --- |\n| error | ReferenceError: foo is not defined |  | 2024-01-22T10:00:00Z |  |\n| error | GET /api/data 500 |  | 2024-01-22T10:00:02Z |  |\n"
     }
   ]
 }

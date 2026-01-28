@@ -1836,12 +1836,16 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
     } else if (message.type === 'enhanced_action') {
       enhancedActionBatcher.add(message.payload)
     } else if (message.type === 'network_body') {
+      if (networkBodyCaptureDisabled) {
+        debugLog(DebugCategory.CAPTURE, 'Network body dropped: capture disabled')
+        return true
+      }
       networkBodyBatcher.add(message.payload)
     } else if (message.type === 'performance_snapshot') {
       perfBatcher.add(message.payload)
     } else if (message.type === 'log') {
       extDebugLog('Received error message, adding to logBatcher', message.payload?.level)
-      handleLogMessage(message.payload, sender)
+      handleLogMessage(message.payload, sender, message.tabId)
         .then(() => {
           // Async complete, but no response needed
         })
@@ -2139,7 +2143,7 @@ const perfBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(s
 })
 const perfBatcher = perfBatcherWithCB.batcher
 
-async function handleLogMessage(payload, sender) {
+async function handleLogMessage(payload, sender, tabId) {
   if (!shouldCaptureLog(payload.level, currentLogLevel, payload.type)) {
     extDebugLog('Error filtered out:', { level: payload.level, type: payload.type, currentLogLevel })
     debugLog(DebugCategory.CAPTURE, `Log filtered out: level=${payload.level}, type=${payload.type}`)
@@ -2147,6 +2151,13 @@ async function handleLogMessage(payload, sender) {
   }
 
   let entry = formatLogEntry(payload)
+
+  // Attach tabId so the server can surface which tab produced each log entry.
+  // Prefer the explicit tabId from content.js; fall back to sender.tab.id.
+  const resolvedTabId = tabId ?? sender?.tab?.id
+  if (resolvedTabId != null) {
+    entry.tabId = resolvedTabId
+  }
   debugLog(DebugCategory.CAPTURE, `Log received: type=${entry.type}, level=${entry.level}`, {
     url: entry.url,
     enrichments: entry._enrichments,
@@ -2594,9 +2605,12 @@ export async function handlePendingQuery(query, serverUrl) {
     if (query.type === 'browser_action') {
       const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
 
-      // ASYNC COMMAND EXECUTION: If query has correlation_id, use async pattern
+      // ASYNC COMMAND EXECUTION: If query has correlation_id, use async pattern.
+      // MUST await — without it, _processingQueries.delete() fires immediately
+      // while the action is still running (10s+), causing duplicate processing
+      // and timeouts after 5-6 operations (Issue #5).
       if (query.correlation_id) {
-        handleAsyncBrowserAction(query, tabId, params, serverUrl)
+        await handleAsyncBrowserAction(query, tabId, params, serverUrl)
         return
       }
 
@@ -2661,12 +2675,20 @@ export async function handlePendingQuery(query, serverUrl) {
       return
     }
 
-    // TODO: dom queries need proper implementation
+    // Handle dom queries - forward to content script for DOM query execution
     if (query.type === 'dom') {
-      await postQueryResult(serverUrl, query.id, 'dom', {
-        success: false,
-        error: 'not_implemented',
-      })
+      try {
+        const result = await chrome.tabs.sendMessage(tabId, {
+          type: 'DOM_QUERY',
+          params: query.params,
+        })
+        await postQueryResult(serverUrl, query.id, 'dom', result)
+      } catch (err) {
+        await postQueryResult(serverUrl, query.id, 'dom', {
+          error: 'dom_query_failed',
+          message: err.message || 'Failed to execute DOM query',
+        })
+      }
       return
     }
 

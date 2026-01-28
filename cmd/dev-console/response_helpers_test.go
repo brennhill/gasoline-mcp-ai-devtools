@@ -722,6 +722,87 @@ func TestBrowserLogs_MarkdownFormat(t *testing.T) {
 	}
 }
 
+// TestBrowserLogs_IncludesTabId verifies toolGetBrowserLogs includes tabId in response.
+func TestBrowserLogs_IncludesTabId(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "test error", "source": "app.js:10", "ts": "2024-01-01T00:00:00Z", "tabId": float64(42)},
+		{"level": "log", "message": "info msg", "source": "main.js:1", "ts": "2024-01-01T00:00:01Z", "tabId": float64(99)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetBrowserLogs(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain Tab column header
+	if !strings.Contains(text, "Tab") {
+		t.Error("Expected 'Tab' column header in markdown table")
+	}
+	// Should contain tab IDs
+	if !strings.Contains(text, "42") {
+		t.Error("Expected tabId 42 in table")
+	}
+	if !strings.Contains(text, "99") {
+		t.Error("Expected tabId 99 in table")
+	}
+}
+
+// TestBrowserErrors_IncludesTabId verifies toolGetBrowserErrors includes tabId in response.
+func TestBrowserErrors_IncludesTabId(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "TypeError: foo", "source": "app.js:10", "ts": "2024-01-01T00:00:00Z", "tabId": float64(42)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetBrowserErrors(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain Tab column header
+	if !strings.Contains(text, "Tab") {
+		t.Error("Expected 'Tab' column header in markdown table")
+	}
+	// Should contain tab ID
+	if !strings.Contains(text, "42") {
+		t.Error("Expected tabId 42 in table")
+	}
+}
+
+// TestBrowserLogs_NoTabId verifies logs without tabId still work (backward compat).
+func TestBrowserLogs_NoTabId(t *testing.T) {
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "old entry", "source": "app.js:10", "ts": "2024-01-01T00:00:00Z"},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetBrowserLogs(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should still render correctly without tabId
+	if !strings.Contains(text, "old entry") {
+		t.Error("Expected log message in table")
+	}
+}
+
 // TestConfigureStore_JSONFormat verifies toolConfigureStore returns JSON format with summary.
 func TestConfigureStore_JSONFormat(t *testing.T) {
 	server, _ := setupTestServer(t)

@@ -215,6 +215,8 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 			overrides := h.captureOverrides.GetAll()
 			if overrides["network_bodies"] == "false" {
 				data["hint"] = "Network body capture is OFF. To enable, call: configure({action: \"capture\", settings: {network_bodies: \"true\"}})"
+			} else {
+				data["hint"] = "No network bodies captured. Ensure: (1) a tab is being tracked via the extension's 'Track This Tab' button, (2) the page has made network requests since tracking started."
 			}
 		}
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("", data)}
@@ -397,4 +399,25 @@ func entryStr(entry LogEntry, key string) string {
 		return ""
 	}
 	return s
+}
+
+// entryDisplay extracts a value from a LogEntry map and returns its string
+// representation. Unlike entryStr, it handles numeric types (e.g. tabId
+// arrives as float64 from JSON).
+func entryDisplay(entry LogEntry, key string) string {
+	v, ok := entry[key]
+	if !ok || v == nil {
+		return ""
+	}
+	switch tv := v.(type) {
+	case string:
+		return tv
+	case float64:
+		if tv == float64(int64(tv)) {
+			return fmt.Sprintf("%d", int64(tv))
+		}
+		return fmt.Sprintf("%g", tv)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }

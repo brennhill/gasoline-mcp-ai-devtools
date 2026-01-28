@@ -241,9 +241,12 @@ func TestToolGetNetworkBodies_EmptyWithCaptureOn(t *testing.T) {
 		t.Errorf("Expected count=0, got: %v", data["count"])
 	}
 
-	// No hint when capture is already on
-	if _, ok := data["hint"]; ok {
-		t.Error("Expected NO hint when network_bodies is 'true' — genuinely empty")
+	// When capture is on but no bodies found, hint about tab tracking
+	hint, ok := data["hint"].(string)
+	if !ok {
+		t.Error("Expected tab-tracking hint when network_bodies is on but empty")
+	} else if !strings.Contains(hint, "Track This Tab") {
+		t.Errorf("Expected hint to mention tab tracking, got: %s", hint)
 	}
 }
 

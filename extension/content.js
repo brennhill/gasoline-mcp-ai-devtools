@@ -132,6 +132,16 @@ window.addEventListener('message', (event) => {
     return
   }
 
+  // Handle DOM query results from inject.js
+  if (messageType === 'GASOLINE_DOM_QUERY_RESPONSE') {
+    const sendResponse = pendingDomRequests.get(requestId)
+    if (sendResponse) {
+      pendingDomRequests.delete(requestId)
+      sendResponse(result)
+    }
+    return
+  }
+
   // Tab isolation filter: only forward captured data from the tracked tab.
   // Response messages (highlight, execute JS, a11y) are NOT filtered because
   // they are responses to explicit commands from the background script.
@@ -214,6 +224,10 @@ let executeRequestId = 0
 // Pending a11y audit requests waiting for responses from inject.js
 const pendingA11yRequests = new Map()
 let a11yRequestId = 0
+
+// Pending DOM query requests waiting for responses from inject.js
+const pendingDomRequests = new Map()
+let domRequestId = 0
 
 // ============================================================================
 // MESSAGE HANDLERS FROM BACKGROUND
@@ -364,6 +378,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     window.postMessage(
       {
         type: 'GASOLINE_A11Y_QUERY',
+        requestId,
+        params: parsedParams,
+      },
+      window.location.origin,
+    )
+
+    return true // Will respond asynchronously
+  }
+
+  // Handle DOM_QUERY from background (execute CSS selector query in page context)
+  if (message.type === 'DOM_QUERY') {
+    const requestId = ++domRequestId
+    const params = message.params || {}
+
+    // Parse params if it's a string (from JSON)
+    let parsedParams = params
+    if (typeof params === 'string') {
+      try {
+        parsedParams = JSON.parse(params)
+      } catch {
+        parsedParams = {}
+      }
+    }
+
+    // Store the sendResponse callback for when we get the result
+    pendingDomRequests.set(requestId, sendResponse)
+
+    // Timeout fallback: respond with error and cleanup after 30 seconds
+    setTimeout(() => {
+      if (pendingDomRequests.has(requestId)) {
+        const cb = pendingDomRequests.get(requestId)
+        pendingDomRequests.delete(requestId)
+        cb({ error: 'DOM query timeout' })
+      }
+    }, 30000)
+
+    // Forward to inject.js via postMessage
+    window.postMessage(
+      {
+        type: 'GASOLINE_DOM_QUERY',
         requestId,
         params: parsedParams,
       },

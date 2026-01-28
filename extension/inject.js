@@ -923,6 +923,23 @@ if (typeof window !== 'undefined') {
     if (event.data?.type === 'GASOLINE_A11Y_QUERY') {
       const { requestId, params } = event.data
 
+      // Defensive check: Chrome extension caching can cause module-level
+      // bindings to be undefined after updates. Return a clear error instead
+      // of crashing with "runAxeAuditWithTimeout is not defined".
+      if (typeof runAxeAuditWithTimeout !== 'function') {
+        window.postMessage(
+          {
+            type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+            requestId,
+            result: {
+              error: 'runAxeAuditWithTimeout not available — try reloading the extension',
+            },
+          },
+          window.location.origin,
+        )
+        return
+      }
+
       try {
         runAxeAuditWithTimeout(params || {})
           .then((result) => {
@@ -954,6 +971,64 @@ if (typeof window !== 'undefined') {
             type: 'GASOLINE_A11Y_QUERY_RESPONSE',
             requestId,
             result: { error: err.message || 'Failed to run accessibility audit' },
+          },
+          window.location.origin,
+        )
+      }
+    }
+
+    // Handle GASOLINE_DOM_QUERY from content script (CSS selector query)
+    if (event.data?.type === 'GASOLINE_DOM_QUERY') {
+      const { requestId, params } = event.data
+
+      // Defensive check: Chrome extension caching can cause module-level
+      // bindings to be undefined after updates. Return a clear error instead
+      // of crashing with "executeDOMQuery is not defined".
+      if (typeof executeDOMQuery !== 'function') {
+        window.postMessage(
+          {
+            type: 'GASOLINE_DOM_QUERY_RESPONSE',
+            requestId,
+            result: {
+              error: 'executeDOMQuery not available — try reloading the extension',
+            },
+          },
+          window.location.origin,
+        )
+        return
+      }
+
+      try {
+        executeDOMQuery(params || {})
+          .then((result) => {
+            // Send response back to content script
+            window.postMessage(
+              {
+                type: 'GASOLINE_DOM_QUERY_RESPONSE',
+                requestId,
+                result,
+              },
+              window.location.origin,
+            )
+          })
+          .catch((err) => {
+            console.error('[Gasoline] DOM query error:', err)
+            window.postMessage(
+              {
+                type: 'GASOLINE_DOM_QUERY_RESPONSE',
+                requestId,
+                result: { error: err.message || 'DOM query failed' },
+              },
+              window.location.origin,
+            )
+          })
+      } catch (err) {
+        console.error('[Gasoline] Failed to run DOM query:', err)
+        window.postMessage(
+          {
+            type: 'GASOLINE_DOM_QUERY_RESPONSE',
+            requestId,
+            result: { error: err.message || 'Failed to run DOM query' },
           },
           window.location.origin,
         )

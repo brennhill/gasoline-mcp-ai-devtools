@@ -195,7 +195,7 @@ func TestObserveErrors_ColumnsMatchDocs(t *testing.T) {
 
 	text := extractMCPText(t, resp)
 	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"Level", "Message", "Source", "Time"}
+	expected := []string{"Level", "Message", "Source", "Time", "Tab"}
 	assertHeaders(t, "observe errors", headers, expected)
 }
 
@@ -217,7 +217,7 @@ func TestObserveLogs_ColumnsMatchDocs(t *testing.T) {
 
 	text := extractMCPText(t, resp)
 	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"Level", "Message", "Source", "Time"}
+	expected := []string{"Level", "Message", "Source", "Time", "Tab"}
 	assertHeaders(t, "observe logs", headers, expected)
 }
 
