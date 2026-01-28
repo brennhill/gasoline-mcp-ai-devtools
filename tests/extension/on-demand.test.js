@@ -30,9 +30,11 @@ const createMockChrome = () => ({
           serverUrl: 'http://localhost:7890',
           captureWebSockets: true,
           captureNetworkBodies: false,
+          trackedTabId: 1,
         }),
       ),
       set: mock.fn((data, callback) => callback && callback()),
+      remove: mock.fn((keys, callback) => callback && callback()),
     },
     sync: {
       get: mock.fn((keys, callback) => callback({})),

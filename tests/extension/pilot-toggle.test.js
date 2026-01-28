@@ -118,13 +118,13 @@ describe('AI Web Pilot Toggle Default State', () => {
     mock.reset()
     mockDocument = createMockDocument()
     globalThis.document = mockDocument
-    mockChrome.storage.sync.get.mock.resetCalls()
-    mockChrome.storage.sync.set.mock.resetCalls()
+    mockChrome.storage.local.get.mock.resetCalls()
+    mockChrome.storage.local.set.mock.resetCalls()
   })
 
   test('toggle should default to false (disabled)', async () => {
     // Mock no saved value
-    mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
       callback({}) // Empty - no saved value
     })
 
@@ -136,8 +136,8 @@ describe('AI Web Pilot Toggle Default State', () => {
     assert.strictEqual(toggle.checked, false, 'AI Web Pilot toggle should default to OFF')
   })
 
-  test('toggle should load saved state from chrome.storage.sync', async () => {
-    mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
+  test('toggle should load saved state from chrome.storage.local', async () => {
+    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: true })
     })
 

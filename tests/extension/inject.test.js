@@ -1586,7 +1586,7 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
     assert.strictEqual(enhancedCall.arguments[0].payload.type, 'click')
     assert.ok(enhancedCall.arguments[0].payload.selectors, 'Payload should include selectors')
     assert.ok(enhancedCall.arguments[0].payload.timestamp, 'Payload should include timestamp')
-    assert.strictEqual(enhancedCall.arguments[1], 'http://localhost')
+    assert.strictEqual(enhancedCall.arguments[1], 'http://localhost:3000')
 
     clearEnhancedActionBuffer()
   })
