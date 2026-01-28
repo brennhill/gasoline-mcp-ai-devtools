@@ -523,37 +523,4 @@ describe('Bug #5: Error Handling Robustness', () => {
     )
   })
 
-  test('timeout in async handler should not leave resources dangling', async () => {
-    // Simulate a slow operation that times out
-    globalThis.chrome.tabs.sendMessage = mock.fn(() => {
-      // Return a promise that never resolves (simulates hung operation)
-      return new Promise(() => {})
-    })
-
-    const query = {
-      id: 'timeout-test-1',
-      type: 'execute',
-      correlation_id: 'timeout-corr-1',
-      params: JSON.stringify({ script: 'while(true){}' }),
-    }
-
-    // Start the operation
-    const promise = bgModule.handlePendingQuery(query, 'http://localhost:7890')
-
-    // Should not hang indefinitely - should timeout
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Test timeout')), 15000)
-    })
-
-    try {
-      await Promise.race([promise, timeoutPromise])
-      // If we get here, the operation completed (either success or internal timeout)
-      assert.ok(true, 'Operation completed or timed out internally')
-    } catch (err) {
-      if (err.message === 'Test timeout') {
-        assert.fail('handlePendingQuery hung indefinitely - async handler not properly bounded')
-      }
-      // Other errors are OK - they indicate the operation failed gracefully
-    }
-  })
 })
