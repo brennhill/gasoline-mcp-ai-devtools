@@ -113,6 +113,7 @@ after(() => {
 
 describe('Pending Query Polling', () => {
   beforeEach(() => {
+    mock.reset()
     originalChrome = globalThis.chrome
     globalThis.chrome = createMockChrome()
   })
