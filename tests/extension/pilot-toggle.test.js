@@ -381,7 +381,7 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
     // CRITICAL ARCHITECTURE: Only background.js writes to storage.
     // When background.js receives setAiWebPilotEnabled message, it writes atomically
     // to sync, local, and session storage areas.
-    mockChrome.runtime.onMessage.addListener.mock.mockImplementation((handler) => {
+    mockChrome.runtime.onMessage.addListener.mock.mockImplementation((_handler) => {
       // Simulate message listener setup
     })
 
@@ -430,7 +430,7 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
       )
     })
 
-    const { _resetPilotCacheForTesting, isAiWebPilotEnabled } = await import(
+    const { _resetPilotCacheForTesting, isAiWebPilotEnabled: _isAiWebPilotEnabled } = await import(
       '../extension/background.js'
     )
     _resetPilotCacheForTesting(false)
@@ -456,7 +456,7 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
     await handleAiWebPilotToggle(true)
 
     // Look for pilotStatusChanged message
-    const confirmationCalls = broadcastSpy.mock.calls.filter(
+    const _confirmationCalls = broadcastSpy.mock.calls.filter(
       (c) => c.arguments[0]?.type === 'pilotStatusChanged',
     )
 
@@ -564,7 +564,7 @@ describe('AI Web Pilot Service Worker Restart Race Condition (LAYER 2 BUG)', () 
     // Simulate service worker startup where cache is null initially
     // and gets populated via async storage callback
     let cacheInitResolve
-    const cacheInitPromise = new Promise((resolve) => {
+    const _cacheInitPromise = new Promise((resolve) => {
       cacheInitResolve = resolve
     })
 
@@ -577,10 +577,10 @@ describe('AI Web Pilot Service Worker Restart Race Condition (LAYER 2 BUG)', () 
     })
 
     // Verify polling doesn't start until cache is ready
-    let pollStarted = false
+    let _pollStarted = false
     const originalSetInterval = setInterval
     const mockSetInterval = mock.fn((fn, interval) => {
-      pollStarted = true
+      _pollStarted = true
       return originalSetInterval(fn, interval)
     })
 

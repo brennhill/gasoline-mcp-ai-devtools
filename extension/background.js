@@ -2227,7 +2227,7 @@ async function handleLogMessage(payload, sender, tabId) {
   // Attach tabId so the server can surface which tab produced each log entry.
   // Prefer the explicit tabId from content.js; fall back to sender.tab.id.
   const resolvedTabId = tabId ?? sender?.tab?.id
-  if (resolvedTabId != null) {
+  if (resolvedTabId !== null && resolvedTabId !== undefined) {
     entry.tabId = resolvedTabId
   }
   debugLog(DebugCategory.CAPTURE, `Log received: type=${entry.type}, level=${entry.level}`, {
@@ -2390,6 +2390,7 @@ async function checkConnectionAndUpdate() {
     }
   } finally {
     // Issue 5 fix: Release mutex
+    // eslint-disable-next-line require-atomic-updates -- mutex pattern: intentional single-point release
     _connectionCheckRunning = false
   }
 }
@@ -3169,7 +3170,7 @@ async function handleAsyncExecuteCommand(query, tabId, serverUrl) {
       elapsed: Date.now() - startTime,
       success: execResult.success,
     })
-  } catch (timeoutErr) {
+  } catch {
     clearTimeout(twoSecondTimer)
 
     // Post timeout error with actionable guidance
@@ -3251,7 +3252,7 @@ async function handleAsyncBrowserAction(query, tabId, params, serverUrl) {
       elapsed: Date.now() - startTime,
       success: execResult.success !== false,
     })
-  } catch (timeoutErr) {
+  } catch {
     clearTimeout(twoSecondTimer)
 
     // Post timeout error with diagnostic guidance
@@ -3419,7 +3420,7 @@ let statusPingInterval = null
  * Start status ping: POST /api/extension-status every 30 seconds
  * @param {string} serverUrl - The server base URL
  */
-export function startStatusPing(serverUrl) {
+export function startStatusPing(_serverUrl) {
   stopStatusPing()
   sendStatusPing() // Send immediately on start
   statusPingInterval = setInterval(() => sendStatusPing(), STATUS_PING_INTERVAL)
@@ -3516,7 +3517,7 @@ let waterfallPostingInterval = null
  * Post network waterfall data to server (collects PerformanceResourceTiming data)
  * @param {string} serverUrl - The server base URL
  */
-async function postNetworkWaterfall(serverUrl) {
+async function postNetworkWaterfall(_serverUrl) {
   try {
     // Query active tab for waterfall data
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true })

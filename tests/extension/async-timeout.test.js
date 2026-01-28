@@ -122,7 +122,7 @@ after(() => {
 })
 
 // Suppress unhandledRejection errors from background module initialization
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason, _promise) => {
   // Suppress initialization errors from background.js module loading
   if (reason?.message?.includes('_connectionCheckRunning') ||
       reason?.message?.includes('Cannot access')) {
@@ -178,13 +178,13 @@ describe('Bug #5: Async Execute Command Await', () => {
     }
 
     // Track when handlePendingQuery completes vs when async result is posted
-    let handlePendingQueryCompleted = false
-    let asyncResultPosted = false
+    let _handlePendingQueryCompleted = false
+    let _asyncResultPosted = false
 
     // Override fetch to detect when async result is posted
-    globalThis.fetch = mock.fn((url, opts) => {
+    globalThis.fetch = mock.fn((url, _opts) => {
       if (url.includes('/execute-result')) {
-        asyncResultPosted = true
+        _asyncResultPosted = true
       }
       return Promise.resolve({
         ok: true,
@@ -198,7 +198,7 @@ describe('Bug #5: Async Execute Command Await', () => {
     // If properly awaited, the promise should not resolve until async handler completes
     // We wait for the promise to resolve
     await promise
-    handlePendingQueryCompleted = true
+    _handlePendingQueryCompleted = true
 
     // Wait a bit for any async operations
     await new Promise(resolve => setTimeout(resolve, 100))
@@ -208,7 +208,7 @@ describe('Bug #5: Async Execute Command Await', () => {
     // (or at least not return immediately before the operation starts)
 
     // Note: This test documents the expected behavior.
-    // Without the await fix, handlePendingQueryCompleted would be true
+    // Without the await fix, _handlePendingQueryCompleted would be true
     // before any meaningful work starts.
   })
 
@@ -398,7 +398,7 @@ describe('Bug #5: Extension Stability Under Load', () => {
 
       try {
         await bgModule.handlePendingQuery(query, 'http://localhost:7890')
-      } catch (err) {
+      } catch {
         errorCount++
       }
     }

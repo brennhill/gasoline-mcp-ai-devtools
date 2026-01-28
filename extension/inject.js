@@ -182,6 +182,7 @@ import {
   sendPerformanceSnapshot,
   setPerformanceSnapshotEnabled,
 } from './lib/perf-snapshot.js'
+import { executeDOMQuery, runAxeAuditWithTimeout } from './lib/dom-queries.js'
 
 // Import constants used by wrapFetch and memory checks from the single source of truth
 import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from './lib/constants.js'

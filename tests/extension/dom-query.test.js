@@ -39,11 +39,11 @@ describe('Content Script: DOM_QUERY message handling', () => {
     }
 
     // Capture the chrome.runtime.onMessage listener
-    mockChrome.runtime.onMessage.addListener = mock.fn((handler) => {})
+    mockChrome.runtime.onMessage.addListener = mock.fn((_handler) => {})
   })
 
   test('should forward DOM_QUERY to inject.js via window.postMessage', () => {
-    const sendResponse = mock.fn()
+    const _sendResponse = mock.fn()
     const params = { selector: 'button.submit' }
 
     // Simulate the DOM_QUERY handler logic from content.js
@@ -337,14 +337,15 @@ describe('Inject Script: GASOLINE_DOM_QUERY message handling', () => {
   })
 
   test('should use empty object for undefined params', async () => {
-    const requestId = 12345
+    const _requestId = 12345
 
     const mockExecuteDOMQuery = mock.fn(() =>
       Promise.resolve({ url: '', title: '', matchCount: 0, returnedCount: 0, matches: [] }),
     )
 
     // Simulate inject.js handling of undefined params
-    const resolvedParams = undefined || {}
+    const undefinedParams = undefined
+    const resolvedParams = undefinedParams || {}
     await mockExecuteDOMQuery(resolvedParams)
 
     assert.deepStrictEqual(mockExecuteDOMQuery.mock.calls[0].arguments[0], {})

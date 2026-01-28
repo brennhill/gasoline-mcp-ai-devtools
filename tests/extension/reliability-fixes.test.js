@@ -11,7 +11,7 @@
  *   6. errorGroups periodic cleanup (TTL enforcement)
  */
 
-import { test, describe, mock, beforeEach, afterEach } from 'node:test'
+import { test, describe, mock, beforeEach, afterEach as _afterEach } from 'node:test'
 import assert from 'node:assert'
 
 // Mock Chrome APIs
@@ -112,7 +112,7 @@ describe('Issue 1: _processingQueries TTL-based cleanup', () => {
 
   test('should remove stale queries older than 60 seconds', () => {
     // Add a query with an old timestamp (more than 60s ago)
-    const state = bgModule.getProcessingQueriesState()
+    const _state = bgModule.getProcessingQueriesState()
     const oldTimestamp = Date.now() - 70000 // 70 seconds ago
 
     // Manually simulate a stale entry
@@ -158,7 +158,7 @@ describe('Issue 2: Pending request Maps cleanup on page unload', () => {
         'function',
         'clearPendingRequests should be exported'
       )
-    } catch (e) {
+    } catch {
       // content.js may not be importable in Node.js - mark as pending
       assert.ok(true, 'content.js cleanup function verified conceptually')
     }
@@ -169,7 +169,7 @@ describe('Issue 2: Pending request Maps cleanup on page unload', () => {
       const contentModule = await import('../../extension/content.js')
       if (contentModule.clearPendingRequests && contentModule.getPendingRequestStats) {
         // Get initial stats
-        const beforeStats = contentModule.getPendingRequestStats()
+        const _beforeStats = contentModule.getPendingRequestStats()
 
         // Simulate some pending requests would be added
         // Then clear them
@@ -182,7 +182,7 @@ describe('Issue 2: Pending request Maps cleanup on page unload', () => {
         assert.strictEqual(afterStats.a11y, 0, 'A11y requests should be cleared')
         assert.strictEqual(afterStats.dom, 0, 'DOM requests should be cleared')
       }
-    } catch (e) {
+    } catch {
       assert.ok(true, 'content.js test deferred to browser context')
     }
   })
@@ -452,7 +452,7 @@ describe('Issue 6: errorGroups periodic cleanup', () => {
       // Manually age the entry by manipulating internal state (if available)
       // Or test that cleanup function exists and can be called
       const beforeState = bgModule.getErrorGroupsState()
-      const beforeSize = beforeState.size
+      const _beforeSize = beforeState.size
 
       // Cleanup should work even if nothing to clean
       bgModule.cleanupStaleErrorGroups()
@@ -503,7 +503,7 @@ describe('Integration: Memory and reliability safeguards', () => {
     const bgModule = await import('../../extension/background.js')
 
     // All Maps that could grow unbounded should have limits
-    const boundedMaps = [
+    const _boundedMaps = [
       'sourceMapCache', // Issue 4: 50 entries max
       'errorGroups',    // Issue 6: 1 hour TTL + 100 max
     ]
