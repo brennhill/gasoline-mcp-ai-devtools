@@ -1,10 +1,19 @@
-# v6 Roadmap
+# Gasoline Versioning & Roadmap
 
 ## Thesis
 
 **AI will be the driving force in development.**
 
 Gasoline's strategic differentiator is enabling AI to **close the feedback loop autonomously** — observe, diagnose, and repair without human intervention. Every feature is evaluated against this thesis.
+
+---
+
+## Release Strategy
+
+- **v5.2** — Fix critical bugs (v5.1 blockers). Release when all 5 bugs fixed.
+- **v6.0** — Release when **core thesis is complete** (Wave 1 + Wave 2 features). Single point release. Marketing moment.
+- **v6.1+** — Adjacent features that improve/enable the thesis (observation depth, interaction expansion, production safety).
+- **v7** — If all roadmap features are shipped, bump to v7 to signal full-featured product.
 
 ---
 
@@ -209,53 +218,102 @@ Production-safe AI debugging
 
 ---
 
-## v6 Roadmap of Priorities
+## v6.0: Core Thesis Release
 
-This is sequenced to maximize trust → leverage → defensibility.
+**Goal:** Prove the thesis — AI closes the feedback loop autonomously.
 
-### Phase 1: Trust & Core Value (Foundational)
+**Release criteria:** Wave 1 + Wave 2 features are shipped and battle-tested.
 
-**Goal:** "This actually debugs better than me."
+### v6.0 Features: The Core Loop
 
-**Must-have**
+**Wave 1 (3 features, parallel)** — Foundations for autonomous closed-loop
 
-1. Semantic context reduction (token efficiency)
-2. Causal root-cause analysis
-3. Human-readable bug summaries
+1. **Self-Healing Tests** (#33) — AI observes test failure → diagnoses via Gasoline → fixes code/test → verifies
+2. **Gasoline CI Infrastructure** — Enable autonomous loops in CI/CD pipelines (`/snapshot`, `/clear`, `/test-boundary`, Playwright fixtures)
+3. **Context Streaming** (#5) — Real-time push notifications instead of raw data dumps
 
-If you fail here, nothing else matters.
+**Wave 2 (3 features, parallel after Wave 1)** — Expand closed-loop across scenarios
 
-### Phase 2: Closed-Loop Power
+4. **PR Preview Exploration** (#35) — Deploy preview → explore → discover bugs → propose fixes
+5. **Agentic E2E Repair** (#34) — Detect API drift → auto-fix tests/mocks
+6. **Deployment Watchdog** (#36) — Post-deploy monitoring → auto-rollback on regression
 
-**Goal:** "This fixes bugs, not just explains them."
+### v6.0 Marketing Moment
 
-**Build next**
+When all 6 features ship:
+- "Same bug, 10× less context than Chrome DevTools MCP" (Context Streaming solves Problem A)
+- "AI autonomously fixes tests, not just suggests fixes" (Self-Healing solves Problem C)
+- "Closed-loop verification: fix → test → confirm → done" (all 3 Wave 2 features prove Problem C)
 
-4. Automated fix + verify loop
-5. Stable selector generation
-6. Replayable failing scenarios
+Release v6.0. This is the thesis validation point.
 
-This is where competitors really fall off.
+---
 
-### Phase 3: Workflow & Adoption
+## v6.1+: Thesis Expansion & Adjacent Features
 
-**Goal:** "This fits how teams actually work."
+These features improve or enable the core loop but don't validate the thesis. Ship after v6.0.
 
-**Then add**
+### v6.1: Observation Depth (Improves "diagnose" leg)
 
-7. GitHub/Jira-ready bug reports
-8. CI/CD integration
-9. IDE handoff (VS Code, etc.)
+- **Causal Diffing** — Root-cause analysis ("X changed → broke Y → surfaces as Z")
+- **DOM Fingerprinting** — Stable selectors for self-healing tests
+- **A11y Tree Snapshots** — Compress accessibility for <25% context window
+- **Performance Audit** — Root-cause perf issues (render-blocking, bundle size, DOM bloat)
+- **Best Practices Audit** — Structural issues (HTTPS, deprecated APIs, security headers)
+- **SEO Audit** — SEO debugging (metadata, heading structure, structured data)
+- **Annotated Screenshots** — Visual context for AI vision models
+- **Enhanced WCAG Audit** — Deep a11y beyond axe-core
 
-### Phase 4: Moat & Enterprise Pull
+### v6.2: Interaction Expansion (Broadens "repair" scope)
 
-**Goal:** "You can't replace this with another MCP."
+- **Form Filling** — Auto-fill complex forms
+- **Dialog Handling** — Handle alerts, confirms, prompts
+- **Drag & Drop** — Complex UI interactions
+- **CPU/Network Emulation** — Throttle to reproduce issues under load
+- **Local Web Scraping** — Authenticated multi-step data extraction
 
-**Differentiators**
+### v6.3: Production Safety (Enables enterprise autonomous debugging)
 
-10. Production-safe debugging modes
-11. Cross-browser / mobile
-12. Historical learning ("we've seen this bug before")
+- **Read-Only Mode** — Non-mutating capture in production
+- **Tool Allowlisting** — Restrict which MCP tools run
+- **Project Isolation** — Multi-tenant capture contexts
+- **Configuration Profiles** — Pre-tuned bundles (paranoid, restricted, short-lived)
+- **Dynamic Exposure** — Feature flags for safe rollout
+
+### v6.4: DX & Workflow Integration (Adoption enablers)
+
+- **GitHub/Jira Bug Reports** — Paste-ready output
+- **CI/CD Integration** — GitHub Actions, SARIF, HAR attachment
+- **IDE Handoff** — VS Code plugin, Claude Code integration
+- **Client Identification** — Track which AI client is debugging
+- **Session IDs** — Unique per MCP connection
+- **Redaction Audit Log** — Compliance logging
+- **Event Timestamps** — `received_at` for precise ordering
+- **Test Fixture Page** — `/test-page` with error triggers
+- **CLI Test Mode** — `--test` flag for self-validation
+- **Mock Extension Client** — Go package for server testing
+- **MCP Test Harness** — Scripted MCP testing
+- **CLI Lifecycle Commands** — `stop`, `restart`, `status`
+- **Data Export** — JSON Lines buffer export
+- **E2E Testing Integration** — Playwright fixtures, failure attachment
+- **Workflow Integration** — CI/CD automation
+
+### v6.5+: Infrastructure & Quality (Continuous shipping)
+
+- **Fuzz Tests** (5 types) — JSONRPC parser, HTTP body, security patterns, WebSocket, network body
+- **Async Command Execution** — Prevent MCP server hangs
+- **Multi-Client MCP Architecture** — Multiple AI clients on one server
+- **Test Generation v2** — DOM assertions, fixtures, visual snapshots
+- **Performance Budget Monitor** — Baseline regression detection
+
+---
+
+## v7: Complete Roadmap Delivery
+
+If/when all features are shipped:
+- v7.0 released as "full-featured" version
+- Signal market maturity
+- All 40+ features working together
 
 ---
 
@@ -290,237 +348,170 @@ See [KNOWN-ISSUES.md](../KNOWN-ISSUES.md) for user-facing summary and [docs/core
 
 ---
 
-## Priority 1: Agentic CI/CD (Thesis Validation)
+## v6.0 Build Plan: Maximum Parallelization
 
-These features prove the thesis. Build now.
+**v5.2 completion** → **Wave 1 (3 agents, parallel)** → **Wave 2 (3 agents, parallel)**
 
-### Parallelization
+### Wave 1: Thesis Foundations (Concurrent)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     CAN BUILD IN PARALLEL                        │
+│                 3 AGENTS IN PARALLEL                             │
 ├─────────────────────┬─────────────────────┬─────────────────────┤
 │  Agent A            │  Agent B            │  Agent C            │
 │                     │                     │                     │
 │  33. Self-Healing   │  Gasoline CI        │  5. Context         │
 │      Tests          │  Infrastructure     │     Streaming       │
 │                     │                     │                     │
-│  - Claude Code      │  - /snapshot        │  - MCP notifications│
-│    integration      │  - /clear           │  - Push alerts      │
-│  - Failure diagnosis│  - /test-boundary   │  - Event filtering  │
-│  - Auto-fix loop    │  - gasoline-ci.js   │                     │
-│                     │  - Playwright fix   │                     │
+│  - Detect failure   │  - /snapshot        │  - Push events      │
+│  - Diagnose via     │  - /clear           │  - Real-time feed   │
+│    Gasoline         │  - /test-boundary   │  - Curated context  │
+│  - Auto-fix code    │  - gasoline-ci.js   │    (not raw dumps)  │
+│    or test          │  - Playwright       │                     │
+│  - Verify fix       │    fixtures         │                     │
 └─────────────────────┴─────────────────────┴─────────────────────┘
-                              │
-                              ▼
+```
+
+**Wave 1 Prerequisites:** ✅ All shipped (Tab targeting, Verification loop, API validation)
+**Wave 1 Duration:** ~4-6 weeks (estimated)
+**Wave 1 Exit Criteria:** All 3 features tested, merged to next
+
+### Wave 2: Thesis Expansion (After Wave 1, Concurrent)
+
+```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     THEN IN PARALLEL                             │
+│                 3 AGENTS IN PARALLEL                             │
 ├─────────────────────┬─────────────────────┬─────────────────────┤
 │  Agent A            │  Agent B            │  Agent C            │
 │                     │                     │                     │
 │  35. PR Preview     │  34. Agentic E2E    │  36. Deployment     │
 │      Exploration    │      Repair         │      Watchdog       │
 │                     │                     │                     │
-│  - Requires: 33     │  - Requires: 33     │  - Requires: 5, CI  │
-│  - Preview deploy   │  - Contract drift   │  - Post-deploy mon  │
-│  - Auto-explore     │  - Test/mock update │  - Auto-rollback    │
+│  - Deploy preview   │  - Detect API drift │  - Post-deploy      │
+│  - Auto-explore     │  - Update tests     │    monitoring       │
+│  - Report bugs      │  - Update mocks     │  - Detect regs      │
+│  - Propose fixes    │  - Verify fixes     │  - Auto-rollback    │
 └─────────────────────┴─────────────────────┴─────────────────────┘
 ```
 
-### Features
+**Wave 2 Prerequisites:** ✅ Wave 1 complete
+**Wave 2 Duration:** ~4-6 weeks (estimated)
+**Wave 2 Exit Criteria:** All 3 features tested, merged to next, v6.0 release candidate ready
 
-- [ ] **33. Self-Healing Tests** — AI observes test failure, diagnoses via Gasoline context, fixes test or code autonomously
-  - Branch: `feature/self-healing-tests`
-  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
-  - Prerequisites: ✅ Tab targeting, ✅ Verification loop
-  - Unlocks: CI that unblocks itself
+### v6.0 Release Criteria
 
-- [ ] **Gasoline CI Infrastructure** — Headless browser capture for CI/CD pipelines
-  - Spec: [gasoline-ci-specification.md](gasoline-ci-specification.md)
-  - Components:
-    - [ ] `/snapshot` endpoint - return all captured state
-    - [ ] `/clear` endpoint - reset between tests
-    - [ ] `/test-boundary` endpoint - correlate entries to tests
-    - [ ] `gasoline-ci.js` - standalone capture script (extract from inject.js)
-    - [ ] `@gasoline/playwright` fixture - auto-inject, auto-clear, failure attachment
-  - Unlocks: Phase 8 features in CI, not just local browser
+- ✅ v5.2 bugs fixed
+- ✅ Wave 1 features shipped (Self-Healing, CI, Context Streaming)
+- ✅ Wave 2 features shipped (PR Preview, E2E Repair, Deployment Watchdog)
+- ✅ All 6 features tested in realistic scenarios
+- ✅ No new regressions in v5.1 features
+- ✅ Marketing narrative ready ("10× less context than DevTools MCP, autonomous closed loops")
 
-- [ ] **5. Context Streaming** — Push significant events to AI via MCP notifications
-  - Branch: `feature/context-streaming`
-  - Spec: v6-specification.md § Feature 5
-  - Prerequisites: None
-  - Unlocks: Proactive alerts, enables Deployment Watchdog
-
-- [ ] **35. PR Preview Exploration** — Deploy preview → agent explores app → discovers bugs → proposes fixes pre-merge
-  - Branch: `feature/pr-preview-exploration`
-  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
-  - Prerequisites: ✅ Tab targeting, Self-Healing Tests (33)
-  - Unlocks: Automated QA on every PR
-
-- [ ] **34. Agentic E2E Repair** — AI detects API contract drift, updates tests/mocks automatically
-  - Branch: `feature/agentic-e2e-repair`
-  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
-  - Prerequisites: ✅ API contract validation, Self-Healing Tests (33)
-  - Unlocks: Zero-maintenance E2E suites
-
-- [ ] **36. Deployment Watchdog** — Post-deploy monitoring; AI detects regressions, triggers rollback
-  - Branch: `feature/deployment-watchdog`
-  - Spec: [ai-first/tech-spec-agentic-cicd.md](ai-first/tech-spec-agentic-cicd.md)
-  - Prerequisites: ✅ Session comparison, Context Streaming (5), Gasoline CI
-  - Unlocks: Self-healing production
+**Then: Release v6.0 as single point release. Market moment.**
 
 ---
 
-## Priority 2: Enterprise Unlock
+## v6.1+: Post-Thesis Roadmap
 
-Required for team/enterprise sales. Core enterprise features shipped in v5.0.
-
-### Features
-
-- [x] **16. TTL-Based Retention** — Configurable time-to-live; buffers auto-evict old entries ✅ Shipped v5.0
-- [x] **19. Configurable Redaction Patterns** — User-defined regex for sensitive data ✅ Shipped v5.0
-- [x] **20. API Key Authentication** — Auto-generated key on startup, `--api-key` and `--no-auth` flags ✅ Shipped v5.0
-- [x] **21. Per-Tool Rate Limits** — Prevent runaway AI loops ✅ Shipped v5.0
-- [x] **Enterprise Audit** — Audit log, security scanner, redaction log ✅ Shipped v5.0
-- [x] **Memory Enforcement** — Hard memory caps with graceful degradation ✅ Shipped v5.0
-- [x] **Security Hardening** — Localhost binding, header stripping, input validation ✅ Shipped v5.0
-
-### Remaining
-
-- [ ] **17. Configuration Profiles** — Named bundles (short-lived, restricted, paranoid)
-  - Branch: `feature/config-profiles`
-  - Complexity: Medium
-  - Prerequisites: 16 ✅, 19 ✅, 21 ✅ — all shipped, ready to build
-  - Sales unlock: "Bank mode" one-click setup
+See separate sections above. These are shipped concurrent or after v6.0. Not blockers for v6.0 release.
 
 ---
 
-## Priority 3: Enhanced Generation
+## In-Progress Features (Partial Implementation)
 
-Improves quality of AI-generated artifacts. Build when self-healing is working.
+These features are >50% complete but not yet shipped. Resume work in v6.1+:
 
-- [ ] **6. Test Generation v2** — DOM assertions, fixtures, visual snapshots
-  - Branch: `feature/generate-test-v2`
-  - Spec: generate-test-v2.md
-  - Thesis connection: Better generated tests = better self-healing input
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Behavioral Baselines | ~60% | Baseline regression detection for performance |
+| Budget Thresholds | ~60% | Configurable alert thresholds (v6.1) |
+| Causal Diffing | ~70% | Root-cause change analysis (v6.1) |
+| DOM Fingerprinting | ~80% | Stable selector generation for self-healing (v6.1) |
+| Interception Deferral | ~50% | Deferred network body capture |
+| Self-Testing | ~40% | Extension self-validation via own tools |
+| SPA Route Measurement | ~60% | Single-page app route timing |
 
-- [ ] **7. Performance Budget Monitor** — Baseline regression detection
-  - Branch: `feature/performance-budget-monitor`
-  - Spec: performance-budget-spec.md
-  - Thesis connection: Weak — perf monitoring isn't AI-native
-
----
-
-## Priority 4: Operational Polish
-
-Build as needed. Low thesis impact.
-
-### Enterprise Audit (Tier 1 extras)
-
-- [ ] **13. Client Identification** — Identify which AI client (Claude Code, Cursor, etc.)
-- [ ] **14. Session ID Assignment** — Unique session ID per MCP connection
-- [ ] **15. Redaction Audit Log** — Log when data is redacted (pattern, field, tool)
-
-### Enterprise Multi-Tenant (Tier 4)
-
-- [ ] **24. Project Isolation** — Multiple isolated capture contexts on one server
-- [ ] **25. Read-Only Mode** — Accept capture data, disable mutation tools
-- [ ] **26. Tool Allowlisting** — Restrict which MCP tools are available
-
-### Developer Experience (Phase 7)
-
-- [ ] **27. Test Fixture Page** — Built-in `/test-page` with error triggers
-- [ ] **28. CLI Test Mode** — `--test` flag for automated validation
-- [ ] **29. Mock Extension Client** — Go package simulating extension calls
-- [ ] **30. Event Timestamps in Diagnostics** — `received_at` in `/diagnostics`
-- [ ] **31. MCP Test Harness** — CLI for scripted MCP testing
-- [ ] **32. CLI Lifecycle Commands** — `gasoline stop`, `restart`, `status`
-
-### Data Export
-
-- [ ] **18. Data Export** — Export buffer state as JSON Lines
+**Recommendation:** Complete Causal Diffing + DOM Fingerprinting during Wave 2 as they enable Self-Healing Tests (Wave 1). Complete others in v6.1 after v6.0 release.
 
 ---
 
-## Internal Quality
-
-### Fuzz Tests
-
-Build incrementally as attack surface grows.
-
-- [ ] **FuzzJSONRPCParse** — MCP message parser (no panics, no unbounded alloc)
-- [ ] **FuzzHTTPBodyParse** — `/logs`, `/network-body` endpoints
-- [ ] **FuzzSecurityPatterns** — Credential/PII regex (no catastrophic backtracking)
-- [ ] **FuzzWebSocketFrame** — WS message handling
-- [ ] **FuzzNetworkBodyStorage** — Large/malformed body storage
-
----
-
-## In Progress
-
-| Feature | Tool | Mode | Notes |
-|---------|------|------|-------|
-| Behavioral Baselines | observe | performance | Baseline regression detection |
-| Budget Thresholds | configure | health | Configurable alert thresholds |
-| Causal Diffing | observe, generate | changes | Root-cause change analysis |
-| DOM Fingerprinting | interact, observe | query_dom | Stable selector generation |
-| Interception Deferral | observe, configure | (network buffering) | Deferred body capture |
-| Self-Testing | interact, generate | execute_js, test | Extension self-validation |
-| SPA Route Measurement | observe | performance, timeline | Single-page app route timing |
-
----
-
-## Dependency Graph
+## v6.0 Dependency Graph
 
 ```
-                    ┌──────────────────────────────────────────────────────┐
-                    │                   COMPLETED                           │
-                    │  Tab Targeting, API Validation, Verify Fix,          │
-                    │  Session Diff, Security Tools, Audit Log             │
-                    └──────────────────────────────────────────────────────┘
-                                            │
-                    ┌───────────────────────┼───────────────────────┐
-                    │                       │                       │
-                    ▼                       ▼                       ▼
-            ┌───────────────┐       ┌───────────────┐       ┌───────────────┐
-            │ 33. Self-     │       │ Gasoline CI   │       │ 5. Context    │
-            │ Healing Tests │       │ Infrastructure│       │ Streaming     │
-            └───────┬───────┘       └───────┬───────┘       └───────┬───────┘
-                    │                       │                       │
-        ┌───────────┴───────────┐           │               ┌───────┴───────┐
-        │                       │           │               │               │
-        ▼                       ▼           │               │               │
-┌───────────────┐       ┌───────────────┐   │               │               │
-│ 35. PR Preview│       │ 34. Agentic   │   │               │               │
-│ Exploration   │       │ E2E Repair    │   │               │               │
-└───────────────┘       └───────────────┘   │               │               │
-                                            │               │               │
-                                            └───────┬───────┘               │
-                                                    │                       │
-                                                    ▼                       │
-                                            ┌───────────────┐               │
-                                            │ 36. Deployment│◄──────────────┘
-                                            │ Watchdog      │
-                                            └───────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           v5.1 COMPLETE                                     │
+│  Tab Targeting, API Validation, Verification Loop, Session Diff,            │
+│  Security Auditing, Audit Logging, Enterprise Features                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+                              │ v5.2 bugs fixed
+                              ▼
+        ┌─────────────────────────────────────────────────────────┐
+        │           WAVE 1: v6.0 Foundations (parallel)           │
+        │                                                         │
+        │  ┌──────────┐  ┌──────────┐  ┌──────────┐             │
+        │  │ Self-    │  │ Gasoline │  │ Context  │             │
+        │  │ Healing  │  │ CI       │  │ Streaming│             │
+        │  │ Tests    │  │ Infra    │  │          │             │
+        │  │ (33)     │  │          │  │ (5)      │             │
+        │  └────┬─────┘  └────┬─────┘  └────┬─────┘             │
+        │       │             │             │                   │
+        │       └─────────────┴─────────────┘                   │
+        │               │ Wave 1 complete
+        └───────────────┼─────────────────────────────────────────┘
+                        ▼
+        ┌─────────────────────────────────────────────────────────┐
+        │           WAVE 2: v6.0 Expansion (parallel)             │
+        │                                                         │
+        │  ┌──────────┐  ┌──────────┐  ┌──────────┐             │
+        │  │ PR       │  │ Agentic  │  │ Deploy   │             │
+        │  │ Preview  │  │ E2E      │  │ Watchdog │             │
+        │  │ Explora- │  │ Repair   │  │          │             │
+        │  │ tion(35) │  │ (34)     │  │ (36)     │             │
+        │  └─────────┘  └─────────┘  └──────────┘              │
+        │               │ Wave 2 complete
+        └───────────────┼─────────────────────────────────────────┘
+                        ▼
+        ╔═════════════════════════════════════════════════════════╗
+        ║  RELEASE v6.0 — Thesis Validated                        ║
+        ║  "AI closes the feedback loop autonomously"             ║
+        ║  ✓ Wave 1 + Wave 2 = 6 core features                   ║
+        ╚═════════════════════════════════════════════════════════╝
+                        ▼
+        ┌─────────────────────────────────────────────────────────┐
+        │  v6.1+ — Adjacent Features (concurrent, non-blocking)   │
+        │                                                         │
+        │  • Observation depth (Causal Diffing, Audits)          │
+        │  • Interaction breadth (Forms, Drag-Drop, etc.)        │
+        │  • Production safety (Read-Only, Isolation, etc.)      │
+        │  • DX/Workflow (CI/CD, IDE, GitHub/Jira, etc.)         │
+        │  • Quality (Fuzz tests, test harness)                  │
+        │                                                         │
+        │  Note: Can start during Wave 2, don't block v6.0       │
+        └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Maximum Parallelization
+## Parallelization Strategy
 
-**Wave 1 (Next):** 3 agents — v5.2 bug fixes + v6 foundations
-- Agent A: Self-Healing Tests (33)
-- Agent B: Gasoline CI Infrastructure
-- Agent C: Context Streaming (5)
+**Phase 1 (Current):** Fix v5.2 bugs (1-2 agents, sequential)
+- Query DOM implementation
+- Accessibility audit runtime error fix
+- Network bodies empty response fix
+- Extension timeout investigation
+- Tab ID missing in MCP responses
 
-**Wave 2 (After Wave 1):** 3 agents
-- Agent A: PR Preview Exploration (35)
-- Agent B: Agentic E2E Repair (34)
-- Agent C: Deployment Watchdog (36)
+**Phase 2 (After v5.2):** Build v6.0 thesis (Wave 1 + Wave 2)
+- **Wave 1:** 3 parallel agents, 4-6 weeks
+- **Wave 2:** 3 parallel agents, 4-6 weeks
+- **Release v6.0** when both waves complete
 
-~~**Wave 3 (Enterprise):** TTL, Redaction, API Key, Rate Limits~~ ✅ **All shipped in v5.0**
+**Phase 3 (Concurrent with Wave 2):** Start v6.1+ features (1-2 parallel agents, non-blocking)
+- Observation improvements (Causal Diffing, DOM Fingerprinting, Audits)
+- Can start mid-Wave 2 if agents available
+- Don't block v6.0 release
 
-**Total: Up to 3 parallel agents** can work productively on v6 at any time.
+**Maximum parallelization:** 3 agents on v6.0 critical path, 1-2 agents on v6.1+ concurrent work
 
 ---
 
