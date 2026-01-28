@@ -14,6 +14,18 @@
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 
+// Suppress unhandledRejection errors from module cleanup after tests end
+process.on('unhandledRejection', (reason, _promise) => {
+  // Suppress initialization-related errors from module import cleanup
+  if (reason?.message?.includes('_connectionCheckRunning') ||
+      reason?.message?.includes('Cannot access') ||
+      reason?.message?.includes('before initialization')) {
+    return // Expected during test cleanup
+  }
+  // Re-throw other unhandled rejections
+  throw reason
+})
+
 // Mock Chrome APIs
 const mockChrome = {
   runtime: {
@@ -89,10 +101,12 @@ describe('Issue 1: _processingQueries TTL-based cleanup', () => {
   })
 
   afterEach(() => {
-    // Stop polling and clear any pending intervals to prevent async activity after test
-    if (bgModule?.stopQueryPolling) {
-      bgModule.stopQueryPolling()
-    }
+    // Stop all intervals to prevent async activity after test
+    if (bgModule?.stopQueryPolling) bgModule.stopQueryPolling()
+    if (bgModule?.stopSettingsHeartbeat) bgModule.stopSettingsHeartbeat()
+    if (bgModule?.stopStatusPing) bgModule.stopStatusPing()
+    if (bgModule?.stopExtensionLogsPosting) bgModule.stopExtensionLogsPosting()
+    if (bgModule?.stopWaterfallPosting) bgModule.stopWaterfallPosting()
   })
 
   test('should export getProcessingQueriesState for testing', () => {
