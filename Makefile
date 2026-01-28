@@ -31,11 +31,11 @@ test:
 	CGO_ENABLED=0 go test -v ./cmd/dev-console/...
 
 test-js:
-	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 tests/extension/*.test.js
+	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
 
 test-fast:
 	go vet ./cmd/dev-console/
-	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 tests/extension/*.test.js
+	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
 
 test-all: test test-js
 
