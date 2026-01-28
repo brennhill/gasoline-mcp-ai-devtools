@@ -478,101 +478,159 @@ type MemoryState struct {
 // Capture
 // ============================================
 
-// Capture manages all buffered browser state: WebSocket events, network
-// bodies, user actions, connections, queries, rate limiting, and performance.
+// Capture manages all buffered browser state: WebSocket events, network bodies,
+// user actions, connections, queries, rate limiting, and performance.
+//
+// All fields are protected by mu (sync.RWMutex) unless noted otherwise.
+// Lock hierarchy: Capture.mu is position 3 (after ClientRegistry, ClientState).
+// Release locks before calling external callbacks. Use RLock() for read-only access.
+// Sub-struct locks: a11y, perf, session, mem use parent mu. Only schemaStore and cspGen have own mutexes.
+//
+// Ring buffers (wsEvents, networkBodies, enhancedActions) maintain three parallel invariants:
+// 1. Parallel timestamp slices kept in perfect sync (wsAddedAt, networkAddedAt, actionAddedAt)
+// 2. Monotonic counters that survive eviction (wsTotalAdded, networkTotalAdded, actionTotalAdded)
+// 3. Memory totals that estimate buffer overhead (wsMemoryTotal, nbMemoryTotal)
+//
+// Rate limiting uses a sliding 1-second window with circuit breaker:
+// windowEventCount resets per window. rateLimitStreak tracks consecutive seconds over threshold.
+// Circuit opens after 5+ consecutive seconds or memory spike; closes after 10s below threshold + memory < 30MB.
+// lastBelowThresholdAt tracks when rate dropped below threshold (initialized at startup to prevent false close).
 type Capture struct {
 	mu sync.RWMutex
 
-	// TTL for read-time filtering (0 means unlimited)
+	// TTL for read-time filtering (0 = unlimited, no filtering applied).
+	// Applied during reads: events older than TTL are skipped.
 	TTL time.Duration
-	// WebSocket event ring buffer
-	wsEvents      []WebSocketEvent
-	wsAddedAt     []time.Time // parallel: when each event was added
-	wsTotalAdded  int64       // monotonic counter
-	wsMemoryTotal int64       // running total of WS buffer memory (O(1) access)
 
-	// Network bodies ring buffer
-	networkBodies     []NetworkBody
-	networkAddedAt    []time.Time // parallel: when each body was added
-	networkTotalAdded int64       // monotonic counter
-	nbMemoryTotal     int64       // running total of NB buffer memory (O(1) access)
+	// ============================================
+	// WebSocket Event Buffer (Ring Buffer)
+	// ============================================
 
-	// Enhanced actions ring buffer
-	enhancedActions  []EnhancedAction
-	actionAddedAt    []time.Time // parallel: when each action was added
-	actionTotalAdded int64       // monotonic counter
+	wsEvents      []WebSocketEvent // Ring buffer of WS events (cap: effectiveWSCapacity). Kept in sync with wsAddedAt.
+	wsAddedAt     []time.Time      // Parallel slice: insertion time for each wsEvents[i]. Used for TTL filtering and eviction order (oldest first).
+	wsTotalAdded  int64            // Monotonic counter: total events ever added (never reset/decremented). Survives eviction. Used for cursor-based delta queries.
+	wsMemoryTotal int64            // Approximate memory: sum of wsEventMemory(&wsEvents[i]). Estimate: len(Data)+200 bytes per event. Updated incrementally; recalc on critical eviction.
 
-	// Network waterfall ring buffer (PerformanceResourceTiming data)
-	networkWaterfall         []NetworkWaterfallEntry // Complete network request timing data
-	networkWaterfallCapacity int                     // Configurable capacity (default 1000)
+	// ============================================
+	// Network Body Buffer (Ring Buffer)
+	// ============================================
 
-	// Security flags ring buffer (detected threats from network waterfall)
-	securityFlags []SecurityFlag // Ring buffer of detected security issues (max 1000)
+	networkBodies     []NetworkBody   // Ring buffer of HTTP request/response bodies (cap: maxNetworkBodies=100). Parallel with networkAddedAt.
+	networkAddedAt    []time.Time     // Parallel slice: insertion time for each networkBodies[i]. Used for TTL filtering and LRU eviction.
+	networkTotalAdded int64           // Monotonic counter: total bodies ever added (never reset/decremented). Survives eviction. Used for cursor-based delta queries.
+	nbMemoryTotal     int64           // Approximate memory: len(RequestBody)+len(ResponseBody)+300 bytes per entry. Updated incrementally on append/eviction.
 
-	// Extension logs ring buffer (background/content script logs)
-	extensionLogs []ExtensionLog // Ring buffer of extension internal logs (max 500)
+	// ============================================
+	// Enhanced Actions Buffer (Ring Buffer)
+	// ============================================
 
-	// Connection tracker
-	connections map[string]*connectionState
-	observeSem  chan struct{} // bounds concurrent observer goroutines
-	closedConns []WebSocketClosedConnection
-	connOrder   []string // Track insertion order for eviction
+	enhancedActions  []EnhancedAction // Ring buffer of browser actions. Parallel with actionAddedAt.
+	actionAddedAt    []time.Time      // Parallel slice: insertion time for each enhancedActions[i].
+	actionTotalAdded int64            // Monotonic counter: total actions ever added (never reset/decremented). Survives eviction.
 
-	// Pending queries
-	pendingQueries []pendingQueryEntry
-	queryResults   map[string]queryResultEntry
-	queryCond      *sync.Cond
-	queryIDCounter int
+	// ============================================
+	// Timings and Performance Data
+	// ============================================
 
-	// Rate limiting (sliding window)
-	windowEventCount     int       // Events in current 1-second window
-	rateWindowStart      time.Time // When current window started (monotonic)
-	rateLimitStreak      int       // Consecutive seconds over threshold
-	lastBelowThresholdAt time.Time // When rate first dropped below threshold
-	circuitOpen          bool      // Circuit breaker state
-	circuitOpenedAt      time.Time // When circuit was opened
-	circuitReason        string    // Why circuit opened ("rate_exceeded" or "memory_exceeded")
+	networkWaterfall         []NetworkWaterfallEntry // Ring buffer of browser PerformanceResourceTiming data (cap: networkWaterfallCapacity, default 1000, reconfigurable).
+	networkWaterfallCapacity int                     // Configurable capacity for network waterfall (default DefaultNetworkWaterfallCapacity=1000).
+	securityFlags            []SecurityFlag          // Ring buffer of security threat flags detected from network waterfall (max 1000). FIFO eviction.
+	extensionLogs            []ExtensionLog          // Ring buffer of extension internal logs (max 500). FIFO eviction. No TTL filtering.
 
-	// Query timeout
-	queryTimeout time.Duration
+	// ============================================
+	// WebSocket Connection Tracking
+	// ============================================
 
-	// Async command tracking (correlation_id → result)
-	completedResults map[string]*CommandResult // Completed async commands (60s TTL)
-	failedCommands   []*CommandResult          // Failed/expired commands (circular buffer, max 100)
-	resultsMu        sync.RWMutex              // Separate lock for async result operations
+	connections map[string]*connectionState  // Active WS connections by ID (max 20 total). LRU eviction via connOrder.
+	observeSem  chan struct{}                // Semaphore limiting concurrent observer goroutines to 4. Prevents goroutine explosion.
+	closedConns []WebSocketClosedConnection  // Ring buffer of closed connections (max 10, maxClosedConns). Preserves history for a while.
+	connOrder   []string                     // Insertion order for LRU eviction of active connections.
 
-	// Extension communication tracking
-	lastPollAt        time.Time // When extension last polled GET /pending-queries (command polling)
-	extensionSession  string    // Current extension session ID (for reload detection)
-	sessionChangedAt  time.Time // When session ID last changed (extension reload)
-	pilotEnabled      bool      // AI Web Pilot toggle state from extension
-	pilotUpdatedAt    time.Time // When pilotEnabled was last updated (from POST /settings)
-	currentTestID     string    // Current test ID for CI test-boundary correlation
+	// ============================================
+	// Pending Queries (Extension ↔ Server RPC)
+	// ============================================
 
-	// Tab tracking status (from extension status pings)
-	trackingEnabled bool      // Whether tab tracking is active
-	trackedTabID    int       // The tracked tab's ID (0 = none)
-	trackedTabURL   string    // The tracked tab's URL
-	trackingUpdated time.Time // When tracking status was last updated
+	pendingQueries []pendingQueryEntry        // FIFO queue of pending queries awaiting extension response (max 5). Each has an expires timeout. Oldest dropped if full.
+	queryResults   map[string]queryResultEntry // Completed query results keyed by query ID (not correlation_id). 60s TTL. Cleaned by startResultCleanup goroutine.
+	queryCond      *sync.Cond                 // Condition var initialized with sync.NewCond(&c.mu). Broadcast when result arrives or cleanup happens.
+	queryIDCounter int                        // Monotonic ID for next query (format: "q-<counter>"). Incremented in CreatePendingQueryWithClient.
 
-	// Polling activity log (rotating buffer of 50 most recent GET /pending-queries and POST /settings calls)
-	pollingLog      []PollingLogEntry // Circular buffer, size 50
-	pollingLogIndex int               // Next write position (wraps at 50)
+	// ============================================
+	// Rate Limiting & Circuit Breaker
+	// ============================================
 
-	// HTTP debug log (rotating buffer of 50 most recent HTTP requests/responses)
-	httpDebugLog      []HTTPDebugEntry // Circular buffer, size 50
-	httpDebugLogIndex int              // Next write position (wraps at 50)
+	windowEventCount     int       // Events in current 1-second window. Reset to 0 when window expires. Compared to rateLimitThreshold (1000 events/sec).
+	rateWindowStart      time.Time // Monotonic time: when current window started. Used to detect expiration (now.Sub(rateWindowStart) > 1 second).
+	rateLimitStreak      int       // Consecutive seconds window was over threshold. Incremented per second if over, reset to 0 if below. Circuit opens at 5 consecutive seconds.
+	lastBelowThresholdAt time.Time // When rate first dropped below threshold. Initialized to time.Now() at startup (prevents false circuit-close on boot). Set to zero when over threshold. Used to measure "below threshold duration" for circuit close (10+ seconds required).
+	circuitOpen          bool      // Circuit breaker state. true=reject all with 429. false=accept if within rate/memory limits. Opened when rateLimitStreak>=5 or memory>hard(50MB). Closed when rate below threshold for 10+ seconds AND memory<30MB.
+	circuitOpenedAt      time.Time // Informational: when circuit was opened (display only, not used for enforcing minimum duration). Zero when circuit closed.
+	circuitReason        string    // Reason circuit opened: "rate_exceeded" or "memory_exceeded". Reflects reason AT OPEN TIME (not necessarily current state). Cleared when closed.
 
-	// Composed sub-structs
-	a11y        A11yCache
-	perf        PerformanceStore
-	session     SessionTracker
-	mem         MemoryState
-	schemaStore *SchemaStore
-	cspGen      *CSPGenerator
+	// ============================================
+	// Query Timeout
+	// ============================================
 
-	// Multi-client support
-	clientRegistry *ClientRegistry
+	queryTimeout time.Duration // Default: 2 seconds (defaultQueryTimeout=2*time.Second, types.go:427). Configurable. Applied to pending queries. Rationale: extension polls every 1-2s, fast timeout prevents MCP hangs.
+
+	// ============================================
+	// Async Command Results (Protected by resultsMu, NOT mu)
+	// ============================================
+
+	completedResults map[string]*CommandResult // Completed async results keyed by correlation_id (60s TTL). Protected by resultsMu. Cleaned by startResultCleanup goroutine every 10s. Expired entries moved to failedCommands.
+	failedCommands   []*CommandResult          // Ring buffer of failed/expired commands for diagnostics (pre-allocated 100). Protected by resultsMu. Trimmed to max 100.
+	resultsMu        sync.RWMutex              // SEPARATE lock protecting completedResults and failedCommands. Separate from mu to avoid blocking event ingest during async result operations. Observer goroutines use this lock.
+
+	// ============================================
+	// Extension Communication State
+	// ============================================
+
+	lastPollAt        time.Time // When extension last polled GET /pending-queries. Updated in HandlePendingQueries (line 373). Health endpoint uses 3s threshold to determine "connected" vs "stale".
+	extensionSession  string    // Extension session ID from header (changes when extension reloads). Detects browser restart or extension update. Session change logged but does NOT auto-clear pending queries.
+	sessionChangedAt  time.Time // When extensionSession last changed (used for display in health endpoint).
+	pilotEnabled      bool      // AI Web Pilot toggle from POST /settings (or GET header fallback if settings >10s stale). Check before dispatching browser actions.
+	pilotUpdatedAt    time.Time // When pilotEnabled was last updated from POST /settings. Staleness threshold: 10 seconds (queries.go:377-378). If >10s old, extension header takes priority.
+	currentTestID     string    // CI test boundary correlation ID. Set via /test-boundary endpoint. Tags all events with test context. Cleared when test ends.
+
+	// ============================================
+	// Tab Tracking
+	// ============================================
+
+	trackingEnabled bool      // Single-tab mode active. true=track specific tab. false=observe all tabs (multi-tab).
+	trackedTabID    int       // Browser tab ID when single-tab tracking (0=none). Invariant: if trackingEnabled then trackedTabID>0.
+	trackedTabURL   string    // Tracked tab URL (informational, may be stale).
+	trackingUpdated time.Time // When tracking status last refreshed from extension.
+
+	// ============================================
+	// Polling Activity Log (Circular Buffer, size 50)
+	// ============================================
+
+	pollingLog      []PollingLogEntry // Circular buffer of GET /pending-queries and POST /settings calls (50 entries). No TTL. For operator debugging.
+	pollingLogIndex int               // Next write position (0-49, wraps to 0 after 49).
+
+	// ============================================
+	// HTTP Debug Log (Circular Buffer, size 50)
+	// ============================================
+
+	httpDebugLog      []HTTPDebugEntry // Circular buffer of HTTP requests/responses (50 entries). No TTL. For operator debugging.
+	httpDebugLogIndex int              // Next write position (0-49, wraps to 0 after 49).
+
+	// ============================================
+	// Composed Sub-Structures
+	// ============================================
+
+	a11y        A11yCache        // Accessibility audit cache. Protected by parent mu (no separate lock). Accessed via getA11yCacheEntry/setA11yCacheEntry.
+	perf        PerformanceStore // Performance snapshots and baselines. Protected by parent mu (no separate lock).
+	session     SessionTracker   // Session-level performance aggregation. Protected by parent mu (no separate lock).
+	mem         MemoryState      // Memory tracking and enforcement state. Protected by parent mu (no separate lock).
+	schemaStore *SchemaStore     // API schema detection and tracking. HAS OWN LOCK (api_schema.go:199). Accessed by observer goroutines outside mu.
+	cspGen      *CSPGenerator    // CSP policy generation. HAS OWN LOCK (csp.go:36). Accessed by observer goroutines outside mu.
+
+	// ============================================
+	// Multi-Client Support
+	// ============================================
+
+	clientRegistry *ClientRegistry // Registry of connected MCP clients. HAS OWN LOCK. Lock hierarchy: ClientRegistry.mu is position 1 (outermost), before Capture.mu.
 }
 
 // NewCapture creates a new Capture instance with initialized buffers
