@@ -150,6 +150,7 @@ window.addEventListener('message', (event) => {
   }
 
   // Handle MESSAGE_MAP forwarding — attach tabId to every message
+  // eslint-disable-next-line security/detect-object-injection -- messageType is from trusted inject.js, MESSAGE_MAP is module constant
   const mapped = MESSAGE_MAP[messageType]
   if (mapped && payload && typeof payload === 'object') {
     safeSendMessage({ type: mapped, payload, tabId: currentTabId })

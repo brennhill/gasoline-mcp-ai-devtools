@@ -43,6 +43,7 @@ export function formatPayload(data) {
       // Small binary: hex preview
       let hex = ''
       for (let i = 0; i < bytes.length; i++) {
+        // eslint-disable-next-line security/detect-object-injection -- i is bounded loop index within Uint8Array
         hex += bytes[i].toString(16).padStart(2, '0')
       }
       return `[Binary: ${data.byteLength}B] ${hex}`
@@ -50,6 +51,7 @@ export function formatPayload(data) {
       // Large binary: size + magic bytes (first 4 bytes)
       let magic = ''
       for (let i = 0; i < Math.min(4, bytes.length); i++) {
+        // eslint-disable-next-line security/detect-object-injection -- i is bounded loop index within Uint8Array
         magic += bytes[i].toString(16).padStart(2, '0')
       }
       return `[Binary: ${data.byteLength}B, magic:${magic}]`
@@ -108,11 +110,15 @@ export function createConnectionTracker(id, url) {
       const size = data ? (typeof data === 'string' ? data.length : getSize(data)) : 0
       const now = Date.now()
 
+      // eslint-disable-next-line security/detect-object-injection -- direction is 'incoming' or 'outgoing' literal from caller
       this.stats[direction].count++
+      // eslint-disable-next-line security/detect-object-injection -- direction is 'incoming' or 'outgoing' literal from caller
       this.stats[direction].bytes += size
+      // eslint-disable-next-line security/detect-object-injection -- direction is 'incoming' or 'outgoing' literal from caller
       this.stats[direction].lastAt = now
 
       if (data && typeof data === 'string') {
+        // eslint-disable-next-line security/detect-object-injection -- direction is 'incoming' or 'outgoing' literal from caller
         this.stats[direction].lastPreview = data.length > WS_PREVIEW_LIMIT ? data.slice(0, WS_PREVIEW_LIMIT) : data
       }
 

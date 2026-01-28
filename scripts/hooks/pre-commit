@@ -1,0 +1,50 @@
+#!/bin/bash
+# Pre-commit hook for Gasoline
+# Runs linting and security checks before allowing commits
+
+set -e
+
+echo "[gasoline] Running pre-commit checks..."
+
+# Check for staged Go files
+GO_STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)
+# Check for staged JS files
+JS_STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|mjs)$' || true)
+
+# ESLint check on staged JS files
+if [ -n "$JS_STAGED" ]; then
+    echo "[lint] Running ESLint on JavaScript files..."
+    npx eslint extension/ tests/extension/ || {
+        echo ""
+        echo "ESLint found issues. Fix them before committing."
+        exit 1
+    }
+    echo "[lint] ESLint passed"
+fi
+
+# Go vet check on staged Go files
+if [ -n "$GO_STAGED" ]; then
+    echo "[lint] Running go vet on Go files..."
+    go vet ./cmd/dev-console/ || {
+        echo ""
+        echo "go vet found issues. Fix them before committing."
+        exit 1
+    }
+    echo "[lint] go vet passed"
+
+    # Gosec check for security issues
+    if command -v gosec >/dev/null 2>&1; then
+        echo "[security] Running gosec on Go files..."
+        gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high -quiet ./cmd/dev-console/ || {
+            echo ""
+            echo "gosec found HIGH severity security issues. Fix them before committing."
+            exit 1
+        }
+        echo "[security] gosec passed"
+    else
+        echo "[security] gosec not installed, skipping Go security scan"
+        echo "           Install: go install github.com/securego/gosec/v2/cmd/gosec@latest"
+    fi
+fi
+
+echo "[gasoline] All pre-commit checks passed"

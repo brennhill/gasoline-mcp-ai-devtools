@@ -232,6 +232,7 @@ export function wrapFetch(originalFetchFn) {
           const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders
           Object.keys(headers).forEach((key) => {
             if (!SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+              // eslint-disable-next-line security/detect-object-injection -- key from Object.keys iteration, headers from request
               safeHeaders[key] = headers[key]
             }
           })
@@ -261,6 +262,7 @@ export function wrapFetch(originalFetchFn) {
         const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders
         Object.keys(headers).forEach((key) => {
           if (!SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+            // eslint-disable-next-line security/detect-object-injection -- key from Object.keys iteration, headers from request
             safeHeaders[key] = headers[key]
           }
         })
@@ -586,8 +588,10 @@ export function safeSerializeForExecute(value, depth = 0, seen = new WeakSet()) 
     const keys = Object.keys(value).slice(0, 50)
     for (const key of keys) {
       try {
+        // eslint-disable-next-line security/detect-object-injection -- key from Object.keys iteration on value being serialized
         result[key] = safeSerializeForExecute(value[key], depth + 1, seen)
       } catch {
+        // eslint-disable-next-line security/detect-object-injection -- key from Object.keys iteration
         result[key] = '[unserializable]'
       }
     }
@@ -1295,11 +1299,13 @@ export function captureState() {
 
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)
+    // eslint-disable-next-line security/detect-object-injection -- key from localStorage.key() API
     state.localStorage[key] = localStorage.getItem(key)
   }
 
   for (let i = 0; i < sessionStorage.length; i++) {
     const key = sessionStorage.key(i)
+    // eslint-disable-next-line security/detect-object-injection -- key from sessionStorage.key() API
     state.sessionStorage[key] = sessionStorage.getItem(key)
   }
 

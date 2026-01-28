@@ -19,6 +19,7 @@ export function getContextAnnotations() {
 
   const result = {}
   for (const [key, value] of contextAnnotations) {
+    // eslint-disable-next-line security/detect-object-injection -- key from Map iteration of internally-managed contextAnnotations
     result[key] = value
   }
   return result

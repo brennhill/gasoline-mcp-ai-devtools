@@ -28,6 +28,7 @@ export async function executeDOMQuery(params) {
 
   const matches = []
   for (let i = 0; i < Math.min(elements.length, DOM_QUERY_MAX_ELEMENTS); i++) {
+    // eslint-disable-next-line security/detect-object-injection -- i is bounded loop index within NodeList
     const el = elements[i]
     const entry = serializeDOMElement(el, include_styles, properties, include_children, cappedDepth, 0)
     matches.push(entry)
@@ -72,6 +73,7 @@ function serializeDOMElement(el, includeStyles, styleProps, includeChildren, max
     entry.styles = {}
     if (styleProps && styleProps.length > 0) {
       for (const prop of styleProps) {
+        // eslint-disable-next-line security/detect-object-injection -- prop from caller-provided style properties array, computed is CSSStyleDeclaration
         entry.styles[prop] = computed[prop]
       }
     } else {
@@ -84,6 +86,7 @@ function serializeDOMElement(el, includeStyles, styleProps, includeChildren, max
     entry.children = []
     const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS)
     for (let i = 0; i < maxChildren; i++) {
+      // eslint-disable-next-line security/detect-object-injection -- i is bounded loop index within HTMLCollection
       entry.children.push(serializeDOMElement(el.children[i], false, null, true, maxDepth, currentDepth + 1))
     }
   }

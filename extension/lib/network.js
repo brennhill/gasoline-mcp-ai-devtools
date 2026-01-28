@@ -241,18 +241,21 @@ export function sanitizeHeaders(headers) {
     // Headers object or Map
     headers.forEach((value, key) => {
       if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+        // eslint-disable-next-line security/detect-object-injection -- key from Headers.forEach iteration
         result[key] = value
       }
     })
   } else if (typeof headers.entries === 'function') {
     for (const [key, value] of headers.entries()) {
       if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+        // eslint-disable-next-line security/detect-object-injection -- key from headers.entries() iteration
         result[key] = value
       }
     }
   } else if (typeof headers === 'object') {
     for (const [key, value] of Object.entries(headers)) {
       if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+        // eslint-disable-next-line security/detect-object-injection -- key from Object.entries iteration
         result[key] = value
       }
     }

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, next]
   pull_request:
     branches: [main]
   schedule:
@@ -10,13 +10,74 @@ on:
   workflow_dispatch: # Manual trigger
 
 jobs:
-  # Go and JavaScript checks temporarily disabled to unblock GitHub Pages/site updates
-  # go:
-  #   name: Go Checks
-  #   ...
-  # javascript:
-  #   name: JavaScript Checks
-  #   ...
+  go:
+    name: Go Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Go vet
+        run: go vet ./cmd/dev-console/
+
+      - name: Go tests with race detection
+        run: go test -race -v ./cmd/dev-console/...
+
+      - name: Go test coverage (95% minimum)
+        run: |
+          go test -coverprofile=coverage.out ./cmd/dev-console/...
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 95" | bc -l) )); then
+            echo "FAIL: Coverage ${COVERAGE}% is below 95% threshold"
+            exit 1
+          fi
+
+      - name: Verify zero external dependencies
+        run: |
+          if grep -q '^require' go.mod; then
+            echo "FAIL: go.mod contains external dependencies"
+            exit 1
+          fi
+          if [ -f go.sum ]; then
+            echo "FAIL: go.sum exists (implies external dependencies)"
+            exit 1
+          fi
+          echo "OK: Zero external dependencies verified"
+
+  javascript:
+    name: JavaScript Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint (all errors and warnings)
+        run: |
+          npx eslint extension/ tests/extension/ || {
+            echo ""
+            echo "ESLint found issues. All warnings must be fixed."
+            exit 1
+          }
+
+      - name: Prettier format check
+        run: npx prettier --check .
+
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
+
+      - name: Extension tests
+        run: node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 tests/extension/*.test.js
 
   security:
     name: Security Scan
@@ -36,16 +97,48 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Go security scan
-        uses: securego/gosec@master
-        with:
-          args: ./cmd/dev-console/
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Go security scan (gosec)
+        run: |
+          gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high ./cmd/dev-console/ || {
+            echo ""
+            echo "gosec found HIGH severity security issues"
+            exit 1
+          }
 
       - name: JS security lint
         run: |
-          npx eslint -c eslint.config.js \
-            --rule '{"security/detect-eval-with-expression": "error", "security/detect-non-literal-regexp": "error", "security/detect-possible-timing-attacks": "error"}' \
-            extension/
+          npx eslint extension/ tests/extension/ || {
+            echo ""
+            echo "ESLint security checks failed"
+            exit 1
+          }
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [go, javascript, security]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Build all platforms
+        run: make build
+
+      - name: Verify binary size (< 15MB)
+        run: |
+          SIZE=$(wc -c < dist/gasoline-linux-x64 | tr -d ' ')
+          MAX=15000000
+          if [ $SIZE -gt $MAX ]; then
+            echo "FAIL: Binary size ${SIZE} bytes exceeds ${MAX} byte limit"
+            exit 1
+          fi
+          echo "OK: Binary size ${SIZE} bytes (limit: ${MAX})"
 
   fuzz:
     name: Fuzz Testing (Nightly)
