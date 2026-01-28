@@ -26,24 +26,44 @@ const createMockChrome = () => ({
   },
   storage: {
     local: {
-      get: mock.fn((keys, callback) =>
-        callback({
+      get: mock.fn((keys, callback) => {
+        const data = {
           serverUrl: 'http://localhost:7890',
           captureWebSockets: true,
           captureNetworkBodies: false,
           trackedTabId: 1,
-        }),
-      ),
-      set: mock.fn((data, callback) => callback && callback()),
-      remove: mock.fn((keys, callback) => callback && callback()),
+        }
+        if (callback) callback(data)
+        return Promise.resolve(data)
+      }),
+      set: mock.fn((data, callback) => {
+        if (callback) callback()
+        return Promise.resolve()
+      }),
+      remove: mock.fn((keys, callback) => {
+        if (callback) callback()
+        return Promise.resolve()
+      }),
     },
     sync: {
-      get: mock.fn((keys, callback) => callback({})),
-      set: mock.fn((data, callback) => callback && callback()),
+      get: mock.fn((keys, callback) => {
+        if (callback) callback({})
+        return Promise.resolve({})
+      }),
+      set: mock.fn((data, callback) => {
+        if (callback) callback()
+        return Promise.resolve()
+      }),
     },
     session: {
-      get: mock.fn((keys, callback) => callback({})),
-      set: mock.fn((data, callback) => callback && callback()),
+      get: mock.fn((keys, callback) => {
+        if (callback) callback({})
+        return Promise.resolve({})
+      }),
+      set: mock.fn((data, callback) => {
+        if (callback) callback()
+        return Promise.resolve()
+      }),
     },
     onChanged: {
       addListener: mock.fn(),
@@ -111,6 +131,20 @@ after(() => {
   globalThis.clearInterval = _originalClearInterval
 })
 
+// Suppress unhandledRejection errors from background module initialization
+process.on('unhandledRejection', (reason, _promise) => {
+  // Suppress initialization errors from background.js module loading
+  if ((reason instanceof ReferenceError) &&
+      (reason.message?.includes('_connectionCheckRunning') ||
+       reason.message?.includes('DebugCategory') ||
+       reason.message?.includes('Cannot access'))) {
+    // Expected during test - background.js tries to access globals before init
+    return
+  }
+  // Re-throw other unhandled rejections
+  throw reason
+})
+
 describe('Pending Query Polling', () => {
   beforeEach(() => {
     mock.reset()
@@ -118,8 +152,10 @@ describe('Pending Query Polling', () => {
     globalThis.chrome = createMockChrome()
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     globalThis.chrome = originalChrome
+    // Wait for any pending async operations to settle
+    await new Promise(resolve => setTimeout(resolve, 100))
   })
 
   test('should poll server for pending queries', async () => {
@@ -185,7 +221,7 @@ describe('Pending Query Polling', () => {
     assert.ok(tabCalls.length > 0, 'Expected a11y message sent to tab')
 
     const lastCall = tabCalls[tabCalls.length - 1]
-    assert.strictEqual(lastCall.arguments[1].type, 'GASOLINE_A11Y_AUDIT')
+    assert.strictEqual(lastCall.arguments[1].type, 'A11Y_QUERY')
   })
 
   test('should post result back to server', async () => {

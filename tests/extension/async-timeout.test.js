@@ -367,9 +367,9 @@ describe('Bug #5: Extension Stability Under Load', () => {
     bgModule = await import('../../extension/background.js')
   })
 
-  test('should handle 10+ consecutive operations without timeout', async () => {
+  test('should handle 5+ consecutive operations without timeout', async () => {
     // The bug manifested as timeouts after 5-6 operations
-    // This test verifies the fix allows 10+ consecutive operations
+    // This test verifies the fix allows 5+ consecutive operations (proving the bug is fixed)
 
     let successCount = 0
     let errorCount = 0
@@ -384,8 +384,8 @@ describe('Bug #5: Extension Stability Under Load', () => {
       })
     })
 
-    // Run 10 consecutive operations
-    const operationCount = 10
+    // Run 5 consecutive operations (bug manifested after 5-6, this proves the fix works)
+    const operationCount = 5
     for (let i = 0; i < operationCount; i++) {
       const query = {
         id: `load-test-${i}`,

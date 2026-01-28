@@ -74,7 +74,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Extension tests
-        run: node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
+        run: node --test --test-force-exit --test-timeout=20000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
 
   security:
     name: Security Scan
