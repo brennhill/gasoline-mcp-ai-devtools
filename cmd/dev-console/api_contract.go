@@ -96,38 +96,38 @@ type APIContractFilter struct {
 type AnalyzeSummary struct {
 	Violations     int `json:"violations"`
 	Endpoints      int `json:"endpoints"`
-	TotalRequests  int `json:"totalRequests"`
-	CleanEndpoints int `json:"cleanEndpoints"`
+	TotalRequests  int `json:"totalRequests"`  // TODO v6.0: migrate to total_requests
+	CleanEndpoints int `json:"cleanEndpoints"` // TODO v6.0: migrate to clean_endpoints
 }
 
 // AppliedFilterEcho echoes back the filter parameters that were applied.
 type AppliedFilterEcho struct {
 	URL             string   `json:"url,omitempty"`
-	IgnoreEndpoints []string `json:"ignoreEndpoints,omitempty"`
+	IgnoreEndpoints []string `json:"ignoreEndpoints,omitempty"` // TODO v6.0: migrate to ignore_endpoints
 }
 
 // APIContractAnalyzeResult is the response from the analyze action.
 type APIContractAnalyzeResult struct {
 	Action                 string                 `json:"action"`
-	AnalyzedAt             string                 `json:"analyzedAt"`                    // RFC3339 timestamp
-	DataWindowStartedAt    string                 `json:"dataWindowStartedAt,omitempty"` // RFC3339 when data collection began
-	AppliedFilter          *AppliedFilterEcho     `json:"appliedFilter,omitempty"`       // Echo of filter parameters
-	Summary                *AnalyzeSummary        `json:"summary"`                       // Aggregate counts
+	AnalyzedAt             string                 `json:"analyzedAt"`                        // TODO v6.0: migrate to analyzed_at
+	DataWindowStartedAt    string                 `json:"dataWindowStartedAt,omitempty"`     // TODO v6.0: migrate to data_window_started_at
+	AppliedFilter          *AppliedFilterEcho     `json:"appliedFilter,omitempty"`           // TODO v6.0: migrate to applied_filter
+	Summary                *AnalyzeSummary        `json:"summary"`                           // Aggregate counts
 	Violations             []APIContractViolation `json:"violations"`
 	TrackedEndpoints       int                    `json:"tracked_endpoints"`
 	TotalRequestsAnalyzed  int                    `json:"total_requests_analyzed"`
 	CleanEndpoints         int                    `json:"clean_endpoints"`
-	PossibleViolationTypes []string               `json:"possibleViolationTypes"` // Metadata: what types of violations are detected
+	PossibleViolationTypes []string               `json:"possibleViolationTypes"` // TODO v6.0: migrate to possible_violation_types
 	Hint                   string                 `json:"hint,omitempty"`         // Helpful hint when no violations found
 }
 
 // APIContractReportResult is the response from the report action.
 type APIContractReportResult struct {
 	Action            string                   `json:"action"`
-	AnalyzedAt        string                   `json:"analyzedAt"`              // RFC3339 timestamp
-	AppliedFilter     *AppliedFilterEcho       `json:"appliedFilter,omitempty"` // Echo of filter parameters
+	AnalyzedAt        string                   `json:"analyzedAt"`                  // TODO v6.0: migrate to analyzed_at
+	AppliedFilter     *AppliedFilterEcho       `json:"appliedFilter,omitempty"`     // TODO v6.0: migrate to applied_filter
 	Endpoints         []EndpointContractReport `json:"endpoints"`
-	ConsistencyLevels map[string]string        `json:"consistencyLevels"` // Metadata: score range explanations
+	ConsistencyLevels map[string]string        `json:"consistencyLevels"` // TODO v6.0: migrate to consistency_levels
 }
 
 // EndpointContractReport summarizes a single endpoint's contract state.

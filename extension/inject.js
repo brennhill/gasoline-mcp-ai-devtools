@@ -1262,7 +1262,7 @@ if (typeof window !== 'undefined') {
           requestId,
           result,
         },
-        '*',
+        window.location.origin,
       )
     }
   })

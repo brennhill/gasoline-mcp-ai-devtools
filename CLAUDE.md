@@ -7,7 +7,8 @@ Browser extension + MCP server: captures real-time browser telemetry (logs, netw
 ## Commands
 
 ```bash
-make test                              # Go tests
+make test                              # Go tests (full suite)
+go test -short ./cmd/dev-console/      # Go tests (fast iteration, skips slow)
 go vet ./cmd/dev-console/              # Static analysis
 node --test tests/extension/*.test.js  # Extension tests
 make dev                               # Build current platform
@@ -19,10 +20,11 @@ make dev                               # Build current platform
 1. **Spec Review** — MANDATORY: Every feature spec must be reviewed by a principal engineer agent before implementation. See [spec-review.md](.claude/docs/spec-review.md)
 2. **TDD** — Write tests FIRST. Read spec → tests → confirm fail → implement → confirm pass → commit
 3. **Zero deps** — Go server: stdlib only. Extension: no frameworks, no build tools
-4. **4-Tool Maximum** — STRICTLY ENFORCED: Gasoline exposes exactly 4 MCP tools: `observe`, `generate`, `configure`, `interact`. NEVER create a 5th tool. New features MUST be added as a new mode/action under one of these 4. See [architecture.md](.claude/docs/architecture.md)
-5. **Performance** — Extension must not degrade browsing. WS < 0.1ms, fetch < 0.5ms, never block main thread
-6. **Privacy** — Sensitive data never leaves localhost. Strip auth headers, body capture opt-in
-7. **Quality gates** — `go vet` + `make test` + `node --test` must pass before every commit
+4. **No remote code** — Chrome Web Store PROHIBITS loading remotely hosted code. All third-party libraries (e.g., axe-core) MUST be bundled locally in the extension package. NEVER load scripts from CDNs or external URLs
+5. **4-Tool Maximum** — STRICTLY ENFORCED: Gasoline exposes exactly 4 MCP tools: `observe`, `generate`, `configure`, `interact`. NEVER create a 5th tool. New features MUST be added as a new mode/action under one of these 4. See [architecture.md](.claude/docs/architecture.md)
+6. **Performance** — Extension must not degrade browsing. WS < 0.1ms, fetch < 0.5ms, never block main thread
+7. **Privacy** — Sensitive data never leaves localhost. Strip auth headers, body capture opt-in
+8. **Quality gates** — `go vet` + `make test` + `node --test` must pass before every commit
 
 ## Git
 

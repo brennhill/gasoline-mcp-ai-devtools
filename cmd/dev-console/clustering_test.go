@@ -9,6 +9,7 @@ import (
 // --- Stack Frame Parsing ---
 
 func TestParseStackFrameStandard(t *testing.T) {
+	t.Parallel()
 	frame := parseStackFrame("    at UserProfile.render (user-profile.js:42:15)")
 	if frame.Function != "UserProfile.render" {
 		t.Fatalf("expected function=UserProfile.render, got %s", frame.Function)
@@ -22,6 +23,7 @@ func TestParseStackFrameStandard(t *testing.T) {
 }
 
 func TestParseStackFrameAnonymous(t *testing.T) {
+	t.Parallel()
 	frame := parseStackFrame("    at app.js:100:5")
 	if frame.Function != "<anonymous>" {
 		t.Fatalf("expected function=<anonymous>, got %s", frame.Function)
@@ -35,6 +37,7 @@ func TestParseStackFrameAnonymous(t *testing.T) {
 }
 
 func TestParseStackFrameNodeModules(t *testing.T) {
+	t.Parallel()
 	frame := parseStackFrame("    at Object.render (node_modules/react-dom/cjs/react-dom.development.js:12345:10)")
 	if !frame.IsFramework {
 		t.Fatal("node_modules/react frame should be marked as framework")
@@ -42,6 +45,7 @@ func TestParseStackFrameNodeModules(t *testing.T) {
 }
 
 func TestParseStackFrameWebpack(t *testing.T) {
+	t.Parallel()
 	frame := parseStackFrame("    at __webpack_require__ (webpack/bootstrap:1234:10)")
 	if !frame.IsFramework {
 		t.Fatal("webpack frame should be marked as framework")
@@ -49,6 +53,7 @@ func TestParseStackFrameWebpack(t *testing.T) {
 }
 
 func TestParseStackFrameAppCode(t *testing.T) {
+	t.Parallel()
 	frame := parseStackFrame("    at Dashboard.componentDidMount (src/components/Dashboard.js:55:8)")
 	if frame.IsFramework {
 		t.Fatal("app code frame should NOT be marked as framework")
@@ -58,6 +63,7 @@ func TestParseStackFrameAppCode(t *testing.T) {
 // --- Message Normalization ---
 
 func TestNormalizeMessageUUID(t *testing.T) {
+	t.Parallel()
 	msg := "Failed to load user 550e8400-e29b-41d4-a716-446655440000"
 	norm := normalizeErrorMessage(msg)
 	if !strings.Contains(norm, "{uuid}") {
@@ -66,6 +72,7 @@ func TestNormalizeMessageUUID(t *testing.T) {
 }
 
 func TestNormalizeMessageNumericID(t *testing.T) {
+	t.Parallel()
 	msg := "Record 12345 not found"
 	norm := normalizeErrorMessage(msg)
 	if !strings.Contains(norm, "{id}") {
@@ -74,6 +81,7 @@ func TestNormalizeMessageNumericID(t *testing.T) {
 }
 
 func TestNormalizeMessageURL(t *testing.T) {
+	t.Parallel()
 	msg := "Failed to fetch https://api.example.com/users/123"
 	norm := normalizeErrorMessage(msg)
 	if !strings.Contains(norm, "{url}") {
@@ -82,6 +90,7 @@ func TestNormalizeMessageURL(t *testing.T) {
 }
 
 func TestNormalizeMessagePreservesShape(t *testing.T) {
+	t.Parallel()
 	msg := "Cannot read property 'name' of undefined"
 	norm := normalizeErrorMessage(msg)
 	if norm != msg {
@@ -90,6 +99,7 @@ func TestNormalizeMessagePreservesShape(t *testing.T) {
 }
 
 func TestNormalizeMessageTimestamp(t *testing.T) {
+	t.Parallel()
 	msg := "Error at 2026-01-24T15:30:00Z processing request"
 	norm := normalizeErrorMessage(msg)
 	if !strings.Contains(norm, "{timestamp}") {
@@ -100,6 +110,7 @@ func TestNormalizeMessageTimestamp(t *testing.T) {
 // --- Cluster Formation ---
 
 func TestClusterFormationByStackSimilarity(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	// Two errors sharing stack frames
 	cm.AddError(ErrorInstance{
@@ -123,6 +134,7 @@ func TestClusterFormationByStackSimilarity(t *testing.T) {
 }
 
 func TestClusterFormationByMessageSimilarity(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	cm.AddError(ErrorInstance{
 		Message:   "Failed to fetch https://api.example.com/users/1",
@@ -142,6 +154,7 @@ func TestClusterFormationByMessageSimilarity(t *testing.T) {
 }
 
 func TestClusterFormationByTemporalProximityAlone(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	now := time.Now()
 	cm.AddError(ErrorInstance{
@@ -163,6 +176,7 @@ func TestClusterFormationByTemporalProximityAlone(t *testing.T) {
 }
 
 func TestClusterFormationStackPlusTemporal(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	now := time.Now()
 	cm.AddError(ErrorInstance{
@@ -183,6 +197,7 @@ func TestClusterFormationStackPlusTemporal(t *testing.T) {
 }
 
 func TestSingleErrorNotClustered(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	cm.AddError(ErrorInstance{
 		Message:   "Unique error",
@@ -200,6 +215,7 @@ func TestSingleErrorNotClustered(t *testing.T) {
 }
 
 func TestErrorWithoutStackClusteredByMessage(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	cm.AddError(ErrorInstance{
 		Message:   "Network error: failed to fetch",
@@ -221,6 +237,7 @@ func TestErrorWithoutStackClusteredByMessage(t *testing.T) {
 // --- Root Cause Inference ---
 
 func TestRootCauseDeepestCommonFrame(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	cm.AddError(ErrorInstance{
 		Message:   "TypeError: x is undefined",
@@ -243,6 +260,7 @@ func TestRootCauseDeepestCommonFrame(t *testing.T) {
 }
 
 func TestFrameworkFramesExcluded(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	cm.AddError(ErrorInstance{
 		Message:   "Error A",
@@ -268,6 +286,7 @@ func TestFrameworkFramesExcluded(t *testing.T) {
 // --- Cluster Lifecycle ---
 
 func TestClusterExpiresAfterInactivity(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	cm.expiryDuration = 100 * time.Millisecond // Short expiry for test
 
@@ -295,6 +314,7 @@ func TestClusterExpiresAfterInactivity(t *testing.T) {
 }
 
 func TestInstanceCapAt20(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	for i := 0; i < 25; i++ {
 		cm.AddError(ErrorInstance{
@@ -317,6 +337,7 @@ func TestInstanceCapAt20(t *testing.T) {
 }
 
 func TestClusterCapAt50(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	// Create 55 unique clusters (each needs 2 matching errors)
 	for i := 0; i < 55; i++ {
@@ -342,6 +363,7 @@ func TestClusterCapAt50(t *testing.T) {
 // --- Alert on Cluster Formation ---
 
 func TestClusterAlertAt3Instances(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	cm.AddError(ErrorInstance{
 		Message: "Error",
@@ -379,6 +401,7 @@ func TestClusterAlertAt3Instances(t *testing.T) {
 // --- Analyze Tool Response ---
 
 func TestAnalyzeErrorsResponse(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	cm.AddError(ErrorInstance{
 		Message:   "TypeError: x is undefined",
@@ -410,6 +433,7 @@ func TestAnalyzeErrorsResponse(t *testing.T) {
 }
 
 func TestAnalyzeErrorsEmptyResponse(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	resp := cm.GetAnalysisResponse()
 	if len(resp.Clusters) != 0 {
@@ -423,6 +447,7 @@ func TestAnalyzeErrorsEmptyResponse(t *testing.T) {
 // --- Concurrent Access ---
 
 func TestClusterManagerConcurrent(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	done := make(chan bool, 100)
 
@@ -449,6 +474,7 @@ func TestClusterManagerConcurrent(t *testing.T) {
 // --- Server Restart Clears Clusters ---
 
 func TestNewClusterManagerIsEmpty(t *testing.T) {
+	t.Parallel()
 	cm := NewClusterManager()
 	clusters := cm.GetClusters()
 	if len(clusters) != 0 {

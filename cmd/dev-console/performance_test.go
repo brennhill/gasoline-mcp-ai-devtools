@@ -10,6 +10,7 @@ import (
 )
 
 func TestPerformanceSnapshotJSONShape(t *testing.T) {
+	t.Parallel()
 	fcp := 250.0
 	lcp := 800.0
 	cls := 0.05
@@ -87,6 +88,7 @@ func TestPerformanceSnapshotJSONShape(t *testing.T) {
 }
 
 func TestPerformanceBaselineJSONShape(t *testing.T) {
+	t.Parallel()
 	fcp := 250.0
 	lcp := 800.0
 	cls := 0.05
@@ -144,6 +146,7 @@ func TestPerformanceBaselineJSONShape(t *testing.T) {
 }
 
 func TestPerformanceSnapshotStorageAndRetrieval(t *testing.T) {
+	t.Parallel()
 	server := NewCapture()
 	fcp := 250.0
 	lcp := 800.0
@@ -189,6 +192,7 @@ func TestPerformanceSnapshotStorageAndRetrieval(t *testing.T) {
 }
 
 func TestPerformanceBaselineAveragesFCPLCP(t *testing.T) {
+	t.Parallel()
 	server := NewCapture()
 	fcp1 := 200.0
 	lcp1 := 600.0
@@ -253,6 +257,7 @@ func TestPerformanceBaselineAveragesFCPLCP(t *testing.T) {
 }
 
 func TestPerformanceRegressionDetectsFCPLCP(t *testing.T) {
+	t.Parallel()
 	server := NewCapture()
 
 	fcpBaseline := 200.0
@@ -303,6 +308,7 @@ func TestPerformanceRegressionDetectsFCPLCP(t *testing.T) {
 }
 
 func TestPerformanceRegressionNoFalsePositiveFCPLCP(t *testing.T) {
+	t.Parallel()
 	server := NewCapture()
 
 	fcpBaseline := 200.0
@@ -342,6 +348,7 @@ func TestPerformanceRegressionNoFalsePositiveFCPLCP(t *testing.T) {
 }
 
 func TestAvgOptionalFloat(t *testing.T) {
+	t.Parallel()
 	// nil snapshot: baseline unchanged
 	baseline := 100.0
 	result := avgOptionalFloat(&baseline, nil, 2)
@@ -364,6 +371,7 @@ func TestAvgOptionalFloat(t *testing.T) {
 }
 
 func TestWeightedOptionalFloat(t *testing.T) {
+	t.Parallel()
 	baseline := 100.0
 	snapshot := 200.0
 
@@ -385,6 +393,7 @@ func TestWeightedOptionalFloat(t *testing.T) {
 // ============================================
 
 func TestNormalizeResourceURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -406,6 +415,7 @@ func TestNormalizeResourceURL(t *testing.T) {
 }
 
 func TestNormalizeDynamicAPIPath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -427,6 +437,7 @@ func TestNormalizeDynamicAPIPath(t *testing.T) {
 }
 
 func TestResourceDiffAddedScript(t *testing.T) {
+	t.Parallel()
 	baseline := []ResourceEntry{
 		{URL: "/static/js/main.js", Type: "script", TransferSize: 100000, Duration: 150},
 	}
@@ -449,6 +460,7 @@ func TestResourceDiffAddedScript(t *testing.T) {
 }
 
 func TestResourceDiffRemovedStylesheet(t *testing.T) {
+	t.Parallel()
 	baseline := []ResourceEntry{
 		{URL: "/static/css/theme.css", Type: "css", TransferSize: 50000, Duration: 80},
 		{URL: "/static/js/main.js", Type: "script", TransferSize: 100000, Duration: 150},
@@ -468,6 +480,7 @@ func TestResourceDiffRemovedStylesheet(t *testing.T) {
 }
 
 func TestResourceDiffResizedBundle(t *testing.T) {
+	t.Parallel()
 	baseline := []ResourceEntry{
 		{URL: "/static/js/main.chunk.js", Type: "script", TransferSize: 145000, Duration: 200},
 	}
@@ -495,6 +508,7 @@ func TestResourceDiffResizedBundle(t *testing.T) {
 }
 
 func TestResourceDiffRetimedAPIEndpoint(t *testing.T) {
+	t.Parallel()
 	baseline := []ResourceEntry{
 		{URL: "/api/dashboard/data", Type: "fetch", TransferSize: 5000, Duration: 80},
 	}
@@ -522,6 +536,7 @@ func TestResourceDiffRetimedAPIEndpoint(t *testing.T) {
 }
 
 func TestResourceDiffRenderBlockingFlag(t *testing.T) {
+	t.Parallel()
 	baseline := []ResourceEntry{}
 	current := []ResourceEntry{
 		{URL: "/static/js/chart-library.js", Type: "script", TransferSize: 412000, Duration: 250, RenderBlocking: true},
@@ -549,6 +564,7 @@ func TestResourceDiffRenderBlockingFlag(t *testing.T) {
 }
 
 func TestProbableCauseSummarize(t *testing.T) {
+	t.Parallel()
 	diff := ResourceDiff{
 		Added: []AddedResource{
 			{URL: "/static/js/analytics.js", Type: "script", SizeBytes: 287000, DurationMs: 180, RenderBlocking: false},
@@ -580,6 +596,7 @@ func TestProbableCauseSummarize(t *testing.T) {
 }
 
 func TestRecommendationsGenerated(t *testing.T) {
+	t.Parallel()
 	diff := ResourceDiff{
 		Added: []AddedResource{
 			{URL: "/static/js/chart-library.js", Type: "script", SizeBytes: 412000, DurationMs: 250, RenderBlocking: true},
@@ -624,6 +641,7 @@ func TestRecommendationsGenerated(t *testing.T) {
 }
 
 func TestURLNormalizationStripsQueryPreservesHash(t *testing.T) {
+	t.Parallel()
 	baseline := []ResourceEntry{
 		{URL: "/static/js/main.js?v=old", Type: "script", TransferSize: 100000, Duration: 150},
 	}
@@ -642,6 +660,7 @@ func TestURLNormalizationStripsQueryPreservesHash(t *testing.T) {
 }
 
 func TestNoBaselineResourcesMessage(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	fcp := 200.0
@@ -680,6 +699,7 @@ func TestNoBaselineResourcesMessage(t *testing.T) {
 }
 
 func TestNoResourceChangesMessage(t *testing.T) {
+	t.Parallel()
 	baseline := []ResourceEntry{
 		{URL: "/static/js/main.js", Type: "script", TransferSize: 100000, Duration: 150},
 	}
@@ -696,6 +716,7 @@ func TestNoResourceChangesMessage(t *testing.T) {
 }
 
 func TestResizeThresholdTenPercentOrTenKB(t *testing.T) {
+	t.Parallel()
 	// Small file: 10KB -> 10.5KB (5% increase, 512B delta)
 	// min(10% * 10KB, 10KB) = min(1KB, 10KB) = 1KB. Delta 512B < 1KB. Not flagged.
 	baseline := []ResourceEntry{
@@ -724,6 +745,7 @@ func TestResizeThresholdTenPercentOrTenKB(t *testing.T) {
 }
 
 func TestRetimedThreshold100ms(t *testing.T) {
+	t.Parallel()
 	// 90ms delta: not flagged
 	baseline := []ResourceEntry{
 		{URL: "/api/data", Type: "fetch", TransferSize: 5000, Duration: 100},
@@ -747,6 +769,7 @@ func TestRetimedThreshold100ms(t *testing.T) {
 }
 
 func TestTopResourcesBySize(t *testing.T) {
+	t.Parallel()
 	resources := make([]ResourceEntry, 60)
 	for i := 0; i < 60; i++ {
 		resources[i] = ResourceEntry{
@@ -772,6 +795,7 @@ func TestTopResourcesBySize(t *testing.T) {
 }
 
 func TestSmallResourcesAggregated(t *testing.T) {
+	t.Parallel()
 	resources := []ResourceEntry{
 		{URL: "/big.js", Type: "script", TransferSize: 100000, Duration: 200},
 		{URL: "/tiny1.js", Type: "script", TransferSize: 500, Duration: 10},
@@ -799,6 +823,7 @@ func TestSmallResourcesAggregated(t *testing.T) {
 }
 
 func TestDynamicAPIPathsGrouped(t *testing.T) {
+	t.Parallel()
 	baseline := []ResourceEntry{
 		{URL: "/api/user/123", Type: "fetch", TransferSize: 2000, Duration: 50},
 	}
@@ -817,6 +842,7 @@ func TestDynamicAPIPathsGrouped(t *testing.T) {
 }
 
 func TestGetCausalDiffExplicitURL(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	fcp := 200.0
@@ -863,6 +889,7 @@ func TestGetCausalDiffExplicitURL(t *testing.T) {
 }
 
 func TestGetCausalDiffTimingDelta(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	fcp := 200.0
@@ -910,6 +937,7 @@ func TestGetCausalDiffTimingDelta(t *testing.T) {
 }
 
 func TestResourceFingerprintStoredWithBaseline(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	snapshot := PerformanceSnapshot{
@@ -941,6 +969,7 @@ func TestResourceFingerprintStoredWithBaseline(t *testing.T) {
 }
 
 func TestResourceFingerprintMovingAverage(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	snapshot1 := PerformanceSnapshot{
@@ -996,6 +1025,7 @@ func TestResourceFingerprintMovingAverage(t *testing.T) {
 }
 
 func TestPayloadIncreasePercentInCause(t *testing.T) {
+	t.Parallel()
 	diff := ResourceDiff{
 		Added: []AddedResource{
 			{URL: "/new.js", Type: "script", SizeBytes: 350000},
@@ -1011,6 +1041,7 @@ func TestPayloadIncreasePercentInCause(t *testing.T) {
 }
 
 func TestGetCausalDiffMCPTool(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	fcp := 200.0
@@ -1082,6 +1113,7 @@ func TestGetCausalDiffMCPTool(t *testing.T) {
 }
 
 func TestGetCausalDiffUsesLatestSnapshotWhenNoURL(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	fcp := 200.0
@@ -1121,6 +1153,7 @@ func TestGetCausalDiffUsesLatestSnapshotWhenNoURL(t *testing.T) {
 // ============================================
 
 func TestGetWebVitalsNoSnapshot(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	result := capture.GetWebVitals()
 
@@ -1142,6 +1175,7 @@ func TestGetWebVitalsNoSnapshot(t *testing.T) {
 }
 
 func TestGetWebVitalsWithSnapshot(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	fcp := 1200.0
@@ -1208,6 +1242,7 @@ func TestGetWebVitalsWithSnapshot(t *testing.T) {
 }
 
 func TestGetWebVitalsAssessmentThresholds(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		fcp       float64
@@ -1287,6 +1322,7 @@ func TestGetWebVitalsAssessmentThresholds(t *testing.T) {
 }
 
 func TestGetWebVitalsMCPTool(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	fcp := 1500.0
@@ -1370,6 +1406,7 @@ func TestGetWebVitalsMCPTool(t *testing.T) {
 }
 
 func TestGetWebVitalsToolRegistered(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	server := &Server{}
 	handler := &ToolHandler{
@@ -1391,6 +1428,7 @@ func TestGetWebVitalsToolRegistered(t *testing.T) {
 }
 
 func TestGetWebVitalsToolDispatch(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	server := &Server{}
 	handler := &ToolHandler{
@@ -1415,6 +1453,7 @@ func TestGetWebVitalsToolDispatch(t *testing.T) {
 }
 
 func TestPerformanceTimingINPField(t *testing.T) {
+	t.Parallel()
 	inp := 175.0
 	timing := PerformanceTiming{
 		DomContentLoaded:       600,
@@ -1443,6 +1482,7 @@ func TestPerformanceTimingINPField(t *testing.T) {
 }
 
 func TestPerformanceTimingINPOmittedWhenNil(t *testing.T) {
+	t.Parallel()
 	timing := PerformanceTiming{
 		DomContentLoaded: 600,
 		Load:             1500,
@@ -1482,6 +1522,7 @@ func stringContains(s, substr string) bool {
 // --- FormatPerformanceReport (line 406, 0% covered) ---
 
 func TestFormatPerformanceReportNoBaseline(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	fcp := 250.0
 	lcp := 800.0
@@ -1567,6 +1608,7 @@ func TestFormatPerformanceReportNoBaseline(t *testing.T) {
 }
 
 func TestFormatPerformanceReportWithBaselineNoRegressions(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	snapshot := PerformanceSnapshot{
@@ -1619,6 +1661,7 @@ func TestFormatPerformanceReportWithBaselineNoRegressions(t *testing.T) {
 }
 
 func TestFormatPerformanceReportWithRegressions(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	snapshot := PerformanceSnapshot{
@@ -1671,6 +1714,7 @@ func TestFormatPerformanceReportWithRegressions(t *testing.T) {
 }
 
 func TestFormatPerformanceReportWithSlowestRequests(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	snapshot := PerformanceSnapshot{
@@ -1708,6 +1752,7 @@ func TestFormatPerformanceReportWithSlowestRequests(t *testing.T) {
 }
 
 func TestFormatPerformanceReportNilFCPLCP(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	snapshot := PerformanceSnapshot{
@@ -1744,6 +1789,7 @@ func TestFormatPerformanceReportNilFCPLCP(t *testing.T) {
 // --- DetectRegressions: load regression ---
 
 func TestDetectRegressionsLoadTime(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	baseline := PerformanceBaseline{
@@ -1791,6 +1837,7 @@ func TestDetectRegressionsLoadTime(t *testing.T) {
 }
 
 func TestDetectRegressionsLoadNoFalsePositive(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Change is >50% but <200ms absolute
@@ -1816,6 +1863,7 @@ func TestDetectRegressionsLoadNoFalsePositive(t *testing.T) {
 // --- DetectRegressions: request count ---
 
 func TestDetectRegressionsRequestCount(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	baseline := PerformanceBaseline{
@@ -1855,6 +1903,7 @@ func TestDetectRegressionsRequestCount(t *testing.T) {
 }
 
 func TestDetectRegressionsRequestCountNoFalsePositive(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// >50% but only +3 (below the >5 threshold)
@@ -1880,6 +1929,7 @@ func TestDetectRegressionsRequestCountNoFalsePositive(t *testing.T) {
 // --- DetectRegressions: transfer size ---
 
 func TestDetectRegressionsTransferSize(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	baseline := PerformanceBaseline{
@@ -1916,6 +1966,7 @@ func TestDetectRegressionsTransferSize(t *testing.T) {
 }
 
 func TestDetectRegressionsTransferSizeNoFalsePositive(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// >100% increase but <100KB absolute (50KB -> 120KB = +70KB)
@@ -1941,6 +1992,7 @@ func TestDetectRegressionsTransferSizeNoFalsePositive(t *testing.T) {
 // --- DetectRegressions: long tasks from 0 ---
 
 func TestDetectRegressionsLongTasksFromZero(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	baseline := PerformanceBaseline{
@@ -1980,6 +2032,7 @@ func TestDetectRegressionsLongTasksFromZero(t *testing.T) {
 // --- DetectRegressions: long tasks >100% increase ---
 
 func TestDetectRegressionsLongTasksOver100Percent(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	baseline := PerformanceBaseline{
@@ -2014,6 +2067,7 @@ func TestDetectRegressionsLongTasksOver100Percent(t *testing.T) {
 }
 
 func TestDetectRegressionsLongTasksNoFalsePositive(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// 2 -> 3 is only 50% increase
@@ -2039,6 +2093,7 @@ func TestDetectRegressionsLongTasksNoFalsePositive(t *testing.T) {
 // --- DetectRegressions: TBT ---
 
 func TestDetectRegressionsTBT(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	baseline := PerformanceBaseline{
@@ -2080,6 +2135,7 @@ func TestDetectRegressionsTBT(t *testing.T) {
 }
 
 func TestDetectRegressionsTBTFromZero(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	baseline := PerformanceBaseline{
@@ -2112,6 +2168,7 @@ func TestDetectRegressionsTBTFromZero(t *testing.T) {
 }
 
 func TestDetectRegressionsTBTNoFalsePositive(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	baseline := PerformanceBaseline{
@@ -2136,6 +2193,7 @@ func TestDetectRegressionsTBTNoFalsePositive(t *testing.T) {
 // --- DetectRegressions: CLS ---
 
 func TestDetectRegressionsCLS(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	baselineCLS := 0.02
@@ -2178,6 +2236,7 @@ func TestDetectRegressionsCLS(t *testing.T) {
 }
 
 func TestDetectRegressionsCLSFromZero(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	baselineCLS := 0.0
@@ -2215,6 +2274,7 @@ func TestDetectRegressionsCLSFromZero(t *testing.T) {
 }
 
 func TestDetectRegressionsCLSNoFalsePositive(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	baselineCLS := 0.05
@@ -2244,6 +2304,7 @@ func TestDetectRegressionsCLSNoFalsePositive(t *testing.T) {
 // --- toolCheckPerformance (line 555) ---
 
 func TestToolCheckPerformanceNoSnapshot(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	server := &Server{}
 	mcp := setupToolHandler(t, server, capture)
@@ -2274,6 +2335,7 @@ func TestToolCheckPerformanceNoSnapshot(t *testing.T) {
 }
 
 func TestToolCheckPerformanceWithURLFilter(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.AddPerformanceSnapshot(PerformanceSnapshot{
 		URL:       "/page-a",
@@ -2320,6 +2382,7 @@ func TestToolCheckPerformanceWithURLFilter(t *testing.T) {
 }
 
 func TestToolCheckPerformanceWithBaseline(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	// Add two snapshots to build baseline
 	capture.AddPerformanceSnapshot(PerformanceSnapshot{
@@ -2366,6 +2429,7 @@ func TestToolCheckPerformanceWithBaseline(t *testing.T) {
 // --- formatBytes: MB branch ---
 
 func TestFormatBytesMB(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    int64
 		expected string
@@ -2386,6 +2450,7 @@ func TestFormatBytesMB(t *testing.T) {
 }
 
 func TestFormatBytesAllBranches(t *testing.T) {
+	t.Parallel()
 	// Bytes branch
 	if got := formatBytes(500); got != "500B" {
 		t.Errorf("formatBytes(500) = %q, want 500B", got)
@@ -2417,6 +2482,7 @@ func TestFormatBytesAllBranches(t *testing.T) {
 // --- GetLatestPerformanceSnapshot: non-empty case ---
 
 func TestGetLatestPerformanceSnapshotNonEmpty(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	capture.AddPerformanceSnapshot(PerformanceSnapshot{
@@ -2447,6 +2513,7 @@ func TestGetLatestPerformanceSnapshotNonEmpty(t *testing.T) {
 }
 
 func TestGetLatestPerformanceSnapshotUpdatesOnReAdd(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	capture.AddPerformanceSnapshot(PerformanceSnapshot{
@@ -2484,6 +2551,7 @@ func TestGetLatestPerformanceSnapshotUpdatesOnReAdd(t *testing.T) {
 // --- AddPerformanceSnapshot: LRU eviction path ---
 
 func TestPerfSnapshotLRUEviction(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Fill up to maxPerfSnapshots (20)
@@ -2536,6 +2604,7 @@ func TestPerfSnapshotLRUEviction(t *testing.T) {
 // --- indexOfDoubleslash: no match case ---
 
 func TestIndexOfDoubleslashNoMatch(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int
@@ -2556,6 +2625,7 @@ func TestIndexOfDoubleslashNoMatch(t *testing.T) {
 }
 
 func TestIndexOfDoubleslashMatch(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int
@@ -2577,6 +2647,7 @@ func TestIndexOfDoubleslashMatch(t *testing.T) {
 // --- updateBaselineResources: weighted average >=5 samples ---
 
 func TestUpdateBaselineResourcesWeightedAverage(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Add 5 snapshots to reach the weighted-average branch (n >= 5)
@@ -2625,6 +2696,7 @@ func TestUpdateBaselineResourcesWeightedAverage(t *testing.T) {
 // --- updateBaselineResources: re-filter path ---
 
 func TestUpdateBaselineResourcesRefilterWhenTooLarge(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Create initial snapshot with maxResourceFingerprints resources
@@ -2680,6 +2752,7 @@ func TestUpdateBaselineResourcesRefilterWhenTooLarge(t *testing.T) {
 // --- computeResourceDiff: additional branch coverage ---
 
 func TestComputeResourceDiffFetchWithDynamicPath(t *testing.T) {
+	t.Parallel()
 	// Tests the normalizeKey branch for fetch/xmlhttprequest type resources
 	baseline := []ResourceEntry{
 		{URL: "https://api.example.com/api/user/123", Type: "fetch", TransferSize: 5000, Duration: 80},
@@ -2700,6 +2773,7 @@ func TestComputeResourceDiffFetchWithDynamicPath(t *testing.T) {
 }
 
 func TestComputeResourceDiffXMLHttpRequestDynamicPath(t *testing.T) {
+	t.Parallel()
 	baseline := []ResourceEntry{
 		{URL: "https://api.example.com/api/orders/abc", Type: "xmlhttprequest", TransferSize: 3000, Duration: 50},
 	}
@@ -2719,6 +2793,7 @@ func TestComputeResourceDiffXMLHttpRequestDynamicPath(t *testing.T) {
 }
 
 func TestComputeResourceDiffResizeNegative(t *testing.T) {
+	t.Parallel()
 	// Resource got smaller (negative delta)
 	baseline := []ResourceEntry{
 		{URL: "/static/js/main.js", Type: "script", TransferSize: 200000, Duration: 200},
@@ -2738,6 +2813,7 @@ func TestComputeResourceDiffResizeNegative(t *testing.T) {
 }
 
 func TestComputeResourceDiffRetimeNegative(t *testing.T) {
+	t.Parallel()
 	// Resource got faster (negative timing delta)
 	baseline := []ResourceEntry{
 		{URL: "/api/data", Type: "fetch", TransferSize: 5000, Duration: 400},
@@ -2757,6 +2833,7 @@ func TestComputeResourceDiffRetimeNegative(t *testing.T) {
 }
 
 func TestComputeResourceDiffNoChangeWithinThreshold(t *testing.T) {
+	t.Parallel()
 	// Size change is below 10% and below 10KB -> no resize
 	baseline := []ResourceEntry{
 		{URL: "/static/js/main.js", Type: "script", TransferSize: 100000, Duration: 200},
@@ -2776,6 +2853,7 @@ func TestComputeResourceDiffNoChangeWithinThreshold(t *testing.T) {
 }
 
 func TestComputeResourceDiffFetchWithoutDoubleslash(t *testing.T) {
+	t.Parallel()
 	// Test fetch resource where URL has no "://" — uses path directly
 	baseline := []ResourceEntry{
 		{URL: "/api/user/123", Type: "fetch", TransferSize: 2000, Duration: 40},
@@ -2800,6 +2878,7 @@ func TestComputeResourceDiffFetchWithoutDoubleslash(t *testing.T) {
 // ============================================
 
 func TestWeightedOptionalFloatZeroBaseline(t *testing.T) {
+	t.Parallel()
 	baseline := 0.0
 	snapshot := 100.0
 
@@ -2816,6 +2895,7 @@ func TestWeightedOptionalFloatZeroBaseline(t *testing.T) {
 }
 
 func TestWeightedOptionalFloatBothZero(t *testing.T) {
+	t.Parallel()
 	baseline := 0.0
 	snapshot := 0.0
 
@@ -2830,6 +2910,7 @@ func TestWeightedOptionalFloatBothZero(t *testing.T) {
 }
 
 func TestWeightedOptionalFloatNonZeroComputation(t *testing.T) {
+	t.Parallel()
 	baseline := 500.0
 	snapshot := 600.0
 
@@ -2846,6 +2927,7 @@ func TestWeightedOptionalFloatNonZeroComputation(t *testing.T) {
 }
 
 func TestWeightedOptionalFloatNilSnapshot(t *testing.T) {
+	t.Parallel()
 	baseline := 500.0
 
 	result := weightedOptionalFloat(&baseline, nil, 0.8, 0.2)
@@ -2859,6 +2941,7 @@ func TestWeightedOptionalFloatNilSnapshot(t *testing.T) {
 }
 
 func TestWeightedOptionalFloatNilBaseline(t *testing.T) {
+	t.Parallel()
 	snapshot := 300.0
 
 	result := weightedOptionalFloat(nil, &snapshot, 0.8, 0.2)
@@ -2876,6 +2959,7 @@ func TestWeightedOptionalFloatNilBaseline(t *testing.T) {
 // ============================================
 
 func TestGetCausalDiffWithAddedScripts(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Directly set the baseline with only one script resource
@@ -2935,6 +3019,7 @@ func TestGetCausalDiffWithAddedScripts(t *testing.T) {
 }
 
 func TestGetCausalDiffWithRemovedScripts(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Directly set baseline with two scripts
@@ -2985,6 +3070,7 @@ func TestGetCausalDiffWithRemovedScripts(t *testing.T) {
 }
 
 func TestGetCausalDiffWithSizeChanges(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Directly set baseline with original size
@@ -3042,6 +3128,7 @@ func TestGetCausalDiffWithSizeChanges(t *testing.T) {
 // ============================================
 
 func TestUpdateBaselineResourcesFontType(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add a snapshot with font resources
@@ -3123,6 +3210,7 @@ func TestUpdateBaselineResourcesFontType(t *testing.T) {
 // ============================================
 
 func TestNormalizeDynamicAPIPathWithUUID(t *testing.T) {
+	t.Parallel()
 	// Path with UUID segment (3+ segments gets wildcard after 2nd)
 	result := normalizeDynamicAPIPath("/api/users/550e8400-e29b-41d4-a716-446655440000")
 
@@ -3132,6 +3220,7 @@ func TestNormalizeDynamicAPIPathWithUUID(t *testing.T) {
 }
 
 func TestNormalizeDynamicAPIPathWithNumericID(t *testing.T) {
+	t.Parallel()
 	result := normalizeDynamicAPIPath("/api/products/12345")
 
 	if result != "/api/products/*" {
@@ -3140,6 +3229,7 @@ func TestNormalizeDynamicAPIPathWithNumericID(t *testing.T) {
 }
 
 func TestNormalizeDynamicAPIPathShortPath(t *testing.T) {
+	t.Parallel()
 	// Paths with fewer than 3 slashes should be kept as-is
 	result := normalizeDynamicAPIPath("/api/health")
 
@@ -3149,6 +3239,7 @@ func TestNormalizeDynamicAPIPathShortPath(t *testing.T) {
 }
 
 func TestNormalizeDynamicAPIPathDeepNesting(t *testing.T) {
+	t.Parallel()
 	result := normalizeDynamicAPIPath("/api/v2/users/123/posts/456")
 
 	if result != "/api/v2/*" {
@@ -3157,6 +3248,7 @@ func TestNormalizeDynamicAPIPathDeepNesting(t *testing.T) {
 }
 
 func TestNormalizeDynamicAPIPathEmpty(t *testing.T) {
+	t.Parallel()
 	result := normalizeDynamicAPIPath("")
 
 	if result != "" {
@@ -3165,6 +3257,7 @@ func TestNormalizeDynamicAPIPathEmpty(t *testing.T) {
 }
 
 func TestNormalizeDynamicAPIPathRootOnly(t *testing.T) {
+	t.Parallel()
 	result := normalizeDynamicAPIPath("/")
 
 	if result != "/" {
@@ -3179,6 +3272,7 @@ func TestNormalizeDynamicAPIPathRootOnly(t *testing.T) {
 // ============================================
 
 func TestGetCausalDiffMultipleRenderBlockingResources(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Set baseline with no scripts
@@ -3228,6 +3322,7 @@ func TestGetCausalDiffMultipleRenderBlockingResources(t *testing.T) {
 // ============================================
 
 func TestGetCausalDiffRetimedResources(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Baseline with a resource at specific duration
@@ -3269,6 +3364,7 @@ func TestGetCausalDiffRetimedResources(t *testing.T) {
 // ============================================
 
 func TestGetCausalDiffPayloadIncrease(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Set up baseline with smaller resources
@@ -3311,6 +3407,7 @@ func TestGetCausalDiffPayloadIncrease(t *testing.T) {
 // ============================================
 
 func TestGetCausalDiffNoResourcesEither(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Set baseline with no resources
@@ -3347,6 +3444,7 @@ func TestGetCausalDiffNoResourcesEither(t *testing.T) {
 // ============================================
 
 func TestUpdateBaselineResourcesFirstSample(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Create a baseline with no resources, then update with resources
@@ -3382,6 +3480,7 @@ func TestUpdateBaselineResourcesFirstSample(t *testing.T) {
 // ============================================
 
 func TestUpdateBaselineResourcesNewResourceAdded(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	capture.mu.Lock()
@@ -3424,6 +3523,7 @@ func TestUpdateBaselineResourcesNewResourceAdded(t *testing.T) {
 // ============================================
 
 func TestGetCausalDiffRecommendations(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	capture.mu.Lock()
@@ -3475,6 +3575,7 @@ func TestGetCausalDiffRecommendations(t *testing.T) {
 // ============================================
 
 func TestGetCausalDiffRecommendationsForResized(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	capture.mu.Lock()
@@ -3521,6 +3622,7 @@ func TestGetCausalDiffRecommendationsForResized(t *testing.T) {
 // ============================================
 
 func TestGetCausalDiffRecommendationsForRetimed(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	capture.mu.Lock()
@@ -3566,6 +3668,7 @@ func TestGetCausalDiffRecommendationsForRetimed(t *testing.T) {
 // ============================================
 
 func TestGetCausalDiffNoBaseline(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Set a snapshot but no baseline
@@ -3591,6 +3694,7 @@ func TestGetCausalDiffNoBaseline(t *testing.T) {
 // ============================================
 
 func TestGetCausalDiffNoSnapshot(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Set baseline but no snapshot
@@ -3615,6 +3719,7 @@ func TestGetCausalDiffNoSnapshot(t *testing.T) {
 // ============================================
 
 func TestUpdateBaselineResourcesEmptySnapshot(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	capture.mu.Lock()
@@ -3641,6 +3746,7 @@ func TestUpdateBaselineResourcesEmptySnapshot(t *testing.T) {
 // ============================================
 
 func TestHandlePerformanceSnapshots_SingleSnapshot(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	body := `{"snapshots":[{"url":"/single","timestamp":"2024-01-15T10:00:00Z","timing":{"domContentLoaded":600,"load":1200,"timeToFirstByte":80,"domInteractive":500},"network":{"requestCount":5,"transferSize":30000,"decodedSize":60000,"byType":{}},"longTasks":{"count":0,"totalBlockingTime":0,"longest":0}}]}`
@@ -3663,6 +3769,7 @@ func TestHandlePerformanceSnapshots_SingleSnapshot(t *testing.T) {
 }
 
 func TestHandlePerformanceSnapshots_MultipleBatched(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	body := `{"snapshots":[` +
@@ -3698,6 +3805,7 @@ func TestHandlePerformanceSnapshots_MultipleBatched(t *testing.T) {
 }
 
 func TestHandlePerformanceSnapshots_EmptyArray(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	body := `{"snapshots":[]}`
@@ -3720,6 +3828,7 @@ func TestHandlePerformanceSnapshots_EmptyArray(t *testing.T) {
 }
 
 func TestHandlePerformanceSnapshots_BadJSON(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	req := httptest.NewRequest("POST", "/performance-snapshots", strings.NewReader("not json"))
@@ -3732,6 +3841,7 @@ func TestHandlePerformanceSnapshots_BadJSON(t *testing.T) {
 }
 
 func TestHandlePerformanceSnapshots_GET(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	req := httptest.NewRequest("GET", "/performance-snapshots", nil)
@@ -3744,6 +3854,7 @@ func TestHandlePerformanceSnapshots_GET(t *testing.T) {
 }
 
 func TestOldPerformanceSnapshotEndpoint_Gone(t *testing.T) {
+	t.Parallel()
 	// This test verifies the old singular endpoint is no longer registered.
 	// We set up routes the same way main.go does and confirm /performance-snapshot returns 404.
 	capture := NewCapture()
@@ -3764,6 +3875,7 @@ func TestOldPerformanceSnapshotEndpoint_Gone(t *testing.T) {
 }
 
 func TestHandlePerformanceSnapshots_DataRetrievable(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	body := `{"snapshots":[` +

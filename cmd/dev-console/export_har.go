@@ -39,7 +39,7 @@ type HARCreator struct {
 
 // HAREntry represents a single HTTP request/response pair
 type HAREntry struct {
-	StartedDateTime string      `json:"startedDateTime"`
+	StartedDateTime string      `json:"startedDateTime"` // camelCase: HAR 1.2 spec standard
 	Time            int         `json:"time"`
 	Request         HARRequest  `json:"request"`
 	Response        HARResponse `json:"response"`
@@ -52,38 +52,38 @@ type HAREntry struct {
 type HARRequest struct {
 	Method      string       `json:"method"`
 	URL         string       `json:"url"`
-	HTTPVersion string       `json:"httpVersion"`
+	HTTPVersion string       `json:"httpVersion"`  // camelCase: HAR 1.2 spec standard
 	Headers     []HARHeader  `json:"headers"`
-	QueryString []HARQuery   `json:"queryString"`
-	PostData    *HARPostData `json:"postData,omitempty"`
-	HeadersSize int          `json:"headersSize"`
-	BodySize    int          `json:"bodySize"`
+	QueryString []HARQuery   `json:"queryString"`  // camelCase: HAR 1.2 spec standard
+	PostData    *HARPostData `json:"postData,omitempty"` // camelCase: HAR 1.2 spec standard
+	HeadersSize int          `json:"headersSize"`  // camelCase: HAR 1.2 spec standard
+	BodySize    int          `json:"bodySize"`     // camelCase: HAR 1.2 spec standard
 	Comment     string       `json:"comment,omitempty"`
 }
 
 // HARResponse represents the HTTP response
 type HARResponse struct {
 	Status      int         `json:"status"`
-	StatusText  string      `json:"statusText"`
-	HTTPVersion string      `json:"httpVersion"`
+	StatusText  string      `json:"statusText"`  // camelCase: HAR 1.2 spec standard
+	HTTPVersion string      `json:"httpVersion"` // camelCase: HAR 1.2 spec standard
 	Headers     []HARHeader `json:"headers"`
 	Content     HARContent  `json:"content"`
-	RedirectURL string      `json:"redirectURL"`
-	HeadersSize int         `json:"headersSize"`
-	BodySize    int         `json:"bodySize"`
+	RedirectURL string      `json:"redirectURL"` // camelCase: HAR 1.2 spec standard
+	HeadersSize int         `json:"headersSize"` // camelCase: HAR 1.2 spec standard
+	BodySize    int         `json:"bodySize"`    // camelCase: HAR 1.2 spec standard
 	Comment     string      `json:"comment,omitempty"`
 }
 
 // HARContent represents the response body content
 type HARContent struct {
 	Size     int    `json:"size"`
-	MimeType string `json:"mimeType"`
+	MimeType string `json:"mimeType"` // camelCase: HAR 1.2 spec standard
 	Text     string `json:"text,omitempty"`
 }
 
 // HARPostData represents the request body
 type HARPostData struct {
-	MimeType string `json:"mimeType"`
+	MimeType string `json:"mimeType"` // camelCase: HAR 1.2 spec standard
 	Text     string `json:"text"`
 }
 

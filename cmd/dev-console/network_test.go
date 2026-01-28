@@ -11,6 +11,7 @@ import (
 )
 
 func TestV4NetworkBodiesBuffer(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	bodies := []NetworkBody{
@@ -34,6 +35,7 @@ func TestV4NetworkBodiesBuffer(t *testing.T) {
 }
 
 func TestV4NetworkBodiesBufferRotation(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add more than max (100) entries
@@ -50,6 +52,7 @@ func TestV4NetworkBodiesBufferRotation(t *testing.T) {
 }
 
 func TestV4NetworkBodiesFilterByURL(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddNetworkBodies([]NetworkBody{
@@ -66,6 +69,7 @@ func TestV4NetworkBodiesFilterByURL(t *testing.T) {
 }
 
 func TestV4NetworkBodiesFilterByMethod(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddNetworkBodies([]NetworkBody{
@@ -82,6 +86,7 @@ func TestV4NetworkBodiesFilterByMethod(t *testing.T) {
 }
 
 func TestV4NetworkBodiesFilterByStatus(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddNetworkBodies([]NetworkBody{
@@ -107,6 +112,7 @@ func TestV4NetworkBodiesFilterByStatus(t *testing.T) {
 }
 
 func TestV4NetworkBodiesFilterWithLimit(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	for i := 0; i < 50; i++ {
@@ -123,6 +129,7 @@ func TestV4NetworkBodiesFilterWithLimit(t *testing.T) {
 }
 
 func TestV4NetworkBodiesDefaultLimit(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	for i := 0; i < 50; i++ {
@@ -140,6 +147,7 @@ func TestV4NetworkBodiesDefaultLimit(t *testing.T) {
 }
 
 func TestV4NetworkBodiesNewestFirst(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	capture.AddNetworkBodies([]NetworkBody{
@@ -155,6 +163,7 @@ func TestV4NetworkBodiesNewestFirst(t *testing.T) {
 }
 
 func TestV4NetworkBodiesTruncation(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Request body > 8KB should be truncated
@@ -175,6 +184,7 @@ func TestV4NetworkBodiesTruncation(t *testing.T) {
 }
 
 func TestV4NetworkBodiesResponseTruncation(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Response body > 16KB should be truncated
@@ -195,6 +205,7 @@ func TestV4NetworkBodiesResponseTruncation(t *testing.T) {
 }
 
 func TestV4PostNetworkBodiesEndpoint(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	body := `{"bodies":[{"ts":"2024-01-15T10:30:00.000Z","method":"GET","url":"/api/test","status":200,"responseBody":"{}","contentType":"application/json"}]}`
@@ -214,6 +225,7 @@ func TestV4PostNetworkBodiesEndpoint(t *testing.T) {
 }
 
 func TestV4PostNetworkBodiesInvalidJSON(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewBufferString("garbage"))
@@ -228,6 +240,7 @@ func TestV4PostNetworkBodiesInvalidJSON(t *testing.T) {
 }
 
 func TestMCPGetNetworkBodies(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -269,6 +282,7 @@ func TestMCPGetNetworkBodies(t *testing.T) {
 }
 
 func TestMCPGetNetworkBodiesWithFilter(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -303,6 +317,7 @@ func TestMCPGetNetworkBodiesWithFilter(t *testing.T) {
 }
 
 func TestMCPGetNetworkBodiesEmpty(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -342,6 +357,7 @@ func TestMCPGetNetworkBodiesEmpty(t *testing.T) {
 
 // Test: evictNBForMemory removes bodies one at a time until memory is within limit.
 func TestV4NetworkBodiesEvictForMemory(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// nbBufferMemoryLimit = 8MB = 8,388,608 bytes.
@@ -362,6 +378,7 @@ func TestV4NetworkBodiesEvictForMemory(t *testing.T) {
 		})
 		capture.networkAddedAt = append(capture.networkAddedAt, now)
 	}
+	recalcMemoryTotals(capture)
 	capture.mu.Unlock()
 
 	// Verify setup: NB memory exceeds limit
@@ -392,6 +409,7 @@ func TestV4NetworkBodiesEvictForMemory(t *testing.T) {
 
 // Test: evictNBForMemory with bodies that are just at the limit (no eviction needed).
 func TestV4NetworkBodiesEvictForMemory_AtLimit(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Each body: 1000 + 1000 + 300 = 2300 bytes.
@@ -423,6 +441,7 @@ func TestV4NetworkBodiesEvictForMemory_AtLimit(t *testing.T) {
 
 // Test: HandleNetworkBodies rejects when rate limited (initial check).
 func TestV4HandleNetworkBodies_RateLimited(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Force circuit breaker open to simulate rate limiting
@@ -455,6 +474,7 @@ func TestV4HandleNetworkBodies_RateLimited(t *testing.T) {
 
 // Test: HandleNetworkBodies rejects when request body is too large.
 func TestV4HandleNetworkBodies_BodyTooLarge(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// maxPostBodySize = 5MB. Create a body larger than that.
@@ -472,6 +492,7 @@ func TestV4HandleNetworkBodies_BodyTooLarge(t *testing.T) {
 
 // Test: HandleNetworkBodies rejects malformed JSON with 400.
 func TestV4HandleNetworkBodies_BadJSON(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	req := httptest.NewRequest("POST", "/network-bodies", bytes.NewBufferString("{invalid json"))
@@ -487,6 +508,7 @@ func TestV4HandleNetworkBodies_BadJSON(t *testing.T) {
 
 // Test: HandleNetworkBodies rejects after recording events pushes over rate limit.
 func TestV4HandleNetworkBodies_RateLimitAfterRecording(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Set the rate window to current time and push event count just below threshold.
@@ -522,6 +544,7 @@ func TestV4HandleNetworkBodies_RateLimitAfterRecording(t *testing.T) {
 // Test: HandleNetworkBodies succeeds when memory-exceeded flag is set but within rate.
 // Memory-exceeded means CheckRateLimit returns true (isMemoryExceeded check).
 func TestV4HandleNetworkBodies_MemoryExceeded(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Set simulated memory above hard limit to trigger memory-exceeded rejection

@@ -12,6 +12,7 @@ import (
 // ============================================
 
 func TestNoiseNewConfigHasBuiltinRules(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 	rules := nc.ListRules()
 
@@ -60,6 +61,7 @@ func TestNoiseNewConfigHasBuiltinRules(t *testing.T) {
 // ============================================
 
 func TestNoiseConsoleFromChromeExtension(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	entry := LogEntry{
@@ -89,6 +91,7 @@ func TestNoiseConsoleFromChromeExtension(t *testing.T) {
 // ============================================
 
 func TestNoiseAppErrorNotNoise(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	entry := LogEntry{
@@ -107,6 +110,7 @@ func TestNoiseAppErrorNotNoise(t *testing.T) {
 // ============================================
 
 func TestNoiseFavicon404(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	body := NetworkBody{
@@ -125,6 +129,7 @@ func TestNoiseFavicon404(t *testing.T) {
 // ============================================
 
 func TestNoiseAPI500NotNoise(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	body := NetworkBody{
@@ -143,6 +148,7 @@ func TestNoiseAPI500NotNoise(t *testing.T) {
 // ============================================
 
 func TestNoiseAnalyticsURL(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	analyticsURLs := []string{
@@ -172,6 +178,7 @@ func TestNoiseAnalyticsURL(t *testing.T) {
 // ============================================
 
 func TestNoiseCORSPreflight(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	body := NetworkBody{
@@ -202,6 +209,7 @@ func TestNoiseCORSPreflight(t *testing.T) {
 // ============================================
 
 func TestNoiseHMRMessages(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	hmrMessages := []string{
@@ -228,6 +236,7 @@ func TestNoiseHMRMessages(t *testing.T) {
 // ============================================
 
 func TestNoiseReactDevTools(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	entry := LogEntry{
@@ -246,6 +255,7 @@ func TestNoiseReactDevTools(t *testing.T) {
 // ============================================
 
 func TestNoiseAddCustomRule(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	entry := LogEntry{
@@ -283,6 +293,7 @@ func TestNoiseAddCustomRule(t *testing.T) {
 // ============================================
 
 func TestNoiseRemoveCustomRule(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	rule := NoiseRule{
@@ -336,6 +347,7 @@ func TestNoiseRemoveCustomRule(t *testing.T) {
 // ============================================
 
 func TestNoiseCannotRemoveBuiltinRules(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	err := nc.RemoveRule("builtin_chrome_extension")
@@ -362,6 +374,7 @@ func TestNoiseCannotRemoveBuiltinRules(t *testing.T) {
 // ============================================
 
 func TestNoiseMaxRulesLimit(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Get current built-in count
@@ -393,6 +406,7 @@ func TestNoiseMaxRulesLimit(t *testing.T) {
 // ============================================
 
 func TestNoiseReset(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Add custom rules
@@ -427,6 +441,7 @@ func TestNoiseReset(t *testing.T) {
 // ============================================
 
 func TestNoiseAutoDetectFrequency(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Create entries with 15 identical messages
@@ -464,6 +479,7 @@ func TestNoiseAutoDetectFrequency(t *testing.T) {
 // ============================================
 
 func TestNoiseAutoDetectNoDuplicates(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// The built-in chrome extension rule already covers this
@@ -491,6 +507,7 @@ func TestNoiseAutoDetectNoDuplicates(t *testing.T) {
 // ============================================
 
 func TestNoiseAutoDetectHighConfidenceApplied(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Create 50 identical messages (should yield high confidence: 0.7 + 50/100 = 1.2, capped at 0.99)
@@ -525,6 +542,7 @@ func TestNoiseAutoDetectHighConfidenceApplied(t *testing.T) {
 // ============================================
 
 func TestNoiseDismissDefaultsToConsole(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	nc.DismissNoise("some pattern", "", "annoying message")
@@ -553,6 +571,7 @@ func TestNoiseDismissDefaultsToConsole(t *testing.T) {
 // ============================================
 
 func TestNoiseDismissNetworkCategory(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	nc.DismissNoise("/api/health", "network", "health check noise")
@@ -573,6 +592,7 @@ func TestNoiseDismissNetworkCategory(t *testing.T) {
 // ============================================
 
 func TestNoiseStatistics(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Trigger a few matches
@@ -604,6 +624,7 @@ func TestNoiseStatistics(t *testing.T) {
 // ============================================
 
 func TestNoiseInvalidRegexNoPanic(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// This should not panic
@@ -637,6 +658,7 @@ func TestNoiseInvalidRegexNoPanic(t *testing.T) {
 // ============================================
 
 func TestNoiseConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	var wg sync.WaitGroup
@@ -696,6 +718,7 @@ func TestNoiseConcurrentAccess(t *testing.T) {
 // ============================================
 
 func TestNoiseAuthNeverFiltered(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Even if a rule matches the URL, 401/403 should never be filtered
@@ -744,6 +767,7 @@ func TestNoiseAuthNeverFiltered(t *testing.T) {
 // ============================================
 
 func TestNoiseSourceMap404(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	body := NetworkBody{
@@ -764,6 +788,7 @@ func TestNoiseSourceMap404(t *testing.T) {
 }
 
 func TestNoiseHMRNetworkURLs(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	hmrURLs := []string{
@@ -786,6 +811,7 @@ func TestNoiseHMRNetworkURLs(t *testing.T) {
 }
 
 func TestNoiseServiceWorkerMessages(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	messages := []string{
@@ -807,6 +833,7 @@ func TestNoiseServiceWorkerMessages(t *testing.T) {
 }
 
 func TestNoisePassiveEventListener(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	entry := LogEntry{
@@ -821,6 +848,7 @@ func TestNoisePassiveEventListener(t *testing.T) {
 }
 
 func TestNoiseDeprecationWarning(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	entry := LogEntry{
@@ -835,6 +863,7 @@ func TestNoiseDeprecationWarning(t *testing.T) {
 }
 
 func TestNoiseWebSocketEvent(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Add a websocket noise rule
@@ -870,6 +899,7 @@ func TestNoiseWebSocketEvent(t *testing.T) {
 }
 
 func TestNoiseAutoDetectNetworkFrequency(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Create 25 network requests to /health endpoint
@@ -898,6 +928,7 @@ func TestNoiseAutoDetectNetworkFrequency(t *testing.T) {
 }
 
 func TestNoiseAutoDetectSourceAnalysis(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Create entries from node_modules
@@ -926,6 +957,7 @@ func TestNoiseAutoDetectSourceAnalysis(t *testing.T) {
 }
 
 func TestNoiseRulePrefix(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// User rule should get "user_" prefix
@@ -955,6 +987,7 @@ func TestNoiseRulePrefix(t *testing.T) {
 }
 
 func TestNoiseMatchSpecMethodFilter(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Add rule that only matches GET requests
@@ -988,6 +1021,7 @@ func TestNoiseMatchSpecMethodFilter(t *testing.T) {
 }
 
 func TestNoiseMatchSpecStatusRange(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Add rule that only matches 4xx status on .map files
@@ -1022,6 +1056,7 @@ func TestNoiseMatchSpecStatusRange(t *testing.T) {
 }
 
 func TestNoiseMatchSpecLevelFilter(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Add rule that only matches warn-level messages
@@ -1059,6 +1094,7 @@ func TestNoiseMatchSpecLevelFilter(t *testing.T) {
 // ============================================
 
 func TestDismissNoise_WebSocketCategory(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	nc.DismissNoise("wss://example\\.com/socket", "websocket", "noisy socket")
@@ -1091,6 +1127,7 @@ func TestDismissNoise_WebSocketCategory(t *testing.T) {
 }
 
 func TestIsCoveredLocked_LevelMismatch(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Add a rule with a message regex (but the rule also has Level set).
@@ -1131,6 +1168,7 @@ func TestIsCoveredLocked_LevelMismatch(t *testing.T) {
 }
 
 func TestIsSourceCoveredLocked_RegexMatch(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Add a rule with sourceRegex matching node_modules paths
@@ -1164,6 +1202,7 @@ func TestIsSourceCoveredLocked_RegexMatch(t *testing.T) {
 }
 
 func TestIsURLCoveredLocked_RegexMatch(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// Add a rule with URLRegex matching health endpoint
@@ -1197,6 +1236,7 @@ func TestIsURLCoveredLocked_RegexMatch(t *testing.T) {
 }
 
 func TestIsURLCoveredLocked_StatusMinMaxRange(t *testing.T) {
+	t.Parallel()
 	nc := NewNoiseConfig()
 
 	// The built-in sourcemap rule has URLRegex=`\.map(\?|$)` with StatusMin=400, StatusMax=499

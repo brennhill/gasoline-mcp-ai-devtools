@@ -15,6 +15,7 @@ import (
 // ============================================
 
 func TestAPIContractValidator_LearnBasicSchema(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	body := NetworkBody{
@@ -42,6 +43,7 @@ func TestAPIContractValidator_LearnBasicSchema(t *testing.T) {
 }
 
 func TestAPIContractValidator_LearnMultipleResponses(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn 3 consistent responses to establish the shape
@@ -88,6 +90,7 @@ func TestAPIContractValidator_LearnMultipleResponses(t *testing.T) {
 }
 
 func TestAPIContractValidator_LearnMergesFields(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// First response with basic fields
@@ -125,6 +128,7 @@ func TestAPIContractValidator_LearnMergesFields(t *testing.T) {
 }
 
 func TestAPIContractValidator_LearnTracksFieldPresence(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// 'email' only appears in 1 of 3 responses
@@ -170,6 +174,7 @@ func TestAPIContractValidator_LearnTracksFieldPresence(t *testing.T) {
 // ============================================
 
 func TestNormalizeEndpoint_NumericID(t *testing.T) {
+	t.Parallel()
 	result := normalizeEndpoint("GET", "http://localhost:3000/api/users/123")
 	if result != "GET /api/users/{id}" {
 		t.Errorf("Expected 'GET /api/users/{id}', got %q", result)
@@ -177,6 +182,7 @@ func TestNormalizeEndpoint_NumericID(t *testing.T) {
 }
 
 func TestNormalizeEndpoint_UUID(t *testing.T) {
+	t.Parallel()
 	result := normalizeEndpoint("GET", "http://localhost:3000/api/items/550e8400-e29b-41d4-a716-446655440000")
 	if result != "GET /api/items/{id}" {
 		t.Errorf("Expected 'GET /api/items/{id}', got %q", result)
@@ -184,6 +190,7 @@ func TestNormalizeEndpoint_UUID(t *testing.T) {
 }
 
 func TestNormalizeEndpoint_LongHex(t *testing.T) {
+	t.Parallel()
 	result := normalizeEndpoint("GET", "http://localhost:3000/api/commits/a1b2c3d4e5f6a7b8c9d0")
 	if result != "GET /api/commits/{id}" {
 		t.Errorf("Expected 'GET /api/commits/{id}', got %q", result)
@@ -191,6 +198,7 @@ func TestNormalizeEndpoint_LongHex(t *testing.T) {
 }
 
 func TestNormalizeEndpoint_IgnoresQueryParams(t *testing.T) {
+	t.Parallel()
 	result := normalizeEndpoint("GET", "http://localhost:3000/api/users?page=1&limit=20")
 	if result != "GET /api/users" {
 		t.Errorf("Expected 'GET /api/users', got %q", result)
@@ -198,6 +206,7 @@ func TestNormalizeEndpoint_IgnoresQueryParams(t *testing.T) {
 }
 
 func TestNormalizeEndpoint_MultipleIDs(t *testing.T) {
+	t.Parallel()
 	result := normalizeEndpoint("GET", "http://localhost:3000/api/users/123/posts/456")
 	if result != "GET /api/users/{id}/posts/{id}" {
 		t.Errorf("Expected 'GET /api/users/{id}/posts/{id}', got %q", result)
@@ -209,6 +218,7 @@ func TestNormalizeEndpoint_MultipleIDs(t *testing.T) {
 // ============================================
 
 func TestAPIContractValidator_DetectShapeChange(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn 3 consistent responses with 'avatar_url'
@@ -248,6 +258,7 @@ func TestAPIContractValidator_DetectShapeChange(t *testing.T) {
 }
 
 func TestAPIContractValidator_DetectTypeChange(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn responses where 'price' is a number
@@ -293,6 +304,7 @@ func TestAPIContractValidator_DetectTypeChange(t *testing.T) {
 }
 
 func TestAPIContractValidator_DetectErrorSpike(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// 3 successful responses
@@ -334,6 +346,7 @@ func TestAPIContractValidator_DetectErrorSpike(t *testing.T) {
 }
 
 func TestAPIContractValidator_DetectNewField(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn 3 consistent responses
@@ -369,6 +382,7 @@ func TestAPIContractValidator_DetectNewField(t *testing.T) {
 }
 
 func TestAPIContractValidator_DetectNullField(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn responses where 'avatar' is a string
@@ -408,6 +422,7 @@ func TestAPIContractValidator_DetectNullField(t *testing.T) {
 // ============================================
 
 func TestAPIContractValidator_NoViolationWithConsistentResponses(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// All responses are identical
@@ -435,6 +450,7 @@ func TestAPIContractValidator_NoViolationWithConsistentResponses(t *testing.T) {
 }
 
 func TestAPIContractValidator_NoViolationBeforeMinCalls(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Only 2 observations - not enough to establish shape
@@ -475,6 +491,7 @@ func TestAPIContractValidator_NoViolationBeforeMinCalls(t *testing.T) {
 // ============================================
 
 func TestAPIContractValidator_ErrorResponsesNotUpdatingShape(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn success response
@@ -512,6 +529,7 @@ func TestAPIContractValidator_ErrorResponsesNotUpdatingShape(t *testing.T) {
 // ============================================
 
 func TestAPIContractValidator_AnalyzeAction(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn some data
@@ -548,6 +566,7 @@ func TestAPIContractValidator_AnalyzeAction(t *testing.T) {
 }
 
 func TestAPIContractValidator_ReportAction(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn some data for multiple endpoints
@@ -579,6 +598,7 @@ func TestAPIContractValidator_ReportAction(t *testing.T) {
 }
 
 func TestAPIContractValidator_ClearAction(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn some data
@@ -600,6 +620,7 @@ func TestAPIContractValidator_ClearAction(t *testing.T) {
 }
 
 func TestAPIContractValidator_URLFilter(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn multiple endpoints
@@ -632,6 +653,7 @@ func TestAPIContractValidator_URLFilter(t *testing.T) {
 }
 
 func TestAPIContractValidator_IgnoreEndpoints(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn multiple endpoints
@@ -672,6 +694,7 @@ func TestAPIContractValidator_IgnoreEndpoints(t *testing.T) {
 // ============================================
 
 func TestAPIContractValidator_NonJSONResponse(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Non-JSON response should be ignored
@@ -693,6 +716,7 @@ func TestAPIContractValidator_NonJSONResponse(t *testing.T) {
 }
 
 func TestAPIContractValidator_EmptyResponseBody(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	v.Learn(NetworkBody{
@@ -715,6 +739,7 @@ func TestAPIContractValidator_EmptyResponseBody(t *testing.T) {
 }
 
 func TestAPIContractValidator_NestedObjectShapeChange(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn with nested object
@@ -745,6 +770,7 @@ func TestAPIContractValidator_NestedObjectShapeChange(t *testing.T) {
 }
 
 func TestAPIContractValidator_ArrayShapeConsistency(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn with array of objects
@@ -766,6 +792,7 @@ func TestAPIContractValidator_ArrayShapeConsistency(t *testing.T) {
 }
 
 func TestAPIContractValidator_StatusHistoryLimit(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Add more than 20 requests (status history limit per spec)
@@ -786,6 +813,7 @@ func TestAPIContractValidator_StatusHistoryLimit(t *testing.T) {
 }
 
 func TestAPIContractValidator_EndpointLimit(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Add more than 30 unique endpoints (limit per spec)
@@ -810,6 +838,7 @@ func TestAPIContractValidator_EndpointLimit(t *testing.T) {
 // ============================================
 
 func TestAPIContractValidator_ConsistencyCalculation(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// 8 consistent responses
@@ -851,6 +880,7 @@ func TestAPIContractValidator_ConsistencyCalculation(t *testing.T) {
 // ============================================
 
 func TestAPIContractValidator_LastCalledTimestamp(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	before := time.Now()
@@ -887,6 +917,7 @@ func containsField(fields []string, target string) bool {
 // ============================================
 
 func TestAPIContractValidator_ProcessNetworkBodies(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	bodies := []NetworkBody{
@@ -911,6 +942,7 @@ func TestAPIContractValidator_ProcessNetworkBodies(t *testing.T) {
 // ============================================
 
 func TestAPIContractViolation_JSONSerialization(t *testing.T) {
+	t.Parallel()
 	violation := APIContractViolation{
 		Endpoint:      "GET /api/users/{id}",
 		Type:          "shape_change",
@@ -942,6 +974,7 @@ func TestAPIContractViolation_JSONSerialization(t *testing.T) {
 
 // Test 1: analyzedAt timestamp in RFC3339 format
 func TestAPIContractAnalyze_AnalyzedAtTimestamp(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	before := time.Now().Truncate(time.Second)
@@ -964,6 +997,7 @@ func TestAPIContractAnalyze_AnalyzedAtTimestamp(t *testing.T) {
 
 // Test 2: dataWindowStartedAt timestamp (when data collection began)
 func TestAPIContractAnalyze_DataWindowStartedAt(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// No data yet - should be empty string
@@ -994,6 +1028,7 @@ func TestAPIContractAnalyze_DataWindowStartedAt(t *testing.T) {
 
 // Test 3: appliedFilter echo
 func TestAPIContractAnalyze_AppliedFilter(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// No filter
@@ -1023,6 +1058,7 @@ func TestAPIContractAnalyze_AppliedFilter(t *testing.T) {
 
 // Test 4: summary object with counts
 func TestAPIContractAnalyze_SummaryObject(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn 3 consistent responses to establish the shape
@@ -1066,6 +1102,7 @@ func TestAPIContractAnalyze_SummaryObject(t *testing.T) {
 
 // Test 5: violationType and severity on violations
 func TestAPIContractAnalyze_ViolationTypeAndSeverity(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	for i := 0; i < 3; i++ {
@@ -1114,6 +1151,7 @@ func TestAPIContractAnalyze_ViolationTypeAndSeverity(t *testing.T) {
 
 // Test 6: affectedCallCount on violations
 func TestAPIContractAnalyze_AffectedCallCount(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	for i := 0; i < 3; i++ {
@@ -1150,6 +1188,7 @@ func TestAPIContractAnalyze_AffectedCallCount(t *testing.T) {
 
 // Test 7: firstSeenAt and lastSeenAt timestamps on violations
 func TestAPIContractAnalyze_ViolationTimestamps(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	for i := 0; i < 3; i++ {
@@ -1205,6 +1244,7 @@ func TestAPIContractAnalyze_ViolationTimestamps(t *testing.T) {
 
 // Test 8: possibleViolationTypes metadata array
 func TestAPIContractAnalyze_PossibleViolationTypes(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	result := v.Analyze(APIContractFilter{})
@@ -1233,6 +1273,7 @@ func TestAPIContractAnalyze_PossibleViolationTypes(t *testing.T) {
 
 // Test 9: hint when no violations found
 func TestAPIContractAnalyze_HintWhenNoViolations(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// Learn consistent data
@@ -1261,6 +1302,7 @@ func TestAPIContractAnalyze_HintWhenNoViolations(t *testing.T) {
 
 // Test 10: lastCalled renamed to lastCalledAt in report
 func TestAPIContractReport_LastCalledAtRename(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	v.Learn(NetworkBody{
@@ -1301,6 +1343,7 @@ func TestAPIContractReport_LastCalledAtRename(t *testing.T) {
 
 // Test 11: firstCalledAt added to report
 func TestAPIContractReport_FirstCalledAt(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	v.Learn(NetworkBody{
@@ -1328,6 +1371,7 @@ func TestAPIContractReport_FirstCalledAt(t *testing.T) {
 
 // Test 12: consistencyScore numeric 0-1
 func TestAPIContractReport_ConsistencyScore(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	// 8 consistent, then 2 inconsistent = 80% = 0.8
@@ -1367,6 +1411,7 @@ func TestAPIContractReport_ConsistencyScore(t *testing.T) {
 
 // Test 13: consistencyLevels explanation metadata in report
 func TestAPIContractReport_ConsistencyLevels(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	result := v.Report(APIContractFilter{})
@@ -1393,6 +1438,7 @@ func TestAPIContractReport_ConsistencyLevels(t *testing.T) {
 
 // Test: Report also has analyzedAt
 func TestAPIContractReport_AnalyzedAtTimestamp(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	before := time.Now().Truncate(time.Second)
@@ -1415,6 +1461,7 @@ func TestAPIContractReport_AnalyzedAtTimestamp(t *testing.T) {
 
 // Test: Report also has appliedFilter
 func TestAPIContractReport_AppliedFilter(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	result := v.Report(APIContractFilter{URLFilter: "users"})
@@ -1429,6 +1476,7 @@ func TestAPIContractReport_AppliedFilter(t *testing.T) {
 
 // Test: EndpointTracker stores FirstCalled timestamp
 func TestAPIContractValidator_FirstCalledTracking(t *testing.T) {
+	t.Parallel()
 	v := NewAPIContractValidator()
 
 	before := time.Now()
@@ -1467,6 +1515,7 @@ func TestAPIContractValidator_FirstCalledTracking(t *testing.T) {
 
 // Test: Violation severity mapping
 func TestAPIContractViolation_SeverityMapping(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		violationType    string
 		expectedSeverity string

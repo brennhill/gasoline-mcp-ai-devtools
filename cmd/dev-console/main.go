@@ -46,7 +46,7 @@ type LogEntry map[string]interface{}
 
 // JSONRPCRequest represents an incoming JSON-RPC 2.0 request
 type JSONRPCRequest struct {
-	JSONRPC  string          `json:"jsonrpc"`
+	JSONRPC  string          `json:"jsonrpc"` // camelCase: JSON-RPC 2.0 spec standard
 	ID       interface{}     `json:"id"`
 	Method   string          `json:"method"`
 	Params   json.RawMessage `json:"params,omitempty"`
@@ -55,7 +55,7 @@ type JSONRPCRequest struct {
 
 // JSONRPCResponse represents an outgoing JSON-RPC 2.0 response
 type JSONRPCResponse struct {
-	JSONRPC string          `json:"jsonrpc"`
+	JSONRPC string          `json:"jsonrpc"` // camelCase: JSON-RPC 2.0 spec standard
 	ID      interface{}     `json:"id"`
 	Result  json.RawMessage `json:"result,omitempty"`
 	Error   *JSONRPCError   `json:"error,omitempty"`
@@ -71,7 +71,7 @@ type JSONRPCError struct {
 type MCPTool struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
-	InputSchema map[string]interface{} `json:"inputSchema"`
+	InputSchema map[string]interface{} `json:"inputSchema"` // camelCase: MCP spec standard
 	Meta        map[string]interface{} `json:"_meta,omitempty"`
 }
 
@@ -827,9 +827,20 @@ func isAllowedOrigin(origin string) bool {
 		return true
 	}
 
-	// Browser extension origins
-	if strings.HasPrefix(origin, "chrome-extension://") || strings.HasPrefix(origin, "moz-extension://") {
-		return true
+	// Browser extension origins - validate specific ID if configured
+	if strings.HasPrefix(origin, "chrome-extension://") {
+		expectedID := os.Getenv("GASOLINE_EXTENSION_ID")
+		if expectedID != "" {
+			return origin == "chrome-extension://"+expectedID
+		}
+		return true // Permissive mode when not configured
+	}
+	if strings.HasPrefix(origin, "moz-extension://") {
+		expectedID := os.Getenv("GASOLINE_FIREFOX_EXTENSION_ID")
+		if expectedID != "" {
+			return origin == "moz-extension://"+expectedID
+		}
+		return true // Permissive mode when not configured
 	}
 
 	// Parse the origin URL to extract the hostname
@@ -1238,7 +1249,12 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 	capture := NewCapture()
 
 	// Start async command result cleanup goroutine (60s TTL)
-	capture.startResultCleanup()
+	stopResultCleanup := capture.startResultCleanup()
+	defer stopResultCleanup()
+
+	// Start consolidated pending query cleanup goroutine (5s interval)
+	stopQueryCleanup := capture.startQueryCleanup()
+	defer stopQueryCleanup()
 
 	// Load cached settings from disk (pilot state, etc.)
 	// See docs/plugin-server-communications.md for protocol details

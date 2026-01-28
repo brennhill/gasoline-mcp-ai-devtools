@@ -250,8 +250,10 @@ func (c *Capture) ClearAll() {
 
 	c.wsEvents = nil
 	c.wsAddedAt = nil
+	c.wsMemoryTotal = 0
 	c.networkBodies = nil
 	c.networkAddedAt = nil
+	c.nbMemoryTotal = 0
 	c.enhancedActions = nil
 	c.actionAddedAt = nil
 	c.connections = make(map[string]*connectionState)

@@ -15,6 +15,7 @@ import (
 // ============================================
 
 func TestObserveTabsInToolsList(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -85,6 +86,7 @@ func TestObserveTabsInToolsList(t *testing.T) {
 }
 
 func TestObserveTabsCreatesQuery(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -144,6 +146,7 @@ func TestObserveTabsCreatesQuery(t *testing.T) {
 // ============================================
 
 func TestPendingQueryWithTabID(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Create query targeting a specific tab
@@ -168,6 +171,7 @@ func TestPendingQueryWithTabID(t *testing.T) {
 }
 
 func TestPendingQueryWithoutTabID(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Create query without tab_id (falls back to active tab)
@@ -192,6 +196,7 @@ func TestPendingQueryWithoutTabID(t *testing.T) {
 }
 
 func TestPendingQueryTabIDInResponse(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Create query with specific tab_id
@@ -223,6 +228,7 @@ func TestPendingQueryTabIDInResponse(t *testing.T) {
 // ============================================
 
 func TestBrowserActionOpenSchema(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -293,6 +299,7 @@ func TestBrowserActionOpenSchema(t *testing.T) {
 }
 
 func TestBrowserActionOpenCreatesQuery(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -366,6 +373,7 @@ func TestBrowserActionOpenCreatesQuery(t *testing.T) {
 }
 
 func TestBrowserActionOpenRequiresURL(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -401,6 +409,7 @@ func TestBrowserActionOpenRequiresURL(t *testing.T) {
 // ============================================
 
 func TestQueryDOMWithTabID(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -436,6 +445,7 @@ func TestQueryDOMWithTabID(t *testing.T) {
 }
 
 func TestExecuteJavaScriptWithTabID(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -476,6 +486,7 @@ func TestExecuteJavaScriptWithTabID(t *testing.T) {
 }
 
 func TestHighlightElementWithTabID(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -516,6 +527,7 @@ func TestHighlightElementWithTabID(t *testing.T) {
 }
 
 func TestManageStateWithTabID(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -556,6 +568,7 @@ func TestManageStateWithTabID(t *testing.T) {
 }
 
 func TestBrowserActionNavigateWithTabID(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -600,6 +613,7 @@ func TestBrowserActionNavigateWithTabID(t *testing.T) {
 // ============================================
 
 func TestTabIDInQueryDOMSchema(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -641,6 +655,7 @@ func TestTabIDInQueryDOMSchema(t *testing.T) {
 }
 
 func TestTabIDInExecuteJavaScriptSchema(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

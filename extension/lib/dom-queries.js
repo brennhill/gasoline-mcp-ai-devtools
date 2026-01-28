@@ -132,7 +132,12 @@ export async function getPageInfo() {
 }
 
 /**
- * Load axe-core dynamically if not already present
+ * Load axe-core dynamically if not already present.
+ *
+ * IMPORTANT: axe-core MUST be loaded from the bundled local copy (lib/axe.min.js).
+ * Chrome Web Store policy prohibits loading remotely hosted code. All third-party
+ * libraries must be bundled with the extension package.
+ *
  * @returns {Promise<void>}
  */
 function loadAxeCore() {
@@ -143,12 +148,11 @@ function loadAxeCore() {
     }
 
     const script = document.createElement('script')
-    script.src =
-      typeof chrome !== 'undefined' && chrome.runtime
-        ? chrome.runtime.getURL('lib/axe.min.js')
-        : 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.8.4/axe.min.js'
+    // Always load from bundled extension copy — never from a CDN or remote URL.
+    // Chrome Web Store rejects extensions that load remotely hosted code.
+    script.src = chrome.runtime.getURL('lib/axe.min.js')
     script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Failed to load axe-core'))
+    script.onerror = () => reject(new Error('Failed to load axe-core from bundled extension copy'))
     const targetElement = document.head || document.body || document.documentElement
     if (targetElement) {
       targetElement.appendChild(script)

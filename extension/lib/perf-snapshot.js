@@ -257,7 +257,7 @@ export function sendPerformanceSnapshot() {
   const snapshot = capturePerformanceSnapshot()
   if (!snapshot) return
 
-  window.postMessage({ type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: snapshot }, '*')
+  window.postMessage({ type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: snapshot }, window.location.origin)
 }
 
 /**

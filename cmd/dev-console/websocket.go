@@ -42,12 +42,17 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 		// Add to ring buffer
 		c.wsEvents = append(c.wsEvents, events[i])
 		c.wsAddedAt = append(c.wsAddedAt, now)
+		c.wsMemoryTotal += wsEventMemory(&events[i])
 	}
 
 	// Enforce max count (respecting minimal mode)
 	capacity := c.effectiveWSCapacity()
 	if len(c.wsEvents) > capacity {
 		keep := len(c.wsEvents) - capacity
+		// Subtract memory for evicted entries
+		for j := 0; j < keep; j++ {
+			c.wsMemoryTotal -= wsEventMemory(&c.wsEvents[j])
+		}
 		newEvents := make([]WebSocketEvent, capacity)
 		copy(newEvents, c.wsEvents[keep:])
 		c.wsEvents = newEvents
@@ -63,13 +68,15 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 // evictWSForMemory removes oldest events if memory exceeds limit.
 // Calculates how many entries to drop in a single pass to avoid O(n²) re-scanning.
 func (c *Capture) evictWSForMemory() {
-	excess := c.calcWSMemory() - wsBufferMemoryLimit
+	excess := c.wsMemoryTotal - wsBufferMemoryLimit
 	if excess <= 0 {
 		return
 	}
 	drop := 0
 	for drop < len(c.wsEvents) && excess > 0 {
-		excess -= int64(len(c.wsEvents[drop].Data)) + wsEventOverhead
+		entryMem := wsEventMemory(&c.wsEvents[drop])
+		excess -= entryMem
+		c.wsMemoryTotal -= entryMem
 		drop++
 	}
 	surviving := make([]WebSocketEvent, len(c.wsEvents)-drop)

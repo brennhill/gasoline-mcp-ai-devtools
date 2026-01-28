@@ -50,7 +50,8 @@
         "lib/exceptions.js",
         "lib/websocket.js",
         "lib/dom-queries.js",
-        "lib/perf-snapshot.js"
+        "lib/perf-snapshot.js",
+        "lib/axe.min.js"
       ],
       "matches": ["<all_urls>"]
     }

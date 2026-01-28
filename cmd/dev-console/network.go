@@ -47,12 +47,17 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 		}
 		c.networkBodies = append(c.networkBodies, bodies[i])
 		c.networkAddedAt = append(c.networkAddedAt, now)
+		c.nbMemoryTotal += nbEntryMemory(&bodies[i])
 	}
 
 	// Enforce max count (respecting minimal mode)
 	capacity := c.effectiveNBCapacity()
 	if len(c.networkBodies) > capacity {
 		keep := len(c.networkBodies) - capacity
+		// Subtract memory for evicted entries
+		for j := 0; j < keep; j++ {
+			c.nbMemoryTotal -= nbEntryMemory(&c.networkBodies[j])
+		}
 		newBodies := make([]NetworkBody, capacity)
 		copy(newBodies, c.networkBodies[keep:])
 		c.networkBodies = newBodies
@@ -90,13 +95,15 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 // evictNBForMemory removes oldest bodies if memory exceeds limit.
 // Calculates how many entries to drop in a single pass to avoid O(n²) re-scanning.
 func (c *Capture) evictNBForMemory() {
-	excess := c.calcNBMemory() - nbBufferMemoryLimit
+	excess := c.nbMemoryTotal - nbBufferMemoryLimit
 	if excess <= 0 {
 		return
 	}
 	drop := 0
 	for drop < len(c.networkBodies) && excess > 0 {
-		excess -= int64(len(c.networkBodies[drop].RequestBody)+len(c.networkBodies[drop].ResponseBody)) + networkBodyOverhead
+		entryMem := nbEntryMemory(&c.networkBodies[drop])
+		excess -= entryMem
+		c.nbMemoryTotal -= entryMem
 		drop++
 	}
 	surviving := make([]NetworkBody, len(c.networkBodies)-drop)

@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -389,6 +390,81 @@ func withHint(h string) func(*StructuredError) {
 }
 
 // ============================================
+// Unknown Parameter Warning Helpers
+// ============================================
+
+// getJSONFieldNames uses reflection to extract the set of known JSON field names
+// from a struct's json tags. Fields without a json tag use their Go field name.
+// Fields tagged with json:"-" are excluded.
+func getJSONFieldNames(v interface{}) map[string]bool {
+	known := make(map[string]bool)
+	t := reflect.TypeOf(v)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return known
+	}
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tag := field.Tag.Get("json")
+		if tag == "-" {
+			continue
+		}
+		if tag == "" {
+			known[field.Name] = true
+			continue
+		}
+		// Strip options like ",omitempty"
+		name := strings.Split(tag, ",")[0]
+		if name != "" {
+			known[name] = true
+		}
+	}
+	return known
+}
+
+// unmarshalWithWarnings unmarshals JSON into a struct and returns warnings for
+// any unknown top-level fields. This helps LLMs discover misspelled parameters.
+func unmarshalWithWarnings(data json.RawMessage, v interface{}) ([]string, error) {
+	if err := json.Unmarshal(data, v); err != nil {
+		return nil, err
+	}
+	// Check for unknown fields by unmarshaling into a map
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, nil // Can't check, skip warnings
+	}
+	known := getJSONFieldNames(v)
+	var warnings []string
+	for k := range raw {
+		if !known[k] {
+			warnings = append(warnings, fmt.Sprintf("unknown parameter '%s' (ignored)", k))
+		}
+	}
+	return warnings, nil
+}
+
+// appendWarningsToResponse adds a warnings content block to an MCP response if there are any.
+func appendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCResponse {
+	if len(warnings) == 0 {
+		return resp
+	}
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+	warningText := "_warnings: " + strings.Join(warnings, "; ")
+	result.Content = append(result.Content, MCPContentBlock{
+		Type: "text",
+		Text: warningText,
+	})
+	resultJSON, _ := json.Marshal(result)
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
+// ============================================
 // MCP Handler
 // ============================================
 
@@ -658,7 +734,7 @@ func (h *ToolHandler) toolsList() []MCPTool {
 	return []MCPTool{
 		{
 			Name:        "observe",
-			Description: "START HERE. Always call observe() first to see what data is available before taking any action.\n\nCOMMON WORKFLOWS (choose your path):\n• Debugging: observe({what:'errors'}) → observe({what:'timeline'}) → find root cause\n• Performance: observe({what:'vitals'}) → observe({what:'network_bodies', status_min:500}) → slow requests\n• Testing: interact() actions → observe({what:'actions'}) → generate({format:'test'})\n• Security: observe({what:'security_audit'}) → observe({what:'third_party_audit'})\n• API Discovery: observe({what:'network_bodies'}) → observe({what:'api', format:'openapi_stub'})\n\nUse observe to READ the current browser state—this is your source of truth. Available: errors, logs, network requests, WebSocket messages, actions, performance metrics, page structure, accessibility issues, API responses, security risks, changes, timeline. \n\nRULES: Before interact(), call observe() to understand state. Before generate(), call observe() to see what data exists. \n\nExamples: observe({what:'page'})→URL & structure, observe({what:'errors'})→console errors, observe({what:'network_bodies'})→API calls, observe({what:'accessibility'})→a11y violations. Observe first, then act.\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T call interact() before observe() — you'll be acting without understanding current state\n• DON'T fetch 1000 entries without filters — use limit, url, status_min parameters to narrow results\n• DON'T assume data exists — check _meta.data_counts or call observe() first to verify\n• DON'T skip observe() after interact() — always verify your action succeeded\n\nResponse format: A summary line followed by either a markdown table (flat data) or compact JSON (nested data).\n\nMode responses (markdown = table format, json = object format):\n- errors (markdown): table with Level, Message, Source, Time columns\n- logs (markdown): table with Level, Message, Source, Time columns\n- extension_logs (markdown): table with Level, Source, Category, Message, Data, Time columns\n- network_waterfall (json): timing waterfall with durationMs, transferSizeBytes, compressionRatio\n- network_bodies (json): request/response pairs with method, status, bodies, headers\n- websocket_events (markdown): table with ID, Event, URL, Direction, Size, Time columns\n- websocket_status (json): {connections: [{id, url, state, messageCount}], closed: [...]}\n- actions (markdown): table with Type, URL, Selector, Value, Time columns\n- vitals (json): {snapshots: [{url, lcp, cls, inp, fcp, ttfb}]}\n- page (json): {url, title, readyState, html}\n- tabs (markdown): table with ID, URL, Title, Active columns\n- pilot (json): {enabled, source, extensionConnected, lastPollAgo}\n- performance: Formatted text report with FCP, LCP, CLS, INP\n- api (markdown): table with Method, Path, Observations columns\n- accessibility (markdown): table with Impact, ID, Description, Nodes columns\n- changes (json): {errors: {new, resolved}, network: {new}, actions: [...]}\n- timeline (json): {events: [{type, timestamp, ...data}]}\n- error_clusters (json): {clusters: [{signature, count, representative, rootCause}]}\n- history (json): {patterns: [...], anomalies: [...]}\n- security_audit (json): audit results object\n- third_party_audit (json): {thirdParties: [{domain, requests, risk}]}\n- security_diff (json): {added: [...], removed: [...], changed: [...]}\n- command_result (json): async command result by correlation_id\n- pending_commands (json): {pending: [...], completed: [...], failed: [...]}\n- failed_commands (json): recent failed/expired commands\n\nEmpty results return descriptive text (e.g., \"No browser errors found\").",
+			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes (what parameter): errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit (max entries), url (substring match), method, status_min, status_max, connection_id, direction, last_n, format, severity.\n\nMode responses: markdown tables for flat data (errors, logs, actions, etc.) or JSON for nested data (network_bodies, vitals, page, etc.). Check _meta.data_counts for available data.",
 			Meta: map[string]interface{}{
 				"data_counts": map[string]interface{}{
 					"errors":            errorCount,
@@ -934,14 +1010,14 @@ func (h *ToolHandler) toolsList() []MCPTool {
 		},
 		{
 			Name:        "configure",
-			Description: "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), diff_sessions (create snapshots & compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T add noise rules prematurely — call observe() first to confirm data is actually noisy\n• DON'T use store for temporary data — that's for cross-session persistence only\n• DON'T configure filters without seeing raw data first — observe(), then decide what to filter\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: Browser logs cleared confirmation text\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
+			Description: "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots & compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear browser logs), health (server health check). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: Browser logs cleared confirmation text\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
 					"action": map[string]interface{}{
 						"type":        "string",
 						"description": "Configuration action to perform",
-						"enum":        []string{"store", "load", "noise_rule", "dismiss", "clear", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming"},
+						"enum":        []string{"store", "load", "noise_rule", "dismiss", "clear", "capture", "record_event", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming"},
 					},
 					"store_action": map[string]interface{}{
 						"type":        "string",
@@ -1174,8 +1250,13 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	var params struct {
 		What string `json:"what"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil && len(args) > 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	var paramWarnings []string
+	if len(args) > 0 {
+		warnings, err := unmarshalWithWarnings(args, &params)
+		if err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+		paramWarnings = warnings
 	}
 
 	if params.What == "" {
@@ -1252,6 +1333,9 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		resp = h.appendAlertsToResponse(resp, alerts)
 	}
 
+	// Append unknown parameter warnings
+	resp = appendWarningsToResponse(resp, paramWarnings)
+
 	return resp
 }
 
@@ -1298,76 +1382,90 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 	var params struct {
 		Format string `json:"format"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil && len(args) > 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	var paramWarnings []string
+	if len(args) > 0 {
+		warnings, err := unmarshalWithWarnings(args, &params)
+		if err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+		paramWarnings = warnings
 	}
 
 	if params.Format == "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'format' is missing", "Add the 'format' parameter and call again", withParam("format"), withHint("Valid values: reproduction, test, pr_summary, sarif, har, csp, sri"))}
 	}
 
+	var resp JSONRPCResponse
 	switch params.Format {
 	case "reproduction":
-		return h.toolGetReproductionScript(req, args)
+		resp = h.toolGetReproductionScript(req, args)
 	case "test":
-		return h.toolGenerateTest(req, args)
+		resp = h.toolGenerateTest(req, args)
 	case "pr_summary":
-		return h.toolGeneratePRSummary(req, args)
+		resp = h.toolGeneratePRSummary(req, args)
 	case "sarif":
-		return h.toolExportSARIF(req, args)
+		resp = h.toolExportSARIF(req, args)
 	case "har":
-		return h.toolExportHAR(req, args)
+		resp = h.toolExportHAR(req, args)
 	case "csp":
-		return h.toolGenerateCSP(req, args)
+		resp = h.toolGenerateCSP(req, args)
 	case "sri":
-		return h.toolGenerateSRI(req, args)
+		resp = h.toolGenerateSRI(req, args)
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+params.Format, "Use a valid format from the 'format' enum", withParam("format"))}
 	}
+	return appendWarningsToResponse(resp, paramWarnings)
 }
 
 func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Action string `json:"action"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil && len(args) > 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	var paramWarnings []string
+	if len(args) > 0 {
+		warnings, err := unmarshalWithWarnings(args, &params)
+		if err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+		paramWarnings = warnings
 	}
 
 	if params.Action == "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: store, load, noise_rule, dismiss, clear, capture, record_event, query_dom, diff_sessions, validate_api, audit_log, health, streaming"))}
 	}
 
+	var resp JSONRPCResponse
 	switch params.Action {
 	case "store":
-		return h.toolConfigureStore(req, args)
+		resp = h.toolConfigureStore(req, args)
 	case "load":
-		return h.toolLoadSessionContext(req, args)
+		resp = h.toolLoadSessionContext(req, args)
 	case "noise_rule":
-		return h.toolConfigureNoiseRule(req, args)
+		resp = h.toolConfigureNoiseRule(req, args)
 	case "dismiss":
-		return h.toolConfigureDismiss(req, args)
+		resp = h.toolConfigureDismiss(req, args)
 	case "clear":
-		return h.toolClearBrowserLogs(req)
+		resp = h.toolClearBrowserLogs(req)
 	case "capture":
-		return h.toolConfigureCapture(req, args)
+		resp = h.toolConfigureCapture(req, args)
 	case "record_event":
-		return h.toolConfigureRecordEvent(req, args)
+		resp = h.toolConfigureRecordEvent(req, args)
 	case "query_dom":
-		return h.toolQueryDOM(req, args)
+		resp = h.toolQueryDOM(req, args)
 	case "diff_sessions":
-		return h.toolDiffSessionsWrapper(req, args)
+		resp = h.toolDiffSessionsWrapper(req, args)
 	case "validate_api":
-		return h.toolValidateAPI(req, args)
+		resp = h.toolValidateAPI(req, args)
 	case "audit_log":
-		return h.toolGetAuditLog(req, args)
+		resp = h.toolGetAuditLog(req, args)
 	case "health":
-		return h.toolGetHealth(req)
+		resp = h.toolGetHealth(req)
 	case "streaming":
-		return h.toolConfigureStreamingWrapper(req, args)
+		resp = h.toolConfigureStreamingWrapper(req, args)
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown configure action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
 	}
+	return appendWarningsToResponse(resp, paramWarnings)
 }
 
 // ============================================
@@ -1378,40 +1476,47 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	var params struct {
 		Action string `json:"action"`
 	}
-	if err := json.Unmarshal(args, &params); err != nil && len(args) > 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	var paramWarnings []string
+	if len(args) > 0 {
+		warnings, err := unmarshalWithWarnings(args, &params)
+		if err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+		paramWarnings = warnings
 	}
 
 	if params.Action == "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: highlight, save_state, load_state, list_states, delete_state, execute_js, navigate, refresh, back, forward, new_tab"))}
 	}
 
+	var resp JSONRPCResponse
 	switch params.Action {
 	case "highlight":
-		return h.handlePilotHighlight(req, args)
+		resp = h.handlePilotHighlight(req, args)
 	case "save_state":
-		return h.handlePilotManageStateSave(req, args)
+		resp = h.handlePilotManageStateSave(req, args)
 	case "load_state":
-		return h.handlePilotManageStateLoad(req, args)
+		resp = h.handlePilotManageStateLoad(req, args)
 	case "list_states":
-		return h.handlePilotManageStateList(req, args)
+		resp = h.handlePilotManageStateList(req, args)
 	case "delete_state":
-		return h.handlePilotManageStateDelete(req, args)
+		resp = h.handlePilotManageStateDelete(req, args)
 	case "execute_js":
-		return h.handlePilotExecuteJS(req, args)
+		resp = h.handlePilotExecuteJS(req, args)
 	case "navigate":
-		return h.handleBrowserActionNavigate(req, args)
+		resp = h.handleBrowserActionNavigate(req, args)
 	case "refresh":
-		return h.handleBrowserActionRefresh(req, args)
+		resp = h.handleBrowserActionRefresh(req, args)
 	case "back":
-		return h.handleBrowserActionBack(req, args)
+		resp = h.handleBrowserActionBack(req, args)
 	case "forward":
-		return h.handleBrowserActionForward(req, args)
+		resp = h.handleBrowserActionForward(req, args)
 	case "new_tab":
-		return h.handleBrowserActionNewTab(req, args)
+		resp = h.handleBrowserActionNewTab(req, args)
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
 	}
+	return appendWarningsToResponse(resp, paramWarnings)
 }
 
 // ============================================

@@ -14,6 +14,7 @@ import (
 // ============================================
 
 func TestRedactBearerToken(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	tests := []struct {
 		name  string
@@ -47,6 +48,7 @@ func TestRedactBearerToken(t *testing.T) {
 }
 
 func TestRedactAWSKeys(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	tests := []struct {
 		name  string
@@ -80,6 +82,7 @@ func TestRedactAWSKeys(t *testing.T) {
 }
 
 func TestRedactJWT(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	tests := []struct {
 		name  string
@@ -113,6 +116,7 @@ func TestRedactJWT(t *testing.T) {
 }
 
 func TestRedactGitHubPAT(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	tests := []struct {
 		name  string
@@ -146,6 +150,7 @@ func TestRedactGitHubPAT(t *testing.T) {
 }
 
 func TestRedactPrivateKey(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 
 	input := `Here is my key:
@@ -164,6 +169,7 @@ done`
 }
 
 func TestRedactCreditCard(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	tests := []struct {
 		name  string
@@ -207,6 +213,7 @@ func TestRedactCreditCard(t *testing.T) {
 }
 
 func TestRedactSSN(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	tests := []struct {
 		name  string
@@ -240,6 +247,7 @@ func TestRedactSSN(t *testing.T) {
 }
 
 func TestRedactAPIKey(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	tests := []struct {
 		name  string
@@ -278,6 +286,7 @@ func TestRedactAPIKey(t *testing.T) {
 }
 
 func TestRedactBasicAuth(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	tests := []struct {
 		name  string
@@ -310,6 +319,7 @@ func TestRedactBasicAuth(t *testing.T) {
 // ============================================
 
 func TestRedactCustomPatterns(t *testing.T) {
+	t.Parallel()
 	// Create a temp config file
 	config := RedactionConfig{
 		Patterns: []RedactionPattern{
@@ -361,6 +371,7 @@ func TestRedactCustomPatterns(t *testing.T) {
 }
 
 func TestRedactCustomPatternWithReplacement(t *testing.T) {
+	t.Parallel()
 	config := RedactionConfig{
 		Patterns: []RedactionPattern{
 			{Name: "custom", Pattern: `SECRET-[A-Z]+`, Replacement: "[HIDDEN]"},
@@ -384,6 +395,7 @@ func TestRedactCustomPatternWithReplacement(t *testing.T) {
 // ============================================
 
 func TestRedactionEngineNoConfig(t *testing.T) {
+	t.Parallel()
 	// Empty config path should still work with built-in patterns
 	engine := NewRedactionEngine("")
 	if engine == nil {
@@ -397,6 +409,7 @@ func TestRedactionEngineNoConfig(t *testing.T) {
 }
 
 func TestRedactionEngineInvalidConfigPath(t *testing.T) {
+	t.Parallel()
 	// Non-existent config path should not crash, just use built-ins
 	engine := NewRedactionEngine("/nonexistent/path/config.json")
 	if engine == nil {
@@ -410,6 +423,7 @@ func TestRedactionEngineInvalidConfigPath(t *testing.T) {
 }
 
 func TestRedactionEngineInvalidJSON(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "bad.json")
 	os.WriteFile(configPath, []byte(`not valid json`), 0644)
@@ -422,6 +436,7 @@ func TestRedactionEngineInvalidJSON(t *testing.T) {
 }
 
 func TestRedactionEngineInvalidRegex(t *testing.T) {
+	t.Parallel()
 	// RE2 doesn't support backreferences, lookahead, etc.
 	config := RedactionConfig{
 		Patterns: []RedactionPattern{
@@ -447,6 +462,7 @@ func TestRedactionEngineInvalidRegex(t *testing.T) {
 // ============================================
 
 func TestRedactEmptyInput(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	got := engine.Redact("")
 	if got != "" {
@@ -455,6 +471,7 @@ func TestRedactEmptyInput(t *testing.T) {
 }
 
 func TestRedactNoMatch(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	input := "This is a normal log message with no sensitive data"
 	got := engine.Redact(input)
@@ -464,6 +481,7 @@ func TestRedactNoMatch(t *testing.T) {
 }
 
 func TestRedactMultipleMatchesSameLine(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	input := `token1: Bearer abc123 and token2: Bearer def456`
 	got := engine.Redact(input)
@@ -474,6 +492,7 @@ func TestRedactMultipleMatchesSameLine(t *testing.T) {
 }
 
 func TestRedactMultiplePatternTypes(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	input := `Auth: Bearer mytoken123 SSN: 123-45-6789`
 	got := engine.Redact(input)
@@ -486,6 +505,7 @@ func TestRedactMultiplePatternTypes(t *testing.T) {
 }
 
 func TestRedactBinaryContent(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	// Binary-like content should pass through without issues
 	input := string([]byte{0x00, 0x01, 0x02, 0xFF, 0xFE})
@@ -496,6 +516,7 @@ func TestRedactBinaryContent(t *testing.T) {
 }
 
 func TestRedactLargeInput(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	// 100KB of text with a few secrets embedded
 	builder := strings.Builder{}
@@ -522,6 +543,7 @@ func TestRedactLargeInput(t *testing.T) {
 // ============================================
 
 func TestRedactFormat(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	tests := []struct {
 		name    string
@@ -548,6 +570,7 @@ func TestRedactFormat(t *testing.T) {
 // ============================================
 
 func TestRedactConcurrent(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	done := make(chan bool, 100)
 
@@ -585,6 +608,7 @@ func BenchmarkRedactSmallInput(b *testing.B) {
 }
 
 func TestRedactPerformanceSmall(t *testing.T) {
+	t.Parallel()
 	if raceEnabled {
 		t.Skip("Performance SLO test skipped under race detector")
 	}
@@ -612,6 +636,7 @@ func TestRedactPerformanceSmall(t *testing.T) {
 }
 
 func TestRedactPerformanceLarge(t *testing.T) {
+	t.Parallel()
 	if raceEnabled {
 		t.Skip("Performance SLO test skipped under race detector")
 	}
@@ -644,6 +669,7 @@ func TestRedactPerformanceLarge(t *testing.T) {
 // ============================================
 
 func TestRedactMCPToolResult(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 
 	// Simulate an MCP tool result with sensitive content
@@ -677,6 +703,7 @@ func TestRedactMCPToolResult(t *testing.T) {
 }
 
 func TestRedactJSONPreservesStructure(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 
 	// Non-sensitive JSON should pass through structurally intact
@@ -693,6 +720,7 @@ func TestRedactJSONPreservesStructure(t *testing.T) {
 }
 
 func TestRedactJSONMultipleContentBlocks(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 
 	result := MCPToolResult{
@@ -724,6 +752,7 @@ func TestRedactJSONMultipleContentBlocks(t *testing.T) {
 // ============================================
 
 func TestLuhnValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -750,6 +779,7 @@ func TestLuhnValidation(t *testing.T) {
 // ============================================
 
 func TestRedactSessionCookie(t *testing.T) {
+	t.Parallel()
 	engine := NewRedactionEngine("")
 	tests := []struct {
 		name  string

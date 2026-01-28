@@ -10,6 +10,7 @@ import (
 )
 
 func TestV4RateLimitWebSocketEvents(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Simulate flooding: > 1000 events in rapid succession
@@ -28,6 +29,7 @@ func TestV4RateLimitWebSocketEvents(t *testing.T) {
 }
 
 func TestV4MemoryLimitRejectsNetworkBodies(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Simulate exceeding memory limit
@@ -46,6 +48,7 @@ func TestV4MemoryLimitRejectsNetworkBodies(t *testing.T) {
 }
 
 func TestV4WebSocketBufferMemoryLimit(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add events that exceed 4MB memory limit
@@ -64,6 +67,7 @@ func TestV4WebSocketBufferMemoryLimit(t *testing.T) {
 }
 
 func TestV4NetworkBodiesBufferMemoryLimit(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add bodies that exceed 8MB memory limit
@@ -82,6 +86,7 @@ func TestV4NetworkBodiesBufferMemoryLimit(t *testing.T) {
 }
 
 func TestMCPToolsListIncludesV4Tools(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -122,6 +127,7 @@ func TestMCPToolsListIncludesV4Tools(t *testing.T) {
 }
 
 func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -192,6 +198,7 @@ func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
 }
 
 func TestV4GetTotalBufferMemory(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add some data to each buffer
@@ -216,6 +223,7 @@ func TestV4GetTotalBufferMemory(t *testing.T) {
 }
 
 func TestV4IsMemoryExceededUsesRealMemory(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// With empty buffers, memory should not be exceeded
@@ -237,6 +245,7 @@ func TestV4IsMemoryExceededUsesRealMemory(t *testing.T) {
 }
 
 func TestV4GlobalEvictionOnWSIngest(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Fill WS buffer to near its per-buffer limit (4MB)
@@ -269,6 +278,7 @@ func TestV4GlobalEvictionOnWSIngest(t *testing.T) {
 }
 
 func TestV4GlobalEvictionOnNBIngest(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Fill NB buffer to near its per-buffer limit (8MB)
@@ -293,6 +303,7 @@ func TestV4GlobalEvictionOnNBIngest(t *testing.T) {
 }
 
 func TestV4MemoryExceededRejectsWSEvents(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Simulate global memory exceeded
@@ -312,6 +323,7 @@ func TestV4MemoryExceededRejectsWSEvents(t *testing.T) {
 }
 
 func TestV4MemoryExceededHeaderInResponse(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Fill buffers close to their limits
@@ -330,6 +342,7 @@ func TestV4MemoryExceededHeaderInResponse(t *testing.T) {
 }
 
 func TestMCPToolsListIncludesV5Tools(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -368,6 +381,7 @@ func TestMCPToolsListIncludesV5Tools(t *testing.T) {
 }
 
 func TestMCPHTTPEndpointToolsList(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -406,6 +420,7 @@ func TestMCPHTTPEndpointToolsList(t *testing.T) {
 }
 
 func TestMCPHTTPEndpointToolCall(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -430,6 +445,7 @@ func TestMCPHTTPEndpointToolCall(t *testing.T) {
 }
 
 func TestMCPHTTPEndpointMethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -445,6 +461,7 @@ func TestMCPHTTPEndpointMethodNotAllowed(t *testing.T) {
 }
 
 func TestMCPHTTPEndpointInvalidJSON(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -471,6 +488,7 @@ func TestMCPHTTPEndpointInvalidJSON(t *testing.T) {
 }
 
 func TestMCPHTTPEndpointUnknownMethod(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -498,6 +516,7 @@ func TestMCPHTTPEndpointUnknownMethod(t *testing.T) {
 }
 
 func TestMCPHTTPEndpointV4ToolCall(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

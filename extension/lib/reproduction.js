@@ -236,7 +236,7 @@ export function recordEnhancedAction(type, element, opts = {}) {
 
   // Emit to content script for server relay
   if (typeof window !== 'undefined' && window.postMessage) {
-    window.postMessage({ type: 'GASOLINE_ENHANCED_ACTION', payload: action }, '*')
+    window.postMessage({ type: 'GASOLINE_ENHANCED_ACTION', payload: action }, window.location.origin)
   }
 
   return action

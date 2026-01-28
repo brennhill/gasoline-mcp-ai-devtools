@@ -9,6 +9,7 @@ import (
 )
 
 func TestSRIGeneratorBasicHash(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		{
@@ -47,6 +48,7 @@ func TestSRIGeneratorBasicHash(t *testing.T) {
 }
 
 func TestSRIGeneratorKnownHash(t *testing.T) {
+	t.Parallel()
 	// Test with known content to verify SHA-384 computation
 	// "test content" SHA-384 hash is known
 	gen := NewSRIGenerator()
@@ -73,6 +75,7 @@ func TestSRIGeneratorKnownHash(t *testing.T) {
 }
 
 func TestSRIGeneratorOnlyScriptsAndStyles(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		// Should be included
@@ -103,6 +106,7 @@ func TestSRIGeneratorOnlyScriptsAndStyles(t *testing.T) {
 }
 
 func TestSRIGeneratorOnlyThirdParty(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		// Same origin - should be excluded
@@ -123,6 +127,7 @@ func TestSRIGeneratorOnlyThirdParty(t *testing.T) {
 }
 
 func TestSRIGeneratorTagTemplates(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		{URL: "https://cdn.example.com/app.js", ContentType: "application/javascript", ResponseBody: "js"},
@@ -166,6 +171,7 @@ func TestSRIGeneratorTagTemplates(t *testing.T) {
 }
 
 func TestSRIGeneratorVaryUserAgentWarning(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		{
@@ -197,6 +203,7 @@ func TestSRIGeneratorVaryUserAgentWarning(t *testing.T) {
 }
 
 func TestSRIGeneratorTruncatedBody(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		{
@@ -231,6 +238,7 @@ func TestSRIGeneratorTruncatedBody(t *testing.T) {
 }
 
 func TestSRIGeneratorEmptyBody(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		{
@@ -250,6 +258,7 @@ func TestSRIGeneratorEmptyBody(t *testing.T) {
 }
 
 func TestSRIGeneratorSummary(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		{URL: "https://cdn1.example.com/a.js", ContentType: "application/javascript", ResponseBody: "a"},
@@ -277,6 +286,7 @@ func TestSRIGeneratorSummary(t *testing.T) {
 }
 
 func TestSRIGeneratorResourceTypesFilter(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		{URL: "https://cdn.example.com/app.js", ContentType: "application/javascript", ResponseBody: "js"},
@@ -298,6 +308,7 @@ func TestSRIGeneratorResourceTypesFilter(t *testing.T) {
 }
 
 func TestSRIGeneratorOriginsFilter(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		{URL: "https://cdn1.example.com/app.js", ContentType: "application/javascript", ResponseBody: "js1"},
@@ -316,6 +327,7 @@ func TestSRIGeneratorOriginsFilter(t *testing.T) {
 }
 
 func TestSRIGeneratorSizeBytes(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	content := "console.log('hello world');"
 	bodies := []NetworkBody{
@@ -338,6 +350,7 @@ func TestSRIGeneratorSizeBytes(t *testing.T) {
 }
 
 func TestSRIGeneratorAlreadyHasSRI(t *testing.T) {
+	t.Parallel()
 	// This tests that we track resources that already have SRI
 	// Note: In practice, Gasoline captures the response, not the HTML.
 	// AlreadyHasSRI would be set based on external data or heuristics.
@@ -360,6 +373,7 @@ func TestSRIGeneratorAlreadyHasSRI(t *testing.T) {
 }
 
 func TestSRIGeneratorDeduplication(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	// Same URL loaded twice - should only appear once
 	bodies := []NetworkBody{
@@ -376,6 +390,7 @@ func TestSRIGeneratorDeduplication(t *testing.T) {
 }
 
 func TestSRIGeneratorMultipleContentTypes(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		// Various JavaScript content types
@@ -395,6 +410,7 @@ func TestSRIGeneratorMultipleContentTypes(t *testing.T) {
 }
 
 func TestSRIGeneratorHandleMCP(t *testing.T) {
+	t.Parallel()
 	bodies := []NetworkBody{
 		{URL: "https://cdn.example.com/lib.js", ContentType: "application/javascript", ResponseBody: "code"},
 	}
@@ -417,6 +433,7 @@ func TestSRIGeneratorHandleMCP(t *testing.T) {
 }
 
 func TestSRIGeneratorEmptyInput(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	result := gen.Generate(nil, nil, SRIParams{})
 
@@ -429,6 +446,7 @@ func TestSRIGeneratorEmptyInput(t *testing.T) {
 }
 
 func TestSRIGeneratorInvalidParams(t *testing.T) {
+	t.Parallel()
 	bodies := []NetworkBody{
 		{URL: "https://cdn.example.com/lib.js", ContentType: "application/javascript", ResponseBody: "code"},
 	}
@@ -442,6 +460,7 @@ func TestSRIGeneratorInvalidParams(t *testing.T) {
 }
 
 func TestSRIGeneratorSubdomainFirstParty(t *testing.T) {
+	t.Parallel()
 	gen := NewSRIGenerator()
 	bodies := []NetworkBody{
 		// Subdomain of first party - should be excluded

@@ -6,7 +6,6 @@
 package main
 
 import (
-	"math"
 	"time"
 )
 
@@ -76,32 +75,26 @@ func (c *Capture) calcTotalMemory() int64 {
 	return c.calcWSMemory() + c.calcNBMemory() + c.calcActionMemory()
 }
 
-// calcWSMemory approximates memory usage of WS buffer (caller must hold lock)
+// calcWSMemory returns the running total of WS buffer memory (caller must hold lock).
+// O(1) — maintained incrementally by add/evict/clear operations.
 func (c *Capture) calcWSMemory() int64 {
-	var total int64
-	for i := range c.wsEvents {
-		size := int64(len(c.wsEvents[i].Data)) + wsEventOverhead
-		// Cap at max int64 to prevent overflow
-		if total > math.MaxInt64-size {
-			return math.MaxInt64
-		}
-		total += size
-	}
-	return total
+	return c.wsMemoryTotal
 }
 
-// calcNBMemory approximates memory usage of network bodies buffer (caller must hold lock)
+// calcNBMemory returns the running total of network bodies buffer memory (caller must hold lock).
+// O(1) — maintained incrementally by add/evict/clear operations.
 func (c *Capture) calcNBMemory() int64 {
-	var total int64
-	for i := range c.networkBodies {
-		size := int64(len(c.networkBodies[i].RequestBody)+len(c.networkBodies[i].ResponseBody)) + networkBodyOverhead
-		// Cap at max int64 to prevent overflow
-		if total > math.MaxInt64-size {
-			return math.MaxInt64
-		}
-		total += size
-	}
-	return total
+	return c.nbMemoryTotal
+}
+
+// wsEventMemory returns the memory estimate for a single WS event.
+func wsEventMemory(e *WebSocketEvent) int64 {
+	return int64(len(e.Data)) + wsEventOverhead
+}
+
+// nbEntryMemory returns the memory estimate for a single network body entry.
+func nbEntryMemory(b *NetworkBody) int64 {
+	return int64(len(b.RequestBody)+len(b.ResponseBody)) + networkBodyOverhead
 }
 
 // calcActionMemory approximates memory usage of enhanced actions buffer (caller must hold lock)
@@ -196,6 +189,10 @@ func (c *Capture) evictBuffers(denominator int, limit int64) {
 		if n > len(c.networkBodies) {
 			n = len(c.networkBodies)
 		}
+		// Subtract memory for evicted entries
+		for j := 0; j < n; j++ {
+			c.nbMemoryTotal -= nbEntryMemory(&c.networkBodies[j])
+		}
 		surviving := make([]NetworkBody, len(c.networkBodies)-n)
 		copy(surviving, c.networkBodies[n:])
 		c.networkBodies = surviving
@@ -215,6 +212,10 @@ func (c *Capture) evictBuffers(denominator int, limit int64) {
 		// Clamp n to actual array length to prevent panic
 		if n > len(c.wsEvents) {
 			n = len(c.wsEvents)
+		}
+		// Subtract memory for evicted entries
+		for j := 0; j < n; j++ {
+			c.wsMemoryTotal -= wsEventMemory(&c.wsEvents[j])
 		}
 		surviving := make([]WebSocketEvent, len(c.wsEvents)-n)
 		copy(surviving, c.wsEvents[n:])
@@ -262,8 +263,10 @@ func (c *Capture) evictCritical() {
 
 	c.wsEvents = nil
 	c.wsAddedAt = nil
+	c.wsMemoryTotal = 0
 	c.networkBodies = nil
 	c.networkAddedAt = nil
+	c.nbMemoryTotal = 0
 	c.enhancedActions = nil
 	c.actionAddedAt = nil
 

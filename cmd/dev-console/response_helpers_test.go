@@ -15,6 +15,7 @@ import (
 // ============================================
 
 func TestMcpMarkdownResponse_IncludesSummary(t *testing.T) {
+	t.Parallel()
 	summary := "3 browser error(s)"
 	md := "| Level | Message |\n| --- | --- |\n| error | test |\n"
 	raw := mcpMarkdownResponse(summary, md)
@@ -35,6 +36,7 @@ func TestMcpMarkdownResponse_IncludesSummary(t *testing.T) {
 }
 
 func TestMcpMarkdownResponse_HasTable(t *testing.T) {
+	t.Parallel()
 	headers := []string{"Level", "Message"}
 	rows := [][]string{{"error", "test error"}}
 	table := markdownTable(headers, rows)
@@ -53,6 +55,7 @@ func TestMcpMarkdownResponse_HasTable(t *testing.T) {
 }
 
 func TestMcpJSONResponse_IncludesSummary(t *testing.T) {
+	t.Parallel()
 	summary := "WebSocket connection status"
 	data := map[string]interface{}{"connections": []interface{}{}}
 	raw := mcpJSONResponse(summary, data)
@@ -76,6 +79,7 @@ func TestMcpJSONResponse_IncludesSummary(t *testing.T) {
 }
 
 func TestMcpJSONResponse_CompactJSON(t *testing.T) {
+	t.Parallel()
 	data := map[string]interface{}{"key": "value", "nested": map[string]interface{}{"a": 1}}
 	raw := mcpJSONResponse("summary", data)
 
@@ -93,6 +97,7 @@ func TestMcpJSONResponse_CompactJSON(t *testing.T) {
 }
 
 func TestMcpJSONResponse_EmptySummary(t *testing.T) {
+	t.Parallel()
 	data := map[string]interface{}{"status": "ok"}
 	raw := mcpJSONResponse("", data)
 
@@ -107,6 +112,7 @@ func TestMcpJSONResponse_EmptySummary(t *testing.T) {
 }
 
 func TestMcpJSONResponse_NilData(t *testing.T) {
+	t.Parallel()
 	raw := mcpJSONResponse("summary", nil)
 
 	var result MCPToolResult
@@ -123,6 +129,7 @@ func TestMcpJSONResponse_NilData(t *testing.T) {
 }
 
 func TestMcpJSONResponse_MarshalError(t *testing.T) {
+	t.Parallel()
 	// channels cannot be marshaled to JSON
 	ch := make(chan int)
 	raw := mcpJSONResponse("summary", ch)
@@ -144,6 +151,7 @@ func TestMcpJSONResponse_MarshalError(t *testing.T) {
 // ============================================
 
 func TestMarkdownTable_Empty(t *testing.T) {
+	t.Parallel()
 	result := markdownTable([]string{"A", "B"}, nil)
 	if result != "" {
 		t.Errorf("Expected empty string for empty rows, got: %q", result)
@@ -151,6 +159,7 @@ func TestMarkdownTable_Empty(t *testing.T) {
 }
 
 func TestMarkdownTable_SingleRow(t *testing.T) {
+	t.Parallel()
 	headers := []string{"Name", "Value"}
 	rows := [][]string{{"foo", "bar"}}
 	result := markdownTable(headers, rows)
@@ -177,6 +186,7 @@ func TestMarkdownTable_SingleRow(t *testing.T) {
 }
 
 func TestMarkdownTable_EscapesPipes(t *testing.T) {
+	t.Parallel()
 	headers := []string{"Message"}
 	rows := [][]string{{"value with | pipe char"}}
 	result := markdownTable(headers, rows)
@@ -194,6 +204,7 @@ func TestMarkdownTable_EscapesPipes(t *testing.T) {
 }
 
 func TestMarkdownTable_EscapesNewlines(t *testing.T) {
+	t.Parallel()
 	headers := []string{"Message"}
 	rows := [][]string{{"line1\nline2"}}
 	result := markdownTable(headers, rows)
@@ -211,6 +222,7 @@ func TestMarkdownTable_EscapesNewlines(t *testing.T) {
 }
 
 func TestMarkdownTable_SpecialChars(t *testing.T) {
+	t.Parallel()
 	headers := []string{"Content"}
 	rows := [][]string{
 		{`<script>alert("xss")</script>`},
@@ -235,6 +247,7 @@ func TestMarkdownTable_SpecialChars(t *testing.T) {
 }
 
 func TestMarkdownTable_LargeTable(t *testing.T) {
+	t.Parallel()
 	headers := []string{"ID", "Name", "Status"}
 	rows := make([][]string, 500)
 	for i := range rows {
@@ -264,6 +277,7 @@ func TestMarkdownTable_LargeTable(t *testing.T) {
 // ============================================
 
 func TestTruncate_ShortString(t *testing.T) {
+	t.Parallel()
 	result := truncate("hello", 10)
 	if result != "hello" {
 		t.Errorf("Expected %q, got %q", "hello", result)
@@ -271,6 +285,7 @@ func TestTruncate_ShortString(t *testing.T) {
 }
 
 func TestTruncate_ExactLimit(t *testing.T) {
+	t.Parallel()
 	result := truncate("12345", 5)
 	if result != "12345" {
 		t.Errorf("Expected %q, got %q", "12345", result)
@@ -278,6 +293,7 @@ func TestTruncate_ExactLimit(t *testing.T) {
 }
 
 func TestTruncate_LongString(t *testing.T) {
+	t.Parallel()
 	result := truncate("this is a long string that should be truncated", 10)
 	if len(result) != 10 {
 		t.Errorf("Expected length 10, got %d: %q", len(result), result)
@@ -292,6 +308,7 @@ func TestTruncate_LongString(t *testing.T) {
 }
 
 func TestTruncate_EmptyString(t *testing.T) {
+	t.Parallel()
 	result := truncate("", 10)
 	if result != "" {
 		t.Errorf("Expected empty string, got %q", result)
@@ -303,6 +320,7 @@ func TestTruncate_EmptyString(t *testing.T) {
 // ============================================
 
 func TestMcpStructuredError_Format(t *testing.T) {
+	t.Parallel()
 	raw := mcpStructuredError(ErrMissingParam, "Parameter 'what' is missing",
 		"Add the 'what' parameter and call again")
 
@@ -328,6 +346,7 @@ func TestMcpStructuredError_Format(t *testing.T) {
 }
 
 func TestMcpStructuredError_IsError(t *testing.T) {
+	t.Parallel()
 	raw := mcpStructuredError(ErrInvalidJSON, "bad json", "Fix JSON syntax and call again")
 
 	var result MCPToolResult
@@ -339,6 +358,7 @@ func TestMcpStructuredError_IsError(t *testing.T) {
 }
 
 func TestMcpStructuredError_SelfDescribingCode(t *testing.T) {
+	t.Parallel()
 	raw := mcpStructuredError(ErrUnknownMode, "Unknown mode: foo",
 		"Use a valid mode from the 'what' enum")
 
@@ -360,6 +380,7 @@ func TestMcpStructuredError_SelfDescribingCode(t *testing.T) {
 }
 
 func TestMcpStructuredError_RetryIsInstruction(t *testing.T) {
+	t.Parallel()
 	retry := "Fix JSON syntax and call again"
 	raw := mcpStructuredError(ErrInvalidJSON, "bad json", retry)
 
@@ -382,6 +403,7 @@ func TestMcpStructuredError_RetryIsInstruction(t *testing.T) {
 }
 
 func TestMcpStructuredError_WithParam(t *testing.T) {
+	t.Parallel()
 	raw := mcpStructuredError(ErrMissingParam, "Missing 'what'",
 		"Add the 'what' parameter and call again",
 		withParam("what"))
@@ -400,6 +422,7 @@ func TestMcpStructuredError_WithParam(t *testing.T) {
 }
 
 func TestMcpStructuredError_WithHint(t *testing.T) {
+	t.Parallel()
 	hint := "Valid values: errors, logs, network"
 	raw := mcpStructuredError(ErrMissingParam, "Missing 'what'",
 		"Add the 'what' parameter and call again",
@@ -419,6 +442,7 @@ func TestMcpStructuredError_WithHint(t *testing.T) {
 }
 
 func TestMcpStructuredError_Parseable(t *testing.T) {
+	t.Parallel()
 	raw := mcpStructuredError(ErrExtTimeout, "Timeout waiting for page info",
 		"Browser extension didn't respond — wait a moment and retry",
 		withParam("page"), withHint("Check that the extension is connected"))
@@ -452,6 +476,7 @@ func TestMcpStructuredError_Parseable(t *testing.T) {
 }
 
 func TestMcpStructuredError_PrefixMatchesBody(t *testing.T) {
+	t.Parallel()
 	code := ErrMissingParam
 	retry := "Add the 'what' parameter and call again"
 	raw := mcpStructuredError(code, "Missing 'what'", retry, withParam("what"))
@@ -478,6 +503,7 @@ func TestMcpStructuredError_PrefixMatchesBody(t *testing.T) {
 }
 
 func TestMcpStructuredError_SpecialCharsInMessage(t *testing.T) {
+	t.Parallel()
 	message := `Error at "line 5": unexpected 'token' with unicode \u00e9 and newline
 second line`
 	raw := mcpStructuredError(ErrInvalidJSON, message, "Fix JSON syntax and call again")
@@ -514,6 +540,7 @@ second line`
 // ============================================
 
 func TestErrorCodeConstants_AreSnakeCase(t *testing.T) {
+	t.Parallel()
 	codes := []string{
 		ErrInvalidJSON, ErrMissingParam, ErrInvalidParam, ErrUnknownMode,
 		ErrPathNotAllowed, ErrNotInitialized, ErrNoData, ErrCodePilotDisabled,
@@ -544,6 +571,7 @@ func TestErrorCodeConstants_AreSnakeCase(t *testing.T) {
 // After migration, no handler code should call mcpErrorResponse directly.
 // The function definition and test helpers may still reference it.
 func TestNoRawMcpErrorResponse(t *testing.T) {
+	t.Parallel()
 	src, err := os.ReadFile("tools.go")
 	if err != nil {
 		t.Fatalf("Failed to read tools.go: %v", err)
@@ -593,6 +621,7 @@ func TestNoRawMcpErrorResponse(t *testing.T) {
 // TestAllErrorCodes_UsedInHandlers verifies that each ErrXxx constant appears
 // in at least one mcpStructuredError call across the source files.
 func TestAllErrorCodes_UsedInHandlers(t *testing.T) {
+	t.Parallel()
 	// Read all Go source files in the package
 	entries, err := os.ReadDir(".")
 	if err != nil {
@@ -632,6 +661,7 @@ func TestAllErrorCodes_UsedInHandlers(t *testing.T) {
 
 // TestEntryStr_Helper verifies the entryStr helper for safe LogEntry field extraction.
 func TestEntryStr_Helper(t *testing.T) {
+	t.Parallel()
 	entry := LogEntry{
 		"level":   "error",
 		"message": "test message",
@@ -657,6 +687,7 @@ func TestEntryStr_Helper(t *testing.T) {
 
 // TestBrowserErrors_MarkdownFormat verifies toolGetBrowserErrors returns markdown table format.
 func TestBrowserErrors_MarkdownFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -698,6 +729,7 @@ func TestBrowserErrors_MarkdownFormat(t *testing.T) {
 
 // TestBrowserLogs_MarkdownFormat verifies toolGetBrowserLogs returns markdown table format.
 func TestBrowserLogs_MarkdownFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -724,6 +756,7 @@ func TestBrowserLogs_MarkdownFormat(t *testing.T) {
 
 // TestBrowserLogs_IncludesTabId verifies toolGetBrowserLogs includes tabId in response.
 func TestBrowserLogs_IncludesTabId(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -755,6 +788,7 @@ func TestBrowserLogs_IncludesTabId(t *testing.T) {
 
 // TestBrowserErrors_IncludesTabId verifies toolGetBrowserErrors includes tabId in response.
 func TestBrowserErrors_IncludesTabId(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -782,6 +816,7 @@ func TestBrowserErrors_IncludesTabId(t *testing.T) {
 
 // TestBrowserLogs_NoTabId verifies logs without tabId still work (backward compat).
 func TestBrowserLogs_NoTabId(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -805,6 +840,7 @@ func TestBrowserLogs_NoTabId(t *testing.T) {
 
 // TestConfigureStore_JSONFormat verifies toolConfigureStore returns JSON format with summary.
 func TestConfigureStore_JSONFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -828,6 +864,7 @@ func TestConfigureStore_JSONFormat(t *testing.T) {
 
 // TestConfigureNoise_JSONFormat verifies toolConfigureNoise returns JSON format with summary.
 func TestConfigureNoise_JSONFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -848,6 +885,7 @@ func TestConfigureNoise_JSONFormat(t *testing.T) {
 
 // TestDismissNoise_JSONFormat verifies toolDismissNoise returns JSON format with summary.
 func TestDismissNoise_JSONFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -868,6 +906,7 @@ func TestDismissNoise_JSONFormat(t *testing.T) {
 
 // TestObserveDispatcher_StructuredErrors verifies dispatcher errors use structured format.
 func TestObserveDispatcher_StructuredErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -933,6 +972,7 @@ func TestObserveDispatcher_StructuredErrors(t *testing.T) {
 
 // TestGenerateDispatcher_StructuredErrors verifies generate dispatcher errors use structured format.
 func TestGenerateDispatcher_StructuredErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -963,6 +1003,7 @@ func TestGenerateDispatcher_StructuredErrors(t *testing.T) {
 
 // TestConfigureDispatcher_StructuredErrors verifies configure dispatcher errors use structured format.
 func TestConfigureDispatcher_StructuredErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -993,6 +1034,7 @@ func TestConfigureDispatcher_StructuredErrors(t *testing.T) {
 
 // TestInteractDispatcher_StructuredErrors verifies interact dispatcher errors use structured format.
 func TestInteractDispatcher_StructuredErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1023,6 +1065,7 @@ func TestInteractDispatcher_StructuredErrors(t *testing.T) {
 
 // TestConfigureStoreNil_StructuredError verifies nil session store returns structured error.
 func TestConfigureStoreNil_StructuredError(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1044,6 +1087,7 @@ func TestConfigureStoreNil_StructuredError(t *testing.T) {
 
 // TestVerifyFix_StructuredError verifies verification manager nil returns structured error.
 func TestVerifyFix_StructuredError(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1065,6 +1109,7 @@ func TestVerifyFix_StructuredError(t *testing.T) {
 
 // TestChanges_JSONFormat verifies toolGetChangesSince returns JSON format with summary.
 func TestChanges_JSONFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1084,6 +1129,7 @@ func TestChanges_JSONFormat(t *testing.T) {
 
 // TestLoadSessionContext_JSONFormat verifies toolLoadSessionContext returns JSON format.
 func TestLoadSessionContext_JSONFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

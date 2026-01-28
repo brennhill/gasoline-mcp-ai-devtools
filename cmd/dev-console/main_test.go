@@ -59,6 +59,7 @@ func setupTestServer(t *testing.T) (*Server, string) {
 }
 
 func TestNewServer(t *testing.T) {
+	t.Parallel()
 	server, logFile := setupTestServer(t)
 
 	if server.logFile != logFile {
@@ -75,6 +76,7 @@ func TestNewServer(t *testing.T) {
 }
 
 func TestAddEntries(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	entries := []LogEntry{
@@ -94,6 +96,7 @@ func TestAddEntries(t *testing.T) {
 }
 
 func TestLogRotation(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	// Add 15 entries (max is 10)
@@ -119,6 +122,7 @@ func TestLogRotation(t *testing.T) {
 }
 
 func TestClearEntries(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	server.addEntries([]LogEntry{{"msg": "test"}})
@@ -135,6 +139,7 @@ func TestClearEntries(t *testing.T) {
 }
 
 func TestPersistence(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 
@@ -154,6 +159,7 @@ func TestPersistence(t *testing.T) {
 }
 
 func TestHealthEndpoint(t *testing.T) {
+	t.Parallel()
 	server, logFile := setupTestServer(t)
 
 	// Setup HTTP handler
@@ -189,6 +195,7 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestPostLogsEndpoint(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -242,6 +249,7 @@ func TestPostLogsEndpoint(t *testing.T) {
 }
 
 func TestPostLogsInvalidJSON(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Entries []LogEntry `json:"entries"`
@@ -268,6 +276,7 @@ func TestPostLogsInvalidJSON(t *testing.T) {
 }
 
 func TestPostLogsMissingEntries(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Entries []LogEntry `json:"entries"`
@@ -299,6 +308,7 @@ func TestPostLogsMissingEntries(t *testing.T) {
 }
 
 func TestDeleteLogsEndpoint(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	server.addEntries([]LogEntry{{"msg": "test"}})
@@ -324,6 +334,7 @@ func TestDeleteLogsEndpoint(t *testing.T) {
 }
 
 func TestCORSHeaders(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -344,6 +355,7 @@ func TestCORSHeaders(t *testing.T) {
 
 // TestCORSOriginEcho verifies that valid origins are echoed back (not wildcard)
 func TestCORSOriginEcho(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -383,6 +395,7 @@ func TestCORSOriginEcho(t *testing.T) {
 
 // TestCORSNoWildcard verifies that Access-Control-Allow-Origin: * is never returned
 func TestCORSNoWildcard(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -414,6 +427,7 @@ func TestCORSNoWildcard(t *testing.T) {
 
 // TestCORSBlockedOriginNoHeader verifies that blocked origins get 403 and no ACAO header
 func TestCORSBlockedOriginNoHeader(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -448,6 +462,7 @@ func TestCORSBlockedOriginNoHeader(t *testing.T) {
 // TestHostHeaderValidation verifies that the Host header is checked against
 // an allowlist of localhost variants to prevent DNS rebinding attacks.
 func TestHostHeaderValidation(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -495,6 +510,7 @@ func TestHostHeaderValidation(t *testing.T) {
 // TestHostHeaderValidation_Body verifies that blocked Host headers return the
 // expected error body text.
 func TestHostHeaderValidation_Body(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -517,6 +533,7 @@ func TestHostHeaderValidation_Body(t *testing.T) {
 // TestHostHeaderValidation_OPTIONS verifies that OPTIONS preflight with
 // invalid Host is also rejected.
 func TestHostHeaderValidation_OPTIONS(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -533,6 +550,7 @@ func TestHostHeaderValidation_OPTIONS(t *testing.T) {
 }
 
 func TestOPTIONSPreflight(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -551,6 +569,7 @@ func TestOPTIONSPreflight(t *testing.T) {
 }
 
 func TestLogFileWritten(t *testing.T) {
+	t.Parallel()
 	server, logFile := setupTestServer(t)
 
 	server.addEntries([]LogEntry{
@@ -578,6 +597,7 @@ func TestLogFileWritten(t *testing.T) {
 }
 
 func TestEmptyEntriesArray(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	received := server.addEntries([]LogEntry{})
@@ -592,6 +612,7 @@ func TestEmptyEntriesArray(t *testing.T) {
 // ============================================
 
 func TestMCPInitialize(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	mcp := NewMCPHandler(server)
 
@@ -633,6 +654,7 @@ func TestMCPInitialize(t *testing.T) {
 }
 
 func TestMCPToolsList(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -684,6 +706,7 @@ func TestMCPToolsList(t *testing.T) {
 }
 
 func TestMCPResourcesList(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	mcp := NewMCPHandler(server)
 
@@ -729,6 +752,7 @@ func TestMCPResourcesList(t *testing.T) {
 }
 
 func TestMCPResourcesRead(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	mcp := NewMCPHandler(server)
 
@@ -781,6 +805,7 @@ func TestMCPResourcesRead(t *testing.T) {
 }
 
 func TestMCPResourcesReadNotFound(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	mcp := NewMCPHandler(server)
 
@@ -805,6 +830,7 @@ func TestMCPResourcesReadNotFound(t *testing.T) {
 }
 
 func TestMCPGetBrowserErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	// Add some log entries with different levels
@@ -866,6 +892,7 @@ func TestMCPGetBrowserErrors(t *testing.T) {
 }
 
 func TestMCPGetBrowserLogs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	// Add some log entries
@@ -928,6 +955,7 @@ func TestMCPGetBrowserLogs(t *testing.T) {
 }
 
 func TestMCPGetBrowserLogsWithLimit(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	// Add many log entries
@@ -985,6 +1013,7 @@ func TestMCPGetBrowserLogsWithLimit(t *testing.T) {
 }
 
 func TestMCPClearBrowserLogs(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	// Add some log entries
@@ -1047,6 +1076,7 @@ func TestMCPClearBrowserLogs(t *testing.T) {
 }
 
 func TestMCPUnknownTool(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1079,6 +1109,7 @@ func TestMCPUnknownTool(t *testing.T) {
 }
 
 func TestMCPUnknownMethod(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	mcp := NewMCPHandler(server)
 
@@ -1109,6 +1140,7 @@ func TestMCPUnknownMethod(t *testing.T) {
 }
 
 func TestMCPGetBrowserErrorsEmpty(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1163,6 +1195,7 @@ func TestMCPGetBrowserErrorsEmpty(t *testing.T) {
 }
 
 func TestScreenshotEndpoint(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 
@@ -1221,6 +1254,7 @@ func TestScreenshotEndpoint(t *testing.T) {
 }
 
 func TestScreenshotEndpointInvalidMethod(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 
@@ -1240,6 +1274,7 @@ func TestScreenshotEndpointInvalidMethod(t *testing.T) {
 }
 
 func TestScreenshotEndpointMissingDataUrl(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 
@@ -1262,6 +1297,7 @@ func TestScreenshotEndpointMissingDataUrl(t *testing.T) {
 }
 
 func TestLoadEntriesLargeEntry(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 
@@ -1298,6 +1334,7 @@ func TestLoadEntriesLargeEntry(t *testing.T) {
 // ============================================
 
 func TestValidateLogEntry(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		entry LogEntry
@@ -1327,6 +1364,7 @@ func TestValidateLogEntry(t *testing.T) {
 }
 
 func TestValidateLogEntrySize(t *testing.T) {
+	t.Parallel()
 	// Entry under limit
 	smallEntry := LogEntry{"level": "error", "msg": "small"}
 	if !validateLogEntry(smallEntry) {
@@ -1341,6 +1379,7 @@ func TestValidateLogEntrySize(t *testing.T) {
 }
 
 func TestValidateLogEntries(t *testing.T) {
+	t.Parallel()
 	entries := []LogEntry{
 		{"level": "error", "msg": "valid1"},
 		{"level": "invalid", "msg": "bad level"},
@@ -1368,6 +1407,7 @@ func TestValidateLogEntries(t *testing.T) {
 }
 
 func TestValidateLogEntriesAllValid(t *testing.T) {
+	t.Parallel()
 	entries := []LogEntry{
 		{"level": "error", "msg": "e1"},
 		{"level": "warn", "msg": "w1"},
@@ -1383,6 +1423,7 @@ func TestValidateLogEntriesAllValid(t *testing.T) {
 }
 
 func TestValidateLogEntriesAllInvalid(t *testing.T) {
+	t.Parallel()
 	entries := []LogEntry{
 		{"msg": "no level"},
 		{"level": "unknown"},
@@ -1398,6 +1439,7 @@ func TestValidateLogEntriesAllInvalid(t *testing.T) {
 }
 
 func TestValidateLogEntriesEmpty(t *testing.T) {
+	t.Parallel()
 	valid, rejected := validateLogEntries([]LogEntry{})
 	if len(valid) != 0 {
 		t.Errorf("Expected 0 valid, got %d", len(valid))
@@ -1788,6 +1830,7 @@ func assertGolden(t *testing.T, name string, got []byte) {
 }
 
 func TestMCPInitializeGolden(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	mcp := NewMCPHandler(server)
 
@@ -1807,6 +1850,7 @@ func TestMCPInitializeGolden(t *testing.T) {
 }
 
 func TestMCPToolsListGolden(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1834,6 +1878,7 @@ func TestMCPToolsListGolden(t *testing.T) {
 }
 
 func TestMCPGetBrowserErrorsGolden(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	// Add deterministic entries for snapshot
@@ -1873,6 +1918,7 @@ func TestMCPGetBrowserErrorsGolden(t *testing.T) {
 
 // TestHandleRequest_Initialized tests the "initialized" method handler
 func TestHandleRequest_Initialized(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1897,6 +1943,7 @@ func TestHandleRequest_Initialized(t *testing.T) {
 
 // TestHandleToolsCall_NilToolHandler tests tools/call with nil toolHandler
 func TestHandleToolsCall_NilToolHandler(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	// Create MCPHandler directly with nil toolHandler (no NewToolHandler)
@@ -1922,6 +1969,7 @@ func TestHandleToolsCall_NilToolHandler(t *testing.T) {
 
 // TestHandleToolsCall_UnknownTool tests tools/call with an unrecognized tool name
 func TestHandleToolsCall_UnknownTool(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1946,6 +1994,7 @@ func TestHandleToolsCall_UnknownTool(t *testing.T) {
 
 // TestLoadEntries_MalformedJSON tests that malformed JSON lines are skipped
 func TestLoadEntries_MalformedJSON(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "malformed.jsonl")
 
@@ -1973,6 +2022,7 @@ this is not json
 
 // TestLoadEntries_EmptyLines tests that empty lines are skipped
 func TestLoadEntries_EmptyLines(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "empty-lines.jsonl")
 
@@ -1998,6 +2048,7 @@ func TestLoadEntries_EmptyLines(t *testing.T) {
 
 // TestValidateLogEntry_OversizedEntry tests rejection of entries exceeding 1MB
 func TestValidateLogEntry_OversizedEntry(t *testing.T) {
+	t.Parallel()
 	// Create an entry with a value larger than 1MB
 	largeValue := strings.Repeat("x", maxEntrySize+1)
 	entry := LogEntry{
@@ -2012,6 +2063,7 @@ func TestValidateLogEntry_OversizedEntry(t *testing.T) {
 
 // TestValidateLogEntry_ExactMaxSize tests an entry at exactly the max size boundary
 func TestValidateLogEntry_ExactMaxSize(t *testing.T) {
+	t.Parallel()
 	// An entry that is just under the limit should pass
 	// The overhead of {"level":"error","msg":"..."} is about 22 bytes
 	overhead := len(`{"level":"error","msg":""}`)
@@ -2028,6 +2080,7 @@ func TestValidateLogEntry_ExactMaxSize(t *testing.T) {
 
 // TestClearEntries_SaveError tests clearEntries when save fails (read-only file)
 func TestClearEntries_SaveError(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "readonly-test.jsonl")
 
@@ -2065,6 +2118,7 @@ func TestClearEntries_SaveError(t *testing.T) {
 
 // L-8: ping MUST return {}
 func TestMCPPing(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	mcp := NewMCPHandler(server)
 
@@ -2089,6 +2143,7 @@ func TestMCPPing(t *testing.T) {
 
 // C-3: resources/templates/list MUST return empty array
 func TestMCPResourcesTemplatesList(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	mcp := NewMCPHandler(server)
 
@@ -2121,6 +2176,7 @@ func TestMCPResourcesTemplatesList(t *testing.T) {
 
 // L-5: Protocol version negotiation
 func TestMCPInitializeVersionNegotiation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		params          string
@@ -2195,6 +2251,7 @@ func TestMCPInitializeVersionNegotiation(t *testing.T) {
 // ============================================
 
 func TestIsAllowedHost(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		host string
@@ -2233,6 +2290,7 @@ func TestIsAllowedHost(t *testing.T) {
 
 // H-2/H-3: Origin header validation
 func TestOriginValidation(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -2273,6 +2331,7 @@ func TestOriginValidation(t *testing.T) {
 }
 
 func TestOriginValidation_OPTIONSPreflight(t *testing.T) {
+	t.Parallel()
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -2300,6 +2359,7 @@ func TestOriginValidation_OPTIONSPreflight(t *testing.T) {
 
 // T-8: Tool call rate limiting
 func TestMCPToolCallRateLimit(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -2336,6 +2396,7 @@ func TestMCPToolCallRateLimit(t *testing.T) {
 }
 
 func TestMCPToolCallRateLimitWindowExpiry(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -2386,6 +2447,7 @@ func TestMCPToolCallRateLimitWindowExpiry(t *testing.T) {
 }
 
 func TestSaveEntries_WriteError(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	// Use a path inside a non-existent directory to trigger create error
 	logFile := filepath.Join(tmpDir, "nonexistent-subdir", "test.jsonl")

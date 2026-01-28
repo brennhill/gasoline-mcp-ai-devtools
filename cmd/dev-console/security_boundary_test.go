@@ -18,6 +18,7 @@ import (
 // ============================================
 
 func TestIsMCPMode_DetectsEnvironmentVariable(t *testing.T) {
+	t.Parallel()
 	// Setup
 	originalValue := os.Getenv("MCP_MODE")
 	defer os.Setenv("MCP_MODE", originalValue)
@@ -36,6 +37,7 @@ func TestIsMCPMode_DetectsEnvironmentVariable(t *testing.T) {
 }
 
 func TestIsMCPMode_DefaultsToFalse(t *testing.T) {
+	t.Parallel()
 	// Setup
 	originalValue := os.Getenv("MCP_MODE")
 	defer os.Setenv("MCP_MODE", originalValue)
@@ -54,6 +56,7 @@ func TestIsMCPMode_DefaultsToFalse(t *testing.T) {
 // ============================================
 
 func TestAddToWhitelist_BlockedInMCPMode(t *testing.T) {
+	t.Parallel()
 	// Setup
 	originalValue := os.Getenv("MCP_MODE")
 	defer os.Setenv("MCP_MODE", originalValue)
@@ -74,6 +77,7 @@ func TestAddToWhitelist_BlockedInMCPMode(t *testing.T) {
 }
 
 func TestSetMinSeverity_BlockedInMCPMode(t *testing.T) {
+	t.Parallel()
 	// Setup
 	originalValue := os.Getenv("MCP_MODE")
 	defer os.Setenv("MCP_MODE", originalValue)
@@ -94,6 +98,7 @@ func TestSetMinSeverity_BlockedInMCPMode(t *testing.T) {
 }
 
 func TestClearWhitelist_BlockedInMCPMode(t *testing.T) {
+	t.Parallel()
 	// Setup
 	originalValue := os.Getenv("MCP_MODE")
 	defer os.Setenv("MCP_MODE", originalValue)
@@ -118,6 +123,7 @@ func TestClearWhitelist_BlockedInMCPMode(t *testing.T) {
 // ============================================
 
 func TestSessionOverride_NotPersisted(t *testing.T) {
+	t.Parallel()
 	// Clear audit log before test
 	ClearSecurityAuditEvents()
 
@@ -144,6 +150,7 @@ func TestSessionOverride_NotPersisted(t *testing.T) {
 }
 
 func TestSessionOverride_WarningIncluded(t *testing.T) {
+	t.Parallel()
 	// Clear audit log before test
 	ClearSecurityAuditEvents()
 
@@ -170,6 +177,7 @@ func TestSessionOverride_WarningIncluded(t *testing.T) {
 }
 
 func TestSessionOverride_AuditInfo(t *testing.T) {
+	t.Parallel()
 	// Clear audit log before test
 	ClearSecurityAuditEvents()
 
@@ -200,6 +208,7 @@ func TestSessionOverride_AuditInfo(t *testing.T) {
 // ============================================
 
 func TestMCPCalls_DoNotModifyConfigFile(t *testing.T) {
+	t.Parallel()
 	// Create temporary config file
 	tmpDir := t.TempDir()
 	configPath := tmpDir + "/security.json"
@@ -240,6 +249,7 @@ func TestMCPCalls_DoNotModifyConfigFile(t *testing.T) {
 // ============================================
 
 func TestAuditLog_RecordsSecurityDecisions(t *testing.T) {
+	t.Parallel()
 	// Clear audit log before test
 	ClearSecurityAuditEvents()
 

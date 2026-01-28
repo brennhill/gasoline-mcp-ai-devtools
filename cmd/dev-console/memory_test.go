@@ -53,6 +53,20 @@ func makeAction() EnhancedAction {
 	}
 }
 
+// Helper: recalculate running memory totals from current slices.
+// Must be called with lock held. Use after directly appending to c.wsEvents
+// or c.networkBodies in test setup blocks.
+func recalcMemoryTotals(c *Capture) {
+	c.wsMemoryTotal = 0
+	for i := range c.wsEvents {
+		c.wsMemoryTotal += wsEventMemory(&c.wsEvents[i])
+	}
+	c.nbMemoryTotal = 0
+	for i := range c.networkBodies {
+		c.nbMemoryTotal += nbEntryMemory(&c.networkBodies[i])
+	}
+}
+
 // Helper: fill buffers to reach an approximate memory target
 func fillToMemory(c *Capture, targetBytes int64) {
 	// Use network bodies as they are the largest per-entry
@@ -74,6 +88,7 @@ func fillToMemory(c *Capture, targetBytes int64) {
 	for i := 0; i < count; i++ {
 		c.networkAddedAt = append(c.networkAddedAt, now)
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 }
 
@@ -81,6 +96,7 @@ func fillToMemory(c *Capture, targetBytes int64) {
 // Test 1: Memory below soft limit -> no eviction
 // ============================================
 func TestMemory_BelowSoftLimit_NoEviction(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Add a small amount of data (well below 20MB)
@@ -104,6 +120,7 @@ func TestMemory_BelowSoftLimit_NoEviction(t *testing.T) {
 // Test 2: Memory at 21MB (above soft limit) -> oldest 25% evicted
 // ============================================
 func TestMemory_AboveSoftLimit_Evicts25Percent(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill with WS events to exceed soft limit (20MB)
@@ -128,6 +145,7 @@ func TestMemory_AboveSoftLimit_Evicts25Percent(t *testing.T) {
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
 	initialCount := len(c.networkBodies)
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// Now trigger enforcement via an ingest
@@ -155,6 +173,7 @@ func TestMemory_AboveSoftLimit_Evicts25Percent(t *testing.T) {
 // Test 3: Memory at 51MB (above hard limit) -> oldest 50% evicted, memory-exceeded flag set
 // ============================================
 func TestMemory_AboveHardLimit_Evicts50Percent(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill to above 50MB
@@ -165,6 +184,7 @@ func TestMemory_AboveHardLimit_Evicts50Percent(t *testing.T) {
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
 	initialCount := len(c.networkBodies)
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// Trigger enforcement
@@ -192,6 +212,7 @@ func TestMemory_AboveHardLimit_Evicts50Percent(t *testing.T) {
 // Test 4: Memory at 101MB (above critical) -> all buffers cleared, minimal mode
 // ============================================
 func TestMemory_AboveCriticalLimit_ClearsAll_MinimalMode(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill to above 100MB
@@ -210,6 +231,7 @@ func TestMemory_AboveCriticalLimit_ClearsAll_MinimalMode(t *testing.T) {
 		c.enhancedActions = append(c.enhancedActions, makeAction())
 		c.actionAddedAt = append(c.actionAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// Trigger enforcement
@@ -242,6 +264,7 @@ func TestMemory_AboveCriticalLimit_ClearsAll_MinimalMode(t *testing.T) {
 // Test 5: Minimal mode -> buffer capacities halved
 // ============================================
 func TestMemory_MinimalMode_HalvedCapacities(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Force minimal mode
@@ -271,6 +294,7 @@ func TestMemory_MinimalMode_HalvedCapacities(t *testing.T) {
 // Test 6: Minimal mode persists after memory drops
 // ============================================
 func TestMemory_MinimalMode_PersistsAfterMemoryDrops(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Force minimal mode
@@ -303,6 +327,7 @@ func TestMemory_MinimalMode_PersistsAfterMemoryDrops(t *testing.T) {
 // Test 7: Memory-exceeded flag -> network body POSTs rejected with 429
 // ============================================
 func TestMemory_ExceededFlag_RejectsNetworkBodies(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill to above hard limit to set memory-exceeded flag
@@ -312,6 +337,7 @@ func TestMemory_ExceededFlag_RejectsNetworkBodies(t *testing.T) {
 		c.networkBodies = append(c.networkBodies, nb)
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// The isMemoryExceeded check uses calcTotalMemory which checks real buffer memory
@@ -325,6 +351,7 @@ func TestMemory_ExceededFlag_RejectsNetworkBodies(t *testing.T) {
 // Test 8: Memory drops below hard limit -> memory-exceeded flag cleared
 // ============================================
 func TestMemory_DropsBelow_HardLimit_FlagCleared(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Start with high memory
@@ -334,6 +361,7 @@ func TestMemory_DropsBelow_HardLimit_FlagCleared(t *testing.T) {
 		c.networkBodies = append(c.networkBodies, nb)
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	if !c.IsMemoryExceeded() {
@@ -344,6 +372,7 @@ func TestMemory_DropsBelow_HardLimit_FlagCleared(t *testing.T) {
 	c.mu.Lock()
 	c.networkBodies = nil
 	c.networkAddedAt = nil
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	if c.IsMemoryExceeded() {
@@ -355,6 +384,7 @@ func TestMemory_DropsBelow_HardLimit_FlagCleared(t *testing.T) {
 // Test 9: Eviction targets network bodies first
 // ============================================
 func TestMemory_EvictionTargetsNetworkBodiesFirst(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Add both WS events and network bodies
@@ -373,6 +403,7 @@ func TestMemory_EvictionTargetsNetworkBodiesFirst(t *testing.T) {
 	}
 	wsCountBefore := len(c.wsEvents)
 	nbCountBefore := len(c.networkBodies)
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// Trigger enforcement
@@ -401,6 +432,7 @@ func TestMemory_EvictionTargetsNetworkBodiesFirst(t *testing.T) {
 // Test 10: Eviction cooldown - two ingests within 1 second -> only one eviction
 // ============================================
 func TestMemory_EvictionCooldown(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill to above soft limit
@@ -413,6 +445,7 @@ func TestMemory_EvictionCooldown(t *testing.T) {
 	// Set lastEvictionTime to now (simulating a recent eviction)
 	c.mem.lastEvictionTime = time.Now()
 	c.mem.totalEvictions = 1
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// Trigger another ingest immediately (within 1 second cooldown)
@@ -432,6 +465,7 @@ func TestMemory_EvictionCooldown(t *testing.T) {
 // Test 11: Periodic check at soft limit -> triggers eviction
 // ============================================
 func TestMemory_PeriodicCheck_AtSoftLimit_TriggersEviction(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill to above soft limit
@@ -441,6 +475,7 @@ func TestMemory_PeriodicCheck_AtSoftLimit_TriggersEviction(t *testing.T) {
 		c.networkBodies = append(c.networkBodies, nb)
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// Call the periodic check function directly
@@ -459,6 +494,7 @@ func TestMemory_PeriodicCheck_AtSoftLimit_TriggersEviction(t *testing.T) {
 // Test 12: Periodic check below soft limit -> no action
 // ============================================
 func TestMemory_PeriodicCheck_BelowSoftLimit_NoAction(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Add a small amount of data
@@ -480,6 +516,7 @@ func TestMemory_PeriodicCheck_BelowSoftLimit_NoAction(t *testing.T) {
 // Test 13: calcTotalMemory returns sum of all buffer estimates
 // ============================================
 func TestMemory_CalcTotalMemory_SumsAllBuffers(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Add data to all three buffer types
@@ -490,6 +527,7 @@ func TestMemory_CalcTotalMemory_SumsAllBuffers(t *testing.T) {
 	c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	c.enhancedActions = append(c.enhancedActions, makeAction())
 	c.actionAddedAt = append(c.actionAddedAt, time.Now())
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	c.mu.RLock()
@@ -510,12 +548,14 @@ func TestMemory_CalcTotalMemory_SumsAllBuffers(t *testing.T) {
 // Test 14: calcWSMemory estimates 200 bytes + data length per event
 // ============================================
 func TestMemory_CalcWSMemory_PerEventEstimate(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	dataSize := 1000
 	c.mu.Lock()
 	c.wsEvents = append(c.wsEvents, makeWSEvent(dataSize))
 	c.wsAddedAt = append(c.wsAddedAt, time.Now())
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	c.mu.RLock()
@@ -537,12 +577,14 @@ func TestMemory_CalcWSMemory_PerEventEstimate(t *testing.T) {
 // Test 15: calcNBMemory estimates 300 bytes + body lengths per entry
 // ============================================
 func TestMemory_CalcNBMemory_PerEntryEstimate(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	reqSize, respSize := 500, 1500
 	c.mu.Lock()
 	c.networkBodies = append(c.networkBodies, makeNetworkBody(reqSize, respSize))
 	c.networkAddedAt = append(c.networkAddedAt, time.Now())
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	c.mu.RLock()
@@ -563,6 +605,7 @@ func TestMemory_CalcNBMemory_PerEntryEstimate(t *testing.T) {
 // Test 16: After eviction, oldest entries are gone, newest preserved
 // ============================================
 func TestMemory_AfterEviction_OldestGone_NewestPreserved(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Add entries with identifiable data
@@ -581,6 +624,7 @@ func TestMemory_AfterEviction_OldestGone_NewestPreserved(t *testing.T) {
 		c.networkBodies = append(c.networkBodies, nb)
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// Trigger eviction
@@ -605,6 +649,7 @@ func TestMemory_AfterEviction_OldestGone_NewestPreserved(t *testing.T) {
 // Test 17: Ring buffer rotation still works correctly after eviction
 // ============================================
 func TestMemory_RingBufferRotation_AfterEviction(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill WS buffer to near capacity
@@ -636,6 +681,7 @@ func TestMemory_RingBufferRotation_AfterEviction(t *testing.T) {
 // Test 18: AddWebSocketEvents at hard limit -> events still added (but eviction runs first)
 // ============================================
 func TestMemory_AddWSEvents_AtHardLimit(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill to above hard limit
@@ -645,6 +691,7 @@ func TestMemory_AddWSEvents_AtHardLimit(t *testing.T) {
 		c.networkBodies = append(c.networkBodies, nb)
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// Add WS events - should trigger eviction first, then add
@@ -669,6 +716,7 @@ func TestMemory_AddWSEvents_AtHardLimit(t *testing.T) {
 // Test 19: Minimal mode + ingest -> data added at reduced capacity
 // ============================================
 func TestMemory_MinimalMode_IngestAtReducedCapacity(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Force minimal mode
@@ -700,6 +748,7 @@ func TestMemory_MinimalMode_IngestAtReducedCapacity(t *testing.T) {
 
 // Test 20: Extension soft limit (20MB) -> buffer capacities halved
 func TestMemory_ExtensionSoftLimit_BufferCapacitiesHalved(t *testing.T) {
+	t.Parallel()
 	// This is tested in extension-tests/memory.test.js
 	// Server-side: verify the concept - when minimalMode is true, capacities are halved
 	c := NewCapture()
@@ -718,6 +767,7 @@ func TestMemory_ExtensionSoftLimit_BufferCapacitiesHalved(t *testing.T) {
 
 // Test 21: Extension hard limit (50MB) -> network bodies disabled
 func TestMemory_ExtensionHardLimit_NetworkBodiesDisabled(t *testing.T) {
+	t.Parallel()
 	// This is tested in extension-tests/memory.test.js
 	// Server-side: verify that IsMemoryExceeded works correctly
 	c := NewCapture()
@@ -728,6 +778,7 @@ func TestMemory_ExtensionHardLimit_NetworkBodiesDisabled(t *testing.T) {
 		c.networkBodies = append(c.networkBodies, nb)
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	if !c.IsMemoryExceeded() {
@@ -737,6 +788,7 @@ func TestMemory_ExtensionHardLimit_NetworkBodiesDisabled(t *testing.T) {
 
 // Test 22: Extension memory check interval
 func TestMemory_ExtensionCheckInterval(t *testing.T) {
+	t.Parallel()
 	// This is tested in extension-tests/memory.test.js
 	// Server-side: verify the periodic check constant
 	if memoryCheckInterval != 10*time.Second {
@@ -750,6 +802,7 @@ func TestMemory_ExtensionCheckInterval(t *testing.T) {
 
 // Test: calcActionMemory estimates 500 bytes per entry
 func TestMemory_CalcActionMemory_PerEntryEstimate(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	c.mu.Lock()
@@ -770,6 +823,7 @@ func TestMemory_CalcActionMemory_PerEntryEstimate(t *testing.T) {
 
 // Test: GetMemoryStatus returns correct state
 func TestMemory_GetMemoryStatus(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	c.mu.Lock()
@@ -802,6 +856,7 @@ func TestMemory_GetMemoryStatus(t *testing.T) {
 
 // Test: Eviction counter increments correctly
 func TestMemory_EvictionCounterIncrements(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill above soft limit
@@ -811,6 +866,7 @@ func TestMemory_EvictionCounterIncrements(t *testing.T) {
 		c.networkBodies = append(c.networkBodies, nb)
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// First eviction
@@ -831,6 +887,7 @@ func TestMemory_EvictionCounterIncrements(t *testing.T) {
 
 // Test: Empty buffers have zero memory
 func TestMemory_EmptyBuffers_ZeroMemory(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	c.mu.RLock()
@@ -865,6 +922,7 @@ func TestMemory_EmptyBuffers_ZeroMemory(t *testing.T) {
 //	After NB eviction (25% of 20 = 5 entries removed): 15*200KB = ~3MB NB
 //	Remaining = ~3MB + ~20MB = ~23MB -> still above soft, so WS branch is hit
 func TestMemory_EvictSoft_NBAndWS(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	c.mu.Lock()
@@ -878,6 +936,7 @@ func TestMemory_EvictSoft_NBAndWS(t *testing.T) {
 		c.wsEvents = append(c.wsEvents, makeWSEvent(100000))
 		c.wsAddedAt = append(c.wsAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	if c.GetTotalBufferMemory() <= memorySoftLimit {
@@ -919,6 +978,7 @@ func TestMemory_EvictSoft_NBAndWS(t *testing.T) {
 //	After WS 25% eviction (2 removed): 6*100KB = ~0.6MB WS
 //	Remaining = ~1.2MB + ~0.6MB + ~25MB = ~26.8MB -> still above, actions branch hit
 func TestMemory_EvictSoft_NBAndWSAndActions(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	c.mu.Lock()
@@ -935,6 +995,7 @@ func TestMemory_EvictSoft_NBAndWSAndActions(t *testing.T) {
 		c.enhancedActions = append(c.enhancedActions, makeAction())
 		c.actionAddedAt = append(c.actionAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	if c.GetTotalBufferMemory() <= memorySoftLimit {
@@ -975,6 +1036,7 @@ func TestMemory_EvictSoft_NBAndWSAndActions(t *testing.T) {
 //	After NB 50% eviction (15 removed): 15*200KB = ~3MB NB
 //	Remaining = ~3MB + ~50MB = ~53MB -> still above hard, WS branch hit
 func TestMemory_EvictHard_NBAndWS(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	c.mu.Lock()
@@ -986,6 +1048,7 @@ func TestMemory_EvictHard_NBAndWS(t *testing.T) {
 		c.wsEvents = append(c.wsEvents, makeWSEvent(100000))
 		c.wsAddedAt = append(c.wsAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	if c.GetTotalBufferMemory() <= memoryHardLimit {
@@ -1027,6 +1090,7 @@ func TestMemory_EvictHard_NBAndWS(t *testing.T) {
 //	After WS 50% eviction (4 removed): 4*100KB = ~0.4MB WS
 //	Remaining = ~0.8MB + ~0.4MB + ~60MB = ~61.2MB -> still above, actions branch hit
 func TestMemory_EvictHard_NBAndWSAndActions(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	c.mu.Lock()
@@ -1043,6 +1107,7 @@ func TestMemory_EvictHard_NBAndWSAndActions(t *testing.T) {
 		c.enhancedActions = append(c.enhancedActions, makeAction())
 		c.actionAddedAt = append(c.actionAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	if c.GetTotalBufferMemory() <= memoryHardLimit {
@@ -1068,6 +1133,7 @@ func TestMemory_EvictHard_NBAndWSAndActions(t *testing.T) {
 }
 
 func TestMemory_StartMemoryEnforcement_StopFunction(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	stop := c.StartMemoryEnforcement()
@@ -1091,6 +1157,7 @@ func TestMemory_StartMemoryEnforcement_StopFunction(t *testing.T) {
 // We cannot easily wait for the ticker (10s default), so we use a direct invocation
 // to verify the checkMemoryAndEvict path is reachable.
 func TestMemory_StartMemoryEnforcement_PeriodicEviction(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill above soft limit
@@ -1099,6 +1166,7 @@ func TestMemory_StartMemoryEnforcement_PeriodicEviction(t *testing.T) {
 		c.networkBodies = append(c.networkBodies, makeNetworkBody(100000, 100000))
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	stop := c.StartMemoryEnforcement()
@@ -1120,6 +1188,7 @@ func TestMemory_StartMemoryEnforcement_PeriodicEviction(t *testing.T) {
 // Note: closing an already-closed channel panics, so we verify the implementation
 // handles it via the goroutine exiting before the second close.
 func TestMemory_StartMemoryEnforcement_DoubleStop(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	stop := c.StartMemoryEnforcement()
@@ -1139,6 +1208,7 @@ func TestMemory_StartMemoryEnforcement_DoubleStop(t *testing.T) {
 
 // Test: evictSoft with exactly 1 entry per secondary buffer (exercises removeCount=0->1 branch)
 func TestMemory_EvictSoft_SingleEntryWS(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Set up: 1 WS event that is huge, plus enough action memory to stay above soft limit
@@ -1152,6 +1222,7 @@ func TestMemory_EvictSoft_SingleEntryWS(t *testing.T) {
 		c.enhancedActions = append(c.enhancedActions, makeAction())
 		c.actionAddedAt = append(c.actionAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	if c.GetTotalBufferMemory() <= memorySoftLimit {
@@ -1177,6 +1248,7 @@ func TestMemory_EvictSoft_SingleEntryWS(t *testing.T) {
 
 // Test: evictHard with exactly 1 entry per secondary buffer (exercises removeCount=0->1 branch)
 func TestMemory_EvictHard_SingleEntryWS(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	c.mu.Lock()
@@ -1188,6 +1260,7 @@ func TestMemory_EvictHard_SingleEntryWS(t *testing.T) {
 		c.enhancedActions = append(c.enhancedActions, makeAction())
 		c.actionAddedAt = append(c.actionAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	if c.GetTotalBufferMemory() <= memoryHardLimit {
@@ -1218,6 +1291,7 @@ func TestMemory_EvictHard_SingleEntryWS(t *testing.T) {
 // ============================================
 
 func TestMemory_EvictBuffers_FreesBackingArray(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill above soft limit with network bodies
@@ -1226,6 +1300,7 @@ func TestMemory_EvictBuffers_FreesBackingArray(t *testing.T) {
 		c.networkBodies = append(c.networkBodies, makeNetworkBody(100000, 100000))
 		c.networkAddedAt = append(c.networkAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// Trigger soft eviction
@@ -1248,6 +1323,7 @@ func TestMemory_EvictBuffers_FreesBackingArray(t *testing.T) {
 }
 
 func TestMemory_EvictCritical_FreesBackingArray(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// Fill above critical limit
@@ -1264,6 +1340,7 @@ func TestMemory_EvictCritical_FreesBackingArray(t *testing.T) {
 		c.enhancedActions = append(c.enhancedActions, makeAction())
 		c.actionAddedAt = append(c.actionAddedAt, time.Now())
 	}
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	// Trigger critical eviction
@@ -1293,6 +1370,7 @@ func TestMemory_EvictCritical_FreesBackingArray(t *testing.T) {
 
 // Test: evictSoft with exactly 1 action entry (exercises removeCount=0->1 for actions)
 func TestMemory_EvictSoft_SingleEntryAction(t *testing.T) {
+	t.Parallel()
 	c := NewCapture()
 
 	// WS memory large enough to stay above soft limit after NB+WS eviction
@@ -1305,6 +1383,7 @@ func TestMemory_EvictSoft_SingleEntryAction(t *testing.T) {
 	// 1 action entry
 	c.enhancedActions = append(c.enhancedActions, makeAction())
 	c.actionAddedAt = append(c.actionAddedAt, time.Now())
+	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
 	if c.GetTotalBufferMemory() <= memorySoftLimit {
@@ -1321,5 +1400,358 @@ func TestMemory_EvictSoft_SingleEntryAction(t *testing.T) {
 	// The 1 action is removed (1/4 = 0 -> 1)
 	if actionsAfter != 0 {
 		t.Errorf("expected 0 actions after eviction of single entry, got %d", actionsAfter)
+	}
+}
+
+// ============================================
+// Running Total Tests (O(1) memory tracking)
+// ============================================
+
+// bruteForceWSMemory recalculates WS memory by iterating all events (the old O(n) way).
+// Used as a reference to verify the running total.
+func bruteForceWSMemory(events []WebSocketEvent) int64 {
+	var total int64
+	for i := range events {
+		total += int64(len(events[i].Data)) + wsEventOverhead
+	}
+	return total
+}
+
+// bruteForceNBMemory recalculates NB memory by iterating all bodies (the old O(n) way).
+// Used as a reference to verify the running total.
+func bruteForceNBMemory(bodies []NetworkBody) int64 {
+	var total int64
+	for i := range bodies {
+		total += int64(len(bodies[i].RequestBody)+len(bodies[i].ResponseBody)) + networkBodyOverhead
+	}
+	return total
+}
+
+// Test: Running totals are accurate after adding WS events
+func TestMemory_RunningTotal_WSAccurateAfterAdd(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	events := []WebSocketEvent{
+		makeWSEvent(500),
+		makeWSEvent(1000),
+		makeWSEvent(2000),
+	}
+	c.AddWebSocketEvents(events)
+
+	c.mu.RLock()
+	runningTotal := c.wsMemoryTotal
+	expected := bruteForceWSMemory(c.wsEvents)
+	c.mu.RUnlock()
+
+	if runningTotal != expected {
+		t.Errorf("wsMemoryTotal = %d, brute force = %d", runningTotal, expected)
+	}
+}
+
+// Test: Running totals are accurate after adding network bodies
+func TestMemory_RunningTotal_NBAccurateAfterAdd(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	bodies := []NetworkBody{
+		makeNetworkBody(500, 500),
+		makeNetworkBody(1000, 2000),
+	}
+	c.AddNetworkBodies(bodies)
+
+	c.mu.RLock()
+	runningTotal := c.nbMemoryTotal
+	expected := bruteForceNBMemory(c.networkBodies)
+	c.mu.RUnlock()
+
+	if runningTotal != expected {
+		t.Errorf("nbMemoryTotal = %d, brute force = %d", runningTotal, expected)
+	}
+}
+
+// Test: Running totals are accurate after WS eviction via ring buffer rotation
+func TestMemory_RunningTotal_WSAccurateAfterRotation(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Fill to capacity, then add more to trigger ring buffer rotation
+	events := make([]WebSocketEvent, maxWSEvents+10)
+	for i := range events {
+		events[i] = makeWSEvent(100 + i) // varying sizes
+	}
+	c.AddWebSocketEvents(events)
+
+	c.mu.RLock()
+	runningTotal := c.wsMemoryTotal
+	expected := bruteForceWSMemory(c.wsEvents)
+	count := len(c.wsEvents)
+	c.mu.RUnlock()
+
+	if count > maxWSEvents {
+		t.Errorf("expected at most %d events, got %d", maxWSEvents, count)
+	}
+	if runningTotal != expected {
+		t.Errorf("after rotation: wsMemoryTotal = %d, brute force = %d", runningTotal, expected)
+	}
+}
+
+// Test: Running totals are accurate after NB eviction via ring buffer rotation
+func TestMemory_RunningTotal_NBAccurateAfterRotation(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Fill to capacity, then add more to trigger ring buffer rotation
+	bodies := make([]NetworkBody, maxNetworkBodies+5)
+	for i := range bodies {
+		bodies[i] = makeNetworkBody(100+i, 200+i) // varying sizes
+	}
+	c.AddNetworkBodies(bodies)
+
+	c.mu.RLock()
+	runningTotal := c.nbMemoryTotal
+	expected := bruteForceNBMemory(c.networkBodies)
+	count := len(c.networkBodies)
+	c.mu.RUnlock()
+
+	if count > maxNetworkBodies {
+		t.Errorf("expected at most %d bodies, got %d", maxNetworkBodies, count)
+	}
+	if runningTotal != expected {
+		t.Errorf("after rotation: nbMemoryTotal = %d, brute force = %d", runningTotal, expected)
+	}
+}
+
+// Test: Running totals are accurate after evictWSForMemory
+func TestMemory_RunningTotal_WSAccurateAfterPerBufferEviction(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Add events that exceed per-buffer WS memory limit (4MB)
+	// Each event with 50KB data = ~50200 bytes; 100 events = ~5MB
+	events := make([]WebSocketEvent, 100)
+	for i := range events {
+		events[i] = makeWSEvent(50000)
+	}
+	c.AddWebSocketEvents(events)
+
+	c.mu.RLock()
+	runningTotal := c.wsMemoryTotal
+	expected := bruteForceWSMemory(c.wsEvents)
+	c.mu.RUnlock()
+
+	if runningTotal != expected {
+		t.Errorf("after per-buffer WS eviction: wsMemoryTotal = %d, brute force = %d", runningTotal, expected)
+	}
+}
+
+// Test: Running totals are accurate after evictNBForMemory
+func TestMemory_RunningTotal_NBAccurateAfterPerBufferEviction(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Add bodies that exceed per-buffer NB memory limit (8MB)
+	// Each body with 50KB req + 50KB resp = ~100300 bytes; 100 bodies = ~10MB
+	bodies := make([]NetworkBody, 100)
+	for i := range bodies {
+		bodies[i] = makeNetworkBody(maxRequestBodySize, maxResponseBodySize)
+	}
+	c.AddNetworkBodies(bodies)
+
+	c.mu.RLock()
+	runningTotal := c.nbMemoryTotal
+	expected := bruteForceNBMemory(c.networkBodies)
+	c.mu.RUnlock()
+
+	if runningTotal != expected {
+		t.Errorf("after per-buffer NB eviction: nbMemoryTotal = %d, brute force = %d", runningTotal, expected)
+	}
+}
+
+// Test: Running totals are accurate after evictBuffers (soft/hard eviction)
+func TestMemory_RunningTotal_AccurateAfterEvictBuffers(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Fill with large network bodies to exceed soft limit
+	c.mu.Lock()
+	for i := 0; i < 110; i++ {
+		nb := makeNetworkBody(100000, 100000)
+		c.networkBodies = append(c.networkBodies, nb)
+		c.networkAddedAt = append(c.networkAddedAt, time.Now())
+		c.nbMemoryTotal += int64(len(nb.RequestBody)+len(nb.ResponseBody)) + networkBodyOverhead
+	}
+	for i := 0; i < 20; i++ {
+		ev := makeWSEvent(10000)
+		c.wsEvents = append(c.wsEvents, ev)
+		c.wsAddedAt = append(c.wsAddedAt, time.Now())
+		c.wsMemoryTotal += int64(len(ev.Data)) + wsEventOverhead
+	}
+	c.mu.Unlock()
+
+	// Trigger enforcement via an ingest
+	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(100)})
+
+	c.mu.RLock()
+	wsRunning := c.wsMemoryTotal
+	wsExpected := bruteForceWSMemory(c.wsEvents)
+	nbRunning := c.nbMemoryTotal
+	nbExpected := bruteForceNBMemory(c.networkBodies)
+	c.mu.RUnlock()
+
+	if wsRunning != wsExpected {
+		t.Errorf("after evictBuffers: wsMemoryTotal = %d, brute force = %d", wsRunning, wsExpected)
+	}
+	if nbRunning != nbExpected {
+		t.Errorf("after evictBuffers: nbMemoryTotal = %d, brute force = %d", nbRunning, nbExpected)
+	}
+}
+
+// Test: Running totals are zero after evictCritical
+func TestMemory_RunningTotal_ZeroAfterCriticalEviction(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Fill above critical limit (100MB)
+	c.mu.Lock()
+	for i := 0; i < 600; i++ {
+		nb := makeNetworkBody(100000, 100000)
+		c.networkBodies = append(c.networkBodies, nb)
+		c.networkAddedAt = append(c.networkAddedAt, time.Now())
+		c.nbMemoryTotal += int64(len(nb.RequestBody)+len(nb.ResponseBody)) + networkBodyOverhead
+	}
+	for i := 0; i < 10; i++ {
+		ev := makeWSEvent(1000)
+		c.wsEvents = append(c.wsEvents, ev)
+		c.wsAddedAt = append(c.wsAddedAt, time.Now())
+		c.wsMemoryTotal += int64(len(ev.Data)) + wsEventOverhead
+	}
+	c.mu.Unlock()
+
+	// Trigger critical eviction
+	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(100)})
+
+	c.mu.RLock()
+	wsRunning := c.wsMemoryTotal
+	nbRunning := c.nbMemoryTotal
+	c.mu.RUnlock()
+
+	// After critical eviction, NB should be zero (cleared to nil)
+	if nbRunning != 0 {
+		t.Errorf("expected nbMemoryTotal = 0 after critical eviction, got %d", nbRunning)
+	}
+	// WS may have the newly added event
+	wsExpected := bruteForceWSMemory([]WebSocketEvent{makeWSEvent(100)})
+	// The newly added event gets added after eviction, so wsRunning should match
+	if wsRunning != wsExpected {
+		// Allow wsRunning to be whatever the actual wsEvents slice shows
+		c.mu.RLock()
+		actualExpected := bruteForceWSMemory(c.wsEvents)
+		c.mu.RUnlock()
+		if wsRunning != actualExpected {
+			t.Errorf("expected wsMemoryTotal = %d after critical eviction, got %d", actualExpected, wsRunning)
+		}
+	}
+}
+
+// Test: Running totals are zero after ClearAll
+func TestMemory_RunningTotal_ZeroAfterClearAll(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Add data
+	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(1000), makeWSEvent(2000)})
+	c.AddNetworkBodies([]NetworkBody{makeNetworkBody(500, 500), makeNetworkBody(1000, 1000)})
+
+	// Verify non-zero before clear
+	c.mu.RLock()
+	wsBefore := c.wsMemoryTotal
+	nbBefore := c.nbMemoryTotal
+	c.mu.RUnlock()
+
+	if wsBefore == 0 {
+		t.Fatal("expected non-zero wsMemoryTotal before ClearAll")
+	}
+	if nbBefore == 0 {
+		t.Fatal("expected non-zero nbMemoryTotal before ClearAll")
+	}
+
+	// Clear
+	c.ClearAll()
+
+	c.mu.RLock()
+	wsAfter := c.wsMemoryTotal
+	nbAfter := c.nbMemoryTotal
+	c.mu.RUnlock()
+
+	if wsAfter != 0 {
+		t.Errorf("expected wsMemoryTotal = 0 after ClearAll, got %d", wsAfter)
+	}
+	if nbAfter != 0 {
+		t.Errorf("expected nbMemoryTotal = 0 after ClearAll, got %d", nbAfter)
+	}
+}
+
+// Test: calcWSMemory returns the running total (O(1))
+func TestMemory_CalcWSMemory_ReturnsRunningTotal(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(500), makeWSEvent(1000)})
+
+	c.mu.RLock()
+	calcResult := c.calcWSMemory()
+	runningTotal := c.wsMemoryTotal
+	c.mu.RUnlock()
+
+	if calcResult != runningTotal {
+		t.Errorf("calcWSMemory() = %d, wsMemoryTotal = %d; expected equal", calcResult, runningTotal)
+	}
+}
+
+// Test: calcNBMemory returns the running total (O(1))
+func TestMemory_CalcNBMemory_ReturnsRunningTotal(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	c.AddNetworkBodies([]NetworkBody{makeNetworkBody(500, 500)})
+
+	c.mu.RLock()
+	calcResult := c.calcNBMemory()
+	runningTotal := c.nbMemoryTotal
+	c.mu.RUnlock()
+
+	if calcResult != runningTotal {
+		t.Errorf("calcNBMemory() = %d, nbMemoryTotal = %d; expected equal", calcResult, runningTotal)
+	}
+}
+
+// Test: Multiple add/evict cycles maintain accurate running totals
+func TestMemory_RunningTotal_MultipleAddEvictCycles(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Cycle 1: add events
+	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(500), makeWSEvent(1000)})
+	c.AddNetworkBodies([]NetworkBody{makeNetworkBody(200, 300)})
+
+	// Cycle 2: add more (may trigger rotation if near capacity)
+	for i := 0; i < 5; i++ {
+		c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(100 * (i + 1))})
+		c.AddNetworkBodies([]NetworkBody{makeNetworkBody(50*(i+1), 75*(i+1))})
+	}
+
+	c.mu.RLock()
+	wsRunning := c.wsMemoryTotal
+	wsExpected := bruteForceWSMemory(c.wsEvents)
+	nbRunning := c.nbMemoryTotal
+	nbExpected := bruteForceNBMemory(c.networkBodies)
+	c.mu.RUnlock()
+
+	if wsRunning != wsExpected {
+		t.Errorf("after multiple cycles: wsMemoryTotal = %d, brute force = %d", wsRunning, wsExpected)
+	}
+	if nbRunning != nbExpected {
+		t.Errorf("after multiple cycles: nbMemoryTotal = %d, brute force = %d", nbRunning, nbExpected)
 	}
 }

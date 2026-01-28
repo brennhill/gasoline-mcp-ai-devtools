@@ -13,6 +13,7 @@ import (
 // ============================================
 
 func TestNetworkBodyToHAREntry(t *testing.T) {
+	t.Parallel()
 	t.Run("basic GET", func(t *testing.T) {
 		body := NetworkBody{
 			Timestamp: "2026-01-23T10:30:00.000Z",
@@ -302,6 +303,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 // ============================================
 
 func TestExportHAR(t *testing.T) {
+	t.Parallel()
 	t.Run("empty - no network bodies", func(t *testing.T) {
 		capture := NewCapture()
 
@@ -420,6 +422,7 @@ func TestExportHAR(t *testing.T) {
 // ============================================
 
 func TestExportHARToFile(t *testing.T) {
+	t.Parallel()
 	t.Run("save to tmp", func(t *testing.T) {
 		capture := NewCapture()
 		capture.AddNetworkBodies([]NetworkBody{
@@ -492,6 +495,7 @@ func TestExportHARToFile(t *testing.T) {
 // ============================================
 
 func TestIsPathSafe(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		path string
@@ -522,6 +526,7 @@ func TestIsPathSafe(t *testing.T) {
 // ============================================
 
 func TestParseQueryString(t *testing.T) {
+	t.Parallel()
 	t.Run("basic params", func(t *testing.T) {
 		result := parseQueryString("https://example.com/api?foo=bar&baz=1")
 		if len(result) != 2 {
@@ -556,6 +561,7 @@ func TestParseQueryString(t *testing.T) {
 // ============================================
 
 func TestExportHARTool(t *testing.T) {
+	t.Parallel()
 	t.Run("no save_to returns full HAR JSON", func(t *testing.T) {
 		server := &Server{
 			entries: make([]LogEntry, 0),
@@ -771,6 +777,7 @@ func TestExportHARTool(t *testing.T) {
 // ============================================
 
 func TestExportHARToFile_WriteError(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add a network body so there's data to export
@@ -799,6 +806,7 @@ func TestExportHARToFile_WriteError(t *testing.T) {
 }
 
 func TestToolExportHAR_MethodStatusFilters(t *testing.T) {
+	t.Parallel()
 	capture := setupTestCapture(t)
 
 	// Add bodies with different methods and statuses
@@ -906,6 +914,7 @@ func TestToolExportHAR_MethodStatusFilters(t *testing.T) {
 // ============================================
 
 func TestExportHARToFile_WriteErrorNonexistentParent(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "2026-01-23T10:00:00.000Z", Method: "GET", URL: "https://example.com", Status: 200},
@@ -928,6 +937,7 @@ func TestExportHARToFile_WriteErrorNonexistentParent(t *testing.T) {
 // ============================================
 
 func TestToolExportHAR_WriteFailure(t *testing.T) {
+	t.Parallel()
 	server := &Server{
 		entries: make([]LogEntry, 0),
 	}
@@ -965,6 +975,7 @@ func TestToolExportHAR_WriteFailure(t *testing.T) {
 // ============================================
 
 func TestToolExportHAR_NoSaveTo_EmptyCapture(t *testing.T) {
+	t.Parallel()
 	server := &Server{
 		entries: make([]LogEntry, 0),
 	}

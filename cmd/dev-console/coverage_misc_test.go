@@ -16,6 +16,7 @@ import (
 // ============================================
 
 func TestRecordEvents_WindowExpiry(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Record some events in the first window
@@ -40,6 +41,7 @@ func TestRecordEvents_WindowExpiry(t *testing.T) {
 }
 
 func TestRecordEvents_WindowExpiryOverThreshold(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Push the window over the threshold before expiry
@@ -71,6 +73,7 @@ func TestRecordEvents_WindowExpiryOverThreshold(t *testing.T) {
 // ============================================
 
 func TestHandleHealth_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	req := httptest.NewRequest("POST", "/health", nil)
@@ -91,6 +94,7 @@ func TestHandleHealth_MethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleHealth_CircuitClosed(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Circuit is closed by default; verify the response
@@ -119,6 +123,7 @@ func TestHandleHealth_CircuitClosed(t *testing.T) {
 // ============================================
 
 func TestExtractURLPath_JustHost(t *testing.T) {
+	t.Parallel()
 	result := extractURLPath("http://example.com")
 	if result != "/" {
 		t.Errorf("expected '/' for host-only URL, got '%s'", result)
@@ -126,6 +131,7 @@ func TestExtractURLPath_JustHost(t *testing.T) {
 }
 
 func TestExtractURLPath_EmptyPath(t *testing.T) {
+	t.Parallel()
 	result := extractURLPath("http://example.com?query=1")
 	if result != "/" {
 		t.Errorf("expected '/' for URL with query but no path, got '%s'", result)
@@ -133,6 +139,7 @@ func TestExtractURLPath_EmptyPath(t *testing.T) {
 }
 
 func TestExtractURLPath_WithPath(t *testing.T) {
+	t.Parallel()
 	result := extractURLPath("http://example.com/api/v1/users")
 	if result != "/api/v1/users" {
 		t.Errorf("expected '/api/v1/users', got '%s'", result)
@@ -140,6 +147,7 @@ func TestExtractURLPath_WithPath(t *testing.T) {
 }
 
 func TestExtractURLPath_EmptyString(t *testing.T) {
+	t.Parallel()
 	// Empty string parses but has empty path
 	result := extractURLPath("")
 	if result != "/" {
@@ -148,6 +156,7 @@ func TestExtractURLPath_EmptyString(t *testing.T) {
 }
 
 func TestExtractURLPath_JustPath(t *testing.T) {
+	t.Parallel()
 	result := extractURLPath("/foo/bar")
 	if result != "/foo/bar" {
 		t.Errorf("expected '/foo/bar', got '%s'", result)
@@ -159,6 +168,7 @@ func TestExtractURLPath_JustPath(t *testing.T) {
 // ============================================
 
 func TestRemoveFromSlice_NotFound(t *testing.T) {
+	t.Parallel()
 	slice := []string{"a", "b", "c"}
 	result := removeFromSlice(slice, "d")
 	if len(result) != 3 {
@@ -172,6 +182,7 @@ func TestRemoveFromSlice_NotFound(t *testing.T) {
 }
 
 func TestRemoveFromSlice_EmptySlice(t *testing.T) {
+	t.Parallel()
 	result := removeFromSlice([]string{}, "anything")
 	if len(result) != 0 {
 		t.Errorf("expected empty slice, got length %d", len(result))
@@ -179,6 +190,7 @@ func TestRemoveFromSlice_EmptySlice(t *testing.T) {
 }
 
 func TestRemoveFromSlice_Found(t *testing.T) {
+	t.Parallel()
 	slice := []string{"a", "b", "c"}
 	result := removeFromSlice(slice, "b")
 	if len(result) != 2 {
@@ -194,6 +206,7 @@ func TestRemoveFromSlice_Found(t *testing.T) {
 // ============================================
 
 func TestGetEntries_Empty(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	entries := server.getEntries()
 	if len(entries) != 0 {
@@ -202,6 +215,7 @@ func TestGetEntries_Empty(t *testing.T) {
 }
 
 func TestGetEntries_ReturnsCopy(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	// Add some entries
@@ -234,6 +248,7 @@ func TestGetEntries_ReturnsCopy(t *testing.T) {
 // ============================================
 
 func TestNewServer_NonExistentFile(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "subdir", "logs.jsonl")
 
@@ -251,6 +266,7 @@ func TestNewServer_NonExistentFile(t *testing.T) {
 }
 
 func TestNewServer_InvalidDirectory(t *testing.T) {
+	t.Parallel()
 	// Use /dev/null/impossible which cannot be a directory
 	_, err := NewServer("/dev/null/impossible/logs.jsonl", 100)
 	if err == nil {
@@ -263,6 +279,7 @@ func TestNewServer_InvalidDirectory(t *testing.T) {
 // ============================================
 
 func TestSaveEntries_WritesCorrectly(t *testing.T) {
+	t.Parallel()
 	server, logFile := setupTestServer(t)
 
 	server.mu.Lock()
@@ -291,6 +308,7 @@ func TestSaveEntries_WritesCorrectly(t *testing.T) {
 }
 
 func TestSaveEntries_InvalidPath(t *testing.T) {
+	t.Parallel()
 	server := &Server{
 		logFile:    "/dev/null/impossible/file.jsonl",
 		maxEntries: 10,
@@ -308,6 +326,7 @@ func TestSaveEntries_InvalidPath(t *testing.T) {
 // ============================================
 
 func TestSanitizeForFilename_SpecialChars(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -330,6 +349,7 @@ func TestSanitizeForFilename_SpecialChars(t *testing.T) {
 }
 
 func TestSanitizeForFilename_Truncation(t *testing.T) {
+	t.Parallel()
 	long := "abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrstuvwxyz"
 	result := sanitizeForFilename(long)
 	if len(result) > 50 {
@@ -342,6 +362,7 @@ func TestSanitizeForFilename_Truncation(t *testing.T) {
 // ============================================
 
 func TestHandleScreenshot_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	req := httptest.NewRequest("GET", "/screenshot", nil)
@@ -354,6 +375,7 @@ func TestHandleScreenshot_MethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleScreenshot_InvalidBase64(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	body := `{"dataUrl":"data:image/jpeg;base64,!!!invalid!!!", "url":"http://example.com"}`
@@ -368,6 +390,7 @@ func TestHandleScreenshot_InvalidBase64(t *testing.T) {
 }
 
 func TestHandleScreenshot_MissingDataUrl(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	body := `{"url":"http://example.com"}`
@@ -382,6 +405,7 @@ func TestHandleScreenshot_MissingDataUrl(t *testing.T) {
 }
 
 func TestHandleScreenshot_InvalidDataUrlFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	body := `{"dataUrl":"not-a-data-url"}`
@@ -396,6 +420,7 @@ func TestHandleScreenshot_InvalidDataUrlFormat(t *testing.T) {
 }
 
 func TestHandleScreenshot_Success(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	// Minimal valid base64 data (not a real JPEG but valid base64)
@@ -426,6 +451,7 @@ func TestHandleScreenshot_Success(t *testing.T) {
 }
 
 func TestHandleScreenshot_NoURL(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	// No URL means hostname defaults to "unknown"
@@ -447,6 +473,7 @@ func TestHandleScreenshot_NoURL(t *testing.T) {
 }
 
 func TestHandleScreenshot_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	body := `{not json}`
@@ -465,6 +492,7 @@ func TestHandleScreenshot_InvalidJSON(t *testing.T) {
 // ============================================
 
 func TestClearEntries_RemovesAll(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 
 	server.addEntries([]LogEntry{
@@ -484,6 +512,7 @@ func TestClearEntries_RemovesAll(t *testing.T) {
 }
 
 func TestClearEntries_PersistsToFile(t *testing.T) {
+	t.Parallel()
 	server, logFile := setupTestServer(t)
 
 	server.addEntries([]LogEntry{
@@ -507,6 +536,7 @@ func TestClearEntries_PersistsToFile(t *testing.T) {
 // ============================================
 
 func TestJsonResponse_Success(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	jsonResponse(rec, http.StatusOK, map[string]string{"status": "ok"})
 
@@ -527,6 +557,7 @@ func TestJsonResponse_Success(t *testing.T) {
 }
 
 func TestJsonResponse_ErrorStatus(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	jsonResponse(rec, http.StatusBadRequest, map[string]string{"error": "bad"})
 
@@ -536,6 +567,7 @@ func TestJsonResponse_ErrorStatus(t *testing.T) {
 }
 
 func TestJsonResponse_NilData(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	jsonResponse(rec, http.StatusOK, nil)
 
@@ -549,6 +581,7 @@ func TestJsonResponse_NilData(t *testing.T) {
 }
 
 func TestJsonResponse_ComplexData(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	data := map[string]interface{}{
 		"count": 42,
@@ -566,6 +599,7 @@ func TestJsonResponse_ComplexData(t *testing.T) {
 // ============================================
 
 func TestCanCorrelate_InvalidTimestamps(t *testing.T) {
+	t.Parallel()
 	a := Alert{Category: "regression", Timestamp: "not-a-time"}
 	b := Alert{Category: "anomaly", Timestamp: "also-not-a-time"}
 
@@ -575,6 +609,7 @@ func TestCanCorrelate_InvalidTimestamps(t *testing.T) {
 }
 
 func TestCanCorrelate_OneInvalidTimestamp(t *testing.T) {
+	t.Parallel()
 	a := Alert{Category: "regression", Timestamp: time.Now().Format(time.RFC3339)}
 	b := Alert{Category: "anomaly", Timestamp: "invalid"}
 
@@ -584,6 +619,7 @@ func TestCanCorrelate_OneInvalidTimestamp(t *testing.T) {
 }
 
 func TestCanCorrelate_FirstTimestampInvalid(t *testing.T) {
+	t.Parallel()
 	a := Alert{Category: "regression", Timestamp: "invalid"}
 	b := Alert{Category: "anomaly", Timestamp: time.Now().Format(time.RFC3339)}
 
@@ -593,6 +629,7 @@ func TestCanCorrelate_FirstTimestampInvalid(t *testing.T) {
 }
 
 func TestCanCorrelate_SameCategory(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	a := Alert{Category: "regression", Timestamp: now.Format(time.RFC3339)}
 	b := Alert{Category: "regression", Timestamp: now.Format(time.RFC3339)}
@@ -603,6 +640,7 @@ func TestCanCorrelate_SameCategory(t *testing.T) {
 }
 
 func TestCanCorrelate_WithinWindow(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	a := Alert{Category: "regression", Timestamp: now.Format(time.RFC3339)}
 	b := Alert{Category: "anomaly", Timestamp: now.Add(2 * time.Second).Format(time.RFC3339)}
@@ -613,6 +651,7 @@ func TestCanCorrelate_WithinWindow(t *testing.T) {
 }
 
 func TestCanCorrelate_OutsideWindow(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	a := Alert{Category: "regression", Timestamp: now.Format(time.RFC3339)}
 	b := Alert{Category: "anomaly", Timestamp: now.Add(10 * time.Second).Format(time.RFC3339)}
@@ -623,6 +662,7 @@ func TestCanCorrelate_OutsideWindow(t *testing.T) {
 }
 
 func TestCanCorrelate_ReversedCategories(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	a := Alert{Category: "anomaly", Timestamp: now.Format(time.RFC3339)}
 	b := Alert{Category: "regression", Timestamp: now.Add(1 * time.Second).Format(time.RFC3339)}
@@ -633,6 +673,7 @@ func TestCanCorrelate_ReversedCategories(t *testing.T) {
 }
 
 func TestCanCorrelate_NegativeTimeDifference(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	// b is BEFORE a (negative diff, should still work with absolute value)
 	a := Alert{Category: "regression", Timestamp: now.Add(3 * time.Second).Format(time.RFC3339)}
@@ -648,6 +689,7 @@ func TestCanCorrelate_NegativeTimeDifference(t *testing.T) {
 // ============================================
 
 func TestMergeAlerts_BHigherSeverity(t *testing.T) {
+	t.Parallel()
 	a := Alert{
 		Severity:  "info",
 		Category:  "regression",
@@ -688,6 +730,7 @@ func TestMergeAlerts_BHigherSeverity(t *testing.T) {
 }
 
 func TestMergeAlerts_AHigherSeverity(t *testing.T) {
+	t.Parallel()
 	a := Alert{
 		Severity:  "warning",
 		Category:  "regression",
@@ -716,6 +759,7 @@ func TestMergeAlerts_AHigherSeverity(t *testing.T) {
 }
 
 func TestMergeAlerts_EqualSeverity(t *testing.T) {
+	t.Parallel()
 	a := Alert{
 		Severity:  "warning",
 		Category:  "regression",
@@ -746,6 +790,7 @@ func TestMergeAlerts_EqualSeverity(t *testing.T) {
 // ============================================
 
 func TestSeverityRank_Default(t *testing.T) {
+	t.Parallel()
 	if severityRank("unknown") != 0 {
 		t.Errorf("expected rank 0 for unknown severity, got %d", severityRank("unknown"))
 	}
@@ -758,6 +803,7 @@ func TestSeverityRank_Default(t *testing.T) {
 }
 
 func TestSeverityRank_AllLevels(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		severity string
 		rank     int
@@ -781,6 +827,7 @@ func TestSeverityRank_AllLevels(t *testing.T) {
 // ============================================
 
 func TestSaveSARIFToFile_Success(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	outPath := filepath.Join(tmpDir, "test-output.sarif")
 
@@ -811,6 +858,7 @@ func TestSaveSARIFToFile_Success(t *testing.T) {
 }
 
 func TestSaveSARIFToFile_PathNotAllowed(t *testing.T) {
+	t.Parallel()
 	log := &SARIFLog{
 		Schema:  "https://example.com/schema",
 		Version: "2.1.0",
@@ -828,6 +876,7 @@ func TestSaveSARIFToFile_PathNotAllowed(t *testing.T) {
 }
 
 func TestSaveSARIFToFile_TmpPath(t *testing.T) {
+	t.Parallel()
 	log := &SARIFLog{
 		Schema:  "https://example.com/schema",
 		Version: "2.1.0",
@@ -848,6 +897,7 @@ func TestSaveSARIFToFile_TmpPath(t *testing.T) {
 // ============================================
 
 func TestExportHARToFile_Success(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	capture.AddNetworkBodies([]NetworkBody{
 		{Timestamp: "2026-01-23T10:00:00.000Z", Method: "GET", URL: "https://example.com/api", Status: 200, ResponseBody: "ok"},
@@ -881,6 +931,7 @@ func TestExportHARToFile_Success(t *testing.T) {
 }
 
 func TestExportHARToFile_UnsafePath(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Path traversal should be rejected
@@ -891,6 +942,7 @@ func TestExportHARToFile_UnsafePath(t *testing.T) {
 }
 
 func TestExportHARToFile_AbsoluteUnsafePath(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	_, err := capture.ExportHARToFile(NetworkBodyFilter{}, "/etc/hosts")
@@ -900,6 +952,7 @@ func TestExportHARToFile_AbsoluteUnsafePath(t *testing.T) {
 }
 
 func TestExportHARToFile_EmptyCapture(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	tmpFile := filepath.Join(t.TempDir(), "empty-export.har")
@@ -917,6 +970,7 @@ func TestExportHARToFile_EmptyCapture(t *testing.T) {
 // ============================================
 
 func TestToolExportHAR_SaveTo_UnsafePath(t *testing.T) {
+	t.Parallel()
 	server := &Server{
 		entries: make([]LogEntry, 0),
 	}
@@ -947,6 +1001,7 @@ func TestToolExportHAR_SaveTo_UnsafePath(t *testing.T) {
 }
 
 func TestToolExportHAR_SaveTo_Success(t *testing.T) {
+	t.Parallel()
 	server := &Server{
 		entries: make([]LogEntry, 0),
 	}
@@ -996,6 +1051,7 @@ func TestToolExportHAR_SaveTo_Success(t *testing.T) {
 }
 
 func TestToolExportHAR_NoSaveTo_ReturnsJSON(t *testing.T) {
+	t.Parallel()
 	server := &Server{
 		entries: make([]LogEntry, 0),
 	}
@@ -1041,6 +1097,7 @@ func TestToolExportHAR_NoSaveTo_ReturnsJSON(t *testing.T) {
 // ============================================
 
 func TestTickRateWindow_BelowThresholdSetsTime(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	// Start with zero events in window (below threshold)
@@ -1061,6 +1118,7 @@ func TestTickRateWindow_BelowThresholdSetsTime(t *testing.T) {
 // ============================================
 
 func TestEvaluateCircuit_StillOverThreshold(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	c.mu.Lock()
@@ -1082,6 +1140,7 @@ func TestEvaluateCircuit_StillOverThreshold(t *testing.T) {
 // ============================================
 
 func TestEvaluateCircuit_BelowThresholdAtZero(t *testing.T) {
+	t.Parallel()
 	c := setupTestCapture(t)
 
 	c.mu.Lock()

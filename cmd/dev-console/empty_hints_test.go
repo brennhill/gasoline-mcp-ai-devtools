@@ -15,6 +15,7 @@ import (
 // --- Browser Logs ---
 
 func TestToolGetBrowserLogs_EmptyWithErrorLevel(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -40,6 +41,7 @@ func TestToolGetBrowserLogs_EmptyWithErrorLevel(t *testing.T) {
 }
 
 func TestToolGetBrowserLogs_EmptyWithWarnLevel(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -61,6 +63,7 @@ func TestToolGetBrowserLogs_EmptyWithWarnLevel(t *testing.T) {
 }
 
 func TestToolGetBrowserLogs_EmptyWithAllLevel(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -83,6 +86,7 @@ func TestToolGetBrowserLogs_EmptyWithAllLevel(t *testing.T) {
 }
 
 func TestToolGetBrowserLogs_NonEmpty_NoHint(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -108,6 +112,7 @@ func TestToolGetBrowserLogs_NonEmpty_NoHint(t *testing.T) {
 // --- WebSocket Events ---
 
 func TestToolGetWSEvents_EmptyWithOffHint(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -132,6 +137,7 @@ func TestToolGetWSEvents_EmptyWithOffHint(t *testing.T) {
 }
 
 func TestToolGetWSEvents_EmptyWithLifecycleNote(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -153,6 +159,7 @@ func TestToolGetWSEvents_EmptyWithLifecycleNote(t *testing.T) {
 }
 
 func TestToolGetWSEvents_EmptyMessagesMode(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -177,6 +184,7 @@ func TestToolGetWSEvents_EmptyMessagesMode(t *testing.T) {
 // --- Network Bodies ---
 
 func TestToolGetNetworkBodies_EmptyWithCaptureOff(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -215,6 +223,7 @@ func TestToolGetNetworkBodies_EmptyWithCaptureOff(t *testing.T) {
 }
 
 func TestToolGetNetworkBodies_EmptyWithCaptureOn(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -253,6 +262,7 @@ func TestToolGetNetworkBodies_EmptyWithCaptureOn(t *testing.T) {
 // --- Enhanced Actions ---
 
 func TestToolGetActions_EmptyWithReplayOff(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -277,6 +287,7 @@ func TestToolGetActions_EmptyWithReplayOff(t *testing.T) {
 }
 
 func TestToolGetActions_EmptyWithReplayOn(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

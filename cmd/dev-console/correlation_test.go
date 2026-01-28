@@ -16,6 +16,7 @@ import (
 // --- Screenshot endpoint with correlation_id ---
 
 func TestScreenshot_FilenameWithCorrelationID(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 	server, err := NewServer(logFile, 100)
@@ -53,6 +54,7 @@ func TestScreenshot_FilenameWithCorrelationID(t *testing.T) {
 }
 
 func TestScreenshot_FilenameWithoutCorrelationID(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 	server, err := NewServer(logFile, 100)
@@ -94,6 +96,7 @@ func TestScreenshot_FilenameWithoutCorrelationID(t *testing.T) {
 }
 
 func TestScreenshot_CorrelationIDSanitized(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 	server, err := NewServer(logFile, 100)
@@ -133,6 +136,7 @@ func TestScreenshot_CorrelationIDSanitized(t *testing.T) {
 }
 
 func TestScreenshot_CorrelationIDEchoedInResponse(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "test-logs.jsonl")
 	server, err := NewServer(logFile, 100)
@@ -168,6 +172,7 @@ func TestScreenshot_CorrelationIDEchoedInResponse(t *testing.T) {
 // --- Schema: correlation_id in interact tool ---
 
 func TestInteract_CorrelationIDInSchema(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)

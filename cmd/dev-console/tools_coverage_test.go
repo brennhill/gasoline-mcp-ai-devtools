@@ -17,6 +17,7 @@ import (
 // ============================================
 
 func TestToolConfigureStoreNilStore(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -48,6 +49,7 @@ func TestToolConfigureStoreNilStore(t *testing.T) {
 }
 
 func TestToolConfigureStoreSave(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -77,6 +79,7 @@ func TestToolConfigureStoreSave(t *testing.T) {
 }
 
 func TestToolConfigureStoreLoadAfterSave(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -110,6 +113,7 @@ func TestToolConfigureStoreLoadAfterSave(t *testing.T) {
 }
 
 func TestToolConfigureStoreList(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -143,6 +147,7 @@ func TestToolConfigureStoreList(t *testing.T) {
 }
 
 func TestToolConfigureStoreDelete(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -176,6 +181,7 @@ func TestToolConfigureStoreDelete(t *testing.T) {
 }
 
 func TestToolConfigureStoreDefaultStats(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -204,6 +210,7 @@ func TestToolConfigureStoreDefaultStats(t *testing.T) {
 }
 
 func TestToolConfigureStoreUnknownAction(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -238,6 +245,7 @@ func TestToolConfigureStoreUnknownAction(t *testing.T) {
 // ============================================
 
 func TestToolConfigureNoiseAddRules(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -278,6 +286,7 @@ func TestToolConfigureNoiseAddRules(t *testing.T) {
 }
 
 func TestToolConfigureNoiseRemoveUserRule(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -319,6 +328,7 @@ func TestToolConfigureNoiseRemoveUserRule(t *testing.T) {
 }
 
 func TestToolConfigureNoiseRemoveBuiltinRejected(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -349,6 +359,7 @@ func TestToolConfigureNoiseRemoveBuiltinRejected(t *testing.T) {
 }
 
 func TestToolConfigureNoiseRemoveNonexistent(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -379,6 +390,7 @@ func TestToolConfigureNoiseRemoveNonexistent(t *testing.T) {
 }
 
 func TestToolConfigureNoiseListRules(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -412,6 +424,7 @@ func TestToolConfigureNoiseListRules(t *testing.T) {
 }
 
 func TestToolConfigureNoiseReset(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -442,6 +455,7 @@ func TestToolConfigureNoiseReset(t *testing.T) {
 }
 
 func TestToolConfigureNoiseAutoDetect(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -484,6 +498,7 @@ func TestToolConfigureNoiseAutoDetect(t *testing.T) {
 }
 
 func TestToolConfigureNoiseUnknownAction(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -518,6 +533,7 @@ func TestToolConfigureNoiseUnknownAction(t *testing.T) {
 // ============================================
 
 func TestToolExportSARIFSaveTo(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -595,6 +611,7 @@ func TestToolExportSARIFSaveTo(t *testing.T) {
 }
 
 func TestToolExportSARIFNoCache(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -629,6 +646,7 @@ func TestToolExportSARIFNoCache(t *testing.T) {
 // ============================================
 
 func TestToolLoadSessionContextNilStore(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -656,6 +674,7 @@ func TestToolLoadSessionContextNilStore(t *testing.T) {
 }
 
 func TestToolLoadSessionContextValid(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -693,6 +712,7 @@ func TestToolLoadSessionContextValid(t *testing.T) {
 // ============================================
 
 func TestToolGeneratePRSummaryWithData(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -753,6 +773,7 @@ func TestToolGeneratePRSummaryWithData(t *testing.T) {
 }
 
 func TestToolGeneratePRSummaryNoEntries(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -791,6 +812,7 @@ func TestToolGeneratePRSummaryNoEntries(t *testing.T) {
 // ============================================
 
 func TestAppendAlertsToResponse_EmptyAlerts(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -823,6 +845,7 @@ func TestAppendAlertsToResponse_EmptyAlerts(t *testing.T) {
 }
 
 func TestAppendAlertsToResponse_NonEmptyAlerts(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -867,6 +890,7 @@ func TestAppendAlertsToResponse_NonEmptyAlerts(t *testing.T) {
 }
 
 func TestToolGenerate_UnknownFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -895,6 +919,7 @@ func TestToolGenerate_UnknownFormat(t *testing.T) {
 // ============================================
 
 func TestAppendAlertsToResponse_InvalidResultJSON(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -920,6 +945,7 @@ func TestAppendAlertsToResponse_InvalidResultJSON(t *testing.T) {
 // ============================================
 
 func TestToolGenerate_SARIFFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -940,6 +966,7 @@ func TestToolGenerate_SARIFFormat(t *testing.T) {
 // ============================================
 
 func TestToolGenerate_HARFormat(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -966,6 +993,7 @@ func TestToolGenerate_HARFormat(t *testing.T) {
 // ============================================
 
 func TestToolGetBrowserErrors_WithNoiseFilter(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -999,6 +1027,7 @@ func TestToolGetBrowserErrors_WithNoiseFilter(t *testing.T) {
 // ============================================
 
 func TestToolConfigureNoiseRule_EmptyAction(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1031,6 +1060,7 @@ func TestToolConfigureNoiseRule_EmptyAction(t *testing.T) {
 // ============================================
 
 func TestToolConfigureNoiseRemoveRule_Success(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1069,6 +1099,7 @@ func TestToolConfigureNoiseRemoveRule_Success(t *testing.T) {
 // ============================================
 
 func TestToolExportSARIF_DirectReturn(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1118,6 +1149,7 @@ func TestToolExportSARIF_DirectReturn(t *testing.T) {
 // ============================================
 
 func TestToolGenerateCSP_ViaDispatch(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1152,6 +1184,7 @@ func TestToolGenerateCSP_ViaDispatch(t *testing.T) {
 }
 
 func TestToolGenerateCSP_WithOrigins(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1183,6 +1216,7 @@ func TestToolGenerateCSP_WithOrigins(t *testing.T) {
 }
 
 func TestToolSecurityAudit_ViaDispatch(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1217,6 +1251,7 @@ func TestToolSecurityAudit_ViaDispatch(t *testing.T) {
 }
 
 func TestToolSecurityAudit_WithData(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1256,6 +1291,7 @@ func TestToolSecurityAudit_WithData(t *testing.T) {
 }
 
 func TestToolGetAuditLog_ViaDispatch(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1290,6 +1326,7 @@ func TestToolGetAuditLog_ViaDispatch(t *testing.T) {
 }
 
 func TestToolGetAuditLog_WithFilters(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1316,6 +1353,7 @@ func TestToolGetAuditLog_WithFilters(t *testing.T) {
 }
 
 func TestToolDiffSessions_ViaDispatch(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1339,6 +1377,7 @@ func TestToolDiffSessions_ViaDispatch(t *testing.T) {
 }
 
 func TestToolDiffSessions_List(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1367,6 +1406,7 @@ func TestToolDiffSessions_List(t *testing.T) {
 }
 
 func TestToolDiffSessions_Compare(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1401,6 +1441,7 @@ func TestToolDiffSessions_Compare(t *testing.T) {
 // ============================================
 
 func TestCaptureStateAdapter_GetConsoleErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 
@@ -1431,6 +1472,7 @@ func TestCaptureStateAdapter_GetConsoleErrors(t *testing.T) {
 }
 
 func TestCaptureStateAdapter_GetConsoleWarnings(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 
@@ -1458,6 +1500,7 @@ func TestCaptureStateAdapter_GetConsoleWarnings(t *testing.T) {
 }
 
 func TestCaptureStateAdapter_GetNetworkRequests(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 
@@ -1489,6 +1532,7 @@ func TestCaptureStateAdapter_GetNetworkRequests(t *testing.T) {
 }
 
 func TestCaptureStateAdapter_GetWSConnections(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 
@@ -1520,6 +1564,7 @@ func TestCaptureStateAdapter_GetWSConnections(t *testing.T) {
 }
 
 func TestCaptureStateAdapter_GetPerformance(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 
@@ -1532,6 +1577,7 @@ func TestCaptureStateAdapter_GetPerformance(t *testing.T) {
 }
 
 func TestCaptureStateAdapter_GetCurrentPageURL(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 
@@ -1548,6 +1594,7 @@ func TestCaptureStateAdapter_GetCurrentPageURL(t *testing.T) {
 }
 
 func TestCaptureStateAdapter_EmptyState(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 
@@ -1575,6 +1622,7 @@ func TestCaptureStateAdapter_EmptyState(t *testing.T) {
 // ============================================
 
 func TestToolConfigureCapture_MissingSettings(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1598,6 +1646,7 @@ func TestToolConfigureCapture_MissingSettings(t *testing.T) {
 }
 
 func TestToolConfigureCapture_Reset(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1619,6 +1668,7 @@ func TestToolConfigureCapture_Reset(t *testing.T) {
 }
 
 func TestToolConfigureCapture_SetSettings(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1640,6 +1690,7 @@ func TestToolConfigureCapture_SetSettings(t *testing.T) {
 }
 
 func TestToolConfigureCapture_InvalidSettings(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1666,6 +1717,7 @@ func TestToolConfigureCapture_InvalidSettings(t *testing.T) {
 // ============================================
 
 func TestToolAnalyzeErrors_Empty(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1692,6 +1744,7 @@ func TestToolAnalyzeErrors_Empty(t *testing.T) {
 }
 
 func TestToolAnalyzeErrors_WithErrors(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1735,6 +1788,7 @@ func TestToolAnalyzeErrors_WithErrors(t *testing.T) {
 // ============================================
 
 func TestToolAnalyzeHistory_NilGraph(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1762,6 +1816,7 @@ func TestToolAnalyzeHistory_NilGraph(t *testing.T) {
 }
 
 func TestToolAnalyzeHistory_WithGraph(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1801,6 +1856,7 @@ func TestToolAnalyzeHistory_WithGraph(t *testing.T) {
 // ============================================
 
 func TestToolConfigureRecordEvent_NilGraph(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1827,6 +1883,7 @@ func TestToolConfigureRecordEvent_NilGraph(t *testing.T) {
 }
 
 func TestToolConfigureRecordEvent_MissingEvent(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1851,6 +1908,7 @@ func TestToolConfigureRecordEvent_MissingEvent(t *testing.T) {
 }
 
 func TestToolConfigureRecordEvent_ValidEvent(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1882,6 +1940,7 @@ func TestToolConfigureRecordEvent_ValidEvent(t *testing.T) {
 // ============================================
 
 func TestHandleToolCall_UnknownTool(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1895,6 +1954,7 @@ func TestHandleToolCall_UnknownTool(t *testing.T) {
 }
 
 func TestHandleToolCall_AllV6Tools(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -1922,6 +1982,7 @@ func TestHandleToolCall_AllV6Tools(t *testing.T) {
 // ============================================
 
 func TestRedactSecret_AllBranches(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -1950,6 +2011,7 @@ func TestRedactSecret_AllBranches(t *testing.T) {
 // ============================================
 
 func TestComputeMetricChange_AllBranches(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		before     float64
@@ -1983,6 +2045,7 @@ func TestComputeMetricChange_AllBranches(t *testing.T) {
 // ============================================
 
 func TestSetMultiple_InvalidValue(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 
 	errs := co.SetMultiple(map[string]string{"log_level": "invalid_value"})
@@ -1995,6 +2058,7 @@ func TestSetMultiple_InvalidValue(t *testing.T) {
 }
 
 func TestSetMultiple_RateLimit(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 
 	// First call should succeed
@@ -2013,6 +2077,7 @@ func TestSetMultiple_RateLimit(t *testing.T) {
 }
 
 func TestSetMultiple_MultipleSettings(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 
 	errs := co.SetMultiple(map[string]string{
@@ -2038,6 +2103,7 @@ func TestSetMultiple_MultipleSettings(t *testing.T) {
 // ============================================
 
 func TestBuildSettingsResponse(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 
 	resp := buildSettingsResponse(co)
@@ -2055,6 +2121,7 @@ func TestBuildSettingsResponse(t *testing.T) {
 // ============================================
 
 func TestExtractOrigin(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -2073,6 +2140,7 @@ func TestExtractOrigin(t *testing.T) {
 }
 
 func TestIsThirdPartyURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		url      string
@@ -2100,6 +2168,7 @@ func TestIsThirdPartyURL(t *testing.T) {
 // ============================================
 
 func TestHandleGetAuditLog_ToolNameFilter(t *testing.T) {
+	t.Parallel()
 	at := NewAuditTrail(AuditConfig{MaxEntries: 100, Enabled: true})
 
 	at.Record(AuditEntry{ToolName: "observe", Parameters: `{"what":"error_clusters"}`, Success: true})
@@ -2119,6 +2188,7 @@ func TestHandleGetAuditLog_ToolNameFilter(t *testing.T) {
 }
 
 func TestHandleGetAuditLog_LimitFilter(t *testing.T) {
+	t.Parallel()
 	at := NewAuditTrail(AuditConfig{MaxEntries: 100, Enabled: true})
 
 	for i := 0; i < 5; i++ {
@@ -2144,6 +2214,7 @@ func TestHandleGetAuditLog_LimitFilter(t *testing.T) {
 // ============================================
 
 func TestIsTestKey(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected bool
@@ -2164,6 +2235,7 @@ func TestIsTestKey(t *testing.T) {
 }
 
 func TestIsLocalhostURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected bool
@@ -2189,6 +2261,7 @@ func TestIsLocalhostURL(t *testing.T) {
 // ============================================
 
 func TestHandleEnhancedActions_WithFilters(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -2217,6 +2290,7 @@ func TestHandleEnhancedActions_WithFilters(t *testing.T) {
 }
 
 func TestHandleEnhancedActions_LastN(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -2248,6 +2322,7 @@ func TestHandleEnhancedActions_LastN(t *testing.T) {
 // ============================================
 
 func TestNewSessionManager_WithState(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 
@@ -2269,6 +2344,7 @@ func TestNewSessionManager_WithState(t *testing.T) {
 }
 
 func TestNewSessionManager_ZeroMaxSnapshots(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 
@@ -2289,6 +2365,7 @@ func TestNewSessionManager_ZeroMaxSnapshots(t *testing.T) {
 // ============================================
 
 func TestScanBodyForCredentials_AWSKey(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	// AKIA followed by 16 uppercase alphanumeric chars (no test indicators)
 	body := `{"config": "AKIAIOSFODNN7PRODKEY"}`
@@ -2306,6 +2383,7 @@ func TestScanBodyForCredentials_AWSKey(t *testing.T) {
 }
 
 func TestScanBodyForCredentials_GitHubToken(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	body := `{"token": "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"}`
 	findings := scanner.scanBodyForCredentials(body, "https://api.example.com/auth", "response body")
@@ -2322,6 +2400,7 @@ func TestScanBodyForCredentials_GitHubToken(t *testing.T) {
 }
 
 func TestScanBodyForCredentials_StripeKey(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	testKey := "sk_" + "live_ABCDEFGHIJKLMNOPQRSTUVWXab"
 	body := `{"key": "` + testKey + `"}`
@@ -2339,6 +2418,7 @@ func TestScanBodyForCredentials_StripeKey(t *testing.T) {
 }
 
 func TestScanBodyForCredentials_PrivateKey(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	body := `-----BEGIN RSA PRIVATE KEY-----\nMIIE...truncated\n-----END RSA PRIVATE KEY-----`
 	findings := scanner.scanBodyForCredentials(body, "https://api.example.com/key", "response body")
@@ -2355,6 +2435,7 @@ func TestScanBodyForCredentials_PrivateKey(t *testing.T) {
 }
 
 func TestScanBodyForCredentials_JWT(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	body := `{"access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SIGNATURE_HERE_abc"}`
 	findings := scanner.scanBodyForCredentials(body, "https://api.example.com/auth", "response body")
@@ -2371,6 +2452,7 @@ func TestScanBodyForCredentials_JWT(t *testing.T) {
 }
 
 func TestScanBodyForCredentials_EmptyBody(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	findings := scanner.scanBodyForCredentials("", "https://api.example.com/", "response body")
 	if len(findings) != 0 {
@@ -2379,6 +2461,7 @@ func TestScanBodyForCredentials_EmptyBody(t *testing.T) {
 }
 
 func TestScanBodyForCredentials_LargeBody(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	// Create body larger than 10240 chars with a key beyond the limit
 	largeBody := strings.Repeat("x", 10300) + `AKIAIOSFODNN7EXAMPLE`
@@ -2392,6 +2475,7 @@ func TestScanBodyForCredentials_LargeBody(t *testing.T) {
 }
 
 func TestScanConsoleForCredentials_BearerToken(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	entry := LogEntry{
 		"level":   "log",
@@ -2412,6 +2496,7 @@ func TestScanConsoleForCredentials_BearerToken(t *testing.T) {
 }
 
 func TestScanConsoleForCredentials_AWSKey(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	entry := LogEntry{
 		"level":   "log",
@@ -2432,6 +2517,7 @@ func TestScanConsoleForCredentials_AWSKey(t *testing.T) {
 }
 
 func TestScanConsoleForCredentials_EmptyMessage(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	entry := LogEntry{"level": "log", "source": "app.js"}
 	findings := scanner.scanConsoleForCredentials(entry)
@@ -2445,6 +2531,7 @@ func TestScanConsoleForCredentials_EmptyMessage(t *testing.T) {
 // ============================================
 
 func TestHandleCaptureSettings_SingleSetting(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 
 	result, errMsg := handleCaptureSettings(co, map[string]string{"log_level": "error"}, nil, "test-agent")
@@ -2457,6 +2544,7 @@ func TestHandleCaptureSettings_SingleSetting(t *testing.T) {
 }
 
 func TestHandleCaptureSettings_EmptySettings(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 
 	_, errMsg := handleCaptureSettings(co, map[string]string{}, nil, "test-agent")
@@ -2469,6 +2557,7 @@ func TestHandleCaptureSettings_EmptySettings(t *testing.T) {
 }
 
 func TestHandleCaptureSettings_InvalidSettingName(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 
 	_, errMsg := handleCaptureSettings(co, map[string]string{"invalid_name": "value"}, nil, "test-agent")
@@ -2482,6 +2571,7 @@ func TestHandleCaptureSettings_InvalidSettingName(t *testing.T) {
 // ============================================
 
 func TestHandleEnhancedActions_BadJSON(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	_ = setupToolHandler(t, server, capture)
@@ -2497,6 +2587,7 @@ func TestHandleEnhancedActions_BadJSON(t *testing.T) {
 }
 
 func TestHandleEnhancedActions_ValidActions(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	_ = setupToolHandler(t, server, capture)
@@ -2517,6 +2608,7 @@ func TestHandleEnhancedActions_ValidActions(t *testing.T) {
 // ============================================
 
 func TestComputeMetricChange_NegativeBeforeZeroAfter(t *testing.T) {
+	t.Parallel()
 	mc := computeMetricChange(100, 0)
 	if mc.Change != "-100%" {
 		t.Errorf("Expected '-100%%', got %q", mc.Change)
@@ -2531,6 +2623,7 @@ func TestComputeMetricChange_NegativeBeforeZeroAfter(t *testing.T) {
 // ============================================
 
 func TestToolGetEnhancedActions_Empty(t *testing.T) {
+	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
@@ -2553,6 +2646,7 @@ func TestToolGetEnhancedActions_Empty(t *testing.T) {
 // ============================================
 
 func TestTemporalEvict_UnparseableTimestamp(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	histDir := filepath.Join(dir, "history")
 	os.MkdirAll(histDir, 0755)
@@ -2606,6 +2700,7 @@ func TestTemporalEvict_UnparseableTimestamp(t *testing.T) {
 }
 
 func TestTemporalEvict_RebuildFingerprints(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	histDir := filepath.Join(dir, "history")
 	os.MkdirAll(histDir, 0755)
@@ -2658,6 +2753,7 @@ func TestTemporalEvict_RebuildFingerprints(t *testing.T) {
 // ============================================
 
 func TestScanBodyForCredentials_APIKeyInJSON(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	body := `{"user": "test", "api_key": "sk_live_real_production_key_1234567890"}`
 	findings := scanner.scanBodyForCredentials(body, "https://api.example.com/config", "response body")
@@ -2676,6 +2772,7 @@ func TestScanBodyForCredentials_APIKeyInJSON(t *testing.T) {
 }
 
 func TestScanForPII_SSNThirdParty(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	content := `{"ssn": "123-45-6789"}`
 	findings := scanner.scanForPII(content, "https://analytics.third-party.com/track", "request body", true)
@@ -2691,6 +2788,7 @@ func TestScanForPII_SSNThirdParty(t *testing.T) {
 }
 
 func TestScanURLForCredentials_AWSKeyInURL(t *testing.T) {
+	t.Parallel()
 	scanner := NewSecurityScanner()
 	body := NetworkBody{
 		URL:    "https://s3.amazonaws.com/bucket?AWSAccessKeyId=AKIAIOSFODNN7PRODKEY&Expires=1234",
@@ -2717,6 +2815,7 @@ func TestScanURLForCredentials_AWSKeyInURL(t *testing.T) {
 // ============================================
 
 func TestOnEntriesCallback_ArgsString(t *testing.T) {
+	t.Parallel()
 	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
 	capture := NewCapture()
 	_ = setupToolHandler(t, server, capture)
@@ -2733,6 +2832,7 @@ func TestOnEntriesCallback_ArgsString(t *testing.T) {
 }
 
 func TestOnEntriesCallback_ArgsErrorObject(t *testing.T) {
+	t.Parallel()
 	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
 	capture := NewCapture()
 	_ = setupToolHandler(t, server, capture)
@@ -2755,6 +2855,7 @@ func TestOnEntriesCallback_ArgsErrorObject(t *testing.T) {
 }
 
 func TestOnEntriesCallback_EmptyMessage(t *testing.T) {
+	t.Parallel()
 	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
 	capture := NewCapture()
 	_ = setupToolHandler(t, server, capture)
@@ -2771,6 +2872,7 @@ func TestOnEntriesCallback_EmptyMessage(t *testing.T) {
 }
 
 func TestOnEntriesCallback_NonErrorSkipped(t *testing.T) {
+	t.Parallel()
 	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
 	capture := NewCapture()
 	_ = setupToolHandler(t, server, capture)
@@ -2788,6 +2890,7 @@ func TestOnEntriesCallback_NonErrorSkipped(t *testing.T) {
 // ============================================
 
 func TestHandleEnhancedActions_BodyTooLarge(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 	largeBody := strings.Repeat("x", 11*1024*1024)
 	req := httptest.NewRequest("POST", "/actions", strings.NewReader(largeBody))
@@ -2802,6 +2905,7 @@ func TestHandleEnhancedActions_BodyTooLarge(t *testing.T) {
 }
 
 func TestHandleEnhancedActions_RateLimitAfterRecording(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	actions := make([]EnhancedAction, 200)
@@ -2831,6 +2935,7 @@ func TestHandleEnhancedActions_RateLimitAfterRecording(t *testing.T) {
 // ============================================
 
 func TestHandleRecordEvent_MissingDescription(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tg := NewTemporalGraph(dir)
 	defer tg.Close()
@@ -2846,6 +2951,7 @@ func TestHandleRecordEvent_MissingDescription(t *testing.T) {
 }
 
 func TestToolConfigureRecordEvent_MissingDescription(t *testing.T) {
+	t.Parallel()
 	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
 	capture := NewCapture()
 	handler := setupToolHandler(t, server, capture)
@@ -2865,6 +2971,10 @@ func TestToolConfigureRecordEvent_MissingDescription(t *testing.T) {
 // ============================================
 
 func TestSetMultiple_UnknownSettingName(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow timeout test")
+	}
+	t.Parallel()
 	co := NewCaptureOverrides()
 	time.Sleep(1100 * time.Millisecond)
 
@@ -2883,6 +2993,7 @@ func TestSetMultiple_UnknownSettingName(t *testing.T) {
 }
 
 func TestBuildSettingsResponse_NilOverrides(t *testing.T) {
+	t.Parallel()
 	co := NewCaptureOverrides()
 	resp := buildSettingsResponse(co)
 	if !resp.Connected {
@@ -2894,6 +3005,7 @@ func TestBuildSettingsResponse_NilOverrides(t *testing.T) {
 }
 
 func TestNewAuditLogger_ValidPath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "subdir", "audit.jsonl")
 	logger, err := NewAuditLogger(path)
@@ -2918,6 +3030,7 @@ func TestNewAuditLogger_ValidPath(t *testing.T) {
 // ============================================
 
 func TestJsonResponse_ContentType(t *testing.T) {
+	t.Parallel()
 	w := httptest.NewRecorder()
 	jsonResponse(w, http.StatusCreated, map[string]string{"id": "123"})
 	if w.Code != http.StatusCreated {
@@ -2929,6 +3042,7 @@ func TestJsonResponse_ContentType(t *testing.T) {
 }
 
 func TestSaveEntries_WithEntries(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	logFile := filepath.Join(dir, "save-test.jsonl")
 	server := &Server{logFile: logFile, maxEntries: 100}
@@ -2954,6 +3068,7 @@ func TestSaveEntries_WithEntries(t *testing.T) {
 // ============================================
 
 func TestExtractOrigin_VariousURLs(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input, expected string
 	}{

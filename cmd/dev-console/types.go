@@ -18,18 +18,18 @@ import (
 // NetworkWaterfallEntry represents a single network resource timing entry
 // from the browser's PerformanceResourceTiming API
 type NetworkWaterfallEntry struct {
-	Name            string    `json:"name"`              // Full URL
-	URL             string    `json:"url"`               // Same as name
-	InitiatorType   string    `json:"initiatorType"`     // "script", "stylesheet", "img", etc.
-	Duration        float64   `json:"duration"`          // Total duration in ms
-	StartTime       float64   `json:"startTime"`         // Relative to navigationStart
-	FetchStart      float64   `json:"fetchStart"`        // When fetch began
-	ResponseEnd     float64   `json:"responseEnd"`       // When response completed
-	TransferSize    int       `json:"transferSize"`      // Bytes transferred (0 if cached)
-	DecodedBodySize int       `json:"decodedBodySize"`   // Decompressed size
-	EncodedBodySize int       `json:"encodedBodySize"`   // Compressed size
-	PageURL         string    `json:"pageURL,omitempty"` // Page that loaded this resource
-	Timestamp       time.Time `json:"timestamp,omitempty"` // Server-side timestamp
+	Name            string    `json:"name"`                         // Full URL
+	URL             string    `json:"url"`                          // Same as name
+	InitiatorType   string    `json:"initiatorType"`                // camelCase: browser API pass-through (PerformanceResourceTiming)
+	Duration        float64   `json:"duration"`                     // camelCase: browser API pass-through (PerformanceResourceTiming)
+	StartTime       float64   `json:"startTime"`                    // camelCase: browser API pass-through (PerformanceResourceTiming)
+	FetchStart      float64   `json:"fetchStart"`                   // camelCase: browser API pass-through (PerformanceResourceTiming)
+	ResponseEnd     float64   `json:"responseEnd"`                  // camelCase: browser API pass-through (PerformanceResourceTiming)
+	TransferSize    int       `json:"transferSize"`                 // camelCase: browser API pass-through (PerformanceResourceTiming)
+	DecodedBodySize int       `json:"decodedBodySize"`              // camelCase: browser API pass-through (PerformanceResourceTiming)
+	EncodedBodySize int       `json:"encodedBodySize"`              // camelCase: browser API pass-through (PerformanceResourceTiming)
+	PageURL         string    `json:"pageURL,omitempty"`            // TODO v6.0: migrate to page_url
+	Timestamp       time.Time `json:"timestamp,omitempty"`          // Server-side timestamp
 }
 
 // NetworkWaterfallPayload is POSTed by the extension
@@ -123,10 +123,10 @@ type WebSocketConnection struct {
 	ID          string                  `json:"id"`
 	URL         string                  `json:"url"`
 	State       string                  `json:"state"`
-	OpenedAt    string                  `json:"openedAt,omitempty"`
+	OpenedAt    string                  `json:"openedAt,omitempty"`   // TODO v6.0: migrate to opened_at
 	Duration    string                  `json:"duration,omitempty"`
-	MessageRate WebSocketMessageRate    `json:"messageRate"`
-	LastMessage WebSocketLastMessage    `json:"lastMessage"`
+	MessageRate WebSocketMessageRate    `json:"messageRate"`          // TODO v6.0: migrate to message_rate
+	LastMessage WebSocketLastMessage    `json:"lastMessage"`          // TODO v6.0: migrate to last_message
 	Schema      *WebSocketSchema        `json:"schema,omitempty"`
 	Sampling    WebSocketSamplingStatus `json:"sampling"`
 }
@@ -136,14 +136,14 @@ type WebSocketClosedConnection struct {
 	ID            string `json:"id"`
 	URL           string `json:"url"`
 	State         string `json:"state"`
-	OpenedAt      string `json:"openedAt,omitempty"`
-	ClosedAt      string `json:"closedAt,omitempty"`
-	CloseCode     int    `json:"closeCode"`
-	CloseReason   string `json:"closeReason"`
+	OpenedAt      string `json:"openedAt,omitempty"`  // TODO v6.0: migrate to opened_at
+	ClosedAt      string `json:"closedAt,omitempty"`  // TODO v6.0: migrate to closed_at
+	CloseCode     int    `json:"closeCode"`           // TODO v6.0: migrate to close_code
+	CloseReason   string `json:"closeReason"`         // TODO v6.0: migrate to close_reason
 	TotalMessages struct {
 		Incoming int `json:"incoming"`
 		Outgoing int `json:"outgoing"`
-	} `json:"totalMessages"`
+	} `json:"totalMessages"` // TODO v6.0: migrate to total_messages
 }
 
 // WebSocketMessageRate contains rate info for a direction
@@ -154,7 +154,7 @@ type WebSocketMessageRate struct {
 
 // WebSocketDirectionStats contains stats for a message direction
 type WebSocketDirectionStats struct {
-	PerSecond float64 `json:"perSecond"`
+	PerSecond float64 `json:"perSecond"` // TODO v6.0: migrate to per_second
 	Total     int     `json:"total"`
 	Bytes     int     `json:"bytes"`
 }
@@ -174,8 +174,8 @@ type WebSocketMessagePreview struct {
 
 // WebSocketSchema describes detected message schema
 type WebSocketSchema struct {
-	DetectedKeys []string `json:"detectedKeys,omitempty"`
-	MessageCount int      `json:"messageCount"`
+	DetectedKeys []string `json:"detectedKeys,omitempty"` // TODO v6.0: migrate to detected_keys
+	MessageCount int      `json:"messageCount"`           // TODO v6.0: migrate to message_count
 	Consistent   bool     `json:"consistent"`
 	Variants     []string `json:"variants,omitempty"`
 }
@@ -193,14 +193,14 @@ type NetworkBody struct {
 	Method             string  `json:"method"`
 	URL                string  `json:"url"`
 	Status             int     `json:"status"`
-	RequestBody        string  `json:"requestBody,omitempty"`
-	ResponseBody       string  `json:"responseBody,omitempty"`
-	ContentType        string  `json:"contentType,omitempty"`
+	RequestBody        string  `json:"requestBody,omitempty"`        // TODO v6.0: migrate to request_body
+	ResponseBody       string  `json:"responseBody,omitempty"`       // TODO v6.0: migrate to response_body
+	ContentType        string  `json:"contentType,omitempty"`        // TODO v6.0: migrate to content_type
 	Duration           int     `json:"duration,omitempty"`
-	RequestTruncated   bool    `json:"requestTruncated,omitempty"`
-	ResponseTruncated  bool    `json:"responseTruncated,omitempty"`
-	ResponseHeaders    map[string]string `json:"responseHeaders,omitempty"`
-	HasAuthHeader      bool              `json:"hasAuthHeader,omitempty"`
+	RequestTruncated   bool    `json:"requestTruncated,omitempty"`   // TODO v6.0: migrate to request_truncated
+	ResponseTruncated  bool    `json:"responseTruncated,omitempty"`  // TODO v6.0: migrate to response_truncated
+	ResponseHeaders    map[string]string `json:"responseHeaders,omitempty"` // TODO v6.0: migrate to response_headers
+	HasAuthHeader      bool              `json:"hasAuthHeader,omitempty"`   // TODO v6.0: migrate to has_auth_header
 	BinaryFormat       string  `json:"binary_format,omitempty"`
 	FormatConfidence   float64 `json:"format_confidence,omitempty"`
 }
@@ -274,28 +274,28 @@ type PerformanceSnapshot struct {
 	Timing    PerformanceTiming `json:"timing"`
 	Network   NetworkSummary    `json:"network"`
 	LongTasks LongTaskMetrics   `json:"longTasks"`
-	CLS       *float64          `json:"cumulativeLayoutShift,omitempty"`
+	CLS       *float64          `json:"cumulativeLayoutShift,omitempty"` // camelCase: browser API pass-through (LayoutShift)
 	Resources []ResourceEntry   `json:"resources,omitempty"`
 }
 
 // PerformanceTiming holds navigation timing metrics
 type PerformanceTiming struct {
-	DomContentLoaded       float64  `json:"domContentLoaded"`
-	Load                   float64  `json:"load"`
-	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`
-	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`
-	InteractionToNextPaint *float64 `json:"interactionToNextPaint,omitempty"`
-	TimeToFirstByte        float64  `json:"timeToFirstByte"`
-	DomInteractive         float64  `json:"domInteractive"`
+	DomContentLoaded       float64  `json:"domContentLoaded"`              // camelCase: browser API pass-through (PerformanceTiming)
+	Load                   float64  `json:"load"`                          // camelCase: browser API pass-through (PerformanceTiming)
+	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`          // camelCase: browser API pass-through (PerformancePaintTiming)
+	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`        // camelCase: browser API pass-through (LargestContentfulPaint)
+	InteractionToNextPaint *float64 `json:"interactionToNextPaint,omitempty"` // camelCase: browser API pass-through (EventTiming)
+	TimeToFirstByte        float64  `json:"timeToFirstByte"`               // camelCase: browser API pass-through (PerformanceTiming)
+	DomInteractive         float64  `json:"domInteractive"`                // camelCase: browser API pass-through (PerformanceTiming)
 }
 
 // NetworkSummary holds aggregated network resource metrics
 type NetworkSummary struct {
-	RequestCount    int                    `json:"requestCount"`
-	TransferSize    int64                  `json:"transferSize"`
-	DecodedSize     int64                  `json:"decodedSize"`
-	ByType          map[string]TypeSummary `json:"byType"`
-	SlowestRequests []SlowRequest          `json:"slowestRequests"`
+	RequestCount    int                    `json:"requestCount"`    // TODO v6.0: migrate to request_count
+	TransferSize    int64                  `json:"transferSize"`    // TODO v6.0: migrate to transfer_size
+	DecodedSize     int64                  `json:"decodedSize"`     // TODO v6.0: migrate to decoded_size
+	ByType          map[string]TypeSummary `json:"byType"`          // TODO v6.0: migrate to by_type
+	SlowestRequests []SlowRequest          `json:"slowestRequests"` // TODO v6.0: migrate to slowest_requests
 }
 
 // TypeSummary holds per-type resource metrics
@@ -314,36 +314,36 @@ type SlowRequest struct {
 // LongTaskMetrics holds accumulated long task data
 type LongTaskMetrics struct {
 	Count             int     `json:"count"`
-	TotalBlockingTime float64 `json:"totalBlockingTime"`
+	TotalBlockingTime float64 `json:"totalBlockingTime"` // TODO v6.0: migrate to total_blocking_time
 	Longest           float64 `json:"longest"`
 }
 
 // PerformanceBaseline holds averaged performance data for a URL path
 type PerformanceBaseline struct {
 	URL         string          `json:"url"`
-	SampleCount int             `json:"sampleCount"`
-	LastUpdated string          `json:"lastUpdated"`
+	SampleCount int             `json:"sampleCount"` // TODO v6.0: migrate to sample_count
+	LastUpdated string          `json:"lastUpdated"` // TODO v6.0: migrate to last_updated
 	Timing      BaselineTiming  `json:"timing"`
 	Network     BaselineNetwork `json:"network"`
 	LongTasks   LongTaskMetrics `json:"longTasks"`
-	CLS         *float64        `json:"cumulativeLayoutShift,omitempty"`
+	CLS         *float64        `json:"cumulativeLayoutShift,omitempty"` // camelCase: browser API pass-through (LayoutShift)
 	Resources   []ResourceEntry `json:"resources,omitempty"`
 }
 
 // BaselineTiming holds averaged timing metrics
 type BaselineTiming struct {
-	DomContentLoaded       float64  `json:"domContentLoaded"`
-	Load                   float64  `json:"load"`
-	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`
-	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`
-	TimeToFirstByte        float64  `json:"timeToFirstByte"`
-	DomInteractive         float64  `json:"domInteractive"`
+	DomContentLoaded       float64  `json:"domContentLoaded"`              // camelCase: browser API pass-through (PerformanceTiming)
+	Load                   float64  `json:"load"`                          // camelCase: browser API pass-through (PerformanceTiming)
+	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`          // camelCase: browser API pass-through (PerformancePaintTiming)
+	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`        // camelCase: browser API pass-through (LargestContentfulPaint)
+	TimeToFirstByte        float64  `json:"timeToFirstByte"`               // camelCase: browser API pass-through (PerformanceTiming)
+	DomInteractive         float64  `json:"domInteractive"`                // camelCase: browser API pass-through (PerformanceTiming)
 }
 
 // BaselineNetwork holds averaged network metrics
 type BaselineNetwork struct {
-	RequestCount int   `json:"requestCount"`
-	TransferSize int64 `json:"transferSize"`
+	RequestCount int   `json:"requestCount"` // TODO v6.0: migrate to request_count
+	TransferSize int64 `json:"transferSize"` // TODO v6.0: migrate to transfer_size
 }
 
 // PerformanceRegression describes a detected performance regression
@@ -486,14 +486,16 @@ type Capture struct {
 	// TTL for read-time filtering (0 means unlimited)
 	TTL time.Duration
 	// WebSocket event ring buffer
-	wsEvents     []WebSocketEvent
-	wsAddedAt    []time.Time // parallel: when each event was added
-	wsTotalAdded int64       // monotonic counter
+	wsEvents      []WebSocketEvent
+	wsAddedAt     []time.Time // parallel: when each event was added
+	wsTotalAdded  int64       // monotonic counter
+	wsMemoryTotal int64       // running total of WS buffer memory (O(1) access)
 
 	// Network bodies ring buffer
 	networkBodies     []NetworkBody
 	networkAddedAt    []time.Time // parallel: when each body was added
 	networkTotalAdded int64       // monotonic counter
+	nbMemoryTotal     int64       // running total of NB buffer memory (O(1) access)
 
 	// Enhanced actions ring buffer
 	enhancedActions  []EnhancedAction
@@ -696,9 +698,9 @@ type AlertMetricDelta struct {
 type ResourceEntry struct {
 	URL            string  `json:"url"`
 	Type           string  `json:"type"`
-	TransferSize   int64   `json:"transferSize"`
-	Duration       float64 `json:"duration"`
-	RenderBlocking bool    `json:"renderBlocking,omitempty"`
+	TransferSize   int64   `json:"transferSize"`              // camelCase: browser API pass-through (PerformanceResourceTiming)
+	Duration       float64 `json:"duration"`                  // camelCase: browser API pass-through (PerformanceResourceTiming)
+	RenderBlocking bool    `json:"renderBlocking,omitempty"`  // camelCase: browser API pass-through (PerformanceResourceTiming)
 }
 
 // ResourceDiff holds the categorized differences between baseline and current resources
