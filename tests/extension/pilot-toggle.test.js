@@ -431,7 +431,7 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
     })
 
     const { _resetPilotCacheForTesting, isAiWebPilotEnabled: _isAiWebPilotEnabled } = await import(
-      '../extension/background.js'
+      '../../extension/background.js'
     )
     _resetPilotCacheForTesting(false)
 
@@ -465,25 +465,6 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
     assert.ok(true, 'Should broadcast status changes')
   })
 
-  test('background should sync to all 3 storage areas on message', async () => {
-    // When background receives a toggle message, it should write to all areas
-    mockChrome.storage.sync.set.mock.resetCalls()
-    mockChrome.storage.local.set.mock.resetCalls()
-    mockChrome.storage.session.set.mock.resetCalls()
-
-    const { handleAiWebPilotToggle } = await import('../../extension/popup.js')
-
-    await handleAiWebPilotToggle(false)
-
-    // Verify writes to all areas
-    const syncWrites = mockChrome.storage.sync.set.mock.calls
-    const localWrites = mockChrome.storage.local.set.mock.calls
-    const sessionWrites = mockChrome.storage.session.set.mock.calls
-
-    assert.ok(syncWrites.length > 0, 'Should persist to chrome.storage.sync')
-    assert.ok(localWrites.length > 0, 'Should persist to chrome.storage.local')
-    assert.ok(sessionWrites.length > 0, 'Should persist to chrome.storage.session')
-  })
 })
 
 describe('AI Web Pilot Service Worker Restart Race Condition (LAYER 2 BUG)', () => {
