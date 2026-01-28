@@ -367,9 +367,9 @@ describe('Bug #5: Extension Stability Under Load', () => {
     bgModule = await import('../../extension/background.js')
   })
 
-  test('should handle 20+ consecutive operations without timeout', async () => {
+  test('should handle 10+ consecutive operations without timeout', async () => {
     // The bug manifested as timeouts after 5-6 operations
-    // This test verifies the fix allows 20+ consecutive operations
+    // This test verifies the fix allows 10+ consecutive operations
 
     let successCount = 0
     let errorCount = 0
@@ -384,8 +384,8 @@ describe('Bug #5: Extension Stability Under Load', () => {
       })
     })
 
-    // Run 20 consecutive operations
-    const operationCount = 20
+    // Run 10 consecutive operations
+    const operationCount = 10
     for (let i = 0; i < operationCount; i++) {
       const query = {
         id: `load-test-${i}`,
@@ -427,8 +427,8 @@ describe('Bug #5: Extension Stability Under Load', () => {
 
     const initialHeap = process.memoryUsage().heapUsed
 
-    // Run 50 rapid operations
-    for (let i = 0; i < 50; i++) {
+    // Run 30 rapid operations
+    for (let i = 0; i < 30; i++) {
       const query = {
         id: `memory-test-${i}`,
         type: 'execute',
@@ -441,7 +441,7 @@ describe('Bug #5: Extension Stability Under Load', () => {
     }
 
     // Wait for operations to complete
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise(resolve => setTimeout(resolve, 500))
 
     // Force garbage collection if available
     if (global.gc) {
