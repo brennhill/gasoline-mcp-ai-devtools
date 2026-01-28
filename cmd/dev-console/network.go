@@ -189,6 +189,7 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		StatusMin int    `json:"status_min"`
 		StatusMax int    `json:"status_max"`
 		Limit     int    `json:"limit"`
+		TabId     int    `json:"tab_id"` // Filter by Chrome tab ID (0 = no filter)
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
@@ -205,6 +206,17 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		var filtered []NetworkBody
 		for _, b := range bodies {
 			if !h.noise.IsNetworkNoise(b) {
+				filtered = append(filtered, b)
+			}
+		}
+		bodies = filtered
+	}
+
+	// Apply tab_id filter if specified
+	if arguments.TabId > 0 {
+		var filtered []NetworkBody
+		for _, b := range bodies {
+			if b.TabId == arguments.TabId {
 				filtered = append(filtered, b)
 			}
 		}
@@ -237,6 +249,11 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 			"method":     b.Method,
 			"status":     b.Status,
 			"duration_ms": b.Duration,
+		}
+
+		// Add tab_id if present (0 means not set/unknown)
+		if b.TabId > 0 {
+			jsonPairs[i]["tab_id"] = b.TabId
 		}
 
 		// Add timestamp if present (renamed capturedAt)
@@ -308,7 +325,8 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 		URL   string `json:"url"`   // Substring filter
 		Limit int    `json:"limit"` // Max entries to return
 	}
-	json.Unmarshal(args, &params)
+	//nolint:errcheck -- args already validated by MCP layer; fallback to zero values is safe
+	_ = json.Unmarshal(args, &params)
 
 	h.capture.mu.RLock()
 	entries := make([]NetworkWaterfallEntry, len(h.capture.networkWaterfall))

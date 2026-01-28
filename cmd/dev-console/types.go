@@ -53,6 +53,7 @@ type WebSocketEvent struct {
 	Sampled          *SamplingInfo `json:"sampled,omitempty"`
 	BinaryFormat     string        `json:"binary_format,omitempty"`
 	FormatConfidence float64       `json:"format_confidence,omitempty"`
+	TabId            int           `json:"tab_id,omitempty"` // Chrome tab ID that produced this event
 }
 
 // SamplingInfo describes the sampling state when a message was captured
@@ -193,16 +194,17 @@ type NetworkBody struct {
 	Method             string  `json:"method"`
 	URL                string  `json:"url"`
 	Status             int     `json:"status"`
-	RequestBody        string  `json:"request_body,omitempty"`       
-	ResponseBody       string  `json:"response_body,omitempty"`      
-	ContentType        string  `json:"content_type,omitempty"`       
+	RequestBody        string  `json:"request_body,omitempty"`
+	ResponseBody       string  `json:"response_body,omitempty"`
+	ContentType        string  `json:"content_type,omitempty"`
 	Duration           int     `json:"duration,omitempty"`
-	RequestTruncated   bool    `json:"request_truncated,omitempty"`  
-	ResponseTruncated  bool    `json:"response_truncated,omitempty"` 
+	RequestTruncated   bool    `json:"request_truncated,omitempty"`
+	ResponseTruncated  bool    `json:"response_truncated,omitempty"`
 	ResponseHeaders    map[string]string `json:"response_headers,omitempty"`
-	HasAuthHeader      bool              `json:"has_auth_header,omitempty"`  
+	HasAuthHeader      bool              `json:"has_auth_header,omitempty"`
 	BinaryFormat       string  `json:"binary_format,omitempty"`
 	FormatConfidence   float64 `json:"format_confidence,omitempty"`
+	TabId              int     `json:"tab_id,omitempty"` // Chrome tab ID that produced this request
 }
 
 // NetworkBodyFilter defines filtering criteria for network bodies
@@ -255,6 +257,7 @@ type EnhancedAction struct {
 	SelectedValue string                 `json:"selectedValue,omitempty"`
 	SelectedText  string                 `json:"selectedText,omitempty"`
 	ScrollY       int                    `json:"scrollY,omitempty"`
+	TabId         int                    `json:"tab_id,omitempty"` // Chrome tab ID that produced this action
 }
 
 // EnhancedActionFilter defines filtering criteria for enhanced actions

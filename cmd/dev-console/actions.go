@@ -139,14 +139,20 @@ func (h *ToolHandler) toolGetEnhancedActions(req JSONRPCRequest, args json.RawMe
 			}
 		}
 		ts := time.Unix(0, a.Timestamp*int64(time.Millisecond)).Format("15:04:05")
+		// Format tabId: show as string if > 0, otherwise empty
+		tabStr := ""
+		if a.TabId > 0 {
+			tabStr = fmt.Sprintf("%d", a.TabId)
+		}
 		rows[i] = []string{
 			a.Type,
 			truncate(a.URL, 60),
 			truncate(sel, 40),
 			truncate(a.Value, 30),
 			ts,
+			tabStr,
 		}
 	}
-	table := markdownTable([]string{"Type", "URL", "Selector", "Value", "Time"}, rows)
+	table := markdownTable([]string{"Type", "URL", "Selector", "Value", "Time", "Tab"}, rows)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
 }

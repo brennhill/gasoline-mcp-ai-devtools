@@ -55,8 +55,9 @@ func (c *Capture) HandleExtensionLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":       "ok",
-		"logs_stored":  len(payload.Logs),
+	//nolint:errcheck -- HTTP response encoding errors are logged by client; no recovery possible
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":      "ok",
+		"logs_stored": len(payload.Logs),
 	})
 }

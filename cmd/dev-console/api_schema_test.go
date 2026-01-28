@@ -301,7 +301,7 @@ func TestObserveActions_ColumnsMatchDocs(t *testing.T) {
 
 	text := extractMCPText(t, resp)
 	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"Type", "URL", "Selector", "Value", "Time"}
+	expected := []string{"Type", "URL", "Selector", "Value", "Time", "Tab"}
 	assertHeaders(t, "observe actions", headers, expected)
 }
 
@@ -324,7 +324,7 @@ func TestObserveWSEvents_ColumnsMatchDocs(t *testing.T) {
 
 	text := extractMCPText(t, resp)
 	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"ID", "Event", "URL", "Direction", "Size", "Time"}
+	expected := []string{"ID", "Event", "URL", "Direction", "Size", "Time", "Tab"}
 	assertHeaders(t, "observe websocket_events", headers, expected)
 }
 

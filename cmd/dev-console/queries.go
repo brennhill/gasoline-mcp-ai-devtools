@@ -882,7 +882,8 @@ func (c *Capture) SetLastKnownURL(url string) {
 // Uses crypto/rand for the random component to ensure uniqueness.
 func generateCorrelationID() string {
 	b := make([]byte, 8)
-	crypto_rand.Read(b)
+	//nolint:errcheck -- crypto/rand.Read only fails if system entropy is unavailable (fatal anyway)
+	_, _ = crypto_rand.Read(b)
 	return fmt.Sprintf("corr-%d-%x", time.Now().UnixMilli(), b)
 }
 

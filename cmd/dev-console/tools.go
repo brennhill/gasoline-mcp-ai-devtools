@@ -1526,6 +1526,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		Limit int `json:"limit"`
+		TabId int `json:"tab_id"` // Filter by Chrome tab ID (0 = no filter)
 	}
 	if len(args) > 0 {
 		// Error acceptable: limit is optional, defaults to 0 (no limit)
@@ -1540,6 +1541,12 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 		if level, ok := entry["level"].(string); ok && level == "error" {
 			if h.noise != nil && h.noise.IsConsoleNoise(entry) {
 				continue
+			}
+			// Apply tab_id filter if specified
+			if arguments.TabId > 0 {
+				if entryTabId, ok := entry["tabId"].(float64); !ok || int(entryTabId) != arguments.TabId {
+					continue
+				}
 			}
 			errors = append(errors, entry)
 		}
@@ -1575,6 +1582,7 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
 		Limit int `json:"limit"`
+		TabId int `json:"tab_id"` // Filter by Chrome tab ID (0 = no filter)
 	}
 	if len(args) > 0 {
 		// Error acceptable: limit is optional, defaults to 0 (no limit)
@@ -1586,10 +1594,22 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 
 	entries := h.MCPHandler.server.entries
 
+	// Apply noise filtering
 	if h.noise != nil {
 		var filtered []LogEntry
 		for _, entry := range entries {
 			if !h.noise.IsConsoleNoise(entry) {
+				filtered = append(filtered, entry)
+			}
+		}
+		entries = filtered
+	}
+
+	// Apply tab_id filter if specified
+	if arguments.TabId > 0 {
+		var filtered []LogEntry
+		for _, entry := range entries {
+			if entryTabId, ok := entry["tabId"].(float64); ok && int(entryTabId) == arguments.TabId {
 				filtered = append(filtered, entry)
 			}
 		}

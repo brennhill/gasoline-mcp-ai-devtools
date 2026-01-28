@@ -157,6 +157,7 @@ import {
   setNetworkWaterfallEnabled,
   setNetworkBodyCaptureEnabled,
   setServerUrl,
+  wrapFetchWithBodies,
 } from './lib/network.js'
 import {
   getPerformanceMarks,
@@ -280,11 +281,16 @@ export function wrapFetch(originalFetchFn) {
 }
 
 /**
- * Install fetch capture
+ * Install fetch capture.
+ * Uses wrapFetchWithBodies to capture request/response bodies for all requests,
+ * then wraps that with wrapFetch to also capture error details for 4xx/5xx responses.
+ * This ensures both body capture (GASOLINE_NETWORK_BODY) and error logging work together.
  */
 export function installFetchCapture() {
   originalFetch = window.fetch
-  window.fetch = wrapFetch(originalFetch)
+  // Layer 1: wrapFetchWithBodies captures request/response bodies for ALL requests
+  // Layer 2: wrapFetch captures detailed error logging for 4xx/5xx responses
+  window.fetch = wrapFetch(wrapFetchWithBodies(originalFetch))
 }
 
 /**
@@ -506,7 +512,7 @@ export function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: '5.1.0',
+    version: '5.2.0',
   }
 }
 

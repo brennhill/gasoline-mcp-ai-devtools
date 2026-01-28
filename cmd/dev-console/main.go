@@ -27,7 +27,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "5.1.0"
+var version = "5.2.0"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -743,8 +743,9 @@ func (s *Server) clearEntries() {
 	s.logAddedAt = nil
 	s.mu.Unlock()
 	// Write empty file outside lock
+	// #nosec G306 -- log files are owner-only (0600) for privacy
 	if s.logFile != "" {
-		if err := os.WriteFile(s.logFile, []byte{}, 0644); err != nil {
+		if err := os.WriteFile(s.logFile, []byte{}, 0600); err != nil {
 			fmt.Fprintf(os.Stderr, "[gasoline] Error clearing log file: %v\n", err)
 		}
 	}
@@ -948,6 +949,7 @@ func findMCPConfig() string {
 	for _, path := range locations {
 		if _, err := os.Stat(path); err == nil {
 			// Verify it actually contains gasoline config
+			// #nosec G304 -- paths are from a fixed list of known MCP config locations, not user input
 			data, err := os.ReadFile(path)
 			if err == nil && (strings.Contains(string(data), "gasoline") || strings.Contains(string(data), "gasoline-mcp")) {
 				return path
@@ -1124,7 +1126,7 @@ func main() {
 			}})
 			os.Exit(1)
 		} else {
-			ln.Close()
+			_ = ln.Close() //nolint:errcheck -- pre-flight check; port will be re-bound by child process
 		}
 
 		exe, _ := os.Executable()
@@ -1194,7 +1196,7 @@ func main() {
 			client := &http.Client{Timeout: 200 * time.Millisecond}
 			resp, err := client.Get(healthURL)
 			if err == nil && resp.StatusCode == 200 {
-				resp.Body.Close()
+				_ = resp.Body.Close() //nolint:errcheck -- best-effort cleanup after health check success
 				fmt.Printf("✓ Server ready on http://127.0.0.1:%d\n", *port)
 				fmt.Printf("  Log file: %s\n", *logFile)
 				fmt.Printf("  Stop with: kill %d\n", backgroundPID)
@@ -1208,7 +1210,7 @@ func main() {
 				os.Exit(0)
 			}
 			if resp != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close() //nolint:errcheck -- best-effort cleanup after health check
 			}
 		}
 
@@ -1462,7 +1464,7 @@ func runConnectMode(port int, clientID string, cwd string) {
 		// Server might not have /clients endpoint yet (backwards compat)
 		fmt.Fprintf(os.Stderr, "[gasoline] Warning: could not register client: %v\n", err)
 	} else {
-		regResp.Body.Close()
+		_ = regResp.Body.Close() //nolint:errcheck -- best-effort cleanup after client registration
 	}
 
 	fmt.Fprintf(os.Stderr, "[gasoline] Connected to %s (client: %s)\n", serverURL, clientID)
@@ -1505,14 +1507,14 @@ func runConnectMode(port int, clientID string, cwd string) {
 		// Stream response back to stdout
 		var respData json.RawMessage
 		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close() //nolint:errcheck -- best-effort cleanup after decode error
 			var jsonReq JSONRPCRequest
 			if json.Unmarshal([]byte(line), &jsonReq) == nil {
 				sendMCPError(jsonReq.ID, -32603, "Invalid server response")
 			}
 			continue
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close() //nolint:errcheck -- best-effort cleanup after successful decode
 
 		fmt.Println(string(respData))
 	}
@@ -1525,7 +1527,7 @@ func runConnectMode(port int, clientID string, cwd string) {
 		req.Header.Set("X-Gasoline-Client", clientID)
 		resp, err := http.DefaultClient.Do(req)
 		if err == nil {
-			resp.Body.Close()
+			_ = resp.Body.Close() //nolint:errcheck -- best-effort cleanup after unregister
 		}
 	}
 
@@ -2022,7 +2024,7 @@ func runSetupCheck(port int) {
 		fmt.Printf("  Or use a different port: --port %d\n", port+1)
 		fmt.Println()
 	} else {
-		ln.Close()
+		_ = ln.Close() //nolint:errcheck -- pre-flight check; port availability test only
 		fmt.Println("OK")
 		fmt.Printf("  Port %d is available.\n", port)
 		fmt.Println()

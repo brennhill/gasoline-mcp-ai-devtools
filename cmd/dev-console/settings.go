@@ -45,6 +45,7 @@ func (c *Capture) LoadSettingsFromDisk() {
 		return
 	}
 
+	// #nosec G304 -- path is constructed from os.UserHomeDir() + fixed filename, not user input
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -98,8 +99,9 @@ func (c *Capture) SaveSettingsToDisk() error {
 	}
 
 	// Write atomically via temp file
+	// #nosec G306 -- settings file is owner-only readable (0600) for privacy
 	tmpPath := path + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
 		return err
 	}
 	return os.Rename(tmpPath, path)

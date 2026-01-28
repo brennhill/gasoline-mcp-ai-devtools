@@ -417,7 +417,7 @@ describe('Background Script: A11Y query dispatch', () => {
         onMessage: { addListener: mock.fn() },
         onInstalled: { addListener: mock.fn() },
         sendMessage: mock.fn(() => Promise.resolve()),
-        getManifest: () => ({ version: '5.1.0' }),
+        getManifest: () => ({ version: '5.2.0' }),
       },
       action: {
         setBadgeText: mock.fn(),

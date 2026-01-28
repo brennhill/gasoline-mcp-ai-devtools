@@ -230,6 +230,39 @@ const pendingDomRequests = new Map()
 let domRequestId = 0
 
 // ============================================================================
+// ISSUE 2 FIX: PENDING REQUEST CLEANUP ON PAGE UNLOAD
+// ============================================================================
+
+/**
+ * Clear all pending request Maps on page unload (Issue 2 fix).
+ * Prevents memory leaks and stale request accumulation across navigations.
+ */
+export function clearPendingRequests() {
+  pendingHighlightRequests.clear()
+  pendingExecuteRequests.clear()
+  pendingA11yRequests.clear()
+  pendingDomRequests.clear()
+}
+
+/**
+ * Get statistics about pending requests (for testing/debugging)
+ * @returns {Object} Counts of pending requests by type
+ */
+export function getPendingRequestStats() {
+  return {
+    highlight: pendingHighlightRequests.size,
+    execute: pendingExecuteRequests.size,
+    a11y: pendingA11yRequests.size,
+    dom: pendingDomRequests.size,
+  }
+}
+
+// Register cleanup handlers for page unload/navigation (Issue 2 fix)
+// Using 'pagehide' (modern, fires on both close and navigation) + 'beforeunload' (legacy fallback)
+window.addEventListener('pagehide', clearPendingRequests)
+window.addEventListener('beforeunload', clearPendingRequests)
+
+// ============================================================================
 // MESSAGE HANDLERS FROM BACKGROUND
 // ============================================================================
 

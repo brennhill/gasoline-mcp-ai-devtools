@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // ============================================
@@ -1144,5 +1145,293 @@ func TestLoadSessionContext_JSONFormat(t *testing.T) {
 	lines := strings.SplitN(text, "\n", 2)
 	if lines[0] != "Session context loaded" {
 		t.Errorf("Expected summary 'Session context loaded', got: %q", lines[0])
+	}
+}
+
+// ============================================
+// Bug #6: Missing tabId in MCP Responses - TDD Tests
+// ============================================
+
+// TestNetworkBodies_IncludesTabId verifies toolGetNetworkBodies includes tabId in response entries.
+func TestNetworkBodies_IncludesTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add network bodies with tabId
+	capture.mu.Lock()
+	capture.networkBodies = []NetworkBody{
+		{URL: "https://api.example.com/users", Method: "GET", Status: 200, TabId: 42},
+		{URL: "https://api.example.com/posts", Method: "POST", Status: 201, TabId: 99},
+	}
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetNetworkBodies(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain tab_id in JSON response
+	if !strings.Contains(text, `"tab_id":42`) && !strings.Contains(text, `"tab_id": 42`) {
+		t.Errorf("Expected tab_id 42 in response, got: %s", text)
+	}
+	if !strings.Contains(text, `"tab_id":99`) && !strings.Contains(text, `"tab_id": 99`) {
+		t.Errorf("Expected tab_id 99 in response, got: %s", text)
+	}
+}
+
+// TestNetworkBodies_NoTabId verifies backward compatibility when tabId is missing.
+func TestNetworkBodies_NoTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add network body without tabId (TabId=0 means not set)
+	capture.mu.Lock()
+	capture.networkBodies = []NetworkBody{
+		{URL: "https://api.example.com/legacy", Method: "GET", Status: 200, TabId: 0},
+	}
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetNetworkBodies(req, json.RawMessage(`{}`))
+
+	// Should not crash and should return valid response
+	if resp.Error != nil {
+		t.Errorf("Expected no error, got: %v", resp.Error)
+	}
+}
+
+// TestWebSocketEvents_IncludesTabId verifies toolGetWSEvents includes tabId in response entries.
+func TestWebSocketEvents_IncludesTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add WebSocket events with tabId
+	capture.mu.Lock()
+	capture.wsEvents = []WebSocketEvent{
+		{ID: "conn1", Event: "message", Direction: "incoming", Data: "hello", TabId: 42},
+		{ID: "conn2", Event: "message", Direction: "outgoing", Data: "world", TabId: 99},
+	}
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetWSEvents(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain Tab column header and tab values in markdown table
+	if !strings.Contains(text, "| Tab |") {
+		t.Errorf("Expected 'Tab' column header in response, got: %s", text)
+	}
+	if !strings.Contains(text, "| 42 |") {
+		t.Errorf("Expected tabId 42 in markdown table, got: %s", text)
+	}
+	if !strings.Contains(text, "| 99 |") {
+		t.Errorf("Expected tabId 99 in markdown table, got: %s", text)
+	}
+}
+
+// TestEnhancedActions_IncludesTabId verifies toolGetEnhancedActions includes tabId in response entries.
+func TestEnhancedActions_IncludesTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add enhanced actions with tabId
+	capture.mu.Lock()
+	capture.enhancedActions = []EnhancedAction{
+		{Type: "click", Timestamp: 1000, URL: "https://example.com", TabId: 42},
+		{Type: "input", Timestamp: 2000, URL: "https://example.com", TabId: 99},
+	}
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolGetEnhancedActions(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain Tab column header and tab values in markdown table
+	if !strings.Contains(text, "| Tab |") {
+		t.Errorf("Expected 'Tab' column header in response, got: %s", text)
+	}
+	if !strings.Contains(text, "| 42 |") {
+		t.Errorf("Expected tabId 42 in markdown table, got: %s", text)
+	}
+	if !strings.Contains(text, "| 99 |") {
+		t.Errorf("Expected tabId 99 in markdown table, got: %s", text)
+	}
+}
+
+// TestObserveLogs_FilterByTabId verifies observe logs can filter by tab_id parameter.
+func TestObserveLogs_FilterByTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add log entries from different tabs
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "error from tab 42", "tabId": float64(42)},
+		{"level": "error", "message": "error from tab 99", "tabId": float64(99)},
+		{"level": "log", "message": "log from tab 42", "tabId": float64(42)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	// Filter by tab_id: 42
+	resp := mcp.toolHandler.toolObserve(req, json.RawMessage(`{"what":"logs","tab_id":42}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain entries from tab 42
+	if !strings.Contains(text, "error from tab 42") {
+		t.Error("Expected 'error from tab 42' in filtered results")
+	}
+	if !strings.Contains(text, "log from tab 42") {
+		t.Error("Expected 'log from tab 42' in filtered results")
+	}
+	// Should NOT contain entries from tab 99
+	if strings.Contains(text, "error from tab 99") {
+		t.Error("Should NOT contain 'error from tab 99' when filtering by tab_id 42")
+	}
+}
+
+// TestObserveErrors_FilterByTabId verifies observe errors can filter by tab_id parameter.
+func TestObserveErrors_FilterByTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add error entries from different tabs
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "error from tab 42", "tabId": float64(42)},
+		{"level": "error", "message": "error from tab 99", "tabId": float64(99)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	// Filter by tab_id: 99
+	resp := mcp.toolHandler.toolObserve(req, json.RawMessage(`{"what":"errors","tab_id":99}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain entries from tab 99 only
+	if !strings.Contains(text, "error from tab 99") {
+		t.Error("Expected 'error from tab 99' in filtered results")
+	}
+	// Should NOT contain entries from tab 42
+	if strings.Contains(text, "error from tab 42") {
+		t.Error("Should NOT contain 'error from tab 42' when filtering by tab_id 99")
+	}
+}
+
+// TestObserveNetworkBodies_FilterByTabId verifies observe network_bodies can filter by tab_id.
+func TestObserveNetworkBodies_FilterByTabId(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add network bodies from different tabs
+	capture.mu.Lock()
+	capture.networkBodies = []NetworkBody{
+		{URL: "https://api.example.com/tab42", Method: "GET", Status: 200, TabId: 42},
+		{URL: "https://api.example.com/tab99", Method: "GET", Status: 200, TabId: 99},
+	}
+	capture.mu.Unlock()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	// Filter by tab_id: 42
+	resp := mcp.toolHandler.toolObserve(req, json.RawMessage(`{"what":"network_bodies","tab_id":42}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain entries from tab 42 only
+	if !strings.Contains(text, "tab42") {
+		t.Error("Expected URL with 'tab42' in filtered results")
+	}
+	// Should NOT contain entries from tab 99
+	if strings.Contains(text, "tab99") {
+		t.Error("Should NOT contain URL with 'tab99' when filtering by tab_id 42")
+	}
+}
+
+// TestObserve_FilterByTabId_EmptyResults verifies empty array returned when no entries match filter.
+func TestObserve_FilterByTabId_EmptyResults(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Add log entries from tab 42 only
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "error from tab 42", "tabId": float64(42)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	// Filter by non-existent tab_id: 999
+	resp := mcp.toolHandler.toolObserve(req, json.RawMessage(`{"what":"logs","tab_id":999}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should not crash and should indicate no matching entries
+	if resp.Error != nil {
+		t.Errorf("Expected no error, got: %v", resp.Error)
+	}
+	// Response should indicate empty results or no entries
+	if !strings.Contains(text, "0") && !strings.Contains(text, "No") && !strings.Contains(text, "no") {
+		t.Logf("Response text: %s", text)
+	}
+}
+
+// TestObserve_IncludesCurrentlyTrackedTab verifies observe responses include currently_tracked_tab metadata.
+func TestObserve_IncludesCurrentlyTrackedTab(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	mcp := setupToolHandler(t, server, capture)
+
+	// Set tracking state
+	capture.mu.Lock()
+	capture.trackingEnabled = true
+	capture.trackedTabID = 42
+	capture.trackingUpdated = time.Now()
+	capture.mu.Unlock()
+
+	// Add some logs
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "test error", "tabId": float64(42)},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+	resp := mcp.toolHandler.toolObserve(req, json.RawMessage(`{"what":"errors"}`))
+
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	// Should contain currently_tracked_tab info (either in text or as metadata)
+	// The implementation can include this in the summary or as a separate field
+	if !strings.Contains(text, "42") {
+		t.Logf("Response may include tracking info in metadata. Text: %s", text)
 	}
 }

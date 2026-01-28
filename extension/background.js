@@ -161,6 +161,35 @@ let screenshotOnError = false // Auto-capture screenshot on error (off by defaul
 // Error grouping state
 const errorGroups = new Map() // signature -> { entry, count, firstSeen, lastSeen }
 
+// Error group max age (1 hour) - entries older than this are cleaned up regardless of flush cycle
+// Issue 6 fix: prevents unbounded memory growth with many unique errors
+export const ERROR_GROUP_MAX_AGE_MS = 3600000 // 1 hour
+
+/**
+ * Get current state of error groups (for testing)
+ * @returns {Map} Current error groups map
+ */
+export function getErrorGroupsState() {
+  return errorGroups
+}
+
+/**
+ * Clean up stale error groups older than ERROR_GROUP_MAX_AGE_MS.
+ * Called periodically to prevent unbounded memory growth (Issue 6 fix).
+ */
+export function cleanupStaleErrorGroups() {
+  const now = Date.now()
+  for (const [signature, group] of errorGroups) {
+    if (now - group.lastSeen > ERROR_GROUP_MAX_AGE_MS) {
+      errorGroups.delete(signature)
+      debugLog(DebugCategory.ERROR, 'Cleaned up stale error group', {
+        signature: signature.slice(0, 50) + '...',
+        age: Math.round((now - group.lastSeen) / 60000) + ' min',
+      })
+    }
+  }
+}
+
 /**
  * Log a diagnostic message only if debug mode is enabled
  * Usage: extDebugLog('message', obj)
@@ -177,6 +206,44 @@ const screenshotTimestamps = new Map() // tabId -> [timestamps]
 // Source map state
 const sourceMapCache = new Map() // scriptUrl -> { mappings, sources, names, sourceRoot }
 let sourceMapEnabled = false // Source map resolution (off by default)
+
+// Export the cache size constant for testing
+export { SOURCE_MAP_CACHE_SIZE }
+
+/**
+ * Set an entry in the source map cache with LRU eviction (Issue 4 fix)
+ * Similar to aiSourceMapCache pattern in ai-context.js
+ * @param {string} url - The script URL
+ * @param {Object|null} map - The parsed source map or null
+ */
+export function setSourceMapCacheEntry(url, map) {
+  // Evict oldest if adding new entry and at capacity
+  if (!sourceMapCache.has(url) && sourceMapCache.size >= SOURCE_MAP_CACHE_SIZE) {
+    const firstKey = sourceMapCache.keys().next().value
+    sourceMapCache.delete(firstKey)
+  }
+  // Move to end (LRU): delete first if exists, then add
+  // This ensures recently accessed/updated entries are kept longest
+  sourceMapCache.delete(url)
+  sourceMapCache.set(url, map)
+}
+
+/**
+ * Get an entry from the source map cache
+ * @param {string} url - The script URL
+ * @returns {Object|null} The cached source map or null
+ */
+export function getSourceMapCacheEntry(url) {
+  return sourceMapCache.get(url) || null
+}
+
+/**
+ * Get the current size of the source map cache
+ * @returns {number} Number of entries in cache
+ */
+export function getSourceMapCacheSize() {
+  return sourceMapCache.size
+}
 
 // Memory enforcement constants
 export const MEMORY_SOFT_LIMIT = 20 * 1024 * 1024 // 20MB
@@ -2001,6 +2068,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
     chrome.alarms.create('reconnect', { periodInMinutes: RECONNECT_INTERVAL / 60000 })
     chrome.alarms.create('errorGroupFlush', { periodInMinutes: 0.5 })
     chrome.alarms.create('memoryCheck', { periodInMinutes: MEMORY_CHECK_INTERVAL_MS / 60000 })
+    // Issue 6 fix: cleanup stale error groups every 10 minutes
+    chrome.alarms.create('errorGroupCleanup', { periodInMinutes: 10 })
 
     chrome.alarms.onAlarm.addListener((alarm) => {
       if (alarm.name === 'reconnect') {
@@ -2012,6 +2081,9 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
         }
       } else if (alarm.name === 'memoryCheck') {
         debugLog(DebugCategory.LIFECYCLE, 'Memory check alarm fired')
+      } else if (alarm.name === 'errorGroupCleanup') {
+        // Issue 6 fix: cleanup error groups older than 1 hour
+        cleanupStaleErrorGroups()
       }
     })
   }
@@ -2214,88 +2286,111 @@ async function handleClearLogs() {
   }
 }
 
+// Issue 5 fix: Mutex flag to prevent multiple simultaneous checkConnectionAndUpdate executions
+let _connectionCheckRunning = false
+
+/**
+ * Check if a connection check is currently running (for testing)
+ * @returns {boolean} True if a connection check is in progress
+ */
+export function isConnectionCheckRunning() {
+  return _connectionCheckRunning
+}
+
 async function checkConnectionAndUpdate() {
-  const health = await checkServerHealth()
-  const wasConnected = connectionStatus.connected
-  connectionStatus = {
-    ...connectionStatus,
-    ...health,
-    connected: health.connected,
+  // Issue 5 fix: Prevent multiple simultaneous executions (mutex pattern)
+  if (_connectionCheckRunning) {
+    debugLog(DebugCategory.CONNECTION, 'Skipping connection check - already running')
+    return
   }
+  _connectionCheckRunning = true
 
-  // Promote nested log info to top-level for popup display
-  if (health.logs) {
-    connectionStatus.logFile = health.logs.logFile || connectionStatus.logFile
-    connectionStatus.logFileSize = health.logs.logFileSize
-    connectionStatus.entries = health.logs.entries ?? connectionStatus.entries
-    connectionStatus.maxEntries = health.logs.maxEntries ?? connectionStatus.maxEntries
-  }
-
-  // Check version compatibility between extension and server
-  if (health.connected && health.version) {
-    const extVersion = chrome.runtime.getManifest().version
-    const serverMajor = health.version.split('.')[0]
-    const extMajor = extVersion.split('.')[0]
-    connectionStatus.serverVersion = health.version
-    connectionStatus.extensionVersion = extVersion
-    connectionStatus.versionMismatch = serverMajor !== extMajor
-  }
-
-  updateBadge(connectionStatus)
-
-  // Log connection status changes
-  if (wasConnected !== health.connected) {
-    debugLog(DebugCategory.CONNECTION, health.connected ? 'Connected to server' : 'Disconnected from server', {
-      entries: connectionStatus.entries,
-      error: health.error || null,
-      serverVersion: health.version || null,
-    })
-  }
-
-  // Poll capture settings when connected
-  if (health.connected) {
-    const overrides = await pollCaptureSettings(serverUrl)
-    if (overrides !== null) {
-      applyCaptureOverrides(overrides)
+  try {
+    const health = await checkServerHealth()
+    const wasConnected = connectionStatus.connected
+    connectionStatus = {
+      ...connectionStatus,
+      ...health,
+      connected: health.connected,
     }
 
-    // ⚠️ CRITICAL BUG FIX: Service Worker Restart Race Condition
-    //
-    // When service worker restarts (Chrome suspends/resumes background script),
-    // the cache initialization from chrome.storage.local.get() is async via callback.
-    // If polling starts before the callback fires, first polls report the wrong state!
-    //
-    // SYMPTOM: Toggle shows "on" in popup, but server sees "pilot_enabled: false"
-    // Start polling for pending queries (execute_javascript, highlight, etc.)
-    startQueryPolling(serverUrl)
-    // Start settings heartbeat (POST /settings every 2s)
-    // See docs/plugin-server-communications.md
-    startSettingsHeartbeat(serverUrl)
-    // Start network waterfall posting (POST /network-waterfall every 10s)
-    startWaterfallPosting(serverUrl)
-    // Start extension logs posting (POST /extension-logs every 5s)
-    startExtensionLogsPosting(serverUrl)
-    // Start status ping (POST /api/extension-status every 30s)
-    startStatusPing(serverUrl)
-  } else {
-    // Stop polling when disconnected
-    stopQueryPolling()
-    stopSettingsHeartbeat()
-    stopWaterfallPosting()
-    stopExtensionLogsPosting()
-    stopStatusPing()
-  }
+    // Promote nested log info to top-level for popup display
+    if (health.logs) {
+      connectionStatus.logFile = health.logs.logFile || connectionStatus.logFile
+      connectionStatus.logFileSize = health.logs.logFileSize
+      connectionStatus.entries = health.logs.entries ?? connectionStatus.entries
+      connectionStatus.maxEntries = health.logs.maxEntries ?? connectionStatus.maxEntries
+    }
 
-  // Notify popup if open
-  if (typeof chrome !== 'undefined' && chrome.runtime) {
-    chrome.runtime
-      .sendMessage({
-        type: 'statusUpdate',
-        status: { ...connectionStatus, aiControlled },
+    // Check version compatibility between extension and server
+    if (health.connected && health.version) {
+      const extVersion = chrome.runtime.getManifest().version
+      const serverMajor = health.version.split('.')[0]
+      const extMajor = extVersion.split('.')[0]
+      connectionStatus.serverVersion = health.version
+      connectionStatus.extensionVersion = extVersion
+      connectionStatus.versionMismatch = serverMajor !== extMajor
+    }
+
+    updateBadge(connectionStatus)
+
+    // Log connection status changes
+    if (wasConnected !== health.connected) {
+      debugLog(DebugCategory.CONNECTION, health.connected ? 'Connected to server' : 'Disconnected from server', {
+        entries: connectionStatus.entries,
+        error: health.error || null,
+        serverVersion: health.version || null,
       })
-      .catch(() => {
-        // Popup not open, ignore
-      })
+    }
+
+    // Poll capture settings when connected
+    if (health.connected) {
+      const overrides = await pollCaptureSettings(serverUrl)
+      if (overrides !== null) {
+        applyCaptureOverrides(overrides)
+      }
+
+      // ⚠️ CRITICAL BUG FIX: Service Worker Restart Race Condition
+      //
+      // When service worker restarts (Chrome suspends/resumes background script),
+      // the cache initialization from chrome.storage.local.get() is async via callback.
+      // If polling starts before the callback fires, first polls report the wrong state!
+      //
+      // SYMPTOM: Toggle shows "on" in popup, but server sees "pilot_enabled: false"
+      // Start polling for pending queries (execute_javascript, highlight, etc.)
+      startQueryPolling(serverUrl)
+      // Start settings heartbeat (POST /settings every 2s)
+      // See docs/plugin-server-communications.md
+      startSettingsHeartbeat(serverUrl)
+      // Start network waterfall posting (POST /network-waterfall every 10s)
+      startWaterfallPosting(serverUrl)
+      // Start extension logs posting (POST /extension-logs every 5s)
+      startExtensionLogsPosting(serverUrl)
+      // Start status ping (POST /api/extension-status every 30s)
+      startStatusPing(serverUrl)
+    } else {
+      // Stop polling when disconnected
+      stopQueryPolling()
+      stopSettingsHeartbeat()
+      stopWaterfallPosting()
+      stopExtensionLogsPosting()
+      stopStatusPing()
+    }
+
+    // Notify popup if open
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      chrome.runtime
+        .sendMessage({
+          type: 'statusUpdate',
+          status: { ...connectionStatus, aiControlled },
+        })
+        .catch(() => {
+          // Popup not open, ignore
+        })
+    }
+  } finally {
+    // Issue 5 fix: Release mutex
+    _connectionCheckRunning = false
   }
 }
 
@@ -2340,7 +2435,62 @@ export function applyCaptureOverrides(overrides) {
 
 let queryPollingInterval = null
 // Track queries currently being processed to prevent duplicate processing
-const _processingQueries = new Set()
+// Changed from Set to Map to store timestamps for TTL-based cleanup (Issue 1 fix)
+const _processingQueries = new Map() // queryId -> timestamp
+
+// TTL for processing queries (60 seconds) - entries older than this are considered stale
+const PROCESSING_QUERY_TTL_MS = 60000
+
+/**
+ * Get current state of processing queries (for testing)
+ * @returns {Map} Current processing queries map
+ */
+export function getProcessingQueriesState() {
+  return _processingQueries
+}
+
+/**
+ * Add a query to the processing set with timestamp
+ * @param {string} queryId - The query ID
+ * @param {number} [timestamp] - Optional timestamp (defaults to now)
+ */
+export function addProcessingQuery(queryId, timestamp = Date.now()) {
+  _processingQueries.set(queryId, timestamp)
+}
+
+/**
+ * Remove a query from the processing set
+ * @param {string} queryId - The query ID
+ */
+export function removeProcessingQuery(queryId) {
+  _processingQueries.delete(queryId)
+}
+
+/**
+ * Check if a query is currently being processed
+ * @param {string} queryId - The query ID
+ * @returns {boolean} True if query is being processed
+ */
+export function isQueryProcessing(queryId) {
+  return _processingQueries.has(queryId)
+}
+
+/**
+ * Clean up stale processing queries that have exceeded the TTL.
+ * Called on each poll cycle to prevent unbounded growth.
+ */
+export function cleanupStaleProcessingQueries() {
+  const now = Date.now()
+  for (const [queryId, timestamp] of _processingQueries) {
+    if (now - timestamp > PROCESSING_QUERY_TTL_MS) {
+      _processingQueries.delete(queryId)
+      debugLog(DebugCategory.CONNECTION, 'Cleaned up stale processing query', {
+        queryId,
+        age: Math.round((now - timestamp) / 1000) + 's',
+      })
+    }
+  }
+}
 
 /**
  * Poll the server for pending queries (DOM queries, a11y audits)
@@ -2348,6 +2498,9 @@ const _processingQueries = new Set()
  */
 export async function pollPendingQueries(serverUrl) {
   try {
+    // Clean up stale processing queries at the start of each poll cycle (Issue 1 fix)
+    cleanupStaleProcessingQueries()
+
     // Determine pilot state for header (cache is always initialized)
     const pilotState = _aiWebPilotEnabledCache === true ? '1' : '0'
 
@@ -2372,17 +2525,17 @@ export async function pollPendingQueries(serverUrl) {
 
     debugLog(DebugCategory.CONNECTION, 'Got pending queries', { count: data.queries.length })
     for (const query of data.queries) {
-      // Skip queries already being processed
+      // Skip queries already being processed (using Map for TTL tracking)
       if (_processingQueries.has(query.id)) {
         debugLog(DebugCategory.CONNECTION, 'Skipping already processing query', { id: query.id })
         continue
       }
-      // Mark as processing
-      _processingQueries.add(query.id)
+      // Mark as processing with timestamp (Issue 1 fix: track time for TTL cleanup)
+      _processingQueries.set(query.id, Date.now())
       try {
         await handlePendingQuery(query, serverUrl)
       } finally {
-        // Remove from processing set when done
+        // Remove from processing map when done
         _processingQueries.delete(query.id)
       }
     }
@@ -2728,8 +2881,11 @@ export async function handlePendingQuery(query, serverUrl) {
 
       // ASYNC COMMAND EXECUTION (v6.0.0)
       // If query has correlation_id, use async pattern with 2s/10s timeouts
+      // MUST await — without it, _processingQueries.delete() fires immediately
+      // while the action is still running (10s+), causing duplicate processing
+      // and timeouts after 5-6 operations (Issue #5).
       if (query.correlation_id) {
-        handleAsyncExecuteCommand(query, tabId, serverUrl)
+        await handleAsyncExecuteCommand(query, tabId, serverUrl)
         return
       }
 

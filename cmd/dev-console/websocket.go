@@ -459,6 +459,11 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 	summary := fmt.Sprintf("%d WebSocket event(s)", len(events))
 	rows := make([][]string, len(events))
 	for i, e := range events {
+		// Format tabId: show as string if > 0, otherwise empty
+		tabStr := ""
+		if e.TabId > 0 {
+			tabStr = fmt.Sprintf("%d", e.TabId)
+		}
 		rows[i] = []string{
 			e.ID,
 			e.Event,
@@ -466,9 +471,10 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 			e.Direction,
 			fmt.Sprintf("%d", e.Size),
 			e.Timestamp,
+			tabStr,
 		}
 	}
-	table := markdownTable([]string{"ID", "Event", "URL", "Direction", "Size", "Time"}, rows)
+	table := markdownTable([]string{"ID", "Event", "URL", "Direction", "Size", "Time", "Tab"}, rows)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
 }
 
