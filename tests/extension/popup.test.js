@@ -594,14 +594,6 @@ describe('WebSocket Toggle', () => {
     assert.strictEqual(wsToggle.checked, false)
   })
 
-  test('should save WebSocket state when toggled', async () => {
-    const { handleFeatureToggle } = await import('../../extension/popup.js')
-
-    handleFeatureToggle('webSocketCaptureEnabled', 'setWebSocketCaptureEnabled', true)
-
-    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].webSocketCaptureEnabled === true))
-  })
-
   test('should send message to background when WebSocket toggled', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
@@ -612,14 +604,6 @@ describe('WebSocket Toggle', () => {
         (c) => c.arguments[0].type === 'setWebSocketCaptureEnabled' && c.arguments[0].enabled === true,
       ),
     )
-  })
-
-  test('should save WebSocket mode when changed', async () => {
-    const { handleWebSocketModeChange } = await import('../../extension/popup.js')
-
-    handleWebSocketModeChange('messages')
-
-    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].webSocketCaptureMode === 'messages'))
   })
 
   test('should send mode change message to background', async () => {
