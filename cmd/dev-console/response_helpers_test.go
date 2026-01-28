@@ -556,7 +556,7 @@ func TestErrorCodeConstants_AreSnakeCase(t *testing.T) {
 		}
 		// Should be snake_case: only lowercase letters and underscores
 		for _, c := range code {
-			if !((c >= 'a' && c <= 'z') || c == '_') {
+			if (c < 'a' || c > 'z') && c != '_' {
 				t.Errorf("Error code %q contains non-snake_case char %q", code, string(c))
 				break
 			}

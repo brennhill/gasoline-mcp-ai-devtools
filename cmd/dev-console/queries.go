@@ -893,10 +893,11 @@ func (c *Capture) SetCommandResult(result CommandResult) {
 	c.resultsMu.Lock()
 	defer c.resultsMu.Unlock()
 
-	if result.Status == "complete" || result.Status == "timeout" {
+	switch result.Status {
+	case "complete", "timeout":
 		result.CompletedAt = time.Now()
 		c.completedResults[result.CorrelationID] = &result
-	} else if result.Status == "pending" {
+	case "pending":
 		// Extension acknowledged, command still running - keep in completedResults with pending status
 		if _, exists := c.completedResults[result.CorrelationID]; !exists {
 			result.CreatedAt = time.Now()
@@ -930,9 +931,10 @@ func (c *Capture) GetPendingCommands() (pending, completed, failed []*CommandRes
 
 	for _, result := range c.completedResults {
 		resultCopy := *result
-		if result.Status == "pending" {
+		switch result.Status {
+		case "pending":
 			pending = append(pending, &resultCopy)
-		} else if result.Status == "complete" || result.Status == "timeout" {
+		case "complete", "timeout":
 			completed = append(completed, &resultCopy)
 		}
 	}

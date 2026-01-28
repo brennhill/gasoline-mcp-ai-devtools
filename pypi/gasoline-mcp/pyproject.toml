@@ -1,6 +1,6 @@
 [project]
 name = "gasoline-mcp"
-version = "5.1.0"
+version = "5.2.0"
 description = "Gasoline MCP is an AI Debugger, Inspector, and Observability toolkit. It acts as Chrome DevTools for AI Agents using the Model Context Protocol (MCP)."
 readme = "README.md"
 requires-python = ">=3.8"

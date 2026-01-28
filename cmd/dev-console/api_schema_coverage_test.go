@@ -253,7 +253,7 @@ func TestBuildPathParamsEmptyPath(t *testing.T) {
 	store := NewSchemaStore()
 	params := store.buildPathParams("")
 
-	if params != nil && len(params) != 0 {
+	if len(params) != 0 {
 		t.Errorf("Expected nil/empty params for empty path, got %d", len(params))
 	}
 }

@@ -620,7 +620,7 @@ func TestCoverageGroupB_InferTypeAndFormat(t *testing.T) {
 		t.Errorf("3.14: expected number/'', got %s/%s", typ, fmt)
 	}
 
-	typ, fmt = inferTypeAndFormat("hello")
+	typ, _ = inferTypeAndFormat("hello")
 	if typ != "string" {
 		t.Errorf("string: expected string, got %s", typ)
 	}

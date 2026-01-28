@@ -350,9 +350,10 @@ func (s *SchemaStore) ObserveWebSocket(event WebSocketEvent) {
 	}
 
 	ws.totalMessages++
-	if event.Direction == "incoming" {
+	switch event.Direction {
+	case "incoming":
 		ws.incomingCount++
-	} else if event.Direction == "outgoing" {
+	case "outgoing":
 		ws.outgoingCount++
 	}
 

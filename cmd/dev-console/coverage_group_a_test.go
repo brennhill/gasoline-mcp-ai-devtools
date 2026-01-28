@@ -1830,6 +1830,3 @@ func TestCoverageGroupA_handlePilotExecuteJS_PilotDisabled(t *testing.T) {
 // Helpers
 // ============================================
 
-func boolPtr(b bool) *bool {
-	return &b
-}

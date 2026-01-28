@@ -233,8 +233,8 @@ func correlateAlerts(alerts []Alert) []Alert {
 
 func canCorrelate(a, b Alert) bool {
 	// Only correlate regression + anomaly pairs
-	if !((a.Category == "regression" && b.Category == "anomaly") ||
-		(a.Category == "anomaly" && b.Category == "regression")) {
+	if (a.Category != "regression" || b.Category != "anomaly") &&
+		(a.Category != "anomaly" || b.Category != "regression") {
 		return false
 	}
 

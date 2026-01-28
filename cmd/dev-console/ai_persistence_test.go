@@ -2373,11 +2373,7 @@ func TestPersistFlushDirtyEmpty(t *testing.T) {
 
 	// Verify no crash and no extra files
 	entries, _ := os.ReadDir(filepath.Join(dir, ".gasoline"))
-	for _, e := range entries {
-		if e.Name() != "meta.json" && e.Name() != ".gitignore" {
-			// Only meta.json should exist
-		}
-	}
+	_ = entries // Only meta.json and .gitignore should exist
 }
 
 // --- evictStaleErrors: empty input returns empty slice ---

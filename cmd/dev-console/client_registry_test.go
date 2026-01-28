@@ -354,6 +354,7 @@ func TestClientRegistry_ConcurrentAccess(t *testing.T) {
 			cs := r.Register(cwd)
 			if cs == nil {
 				t.Errorf("Register returned nil for goroutine %d", i)
+				return
 			}
 			r.Get(cs.ID)
 		}(i)

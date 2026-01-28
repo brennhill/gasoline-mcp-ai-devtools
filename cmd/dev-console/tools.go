@@ -703,14 +703,14 @@ func (h *ToolHandler) checkTrackingStatus() (enabled bool, hint string) {
 // computeDataCounts reads current buffer sizes from server and capture under read locks.
 // Returns counts for each observable mode.
 func (h *ToolHandler) computeDataCounts() (errorCount, logCount, extensionLogsCount, waterfallCount, networkCount, wsEventCount, wsStatusCount, actionCount, vitalCount, apiCount int) {
-	h.MCPHandler.server.mu.RLock()
-	logCount = len(h.MCPHandler.server.entries)
-	for _, entry := range h.MCPHandler.server.entries {
+	h.server.mu.RLock()
+	logCount = len(h.server.entries)
+	for _, entry := range h.server.entries {
 		if level, ok := entry["level"].(string); ok && level == "error" {
 			errorCount++
 		}
 	}
-	h.MCPHandler.server.mu.RUnlock()
+	h.server.mu.RUnlock()
 
 	h.capture.mu.RLock()
 	extensionLogsCount = len(h.capture.extensionLogs)
@@ -1533,11 +1533,11 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 		_ = json.Unmarshal(args, &arguments)
 	}
 
-	h.MCPHandler.server.mu.RLock()
-	defer h.MCPHandler.server.mu.RUnlock()
+	h.server.mu.RLock()
+	defer h.server.mu.RUnlock()
 
 	var errors []LogEntry
-	for _, entry := range h.MCPHandler.server.entries {
+	for _, entry := range h.server.entries {
 		if level, ok := entry["level"].(string); ok && level == "error" {
 			if h.noise != nil && h.noise.IsConsoleNoise(entry) {
 				continue
@@ -1589,10 +1589,10 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 		_ = json.Unmarshal(args, &arguments)
 	}
 
-	h.MCPHandler.server.mu.RLock()
-	defer h.MCPHandler.server.mu.RUnlock()
+	h.server.mu.RLock()
+	defer h.server.mu.RUnlock()
 
-	entries := h.MCPHandler.server.entries
+	entries := h.server.entries
 
 	// Apply noise filtering
 	if h.noise != nil {
@@ -1702,7 +1702,7 @@ func (h *ToolHandler) toolGetExtensionLogs(req JSONRPCRequest, args json.RawMess
 }
 
 func (h *ToolHandler) toolClearBrowserLogs(req JSONRPCRequest) JSONRPCResponse {
-	h.MCPHandler.server.clearEntries()
+	h.server.clearEntries()
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Browser logs cleared successfully")}
 }
 
@@ -2049,10 +2049,10 @@ func (h *ToolHandler) toolSecurityAudit(req JSONRPCRequest, args json.RawMessage
 	h.capture.mu.RUnlock()
 
 	// Extract console entries from server
-	h.MCPHandler.server.mu.RLock()
-	entries := make([]LogEntry, len(h.MCPHandler.server.entries))
-	copy(entries, h.MCPHandler.server.entries)
-	h.MCPHandler.server.mu.RUnlock()
+	h.server.mu.RLock()
+	entries := make([]LogEntry, len(h.server.entries))
+	copy(entries, h.server.entries)
+	h.server.mu.RUnlock()
 
 	// Extract page URLs from CSP generator
 	h.cspGenerator.mu.RLock()

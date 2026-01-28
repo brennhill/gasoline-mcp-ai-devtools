@@ -145,9 +145,10 @@ func (g *SRIGenerator) Generate(bodies []NetworkBody, pageURLs []string, params 
 		}
 
 		// Track scripts/styles for summary
-		if resType == "script" {
+		switch resType {
+		case "script":
 			scriptsWithoutSRI++
-		} else if resType == "style" {
+		case "style":
 			stylesWithoutSRI++
 		}
 

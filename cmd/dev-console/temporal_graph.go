@@ -43,7 +43,6 @@ type TemporalEvent struct {
 	Status          string      `json:"status"` // active, resolved, superseded
 	Links           []EventLink `json:"links,omitempty"`
 	OccurrenceCount int         `json:"occurrence_count,omitempty"`
-	fingerprint     string      // internal: for deduplication
 }
 
 // TemporalQuery specifies filters for querying the event history.

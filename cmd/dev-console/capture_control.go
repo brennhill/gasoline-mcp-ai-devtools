@@ -58,14 +58,14 @@ func validateCaptureSettingValue(setting, value string) error {
 		for k := range validSettings {
 			names = append(names, k)
 		}
-		return fmt.Errorf("Unknown capture setting: %s. Valid: %s", setting, strings.Join(names, ", "))
+		return fmt.Errorf("unknown capture setting: %s. Valid: %s", setting, strings.Join(names, ", "))
 	}
 	for _, v := range validValues {
 		if v == value {
 			return nil
 		}
 	}
-	return fmt.Errorf("Invalid value '%s' for %s. Valid: %s", value, setting, strings.Join(validValues, ", "))
+	return fmt.Errorf("invalid value '%s' for %s. Valid: %s", value, setting, strings.Join(validValues, ", "))
 }
 
 // Set applies a single override. Returns an error if the setting or value is invalid,
@@ -80,7 +80,7 @@ func (co *CaptureOverrides) Set(setting, value string) error {
 
 	// Rate limit: 1 change per second
 	if !co.lastChangeAt.IsZero() && time.Since(co.lastChangeAt) < time.Second {
-		return fmt.Errorf("Rate limited: capture settings can be changed at most once per second")
+		return fmt.Errorf("rate limited: capture settings can be changed at most once per second")
 	}
 
 	// Record previous value for alert
@@ -114,7 +114,7 @@ func (co *CaptureOverrides) SetMultiple(settings map[string]string) map[string]e
 	if !co.lastChangeAt.IsZero() && time.Since(co.lastChangeAt) < time.Second {
 		errs := make(map[string]error)
 		for k := range settings {
-			errs[k] = fmt.Errorf("Rate limited: capture settings can be changed at most once per second")
+			errs[k] = fmt.Errorf("rate limited: capture settings can be changed at most once per second")
 		}
 		return errs
 	}
