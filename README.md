@@ -29,26 +29,33 @@
 **Option A: NPM (recommended)**
 
 ```bash
-# 1. Install and run the server
-npx gasoline-mcp
+# 1. Clone the repo for the extension
+git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
+cd gasoline
 
-# 2. Load the extension manually (until Chrome Web Store approval):
+# 2. Load the extension:
 #    - Open chrome://extensions
 #    - Enable Developer mode
-#    - Click "Load unpacked" and select the `extension/` folder
+#    - Click "Load unpacked" and select the `extension/` folder from this repo
+
+# 3. The server will start automatically when your AI tool connects via MCP
+#    (no manual start needed - see MCP config below)
 ```
 
 **Option B: PyPI (Python)**
 
 ```bash
-# 1. Install and run the server
-pip install gasoline-mcp
-gasoline-mcp
+# 1. Clone the repo for the extension
+git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
+cd gasoline
 
-# 2. Load the extension manually (until Chrome Web Store approval):
+# 2. Load the extension:
 #    - Open chrome://extensions
 #    - Enable Developer mode
-#    - Click "Load unpacked" and select the `extension/` folder
+#    - Click "Load unpacked" and select the `extension/` folder from this repo
+
+# 3. The server will start automatically when your AI tool connects via MCP
+#    (no manual start needed - see MCP config below)
 ```
 
 **Option C: From source** (requires [Go 1.21+](https://go.dev/))
