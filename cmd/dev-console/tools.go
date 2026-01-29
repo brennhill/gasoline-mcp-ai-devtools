@@ -504,12 +504,15 @@ type ToolHandler struct {
 	// Rate limiter for MCP tool calls (sliding window)
 	toolCallLimiter *ToolCallLimiter
 
+	// SSE registry for MCP streaming transport
+	sseRegistry *SSERegistry
+
 	// Context streaming: active push notifications via MCP
 	streamState *StreamState
 }
 
 // NewToolHandler creates an MCP handler with composite tool capabilities
-func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
+func NewToolHandler(server *Server, capture *Capture, sseRegistry *SSERegistry) *MCPHandler {
 	handler := &ToolHandler{
 		MCPHandler:       NewMCPHandler(server),
 		capture:          capture,
@@ -517,6 +520,7 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 		noise:            NewNoiseConfig(),
 		captureOverrides: NewCaptureOverrides(),
 		clusters:         NewClusterManager(),
+		sseRegistry:      sseRegistry,
 	}
 
 	// Initialize persistent session store and temporal graph using CWD as project root.
@@ -554,7 +558,7 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 	handler.healthMetrics = NewHealthMetrics()
 	handler.verificationMgr = NewVerificationManager(&captureStateAdapter{capture: capture, server: server})
 	handler.toolCallLimiter = NewToolCallLimiter(100, time.Minute)
-	handler.streamState = NewStreamState()
+	handler.streamState = NewStreamState(sseRegistry)
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.
 	// Use SetOnEntries for thread-safe assignment (avoids racing with addEntries).
@@ -1392,7 +1396,7 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 
 	if params.Format == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'format' is missing", "Add the 'format' parameter and call again", withParam("format"), withHint("Valid values: reproduction, test, pr_summary, sarif, har, csp, sri"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'format' is missing", "Add the 'format' parameter and call again", withParam("format"), withHint("Valid values: reproduction, test, pr_summary, sarif, har, csp, sri, test_from_context, test_heal, test_classify"))}
 	}
 
 	var resp JSONRPCResponse
@@ -1411,6 +1415,12 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 		resp = h.toolGenerateCSP(req, args)
 	case "sri":
 		resp = h.toolGenerateSRI(req, args)
+	case "test_from_context":
+		resp = h.handleGenerateTestFromContext(req, args)
+	case "test_heal":
+		resp = h.handleGenerateTestHeal(req, args)
+	case "test_classify":
+		resp = h.handleGenerateTestClassify(req, args)
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+params.Format, "Use a valid format from the 'format' enum", withParam("format"))}
 	}

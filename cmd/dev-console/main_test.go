@@ -1691,7 +1691,7 @@ func BenchmarkMCPGetBrowserErrors(b *testing.B) {
 	server.addEntries(entries)
 
 	capture := NewCapture()
-	mcp := NewToolHandler(server, capture)
+	mcp := NewToolHandler(server, capture, nil)
 	b.Cleanup(func() {
 		if mcp.toolHandler != nil && mcp.toolHandler.sessionStore != nil {
 			mcp.toolHandler.sessionStore.Shutdown()
@@ -1729,7 +1729,7 @@ func BenchmarkMCPGetBrowserLogs(b *testing.B) {
 	server.addEntries(entries)
 
 	capture := NewCapture()
-	mcp := NewToolHandler(server, capture)
+	mcp := NewToolHandler(server, capture, nil)
 	b.Cleanup(func() {
 		if mcp.toolHandler != nil && mcp.toolHandler.sessionStore != nil {
 			mcp.toolHandler.sessionStore.Shutdown()

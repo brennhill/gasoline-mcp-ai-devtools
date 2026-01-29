@@ -13,7 +13,7 @@ func setupTestCapture(t *testing.T) *Capture {
 // The SessionStore's background goroutine is shut down when the test completes.
 func setupToolHandler(t *testing.T, server *Server, capture *Capture) *MCPHandler {
 	t.Helper()
-	mcp := NewToolHandler(server, capture)
+	mcp := NewToolHandler(server, capture, nil)
 	t.Cleanup(func() {
 		if mcp.toolHandler != nil && mcp.toolHandler.sessionStore != nil {
 			mcp.toolHandler.sessionStore.Shutdown()

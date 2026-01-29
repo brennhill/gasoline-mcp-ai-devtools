@@ -1017,6 +1017,7 @@ func main() {
 	persistMode := flag.Bool("persist", true, "Keep server running after MCP client disconnects (default: true)")
 	connectMode := flag.Bool("connect", false, "Connect to existing server (multi-client mode)")
 	clientID := flag.String("client-id", "", "Override client ID (default: derived from CWD)")
+	bridgeMode := flag.Bool("bridge", false, "Run as stdio-to-HTTP bridge (spawns daemon if needed)")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 
 	flag.Parse()
@@ -1066,6 +1067,20 @@ func main() {
 	}
 
 	// Always run in MCP mode: HTTP server for browser extension + MCP protocol over stdio
+	// Bridge mode: stdio-to-HTTP proxy (spawns daemon if needed)
+	if *bridgeMode {
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "bridge_mode_start",
+			"pid":       os.Getpid(),
+			"port":      *port,
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
+		fmt.Fprintf(os.Stderr, "[gasoline] Starting in bridge mode (stdio -> HTTP)\n")
+		runBridgeMode(*port)
+		return
+	}
+
 	// Determine if stdin is TTY (user ran "gasoline" interactively) or piped (launched by MCP host)
 	stat, err := os.Stdin.Stat()
 	var isTTY bool
@@ -1284,10 +1299,13 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 		"timestamp":       time.Now().UTC().Format(time.RFC3339),
 	}})
 
+	// Create SSE registry for MCP connections
+	sseRegistry := NewSSERegistry()
+
 	// Register HTTP routes before starting the goroutine.
 	// This avoids fragile ordering where route registration in a goroutine
 	// relies on implicit happens-before guarantees from the channel.
-	setupHTTPRoutes(server, capture)
+	setupHTTPRoutes(server, capture, sseRegistry)
 
 	// Start HTTP server in background for browser extension
 	httpReady := make(chan error, 1)
@@ -1349,85 +1367,22 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 
 	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "startup", "version": version, "port": port, "timestamp": time.Now().UTC().Format(time.RFC3339)}})
 
-	// Run MCP protocol over stdin/stdout
+	// MCP SSE transport ready
 	_ = server.appendToFile([]LogEntry{{
 		"type":      "lifecycle",
-		"event":     "mcp_stdio_start",
+		"event":     "mcp_sse_ready",
 		"pid":       os.Getpid(),
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}})
-	fmt.Fprintf(os.Stderr, "[gasoline] MCP stdio handler ready, waiting for requests...\n")
+	fmt.Fprintf(os.Stderr, "[gasoline] MCP SSE handler ready at /mcp/sse\n")
 
-	mcp := NewToolHandler(server, capture)
-	scanner := bufio.NewScanner(os.Stdin)
-
-	// Increase scanner buffer for large messages
-	const maxScanTokenSize = 10 * 1024 * 1024 // 10MB
-	buf := make([]byte, maxScanTokenSize)
-	scanner.Buffer(buf, maxScanTokenSize)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-
-		var req JSONRPCRequest
-		if err := json.Unmarshal([]byte(line), &req); err != nil {
-			// Send error response for malformed JSON
-			errResp := JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      nil,
-				Error: &JSONRPCError{
-					Code:    -32700,
-					Message: "Parse error: " + err.Error(),
-				},
-			}
-			// Error impossible: errResp is a simple JSONRPCResponse struct
-			respJSON, _ := json.Marshal(errResp)
-			mcpStdoutMu.Lock()
-			fmt.Println(string(respJSON))
-			mcpStdoutMu.Unlock()
-			continue
-		}
-
-		resp := mcp.HandleRequest(req)
-		// Error impossible: resp is a simple JSONRPCResponse struct
-		respJSON, _ := json.Marshal(resp)
-		mcpStdoutMu.Lock()
-		fmt.Println(string(respJSON))
-		mcpStdoutMu.Unlock()
-	}
-
-	// stdin closed (MCP client disconnected)
-	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "mcp_disconnect", "timestamp": time.Now().UTC().Format(time.RFC3339), "port": port}})
-
-	if persist {
-		// --persist: keep HTTP server running for the extension, wait for signal
-		fmt.Fprintf(os.Stderr, "[gasoline] MCP disconnected, server persisting on port %d (Ctrl+C to stop)\n", port)
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-		s := <-sig
-		fmt.Fprintf(os.Stderr, "[gasoline] Received %s, shutting down\n", s)
-		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
-		return
-	}
-
-	// Default: exit after brief grace period to free the port
-	// The next AI session will spawn a fresh process; extension auto-reconnects.
-	fmt.Fprintf(os.Stderr, "[gasoline] MCP disconnected, shutting down in 100ms (port %d will be freed)\n", port)
-
+	// Wait for shutdown signal
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt)
-
-	select {
-	case s := <-sig:
-		fmt.Fprintf(os.Stderr, "[gasoline] Received %s, shutting down\n", s)
-		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
-	case <-time.After(100 * time.Millisecond):
-		fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
-		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": "mcp_disconnect_grace", "timestamp": time.Now().UTC().Format(time.RFC3339)}})
-	}
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	s := <-sig
+	fmt.Fprintf(os.Stderr, "[gasoline] Received %s, shutting down\n", s)
+	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
+	fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
 }
 
 // runConnectMode connects to an existing Gasoline server as an MCP client.
@@ -1533,7 +1488,7 @@ func runConnectMode(port int, clientID string, cwd string) {
 	fmt.Fprintf(os.Stderr, "[gasoline] Disconnected from %s\n", serverURL)
 }
 
-// sendMCPError sends a JSON-RPC error response to stdout
+// sendMCPError sends a JSON-RPC error response to stdout (used in connect mode)
 func sendMCPError(id interface{}, code int, message string) {
 	resp := JSONRPCResponse{
 		JSONRPC: "2.0",
@@ -1544,13 +1499,11 @@ func sendMCPError(id interface{}, code int, message string) {
 		},
 	}
 	respJSON, _ := json.Marshal(resp)
-	mcpStdoutMu.Lock()
 	fmt.Println(string(respJSON))
-	mcpStdoutMu.Unlock()
 }
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
-func setupHTTPRoutes(server *Server, capture *Capture) {
+func setupHTTPRoutes(server *Server, capture *Capture, sseRegistry *SSERegistry) {
 	// V4 routes
 	if capture != nil {
 		http.HandleFunc("/websocket-events", corsMiddleware(capture.HandleWebSocketEvents))
@@ -1641,9 +1594,13 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 		http.HandleFunc("/test-boundary", corsMiddleware(handleTestBoundary(capture)))
 	}
 
-	// MCP over HTTP endpoint
-	mcp := NewToolHandler(server, capture)
+	// MCP over HTTP endpoint (for browser extension backward compatibility)
+	mcp := NewToolHandler(server, capture, sseRegistry)
 	http.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
+
+	// MCP SSE transport endpoints
+	http.HandleFunc("/mcp/sse", corsMiddleware(handleMCPSSE(sseRegistry, server)))
+	http.HandleFunc("/mcp/messages/", corsMiddleware(handleMCPMessages(sseRegistry, mcp)))
 
 	// CI/CD webhook endpoint for push-based alerts
 	if mcp.toolHandler != nil {

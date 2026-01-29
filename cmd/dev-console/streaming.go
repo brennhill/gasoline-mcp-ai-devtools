@@ -24,10 +24,7 @@ const (
 	maxPendingBatch           = 100
 )
 
-// mcpStdoutMu protects stdout writes from interleaving between MCP responses
-// (written by the main goroutine) and streaming notifications (written by
-// background goroutines via EmitAlert). Both paths must acquire this mutex.
-var mcpStdoutMu sync.Mutex
+// Removed mcpStdoutMu - no longer needed with SSE transport
 
 // ============================================
 // Types
@@ -51,7 +48,8 @@ type StreamState struct {
 	MinuteStart  time.Time
 	PendingBatch []Alert
 	mu           sync.Mutex
-	writer       io.Writer // defaults to os.Stdout
+	sseRegistry  *SSERegistry // SSE connections for broadcasting
+	writer       io.Writer    // defaults to os.Stdout (for testing)
 }
 
 // MCPNotification is the MCP notification format for streaming alerts.
@@ -73,7 +71,7 @@ type NotificationParams struct {
 // ============================================
 
 // NewStreamState creates a new StreamState with defaults.
-func NewStreamState() *StreamState {
+func NewStreamState(sseRegistry *SSERegistry) *StreamState {
 	return &StreamState{
 		Config: StreamConfig{
 			Enabled:         false,
@@ -83,7 +81,8 @@ func NewStreamState() *StreamState {
 		},
 		SeenMessages: make(map[string]time.Time),
 		MinuteStart:  time.Now(),
-		writer:       os.Stdout,
+		sseRegistry:  sseRegistry,
+		writer:       os.Stdout, // fallback for tests
 	}
 }
 
@@ -382,23 +381,26 @@ func (s *StreamState) EmitAlert(alert Alert) {
 		}
 	}
 
+	sseReg := s.sseRegistry
 	w := s.writer
 	s.mu.Unlock()
 
-	if w == nil {
-		return
+	// === Emit notification via SSE (outside StreamState lock) ===
+	notification := formatMCPNotification(alert)
+
+	// Broadcast to all SSE clients
+	if sseReg != nil {
+		sseReg.BroadcastNotification(notification)
 	}
 
-	// === Emit notification (outside StreamState lock, under stdout lock) ===
-	notification := formatMCPNotification(alert)
-	data, err := json.Marshal(notification)
-	if err != nil {
-		return
+	// Also write to writer for backward compatibility (testing)
+	if w != nil {
+		data, err := json.Marshal(notification)
+		if err == nil {
+			_, _ = w.Write(data)
+			_, _ = w.Write([]byte{'\n'})
+		}
 	}
-	mcpStdoutMu.Lock()
-	_, _ = w.Write(data)
-	_, _ = w.Write([]byte{'\n'})
-	mcpStdoutMu.Unlock()
 }
 
 // ============================================
