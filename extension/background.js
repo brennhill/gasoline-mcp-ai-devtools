@@ -58,6 +58,7 @@ export { setSourceMapEnabled, isSourceMapEnabled, clearSourceMapCache, } from '.
 // === PUBLIC API: COMMUNICATION (Tests)
 // =============================================================================
 export { createCircuitBreaker, createBatcherWithCircuitBreaker, createLogBatcher, sendLogsToServer, sendEnhancedActionsToServer, checkServerHealth, updateBadge, formatLogEntry, shouldCaptureLog, } from './background/communication.js';
+export { postQueryResult, } from './background/server.js';
 // =============================================================================
 // === PUBLIC API: STATE SNAPSHOTS (Initialization)
 // =============================================================================

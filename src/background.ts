@@ -155,6 +155,10 @@ export {
   shouldCaptureLog,
 } from './background/communication';
 
+export {
+  postQueryResult,
+} from './background/server';
+
 // =============================================================================
 // === PUBLIC API: STATE SNAPSHOTS (Initialization)
 // =============================================================================
