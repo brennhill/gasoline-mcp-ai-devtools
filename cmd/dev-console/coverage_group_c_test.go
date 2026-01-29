@@ -1297,7 +1297,7 @@ func TestCoverageGroupC_toolGetHealth_WithMetrics(t *testing.T) {
 		capture:       capture,
 		healthMetrics: metrics,
 	}
-	handler.MCPHandler.toolHandler = handler
+	handler.toolHandler = handler
 	handler.server = server
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1), Method: "tools/call"}
@@ -1359,7 +1359,7 @@ func TestCoverageGroupC_toolGetNetworkBodies_Empty(t *testing.T) {
 		capture:          capture,
 		captureOverrides: overrides,
 	}
-	handler.MCPHandler.toolHandler = handler
+	handler.toolHandler = handler
 
 	args, _ := json.Marshal(map[string]interface{}{})
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
@@ -1412,7 +1412,7 @@ func TestCoverageGroupC_toolGetNetworkBodies_WithBodies(t *testing.T) {
 		capture:          capture,
 		captureOverrides: NewCaptureOverrides(),
 	}
-	handler.MCPHandler.toolHandler = handler
+	handler.toolHandler = handler
 
 	args, _ := json.Marshal(map[string]interface{}{"limit": 10})
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
@@ -1449,7 +1449,7 @@ func TestCoverageGroupC_toolGetNetworkBodies_CaptureOff(t *testing.T) {
 		capture:          capture,
 		captureOverrides: overrides,
 	}
-	handler.MCPHandler.toolHandler = handler
+	handler.toolHandler = handler
 
 	args, _ := json.Marshal(map[string]interface{}{})
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
@@ -2224,7 +2224,7 @@ func TestCoverageGroupC_toolGetNetworkBodies_WithBinaryFormat(t *testing.T) {
 		MCPHandler: NewMCPHandler(server),
 		capture:    capture,
 	}
-	handler.MCPHandler.toolHandler = handler
+	handler.toolHandler = handler
 
 	args, _ := json.Marshal(map[string]interface{}{})
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}

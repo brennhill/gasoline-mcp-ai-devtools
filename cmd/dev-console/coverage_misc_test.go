@@ -237,7 +237,7 @@ func TestGetEntries_ReturnsCopy(t *testing.T) {
 	}
 
 	// Length changes to the copy should not affect the server
-	entries = append(entries, LogEntry{"level": "debug", "message": "extra"})
+	_ = append(entries, LogEntry{"level": "debug", "message": "extra"})
 	if server.getEntryCount() != 2 {
 		t.Error("appending to copy should not change server entry count")
 	}

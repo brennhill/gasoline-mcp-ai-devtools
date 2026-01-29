@@ -1239,7 +1239,6 @@ func main() {
 	}})
 	fmt.Fprintf(os.Stderr, "[gasoline] Starting in MCP mode (HTTP + MCP protocol, persist=%v)\n", *persistMode)
 	runMCPMode(server, *port, *apiKey, *persistMode)
-	return
 }
 
 // runMCPMode runs the server in MCP mode:

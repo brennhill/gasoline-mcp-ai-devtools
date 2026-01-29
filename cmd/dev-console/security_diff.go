@@ -560,11 +560,6 @@ func (m *SecurityDiffManager) compareTransport(from, to *SecuritySnapshot) ([]Se
 
 	// For transport comparison, we need to normalize origins to just host
 	// since the scheme is the thing that changes
-	type hostTransport struct {
-		host   string
-		scheme string
-	}
-
 	fromByHost := make(map[string]string) // host → scheme
 	toByHost := make(map[string]string)
 
@@ -721,12 +716,7 @@ func parseSnapshotCookies(setCookieHeader string) []SecurityCookie {
 			continue
 		}
 		parsed := parseSingleCookie(line)
-		cookies = append(cookies, SecurityCookie{
-			Name:     parsed.Name,
-			HttpOnly: parsed.HttpOnly,
-			Secure:   parsed.Secure,
-			SameSite: parsed.SameSite,
-		})
+		cookies = append(cookies, SecurityCookie(parsed))
 	}
 
 	return cookies

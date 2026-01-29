@@ -10,7 +10,7 @@ Gasoline's strategic differentiator is enabling AI to **close the feedback loop 
 
 ## Release Strategy
 
-- **v5.2** — Fix critical bugs (v5.1 blockers). Release when all 5 bugs fixed.
+- **v5.2** — ✅ All critical bugs fixed (v5.1 blockers). Ready to release.
 - **v6.0** — Release when **core thesis is complete** (Wave 1 + Wave 2 features). Single point release. Marketing moment.
 - **v6.1+** — Adjacent features that improve/enable the thesis (observation depth, interaction expansion, production safety).
 - **v7** — If all roadmap features are shipped, bump to v7 to signal full-featured product.
@@ -327,11 +327,11 @@ See [KNOWN-ISSUES.md](../KNOWN-ISSUES.md) for user-facing summary and [docs/core
 
 | # | Severity | Issue | Status |
 |---|----------|-------|--------|
-| 2 | High | `query_dom` not implemented — schema advertises it but background.js returns `not_implemented` | Open |
-| 3 | High | Accessibility audit runtime error — `runAxeAuditWithTimeout` "not defined" at runtime | Open |
-| 4 | Medium | `network_bodies` returns no data — empty arrays on multiple page loads | Open |
-| 5 | Medium | Extension timeouts after 5-6 operations — possible message queue backup or memory leak | Open |
-| 6 | Medium | `observe()` missing tabId — content.js attaches it but server doesn't surface in MCP responses | Open |
+| 2 | High | `query_dom` not implemented — schema advertises it but background.js returns `not_implemented` | ✅ FIXED |
+| 3 | High | Accessibility audit runtime error — `runAxeAuditWithTimeout` "not defined" at runtime | ✅ FIXED |
+| 4 | Medium | `network_bodies` returns no data — empty arrays on multiple page loads | ✅ FIXED |
+| 5 | Medium | Extension timeouts after 5-6 operations — possible message queue backup or memory leak | ✅ FIXED |
+| 6 | Medium | `observe()` missing tabId — content.js attaches it but server doesn't surface in MCP responses | ✅ FIXED |
 
 ### UX Improvements
 
@@ -494,12 +494,12 @@ These features are >50% complete but not yet shipped. Resume work in v6.1+:
 
 ## Parallelization Strategy
 
-**Phase 1 (Current):** Fix v5.2 bugs (1-2 agents, sequential)
-- Query DOM implementation
-- Accessibility audit runtime error fix
-- Network bodies empty response fix
-- Extension timeout investigation
-- Tab ID missing in MCP responses
+**Phase 1 (Complete):** ✅ All v5.2 bugs fixed
+- ✅ Query DOM implementation
+- ✅ Accessibility audit runtime error fix
+- ✅ Network bodies capture fix
+- ✅ Extension timeout fix
+- ✅ Tab ID attached to all responses
 
 **Phase 2 (After v5.2):** Build v6.0 thesis (Wave 1 + Wave 2)
 - **Wave 1:** 3 parallel agents, 4-6 weeks

@@ -2052,8 +2052,8 @@ func TestSetMultiple_InvalidValue(t *testing.T) {
 
 	if err, ok := errs["log_level"]; !ok || err == nil {
 		t.Error("Expected error for invalid log_level value")
-	} else if !strings.Contains(err.Error(), "Invalid value") {
-		t.Errorf("Expected 'Invalid value' error, got: %s", err.Error())
+	} else if !strings.Contains(err.Error(), "invalid value") {
+		t.Errorf("Expected 'invalid value' error, got: %s", err.Error())
 	}
 }
 
@@ -2071,8 +2071,8 @@ func TestSetMultiple_RateLimit(t *testing.T) {
 	errs = co.SetMultiple(map[string]string{"log_level": "error"})
 	if err := errs["log_level"]; err == nil {
 		t.Error("Expected rate limit error on immediate second call")
-	} else if !strings.Contains(err.Error(), "Rate limited") {
-		t.Errorf("Expected 'Rate limited' error, got: %s", err.Error())
+	} else if !strings.Contains(err.Error(), "rate limited") {
+		t.Errorf("Expected 'rate limited' error, got: %s", err.Error())
 	}
 }
 
@@ -2984,8 +2984,8 @@ func TestSetMultiple_UnknownSettingName(t *testing.T) {
 		t.Fatal("expected error for unknown setting")
 	}
 	errStr := errs["nonexistent_setting"].Error()
-	if !strings.Contains(errStr, "Unknown capture setting") {
-		t.Errorf("expected 'Unknown capture setting' error, got: %s", errStr)
+	if !strings.Contains(errStr, "unknown capture setting") {
+		t.Errorf("expected 'unknown capture setting' error, got: %s", errStr)
 	}
 	if !strings.Contains(errStr, "log_level") {
 		t.Errorf("expected valid settings listed, got: %s", errStr)

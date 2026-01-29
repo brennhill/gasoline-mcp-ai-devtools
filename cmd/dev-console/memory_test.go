@@ -67,31 +67,6 @@ func recalcMemoryTotals(c *Capture) {
 	}
 }
 
-// Helper: fill buffers to reach an approximate memory target
-func fillToMemory(c *Capture, targetBytes int64) {
-	// Use network bodies as they are the largest per-entry
-	// Each NB with 1000 byte request + 1000 byte response = ~2300 bytes (+ 300 overhead)
-	entrySize := int64(2300)
-	count := int(targetBytes / entrySize)
-	if count == 0 {
-		count = 1
-	}
-
-	bodies := make([]NetworkBody, 0, count)
-	for i := 0; i < count; i++ {
-		bodies = append(bodies, makeNetworkBody(1000, 1000))
-	}
-	// Add directly to buffer without memory enforcement to set up test state
-	c.mu.Lock()
-	c.networkBodies = append(c.networkBodies, bodies...)
-	now := time.Now()
-	for i := 0; i < count; i++ {
-		c.networkAddedAt = append(c.networkAddedAt, now)
-	}
-	recalcMemoryTotals(c)
-	c.mu.Unlock()
-}
-
 // ============================================
 // Test 1: Memory below soft limit -> no eviction
 // ============================================
