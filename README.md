@@ -145,33 +145,40 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 ## Comparison
 
-| | Gasoline | Chrome DevTools MCP | BrowserTools MCP | Cursor Browser |
-|---|:---:|:---:|:---:|:---:|
-| **Console logs** | ✅ | ✅ | ✅ | ✅ |
-| **Network errors** | ✅ | ✅ | ✅ | ❌ |
-| **Network bodies** | ✅ | ❌ | ❌ | ❌ |
-| **WebSocket events** | ✅ | ❌ | ❌ | ❌ |
-| **User action recording** | ✅ | ❌ | ❌ | ❌ |
-| **DOM queries** | ✅ | ✅ | ✅ | ✅ |
-| **Screenshots** | ✅ | ✅ | ✅ | ✅ |
-| | | | | |
-| **[Web Vitals](https://cookwithgasoline.com/web-vitals/)** | ✅ LCP, CLS, INP, FCP | ❌ | ❌ | ❌ |
-| **[Regression detection](https://cookwithgasoline.com/regression-detection/)** | ✅ Automatic | ❌ | ❌ | ❌ |
-| **[API schema inference](https://cookwithgasoline.com/api-schema/)** | ✅ OpenAPI from traffic | ❌ | ❌ | ❌ |
-| **[Accessibility audits](https://cookwithgasoline.com/accessibility-audit/)** | ✅ WCAG + SARIF | ❌ | ❌ | ❌ |
-| **[Session checkpoints](https://cookwithgasoline.com/session-checkpoints/)** | ✅ Named + auto | ❌ | ❌ | ❌ |
-| **[Noise filtering](https://cookwithgasoline.com/noise-filtering/)** | ✅ Auto-detect | ❌ | ❌ | ❌ |
-| | | | | |
-| **[Test generation](https://cookwithgasoline.com/generate-test/)** | ✅ Playwright | ❌ | ❌ | ❌ |
-| **[Reproduction scripts](https://cookwithgasoline.com/reproduction-scripts/)** | ✅ From actions | ❌ | ❌ | ❌ |
-| **[PR summaries](https://cookwithgasoline.com/pr-summaries/)** | ✅ Perf impact | ❌ | ❌ | ❌ |
-| **[HAR export](https://cookwithgasoline.com/har-export/)** | ✅ | ❌ | ❌ | ❌ |
-| | | | | |
-| **Zero dependencies** | ✅ Single Go binary | ❌ Node.js + Chrome flags | ❌ Node.js + Puppeteer | ❌ Electron |
-| **Vendor neutral** | ✅ Any MCP tool | ⚠️ Any MCP tool | ⚠️ Any MCP tool | ❌ Cursor only |
-| **No debug port** | ✅ | ❌ `--remote-debugging-port` | ❌ `--remote-debugging-port` | N/A |
-| **Privacy** | ✅ Localhost only | ✅ Local | ⚠️ Optional cloud | ❌ Cursor servers |
-| **Performance overhead** | < 0.1ms | ~5ms | ~5ms | Unknown |
+| | Gasoline | TestSprite MCP | Chrome DevTools MCP | BrowserTools MCP | Cursor Browser |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Console logs** | ✅ | ❌ | ✅ | ✅ | ✅ |
+| **Network errors** | ✅ | ❌ | ✅ | ✅ | ❌ |
+| **Network bodies** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **WebSocket events** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **User action recording** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **DOM queries** | ✅ | ❌ | ✅ | ✅ | ✅ |
+| **Screenshots** | ✅ | ❌ | ✅ | ✅ | ✅ |
+| | | | | | |
+| **[Web Vitals](https://cookwithgasoline.com/web-vitals/)** | ✅ LCP, CLS, INP, FCP | ❌ | ❌ | ❌ | ❌ |
+| **[Regression detection](https://cookwithgasoline.com/regression-detection/)** | ✅ Automatic | ❌ | ❌ | ❌ | ❌ |
+| **[API schema inference](https://cookwithgasoline.com/api-schema/)** | ✅ OpenAPI from traffic | ❌ | ❌ | ❌ | ❌ |
+| **[Accessibility audits](https://cookwithgasoline.com/accessibility-audit/)** | ✅ WCAG + SARIF | ❌ | ❌ | ❌ | ❌ |
+| **[Session checkpoints](https://cookwithgasoline.com/session-checkpoints/)** | ✅ Named + auto | ❌ | ❌ | ❌ | ❌ |
+| **[Noise filtering](https://cookwithgasoline.com/noise-filtering/)** | ✅ Auto-detect | ❌ | ❌ | ❌ | ❌ |
+| | | | | | |
+| **[Test generation](https://cookwithgasoline.com/generate-test/)** | ✅ Playwright | ✅ AI-driven | ❌ | ❌ | ❌ |
+| **Test generation from errors** | 🟡 v6 | ❌ | ❌ | ❌ | ❌ |
+| **Self-healing tests** | 🟡 v6 | ✅ | ❌ | ❌ | ❌ |
+| **Failure classification** | 🟡 v6 | ✅ | ❌ | ❌ | ❌ |
+| **Auto-repair suggestions** | 🟡 v6 | ✅ | ❌ | ❌ | ❌ |
+| **[Reproduction scripts](https://cookwithgasoline.com/reproduction-scripts/)** | ✅ From actions | ❌ | ❌ | ❌ | ❌ |
+| **[PR summaries](https://cookwithgasoline.com/pr-summaries/)** | ✅ Perf impact | ❌ | ❌ | ❌ | ❌ |
+| **[HAR export](https://cookwithgasoline.com/har-export/)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| | | | | | |
+| **Zero dependencies** | ✅ Single Go binary | ❌ Node.js + cloud | ❌ Node.js + Chrome flags | ❌ Node.js + Puppeteer | ❌ Electron |
+| **Vendor neutral** | ✅ Any MCP tool | ⚠️ Any MCP tool | ⚠️ Any MCP tool | ⚠️ Any MCP tool | ❌ Cursor only |
+| **No debug port** | ✅ | ✅ | ❌ `--remote-debugging-port` | ❌ `--remote-debugging-port` | N/A |
+| **Privacy** | ✅ Localhost only | ❌ Cloud-based | ✅ Local | ⚠️ Optional cloud | ❌ Cursor servers |
+| **Cost** | ✅ Free, open-source | ❌ $29-99/month | ✅ Free | ✅ Free | ⚠️ Cursor subscription |
+| **Performance overhead** | < 0.1ms | Unknown | ~5ms | ~5ms | Unknown |
+
+**🟡 = Coming in v6.0** — [See roadmap](docs/roadmap.md)
 
 ## Why You Cook With Gasoline
 
