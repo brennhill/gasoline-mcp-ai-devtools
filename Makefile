@@ -27,6 +27,17 @@ all: clean build
 clean:
 	rm -rf $(BUILD_DIR)
 
+# Compile TypeScript to JavaScript (REQUIRED before tests)
+compile-ts:
+	@echo "=== Compiling TypeScript ==="
+	@npx tsc
+	@if [ ! -f extension/background/index.js ]; then \
+		echo "❌ ERROR: TypeScript compilation failed - extension/background/index.js not found"; \
+		exit 1; \
+	fi
+	@./scripts/fix-esm-imports.sh
+	@echo "✅ TypeScript compilation successful"
+
 test:
 	CGO_ENABLED=0 go test -v ./cmd/dev-console/...
 

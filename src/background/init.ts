@@ -5,6 +5,15 @@
  */
 
 import * as index from './index';
+import {
+  setDebugMode,
+  setServerUrl,
+  setCurrentLogLevel,
+  setScreenshotOnError,
+  setAiWebPilotEnabledCache,
+  setAiWebPilotCacheInitialized,
+  setPilotInitCallback,
+} from './index';
 import * as stateManager from './state-manager';
 import * as eventListeners from './event-listeners';
 import { handlePendingQuery } from './pending-queries';
@@ -69,36 +78,9 @@ function markStateVersionAsync(): Promise<void> {
 }
 
 // =============================================================================
-// STATE SETTERS
+// STATE SETTERS (imported from index.ts)
 // =============================================================================
-
-function setDebugMode(enabled: boolean): void {
-  (index as any).debugMode = enabled;
-}
-
-function setServerUrl(url: string): void {
-  (index as any).serverUrl = url;
-}
-
-function setCurrentLogLevel(level: string): void {
-  (index as any).currentLogLevel = level;
-}
-
-function setScreenshotOnError(enabled: boolean): void {
-  (index as any).screenshotOnError = enabled;
-}
-
-function setAiWebPilotEnabledCache(enabled: boolean): void {
-  (index as any).__aiWebPilotEnabledCache = enabled;
-}
-
-function setAiWebPilotCacheInitialized(initialized: boolean): void {
-  (index as any).__aiWebPilotCacheInitialized = initialized;
-}
-
-function setPilotInitCallback(callback: (() => void) | null): void {
-  (index as any).__pilotInitCallback = callback;
-}
+// These are now exported from index.ts to properly mutate module state
 
 /**
  * Initialize the extension on startup

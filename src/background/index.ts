@@ -100,6 +100,35 @@ export const extensionLogQueue: Array<{
 }> = [];
 
 // =============================================================================
+// STATE SETTERS (for init.ts)
+// =============================================================================
+// Note: setDebugMode is defined later in the file
+
+export function setServerUrl(url: string): void {
+  serverUrl = url;
+}
+
+export function setCurrentLogLevel(level: string): void {
+  currentLogLevel = level;
+}
+
+export function setScreenshotOnError(enabled: boolean): void {
+  screenshotOnError = enabled;
+}
+
+export function setAiWebPilotEnabledCache(enabled: boolean): void {
+  __aiWebPilotEnabledCache = enabled;
+}
+
+export function setAiWebPilotCacheInitialized(initialized: boolean): void {
+  __aiWebPilotCacheInitialized = initialized;
+}
+
+export function setPilotInitCallback(callback: (() => void) | null): void {
+  __pilotInitCallback = callback;
+}
+
+// =============================================================================
 // DEBUG LOGGING
 // =============================================================================
 

@@ -9,24 +9,6 @@
  * tracked tab. Validates message origin (event.source === window) to prevent
  * cross-frame injection. Attaches tabId to all forwarded messages.
  */
-/**
- * Pending request statistics
- */
-interface PendingRequestStats {
-    readonly highlight: number;
-    readonly execute: number;
-    readonly a11y: number;
-    readonly dom: number;
-}
-/**
- * Clear all pending request Maps on page unload (Issue 2 fix).
- * Prevents memory leaks and stale request accumulation across navigations.
- */
-export declare function clearPendingRequests(): void;
-/**
- * Get statistics about pending requests (for testing/debugging)
- * @returns Counts of pending requests by type
- */
-export declare function getPendingRequestStats(): PendingRequestStats;
-export {};
+import { getPendingRequestStats, clearPendingRequests } from './content/request-tracking';
+export { getPendingRequestStats, clearPendingRequests };
 //# sourceMappingURL=content.d.ts.map
