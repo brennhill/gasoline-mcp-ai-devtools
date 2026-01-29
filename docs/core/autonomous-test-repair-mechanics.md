@@ -1,10 +1,12 @@
 # Autonomous Test Repair Mechanics
 
-**Status:** Design Document for v6.0 Wave 1 (Self-Healing Tests feature)
+**Status:** Design Document for v6.0 Wave 1 (Self-Healing Tests feature) — **Minimal MVP**
 
-**Purpose:** This document describes how Claude uses Gasoline's v5.1 telemetry capabilities to autonomously diagnose failing E2E tests, propose fixes, apply them, and verify success in CI/CD pipelines.
+**Purpose:** This document describes how Claude uses Gasoline's v5.1 telemetry capabilities to autonomously diagnose failing E2E tests, propose fixes, apply them, and verify success.
 
-**Key Insight:** v5.1 already captures and correlates telemetry. v6.0 adds the **workflow** that uses it autonomously.
+**Key Insight:** v5.1 already has all required infrastructure. v6.0 is **validation that Claude can use it autonomously.** Zero new code required for MVP.
+
+**Scope:** Prove the thesis with manual tests. Add automation in v6.1 if needed.
 
 ---
 
@@ -466,35 +468,56 @@ Gasoline v5.1 uses ring buffers (bounded):
 
 ---
 
-## What v6.0 Adds
+## What v6.0 Adds (Minimal MVP)
 
 **Not capture or correlation.** Those exist in v5.1.
 
-v6.0 adds:
+v6.0 MVP adds:
 
-1. **Workflow orchestration** — Test fails → Claude → Fix → Verify → Report
-2. **System prompt** — Guide Claude on how to read timeline, diagnose, apply fixes
-3. **CI integration** — Trigger Claude on test failure
-4. **Git automation** — Claude can checkout branches, commit, push
+**Nothing. Zero new code.**
 
-That's it. v6.0 is **using existing capabilities in a new workflow**.
+v6.0 is proving the thesis by **demonstrating that Claude can use v5.1 existing capabilities autonomously.**
+
+### What's Different From v5.1?
+
+| v5.1 | v6.0 |
+|-----|-----|
+| Captures telemetry | Same |
+| Exposes via MCP | Same |
+| **Usage:** Human developer reads data | **Usage:** Claude reads data autonomously |
+
+That's it. The feature is the **demonstration that AI can diagnose + fix without human intervention.**
+
+### v6.1+ Optimizations (Future)
+
+Once thesis is validated, add:
+- System prompt (100 lines) — Make Claude more efficient
+- CI hook (50 lines) — Automatic triggering
+- Git automation (50 lines) — Better branching strategy
+
+But these don't validate the thesis. They optimize it.
 
 ---
 
-## Why This Works
+## Why v6.0 MVP Requires Zero Code
 
-v5.1 already solved the hard parts:
+v5.1 already has everything:
 - ✅ Capture telemetry (browser extension)
-- ✅ Correlate by timestamp (timeline mode)
+- ✅ Correlate by timestamp (timeline mode: codegen.go:256-384)
 - ✅ Store bounded memory (ring buffers)
 - ✅ Expose via MCP (25 observe modes)
 
-v6.0 just needs:
-- Claude system prompt (200 lines)
-- CI integration (50 lines)
-- Git automation (Claude uses Bash tool, no new code)
+Claude already has everything:
+- ✅ Bash tool (run git commands, tests)
+- ✅ MCP client (call observe())
+- ✅ Reasoning ability (diagnose issues)
+- ✅ Problem-solving (apply fixes)
 
-**Total new code: ~250 lines.** The feature is mostly workflow + prompt.
+**The "feature" is just proving they work together.**
+
+v6.0 MVP = validation workflow, not engineering work.
+
+Only add code if validation shows it's necessary.
 
 ---
 
@@ -509,11 +532,47 @@ Gasoline provides **facts**. Claude provides **reasoning**.
 
 ---
 
-## Next Steps
+## v6.0 MVP: Minimal Scope
 
-1. Write Claude system prompt with examples (200 lines)
-2. Test with 2-3 manual scenarios
-3. Ship as part of Wave 1
+This feature ships with **zero new code**.
+
+### What's Required
+- ✅ Gasoline v5.1 (already exists)
+- ✅ MCP observe() endpoints (already exist)
+- ✅ Claude with Bash tool (already exists)
+- ✅ GitHub CLI (user installs if needed)
+
+### What's NOT Required
+- ❌ System prompt (Claude figures it out)
+- ❌ CI integration hook (manual trigger first)
+- ❌ Analysis engine (Claude does analysis)
+- ❌ Diagnosis rules (Claude reasons)
+
+### Validation Approach
+
+1. **Manual test:** Have Claude fix 2-3 real failing tests by hand
+   - Claude reads timeline via observe()
+   - Claude diagnoses
+   - Claude applies fix
+   - Claude verifies
+
+2. **If it works:** Declare v6.0 thesis validated
+   - "AI closes feedback loop autonomously (with human triggering)"
+
+3. **If it doesn't:** Add system prompt + CI hook in v6.1
+   - Don't block v6.0 on optimization
+
+### Ship Criteria
+
+- [ ] Manual test: Claude successfully diagnoses 2+ test failures
+- [ ] Manual test: Claude successfully applies fixes
+- [ ] Manual test: Claude successfully verifies via 3 runs
+- [ ] Timeline data is accurate and usable
+- [ ] No bugs in v5.1 observe() modes
+
+**Total shipping effort: ~1 day (validation only)**
+
+**Total new code: 0 lines**
 
 ---
 
