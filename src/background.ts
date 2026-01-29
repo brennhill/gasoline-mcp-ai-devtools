@@ -1,20 +1,26 @@
 /**
- * @fileoverview Background Service Worker Facade
- * Re-exports all public APIs from background modules for backward compatibility.
+ * @fileoverview Background Service Worker Facade - Minimal Public API
+ *
+ * This facade provides a clean, minimal public API for the extension.
+ * Direct use of internal modules (communication/, state-manager/, polling/)
+ * should go through initialization in init.ts, not through the facade.
+ *
  * Main modules:
- * - background/index.ts: Core initialization and batchers
- * - background/state-manager.ts: State management (error groups, cache, memory)
- * - background/communication.ts: Server communication
+ * - background/index.ts: Core state and batchers
  * - background/init.ts: Extension startup
+ * - background/communication.ts: Server communication (internal)
+ * - background/state-manager.ts: State management (internal)
+ * - background/polling.ts: Polling loops (internal)
  */
 
 import { initializeExtension } from './background/init';
 import { EXTENSION_SESSION_ID } from './background/index';
 
 // =============================================================================
-// RE-EXPORT CONSTANTS
+// === PUBLIC API: CONSTANTS (Test & Init)
 // =============================================================================
 
+// Memory enforcement constants
 export {
   MEMORY_SOFT_LIMIT,
   MEMORY_HARD_LIMIT,
@@ -23,15 +29,13 @@ export {
   MEMORY_AVG_WS_EVENT_SIZE,
   MEMORY_AVG_NETWORK_BODY_SIZE,
   MEMORY_AVG_ACTION_SIZE,
-  ERROR_GROUP_MAX_AGE_MS,
-  MAX_PENDING_BUFFER,
-  SOURCE_MAP_CACHE_SIZE,
 } from './background/state-manager';
 
+// Rate limiting constants
 export { RATE_LIMIT_CONFIG } from './background/communication';
 
 // =============================================================================
-// RE-EXPORT STATE AND CONFIG
+// === PUBLIC API: CORE STATE
 // =============================================================================
 
 export {
@@ -41,46 +45,36 @@ export {
   connectionStatus,
   currentLogLevel,
   screenshotOnError,
-  _captureOverrides,
-  aiControlled,
-  _connectionCheckRunning,
   extensionLogQueue,
   DebugCategory,
 } from './background/index';
 
 // =============================================================================
-// RE-EXPORT DEBUG LOGGING
+// === PUBLIC API: DEBUG LOGGING
 // =============================================================================
 
 export {
-  diagnosticLog,
   debugLog,
   getDebugLog,
   clearDebugLog,
   exportDebugLog,
-  setDebugMode,
 } from './background/index';
 
 // =============================================================================
-// RE-EXPORT CIRCUIT BREAKER AND BATCHERS
+// === PUBLIC API: BATCHERS & CIRCUIT BREAKER
 // =============================================================================
 
 export {
   sharedServerCircuitBreaker,
-  logBatcherWithCB,
   logBatcher,
-  wsBatcherWithCB,
   wsBatcher,
-  enhancedActionBatcherWithCB,
   enhancedActionBatcher,
-  networkBodyBatcherWithCB,
   networkBodyBatcher,
-  perfBatcherWithCB,
   perfBatcher,
 } from './background/index';
 
 // =============================================================================
-// RE-EXPORT LOG AND REQUEST HANDLERS
+// === PUBLIC API: CORE HANDLERS
 // =============================================================================
 
 export {
@@ -92,7 +86,7 @@ export {
 } from './background/index';
 
 // =============================================================================
-// RE-EXPORT POLLING WRAPPERS
+// === PUBLIC API: POLLING WRAPPERS
 // =============================================================================
 
 export {
@@ -104,72 +98,49 @@ export {
 } from './background/index';
 
 // =============================================================================
-// RE-EXPORT PENDING QUERY HANDLERS
+// === PUBLIC API: PENDING QUERIES & PILOT
 // =============================================================================
 
 export {
   handlePendingQuery,
   handlePilotCommand,
-} from './background/index';
-
-// =============================================================================
-// RE-EXPORT AI WEB PILOT STATE
-// =============================================================================
-
-export {
-  __aiWebPilotEnabledCache,
-  __aiWebPilotCacheInitialized,
-  __pilotInitCallback,
-  _resetPilotCacheForTesting,
   isAiWebPilotEnabled,
 } from './background/index';
 
 // =============================================================================
-// RE-EXPORT STATE MANAGEMENT FUNCTIONS
+// === PUBLIC API: STATE MANAGEMENT (Tests, Initialization)
 // =============================================================================
 
+// Error and memory management
 export {
   createErrorSignature,
   processErrorGroup,
-  getErrorGroupsState,
-  cleanupStaleErrorGroups,
   flushErrorGroups,
   canTakeScreenshot,
   recordScreenshot,
-  clearScreenshotTimestamps,
   estimateBufferMemory,
   checkMemoryPressure,
   getMemoryPressureState,
   resetMemoryPressureState,
-  isNetworkBodyCaptureDisabled,
+} from './background/state-manager';
+
+// Context and annotations
+export {
   measureContextSize,
   checkContextAnnotations,
   getContextWarning,
   resetContextWarning,
+} from './background/state-manager';
+
+// Source map management
+export {
   setSourceMapEnabled,
   isSourceMapEnabled,
-  setSourceMapCacheEntry,
-  getSourceMapCacheEntry,
-  getSourceMapCacheSize,
   clearSourceMapCache,
-  decodeVLQ,
-  parseMappings,
-  parseStackFrame,
-  extractSourceMapUrl,
-  parseSourceMapData,
-  findOriginalLocation,
-  fetchSourceMap,
-  resolveStackFrame,
-  resolveStackTrace,
-  getProcessingQueriesState,
-  addProcessingQuery,
-  removeProcessingQuery,
-  isQueryProcessing,
-  cleanupStaleProcessingQueries,
 } from './background/state-manager';
 
 // =============================================================================
-// RE-EXPORT COMMUNICATION FUNCTIONS
+// === PUBLIC API: COMMUNICATION (Tests)
 // =============================================================================
 
 export {
@@ -177,37 +148,15 @@ export {
   createBatcherWithCircuitBreaker,
   createLogBatcher,
   sendLogsToServer,
-  sendWSEventsToServer,
-  sendNetworkBodiesToServer,
   sendEnhancedActionsToServer,
-  sendPerformanceSnapshotsToServer,
-  sendNetworkWaterfallToServer,
   checkServerHealth,
   updateBadge,
   formatLogEntry,
   shouldCaptureLog,
-  postQueryResult,
 } from './background/communication';
 
 // =============================================================================
-// RE-EXPORT POLLING FUNCTIONS
-// =============================================================================
-
-export {
-  startQueryPolling,
-  stopQueryPolling,
-  startSettingsHeartbeat,
-  stopSettingsHeartbeat,
-  startWaterfallPosting,
-  stopWaterfallPosting,
-  startExtensionLogsPosting,
-  stopExtensionLogsPosting,
-  startStatusPing,
-  stopStatusPing,
-} from './background/polling';
-
-// =============================================================================
-// RE-EXPORT STATE SNAPSHOT FUNCTIONS
+// === PUBLIC API: STATE SNAPSHOTS (Initialization)
 // =============================================================================
 
 export {
@@ -216,6 +165,19 @@ export {
   listStateSnapshots,
   deleteStateSnapshot,
 } from './background/message-handlers';
+
+// =============================================================================
+// === INTERNAL USE (Underscore Prefix)
+// =============================================================================
+
+export {
+  _captureOverrides,
+  _connectionCheckRunning,
+  __aiWebPilotEnabledCache,
+  __aiWebPilotCacheInitialized,
+  __pilotInitCallback,
+  _resetPilotCacheForTesting,
+} from './background/index';
 
 // =============================================================================
 // INITIALIZATION
