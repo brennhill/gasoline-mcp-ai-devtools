@@ -573,11 +573,17 @@ All shipped features as of v5.1.0. This is the single source of truth. See also 
 |---------|------|---------|-------------|
 | AI Web Pilot | highlight, save_state, load_state, execute_js, navigate | 5.0.0 | Full browser automation for AI agents |
 
-### Infrastructure
+---
 
-| Feature | Version | Description |
-|---------|---------|-------------|
+## Deferred Features
+
+These features were originally planned for v5.0-v5.1 but have been deferred pending v6.0 completion and team bandwidth prioritization.
+
+| Feature | Planned Version | Description |
+|---------|-----------------|-------------|
 | MCP Tool Descriptions | 5.0.0 | LLM-optimized tool schema with usage examples |
 | Usability Improvements | 5.0.0 | NPM/PyPI install, 5-minute setup, first-run banner |
 | Single-Tab Tracking | 5.1.0 | Security: isolate capture to explicitly tracked tab |
 | Network Schema Improvements | 5.1.0 | Unit suffixes, compression ratios, timestamps |
+
+**Status:** Deprioritized. Review for inclusion in v6.1+ or later releases pending v6.0 completion.
