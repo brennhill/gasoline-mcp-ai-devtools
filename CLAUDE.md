@@ -22,7 +22,7 @@ make dev                               # Build current platform
 2. **TDD** — Write tests FIRST. Read spec → tests → confirm fail → implement → confirm pass → commit
 3. **Zero deps** — Production runtime only: Go server uses stdlib only; Extension uses no frameworks. Dev tooling (test runners, linters, code generators) may use external packages.
 4. **No remote code** — Chrome Web Store PROHIBITS loading remotely hosted code. All third-party libraries (e.g., axe-core) MUST be bundled locally in the extension package. NEVER load scripts from CDNs or external URLs
-5. **4-Tool Maximum** — STRICTLY ENFORCED: Gasoline exposes exactly 4 MCP tools: `observe`, `generate`, `configure`, `interact`. NEVER create a 5th tool. New features MUST be added as a new mode/action under one of these 4. See [architecture.md](.claude/docs/architecture.md)
+5. **5-Tool Maximum** — Gasoline exposes exactly 5 MCP tools: `observe`, `analyze`, `generate`, `configure`, `interact`. Creating a 6th tool requires architecture review. New features MUST be added as a mode/action under one of these 5. See [architecture.md](.claude/docs/architecture.md)
 6. **Performance** — Extension must not degrade browsing. WS < 0.1ms, fetch < 0.5ms, never block main thread
 7. **Privacy** — Sensitive data never leaves localhost. Strip auth headers, body capture opt-in
 8. **Quality gates** — `go vet` + `make test` + `node --test` must pass before every commit
@@ -39,7 +39,7 @@ make dev                               # Build current platform
 See `.claude/docs/` for:
 - **Spec Standards** — Where specs live, what they must contain. See [spec-standards.md](.claude/docs/spec-standards.md) — **START HERE** before creating any spec
 - **Spec Review** — MANDATORY principal engineer review before implementation
-- **Architecture** — 4-tool constraint, data flows, security, concurrency
+- **Architecture** — 5-tool constraint, data flows, security, concurrency
 - **Development** — TDD workflow, testing, code style
 - **Git & Releases** — Branch model, worktrees, parallel agents, version sync, release process
 - **Product** — Feature evaluation: capture vs interpret

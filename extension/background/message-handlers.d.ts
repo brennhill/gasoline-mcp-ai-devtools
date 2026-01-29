@@ -1,0 +1,89 @@
+/**
+ * @fileoverview Message Handlers - Handles all chrome.runtime.onMessage routing
+ * with type-safe message discrimination.
+ */
+import type { LogEntry, ChromeMessageSender, BrowserStateSnapshot, ConnectionStatus, ContextWarning, CircuitBreakerState, MemoryPressureState } from '../types';
+/** Message handler dependencies */
+export interface MessageHandlerDependencies {
+    getServerUrl: () => string;
+    getConnectionStatus: () => ConnectionStatus;
+    getDebugMode: () => boolean;
+    getScreenshotOnError: () => boolean;
+    getSourceMapEnabled: () => boolean;
+    getCurrentLogLevel: () => string;
+    getContextWarning: () => ContextWarning | null;
+    getCircuitBreakerState: () => CircuitBreakerState;
+    getMemoryPressureState: () => MemoryPressureState;
+    getAiWebPilotEnabled: () => boolean;
+    isNetworkBodyCaptureDisabled: () => boolean;
+    setServerUrl: (url: string) => void;
+    setCurrentLogLevel: (level: string) => void;
+    setScreenshotOnError: (enabled: boolean) => void;
+    setSourceMapEnabled: (enabled: boolean) => void;
+    setDebugMode: (enabled: boolean) => void;
+    setAiWebPilotEnabled: (enabled: boolean, callback?: () => void) => void;
+    addToLogBatcher: (entry: LogEntry) => void;
+    addToWsBatcher: (event: unknown) => void;
+    addToEnhancedActionBatcher: (action: unknown) => void;
+    addToNetworkBodyBatcher: (body: unknown) => void;
+    addToPerfBatcher: (snapshot: unknown) => void;
+    handleLogMessage: (payload: LogEntry, sender: ChromeMessageSender, tabId?: number) => Promise<void>;
+    handleClearLogs: () => Promise<{
+        success: boolean;
+        error?: string;
+    }>;
+    captureScreenshot: (tabId: number, relatedErrorId: string | null) => Promise<{
+        success: boolean;
+        entry?: LogEntry;
+        error?: string;
+    }>;
+    checkConnectionAndUpdate: () => Promise<void>;
+    clearSourceMapCache: () => void;
+    postSettings: (serverUrl: string) => Promise<void>;
+    debugLog: (category: string, message: string, data?: unknown) => void;
+    exportDebugLog: () => string;
+    clearDebugLog: () => void;
+    saveSetting: (key: string, value: unknown) => void;
+    forwardToAllContentScripts: (message: {
+        type: string;
+        [key: string]: unknown;
+    }) => void;
+}
+/**
+ * Install the main message listener
+ */
+export declare function installMessageListener(deps: MessageHandlerDependencies): void;
+interface StoredStateSnapshot extends BrowserStateSnapshot {
+    name: string;
+    size_bytes: number;
+}
+/**
+ * Save a state snapshot to chrome.storage.local
+ */
+export declare function saveStateSnapshot(name: string, state: BrowserStateSnapshot): Promise<{
+    success: boolean;
+    snapshot_name: string;
+    size_bytes: number;
+}>;
+/**
+ * Load a state snapshot from chrome.storage.local
+ */
+export declare function loadStateSnapshot(name: string): Promise<StoredStateSnapshot | null>;
+/**
+ * List all state snapshots with metadata
+ */
+export declare function listStateSnapshots(): Promise<Array<{
+    name: string;
+    url: string;
+    timestamp: number;
+    size_bytes: number;
+}>>;
+/**
+ * Delete a state snapshot from chrome.storage.local
+ */
+export declare function deleteStateSnapshot(name: string): Promise<{
+    success: boolean;
+    deleted: string;
+}>;
+export {};
+//# sourceMappingURL=message-handlers.d.ts.map
