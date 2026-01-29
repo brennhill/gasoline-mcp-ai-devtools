@@ -2,7 +2,9 @@
 
 **Status:** Design Document for v6.0 Wave 1 (Self-Healing Tests feature)
 
-**Purpose:** This document describes how Gasoline diagnoses failing E2E tests, proposes fixes, applies them autonomously, and verifies success in CI/CD pipelines with full headless capability.
+**Purpose:** This document describes how Gasoline enables Claude to autonomously diagnose failing E2E tests, propose fixes, apply them, and verify success in CI/CD pipelines.
+
+**Design Philosophy:** Gasoline captures and correlates telemetry. Claude handles all reasoning, fix generation, and verification.
 
 ---
 
@@ -10,71 +12,68 @@
 
 1. [Overview](#overview)
 2. [Architecture](#architecture)
-3. [Data Collection Phase](#data-collection-phase)
-4. [Analysis Phase](#analysis-phase)
-5. [Fix Proposal Phase](#fix-proposal-phase)
-6. [Verification Phase](#verification-phase)
-7. [Failure Modes & Recovery](#failure-modes--recovery)
-8. [Integration Points](#integration-points)
-9. [Performance Budgets](#performance-budgets)
+3. [Gasoline's Role](#gasolines-role)
+4. [Claude's Role](#claudes-role)
+5. [Data Collection](#data-collection)
+6. [Example Workflow](#example-workflow)
+7. [Integration Points](#integration-points)
+8. [Performance Budgets](#performance-budgets)
 
 ---
 
 ## Overview
 
-### Problem Statement
+### The Problem
 
-E2E test failures today require manual debugging:
+E2E test failures in CI require manual debugging:
 
 ```
 Test fails in CI
   ↓
 Developer gets notification
   ↓
-Developer clones repo, reproduces locally
+Developer clones repo, reproduces locally (5 mins)
   ↓
-Developer inspects DevTools, console, network
+Developer inspects DevTools, console, network (10 mins)
   ↓
-Developer guesses at root cause
+Developer guesses at root cause (10 mins)
   ↓
-Developer proposes fix (code or test)
+Developer proposes fix (5 mins)
   ↓
-Developer verifies it works
+Developer verifies it works (5 mins)
   ↓
 Developer pushes to PR
 
-Time: 15 minutes to 1 hour
+Total: 15-60 minutes
 ```
 
-### Solution: Autonomous Loop
+### The Solution
+
+Gasoline captures full telemetry. Claude reads it and fixes autonomously:
 
 ```
 Test fails in CI
   ↓
-Gasoline captures full telemetry (logs, network, DOM, timeline)
+Gasoline captures: timeline, network, logs, DOM
   ↓
-AI analyzes timeline to identify root cause
+Claude reads timeline via MCP
   ↓
-AI proposes fix (with options)
+Claude diagnoses root cause (no guessing, facts from telemetry)
   ↓
-AI applies fix to branch
+Claude applies fix via git
   ↓
-AI reruns test (N times)
+Claude spawns subagent to verify (10 test runs)
   ↓
-AI verifies pass/fail
-  ↓
-Result posted to PR
+Claude posts results to PR
 
-Time: 1-2 minutes
+Total: 1-2 minutes
 ```
 
-### What "Autonomous" Means
+### Key Insight
 
-- **No human intervention** during diagnosis and fix application
-- **Multiple verification runs** (not just one pass)
-- **Fallback handling** if initial fix doesn't work
-- **Git-tracked commits** (human can review)
-- **Clear reporting** of what was fixed and why
+**Gasoline provides facts. Claude provides reasoning.**
+
+Gasoline doesn't need to understand why a test failed. It just records everything that happened. Claude reads the facts and reasons over them.
 
 ---
 
@@ -83,820 +82,684 @@ Time: 1-2 minutes
 ### System Components
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        CI/CD Pipeline                        │
+┌──────────────────────────────────────────────────────────────┐
+│                    CI/CD Pipeline                            │
+│                    npm test:e2e                              │
+└──────────────────────┬───────────────────────────────────────┘
+                       ↓
+┌──────────────────────────────────────────────────────────────┐
+│                Gasoline Server (Go)                          │
 │                                                              │
-│  $ npm run test:e2e                                         │
-│        ↓                                                     │
-│  Test Runner (Playwright)                                   │
-│        ↓                                                     │
-│  [Test passes] OR [Test fails]                              │
-│        ↓                                                     │
-│  ┌──────────────────────────────────────────┐              │
-│  │ Gasoline Server (HTTP + MCP)             │              │
-│  │                                          │              │
-│  │  ├─ Browser Extension                   │              │
-│  │  │   (collect telemetry from test run)  │              │
-│  │  │                                       │              │
-│  │  ├─ Ring Buffers                        │              │
-│  │  │   - Timeline (T+Nms events)          │              │
-│  │  │   - Network waterfall                │              │
-│  │  │   - Console logs                     │              │
-│  │  │   - DOM snapshots                    │              │
-│  │  │   - Performance metrics              │              │
-│  │  │                                       │              │
-│  │  └─ Analysis Engine                     │              │
-│  │      (diagnose root cause)              │              │
-│  └──────────────────────────────────────────┘              │
-│        ↓                                                     │
-│  ┌──────────────────────────────────────────┐              │
-│  │ AI Agent (Claude via MCP)                │              │
-│  │                                          │              │
-│  │  1. Read test output + Gasoline data    │              │
-│  │  2. Diagnose root cause                 │              │
-│  │  3. Propose fix(es)                     │              │
-│  │  4. Apply fix to git branch             │              │
-│  │  5. Rerun test N times                  │              │
-│  │  6. Analyze new results                 │              │
-│  │  7. Report: Pass/Fail/Inconclusive      │              │
-│  └──────────────────────────────────────────┘              │
-│        ↓                                                     │
-│  GitHub API: Create/update PR comment                       │
+│  Browser Extension (Capture)                                │
+│  ├─ Timeline events (T+Nms)                                │
+│  ├─ Network request/response                               │
+│  ├─ DOM mutations                                          │
+│  ├─ Console logs                                           │
+│  └─ Performance metrics                                    │
+│           ↓                                                 │
+│  Ring Buffers (Storage)                                    │
+│  ├─ Timeline: 10,000 events (~1MB)                        │
+│  ├─ Network: 100 requests (8MB)                           │
+│  ├─ Logs: 1,000 entries (~100KB)                          │
+│  └─ DOM snapshots: 10 snapshots (~10MB)                   │
+│           ↓                                                 │
+│  Timeline Correlator                                       │
+│  └─ Sort events by timestamp                              │
+│     Convert raw events → chronological sequence            │
 │                                                              │
-└─────────────────────────────────────────────────────────────┘
+└──────────────┬───────────────────────────────────────────────┘
+               ↓
+┌──────────────────────────────────────────────────────────────┐
+│           Claude AI Agent (via MCP)                          │
+│                                                              │
+│  1. observe({ what: 'timeline' })                           │
+│     → Get correlated events in time order                   │
+│                                                              │
+│  2. Read test output + timeline                             │
+│     → Diagnose root cause (test vs code vs env)            │
+│                                                              │
+│  3. Apply fix autonomously                                  │
+│     → git checkout -b fix/...                              │
+│     → edit files                                           │
+│     → git commit                                           │
+│     → git push                                             │
+│                                                              │
+│  4. Spawn verification subagent                             │
+│     → Run test 10 times                                    │
+│     → Collect results                                      │
+│     → Return: { passed: 10, failed: 0 }                    │
+│                                                              │
+│  5. Post results to PR                                      │
+│     → Create GitHub comment                                │
+│     → Include diagnosis + verification stats              │
+│                                                              │
+└──────────────┬───────────────────────────────────────────────┘
+               ↓
+         GitHub PR Updated
 ```
 
-### Key Systems
+### Key Principle: Separation of Concerns
 
-| System | Purpose | Data | Update Frequency |
-|--------|---------|------|------------------|
-| **Timeline Correlator** | Link events to precise millisecond | Navigation, XHR, DOM, console, paint | Real-time |
-| **Network Analyzer** | Compare requests/responses | HTTP headers, status, body, timing | Per request |
-| **DOM Snapshot** | Capture state at failure | Full DOM tree, accessibility tree | At test failure |
-| **Console Aggregator** | Collect logs/errors | Logs, errors, warnings, timestamps | Per log |
-| **Causal Graph** | Link cause → effect | What changed, what failed | At analysis time |
+| Component | Responsibility | Rationale |
+|-----------|-----------------|-----------|
+| **Gasoline** | Capture + correlate telemetry | Record facts objectively |
+| **Claude** | Reason + diagnose + apply + verify | Make intelligent decisions |
+| **GitHub** | Report results | Provide feedback to team |
+
+Gasoline stays **dumb but accurate**. Claude stays **intelligent but fact-based**.
 
 ---
 
-## Data Collection Phase
+## Gasoline's Role
 
-### What Gasoline Captures
+### 1. Telemetry Capture (Browser Extension)
 
-During test execution, Gasoline's browser extension (running in the test tab) captures:
-
-#### 1. Timeline Events
+While the test runs, capture:
 
 ```javascript
-// Every event gets a precise timestamp
-class TimelineEvent {
-  timestamp: number;           // ms since start
-  type: 'navigation' | 'network' | 'dom' | 'console' | 'paint';
-  source: 'extension' | 'server';
-
-  // Type-specific fields
-  navigation?: { url, navigationType };
-  network?: { url, method, status, duration };
-  dom?: { action, selector, nodeName, details };
-  console?: { level, message, stackTrace };
-  paint?: { metric, value };
-}
-
-// Example: 100 events captured during 5s test run
-Timeline = [
-  { timestamp: 0, type: 'navigation', url: 'http://localhost:3000/checkout' },
-  { timestamp: 45, type: 'paint', metric: 'FCP', value: 45 },
-  { timestamp: 150, type: 'paint', metric: 'LCP', value: 150 },
-  { timestamp: 200, type: 'dom', action: 'fill', selector: 'input[name="email"]' },
-  { timestamp: 250, type: 'dom', action: 'click', selector: 'button[type="submit"]' },
-  { timestamp: 270, type: 'network', method: 'POST', url: '/checkout', status: null },  // Request
-  { timestamp: 1200, type: 'network', method: 'POST', url: '/checkout', status: 200, duration: 930 },  // Response
-  { timestamp: 1210, type: 'dom', action: 'insert', selector: '.confirmation' },
-  { timestamp: 1215, type: 'paint', metric: 'CLS', value: 0.05 },
+// Timeline events
+[
+  { timestamp: 0, type: 'navigation', url: '/checkout' },
+  { timestamp: 245, type: 'network', method: 'POST', url: '/api/checkout', status: null },
+  { timestamp: 1200, type: 'network', method: 'POST', url: '/api/checkout', status: 200, duration: 955 },
+  { timestamp: 1210, type: 'dom', action: 'inserted', selector: '.confirmation' },
+  { timestamp: 1210, type: 'dom', action: 'removed', selector: '.loading-spinner' },
   { timestamp: 5000, type: 'console', level: 'error', message: 'Timeout assertion failed' },
-  // ... more events
 ]
-```
 
-**Collection method:** MutationObserver (DOM), fetch intercept (network), console override, PerformanceObserver (metrics)
-
-#### 2. Network Request/Response Bodies
-
-```javascript
-NetworkCapture = {
-  url: 'https://api.example.com/checkout',
-  method: 'POST',
-  requestHeaders: {
-    'Content-Type': 'application/json',
-    'Authorization': '<REDACTED>',  // Stripped for security
-  },
-  requestBody: {
-    email: 'test@example.com',
-    items: [123, 456],
-    total: 99.99
-  },
-
-  statusCode: 200,
-  responseHeaders: {
-    'Content-Type': 'application/json',
-    'X-RateLimit-Remaining': '4999'
-  },
-  responseBody: {
-    success: true,
-    confirmationId: 'CH-12345',
-    processingTime: 930  // milliseconds
-  },
-
-  // Captured metrics
-  startTime: 270,      // ms since test start
-  endTime: 1200,       // ms since test start
-  transferSize: 4321,  // bytes (compressed)
-  decompressedSize: 45123,  // bytes (uncompressed)
-};
-```
-
-**Collection method:** Override fetch/XMLHttpRequest, capture before/after, store in ring buffer
-
-#### 3. DOM Snapshots
-
-At test failure, Gasoline captures the full DOM:
-
-```javascript
-DOMSnapshot = {
-  capturedAt: 5000,  // When failure occurred
-  selector: '.checkout-form',  // Context (what was the test checking)
-
-  html: `
-    <form class="checkout-form">
-      <input type="email" name="email" value="test@example.com">
-      <button type="submit">Complete Checkout</button>
-      <!-- Spinner is NOT here — it was removed at T+1210ms -->
-    </form>
-  `,
-
-  accessibility: {
-    // AOM tree (what screen readers see)
-    role: 'form',
-    name: 'Checkout form',
-    children: [
-      { role: 'textbox', name: 'Email address', value: 'test@example.com' },
-      { role: 'button', name: 'Complete Checkout' }
-    ]
-  },
-
-  computedStyles: {
-    display: 'block',
-    visibility: 'visible',
-    opacity: 1,
-    // ...
+// Network bodies
+[
+  {
+    url: 'https://api.example.com/checkout',
+    method: 'POST',
+    requestBody: { email: 'test@example.com' },
+    responseBody: { confirmationId: 'CH-12345' },
+    statusCode: 200,
+    duration: 955
   }
-};
+]
+
+// Console logs
+[
+  { timestamp: 0, level: 'log', message: 'Loading checkout page' },
+  { timestamp: 245, level: 'log', message: 'Submitting form' },
+  { timestamp: 1200, level: 'log', message: 'Order confirmed' },
+  { timestamp: 5000, level: 'error', message: 'Assertion timeout' },
+]
+
+// DOM snapshot at failure
+{
+  capturedAt: 5000,
+  html: '<form>...</form>',
+  exists: {
+    '.loading-spinner': false,  // This is important!
+    '.confirmation': true
+  }
+}
 ```
 
-**Collection method:** document.body.outerHTML + getComputedStyle + AOM serialization
+**How it's captured:**
+- MutationObserver for DOM changes
+- fetch/XHR interception for network
+- console override for logs
+- PerformanceObserver for metrics
 
-#### 4. Console Logs
+All events tagged with microsecond timestamps.
 
-```javascript
-ConsoleLogs = [
-  { timestamp: 100, level: 'log', message: 'Loading checkout...' },
-  { timestamp: 270, level: 'log', message: 'Submitting form...' },
-  { timestamp: 1200, level: 'log', message: 'Server response received' },
-  { timestamp: 1210, level: 'log', message: 'Rendering confirmation...' },
-  { timestamp: 5000, level: 'error', message: 'Timeout: element .spinner not found' },
-];
-```
+### 2. Ring Buffer Storage (Bounded Memory)
 
-**Collection method:** Override console methods, timestamp each call
-
-### Data Storage
-
-All captured data is stored in **ring buffers** (bounded memory):
+Store captured data in fixed-size buffers:
 
 ```go
 // In Gasoline server
 type RingBuffer struct {
-  capacity int        // e.g., 1000 entries
+  capacity int        // e.g., 10,000
   data     []Event    // Fixed-size array
   head     int        // Write position
   tail     int        // Read position
-  lock     sync.RWMutex
 }
 
-// Buffer sizes (per test run)
-Timeline:         10,000 events max (~1MB)
-Network bodies:     100 requests max (8MB total)
-Console logs:     1,000 entries max (~100KB)
-DOM snapshots:       10 snapshots max (~10MB)
+// Buffers
+Timeline:    10,000 events (~1MB)
+Network:       100 requests (8MB)
+Logs:        1,000 entries (~100KB)
+DOM snapshots: 10 snapshots (~10MB)
+Total:       ~19MB maximum (bounded)
 ```
 
-**Why ring buffers?** Bounded memory even for long test runs. Oldest data drops off as new data arrives. No unbounded growth.
+When capacity is reached, oldest entries drop off. No unbounded growth.
+
+### 3. Timeline Correlation
+
+Sort events by timestamp to create a causal sequence:
+
+```go
+// Pseudo-code
+func correlateTimeline(events []Event) []Event {
+  // Sort by timestamp
+  sort.Slice(events, func(i, j int) bool {
+    return events[i].timestamp < events[j].timestamp
+  })
+  return events
+}
+
+// Input (scrambled order):
+[
+  { t: 1210, type: 'dom', action: 'inserted', selector: '.confirmation' },
+  { t: 245, type: 'network', method: 'POST', status: null },
+  { t: 1200, type: 'network', method: 'POST', status: 200 },
+  { t: 1210, type: 'dom', action: 'removed', selector: '.spinner' },
+]
+
+// Output (time-ordered):
+[
+  { t: 245, type: 'network', method: 'POST', status: null },      ← Request
+  { t: 1200, type: 'network', method: 'POST', status: 200 },     ← Response
+  { t: 1210, type: 'dom', action: 'removed', selector: '.spinner' },  ← Spinner hidden
+  { t: 1210, type: 'dom', action: 'inserted', selector: '.confirmation' }, ← Confirmation shown
+]
+```
+
+That's it. No AI reasoning. Just sorting by timestamp.
 
 ---
 
-## Analysis Phase
+## Claude's Role
 
-### Step 1: Timeline Correlation
-
-When a test fails, Gasoline correlates all events into a causal sequence:
+### 1. Read Telemetry via MCP
 
 ```javascript
-// Pseudo-code for analysis engine
-function analyzeFailure(testOutput, timeline, networkCapture, domSnapshot, consoleLogs) {
-
-  // 1. Find the failure point
-  const failureTime = testOutput.failedAt;  // 5000ms
-  const failureReason = testOutput.message;  // "Timeout waiting for .spinner"
-
-  // 2. Build causal chain UP TO failure
-  const causalChain = timeline
-    .filter(e => e.timestamp <= failureTime)
-    .sort((a, b) => a.timestamp - b.timestamp);
-
-  // 3. Analyze what happened BEFORE failure
-  const beforeFailure = causalChain.slice(-20);  // Last 20 events
-
-  return {
-    timelineUpToFailure: beforeFailure,
-    networkAtFailure: networkCapture.filter(n => n.endTime < failureTime),
-    domAtFailure: domSnapshot,
-    consoleLogs: consoleLogs.filter(l => l.timestamp < failureTime),
-  };
-}
-```
-
-### Step 2: Root Cause Categorization
-
-The analysis engine (or AI, depending on complexity) categorizes the root cause:
-
-```javascript
-RootCauseCategory = {
-  'TEST_ASSUMPTION': {
-    description: 'Test expects behavior that code doesn\'t provide',
-    examples: [
-      'Spinner visible for 5s, but code hides it immediately',
-      'API response in 100ms, but test expects 1s',
-      'Form submits synchronously, test expects async'
-    ],
-    fix: 'Adjust test expectations to match actual behavior'
-  },
-
-  'CODE_BUG': {
-    description: 'Code changed, breaking expected behavior',
-    examples: [
-      'Selector changed from .spinner to .loader',
-      'API response shape changed (old: name, new: person.fullName)',
-      'Race condition: DOM update happens before assertion'
-    ],
-    fix: 'Fix code to restore expected behavior'
-  },
-
-  'ENVIRONMENT_ISSUE': {
-    description: 'Test environment differs from expected',
-    examples: [
-      'API timeout (network slow)',
-      'Missing test data (seed data issue)',
-      'CSS file didn\'t load (network failure)'
-    ],
-    fix: 'Retry test or adjust timeouts'
-  },
-
-  'FLAKY_TIMING': {
-    description: 'Race condition or timing-dependent behavior',
-    examples: [
-      'API sometimes takes 300ms, sometimes 1200ms',
-      'DOM mutation races with assertion',
-      'setTimeout behavior undefined'
-    ],
-    fix: 'Add explicit waits or retries'
-  }
-};
-```
-
-### Step 3: AI Diagnostic Reasoning
-
-Claude (via MCP) receives the correlated data and reasons:
-
-```
-Input:
-- Test error: "Timeout waiting for .loading-spinner"
-- Timeline: [... events from T+0 to T+5000 ...]
-- Network: POST /checkout returned 200 at T+1200ms
-- DOM at T+5000ms: .loading-spinner is NOT in DOM
-- DOM mutation log: .loading-spinner was REMOVED at T+1210ms
-- Console: "Rendering confirmation..." at T+1210ms
-
-AI Reasoning:
-1. Test expects .loading-spinner to exist at T+5000ms
-2. But .loading-spinner was removed at T+1210ms
-3. The removal happened AFTER API response (T+1200ms)
-4. This is the CORRECT flow (spinner hidden when done loading)
-5. Test assumption is WRONG
-6. Root cause: TEST_ASSUMPTION (not code bug)
-7. Fix: Change assertion from .loading-spinner to .confirmation
-
-Confidence: HIGH (timeline clearly shows element removal)
-```
-
-This reasoning is codified in a prompt that Claude receives via MCP `observe()`:
-
-```javascript
+Claude calls:
 observe({
   what: 'timeline',
-  analyze: true,  // Request analysis
-  context: {
-    failedAssertion: ".loading-spinner",
-    failureTime: 5000,
-    failureMessage: "Timeout waiting for selector"
-  }
+  limit: 100  // Last 100 events
 })
-```
 
 Gasoline returns:
+[
+  { timestamp: 0, type: 'navigation', url: '/checkout' },
+  { timestamp: 245, type: 'network', ... },
+  { timestamp: 1200, type: 'network', status: 200 },
+  { timestamp: 1210, type: 'dom', action: 'inserted' },
+  { timestamp: 1210, type: 'dom', action: 'removed' },
+  { timestamp: 5000, type: 'console', level: 'error', message: 'Timeout' },
+]
+```
 
-```javascript
+### 2. Diagnose Root Cause
+
+Claude reads test output + timeline and reasons:
+
+```
+Test output: "Timeout waiting for .loading-spinner"
+
+Timeline shows:
+- T+245ms: POST /checkout starts
+- T+1200ms: POST response (200 OK)
+- T+1210ms: .loading-spinner removed
+- T+1210ms: .confirmation inserted
+- T+5000ms: Test assertion (too late!)
+
+Claude reasoning:
+"The spinner was removed at T+1210ms, but the test checked for it
+at T+5000ms. This is a test assumption issue, not a code bug.
+
+The code flow is correct:
+1. Submit form (T+250ms)
+2. API responds (T+1200ms)
+3. Hide spinner (T+1210ms)
+4. Show confirmation (T+1210ms)
+
+The test expected the spinner to persist, but it was immediately
+hidden after the API response. This is the correct behavior.
+
+Fix: Change assertion from .loading-spinner to .confirmation"
+```
+
+**No Gasoline analysis engine needed.** Claude just reads the facts.
+
+### 3. Apply Fix
+
+```bash
+Claude executes:
+$ git checkout -b fix/checkout-spinner-timeout-$(date +%s)
+$ # Edit test file
+$ git add test/checkout.test.ts
+$ git commit -m "fix: Update assertion from spinner to confirmation
+
+Timeline analysis showed spinner removed at T+1210ms, test
+checked at T+5000ms. This is a test assumption error."
+$ git push origin fix/checkout-spinner-timeout-...
+```
+
+Standard git operations. Claude can do this directly via Bash tool or MCP `interact()`.
+
+### 4. Verify (Spawn Subagent)
+
+Claude spawns a background subagent to run tests:
+
+```bash
+Claude executes:
+$ npm test -- --testNamePattern="checkout" --repeat=10
+
+Subagent captures:
+Run 1:  ✅ PASS (1865ms)
+Run 2:  ✅ PASS (1870ms)
+Run 3:  ✅ PASS (1852ms)
+...
+Run 10: ✅ PASS (1869ms)
+
+Returns to Claude:
 {
-  analysis: {
-    rootCause: 'TEST_ASSUMPTION',
-    reasoning: [
-      'Element .loading-spinner removed at T+1210ms',
-      'Test assertion ran at T+5000ms (3.7s later)',
-      'This is a flawed test assumption, not a code bug'
-    ],
-    causalChain: [
-      { t: 270, event: 'POST /checkout' },
-      { t: 1200, event: 'Response 200' },
-      { t: 1210, event: '.loading-spinner removed' },
-      { t: 1210, event: '.confirmation inserted' },
-      { t: 5000, event: 'Test assertion failed' }
-    ],
-    confidence: 0.95  // 95% confidence
-  },
-
-  suggestedFixes: [
-    {
-      type: 'UPDATE_TEST',
-      description: 'Wait for .confirmation instead of .spinner',
-      reasoning: 'The final state is .confirmation visible, not .spinner'
-    },
-    {
-      type: 'UPDATE_CODE',
-      description: 'Keep spinner visible longer (e.g., 500ms)',
-      reasoning: 'If spinner is meant to be visible, extend its duration'
-    }
-  ]
+  status: 'PASSED',
+  successRate: 1.0,
+  averageDuration: 1865,
+  allPassed: true
 }
 ```
 
----
+Claude gets the result and proceeds.
 
-## Fix Proposal Phase
-
-### Option Generation
-
-AI generates multiple fix options, ranked by likelihood of success:
-
-```javascript
-// fix-proposal.ts
-
-interface FixProposal {
-  id: string;
-  type: 'TEST_CHANGE' | 'CODE_CHANGE' | 'RETRY' | 'TIMEOUT_INCREASE';
-  description: string;
-  reasoning: string;
-  changes: FileChange[];
-  estimatedSuccessRate: number;  // 0.0-1.0
-  estimatedRisk: 'LOW' | 'MEDIUM' | 'HIGH';
-  verificationSteps: string[];
-}
-
-// Example: Timeout issue
-const fixes = [
-  {
-    id: 'fix-001',
-    type: 'TEST_CHANGE',
-    description: 'Change assertion from spinner to confirmation',
-    reasoning: 'Timeline shows spinner removed at T+1210ms, test checks at T+5000ms',
-    changes: [{
-      path: 'test/checkout.test.ts',
-      oldContent: '  await expect(page.locator(\'.loading-spinner\')).toBeVisible();',
-      newContent: '  await expect(page.locator(\'.confirmation\')).toBeVisible();'
-    }],
-    estimatedSuccessRate: 0.95,
-    estimatedRisk: 'LOW',
-    verificationSteps: [
-      'Run test 10 times',
-      'Check for any console errors',
-      'Verify DOM state matches expectation'
-    ]
-  },
-
-  {
-    id: 'fix-002',
-    type: 'TIMEOUT_INCREASE',
-    description: 'Increase timeout to 10s',
-    reasoning: 'Maybe spinner takes longer than expected in slow environments',
-    changes: [{
-      path: 'test/checkout.test.ts',
-      oldContent: '  await expect(page.locator(\'.loading-spinner\')).toBeVisible();',
-      newContent: '  await expect(page.locator(\'.loading-spinner\')).toBeVisible({ timeout: 10000 });'
-    }],
-    estimatedSuccessRate: 0.30,  // Low success rate — doesn't fix underlying issue
-    estimatedRisk: 'MEDIUM',     // Masks the real problem
-    verificationSteps: [
-      'Run test 10 times',
-      'Check if timeout still occurs'
-    ]
-  }
-];
-
-// AI picks the highest success rate + lowest risk
-selectedFix = fixes[0];  // fix-001
-```
-
-### Commit Generation
-
-AI generates a descriptive commit message:
-
-```
-fix: Update dashboard test spinner assertion
-
-Timeline analysis revealed the loading spinner is removed at T+1210ms,
-but the test assertion runs at T+5000ms. This is not a code bug; it's
-a test assumption error.
-
-Gasoline Analysis:
-  - API response received at T+1200ms (acceptable latency)
-  - DOM updated immediately after (spinner removed, content shown)
-  - Test incorrectly expects spinner to exist 3.8s after completion
-
-Fix: Changed assertion from waiting for .loading-spinner to waiting for
-.dashboard-content (the actual final state).
-
-Verification: Test now passes consistently (100/100 runs). No timeouts.
-
-Related: #123 (original test failure in CI)
-```
-
----
-
-## Verification Phase
-
-### Step 1: Apply Fix
+### 5. Post Results to PR
 
 ```bash
-# Autonomously executed by AI agent
-$ git checkout -b fix/test-dashboard-spinner-$(date +%s)
-$ # Edit file
-$ git add test/dashboard.test.ts
-$ git commit -m "fix: Update dashboard test spinner assertion..."
-```
+Claude executes:
+$ gh pr comment <PR_ID> -b "✅ **Gasoline Auto-Fix: VERIFIED**
 
-### Step 2: Run Multiple Test Iterations
+Root Cause: Test assumption issue. Timeline showed spinner removed
+at T+1210ms, but test expected it at T+5000ms.
 
-```bash
-# Run test N times to catch flakiness
-$ for i in {1..10}; do
-    npm test -- --testNamePattern="dashboard"
-  done
-```
+Fix Applied:
+- Changed assertion from .loading-spinner to .confirmation
 
-Gasoline captures full telemetry on each run:
-
-```javascript
-VerificationResults = [
-  { run: 1, status: 'PASS', duration: 1865ms, failureRate: 0 },
-  { run: 2, status: 'PASS', duration: 1870ms, failureRate: 0 },
-  { run: 3, status: 'PASS', duration: 1852ms, failureRate: 0 },
-  { run: 4, status: 'PASS', duration: 1868ms, failureRate: 0 },
-  { run: 5, status: 'PASS', duration: 1875ms, failureRate: 0 },
-  { run: 6, status: 'PASS', duration: 1859ms, failureRate: 0 },
-  { run: 7, status: 'PASS', duration: 1861ms, failureRate: 0 },
-  { run: 8, status: 'PASS', duration: 1870ms, failureRate: 0 },
-  { run: 9, status: 'PASS', duration: 1856ms, failureRate: 0 },
-  { run: 10, status: 'PASS', duration: 1869ms, failureRate: 0 },
-];
-
-successRate = 10/10 = 100%;
-averageDuration = 1865ms;
-conclusion = 'PASSED — Fix is stable';
-```
-
-### Step 3: Analyze Results
-
-```javascript
-function analyzeVerificationResults(results) {
-  const passed = results.filter(r => r.status === 'PASS').length;
-  const failed = results.filter(r => r.status === 'FAIL').length;
-  const successRate = passed / results.length;
-
-  if (successRate >= 0.95) {
-    return {
-      status: 'VERIFIED',
-      confidence: 'HIGH',
-      reason: 'Test passed 95%+ of runs'
-    };
-  } else if (successRate >= 0.80) {
-    return {
-      status: 'PARTIAL',
-      confidence: 'MEDIUM',
-      reason: 'Test passed 80%+ of runs, still somewhat flaky'
-    };
-  } else if (successRate >= 0.50) {
-    return {
-      status: 'INCONCLUSIVE',
-      confidence: 'LOW',
-      reason: 'Test passes < 80%, fix did not fully resolve issue'
-    };
-  } else {
-    return {
-      status: 'FAILED',
-      confidence: 'HIGH',
-      reason: 'Fix did not work, root cause analysis was incorrect'
-    };
-  }
-}
-```
-
-### Step 4: Report Results
-
-If verification succeeds, AI posts to PR:
-
-```markdown
-✅ **Gasoline Auto-Fix: VERIFIED**
-
-**Issue:** Test timeout waiting for `.loading-spinner`
-
-**Root Cause:** Test assumption error. Timeline showed spinner was removed
-at T+1210ms, but test checked for it at T+5000ms.
-
-**Fix Applied:**
-- Changed assertion from `.loading-spinner` to `.dashboard-content`
-- Now asserts on final state instead of transient indicator
-
-**Verification:** 10 consecutive test runs
+Verification: 10 test runs
 - Status: ✅ All passed
 - Average duration: 1865ms
 - Success rate: 100%
 
-**Commit:** [e3f4a1e](link-to-commit)
+Commit: [abc1234](link)
 
-You can review the change and merge with confidence.
+Ready to merge!"
 ```
 
-If verification fails, AI tries next fix option or escalates to human.
+**No Gasoline reporting engine.** Claude just uses GitHub API.
 
 ---
 
-## Failure Modes & Recovery
+## Data Collection
 
-### Mode 1: Fix Didn't Work (Success Rate < 50%)
+### What Gasoline Captures
 
-```
-Initial fix → Run tests → Success rate 30% → FAIL
+#### Timeline Events
 
-Recovery:
-1. Revert commit
-2. Try next suggested fix
-3. Repeat analysis with new fix
-4. If all fixes fail: Escalate to human with full diagnostics
-```
+```javascript
+TimelineEvent = {
+  timestamp: number,           // ms since start
+  type: 'navigation' | 'network' | 'dom' | 'console' | 'paint' | 'error',
 
-### Mode 2: Ambiguous Root Cause
+  // Type-specific data
+  navigation?: { url, navigationType },
+  network?: { url, method, status, duration, startTime, endTime },
+  dom?: { action, selector, html, nodeName },
+  console?: { level, message, stackTrace },
+  paint?: { metric, value },
+  error?: { message, stackTrace, source }
+};
 
-```
-Timeline shows two possible causes:
-  A. Spinner removed too quickly (code issue)
-  B. Test assumption wrong (test issue)
-
-AI requests clarification:
-  "I'm 60% confident this is a test assumption issue.
-   But there's a 40% chance the code timing changed.
-
-   Let me try Fix A (test change) first. If that fails,
-   I'll try Fix B (code timeout)."
-
-Try Fix A (60% likely) → Run tests → Success rate 90% → ✅ VERIFIED
+// Example: Typical test run captures 50-200 events
 ```
 
-### Mode 3: Test Passes But Performance Regresses
+#### Network Request/Response Bodies
+
+```javascript
+NetworkCapture = {
+  url: string,
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+
+  requestHeaders: { [key]: string },
+  requestBody: any,
+
+  responseHeaders: { [key]: string },
+  responseBody: any,
+  statusCode: number,
+
+  // Metadata
+  startTime: number,   // ms since test start
+  endTime: number,
+  duration: number,
+  transferSize: number,
+  decompressedSize: number
+};
+
+// Example: Test makes 2-10 network requests typically
+```
+
+#### Console Logs
+
+```javascript
+ConsoleLog = {
+  timestamp: number,
+  level: 'log' | 'warn' | 'error' | 'debug',
+  message: string,
+  stackTrace?: string,
+  source: 'page' | 'extension'
+};
+
+// Example: Test produces 5-50 console entries
+```
+
+#### DOM Snapshots
+
+```javascript
+DOMSnapshot = {
+  capturedAt: number,  // timestamp
+  selector: string,    // what test was checking
+  html: string,        // full HTML
+  exists: {
+    [selector]: boolean  // Quick lookup: does element exist?
+  }
+};
+
+// Example: Captured at test failure time
+```
+
+### Storage Model
+
+All captured data goes into **ring buffers** (fixed-size, no unbounded growth):
+
+| Buffer | Capacity | Notes |
+|--------|----------|-------|
+| Timeline | 10,000 events | ~1MB per test run |
+| Network | 100 requests | 8MB max |
+| Console | 1,000 entries | ~100KB |
+| DOM snapshots | 10 snapshots | ~10MB on demand |
+| **Total** | | **~19MB max** |
+
+When capacity is hit, oldest entries drop off. Memory is always bounded.
+
+---
+
+## Example Workflow
+
+### Scenario: Test Timeout
+
+#### Step 1: Test Fails
 
 ```
-Original test: ~2s
-Fixed test: ~5s (now it waits longer)
-
-Recovery:
-AI detects regression and notes:
-  "Fix is functionally correct (assertions pass),
-   but test duration increased 2.5x.
-
-   This suggests the wait target is slow.
-   Recommend investigating code performance."
+$ npm test:e2e
+ FAIL  src/__tests__/checkout.test.ts
+  ✕ should complete checkout flow
+    Error: Timeout waiting for selector ".loading-spinner"
+    at test/checkout.test.ts:18
 ```
 
-### Mode 4: Network Issue (Not Code/Test Issue)
+#### Step 2: Gasoline Captures
 
+During the test run, Gasoline's extension captured everything.
+
+Server has ring buffers full of:
+- Timeline (245ms POST start, 1200ms response, 1210ms spinner removed, 5000ms timeout)
+- Network (POST /checkout → 200 OK, 955ms duration)
+- Console (logs about form submission, order confirmation)
+- DOM snapshot (at failure: spinner is NOT in DOM)
+
+#### Step 3: Claude Reads Timeline
+
+```javascript
+Claude calls:
+observe({ what: 'timeline', limit: 50 })
+
+Returns:
+[
+  { t: 245, type: 'network', method: 'POST', status: null },
+  { t: 1200, type: 'network', method: 'POST', status: 200, duration: 955 },
+  { t: 1210, type: 'dom', action: 'removed', selector: '.loading-spinner' },
+  { t: 1210, type: 'dom', action: 'inserted', selector: '.confirmation' },
+  { t: 5000, type: 'console', level: 'error', message: 'Timeout' }
+]
 ```
-Failure: API timeout (5000ms limit)
-Timeline: Request sent at T+270ms, response at T+5050ms
-Gasoline detects: NETWORK_LATENCY (not code/test issue)
 
-AI skips fix and reports:
-  "This appears to be a network/infrastructure issue,
-   not a code or test bug. The API is slow (5+ seconds).
+#### Step 4: Claude Diagnoses
 
-   Recommendation: Check server performance metrics."
+Claude reads timeline and test error. Diagnosis:
+
+> "Timeline clearly shows spinner removed at T+1210ms. Test asserted at T+5000ms.
+> The test expected spinner to exist for 5+ seconds, but code hides it immediately.
+> This is a test assumption error.
+>
+> Fix: Change assertion from .loading-spinner to .confirmation (the actual final state)"
+
+#### Step 5: Claude Applies Fix
+
+```bash
+$ git checkout -b fix/checkout-timeout
+$ # Edit test/checkout.test.ts
+$ git add test/checkout.test.ts
+$ git commit -m "fix: Update assertion from spinner to confirmation
+
+Timeline showed spinner removed at T+1210ms, test checked at T+5000ms."
 ```
+
+#### Step 6: Claude Verifies
+
+Spawn subagent to run test 10 times:
+
+```bash
+$ for i in {1..10}; do npm test -- --testNamePattern="checkout"; done
+
+Results: 10/10 PASS ✅
+```
+
+#### Step 7: Claude Reports
+
+```bash
+$ gh pr comment <PR> -b "✅ Gasoline Auto-Fix: VERIFIED
+
+Root Cause: Test assumption. Spinner removed at T+1210ms, test checked T+5000ms.
+Fix: Changed assertion to final state (.confirmation).
+Verification: 10 runs, 100% pass rate.
+
+Ready to merge."
+```
+
+**Total time: 1-2 minutes. Done.**
 
 ---
 
 ## Integration Points
 
-### 1. Test Runner Integration
+### 1. Test Runner
 
-Gasoline hooks into test runner exit codes:
+CI runs tests. When they fail, Gasoline is already capturing:
 
 ```bash
-# In CI/CD pipeline
-npm test:e2e
-EXIT_CODE=$?
-
-if [ $EXIT_CODE -ne 0 ]; then
-  # Test failed, trigger Gasoline auto-repair
-  gasoline-repair --mode=auto --testOutput=$TEST_OUTPUT
-fi
+$ npm test:e2e
+# Test fails
+# Gasoline has captured everything
+# Claude reads via MCP
 ```
 
-### 2. Git Integration
+No special integration needed. Gasoline runs in background, always capturing.
 
-AI agent has git access (scoped):
+### 2. MCP Endpoints
+
+Claude calls:
 
 ```javascript
-// Allowed operations
-- Checkout new branch (fix/* prefix)
-- Commit to branch
-- Push to fork
-- Create/update PR comments
+// Read timeline
+observe({ what: 'timeline' })
 
-// NOT allowed
-- Push to main
-- Force push
-- Delete branches
-- Modify git history
+// Read network
+observe({ what: 'network_bodies', url: '/checkout' })
+
+// Read logs
+observe({ what: 'logs' })
+
+// Read DOM snapshots
+observe({ what: 'page' })
 ```
 
-### 3. MCP Integration
+That's it. Gasoline returns raw captured data. Claude interprets it.
 
-All data flows through MCP:
+### 3. Git Operations
 
-```javascript
-// AI agent calls
-observe({ what: 'timeline', analyze: true })
-observe({ what: 'network_bodies' })
-observe({ what: 'console_logs' })
-generate({ format: 'test', fixes: [...] })
-configure({ action: 'record_event', event: 'fix_applied' })
-interact({ action: 'execute_js', script: 'rerun test' })
+Claude uses standard git commands (already supported):
+
+```bash
+# Via Bash tool
+git checkout -b fix/...
+git add .
+git commit
+
+# Or via interact() tool if we add git support
 ```
 
-### 4. GitHub/GitLab Integration
+### 4. GitHub API
 
-```javascript
-// Post results to PR
-gh pr comment <PR_ID> -b "✅ **Gasoline Auto-Fix: VERIFIED**
+Claude posts results:
 
-Root Cause: Timeline analysis showed...
-Fix Applied: ...
-Verification: 10 runs, 100% pass rate
-"
+```bash
+# Via Bash tool
+gh pr comment <PR> -b "..."
+
+# Or via Python github library if more complex
 ```
 
 ---
 
 ## Performance Budgets
 
-### Time Budgets
+### Time
 
 | Phase | Target | Notes |
 |-------|--------|-------|
-| Data Collection | Real-time | Passive, no test overhead |
-| Timeline Analysis | < 100ms | Correlate events in-memory |
-| AI Diagnosis | 30-60s | Claude reasoning (depends on model) |
-| Fix Proposal | 5-10s | Generate diffs |
-| Git Operations | 10-15s | Checkout, commit, push |
-| Test Verification | 30-120s | 10 runs × 3-12s per run |
-| **Total Time** | **~2-5 minutes** | Start to finish |
+| Data capture | Real-time | Passive, 0.1ms extension overhead |
+| Timeline correlation | < 50ms | Just sorting events |
+| Claude diagnosis | 30-60s | Depends on model |
+| Fix application | 10-20s | git operations |
+| Verification (10 runs) | 30-120s | Depends on test suite duration |
+| PR comment | 5-10s | GitHub API |
+| **Total** | **1-3 minutes** | Start to finish |
 
-### Memory Budgets
+### Memory
 
-| Buffer | Max Size | Rationale |
-|--------|----------|-----------|
-| Timeline | 10,000 events | ~1MB (enough for 5-10 minute test) |
-| Network bodies | 100 requests | 8MB (typical test suite) |
-| Console logs | 1,000 entries | ~100KB |
-| DOM snapshots | 10 snapshots | ~10MB (saved on demand) |
-| **Total** | ~19MB | Bounded, no unbounded growth |
+| Buffer | Max | Rationale |
+|--------|-----|-----------|
+| Timeline | 10,000 events (~1MB) | Enough for 10-minute test |
+| Network | 100 requests (8MB) | Typical test makes <50 requests |
+| Console | 1,000 entries (~100KB) | Typical test logs <100 entries |
+| DOM snapshots | 10 snapshots (~10MB) | Captured on demand |
+| **Total** | ~19MB | Bounded, no growth |
 
-### Accuracy Targets (v6.0)
+### Accuracy
 
 | Metric | Target | Notes |
 |--------|--------|-------|
-| Root cause identification accuracy | 90%+ | AI correctly categorizes test vs code issues |
-| Fix success rate | 80%+ | Applied fix resolves the issue |
-| Verification stability | 95%+ | Test passes consistently after fix |
-| False positives | < 5% | Don't incorrectly "fix" things that aren't broken |
+| Timeline correctness | 100% | Just sorting, deterministic |
+| Root cause diagnosis | 85%+ | Claude's reasoning accuracy |
+| Fix success rate | 80%+ | Fix actually resolves issue |
 
 ---
 
-## Data Flow Diagram
+## Failure Modes
+
+### Fix Doesn't Work (Success Rate < 50%)
 
 ```
-Test Execution
-    ↓
-Browser Extension (capture):
-  - Timeline events
-  - Network requests/responses
-  - DOM mutations
-  - Console logs
-  ↓
-Gasoline Server (store):
-  - Ring buffers
-  - Correlation
-  ↓
-Test fails (exit code != 0)
-    ↓
-Analysis Engine:
-  - Build causal chain
-  - Categorize root cause
-  - Generate options
-    ↓
-MCP: observe({ what: 'timeline', analyze: true })
-    ↓
-AI Agent (Claude):
-  - Diagnose root cause
-  - Select fix
-  - Generate commit message
-    ↓
-Git Operations:
-  - Checkout branch
-  - Apply changes
-  - Commit
-    ↓
-Test Verification:
-  - Rerun test 10x
-  - Collect telemetry
-  - Analyze results
-    ↓
-Report:
-  - Post to PR
-  - Update issue
-  - Record metrics
+Claude's logic:
+1. Apply fix
+2. Verify: 3/10 tests pass
+3. Success rate 30% < target
+4. Revert: git reset --hard
+5. Report: "Fix didn't work, needs manual review"
 ```
+
+Claude abandons the fix and escalates.
+
+### Ambiguous Root Cause
+
+```
+Claude's logic:
+"Timeline shows two possible issues:
+1. Test assumption (80% likely)
+2. Code timing bug (20% likely)
+
+Try fix for most likely first.
+If it fails, escalate to human."
+```
+
+Claude picks the best guess and tries it.
+
+### Network Issue (Not Code/Test)
+
+```
+Claude reads timeline:
+- POST sent at T+245ms
+- Response at T+5200ms (4955ms delay!)
+- This is timeout, not code/test issue
+
+Report: "Looks like network/infrastructure issue, not code/test.
+API endpoint is slow. Recommend investigating backend performance."
+```
+
+Claude recognizes it's not a code/test issue and doesn't apply a fix.
 
 ---
 
-## Future Extensions
+## What This Requires (Implementation)
 
-### Multi-Failure Analysis
+### Gasoline (Go Server) — ~1000 lines
 
-If multiple tests fail:
+- [x] Browser extension (already exists)
+- [x] Ring buffer storage (already exists)
+- [ ] Timeline correlator (NEW — 100 lines to sort events)
+- [ ] MCP `observe({what: 'timeline'})` endpoint (NEW — 50 lines)
+- [ ] Ring buffer management for bounded memory (mostly exists, refine)
 
-```
-Test A fails (timeout) → Diagnose → Propose fix
-Test B fails (API) → Diagnose → Propose fix
-Test C fails (selector) → Diagnose → Propose fix
+### Claude (System Prompt)
 
-Smart ordering:
-  1. Fix shared root causes first (e.g., API schema change)
-  2. Then fix isolated issues
-  3. Verify all fixes together
-```
+- [ ] Examples of reading timeline data
+- [ ] Examples of diagnosing common failure patterns
+- [ ] Guidance on when to apply fixes vs escalate
 
-### Learning from Patterns
+### Subagent (Verification Script)
 
-```
-Track patterns across runs:
-  "10 tests failed due to 'selector changed' this week"
-  → Suggest codemod to update all affected tests
-  → Apply fix to entire test suite
-```
+- [ ] Simple bash script to run test N times
+- [ ] Collect pass/fail results
+- [ ] Return summary to Claude
 
-### Fallback to Manual Debugging Mode
+### Integration
 
-If AI confidence is low:
+- [ ] CI hook that triggers Claude on test failure (already in CI config)
+- [ ] GitHub token for PR comments (already available in CI)
 
-```
-"I'm only 40% confident in the root cause.
- Rather than risk applying the wrong fix,
- I've captured full telemetry for manual debugging.
+---
 
- [Download telemetry as HAR + timeline.json]"
-```
+## Why This Design Is Better
+
+| Aspect | Old Design (Analysis Engine in Gasoline) | New Design (Claude Does Reasoning) |
+|--------|----------------------------------------|-----------------------------------|
+| **Code in Gasoline** | ~2000 lines | ~1000 lines |
+| **Code in Claude** | ~0 lines | ~0 (just system prompt) |
+| **Coupling** | Gasoline → Claude (tight) | Gasoline → Claude (loose) |
+| **Testability** | Hard (complex state machine) | Easy (stateless) |
+| **Flexibility** | Rigid (Gasoline decides strategy) | Flexible (Claude adapts) |
+| **Development speed** | Slower (build + test analysis engine) | Faster (just correlation) |
+
+---
+
+## Next Steps
+
+1. Implement timeline correlator in Gasoline (100 lines)
+2. Add `observe({what: 'timeline'})` MCP endpoint (50 lines)
+3. Write Claude system prompt with examples (200 lines)
+4. Test with 1-2 manual scenarios
+5. Ship as part of Wave 1
 
 ---
 
 ## References
 
 - [Gasoline Architecture](./architecture.md)
-- [Timeline Data Structure](../../.claude/refs/timeline.md)
-- [Self-Healing Tests Feature Spec](../features/feature/33-self-healing-tests)
 - [v6.0 Roadmap](../roadmap.md)
+- [Self-Healing Tests Feature Spec](../features/feature/33-self-healing-tests)
