@@ -152,6 +152,27 @@ func TestApplyActionCursorPagination_NoCursor(t *testing.T) {
 					t.Errorf("First sequence = %d, want %d (should be last %d entries)", firstSeq, expectedFirstSeq, tt.expectedCount)
 				}
 			}
+
+			// Verify cursor field is present when results exist
+			if len(result) > 0 {
+				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
+				if metadata.Cursor != expectedCursor {
+					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
+				}
+
+				// Verify timestamp fields
+				if metadata.OldestTimestamp != result[0].Timestamp {
+					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
+				}
+				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
+					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
+				}
+			} else {
+				// Empty results should have empty cursor
+				if metadata.Cursor != "" {
+					t.Errorf("Metadata cursor should be empty for empty results, got %v", metadata.Cursor)
+				}
+			}
 		})
 	}
 }
@@ -241,6 +262,20 @@ func TestApplyActionCursorPagination_AfterCursor(t *testing.T) {
 				if lastSeq != tt.expectedLastSeq {
 					t.Errorf("Last sequence = %d, want %d", lastSeq, tt.expectedLastSeq)
 				}
+
+				// Verify cursor field is present
+				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
+				if metadata.Cursor != expectedCursor {
+					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
+				}
+
+				// Verify timestamp fields
+				if metadata.OldestTimestamp != result[0].Timestamp {
+					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
+				}
+				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
+					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
+				}
 			}
 
 			if metadata.HasMore != tt.expectedHasMore {
@@ -315,6 +350,20 @@ func TestApplyActionCursorPagination_BeforeCursor(t *testing.T) {
 				lastSeq := result[len(result)-1].Sequence
 				if lastSeq != tt.expectedLastSeq {
 					t.Errorf("Last sequence = %d, want %d", lastSeq, tt.expectedLastSeq)
+				}
+
+				// Verify cursor field is present
+				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
+				if metadata.Cursor != expectedCursor {
+					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
+				}
+
+				// Verify timestamp fields
+				if metadata.OldestTimestamp != result[0].Timestamp {
+					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
+				}
+				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
+					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
 				}
 			}
 		})
@@ -400,6 +449,20 @@ func TestApplyActionCursorPagination_CursorExpired(t *testing.T) {
 				firstSeq := result[0].Sequence
 				if firstSeq != tt.expectedFirstSeq {
 					t.Errorf("First sequence = %d, want %d (oldest after restart)", firstSeq, tt.expectedFirstSeq)
+				}
+
+				// Verify cursor field is present
+				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
+				if metadata.Cursor != expectedCursor {
+					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
+				}
+
+				// Verify timestamp fields
+				if metadata.OldestTimestamp != result[0].Timestamp {
+					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
+				}
+				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
+					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
 				}
 			}
 

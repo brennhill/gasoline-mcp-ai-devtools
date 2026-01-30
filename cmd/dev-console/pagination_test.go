@@ -170,6 +170,19 @@ func TestApplyLogCursorPagination_NoСursor(t *testing.T) {
 				if metadata.Cursor != expectedCursor {
 					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
 				}
+
+				// Verify timestamp fields
+				if metadata.OldestTimestamp != result[0].Timestamp {
+					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
+				}
+				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
+					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
+				}
+			} else {
+				// Empty results should have empty cursor
+				if metadata.Cursor != "" {
+					t.Errorf("Metadata cursor should be empty for empty results, got %v", metadata.Cursor)
+				}
 			}
 		})
 	}
@@ -247,6 +260,20 @@ func TestApplyLogCursorPagination_AfterCursor(t *testing.T) {
 				}
 				if result[len(result)-1].Sequence != tt.wantLast {
 					t.Errorf("Last sequence = %d, want %d", result[len(result)-1].Sequence, tt.wantLast)
+				}
+
+				// Verify cursor field is present
+				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
+				if metadata.Cursor != expectedCursor {
+					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
+				}
+
+				// Verify timestamp fields
+				if metadata.OldestTimestamp != result[0].Timestamp {
+					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
+				}
+				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
+					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
 				}
 			}
 		})
@@ -326,6 +353,20 @@ func TestApplyLogCursorPagination_BeforeCursor(t *testing.T) {
 				if result[len(result)-1].Sequence != tt.wantLast {
 					t.Errorf("Last sequence = %d, want %d", result[len(result)-1].Sequence, tt.wantLast)
 				}
+
+				// Verify cursor field is present
+				expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
+				if metadata.Cursor != expectedCursor {
+					t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
+				}
+
+				// Verify timestamp fields
+				if metadata.OldestTimestamp != result[0].Timestamp {
+					t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
+				}
+				if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
+					t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
+				}
 			}
 		})
 	}
@@ -395,6 +436,22 @@ func TestApplyLogCursorPagination_CursorExpired(t *testing.T) {
 
 		if metadata.Warning == "" {
 			t.Error("Metadata.Warning is empty, want warning message")
+		}
+
+		// Verify cursor field is present
+		if len(result) > 0 {
+			expectedCursor := BuildCursor(result[len(result)-1].Timestamp, result[len(result)-1].Sequence)
+			if metadata.Cursor != expectedCursor {
+				t.Errorf("Metadata cursor = %v, want %v", metadata.Cursor, expectedCursor)
+			}
+
+			// Verify timestamp fields
+			if metadata.OldestTimestamp != result[0].Timestamp {
+				t.Errorf("OldestTimestamp = %v, want %v", metadata.OldestTimestamp, result[0].Timestamp)
+			}
+			if metadata.NewestTimestamp != result[len(result)-1].Timestamp {
+				t.Errorf("NewestTimestamp = %v, want %v", metadata.NewestTimestamp, result[len(result)-1].Timestamp)
+			}
 		}
 	})
 }
