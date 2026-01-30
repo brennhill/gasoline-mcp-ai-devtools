@@ -576,12 +576,34 @@ func TestRecordingSensitiveDataOptIn(t *testing.T) {
 func TestRecordingStorageQuotaEnforcement(t *testing.T) {
 	t.Parallel()
 
-	// Test quota enforcement
-	// Max: 1GB
-	// When full: reject new recordings
-	// User must manually delete old recordings
+	capture := setupTestCapture(t)
 
-	t.Skip("Waiting for quota check in recording.go")
+	// Simulate storage being at max capacity
+	// Set recordingStorageUsed to 1GB (recording.go constant: recordingStorageMax = 1GB)
+	capture.recordingStorageUsed = 1024 * 1024 * 1024 // 1GB
+
+	// Try to start a new recording when storage is full
+	recordingID, err := capture.StartRecording("over-quota", "https://example.com", false)
+
+	// Verify error is returned
+	if err == nil {
+		t.Errorf("Expected error when storage at capacity, got nil")
+	}
+
+	// Verify error message mentions storage is full
+	if err != nil && !strings.Contains(err.Error(), "recording_storage_full") {
+		t.Errorf("Expected error to mention 'recording_storage_full', got: %v", err)
+	}
+
+	// Verify no recording was created
+	if recordingID != "" {
+		t.Errorf("Expected empty recording_id when over quota, got: %s", recordingID)
+	}
+
+	// Verify activeRecordingID is empty (no recording started)
+	if capture.activeRecordingID != "" {
+		t.Errorf("Expected activeRecordingID to be empty when over quota")
+	}
 }
 
 // Test Case 2.7: Storage Warning at 80%
@@ -592,10 +614,47 @@ func TestRecordingStorageQuotaEnforcement(t *testing.T) {
 func TestRecordingStorageWarning(t *testing.T) {
 	t.Parallel()
 
-	// Test warning at 80% capacity
-	// Should not block operations, just warn
+	capture := setupTestCapture(t)
 
-	t.Skip("Waiting for quota check in recording.go")
+	// Simulate storage at 80% capacity (warning threshold)
+	// recording.go constant: recordingWarningLevel = 800MB
+	capture.recordingStorageUsed = 800 * 1024 * 1024 // 800MB (80% of 1GB)
+
+	// Try to start a recording when at warning level
+	// The operation should proceed (non-blocking) but a warning should be logged
+	recordingID, err := capture.StartRecording("at-warning-level", "https://example.com", false)
+
+	// Verify no error - operation should succeed despite warning
+	if err != nil {
+		t.Errorf("Expected operation to proceed at warning level, got error: %v", err)
+	}
+
+	// Verify recording was created
+	if recordingID == "" {
+		t.Errorf("Expected recording_id to be returned even at warning level")
+	}
+
+	// Verify recording is active
+	if capture.activeRecordingID != recordingID {
+		t.Errorf("Expected active recording to be set")
+	}
+
+	// Verify we can still add actions (non-blocking)
+	action := RecordingAction{Type: "click", Selector: "button", TimestampMs: int64(1000)}
+	err = capture.AddRecordingAction(action)
+	if err != nil {
+		t.Errorf("Expected to add actions at warning level, got error: %v", err)
+	}
+
+	// Verify we can stop recording (non-blocking)
+	actionCount, _, err := capture.StopRecording(recordingID)
+	if err != nil {
+		t.Errorf("Expected to stop recording at warning level, got error: %v", err)
+	}
+
+	if actionCount != 1 {
+		t.Errorf("Expected 1 action captured, got: %d", actionCount)
+	}
 }
 
 // Test Case 2.8: List Recordings
