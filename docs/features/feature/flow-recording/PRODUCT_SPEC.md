@@ -10,26 +10,37 @@ version: v6.0
 
 ## Problem Statement
 
-Manual QA testing is slow, fragile, and hard to maintain:
+**When bugs are discovered in production, developers spend hours reproducing them, analyzing root causes, and verifying fixes — manually.**
 
-1. **Recording Gap:** QA engineers manually write test scripts. If UI changes, scripts break.
-2. **Regression Testing:** When bugs are fixed, QA manually re-tests. Can't guarantee coverage or prevent regressions.
-3. **Reproducibility:** "Works on my machine" — environment differences cause flaky tests.
-4. **Variation Testing:** Testing multiple scenarios (different carts, different users) requires copying scripts.
-5. **CI/CD Integration:** No automated way to test user flows in CI pipelines.
+Regression testing today is **slow, manual, and error-prone**:
 
-**Result:** Regressions slip through, manual testing is 30% of release cycle time.
+1. **Reproducibility Gap:** "Works on my machine" — reproducing user-reported bugs requires exact environment replication
+2. **Root Cause Blindness:** Logs are opaque; developers manually trace through to understand what broke
+3. **Fix Verification:** After coding a fix, QA manually re-tests the entire flow (15-30 min per bug)
+4. **Regression Risk:** No automated way to re-test all historical flows; some regressions re-appear multiple times
+5. **Incident Response:** On-call engineers waste time on reproduction; they need answers in minutes, not hours
+
+**Result:** Critical bugs take 2-4 hours to fix + verify; non-critical regressions accumulate; team loses confidence in releases.
 
 ---
 
 ## Solution
 
-**Flow Recording & Playback** lets LLMs record user flows once, then:
-- **Replay** to verify regressions are fixed
-- **Generate variations** automatically (different inputs/flows)
-- **Compare logs** (original vs replay) to detect issues
+**Gasoline Flow Recording & Playback** is the **AI-powered regression testing tool for developers**.
 
-Transforms manual QA into **automated, AI-driven regression testing**.
+**The workflow:**
+1. **QA records** a user's reported flow once (e.g., "checkout fails on coupon code entry")
+2. **Developer fixes** the bug in code
+3. **LLM invokes Gasoline** to replay the flow and analyze what changed
+4. **Gasoline suggests** the root cause + code fixes (with file/line numbers and git context)
+5. **Developer verifies** the fix in <5 minutes (not 30 minutes of manual testing)
+
+**Why Gasoline:**
+- **Purpose-built for regression testing**, not general test automation
+- **Root cause analysis + fix suggestions** (unique) — tells you WHY it broke, not just that it broke
+- **AI-driven** — uses Claude to understand logs, suggest fixes, and rank confidence
+- **Local-first** — runs entirely on your machine (no cloud, no shared state)
+- **Zero dependencies** — lean, fast, audit-friendly
 
 ---
 
@@ -122,10 +133,11 @@ Transforms manual QA into **automated, AI-driven regression testing**.
 - [ ] OR auto-generated: "{adjective}-{noun}-{adjective}-{ISO8601}" (e.g., "magic-badger-hammer-20260130T143022Z")
 - [ ] Name + timestamp used in file paths/IDs
 
-**No Truncation:**
-- [ ] Full text typed (passwords, long values, etc.)
-- [ ] Sensitive data: **configurable setting** (warn if enabled and secrets detected)
-- [ ] Default: **DO NOT hide** (warn user to disable setting if testing login flows)
+**Recording Policy:**
+- [ ] Full text typed captured (necessary for regression testing with real data)
+- [ ] ⚠️ **Security Warning:** Never record flows with real production credentials (passwords, API keys, credit cards)
+- [ ] Recommended: Use test accounts and fake data for all recordings
+- [ ] Recordings stored locally only; not transmitted to cloud
 
 ### R2: Recording UI
 
@@ -143,57 +155,71 @@ Transforms manual QA into **automated, AI-driven regression testing**.
 ### R3: Screenshot Management
 
 **Format & Compression:**
-- [ ] Format: JPEG (85% compression, PNG fallback if alpha needed)
-- [ ] Max file size: Configurable (default 500KB per screenshot)
-- [ ] Storage: Disk (local file system, not in-memory)
-- [ ] Naming: `{date}-{recording_name}-{action_number}-{issue_type}.jpg`
-  - Example: `20260130-shopping-checkout-003-click.jpg`
-  - Issue types: `click`, `type`, `navigate`, `page-load`, `moved-selector`, `error`
+- [ ] Format: JPEG (85% compression)
+- [ ] Max file size: 500KB per screenshot
+- [ ] Storage: Disk (local file system)
+- [ ] Naming: `{date}-{recording_name}-{action_index}-{issue_type}.jpg`
+  - Example: `20260130-shopping-checkout-003-page-load.jpg`
+  - Issue types: `page-load` (after navigation), `moved-selector` (element not found), `error` (assertion/timeout/network)
 
 **When Captured:**
 - [ ] On page load (after navigation)
-- [ ] After significant delay (> 500ms post-action)
+- [ ] When element selector fails or moves
 - [ ] On error/timeout
-- [ ] Every N actions (configurable, default 5)
+- [ ] Sampling: every N actions (configurable, default 5)
 
-### R4: Element Matching Strategy
+### R4: Element Matching & Self-Healing (Robust Selector Recovery)
 
 **For Playback, Match Elements Using (Priority Order):**
 1. **data-testid** attribute (most reliable for dynamic content)
-2. **CSS selector path** (e.g., `.product-card:nth-child(3) .add-to-cart`)
-3. **aria-label** or semantic attributes
-4. **x/y coordinates** (fallback if selectors fail)
+2. **x/y coordinates + context** (if selector fails, search nearby elements)
+3. **Visual recovery** (if above fails, use OCR on screenshots to find element by visible text)
 
-**If Element Moved:**
-- [ ] Log warning: "Element moved: old=[x:500, y:200], new=[x:505, y:210]"
+**Self-Healing on Selector Failure:**
+- [ ] Primary: Try exact data-testid match
+- [ ] Secondary: Try recorded CSS selector
+- [ ] Tertiary: Check if element moved (nearby search based on old x/y)
+- [ ] Quaternary: Use OCR on screenshot to find by visible text
+- [ ] Final: Use last-known x/y coordinates with warning
+
+**If Element is Fragile (Moved Multiple Times):**
+- [ ] Log warning: "Fragile selector: element moved 3 times across test runs"
 - [ ] Screenshot with issue type: `moved-selector`
-- [ ] Continue playback with new coordinates
+- [ ] Recommend using `data-testid` instead of selectors
+- [ ] Suggest code change: "Add data-testid=product-card-1 to improve test stability"
 - [ ] Report to LLM for debugging
+
+**Competitive Advantage:**
+- Gasoline has access to real browser context (logs, network, visual state)
+- Can detect selector fragility and suggest fixes proactively
+- Unlike cloud-based tools, we see the actual user environment
 
 ---
 
 ### R5: Playback & Sequence Execution
 
-**Execution Mode:**
-- [ ] **Sequence mode** (default): Execute actions in order, ignoring timing
-  - Navigate → click → type → navigate → click (fast-forward)
-  - Useful for regression testing (speed matters)
-- [ ] **Timed mode** (optional): Respect original delays between actions
-  - Useful for performance/timing validation
-  - No multiplier (1x speed) to start
+**Execution:**
+- [ ] **Sequence mode**: Execute actions in order, ignoring timing (fast-forward)
+  - Navigate → click → type → navigate → click
+  - Useful for regression testing (speed is priority)
+  - Target: 10+ actions/second
 
 **On Page Load During Playback:**
 - [ ] Wait for page to load (network idle or timeout: 5 sec)
-- [ ] If selector not found, log error and take screenshot (`moved-selector` issue)
-- [ ] If element found but location different, note in logs and screenshot
+- [ ] If selector not found, attempt self-healing (R4)
+- [ ] If self-healing fails, log error and take screenshot
 - [ ] Continue playback (non-blocking)
 
-**Error Handling:**
-- [ ] Selector not found → Log + screenshot, continue
+**Error Handling (Non-Blocking):**
+- [ ] Selector not found (after self-healing) → Log + screenshot, continue
 - [ ] Click outside viewport → Scroll to element, then click
 - [ ] Type in non-input → Log error, continue
 - [ ] Navigation timeout → Log, continue
-- [ ] Network timeout → Log, continue
+- [ ] Network error → Log, continue
+
+**Graceful Degradation:**
+- Playback completes even if some actions fail (important for regression analysis)
+- All failures logged and visible to LLM for debugging
 
 ---
 
@@ -266,17 +292,19 @@ Transforms manual QA into **automated, AI-driven regression testing**.
 
 ---
 
-### R9: Recording Limits & Cleanup
+### R9: Recording Storage & Management
 
-**Constraints:**
-- [ ] **Max duration:** 30 minutes per recording
-- [ ] **Max actions:** 500 per recording (typical workflow)
-- [ ] **Max storage:** 1GB total (configurable)
+**Storage:**
+- [ ] **Max storage:** 1GB total on disk (warn at 80%, error at 100%)
 - [ ] **Concurrent:** Only 1 active recording at a time
-- [ ] **Auto-cleanup:**
-  - Keep last 7 days (configurable)
-  - Archive older (compress, move to long-term storage)
-  - Warn when approaching 1GB limit
+- [ ] Storage location: `~/.gasoline/recordings/` (configurable)
+
+**Guidance (Not Hard Limits):**
+- Typical flow: 5-30 minutes, 20-100 actions
+- If recording approaches 1GB, user should manage manually:
+  - Delete old recordings
+  - Or expand storage
+- Gasoline doesn't auto-delete recordings (data loss risk)
 
 ### R10: Root Cause Analysis & Auto-Fix Skill
 
@@ -461,81 +489,122 @@ LLM reviews suggestions:
 
 ---
 
-## Claude Skill Definition: `/gasoline-fix`
+## Claude Skill: `/gasoline-fix`
 
-**Purpose:** LLM-callable skill to analyze flow recording regressions and suggest fixes.
+**When to Use:**
+When flow recording playback detects a regression (logs differ between original and replay), invoke this skill to automatically analyze the root cause and suggest code fixes.
 
-**Invocation:**
+**How to Invoke:**
 ```
-User: "Analyze the regression and suggest fixes"
-Claude: Invokes /gasoline-fix with parameters
-→ Returns: root cause, confidence, suggested fixes, related commits
+/gasoline-fix recording_id="shopping-checkout-20260130T..." \
+              original_test_boundary="shopping-checkout-original" \
+              replay_test_boundary="shopping-checkout-replay" \
+              git_repo_path="/home/dev/my-app"
 ```
 
 **Parameters:**
-- `recording_id` (string, required): ID of original recording
-- `original_test_boundary` (string, required): Test boundary ID from original recording
-- `replay_test_boundary` (string, required): Test boundary ID from replay/regression
-- `git_repo_path` (string, optional): Path to git repo for commit analysis
+- `recording_id` (required): ID of the original recording (e.g., "shopping-checkout-20260130T143022Z")
+- `original_test_boundary` (required): Test boundary ID from original recording (e.g., "shopping-checkout-original")
+- `replay_test_boundary` (required): Test boundary ID from replay showing regression (e.g., "shopping-checkout-replay")
+- `git_repo_path` (optional): Path to git repo for commit analysis. If provided, skill finds related commits. If omitted, skill analyzes error logs only.
 
-**Response:**
-```json
-{
-  "root_cause": "POST /api/order endpoint returns 404 (renamed to /api/orders)",
-  "confidence": "HIGH",
-  "error_types": ["network_error"],
-  "affected_action": 5,
-  "suggested_fixes": [
-    {
-      "file": "src/api/checkout.ts",
-      "line": 45,
-      "change": "endpoint: '/api/orders'",
-      "rationale": "Endpoint was renamed in recent refactor"
-    }
-  ],
-  "affected_files": [
-    "src/api/checkout.ts",
-    "src/handlers/order.ts"
-  ],
-  "related_commits": [
-    {
-      "hash": "abc123",
-      "message": "Refactor API endpoints",
-      "author": "alice@company.com",
-      "date": "2026-01-28"
-    }
-  ],
-  "error_log_excerpt": "POST /api/order 404 Not Found",
-  "screenshot_paths": [
-    "/recordings/checkout-flow/20260130-...-error.jpg"
-  ]
-}
+**What the Skill Does:**
+
+1. **Compares Logs:** Diffs logs from original test boundary vs replay test boundary
+2. **Identifies Errors:** Detects error types:
+   - Network errors (404, 500, timeout, connection refused)
+   - DOM errors (element not found, selector changed)
+   - Assertion failures (expected text missing)
+   - Timing issues (load timeout)
+3. **Suggests Root Causes:** Analyzes error patterns and proposes likely causes
+4. **Finds Git Context (if git_repo_path provided):**
+   - Identifies files that changed between commits
+   - Shows commits that touched affected code
+   - Highlights commits that might have introduced the issue
+5. **Ranks Confidence:** Marks suggestions as HIGH/MEDIUM/LOW based on error clarity
+
+**What You Get Back:**
+
+The skill returns a natural language analysis with:
+- **Root Cause:** Clear explanation of what's broken (e.g., "POST /api/order endpoint returns 404 because the endpoint was renamed to /api/orders")
+- **Confidence Level:** How confident the analysis is (HIGH if error is explicit, MEDIUM if pattern-based, LOW if speculative)
+- **Affected Files:** List of source files likely to need changes
+- **Suggested Fixes:** Specific code changes to try (file, line number, what to change, why)
+- **Related Commits:** If git available, shows commits that changed the affected code
+- **Error Evidence:** Direct quotes from error logs and screenshot paths
+
+**Example Response:**
+
+```
+ROOT CAUSE (HIGH confidence):
+The /api/order endpoint was renamed to /api/orders in commit abc123
+(PR #234 "Refactor API endpoints").
+
+AFFECTED FILES:
+- src/api/checkout.ts (line 45)
+- src/handlers/order.ts (line 123)
+
+SUGGESTED FIXES:
+1. In src/api/checkout.ts line 45:
+   Change: await fetch('/api/order', ...)
+   To: await fetch('/api/orders', ...)
+   Reason: Endpoint was renamed in refactor
+
+RELATED COMMITS:
+- Commit abc123 "Refactor API endpoints" (alice@company.com, Jan 28)
+  → This commit likely introduced the issue
+- Commit def456 "Fix: Restore /api/order endpoint" (bob@company.com, Jan 29)
+  → This commit attempted to fix it but was reverted
+
+ERROR LOG EVIDENCE:
+POST /api/order 404 Not Found
+at retry attempt 3/3
+
+SCREENSHOT: /recordings/checkout-flow/20260130-...-error.jpg
 ```
 
-**Safety Constraints:**
-- No auto-apply fixes; LLM must review and approve
-- Git operations read-only (no commits, pushes, or destructive operations)
-- Requires explicit opt-in from LLM to use git (optional parameter)
-- All suggestions ranked by confidence; speculative suggestions marked clearly
-- Audit trail logged: who ran skill, when, parameters, results
+**How to Use the Results:**
 
-**Usage Example:**
-```python
-# LLM invokes skill when regression detected
-skill_result = invoke_skill("gasoline-fix", {
-    "recording_id": "shopping-checkout-20260130T...",
-    "original_test_boundary": "shopping-checkout-original",
-    "replay_test_boundary": "shopping-checkout-replay",
-    "git_repo_path": "/home/dev/my-app"
-})
+1. **Review:** Read the root cause analysis and suggested fixes
+2. **Approve:** Decide if the suggestion makes sense (high confidence suggestions usually do)
+3. **Apply:** Implement the suggested fix in your code
+4. **Verify:** Re-run the recording playback to confirm the fix works
+5. **Report:** If fix resolves the issue, you have automated root cause analysis + fix verification
 
-# LLM reviews result
-print(f"Root Cause: {skill_result['root_cause']}")
-print(f"Confidence: {skill_result['confidence']}")
+**Safety Guardrails:**
 
-# LLM applies suggested fix and re-runs playback
-apply_suggested_fix(skill_result['suggested_fixes'][0])
-replay_recording(...)
+- ✅ Skill never auto-applies fixes; you must review and approve
+- ✅ Git operations are read-only (no commits, pushes, or destructive operations)
+- ✅ All suggestions ranked by confidence; you know which are speculative vs obvious
+- ✅ Full audit trail logged: who ran skill, when, parameters, results
+- ✅ Works without git (analyzes error logs only if git_repo_path omitted)
+
+**Common Workflows:**
+
+### Fast Path (High Confidence)
+```
+Playback shows: "POST /api/order 404"
+→ /gasoline-fix suggests: "Endpoint renamed to /api/orders"
+→ You apply fix, re-run playback, ✓ passes
+→ Done in 2 minutes
+```
+
+### Investigation Path (Low Confidence)
+```
+Playback shows: "Element not found: button.add-to-cart"
+→ /gasoline-fix suggests: (LOW confidence) "DOM structure changed or CSS selector is fragile"
+→ Related commits show UI refactor
+→ You review code, update selector to use data-testid, re-run
+→ ✓ passes
+```
+
+### No Git Available
+```
+Playback shows: "GET /user/profile timeout"
+→ /gasoline-fix analyzes error logs (no git)
+→ Suggests: "API endpoint may be slow or unavailable; check server logs"
+→ You investigate server metrics, find database query N+1 problem
+→ Fix applied, re-run, ✓ passes
 ```
 
 ---
