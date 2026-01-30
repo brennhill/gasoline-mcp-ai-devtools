@@ -83,7 +83,7 @@ export async function withTimeout<T>(
     ),
   ]).catch((err) => {
     if (err instanceof TimeoutError && err.fallback !== undefined) {
-      return err.fallback;
+      return err.fallback as T;
     }
     throw err;
   });
@@ -228,7 +228,7 @@ export async function promiseRaceWithCleanup<T>(
     ]);
   } catch (err) {
     if (err instanceof TimeoutError && err.fallback !== undefined) {
-      return err.fallback;
+      return err.fallback as T;
     }
     throw err;
   }

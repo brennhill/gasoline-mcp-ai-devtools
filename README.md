@@ -3,7 +3,7 @@
 <img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-5.2.0-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
+[![Version](https://img.shields.io/badge/version-5.2.5-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
@@ -87,9 +87,10 @@ curl http://localhost:7890/health
 {
   "mcpServers": {
     "gasoline": {
-      "type": "stdio",
+      "type": "sse",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+      "args": ["-y", "gasoline-mcp", "--port", "7890"],
+      "url": "http://localhost:7890/mcp/sse"
     }
   }
 }
@@ -100,17 +101,18 @@ curl http://localhost:7890/health
 {
   "mcpServers": {
     "gasoline": {
-      "type": "stdio",
+      "type": "sse",
       "command": "gasoline-mcp",
-      "args": ["--port", "7890", "--persist"]
+      "args": ["--port", "7890"],
+      "url": "http://localhost:7890/mcp/sse"
     }
   }
 }
 ```
 
-**Architecture:** The MCP system spawns a single Gasoline process that runs both:
-- HTTP server on port 7890 (for browser extension)
-- stdio MCP protocol (for AI tool)
+**Architecture:** The MCP system spawns a single Gasoline process that runs:
+- HTTP server on port 7890 (for browser extension + MCP)
+- SSE transport at `/mcp/sse` (MCP 2024-11-05 compliant)
 
 Both interfaces share the same browser telemetry state. Do NOT manually start Gasoline — let the MCP system manage the process lifecycle.
 
@@ -119,9 +121,10 @@ Both interfaces share the same browser telemetry state. Do NOT manually start Ga
 {
   "mcpServers": {
     "gasoline": {
-      "type": "stdio",
+      "type": "sse",
       "command": "go",
-      "args": ["run", "./cmd/dev-console", "--port", "7890", "--persist"]
+      "args": ["run", "./cmd/dev-console", "--port", "7890"],
+      "url": "http://localhost:7890/mcp/sse"
     }
   }
 }
@@ -221,11 +224,11 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 See [latest benchmarks](docs/benchmarks/latest-benchmark.md) for current performance data.
 
-Last benchmarked: 2026-01-28 on darwin/arm64 (v5.1.0)
+Last benchmarked: 2026-01-28 on darwin/arm64 (v5.2.5)
 
 ## Known Issues
 
-See [KNOWN-ISSUES.md](KNOWN-ISSUES.md) for current known issues and the v5.2 roadmap.
+See [docs/core/KNOWN-ISSUES.md](docs/core/KNOWN-ISSUES.md) for current known issues and the v5.3 roadmap.
 
 ## Development
 
@@ -235,7 +238,7 @@ node --test tests/extension/*.test.js  # Extension tests
 make dev                               # Build for current platform
 ```
 
-**[Release process & quality gates →](RELEASE.md)** · **[Changelog →](CHANGELOG.md)**
+**[Release process & quality gates →](docs/core/RELEASE.md)** · **[Changelog →](CHANGELOG.md)**
 
 ## License
 

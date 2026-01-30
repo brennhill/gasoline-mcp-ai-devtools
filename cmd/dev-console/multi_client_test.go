@@ -496,7 +496,7 @@ func TestHTTP_MCPWithClientID(t *testing.T) {
 	}
 	capture := NewCapture()
 
-	mcp := NewToolHandler(server, capture)
+	mcp := NewToolHandler(server, capture, nil)
 
 	// Send initialize request with X-Gasoline-Client header
 	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}}}`
@@ -529,7 +529,7 @@ func TestHTTP_MCPToolCallSetsClientID(t *testing.T) {
 	}
 	capture := NewCapture()
 
-	mcp := NewToolHandler(server, capture)
+	mcp := NewToolHandler(server, capture, nil)
 
 	// Add some log data for the observe tool
 	server.addEntries([]LogEntry{
@@ -570,7 +570,7 @@ func TestHTTP_MCPWithoutClientID(t *testing.T) {
 	}
 	capture := NewCapture()
 
-	mcp := NewToolHandler(server, capture)
+	mcp := NewToolHandler(server, capture, nil)
 
 	// Send request without X-Gasoline-Client — backwards compatibility
 	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}}}`
@@ -607,7 +607,7 @@ func TestIntegration_CheckpointWithMCPClientHeader(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	capture := NewCapture()
-	mcp := NewToolHandler(server, capture)
+	mcp := NewToolHandler(server, capture, nil)
 
 	clientA := "client-alpha"
 	clientB := "client-beta"
@@ -1183,7 +1183,7 @@ func TestConnectMode_FullLifecycle(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	capture := NewCapture()
-	mcp := NewToolHandler(server, capture)
+	mcp := NewToolHandler(server, capture, nil)
 
 	clientID := DeriveClientID("/home/alice/frontend")
 	cwd := "/home/alice/frontend"
@@ -1294,7 +1294,7 @@ func TestConnectMode_TwoClientsParallel(t *testing.T) {
 	var wg sync.WaitGroup
 	errors := make(chan string, 10)
 
-	mcp := NewToolHandler(server, capture)
+	mcp := NewToolHandler(server, capture, nil)
 
 	// Both clients make observe requests in parallel
 	for _, cid := range []string{clientA, clientB} {
@@ -1361,7 +1361,7 @@ func TestStress_ConcurrentMCPRequests(t *testing.T) {
 
 	// Single shared handler — like the real server where one handler
 	// processes requests from all connect-mode clients concurrently.
-	mcp := NewToolHandler(server, capture)
+	mcp := NewToolHandler(server, capture, nil)
 
 	for i := 0; i < numClients; i++ {
 		wg.Add(1)

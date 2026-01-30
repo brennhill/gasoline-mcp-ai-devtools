@@ -335,6 +335,7 @@ const (
 	ErrNoData            = "no_data"
 	ErrCodePilotDisabled = "pilot_disabled" // Named ErrCodePilotDisabled to avoid collision with var ErrPilotDisabled in pilot.go
 	ErrRateLimited       = "rate_limited"
+	ErrCursorExpired     = "cursor_expired" // Cursor pagination: buffer overflow evicted cursor position
 
 	// Communication errors — retry with backoff
 	ErrExtTimeout = "extension_timeout"
@@ -504,12 +505,15 @@ type ToolHandler struct {
 	// Rate limiter for MCP tool calls (sliding window)
 	toolCallLimiter *ToolCallLimiter
 
+	// SSE registry for MCP streaming transport
+	sseRegistry *SSERegistry
+
 	// Context streaming: active push notifications via MCP
 	streamState *StreamState
 }
 
 // NewToolHandler creates an MCP handler with composite tool capabilities
-func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
+func NewToolHandler(server *Server, capture *Capture, sseRegistry *SSERegistry) *MCPHandler {
 	handler := &ToolHandler{
 		MCPHandler:       NewMCPHandler(server),
 		capture:          capture,
@@ -517,6 +521,7 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 		noise:            NewNoiseConfig(),
 		captureOverrides: NewCaptureOverrides(),
 		clusters:         NewClusterManager(),
+		sseRegistry:      sseRegistry,
 	}
 
 	// Initialize persistent session store and temporal graph using CWD as project root.
@@ -554,7 +559,7 @@ func NewToolHandler(server *Server, capture *Capture) *MCPHandler {
 	handler.healthMetrics = NewHealthMetrics()
 	handler.verificationMgr = NewVerificationManager(&captureStateAdapter{capture: capture, server: server})
 	handler.toolCallLimiter = NewToolCallLimiter(100, time.Minute)
-	handler.streamState = NewStreamState()
+	handler.streamState = NewStreamState(sseRegistry)
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.
 	// Use SetOnEntries for thread-safe assignment (avoids racing with addEntries).
@@ -734,7 +739,7 @@ func (h *ToolHandler) toolsList() []MCPTool {
 	return []MCPTool{
 		{
 			Name:        "observe",
-			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes (what parameter): errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit (max entries), url (substring match), method, status_min, status_max, connection_id, direction, last_n, format, severity.\n\nMode responses: markdown tables for flat data (errors, logs, actions, etc.) or JSON for nested data (network_bodies, vitals, page, etc.). Check _meta.data_counts for available data.",
+			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format. Check _meta.data_counts for available data.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.",
 			Meta: map[string]interface{}{
 				"data_counts": map[string]interface{}{
 					"errors":            errorCount,
@@ -763,6 +768,23 @@ func (h *ToolHandler) toolsList() []MCPTool {
 					"limit": map[string]interface{}{
 						"type":        "number",
 						"description": "Maximum entries to return (applies to logs, network_waterfall, network_bodies, websocket_events, actions, audit_log)",
+					},
+					// Cursor-based pagination parameters (v5.3+)
+					"after_cursor": map[string]interface{}{
+						"type":        "string",
+						"description": "Return entries older than this cursor (backward pagination). Cursor format: 'timestamp:sequence' from previous response. Stable for live data - recommended for logs, websocket_events, actions. Example: '2026-01-30T10:15:23.456Z:1234'. Applies to: logs, websocket_events, actions, network_bodies.",
+					},
+					"before_cursor": map[string]interface{}{
+						"type":        "string",
+						"description": "Return entries newer than this cursor (forward pagination). Use to monitor new data that arrived since cursor. Cursor format: 'timestamp:sequence'. Applies to: logs, websocket_events, actions, network_bodies.",
+					},
+					"since_cursor": map[string]interface{}{
+						"type":        "string",
+						"description": "Return ALL entries newer than this cursor (inclusive, no limit). Convenience method for 'show me everything since X'. Cursor format: 'timestamp:sequence'. Applies to: logs, websocket_events, actions, network_bodies.",
+					},
+					"restart_on_eviction": map[string]interface{}{
+						"type":        "boolean",
+						"description": "If cursor expired (buffer overflow), automatically restart from oldest available entry instead of returning error. Use when pagination must continue despite data loss. Applies to: logs, websocket_events.",
 					},
 					"url": map[string]interface{}{
 						"type":        "string",
@@ -1010,7 +1032,7 @@ func (h *ToolHandler) toolsList() []MCPTool {
 		},
 		{
 			Name:        "configure",
-			Description: "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots & compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear browser logs), health (server health check). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: Browser logs cleared confirmation text\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
+			Description: "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots & compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear buffers - specify buffer parameter), health (server health check). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot, configure({action:'clear',buffer:'network'})→clear network buffers. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: {cleared, counts, total_cleared}\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
@@ -1080,6 +1102,11 @@ func (h *ToolHandler) toolsList() []MCPTool {
 					"reason": map[string]interface{}{
 						"type":        "string",
 						"description": "Why this is noise (applies to dismiss)",
+					},
+					"buffer": map[string]interface{}{
+						"type":        "string",
+						"description": "Which buffer to clear (applies to action: \"clear\"). Valid values: \"network\" (network_waterfall + network_bodies), \"websocket\" (websocket_events + websocket_status), \"actions\" (user interactions), \"logs\" (console + extension logs), \"all\" (everything). Default: \"logs\" (backward compatible).",
+						"enum":        []string{"network", "websocket", "actions", "logs", "all"},
 					},
 					// query_dom parameters
 					"selector": map[string]interface{}{
@@ -1250,13 +1277,10 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	var params struct {
 		What string `json:"what"`
 	}
-	var paramWarnings []string
 	if len(args) > 0 {
-		warnings, err := unmarshalWithWarnings(args, &params)
-		if err != nil {
+		if err := json.Unmarshal(args, &params); err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 		}
-		paramWarnings = warnings
 	}
 
 	if params.What == "" {
@@ -1333,9 +1357,6 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		resp = h.appendAlertsToResponse(resp, alerts)
 	}
 
-	// Append unknown parameter warnings
-	resp = appendWarningsToResponse(resp, paramWarnings)
-
 	return resp
 }
 
@@ -1382,17 +1403,14 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 	var params struct {
 		Format string `json:"format"`
 	}
-	var paramWarnings []string
 	if len(args) > 0 {
-		warnings, err := unmarshalWithWarnings(args, &params)
-		if err != nil {
+		if err := json.Unmarshal(args, &params); err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 		}
-		paramWarnings = warnings
 	}
 
 	if params.Format == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'format' is missing", "Add the 'format' parameter and call again", withParam("format"), withHint("Valid values: reproduction, test, pr_summary, sarif, har, csp, sri"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'format' is missing", "Add the 'format' parameter and call again", withParam("format"), withHint("Valid values: reproduction, test, pr_summary, sarif, har, csp, sri, test_from_context, test_heal, test_classify"))}
 	}
 
 	var resp JSONRPCResponse
@@ -1411,23 +1429,26 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 		resp = h.toolGenerateCSP(req, args)
 	case "sri":
 		resp = h.toolGenerateSRI(req, args)
+	case "test_from_context":
+		resp = h.handleGenerateTestFromContext(req, args)
+	case "test_heal":
+		resp = h.handleGenerateTestHeal(req, args)
+	case "test_classify":
+		resp = h.handleGenerateTestClassify(req, args)
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+params.Format, "Use a valid format from the 'format' enum", withParam("format"))}
 	}
-	return appendWarningsToResponse(resp, paramWarnings)
+	return resp
 }
 
 func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Action string `json:"action"`
 	}
-	var paramWarnings []string
 	if len(args) > 0 {
-		warnings, err := unmarshalWithWarnings(args, &params)
-		if err != nil {
+		if err := json.Unmarshal(args, &params); err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 		}
-		paramWarnings = warnings
 	}
 
 	if params.Action == "" {
@@ -1445,7 +1466,7 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 	case "dismiss":
 		resp = h.toolConfigureDismiss(req, args)
 	case "clear":
-		resp = h.toolClearBrowserLogs(req)
+		resp = h.toolConfigureClear(req, args)
 	case "capture":
 		resp = h.toolConfigureCapture(req, args)
 	case "record_event":
@@ -1465,7 +1486,7 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown configure action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
 	}
-	return appendWarningsToResponse(resp, paramWarnings)
+	return resp
 }
 
 // ============================================
@@ -1476,13 +1497,10 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	var params struct {
 		Action string `json:"action"`
 	}
-	var paramWarnings []string
 	if len(args) > 0 {
-		warnings, err := unmarshalWithWarnings(args, &params)
-		if err != nil {
+		if err := json.Unmarshal(args, &params); err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 		}
-		paramWarnings = warnings
 	}
 
 	if params.Action == "" {
@@ -1516,7 +1534,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
 	}
-	return appendWarningsToResponse(resp, paramWarnings)
+	return resp
 }
 
 // ============================================
@@ -1525,102 +1543,208 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 
 func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
-		Limit int `json:"limit"`
-		TabId int `json:"tab_id"` // Filter by Chrome tab ID (0 = no filter)
+		Limit             int    `json:"limit"`
+		TabId             int    `json:"tab_id"` // Filter by Chrome tab ID (0 = no filter)
+		AfterCursor       string `json:"after_cursor"`
+		BeforeCursor      string `json:"before_cursor"`
+		SinceCursor       string `json:"since_cursor"`
+		RestartOnEviction bool   `json:"restart_on_eviction"`
 	}
 	if len(args) > 0 {
-		// Error acceptable: limit is optional, defaults to 0 (no limit)
+		// Error acceptable: params are optional
 		_ = json.Unmarshal(args, &arguments)
 	}
 
 	h.server.mu.RLock()
 	defer h.server.mu.RUnlock()
 
-	var errors []LogEntry
-	for _, entry := range h.server.entries {
-		if level, ok := entry["level"].(string); ok && level == "error" {
-			if h.noise != nil && h.noise.IsConsoleNoise(entry) {
-				continue
-			}
-			// Apply tab_id filter if specified
-			if arguments.TabId > 0 {
-				if entryTabId, ok := entry["tabId"].(float64); !ok || int(entryTabId) != arguments.TabId {
-					continue
-				}
-			}
-			errors = append(errors, entry)
+	// Enrich entries with sequence numbers BEFORE filtering (critical for correct sequences)
+	enriched := EnrichLogEntries(h.server.entries, h.server.logTotalAdded)
+
+	// Apply level filtering (errors only)
+	var errors []LogEntryWithSequence
+	for _, e := range enriched {
+		if level, ok := e.Entry["level"].(string); ok && level == "error" {
+			errors = append(errors, e)
 		}
 	}
-
-	// Apply limit (last N errors)
-	if arguments.Limit > 0 && arguments.Limit < len(errors) {
-		errors = errors[len(errors)-arguments.Limit:]
-	}
-
-	if len(errors) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("No browser errors found")}
-	}
-
-	summary := fmt.Sprintf("%d browser error(s)", len(errors))
-	if warning := checkLogQuality(errors); warning != "" {
-		summary += "\n" + warning
-	}
-	rows := make([][]string, len(errors))
-	for i, e := range errors {
-		rows[i] = []string{
-			entryStr(e, "level"),
-			truncate(entryStr(e, "message"), 80),
-			entryStr(e, "source"),
-			entryStr(e, "ts"),
-			entryDisplay(e, "tabId"),
-		}
-	}
-	table := markdownTable([]string{"Level", "Message", "Source", "Time", "Tab"}, rows)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
-}
-
-func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var arguments struct {
-		Limit int `json:"limit"`
-		TabId int `json:"tab_id"` // Filter by Chrome tab ID (0 = no filter)
-	}
-	if len(args) > 0 {
-		// Error acceptable: limit is optional, defaults to 0 (no limit)
-		_ = json.Unmarshal(args, &arguments)
-	}
-
-	h.server.mu.RLock()
-	defer h.server.mu.RUnlock()
-
-	entries := h.server.entries
 
 	// Apply noise filtering
 	if h.noise != nil {
-		var filtered []LogEntry
-		for _, entry := range entries {
-			if !h.noise.IsConsoleNoise(entry) {
-				filtered = append(filtered, entry)
+		var filtered []LogEntryWithSequence
+		for _, e := range errors {
+			if !h.noise.IsConsoleNoise(e.Entry) {
+				filtered = append(filtered, e)
 			}
 		}
-		entries = filtered
+		errors = filtered
 	}
 
 	// Apply tab_id filter if specified
 	if arguments.TabId > 0 {
-		var filtered []LogEntry
-		for _, entry := range entries {
-			if entryTabId, ok := entry["tabId"].(float64); ok && int(entryTabId) == arguments.TabId {
-				filtered = append(filtered, entry)
+		var filtered []LogEntryWithSequence
+		for _, e := range errors {
+			if entryTabId, ok := e.Entry["tabId"].(float64); ok && int(entryTabId) == arguments.TabId {
+				filtered = append(filtered, e)
 			}
 		}
-		entries = filtered
+		errors = filtered
 	}
 
-	if arguments.Limit > 0 && arguments.Limit < len(entries) {
-		entries = entries[len(entries)-arguments.Limit:]
+	// Apply cursor-based pagination
+	result, metadata, err := ApplyLogCursorPagination(
+		errors,
+		arguments.AfterCursor,
+		arguments.BeforeCursor,
+		arguments.SinceCursor,
+		arguments.Limit,
+		arguments.RestartOnEviction,
+	)
+	if err != nil {
+		// Cursor expired error
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrCursorExpired,
+			err.Error(),
+			"Use restart_on_eviction=true to auto-restart from oldest available entry, or fetch from beginning",
+		)}
 	}
 
-	if len(entries) == 0 {
+	// Empty result case
+	if len(result) == 0 {
+		msg := "No browser errors found"
+
+		// Get tracked tab ID for metadata (v5.3+)
+		_, trackedTabID, _ := h.capture.GetTrackingStatus()
+
+		// Return JSON response with cursor metadata
+		data := map[string]interface{}{
+			"errors": []interface{}{},
+			"count":  0,
+			"total":  metadata.Total,
+		}
+		if metadata.Warning != "" {
+			data["warning"] = metadata.Warning
+		}
+		// Add tracked_tab_id metadata if tracking is active (v5.3+)
+		if trackedTabID > 0 {
+			data["tracked_tab_id"] = trackedTabID
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(msg, data)}
+	}
+
+	// Serialize entries to JSON format
+	jsonErrors := make([]map[string]interface{}, len(result))
+	for i, e := range result {
+		jsonErrors[i] = SerializeLogEntryWithSequence(e)
+	}
+
+	// Get tracked tab ID for metadata (v5.3+)
+	_, trackedTabID, _ := h.capture.GetTrackingStatus()
+
+	// Build response data with cursor metadata
+	data := map[string]interface{}{
+		"errors": jsonErrors,
+		"count":  metadata.Count,
+		"total":  metadata.Total,
+	}
+
+	if metadata.Cursor != "" {
+		data["cursor"] = metadata.Cursor
+	}
+	if metadata.OldestTimestamp != "" {
+		data["oldest_timestamp"] = metadata.OldestTimestamp
+	}
+	if metadata.NewestTimestamp != "" {
+		data["newest_timestamp"] = metadata.NewestTimestamp
+	}
+	if metadata.HasMore {
+		data["has_more"] = true
+	}
+	if metadata.CursorRestarted {
+		data["cursor_restarted"] = true
+		data["original_cursor"] = metadata.OriginalCursor
+	}
+	if metadata.Warning != "" {
+		data["warning"] = metadata.Warning
+	}
+	// Add tracked_tab_id metadata if tracking is active (v5.3+)
+	if trackedTabID > 0 {
+		data["tracked_tab_id"] = trackedTabID
+	}
+
+	summary := fmt.Sprintf("%d browser error(s)", metadata.Count)
+	if metadata.CursorRestarted {
+		summary += " (cursor restarted after buffer overflow)"
+	}
+	if warning := checkLogQuality(h.server.entries); warning != "" {
+		summary += "\n" + warning
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
+}
+
+func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var arguments struct {
+		Limit             int    `json:"limit"`
+		TabId             int    `json:"tab_id"` // Filter by Chrome tab ID (0 = no filter)
+		AfterCursor       string `json:"after_cursor"`
+		BeforeCursor      string `json:"before_cursor"`
+		SinceCursor       string `json:"since_cursor"`
+		RestartOnEviction bool   `json:"restart_on_eviction"`
+	}
+	if len(args) > 0 {
+		// Error acceptable: params are optional
+		_ = json.Unmarshal(args, &arguments)
+	}
+
+	h.server.mu.RLock()
+	defer h.server.mu.RUnlock()
+
+	// Enrich entries with sequence numbers BEFORE filtering (critical for correct sequences)
+	enriched := EnrichLogEntries(h.server.entries, h.server.logTotalAdded)
+
+	// Apply noise filtering
+	if h.noise != nil {
+		var filtered []LogEntryWithSequence
+		for _, e := range enriched {
+			if !h.noise.IsConsoleNoise(e.Entry) {
+				filtered = append(filtered, e)
+			}
+		}
+		enriched = filtered
+	}
+
+	// Apply tab_id filter if specified
+	if arguments.TabId > 0 {
+		var filtered []LogEntryWithSequence
+		for _, e := range enriched {
+			if entryTabId, ok := e.Entry["tabId"].(float64); ok && int(entryTabId) == arguments.TabId {
+				filtered = append(filtered, e)
+			}
+		}
+		enriched = filtered
+	}
+
+	// Apply cursor-based pagination
+	result, metadata, err := ApplyLogCursorPagination(
+		enriched,
+		arguments.AfterCursor,
+		arguments.BeforeCursor,
+		arguments.SinceCursor,
+		arguments.Limit,
+		arguments.RestartOnEviction,
+	)
+	if err != nil {
+		// Cursor expired error
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrCursorExpired,
+			err.Error(),
+			"Use restart_on_eviction=true to auto-restart from oldest available entry, or fetch from beginning",
+		)}
+	}
+
+	// Empty result case
+	if len(result) == 0 {
 		msg := "No browser logs found"
 		if h.captureOverrides != nil {
 			overrides := h.captureOverrides.GetAll()
@@ -1635,25 +1759,75 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 				msg += "\n\nlog_level is 'warn' (errors + warnings only). To capture all console output, call:\nconfigure({action: \"capture\", settings: {log_level: \"all\"}})"
 			}
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(msg)}
+
+		// Get tracked tab ID for metadata (v5.3+)
+		_, trackedTabID, _ := h.capture.GetTrackingStatus()
+
+		// Return JSON response with cursor metadata
+		data := map[string]interface{}{
+			"logs":  []interface{}{},
+			"count": 0,
+			"total": len(h.server.entries),
+		}
+		if metadata.Warning != "" {
+			data["warning"] = metadata.Warning
+		}
+		// Add tracked_tab_id metadata if tracking is active (v5.3+)
+		if trackedTabID > 0 {
+			data["tracked_tab_id"] = trackedTabID
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(msg, data)}
 	}
 
-	summary := fmt.Sprintf("%d log entries", len(entries))
-	if warning := checkLogQuality(entries); warning != "" {
+	// Serialize entries to JSON format
+	jsonLogs := make([]map[string]interface{}, len(result))
+	for i, e := range result {
+		jsonLogs[i] = SerializeLogEntryWithSequence(e)
+	}
+
+	// Get tracked tab ID for metadata (v5.3+)
+	_, trackedTabID, _ := h.capture.GetTrackingStatus()
+
+	// Build response data with cursor metadata
+	data := map[string]interface{}{
+		"logs":  jsonLogs,
+		"count": metadata.Count,
+		"total": metadata.Total,
+	}
+
+	if metadata.Cursor != "" {
+		data["cursor"] = metadata.Cursor
+	}
+	if metadata.OldestTimestamp != "" {
+		data["oldest_timestamp"] = metadata.OldestTimestamp
+	}
+	if metadata.NewestTimestamp != "" {
+		data["newest_timestamp"] = metadata.NewestTimestamp
+	}
+	if metadata.HasMore {
+		data["has_more"] = true
+	}
+	if metadata.CursorRestarted {
+		data["cursor_restarted"] = true
+		data["original_cursor"] = metadata.OriginalCursor
+	}
+	if metadata.Warning != "" {
+		data["warning"] = metadata.Warning
+	}
+	// Add tracked_tab_id metadata if tracking is active (v5.3+)
+	if trackedTabID > 0 {
+		data["tracked_tab_id"] = trackedTabID
+	}
+
+	summary := fmt.Sprintf("%d log entries", len(result))
+	if metadata.CursorRestarted {
+		summary += " (cursor restarted after buffer overflow)"
+	}
+	if warning := checkLogQuality(h.server.entries); warning != "" {
 		summary += "\n" + warning
 	}
-	rows := make([][]string, len(entries))
-	for i, e := range entries {
-		rows[i] = []string{
-			entryStr(e, "level"),
-			truncate(entryStr(e, "message"), 80),
-			entryStr(e, "source"),
-			entryStr(e, "ts"),
-			entryDisplay(e, "tabId"),
-		}
-	}
-	table := markdownTable([]string{"Level", "Message", "Source", "Time", "Tab"}, rows)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
 }
 
 func (h *ToolHandler) toolGetExtensionLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -1701,9 +1875,64 @@ func (h *ToolHandler) toolGetExtensionLogs(req JSONRPCRequest, args json.RawMess
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
 }
 
-func (h *ToolHandler) toolClearBrowserLogs(req JSONRPCRequest) JSONRPCResponse {
-	h.server.clearEntries()
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Browser logs cleared successfully")}
+// toolConfigureClear handles buffer-specific clearing with optional buffer parameter.
+func (h *ToolHandler) toolConfigureClear(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Buffer string `json:"buffer"` // "network", "websocket", "actions", "logs", "all"
+	}
+	_ = json.Unmarshal(args, &params)
+
+	// Default to "logs" for backward compatibility
+	if params.Buffer == "" {
+		params.Buffer = "logs"
+	}
+
+	var counts BufferClearCounts
+	var bufferName string
+
+	switch params.Buffer {
+	case "network":
+		counts = h.capture.ClearNetworkBuffers()
+		bufferName = "network"
+
+	case "websocket":
+		counts = h.capture.ClearWebSocketBuffers()
+		bufferName = "websocket"
+
+	case "actions":
+		counts = h.capture.ClearActionBuffer()
+		bufferName = "actions"
+
+	case "logs":
+		counts = ClearLogBuffers(h.server, h.capture)
+		bufferName = "logs"
+
+	case "all":
+		counts = ClearAllBuffers(h.server, h.capture)
+		bufferName = "all"
+
+	default:
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result: mcpStructuredError(
+				ErrInvalidParam,
+				fmt.Sprintf("Invalid buffer: %s", params.Buffer),
+				"Use one of: network, websocket, actions, logs, all",
+				withParam("buffer"),
+			),
+		}
+	}
+
+	data := map[string]interface{}{
+		"cleared":       bufferName,
+		"counts":        counts,
+		"total_cleared": counts.Total(),
+		"timestamp":     time.Now().Format(time.RFC3339),
+	}
+
+	summary := fmt.Sprintf("Cleared %s buffer(s): %d total items", bufferName, counts.Total())
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
 }
 
 // ============================================

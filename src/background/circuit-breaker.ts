@@ -5,6 +5,9 @@
 
 import type { CircuitBreakerState, CircuitBreakerStats } from '../types';
 
+// Re-export types for external use
+export type { CircuitBreakerState, CircuitBreakerStats };
+
 /** Circuit breaker options */
 export interface CircuitBreakerOptions {
   maxFailures?: number;

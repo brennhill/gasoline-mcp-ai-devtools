@@ -3,15 +3,34 @@
  * storage change listeners, and other Chrome extension events.
  */
 // =============================================================================
-// CONSTANTS
+// CONSTANTS - Rate Limiting & DoS Protection
 // =============================================================================
-/** Reconnect interval in minutes */
+/**
+ * Reconnect interval: 5 seconds
+ * DoS Protection: If MCP server is down, we check every 5s (circuit breaker
+ * will back off exponentially if failures continue).
+ * Ensures connection restored quickly when server comes back up.
+ */
 const RECONNECT_INTERVAL_MINUTES = 5 / 60; // 5 seconds in minutes
-/** Error group flush interval in minutes */
+/**
+ * Error group flush interval: 30 seconds
+ * DoS Protection: Deduplicates identical errors within a 5-second window
+ * before sending to server. Reduces network traffic and API quota usage.
+ * Flushed every 30 seconds to keep errors reasonably fresh.
+ */
 const ERROR_GROUP_FLUSH_INTERVAL_MINUTES = 0.5; // 30 seconds
-/** Memory check interval in minutes */
+/**
+ * Memory check interval: 30 seconds
+ * DoS Protection: Monitors estimated buffer memory and triggers circuit breaker
+ * if soft limit (20MB) or hard limit (50MB) is exceeded.
+ * Prevents memory exhaustion from unbounded capture buffer growth.
+ */
 const MEMORY_CHECK_INTERVAL_MINUTES = 0.5; // 30 seconds
-/** Error group cleanup interval in minutes */
+/**
+ * Error group cleanup interval: 10 minutes
+ * DoS Protection: Removes stale error group deduplication state that is >5min old.
+ * Prevents unbounded growth of error group metadata.
+ */
 const ERROR_GROUP_CLEANUP_INTERVAL_MINUTES = 10;
 // =============================================================================
 // ALARM NAMES
@@ -27,6 +46,15 @@ export const ALARM_NAMES = {
 // =============================================================================
 /**
  * Setup Chrome alarms for periodic tasks
+ *
+ * RATE LIMITING & DoS PROTECTION:
+ * 1. RECONNECT (5s): Maintains MCP connection with exponential backoff
+ * 2. ERROR_GROUP_FLUSH (30s): Deduplicates errors, reduces server load
+ * 3. MEMORY_CHECK (30s): Monitors buffer memory, prevents exhaustion
+ * 4. ERROR_GROUP_CLEANUP (10min): Removes stale deduplication state
+ *
+ * Note: Alarms are re-created on service worker startup (not persistent)
+ * If service worker restarts, alarms must be recreated by this function
  */
 export function setupChromeAlarms() {
     if (typeof chrome === 'undefined' || !chrome.alarms)
@@ -74,17 +102,28 @@ export function installTabRemovedListener(onTabRemoved) {
 }
 /**
  * Handle tracked tab being closed
+ * SECURITY: Clears ephemeral tracking state when tab closes
+ * Uses session storage for ephemeral tab tracking data
  */
 export function handleTrackedTabClosed(closedTabId, logFn) {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
-    chrome.storage.local.get(['trackedTabId'], (result) => {
-        if (result.trackedTabId === closedTabId) {
-            if (logFn)
-                logFn('[Gasoline] Tracked tab closed (id:', closedTabId);
-            chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl']);
-        }
-    });
+    // Check both session and local storage for backward compatibility
+    const checkStorageArea = (area) => {
+        chrome.storage[area].get(['trackedTabId'], (result) => {
+            if (result.trackedTabId === closedTabId) {
+                if (logFn)
+                    logFn('[Gasoline] Tracked tab closed (id:', closedTabId);
+                chrome.storage[area].remove(['trackedTabId', 'trackedTabUrl']);
+            }
+        });
+    };
+    // Check local storage (legacy)
+    checkStorageArea('local');
+    // Check session storage (modern)
+    if (chrome.storage.session) {
+        checkStorageArea('session');
+    }
 }
 // =============================================================================
 // STORAGE LISTENERS
@@ -243,19 +282,23 @@ export function saveSetting(key, value) {
         return;
     chrome.storage.local.set({ [key]: value });
 }
-/**
- * Get tracked tab information
- */
-export async function getTrackedTabInfo() {
-    if (typeof chrome === 'undefined' || !chrome.storage) {
-        return { trackedTabId: null, trackedTabUrl: null };
+// Implementation
+export function getTrackedTabInfo(callback) {
+    if (!callback) {
+        // Promise-based version
+        return new Promise((resolve) => {
+            getTrackedTabInfo((info) => resolve(info));
+        });
     }
-    return new Promise((resolve) => {
-        chrome.storage.local.get(['trackedTabId', 'trackedTabUrl'], (result) => {
-            resolve({
-                trackedTabId: result.trackedTabId || null,
-                trackedTabUrl: result.trackedTabUrl || null,
-            });
+    // Callback-based version
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+        callback({ trackedTabId: null, trackedTabUrl: null });
+        return;
+    }
+    chrome.storage.local.get(['trackedTabId', 'trackedTabUrl'], (result) => {
+        callback({
+            trackedTabId: result.trackedTabId || null,
+            trackedTabUrl: result.trackedTabUrl || null,
         });
     });
 }
@@ -267,26 +310,30 @@ export function clearTrackedTab() {
         return;
     chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl']);
 }
-/**
- * Get all extension config settings
- */
-export async function getAllConfigSettings() {
-    if (typeof chrome === 'undefined' || !chrome.storage) {
-        return {};
-    }
-    return new Promise((resolve) => {
-        chrome.storage.local.get([
-            'aiWebPilotEnabled',
-            'webSocketCaptureEnabled',
-            'networkWaterfallEnabled',
-            'performanceMarksEnabled',
-            'actionReplayEnabled',
-            'screenshotOnError',
-            'sourceMapEnabled',
-            'networkBodyCaptureEnabled',
-        ], (result) => {
-            resolve(result);
+// Implementation
+export function getAllConfigSettings(callback) {
+    if (!callback) {
+        // Promise-based version
+        return new Promise((resolve) => {
+            getAllConfigSettings((settings) => resolve(settings));
         });
+    }
+    // Callback-based version
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+        callback({});
+        return;
+    }
+    chrome.storage.local.get([
+        'aiWebPilotEnabled',
+        'webSocketCaptureEnabled',
+        'networkWaterfallEnabled',
+        'performanceMarksEnabled',
+        'actionReplayEnabled',
+        'screenshotOnError',
+        'sourceMapEnabled',
+        'networkBodyCaptureEnabled',
+    ], (result) => {
+        callback(result);
     });
 }
 //# sourceMappingURL=event-listeners.js.map

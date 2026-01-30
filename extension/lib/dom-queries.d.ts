@@ -3,7 +3,7 @@
  * Provides structured DOM querying, page info extraction, and
  * accessibility auditing via axe-core.
  */
-interface DOMQueryParams {
+export interface DOMQueryParams {
     selector: string;
     include_styles?: boolean;
     properties?: string[];

@@ -4,7 +4,7 @@
  * enriching errors with AI context before posting via bridge.
  */
 
-import { postLog } from './bridge';
+import { postLog, type BridgePayload } from './bridge';
 import { enrichErrorWithAiContext } from './ai-context';
 
 interface ExceptionEntry extends Record<string, unknown> {
@@ -19,13 +19,7 @@ interface ExceptionEntry extends Record<string, unknown> {
 }
 
 // Exception capture state
-let originalOnerror: ((
-  message: string,
-  filename?: string,
-  lineno?: number,
-  colno?: number,
-  error?: Error,
-) => boolean | void) | null = null;
+let originalOnerror: OnErrorEventHandler | null = null;
 let unhandledrejectionHandler: ((event: PromiseRejectionEvent) => void) | null = null;
 
 /**
@@ -57,15 +51,15 @@ export function installExceptionCapture(): void {
     void (async (): Promise<void> => {
       try {
         const enriched = await enrichErrorWithAiContext(entry);
-        postLog(enriched);
+        postLog(enriched as unknown as BridgePayload);
       } catch {
-        postLog(entry);
+        postLog(entry as unknown as BridgePayload);
       }
     })().catch((err: Error) => {
       console.error('[Gasoline] Exception enrichment error:', err);
       // Fallback: ensure entry is logged even if something fails
       try {
-        postLog(entry);
+        postLog(entry as unknown as BridgePayload);
       } catch (postErr) {
         console.error('[Gasoline] Failed to log entry:', postErr);
       }
@@ -104,15 +98,15 @@ export function installExceptionCapture(): void {
     void (async (): Promise<void> => {
       try {
         const enriched = await enrichErrorWithAiContext(entry);
-        postLog(enriched);
+        postLog(enriched as unknown as BridgePayload);
       } catch {
-        postLog(entry);
+        postLog(entry as unknown as BridgePayload);
       }
     })().catch((err: Error) => {
       console.error('[Gasoline] Exception enrichment error:', err);
       // Fallback: ensure entry is logged even if something fails
       try {
-        postLog(entry);
+        postLog(entry as unknown as BridgePayload);
       } catch (postErr) {
         console.error('[Gasoline] Failed to log entry:', postErr);
       }

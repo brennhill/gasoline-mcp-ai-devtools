@@ -1,3 +1,6 @@
+// Extension internal logs endpoint
+// Receives log entries from browser extension contexts (background, content scripts).
+// Enables AI debugging of extension-internal behavior not visible through page-level capture.
 package main
 
 import (

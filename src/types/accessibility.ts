@@ -1,0 +1,48 @@
+/**
+ * @fileoverview Accessibility Types
+ * Accessibility audit results and violations
+ */
+
+/**
+ * Accessibility violation node
+ */
+export interface A11yViolationNode {
+  readonly html: string;
+  readonly target: readonly string[];
+  readonly failureSummary: string;
+}
+
+/**
+ * Accessibility violation
+ */
+export interface A11yViolation {
+  readonly id: string;
+  readonly impact: string;
+  readonly description: string;
+  readonly help: string;
+  readonly helpUrl: string;
+  readonly nodes: readonly A11yViolationNode[];
+}
+
+/**
+ * Accessibility audit result
+ */
+export interface A11yAuditResult {
+  readonly violations: readonly A11yViolation[];
+  readonly passes: readonly {
+    readonly id: string;
+    readonly description: string;
+    readonly nodes: readonly { html: string; target: string[] }[];
+  }[];
+  readonly incomplete: readonly {
+    readonly id: string;
+    readonly description: string;
+    readonly nodes: readonly { html: string; target: string[] }[];
+  }[];
+  readonly inapplicable: readonly { id: string; description: string }[];
+  readonly summary?: {
+    readonly violationCount: number;
+    readonly passCount: number;
+  };
+  readonly error?: string;
+}

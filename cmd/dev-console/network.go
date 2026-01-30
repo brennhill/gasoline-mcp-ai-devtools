@@ -224,12 +224,21 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 	}
 
 	if len(bodies) == 0 {
+		// Get tracked tab ID for metadata (v5.3+)
+		_, trackedTabID, _ := h.capture.GetTrackingStatus()
+
 		data := map[string]interface{}{
 			"network_request_response_pairs": []interface{}{},
 			"count":                       0,
 			"max_request_body_bytes":         8192,
 			"max_response_body_bytes":        16384,
 		}
+
+		// Add tracked_tab_id metadata if tracking is active (v5.3+)
+		if trackedTabID > 0 {
+			data["tracked_tab_id"] = trackedTabID
+		}
+
 		if h.captureOverrides != nil {
 			overrides := h.captureOverrides.GetAll()
 			if overrides["network_bodies"] == "false" {
@@ -307,11 +316,19 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		}
 	}
 
+	// Get tracked tab ID for metadata (v5.3+)
+	_, trackedTabID, _ := h.capture.GetTrackingStatus()
+
 	data := map[string]interface{}{
 		"network_request_response_pairs": jsonPairs,
 		"count":                       len(bodies),
 		"max_request_body_bytes":         8192,
 		"max_response_body_bytes":        16384,
+	}
+
+	// Add tracked_tab_id metadata if tracking is active (v5.3+)
+	if trackedTabID > 0 {
+		data["tracked_tab_id"] = trackedTabID
 	}
 
 	summary := fmt.Sprintf("%d network request-response pair(s)", len(bodies))
@@ -351,6 +368,9 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 
 	// Empty buffer case
 	if len(entries) == 0 {
+		// Get tracked tab ID for metadata (v5.3+)
+		_, trackedTabID, _ := h.capture.GetTrackingStatus()
+
 		data := map[string]interface{}{
 			"entries":     []interface{}{},
 			"count":       0,
@@ -360,6 +380,10 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 				"No request/response headers or bodies",
 			},
 			"hint": "Network waterfall data comes from the PerformanceResourceTiming API. Ensure the extension is active and a page is loaded.",
+		}
+		// Add tracked_tab_id metadata if tracking is active (v5.3+)
+		if trackedTabID > 0 {
+			data["tracked_tab_id"] = trackedTabID
 		}
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("", data)}
 	}
@@ -395,6 +419,9 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 		}
 	}
 
+	// Get tracked tab ID for metadata (v5.3+)
+	_, trackedTabID, _ := h.capture.GetTrackingStatus()
+
 	data := map[string]interface{}{
 		"entries":          jsonEntries,
 		"count":            len(entries),
@@ -406,6 +433,10 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 			"No request methods (GET/POST/etc.)",
 			"No request/response headers or bodies",
 		},
+	}
+	// Add tracked_tab_id metadata if tracking is active (v5.3+)
+	if trackedTabID > 0 {
+		data["tracked_tab_id"] = trackedTabID
 	}
 
 	summary := fmt.Sprintf("%d network waterfall entries (timespan: %s)", len(entries), formatDuration(timeRange))

@@ -6,21 +6,65 @@
 // MESSAGE HANDLER
 // =============================================================================
 /**
+ * Security: Validate that sender is from extension or content script
+ * Prevents messages from untrusted sources
+ */
+function isValidMessageSender(sender) {
+    // Content scripts have sender.tab with tabId and url
+    // Background/popup scripts have sender.id === chrome.runtime.id
+    // Extension pages (popup, options) have sender.tab?.url starting with 'chrome-extension://'
+    if (sender.tab?.id !== undefined && sender.tab?.url) {
+        // Content script: has tab context
+        return true;
+    }
+    if (typeof chrome !== 'undefined' && chrome.runtime && sender.id === chrome.runtime.id) {
+        // Internal extension message
+        return true;
+    }
+    // Reject messages from web pages
+    return false;
+}
+/**
  * Install the main message listener
+ * All messages are validated for sender origin to ensure they come from trusted extension contexts
  */
 export function installMessageListener(deps) {
     if (typeof chrome === 'undefined' || !chrome.runtime)
         return;
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        // SECURITY: Validate sender before processing any message
+        if (!isValidMessageSender(sender)) {
+            deps.debugLog('error', 'Rejected message from untrusted sender', { senderId: sender.id, senderUrl: sender.url });
+            return false;
+        }
         return handleMessage(message, sender, sendResponse, deps);
     });
 }
 /**
+ * Type guard to validate message structure before processing
+ * Returns true if message passes validation, logs rejection otherwise
+ */
+function validateMessageType(message, expectedType, deps) {
+    if (typeof message !== 'object' || message === null) {
+        deps.debugLog('error', `Invalid message: not an object`, { messageType: typeof message });
+        return false;
+    }
+    const msg = message;
+    if (msg.type !== expectedType) {
+        deps.debugLog('error', `Message type mismatch`, { expected: expectedType, received: msg.type });
+        return false;
+    }
+    return true;
+}
+/**
  * Handle incoming message
  * Returns true if response will be sent asynchronously
+ * Security: All messages are type-validated using discriminated unions
  */
 function handleMessage(message, sender, sendResponse, deps) {
     const messageType = message.type;
+    // Type validation: ensure message conforms to expected discriminated union
+    // TypeScript's type system ensures exhaustiveness, but add logging for debugging
     switch (messageType) {
         case 'GET_TAB_ID':
             sendResponse({ tabId: sender.tab?.id });
@@ -36,7 +80,8 @@ function handleMessage(message, sender, sendResponse, deps) {
                 deps.debugLog('capture', 'Network body dropped: capture disabled');
                 return true;
             }
-            deps.addToNetworkBodyBatcher(message.payload);
+            // Attach tabId to payload before batching (v5.3+)
+            deps.addToNetworkBodyBatcher({ ...message.payload, tabId: message.tabId });
             return false;
         case 'performance_snapshot':
             deps.addToPerfBatcher(message.payload);

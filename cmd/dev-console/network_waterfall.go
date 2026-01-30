@@ -1,3 +1,6 @@
+// Network waterfall data handler
+// Receives PerformanceResourceTiming data from browser extension.
+// Used for CSP policy generation and security analysis.
 package main
 
 import (

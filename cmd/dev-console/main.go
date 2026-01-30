@@ -27,14 +27,25 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "5.2.0"
+var version = "5.3.0"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
 
+// GitHub version checking state
+var (
+	availableVersion string
+	lastVersionCheck time.Time
+	versionCheckMu   sync.Mutex
+)
+
 const (
-	defaultPort       = 7890
-	defaultMaxEntries = 1000
+	defaultPort           = 7890
+	defaultMaxEntries     = 1000
+	githubAPIURL          = "https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest"
+	versionCheckCacheTTL  = 6 * time.Hour
+	versionCheckInterval  = 24 * time.Hour
+	httpClientTimeout     = 10 * time.Second
 )
 
 // LogEntry represents a single log entry
@@ -93,6 +104,7 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	sessionID := r.Header.Get("X-Gasoline-Session")
 	clientID := r.Header.Get("X-Gasoline-Client")
+	extensionVersion := r.Header.Get("X-Gasoline-Extension-Version")
 
 	// Collect all headers for debug logging (redact auth)
 	headers := make(map[string]string)
@@ -102,6 +114,11 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 		} else if len(values) > 0 {
 			headers[name] = values[0]
 		}
+	}
+
+	// Log version mismatch if detected
+	if extensionVersion != "" && extensionVersion != version {
+		fmt.Fprintf(os.Stderr, "[gasoline] Version mismatch: server=%s extension=%s\n", version, extensionVersion)
 	}
 
 	if r.Method != "POST" {
@@ -1017,6 +1034,7 @@ func main() {
 	persistMode := flag.Bool("persist", true, "Keep server running after MCP client disconnects (default: true)")
 	connectMode := flag.Bool("connect", false, "Connect to existing server (multi-client mode)")
 	clientID := flag.String("client-id", "", "Override client ID (default: derived from CWD)")
+	bridgeMode := flag.Bool("bridge", false, "Run as stdio-to-HTTP bridge (spawns daemon if needed)")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 
 	flag.Parse()
@@ -1066,6 +1084,20 @@ func main() {
 	}
 
 	// Always run in MCP mode: HTTP server for browser extension + MCP protocol over stdio
+	// Bridge mode: stdio-to-HTTP proxy (spawns daemon if needed)
+	if *bridgeMode {
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "bridge_mode_start",
+			"pid":       os.Getpid(),
+			"port":      *port,
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
+		fmt.Fprintf(os.Stderr, "[gasoline] Starting in bridge mode (stdio -> HTTP)\n")
+		runBridgeMode(*port)
+		return
+	}
+
 	// Determine if stdin is TTY (user ran "gasoline" interactively) or piped (launched by MCP host)
 	stat, err := os.Stdin.Stat()
 	var isTTY bool
@@ -1284,10 +1316,16 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 		"timestamp":       time.Now().UTC().Format(time.RFC3339),
 	}})
 
+	// Create SSE registry for MCP connections
+	sseRegistry := NewSSERegistry()
+
 	// Register HTTP routes before starting the goroutine.
 	// This avoids fragile ordering where route registration in a goroutine
 	// relies on implicit happens-before guarantees from the channel.
-	setupHTTPRoutes(server, capture)
+	setupHTTPRoutes(server, capture, sseRegistry)
+
+	// Start version checking loop (checks GitHub daily for new releases)
+	startVersionCheckLoop()
 
 	// Start HTTP server in background for browser extension
 	httpReady := make(chan error, 1)
@@ -1300,8 +1338,8 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 		}
 		httpReady <- nil
 		srv := &http.Server{
-			ReadTimeout:  2 * time.Second,  // Force fast request reads
-			WriteTimeout: 2 * time.Second,  // Force responses within 2s (async command pattern)
+			ReadTimeout:  5 * time.Second,  // Allow time for request body reads
+			WriteTimeout: 10 * time.Second, // Allow time for extension queries (2s timeout + buffer)
 			IdleTimeout:  120 * time.Second, // Keep-alive for polling connections
 			Handler:      AuthMiddleware(apiKey)(http.DefaultServeMux),
 		}
@@ -1349,85 +1387,22 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 
 	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "startup", "version": version, "port": port, "timestamp": time.Now().UTC().Format(time.RFC3339)}})
 
-	// Run MCP protocol over stdin/stdout
+	// MCP SSE transport ready
 	_ = server.appendToFile([]LogEntry{{
 		"type":      "lifecycle",
-		"event":     "mcp_stdio_start",
+		"event":     "mcp_sse_ready",
 		"pid":       os.Getpid(),
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}})
-	fmt.Fprintf(os.Stderr, "[gasoline] MCP stdio handler ready, waiting for requests...\n")
+	fmt.Fprintf(os.Stderr, "[gasoline] MCP SSE handler ready at /mcp/sse\n")
 
-	mcp := NewToolHandler(server, capture)
-	scanner := bufio.NewScanner(os.Stdin)
-
-	// Increase scanner buffer for large messages
-	const maxScanTokenSize = 10 * 1024 * 1024 // 10MB
-	buf := make([]byte, maxScanTokenSize)
-	scanner.Buffer(buf, maxScanTokenSize)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-
-		var req JSONRPCRequest
-		if err := json.Unmarshal([]byte(line), &req); err != nil {
-			// Send error response for malformed JSON
-			errResp := JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      nil,
-				Error: &JSONRPCError{
-					Code:    -32700,
-					Message: "Parse error: " + err.Error(),
-				},
-			}
-			// Error impossible: errResp is a simple JSONRPCResponse struct
-			respJSON, _ := json.Marshal(errResp)
-			mcpStdoutMu.Lock()
-			fmt.Println(string(respJSON))
-			mcpStdoutMu.Unlock()
-			continue
-		}
-
-		resp := mcp.HandleRequest(req)
-		// Error impossible: resp is a simple JSONRPCResponse struct
-		respJSON, _ := json.Marshal(resp)
-		mcpStdoutMu.Lock()
-		fmt.Println(string(respJSON))
-		mcpStdoutMu.Unlock()
-	}
-
-	// stdin closed (MCP client disconnected)
-	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "mcp_disconnect", "timestamp": time.Now().UTC().Format(time.RFC3339), "port": port}})
-
-	if persist {
-		// --persist: keep HTTP server running for the extension, wait for signal
-		fmt.Fprintf(os.Stderr, "[gasoline] MCP disconnected, server persisting on port %d (Ctrl+C to stop)\n", port)
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-		s := <-sig
-		fmt.Fprintf(os.Stderr, "[gasoline] Received %s, shutting down\n", s)
-		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
-		return
-	}
-
-	// Default: exit after brief grace period to free the port
-	// The next AI session will spawn a fresh process; extension auto-reconnects.
-	fmt.Fprintf(os.Stderr, "[gasoline] MCP disconnected, shutting down in 100ms (port %d will be freed)\n", port)
-
+	// Wait for shutdown signal
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt)
-
-	select {
-	case s := <-sig:
-		fmt.Fprintf(os.Stderr, "[gasoline] Received %s, shutting down\n", s)
-		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
-	case <-time.After(100 * time.Millisecond):
-		fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
-		_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": "mcp_disconnect_grace", "timestamp": time.Now().UTC().Format(time.RFC3339)}})
-	}
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	s := <-sig
+	fmt.Fprintf(os.Stderr, "[gasoline] Received %s, shutting down\n", s)
+	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
+	fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
 }
 
 // runConnectMode connects to an existing Gasoline server as an MCP client.
@@ -1533,7 +1508,7 @@ func runConnectMode(port int, clientID string, cwd string) {
 	fmt.Fprintf(os.Stderr, "[gasoline] Disconnected from %s\n", serverURL)
 }
 
-// sendMCPError sends a JSON-RPC error response to stdout
+// sendMCPError sends a JSON-RPC error response to stdout (used in connect mode)
 func sendMCPError(id interface{}, code int, message string) {
 	resp := JSONRPCResponse{
 		JSONRPC: "2.0",
@@ -1544,13 +1519,79 @@ func sendMCPError(id interface{}, code int, message string) {
 		},
 	}
 	respJSON, _ := json.Marshal(resp)
-	mcpStdoutMu.Lock()
 	fmt.Println(string(respJSON))
-	mcpStdoutMu.Unlock()
+}
+
+// checkGitHubVersion fetches the latest version from GitHub
+// Returns early if cache is still valid (within 6 hours)
+// Used to determine if a newer version is available to notify users
+func checkGitHubVersion() {
+	versionCheckMu.Lock()
+	// Check if cache is still valid (6 hour TTL)
+	if !lastVersionCheck.IsZero() && time.Since(lastVersionCheck) < versionCheckCacheTTL {
+		versionCheckMu.Unlock()
+		return
+	}
+	versionCheckMu.Unlock()
+
+	// Fetch from GitHub
+	client := &http.Client{Timeout: httpClientTimeout}
+	resp, err := client.Get(githubAPIURL) // #nosec G107 -- constant GitHub API URL
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] GitHub version check failed: %v\n", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "[gasoline] GitHub API error: %d\n", resp.StatusCode)
+		return
+	}
+
+	var releaseInfo struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&releaseInfo); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Failed to parse GitHub response: %v\n", err)
+		return
+	}
+
+	// Extract version from tag (e.g., "v5.2.6" -> "5.2.6")
+	newVersion := strings.TrimPrefix(releaseInfo.TagName, "v")
+	if newVersion == "" {
+		fmt.Fprintf(os.Stderr, "[gasoline] Invalid GitHub release tag: %s\n", releaseInfo.TagName)
+		return
+	}
+
+	versionCheckMu.Lock()
+	availableVersion = newVersion
+	lastVersionCheck = time.Now()
+	versionCheckMu.Unlock()
+
+	if newVersion != version {
+		fmt.Fprintf(os.Stderr, "[gasoline] New version available: %s (current: %s)\n", newVersion, version)
+	}
+}
+
+// startVersionCheckLoop starts a periodic check for new versions on GitHub (daily)
+// Checks immediately on startup if no cached value, then periodically
+func startVersionCheckLoop() {
+	go func() {
+		// Check immediately on startup
+		checkGitHubVersion()
+
+		// Then check periodically
+		ticker := time.NewTicker(versionCheckInterval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			checkGitHubVersion()
+		}
+	}()
 }
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
-func setupHTTPRoutes(server *Server, capture *Capture) {
+func setupHTTPRoutes(server *Server, capture *Capture, sseRegistry *SSERegistry) {
 	// V4 routes
 	if capture != nil {
 		http.HandleFunc("/websocket-events", corsMiddleware(capture.HandleWebSocketEvents))
@@ -1641,9 +1682,13 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 		http.HandleFunc("/test-boundary", corsMiddleware(handleTestBoundary(capture)))
 	}
 
-	// MCP over HTTP endpoint
-	mcp := NewToolHandler(server, capture)
+	// MCP over HTTP endpoint (for browser extension backward compatibility)
+	mcp := NewToolHandler(server, capture, sseRegistry)
 	http.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
+
+	// MCP SSE transport endpoints
+	http.HandleFunc("/mcp/sse", corsMiddleware(handleMCPSSE(sseRegistry, server)))
+	http.HandleFunc("/mcp/messages/", corsMiddleware(handleMCPMessages(sseRegistry, mcp)))
 
 	// CI/CD webhook endpoint for push-based alerts
 	if mcp.toolHandler != nil {
@@ -1665,6 +1710,11 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 			logFileSize = fi.Size()
 		}
 
+		// Include available version if known
+		versionCheckMu.Lock()
+		availVer := availableVersion
+		versionCheckMu.Unlock()
+
 		resp := map[string]interface{}{
 			"status":  "ok",
 			"version": version,
@@ -1674,6 +1724,11 @@ func setupHTTPRoutes(server *Server, capture *Capture) {
 				"logFile":     server.logFile,
 				"logFileSize": logFileSize,
 			},
+		}
+
+		// Add available version if known
+		if availVer != "" {
+			resp["availableVersion"] = availVer
 		}
 
 		if capture != nil {

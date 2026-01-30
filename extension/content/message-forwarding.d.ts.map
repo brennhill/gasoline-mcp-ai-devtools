@@ -1,0 +1,1 @@
+{"version":3,"file":"message-forwarding.d.ts","sourceRoot":"","sources":["../../src/content/message-forwarding.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,KAAK,EAAE,4BAA4B,EAAE,MAAM,SAAS,CAAC;AAG5D,eAAO,MAAM,WAAW,EAAE,MAAM,CAAC,MAAM,EAAE,MAAM,CAMrC,CAAC;AAKX;;;GAGG;AACH,wBAAgB,eAAe,CAAC,GAAG,EAAE,4BAA4B,GAAG,IAAI,CAcvE;AAED;;GAEG;AACH,wBAAgB,cAAc,IAAI,OAAO,CAExC"}

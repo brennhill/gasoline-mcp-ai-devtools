@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "observe",
-      "description": "Read current browser state. Call observe() first before interact() or generate().\n\nModes (what parameter): errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit (max entries), url (substring match), method, status_min, status_max, connection_id, direction, last_n, format, severity.\n\nMode responses: markdown tables for flat data (errors, logs, actions, etc.) or JSON for nested data (network_bodies, vitals, page, etc.). Check _meta.data_counts for available data.",
+      "description": "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format. Check _meta.data_counts for available data.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.",
       "inputSchema": {
         "properties": {
           "action": {
@@ -12,6 +12,14 @@
               "compare",
               "list"
             ],
+            "type": "string"
+          },
+          "after_cursor": {
+            "description": "Return entries older than this cursor (backward pagination). Cursor format: 'timestamp:sequence' from previous response. Stable for live data - recommended for logs, websocket_events, actions. Example: '2026-01-30T10:15:23.456Z:1234'. Applies to: logs, websocket_events, actions, network_bodies.",
+            "type": "string"
+          },
+          "before_cursor": {
+            "description": "Return entries newer than this cursor (forward pagination). Use to monitor new data that arrived since cursor. Cursor format: 'timestamp:sequence'. Applies to: logs, websocket_events, actions, network_bodies.",
             "type": "string"
           },
           "checkpoint": {
@@ -131,6 +139,10 @@
             "description": "Snapshot name (applies to security_diff)",
             "type": "string"
           },
+          "restart_on_eviction": {
+            "description": "If cursor expired (buffer overflow), automatically restart from oldest available entry instead of returning error. Use when pagination must continue despite data loss. Applies to: logs, websocket_events.",
+            "type": "boolean"
+          },
           "scope": {
             "description": "CSS selector to scope audit (applies to accessibility)",
             "type": "string"
@@ -153,6 +165,10 @@
               "low",
               "info"
             ],
+            "type": "string"
+          },
+          "since_cursor": {
+            "description": "Return ALL entries newer than this cursor (inclusive, no limit). Convenience method for 'show me everything since X'. Cursor format: 'timestamp:sequence'. Applies to: logs, websocket_events, actions, network_bodies.",
             "type": "string"
           },
           "status_max": {
@@ -366,7 +382,7 @@
     },
     {
       "name": "configure",
-      "description": "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots \u0026 compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear browser logs), health (server health check). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: Browser logs cleared confirmation text\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
+      "description": "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots \u0026 compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear buffers - specify buffer parameter), health (server health check). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot, configure({action:'clear',buffer:'network'})→clear network buffers. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: {cleared, counts, total_cleared}\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
       "inputSchema": {
         "properties": {
           "action": {
@@ -385,6 +401,17 @@
               "audit_log",
               "health",
               "streaming"
+            ],
+            "type": "string"
+          },
+          "buffer": {
+            "description": "Which buffer to clear (applies to action: \"clear\"). Valid values: \"network\" (network_waterfall + network_bodies), \"websocket\" (websocket_events + websocket_status), \"actions\" (user interactions), \"logs\" (console + extension logs), \"all\" (everything). Default: \"logs\" (backward compatible).",
+            "enum": [
+              "network",
+              "websocket",
+              "actions",
+              "logs",
+              "all"
             ],
             "type": "string"
           },

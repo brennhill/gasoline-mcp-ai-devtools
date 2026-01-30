@@ -11,8 +11,8 @@ import type { PerformanceMark, PerformanceMeasure } from '../types/index';
 let performanceMarksEnabled = false;
 let capturedMarks: Array<PerformanceMark & { detail?: unknown; capturedAt: string }> = [];
 let capturedMeasures: Array<PerformanceMeasure & { capturedAt: string }> = [];
-let originalPerformanceMark: ((name: string, options?: PerformanceMarkOptions) => PerformanceEntryList) | null = null;
-let originalPerformanceMeasure: ((name: string, startMark?: string, endMark?: string) => PerformanceEntryList) | null = null;
+let originalPerformanceMark: ((name: string, options?: PerformanceMarkOptions) => PerformanceMark) | null = null;
+let originalPerformanceMeasure: ((name: string, startMark?: string, endMark?: string) => PerformanceMeasure) | null = null;
 let performanceObserver: PerformanceObserver | null = null;
 let performanceCaptureActive = false;
 
@@ -100,6 +100,12 @@ export function getCapturedMeasures(): Array<PerformanceMeasure & { capturedAt: 
 export function installPerformanceCapture(): void {
   if (typeof performance === 'undefined' || !performance) return;
 
+  // Guard against double installation (prevents infinite recursion)
+  if (performanceCaptureActive) {
+    console.warn('[Gasoline] Performance capture already installed, skipping');
+    return;
+  }
+
   // Clear previous captured data
   capturedMarks = [];
   capturedMeasures = [];
@@ -179,7 +185,9 @@ export function installPerformanceCapture(): void {
           }
         }
       });
-      performanceObserver.observe({ entryTypes: ['mark', 'measure'] });
+      if (performanceObserver) {
+        performanceObserver.observe({ entryTypes: ['mark', 'measure'] });
+      }
     } catch {
       // PerformanceObserver not supported, continue without it
     }
@@ -253,12 +261,14 @@ export async function getPerformanceSnapshotForError(errorEntry: { ts?: string }
       const navEntries = (performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]) || [];
       if (navEntries && navEntries.length > 0) {
         const nav = navEntries[0];
-        navigation = {
-          type: nav.type,
-          startTime: nav.startTime,
-          domContentLoadedEventEnd: nav.domContentLoadedEventEnd,
-          loadEventEnd: nav.loadEventEnd,
-        };
+        if (nav) {
+          navigation = {
+            type: nav.type,
+            startTime: nav.startTime,
+            domContentLoadedEventEnd: nav.domContentLoadedEventEnd,
+            loadEventEnd: nav.loadEventEnd,
+          };
+        }
       }
     } catch {
       // Navigation timing not available

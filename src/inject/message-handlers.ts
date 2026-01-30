@@ -3,29 +3,15 @@
  * settings, state management, JavaScript execution, and DOM/accessibility queries.
  */
 
-import type { BrowserStateSnapshot, StateAction, ExecuteJsResult } from '../types/index';
+import type { BrowserStateSnapshot, StateAction, ExecuteJsResult, WebSocketCaptureMode } from '../types/index';
 
 import { createDeferredPromise, TimeoutError } from '../lib/timeout-utils';
-import { executeDOMQuery, runAxeAuditWithTimeout } from '../lib/dom-queries';
-import { getNetworkWaterfall } from '../lib/network';
-import {
-  setNetworkWaterfallEnabled,
-  setPerformanceMarksEnabled,
-  setActionCaptureEnabled,
-  setWebSocketCaptureEnabled,
-  setWebSocketCaptureMode,
-  setPerformanceSnapshotEnabled,
-  setNetworkBodyCaptureEnabled,
-  setServerUrl,
-} from '../lib/network';
-import {
-  installPerformanceCapture,
-  uninstallPerformanceCapture,
-} from '../lib/performance';
-import {
-  installWebSocketCapture,
-  uninstallWebSocketCapture,
-} from '../lib/websocket';
+import { executeDOMQuery, runAxeAuditWithTimeout, type DOMQueryParams } from '../lib/dom-queries';
+import { getNetworkWaterfall, setNetworkWaterfallEnabled, setNetworkBodyCaptureEnabled, setServerUrl } from '../lib/network';
+import { setPerformanceMarksEnabled, installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance';
+import { setActionCaptureEnabled } from '../lib/actions';
+import { setWebSocketCaptureEnabled, setWebSocketCaptureMode, installWebSocketCapture, uninstallWebSocketCapture } from '../lib/websocket';
+import { setPerformanceSnapshotEnabled } from '../lib/perf-snapshot';
 import { setDeferralEnabled } from './observers';
 
 /**
@@ -384,7 +370,7 @@ function handleSetting(data: SettingMessageData): void {
       }
       break;
     case 'setWebSocketCaptureMode':
-      setWebSocketCaptureMode(data.mode || 'lifecycle');
+      setWebSocketCaptureMode((data.mode || 'lifecycle') as WebSocketCaptureMode);
       break;
     case 'setPerformanceSnapshotEnabled':
       setPerformanceSnapshotEnabled(data.enabled!);
@@ -579,7 +565,7 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
   }
 
   try {
-    executeDOMQuery(params || {})
+    executeDOMQuery((params || {}) as unknown as DOMQueryParams)
       .then((result) => {
         window.postMessage(
           {

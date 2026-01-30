@@ -2,7 +2,7 @@
   "content": [
     {
       "type": "text",
-      "text": "2 browser error(s)\nWARNING: 2/2 entries have incomplete fields (2 missing 'source'). This may indicate a browser extension issue or version mismatch.\n\n| Level | Message | Source | Time | Tab |\n| --- | --- | --- | --- | --- |\n| error | ReferenceError: foo is not defined |  | 2024-01-22T10:00:00Z |  |\n| error | GET /api/data 500 |  | 2024-01-22T10:00:02Z |  |\n"
+      "text": "2 browser error(s)\nWARNING: 3/3 entries have incomplete fields (3 missing 'source'). This may indicate a browser extension issue or version mismatch.\n{\"count\":2,\"cursor\":\"2024-01-22T10:00:02Z:3\",\"errors\":[{\"level\":\"error\",\"message\":\"ReferenceError: foo is not defined\",\"sequence\":1,\"source\":\"\",\"timestamp\":\"2024-01-22T10:00:00Z\"},{\"level\":\"error\",\"message\":\"GET /api/data 500\",\"sequence\":3,\"source\":\"\",\"timestamp\":\"2024-01-22T10:00:02Z\"}],\"newest_timestamp\":\"2024-01-22T10:00:02Z\",\"oldest_timestamp\":\"2024-01-22T10:00:00Z\",\"total\":2}"
     }
   ]
 }

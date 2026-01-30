@@ -109,14 +109,20 @@ export function formatPayload(data: WebSocketMessageData | null): string {
       // Small binary: hex preview
       let hex = ''
       for (let i = 0; i < bytes.length; i++) {
-        hex += bytes[i].toString(16).padStart(2, '0')
+        const byte = bytes[i]
+        if (byte !== undefined) {
+          hex += byte.toString(16).padStart(2, '0')
+        }
       }
       return `[Binary: ${data.byteLength}B] ${hex}`
     } else {
       // Large binary: size + magic bytes (first 4 bytes)
       let magic = ''
       for (let i = 0; i < Math.min(4, bytes.length); i++) {
-        magic += bytes[i].toString(16).padStart(2, '0')
+        const byte = bytes[i]
+        if (byte !== undefined) {
+          magic += byte.toString(16).padStart(2, '0')
+        }
       }
       return `[Binary: ${data.byteLength}B, magic:${magic}]`
     }
@@ -284,7 +290,10 @@ export function createConnectionTracker(id: string, url: string): ConnectionTrac
      */
     getMessageRate(): number {
       if (this._messageTimestamps.length < 2) return this._messageTimestamps.length
-      const window = (this._messageTimestamps[this._messageTimestamps.length - 1] - this._messageTimestamps[0]) / 1000
+      const lastTime = this._messageTimestamps[this._messageTimestamps.length - 1]
+      const firstTime = this._messageTimestamps[0]
+      if (lastTime === undefined || firstTime === undefined) return this._messageTimestamps.length
+      const window = (lastTime - firstTime) / 1000
       return window > 0 ? this._messageTimestamps.length / window : this._messageTimestamps.length
     },
 

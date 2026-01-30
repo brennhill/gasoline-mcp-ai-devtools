@@ -189,16 +189,17 @@ func TestToolGetBrowserErrors_LimitParameter(t *testing.T) {
 		t.Errorf("Expected '2 browser error(s)' in summary, got:\n%s", text)
 	}
 
-	// Count table rows (exclude header/separator)
-	lines := strings.Split(text, "\n")
-	dataRows := 0
-	for _, line := range lines {
-		if strings.HasPrefix(line, "|") && !strings.Contains(line, "---") && !strings.Contains(line, "Level") {
-			dataRows++
-		}
+	// Response is now JSON format - verify count field is 2
+	if !strings.Contains(text, `"count":2`) {
+		t.Errorf("Expected count:2 in JSON response, got:\n%s", text)
 	}
-	if dataRows != 2 {
-		t.Errorf("Expected 2 data rows in table, got %d", dataRows)
+
+	// Verify errors array contains exactly 2 entries
+	if !strings.Contains(text, "error 4") || !strings.Contains(text, "error 5") {
+		t.Errorf("Expected last 2 errors (error 4, error 5) in response, got:\n%s", text)
+	}
+	if strings.Contains(text, "error 1") || strings.Contains(text, "error 2") || strings.Contains(text, "error 3") {
+		t.Errorf("Should not contain first 3 errors with limit=2, got:\n%s", text)
 	}
 }
 
@@ -223,11 +224,11 @@ func TestToolGetBrowserLogs_Warning_DoesNotBreakMarkdown(t *testing.T) {
 	if !strings.Contains(text, "WARNING") {
 		t.Errorf("Expected WARNING for missing fields, got:\n%s", text)
 	}
-	// Markdown table should still be present after the warning
-	if !strings.Contains(text, "| Level |") {
-		t.Errorf("Expected markdown table header to still be present, got:\n%s", text)
+	// JSON response should still be present after the warning
+	if !strings.Contains(text, `"logs"`) {
+		t.Errorf("Expected JSON 'logs' field to still be present, got:\n%s", text)
 	}
-	if !strings.Contains(text, "| info |") {
-		t.Errorf("Expected markdown table row to still be present, got:\n%s", text)
+	if !strings.Contains(text, `"level":"info"`) && !strings.Contains(text, `"level": "info"`) {
+		t.Errorf("Expected log entry with level 'info' to still be present, got:\n%s", text)
 	}
 }

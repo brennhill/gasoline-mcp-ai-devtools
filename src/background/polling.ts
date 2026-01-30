@@ -24,6 +24,9 @@ const EXTENSION_LOGS_INTERVAL_MS = 5000;
 /** Status ping interval in milliseconds */
 const STATUS_PING_INTERVAL_MS = 30000;
 
+/** Version check interval in milliseconds */
+const VERSION_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (daily)
+
 // =============================================================================
 // STATE
 // =============================================================================
@@ -33,6 +36,7 @@ let settingsHeartbeatInterval: IntervalId | null = null;
 let waterfallPostingInterval: IntervalId | null = null;
 let extensionLogsInterval: IntervalId | null = null;
 let statusPingInterval: IntervalId | null = null;
+let versionCheckInterval: IntervalId | null = null;
 
 // =============================================================================
 // QUERY POLLING
@@ -208,6 +212,43 @@ export function isStatusPingActive(): boolean {
 }
 
 // =============================================================================
+// VERSION CHECK
+// =============================================================================
+
+/**
+ * Start version check: check GitHub for new releases (once daily)
+ */
+export function startVersionCheck(
+  checkVersionFn: () => Promise<void>,
+  debugLogFn?: (category: string, message: string, data?: unknown) => void
+): void {
+  stopVersionCheck();
+  if (debugLogFn) debugLogFn('connection', 'Starting GitHub version check');
+  checkVersionFn(); // Check immediately on start
+  versionCheckInterval = setInterval(checkVersionFn, VERSION_CHECK_INTERVAL_MS);
+}
+
+/**
+ * Stop version check
+ */
+export function stopVersionCheck(
+  debugLogFn?: (category: string, message: string, data?: unknown) => void
+): void {
+  if (versionCheckInterval) {
+    clearInterval(versionCheckInterval);
+    versionCheckInterval = null;
+    if (debugLogFn) debugLogFn('connection', 'Stopped version check');
+  }
+}
+
+/**
+ * Check if version check is active
+ */
+export function isVersionCheckActive(): boolean {
+  return versionCheckInterval !== null;
+}
+
+// =============================================================================
 // CLEANUP
 // =============================================================================
 
@@ -220,4 +261,5 @@ export function stopAllPolling(): void {
   stopWaterfallPosting();
   stopExtensionLogsPosting();
   stopStatusPing();
+  stopVersionCheck();
 }

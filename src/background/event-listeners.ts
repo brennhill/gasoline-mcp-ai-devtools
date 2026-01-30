@@ -357,9 +357,24 @@ export function saveSetting(key: string, value: unknown): void {
 /**
  * Get tracked tab information (callback-based for compatibility with pre-async event listeners)
  */
+// Overload: Promise-based (for await usage)
+export function getTrackedTabInfo(): Promise<{ trackedTabId: number | null; trackedTabUrl: string | null }>;
+// Overload: Callback-based (for backward compatibility)
 export function getTrackedTabInfo(
   callback: (info: { trackedTabId: number | null; trackedTabUrl: string | null }) => void
-): void {
+): void;
+// Implementation
+export function getTrackedTabInfo(
+  callback?: (info: { trackedTabId: number | null; trackedTabUrl: string | null }) => void
+): void | Promise<{ trackedTabId: number | null; trackedTabUrl: string | null }> {
+  if (!callback) {
+    // Promise-based version
+    return new Promise((resolve) => {
+      getTrackedTabInfo((info) => resolve(info));
+    });
+  }
+
+  // Callback-based version
   if (typeof chrome === 'undefined' || !chrome.storage) {
     callback({ trackedTabId: null, trackedTabUrl: null });
     return;
@@ -385,11 +400,26 @@ export function clearTrackedTab(): void {
 }
 
 /**
- * Get all extension config settings (callback-based for compatibility)
+ * Get all extension config settings
  */
+// Overload: Promise-based (for await usage)
+export function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>>;
+// Overload: Callback-based (for backward compatibility)
 export function getAllConfigSettings(
   callback: (settings: Record<string, boolean | string | undefined>) => void
-): void {
+): void;
+// Implementation
+export function getAllConfigSettings(
+  callback?: (settings: Record<string, boolean | string | undefined>) => void
+): void | Promise<Record<string, boolean | string | undefined>> {
+  if (!callback) {
+    // Promise-based version
+    return new Promise((resolve) => {
+      getAllConfigSettings((settings) => resolve(settings));
+    });
+  }
+
+  // Callback-based version
   if (typeof chrome === 'undefined' || !chrome.storage) {
     callback({});
     return;
