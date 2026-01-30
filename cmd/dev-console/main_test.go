@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -2471,5 +2472,108 @@ func TestSaveEntries_WriteError(t *testing.T) {
 	err := server.saveEntries()
 	if err == nil {
 		t.Error("Expected error when directory doesn't exist")
+	}
+}
+
+func TestPrintHelp(t *testing.T) {
+	// Note: Cannot use t.Parallel() because this test modifies global os.Stdout
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Call printHelp
+	printHelp()
+
+	// Restore stdout
+	w.Close()
+	os.Stdout = oldStdout
+
+	// Read captured output
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	// Verify help text contains key sections
+	expectedSections := []string{
+		"Gasoline - Browser observability for AI coding agents",
+		"Usage: gasoline [options]",
+		"Options:",
+		"--port",
+		"--log-file",
+		"--max-entries",
+		"--persist",
+		"--api-key",
+		"--connect",
+		"--client-id",
+		"--check",
+		"--version",
+		"--help",
+		"Examples:",
+		"MCP Configuration:",
+	}
+
+	for _, section := range expectedSections {
+		if !strings.Contains(output, section) {
+			t.Errorf("Help text missing expected section: %q", section)
+		}
+	}
+
+	// Verify examples are present
+	if !strings.Contains(output, "gasoline") {
+		t.Error("Help text missing usage examples")
+	}
+
+	// Verify MCP config example
+	if !strings.Contains(output, "mcpServers") {
+		t.Error("Help text missing MCP configuration example")
+	}
+}
+
+func TestRunSetupCheck(t *testing.T) {
+	// Note: Cannot use t.Parallel() because this test modifies global os.Stdout
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Call runSetupCheck with a test port
+	runSetupCheck(7890)
+
+	// Restore stdout
+	w.Close()
+	os.Stdout = oldStdout
+
+	// Read captured output
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	// Verify setup check output contains key sections
+	expectedSections := []string{
+		"GASOLINE SETUP CHECK",
+		"Version:",
+		"Port:",
+		"Checking port availability",
+		"Checking log file directory",
+		"Next steps:",
+	}
+
+	for _, section := range expectedSections {
+		if !strings.Contains(output, section) {
+			t.Errorf("Setup check output missing expected section: %q", section)
+		}
+	}
+
+	// Verify port number appears in output
+	if !strings.Contains(output, "7890") {
+		t.Error("Setup check output should contain port number")
+	}
+
+	// Verify version appears
+	if !strings.Contains(output, version) {
+		t.Error("Setup check output should contain version number")
 	}
 }

@@ -1875,11 +1875,6 @@ func (h *ToolHandler) toolGetExtensionLogs(req JSONRPCRequest, args json.RawMess
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
 }
 
-func (h *ToolHandler) toolClearBrowserLogs(req JSONRPCRequest) JSONRPCResponse {
-	h.server.clearEntries()
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Browser logs cleared successfully")}
-}
-
 // toolConfigureClear handles buffer-specific clearing with optional buffer parameter.
 func (h *ToolHandler) toolConfigureClear(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
