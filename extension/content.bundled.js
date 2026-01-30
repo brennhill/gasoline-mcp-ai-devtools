@@ -29,6 +29,12 @@
   }
 
   // extension/content/script-injection.js
+  function injectAxeCore() {
+    const script = document.createElement("script");
+    script.src = chrome.runtime.getURL("lib/axe.min.js");
+    script.onload = () => script.remove();
+    (document.head || document.documentElement).appendChild(script);
+  }
   function injectScript() {
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("inject.bundled.js");
@@ -38,8 +44,12 @@
   }
   function initScriptInjection() {
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", injectScript, { once: true });
+      document.addEventListener("DOMContentLoaded", () => {
+        injectAxeCore();
+        injectScript();
+      }, { once: true });
     } else {
+      injectAxeCore();
       injectScript();
     }
   }

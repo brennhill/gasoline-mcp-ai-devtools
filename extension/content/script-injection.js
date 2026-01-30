@@ -3,6 +3,16 @@
  * Injects capture script into the page context
  */
 /**
+ * Inject axe-core library into the page
+ * Must be called from content script context (has chrome.runtime API access)
+ */
+export function injectAxeCore() {
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL('lib/axe.min.js');
+    script.onload = () => script.remove();
+    (document.head || document.documentElement).appendChild(script);
+}
+/**
  * Inject the capture script into the page
  */
 export function injectScript() {
@@ -18,9 +28,13 @@ export function injectScript() {
 export function initScriptInjection() {
     // Inject when DOM is ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', injectScript, { once: true });
+        document.addEventListener('DOMContentLoaded', () => {
+            injectAxeCore(); // Inject axe-core first (needed by inject script)
+            injectScript();
+        }, { once: true });
     }
     else {
+        injectAxeCore(); // Inject axe-core first (needed by inject script)
         injectScript();
     }
 }

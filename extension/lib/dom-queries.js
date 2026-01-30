@@ -126,19 +126,19 @@ function loadAxeCore() {
             resolve();
             return;
         }
-        const script = document.createElement('script');
-        // Always load from bundled extension copy - never from a CDN or remote URL.
-        // Chrome Web Store rejects extensions that load remotely hosted code.
-        script.src = chrome.runtime.getURL('lib/axe.min.js');
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load axe-core from bundled extension copy'));
-        const targetElement = document.head || document.body || document.documentElement;
-        if (targetElement) {
-            targetElement.appendChild(script);
-        }
-        else {
-            reject(new Error('No document element available for axe-core injection'));
-        }
+        // Wait for axe-core to be injected by content script (which has chrome.runtime API access)
+        // Note: This function runs in page context (inject script), so we can't call chrome.runtime.getURL()
+        const checkInterval = setInterval(() => {
+            if (window.axe) {
+                clearInterval(checkInterval);
+                resolve();
+            }
+        }, 100);
+        // Timeout after 5 seconds
+        setTimeout(() => {
+            clearInterval(checkInterval);
+            reject(new Error('axe-core not available - content script may not have loaded it'));
+        }, 5000);
     });
 }
 /**

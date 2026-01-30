@@ -1997,16 +1997,16 @@ function loadAxeCore() {
       resolve();
       return;
     }
-    const script = document.createElement("script");
-    script.src = chrome.runtime.getURL("lib/axe.min.js");
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load axe-core from bundled extension copy"));
-    const targetElement = document.head || document.body || document.documentElement;
-    if (targetElement) {
-      targetElement.appendChild(script);
-    } else {
-      reject(new Error("No document element available for axe-core injection"));
-    }
+    const checkInterval = setInterval(() => {
+      if (window.axe) {
+        clearInterval(checkInterval);
+        resolve();
+      }
+    }, 100);
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      reject(new Error("axe-core not available - content script may not have loaded it"));
+    }, 5e3);
   });
 }
 async function runAxeAudit(params) {

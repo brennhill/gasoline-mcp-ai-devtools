@@ -17,21 +17,30 @@ export function postLog(payload) {
         enrichments.push('context');
     if (actions && actions.length > 0)
         enrichments.push('userActions');
+    // Extract fields we want from payload (exclude ts, message, source, url to avoid overwriting enrichments)
+    const { level, type, args, error, stack, ...otherFields } = payload;
     window.postMessage({
         type: 'GASOLINE_LOG',
         payload: {
+            // Enriched fields (these are the source of truth)
             ts: new Date().toISOString(),
             url: window.location.href,
-            // Extract message from multiple possible sources
             message: payload.message ||
                 payload.error ||
                 (payload.args?.[0] !== null && payload.args?.[0] !== undefined ? String(payload.args[0]) : ''),
-            // Derive source from url (filename:line if available)
             source: payload.filename ? `${payload.filename}:${payload.lineno || 0}` : '',
+            // Core fields from payload
+            level,
+            ...(type ? { type } : {}),
+            ...(args ? { args } : {}),
+            ...(error ? { error } : {}),
+            ...(stack ? { stack } : {}),
+            // Optional enrichments
             ...(enrichments.length > 0 ? { _enrichments: enrichments } : {}),
             ...(context && payload.level === 'error' ? { _context: context } : {}),
             ...(actions && actions.length > 0 ? { _actions: actions } : {}),
-            ...payload, // Allow payload to override defaults like url
+            // Any other fields from payload (excluding the ones we destructured)
+            ...otherFields,
         },
     }, '*');
 }
