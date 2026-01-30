@@ -1001,14 +1001,17 @@ func TestMCPGetBrowserLogsWithLimit(t *testing.T) {
 		t.Fatalf("Failed to unmarshal result: %v", err)
 	}
 
-	// New format: summary line + markdown table via mcpMarkdownResponse
+	// New format: summary line + JSON data via mcpJSONResponse
 	text := result.Content[0].Text
 	if !strings.Contains(text, "5 log entries") {
 		t.Errorf("Expected summary with '5 log entries', got: %s", text)
 	}
-	// Verify it's a markdown table (has header separator)
-	if !strings.Contains(text, "| --- |") {
-		t.Error("Expected markdown table format in response")
+	// Verify it's JSON format with count field
+	if !strings.Contains(text, `"count":5`) && !strings.Contains(text, `"count": 5`) {
+		t.Errorf("Expected JSON with count:5, got: %s", text)
+	}
+	if !strings.Contains(text, `"logs"`) {
+		t.Error("Expected JSON response with 'logs' field")
 	}
 }
 

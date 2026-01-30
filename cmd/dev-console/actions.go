@@ -102,17 +102,62 @@ func (c *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) 
 
 func (h *ToolHandler) toolGetEnhancedActions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
-		LastN int    `json:"last_n"`
-		URL   string `json:"url"`
+		LastN             int    `json:"last_n"`
+		URL               string `json:"url"`
+		AfterCursor       string `json:"after_cursor"`
+		BeforeCursor      string `json:"before_cursor"`
+		SinceCursor       string `json:"since_cursor"`
+		RestartOnEviction bool   `json:"restart_on_eviction"`
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
-	actions := h.capture.GetEnhancedActions(EnhancedActionFilter{
-		LastN:     arguments.LastN,
-		URLFilter: arguments.URL,
-	})
+	// Acquire read lock to access raw buffer and total counter
+	h.capture.mu.RLock()
+	defer h.capture.mu.RUnlock()
 
-	if len(actions) == 0 {
+	// Enrich entries with sequence numbers BEFORE filtering
+	enriched := EnrichActionEntries(h.capture.enhancedActions, h.capture.actionTotalAdded)
+
+	// Apply TTL and URL filters (preserving sequences)
+	var filtered []ActionEntryWithSequence
+	for i, e := range enriched {
+		// TTL filtering: skip entries older than TTL
+		if h.capture.TTL > 0 && i < len(h.capture.actionAddedAt) && isExpiredByTTL(h.capture.actionAddedAt[i], h.capture.TTL) {
+			continue
+		}
+		// URL filter
+		if arguments.URL != "" && !strings.Contains(e.Entry.URL, arguments.URL) {
+			continue
+		}
+		filtered = append(filtered, e)
+	}
+
+	// Determine limit: use cursor limit if specified, otherwise last_n for backward compatibility
+	limit := 0
+	if arguments.LastN > 0 {
+		limit = arguments.LastN
+	}
+
+	// Apply cursor-based pagination
+	result, metadata, err := ApplyActionCursorPagination(
+		filtered,
+		arguments.AfterCursor,
+		arguments.BeforeCursor,
+		arguments.SinceCursor,
+		limit,
+		arguments.RestartOnEviction,
+	)
+
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrCursorExpired,
+			err.Error(),
+			"Use restart_on_eviction=true to auto-restart from oldest available, or reduce the time between pagination calls to prevent buffer overflow",
+		)}
+	}
+
+	// Handle empty result
+	if len(result) == 0 {
 		msg := "No user actions captured"
 		if h.captureOverrides != nil {
 			overrides := h.captureOverrides.GetAll()
@@ -120,39 +165,52 @@ func (h *ToolHandler) toolGetEnhancedActions(req JSONRPCRequest, args json.RawMe
 				msg += "\n\nAction replay capture is OFF. To enable, call:\nconfigure({action: \"capture\", settings: {action_replay: \"true\"}})"
 			}
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(msg)}
+
+		// Return JSON format even for empty result to maintain consistency
+		data := map[string]interface{}{
+			"actions": []map[string]interface{}{},
+			"count":   0,
+			"total":   metadata.Total,
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(msg, data)}
 	}
 
-	summary := fmt.Sprintf("%d user action(s)", len(actions))
-	rows := make([][]string, len(actions))
-	for i, a := range actions {
-		// Pick the best selector string
-		sel := ""
-		if a.Selectors != nil {
-			for _, key := range []string{"testId", "ariaLabel", "role", "id", "cssPath"} {
-				if v, ok := a.Selectors[key]; ok {
-					if s, ok := v.(string); ok && s != "" {
-						sel = s
-						break
-					}
-				}
-			}
-		}
-		ts := time.Unix(0, a.Timestamp*int64(time.Millisecond)).Format("15:04:05")
-		// Format tabId: show as string if > 0, otherwise empty
-		tabStr := ""
-		if a.TabId > 0 {
-			tabStr = fmt.Sprintf("%d", a.TabId)
-		}
-		rows[i] = []string{
-			a.Type,
-			truncate(a.URL, 60),
-			truncate(sel, 40),
-			truncate(a.Value, 30),
-			ts,
-			tabStr,
-		}
+	// Serialize actions to JSON format
+	jsonActions := make([]map[string]interface{}, len(result))
+	for i, e := range result {
+		jsonActions[i] = SerializeActionEntryWithSequence(e)
 	}
-	table := markdownTable([]string{"Type", "URL", "Selector", "Value", "Time", "Tab"}, rows)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
+
+	// Build response summary
+	summary := fmt.Sprintf("%d user action(s)", metadata.Count)
+	if metadata.Total > metadata.Count {
+		summary += fmt.Sprintf(" (total in buffer: %d)", metadata.Total)
+	}
+
+	// Build response with cursor metadata
+	data := map[string]interface{}{
+		"actions": jsonActions,
+		"count":   metadata.Count,
+		"total":   metadata.Total,
+	}
+
+	if metadata.Cursor != "" {
+		data["cursor"] = metadata.Cursor
+	}
+	if metadata.OldestTimestamp != "" {
+		data["oldest_timestamp"] = metadata.OldestTimestamp
+	}
+	if metadata.NewestTimestamp != "" {
+		data["newest_timestamp"] = metadata.NewestTimestamp
+	}
+	if metadata.HasMore {
+		data["has_more"] = metadata.HasMore
+	}
+	if metadata.CursorRestarted {
+		data["cursor_restarted"] = metadata.CursorRestarted
+		data["original_cursor"] = metadata.OriginalCursor
+		data["warning"] = metadata.Warning
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
 }

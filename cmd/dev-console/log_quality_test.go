@@ -223,11 +223,11 @@ func TestToolGetBrowserLogs_Warning_DoesNotBreakMarkdown(t *testing.T) {
 	if !strings.Contains(text, "WARNING") {
 		t.Errorf("Expected WARNING for missing fields, got:\n%s", text)
 	}
-	// Markdown table should still be present after the warning
-	if !strings.Contains(text, "| Level |") {
-		t.Errorf("Expected markdown table header to still be present, got:\n%s", text)
+	// JSON response should still be present after the warning
+	if !strings.Contains(text, `"logs"`) {
+		t.Errorf("Expected JSON 'logs' field to still be present, got:\n%s", text)
 	}
-	if !strings.Contains(text, "| info |") {
-		t.Errorf("Expected markdown table row to still be present, got:\n%s", text)
+	if !strings.Contains(text, `"level":"info"`) && !strings.Contains(text, `"level": "info"`) {
+		t.Errorf("Expected log entry with level 'info' to still be present, got:\n%s", text)
 	}
 }
