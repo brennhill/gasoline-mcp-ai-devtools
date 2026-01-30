@@ -6,9 +6,10 @@
 import * as communication from './communication.js';
 import * as eventListeners from './event-listeners.js';
 import * as index from './index.js';
+import { DebugCategory } from './debug.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js';
-// Extract values from index for easier reference
-const { debugLog, DebugCategory, diagnosticLog } = index;
+// Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
+const { debugLog, diagnosticLog } = index;
 // =============================================================================
 // PENDING QUERY HANDLING
 // =============================================================================

@@ -57,16 +57,7 @@ export declare function setScreenshotOnError(enabled: boolean): void;
 export declare function setAiWebPilotEnabledCache(enabled: boolean): void;
 export declare function setAiWebPilotCacheInitialized(initialized: boolean): void;
 export declare function setPilotInitCallback(callback: (() => void) | null): void;
-/** Log categories for debug output */
-export declare const DebugCategory: {
-    CONNECTION: "connection";
-    CAPTURE: "capture";
-    ERROR: "error";
-    LIFECYCLE: "lifecycle";
-    SETTINGS: "settings";
-    SOURCEMAP: "sourcemap";
-    QUERY: "query";
-};
+export { DebugCategory } from './debug';
 /**
  * Log a diagnostic message only when debug mode is enabled
  */

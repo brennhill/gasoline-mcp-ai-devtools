@@ -8,10 +8,11 @@ import type { PendingQuery } from '../types';
 import * as communication from './communication';
 import * as eventListeners from './event-listeners';
 import * as index from './index';
+import { DebugCategory } from './debug';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers';
 
-// Extract values from index for easier reference
-const { debugLog, DebugCategory, diagnosticLog } = index;
+// Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
+const { debugLog, diagnosticLog } = index;
 
 // =============================================================================
 // PENDING QUERY HANDLING

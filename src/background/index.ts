@@ -22,6 +22,7 @@ import * as stateManager from './state-manager';
 import * as communication from './communication';
 import * as polling from './polling';
 import * as eventListeners from './event-listeners';
+import { DebugCategory } from './debug';
 import {
   installMessageListener,
   saveStateSnapshot,
@@ -136,16 +137,8 @@ export function setPilotInitCallback(callback: (() => void) | null): void {
 // DEBUG LOGGING
 // =============================================================================
 
-/** Log categories for debug output */
-export const DebugCategory = {
-  CONNECTION: 'connection' as const,
-  CAPTURE: 'capture' as const,
-  ERROR: 'error' as const,
-  LIFECYCLE: 'lifecycle' as const,
-  SETTINGS: 'settings' as const,
-  SOURCEMAP: 'sourcemap' as const,
-  QUERY: 'query' as const,
-};
+// Re-export DebugCategory from debug module (to avoid circular dependencies)
+export { DebugCategory } from './debug';
 
 /**
  * Log a diagnostic message only when debug mode is enabled

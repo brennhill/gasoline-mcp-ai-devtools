@@ -9,6 +9,7 @@ import * as stateManager from './state-manager.js';
 import * as communication from './communication.js';
 import * as polling from './polling.js';
 import * as eventListeners from './event-listeners.js';
+import { DebugCategory } from './debug.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, } from './message-handlers.js';
 import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl, } from './pending-queries.js';
 // =============================================================================
@@ -71,16 +72,8 @@ export function setPilotInitCallback(callback) {
 // =============================================================================
 // DEBUG LOGGING
 // =============================================================================
-/** Log categories for debug output */
-export const DebugCategory = {
-    CONNECTION: 'connection',
-    CAPTURE: 'capture',
-    ERROR: 'error',
-    LIFECYCLE: 'lifecycle',
-    SETTINGS: 'settings',
-    SOURCEMAP: 'sourcemap',
-    QUERY: 'query',
-};
+// Re-export DebugCategory from debug module (to avoid circular dependencies)
+export { DebugCategory } from './debug.js';
 /**
  * Log a diagnostic message only when debug mode is enabled
  */
