@@ -971,6 +971,10 @@ function getCapturedMeasures() {
 function installPerformanceCapture() {
   if (typeof performance === "undefined" || !performance)
     return;
+  if (performanceCaptureActive) {
+    console.warn("[Gasoline] Performance capture already installed, skipping");
+    return;
+  }
   capturedMarks = [];
   capturedMeasures = [];
   originalPerformanceMark = performance.mark.bind(performance);

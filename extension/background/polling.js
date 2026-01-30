@@ -15,6 +15,8 @@ const WATERFALL_POSTING_INTERVAL_MS = 10000;
 const EXTENSION_LOGS_INTERVAL_MS = 5000;
 /** Status ping interval in milliseconds */
 const STATUS_PING_INTERVAL_MS = 30000;
+/** Version check interval in milliseconds */
+const VERSION_CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 // =============================================================================
 // STATE
 // =============================================================================
@@ -23,6 +25,7 @@ let settingsHeartbeatInterval = null;
 let waterfallPostingInterval = null;
 let extensionLogsInterval = null;
 let statusPingInterval = null;
+let versionCheckInterval = null;
 // =============================================================================
 // QUERY POLLING
 // =============================================================================
@@ -165,6 +168,36 @@ export function isStatusPingActive() {
     return statusPingInterval !== null;
 }
 // =============================================================================
+// VERSION CHECK
+// =============================================================================
+/**
+ * Start version check: check /health every 30 minutes for new server version
+ */
+export function startVersionCheck(checkVersionFn, debugLogFn) {
+    stopVersionCheck();
+    if (debugLogFn)
+        debugLogFn('connection', 'Starting version check');
+    checkVersionFn(); // Check immediately on start
+    versionCheckInterval = setInterval(checkVersionFn, VERSION_CHECK_INTERVAL_MS);
+}
+/**
+ * Stop version check
+ */
+export function stopVersionCheck(debugLogFn) {
+    if (versionCheckInterval) {
+        clearInterval(versionCheckInterval);
+        versionCheckInterval = null;
+        if (debugLogFn)
+            debugLogFn('connection', 'Stopped version check');
+    }
+}
+/**
+ * Check if version check is active
+ */
+export function isVersionCheckActive() {
+    return versionCheckInterval !== null;
+}
+// =============================================================================
 // CLEANUP
 // =============================================================================
 /**
@@ -176,5 +209,6 @@ export function stopAllPolling() {
     stopWaterfallPosting();
     stopExtensionLogsPosting();
     stopStatusPing();
+    stopVersionCheck();
 }
 //# sourceMappingURL=polling.js.map

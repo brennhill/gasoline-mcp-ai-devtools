@@ -29,29 +29,25 @@ npm install -g gasoline-mcp@5.2.5
 
 ---
 
-## ⏳ PyPI Ready (Manual Publish Required)
+## ✅ PyPI Published
 
-All PyPI wheels built and ready for publishing.
+All PyPI packages successfully published to https://pypi.org/
 
-### Built Packages
-- `gasoline-mcp-darwin-arm64-5.2.5-py3-none-any.whl`
-- `gasoline-mcp-darwin-x64-5.2.5-py3-none-any.whl`
-- `gasoline-mcp-linux-arm64-5.2.5-py3-none-any.whl`
-- `gasoline-mcp-linux-x64-5.2.5-py3-none-any.whl`
-- `gasoline-mcp-win32-x64-5.2.5-py3-none-any.whl`
-- `gasoline-mcp-5.2.5-py3-none-any.whl`
+### Published Packages
+✅ `gasoline-mcp-darwin-arm64@5.2.5`
+✅ `gasoline-mcp-darwin-x64@5.2.5`
+✅ `gasoline-mcp-linux-arm64@5.2.5`
+✅ `gasoline-mcp-linux-x64@5.2.5`
+✅ `gasoline-mcp-win32-x64@5.2.5`
+✅ `gasoline-mcp@5.2.5`
 
-**To publish manually**:
+**Installation**:
 ```bash
-# Set credentials
-export TWINE_USERNAME=__token__
-export TWINE_PASSWORD=<your-pypi-api-token>
-
-# Publish
-cd /Users/brenn/dev/gasoline
-make pypi-publish
-# Or press Enter when prompted
+pip install gasoline-mcp==5.2.5
 ```
+
+**Published by**: brennhill
+**Status**: Live on PyPI ✅
 
 **Automated publishing**: GitHub Actions workflow created at `.github/workflows/release.yml`
 
@@ -122,18 +118,12 @@ Binaries available in `dist/`:
 ## 📋 Next Steps
 
 ### For v5.2.5 Release
-1. **Publish to PyPI** (manual step required):
-   ```bash
-   export TWINE_PASSWORD=<token>
-   make pypi-publish
-   ```
-
-2. **Update Chrome Web Store**:
+1. **Update Chrome Web Store**:
    - Package `extension/` folder
    - Upload to Chrome Web Store
    - Update version notes with CHANGELOG.md entry
 
-3. **Create GitHub Release** (optional, or wait for GitHub Actions):
+2. **Create GitHub Release** (optional, or wait for GitHub Actions):
    - Go to https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/new
    - Select tag `v5.2.5`
    - Copy CHANGELOG.md entry to release notes
@@ -168,8 +158,8 @@ Binaries available in `dist/`:
 ## ✅ Summary
 
 **NPM**: ✅ Published (all 6 packages)
-**PyPI**: ⏳ Ready (manual publish pending)
+**PyPI**: ✅ Published (all 6 packages)
 **GitHub**: ✅ Tagged and pushed
 **Automation**: ✅ GitHub Actions workflow created
 
-**v5.2.5 is live on NPM and ready for PyPI!** 🚀
+**v5.2.5 is live on NPM and PyPI!** 🚀

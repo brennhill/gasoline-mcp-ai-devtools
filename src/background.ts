@@ -98,6 +98,19 @@ export {
 } from './background/index';
 
 // =============================================================================
+// === PUBLIC API: VERSION CHECKING
+// =============================================================================
+
+export {
+  getExtensionVersion,
+  isNewVersionAvailable,
+  getLastServerVersion,
+  checkServerVersion,
+  updateVersionBadge,
+  resetVersionCheck,
+} from './background/version-check';
+
+// =============================================================================
 // === PUBLIC API: PENDING QUERIES & PILOT
 // =============================================================================
 

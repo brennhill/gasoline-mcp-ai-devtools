@@ -1669,6 +1669,9 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 			}
 		}
 
+		// Get tracked tab ID for metadata (v5.3+)
+		_, trackedTabID, _ := h.capture.GetTrackingStatus()
+
 		// Return JSON response with cursor metadata
 		data := map[string]interface{}{
 			"logs":  []interface{}{},
@@ -1678,6 +1681,10 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 		if metadata.Warning != "" {
 			data["warning"] = metadata.Warning
 		}
+		// Add tracked_tab_id metadata if tracking is active (v5.3+)
+		if trackedTabID > 0 {
+			data["tracked_tab_id"] = trackedTabID
+		}
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(msg, data)}
 	}
 
@@ -1686,6 +1693,9 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 	for i, e := range result {
 		jsonLogs[i] = SerializeLogEntryWithSequence(e)
 	}
+
+	// Get tracked tab ID for metadata (v5.3+)
+	_, trackedTabID, _ := h.capture.GetTrackingStatus()
 
 	// Build response data with cursor metadata
 	data := map[string]interface{}{
@@ -1712,6 +1722,10 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 	}
 	if metadata.Warning != "" {
 		data["warning"] = metadata.Warning
+	}
+	// Add tracked_tab_id metadata if tracking is active (v5.3+)
+	if trackedTabID > 0 {
+		data["tracked_tab_id"] = trackedTabID
 	}
 
 	summary := fmt.Sprintf("%d log entries", len(result))

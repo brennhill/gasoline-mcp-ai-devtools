@@ -1,5 +1,7 @@
 # Roadmap Reorganization Strategy
 
+**Note:** This is the strategic analysis document. The **operational source of truth is [docs/roadmap.md](roadmap.md)** — it may have been updated since this analysis was written.
+
 ## Current State Analysis
 
 **Thesis:** "AI closes the feedback loop autonomously" — observe, diagnose, repair, verify without human intervention.
@@ -57,6 +59,7 @@ Current roadmap doesn't clearly show which features are:
 
 **v6.1: Smart Observation**
 Solves Problems A (tokens) + B (causality) + D (selector brittleness).
+- Advanced Filtering (Signal-to-Noise) (reduces noise before AI sees it)
 - Visual-Semantic Bridge (enables reliable clicking)
 - State "Time Travel" (enables causal debugging)
 - Causal Diffing (enables root-cause analysis)
@@ -64,6 +67,8 @@ Solves Problems A (tokens) + B (causality) + D (selector brittleness).
 - Design System Injector (enables semantic code generation)
 - Deep Framework Intelligence (enables component-level understanding)
 - DOM Fingerprinting (enables stable selectors)
+- Smart DOM Pruning (removes non-essential noise, fits DOM in <25% context)
+- Hydration Doctor (enables SSR/Nuxt debugging)
 
 **v6.2: Safe Repair & Verification**
 Solves Problems C (feedback loops) + F (production safety).

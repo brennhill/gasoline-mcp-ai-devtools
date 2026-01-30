@@ -93,6 +93,7 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	sessionID := r.Header.Get("X-Gasoline-Session")
 	clientID := r.Header.Get("X-Gasoline-Client")
+	extensionVersion := r.Header.Get("X-Gasoline-Extension-Version")
 
 	// Collect all headers for debug logging (redact auth)
 	headers := make(map[string]string)
@@ -102,6 +103,11 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 		} else if len(values) > 0 {
 			headers[name] = values[0]
 		}
+	}
+
+	// Log version mismatch if detected
+	if extensionVersion != "" && extensionVersion != version {
+		fmt.Fprintf(os.Stderr, "[gasoline] Version mismatch: server=%s extension=%s\n", version, extensionVersion)
 	}
 
 	if r.Method != "POST" {

@@ -228,7 +228,7 @@ Last benchmarked: 2026-01-28 on darwin/arm64 (v5.2.5)
 
 ## Known Issues
 
-See [KNOWN-ISSUES.md](KNOWN-ISSUES.md) for current known issues and the v5.2 roadmap.
+See [docs/core/KNOWN-ISSUES.md](docs/core/KNOWN-ISSUES.md) for current known issues and the v5.3 roadmap.
 
 ## Development
 
@@ -238,7 +238,7 @@ node --test tests/extension/*.test.js  # Extension tests
 make dev                               # Build for current platform
 ```
 
-**[Release process & quality gates →](RELEASE.md)** · **[Changelog →](CHANGELOG.md)**
+**[Release process & quality gates →](docs/core/RELEASE.md)** · **[Changelog →](CHANGELOG.md)**
 
 ## License
 

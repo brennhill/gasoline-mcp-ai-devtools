@@ -455,10 +455,24 @@
   }
 
   // extension/content.js
+  var scriptsInjected = false;
   initTabTracking();
   initRequestTracking();
   initWindowMessageListener();
   initRuntimeMessageListener();
-  initScriptInjection();
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.trackedTabId) {
+      if (getIsTrackedTab() && !scriptsInjected) {
+        initScriptInjection();
+        scriptsInjected = true;
+      }
+    }
+  });
+  setTimeout(() => {
+    if (getIsTrackedTab() && !scriptsInjected) {
+      initScriptInjection();
+      scriptsInjected = true;
+    }
+  }, 100);
 })();
 //# sourceMappingURL=content.bundled.js.map

@@ -505,11 +505,18 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 			}
 		}
 
+		// Get tracked tab ID for metadata (v5.3+)
+		_, trackedTabID, _ := h.capture.GetTrackingStatus()
+
 		// Return JSON format even for empty result to maintain consistency
 		data := map[string]interface{}{
 			"events": []map[string]interface{}{},
 			"count":  0,
 			"total":  metadata.Total,
+		}
+		// Add tracked_tab_id metadata if tracking is active (v5.3+)
+		if trackedTabID > 0 {
+			data["tracked_tab_id"] = trackedTabID
 		}
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(msg, data)}
 	}
@@ -519,6 +526,9 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 	for i, e := range result {
 		jsonEvents[i] = SerializeWebSocketEntryWithSequence(e)
 	}
+
+	// Get tracked tab ID for metadata (v5.3+)
+	_, trackedTabID, _ := h.capture.GetTrackingStatus()
 
 	// Build response summary
 	summary := fmt.Sprintf("%d WebSocket event(s)", metadata.Count)
@@ -550,6 +560,10 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 		data["original_cursor"] = metadata.OriginalCursor
 		data["warning"] = metadata.Warning
 	}
+	// Add tracked_tab_id metadata if tracking is active (v5.3+)
+	if trackedTabID > 0 {
+		data["tracked_tab_id"] = trackedTabID
+	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
 }
@@ -568,5 +582,18 @@ func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) 
 		ConnectionID: arguments.ConnectionID,
 	})
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("WebSocket connection status", status)}
+	// Get tracked tab ID for metadata (v5.3+)
+	_, trackedTabID, _ := h.capture.GetTrackingStatus()
+
+	// Wrap status in data map to add tracked_tab_id metadata
+	data := map[string]interface{}{
+		"connections": status.Connections,
+		"closed":      status.Closed,
+	}
+	// Add tracked_tab_id metadata if tracking is active (v5.3+)
+	if trackedTabID > 0 {
+		data["tracked_tab_id"] = trackedTabID
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("WebSocket connection status", data)}
 }

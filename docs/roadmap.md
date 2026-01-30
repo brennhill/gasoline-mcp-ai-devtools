@@ -1,6 +1,6 @@
 # Gasoline Versioning & Roadmap
 
-**Single source of truth. For strategic analysis, see [ROADMAP-REORGANIZATION.md](ROADMAP-REORGANIZATION.md).**
+**Single source of truth. For strategic analysis, see [ROADMAP-STRATEGY-ANALYSIS.md](ROADMAP-STRATEGY-ANALYSIS.md).**
 
 ---
 
@@ -180,7 +180,7 @@ observe({what: "network_stats", group_by: "host"})
 
 **Organization:** Features grouped by tier. Each tier validates part of the thesis and unlocks the next market segment.
 
-**See [ROADMAP-REORGANIZATION.md](ROADMAP-REORGANIZATION.md) for detailed strategic analysis.**
+**See [ROADMAP-STRATEGY-ANALYSIS.md](ROADMAP-STRATEGY-ANALYSIS.md) for detailed strategic analysis.**
 
 ---
 
@@ -194,6 +194,7 @@ observe({what: "network_stats", group_by: "host"})
 
 **Solves:** Problems A (tokens) + B (causality) + D (selectors)
 
+- **Advanced Filtering (Signal-to-Noise)** — Content-type filters, domain allowlist/blocklist, regex patterns, response size thresholds. Reduce noise before AI sees it. Complements v5.3 pagination.
 - **Visual-Semantic Bridge** — Computed layout maps. Auto-generate unique test-IDs. Solves "ghost clicks" and "hallucinated selectors." [Spec](features/feature/visual-semantic-bridge/PRODUCT_SPEC.md)
 - **State "Time Travel"** — Persistent event buffer. Before/after snapshots. Enables causal debugging across crashes. [Spec](features/feature/state-time-travel/PRODUCT_SPEC.md)
 - **Causal Diffing** — Root-cause analysis: "X changed → broke Y → surfaces as Z"

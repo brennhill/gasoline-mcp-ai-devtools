@@ -476,6 +476,15 @@ export async function checkConnectionAndUpdate(): Promise<void> {
       polling.startStatusPing(
         () => sendStatusPingWrapper()
       );
+      // Import version check dynamically to avoid circular imports
+      import('./version-check').then(vc => {
+        polling.startVersionCheck(
+          () => vc.checkServerVersion(serverUrl, debugLog),
+          debugLog
+        );
+      }).catch(err => {
+        debugLog(DebugCategory.CONNECTION, 'Failed to start version check', { error: (err as Error).message });
+      });
     } else {
       polling.stopAllPolling();
     }

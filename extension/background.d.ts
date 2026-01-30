@@ -19,6 +19,7 @@ export { debugLog, getDebugLog, clearDebugLog, exportDebugLog, } from './backgro
 export { sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher, } from './background/index';
 export { handleLogMessage, handleClearLogs, isConnectionCheckRunning, checkConnectionAndUpdate, applyCaptureOverrides, } from './background/index';
 export { pollPendingQueriesWrapper, postSettingsWrapper, postNetworkWaterfall, postExtensionLogsWrapper, sendStatusPingWrapper, } from './background/index';
+export { getExtensionVersion, isNewVersionAvailable, getLastServerVersion, checkServerVersion, updateVersionBadge, resetVersionCheck, } from './background/version-check';
 export { handlePendingQuery, handlePilotCommand, isAiWebPilotEnabled, } from './background/index';
 export { createErrorSignature, processErrorGroup, flushErrorGroups, canTakeScreenshot, recordScreenshot, estimateBufferMemory, checkMemoryPressure, getMemoryPressureState, resetMemoryPressureState, } from './background/state-manager';
 export { measureContextSize, checkContextAnnotations, getContextWarning, resetContextWarning, } from './background/state-manager';

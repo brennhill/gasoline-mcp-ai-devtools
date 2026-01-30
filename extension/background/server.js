@@ -2,6 +2,17 @@
  * @fileoverview Server Communication - HTTP functions for sending data to
  * the Gasoline server.
  */
+import { getExtensionVersion } from './version-check.js';
+/**
+ * Get standard headers for API requests including version header
+ */
+function getRequestHeaders(additionalHeaders = {}) {
+    return {
+        'Content-Type': 'application/json',
+        'X-Gasoline-Extension-Version': getExtensionVersion(),
+        ...additionalHeaders,
+    };
+}
 /**
  * Send log entries to the server
  */
@@ -10,7 +21,7 @@ export async function sendLogsToServer(serverUrl, entries, debugLogFn) {
         debugLogFn('connection', `Sending ${entries.length} entries to server`);
     const response = await fetch(`${serverUrl}/logs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getRequestHeaders(),
         body: JSON.stringify({ entries }),
     });
     if (!response.ok) {
@@ -32,7 +43,7 @@ export async function sendWSEventsToServer(serverUrl, events, debugLogFn) {
         debugLogFn('connection', `Sending ${events.length} WS events to server`);
     const response = await fetch(`${serverUrl}/websocket-events`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getRequestHeaders(),
         body: JSON.stringify({ events }),
     });
     if (!response.ok) {
@@ -52,7 +63,7 @@ export async function sendNetworkBodiesToServer(serverUrl, bodies, debugLogFn) {
         debugLogFn('connection', `Sending ${bodies.length} network bodies to server`);
     const response = await fetch(`${serverUrl}/network-bodies`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getRequestHeaders(),
         body: JSON.stringify({ bodies }),
     });
     if (!response.ok) {
@@ -72,7 +83,7 @@ export async function sendNetworkWaterfallToServer(serverUrl, payload, debugLogF
         debugLogFn('connection', `Sending ${payload.entries.length} waterfall entries to server`);
     const response = await fetch(`${serverUrl}/network-waterfall`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getRequestHeaders(),
         body: JSON.stringify(payload),
     });
     if (!response.ok) {
@@ -92,7 +103,7 @@ export async function sendEnhancedActionsToServer(serverUrl, actions, debugLogFn
         debugLogFn('connection', `Sending ${actions.length} enhanced actions to server`);
     const response = await fetch(`${serverUrl}/enhanced-actions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getRequestHeaders(),
         body: JSON.stringify({ actions }),
     });
     if (!response.ok) {
@@ -112,7 +123,7 @@ export async function sendPerformanceSnapshotsToServer(serverUrl, snapshots, deb
         debugLogFn('connection', `Sending ${snapshots.length} performance snapshots to server`);
     const response = await fetch(`${serverUrl}/performance-snapshots`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getRequestHeaders(),
         body: JSON.stringify({ snapshots }),
     });
     if (!response.ok) {
@@ -200,7 +211,7 @@ export async function postQueryResult(serverUrl, queryId, type, result) {
     try {
         const response = await fetch(`${serverUrl}${endpoint}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getRequestHeaders(),
             body: JSON.stringify({ id: queryId, result }),
         });
         if (!response.ok) {
@@ -228,7 +239,7 @@ export async function postAsyncCommandResult(serverUrl, correlationId, status, r
     try {
         const response = await fetch(`${serverUrl}/execute-result`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getRequestHeaders(),
             body: JSON.stringify(payload),
         });
         if (!response.ok) {
@@ -253,7 +264,7 @@ export async function postSettings(serverUrl, sessionId, settings, debugLogFn) {
     try {
         const response = await fetch(`${serverUrl}/settings`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getRequestHeaders(),
             body: JSON.stringify({
                 session_id: sessionId,
                 settings: settings,
@@ -297,7 +308,7 @@ export async function postExtensionLogs(serverUrl, logs) {
     try {
         const response = await fetch(`${serverUrl}/extension-logs`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getRequestHeaders(),
             body: JSON.stringify({ logs }),
         });
         if (!response.ok) {
@@ -315,7 +326,7 @@ export async function sendStatusPing(serverUrl, statusMessage, diagnosticLogFn) 
     try {
         const response = await fetch(`${serverUrl}/api/extension-status`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getRequestHeaders(),
             body: JSON.stringify(statusMessage),
         });
         if (!response.ok) {
@@ -339,8 +350,7 @@ export async function pollPendingQueries(serverUrl, sessionId, pilotState, diagn
         }
         const response = await fetch(`${serverUrl}/pending-queries`, {
             headers: {
-                'X-Gasoline-Session': sessionId,
-                'X-Gasoline-Pilot': pilotState,
+                ...getRequestHeaders({ 'X-Gasoline-Session': sessionId, 'X-Gasoline-Pilot': pilotState }),
             },
         });
         if (!response.ok) {
