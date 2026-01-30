@@ -542,3 +542,178 @@ func TestMCPHTTPEndpointV4ToolCall(t *testing.T) {
 		t.Errorf("Expected no error, got %v", resp.Error)
 	}
 }
+
+// TestToolConfigureClearNetwork verifies clearing network buffers via MCP tool.
+func TestToolConfigureClearNetwork(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	handler := setupToolHandler(t, server, capture)
+
+	// Add network data
+	capture.mu.Lock()
+	capture.networkWaterfall = []NetworkWaterfallEntry{{URL: "https://example.com"}}
+	capture.mu.Unlock()
+
+	capture.AddNetworkBodies([]NetworkBody{{URL: "https://example.com", Status: 200}})
+
+	// Clear via MCP tool
+	args := json.RawMessage(`{"action": "clear", "buffer": "network"}`)
+	resp := handler.toolHandler.toolConfigure(JSONRPCRequest{ID: json.RawMessage(`1`)}, args)
+
+	// Verify no error
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got %v", resp.Error)
+	}
+
+	// Verify response
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	if !strings.Contains(text, `"cleared":"network"`) {
+		t.Errorf("Expected cleared:network in response, got: %s", text)
+	}
+	if !strings.Contains(text, `"counts"`) {
+		t.Errorf("Expected counts field in response, got: %s", text)
+	}
+	if !strings.Contains(text, `"total_cleared":2`) {
+		t.Errorf("Expected total_cleared:2 in response, got: %s", text)
+	}
+
+	// Verify buffer empty
+	capture.mu.RLock()
+	networkEmpty := len(capture.networkWaterfall) == 0
+	bodiesEmpty := len(capture.networkBodies) == 0
+	capture.mu.RUnlock()
+
+	if !networkEmpty {
+		t.Error("Expected networkWaterfall to be empty")
+	}
+	if !bodiesEmpty {
+		t.Error("Expected networkBodies to be empty")
+	}
+}
+
+// TestToolConfigureClearBackwardCompatible verifies clearing without buffer parameter clears logs only.
+func TestToolConfigureClearBackwardCompatible(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	handler := setupToolHandler(t, server, capture)
+
+	// Add logs
+	server.addEntries([]LogEntry{{"level": "info", "message": "test", "ts": "2026-01-30T10:00:00Z"}})
+
+	// Clear without buffer parameter (backward compatible)
+	args := json.RawMessage(`{"action": "clear"}`)
+	resp := handler.toolHandler.toolConfigure(JSONRPCRequest{ID: json.RawMessage(`1`)}, args)
+
+	// Verify no error
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got %v", resp.Error)
+	}
+
+	// Verify logs cleared
+	server.mu.RLock()
+	logsEmpty := len(server.entries) == 0
+	server.mu.RUnlock()
+
+	if !logsEmpty {
+		t.Error("Expected server.entries to be empty")
+	}
+
+	// Verify response
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	if !strings.Contains(text, `"cleared":"logs"`) {
+		t.Errorf("Expected cleared:logs in response (backward compatible), got: %s", text)
+	}
+}
+
+// TestToolConfigureClearInvalidBuffer verifies error for invalid buffer name.
+func TestToolConfigureClearInvalidBuffer(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	handler := setupToolHandler(t, server, capture)
+
+	// Try invalid buffer
+	args := json.RawMessage(`{"action": "clear", "buffer": "invalid"}`)
+	resp := handler.toolHandler.toolConfigure(JSONRPCRequest{ID: json.RawMessage(`1`)}, args)
+
+	// Verify error (errors are returned in Result with isError flag)
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+
+	text := result.Content[0].Text
+	if !strings.Contains(text, "Invalid buffer") {
+		t.Errorf("Expected 'Invalid buffer' in response, got: %s", text)
+	}
+	if !result.IsError {
+		t.Error("Expected isError to be true for invalid buffer")
+	}
+}
+
+// TestToolConfigureClearAll verifies clearing all buffers.
+func TestToolConfigureClearAll(t *testing.T) {
+	t.Parallel()
+	server, _ := setupTestServer(t)
+	capture := setupTestCapture(t)
+	handler := setupToolHandler(t, server, capture)
+
+	// Add data to all buffers
+	capture.mu.Lock()
+	capture.networkWaterfall = []NetworkWaterfallEntry{{URL: "test"}}
+	capture.mu.Unlock()
+
+	capture.AddWebSocketEvents([]WebSocketEvent{{ID: "conn1", Data: "test"}})
+	capture.AddEnhancedActions([]EnhancedAction{{Type: "click", Timestamp: 1738238000000}})
+	server.addEntries([]LogEntry{{"level": "info", "message": "test", "ts": "2026-01-30T10:00:00Z"}})
+
+	// Clear all
+	args := json.RawMessage(`{"action": "clear", "buffer": "all"}`)
+	resp := handler.toolHandler.toolConfigure(JSONRPCRequest{ID: json.RawMessage(`1`)}, args)
+
+	// Verify no error
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got %v", resp.Error)
+	}
+
+	// Verify all buffers empty
+	capture.mu.RLock()
+	networkEmpty := len(capture.networkWaterfall) == 0
+	wsEmpty := len(capture.wsEvents) == 0
+	actionsEmpty := len(capture.enhancedActions) == 0
+	capture.mu.RUnlock()
+
+	server.mu.RLock()
+	logsEmpty := len(server.entries) == 0
+	server.mu.RUnlock()
+
+	if !networkEmpty {
+		t.Error("Expected networkWaterfall to be empty")
+	}
+	if !wsEmpty {
+		t.Error("Expected wsEvents to be empty")
+	}
+	if !actionsEmpty {
+		t.Error("Expected enhancedActions to be empty")
+	}
+	if !logsEmpty {
+		t.Error("Expected server.entries to be empty")
+	}
+
+	// Verify response
+	var result MCPToolResult
+	json.Unmarshal(resp.Result, &result)
+	text := result.Content[0].Text
+
+	if !strings.Contains(text, `"cleared":"all"`) {
+		t.Errorf("Expected cleared:all in response, got: %s", text)
+	}
+}

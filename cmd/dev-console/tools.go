@@ -1032,7 +1032,7 @@ func (h *ToolHandler) toolsList() []MCPTool {
 		},
 		{
 			Name:        "configure",
-			Description: "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots & compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear browser logs), health (server health check). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: Browser logs cleared confirmation text\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
+			Description: "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots & compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear buffers - specify buffer parameter), health (server health check). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot, configure({action:'clear',buffer:'network'})→clear network buffers. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: {cleared, counts, total_cleared}\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
@@ -1102,6 +1102,11 @@ func (h *ToolHandler) toolsList() []MCPTool {
 					"reason": map[string]interface{}{
 						"type":        "string",
 						"description": "Why this is noise (applies to dismiss)",
+					},
+					"buffer": map[string]interface{}{
+						"type":        "string",
+						"description": "Which buffer to clear (applies to action: \"clear\"). Valid values: \"network\" (network_waterfall + network_bodies), \"websocket\" (websocket_events + websocket_status), \"actions\" (user interactions), \"logs\" (console + extension logs), \"all\" (everything). Default: \"logs\" (backward compatible).",
+						"enum":        []string{"network", "websocket", "actions", "logs", "all"},
 					},
 					// query_dom parameters
 					"selector": map[string]interface{}{
@@ -1461,7 +1466,7 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 	case "dismiss":
 		resp = h.toolConfigureDismiss(req, args)
 	case "clear":
-		resp = h.toolClearBrowserLogs(req)
+		resp = h.toolConfigureClear(req, args)
 	case "capture":
 		resp = h.toolConfigureCapture(req, args)
 	case "record_event":
@@ -1873,6 +1878,66 @@ func (h *ToolHandler) toolGetExtensionLogs(req JSONRPCRequest, args json.RawMess
 func (h *ToolHandler) toolClearBrowserLogs(req JSONRPCRequest) JSONRPCResponse {
 	h.server.clearEntries()
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("Browser logs cleared successfully")}
+}
+
+// toolConfigureClear handles buffer-specific clearing with optional buffer parameter.
+func (h *ToolHandler) toolConfigureClear(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Buffer string `json:"buffer"` // "network", "websocket", "actions", "logs", "all"
+	}
+	_ = json.Unmarshal(args, &params)
+
+	// Default to "logs" for backward compatibility
+	if params.Buffer == "" {
+		params.Buffer = "logs"
+	}
+
+	var counts BufferClearCounts
+	var bufferName string
+
+	switch params.Buffer {
+	case "network":
+		counts = h.capture.ClearNetworkBuffers()
+		bufferName = "network"
+
+	case "websocket":
+		counts = h.capture.ClearWebSocketBuffers()
+		bufferName = "websocket"
+
+	case "actions":
+		counts = h.capture.ClearActionBuffer()
+		bufferName = "actions"
+
+	case "logs":
+		counts = ClearLogBuffers(h.server, h.capture)
+		bufferName = "logs"
+
+	case "all":
+		counts = ClearAllBuffers(h.server, h.capture)
+		bufferName = "all"
+
+	default:
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result: mcpStructuredError(
+				ErrInvalidParam,
+				fmt.Sprintf("Invalid buffer: %s", params.Buffer),
+				"Use one of: network, websocket, actions, logs, all",
+				withParam("buffer"),
+			),
+		}
+	}
+
+	data := map[string]interface{}{
+		"cleared":       bufferName,
+		"counts":        counts,
+		"total_cleared": counts.Total(),
+		"timestamp":     time.Now().Format(time.RFC3339),
+	}
+
+	summary := fmt.Sprintf("Cleared %s buffer(s): %d total items", bufferName, counts.Total())
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
 }
 
 // ============================================

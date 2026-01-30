@@ -1073,8 +1073,13 @@ func TestMCPClearBrowserLogs(t *testing.T) {
 		t.Fatal("Expected at least one content item")
 	}
 
-	if result.Content[0].Text != "Browser logs cleared successfully" {
-		t.Errorf("Expected success message, got: %s", result.Content[0].Text)
+	// New behavior: returns JSON format with counts
+	text := result.Content[0].Text
+	if !strings.Contains(text, `"cleared":"logs"`) {
+		t.Errorf("Expected cleared:logs in response, got: %s", text)
+	}
+	if !strings.Contains(text, `"counts"`) {
+		t.Errorf("Expected counts field in response, got: %s", text)
 	}
 }
 
