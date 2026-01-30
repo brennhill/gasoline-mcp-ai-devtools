@@ -156,11 +156,13 @@ version: v7.0-rev2
 
 ### 4. Memory Analysis (analyze-memory.js)
 
+**Limitation:** Uses `performance.memory` (Chrome-only, deprecated, basic stats only). For full heap profiling, use DevTools.
+
 | Test ID | Test Case | Expected Result |
 |---------|-----------|-----------------|
 | A-EXT-050 | Heap snapshot captures performance.memory | heap_used_mb, heap_total_mb |
 | A-EXT-051 | performance.memory unavailable detected | error: "memory_api_unavailable" |
-| A-EXT-052 | Detached DOM nodes counted | detached_nodes field populated |
+| A-EXT-052 | DOM node count captured | dom_node_count field populated |
 | A-EXT-053 | Snapshot includes timestamp | ISO 8601 format |
 | A-EXT-054 | Compare requires prior baseline | error: "no_baseline" if missing |
 | A-EXT-055 | Compare calculates delta | heap_growth_mb, heap_growth_pct |

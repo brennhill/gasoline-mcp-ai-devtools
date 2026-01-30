@@ -1318,8 +1318,8 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 		}
 		httpReady <- nil
 		srv := &http.Server{
-			ReadTimeout:  2 * time.Second,  // Force fast request reads
-			WriteTimeout: 2 * time.Second,  // Force responses within 2s (async command pattern)
+			ReadTimeout:  5 * time.Second,  // Allow time for request body reads
+			WriteTimeout: 10 * time.Second, // Allow time for extension queries (2s timeout + buffer)
 			IdleTimeout:  120 * time.Second, // Keep-alive for polling connections
 			Handler:      AuthMiddleware(apiKey)(http.DefaultServeMux),
 		}

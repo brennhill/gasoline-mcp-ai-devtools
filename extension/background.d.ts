@@ -24,6 +24,7 @@ export { createErrorSignature, processErrorGroup, flushErrorGroups, canTakeScree
 export { measureContextSize, checkContextAnnotations, getContextWarning, resetContextWarning, } from './background/state-manager';
 export { setSourceMapEnabled, isSourceMapEnabled, clearSourceMapCache, } from './background/state-manager';
 export { createCircuitBreaker, createBatcherWithCircuitBreaker, createLogBatcher, sendLogsToServer, sendEnhancedActionsToServer, checkServerHealth, updateBadge, formatLogEntry, shouldCaptureLog, } from './background/communication';
+export { postQueryResult, } from './background/server';
 export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, } from './background/message-handlers';
 export { _captureOverrides, _connectionCheckRunning, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, _resetPilotCacheForTesting, } from './background/index';
 //# sourceMappingURL=background.d.ts.map

@@ -349,6 +349,8 @@ All analyze responses follow this structure (aligned with mcpJSONResponse):
 
 ### Memory Response Schema
 
+**Limitation:** Memory analysis uses `performance.memory` API which is Chrome-only, deprecated, and provides basic heap stats only (no detached node detection). Developers needing full heap profiling should use DevTools Memory panel directly.
+
 ```json
 {
   "status": "success",

@@ -90,7 +90,7 @@ export function installGasolineAPI(): void {
      * @example
      * window.__gasoline.annotate('checkout-flow', { step: 'payment', items: 3 })
      */
-    annotate(key: string, value: unknown): void {
+    annotate(key: string, value: unknown): boolean {
       return setContextAnnotation(key, value);
     },
 
@@ -98,7 +98,7 @@ export function installGasolineAPI(): void {
      * Remove a context annotation
      * @param key - Annotation key to remove
      */
-    removeAnnotation(key: string): void {
+    removeAnnotation(key: string): boolean {
       return removeContextAnnotation(key);
     },
 
@@ -122,7 +122,7 @@ export function installGasolineAPI(): void {
      * @returns Recent user actions
      */
     getActions(): ActionEntry[] {
-      return getActionBuffer();
+      return getActionBuffer() as unknown as ActionEntry[];
     },
 
     /**
@@ -171,7 +171,7 @@ export function installGasolineAPI(): void {
      * @returns Performance mark entries
      */
     getMarks(options?: { since?: number }): PerformanceMark[] {
-      return getPerformanceMarks(options);
+      return getPerformanceMarks(options) as unknown as PerformanceMark[];
     },
 
     /**
@@ -180,7 +180,7 @@ export function installGasolineAPI(): void {
      * @returns Performance measure entries
      */
     getMeasures(options?: { since?: number }): PerformanceMeasure[] {
-      return getPerformanceMeasures(options);
+      return getPerformanceMeasures(options) as unknown as PerformanceMeasure[];
     },
 
     // === AI Context ===
@@ -191,7 +191,7 @@ export function installGasolineAPI(): void {
      * @returns Enriched error entry
      */
     enrichError(error: LogEntry): Promise<LogEntry> {
-      return enrichErrorWithAiContext(error);
+      return enrichErrorWithAiContext(error as unknown as any) as unknown as Promise<LogEntry>;
     },
 
     /**
@@ -219,7 +219,7 @@ export function installGasolineAPI(): void {
      * @param opts - Options
      */
     recordAction(type: string, element: Element, opts?: Record<string, unknown>): void {
-      return recordEnhancedAction(type, element, opts);
+      recordEnhancedAction(type as any, element, opts);
     },
 
     /**
@@ -227,7 +227,7 @@ export function installGasolineAPI(): void {
      * @returns
      */
     getEnhancedActions(): EnhancedAction[] {
-      return getEnhancedActionBuffer();
+      return getEnhancedActionBuffer() as unknown as EnhancedAction[];
     },
 
     /**
@@ -244,7 +244,7 @@ export function installGasolineAPI(): void {
      * @returns Playwright test script
      */
     generateScript(actions?: EnhancedAction[], opts?: Record<string, unknown>): string {
-      return generatePlaywrightScript(actions || getEnhancedActionBuffer(), opts);
+      return generatePlaywrightScript((actions || getEnhancedActionBuffer()) as any, opts);
     },
 
     /**
@@ -253,7 +253,7 @@ export function installGasolineAPI(): void {
      * @returns
      */
     getSelectors(element: Element): SelectorStrategies {
-      return computeSelectors(element);
+      return computeSelectors(element) as unknown as SelectorStrategies;
     },
 
     /**

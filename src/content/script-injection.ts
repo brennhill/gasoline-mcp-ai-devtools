@@ -1,0 +1,27 @@
+/**
+ * @fileoverview Script Injection Module
+ * Injects capture script into the page context
+ */
+
+/**
+ * Inject the capture script into the page
+ */
+export function injectScript(): void {
+  const script = document.createElement('script');
+  script.src = chrome.runtime.getURL('inject.js');
+  script.type = 'module';
+  script.onload = () => script.remove();
+  (document.head || document.documentElement).appendChild(script);
+}
+
+/**
+ * Initialize script injection (call when DOM is ready)
+ */
+export function initScriptInjection(): void {
+  // Inject when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectScript, { once: true });
+  } else {
+    injectScript();
+  }
+}

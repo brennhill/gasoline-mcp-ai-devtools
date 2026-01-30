@@ -134,6 +134,8 @@ export function capturePerformanceSnapshot(): PerformanceSnapshotData | null {
   if (!navEntries || navEntries.length === 0) return null;
 
   const nav = navEntries[0];
+  if (!nav) return null;
+
   const timing: NetworkTiming = {
     domContentLoaded: nav.domContentLoadedEventEnd,
     load: nav.loadEventEnd,
@@ -192,7 +194,10 @@ export function installPerfObservers(): void {
   lcpObserver = new PerformanceObserver((list: PerformanceObserverEntryList): void => {
     const entries = list.getEntries();
     if (entries.length > 0) {
-      lcpValue = entries[entries.length - 1].startTime;
+      const lastEntry = entries[entries.length - 1];
+      if (lastEntry) {
+        lcpValue = lastEntry.startTime;
+      }
     }
   });
   lcpObserver.observe({ type: 'largest-contentful-paint' });
@@ -219,7 +224,7 @@ export function installPerfObservers(): void {
       }
     }
   });
-  inpObserver.observe({ type: 'event', durationThreshold: 40 });
+  inpObserver.observe({ type: 'event', durationThreshold: 40 } as PerformanceObserverInit);
 }
 
 /**

@@ -7,6 +7,7 @@ Browser extension + MCP server: captures real-time browser telemetry (logs, netw
 ## Commands
 
 ```bash
+make compile-ts                        # REQUIRED: Compile TypeScript before ANY extension changes
 make test                              # Go tests (full suite)
 go test -short ./cmd/dev-console/      # Go tests (fast iteration, skips slow)
 go vet ./cmd/dev-console/              # Static analysis
@@ -20,12 +21,26 @@ make dev                               # Build current platform
 
 1. **Spec Review** — MANDATORY: Every feature spec must be reviewed by a principal engineer agent before implementation. See [spec-review.md](.claude/docs/spec-review.md)
 2. **TDD** — Write tests FIRST. Read spec → tests → confirm fail → implement → confirm pass → commit
-3. **Zero deps** — Production runtime only: Go server uses stdlib only; Extension uses no frameworks. Dev tooling (test runners, linters, code generators) may use external packages.
-4. **No remote code** — Chrome Web Store PROHIBITS loading remotely hosted code. All third-party libraries (e.g., axe-core) MUST be bundled locally in the extension package. NEVER load scripts from CDNs or external URLs
-5. **5-Tool Maximum** — Gasoline exposes exactly 5 MCP tools: `observe`, `analyze`, `generate`, `configure`, `interact`. Creating a 6th tool requires architecture review. New features MUST be added as a mode/action under one of these 5. See [architecture.md](.claude/docs/architecture.md)
-6. **Performance** — Extension must not degrade browsing. WS < 0.1ms, fetch < 0.5ms, never block main thread
-7. **Privacy** — Sensitive data never leaves localhost. Strip auth headers, body capture opt-in
-8. **Quality gates** — `go vet` + `make test` + `node --test` must pass before every commit
+3. **TypeScript Compilation** — CRITICAL: After ANY change to `src/**/*.ts`, you MUST run `make compile-ts` and verify it succeeds. NEVER commit without compilation. See [typescript-workflow.md](.claude/docs/typescript-workflow.md)
+4. **Zero deps** — Production runtime only: Go server uses stdlib only; Extension uses no frameworks. Dev tooling (test runners, linters, code generators) may use external packages.
+5. **No remote code** — Chrome Web Store PROHIBITS loading remotely hosted code. All third-party libraries (e.g., axe-core) MUST be bundled locally in the extension package. NEVER load scripts from CDNs or external URLs
+6. **5-Tool Maximum** — Gasoline exposes exactly 5 MCP tools: `observe`, `analyze`, `generate`, `configure`, `interact`. Creating a 6th tool requires architecture review. New features MUST be added as a mode/action under one of these 5. See [architecture.md](.claude/docs/architecture.md)
+7. **Performance** — Extension must not degrade browsing. WS < 0.1ms, fetch < 0.5ms, never block main thread
+8. **Privacy** — Sensitive data never leaves localhost. Strip auth headers, body capture opt-in
+9. **Quality gates** — `make compile-ts` + `go vet` + `make test` + `node --test` + smoke test must ALL pass before every commit
+
+## Pre-Commit Checklist
+
+BEFORE EVERY COMMIT involving extension code (`src/` changes), you MUST:
+
+- [ ] **Run `make compile-ts`** - Verify TypeScript compiles without errors
+- [ ] **Check compilation output** - Verify `extension/background/index.js` exists and is recent
+- [ ] **Run `make test`** - All Go tests pass
+- [ ] **Run `node --test tests/extension/*.test.js`** - All extension tests pass
+- [ ] **Smoke test** - If you modified TypeScript, reload extension in Chrome and check console for errors
+- [ ] **Verify manifest** - If you changed background entry point, verify `manifest.json` points to correct file
+
+**If ANY step fails, DO NOT COMMIT. Fix the issue first.**
 
 ## Git
 

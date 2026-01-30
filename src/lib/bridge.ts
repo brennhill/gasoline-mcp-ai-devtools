@@ -6,7 +6,7 @@
 import { getContextAnnotations } from './context';
 import { getActionBuffer } from './actions';
 
-interface BridgePayload {
+export interface BridgePayload {
   level?: string;
   message?: string;
   error?: string;
