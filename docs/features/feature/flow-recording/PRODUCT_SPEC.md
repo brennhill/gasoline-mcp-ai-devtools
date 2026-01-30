@@ -30,20 +30,21 @@ Regression testing today is **slow, manual, and error-prone**:
 
 **The workflow:**
 1. **QA records** a user's reported flow once (e.g., "checkout fails on coupon code entry")
+   - Recording captures: clicks, typing, navigation, network calls, console errors, DOM state
 2. **Developer fixes** the bug in code
-3. **LLM invokes Gasoline** to replay the flow and compare logs (original vs fixed)
-4. **Gasoline provides:**
-   - Structured diff of logs (what changed?)
-   - Error detection (404? timeout? missing element?)
-   - Git context (which commits touched affected code?)
-   - Claude analyzes all this and suggests root cause + code fixes
-5. **Developer verifies** the fix in <5 minutes (not 30 minutes of manual testing)
+3. **LLM invokes Gasoline** to replay the exact same flow (against fixed code)
+4. **Gasoline compares** original recording logs vs replay logs:
+   - What changed? (error message now present, API response different, element location moved?)
+   - What's new? (404 error, console warning, network timeout?)
+   - What's missing? (cleanup event, success message?)
+5. **LLM analyzes** the diff and tells developer: "Regression is fixed ✓" or "Still broken, here's why"
+6. **Developer verifies** the fix in <5 minutes (not 30 minutes of manual testing)
 
 **Why Gasoline:**
 - **Purpose-built for regression testing**, not general test automation
-- **Structured log diffing + error detection** — provides the data Claude needs to analyze root causes (unique differentiator)
-- **Git context collection** — shows which commits changed affected code (helps Claude suggest correct fixes)
-- **AI-ready data pipeline** — logs, diffs, errors, and git context fed directly to Claude for analysis
+- **Structured log diffing** — record a flow once, replay later, automatically detect what changed (the core product)
+- **Error detection** — identify 404s, timeouts, missing elements, log changes automatically
+- **AI-ready data pipeline** — logs, diffs, errors fed directly to Claude for analysis
 - **Local-first** — runs entirely on your machine (no cloud, no shared state)
 - **Zero dependencies** — lean, fast, audit-friendly
 
@@ -313,46 +314,39 @@ Regression testing today is **slow, manual, and error-prone**:
   - Or expand storage
 - Gasoline doesn't auto-delete recordings (data loss risk)
 
-### R10: Root Cause Analysis Data & Git Context (For Claude)
+### R10: Log Diffing & Regression Detection
 
-**What Gasoline Provides (Structured Data for LLM Analysis):**
+**What Gasoline Provides (Core MVP):**
 
-**Log Diffing & Error Detection:**
+**Log Diffing:**
 - [ ] Compare original recording logs vs replay logs (structured diff)
-- [ ] Identify error types: network error (404, 500, timeout), DOM changes (missing elements), timeout/delay
-- [ ] Extract error context: error message, stack trace, affected URL, affected action
-- [ ] Categorize: Is this a regression (present in replay but not original)?
-- [ ] Take screenshot when error detected (visual evidence)
+- [ ] Show what's different:
+  - New errors (404, 500, timeout, missing element)
+  - Missing events (expected network call didn't happen, console message absent)
+  - Changed values (success response different, form validation error different)
+  - Timing changes (action took 2x longer, load delayed)
+- [ ] Extract error context: error message, stack trace, affected URL, affected action, timestamp
 
-**Git Context (Read-Only):**
-- [ ] Find commits that touched affected files (from error context)
-- [ ] Show commit messages and authors: "User auth changes (PR #523)"
-- [ ] Suggest which commits might have introduced the issue
-- [ ] Report commits that fixed related issues (for comparison)
+**Regression Detection:**
+- [ ] Categorize: Is this a regression? (present in replay but NOT in original recording)
+- [ ] Alert LLM: "Regression detected: [error type] on [action]"
+- [ ] Take screenshot when error detected (visual evidence)
+- [ ] Mark errors as:
+  - Regression (new in replay) = BUG
+  - Expected (in both original + replay) = Known issue
+  - Fixed (was in original, gone in replay) = SUCCESS
 
 **What Claude Does (With Gasoline Data):**
-- [ ] Analyze error patterns: "404 on /api/checkout" → likely cause is "endpoint missing or renamed"
-- [ ] Rank confidence (HIGH/MEDIUM/LOW) based on error clarity + git context
-- [ ] Propose specific code fixes: file path, line number, what to change, why
-- [ ] Never auto-apply; LLM (Claude) reviews and decides to apply fixes
+- [ ] Review the log diff from Gasoline
+- [ ] Analyze error patterns: "404 on /api/checkout" → likely cause is "endpoint missing"
+- [ ] Propose code fixes: "Update client to call /api/orders instead"
+- [ ] Rank confidence (HIGH/MEDIUM/LOW) based on error clarity
+- [ ] Never auto-apply; developer reviews and applies fixes
 
-**Git Integration (Optional):**
-- [ ] If git repo available, find commits that touched affected files
-- [ ] Show commit messages and authors: "User auth changes (PR #523)"
-- [ ] Suggest which commits might have introduced the issue
-- [ ] Report commits that fixed related issues (for comparison)
-
-**Claude Skill API:**
-- [ ] Skill name: `/gasoline-fix`
-- [ ] Parameters: `recording_id`, `original_test_boundary`, `replay_test_boundary`
-- [ ] Returns: `{root_cause, confidence, suggested_fixes, related_commits, affected_files}`
-- [ ] Callable by LLM during CI/CD or interactive debugging
-
-**Safety & Guardrails:**
-- [ ] Never auto-apply fixes; always propose for review
-- [ ] If git unavailable, suggest based on error logs only
-- [ ] Log all suggestions for audit trail
-- [ ] Flag speculative fixes (low confidence) vs obvious fixes (high confidence)
+**Phase 2 (Optional):**
+- [ ] Git integration: Find commits that touched affected files
+- [ ] Show commit history for context
+- [ ] Test coverage analytics: Which code paths are untested
 
 ---
 
@@ -501,123 +495,59 @@ Developer reviews & applies:
 
 ---
 
-## Claude Skill: `/gasoline-fix`
+## Claude Skill: Analyze Regression (Gasoline Data → Claude Analysis)
 
 **When to Use:**
-When flow recording playback detects a regression (logs differ between original and replay), invoke this skill to automatically analyze the root cause and suggest code fixes.
+When playback detects a regression (replay logs differ from original), use this workflow to analyze the diff and suggest fixes.
 
-**How to Invoke:**
+**How to Use (Workflow, not API):**
 ```
-/gasoline-fix recording_id="shopping-checkout-20260130T..." \
-              original_test_boundary="shopping-checkout-original" \
-              replay_test_boundary="shopping-checkout-replay" \
-              git_repo_path="/home/dev/my-app"
-```
-
-**Parameters:**
-- `recording_id` (required): ID of the original recording (e.g., "shopping-checkout-20260130T143022Z")
-- `original_test_boundary` (required): Test boundary ID from original recording (e.g., "shopping-checkout-original")
-- `replay_test_boundary` (required): Test boundary ID from replay showing regression (e.g., "shopping-checkout-replay")
-- `git_repo_path` (optional): Path to git repo for commit analysis. If provided, skill finds related commits. If omitted, skill analyzes error logs only.
-
-**What the Skill Does:**
-
-1. **Compares Logs:** Diffs logs from original test boundary vs replay test boundary
-2. **Identifies Errors:** Detects error types:
-   - Network errors (404, 500, timeout, connection refused)
-   - DOM errors (element not found, selector changed)
-   - Assertion failures (expected text missing)
-   - Timing issues (load timeout)
-3. **Suggests Root Causes:** Analyzes error patterns and proposes likely causes
-4. **Finds Git Context (if git_repo_path provided):**
-   - Identifies files that changed between commits
-   - Shows commits that touched affected code
-   - Highlights commits that might have introduced the issue
-5. **Ranks Confidence:** Marks suggestions as HIGH/MEDIUM/LOW based on error clarity
-
-**What You Get Back:**
-
-The skill returns a natural language analysis with:
-- **Root Cause:** Clear explanation of what's broken (e.g., "POST /api/order endpoint returns 404 because the endpoint was renamed to /api/orders")
-- **Confidence Level:** How confident the analysis is (HIGH if error is explicit, MEDIUM if pattern-based, LOW if speculative)
-- **Affected Files:** List of source files likely to need changes
-- **Suggested Fixes:** Specific code changes to try (file, line number, what to change, why)
-- **Related Commits:** If git available, shows commits that changed the affected code
-- **Error Evidence:** Direct quotes from error logs and screenshot paths
-
-**Example Response:**
-
-```
-ROOT CAUSE (HIGH confidence):
-The /api/order endpoint was renamed to /api/orders in commit abc123
-(PR #234 "Refactor API endpoints").
-
-AFFECTED FILES:
-- src/api/checkout.ts (line 45)
-- src/handlers/order.ts (line 123)
-
-SUGGESTED FIXES:
-1. In src/api/checkout.ts line 45:
-   Change: await fetch('/api/order', ...)
-   To: await fetch('/api/orders', ...)
-   Reason: Endpoint was renamed in refactor
-
-RELATED COMMITS:
-- Commit abc123 "Refactor API endpoints" (alice@company.com, Jan 28)
-  → This commit likely introduced the issue
-- Commit def456 "Fix: Restore /api/order endpoint" (bob@company.com, Jan 29)
-  → This commit attempted to fix it but was reverted
-
-ERROR LOG EVIDENCE:
-POST /api/order 404 Not Found
-at retry attempt 3/3
-
-SCREENSHOT: /recordings/checkout-flow/20260130-...-error.jpg
+1. LLM reads original recording logs
+2. LLM reads replay logs
+3. LLM analyzes diff: "What changed? What's broken?"
+4. LLM suggests fixes: "Try changing X to Y in file Z"
+5. Developer applies fix
+6. LLM replays recording to verify
 ```
 
-**How to Use the Results:**
+**What Gasoline Provides:**
+- `observe({what: 'logs', test_boundary: 'original-checkout'})` → Original logs
+- `observe({what: 'logs', test_boundary: 'replay-checkout'})` → Replay logs with regression
+- `observe({what: 'recording_actions', recording_id: 'checkout'})` → The exact flow that was recorded
+- Screenshots showing errors (visual evidence)
+- Structured error detection: "404 on /api/order", "Missing element: .pay-btn", etc.
 
-1. **Review:** Read the root cause analysis and suggested fixes
-2. **Approve:** Decide if the suggestion makes sense (high confidence suggestions usually do)
-3. **Apply:** Implement the suggested fix in your code
-4. **Verify:** Re-run the recording playback to confirm the fix works
-5. **Report:** If fix resolves the issue, you have automated root cause analysis + fix verification
+**What Claude Does:**
+- Compares the two log sets
+- Detects what changed: new errors, missing calls, different responses
+- Analyzes patterns: "404 on /api/order → endpoint renamed or removed"
+- Suggests fixes: "Try /api/orders instead"
+- Ranks confidence: HIGH (obvious match), MEDIUM (pattern-based), LOW (speculative)
 
-**Safety Guardrails:**
+**Example Flow:**
 
-- ✅ Skill never auto-applies fixes; you must review and approve
-- ✅ Git operations are read-only (no commits, pushes, or destructive operations)
-- ✅ All suggestions ranked by confidence; you know which are speculative vs obvious
-- ✅ Full audit trail logged: who ran skill, when, parameters, results
-- ✅ Works without git (analyzes error logs only if git_repo_path omitted)
-
-**Common Workflows:**
-
-### Fast Path (High Confidence)
 ```
-Playback shows: "POST /api/order 404"
-→ /gasoline-fix suggests: "Endpoint renamed to /api/orders"
-→ You apply fix, re-run playback, ✓ passes
-→ Done in 2 minutes
+Original logs:
+  POST /api/order → 200 OK
+  Response: {orderId: 123, status: "confirmed"}
+
+Replay logs:
+  POST /api/order → 404 Not Found
+  Error: "Cannot POST /api/order"
+
+Claude's analysis:
+  Regression: 404 on /api/order (was working in original)
+  Root cause: Endpoint renamed or removed
+  Suggested fix: Change fetch('/api/order') to fetch('/api/orders')
+  Confidence: HIGH (error message is explicit)
+
+Developer applies fix and re-runs playback → ✓ Verified
 ```
 
-### Investigation Path (Low Confidence)
-```
-Playback shows: "Element not found: button.add-to-cart"
-→ /gasoline-fix suggests: (LOW confidence) "DOM structure changed or CSS selector is fragile"
-→ Related commits show UI refactor
-→ You review code, update selector to use data-testid, re-run
-→ ✓ passes
-```
-
-### No Git Available
-```
-Playback shows: "GET /user/profile timeout"
-→ /gasoline-fix analyzes error logs (no git)
-→ Suggests: "API endpoint may be slow or unavailable; check server logs"
-→ You investigate server metrics, find database query N+1 problem
-→ Fix applied, re-run, ✓ passes
-```
+**Phase 2 (Optional):**
+- Git context: Show commits that touched affected files
+- Test coverage: Which code paths are being tested
+- Performance: Detect if regression is also a performance issue
 
 ---
 
