@@ -8,7 +8,7 @@
  */
 export function injectScript(): void {
   const script = document.createElement('script');
-  script.src = chrome.runtime.getURL('inject.js');
+  script.src = chrome.runtime.getURL('inject.bundled.js');
   script.type = 'module';
   script.onload = () => script.remove();
   (document.head || document.documentElement).appendChild(script);

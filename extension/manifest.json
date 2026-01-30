@@ -23,7 +23,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["content.bundled.js"],
       "run_at": "document_start"
     }
   ],
@@ -36,21 +36,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "inject.js",
-        "lib/constants.js",
-        "lib/serialize.js",
-        "lib/context.js",
-        "lib/reproduction.js",
-        "lib/actions.js",
-        "lib/network.js",
-        "lib/performance.js",
-        "lib/bridge.js",
-        "lib/console.js",
-        "lib/ai-context.js",
-        "lib/exceptions.js",
-        "lib/websocket.js",
-        "lib/dom-queries.js",
-        "lib/perf-snapshot.js",
+        "inject.bundled.js",
         "lib/axe.min.js"
       ],
       "matches": ["<all_urls>"]

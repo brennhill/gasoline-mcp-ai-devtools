@@ -36,6 +36,16 @@ compile-ts:
 		exit 1; \
 	fi
 	@./scripts/fix-esm-imports.sh
+	@echo "=== Bundling extension scripts ==="
+	@node scripts/bundle-content.js
+	@if [ ! -f extension/content.bundled.js ]; then \
+		echo "❌ ERROR: Content script bundling failed"; \
+		exit 1; \
+	fi
+	@if [ ! -f extension/inject.bundled.js ]; then \
+		echo "❌ ERROR: Inject script bundling failed"; \
+		exit 1; \
+	fi
 	@echo "✅ TypeScript compilation successful"
 
 test:
