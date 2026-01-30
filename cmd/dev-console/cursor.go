@@ -16,7 +16,8 @@ type Cursor struct {
 	Sequence  int64  // Monotonic sequence number (tiebreaker for same-millisecond entries)
 }
 
-// ParseCursor parses a composite cursor string "timestamp:sequence" into a Cursor struct.
+// ParseCursor parses a composite cursor string "timestamp:sequence" or ":sequence" into a Cursor struct.
+// Supports sequence-only cursors (":N") for logs without timestamps.
 // Returns zero cursor if input is empty (for first page request).
 // Returns error if cursor format is invalid.
 func ParseCursor(cursorStr string) (Cursor, error) {
@@ -27,20 +28,22 @@ func ParseCursor(cursorStr string) (Cursor, error) {
 	// Find the last colon (since RFC3339 timestamps contain colons)
 	lastColonIdx := strings.LastIndex(cursorStr, ":")
 	if lastColonIdx == -1 {
-		return Cursor{}, fmt.Errorf("invalid cursor format: expected 'timestamp:sequence', got '%s'", cursorStr)
+		return Cursor{}, fmt.Errorf("invalid cursor format: expected 'timestamp:sequence' or ':sequence', got '%s'", cursorStr)
 	}
 
 	// Split on last colon: everything before is timestamp, everything after is sequence
 	timestamp := cursorStr[:lastColonIdx]
 	sequenceStr := cursorStr[lastColonIdx+1:]
 
-	// Validate timestamp format (RFC3339)
-	_, err := time.Parse(time.RFC3339, timestamp)
-	if err != nil {
-		// Try with nanosecond precision
-		_, err = time.Parse(time.RFC3339Nano, timestamp)
+	// Validate timestamp format (RFC3339) if present
+	if timestamp != "" {
+		_, err := time.Parse(time.RFC3339, timestamp)
 		if err != nil {
-			return Cursor{}, fmt.Errorf("invalid timestamp in cursor: %w", err)
+			// Try with nanosecond precision
+			_, err = time.Parse(time.RFC3339Nano, timestamp)
+			if err != nil {
+				return Cursor{}, fmt.Errorf("invalid timestamp in cursor: %w", err)
+			}
 		}
 	}
 
@@ -57,9 +60,11 @@ func ParseCursor(cursorStr string) (Cursor, error) {
 }
 
 // BuildCursor creates a composite cursor string from timestamp and sequence.
+// Returns sequence-only cursor (":N") when timestamp is unavailable.
 func BuildCursor(timestamp string, sequence int64) string {
 	if timestamp == "" {
-		return ""
+		// Return sequence-only cursor for logs without timestamps
+		return fmt.Sprintf(":%d", sequence)
 	}
 	return fmt.Sprintf("%s:%d", timestamp, sequence)
 }

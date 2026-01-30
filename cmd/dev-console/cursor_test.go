@@ -74,6 +74,33 @@ func TestParseCursor(t *testing.T) {
 				Sequence:  -100,
 			},
 		},
+		{
+			name:      "sequence-only cursor (empty timestamp)",
+			cursorStr: ":1234",
+			wantCursor: Cursor{
+				Timestamp: "",
+				Sequence:  1234,
+			},
+			wantErr: false,
+		},
+		{
+			name:      "sequence-only cursor with large number",
+			cursorStr: ":9999999999",
+			wantCursor: Cursor{
+				Timestamp: "",
+				Sequence:  9999999999,
+			},
+			wantErr: false,
+		},
+		{
+			name:      "sequence-only cursor with zero",
+			cursorStr: ":0",
+			wantCursor: Cursor{
+				Timestamp: "",
+				Sequence:  0,
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -126,10 +153,10 @@ func TestBuildCursor(t *testing.T) {
 			want:      "2026-01-30T10:15:23.456789Z:5678",
 		},
 		{
-			name:      "empty timestamp returns empty",
+			name:      "empty timestamp returns sequence-only cursor",
 			timestamp: "",
 			sequence:  1234,
-			want:      "",
+			want:      ":1234",
 		},
 		{
 			name:      "zero sequence",
@@ -364,6 +391,8 @@ func TestCursorRoundtrip(t *testing.T) {
 		{"2026-01-30T10:15:23Z", 1234},
 		{"2026-01-30T10:15:23.456789Z", 5678},
 		{"2026-01-30T00:00:00Z", 0},
+		{"", 1234}, // Sequence-only cursor
+		{"", 0},    // Sequence-only cursor with zero
 	}
 
 	for _, tt := range tests {
