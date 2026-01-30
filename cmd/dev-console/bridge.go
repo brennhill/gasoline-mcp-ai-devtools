@@ -1,3 +1,6 @@
+// Bridge mode: stdio-to-HTTP transport for MCP
+// Spawns persistent HTTP server daemon if not running,
+// forwards JSON-RPC messages between stdio (MCP client) and HTTP (server).
 package main
 
 import (

@@ -1,3 +1,6 @@
+// Security flagging: Detects suspicious origins in network data
+// Identifies supply chain attacks, poisoned dependencies, and non-standard network behavior.
+// Used by security_audit and third_party_audit modes.
 package main
 
 import (

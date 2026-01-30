@@ -1,3 +1,6 @@
+// SSE transport infrastructure for MCP
+// Manages Server-Sent Events connections, session state, and streaming notifications.
+// Supports MCP 2024-11-05 spec with bidirectional communication via SSE + HTTP POST.
 package main
 
 import (

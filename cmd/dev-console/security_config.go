@@ -1,3 +1,6 @@
+// Security boundary: LLM trust model for config persistence
+// Implements security boundary between untrusted LLM tool calls and trusted persistent configuration.
+// See: docs/specs/security-boundary-llm-trust.md
 package main
 
 import (
