@@ -356,7 +356,7 @@ async function handleAsyncExecuteCommand(query, tabId) {
             message,
         };
     });
-    const twoSecondTimer = setTimeout(async () => {
+    const pendingTimer = setTimeout(async () => {
         if (!completed && !pendingPosted) {
             pendingPosted = true;
             await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id, 'pending');
@@ -365,7 +365,7 @@ async function handleAsyncExecuteCommand(query, tabId) {
                 elapsed: Date.now() - startTime,
             });
         }
-    }, 2000);
+    }, 3000);
     try {
         const execResult = await Promise.race([
             executionPromise,
@@ -373,7 +373,7 @@ async function handleAsyncExecuteCommand(query, tabId) {
                 setTimeout(() => reject(new Error('Execution timeout')), 10000);
             }),
         ]);
-        clearTimeout(twoSecondTimer);
+        clearTimeout(pendingTimer);
         if (execResult.success) {
             await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id, 'complete', execResult.result);
         }
@@ -387,7 +387,7 @@ async function handleAsyncExecuteCommand(query, tabId) {
         });
     }
     catch {
-        clearTimeout(twoSecondTimer);
+        clearTimeout(pendingTimer);
         const timeoutMessage = `JavaScript execution exceeded 10s timeout. RECOMMENDED ACTIONS:
 
 1. Break your task into smaller discrete steps that execute in < 2s for best results
@@ -416,7 +416,7 @@ async function handleAsyncBrowserAction(query, tabId, params) {
             error: err.message || 'Browser action failed',
         };
     });
-    const twoSecondTimer = setTimeout(async () => {
+    const pendingTimer = setTimeout(async () => {
         if (!completed && !pendingPosted) {
             pendingPosted = true;
             await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id, 'pending');
@@ -425,7 +425,7 @@ async function handleAsyncBrowserAction(query, tabId, params) {
                 elapsed: Date.now() - startTime,
             });
         }
-    }, 2000);
+    }, 3000);
     try {
         const execResult = await Promise.race([
             executionPromise,
@@ -433,7 +433,7 @@ async function handleAsyncBrowserAction(query, tabId, params) {
                 setTimeout(() => reject(new Error('Execution timeout')), 10000);
             }),
         ]);
-        clearTimeout(twoSecondTimer);
+        clearTimeout(pendingTimer);
         if (execResult.success !== false) {
             await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id, 'complete', execResult);
         }
@@ -447,7 +447,7 @@ async function handleAsyncBrowserAction(query, tabId, params) {
         });
     }
     catch {
-        clearTimeout(twoSecondTimer);
+        clearTimeout(pendingTimer);
         const timeoutMessage = `Browser action exceeded 10s timeout. DIAGNOSTIC STEPS:
 
 1. Check page status: observe({what: 'page'})

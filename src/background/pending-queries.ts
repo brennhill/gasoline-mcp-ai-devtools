@@ -398,7 +398,7 @@ async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number): Pr
       };
     });
 
-  const twoSecondTimer = setTimeout(async () => {
+  const pendingTimer = setTimeout(async () => {
     if (!completed && !pendingPosted) {
       pendingPosted = true;
       await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id!, 'pending');
@@ -407,7 +407,7 @@ async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number): Pr
         elapsed: Date.now() - startTime,
       });
     }
-  }, 2000);
+  }, 3000);
 
   try {
     const execResult = await Promise.race([
@@ -417,7 +417,7 @@ async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number): Pr
       }),
     ]);
 
-    clearTimeout(twoSecondTimer);
+    clearTimeout(pendingTimer);
 
     if (execResult.success) {
       await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id!, 'complete', execResult.result);
@@ -431,7 +431,7 @@ async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number): Pr
       success: execResult.success,
     });
   } catch {
-    clearTimeout(twoSecondTimer);
+    clearTimeout(pendingTimer);
 
     const timeoutMessage = `JavaScript execution exceeded 10s timeout. RECOMMENDED ACTIONS:
 
@@ -466,7 +466,7 @@ async function handleAsyncBrowserAction(query: PendingQuery, tabId: number, para
       };
     });
 
-  const twoSecondTimer = setTimeout(async () => {
+  const pendingTimer = setTimeout(async () => {
     if (!completed && !pendingPosted) {
       pendingPosted = true;
       await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id!, 'pending');
@@ -475,7 +475,7 @@ async function handleAsyncBrowserAction(query: PendingQuery, tabId: number, para
         elapsed: Date.now() - startTime,
       });
     }
-  }, 2000);
+  }, 3000);
 
   try {
     const execResult = await Promise.race([
@@ -485,7 +485,7 @@ async function handleAsyncBrowserAction(query: PendingQuery, tabId: number, para
       }),
     ]);
 
-    clearTimeout(twoSecondTimer);
+    clearTimeout(pendingTimer);
 
     if (execResult.success !== false) {
       await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id!, 'complete', execResult);
@@ -499,7 +499,7 @@ async function handleAsyncBrowserAction(query: PendingQuery, tabId: number, para
       success: execResult.success !== false,
     });
   } catch {
-    clearTimeout(twoSecondTimer);
+    clearTimeout(pendingTimer);
 
     const timeoutMessage = `Browser action exceeded 10s timeout. DIAGNOSTIC STEPS:
 
