@@ -37,7 +37,7 @@ func TestToolDescriptions_ContainResponseDocs(t *testing.T) {
 	}
 
 	checks := map[string]string{
-		"observe":   "Mode responses",
+		"observe":   "Responses:",
 		"generate":  "Format responses",
 		"configure": "Returns",
 		"interact":  "Action responses",
