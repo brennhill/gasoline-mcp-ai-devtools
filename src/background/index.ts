@@ -522,14 +522,22 @@ export async function pollPendingQueriesWrapper(): Promise<void> {
     debugLog
   );
 
+  debugLog(DebugCategory.CONNECTION, 'Poll result', { count: queries.length, queries: queries.map(q => ({ id: q.id, type: q.type })) });
+
   for (const query of queries) {
+    debugLog(DebugCategory.CONNECTION, 'Processing query', { type: query.type, id: query.id });
     if (stateManager.isQueryProcessing(query.id)) {
       debugLog(DebugCategory.CONNECTION, 'Skipping already processing query', { id: query.id });
       continue;
     }
     stateManager.addProcessingQuery(query.id);
     try {
+      debugLog(DebugCategory.CONNECTION, 'Calling handlePendingQuery', { type: query.type });
       await handlePendingQuery(query as unknown as PendingQuery);
+      debugLog(DebugCategory.CONNECTION, 'handlePendingQuery completed', { type: query.type });
+    } catch (err) {
+      debugLog(DebugCategory.CONNECTION, 'Error in handlePendingQuery', { type: query.type, error: (err as Error).message });
+      console.error('[Gasoline] Error in handlePendingQuery:', query.type, err);
     } finally {
       stateManager.removeProcessingQuery(query.id);
     }
