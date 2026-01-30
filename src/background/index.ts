@@ -30,6 +30,10 @@ import {
   deleteStateSnapshot,
   type MessageHandlerDependencies,
 } from './message-handlers';
+import {
+  handlePendingQuery as handlePendingQueryImpl,
+  handlePilotCommand as handlePilotCommandImpl,
+} from './pending-queries';
 
 // =============================================================================
 // CONSTANTS
@@ -646,16 +650,9 @@ export function isAiWebPilotEnabled(): boolean {
   return __aiWebPilotEnabledCache === true;
 }
 
-// These will be defined as wrapper exports below
-export async function handlePendingQuery(query: PendingQuery): Promise<void> {
-  const { handlePendingQuery: impl } = await import('./pending-queries');
-  return impl(query);
-}
-
-export async function handlePilotCommand(command: string, params: unknown): Promise<unknown> {
-  const { handlePilotCommand: pilotCommand } = await import('./pending-queries');
-  return pilotCommand(command, params);
-}
+// Re-export statically imported functions (Service Workers don't support dynamic import())
+export const handlePendingQuery = handlePendingQueryImpl;
+export const handlePilotCommand = handlePilotCommandImpl;
 
 // Export snapshot/state management for backward compatibility
 export {

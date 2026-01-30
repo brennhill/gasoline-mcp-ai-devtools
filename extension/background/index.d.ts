@@ -5,9 +5,10 @@
  * and posts to the Go server. Handles error deduplication, connection status,
  * badge updates, and on-demand query polling.
  */
-import type { LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot, ChromeMessageSender, PendingQuery } from '../types';
+import type { LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot, ChromeMessageSender } from '../types';
 import * as communication from './communication';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers';
+import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl } from './pending-queries';
 export declare const DEFAULT_SERVER_URL = "http://localhost:7890";
 /** Session ID for detecting extension reloads */
 export declare const EXTENSION_SESSION_ID: string;
@@ -125,7 +126,7 @@ export declare function _resetPilotCacheForTesting(value?: boolean): void;
  * Check if AI Web Pilot is enabled
  */
 export declare function isAiWebPilotEnabled(): boolean;
-export declare function handlePendingQuery(query: PendingQuery): Promise<void>;
-export declare function handlePilotCommand(command: string, params: unknown): Promise<unknown>;
+export declare const handlePendingQuery: typeof handlePendingQueryImpl;
+export declare const handlePilotCommand: typeof handlePilotCommandImpl;
 export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, };
 //# sourceMappingURL=index.d.ts.map

@@ -10,6 +10,7 @@ import * as communication from './communication.js';
 import * as polling from './polling.js';
 import * as eventListeners from './event-listeners.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, } from './message-handlers.js';
+import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl, } from './pending-queries.js';
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -474,15 +475,9 @@ export function _resetPilotCacheForTesting(value) {
 export function isAiWebPilotEnabled() {
     return __aiWebPilotEnabledCache === true;
 }
-// These will be defined as wrapper exports below
-export async function handlePendingQuery(query) {
-    const { handlePendingQuery: impl } = await import('./pending-queries');
-    return impl(query);
-}
-export async function handlePilotCommand(command, params) {
-    const { handlePilotCommand: pilotCommand } = await import('./pending-queries');
-    return pilotCommand(command, params);
-}
+// Re-export statically imported functions (Service Workers don't support dynamic import())
+export const handlePendingQuery = handlePendingQueryImpl;
+export const handlePilotCommand = handlePilotCommandImpl;
 // Export snapshot/state management for backward compatibility
 export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, };
 //# sourceMappingURL=index.js.map
