@@ -686,8 +686,8 @@ func TestEntryStr_Helper(t *testing.T) {
 	}
 }
 
-// TestBrowserErrors_MarkdownFormat verifies toolGetBrowserErrors returns markdown table format.
-func TestBrowserErrors_MarkdownFormat(t *testing.T) {
+// TestBrowserErrors_JSONFormat verifies toolGetBrowserErrors returns JSON format.
+func TestBrowserErrors_JSONFormat(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
@@ -705,26 +705,24 @@ func TestBrowserErrors_MarkdownFormat(t *testing.T) {
 	json.Unmarshal(resp.Result, &result)
 	text := result.Content[0].Text
 
-	// First line should be summary
-	lines := strings.SplitN(text, "\n", 2)
-	if !strings.Contains(lines[0], "2 browser error(s)") {
-		t.Errorf("Expected summary with count, got: %q", lines[0])
+	if !strings.Contains(text, "2 browser error(s)") {
+		t.Errorf("Expected summary with count, got: %q", text)
 	}
 
-	// Should contain markdown table delimiters
-	if !strings.Contains(text, "| ") {
-		t.Error("Expected pipe delimiters in markdown table")
+	// Response is now JSON format
+	if !strings.Contains(text, `"errors"`) {
+		t.Error("Expected JSON response with 'errors' field")
 	}
-	if !strings.Contains(text, "---") {
-		t.Error("Expected separator row in markdown table")
+	if !strings.Contains(text, `"count"`) {
+		t.Error("Expected JSON response with 'count' field")
 	}
 
 	// Should contain the error data
 	if !strings.Contains(text, "TypeError: foo") {
-		t.Error("Expected error message in table")
+		t.Error("Expected error message in JSON")
 	}
 	if !strings.Contains(text, "app.js:10") {
-		t.Error("Expected source in table")
+		t.Error("Expected source in JSON")
 	}
 }
 
@@ -808,13 +806,13 @@ func TestBrowserErrors_IncludesTabId(t *testing.T) {
 	json.Unmarshal(resp.Result, &result)
 	text := result.Content[0].Text
 
-	// Should contain Tab column header
-	if !strings.Contains(text, "Tab") {
-		t.Error("Expected 'Tab' column header in markdown table")
+	// Response is now JSON format with tab_id field
+	if !strings.Contains(text, `"tab_id"`) {
+		t.Error("Expected 'tab_id' field in JSON response")
 	}
 	// Should contain tab ID
 	if !strings.Contains(text, "42") {
-		t.Error("Expected tabId 42 in table")
+		t.Error("Expected tabId 42 in JSON")
 	}
 }
 

@@ -179,21 +179,24 @@ func TestV5AiContextPassthroughInGetBrowserErrors(t *testing.T) {
 		t.Fatal("Expected content in response")
 	}
 
-	// After W1 migration, errors are returned as markdown table with summary.
-	// The error message and source should appear in the table columns.
+	// Errors are now returned as JSON format with summary.
+	// The error message and source should appear in the JSON data.
 	responseText := result.Content[0].Text
 	if !strings.Contains(responseText, "1 browser error(s)") {
 		t.Error("Expected summary line with error count")
 	}
 	if !strings.Contains(responseText, "Cannot read property") {
-		t.Error("Expected error message in markdown table")
+		t.Error("Expected error message in JSON response")
 	}
 	if !strings.Contains(responseText, "app.js:42") {
-		t.Error("Expected source in markdown table")
+		t.Error("Expected source in JSON response")
 	}
-	// Markdown table should have pipe delimiters
-	if !strings.Contains(responseText, "| ") {
-		t.Error("Expected markdown table format with pipe delimiters")
+	// Response should be JSON format with errors array
+	if !strings.Contains(responseText, `"errors"`) {
+		t.Error("Expected JSON format with errors array")
+	}
+	if !strings.Contains(responseText, `"count"`) {
+		t.Error("Expected count field in JSON response")
 	}
 }
 

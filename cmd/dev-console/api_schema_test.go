@@ -200,9 +200,13 @@ func TestObserveErrors_ColumnsMatchDocs(t *testing.T) {
 	})
 
 	text := extractMCPText(t, resp)
-	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"Level", "Message", "Source", "Time", "Tab"}
-	assertHeaders(t, "observe errors", headers, expected)
+	// Response is now JSON format instead of markdown table
+	expectedFields := []string{`"level"`, `"message"`, `"source"`, `"timestamp"`, `"sequence"`}
+	for _, field := range expectedFields {
+		if !strings.Contains(text, field) {
+			t.Errorf("Expected JSON field %s in errors response, got: %s", field, text)
+		}
+	}
 }
 
 // TestObserveLogs_ColumnsMatchDocs calls observe with what:"logs" and
