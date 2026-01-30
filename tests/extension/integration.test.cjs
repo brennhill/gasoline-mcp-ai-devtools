@@ -176,7 +176,10 @@ describe('Module Import Chain', () => {
 
     for (const importPath of expectedImports) {
       assert(
-        content.includes(`from '${importPath}'`) || content.includes(`from "${importPath}"`),
+        content.includes(`from '${importPath}'`) ||
+        content.includes(`from "${importPath}"`) ||
+        content.includes(`from '${importPath}.js'`) ||
+        content.includes(`from "${importPath}.js"`),
         `Should import from ${importPath}`
       );
     }
