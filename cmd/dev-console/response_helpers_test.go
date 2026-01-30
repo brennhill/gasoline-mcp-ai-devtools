@@ -1222,6 +1222,7 @@ func TestWebSocketEvents_IncludesTabId(t *testing.T) {
 		{ID: "conn1", Event: "message", Direction: "incoming", Data: "hello", TabId: 42},
 		{ID: "conn2", Event: "message", Direction: "outgoing", Data: "world", TabId: 99},
 	}
+	capture.wsTotalAdded = 2 // Set total counter for cursor pagination
 	capture.mu.Unlock()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
@@ -1231,15 +1232,15 @@ func TestWebSocketEvents_IncludesTabId(t *testing.T) {
 	json.Unmarshal(resp.Result, &result)
 	text := result.Content[0].Text
 
-	// Should contain Tab column header and tab values in markdown table
-	if !strings.Contains(text, "| Tab |") {
-		t.Errorf("Expected 'Tab' column header in response, got: %s", text)
+	// Response is now JSON format with tab_id fields
+	if !strings.Contains(text, `"tab_id"`) {
+		t.Errorf("Expected 'tab_id' field in JSON response, got: %s", text)
 	}
-	if !strings.Contains(text, "| 42 |") {
-		t.Errorf("Expected tabId 42 in markdown table, got: %s", text)
+	if !strings.Contains(text, "42") {
+		t.Errorf("Expected tabId 42 in JSON response, got: %s", text)
 	}
-	if !strings.Contains(text, "| 99 |") {
-		t.Errorf("Expected tabId 99 in markdown table, got: %s", text)
+	if !strings.Contains(text, "99") {
+		t.Errorf("Expected tabId 99 in JSON response, got: %s", text)
 	}
 }
 

@@ -411,34 +411,85 @@ func (c *Capture) HandleWebSocketStatus(w http.ResponseWriter, r *http.Request) 
 
 func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
-		ConnectionID string `json:"connection_id"`
-		URL          string `json:"url"`
-		Direction    string `json:"direction"`
-		Limit        int    `json:"limit"`
+		ConnectionID      string `json:"connection_id"`
+		URL               string `json:"url"`
+		Direction         string `json:"direction"`
+		Limit             int    `json:"limit"`
+		AfterCursor       string `json:"after_cursor"`
+		BeforeCursor      string `json:"before_cursor"`
+		SinceCursor       string `json:"since_cursor"`
+		RestartOnEviction bool   `json:"restart_on_eviction"`
 	}
 	if err := json.Unmarshal(args, &arguments); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	events := h.capture.GetWebSocketEvents(WebSocketEventFilter{
-		ConnectionID: arguments.ConnectionID,
-		URLFilter:    arguments.URL,
-		Direction:    arguments.Direction,
-		Limit:        arguments.Limit,
-	})
+	// Acquire read lock to access raw buffer and total counter
+	h.capture.mu.RLock()
+	defer h.capture.mu.RUnlock()
+
+	// Enrich entries with sequence numbers BEFORE filtering
+	enriched := EnrichWebSocketEntries(h.capture.wsEvents, h.capture.wsTotalAdded)
+
+	// Apply TTL and filters (preserving sequences)
+	var filtered []WebSocketEntryWithSequence
+	for i, e := range enriched {
+		// TTL filtering: skip entries older than TTL
+		if h.capture.TTL > 0 && i < len(h.capture.wsAddedAt) && isExpiredByTTL(h.capture.wsAddedAt[i], h.capture.TTL) {
+			continue
+		}
+		// ConnectionID filter
+		if arguments.ConnectionID != "" && e.Entry.ID != arguments.ConnectionID {
+			continue
+		}
+		// URL filter
+		if arguments.URL != "" && !strings.Contains(e.Entry.URL, arguments.URL) {
+			continue
+		}
+		// Direction filter
+		if arguments.Direction != "" && e.Entry.Direction != arguments.Direction {
+			continue
+		}
+		filtered = append(filtered, e)
+	}
 
 	// Apply noise filtering
 	if h.noise != nil {
-		var filtered []WebSocketEvent
-		for i := range events {
-			if !h.noise.IsWebSocketNoise(events[i]) {
-				filtered = append(filtered, events[i])
+		var noiseFiltered []WebSocketEntryWithSequence
+		for _, e := range filtered {
+			if !h.noise.IsWebSocketNoise(e.Entry) {
+				noiseFiltered = append(noiseFiltered, e)
 			}
 		}
-		events = filtered
+		filtered = noiseFiltered
 	}
 
-	if len(events) == 0 {
+	// Determine limit: use cursor limit if specified, otherwise limit for backward compatibility
+	limit := arguments.Limit
+	if limit <= 0 {
+		limit = defaultWSLimit
+	}
+
+	// Apply cursor-based pagination
+	result, metadata, err := ApplyWebSocketCursorPagination(
+		filtered,
+		arguments.AfterCursor,
+		arguments.BeforeCursor,
+		arguments.SinceCursor,
+		limit,
+		arguments.RestartOnEviction,
+	)
+
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrCursorExpired,
+			err.Error(),
+			"Use restart_on_eviction=true to auto-restart from oldest available, or reduce the time between pagination calls to prevent buffer overflow",
+		)}
+	}
+
+	// Handle empty result
+	if len(result) == 0 {
 		msg := "No WebSocket events captured"
 		if h.captureOverrides != nil {
 			overrides := h.captureOverrides.GetAll()
@@ -453,29 +504,54 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 				msg += "\n\nws_mode is 'lifecycle' (open/close only, no message payloads). To capture message content, call:\nconfigure({action: \"capture\", settings: {ws_mode: \"messages\"}})"
 			}
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(msg)}
+
+		// Return JSON format even for empty result to maintain consistency
+		data := map[string]interface{}{
+			"events": []map[string]interface{}{},
+			"count":  0,
+			"total":  metadata.Total,
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(msg, data)}
 	}
 
-	summary := fmt.Sprintf("%d WebSocket event(s)", len(events))
-	rows := make([][]string, len(events))
-	for i, e := range events {
-		// Format tabId: show as string if > 0, otherwise empty
-		tabStr := ""
-		if e.TabId > 0 {
-			tabStr = fmt.Sprintf("%d", e.TabId)
-		}
-		rows[i] = []string{
-			e.ID,
-			e.Event,
-			truncate(e.URL, 60),
-			e.Direction,
-			fmt.Sprintf("%d", e.Size),
-			e.Timestamp,
-			tabStr,
-		}
+	// Serialize events to JSON format
+	jsonEvents := make([]map[string]interface{}, len(result))
+	for i, e := range result {
+		jsonEvents[i] = SerializeWebSocketEntryWithSequence(e)
 	}
-	table := markdownTable([]string{"ID", "Event", "URL", "Direction", "Size", "Time", "Tab"}, rows)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
+
+	// Build response summary
+	summary := fmt.Sprintf("%d WebSocket event(s)", metadata.Count)
+	if metadata.Total > metadata.Count {
+		summary += fmt.Sprintf(" (total in buffer: %d)", metadata.Total)
+	}
+
+	// Build response with cursor metadata
+	data := map[string]interface{}{
+		"events": jsonEvents,
+		"count":  metadata.Count,
+		"total":  metadata.Total,
+	}
+
+	if metadata.Cursor != "" {
+		data["cursor"] = metadata.Cursor
+	}
+	if metadata.OldestTimestamp != "" {
+		data["oldest_timestamp"] = metadata.OldestTimestamp
+	}
+	if metadata.NewestTimestamp != "" {
+		data["newest_timestamp"] = metadata.NewestTimestamp
+	}
+	if metadata.HasMore {
+		data["has_more"] = metadata.HasMore
+	}
+	if metadata.CursorRestarted {
+		data["cursor_restarted"] = metadata.CursorRestarted
+		data["original_cursor"] = metadata.OriginalCursor
+		data["warning"] = metadata.Warning
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
 }
 
 func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

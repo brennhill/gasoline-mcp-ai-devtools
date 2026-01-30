@@ -331,9 +331,13 @@ func TestObserveWSEvents_ColumnsMatchDocs(t *testing.T) {
 	})
 
 	text := extractMCPText(t, resp)
-	headers := extractMarkdownTableHeaders(t, text)
-	expected := []string{"ID", "Event", "URL", "Direction", "Size", "Time", "Tab"}
-	assertHeaders(t, "observe websocket_events", headers, expected)
+	// Response is now JSON format instead of markdown table
+	expectedFields := []string{`"id"`, `"event"`, `"url"`, `"direction"`, `"timestamp"`, `"sequence"`}
+	for _, field := range expectedFields {
+		if !strings.Contains(text, field) {
+			t.Errorf("Expected JSON field %s in websocket_events response, got: %s", field, text)
+		}
+	}
 }
 
 // TestObserveHealth_FieldsMatchDocs calls configure with action:"health" and
