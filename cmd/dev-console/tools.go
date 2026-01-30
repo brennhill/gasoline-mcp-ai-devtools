@@ -738,7 +738,7 @@ func (h *ToolHandler) toolsList() []MCPTool {
 	return []MCPTool{
 		{
 			Name:        "observe",
-			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes (what parameter): errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit (max entries), url (substring match), method, status_min, status_max, connection_id, direction, last_n, format, severity.\n\nMode responses: markdown tables for flat data (errors, logs, actions, etc.) or JSON for nested data (network_bodies, vitals, page, etc.). Check _meta.data_counts for available data.",
+			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes (what parameter): errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit (max entries), url (substring match), method, status_min, status_max, connection_id, direction, last_n, format, severity.\n\nPagination: Use cursor-based pagination for stable iteration over live data (logs, websocket_events, actions). Cursor format: 'timestamp:sequence' (e.g., '2026-01-30T10:15:23.456Z:1234'). Cursors are returned in response metadata and passed via after_cursor (backward), before_cursor (forward), or since_cursor (all new). Use restart_on_eviction=true to auto-restart if cursor expires due to buffer overflow.\n\nMode responses: markdown tables for flat data (errors, logs, actions, etc.) or JSON for nested data (network_bodies, vitals, page, etc.). Check _meta.data_counts for available data.\n\nIMPORTANT - network_bodies limitation: Only captures window.fetch() calls made by JavaScript. Does NOT capture: browser navigation, XMLHttpRequest (XHR), resources loaded by <script>/<img>/<link> tags, or form submissions. To capture all network requests (metadata only), use network_waterfall instead.",
 			Meta: map[string]interface{}{
 				"data_counts": map[string]interface{}{
 					"errors":            errorCount,
@@ -767,6 +767,23 @@ func (h *ToolHandler) toolsList() []MCPTool {
 					"limit": map[string]interface{}{
 						"type":        "number",
 						"description": "Maximum entries to return (applies to logs, network_waterfall, network_bodies, websocket_events, actions, audit_log)",
+					},
+					// Cursor-based pagination parameters (v5.3+)
+					"after_cursor": map[string]interface{}{
+						"type":        "string",
+						"description": "Return entries older than this cursor (backward pagination). Cursor format: 'timestamp:sequence' from previous response. Stable for live data - recommended for logs, websocket_events, actions. Example: '2026-01-30T10:15:23.456Z:1234'. Applies to: logs, websocket_events, actions, network_bodies.",
+					},
+					"before_cursor": map[string]interface{}{
+						"type":        "string",
+						"description": "Return entries newer than this cursor (forward pagination). Use to monitor new data that arrived since cursor. Cursor format: 'timestamp:sequence'. Applies to: logs, websocket_events, actions, network_bodies.",
+					},
+					"since_cursor": map[string]interface{}{
+						"type":        "string",
+						"description": "Return ALL entries newer than this cursor (inclusive, no limit). Convenience method for 'show me everything since X'. Cursor format: 'timestamp:sequence'. Applies to: logs, websocket_events, actions, network_bodies.",
+					},
+					"restart_on_eviction": map[string]interface{}{
+						"type":        "boolean",
+						"description": "If cursor expired (buffer overflow), automatically restart from oldest available entry instead of returning error. Use when pagination must continue despite data loss. Applies to: logs, websocket_events.",
 					},
 					"url": map[string]interface{}{
 						"type":        "string",
