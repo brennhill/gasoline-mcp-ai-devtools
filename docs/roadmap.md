@@ -246,6 +246,7 @@ observe({what: "network_stats", group_by: "host"})
 - **GitHub/Jira Integration** — Paste-ready bug reports
 - **CI/CD Integration** — GitHub Actions, SARIF export, HAR attachment
 - **IDE Integration** — VS Code plugin, Claude Code integration
+- **Documentation Links (docs_url)** — Add `docs_url` to `/health` response and MCP tool schemas. Links to versioned markdown docs on GitHub repo. Supports offline-first workflows while providing navigation to detailed API documentation.
 - **Event Timestamps & Session IDs** — Audit trails, precise ordering
 - **CLI Lifecycle Commands** — `stop`, `restart`, `status` for ops
 

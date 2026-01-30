@@ -104,9 +104,10 @@ export {
 export {
   getExtensionVersion,
   isNewVersionAvailable,
-  getLastServerVersion,
-  checkServerVersion,
+  getAvailableVersion,
+  updateVersionFromHealth,
   updateVersionBadge,
+  getUpdateInfo,
   resetVersionCheck,
 } from './background/version-check';
 

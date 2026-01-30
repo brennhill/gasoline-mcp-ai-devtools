@@ -291,6 +291,17 @@ export async function checkConnectionAndUpdate() {
     _connectionCheckRunning = true;
     try {
         const health = await communication.checkServerHealth(serverUrl);
+        // Update version information from health response
+        if (health.connected) {
+            import('./version-check').then(vc => {
+                vc.updateVersionFromHealth({
+                    version: health.version,
+                    availableVersion: health.availableVersion,
+                }, debugLog);
+            }).catch(err => {
+                debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: err.message });
+            });
+        }
         const wasConnected = connectionStatus.connected;
         connectionStatus = {
             ...connectionStatus,
@@ -329,12 +340,6 @@ export async function checkConnectionAndUpdate() {
             polling.startWaterfallPosting(() => postNetworkWaterfall(), debugLog);
             polling.startExtensionLogsPosting(() => postExtensionLogsWrapper());
             polling.startStatusPing(() => sendStatusPingWrapper());
-            // Import version check dynamically to avoid circular imports
-            import('./version-check').then(vc => {
-                polling.startVersionCheck(() => vc.checkServerVersion(serverUrl, debugLog), debugLog);
-            }).catch(err => {
-                debugLog(DebugCategory.CONNECTION, 'Failed to start version check', { error: err.message });
-            });
         }
         else {
             polling.stopAllPolling();

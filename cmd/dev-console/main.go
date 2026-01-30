@@ -32,9 +32,20 @@ var version = "5.2.5"
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
 
+// GitHub version checking state
+var (
+	availableVersion string
+	lastVersionCheck time.Time
+	versionCheckMu   sync.Mutex
+)
+
 const (
-	defaultPort       = 7890
-	defaultMaxEntries = 1000
+	defaultPort           = 7890
+	defaultMaxEntries     = 1000
+	githubAPIURL          = "https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest"
+	versionCheckCacheTTL  = 6 * time.Hour
+	versionCheckInterval  = 24 * time.Hour
+	httpClientTimeout     = 10 * time.Second
 )
 
 // LogEntry represents a single log entry
@@ -1313,6 +1324,9 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 	// relies on implicit happens-before guarantees from the channel.
 	setupHTTPRoutes(server, capture, sseRegistry)
 
+	// Start version checking loop (checks GitHub daily for new releases)
+	startVersionCheckLoop()
+
 	// Start HTTP server in background for browser extension
 	httpReady := make(chan error, 1)
 	go func() {
@@ -1508,6 +1522,74 @@ func sendMCPError(id interface{}, code int, message string) {
 	fmt.Println(string(respJSON))
 }
 
+// checkGitHubVersion fetches the latest version from GitHub
+// Returns early if cache is still valid (within 6 hours)
+// Used to determine if a newer version is available to notify users
+func checkGitHubVersion() {
+	versionCheckMu.Lock()
+	// Check if cache is still valid (6 hour TTL)
+	if !lastVersionCheck.IsZero() && time.Since(lastVersionCheck) < versionCheckCacheTTL {
+		versionCheckMu.Unlock()
+		return
+	}
+	versionCheckMu.Unlock()
+
+	// Fetch from GitHub
+	client := &http.Client{Timeout: httpClientTimeout}
+	resp, err := client.Get(githubAPIURL) // #nosec G107 -- constant GitHub API URL
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] GitHub version check failed: %v\n", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "[gasoline] GitHub API error: %d\n", resp.StatusCode)
+		return
+	}
+
+	var releaseInfo struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&releaseInfo); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Failed to parse GitHub response: %v\n", err)
+		return
+	}
+
+	// Extract version from tag (e.g., "v5.2.6" -> "5.2.6")
+	newVersion := strings.TrimPrefix(releaseInfo.TagName, "v")
+	if newVersion == "" {
+		fmt.Fprintf(os.Stderr, "[gasoline] Invalid GitHub release tag: %s\n", releaseInfo.TagName)
+		return
+	}
+
+	versionCheckMu.Lock()
+	availableVersion = newVersion
+	lastVersionCheck = time.Now()
+	versionCheckMu.Unlock()
+
+	if newVersion != version {
+		fmt.Fprintf(os.Stderr, "[gasoline] New version available: %s (current: %s)\n", newVersion, version)
+	}
+}
+
+// startVersionCheckLoop starts a periodic check for new versions on GitHub (daily)
+// Checks immediately on startup if no cached value, then periodically
+func startVersionCheckLoop() {
+	go func() {
+		// Check immediately on startup
+		checkGitHubVersion()
+
+		// Then check periodically
+		ticker := time.NewTicker(versionCheckInterval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			checkGitHubVersion()
+		}
+	}()
+}
+
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
 func setupHTTPRoutes(server *Server, capture *Capture, sseRegistry *SSERegistry) {
 	// V4 routes
@@ -1628,6 +1710,11 @@ func setupHTTPRoutes(server *Server, capture *Capture, sseRegistry *SSERegistry)
 			logFileSize = fi.Size()
 		}
 
+		// Include available version if known
+		versionCheckMu.Lock()
+		availVer := availableVersion
+		versionCheckMu.Unlock()
+
 		resp := map[string]interface{}{
 			"status":  "ok",
 			"version": version,
@@ -1637,6 +1724,11 @@ func setupHTTPRoutes(server *Server, capture *Capture, sseRegistry *SSERegistry)
 				"logFile":     server.logFile,
 				"logFileSize": logFileSize,
 			},
+		}
+
+		// Add available version if known
+		if availVer != "" {
+			resp["availableVersion"] = availVer
 		}
 
 		if capture != nil {

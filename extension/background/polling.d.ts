@@ -63,7 +63,7 @@ export declare function stopStatusPing(): void;
  */
 export declare function isStatusPingActive(): boolean;
 /**
- * Start version check: check /health every 30 minutes for new server version
+ * Start version check: check GitHub for new releases (once daily)
  */
 export declare function startVersionCheck(checkVersionFn: () => Promise<void>, debugLogFn?: (category: string, message: string, data?: unknown) => void): void;
 /**

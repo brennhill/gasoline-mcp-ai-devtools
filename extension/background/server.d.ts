@@ -10,6 +10,7 @@ export interface ServerHealthResponse {
     connected: boolean;
     error?: string;
     version?: string;
+    availableVersion?: string;
     logs?: {
         logFile?: string;
         logFileSize?: number;

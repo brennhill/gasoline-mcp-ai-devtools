@@ -16,7 +16,7 @@ const EXTENSION_LOGS_INTERVAL_MS = 5000;
 /** Status ping interval in milliseconds */
 const STATUS_PING_INTERVAL_MS = 30000;
 /** Version check interval in milliseconds */
-const VERSION_CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+const VERSION_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (daily)
 // =============================================================================
 // STATE
 // =============================================================================
@@ -171,12 +171,12 @@ export function isStatusPingActive() {
 // VERSION CHECK
 // =============================================================================
 /**
- * Start version check: check /health every 30 minutes for new server version
+ * Start version check: check GitHub for new releases (once daily)
  */
 export function startVersionCheck(checkVersionFn, debugLogFn) {
     stopVersionCheck();
     if (debugLogFn)
-        debugLogFn('connection', 'Starting version check');
+        debugLogFn('connection', 'Starting GitHub version check');
     checkVersionFn(); // Check immediately on start
     versionCheckInterval = setInterval(checkVersionFn, VERSION_CHECK_INTERVAL_MS);
 }

@@ -44,7 +44,7 @@ export { pollPendingQueriesWrapper, postSettingsWrapper, postNetworkWaterfall, p
 // =============================================================================
 // === PUBLIC API: VERSION CHECKING
 // =============================================================================
-export { getExtensionVersion, isNewVersionAvailable, getLastServerVersion, checkServerVersion, updateVersionBadge, resetVersionCheck, } from './background/version-check.js';
+export { getExtensionVersion, isNewVersionAvailable, getAvailableVersion, updateVersionFromHealth, updateVersionBadge, getUpdateInfo, resetVersionCheck, } from './background/version-check.js';
 // =============================================================================
 // === PUBLIC API: PENDING QUERIES & PILOT
 // =============================================================================

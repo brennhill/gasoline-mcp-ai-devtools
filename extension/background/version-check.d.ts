@@ -1,28 +1,40 @@
 /**
- * @fileoverview Version Check - Periodic version checking and badge management
+ * @fileoverview Version Check - Badge display based on /health response
  */
 /**
  * Get the extension version from manifest
  */
 export declare function getExtensionVersion(): string;
 /**
- * Check if a new version is available (based on last check)
+ * Check if a new version is available (from last /health response)
  */
 export declare function isNewVersionAvailable(): boolean;
 /**
- * Get the last checked server version
+ * Get the available version from last /health response
  */
-export declare function getLastServerVersion(): string | null;
+export declare function getAvailableVersion(): string | null;
 /**
- * Check server version and update state
- * Updates newVersionAvailable state and badge
+ * Update version state from /health response
+ * Called when extension receives /health endpoint data
  */
-export declare function checkServerVersion(serverUrl: string, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
+export declare function updateVersionFromHealth(healthResponse: {
+    version?: string;
+    availableVersion?: string;
+}, debugLogFn?: (category: string, message: string, data?: unknown) => void): void;
 /**
  * Update extension badge to show version update indicator
  * If newVersionAvailable, shows a "⬆" indicator on the icon
  */
 export declare function updateVersionBadge(): void;
+/**
+ * Get update information for display in popup
+ */
+export declare function getUpdateInfo(): {
+    available: boolean;
+    currentVersion: string;
+    availableVersion: string | null;
+    downloadUrl: string;
+};
 /**
  * Reset version check state (useful for testing)
  */

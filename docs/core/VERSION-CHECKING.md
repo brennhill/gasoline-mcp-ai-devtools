@@ -1,25 +1,32 @@
-# Version Checking & Notifications
+# Version Checking & Update Notifications
 
-Gasoline includes automatic version checking to notify users when a newer server version is available. This document describes how the system works and how to use it.
+Gasoline includes automatic version checking to notify users when newer versions are available on GitHub. This document describes how the system works and how to use it.
 
 ## Overview
 
-The version checking system has two components:
+The version checking system has three components:
 
-1. **Extension → Server**: Extension sends its version with every request via `X-Gasoline-Extension-Version` header
-2. **Server → Extension**: Extension periodically checks server version and displays a notification badge
+1. **Server → GitHub**: Server checks GitHub API daily for the latest release version
+2. **Server → Extension**: Server exposes current version and available version in `/health` endpoint response
+3. **Extension UI**: Extension reads `/health` response and displays a badge if an update is available
 
-Both run automatically with no configuration needed.
+The server handles all GitHub API polling. The extension simply reads the cached result from `/health` and displays a notification badge. No configuration needed — everything runs automatically.
 
 ## User Experience
 
 ### When a New Version is Available
 
-1. Extension periodically checks `/health` endpoint for server version (every 30 minutes)
-2. If server version is newer than extension version:
+1. **Server checks GitHub** daily (once per 24 hours, on startup + periodic polling)
+2. **Server caches result** for 6 hours (avoids GitHub API rate limiting)
+3. **Extension polls `/health`** regularly as part of normal connectivity checks
+4. **If available > current version**:
    - A **blue "⬆" badge** appears on the extension icon
    - Extension tooltip shows: `"Gasoline: New version available (v5.2.6)"`
-3. User can click extension icon to see version info or download new version
+5. **User can click extension icon** to see update info and download link
+6. **Popup displays**:
+   - Current version (e.g., "5.2.5")
+   - Available version (e.g., "5.2.6")
+   - Download link to GitHub releases
 
 ### Version Format
 
@@ -31,42 +38,94 @@ Versions follow semantic versioning: `X.Y.Z` (e.g., `5.2.5`)
 
 ### Example Scenarios
 
-| Server | Extension | Result |
-|--------|-----------|--------|
-| 5.2.5  | 5.2.5     | ✅ No badge |
-| 5.2.6  | 5.2.5     | 🔵 Blue "⬆" badge (patch update available) |
-| 5.3.0  | 5.2.5     | 🔵 Blue "⬆" badge (minor update available) |
-| 5.2.5  | 5.3.0     | ✅ No badge (extension newer than server) |
+| Server Version | Available | Extension | Result |
+|---|---|---|---|
+| 5.2.5 | 5.2.5 | 5.2.5 | ✅ No badge |
+| 5.2.5 | 5.2.6 | 5.2.5 | 🔵 Blue "⬆" badge (patch update available) |
+| 5.2.5 | 5.3.0 | 5.2.5 | 🔵 Blue "⬆" badge (minor update available) |
+| 5.2.5 | 5.2.5 | 5.3.0 | ✅ No badge (extension newer than available) |
 
 ## How It Works
 
-### Extension Side
+### Architecture Diagram
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                      GitHub API                          │
+│  /repos/brennhill/gasoline-mcp-ai-devtools/releases/...  │
+└────────────────────────┬─────────────────────────────────┘
+                         │ (daily check, 6h cache)
+                         ↓
+                    ┌─────────────┐
+                    │   Server    │
+                    │  (Go)       │
+                    └──────┬──────┘
+                           │ /health: { version, availableVersion }
+                           ↓
+                    ┌─────────────────────┐
+                    │   Browser           │
+                    │   Extension         │
+                    │  (TypeScript)       │
+                    │                     │
+                    │  updateVersionBadge │
+                    │  showNotification   │
+                    └─────────────────────┘
+                           │
+                           ↓
+                       User sees badge
+```
+
+### Server Side (Go)
 
 #### Version Check Flow
 
-```
-Extension starts
-    ↓
-Connects to server via /health
-    ↓
-Reads server version: { version: "5.2.6", ... }
-    ↓
-Compares with manifest version (5.2.5)
-    ↓
-If server > extension:
-  - Sets newVersionAvailable flag
-  - Updates badge: "⬆"
-  - Updates tooltip
-    ↓
-Checks again in 30 minutes
+1. **Server starts**: `startVersionCheckLoop()` is called during initialization
+2. **Immediate check**: `checkGitHubVersion()` fetches the latest release from GitHub (if no cached value)
+3. **GitHub API call**: Fetches `https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest`
+4. **Extract version**: Parses `tag_name` field (e.g., "v5.2.6" → "5.2.6")
+5. **Cache result**: Stores in memory with 6-hour TTL
+6. **Periodic polling**: Checks again every 24 hours (or if cache expired)
+7. **Expose in `/health`**: Returns `availableVersion` in response alongside `version`
+
+#### Rate Limiting & Caching
+
+- **GitHub API limit**: 60 requests/hour (unauthenticated)
+- **Server strategy**: Daily checks (1 request/day) with 6-hour cache
+- **Fallback**: If GitHub unreachable, keeps previous cached value (or server version if no previous check)
+- **Location**: [cmd/dev-console/main.go](../../cmd/dev-console/main.go#L1542)
+
+#### `/health` Response Example
+
+```json
+{
+  "status": "ok",
+  "version": "5.2.5",
+  "availableVersion": "5.2.6",
+  "logs": {
+    "entries": 42,
+    "maxEntries": 1000,
+    "logFile": "/home/user/gasoline-logs.jsonl",
+    "logFileSize": 102400
+  },
+  "buffers": { ... },
+  "extension": { ... },
+  "circuit": { ... }
+}
 ```
 
-#### Periodic Polling
+**Note**: `availableVersion` field is only present if a version check has been completed. If the server hasn't checked GitHub yet, the field will be omitted.
 
-- **Interval**: Every 30 minutes (configurable in [src/background/polling.ts:28](../src/background/polling.ts#L28))
-- **First check**: Immediately when server connection established
-- **Rate limiting**: Prevents excessive checks if `/health` is called more frequently
-- **Graceful degradation**: Silently fails if server is unreachable
+### Extension Side (TypeScript)
+
+#### Version Check Flow
+
+1. **Extension polls `/health`** periodically as part of normal connectivity checks (no separate version-specific polling)
+2. **Receives response** with `version` and optional `availableVersion` fields
+3. **Calls `updateVersionFromHealth()`** with the response data
+4. **Compares versions**: Uses semver comparison (e.g., "5.2.6" > "5.2.5")
+5. **Updates state**: Sets `newVersionAvailable` flag based on comparison
+6. **Updates badge**: Calls `updateVersionBadge()` to show/hide the "⬆" icon
+7. **Updates tooltip**: Shows "Gasoline: New version available (v5.2.6)" or just "Gasoline"
 
 #### Version Header
 
@@ -76,139 +135,66 @@ Every request to the server includes:
 X-Gasoline-Extension-Version: 5.2.5
 ```
 
-This header is automatically added to all API requests:
+This header is automatically added to all API requests for diagnostics:
 - `/logs` - Console logs
 - `/websocket-events` - WebSocket events
 - `/network-bodies` - Network requests
+- `/network-waterfall` - Network waterfall
 - `/enhanced-actions` - User actions
 - `/settings` - Settings sync
 - `/pending-queries` - Query polling
-- Plus 5+ other endpoints
+- `/extension-logs` - Extension logs
+- `/api/extension-status` - Extension status
+- `/performance-snapshots` - Performance metrics
+- Plus other endpoints
 
-### Server Side
+The server logs version mismatches (e.g., when extension and server versions differ).
 
-#### Version Validation
-
-When the server receives a request with `X-Gasoline-Extension-Version` header:
-
-1. **Extracts** the header from the request
-2. **Compares** with server version (set at build time via `-ldflags`)
-3. **Logs** version mismatches to stderr:
-   ```
-   [gasoline] Version mismatch: server=5.2.5 extension=5.2.6
-   ```
-
-#### Exposing Server Version
-
-The `/health` endpoint returns server version:
-
-```json
-{
-  "status": "ok",
-  "version": "5.2.5",
-  "logs": { ... },
-  "buffers": { ... }
-}
-```
-
-## For Developers
-
-### Getting Current Versions
+#### Badge Updates
 
 ```typescript
-import { getExtensionVersion, getLastServerVersion } from 'gasoline';
+// When availableVersion > extensionVersion:
+- Badge text: "⬆"
+- Badge color: Blue (#0969da)
+- Tooltip: "Gasoline: New version available (v5.2.6)"
 
-// Extension version (from manifest.json)
-const extVersion = getExtensionVersion(); // "5.2.5"
-
-// Last checked server version
-const serverVersion = getLastServerVersion(); // "5.2.6" or null
-```
-
-### Checking Update Status
-
-```typescript
-import { isNewVersionAvailable } from 'gasoline';
-
-if (isNewVersionAvailable()) {
-  console.log('User should update extension');
-}
-```
-
-### Manual Version Check
-
-```typescript
-import { checkServerVersion } from 'gasoline';
-
-// Force a version check (respects rate limiting)
-await checkServerVersion(serverUrl, debugLog);
-```
-
-### Version Comparison Utilities
-
-Low-level semver comparison functions are available:
-
-```typescript
-import {
-  parseVersion,
-  compareVersions,
-  isVersionNewer,
-  isVersionSameOrNewer,
-  formatVersionDisplay
-} from 'gasoline/lib/version';
-
-// Parse version string
-const version = parseVersion("5.2.5");
-// { major: 5, minor: 2, patch: 5 }
-
-// Compare versions: -1 (A < B), 0 (A == B), 1 (A > B)
-compareVersions("5.2.5", "5.2.6"); // -1
-
-// Check if newer
-isVersionNewer("5.2.6", "5.2.5"); // true
-
-// Check if same or newer
-isVersionSameOrNewer("5.2.5", "5.2.5"); // true
-isVersionSameOrNewer("5.3.0", "5.2.5"); // true
-
-// Format for display
-formatVersionDisplay("5.2.5"); // "v5.2.5"
-```
-
-### Resetting State (Testing)
-
-```typescript
-import { resetVersionCheck } from 'gasoline';
-
-// Clear version check state (for testing)
-resetVersionCheck();
+// When equal or no update available:
+- Badge cleared (no "⬆")
+- Tooltip: "Gasoline"
 ```
 
 ## Configuration
 
-### Extension Polling Interval
+### Server GitHub Check Interval
 
-Edit [src/background/polling.ts:28](../src/background/polling.ts#L28):
+Edit [cmd/dev-console/main.go:42-52](../../cmd/dev-console/main.go#L42-L52):
 
-```typescript
-const VERSION_CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+```go
+const (
+	githubAPIURL         = "https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest"
+	versionCheckCacheTTL = 6 * time.Hour    // Cache validity period
+	versionCheckInterval = 24 * time.Hour   // Polling frequency
+	httpClientTimeout    = 10 * time.Second // GitHub API timeout
+)
 ```
 
-Common values:
-- `10 * 1000` = 10 seconds (for testing)
-- `5 * 60 * 1000` = 5 minutes (frequent checks)
-- `30 * 60 * 1000` = 30 minutes (default, balanced)
-- `6 * 60 * 60 * 1000` = 6 hours (infrequent)
+**Recommended values**:
+- `versionCheckInterval`: 24 hours (daily) - avoids GitHub rate limits
+- `versionCheckCacheTTL`: 6 hours - allows manual refresh within 6h window
+- `httpClientTimeout`: 10 seconds - prevents hanging on network issues
 
-### Server Rate Limit
+### Custom GitHub Repository
 
-Edit [src/background/version-check.ts:15](../src/background/version-check.ts#L15):
+To use a different GitHub repository (fork), edit [cmd/dev-console/main.go:47](../../cmd/dev-console/main.go#L47):
 
-```typescript
-const VERSION_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+```go
+const githubAPIURL = "https://api.github.com/repos/YOUR-ORG/YOUR-REPO/releases/latest"
 ```
 
-This prevents multiple version checks for the same server in quick succession.
+**Requirements**:
+- GitHub releases must use semver tags: `vX.Y.Z` (e.g., `v5.2.6`)
+- Tag format must include `v` prefix
+- API endpoint must be public (no authentication)
 
 ### Setting Server Version at Build Time
 
@@ -217,28 +203,57 @@ This prevents multiple version checks for the same server in quick succession.
 go build -ldflags "-X main.version=5.2.6" ./cmd/dev-console
 ```
 
-The version is automatically read from:
-1. Compile-time flag (`-ldflags`)
-2. Fallback in code: `main.go:30`
+If no `-ldflags` provided, defaults to `5.2.5` (see [cmd/dev-console/main.go:30](../../cmd/dev-console/main.go#L30)).
 
 ## Troubleshooting
 
 ### Badge Not Showing
 
-**Symptoms**: Server is newer but no "⬆" badge appears
+**Symptoms**: GitHub has newer version but no "⬆" badge appears
 
 **Solutions**:
-1. Check that server version is actually newer (semantic comparison)
+1. Check GitHub has the newer version:
    ```bash
-   curl http://localhost:7890/health | jq .version
+   curl -s https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest | jq .tag_name
    ```
-2. Wait for next polling cycle (default 30 minutes, check logs with DevTools)
-3. Check browser console for errors in version check
-4. Verify extension has permission to access `/health` endpoint
 
-### Version Mismatch in Logs
+2. Server hasn't checked GitHub yet
+   - Server checks on startup, so restart the server: `killall gasoline && gasoline`
+   - Or wait for next daily check
 
-**Symptom**: Server logs show version mismatch
+3. Check server version was fetched by extension
+   - Open extension popup → should show server version under "Connected"
+   - Or check DevTools Network tab → `/health` response should include `availableVersion` field
+
+4. Check browser DevTools for errors
+   - Open DevTools → Console → look for version check errors
+   - DevTools → Network → click `/health` request → Response tab
+
+5. Verify GitHub API is accessible from your network
+   - Try: `curl https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest`
+
+### GitHub API Unreachable
+
+**Symptom**: Server logs show "GitHub version check failed"
+
+```
+[gasoline] GitHub version check failed: connection refused
+```
+
+**Causes**:
+1. Network/firewall blocking GitHub API (`api.github.com`)
+2. No internet connection
+3. GitHub API down
+
+**Solutions**:
+- Check connectivity: `curl https://api.github.com`
+- Check firewall allows `api.github.com`
+- Retry next day (checks happen daily)
+- Version checking is non-critical, doesn't block functionality
+
+### Version Mismatch in Server Logs
+
+**Symptom**: Server stderr shows version mismatch
 
 ```
 [gasoline] Version mismatch: server=5.2.5 extension=5.2.6
@@ -248,23 +263,137 @@ The version is automatically read from:
 
 **What to do**:
 - This is informational only, not an error
-- If blocking issues occur, rebuild extension to match server version
-- Check [RELEASE.md](RELEASE.md) for upgrade notes
-
-### Extension Header Not Sent
-
-**Symptom**: Server logs don't show version mismatch (header missing)
-
-**Causes**:
-1. Extension is outdated (before version checking was added)
-2. Requests are being made through proxy that strips headers
-3. CORS blocking (unlikely for localhost)
-
-**Solution**: Rebuild and reinstall extension
+- Server logs this for diagnostics (allows debugging version-related issues)
+- If incompatibility issues occur, rebuild extension to match server version
+- Check [RELEASE.md](./RELEASE.md) for upgrade notes
 
 ## API Reference
 
-### Extension Functions
+### Server Functions (Go)
+
+#### `checkGitHubVersion()`
+
+Fetches the latest version from GitHub. Called automatically on startup and every 24 hours.
+
+**Behavior**:
+- Checks cache first (6-hour TTL)
+- Fetches GitHub API if cache expired
+- Updates `availableVersion` global variable
+- Non-blocking; silently fails if GitHub unreachable
+
+**Implementation**: [cmd/dev-console/main.go#L1542](../../cmd/dev-console/main.go#L1542)
+
+#### `startVersionCheckLoop()`
+
+Starts the periodic version checking loop. Called once during server initialization.
+
+**Behavior**:
+- Immediately calls `checkGitHubVersion()` on startup
+- Schedules periodic checks every 24 hours
+- Runs in background goroutine
+
+**Implementation**: [cmd/dev-console/main.go#L1588](../../cmd/dev-console/main.go#L1588)
+
+#### `GET /health` Response
+
+Returns server health including version information.
+
+**Fields**:
+- `status`: "ok"
+- `version`: Current server version (e.g., "5.2.5")
+- `availableVersion`: Latest GitHub release version if known (e.g., "5.2.6")
+  - Omitted if no version check completed yet
+  - Omitted if GitHub check failed
+- `logs`: Log file statistics
+- `buffers`: Capture buffer counts
+- `extension`: Extension connection status
+- `circuit`: Circuit breaker status
+
+**Example**:
+```json
+{
+  "status": "ok",
+  "version": "5.2.5",
+  "availableVersion": "5.2.6",
+  ...
+}
+```
+
+### Extension Functions (TypeScript)
+
+#### `updateVersionFromHealth(healthResponse, debugLogFn?)`
+
+Updates version information from server health response. Called when `/health` is received.
+
+**Parameters**:
+- `healthResponse`: Object with `version` and `availableVersion` fields
+- `debugLogFn`: Optional debug logging function
+
+**Example**:
+```typescript
+import { updateVersionFromHealth, debugLog } from 'gasoline';
+
+updateVersionFromHealth({
+  version: "5.2.5",
+  availableVersion: "5.2.6"
+}, debugLog);
+```
+
+#### `isNewVersionAvailable(): boolean`
+
+Returns `true` if a newer version is available based on last `/health` response.
+
+**Example**:
+```typescript
+if (isNewVersionAvailable()) {
+  console.log("Update available!");
+}
+```
+
+#### `getAvailableVersion(): string | null`
+
+Returns the latest version from last `/health` response, or `null` if not yet fetched.
+
+**Example**:
+```typescript
+const availVer = getAvailableVersion(); // "5.2.6" or null
+```
+
+#### `getUpdateInfo(): UpdateInfo`
+
+Get update information for display in UI.
+
+**Returns**:
+```typescript
+{
+  available: boolean;           // True if update is available
+  currentVersion: string;       // Current extension version
+  availableVersion: string | null; // Latest available version
+  downloadUrl: string;          // GitHub releases URL
+}
+```
+
+**Example**:
+```typescript
+import { getUpdateInfo } from 'gasoline';
+
+const info = getUpdateInfo();
+if (info.available) {
+  console.log(`Update: ${info.currentVersion} → ${info.availableVersion}`);
+  console.log(`Get it: ${info.downloadUrl}`);
+}
+```
+
+#### `updateVersionBadge(): void`
+
+Manually update the extension badge based on current version state.
+
+**Example**:
+```typescript
+import { updateVersionBadge } from 'gasoline';
+
+updateVersionBadge();
+```
 
 #### `getExtensionVersion(): string`
 
@@ -272,176 +401,82 @@ Returns the extension version from `manifest.json`.
 
 **Example**:
 ```typescript
-getExtensionVersion(); // "5.2.5"
-```
+import { getExtensionVersion } from 'gasoline';
 
-#### `getLastServerVersion(): string | null`
-
-Returns the last checked server version, or `null` if never checked.
-
-**Example**:
-```typescript
-getLastServerVersion(); // "5.2.6" or null
-```
-
-#### `isNewVersionAvailable(): boolean`
-
-Returns `true` if a newer server version is available based on last check.
-
-**Example**:
-```typescript
-if (isNewVersionAvailable()) {
-  showNotification("Update available!");
-}
-```
-
-#### `checkServerVersion(serverUrl: string, debugLogFn?: Function): Promise<void>`
-
-Manually trigger a version check (respects rate limiting).
-
-**Parameters**:
-- `serverUrl`: Server URL (e.g., `http://localhost:7890`)
-- `debugLogFn`: Optional debug logging function
-
-**Example**:
-```typescript
-import { debugLog, DebugCategory } from 'gasoline';
-
-await checkServerVersion(
-  'http://localhost:7890',
-  (category, message, data) => {
-    debugLog(DebugCategory.CONNECTION, message, data);
-  }
-);
-```
-
-#### `updateVersionBadge(): void`
-
-Manually update the extension badge based on current state.
-
-**Example**:
-```typescript
-// Updates badge to "⬆" if newVersionAvailable is true
-updateVersionBadge();
+console.log(getExtensionVersion()); // "5.2.5"
 ```
 
 #### `resetVersionCheck(): void`
 
-Reset version check state to initial values. **For testing only.**
+Reset version checking state to initial values. **For testing only.**
 
 **Example**:
 ```typescript
-// Clear all version state
+import { resetVersionCheck } from 'gasoline';
+
 resetVersionCheck();
 ```
 
-### Server Functions
+## Files Involved
 
-#### `GET /health`
+### Server (Go)
+- [cmd/dev-console/main.go](../../cmd/dev-console/main.go) - GitHub checking, `/health` endpoint
 
-Returns server health info including version.
-
-**Response**:
-```json
-{
-  "status": "ok",
-  "version": "5.2.5",
-  "logs": {
-    "entries": 42,
-    "maxEntries": 1000,
-    "logFile": "/home/user/gasoline-logs.jsonl",
-    "logFileSize": 102400
-  },
-  "buffers": {
-    "websocket_events": 10,
-    "network_bodies": 25,
-    "actions": 5,
-    "connections": 2
-  },
-  "extension": {
-    "connected": true,
-    "status": "connected",
-    "last_poll_ms": 500,
-    "pilot_enabled": false
-  }
-}
-```
-
-#### Request Header: `X-Gasoline-Extension-Version`
-
-All requests from the extension include this header.
-
-**Example**:
-```
-POST /logs HTTP/1.1
-X-Gasoline-Extension-Version: 5.2.5
-Content-Type: application/json
-```
-
-## Internals
-
-### Files Involved
-
-**Extension (TypeScript)**:
+### Extension (TypeScript)
 - [src/lib/version.ts](../src/lib/version.ts) - Semver parsing & comparison
-- [src/background/version-check.ts](../src/background/version-check.ts) - Version checking logic
-- [src/background/polling.ts](../src/background/polling.ts) - Polling loop management
+- [src/background/version-check.ts](../src/background/version-check.ts) - Version state management
 - [src/background/server.ts](../src/background/server.ts) - HTTP header injection
-- [src/background/index.ts](../src/background/index.ts) - Integration with polling
+- [src/background/index.ts](../src/background/index.ts) - Integration with `/health` polling
 
-**Server (Go)**:
-- [cmd/dev-console/main.go](../../cmd/dev-console/main.go) - Header extraction & logging
-
-### State Machine
+## Data Flow Summary
 
 ```
-┌──────────────┐
-│   IDLE       │ No version checked yet
-└──────┬───────┘
-       │ First connection
-       ↓
-┌──────────────────┐
-│ CHECKING         │ Polling /health endpoint
-└──────┬───────────┘
-       │
-       ├─→ Match: Version strings are equal
-       │   └─→ ✅ NO_UPDATE (badge cleared)
-       │
-       └─→ Newer: Server > Extension
-           └─→ 🔵 UPDATE_AVAILABLE (badge shown)
+┌─────────────────────────────────────────────────────────┐
+│  Server Startup                                         │
+│  1. Read version from manifest / ldflags                │
+│  2. Call startVersionCheckLoop()                        │
+│  3. Immediately call checkGitHubVersion()               │
+│  4. Start periodic timer for daily checks               │
+└──────────────────┬──────────────────────────────────────┘
+                   │
+                   ↓
+         ┌─────────────────────┐
+         │  GitHub API Check   │
+         │  (6h cache TTL)     │
+         │                     │
+         │ If cached:          │
+         │   Return immediately│
+         │ Else:               │
+         │   Fetch & cache     │
+         └──────────┬──────────┘
+                    │
+                    ↓ Update availableVersion global var
+         ┌─────────────────────┐
+         │  /health endpoint   │
+         │  Returns:           │
+         │  - version          │
+         │  - availableVersion │
+         │  - logs, buffers... │
+         └──────────┬──────────┘
+                    │
+                    ↓ Extension polls /health
+         ┌──────────────────────────┐
+         │  updateVersionFromHealth │
+         │  - Compare versions      │
+         │  - Set flags             │
+         │  - Update badge          │
+         │  - Show notification     │
+         └──────────────────────────┘
+                    │
+                    ↓
+         ┌──────────────────────────┐
+         │  User sees "⬆" badge     │
+         │  Clicks → Download link  │
+         └──────────────────────────┘
 ```
-
-## Migration Guide
-
-### For Existing Installations
-
-The version checking system is **automatic** and requires no configuration.
-
-1. **Update Server**: Build with new version number
-   ```bash
-   go build -ldflags "-X main.version=5.2.6" ./cmd/dev-console
-   ```
-
-2. **Update Extension**: Rebuild and install new version
-   ```bash
-   make compile-ts
-   # Then load updated extension in chrome://extensions
-   ```
-
-3. **First Check**: Happens immediately on next connection
-   - Extension checks `/health` endpoint
-   - Badge updates automatically
-
-### For Custom Deployments
-
-If you're running Gasoline in a custom environment:
-
-1. Ensure `/health` endpoint is accessible from extension
-2. Ensure `X-Gasoline-Extension-Version` header is preserved (not stripped by proxy)
-3. Set version at build time with `-ldflags`
 
 ## See Also
 
-- [RELEASE.md](RELEASE.md) - Version history and upgrade notes
+- [RELEASE.md](./RELEASE.md) - Version history and upgrade notes
 - [README.md](../../README.md) - Installation and setup
-- [docs/plugin-server-communications.md](plugin-server-communications.md) - Full protocol spec
+- [docs/plugin-server-communications.md](./plugin-server-communications.md) - Full protocol spec

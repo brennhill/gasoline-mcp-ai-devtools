@@ -1,15 +1,12 @@
 /**
- * @fileoverview Version Check - Periodic version checking and badge management
+ * @fileoverview Version Check - Badge display based on /health response
  */
 import { isVersionNewer } from '../lib/version.js';
 /**
  * Version check state
  */
-let lastCheckedAt = 0;
-let lastServerVersion = null;
+let availableVersion = null;
 let newVersionAvailable = false;
-// Version check interval: 6 hours (in milliseconds)
-const VERSION_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 /**
  * Get the extension version from manifest
  */
@@ -18,63 +15,37 @@ export function getExtensionVersion() {
     return manifest.version || '0.0.0';
 }
 /**
- * Check if a new version is available (based on last check)
+ * Check if a new version is available (from last /health response)
  */
 export function isNewVersionAvailable() {
     return newVersionAvailable;
 }
 /**
- * Get the last checked server version
+ * Get the available version from last /health response
  */
-export function getLastServerVersion() {
-    return lastServerVersion;
+export function getAvailableVersion() {
+    return availableVersion;
 }
 /**
- * Check server version and update state
- * Updates newVersionAvailable state and badge
+ * Update version state from /health response
+ * Called when extension receives /health endpoint data
  */
-export async function checkServerVersion(serverUrl, debugLogFn) {
-    const now = Date.now();
-    // Rate limit: only check every VERSION_CHECK_INTERVAL_MS
-    if (now - lastCheckedAt < VERSION_CHECK_INTERVAL_MS) {
-        return;
-    }
-    try {
-        const response = await fetch(`${serverUrl}/health`);
-        if (!response.ok) {
-            if (debugLogFn) {
-                debugLogFn('version', `Server health check failed: HTTP ${response.status}`);
-            }
-            return;
-        }
-        const data = (await response.json());
-        const serverVersion = data.version;
-        lastCheckedAt = now;
-        if (!serverVersion) {
-            if (debugLogFn) {
-                debugLogFn('version', 'Server returned no version info');
-            }
-            return;
-        }
-        lastServerVersion = serverVersion;
-        const extensionVersion = getExtensionVersion();
-        const isNewer = isVersionNewer(serverVersion, extensionVersion);
-        if (isNewer !== newVersionAvailable) {
-            newVersionAvailable = isNewer;
-            updateVersionBadge();
-            if (debugLogFn) {
-                debugLogFn('version', 'Version check result', {
-                    extensionVersion,
-                    serverVersion,
-                    updateAvailable: isNewer,
-                });
-            }
-        }
-    }
-    catch (error) {
+export function updateVersionFromHealth(healthResponse, debugLogFn) {
+    const currentVersion = healthResponse.version || getExtensionVersion();
+    const newAvailableVersion = healthResponse.availableVersion || null;
+    // Update cached version
+    availableVersion = newAvailableVersion;
+    const extensionVersion = getExtensionVersion();
+    const isNewer = newAvailableVersion && isVersionNewer(newAvailableVersion, extensionVersion);
+    if (isNewer !== newVersionAvailable) {
+        newVersionAvailable = isNewer ? true : false;
+        updateVersionBadge();
         if (debugLogFn) {
-            debugLogFn('version', 'Version check failed', {
-                error: error.message,
+            debugLogFn('version', 'Version check result', {
+                extensionVersion,
+                currentVersion,
+                availableVersion: newAvailableVersion,
+                updateAvailable: isNewer,
             });
         }
     }
@@ -86,7 +57,7 @@ export async function checkServerVersion(serverUrl, debugLogFn) {
 export function updateVersionBadge() {
     if (typeof chrome === 'undefined' || !chrome.action)
         return;
-    if (newVersionAvailable) {
+    if (newVersionAvailable && availableVersion) {
         chrome.action.setBadgeText({
             text: '⬆',
         });
@@ -94,23 +65,32 @@ export function updateVersionBadge() {
             color: '#0969da', // Blue for info
         });
         chrome.action.setTitle({
-            title: `Gasoline: New version available (${lastServerVersion})`,
+            title: `Gasoline: New version available (${availableVersion})`,
         });
     }
     else {
         // Clear the version update indicator
-        // Keep error count badge if any
         chrome.action.setTitle({
             title: 'Gasoline',
         });
     }
 }
 /**
+ * Get update information for display in popup
+ */
+export function getUpdateInfo() {
+    return {
+        available: newVersionAvailable,
+        currentVersion: getExtensionVersion(),
+        availableVersion: availableVersion,
+        downloadUrl: 'https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/latest',
+    };
+}
+/**
  * Reset version check state (useful for testing)
  */
 export function resetVersionCheck() {
-    lastCheckedAt = 0;
-    lastServerVersion = null;
+    availableVersion = null;
     newVersionAvailable = false;
 }
 //# sourceMappingURL=version-check.js.map
