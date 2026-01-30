@@ -335,6 +335,7 @@ const (
 	ErrNoData            = "no_data"
 	ErrCodePilotDisabled = "pilot_disabled" // Named ErrCodePilotDisabled to avoid collision with var ErrPilotDisabled in pilot.go
 	ErrRateLimited       = "rate_limited"
+	ErrCursorExpired     = "cursor_expired" // Cursor pagination: buffer overflow evicted cursor position
 
 	// Communication errors — retry with backoff
 	ErrExtTimeout = "extension_timeout"
@@ -1593,46 +1594,66 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 
 func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var arguments struct {
-		Limit int `json:"limit"`
-		TabId int `json:"tab_id"` // Filter by Chrome tab ID (0 = no filter)
+		Limit             int    `json:"limit"`
+		TabId             int    `json:"tab_id"` // Filter by Chrome tab ID (0 = no filter)
+		AfterCursor       string `json:"after_cursor"`
+		BeforeCursor      string `json:"before_cursor"`
+		SinceCursor       string `json:"since_cursor"`
+		RestartOnEviction bool   `json:"restart_on_eviction"`
 	}
 	if len(args) > 0 {
-		// Error acceptable: limit is optional, defaults to 0 (no limit)
+		// Error acceptable: params are optional
 		_ = json.Unmarshal(args, &arguments)
 	}
 
 	h.server.mu.RLock()
 	defer h.server.mu.RUnlock()
 
-	entries := h.server.entries
+	// Enrich entries with sequence numbers BEFORE filtering (critical for correct sequences)
+	enriched := EnrichLogEntries(h.server.entries, h.server.logTotalAdded)
 
 	// Apply noise filtering
 	if h.noise != nil {
-		var filtered []LogEntry
-		for _, entry := range entries {
-			if !h.noise.IsConsoleNoise(entry) {
-				filtered = append(filtered, entry)
+		var filtered []LogEntryWithSequence
+		for _, e := range enriched {
+			if !h.noise.IsConsoleNoise(e.Entry) {
+				filtered = append(filtered, e)
 			}
 		}
-		entries = filtered
+		enriched = filtered
 	}
 
 	// Apply tab_id filter if specified
 	if arguments.TabId > 0 {
-		var filtered []LogEntry
-		for _, entry := range entries {
-			if entryTabId, ok := entry["tabId"].(float64); ok && int(entryTabId) == arguments.TabId {
-				filtered = append(filtered, entry)
+		var filtered []LogEntryWithSequence
+		for _, e := range enriched {
+			if entryTabId, ok := e.Entry["tabId"].(float64); ok && int(entryTabId) == arguments.TabId {
+				filtered = append(filtered, e)
 			}
 		}
-		entries = filtered
+		enriched = filtered
 	}
 
-	if arguments.Limit > 0 && arguments.Limit < len(entries) {
-		entries = entries[len(entries)-arguments.Limit:]
+	// Apply cursor-based pagination
+	result, metadata, err := ApplyLogCursorPagination(
+		enriched,
+		arguments.AfterCursor,
+		arguments.BeforeCursor,
+		arguments.SinceCursor,
+		arguments.Limit,
+		arguments.RestartOnEviction,
+	)
+	if err != nil {
+		// Cursor expired error
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrCursorExpired,
+			err.Error(),
+			"Use restart_on_eviction=true to auto-restart from oldest available entry, or fetch from beginning",
+		)}
 	}
 
-	if len(entries) == 0 {
+	// Empty result case
+	if len(result) == 0 {
 		msg := "No browser logs found"
 		if h.captureOverrides != nil {
 			overrides := h.captureOverrides.GetAll()
@@ -1647,25 +1668,61 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 				msg += "\n\nlog_level is 'warn' (errors + warnings only). To capture all console output, call:\nconfigure({action: \"capture\", settings: {log_level: \"all\"}})"
 			}
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(msg)}
+
+		// Return JSON response with cursor metadata
+		data := map[string]interface{}{
+			"logs":  []interface{}{},
+			"count": 0,
+			"total": len(h.server.entries),
+		}
+		if metadata.Warning != "" {
+			data["warning"] = metadata.Warning
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(msg, data)}
 	}
 
-	summary := fmt.Sprintf("%d log entries", len(entries))
-	if warning := checkLogQuality(entries); warning != "" {
+	// Serialize entries to JSON format
+	jsonLogs := make([]map[string]interface{}, len(result))
+	for i, e := range result {
+		jsonLogs[i] = SerializeLogEntryWithSequence(e)
+	}
+
+	// Build response data with cursor metadata
+	data := map[string]interface{}{
+		"logs":  jsonLogs,
+		"count": metadata.Count,
+		"total": metadata.Total,
+	}
+
+	if metadata.Cursor != "" {
+		data["cursor"] = metadata.Cursor
+	}
+	if metadata.OldestTimestamp != "" {
+		data["oldest_timestamp"] = metadata.OldestTimestamp
+	}
+	if metadata.NewestTimestamp != "" {
+		data["newest_timestamp"] = metadata.NewestTimestamp
+	}
+	if metadata.HasMore {
+		data["has_more"] = true
+	}
+	if metadata.CursorRestarted {
+		data["cursor_restarted"] = true
+		data["original_cursor"] = metadata.OriginalCursor
+	}
+	if metadata.Warning != "" {
+		data["warning"] = metadata.Warning
+	}
+
+	summary := fmt.Sprintf("%d log entries", len(result))
+	if metadata.CursorRestarted {
+		summary += " (cursor restarted after buffer overflow)"
+	}
+	if warning := checkLogQuality(h.server.entries); warning != "" {
 		summary += "\n" + warning
 	}
-	rows := make([][]string, len(entries))
-	for i, e := range entries {
-		rows[i] = []string{
-			entryStr(e, "level"),
-			truncate(entryStr(e, "message"), 80),
-			entryStr(e, "source"),
-			entryStr(e, "ts"),
-			entryDisplay(e, "tabId"),
-		}
-	}
-	table := markdownTable([]string{"Level", "Message", "Source", "Time", "Tab"}, rows)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpMarkdownResponse(summary, table)}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, data)}
 }
 
 func (h *ToolHandler) toolGetExtensionLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
