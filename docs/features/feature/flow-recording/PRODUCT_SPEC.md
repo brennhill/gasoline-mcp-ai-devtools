@@ -31,14 +31,19 @@ Regression testing today is **slow, manual, and error-prone**:
 **The workflow:**
 1. **QA records** a user's reported flow once (e.g., "checkout fails on coupon code entry")
 2. **Developer fixes** the bug in code
-3. **LLM invokes Gasoline** to replay the flow and analyze what changed
-4. **Gasoline suggests** the root cause + code fixes (with file/line numbers and git context)
+3. **LLM invokes Gasoline** to replay the flow and compare logs (original vs fixed)
+4. **Gasoline provides:**
+   - Structured diff of logs (what changed?)
+   - Error detection (404? timeout? missing element?)
+   - Git context (which commits touched affected code?)
+   - Claude analyzes all this and suggests root cause + code fixes
 5. **Developer verifies** the fix in <5 minutes (not 30 minutes of manual testing)
 
 **Why Gasoline:**
 - **Purpose-built for regression testing**, not general test automation
-- **Root cause analysis + fix suggestions** (unique) — tells you WHY it broke, not just that it broke
-- **AI-driven** — uses Claude to understand logs, suggest fixes, and rank confidence
+- **Structured log diffing + error detection** — provides the data Claude needs to analyze root causes (unique differentiator)
+- **Git context collection** — shows which commits changed affected code (helps Claude suggest correct fixes)
+- **AI-ready data pipeline** — logs, diffs, errors, and git context fed directly to Claude for analysis
 - **Local-first** — runs entirely on your machine (no cloud, no shared state)
 - **Zero dependencies** — lean, fast, audit-friendly
 
@@ -134,9 +139,11 @@ Regression testing today is **slow, manual, and error-prone**:
 - [ ] Name + timestamp used in file paths/IDs
 
 **Recording Policy:**
-- [ ] Full text typed captured (necessary for regression testing with real data)
-- [ ] ⚠️ **Security Warning:** Never record flows with real production credentials (passwords, API keys, credit cards)
-- [ ] Recommended: Use test accounts and fake data for all recordings
+- [ ] Full text typed captured (necessary for regression testing with real data, including login flows)
+- [ ] **Sensitive Data Toggle:** User can enable/disable recording of credentials
+  - Default: Disabled (safe)
+  - If enabled: ⚠️ **Warning:** "You are recording credentials. Ensure this is test data, not production credentials. Recordings stored only on localhost."
+- [ ] Use case: Testing login flows on local dev environment requires recording test account credentials
 - [ ] Recordings stored locally only; not transmitted to cloud
 
 ### R2: Recording UI
@@ -306,23 +313,28 @@ Regression testing today is **slow, manual, and error-prone**:
   - Or expand storage
 - Gasoline doesn't auto-delete recordings (data loss risk)
 
-### R10: Root Cause Analysis & Auto-Fix Skill
+### R10: Root Cause Analysis Data & Git Context (For Claude)
 
-**Issue Detection:**
-- [ ] Compare original recording logs vs replay logs
-- [ ] Identify error types: network error (404, 500, timeout), DOM changes (missing elements), timeout/delay, assertion failures
+**What Gasoline Provides (Structured Data for LLM Analysis):**
+
+**Log Diffing & Error Detection:**
+- [ ] Compare original recording logs vs replay logs (structured diff)
+- [ ] Identify error types: network error (404, 500, timeout), DOM changes (missing elements), timeout/delay
 - [ ] Extract error context: error message, stack trace, affected URL, affected action
-- [ ] Take screenshot when error detected (if not already taken)
+- [ ] Categorize: Is this a regression (present in replay but not original)?
+- [ ] Take screenshot when error detected (visual evidence)
 
-**Root Cause Analysis:**
-- [ ] Analyze error pattern: "404 on /api/checkout" → "API endpoint missing or renamed"
-- [ ] Suggest likely causes: code change, missing migration, environment mismatch
-- [ ] Report confidence level (high/medium/low) based on error clarity
+**Git Context (Read-Only):**
+- [ ] Find commits that touched affected files (from error context)
+- [ ] Show commit messages and authors: "User auth changes (PR #523)"
+- [ ] Suggest which commits might have introduced the issue
+- [ ] Report commits that fixed related issues (for comparison)
 
-**Fix Suggestions:**
-- [ ] Propose code changes (e.g., "Add 'cvv' field to checkout form validation")
-- [ ] List files likely to need changes (form component, validation logic, database schema)
-- [ ] Do NOT auto-apply fixes; LLM reviews and approves
+**What Claude Does (With Gasoline Data):**
+- [ ] Analyze error patterns: "404 on /api/checkout" → likely cause is "endpoint missing or renamed"
+- [ ] Rank confidence (HIGH/MEDIUM/LOW) based on error clarity + git context
+- [ ] Propose specific code fixes: file path, line number, what to change, why
+- [ ] Never auto-apply; LLM (Claude) reviews and decides to apply fixes
 
 **Git Integration (Optional):**
 - [ ] If git repo available, find commits that touched affected files
@@ -442,34 +454,34 @@ Playback:
 → LLM notified, suggested update selector for robustness
 ```
 
-### Story 4: Root Cause Analysis & Auto-Fix
+### Story 4: Root Cause Analysis (Gasoline + Claude)
 
 ```
 Original: Checkout flow works (records clean logs).
 Week later: Playback detects regression → POST /api/order returns 404.
 
-LLM invokes skill: /gasoline-fix
-→ Root cause analysis:
-  - Error: "404 Not Found"
-  - URL: "POST /api/order"
-  - Likely cause: Endpoint renamed or removed
-  - Confidence: HIGH
+LLM invokes /gasoline-fix skill:
 
-→ Fix suggestions:
+Gasoline provides:
+  - Error detected: "404 Not Found" on POST /api/order
+  - Affected action: Step 5 (click checkout button)
+  - Related commits: [abc123 "Refactor API endpoints", def456 "Fix endpoint"]
   - Affected files: src/api/checkout.ts, src/handlers/order.ts
-  - Proposed fix: "Endpoint renamed from /api/order to /api/orders"
-  - Check: Recent commit (PR #234) changed API routes
+  - Screenshot: shows the error page
 
-→ Related commits:
-  - Commit abc123: "Refactor API endpoints" (author: alice@company.com)
-  - Commit def456: "Fix: Restore /api/order endpoint" (author: bob@company.com)
+Claude analyzes all this and responds:
+  - Root cause: "POST /api/order endpoint was renamed to /api/orders in commit abc123"
+  - Confidence: HIGH (git context + error type match perfectly)
+  - Suggested fix: "In src/api/checkout.ts line 45, change fetch('/api/order') to fetch('/api/orders')"
 
-LLM reviews suggestions:
+Developer reviews & applies:
   - "Got it, the endpoint was renamed. I'll update the client call."
   - Applies fix: checkout.ts calls /api/orders instead
   - Re-runs playback
   → ✓ Regression resolved, logs match original
 ```
+
+**Key:** Gasoline (data collection) + Claude (analysis) = Fast root cause + fix verification
 
 ---
 
