@@ -54,6 +54,7 @@ type WebSocketEvent struct {
 	BinaryFormat     string        `json:"binary_format,omitempty"`
 	FormatConfidence float64       `json:"format_confidence,omitempty"`
 	TabId            int           `json:"tab_id,omitempty"` // Chrome tab ID that produced this event
+	TestIDs          []string      `json:"test_ids,omitempty"` // Test IDs this event belongs to (for test boundary correlation)
 }
 
 // SamplingInfo describes the sampling state when a message was captured
@@ -105,6 +106,7 @@ type WebSocketEventFilter struct {
 	URLFilter    string
 	Direction    string
 	Limit        int
+	TestID       string // If set, filter events where TestID is in event's TestIDs array
 }
 
 // WebSocketStatusFilter defines filtering criteria for status
@@ -205,6 +207,7 @@ type NetworkBody struct {
 	BinaryFormat       string  `json:"binary_format,omitempty"`
 	FormatConfidence   float64 `json:"format_confidence,omitempty"`
 	TabId              int     `json:"tab_id,omitempty"` // Chrome tab ID that produced this request
+	TestIDs            []string `json:"test_ids,omitempty"` // Test IDs this entry belongs to (for test boundary correlation)
 }
 
 // NetworkBodyFilter defines filtering criteria for network bodies
@@ -214,6 +217,7 @@ type NetworkBodyFilter struct {
 	StatusMin int
 	StatusMax int
 	Limit     int
+	TestID    string // If set, filter entries where TestID is in entry's TestIDs array
 }
 
 // PendingQuery represents a query waiting for extension response
@@ -258,12 +262,65 @@ type EnhancedAction struct {
 	SelectedText  string                 `json:"selectedText,omitempty"`
 	ScrollY       int                    `json:"scrollY,omitempty"`
 	TabId         int                    `json:"tab_id,omitempty"` // Chrome tab ID that produced this action
+	TestIDs       []string               `json:"test_ids,omitempty"` // Test IDs this action belongs to (for test boundary correlation)
 }
 
 // EnhancedActionFilter defines filtering criteria for enhanced actions
 type EnhancedActionFilter struct {
 	LastN     int
 	URLFilter string
+	TestID    string // If set, filter actions where TestID is in action's TestIDs array
+}
+
+// ============================================
+// Recording Types (Flow Recording & Playback)
+// ============================================
+
+// RecordingAction represents a user action captured during recording
+type RecordingAction struct {
+	Type          string `json:"type"`               // "click", "type", "navigate", "screenshot"
+	TimestampMs   int64  `json:"timestamp_ms"`       // Milliseconds since epoch
+	URL           string `json:"url,omitempty"`      // Page URL at time of action
+	Selector      string `json:"selector,omitempty"` // CSS selector for the element (data-testid preferred)
+	DataTestID    string `json:"data_testid,omitempty"` // data-testid attribute value if present
+	Text          string `json:"text,omitempty"`    // Text typed or "[redacted]" if sensitive_data_enabled=false
+	X             int    `json:"x,omitempty"`        // X coordinate
+	Y             int    `json:"y,omitempty"`        // Y coordinate
+	ScreenshotPath string `json:"screenshot_path,omitempty"` // Path to screenshot file (relative to recording dir)
+}
+
+// Recording represents a captured user flow
+type Recording struct {
+	ID                   string             `json:"id"`                   // Format: "name-YYYYMMDDTHHMMSSZ"
+	Name                 string             `json:"name"`                 // User-provided or auto-generated from page title
+	CreatedAt            string             `json:"created_at"`           // ISO8601 timestamp
+	StartURL             string             `json:"start_url"`            // Initial page URL
+	Viewport             ViewportInfo       `json:"viewport,omitempty"`   // Viewport size at recording time
+	Duration             int64              `json:"duration_ms"`          // Total duration in milliseconds
+	ActionCount          int                `json:"action_count"`         // Number of actions captured
+	Actions              []RecordingAction  `json:"actions"`              // Ordered list of actions
+	SensitiveDataEnabled bool               `json:"sensitive_data_enabled"` // Whether to capture full text (default false)
+	TestID               string             `json:"test_id,omitempty"`    // Test boundary ID if recording was part of a test
+}
+
+// ViewportInfo captures the browser viewport dimensions
+type ViewportInfo struct {
+	Width  int `json:"width"`
+	Height int `json:"height"`
+}
+
+// RecordingMetadata is persisted to ~/.gasoline/recordings/{id}/metadata.json
+type RecordingMetadata struct {
+	ID                   string            `json:"id"`
+	Name                 string            `json:"name"`
+	CreatedAt            string            `json:"created_at"`
+	StartURL             string            `json:"start_url"`
+	Viewport             ViewportInfo      `json:"viewport"`
+	Duration             int64             `json:"duration_ms"`
+	ActionCount          int               `json:"action_count"`
+	Actions              []RecordingAction `json:"actions"`
+	SensitiveDataEnabled bool              `json:"sensitive_data_enabled"`
+	TestID               string            `json:"test_id,omitempty"`
 }
 
 // ============================================
@@ -591,9 +648,9 @@ type Capture struct {
 	lastPollAt        time.Time // When extension last polled GET /pending-queries. Updated in HandlePendingQueries (line 373). Health endpoint uses 3s threshold to determine "connected" vs "stale".
 	extensionSession  string    // Extension session ID from header (changes when extension reloads). Detects browser restart or extension update. Session change logged but does NOT auto-clear pending queries.
 	sessionChangedAt  time.Time // When extensionSession last changed (used for display in health endpoint).
-	pilotEnabled      bool      // AI Web Pilot toggle from POST /settings (or GET header fallback if settings >10s stale). Check before dispatching browser actions.
-	pilotUpdatedAt    time.Time // When pilotEnabled was last updated from POST /settings. Staleness threshold: 10 seconds (queries.go:377-378). If >10s old, extension header takes priority.
-	currentTestID     string    // CI test boundary correlation ID. Set via /test-boundary endpoint. Tags all events with test context. Cleared when test ends.
+	pilotEnabled      bool           // AI Web Pilot toggle from POST /settings (or GET header fallback if settings >10s stale). Check before dispatching browser actions.
+	pilotUpdatedAt    time.Time      // When pilotEnabled was last updated from POST /settings. Staleness threshold: 10 seconds (queries.go:377-378). If >10s old, extension header takes priority.
+	activeTestIDs     map[string]bool // Active test boundaries (concurrent test support). Maps test_id -> true for all active tests. Used to tag all events with test context. Keys added on test_boundary_start, removed on test_boundary_end.
 
 	// ============================================
 	// Tab Tracking
@@ -617,6 +674,15 @@ type Capture struct {
 
 	httpDebugLog      []HTTPDebugEntry // Circular buffer of HTTP requests/responses (50 entries). No TTL. For operator debugging.
 	httpDebugLogIndex int              // Next write position (0-49, wraps to 0 after 49).
+
+	// ============================================
+	// Recording Management (Flow Recording & Playback)
+	// ============================================
+
+	activeRecordingID   string              // Current recording ID (empty if not recording). Set by recording_start, cleared by recording_stop.
+	recordings          map[string]*Recording // Active recordings in memory, keyed by recording_id. Persisted to disk on recording_stop.
+	recordingStorageDir string              // Base directory for recording storage: ~/.gasoline/recordings. Set during init.
+	recordingStorageUsed int64               // Approximate used storage in bytes (sum of all recording directories). Updated on recording_stop and periodically. Max: 1GB.
 
 	// ============================================
 	// Composed Sub-Structures
@@ -656,6 +722,7 @@ func NewCapture() *Capture {
 		queryTimeout:             defaultQueryTimeout,
 		completedResults:         make(map[string]*CommandResult),
 		failedCommands:           make([]*CommandResult, 0, 100), // Pre-allocate for 100 failed commands
+		activeTestIDs:            make(map[string]bool),          // Initialize empty map for concurrent test boundaries
 		perf: PerformanceStore{
 			snapshots:     make(map[string]PerformanceSnapshot),
 			snapshotOrder: make([]string, 0),
@@ -672,6 +739,7 @@ func NewCapture() *Capture {
 		},
 		pollingLog:   make([]PollingLogEntry, 50),  // Pre-allocate 50-entry circular buffer
 		httpDebugLog: make([]HTTPDebugEntry, 50), // Pre-allocate 50-entry circular buffer for HTTP debug
+		recordings:   make(map[string]*Recording), // Active recordings in memory
 	}
 	c.observeSem = make(chan struct{}, 4)
 	c.queryCond = sync.NewCond(&c.mu)

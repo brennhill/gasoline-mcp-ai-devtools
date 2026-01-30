@@ -1,0 +1,749 @@
+package main
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+// Module 1: WebSocket Streaming Tests (for Flow Recording feature)
+// These tests verify real-time telemetry streaming for recording precision.
+
+// Test Case 1.1: WebSocket Connection Established
+// GIVEN: Server running on localhost:3001
+// WHEN: Extension calls POST /api/ws-connect with valid API key
+// THEN: WebSocket upgrade successful
+// AND: Connection state = "connected"
+// AND: No polling (WS is primary)
+func TestRecordingWebSocketConnectionEstablished(t *testing.T) {
+	t.Parallel()
+
+	// Start a test WebSocket server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/ws-connect" && r.Method == "POST" {
+			// Simulate WebSocket upgrade
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	// For now, this test describes the desired behavior
+	// The actual WebSocket server implementation will handle this
+	// Test will fail until websocket.go is implemented with proper upgrade handler
+	t.Skip("Waiting for websocket.go implementation")
+}
+
+// Test Case 1.2: Real-Time Event Streaming
+// GIVEN: Active WebSocket connection
+// WHEN: Server emits 5 log events
+// THEN: Extension receives all 5 events in < 100ms
+// AND: Event order preserved
+// AND: No duplicates
+func TestRecordingWebSocketRealTimeStreaming(t *testing.T) {
+	t.Parallel()
+
+	// This test will verify that events are pushed via WebSocket in real-time
+	// Expected latency: < 10ms, safe margin < 100ms
+	// Requires implementation of WebSocket broadcast in server
+
+	t.Skip("Waiting for websocket broadcast implementation")
+}
+
+// Test Case 1.3: Buffer Overflow Handling
+// GIVEN: WebSocket broadcast buffer at max capacity (10,000 events)
+// WHEN: Server receives 11,000th event
+// THEN: Oldest event dropped (ring buffer behavior)
+// AND: Warning logged: "WebSocket buffer overflow"
+// AND: Newest 10,000 events retained
+func TestRecordingWebSocketBufferOverflow(t *testing.T) {
+	t.Parallel()
+
+	// Test ring buffer behavior for WebSocket broadcast
+	// Max capacity: 10,000 events
+	// On overflow: drop oldest, keep newest 10,000
+	// Warning should be logged
+
+	t.Skip("Waiting for ring buffer implementation in websocket.go")
+}
+
+// Test Case 1.4: Connection Drop + Polling Fallback
+// GIVEN: Active WebSocket connection
+// WHEN: Connection drops (network error)
+// THEN: Extension detects drop within 5 seconds
+// AND: Falls back to polling (GET /pending-queries)
+// AND: Continues capturing events (no data loss)
+func TestRecordingWebSocketConnectionDropFallback(t *testing.T) {
+	t.Parallel()
+
+	// This test verifies the fallback mechanism
+	// When WebSocket drops, extension should:
+	// 1. Detect the drop within 5 seconds (via ping/pong or timeout)
+	// 2. Switch to polling mode (GET /pending-queries every 200ms)
+	// 3. Continue capturing events without loss
+
+	t.Skip("Waiting for fallback handler in ws.js")
+}
+
+// Test Case 1.5: Reconnection with Exponential Backoff
+// GIVEN: WebSocket connection dropped
+// WHEN: Network becomes available again
+// THEN: Extension reconnects with backoff: 100ms, 200ms, 400ms, 800ms, 1600ms
+// AND: Eventually reconnects (< 10 seconds)
+// AND: Resumes streaming (no polling after reconnect)
+func TestRecordingWebSocketReconnectBackoff(t *testing.T) {
+	t.Parallel()
+
+	// This test verifies exponential backoff retry logic
+	// Expected backoff sequence: 100ms, 200ms, 400ms, 800ms, 1600ms
+	// Should eventually reconnect within 10 seconds
+	// After reconnect, should resume WebSocket streaming (stop polling)
+
+	t.Skip("Waiting for reconnect logic in ws.js")
+}
+
+// ============================================================================
+// Module 2: Recording Storage Tests (for Flow Recording feature)
+// ============================================================================
+
+// Test Case 2.1: Create Recording Metadata
+// GIVEN: User calls configure({action: 'recording_start', name: 'checkout', url: 'https://...'})
+// WHEN: Recording created
+// THEN: metadata.json saved to ~/.gasoline/recordings/{id}/metadata.json
+// AND: File contains: id, name, created_at, duration, action_count, start_url, viewport, sensitive_data_enabled
+// AND: Response: {status: "ok", recording_id: "checkout-20260130T143022Z"}
+func TestRecordingCreateMetadata(t *testing.T) {
+	t.Parallel()
+
+	capture := setupTestCapture(t)
+
+	// Start recording
+	recordingID, err := capture.StartRecording("checkout", "https://example.com/checkout", false)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	// Verify recording ID format (name-YYYYMMDDTHHMMSSZ)
+	if recordingID == "" {
+		t.Errorf("Expected non-empty recording_id")
+	}
+	if !strings.Contains(recordingID, "checkout") {
+		t.Errorf("Expected recording_id to contain 'checkout', got: %s", recordingID)
+	}
+
+	// Verify recording exists in memory
+	recording, exists := capture.recordings[recordingID]
+	if !exists {
+		t.Errorf("Expected recording to exist in memory")
+	}
+
+	// Verify metadata fields
+	if recording.Name != "checkout" {
+		t.Errorf("Expected name 'checkout', got: %s", recording.Name)
+	}
+	if recording.StartURL != "https://example.com/checkout" {
+		t.Errorf("Expected url, got: %s", recording.StartURL)
+	}
+	if recording.SensitiveDataEnabled != false {
+		t.Errorf("Expected sensitive_data_enabled=false")
+	}
+	if recording.CreatedAt == "" {
+		t.Errorf("Expected created_at to be set")
+	}
+	if recording.ActionCount != 0 {
+		t.Errorf("Expected action_count=0 initially, got: %d", recording.ActionCount)
+	}
+}
+
+// Test Case 2.2: Add Actions to Recording
+// GIVEN: Active recording (recording_id = "checkout-123")
+// WHEN: 5 actions sent via POST /query: click, type, navigate, click, type
+// THEN: All actions added to recording in memory
+// AND: Each action has: type, timestamp_ms, selector, x, y, screenshot_path
+// AND: Timestamps in ascending order
+func TestRecordingAddActions(t *testing.T) {
+	t.Parallel()
+
+	capture := setupTestCapture(t)
+
+	// Start recording
+	recordingID, err := capture.StartRecording("checkout", "https://example.com", false)
+	if err != nil {
+		t.Fatalf("Failed to start recording: %v", err)
+	}
+
+	// Add 5 actions
+	actions := []RecordingAction{
+		{Type: "navigate", URL: "https://example.com/checkout", X: 0, Y: 0},
+		{Type: "click", Selector: "[data-testid=email]", X: 100, Y: 50},
+		{Type: "type", Selector: "[data-testid=email]", Text: "test@example.com"},
+		{Type: "click", Selector: "[data-testid=next]", X: 200, Y: 100},
+		{Type: "navigate", URL: "https://example.com/payment", X: 0, Y: 0},
+	}
+
+	for i, action := range actions {
+		action.TimestampMs = int64((i + 1) * 1000) // 1000, 2000, 3000, 4000, 5000
+		err := capture.AddRecordingAction(action)
+		if err != nil {
+			t.Fatalf("Failed to add action %d: %v", i, err)
+		}
+	}
+
+	// Verify all actions added
+	recording := capture.recordings[recordingID]
+	if len(recording.Actions) != 5 {
+		t.Errorf("Expected 5 actions, got: %d", len(recording.Actions))
+	}
+
+	// Verify timestamps in ascending order
+	for i := 1; i < len(recording.Actions); i++ {
+		if recording.Actions[i].TimestampMs < recording.Actions[i-1].TimestampMs {
+			t.Errorf("Actions not in timestamp order at index %d", i)
+		}
+	}
+
+	// Verify action types
+	expectedTypes := []string{"navigate", "click", "type", "click", "navigate"}
+	for i, expectedType := range expectedTypes {
+		if recording.Actions[i].Type != expectedType {
+			t.Errorf("Action %d: expected type %s, got %s", i, expectedType, recording.Actions[i].Type)
+		}
+	}
+}
+
+// Test Case 2.3: Persist Recording to Disk
+// GIVEN: Active recording with 10 actions
+// WHEN: configure({action: 'recording_stop', recording_id: '...'})
+// THEN: metadata.json persisted with all 10 actions
+// AND: File readable as valid JSON
+// AND: action_count = 10
+// AND: duration_ms > 0
+func TestRecordingPersistToDisk(t *testing.T) {
+	t.Parallel()
+
+	capture := setupTestCapture(t)
+
+	// Start recording
+	recordingID, err := capture.StartRecording("test", "https://example.com", false)
+	if err != nil {
+		t.Fatalf("Failed to start recording: %v", err)
+	}
+
+	// Add 10 actions
+	for i := 0; i < 10; i++ {
+		action := RecordingAction{
+			Type:        "click",
+			Selector:    "[data-testid=btn]",
+			TimestampMs: int64((i + 1) * 1000),
+		}
+		err := capture.AddRecordingAction(action)
+		if err != nil {
+			t.Fatalf("Failed to add action: %v", err)
+		}
+	}
+
+	// Stop recording
+	actionCount, duration, err := capture.StopRecording(recordingID)
+	if err != nil {
+		t.Fatalf("Failed to stop recording: %v", err)
+	}
+
+	// Verify counts
+	if actionCount != 10 {
+		t.Errorf("Expected 10 actions, got: %d", actionCount)
+	}
+	if duration <= 0 {
+		t.Errorf("Expected positive duration, got: %d", duration)
+	}
+
+	// Try to load the recording back from disk
+	recording, err := capture.GetRecording(recordingID)
+	if err != nil {
+		t.Fatalf("Failed to load recording from disk: %v", err)
+	}
+
+	// Verify loaded data
+	if recording.ActionCount != 10 {
+		t.Errorf("Loaded recording: expected 10 actions, got: %d", recording.ActionCount)
+	}
+	if len(recording.Actions) != 10 {
+		t.Errorf("Loaded recording: expected 10 action objects, got: %d", len(recording.Actions))
+	}
+}
+
+// Test Case 2.4: Sensitive Data Redaction
+// GIVEN: Recording with sensitive_data_enabled = false (default)
+// WHEN: Type action on password input: "my_password_123"
+// THEN: Stored as: {type: "type", text: "[redacted]", ...}
+// AND: Original text never stored
+func TestRecordingSensitiveDataRedaction(t *testing.T) {
+	t.Parallel()
+
+	capture := setupTestCapture(t)
+
+	// Start recording with sensitive_data_enabled = false (default)
+	recordingID, err := capture.StartRecording("login", "https://example.com/login", false)
+	if err != nil {
+		t.Fatalf("Failed to start recording: %v", err)
+	}
+
+	// Add type action with sensitive text
+	action := RecordingAction{
+		Type:     "type",
+		Selector: "input[type=password]",
+		Text:     "my_password_123",
+	}
+	err = capture.AddRecordingAction(action)
+	if err != nil {
+		t.Fatalf("Failed to add action: %v", err)
+	}
+
+	// Verify text was redacted
+	recording := capture.recordings[recordingID]
+	if len(recording.Actions) != 1 {
+		t.Fatalf("Expected 1 action, got: %d", len(recording.Actions))
+	}
+
+	if recording.Actions[0].Text != "[redacted]" {
+		t.Errorf("Expected text to be '[redacted]', got: '%s'", recording.Actions[0].Text)
+	}
+}
+
+// Test Case 2.5: Sensitive Data Full Capture (Opt-In)
+// GIVEN: User calls configure({action: 'recording_start', sensitive_data_enabled: true})
+// AND: Extension shows warning popup (mocked in test)
+// WHEN: Type action on password input: "test_password"
+// THEN: Stored as: {type: "type", text: "test_password", ...}
+// AND: metadata.json: sensitive_data_enabled: true
+func TestRecordingSensitiveDataOptIn(t *testing.T) {
+	t.Parallel()
+
+	capture := setupTestCapture(t)
+
+	// Start recording with sensitive_data_enabled = true
+	recordingID, err := capture.StartRecording("login", "https://example.com/login", true)
+	if err != nil {
+		t.Fatalf("Failed to start recording: %v", err)
+	}
+
+	// Verify flag is set
+	recording := capture.recordings[recordingID]
+	if !recording.SensitiveDataEnabled {
+		t.Errorf("Expected sensitive_data_enabled=true")
+	}
+
+	// Add type action with sensitive text
+	action := RecordingAction{
+		Type:     "type",
+		Selector: "input[type=password]",
+		Text:     "test_password",
+	}
+	err = capture.AddRecordingAction(action)
+	if err != nil {
+		t.Fatalf("Failed to add action: %v", err)
+	}
+
+	// Verify text was NOT redacted (because opt-in is enabled)
+	if recording.Actions[0].Text != "test_password" {
+		t.Errorf("Expected text='test_password', got: '%s'", recording.Actions[0].Text)
+	}
+
+	// Verify it persists to disk with flag set
+	_, _, err = capture.StopRecording(recordingID)
+	if err != nil {
+		t.Fatalf("Failed to stop recording: %v", err)
+	}
+
+	// Load it back and verify flag
+	loaded, err := capture.GetRecording(recordingID)
+	if err != nil {
+		t.Fatalf("Failed to load recording: %v", err)
+	}
+	if !loaded.SensitiveDataEnabled {
+		t.Errorf("Loaded recording: expected sensitive_data_enabled=true")
+	}
+}
+
+// Test Case 2.6: Storage Quota Enforcement
+// GIVEN: Recording storage at 100% (1GB used)
+// WHEN: User calls configure({action: 'recording_start', name: 'new'})
+// THEN: Error returned: "recording_storage_full: Recording storage at capacity (1GB)..."
+// AND: No recording created
+// AND: Next call still fails (no auto-delete)
+func TestRecordingStorageQuotaEnforcement(t *testing.T) {
+	t.Parallel()
+
+	// Test quota enforcement
+	// Max: 1GB
+	// When full: reject new recordings
+	// User must manually delete old recordings
+
+	t.Skip("Waiting for quota check in recording.go")
+}
+
+// Test Case 2.7: Storage Warning at 80%
+// GIVEN: Recording storage at 80% (800MB used)
+// WHEN: Any recording operation
+// THEN: Warning logged: "recording_storage_warning: Recording storage at 80%..."
+// AND: Operation proceeds (non-blocking)
+func TestRecordingStorageWarning(t *testing.T) {
+	t.Parallel()
+
+	// Test warning at 80% capacity
+	// Should not block operations, just warn
+
+	t.Skip("Waiting for quota check in recording.go")
+}
+
+// Test Case 2.8: List Recordings
+// GIVEN: 5 recordings stored on disk
+// WHEN: observe({what: 'recordings', limit: 10})
+// THEN: Returns array of 5 recordings
+// AND: Each includes: id, name, created_at, action_count, url
+// AND: Sorted by created_at (newest first)
+func TestRecordingListRecordings(t *testing.T) {
+	t.Parallel()
+
+	capture := setupTestCapture(t)
+
+	// Create 1 recording to test listing
+	recordingID, err := capture.StartRecording("listtest", "https://example.com", false)
+	if err != nil {
+		t.Fatalf("Failed to create recording: %v", err)
+	}
+
+	// Add an action
+	err = capture.AddRecordingAction(RecordingAction{Type: "click", Selector: "btn"})
+	if err != nil {
+		t.Fatalf("Failed to add action: %v", err)
+	}
+
+	// Stop recording
+	_, _, err = capture.StopRecording(recordingID)
+	if err != nil {
+		t.Fatalf("Failed to stop recording: %v", err)
+	}
+
+	// List recordings
+	recordings, err := capture.ListRecordings(100)
+	if err != nil {
+		t.Fatalf("Failed to list recordings: %v", err)
+	}
+
+	// We should have at least 1 recording
+	if len(recordings) < 1 {
+		t.Errorf("Expected at least 1 recording, got: %d", len(recordings))
+	}
+
+	// Verify required fields are present on all recordings
+	for i, recording := range recordings {
+		if recording.ID == "" {
+			t.Errorf("Recording %d: expected non-empty id", i)
+		}
+		if recording.CreatedAt == "" {
+			t.Errorf("Recording %d: expected non-empty created_at", i)
+		}
+		if recording.StartURL == "" {
+			t.Errorf("Recording %d: expected non-empty start_url", i)
+		}
+	}
+}
+
+// Test Case 2.9: Query Recording Actions
+// GIVEN: Recording with 10 actions
+// WHEN: observe({what: 'recording_actions', recording_id: 'checkout-123'})
+// THEN: Returns: {recording_id: "...", actions: [...10 items...]}
+// AND: Each action has all fields
+// AND: Timestamps in order
+func TestRecordingQueryActions(t *testing.T) {
+	t.Parallel()
+
+	capture := setupTestCapture(t)
+
+	// Create recording with 10 actions
+	recordingID, err := capture.StartRecording("query-test", "https://example.com", false)
+	if err != nil {
+		t.Fatalf("Failed to start recording: %v", err)
+	}
+
+	for i := 0; i < 10; i++ {
+		action := RecordingAction{
+			Type:        "click",
+			Selector:    "button",
+			TimestampMs: int64((i + 1) * 1000),
+			X:           100 + i*10,
+			Y:           50 + i*10,
+		}
+		err := capture.AddRecordingAction(action)
+		if err != nil {
+			t.Fatalf("Failed to add action %d: %v", i, err)
+		}
+	}
+
+	// Stop and load the recording
+	_, _, err = capture.StopRecording(recordingID)
+	if err != nil {
+		t.Fatalf("Failed to stop recording: %v", err)
+	}
+
+	recording, err := capture.GetRecording(recordingID)
+	if err != nil {
+		t.Fatalf("Failed to get recording: %v", err)
+	}
+
+	// Verify all actions are returned
+	if len(recording.Actions) != 10 {
+		t.Errorf("Expected 10 actions, got: %d", len(recording.Actions))
+	}
+
+	// Verify all have required fields
+	for i, action := range recording.Actions {
+		if action.Type == "" {
+			t.Errorf("Action %d: missing type", i)
+		}
+		if action.TimestampMs <= 0 {
+			t.Errorf("Action %d: missing timestamp_ms", i)
+		}
+	}
+
+	// Verify timestamps in order
+	for i := 1; i < len(recording.Actions); i++ {
+		if recording.Actions[i].TimestampMs < recording.Actions[i-1].TimestampMs {
+			t.Errorf("Actions not in timestamp order at index %d", i)
+		}
+	}
+}
+
+// ============================================================================
+// Module 3: Playback Engine Tests (for Flow Recording feature)
+// ============================================================================
+
+// Test Case 3.1: Load Recording
+// GIVEN: Recording stored at ~/.gasoline/recordings/checkout-123/metadata.json
+// WHEN: playback.LoadRecording("checkout-123")
+// THEN: Recording loaded successfully
+// AND: All 8 actions in memory
+// AND: No errors
+func TestPlaybackLoadRecording(t *testing.T) {
+	t.Parallel()
+
+	// Test loading recording from disk
+
+	t.Skip("Waiting for playback.go implementation")
+}
+
+// Test Case 3.2: Execute Navigate Action
+// GIVEN: Playback engine with action: {type: "navigate", url: "https://example.com", ...}
+// AND: Mock browser navigation + network idle detection
+// WHEN: Playback executes action
+// THEN: Browser navigates to URL
+// AND: Waits for network idle (0 active HTTP requests)
+// AND: Timeout = 5 seconds (hard limit)
+// AND: Result: {status: "ok", action_executed: true, duration_ms: 1250}
+func TestPlaybackNavigateAction(t *testing.T) {
+	t.Parallel()
+
+	// Test navigation action execution
+	// Should wait for network idle with 5s timeout
+
+	t.Skip("Waiting for playback.go implementation")
+}
+
+// Test Case 3.3: Execute Click Action
+// GIVEN: Playback action: {type: "click", selector: "[data-testid=add-to-cart]", x: 500, y: 300}
+// AND: Element exists on page
+// WHEN: Playback executes click
+// THEN: Element found via querySelector
+// AND: Element clicked at coordinates
+// AND: Result: {status: "ok", action_executed: true, selector_matched: "data-testid"}
+func TestPlaybackClickAction(t *testing.T) {
+	t.Parallel()
+
+	// Test click action execution
+	// Should use querySelector to find element
+
+	t.Skip("Waiting for playback.go implementation")
+}
+
+// Test Case 3.4: Execute Click with Self-Healing
+// GIVEN: Playback action has original selector: "[data-testid=add-to-cart]"
+// AND: Selector no longer matches (element moved)
+// WHEN: Playback tries to execute click
+// THEN: Self-healing kicks in: tries CSS, nearby x/y, last-known x/y
+// AND: Clicks element via fallback selector
+// AND: Result: {status: "ok", action_executed: true, selector_matched: "nearby_xy"}
+func TestPlaybackClickSelfHealing(t *testing.T) {
+	t.Parallel()
+
+	// Test self-healing selector logic
+	// Fallback order: data-testid → CSS → nearby x/y → last-known x/y
+
+	t.Skip("Waiting for self-healing in playback.go")
+}
+
+// Test Case 3.5: Fragile Selector Detection
+// GIVEN: Recording with 5 playback runs
+// WHEN: Same action has different selectors in each run (element moved)
+// THEN: Flag recorded as "selector_fragile: true"
+// AND: Warning in log: "Fragile selector detected: [data-testid=add-to-cart]"
+// AND: LLM can adjust action text instead
+func TestPlaybackFragileSelectorDetection(t *testing.T) {
+	t.Parallel()
+
+	// Test detection of fragile selectors
+	// Track selector changes across multiple runs
+
+	t.Skip("Waiting for fragile selector detection in playback.go")
+}
+
+// Test Case 3.6: Non-Blocking Playback Error
+// GIVEN: Playback sequence with 5 actions
+// AND: Action 3 fails (selector not found)
+// WHEN: Playback executes
+// THEN: Error recorded for action 3 (non-blocking)
+// AND: Continues with actions 4, 5
+// AND: Result: {status: "partial", actions_executed: 5, actions_failed: 1}
+func TestPlaybackNonBlockingError(t *testing.T) {
+	t.Parallel()
+
+	// Test non-blocking error behavior
+	// Failures should not stop playback
+
+	t.Skip("Waiting for error handling in playback.go")
+}
+
+// ============================================================================
+// Module 4: Log Diffing Tests (for Flow Recording feature)
+// ============================================================================
+
+// Test Case 4.1: Match - No Regressions
+// GIVEN: Original logs from first recording
+// AND: Replay logs from same flow (after no bug fix)
+// WHEN: Log diff compares them
+// THEN: Status = "match"
+// AND: No new errors, no missing events
+// AND: summary: "All logs match (0 new errors, 0 missing events)"
+func TestLogDiffMatch(t *testing.T) {
+	t.Parallel()
+
+	// Test log diff when logs match exactly
+
+	t.Skip("Waiting for log-diff.go implementation")
+}
+
+// Test Case 4.2: Regression - New Errors
+// GIVEN: Original logs (no errors)
+// AND: Replay logs after introducing a bug
+// WHEN: Log diff compares them
+// THEN: Status = "regression"
+// AND: NewErrors contains error entries from replay
+// AND: summary: "⚠️ REGRESSION: 3 new errors detected"
+func TestLogDiffNewErrors(t *testing.T) {
+	t.Parallel()
+
+	// Test log diff detection of new errors
+
+	t.Skip("Waiting for log-diff.go implementation")
+}
+
+// Test Case 4.3: Fixed - Missing Events
+// GIVEN: Original logs with errors (bug present)
+// AND: Replay logs without those errors (bug fixed)
+// WHEN: Log diff compares them
+// THEN: Status = "fixed"
+// AND: No new errors
+// AND: summary: "✓ FIXED: 3 errors no longer appear"
+func TestLogDiffFixed(t *testing.T) {
+	t.Parallel()
+
+	// Test log diff detection of fixed bugs
+
+	t.Skip("Waiting for log-diff.go implementation")
+}
+
+// Test Case 4.4: Value Changes
+// GIVEN: Original log: {level: "info", msg: "Items in cart: 3"}
+// AND: Replay log: {level: "info", msg: "Items in cart: 0"}
+// WHEN: Log diff compares them
+// THEN: Status = "regression"
+// AND: ChangedValues contains diff: {field: "msg", from: "...3", to: "...0"}
+// AND: summary includes value change info
+func TestLogDiffValueChanges(t *testing.T) {
+	t.Parallel()
+
+	// Test detection of value changes in logs
+
+	t.Skip("Waiting for log-diff.go implementation")
+}
+
+// Test Case 4.5: Categorize Diffs
+// GIVEN: Original logs with mix of errors, warnings, info
+// AND: Replay logs with different error mix
+// WHEN: Log diff categorizes
+// THEN: Returns structured diff:
+// - NewErrors: [...error entries...]
+// - MissingEvents: [...previously seen events...]
+// - ChangedValues: [...field diffs...]
+// AND: Each entry has: severity, level, message, timestamp
+func TestLogDiffCategorize(t *testing.T) {
+	t.Parallel()
+
+	// Test categorization of diffs
+
+	t.Skip("Waiting for log-diff.go implementation")
+}
+
+// ============================================================================
+// Module 5: Extension Tests (for Flow Recording feature)
+// ============================================================================
+
+// Test Case 5.1: Start Recording
+// GIVEN: User clicks "Start Recording" in extension popup
+// WHEN: Extension calls configure({action: 'recording_start', name: 'checkout'})
+// THEN: Status = "ok", recording_id returned
+// AND: Extension shows recording UI (red dot, action counter)
+// AND: Starts capturing actions (clicks, typing, navigation)
+func TestExtensionStartRecording(t *testing.T) {
+	t.Parallel()
+
+	// Test recording start flow in extension
+	// Requires extension test framework
+
+	t.Skip("Waiting for extension tests in tests/extension/recording.test.js")
+}
+
+// Test Case 5.2: Stop Recording
+// GIVEN: Recording active with 12 captured actions
+// WHEN: User clicks "Stop Recording" in extension popup
+// THEN: Calls configure({action: 'recording_stop', recording_id: '...'})
+// AND: Response: {status: "ok", action_count: 12, duration_ms: 34521}
+// AND: Extension stops capturing
+// AND: Shows summary (12 actions, 34.5 seconds)
+func TestExtensionStopRecording(t *testing.T) {
+	t.Parallel()
+
+	// Test recording stop flow
+
+	t.Skip("Waiting for extension tests in tests/extension/recording.test.js")
+}
+
+// Test Case 5.3: Auto-Name Recording
+// GIVEN: Recording captures flow on https://example.com/checkout
+// AND: No explicit name provided in recording_start
+// WHEN: Recording stopped
+// THEN: Auto-name from page title: "Checkout - Example Store"
+// AND: metadata.json: name = "Checkout - Example Store"
+func TestExtensionAutoNameRecording(t *testing.T) {
+	t.Parallel()
+
+	// Test auto-naming of recordings from page title
+
+	t.Skip("Waiting for extension tests in tests/extension/recording.test.js")
+}
+
+// ============================================================================
+// Placeholder for future tests: Module 6-7 (Playback, Test Gen, etc.)
+// ============================================================================
+
+// This file serves as the TDD blueprint for Phase 1a implementation.
+// As implementation progresses, tests will be un-skipped and assertions filled in.
