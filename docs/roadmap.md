@@ -17,6 +17,95 @@ Gasoline's strategic differentiator is enabling AI to **close the feedback loop 
 
 ---
 
+## v5.3: Immediate Priorities (Before v6.0)
+
+**Goal:** Fix critical usability issues blocking AI debugging workflows
+
+### 1. Pagination for Large Datasets ⭐⭐⭐ HIGH PRIORITY
+
+**Problem:** Network waterfall and other buffers return >440K characters, exceeding MCP token limits. AI cannot analyze network traffic.
+
+**Root Cause:**
+- Ring buffers accumulate data from all browser tabs (1000 entry capacity)
+- No pagination, all data returned at once
+- Multiple tabs open = massive data volume
+
+**Solution:** Add `offset` and `limit` parameters to observe modes
+```javascript
+observe({what: "network_waterfall", limit: 100})
+observe({what: "network_waterfall", offset: 100, limit: 100})
+```
+
+**Implementation:**
+- Add offset/limit to: network_waterfall, websocket_events, actions, logs
+- Default limit: 100 entries
+- Return pagination metadata: {total, offset, limit, hasMore}
+- Backward compatible (limit defaults to 100 if not specified)
+
+**Impact:** ✅ Solves token limit issue, enables AI to query large datasets in chunks
+
+**Effort:** 2-4 hours
+
+**Status:** 📋 Analyzed in [LARGE_DATA_ISSUE_ANALYSIS.md](../LARGE_DATA_ISSUE_ANALYSIS.md)
+
+---
+
+### 2. Buffer-Specific Clearing ⭐⭐⭐ HIGH PRIORITY
+
+**Problem:** `configure({action: "clear"})` only clears console logs, not network/websocket/actions. Buffers accumulate data indefinitely.
+
+**Solution:** Add buffer parameter to clear action
+```javascript
+configure({action: "clear", buffer: "network"})    // Clear network waterfall
+configure({action: "clear", buffer: "websocket"})  // Clear WebSocket events
+configure({action: "clear", buffer: "actions"})    // Clear user actions
+configure({action: "clear", buffer: "all"})        // Clear all buffers
+```
+
+**Implementation:**
+- Extend toolClearBrowserLogs() to support buffer parameter
+- Add cases for each buffer type (network, websocket, actions, all)
+- Maintain backward compat: no buffer param = clear console logs only
+
+**Impact:** ✅ Granular buffer management, useful for testing, prevents memory bloat
+
+**Effort:** 1-2 hours
+
+**Status:** 📋 Analyzed in [LARGE_DATA_ISSUE_ANALYSIS.md](../LARGE_DATA_ISSUE_ANALYSIS.md)
+
+---
+
+### 3. Server-Side Aggregation (Future Enhancement) ⭐⭐
+
+**Problem:** Even with pagination, large datasets are verbose. Need summary views.
+
+**Solution:** Add aggregation/stats endpoints
+```javascript
+observe({what: "network_stats", group_by: "host"})
+→ {"localhost:3000": {count: 150, avg_duration: 45ms, errors: 3}}
+
+observe({what: "network_stats", group_by: "status"})
+→ {"200": {count: 180}, "404": {count: 15}}
+```
+
+**Impact:** Compact representation of large datasets, useful for overview/analysis
+
+**Effort:** 4-6 hours
+
+**Status:** 📋 Deferred until pagination is proven insufficient
+
+---
+
+**Why These Are Critical:**
+1. Blocking AI workflows TODAY (cannot analyze network traffic due to token limits)
+2. Quick wins (3-6 hours total) vs embedded DB (20-40 hours)
+3. Solve 90% of large data issues without architectural complexity
+4. Enable better debugging with existing observe modes
+
+**Timeline:** Ship in v5.3 (1-2 weeks after v5.2)
+
+---
+
 ## Strategic Problem Space
 
 ### A. Context / Token Inefficiency
@@ -249,56 +338,119 @@ Release v6.0. This is the thesis validation point.
 
 ---
 
-## v6.1+: Thesis Expansion & Adjacent Features
+## v6.1+: Post-Thesis Roadmap (Tier Strategy)
 
-These features improve or enable the core loop but don't validate the thesis. Ship after v6.0.
+**Organization:** Features grouped by tier — each tier validates part of the thesis and unlocks the next market segment.
 
-### v6.1: Observation Depth (Improves "diagnose" leg)
+**See [ROADMAP-REORGANIZATION.md](ROADMAP-REORGANIZATION.md) for strategic analysis.**
 
-- **Causal Diffing** — Root-cause analysis ("X changed → broke Y → surfaces as Z")
-- **DOM Fingerprinting** — Stable selectors for self-healing tests
-- **A11y Tree Snapshots** — Compress accessibility for <25% context window
-- **Performance Audit** — Root-cause perf issues (render-blocking, bundle size, DOM bloat)
+---
+
+## Tier 1: Core Moat — Smart Observation & Safe Repair (v6.0-6.2)
+
+**Goal:** Validate thesis — AI closes the feedback loop autonomously (observe → diagnose → repair → verify).
+
+**Competitive Differentiator:** What Chrome DevTools and other AI agents cannot do.
+
+### v6.1: Smart Observation (Improves "observe" & "diagnose" legs)
+
+**Solves:** Problems A (token efficiency) + B (causality) + D (brittle selectors)
+
+- **Visual-Semantic Bridge** — Computed layout maps with z-index, visibility, coverage states. Auto-generate unique test-IDs. Solves "ghost clicks" and "hallucinated selectors." [Spec](features/feature/visual-semantic-bridge/PRODUCT_SPEC.md)
+- **State "Time Travel"** — Persistent event buffer surviving page reloads. Before/after snapshots on every action. Enables causal debugging across crashes. [Spec](features/feature/state-time-travel/PRODUCT_SPEC.md)
+- **Causal Diffing** — Root-cause analysis: "X changed → broke Y → surfaces as Z" (Problem B)
+- **Reverse Engineering Engine** — Auto-infer OpenAPI specs from network traffic. Legacy code archaeology solved.
+- **Design System Injector** — Inject design tokens (Tailwind, CSS variables, Storybook). Stop AI from writing garbage CSS.
+- **Deep Framework Intelligence** — Show React/Vue component tree + props instead of HTML soup (Problem D).
+- **DOM Fingerprinting** — Stable selectors survive UI refactors (Problem D).
+- **Smart DOM Pruning** — Remove non-interactive noise; fit DOM in <25% context window (Problem A).
+- **Hydration Doctor** — Debug SSR mismatches (Next.js/Nuxt) with precision diffs.
+
+### v6.2: Safe Repair & Verification (Improves "repair" & "verify" legs)
+
+**Solves:** Problems C (feedback loops) + F (production safety)
+
+- **Prompt-Based Network Mocking** — AI instructs Gasoline to mock network responses. Enables verify-fix-verify loops.
+- **Shadow Mode** — Intercept POST/PUT/DELETE; return fake 200. Test destructive ops without touching backend.
+- **Pixel-Perfect Guardian** — Snapshot unmodified components before AI writes code. Auto-reject changes that cause CSS regression (Problem F).
+- **Healer Mode** — Auto-convert bug fixes into permanent regression tests. Uses Time-Travel recordings for pixel-perfect tests (Problem C).
+
+---
+
+## Tier 2: Enterprise Unlock — Zero-Trust Safety & Team Collaboration (v6.3)
+
+**Goal:** Enable corporate adoption with safety guarantees and knowledge sharing.
+
+**Competitive Differentiator:** Safety-first design. Enterprises can trust AI agents in their codebase.
+
+### v6.3: Zero-Trust Enterprise (Enables production and team workflows)
+
+**Solves:** Problems C + E + F — automated verification, developer output, production safety
+
+- **Zero-Trust Sandbox** — Action gating ("Agent wants to delete. Allow?"). Data masking (auto-redact PII/keys). Prompt injection defense.
+- **Asynchronous Multiplayer Debugging** — Flight Recorder links: share crash state URL with full context (logs, network, DOM). Annotated overlays let humans guide AI.
+- **Session Replay Exports** — Export .gas files: portable crash context for hand-off to senior devs or upgrade to better AI model (Problem E).
+
+---
+
+## Tier 3: Production Ready — Compliance & Integration (v6.4)
+
+**Goal:** Enable production debugging at scale with governance.
+
+**Competitive Differentiator:** Compliance-ready. Audit trails, multi-tenant isolation, integration with existing workflows.
+
+### v6.4: Production Compliance
+
+**Solves:** Problem F — production safety at scale
+
+- **Read-Only Mode** — Non-mutating observation in production
+- **Tool Allowlisting** — Restrict which MCP tools run
+- **Project Isolation** — Multi-tenant capture contexts
+- **Configuration Profiles** — Pre-tuned bundles (paranoid, restricted, short-lived)
+- **Redaction Audit Log** — Compliance logging with automatic data redaction
+- **GitHub/Jira Integration** — Paste-ready bug reports (Problem E)
+- **CI/CD Integration** — GitHub Actions, SARIF export, HAR attachment
+- **IDE Integration** — VS Code plugin, Claude Code integration
+- **Event Timestamps & Session IDs** — Precise event ordering, audit trails
+- **CLI Lifecycle Commands** — `stop`, `restart`, `status` for ops integration
+
+---
+
+## Tier 4: Optimization & Specialization — Continuous Shipping (v6.5+)
+
+**Goal:** Continuous incremental value. Not blocking any tier above.
+
+### v6.5: Token & Context Efficiency
+
+**Solves:** Problem A — context window optimization for cost/speed
+
+- **Focus Mode** — "Tunnel Vision": AI selects component; Gasoline sends only that component's HTML/styles/state. 90% token reduction.
+- **Semantic Token Compression** — Lightweight references (@button1, @input2) instead of full HTML. JIT context pruning (hide headers when debugging footer).
+
+### v6.6: Specialized Audits & Analytics
+
+**Adjacent features:** Domain-specific debugging superpowers
+
+- **Performance Audit** — Root-cause perf issues (render-blocking, bundle bloat, DOM thrashing)
 - **Best Practices Audit** — Structural issues (HTTPS, deprecated APIs, security headers)
-- **SEO Audit** — SEO debugging (metadata, heading structure, structured data)
-- **Annotated Screenshots** — Visual context for AI vision models
-- **Enhanced WCAG Audit** — Deep a11y beyond axe-core
+- **SEO Audit** — Metadata, heading structure, structured data
+- **A11y Tree Snapshots** — Accessibility tree compression
+- **Enhanced WCAG Audit** — Deep accessibility beyond axe-core
+- **Annotated Screenshots** — Visual context for vision models
 
-### v6.2: Interaction Expansion (Broadens "repair" scope)
+### v6.7: Advanced Interactions
 
-- **Form Filling** — Auto-fill complex forms
+**Adjacent features:** Rich interaction support for complex scenarios
+
+- **Form Filling** — Auto-fill complex multi-field forms
 - **Dialog Handling** — Handle alerts, confirms, prompts
 - **Drag & Drop** — Complex UI interactions
 - **CPU/Network Emulation** — Throttle to reproduce issues under load
 - **Local Web Scraping** — Authenticated multi-step data extraction
 
-### v6.3: Production Safety (Enables enterprise autonomous debugging)
+### v6.8: Infrastructure & Quality
 
-- **Read-Only Mode** — Non-mutating capture in production
-- **Tool Allowlisting** — Restrict which MCP tools run
-- **Project Isolation** — Multi-tenant capture contexts
-- **Configuration Profiles** — Pre-tuned bundles (paranoid, restricted, short-lived)
-- **Dynamic Exposure** — Feature flags for safe rollout
-
-### v6.4: DX & Workflow Integration (Adoption enablers)
-
-- **GitHub/Jira Bug Reports** — Paste-ready output
-- **CI/CD Integration** — GitHub Actions, SARIF, HAR attachment
-- **IDE Handoff** — VS Code plugin, Claude Code integration
-- **Client Identification** — Track which AI client is debugging
-- **Session IDs** — Unique per MCP connection
-- **Redaction Audit Log** — Compliance logging
-- **Event Timestamps** — `received_at` for precise ordering
-- **Test Fixture Page** — `/test-page` with error triggers
-- **CLI Test Mode** — `--test` flag for self-validation
-- **Mock Extension Client** — Go package for server testing
-- **MCP Test Harness** — Scripted MCP testing
-- **CLI Lifecycle Commands** — `stop`, `restart`, `status`
-- **Data Export** — JSON Lines buffer export
-- **E2E Testing Integration** — Playwright fixtures, failure attachment
-- **Workflow Integration** — CI/CD automation
-
-### v6.5+: Infrastructure & Quality (Continuous shipping)
+**Adjacent features:** Continuous delivery and reliability
 
 - **Fuzz Tests** (5 types) — JSONRPC parser, HTTP body, security patterns, WebSocket, network body
 - **Async Command Execution** — Prevent MCP server hangs
