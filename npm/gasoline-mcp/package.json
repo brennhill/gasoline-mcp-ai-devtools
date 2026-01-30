@@ -1,6 +1,6 @@
 {
   "name": "gasoline-mcp",
-  "version": "5.2.0",
+  "version": "5.2.5",
   "description": "Gasoline MCP is an AI Debugger, Inspector, and Observability toolkit. It acts as Chrome DevTools for AI Agents using the Model Context Protocol (MCP).",
   "license": "AGPL-3.0-only",
   "bin": {
@@ -11,11 +11,11 @@
     "lib"
   ],
   "optionalDependencies": {
-    "@brennhill/gasoline-darwin-arm64": "5.2.0",
-    "@brennhill/gasoline-darwin-x64": "5.2.0",
-    "@brennhill/gasoline-linux-arm64": "5.2.0",
-    "@brennhill/gasoline-linux-x64": "5.2.0",
-    "@brennhill/gasoline-win32-x64": "5.2.0"
+    "@brennhill/gasoline-darwin-arm64": "5.2.5",
+    "@brennhill/gasoline-darwin-x64": "5.2.5",
+    "@brennhill/gasoline-linux-arm64": "5.2.5",
+    "@brennhill/gasoline-linux-x64": "5.2.5",
+    "@brennhill/gasoline-win32-x64": "5.2.5"
   },
   "keywords": [
     "mcp",

@@ -5,6 +5,22 @@ All notable changes to Dev Console will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.5] - 2026-01-30
+
+### Fixed
+- **Accessibility audit runtime error** (HIGH SEVERITY): Fixed `observe({what: "accessibility"})` failing with "chrome.runtime.getURL is not a function" by pre-injecting axe-core from content script context
+- **Parameter validation warnings** (HIGH SEVERITY): Removed false "unknown parameter" warnings for all documented sub-handler parameters (limit, selector, test_name, etc.)
+
+### Changed
+- Removed routing-level parameter validation that incorrectly flagged documented parameters
+- Updated `loadAxeCore()` to wait for pre-injected axe-core instead of attempting injection from page context
+
+### Technical Details
+- Extension: Pre-inject axe-core from content script (has chrome.runtime API access)
+- Server: Remove `unmarshalWithWarnings()` from routing functions (toolObserve, toolConfigure, toolGenerate, toolInteract)
+- Tests: Removed 2 tests that validated broken routing-level parameter warnings
+- See BUG_FIXES_SUMMARY.md for complete technical details
+
 ## [5.1.0] - 2026-01-28
 
 ### Security
