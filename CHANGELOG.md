@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Features & Infrastructure
+- **Flow Recording storage infrastructure** — Modular storage system for recording playback (Module 2, Phase 1)
+- **Playback engine tests** — Comprehensive test suite for playback functionality (Module 3, Phase 1)
+- **Extended test coverage** — Converted 40+ placeholder/skip tests to assertions across modules:
+  - WebSocket streaming module tests (Module 1)
+  - Log diffing module tests (Module 4)
+  - Extension integration module tests (Module 5)
+  - Recording storage quota tests
+
+#### Documentation & Process
 - **Complete filename standardization** — All 335 documentation files standardized to `lowercase-with-hyphens` format (product-spec.md, tech-spec.md, qa-plan.md across all 71 features)
 - **Documentation automation scripts** — Feature navigation generator (`generate-feature-navigation.py`) and lint checker (`lint-documentation.py`) with link verification and frontmatter validation
 - **Mandatory documentation workflow** — `documentation-maintenance.md` with quality gates, commit checklists, and enforcement rules
@@ -19,20 +29,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Development Workflow
 - **Process enforcement** — Documentation updates now mandatory before commit; lint checker blocks broken links and stale metadata
 - **Feature documentation structure** — Unified naming and metadata across all 71 features with status tracking
 - **Navigation automation** — Feature index auto-generated from folder structure and frontmatter
 - **Reference authority** — v5.3 established as codebase baseline with recovery guide for version verification
 
+#### Testing
+- **Test execution converted from skips to assertions** — 40+ tests now actively validate behavior instead of being skipped or marked as placeholders
+- **Quota enforcement** — Recording storage quota tests verify disk/memory constraints
+
 ### Technical Details
 
-- **372 files updated** for reference consistency after 335 file renames
-- **Zero breaking changes** — All documentation functionality preserved during standardization
-- **Quality gates enforced** — Pre-commit lint checking prevents documentation rot
-- **AI-optimized navigation** — Multiple discovery paths for LLM agents (quick-reference, feature-navigation, cross-reference, context-on-demand)
+**Code Changes:**
+- Flow recording storage infrastructure with multi-format support
+- Playback engine with state machine validation
+- 40+ test assertions added/converted across all modules
 
-### Documentation Improvements
+**Documentation Changes:**
+- 372 files updated for reference consistency after 335 file renames
+- Zero breaking changes — All documentation functionality preserved during standardization
+- Quality gates enforced — Pre-commit lint checking prevents documentation rot
+- AI-optimized navigation — Multiple discovery paths for LLM agents (quick-reference, feature-navigation, cross-reference, context-on-demand)
 
+**Documentation Cleanup:**
 - Removed 2 broken stub files (`product-spec.md`, `tech-spec.md` in core/)
 - Consolidated duplicate reviews (SARIF, behavioral-baselines, interception-deferral)
 - Archived 11 stale tab-tracking documents with recovery guide
