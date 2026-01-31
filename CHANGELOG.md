@@ -149,3 +149,50 @@ See [KNOWN-ISSUES.md](known-issues.md) for issues targeted for v5.2.
   - Quick start instructions
   - Feature overview
   - Privacy information
+
+---
+
+## [2.0.0] - 2026-01-18
+
+### Architecture & Planning Phase
+
+Exploration and planning phase focused on architecting the plugin/server split and determining MVP scope.
+
+### Added
+
+- **Architecture decisions**
+  - Separated browser extension (MV3) from backend server
+  - Chose Go for zero-dependency server
+  - Defined MCP (Model Context Protocol) as communication layer
+  - Established data flow: extension → server → MCP stdio
+
+- **MVP direction planning**
+  - Core telemetry capabilities (console, network, exceptions)
+  - Basic storage and session management
+  - Initial Landing Page design
+  - Security model (localhost-only, ephemeral sessions)
+
+- **Early implementation**
+  - Browser extension scaffold (MV3 foundation)
+  - Go server foundation
+  - MCP integration approach
+
+### Notes
+
+This was the architecture exploration phase that bridged the initial plugin-only POC (v1.0.0) with the full MVP implementation (v3.0.0). Established the core design patterns and constraints that shaped production development.
+
+---
+
+## [1.0.0] - 2026-01-16
+
+### Added
+
+- **Initial proof-of-concept** — Browser plugin generation prototype
+- **Experimental features**
+  - Basic browser extension scaffold generation
+  - Development foundations for MCP integration
+  - Early architecture exploration
+
+### Notes
+
+This was an initial POC under a different project name, exploring browser plugin generation capabilities. Evolved into Gasoline v3.0.0 with full MCP implementation and production-ready architecture.
