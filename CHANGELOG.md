@@ -129,25 +129,22 @@ See [KNOWN-ISSUES.md](known-issues.md) for issues targeted for v5.2.
 - Restructured MCP tool descriptions for LLM optimization
 - Go server rewrite (zero dependencies, single binary)
 
-## [1.0.0] - 2024-01-22
+## [3.0.0] - 2026-01-23
 
 ### Added
 
-- Initial release
-- **Server**
-  - Zero-dependency Node.js server
-  - JSONL log file format
-  - Log rotation (configurable max entries)
-  - CORS support for browser extension
-  - Health check endpoint
-  - Clear logs endpoint
-- **Browser Extension**
+- **Initial release** — Gasoline v3.0.0 foundation
+- **Browser Extension (MV3)**
   - Console capture (log, warn, error, info, debug)
   - Network error capture (4xx, 5xx responses)
   - Exception capture (onerror, unhandled rejections)
   - Configurable capture levels
   - Domain filtering
   - Connection status badge
+- **Go Server**
+  - Zero-dependency server
+  - Health check endpoint
+  - CORS support for browser extension
 - **Landing Page**
   - Quick start instructions
   - Feature overview
