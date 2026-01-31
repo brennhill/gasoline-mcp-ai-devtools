@@ -3,7 +3,7 @@
 <img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-5.2.5-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
+[![Version](https://img.shields.io/badge/version-5.3.0-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
@@ -26,71 +26,31 @@
 
 ## Quick Start
 
-**Option A: NPM (recommended)**
+**Step 1: Load the extension**
 
 ```bash
-# 1. Clone the repo for the extension
+# Clone the repo
 git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
 cd gasoline
 
-# 2. Load the extension:
-#    - Open chrome://extensions
-#    - Enable Developer mode
-#    - Click "Load unpacked" and select the `extension/` folder from this repo
-
-# 3. The server will start automatically when your AI tool connects via MCP
-#    (no manual start needed - see MCP config below)
+# Load the extension in Chrome:
+#   - Open chrome://extensions
+#   - Enable Developer mode (top right)
+#   - Click "Load unpacked" and select the `extension/` folder
 ```
 
-**Option B: PyPI (Python)**
+**Step 2: Configure MCP in your AI tool**
 
-```bash
-# 1. Clone the repo for the extension
-git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
-cd gasoline
+Choose one option below based on your setup:
 
-# 2. Load the extension:
-#    - Open chrome://extensions
-#    - Enable Developer mode
-#    - Click "Load unpacked" and select the `extension/` folder from this repo
-
-# 3. The server will start automatically when your AI tool connects via MCP
-#    (no manual start needed - see MCP config below)
-```
-
-**Option C: From source** (requires [Go 1.21+](https://go.dev/))
-
-```bash
-# 1. Clone the repo
-git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
-cd gasoline
-
-# 2. Start the server
-go run ./cmd/dev-console
-
-# 3. Load the extension manually:
-#    - Open chrome://extensions
-#    - Enable Developer mode
-#    - Click "Load unpacked" and select the `extension/` folder in this repo
-```
-
-**Verify setup:**
-```bash
-curl http://localhost:7890/health
-# Should return: {"status":"ok","version":"5.0.0",...}
-```
-
-**MCP config** (add to your `.mcp.json` or Claude Code settings):
-
-*Option A: NPM*
+*Option A: NPM (recommended)*
 ```json
 {
   "mcpServers": {
     "gasoline": {
-      "type": "sse",
+      "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp", "--port", "7890"],
-      "url": "http://localhost:7890/mcp/sse"
+      "args": ["-y", "gasoline-mcp"]
     }
   }
 }
@@ -101,34 +61,38 @@ curl http://localhost:7890/health
 {
   "mcpServers": {
     "gasoline": {
-      "type": "sse",
-      "command": "gasoline-mcp",
-      "args": ["--port", "7890"],
-      "url": "http://localhost:7890/mcp/sse"
+      "type": "stdio",
+      "command": "gasoline-mcp"
     }
   }
 }
 ```
 
-**Architecture:** The MCP system spawns a single Gasoline process that runs:
-- HTTP server on port 7890 (for browser extension + MCP)
-- SSE transport at `/mcp/sse` (MCP 2024-11-05 compliant)
-
-Both interfaces share the same browser telemetry state. Do NOT manually start Gasoline — let the MCP system manage the process lifecycle.
-
-*Option C: Local development (must run from repo root)*
+*Option C: Local development (from repo root)*
 ```json
 {
   "mcpServers": {
     "gasoline": {
-      "type": "sse",
+      "type": "stdio",
       "command": "go",
-      "args": ["run", "./cmd/dev-console", "--port", "7890"],
-      "url": "http://localhost:7890/mcp/sse"
+      "args": ["run", "./cmd/dev-console"]
     }
   }
 }
 ```
+
+**Verify setup:**
+```bash
+curl http://localhost:7890/health
+# Should return: {"status":"ok","version":"5.3.0",...}
+```
+
+**How it works:**
+- Gasoline runs as a stdio-based MCP server (bridge mode)
+- The bridge automatically spawns a persistent daemon on port 7890 if needed
+- Extension connects to the daemon to send browser telemetry
+- MCP client communicates via stdio
+- Both share the same browser telemetry state
 
 Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed**, and any MCP-compatible tool.
 
@@ -166,10 +130,6 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 | **[Noise filtering](https://cookwithgasoline.com/noise-filtering/)** | ✅ Auto-detect | ❌ | ❌ | ❌ | ❌ |
 | | | | | | |
 | **[Test generation](https://cookwithgasoline.com/generate-test/)** | ✅ Playwright | ✅ AI-driven | ❌ | ❌ | ❌ |
-| **Test generation from errors** | 🟡 v6 | ❌ | ❌ | ❌ | ❌ |
-| **Self-healing tests** | 🟡 v6 | ✅ | ❌ | ❌ | ❌ |
-| **Failure classification** | 🟡 v6 | ✅ | ❌ | ❌ | ❌ |
-| **Auto-repair suggestions** | 🟡 v6 | ✅ | ❌ | ❌ | ❌ |
 | **[Reproduction scripts](https://cookwithgasoline.com/reproduction-scripts/)** | ✅ From actions | ❌ | ❌ | ❌ | ❌ |
 | **[PR summaries](https://cookwithgasoline.com/pr-summaries/)** | ✅ Perf impact | ❌ | ❌ | ❌ | ❌ |
 | **[HAR export](https://cookwithgasoline.com/har-export/)** | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -181,7 +141,7 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 | **Cost** | ✅ Free, open-source | ❌ $29-99/month | ✅ Free | ✅ Free | ⚠️ Cursor subscription |
 | **Performance overhead** | < 0.1ms | Unknown | ~5ms | ~5ms | Unknown |
 
-**🟡 = Coming in v6.0** — [See roadmap](docs/roadmap.md)
+**[v6.0 Roadmap](docs/roadmap.md)** — Features like self-healing tests, failure classification, and auto-repair suggestions coming in v6.0
 
 ## Why You Cook With Gasoline
 
