@@ -12,7 +12,7 @@ type: review
 | **Review Date** | 2026-01-29 |
 | **Reviewer** | Principal Engineer Agent (Claude Opus 4.5) |
 | **Spec Version** | v7.0 (proposed) |
-| **Files Reviewed** | PRODUCT_SPEC.md, TECH_SPEC.md, QA_PLAN.md, MIGRATION.md, architecture.md |
+| **Files Reviewed** | product-spec.md, tech-spec.md, qa-plan.md, migration.md, architecture.md |
 
 ---
 
@@ -168,7 +168,7 @@ type: review
 ### Critical Issues
 
 **M1-1: Extension code organization unclear**
-- MIGRATION.md says create `extension/lib/analyze.js`
+- migration.md says create `extension/lib/analyze.js`
 - But current extension has modular structure (console.js, network.js, etc.)
 - Need to decide: one analyze.js or per-mode files (audit.js, memory.js, etc.)
 - **Resolution required**: Define file structure that matches existing patterns
@@ -183,14 +183,14 @@ type: review
 - **Suggestion**: Clarify integration test location or create the folder
 
 **M2-2: Version bump rationale is weak**
-- MIGRATION.md says "minor version bump (v6.x → v7.0)"
+- migration.md says "minor version bump (v6.x → v7.0)"
 - But current version in main.go is 5.2.0
 - **Suggestion**: Clarify version numbering rationale
 
 ### Minor Issues
 
 **M3-1: Documentation updates incomplete**
-- MIGRATION.md lists files to update but misses:
+- migration.md lists files to update but misses:
   - `/docs/core/UAT-TEST-PLAN.md` (needs analyze scenarios)
   - Extension manifest.json (may need new permissions for chrome.debugger)
   - CHANGELOG.md pattern

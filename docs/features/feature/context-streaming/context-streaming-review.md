@@ -4,7 +4,7 @@
 
 > **[MIGRATION NOTICE]**
 > This file was migrated from `/docs/specs/context-streaming-review.md` on 2026-01-26 as part of the documentation modularization project.
-> Related docs: [PRODUCT_SPEC.md](PRODUCT_SPEC.md), [TECH_SPEC.md](TECH_SPEC.md), [ADRS.md](ADRS.md).
+> Related docs: [product-spec.md](product-spec.md), [tech-spec.md](tech-spec.md), [ADRS.md](ADRS.md).
 
 ---
 

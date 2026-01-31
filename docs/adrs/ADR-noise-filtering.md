@@ -6,6 +6,6 @@
 ---
 
 **See also:**
-- [Product Spec](PRODUCT_SPEC.md)
-- [Tech Spec](TECH_SPEC.md)
-- [Core ADRs](../../../core/ADRs.md)
+- [Product Spec](product-spec.md)
+- [Tech Spec](tech-spec.md)
+- [Core ADRs](../../../core/adrs.md)

@@ -1,12 +1,3 @@
----
-status: shipped
-scope: feature/noise-filtering/review
-ai-priority: high
-tags: [review, issues]
-relates-to: [TECH_SPEC.md, PRODUCT_SPEC.md]
-last-verified: 2026-01-31
----
-
 # Review: Noise Filtering Spec
 
 **Reviewer**: Principal Engineer Review

@@ -5,8 +5,8 @@ scope: feature-review/security
 ai-priority: high
 tags: [review, sarif-export, security, compliance]
 last-verified: 2026-01-26
-relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md, ADR-sarif-export.md]
-supersedes: [SARIF_EXPORT_REVIEW.md, SARIF_EXPORT_REVIEW_CRITICAL_ISSUES.md, SARIF_EXPORT_REVIEW_RECOMMENDATIONS.md]
+relates-to: [product-spec.md, tech-spec.md, adr-sarif-export.md]
+supersedes: [SARIF_EXPORT_review.md, sarif-export-review-critical-issues.md, sarif-export-review-recommendations.md]
 ---
 
 # SARIF Export Feature Review
@@ -239,9 +239,9 @@ Ordered by impact and effort:
 
 ## Related Documents
 
-- **PRODUCT_SPEC.md** — Feature requirements and SARIF format spec
-- **TECH_SPEC.md** — Implementation details and API reference
-- **ADR-sarif-export.md** — Architecture decision record
+- **product-spec.md** — Feature requirements and SARIF format spec
+- **tech-spec.md** — Implementation details and API reference
+- **adr-sarif-export.md** — Architecture decision record
 - **../../../core/known-issues.md** — Current blockers for v5.3
 
 ---

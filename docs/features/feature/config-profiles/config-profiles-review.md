@@ -3,7 +3,7 @@ status: shipped
 scope: feature/config-profiles/review
 ai-priority: high
 tags: [review, issues]
-relates-to: [TECH_SPEC.md, PRODUCT_SPEC.md]
+relates-to: [tech-spec.md, product-spec.md]
 last-verified: 2026-01-31
 ---
 

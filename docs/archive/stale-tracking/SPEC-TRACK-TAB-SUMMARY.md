@@ -8,10 +8,10 @@
 
 ## Quick Links
 
-- **Product Spec:** [SPEC-TRACK-TAB-PRODUCT.md](./SPEC-TRACK-TAB-PRODUCT.md)
-- **Technical Spec:** [SPEC-TRACK-TAB-TECHNICAL.md](./SPEC-TRACK-TAB-TECHNICAL.md)
-- **Edge Cases:** [SPEC-TRACK-TAB-EDGE-CASES.md](./SPEC-TRACK-TAB-EDGE-CASES.md)
-- **Related Issues:** [TRACKING-ANALYSIS.md](./TRACKING-ANALYSIS.md)
+- **Product Spec:** [spec-track-tab-product.md](./spec-track-tab-product.md)
+- **Technical Spec:** [spec-track-tab-technical.md](./spec-track-tab-technical.md)
+- **Edge Cases:** [spec-track-tab-edge-cases.md](./spec-track-tab-edge-cases.md)
+- **Related Issues:** [tracking-analysis.md](./tracking-analysis.md)
 
 ---
 
@@ -43,7 +43,7 @@
 - User controls what is tracked
 - LLM can debug multi-site flows in one tab
 
-📄 **Full Details:** [SPEC-TRACK-TAB-PRODUCT.md](./SPEC-TRACK-TAB-PRODUCT.md) (450 lines)
+📄 **Full Details:** [spec-track-tab-product.md](./spec-track-tab-product.md) (450 lines)
 
 ---
 
@@ -68,7 +68,7 @@
 - **Risk:** Low (isolated change, no API surface changes)
 - **Performance:** Negligible (< 0.01% overhead)
 
-📄 **Full Details:** [SPEC-TRACK-TAB-TECHNICAL.md](./SPEC-TRACK-TAB-TECHNICAL.md) (850 lines)
+📄 **Full Details:** [spec-track-tab-technical.md](./spec-track-tab-technical.md) (850 lines)
 
 ---
 
@@ -91,7 +91,7 @@
 - P1 tests: 8 scenarios - Should pass before release
 - P2 tests: 6 scenarios - Nice to have
 
-📄 **Full Details:** [SPEC-TRACK-TAB-EDGE-CASES.md](./SPEC-TRACK-TAB-EDGE-CASES.md) (650 lines)
+📄 **Full Details:** [spec-track-tab-edge-cases.md](./spec-track-tab-edge-cases.md) (650 lines)
 
 ---
 

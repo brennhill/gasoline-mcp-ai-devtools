@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extension: Pre-inject axe-core from content script (has chrome.runtime API access)
 - Server: Remove `unmarshalWithWarnings()` from routing functions (toolObserve, toolConfigure, toolGenerate, toolInteract)
 - Tests: Removed 2 tests that validated broken routing-level parameter warnings
-- See BUG_FIXES_SUMMARY.md for complete technical details
+- See bug-fixes-summary.md for complete technical details
 
 ## [5.1.0] - 2026-01-28
 

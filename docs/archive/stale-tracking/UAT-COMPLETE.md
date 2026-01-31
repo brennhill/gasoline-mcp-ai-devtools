@@ -88,7 +88,7 @@ After 5-6 navigation commands, extension starts timing out even though pilot sho
 
 ## 📁 Documentation Created
 
-1. **[docs/core/UAT-RESULTS-2026-01-27.md](docs/core/UAT-RESULTS-2026-01-27.md)**
+1. **[docs/core/uat-results-2026-01-27.md](docs/core/uat-results-2026-01-27.md)**
    - Full detailed results with code examples
    - 15-minute test session documentation
    - All findings with evidence
@@ -99,7 +99,7 @@ After 5-6 navigation commands, extension starts timing out even though pilot sho
    - Priority ordering
    - Code snippets for fixes
 
-3. **[UAT-COMPLETE.md](UAT-COMPLETE.md)** (this file)
+3. **[uat-complete.md](uat-complete.md)** (this file)
    - Executive summary for quick review
 
 ---
@@ -144,10 +144,10 @@ Before next UAT:
 
 ## 🔗 Quick Links
 
-- **Full Results:** [docs/core/UAT-RESULTS-2026-01-27.md](docs/core/UAT-RESULTS-2026-01-27.md)
+- **Full Results:** [docs/core/uat-results-2026-01-27.md](docs/core/uat-results-2026-01-27.md)
 - **Issue Tracker:** [docs/core/UAT-ISSUES-TRACKER.md](docs/core/UAT-ISSUES-TRACKER.md)
 - **Schema Commit:** f1b1f4f
-- **Test Checklist:** [docs/core/UAT-SCHEMA-IMPROVEMENTS.md](docs/core/UAT-SCHEMA-IMPROVEMENTS.md)
+- **Test Checklist:** [docs/core/uat-schema-improvements.md](docs/core/uat-schema-improvements.md)
 
 ---
 

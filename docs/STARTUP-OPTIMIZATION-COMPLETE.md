@@ -44,7 +44,7 @@ TOOLS.md                       → tools.md
 
 | Stage | Files | Tokens | Time | Purpose |
 |-------|-------|--------|------|---------|
-| **Entry** | CLAUDE.md | ~800 | 1-2 min | Project overview + quick navigation |
+| **Entry** | claude.md | ~800 | 1-2 min | Project overview + quick navigation |
 | **Onboard** | quick-reference.md + startup-checklist.md | ~2,000 | 10-15 min | Rules, workflow, pre-commit checklist |
 | **Strategy** | context-on-demand.md | ~1,800 | 3-5 min | How to load context by task type |
 | **Total Startup** | **3-4 files** | **~5K** | **~15-20 min** | Ready to start work |
@@ -59,7 +59,7 @@ TOOLS.md                       → tools.md
    - 10 common questions → file + estimated read time
    - Updated to use lowercase filenames
 
-2. **CLAUDE.md** — "By Task" quick navigation
+2. **claude.md** — "By Task" quick navigation
    - Implementing a feature → docs/features/README.md
    - Fixing a bug → docs/core/known-issues.md
    - Finding something → docs/how-to-use-new-system.md
@@ -92,7 +92,7 @@ v5.3-baseline.md        V5.3_BASELINE.md
 
 ### ✅ All Startup Files Clean
 ```
-✅ CLAUDE.md                    (87 lines, ~800 tokens)
+✅ claude.md                    (87 lines, ~800 tokens)
 ✅ quick-reference.md           (303 lines, ~2000 tokens)
 ✅ startup-checklist.md         (116 lines, ~1050 tokens)  [YAML frontmatter added]
 ✅ context-on-demand.md         (284 lines, ~1800 tokens)
@@ -115,19 +115,19 @@ v5.3-baseline.md        V5.3_BASELINE.md
 ## Entry Points (Use These to Start)
 
 **For first-time developers:**
-1. Read `CLAUDE.md` (2 min) — Get the overview
+1. Read `claude.md` (2 min) — Get the overview
 2. Read `quick-reference.md` (10 min) — Learn the rules
 3. Read `.claude/docs/startup-checklist.md` (5 min) — Know the workflow
 
 **For returning developers:**
-1. Skim `CLAUDE.md` (1 min) — Remember the project
-2. Follow task-specific links in CLAUDE.md → load only what you need
+1. Skim `claude.md` (1 min) — Remember the project
+2. Follow task-specific links in claude.md → load only what you need
 
 **By Task:**
-- **Adding a feature** → Load `CLAUDE.md` + `docs/features/README.md` + feature folder specs
-- **Fixing a bug** → Load `CLAUDE.md` + `docs/core/known-issues.md` + TECH_SPEC.md
-- **Writing docs** → Load `CLAUDE.md` + `documentation-maintenance.md` + `docs/features/README.md`
-- **Understanding system** → Load `CLAUDE.md` + `.claude/refs/architecture.md`
+- **Adding a feature** → Load `claude.md` + `docs/features/README.md` + feature folder specs
+- **Fixing a bug** → Load `claude.md` + `docs/core/known-issues.md` + tech-spec.md
+- **Writing docs** → Load `claude.md` + `documentation-maintenance.md` + `docs/features/README.md`
+- **Understanding system** → Load `claude.md` + `.claude/refs/architecture.md`
 
 ---
 
@@ -177,7 +177,7 @@ Both should show:
 
 ### Session Start (Every Time)
 ```
-1. Open CLAUDE.md
+1. Open claude.md
    ↓
 2. Identify your task (feature, bug, docs, etc.)
    ↓
@@ -198,7 +198,7 @@ Both should show:
 ```
 Quick: Check "Find Information Fast" table in quick-reference.md
 Detailed: Use docs/cross-reference.md for doc relationships
-Features: Use docs/features/FEATURE-NAVIGATION.md to find features
+Features: Use docs/features/feature-navigation.md to find features
 ```
 
 ---
@@ -206,14 +206,14 @@ Features: Use docs/features/FEATURE-NAVIGATION.md to find features
 ## Files Modified/Created
 
 ### Modified
-- `CLAUDE.md` — Frontmatter removed (entry points don't need metadata)
+- `claude.md` — Frontmatter removed (entry points don't need metadata)
 - `.claude/docs/quick-reference.md` — Filenames updated to lowercase
 - `.claude/docs/startup-checklist.md` — Filenames updated + YAML frontmatter added
 - `.claude/docs/documentation-maintenance.md` — File Naming Convention section added
 - All 31 referenced markdown files — Link paths updated
 
 ### Created
-- `docs/STARTUP-OPTIMIZATION-COMPLETE.md` (this file)
+- `docs/startup-optimization-complete.md` (this file)
 
 ### Standardized
 - **44 files renamed** — ALL_CAPS → lowercase-with-hyphens
@@ -251,7 +251,7 @@ Features: Use docs/features/FEATURE-NAVIGATION.md to find features
 - `.claude/docs/STARTUP-CHECKLIST.md` — Essential workflow
 - `.claude/docs/CONTEXT-ON-DEMAND.md` — Context loading strategy
 - `.claude/docs/DOCUMENTATION-MAINTENANCE.md` — Naming standards
-- `CLAUDE.md` — Entry point (project overview)
+- `claude.md` — Entry point (project overview)
 
 ---
 

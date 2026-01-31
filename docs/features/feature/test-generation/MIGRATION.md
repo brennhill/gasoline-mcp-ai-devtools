@@ -153,7 +153,7 @@ go test -v ./cmd/dev-console/ -run TestGenIntegration
 
 ### Manual Testing
 
-Follow UAT_GUIDE.md for human verification.
+Follow uat-guide.md for human verification.
 
 ## Rollout Plan
 

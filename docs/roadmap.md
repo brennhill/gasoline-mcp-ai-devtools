@@ -184,8 +184,8 @@ observe({what: "network_stats", group_by: "host"})
 **Solves:** Problems A (tokens) + B (causality) + D (selectors)
 
 - **Advanced Filtering (Signal-to-Noise)** — Content-type filters, domain allowlist/blocklist, regex patterns, response size thresholds. Reduce noise before AI sees it. Complements v5.3 pagination.
-- **Visual-Semantic Bridge** — Computed layout maps. Auto-generate unique test-IDs. Solves "ghost clicks" and "hallucinated selectors." [Spec](features/feature/visual-semantic-bridge/PRODUCT_SPEC.md)
-- **State "Time Travel"** — Persistent event buffer. Before/after snapshots. Enables causal debugging across crashes. [Spec](features/feature/state-time-travel/PRODUCT_SPEC.md)
+- **Visual-Semantic Bridge** — Computed layout maps. Auto-generate unique test-IDs. Solves "ghost clicks" and "hallucinated selectors." [Spec](features/feature/visual-semantic-bridge/product-spec.md)
+- **State "Time Travel"** — Persistent event buffer. Before/after snapshots. Enables causal debugging across crashes. [Spec](features/feature/state-time-travel/product-spec.md)
 - **Causal Diffing** — Root-cause analysis: "X changed → broke Y → surfaces as Z"
 - **Reverse Engineering Engine** — Auto-infer OpenAPI specs from network traffic
 - **Design System Injector** — Inject design tokens; stop AI from writing garbage CSS

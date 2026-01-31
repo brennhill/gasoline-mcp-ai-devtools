@@ -3,7 +3,7 @@ status: active
 scope: documentation/cross-reference
 ai-priority: medium
 tags: [cross-reference, dependencies, relationships, navigation]
-relates-to: [README.md, features/README.md, features/FEATURE-NAVIGATION.md]
+relates-to: [README.md, features/README.md, features/feature-navigation.md]
 last-verified: 2026-01-31
 ---
 
@@ -25,8 +25,8 @@ RELEASE.md (process)
     └── CHANGELOG.md (history)
 
 KNOWN-ISSUES.md (blockers)
-├── FEATURE-INDEX.md (status)
-└── features/*/PRODUCT_SPEC.md (feature reqs)
+├── FEATURE-index.md (status)
+└── features/*/product-spec.md (feature reqs)
 ```
 
 ### Architecture & System Design
@@ -37,23 +37,23 @@ KNOWN-ISSUES.md (blockers)
 ├── .claude/docs/testing.md (TDD workflow)
 ├── docs/core/mcp-correctness.md (MCP tool rules)
 └── docs/adrs/ADR-*.md (feature decisions)
-    ├── features/feature/*/TECH_SPEC.md
-    └── features/feature/*/PRODUCT_SPEC.md
+    ├── features/feature/*/tech-spec.md
+    └── features/feature/*/product-spec.md
 ```
 
 ### Feature Documentation
 
 ```
-FEATURE-INDEX.md (canonical status table)
-├── features/FEATURE-NAVIGATION.md (folder structure)
+FEATURE-index.md (canonical status table)
+├── features/feature-navigation.md (folder structure)
 ├── features/README.md (guide for LLMs)
 └── features/feature/<name>/
-    ├── PRODUCT_SPEC.md (requirements)
+    ├── product-spec.md (requirements)
     │   └── User stories, API design
-    ├── TECH_SPEC.md (implementation)
+    ├── tech-spec.md (implementation)
     │   ├── Code references (file.go:line)
     │   └── Performance requirements
-    ├── QA_PLAN.md (testing)
+    ├── qa-plan.md (testing)
     │   ├── Test scenarios
     │   └── Acceptance criteria
     ├── <name>-review.md (issues & recommendations)
@@ -67,18 +67,18 @@ FEATURE-INDEX.md (canonical status table)
 ```
 core/uat-v5.3-checklist.md (canonical UAT)
 ├── core/release.md (quality gates)
-├── features/feature/*/QA_PLAN.md
+├── features/feature/*/qa-plan.md
 └── .claude/docs/testing.md (TDD workflow)
     └── .claude/refs/testing-examples.md (patterns)
 
 .claude/docs/spec-review.md (spec approval)
-└── features/feature/*/PRODUCT_SPEC.md (feature specs)
+└── features/feature/*/product-spec.md (feature specs)
 ```
 
 ### Archive & Historical
 
 ```
-archive/INDEX.md (what's archived & why)
+archive/index.md (what's archived & why)
 ├── archive/stale-tracking/ (abandoned features)
 ├── archive/2026-01-31-UAT-TEST-PLAN-v*.md (superseded)
 └── archive/v*-specification.md (old roadmaps)
@@ -131,8 +131,8 @@ api-key-auth (shipped)
 ### For Product Managers
 
 **Read these first:**
-1. `FEATURE-INDEX.md` — What's shipped vs. proposed
-2. `features/feature/<name>/PRODUCT_SPEC.md` — Requirements
+1. `FEATURE-index.md` — What's shipped vs. proposed
+2. `features/feature/<name>/product-spec.md` — Requirements
 3. `KNOWN-ISSUES.md` — What's blocking
 
 **Then read:**
@@ -142,12 +142,12 @@ api-key-auth (shipped)
 ### For Developers
 
 **Read these first:**
-1. `features/feature/<name>/PRODUCT_SPEC.md` — What to build
-2. `features/feature/<name>/TECH_SPEC.md` — How to build it
+1. `features/feature/<name>/product-spec.md` — What to build
+2. `features/feature/<name>/tech-spec.md` — How to build it
 3. `.claude/docs/testing.md` — TDD workflow
 
 **Then read:**
-- `features/feature/<name>/QA_PLAN.md` — Test scenarios
+- `features/feature/<name>/qa-plan.md` — Test scenarios
 - `.claude/refs/architecture.md` — Design patterns
 - Code references in TECH_SPEC (file.go:line)
 
@@ -155,8 +155,8 @@ api-key-auth (shipped)
 
 **Read these first:**
 1. `.claude/refs/architecture.md` — System design
-2. `docs/adrs/ADRs.md` — Decisions index
-3. `features/feature/<name>/TECH_SPEC.md` — Implementation
+2. `docs/adrs/adrs.md` — Decisions index
+3. `features/feature/<name>/tech-spec.md` — Implementation
 
 **Then read:**
 - `features/<name>-review.md` — Known issues
@@ -166,8 +166,8 @@ api-key-auth (shipped)
 ### For QA/Testers
 
 **Read these first:**
-1. `features/feature/<name>/PRODUCT_SPEC.md` — Expected behavior
-2. `features/feature/<name>/QA_PLAN.md` — Test scenarios
+1. `features/feature/<name>/product-spec.md` — Expected behavior
+2. `features/feature/<name>/qa-plan.md` — Test scenarios
 3. `core/uat-v5.3-checklist.md` — UAT patterns
 
 **Then read:**
@@ -188,29 +188,29 @@ api-key-auth (shipped)
 - `CHANGELOG.md` — History
 
 **Feature Status:**
-- `FEATURE-INDEX.md` — Complete list with status
-- `features/FEATURE-NAVIGATION.md` — Folder structure
+- `FEATURE-index.md` — Complete list with status
+- `features/feature-navigation.md` — Folder structure
 - `features/README.md` — Navigation guide for LLMs
 
 **Architecture & Design:**
 - `.claude/refs/architecture.md` — System architecture
 - `docs/adrs/` — Architectural decision records
-- `features/feature/*/TECH_SPEC.md` — Component design
+- `features/feature/*/tech-spec.md` — Component design
 
 **Testing:**
 - `core/uat-v5.3-checklist.md` — UAT checklist
-- `features/feature/*/QA_PLAN.md` — Feature tests
+- `features/feature/*/qa-plan.md` — Feature tests
 - `.claude/docs/testing.md` — TDD workflow
 - `.claude/refs/testing-examples.md` — Test patterns
 
 **Security:**
-- `features/feature/security-hardening/TECH_SPEC.md`
-- `features/feature/api-key-auth/TECH_SPEC.md`
-- `features/feature/data-privacy/TECH_SPEC.md`
+- `features/feature/security-hardening/tech-spec.md`
+- `features/feature/api-key-auth/tech-spec.md`
+- `features/feature/data-privacy/tech-spec.md`
 
 **Performance:**
-- `features/feature/behavioral-baselines/PRODUCT_SPEC.md`
-- `features/feature/performance-profiling/TECH_SPEC.md`
+- `features/feature/behavioral-baselines/product-spec.md`
+- `features/feature/performance-profiling/tech-spec.md`
 - `docs/core/uat-v5.3-checklist.md` (performance section)
 
 ---
@@ -222,7 +222,7 @@ When a document is updated, trace the impact:
 1. **If PRODUCT_SPEC changes** → Update TECH_SPEC, QA_PLAN, and review doc
 2. **If TECH_SPEC changes** → Update QA_PLAN, and potentially ADR
 3. **If QA_PLAN changes** → Check RELEASE.md quality gates
-4. **If status changes** → Update FEATURE-INDEX.md
+4. **If status changes** → Update FEATURE-index.md
 5. **If feature supersedes another** → Mark old feature deprecated, update `supersedes:` field
 
 ---
@@ -278,8 +278,8 @@ canonical: true   # Authoritative source
 
 **Master indexes:**
 - `README.md` — Master documentation index
-- `features/FEATURE-INDEX.md` — Feature status table
-- `features/FEATURE-NAVIGATION.md` — Feature folder guide
+- `features/FEATURE-index.md` — Feature status table
+- `features/feature-navigation.md` — Feature folder guide
 - `features/README.md` — LLM-optimized navigation guide
 
 **Core processes:**
@@ -289,7 +289,7 @@ canonical: true   # Authoritative source
 
 **Architecture:**
 - `.claude/refs/architecture.md` — System design
-- `docs/adrs/ADRs.md` — Decision records index
+- `docs/adrs/adrs.md` — Decision records index
 
 **Getting started:**
 - `.claude/docs/startup-checklist.md` — Session startup rules
@@ -302,5 +302,5 @@ canonical: true   # Authoritative source
 
 - `README.md` — Master documentation index
 - `features/README.md` — Features guide for LLMs
-- `features/FEATURE-NAVIGATION.md` — Feature structure guide
+- `features/feature-navigation.md` — Feature structure guide
 - `.claude/docs/documentation-policy.md` — Documentation standards

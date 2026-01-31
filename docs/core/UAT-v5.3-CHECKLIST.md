@@ -7,7 +7,7 @@ tags: [testing, uat, regression, pagination, buffer-clearing]
 last-verified: 2026-01-30
 canonical: true
 relates-to: [core/release-v5.3-prep.md, core/known-issues.md]
-supersedes: [archive/2026-01-31-UAT-TEST-PLAN-v1.md, archive/2026-01-31-UAT-TEST-PLAN-v2.md]
+supersedes: [archive/2026-01-31-uat-test-plan-v1.md, archive/2026-01-31-uat-test-plan-v2.md]
 ---
 
 # v5.3 UAT Checklist

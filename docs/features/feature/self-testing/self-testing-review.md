@@ -1,12 +1,3 @@
----
-status: shipped
-scope: feature/self-testing/review
-ai-priority: high
-tags: [review, issues]
-relates-to: [TECH_SPEC.md, PRODUCT_SPEC.md]
-last-verified: 2026-01-31
----
-
 # Review: AI Self-Testing Infrastructure (tech-spec-self-testing.md)
 
 ## Executive Summary

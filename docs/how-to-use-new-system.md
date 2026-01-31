@@ -34,9 +34,9 @@ git add docs/ && git commit -m "feat: ... docs: ..."
 **Start here:** `docs/features/README.md` (optimized for AI discovery)
 
 **Then use:**
-- `docs/features/FEATURE-NAVIGATION.md` — Find any feature by status
+- `docs/features/feature-navigation.md` — Find any feature by status
 - `docs/cross-reference.md` — Find related documents
-- `docs/features/FEATURE-INDEX.md` — Status table of all features
+- `docs/features/FEATURE-index.md` — Status table of all features
 
 **For system design:**
 - `.claude/refs/architecture.md` (canonical)
@@ -53,24 +53,24 @@ git add docs/ && git commit -m "feat: ... docs: ..."
 **Step 1: Understand the scope**
 ```bash
 # Read feature requirements
-cat docs/features/feature/<name>/PRODUCT_SPEC.md
+cat docs/features/feature/<name>/product-spec.md
 
 # Read implementation guide
-cat docs/features/feature/<name>/TECH_SPEC.md
+cat docs/features/feature/<name>/tech-spec.md
 
 # Understand tests needed
-cat docs/features/feature/<name>/QA_PLAN.md
+cat docs/features/feature/<name>/qa-plan.md
 ```
 
 **Step 2: While coding**
-- Update TECH_SPEC.md as you implement
+- Update tech-spec.md as you implement
 - Add code references: `cmd/dev-console/tools.go:observe()`
 - Document APIs and data structures
 
 **Step 3: Before committing**
 ```bash
 # Update last-verified date
-vim docs/features/feature/<name>/TECH_SPEC.md  # Change date to today
+vim docs/features/feature/<name>/tech-spec.md  # Change date to today
 
 # Check for lint errors
 python3 scripts/lint-documentation.py
@@ -94,13 +94,13 @@ grep -r "Issue #123" docs/core/known-issues.md
 
 **Step 2: Read the context**
 ```bash
-cat docs/features/feature/<name>/PRODUCT_SPEC.md  # Expected behavior
-cat docs/features/feature/<name>/TECH_SPEC.md     # Current implementation
+cat docs/features/feature/<name>/product-spec.md  # Expected behavior
+cat docs/features/feature/<name>/tech-spec.md     # Current implementation
 ```
 
 **Step 3: After fixing**
 - Update KNOWN-ISSUES.md (mark as fixed)
-- Update QA_PLAN.md (add regression test)
+- Update qa-plan.md (add regression test)
 - Update `last-verified` date
 - Commit with docs
 
@@ -111,13 +111,13 @@ cat docs/features/feature/<name>/TECH_SPEC.md     # Current implementation
 **Step 1: Create the structure**
 ```bash
 mkdir docs/features/feature/my-feature
-cp docs/templates/FEATURE-TEMPLATE.md docs/features/feature/my-feature/PRODUCT_SPEC.md
+cp docs/templates/FEATURE-TEMPLATE.md docs/features/feature/my-feature/product-spec.md
 ```
 
 **Step 2: Write specs**
-- Fill PRODUCT_SPEC.md (user stories, APIs)
-- Fill TECH_SPEC.md (design, code references)
-- Fill QA_PLAN.md (test scenarios)
+- Fill product-spec.md (user stories, APIs)
+- Fill tech-spec.md (design, code references)
+- Fill qa-plan.md (test scenarios)
 - Verify YAML frontmatter on all files
 
 **Step 3: Get approval**
@@ -132,7 +132,7 @@ cp docs/templates/FEATURE-TEMPLATE.md docs/features/feature/my-feature/PRODUCT_S
 **Step 5: Before shipping**
 ```bash
 # Update status to shipped
-vim docs/features/feature/my-feature/PRODUCT_SPEC.md
+vim docs/features/feature/my-feature/product-spec.md
 # Change: status: proposed → status: shipped
 
 # Update navigation
@@ -146,7 +146,7 @@ git add docs/features/feature/my-feature/
 git commit -m "feat: Add my-feature
 
 - docs: PRODUCT_SPEC, TECH_SPEC, QA_PLAN (status: shipped)
-- Updated FEATURE-INDEX.md
+- Updated FEATURE-index.md
 - All docs marked last-verified: $(date +%Y-%m-%d)
 "
 ```
@@ -176,7 +176,7 @@ python3 scripts/generate-feature-navigation.py
 ```
 
 **Generates:**
-- `docs/features/FEATURE-NAVIGATION.md` (auto-index)
+- `docs/features/feature-navigation.md` (auto-index)
 - Scans all feature folders
 - Groups by status (shipped/in-progress/proposed)
 - Lists all files per feature
@@ -213,7 +213,7 @@ tags: [feature, security, shipped]
   # Searchable keywords
   # Examples: security, performance, testing, shipped, proposed
 
-relates-to: [TECH_SPEC.md, QA_PLAN.md]
+relates-to: [tech-spec.md, qa-plan.md]
   # What other docs are related?
   # Helps navigate between connected documents
 
@@ -237,7 +237,7 @@ canonical: true  # (optional)
 
 ### Find all shipped features
 ```bash
-grep -r "status: shipped" docs/features/feature/*/PRODUCT_SPEC.md | wc -l
+grep -r "status: shipped" docs/features/feature/*/product-spec.md | wc -l
 ```
 
 ### Find stale docs (not updated in 30+ days)
@@ -253,7 +253,7 @@ grep -r "relates-to:.*my-feature" docs/features/
 ### Update all last-verified dates
 ```bash
 # When you've updated multiple docs, refresh the dates:
-for file in docs/features/feature/*/TECH_SPEC.md; do
+for file in docs/features/feature/*/tech-spec.md; do
   sed -i '' "s/last-verified: .*/last-verified: $(date +%Y-%m-%d)/" "$file"
 done
 ```
@@ -296,12 +296,12 @@ docs/
 ├── HOW-TO-USE-NEW-SYSTEM.md (this file)
 ├── features/
 │   ├── README.md (LLM-optimized guide)
-│   ├── FEATURE-INDEX.md (status table)
-│   ├── FEATURE-NAVIGATION.md (auto-generated index)
+│   ├── FEATURE-index.md (status table)
+│   ├── feature-navigation.md (auto-generated index)
 │   └── feature/<name>/ (per-feature docs)
-│       ├── PRODUCT_SPEC.md (requirements)
-│       ├── TECH_SPEC.md (implementation)
-│       ├── QA_PLAN.md (tests)
+│       ├── product-spec.md (requirements)
+│       ├── tech-spec.md (implementation)
+│       ├── qa-plan.md (tests)
 │       └── <name>-review.md (issues found)
 ├── core/
 │   ├── RELEASE.md (process)
@@ -309,10 +309,10 @@ docs/
 │   ├── UAT-v5.3-CHECKLIST.md (canonical UAT)
 │   └── CODEBASE-CANON-V5.3.md (baseline reference)
 ├── adrs/
-│   ├── ADRs.md (index)
+│   ├── adrs.md (index)
 │   └── ADR-<name>.md (per-feature decisions)
 └── archive/
-    ├── INDEX.md (what's archived & why)
+    ├── index.md (what's archived & why)
     ├── stale-tracking/ (abandoned features)
     └── 2026-01-31-*.md (dated archives)
 

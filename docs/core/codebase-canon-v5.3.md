@@ -140,7 +140,7 @@ If you find a doc that contradicts the codebase:
 
 Features planned for v6.0+ should be documented as `proposed` status, NOT as shipped behavior:
 
-- Advanced filtering (advanced-filtering/TECH_SPEC.md)
+- Advanced filtering (advanced-filtering/tech-spec.md)
 - Agentic CI/CD (agentic-cicd/)
 - Design audit archival (design-audit-archival/)
 - Flow recording (flow-recording/)
@@ -208,7 +208,7 @@ git log -n 5 --oneline cmd/dev-console/tools.go
 
 ### For Detailed Review
 
-1. Read feature TECH_SPEC.md (what should happen)
+1. Read feature tech-spec.md (what should happen)
 2. Read code file referenced (what actually happens)
 3. Compare — do they match?
 4. If different, update doc and mark `last-verified`
@@ -221,7 +221,7 @@ git log -n 5 --oneline cmd/dev-console/tools.go
 - `RELEASE.md` — Release process and quality gates
 - `KNOWN-ISSUES.md` — Current blockers and fixes
 - `UAT-v5.3-CHECKLIST.md` — Comprehensive test verification
-- Features `*/TECH_SPEC.md` — Implementation details per feature
+- Features `*/tech-spec.md` — Implementation details per feature
 
 ---
 

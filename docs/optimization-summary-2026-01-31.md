@@ -18,7 +18,7 @@ last-verified: 2026-01-31
 
 ### Phase 1: Fixed Critical Issues ✅
 1. **Removed 2 broken stub files**
-   - Deleted `/docs/core/PRODUCT_SPEC.md` and `/docs/core/TECH_SPEC.md` (non-functional stubs)
+   - Deleted `/docs/core/product-spec.md` and `/docs/core/tech-spec.md` (non-functional stubs)
    - Updated `docs/README.md` to link to actual canonical documents
 
 2. **Consolidated UAT plans**
@@ -38,20 +38,20 @@ last-verified: 2026-01-31
    - Standardized naming: `*-review.md` (lowercase, hyphenated)
 
 5. **Completed sparse features**
-   - Added TECH_SPEC.md + QA_PLAN.md placeholders for:
+   - Added tech-spec.md + qa-plan.md placeholders for:
      - `advanced-filtering/` (with TODO sections)
      - `cursor-pagination/` (shipped feature docs)
      - `design-audit-archival/` (comprehensive SQL schema spec)
 
 ### Phase 3: Optimized for AI Consumption ✅
 6. **Added YAML frontmatter to 130 feature docs**
-   - All PRODUCT_SPEC.md, TECH_SPEC.md, QA_PLAN.md, review files
+   - All product-spec.md, tech-spec.md, qa-plan.md, review files
    - Standardized metadata: status, scope, ai-priority, tags, relates-to, last-verified
    - Enables AI discovery and freshness tracking
 
 7. **Created navigation guides for LLMs**
    - `docs/features/README.md` — Comprehensive guide (with patterns, workflows)
-   - `docs/features/FEATURE-NAVIGATION.md` — Quick lookup index (auto-generated, 71 features)
+   - `docs/features/feature-navigation.md` — Quick lookup index (auto-generated, 71 features)
    - `docs/cross-reference.md` — Document dependency graph and relationships
 
 8. **Built automation scripts**
@@ -60,7 +60,7 @@ last-verified: 2026-01-31
    - Integrated into pre-commit workflow
 
 9. **Added frontmatter to core docs**
-   - Marked canonical sources: `architecture.md`, `RELEASE.md`, `KNOWN-ISSUES.md`, `FEATURE-INDEX.md`
+   - Marked canonical sources: `architecture.md`, `RELEASE.md`, `KNOWN-ISSUES.md`, `FEATURE-index.md`
    - Ensures AI knows which docs are authoritative
 
 ### Phase 4: Clarified Authority ✅
@@ -93,7 +93,7 @@ last-verified: 2026-01-31
 | File | Purpose |
 |------|---------|
 | `docs/features/README.md` | Comprehensive LLM-optimized features guide |
-| `docs/features/FEATURE-NAVIGATION.md` | Auto-generated feature index (71 features) |
+| `docs/features/feature-navigation.md` | Auto-generated feature index (71 features) |
 | `docs/cross-reference.md` | Documentation dependency mapping |
 | `docs/core/codebase-canon-v5.3.md` | v5.3 as reference baseline |
 | `docs/archive/stale-tracking/README.md` | Recovery guide for abandoned features |
@@ -170,7 +170,7 @@ These improve documentation further but weren't in original scope:
    - Resolve mcp-integration links
 
 2. **Add frontmatter to remaining docs** (355+ files)
-   - All root-level docs (README.md, DEVELOPMENT.md, etc.)
+   - All root-level docs (README.md, development.md, etc.)
    - Core docs without frontmatter (timestamp-standard.md, etc.)
    - Archive docs
 
@@ -197,7 +197,7 @@ These improve documentation further but weren't in original scope:
 ```bash
 # 1. Create new feature
 mkdir docs/features/feature/my-feature
-cp docs/templates/FEATURE-TEMPLATE.md docs/features/feature/my-feature/PRODUCT_SPEC.md
+cp docs/templates/FEATURE-TEMPLATE.md docs/features/feature/my-feature/product-spec.md
 
 # 2. Write specs, get review, implement
 
@@ -209,8 +209,8 @@ python3 scripts/generate-feature-navigation.py # Regenerate index
 git add -A
 git commit -m "feat: Add my-feature
 
-- docs: Added PRODUCT_SPEC.md, TECH_SPEC.md, QA_PLAN.md
-- Updated FEATURE-INDEX.md to status: shipped
+- docs: Added product-spec.md, tech-spec.md, qa-plan.md
+- Updated FEATURE-index.md to status: shipped
 - All docs marked last-verified: $(date +%Y-%m-%d)
 "
 ```
@@ -218,7 +218,7 @@ git commit -m "feat: Add my-feature
 ### For Documentation Updates
 ```bash
 # 1. Update any feature doc
-vim docs/features/feature/my-feature/TECH_SPEC.md
+vim docs/features/feature/my-feature/tech-spec.md
 
 # 2. Update metadata
 # - Change last-verified to today's date
@@ -240,7 +240,7 @@ git commit -m "docs: Update my-feature TECH_SPEC
 ### For Finding Documentation
 ```bash
 # Quick: Find feature folder
-grep -r "status: shipped" docs/features/feature/*/PRODUCT_SPEC.md
+grep -r "status: shipped" docs/features/feature/*/product-spec.md
 
 # Find related docs
 grep -r "relates-to:.*my-feature" docs/
@@ -283,12 +283,12 @@ python3 scripts/lint-documentation.py | grep "stale"
 - `docs/core/mcp-correctness.md` — Added YAML frontmatter
 - `docs/core/release.md` — Added YAML frontmatter
 - `docs/core/known-issues.md` — Added YAML frontmatter
-- `docs/features/FEATURE-INDEX.md` — Added YAML frontmatter
+- `docs/features/FEATURE-index.md` — Added YAML frontmatter
 - All 130 feature docs — Added YAML frontmatter
 
 ### Created
 - `docs/features/README.md` (2,400+ lines, comprehensive guide)
-- `docs/features/FEATURE-NAVIGATION.md` (auto-generated, 150+ lines)
+- `docs/features/feature-navigation.md` (auto-generated, 150+ lines)
 - `docs/cross-reference.md` (1,200+ lines, dependency mapping)
 - `docs/core/codebase-canon-v5.3.md` (500+ lines, baseline reference)
 - `docs/archive/stale-tracking/README.md` (recovery guide)
@@ -298,8 +298,8 @@ python3 scripts/lint-documentation.py | grep "stale"
 - `.claude/docs/documentation-maintenance.md` (500+ lines, process guide)
 
 ### Archived (with date prefix)
-- `docs/archive/2026-01-31-UAT-TEST-PLAN-v1.md` (superseded)
-- `docs/archive/2026-01-31-UAT-TEST-PLAN-v2.md` (superseded)
+- `docs/archive/2026-01-31-uat-test-plan-v1.md` (superseded)
+- `docs/archive/2026-01-31-uat-test-plan-v2.md` (superseded)
 - `docs/archive/stale-tracking/` folder (11 abandoned feature docs)
 - Multiple `*-review-archived.md` files (consolidated duplicates)
 

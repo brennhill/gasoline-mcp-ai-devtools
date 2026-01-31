@@ -3,7 +3,7 @@ status: shipped
 scope: feature/ttl-retention/review
 ai-priority: high
 tags: [review, issues]
-relates-to: [TECH_SPEC.md, PRODUCT_SPEC.md]
+relates-to: [tech-spec.md, product-spec.md]
 last-verified: 2026-01-31
 ---
 
@@ -11,7 +11,7 @@ last-verified: 2026-01-31
 
 > **[MIGRATION NOTICE]**
 > Migrated from `/docs/specs/ttl-retention-review.md` on 2026-01-26.
-> Related docs: [PRODUCT_SPEC.md](PRODUCT_SPEC.md), [TECH_SPEC.md](TECH_SPEC.md), [ADRS.md](ADRS.md).
+> Related docs: [product-spec.md](product-spec.md), [tech-spec.md](tech-spec.md), [ADRS.md](ADRS.md).
 
 ---
 

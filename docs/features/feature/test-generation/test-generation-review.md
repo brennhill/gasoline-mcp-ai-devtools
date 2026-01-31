@@ -12,7 +12,7 @@ type: review
 | **Review Date** | 2026-01-29 |
 | **Reviewer** | Principal Engineer Agent (Claude Opus 4.5) |
 | **Spec Version** | v1.0 (proposed) |
-| **Files Reviewed** | PRODUCT_SPEC.md, TECH_SPEC.md, architecture.md |
+| **Files Reviewed** | product-spec.md, tech-spec.md, architecture.md |
 
 ---
 

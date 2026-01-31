@@ -14,7 +14,7 @@ last-verified: 2026-01-31
 
 ## Quick Navigation
 
-- **[FEATURE-INDEX.md](FEATURE-INDEX.md)** — Machine-readable status table of all features (shipped, in-progress, proposed)
+- **[FEATURE-index.md](FEATURE-index.md)** — Machine-readable status table of all features (shipped, in-progress, proposed)
 - **[feature/](feature/)** — All feature documentation folders
 
 ---
@@ -27,15 +27,15 @@ Each feature has its own folder at `docs/features/feature/<feature-name>/` with 
 
 | File | Purpose | Audience | Status |
 |------|---------|----------|--------|
-| **PRODUCT_SPEC.md** | What the feature does (user stories, requirements, API spec) | Product managers, LLMs | Required |
-| **TECH_SPEC.md** | How it's implemented (architecture, data structures, algorithms) | Developers, LLMs | Required |
-| **QA_PLAN.md** | How to test it (test scenarios, acceptance criteria, regression tests) | QA, developers, LLMs | Required |
+| **product-spec.md** | What the feature does (user stories, requirements, API spec) | Product managers, LLMs | Required |
+| **tech-spec.md** | How it's implemented (architecture, data structures, algorithms) | Developers, LLMs | Required |
+| **qa-plan.md** | How to test it (test scenarios, acceptance criteria, regression tests) | QA, developers, LLMs | Required |
 | **<feature>-review.md** | Principal engineer review (issues found, recommendations, implementation roadmap) | Architects, senior devs | Optional |
 | **ADR-<feature>.md** | Architecture decision record (in `/docs/adrs/`) | Architects, historians | Optional |
 
 ### File Naming Conventions
 
-- **Lowercase, hyphenated:** `feature-name-review.md` (NOT `FEATURE_NAME_REVIEW.md`)
+- **Lowercase, hyphenated:** `feature-name-review.md` (NOT `FEATURE_NAME_review.md`)
 - **Descriptive names:** Use full words (`security-review.md`, not `sec-review.md`)
 - **No redundant prefixes:** File is already in `feature/<name>/`, so prefix with feature name only if ambiguous
 
@@ -46,24 +46,24 @@ Each feature has its own folder at `docs/features/feature/<feature-name>/` with 
 ### As an LLM, I Need to Know...
 
 #### "What are all the features?"
-→ Read **[FEATURE-INDEX.md](FEATURE-INDEX.md)**
+→ Read **[FEATURE-index.md](FEATURE-index.md)**
 - Status column shows: `shipped`, `in-progress`, `proposed`
 - Status `deprecated` means old feature, check archive
 
 #### "What does feature X do?"
-→ Read `docs/features/feature/<feature-name>/PRODUCT_SPEC.md`
+→ Read `docs/features/feature/<feature-name>/product-spec.md`
 - User stories explain the "why"
 - API examples show the "how to use"
 - Acceptance criteria define "done"
 
 #### "How is feature X implemented?"
-→ Read `docs/features/feature/<feature-name>/TECH_SPEC.md`
+→ Read `docs/features/feature/<feature-name>/tech-spec.md`
 - Architecture section explains design decisions
 - Code references (filename:line_number) point to implementation
 - Performance requirements define acceptable behavior
 
 #### "How do I test feature X?"
-→ Read `docs/features/feature/<feature-name>/QA_PLAN.md`
+→ Read `docs/features/feature/<feature-name>/qa-plan.md`
 - Test categories organize scenarios by area
 - Each scenario has clear inputs, outputs, acceptance criteria
 - Regression tests show what existing behavior to protect
@@ -77,7 +77,7 @@ Each feature has its own folder at `docs/features/feature/<feature-name>/` with 
 - Implementation roadmap shows phase ordering
 
 #### "What architectural decisions were made?"
-→ Read `docs/adrs/ADR-<feature>.md` or TECH_SPEC.md "Architectural Decisions" section
+→ Read `docs/adrs/ADR-<feature>.md` or tech-spec.md "Architectural Decisions" section
 - ADRs explain the "why" behind major choices
 - Trade-offs are documented
 - Alternatives considered are listed
@@ -153,11 +153,11 @@ Feature is no longer supported or scheduled for removal.
 ### Pattern: "Add a new feature"
 
 1. Create folder: `docs/features/feature/<feature-name>/`
-2. Copy template: `cp docs/templates/FEATURE-TEMPLATE.md docs/features/feature/<feature-name>/PRODUCT_SPEC.md`
+2. Copy template: `cp docs/templates/FEATURE-TEMPLATE.md docs/features/feature/<feature-name>/product-spec.md`
 3. Fill PRODUCT_SPEC with user stories and requirements
 4. Create TECH_SPEC (can start as skeleton)
 5. Create QA_PLAN (can start as skeleton)
-6. Add entry to FEATURE-INDEX.md with status `proposed`
+6. Add entry to FEATURE-index.md with status `proposed`
 7. Create ADR at `docs/adrs/ADR-<feature-name>.md`
 8. **REQUIRED:** Get spec review before implementation (see `.claude/docs/spec-review.md`)
 
@@ -232,11 +232,11 @@ If documentation contradicts code:
 ## Related Documents
 
 **For humans:**
-- `FEATURE-INDEX.md` — Status table with brief descriptions
+- `FEATURE-index.md` — Status table with brief descriptions
 
 **For architects:**
 - `.claude/refs/architecture.md` — System design and 5-tool constraint
-- `docs/adrs/ADRs.md` — Architecture decision record index
+- `docs/adrs/adrs.md` — Architecture decision record index
 
 **For developers:**
 - `.claude/docs/testing.md` — TDD workflow
@@ -253,7 +253,7 @@ If documentation contradicts code:
 ### When Searching Docs
 
 **Search strategy:**
-1. Always start with FEATURE-INDEX.md (quick status lookup)
+1. Always start with FEATURE-index.md (quick status lookup)
 2. If status is `shipped`, read PRODUCT_SPEC + TECH_SPEC + QA_PLAN
 3. If status is `proposed`, read PRODUCT_SPEC + placeholder specs
 4. If status is `in-progress`, check `incomplete: true` flag
@@ -263,7 +263,7 @@ If documentation contradicts code:
 ```javascript
 // All shipped features and their tech specs:
 grep -r "status: shipped" docs/features/feature/*/
-grep -l "TECH_SPEC.md" docs/features/feature/*/
+grep -l "tech-spec.md" docs/features/feature/*/
 
 // All high-priority docs:
 grep -r "ai-priority: high" docs/features/

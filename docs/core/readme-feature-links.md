@@ -9,8 +9,8 @@ Each feature in `/docs/features/feature/` should include:
 
 ```
 /docs/features/feature/noise-filtering/
-  - PRODUCT_SPEC.md
-  - TECH_SPEC.md
+  - product-spec.md
+  - tech-spec.md
   - ADRS.md (if any)
 ```
 

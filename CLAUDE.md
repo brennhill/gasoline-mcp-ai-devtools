@@ -35,7 +35,7 @@
 **Navigation & Discovery:**
 - [docs/README.md](docs/README.md) — Master index
 - [docs/cross-reference.md](docs/cross-reference.md) — Doc relationships
-- [docs/features/FEATURE-NAVIGATION.md](docs/features/FEATURE-NAVIGATION.md) — All 71 features
+- [docs/features/feature-navigation.md](docs/features/feature-navigation.md) — All 71 features
 - [docs/features/README.md](docs/features/README.md) — LLM guide
 - [docs/how-to-use-new-system.md](docs/how-to-use-new-system.md) — How-to guide
 

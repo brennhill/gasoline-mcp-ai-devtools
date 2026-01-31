@@ -32,87 +32,87 @@ Each entry shows:
 
 | Feature | Folder | Files | Purpose |
 |---------|--------|-------|---------|
-| ai-capture-control | `feature/ai-capture-control/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, ai-capture-control-review.md | Product Spec: AI Capture Control |
-| ai-web-pilot | `feature/ai-web-pilot/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, ai-web-pilot-review.md | Product Spec: AI Web Pilot |
-| api-key-auth | `feature/api-key-auth/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, api-key-auth-review.md | Product Spec: API Key Auth |
-| api-schema | `feature/api-schema/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, api-schema-review.md | Product Spec: API Schema |
-| binary-format-detection | `feature/binary-format-detection/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, binary-format-detection-review.md | Product Spec: Binary Format Detection |
-| causal-diffing | `feature/causal-diffing/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, causal-diffing-review.md | Product Spec: Causal Diffing |
-| compressed-diffs | `feature/compressed-diffs/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, compressed-diffs-review.md | Product Spec: Compressed Diffs |
-| cursor-pagination | `feature/cursor-pagination/` | FEATURE_PROPOSAL.md, QA_PLAN.md, TECH_SPEC.md | Cursor-Based Pagination for Live Data - Feature Proposal |
-| enterprise-audit | `feature/enterprise-audit/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, enterprise-audit-review.md | Product Spec: Enterprise Audit |
-| error-clustering | `feature/error-clustering/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, error-clustering-review.md | Product Spec: Error Clustering |
-| har-export | `feature/har-export/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, har-export-review.md | Product Spec: HAR Export |
-| memory-enforcement | `feature/memory-enforcement/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, memory-enforcement-review.md | Product Spec: Memory Enforcement |
-| noise-filtering | `feature/noise-filtering/` | NOISE_FILTERING_REVIEW.md, PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, noise-filtering-review.md | Product Spec: Noise Filtering |
-| performance-budget | `feature/performance-budget/` | PERFORMANCE_BUDGET_REVIEW.md, PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, performance-budget-review.md | Product Spec: Performance Budget |
-| persistent-memory | `feature/persistent-memory/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, persistent-memory-review.md | Product Spec: Persistent Memory |
-| push-alerts | `feature/push-alerts/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: Push Alerts |
-| push-regression | `feature/push-regression/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, push-regression-review.md | Product Spec: Push Regression |
-| rate-limiting | `feature/rate-limiting/` | PRODUCT_SPEC.md, QA_PLAN.md, RATE_LIMITING_REVIEW.md, TECH_SPEC.md, rate-limiting-review.md | Product Spec: Rate Limiting |
-| redaction-patterns | `feature/redaction-patterns/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, redaction-patterns-review.md | Product Spec: Redaction Patterns |
-| reproduction-enhancements | `feature/reproduction-enhancements/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, reproduction-enhancements-review.md | Product Spec: Reproduction Enhancements |
-| sarif-export | `feature/sarif-export/` | PRODUCT_SPEC.md, QA_PLAN.md, SARIF_EXPORT_REVIEW.md, SARIF_EXPORT_REVIEW_CRITICAL_ISSUES.md, SARIF_EXPORT_REVIEW_RECOMMENDATIONS.md, TECH_SPEC.md, sarif-export-review-boilerplate-archived.md, sarif-export-review-consolidated.md, sarif-export-review-critical-issues-archived.md, sarif-export-review-recommendations-archived.md, sarif-export-review.md | Product Spec: Sarif Export |
-| security-hardening | `feature/security-hardening/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, security-hardening-review.md | Product Spec: Security Hardening |
-| self-healing-tests | `feature/self-healing-tests/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, self-healing-tests-review.md | Product Spec: Self-Healing Tests |
-| temporal-graph | `feature/temporal-graph/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, temporal-graph-review.md | Product Spec: Temporal Graph |
-| ttl-retention | `feature/ttl-retention/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, ttl-retention-review.md | Product Spec: TTL Retention |
-| web-vitals | `feature/web-vitals/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, web-vitals-review.md | Product Spec: Web Vitals |
-| workflow-integration | `feature/workflow-integration/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, workflow-integration-review.md | Product Spec: Workflow Integration |
 
 ### In-Progress Features
 
 | Feature | Folder | Files | Purpose |
 |---------|--------|-------|---------|
-| behavioral-baselines | `feature/behavioral-baselines/` | BEHAVIORAL_BASELINES_REVIEW.md, PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, behavioral-baselines-review-stub-archived.md, behavioral-baselines-review.md | Product Spec: Behavioral Baselines |
-| budget-thresholds | `feature/budget-thresholds/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, budget-thresholds-review.md | Product Spec: Budget Thresholds |
-| flow-recording | `feature/flow-recording/` | PRODUCT_SPEC.md, QA_PLAN.md, RECORDING_SCENARIOS.md, TECH_SPEC.md | Product Spec: Flow Recording & Playback (Regression Testing) |
-| interception-deferral | `feature/interception-deferral/` | INTERCEPTION_DEFERRAL_REVIEW.md, PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, interception-deferral-review-stub-archived.md, interception-deferral-review.md | Product Spec: Interception Deferral |
-| self-testing | `feature/self-testing/` | PRODUCT_SPEC.md, QA_PLAN.md, SELF_TESTING_REVIEW.md, TECH_SPEC.md, self-testing-review.md | Product Spec: Self Testing |
-| spa-route-measurement | `feature/spa-route-measurement/` | PRODUCT_SPEC.md, QA_PLAN.md, SPA_ROUTE_MEASUREMENT_REVIEW.md, TECH_SPEC.md, spa-route-measurement-review.md | Product Spec: Spa Route Measurement |
 
 ### Proposed Features
 
 | Feature | Folder | Files | Purpose |
 |---------|--------|-------|---------|
-| a11y-tree-snapshots | `feature/a11y-tree-snapshots/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | A11y Tree Snapshots (Text-Based Page Representation) |
-| advanced-filtering | `feature/advanced-filtering/` | FEATURE_PROPOSAL.md, QA_PLAN.md, TECH_SPEC.md | Advanced Filtering for Signal-to-Noise - Feature Proposal |
-| agentic-cicd | `feature/agentic-cicd/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: Agentic CI/CD |
-| agentic-e2e-repair | `feature/agentic-e2e-repair/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, agentic-e2e-repair-review.md | Agentic E2E Repair |
-| analyze-tool | `feature/analyze-tool/` | MIGRATION.md, PRODUCT_SPEC.md, QA_PLAN.md, REVIEW.md, TECH_SPEC.md, UAT_GUIDE.md, analyze-tool-review.md | The `analyze` Tool |
-| annotated-screenshots | `feature/annotated-screenshots/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Annotated Screenshots |
-| auto-paste-screenshots | `feature/auto-paste-screenshots/` | PRODUCT_SPEC.md, QA_PLAN.md | Auto-Paste Screenshots to IDE |
-| best-practices-audit | `feature/best-practices-audit/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Best Practices Audit |
-| buffer-clearing | `feature/buffer-clearing/` | PRODUCT_SPEC.md, TECH_SPEC.md | Buffer-Specific Clearing - Product Spec |
-| ci-infrastructure | `feature/ci-infrastructure/` | BUSINESS_PITCH.md, EXECUTIVE_SUMMARY.md, PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: Gasoline CI Infrastructure |
-| config-profiles | `feature/config-profiles/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, config-profiles-review.md | Product Spec: Configuration Profiles |
-| context-streaming | `feature/context-streaming/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, context-streaming-review.md | Product Spec: Context Streaming (#5) |
-| cpu-network-emulation | `feature/cpu-network-emulation/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: CPU/Network Emulation |
-| deployment-watchdog | `feature/deployment-watchdog/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, deployment-watchdog-review.md | Deployment Watchdog |
-| design-audit-archival | `feature/design-audit-archival/` | FEATURE_TRACKING.md, PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Specification: Design Audit & Archival |
-| dialog-handling | `feature/dialog-handling/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: Dialog Handling |
-| dom-fingerprinting | `feature/dom-fingerprinting/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, dom-fingerprinting-review.md | Product Spec: DOM Fingerprinting |
-| drag-drop-automation | `feature/drag-drop-automation/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: Drag & Drop Automation |
-| dynamic-exposure | `feature/dynamic-exposure/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, dynamic-exposure-review.md | Product Spec: Dynamic Exposure |
-| e2e-testing-integration | `feature/e2e-testing-integration/` | PRODUCT_SPEC.md, QA_PLAN.md | E2E Testing Integration (CI/CD) |
-| enhanced-cli-config | `feature/enhanced-cli-config/` | IMPLEMENTATION_PLAN.md, PRODUCT_SPEC.md, QA_PLAN.md, REVIEW_SUMMARY.md, TECH_SPEC.md | Product Spec: Enhanced CLI Configuration Management |
-| enhanced-wcag-audit | `feature/enhanced-wcag-audit/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Enhanced WCAG Accessibility Audit |
-| form-filling | `feature/form-filling/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: Form Filling |
-| gasoline-ci | `feature/gasoline-ci/` | GASOLINE_CI_REVIEW.md, PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md, gasoline-ci-review-stub-archived.md, gasoline-ci-review.md | Gasoline CI Infrastructure (v6) |
-| local-web-scraping | `feature/local-web-scraping/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: Local Web Scraping |
-| mcp-tool-descriptions | `feature/mcp-tool-descriptions/` | MCP_TOOL_DESCRIPTIONS_REVIEW.md, mcp-tool-descriptions-review.md | (See folder for details) |
-| pagination | `feature/pagination/` | PRODUCT_SPEC.md, TECH_SPEC.md | Pagination for Large Datasets - Product Spec |
-| performance-audit | `feature/performance-audit/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Performance Audit |
-| pr-preview-exploration | `feature/pr-preview-exploration/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | PR Preview Exploration |
-| project-isolation | `feature/project-isolation/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: Project Isolation |
-| query-dom | `feature/query-dom/` | PRODUCT_SPEC.md, QA_PLAN.md | Query DOM |
-| read-only-mode | `feature/read-only-mode/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: Read-Only Mode |
-| seo-audit | `feature/seo-audit/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | SEO Audit |
-| state-time-travel | `feature/state-time-travel/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: State Time-Travel |
-| tab-tracking-ux | `feature/tab-tracking-ux/` | PRODUCT_SPEC.md, QA_PLAN.md | Tab Tracking UX Improvements |
-| test-generation | `feature/test-generation/` | COMMIT_MESSAGE.md, COMPETITIVE_ADVANTAGE.md, MIGRATION.md, PRODUCT_SPEC.md, QA_PLAN.md, QUESTIONS.md, QUICK_START.md, REVIEW.md, STATUS.md, TECH_SPEC.md, UAT_GUIDE.md, VALIDATION_GUIDE.md, VALIDATION_PLAN.md, WAKE_UP.md, test-generation-review.md | Test Generation from Context |
-| tool-allowlisting | `feature/tool-allowlisting/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: Tool Allowlisting |
-| visual-semantic-bridge | `feature/visual-semantic-bridge/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Product Spec: Visual-Semantic Bridge |
+| a11y-tree-snapshots | `feature/a11y-tree-snapshots/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| advanced-filtering | `feature/advanced-filtering/` | feature-proposal.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| agentic-cicd | `feature/agentic-cicd/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| agentic-e2e-repair | `feature/agentic-e2e-repair/` | agentic-e2e-repair-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| ai-capture-control | `feature/ai-capture-control/` | ai-capture-control-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| ai-web-pilot | `feature/ai-web-pilot/` | ai-web-pilot-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| analyze-tool | `feature/analyze-tool/` | analyze-tool-review.md, migration.md, product-spec.md, qa-plan.md, review.md, tech-spec.md, uat-guide.md | (See folder for details) |
+| annotated-screenshots | `feature/annotated-screenshots/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| api-key-auth | `feature/api-key-auth/` | api-key-auth-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| api-schema | `feature/api-schema/` | api-schema-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| auto-paste-screenshots | `feature/auto-paste-screenshots/` | product-spec.md, qa-plan.md | (See folder for details) |
+| behavioral-baselines | `feature/behavioral-baselines/` | behavioral-baselines-review-stub-archived.md, behavioral-baselines-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| best-practices-audit | `feature/best-practices-audit/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| binary-format-detection | `feature/binary-format-detection/` | binary-format-detection-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| budget-thresholds | `feature/budget-thresholds/` | budget-thresholds-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| buffer-clearing | `feature/buffer-clearing/` | product-spec.md, tech-spec.md | (See folder for details) |
+| causal-diffing | `feature/causal-diffing/` | causal-diffing-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| ci-infrastructure | `feature/ci-infrastructure/` | business-pitch.md, executive-summary.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| compressed-diffs | `feature/compressed-diffs/` | compressed-diffs-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| config-profiles | `feature/config-profiles/` | config-profiles-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| context-streaming | `feature/context-streaming/` | context-streaming-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| cpu-network-emulation | `feature/cpu-network-emulation/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| cursor-pagination | `feature/cursor-pagination/` | feature-proposal.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| deployment-watchdog | `feature/deployment-watchdog/` | deployment-watchdog-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| design-audit-archival | `feature/design-audit-archival/` | feature-tracking.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| dialog-handling | `feature/dialog-handling/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| dom-fingerprinting | `feature/dom-fingerprinting/` | dom-fingerprinting-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| drag-drop-automation | `feature/drag-drop-automation/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| dynamic-exposure | `feature/dynamic-exposure/` | dynamic-exposure-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| e2e-testing-integration | `feature/e2e-testing-integration/` | product-spec.md, qa-plan.md | (See folder for details) |
+| enhanced-cli-config | `feature/enhanced-cli-config/` | implementation-plan.md, product-spec.md, qa-plan.md, review-summary.md, tech-spec.md | (See folder for details) |
+| enhanced-wcag-audit | `feature/enhanced-wcag-audit/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| enterprise-audit | `feature/enterprise-audit/` | enterprise-audit-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| error-clustering | `feature/error-clustering/` | error-clustering-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| flow-recording | `feature/flow-recording/` | product-spec.md, qa-plan.md, recording-scenarios.md, tech-spec.md | (See folder for details) |
+| form-filling | `feature/form-filling/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| gasoline-ci | `feature/gasoline-ci/` | gasoline-ci-review-stub-archived.md, gasoline-ci-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| har-export | `feature/har-export/` | har-export-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| interception-deferral | `feature/interception-deferral/` | interception-deferral-review-stub-archived.md, interception-deferral-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| local-web-scraping | `feature/local-web-scraping/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| mcp-tool-descriptions | `feature/mcp-tool-descriptions/` | mcp-tool-descriptions-review.md | (See folder for details) |
+| memory-enforcement | `feature/memory-enforcement/` | memory-enforcement-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| noise-filtering | `feature/noise-filtering/` | noise-filtering-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| pagination | `feature/pagination/` | product-spec.md, tech-spec.md | (See folder for details) |
+| performance-audit | `feature/performance-audit/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| performance-budget | `feature/performance-budget/` | performance-budget-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| persistent-memory | `feature/persistent-memory/` | persistent-memory-review.md, product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| pr-preview-exploration | `feature/pr-preview-exploration/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| project-isolation | `feature/project-isolation/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| push-alerts | `feature/push-alerts/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| push-regression | `feature/push-regression/` | product-spec.md, push-regression-review.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| query-dom | `feature/query-dom/` | product-spec.md, qa-plan.md | (See folder for details) |
+| rate-limiting | `feature/rate-limiting/` | product-spec.md, qa-plan.md, rate-limiting-review.md, tech-spec.md | (See folder for details) |
+| read-only-mode | `feature/read-only-mode/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| redaction-patterns | `feature/redaction-patterns/` | product-spec.md, qa-plan.md, redaction-patterns-review.md, tech-spec.md | (See folder for details) |
+| reproduction-enhancements | `feature/reproduction-enhancements/` | product-spec.md, qa-plan.md, reproduction-enhancements-review.md, tech-spec.md | (See folder for details) |
+| sarif-export | `feature/sarif-export/` | product-spec.md, qa-plan.md, sarif-export-review-boilerplate-archived.md, sarif-export-review-consolidated.md, sarif-export-review-critical-issues-archived.md, sarif-export-review-critical-issues.md, sarif-export-review-recommendations-archived.md, sarif-export-review-recommendations.md, sarif-export-review.md, tech-spec.md | (See folder for details) |
+| security-hardening | `feature/security-hardening/` | product-spec.md, qa-plan.md, security-hardening-review.md, tech-spec.md | (See folder for details) |
+| self-healing-tests | `feature/self-healing-tests/` | product-spec.md, qa-plan.md, self-healing-tests-review.md, tech-spec.md | (See folder for details) |
+| self-testing | `feature/self-testing/` | product-spec.md, qa-plan.md, self-testing-review.md, tech-spec.md | (See folder for details) |
+| seo-audit | `feature/seo-audit/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| spa-route-measurement | `feature/spa-route-measurement/` | product-spec.md, qa-plan.md, spa-route-measurement-review.md, tech-spec.md | (See folder for details) |
+| state-time-travel | `feature/state-time-travel/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| tab-tracking-ux | `feature/tab-tracking-ux/` | product-spec.md, qa-plan.md | (See folder for details) |
+| temporal-graph | `feature/temporal-graph/` | product-spec.md, qa-plan.md, tech-spec.md, temporal-graph-review.md | (See folder for details) |
+| test-generation | `feature/test-generation/` | commit-message.md, competitive-advantage.md, migration.md, product-spec.md, qa-plan.md, questions.md, quick-start.md, review.md, status.md, tech-spec.md, test-generation-review.md, uat-guide.md, validation-guide.md, validation-plan.md, wake-up.md | (See folder for details) |
+| tool-allowlisting | `feature/tool-allowlisting/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| ttl-retention | `feature/ttl-retention/` | product-spec.md, qa-plan.md, tech-spec.md, ttl-retention-review.md | (See folder for details) |
+| visual-semantic-bridge | `feature/visual-semantic-bridge/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| web-vitals | `feature/web-vitals/` | product-spec.md, qa-plan.md, tech-spec.md, web-vitals-review.md | (See folder for details) |
+| workflow-integration | `feature/workflow-integration/` | product-spec.md, qa-plan.md, tech-spec.md, workflow-integration-review.md | (See folder for details) |
 
 ---
 

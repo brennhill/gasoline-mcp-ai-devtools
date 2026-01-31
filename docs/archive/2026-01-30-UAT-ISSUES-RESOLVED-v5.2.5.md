@@ -291,7 +291,7 @@ All UAT issues resolved:
 - [x] Issue #4 investigated and documented (network_bodies working as designed)
 - [x] Issue #5 fixed (script injection only on tracked pages)
 - [x] Issue #6 evaluated and deferred to v5.3 (non-critical)
-- [x] All fixes documented in CRITICAL_FIXES_v5.2.5.md
+- [x] All fixes documented in critical-fixes-v5.2.5.md
 - [x] TypeScript recompiled successfully
 
 **v5.2.5 is ready for Chrome Web Store deployment! 🚀**
@@ -299,6 +299,6 @@ All UAT issues resolved:
 ---
 
 ## Reference
-- Full UAT Report: [UAT-RESULTS-2026-01-27.md](./UAT-RESULTS-2026-01-27.md)
+- Full UAT Report: [uat-results-2026-01-27.md](./uat-results-2026-01-27.md)
 - Build Tested: f1b1f4f
 - Schema Improvements: network_waterfall, network_bodies, query_dom, validate_api, accessibility
