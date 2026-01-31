@@ -5,6 +5,41 @@ All notable changes to Dev Console will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.0] - 2026-01-31
+
+### Added
+
+- **Complete filename standardization** — All 335 documentation files standardized to `lowercase-with-hyphens` format (product-spec.md, tech-spec.md, qa-plan.md across all 71 features)
+- **Documentation automation scripts** — Feature navigation generator (`generate-feature-navigation.py`) and lint checker (`lint-documentation.py`) with link verification and frontmatter validation
+- **Mandatory documentation workflow** — `documentation-maintenance.md` with quality gates, commit checklists, and enforcement rules
+- **Comprehensive documentation guides** — `docs/features/README.md` (LLM-optimized feature guide), `docs/cross-reference.md` (dependency mapping), `docs/core/codebase-canon-v5.3.md` (baseline reference)
+- **YAML frontmatter metadata** — All feature docs include status, scope, ai-priority, tags, relates-to, and last-verified fields for AI discoverability
+- **On-demand context loading strategy** — `context-on-demand.md` with task-based documentation loading to minimize startup overhead
+- **Optimized startup context** — Reduced initial documentation load to ~5K tokens
+
+### Changed
+
+- **Process enforcement** — Documentation updates now mandatory before commit; lint checker blocks broken links and stale metadata
+- **Feature documentation structure** — Unified naming and metadata across all 71 features with status tracking
+- **Navigation automation** — Feature index auto-generated from folder structure and frontmatter
+- **Reference authority** — v5.3 established as codebase baseline with recovery guide for version verification
+
+### Technical Details
+
+- **372 files updated** for reference consistency after 335 file renames
+- **Zero breaking changes** — All documentation functionality preserved during standardization
+- **Quality gates enforced** — Pre-commit lint checking prevents documentation rot
+- **AI-optimized navigation** — Multiple discovery paths for LLM agents (quick-reference, feature-navigation, cross-reference, context-on-demand)
+
+### Documentation Improvements
+
+- Removed 2 broken stub files (`product-spec.md`, `tech-spec.md` in core/)
+- Consolidated duplicate reviews (SARIF, behavioral-baselines, interception-deferral)
+- Archived 11 stale tab-tracking documents with recovery guide
+- Added comprehensive metadata to 130+ feature docs
+
+---
+
 ## [5.2.5] - 2026-01-30
 
 ### Fixed
