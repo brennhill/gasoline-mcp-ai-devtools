@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/cursor-pagination
+ai-priority: medium
+tags: [proposal]
+relates-to: [TECH_SPEC.md, QA_PLAN.md]
+last-verified: 2026-01-31
+---
+
 # Cursor-Based Pagination for Live Data - Feature Proposal
 
 **Feature:** Cursor-Based Pagination
@@ -136,7 +145,7 @@ timestamp := entry.Timestamp.Format(time.RFC3339)
 timestamp := entry.Timestamp
 ```
 
-**Documented standard:** See [docs/core/TIMESTAMP_STANDARD.md](../../../core/TIMESTAMP_STANDARD.md)
+**Documented standard:** See [docs/core/timestamp-standard.md](../../../core/timestamp-standard.md)
 
 ### Concurrency Model (Extended Read Lock)
 

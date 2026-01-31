@@ -27,7 +27,17 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 
 	c.wsTotalAdded += int64(len(events))
 	now := time.Now()
+
+	// Collect active test IDs for tagging
+	activeTestIDs := make([]string, 0)
+	for testID := range c.activeTestIDs {
+		activeTestIDs = append(activeTestIDs, testID)
+	}
+
 	for i := range events {
+		// Tag entry with active test IDs
+		events[i].TestIDs = activeTestIDs
+
 		// Detect binary format in message data
 		if events[i].Event == "message" && events[i].BinaryFormat == "" && len(events[i].Data) > 0 {
 			if format := DetectBinaryFormat([]byte(events[i].Data)); format != nil {
@@ -121,6 +131,19 @@ func (c *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 		}
 		if filter.Direction != "" && c.wsEvents[i].Direction != filter.Direction {
 			continue
+		}
+		// Test ID filtering: if test_id is specified, check if it's in the event's TestIDs
+		if filter.TestID != "" {
+			found := false
+			for _, tid := range c.wsEvents[i].TestIDs {
+				if tid == filter.TestID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
 		}
 		filtered = append(filtered, c.wsEvents[i])
 	}
@@ -419,6 +442,7 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 		BeforeCursor      string `json:"before_cursor"`
 		SinceCursor       string `json:"since_cursor"`
 		RestartOnEviction bool   `json:"restart_on_eviction"`
+		TestID            string `json:"test_id"` // Filter by test ID (empty = no filter)
 	}
 	if err := json.Unmarshal(args, &arguments); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -449,6 +473,19 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 		// Direction filter
 		if arguments.Direction != "" && e.Entry.Direction != arguments.Direction {
 			continue
+		}
+		// Test ID filtering: if test_id is specified, check if it's in the event's TestIDs
+		if arguments.TestID != "" {
+			found := false
+			for _, tid := range e.Entry.TestIDs {
+				if tid == arguments.TestID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
 		}
 		filtered = append(filtered, e)
 	}

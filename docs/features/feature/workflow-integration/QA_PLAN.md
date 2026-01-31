@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/workflow-integration/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Workflow Integration
 
 > QA plan for the Workflow Integration feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification.

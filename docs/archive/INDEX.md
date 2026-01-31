@@ -5,6 +5,9 @@ This directory contains historical documents, analysis reports, and session summ
 ## Contents
 
 ### UAT & Testing Reports
+- **2026-01-30-UAT-ISSUES-RESOLVED-v5.2.5.md** — Issue tracker for v5.2.5 UAT (all resolved)
+- **2026-01-31-UAT-TEST-PLAN-v1.md** — Original UAT plan (superseded by v5.3 checklist)
+- **2026-01-31-UAT-TEST-PLAN-v2.md** — Updated UAT plan v2 for v5.2.0 (superseded by v5.3 checklist)
 - **ANALYZE_TOOL_TEST_PLAN.md** — Test plan for analyze tool feature
 - **COMPREHENSIVE_UAT_REPORT.md** — Full UAT findings (v5.1)
 - **FINAL_UAT_REPORT.md** — Final UAT sign-off report
@@ -34,12 +37,17 @@ These documents are kept for:
 - **Audit trail** — Security and quality decisions made
 - **Learning** — Future reference when similar issues arise
 
+## Special Archive Folders
+
+- **stale-tracking/** — Abandoned or stale feature tracking docs (tab tracking, UAT from Jan 27)
+  - See [stale-tracking/README.md](stale-tracking/README.md) for recovery path if feature resumes
+
 ## Related Active Documentation
 
 For current issues, see:
-- [docs/core/KNOWN-ISSUES.md](../core/KNOWN-ISSUES.md) — Current known issues
-- [docs/core/RELEASE.md](../core/RELEASE.md) — Release process
+- [docs/core/known-issues.md](../core/known-issues.md) — Current known issues
+- [docs/core/release.md](../core/release.md) — Release process
 
 For roadmap and features:
 - [docs/roadmap.md](../roadmap.md) — Current product roadmap
-- [docs/ROADMAP-STRATEGY-ANALYSIS.md](../ROADMAP-STRATEGY-ANALYSIS.md) — Strategic roadmap analysis
+- [docs/roadmap-strategy-analysis.md](../roadmap-strategy-analysis.md) — Strategic roadmap analysis

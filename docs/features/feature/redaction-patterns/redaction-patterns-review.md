@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/redaction-patterns/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [TECH_SPEC.md, PRODUCT_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # Redaction Patterns Review (Migrated)
 
 > **[MIGRATION NOTICE]**

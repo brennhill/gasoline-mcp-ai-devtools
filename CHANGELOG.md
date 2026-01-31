@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known Issues
 
-See [KNOWN-ISSUES.md](KNOWN-ISSUES.md) for issues targeted for v5.2.
+See [KNOWN-ISSUES.md](known-issues.md) for issues targeted for v5.2.
 
 ## [5.0.0] - 2026-01-26
 

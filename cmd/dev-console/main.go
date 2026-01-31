@@ -1980,6 +1980,24 @@ func setupHTTPRoutes(server *Server, capture *Capture, sseRegistry *SSERegistry)
 				return
 			}
 
+			// Tag entries with active test IDs from capture
+			capture.mu.RLock()
+			activeTestIDs := make([]string, 0)
+			for testID := range capture.activeTestIDs {
+				activeTestIDs = append(activeTestIDs, testID)
+			}
+			capture.mu.RUnlock()
+
+			// Add test_ids to each log entry if there are active tests
+			if len(activeTestIDs) > 0 {
+				for i := range body.Entries {
+					if body.Entries[i] == nil {
+						body.Entries[i] = make(LogEntry)
+					}
+					body.Entries[i]["test_ids"] = activeTestIDs
+				}
+			}
+
 			valid, rejected := validateLogEntries(body.Entries)
 			received := server.addEntries(valid)
 			jsonResponse(w, http.StatusOK, map[string]int{

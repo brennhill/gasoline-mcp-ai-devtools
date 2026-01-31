@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/self-testing/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Self-Testing Infrastructure
 
 > QA plan for the Self-Testing Infrastructure feature (Features 32, 33, 34). Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification. This feature exposes HTTP GET endpoints for captured data, an HTTP MCP endpoint, and a Playwright-based UAT harness.

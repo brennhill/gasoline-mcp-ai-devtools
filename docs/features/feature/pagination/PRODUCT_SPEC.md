@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/pagination
+ai-priority: medium
+tags: [feature]
+relates-to: [TECH_SPEC.md, QA_PLAN.md]
+last-verified: 2026-01-31
+---
+
 # Pagination for Large Datasets - Product Spec
 
 **Feature:** Pagination for Large Datasets

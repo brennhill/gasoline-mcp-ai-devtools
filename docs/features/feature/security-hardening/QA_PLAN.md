@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/security-hardening/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Security Hardening
 
 > QA plan for the Security Hardening feature suite. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification. This feature encompasses four sub-tools: CSP Generator (`generate_csp`), Third-Party Risk Audit (`audit_third_parties`), Security Regression Detection (`diff_security`), and SRI Hash Generator (`generate_sri`).

@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/binary-format-detection/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [TECH_SPEC.md, PRODUCT_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # Binary Format Detection -- Engineering Review
 
 ## Executive Summary

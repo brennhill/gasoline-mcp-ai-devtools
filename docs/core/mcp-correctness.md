@@ -1,4 +1,15 @@
+---
+status: active
+scope: architecture/mcp
+ai-priority: high
+tags: [mcp, correctness, constraints, reference]
+relates-to: [../../.claude/refs/architecture.md, ../../.claude/refs/async-command-architecture.md]
+last-verified: 2026-01-31
+---
+
 # MCP Correctness
+
+**See Also:** [.claude/refs/architecture.md](../../.claude/refs/architecture.md) (canonical system design)
 
 Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-11-25) specification using SSE transport and custom HTTP bridge.
 

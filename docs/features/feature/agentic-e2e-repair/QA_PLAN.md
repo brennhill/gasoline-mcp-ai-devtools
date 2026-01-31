@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/agentic-e2e-repair/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Agentic E2E Repair
 
 > QA plan for the Agentic E2E Repair feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification. This is a WORKFLOW PATTERN that orchestrates existing Gasoline MCP tools — it does NOT introduce new tools or server features. QA focuses on the correctness and safety of the multi-tool orchestration sequence.

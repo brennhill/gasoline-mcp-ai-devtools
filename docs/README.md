@@ -7,12 +7,12 @@
 | What you need | Where to look |
 |---------------|---------------|
 | Project rules & commands | [`/CLAUDE.md`](../CLAUDE.md) |
-| System architecture | [`.claude/docs/architecture.md`](../.claude/docs/architecture.md) |
+| System architecture | [`.claude/refs/architecture.md`](../.claude/refs/architecture.md) |
 | Feature index (all features + status) | [`features/FEATURE-INDEX.md`](features/FEATURE-INDEX.md) |
-| UAT test plan | [`core/UAT-TEST-PLAN.md`](core/UAT-TEST-PLAN.md) |
-| Known issues | [`/KNOWN-ISSUES.md`](../KNOWN-ISSUES.md) |
+| UAT test plan (current) | [`core/uat-v5.3-checklist.md`](core/uat-v5.3-checklist.md) |
+| Known issues | [`core/known-issues.md`](core/known-issues.md) |
 | Changelog | [`/CHANGELOG.md`](../CHANGELOG.md) |
-| Release process | [`/RELEASE.md`](../RELEASE.md) |
+| Release process | [`core/release.md`](core/release.md) |
 
 ## Directory Structure
 
@@ -20,9 +20,9 @@
 docs/
 ├── README.md                  ← You are here (master index)
 ├── core/                      ← Cross-product specs, API specs, UAT
-│   ├── PRODUCT_SPEC.md        ← Product requirements
-│   ├── TECH_SPEC.md           ← Technical specification
-│   ├── UAT-TEST-PLAN.md       ← Canonical UAT checklist
+│   ├── UAT-v5.3-CHECKLIST.md  ← Current UAT checklist (canonical)
+│   ├── RELEASE.md             ← Release process & quality gates
+│   ├── KNOWN-ISSUES.md        ← Current blockers & issues
 │   ├── async-command-api.yaml ← OpenAPI 3.0 spec
 │   └── in-progress/           ← Active tracking docs, issue trackers
 ├── features/                  ← All feature documentation
@@ -76,7 +76,7 @@ Proposed → In-Progress → Shipped → (Deprecated → Archived)
 ### Creating a release
 1. Update `CHANGELOG.md` using the structured format
 2. Update `KNOWN-ISSUES.md` if issues are resolved
-3. Follow `/RELEASE.md` process
+3. Follow `/release.md` process
 
 ### Finding implementation details
 - Go source: `cmd/dev-console/*.go`

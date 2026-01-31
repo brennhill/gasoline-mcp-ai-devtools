@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/dom-fingerprinting/implementation
+ai-priority: high
+tags: [implementation, architecture]
+relates-to: [PRODUCT_SPEC.md, QA_PLAN.md]
+last-verified: 2026-01-31
+---
+
 > **[MIGRATION NOTICE]**
 > Canonical location for this tech spec. Migrated from `/docs/ai-first/tech-spec-dom-fingerprinting.md` on 2026-01-26.
 > See also: [Product Spec](PRODUCT_SPEC.md) and [Dom Fingerprinting Review](dom-fingerprinting-review.md).

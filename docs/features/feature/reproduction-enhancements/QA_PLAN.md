@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/reproduction-enhancements/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Reproduction Enhancements
 
 > QA plan for the Reproduction Enhancements feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification. This feature adds screenshot capture, visual assertions, data fixture generation, and bug report generation to reproduction scripts and test generation.

@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/rate-limiting/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Rate Limiting & Circuit Breaker
 
 > QA plan for the Rate Limiting & Circuit Breaker feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification. This feature encompasses server-side rate limiting, server-side circuit breaker, extension-side exponential backoff, and extension-side circuit breaker.

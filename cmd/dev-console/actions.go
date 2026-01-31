@@ -27,7 +27,17 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 
 	c.actionTotalAdded += int64(len(actions))
 	now := time.Now()
+
+	// Collect active test IDs for tagging
+	activeTestIDs := make([]string, 0)
+	for testID := range c.activeTestIDs {
+		activeTestIDs = append(activeTestIDs, testID)
+	}
+
 	for i := range actions {
+		// Tag entry with active test IDs
+		actions[i].TestIDs = activeTestIDs
+
 		// Redact password values on ingest
 		if actions[i].InputType == "password" && actions[i].Value != "[redacted]" {
 			actions[i].Value = "[redacted]"
@@ -70,6 +80,19 @@ func (c *Capture) GetEnhancedActions(filter EnhancedActionFilter) []EnhancedActi
 		if filter.URLFilter != "" && !strings.Contains(c.enhancedActions[i].URL, filter.URLFilter) {
 			continue
 		}
+		// Test ID filtering: if test_id is specified, check if it's in the action's TestIDs
+		if filter.TestID != "" {
+			found := false
+			for _, tid := range c.enhancedActions[i].TestIDs {
+				if tid == filter.TestID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
 		filtered = append(filtered, c.enhancedActions[i])
 	}
 
@@ -104,6 +127,7 @@ func (h *ToolHandler) toolGetEnhancedActions(req JSONRPCRequest, args json.RawMe
 	var arguments struct {
 		LastN             int    `json:"last_n"`
 		URL               string `json:"url"`
+		TestID            string `json:"test_id"` // Filter by test ID (empty = no filter)
 		AfterCursor       string `json:"after_cursor"`
 		BeforeCursor      string `json:"before_cursor"`
 		SinceCursor       string `json:"since_cursor"`
@@ -128,6 +152,19 @@ func (h *ToolHandler) toolGetEnhancedActions(req JSONRPCRequest, args json.RawMe
 		// URL filter
 		if arguments.URL != "" && !strings.Contains(e.Entry.URL, arguments.URL) {
 			continue
+		}
+		// Test ID filtering: if test_id is specified, check if it's in the action's TestIDs
+		if arguments.TestID != "" {
+			found := false
+			for _, tid := range e.Entry.TestIDs {
+				if tid == arguments.TestID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
 		}
 		filtered = append(filtered, e)
 	}

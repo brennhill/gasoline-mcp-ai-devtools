@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/best-practices-audit/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Best Practices Audit
 
 > QA plan for the Best Practices Audit feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification.

@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/temporal-graph/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Cross-Session Temporal Graph
 
 > QA plan for the Cross-Session Temporal Graph feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification.

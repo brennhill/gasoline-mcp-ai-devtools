@@ -316,16 +316,24 @@ func TestHandleTestBoundary_Start(t *testing.T) {
 		t.Errorf("expected action=start, got %v", resp["action"])
 	}
 
-	// Verify current test ID is set
-	if capture.GetCurrentTestID() != "login-flow" {
-		t.Errorf("expected current test ID to be login-flow, got %q", capture.GetCurrentTestID())
+	// Verify test ID is active
+	activeIDs := capture.GetActiveTestIDs()
+	found := false
+	for _, id := range activeIDs {
+		if id == "login-flow" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected login-flow to be active, got %v", activeIDs)
 	}
 }
 
 func TestHandleTestBoundary_End(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
-	capture.SetCurrentTestID("login-flow")
+	capture.SetTestBoundaryStart("login-flow")
 
 	handler := handleTestBoundary(capture)
 	body := `{"test_id": "login-flow", "action": "end"}`
@@ -339,9 +347,12 @@ func TestHandleTestBoundary_End(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	// Verify current test ID is cleared
-	if capture.GetCurrentTestID() != "" {
-		t.Errorf("expected empty test ID after end, got %q", capture.GetCurrentTestID())
+	// Verify test ID is no longer active
+	activeIDs := capture.GetActiveTestIDs()
+	for _, id := range activeIDs {
+		if id == "login-flow" {
+			t.Errorf("expected login-flow to be inactive after end, but it's active in %v", activeIDs)
+		}
 	}
 }
 
@@ -446,8 +457,8 @@ func TestCaptureClearAll(t *testing.T) {
 		{Type: "click"},
 	})
 
-	// Set a test ID
-	capture.SetCurrentTestID("test-1")
+	// Set a test boundary
+	capture.SetTestBoundaryStart("test-1")
 
 	capture.ClearAll()
 
@@ -460,7 +471,7 @@ func TestCaptureClearAll(t *testing.T) {
 	if len(capture.GetEnhancedActions(EnhancedActionFilter{})) != 0 {
 		t.Error("expected 0 actions after ClearAll")
 	}
-	if capture.GetCurrentTestID() != "" {
-		t.Error("expected empty test ID after ClearAll")
+	if len(capture.GetActiveTestIDs()) != 0 {
+		t.Error("expected no active test IDs after ClearAll")
 	}
 }

@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/auto-paste-screenshots/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Auto-Paste Screenshots to IDE
 
 > QA plan for the Auto-Paste Screenshots to IDE feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification.

@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/enhanced-cli-config/implementation
+ai-priority: high
+tags: [implementation, planning]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # Implementation Plan: Enhanced CLI Configuration Management
 
 **Timeline:** 24-30 hours (developer time for both NPM + PyPI)

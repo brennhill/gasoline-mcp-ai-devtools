@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/enterprise-audit/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Enterprise Audit & Governance
 
 > QA plan for the Enterprise Audit & Governance feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification. This feature spans four tiers: AI Audit Trail, Data Governance, Operational Safety, and Multi-Tenant & Access Control.

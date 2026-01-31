@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/advanced-filtering
+ai-priority: medium
+tags: [proposal]
+relates-to: [TECH_SPEC.md, QA_PLAN.md]
+last-verified: 2026-01-31
+---
+
 # Advanced Filtering for Signal-to-Noise - Feature Proposal
 
 **Feature:** Advanced Filtering for Large Datasets

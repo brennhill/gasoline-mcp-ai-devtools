@@ -43,7 +43,7 @@
 **BEFORE PROCEEDING, USER MUST:**
 
 1. **Run UAT Checklist**
-   - Follow [docs/core/UAT-v5.3-CHECKLIST.md](UAT-v5.3-CHECKLIST.md)
+   - Follow [docs/core/uat-v5.3-checklist.md](uat-v5.3-checklist.md)
    - Test all pagination features
    - Test buffer clearing (all modes)
    - Test version checking (server + extension)

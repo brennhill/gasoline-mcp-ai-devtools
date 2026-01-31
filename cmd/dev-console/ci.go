@@ -78,11 +78,14 @@ func handleSnapshot(server *Server, capture *Capture) http.HandlerFunc {
 		networkBodies := capture.GetNetworkBodies(NetworkBodyFilter{})
 		enhancedActions := capture.GetEnhancedActions(EnhancedActionFilter{})
 
-		// Apply test_id label (use current test ID if not specified).
+		// Apply test_id label (use first active test ID if not specified).
 		// Note: test_id is currently for labeling only. Full per-entry filtering
 		// would require storing test boundary timestamps alongside buffer entries.
 		if testID == "" {
-			testID = capture.GetCurrentTestID()
+			activeIDs := capture.GetActiveTestIDs()
+			if len(activeIDs) > 0 {
+				testID = activeIDs[0]
+			}
 		}
 
 		stats := computeSnapshotStats(logs, wsEvents, networkBodies)
@@ -154,9 +157,9 @@ func handleTestBoundary(capture *Capture) http.HandlerFunc {
 		now := time.Now().UTC()
 
 		if req.Action == "start" {
-			capture.SetCurrentTestID(req.TestID)
+			capture.SetTestBoundaryStart(req.TestID)
 		} else {
-			capture.SetCurrentTestID("")
+			capture.SetTestBoundaryEnd(req.TestID)
 		}
 
 		jsonResponse(w, http.StatusOK, map[string]interface{}{
@@ -229,18 +232,31 @@ func computeSnapshotStats(logs []LogEntry, wsEvents []WebSocketEvent, networkBod
 // Capture methods for test boundary tracking
 // ============================================
 
-// GetCurrentTestID returns the current test ID set via /test-boundary.
-func (c *Capture) GetCurrentTestID() string {
+// GetActiveTestIDs returns the list of currently active test IDs.
+func (c *Capture) GetActiveTestIDs() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.currentTestID
+	result := make([]string, 0, len(c.activeTestIDs))
+	for testID := range c.activeTestIDs {
+		result = append(result, testID)
+	}
+	return result
 }
 
-// SetCurrentTestID sets the current test ID for correlating entries.
-func (c *Capture) SetCurrentTestID(id string) {
+// SetTestBoundaryStart adds a test ID to the active set for correlating entries.
+// Deprecated: Use test_boundary_start action via configure tool instead.
+func (c *Capture) SetTestBoundaryStart(id string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.currentTestID = id
+	c.activeTestIDs[id] = true
+}
+
+// SetTestBoundaryEnd removes a test ID from the active set.
+// Deprecated: Use test_boundary_end action via configure tool instead.
+func (c *Capture) SetTestBoundaryEnd(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.activeTestIDs, id)
 }
 
 // ClearAll resets all capture buffers atomically.
@@ -259,7 +275,7 @@ func (c *Capture) ClearAll() {
 	c.connections = make(map[string]*connectionState)
 	c.closedConns = nil
 	c.connOrder = nil
-	c.currentTestID = ""
+	c.activeTestIDs = make(map[string]bool)
 
 	// Reset performance data (H-6 fix)
 	c.perf.snapshots = make(map[string]PerformanceSnapshot)

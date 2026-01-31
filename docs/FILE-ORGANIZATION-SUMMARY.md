@@ -55,8 +55,8 @@ Plus **INDEX.md** — Guide to what's archived and why.
 
 **Starting from root:**
 - Need to understand the project? → README.md ✓
-- Want to release? → docs/core/RELEASE.md ✓
-- Seeing an error? → docs/core/KNOWN-ISSUES.md ✓
+- Want to release? → docs/core/release.md ✓
+- Seeing an error? → docs/core/known-issues.md ✓
 - Looking for historical context? → docs/archive/ ✓
 
 **From docs/archive/INDEX.md:**
@@ -80,6 +80,6 @@ Plus **INDEX.md** — Guide to what's archived and why.
 
 - **Project instructions:** CLAUDE.md (root)
 - **Active roadmap:** docs/roadmap.md
-- **Strategic analysis:** docs/ROADMAP-STRATEGY-ANALYSIS.md
+- **Strategic analysis:** docs/roadmap-strategy-analysis.md
 - **Feature specifications:** docs/features/
 - **Archived roadmaps:** docs/archive/

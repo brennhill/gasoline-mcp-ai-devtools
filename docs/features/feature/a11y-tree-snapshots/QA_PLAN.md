@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/a11y-tree-snapshots/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: A11y Tree Snapshots
 
 > QA plan for the A11y Tree Snapshots (Text-Based Page Representation) feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification.

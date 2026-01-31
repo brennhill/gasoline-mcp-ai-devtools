@@ -27,7 +27,17 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 
 	c.networkTotalAdded += int64(len(bodies))
 	now := time.Now()
+
+	// Collect active test IDs for tagging
+	activeTestIDs := make([]string, 0)
+	for testID := range c.activeTestIDs {
+		activeTestIDs = append(activeTestIDs, testID)
+	}
+
 	for i := range bodies {
+		// Tag entry with active test IDs
+		bodies[i].TestIDs = activeTestIDs
+
 		// Truncate request body
 		if len(bodies[i].RequestBody) > maxRequestBodySize {
 			bodies[i].RequestBody = bodies[i].RequestBody[:maxRequestBodySize] // #nosec G602 -- i is bounded by range
@@ -151,6 +161,19 @@ func (c *Capture) GetNetworkBodies(filter NetworkBodyFilter) []NetworkBody {
 		if filter.StatusMax > 0 && b.Status > filter.StatusMax {
 			continue
 		}
+		// Test ID filtering: if test_id is specified, check if it's in the entry's TestIDs
+		if filter.TestID != "" {
+			found := false
+			for _, tid := range b.TestIDs {
+				if tid == filter.TestID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
 		filtered = append(filtered, b)
 	}
 
@@ -189,7 +212,8 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		StatusMin int    `json:"status_min"`
 		StatusMax int    `json:"status_max"`
 		Limit     int    `json:"limit"`
-		TabId     int    `json:"tab_id"` // Filter by Chrome tab ID (0 = no filter)
+		TabId     int    `json:"tab_id"`   // Filter by Chrome tab ID (0 = no filter)
+		TestID    string `json:"test_id"`  // Filter by test ID (empty = no filter)
 	}
 	_ = json.Unmarshal(args, &arguments) // Optional args - zero values are acceptable defaults
 
@@ -199,6 +223,7 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		StatusMin: arguments.StatusMin,
 		StatusMax: arguments.StatusMax,
 		Limit:     arguments.Limit,
+		TestID:    arguments.TestID,
 	})
 
 	// Apply noise filtering

@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/buffer-clearing
+ai-priority: medium
+tags: [feature]
+relates-to: [TECH_SPEC.md, QA_PLAN.md]
+last-verified: 2026-01-31
+---
+
 # Buffer-Specific Clearing - Product Spec
 
 **Feature:** Buffer-Specific Clearing

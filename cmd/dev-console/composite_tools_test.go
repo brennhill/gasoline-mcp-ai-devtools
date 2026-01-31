@@ -156,7 +156,7 @@ func TestCompositeToolsModeEnumValues(t *testing.T) {
 	expectedEnums := map[string][]string{
 		"observe":   {"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "performance", "api", "accessibility", "changes", "timeline", "error_clusters", "history", "security_audit", "third_party_audit", "security_diff", "command_result", "pending_commands", "failed_commands"},
 		"generate":  {"reproduction", "test", "pr_summary", "sarif", "har", "csp", "sri"},
-		"configure": {"store", "load", "noise_rule", "dismiss", "clear", "capture", "record_event", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming"},
+		"configure": {"store", "load", "noise_rule", "dismiss", "clear", "capture", "record_event", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming", "test_boundary_start", "test_boundary_end"},
 		"interact":  {"highlight", "save_state", "load_state", "list_states", "delete_state", "execute_js", "navigate", "refresh", "back", "forward", "new_tab"},
 	}
 

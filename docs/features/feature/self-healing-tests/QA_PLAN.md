@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/self-healing-tests/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Self-Healing Tests
 
 > QA plan for the Self-Healing Tests feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification. This feature adds `observe({what: "test_diagnosis"})` and `generate({format: "test_fix"})` modes to existing tools.

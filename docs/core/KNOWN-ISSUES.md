@@ -1,3 +1,14 @@
+---
+status: active
+scope: issues/blockers
+ai-priority: high
+tags: [known-issues, blockers, v5.3, v6.0]
+version-applies-to: v5.3+
+relates-to: [RELEASE.md, UAT-v5.3-CHECKLIST.md, ../roadmap.md]
+last-verified: 2026-01-30
+canonical: true
+---
+
 # Known Issues & Roadmap
 
 ## v5.2.0 — In Progress
@@ -57,7 +68,7 @@ All known issues have been resolved in v5.2.
 
 ### Code Health
 
-See [docs/core/ARCHITECT-REVIEW.md](docs/core/ARCHITECT-REVIEW.md) for the principal architect code review with 12 prioritized recommendations.
+See [docs/core/architect-review.md](docs/core/architect-review.md) for the principal architect code review with 12 prioritized recommendations.
 
 ---
 

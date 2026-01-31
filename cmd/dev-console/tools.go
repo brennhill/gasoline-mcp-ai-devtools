@@ -1032,14 +1032,14 @@ func (h *ToolHandler) toolsList() []MCPTool {
 		},
 		{
 			Name:        "configure",
-			Description: "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots & compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear buffers - specify buffer parameter), health (server health check). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot, configure({action:'clear',buffer:'network'})→clear network buffers. \n\nUse when: isolating signal, filtering noise, or tracking state across multiple actions.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: {cleared, counts, total_cleared}\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}",
+			Description: "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots, mark test boundaries. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots & compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear buffers - specify buffer parameter), health (server health check), test_boundary_start (mark test start for concurrent test correlation), test_boundary_end (mark test end, unmark from logs/network/actions). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot, configure({action:'clear',buffer:'network'})→clear network buffers, configure({action:'test_boundary_start',test_id:'login-test',label:'Login Test'})→mark test start, configure({action:'test_boundary_end',test_id:'login-test'})→mark test end. \n\nUse when: isolating signal, filtering noise, tracking state across multiple actions, or correlating telemetry with specific tests.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: {cleared, counts, total_cleared}\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}\n- test_boundary_start: {status, test_id, label, message}\n- test_boundary_end: {status, test_id, was_active, message}",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
 					"action": map[string]interface{}{
 						"type":        "string",
 						"description": "Configuration action to perform",
-						"enum":        []string{"store", "load", "noise_rule", "dismiss", "clear", "capture", "record_event", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming"},
+						"enum":        []string{"store", "load", "noise_rule", "dismiss", "clear", "capture", "record_event", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming", "test_boundary_start", "test_boundary_end"},
 					},
 					"store_action": map[string]interface{}{
 						"type":        "string",
@@ -1192,6 +1192,15 @@ func (h *ToolHandler) toolsList() []MCPTool {
 						"enum":        []string{"info", "warning", "error"},
 						"description": "Minimum severity to stream (applies to streaming)",
 					},
+					// test boundary parameters
+					"test_id": map[string]interface{}{
+						"type":        "string",
+						"description": "Test ID for boundary marker (applies to test_boundary_start and test_boundary_end)",
+					},
+					"label": map[string]interface{}{
+						"type":        "string",
+						"description": "Human-readable label for test boundary (applies to test_boundary_start)",
+					},
 				},
 				"required": []string{"action"},
 			},
@@ -1342,8 +1351,17 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		resp = h.toolObservePendingCommands(req, args)
 	case "failed_commands":
 		resp = h.toolObserveFailedCommands(req, args)
+	// Recording modes
+	case "recordings":
+		resp = h.toolGetRecordings(req, args)
+	case "recording_actions":
+		resp = h.toolGetRecordingActions(req, args)
+	case "playback_results":
+		resp = h.toolGetPlaybackResults(req, args)
+	case "log_diff_report":
+		resp = h.toolGetLogDiffReport(req, args)
 	default:
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+params.What, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+params.What, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands, recordings, recording_actions, playback_results, log_diff_report"))}
 	}
 
 	// Prepend tracking status warning when no tab is tracked
@@ -1483,6 +1501,18 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 		resp = h.toolGetHealth(req)
 	case "streaming":
 		resp = h.toolConfigureStreamingWrapper(req, args)
+	case "test_boundary_start":
+		resp = h.toolConfigureTestBoundaryStart(req, args)
+	case "test_boundary_end":
+		resp = h.toolConfigureTestBoundaryEnd(req, args)
+	case "recording_start":
+		resp = h.toolConfigureRecordingStart(req, args)
+	case "recording_stop":
+		resp = h.toolConfigureRecordingStop(req, args)
+	case "playback":
+		resp = h.toolConfigurePlayback(req, args)
+	case "log_diff":
+		resp = h.toolConfigureLogDiff(req, args)
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown configure action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
 	}
@@ -2075,6 +2105,110 @@ func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMe
 	ctx := h.sessionStore.LoadSessionContext()
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Session context loaded", ctx)}
+}
+
+// ============================================
+// Test Boundary Tool Implementations
+// ============================================
+
+func (h *ToolHandler) toolConfigureTestBoundaryStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		TestID string `json:"test_id"`
+		Label  string `json:"label"`
+	}
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &params); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
+
+	if params.TestID == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'test_id' is missing", "Add the 'test_id' parameter", withParam("test_id"))}
+	}
+
+	// Lock capture and add test ID to active set
+	h.capture.mu.Lock()
+	h.capture.activeTestIDs[params.TestID] = true
+	h.capture.mu.Unlock()
+
+	// Emit a log marker to record boundary start
+	label := params.Label
+	if label == "" {
+		label = "Test: " + params.TestID
+	}
+	now := time.Now()
+	logEntry := LogEntry{
+		"timestamp": now.Format(time.RFC3339Nano),
+		"level":     "info",
+		"message":   "[TEST_BOUNDARY_START] " + label,
+		"category":  "TEST_BOUNDARY",
+		"test_ids":  []string{params.TestID},
+	}
+
+	// Add to server log entries
+	h.MCPHandler.server.mu.Lock()
+	h.MCPHandler.server.entries = append(h.MCPHandler.server.entries, logEntry)
+	if len(h.MCPHandler.server.entries) > h.MCPHandler.server.maxEntries {
+		h.MCPHandler.server.entries = h.MCPHandler.server.entries[1:]
+	}
+	h.MCPHandler.server.mu.Unlock()
+
+	responseData := map[string]interface{}{
+		"status":   "ok",
+		"test_id":  params.TestID,
+		"label":    label,
+		"message":  "Test boundary started",
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Test boundary started", responseData)}
+}
+
+func (h *ToolHandler) toolConfigureTestBoundaryEnd(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		TestID string `json:"test_id"`
+	}
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &params); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
+
+	if params.TestID == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'test_id' is missing", "Add the 'test_id' parameter", withParam("test_id"))}
+	}
+
+	// Lock capture and remove test ID from active set
+	h.capture.mu.Lock()
+	wasActive := h.capture.activeTestIDs[params.TestID]
+	delete(h.capture.activeTestIDs, params.TestID)
+	h.capture.mu.Unlock()
+
+	// Emit a log marker to record boundary end
+	now := time.Now()
+	logEntry := LogEntry{
+		"timestamp": now.Format(time.RFC3339Nano),
+		"level":     "info",
+		"message":   "[TEST_BOUNDARY_END] Test: " + params.TestID,
+		"category":  "TEST_BOUNDARY",
+		"test_ids":  []string{params.TestID},
+	}
+
+	// Add to server log entries
+	h.MCPHandler.server.mu.Lock()
+	h.MCPHandler.server.entries = append(h.MCPHandler.server.entries, logEntry)
+	if len(h.MCPHandler.server.entries) > h.MCPHandler.server.maxEntries {
+		h.MCPHandler.server.entries = h.MCPHandler.server.entries[1:]
+	}
+	h.MCPHandler.server.mu.Unlock()
+
+	responseData := map[string]interface{}{
+		"status":     "ok",
+		"test_id":    params.TestID,
+		"was_active": wasActive,
+		"message":    "Test boundary ended",
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Test boundary ended", responseData)}
 }
 
 // ============================================

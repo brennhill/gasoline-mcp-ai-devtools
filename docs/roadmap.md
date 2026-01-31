@@ -1,6 +1,6 @@
 # Gasoline Versioning & Roadmap
 
-**Single source of truth. For strategic analysis, see [ROADMAP-STRATEGY-ANALYSIS.md](ROADMAP-STRATEGY-ANALYSIS.md).**
+**Single source of truth. For strategic analysis, see [ROADMAP-STRATEGY-ANALYSIS.md](roadmap-strategy-analysis.md).**
 
 ---
 
@@ -15,7 +15,7 @@ Gasoline's strategic differentiator is enabling AI to **close the feedback loop 
 ## Release Strategy
 
 - **v5.2** — ✅ All critical bugs fixed (v5.1 blockers). Ready to release.
-- **v5.3** — Critical usability fixes blocking AI workflows (pagination, buffer-specific clearing). **Must ship before v6.0.**
+- **v5.3** — ✅ Critical usability fixes complete (pagination, buffer-specific clearing). **v6.0 thesis now unblocked.**
 - **v6.0** — Release when core thesis is complete (Wave 1 + Wave 2 features). Single point release. **Marketing moment: "AI closes the feedback loop autonomously."**
 - **v6.1-6.8** — Post-thesis roadmap. Tier-based: moat → enterprise → production → optimization.
 - **v7** — If all roadmap features shipped, bump to v7 to signal full-featured product.
@@ -98,45 +98,36 @@ Gasoline's strategic differentiator is enabling AI to **close the feedback loop 
 
 ## v5.3: Critical Blockers (Before v6.0)
 
-**Goal:** Fix usability issues preventing AI workflows today.
+✅ **Complete** — All critical blockers removed. v6.0 thesis unblocked.
 
-### 1. Pagination for Large Datasets ⭐⭐⭐ HIGH PRIORITY
+### ✅ 1. Pagination for Large Datasets
 
-**Problem:** Network waterfall and other buffers return >440K characters, exceeding MCP token limits. AI cannot analyze network traffic.
-
-**Solution:** Add `offset` and `limit` parameters:
+**Implemented:** Cursor-based pagination with `limit`, `offset`, `after_cursor`, `before_cursor`, `since_cursor` parameters.
 ```javascript
 observe({what: "network_waterfall", limit: 100})
-observe({what: "network_waterfall", offset: 100, limit: 100})
+observe({what: "network_waterfall", after_cursor: "2026-01-30T10:15:23.456Z:1234", limit: 100})
+observe({what: "logs", since_cursor: "2026-01-30T10:00:00Z:0"})
 ```
 
-**Impact:** Solves token limit issue. Enables AI to query large datasets in chunks.
+**Impact:** Solves MCP token limit issue. AI can query large datasets in manageable chunks.
 
-**Effort:** 2-4 hours
+### ✅ 2. Buffer-Specific Clearing
 
----
-
-### 2. Buffer-Specific Clearing ⭐⭐⭐ HIGH PRIORITY
-
-**Problem:** `configure({action: "clear"})` only clears console logs. Network/WebSocket/action buffers accumulate indefinitely.
-
-**Solution:** Add buffer parameter:
+**Implemented:** Granular buffer control via `buffer` parameter in `configure({action: "clear"})`.
 ```javascript
-configure({action: "clear", buffer: "network"})    // Clear network waterfall
-configure({action: "clear", buffer: "websocket"})  // Clear WebSocket events
-configure({action: "clear", buffer: "actions"})    // Clear user actions
+configure({action: "clear", buffer: "network"})    // Clear network waterfall + bodies
+configure({action: "clear", buffer: "websocket"})  // Clear WebSocket events + status
+configure({action: "clear", buffer: "actions"})    // Clear user action buffer
 configure({action: "clear", buffer: "all"})        // Clear all buffers
 ```
 
-**Impact:** Granular buffer management. Prevents memory bloat.
-
-**Effort:** 1-2 hours
-
----
+**Impact:** Prevents memory bloat. Enables granular cleanup for long sessions.
 
 ### 3. Server-Side Aggregation (Future) ⭐⭐
 
-**Problem:** Even with pagination, large datasets are verbose. Need summary views.
+**Status:** Deferred. Pagination proves sufficient for current needs.
+
+**Problem:** Even with pagination, large datasets can be verbose. Need summary views.
 
 **Solution:** Add aggregation endpoints:
 ```javascript
@@ -144,9 +135,7 @@ observe({what: "network_stats", group_by: "host"})
 → {"localhost:3000": {count: 150, avg_duration: 45ms, errors: 3}}
 ```
 
-**Impact:** Compact representation. Useful for overview/analysis.
-
-**Effort:** 4-6 hours. **Deferred until pagination proves insufficient.**
+**Effort:** 4-6 hours. Start only if pagination proves insufficient.
 
 ---
 
@@ -180,7 +169,7 @@ observe({what: "network_stats", group_by: "host"})
 
 **Organization:** Features grouped by tier. Each tier validates part of the thesis and unlocks the next market segment.
 
-**See [ROADMAP-STRATEGY-ANALYSIS.md](ROADMAP-STRATEGY-ANALYSIS.md) for detailed strategic analysis.**
+**See [ROADMAP-STRATEGY-ANALYSIS.md](roadmap-strategy-analysis.md) for detailed strategic analysis.**
 
 ---
 
@@ -273,6 +262,7 @@ observe({what: "network_stats", group_by: "host"})
 - **A11y Tree Snapshots** — Accessibility compression
 - **Enhanced WCAG Audit** — Deep accessibility beyond axe-core
 - **Annotated Screenshots** — Visual context for vision models
+- **Design Audit & Archival** — Screenshot archival + queryable design system compliance. Enables design regression testing across responsive variants (desktop/tablet/mobile) with semantic queries (component, variant, viewport, date, URL). Auto-capture on `observe({what: 'design-audit'})`. Disk-aware cleanup (5GB default). [Spec](../screenshot-archival-and-query.md) [Review](../screenshot-archival-and-query-review.md)
 
 ### v6.7: Advanced Interactions
 
@@ -309,8 +299,10 @@ If/when all features shipped:
 
 ### Critical Path (must serialize)
 ```
-v5.2 (bugs) → v5.3 (blockers) → v6.0 (thesis) → v6.1 (moat) → v6.2 (repair) → v6.3 (enterprise) → v6.4 (prod)
+✅ v5.2 (bugs) → ✅ v5.3 (blockers) → ⏳ v6.0 (thesis) → v6.1 (moat) → v6.2 (repair) → v6.3 (enterprise) → v6.4 (prod)
 ```
+
+**Status:** v5.2 + v5.3 complete. v6.0 thesis (Wave 1 + Wave 2) is next priority.
 
 ### Parallel Tracks (can start after v6.2)
 ```

@@ -265,7 +265,7 @@ If no `-ldflags` provided, defaults to `5.2.5` (see [cmd/dev-console/main.go:30]
 - This is informational only, not an error
 - Server logs this for diagnostics (allows debugging version-related issues)
 - If incompatibility issues occur, rebuild extension to match server version
-- Check [RELEASE.md](./RELEASE.md) for upgrade notes
+- Check [RELEASE.md](./release.md) for upgrade notes
 
 ## API Reference
 
@@ -477,6 +477,6 @@ resetVersionCheck();
 
 ## See Also
 
-- [RELEASE.md](./RELEASE.md) - Version history and upgrade notes
+- [RELEASE.md](./release.md) - Version history and upgrade notes
 - [README.md](../../README.md) - Installation and setup
 - [docs/plugin-server-communications.md](./plugin-server-communications.md) - Full protocol spec

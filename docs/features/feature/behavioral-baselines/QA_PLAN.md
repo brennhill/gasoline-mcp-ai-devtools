@@ -1,3 +1,12 @@
+---
+status: proposed
+scope: feature/behavioral-baselines/qa
+ai-priority: medium
+tags: [testing, qa]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC.md]
+last-verified: 2026-01-31
+---
+
 # QA Plan: Behavioral Baselines
 
 > QA plan for the Behavioral Baselines feature. Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification.
