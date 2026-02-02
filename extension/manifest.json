@@ -27,7 +27,7 @@
       "run_at": "document_start"
     }
   ],
-  "permissions": ["activeTab", "storage", "alarms", "tabs"],
+  "permissions": ["storage", "alarms", "tabs"],
   "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
   "options_ui": {
     "page": "options.html",
