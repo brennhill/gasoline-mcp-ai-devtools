@@ -60,7 +60,7 @@ last-verified: 2026-01-31
    - Integrated into pre-commit workflow
 
 9. **Added frontmatter to core docs**
-   - Marked canonical sources: `architecture.md`, `RELEASE.md`, `KNOWN-ISSUES.md`, `FEATURE-index.md`
+   - Marked canonical sources: `architecture.md`, `release.md`, `known-issues.md`, `FEATURE-index.md`
    - Ensures AI knows which docs are authoritative
 
 ### Phase 4: Clarified Authority ✅

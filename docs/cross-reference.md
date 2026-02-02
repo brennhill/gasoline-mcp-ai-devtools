@@ -18,13 +18,13 @@ last-verified: 2026-01-31
 ### Core Release & Status Documents
 
 ```
-RELEASE.md (process)
-├── KNOWN-ISSUES.md (blockers)
+release.md (process)
+├── known-issues.md (blockers)
 ├── UAT-v5.3-CHECKLIST.md (testing)
-└── VERSION-CHECKING.md (deployment)
+└── version-checking.md (deployment)
     └── CHANGELOG.md (history)
 
-KNOWN-ISSUES.md (blockers)
+known-issues.md (blockers)
 ├── FEATURE-index.md (status)
 └── features/*/product-spec.md (feature reqs)
 ```
@@ -133,7 +133,7 @@ api-key-auth (shipped)
 **Read these first:**
 1. `FEATURE-index.md` — What's shipped vs. proposed
 2. `features/feature/<name>/product-spec.md` — Requirements
-3. `KNOWN-ISSUES.md` — What's blocking
+3. `known-issues.md` — What's blocking
 
 **Then read:**
 - `ROADMAP-STRATEGY-ANALYSIS.md` — Roadmap for v6+
@@ -172,7 +172,7 @@ api-key-auth (shipped)
 
 **Then read:**
 - `features/<name>-review.md` — Known issues (regression prevention)
-- `KNOWN-ISSUES.md` — Current blockers
+- `known-issues.md` — Current blockers
 - `.claude/refs/testing-examples.md` — Test patterns
 
 ---
@@ -221,7 +221,7 @@ When a document is updated, trace the impact:
 
 1. **If PRODUCT_SPEC changes** → Update TECH_SPEC, QA_PLAN, and review doc
 2. **If TECH_SPEC changes** → Update QA_PLAN, and potentially ADR
-3. **If QA_PLAN changes** → Check RELEASE.md quality gates
+3. **If QA_PLAN changes** → Check release.md quality gates
 4. **If status changes** → Update FEATURE-index.md
 5. **If feature supersedes another** → Mark old feature deprecated, update `supersedes:` field
 

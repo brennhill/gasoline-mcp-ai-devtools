@@ -30,8 +30,8 @@ Messy, hard to navigate, unclear what was active vs. historical.
 ### docs/core/ (2 files moved)
 **Current, active documentation:**
 
-- **KNOWN-ISSUES.md** — Current known issues, v5.3 blockers (moved from root)
-- **RELEASE.md** — Release process and quality gates (moved from root)
+- **known-issues.md** — Current known issues, v5.3 blockers (moved from root)
+- **release.md** — Release process and quality gates (moved from root)
 
 Updated references in README.md to point to new locations.
 
