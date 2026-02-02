@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/error-clustering/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # Error Clustering Review
 
 _Migrated from /specs/error-clustering-review.md_

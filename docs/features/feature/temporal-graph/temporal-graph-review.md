@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/temporal-graph/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # Review: Cross-Session Temporal Graph (tech-spec-temporal-graph.md)
 
 ## Executive Summary

@@ -5,6 +5,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,6 +33,16 @@ type SSEConnection struct {
 type SSERegistry struct {
 	connections map[string]*SSEConnection
 	mu          sync.RWMutex
+}
+
+// generateSessionID creates a new random session ID
+func generateSessionID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to time-based ID if random fails
+		return fmt.Sprintf("session-%d", time.Now().UnixNano())
+	}
+	return "session-" + hex.EncodeToString(b)
 }
 
 // NewSSERegistry creates a new SSE connection registry

@@ -23,7 +23,7 @@ Messy, hard to navigate, unclear what was active vs. historical.
 
 - **README.md** — Primary project documentation, quick start, features comparison
 - **CHANGELOG.md** — Version history and release notes
-- **CLAUDE.md** — Project instructions for AI assistance
+- **claude.md** — Project instructions for AI assistance
 
 ---
 
@@ -47,7 +47,7 @@ Updated references in README.md to point to new locations.
 | **Security & Quality** | SECURITY_AUDIT_SUMMARY, PREVENTION_MEASURES_SUMMARY, LARGE_DATA_ISSUE_ANALYSIS |
 | **Session & Work** | SESSION_SUMMARY, PUBLISHING_SUMMARY, WORK_COMPLETE |
 
-Plus **INDEX.md** — Guide to what's archived and why.
+Plus **index.md** — Guide to what's archived and why.
 
 ---
 
@@ -55,11 +55,11 @@ Plus **INDEX.md** — Guide to what's archived and why.
 
 **Starting from root:**
 - Need to understand the project? → README.md ✓
-- Want to release? → docs/core/RELEASE.md ✓
-- Seeing an error? → docs/core/KNOWN-ISSUES.md ✓
+- Want to release? → docs/core/release.md ✓
+- Seeing an error? → docs/core/known-issues.md ✓
 - Looking for historical context? → docs/archive/ ✓
 
-**From docs/archive/INDEX.md:**
+**From docs/archive/index.md:**
 - Links back to active docs (KNOWN-ISSUES, RELEASE, roadmap)
 - Explains why each document was archived
 - Organized by category for quick reference
@@ -78,8 +78,8 @@ Plus **INDEX.md** — Guide to what's archived and why.
 
 ## Related
 
-- **Project instructions:** CLAUDE.md (root)
+- **Project instructions:** claude.md (root)
 - **Active roadmap:** docs/roadmap.md
-- **Strategic analysis:** docs/ROADMAP-STRATEGY-ANALYSIS.md
+- **Strategic analysis:** docs/roadmap-strategy-analysis.md
 - **Feature specifications:** docs/features/
 - **Archived roadmaps:** docs/archive/

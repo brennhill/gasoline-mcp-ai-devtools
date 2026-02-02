@@ -54,6 +54,12 @@ export interface MessageHandlerDependencies {
  * All messages are validated for sender origin to ensure they come from trusted extension contexts
  */
 export declare function installMessageListener(deps: MessageHandlerDependencies): void;
+/**
+ * Broadcast tracking state to the tracked tab.
+ * Used by favicon replacer to show/hide flicker animation.
+ * Exported for use in init.ts storage change handlers.
+ */
+export declare function broadcastTrackingState(): Promise<void>;
 interface StoredStateSnapshot extends BrowserStateSnapshot {
     name: string;
     size_bytes: number;

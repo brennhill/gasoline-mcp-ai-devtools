@@ -5,6 +5,7 @@
 package main
 
 import (
+	"github.com/dev-console/dev-console/internal/capture"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -17,13 +18,13 @@ import (
 
 // SnapshotResponse is the aggregated state returned by GET /snapshot.
 type SnapshotResponse struct {
-	Timestamp       string            `json:"timestamp"`
-	TestID          string            `json:"test_id,omitempty"`
-	Logs            []LogEntry        `json:"logs"`
-	WebSocket       []WebSocketEvent  `json:"websocket_events"`
-	NetworkBodies   []NetworkBody     `json:"network_bodies"`
-	EnhancedActions []EnhancedAction  `json:"enhanced_actions,omitempty"`
-	Stats           SnapshotStats     `json:"stats"`
+	Timestamp       string                     `json:"timestamp"`
+	TestID          string                     `json:"test_id,omitempty"`
+	Logs            []LogEntry                 `json:"logs"`
+	WebSocket       []capture.WebSocketEvent   `json:"websocket_events"`
+	NetworkBodies   []capture.NetworkBody      `json:"network_bodies"`
+	EnhancedActions []capture.EnhancedAction   `json:"enhanced_actions,omitempty"`
+	Stats           SnapshotStats              `json:"stats"`
 }
 
 // SnapshotStats summarizes the snapshot contents.
@@ -47,7 +48,7 @@ type TestBoundaryRequest struct {
 
 // handleSnapshot returns an HTTP handler for GET /snapshot.
 // Returns all captured state in a single response.
-func handleSnapshot(server *Server, capture *Capture) http.HandlerFunc {
+func handleSnapshot(server *Server, cap *capture.Capture) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -74,15 +75,18 @@ func handleSnapshot(server *Server, capture *Capture) http.HandlerFunc {
 		}
 
 		// Gather capture data
-		wsEvents := capture.GetWebSocketEvents(WebSocketEventFilter{})
-		networkBodies := capture.GetNetworkBodies(NetworkBodyFilter{})
-		enhancedActions := capture.GetEnhancedActions(EnhancedActionFilter{})
+		wsEvents := cap.GetAllWebSocketEvents()
+		networkBodies := cap.GetNetworkBodies()
+		enhancedActions := cap.GetAllEnhancedActions()
 
-		// Apply test_id label (use current test ID if not specified).
+		// Apply test_id label (use first active test ID if not specified).
 		// Note: test_id is currently for labeling only. Full per-entry filtering
 		// would require storing test boundary timestamps alongside buffer entries.
 		if testID == "" {
-			testID = capture.GetCurrentTestID()
+			activeIDs := cap.GetActiveTestIDs()
+			if len(activeIDs) > 0 {
+				testID = activeIDs[0]
+			}
 		}
 
 		stats := computeSnapshotStats(logs, wsEvents, networkBodies)
@@ -103,7 +107,7 @@ func handleSnapshot(server *Server, capture *Capture) http.HandlerFunc {
 
 // handleClear returns an HTTP handler for POST/DELETE /clear.
 // Resets all buffers atomically.
-func handleClear(server *Server, capture *Capture) http.HandlerFunc {
+func handleClear(server *Server, cap *capture.Capture) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" && r.Method != "DELETE" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -112,7 +116,7 @@ func handleClear(server *Server, capture *Capture) http.HandlerFunc {
 
 		previousCount := server.getEntryCount()
 		server.clearEntries()
-		capture.ClearAll()
+		cap.ClearAll()
 
 		jsonResponse(w, http.StatusOK, map[string]interface{}{
 			"cleared":         true,
@@ -123,7 +127,7 @@ func handleClear(server *Server, capture *Capture) http.HandlerFunc {
 
 // handleTestBoundary returns an HTTP handler for POST /test-boundary.
 // Marks test boundaries for correlation.
-func handleTestBoundary(capture *Capture) http.HandlerFunc {
+func handleTestBoundary(cap *capture.Capture) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -154,9 +158,9 @@ func handleTestBoundary(capture *Capture) http.HandlerFunc {
 		now := time.Now().UTC()
 
 		if req.Action == "start" {
-			capture.SetCurrentTestID(req.TestID)
+			cap.SetTestBoundaryStart(req.TestID)
 		} else {
-			capture.SetCurrentTestID("")
+			cap.SetTestBoundaryEnd(req.TestID)
 		}
 
 		jsonResponse(w, http.StatusOK, map[string]interface{}{
@@ -192,7 +196,7 @@ func filterLogsSince(logs []LogEntry, since time.Time) []LogEntry {
 }
 
 // computeSnapshotStats computes summary statistics for a snapshot.
-func computeSnapshotStats(logs []LogEntry, wsEvents []WebSocketEvent, networkBodies []NetworkBody) SnapshotStats {
+func computeSnapshotStats(logs []LogEntry, wsEvents []capture.WebSocketEvent, networkBodies []capture.NetworkBody) SnapshotStats {
 	stats := SnapshotStats{
 		TotalLogs: len(logs),
 	}
@@ -229,41 +233,3 @@ func computeSnapshotStats(logs []LogEntry, wsEvents []WebSocketEvent, networkBod
 // Capture methods for test boundary tracking
 // ============================================
 
-// GetCurrentTestID returns the current test ID set via /test-boundary.
-func (c *Capture) GetCurrentTestID() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.currentTestID
-}
-
-// SetCurrentTestID sets the current test ID for correlating entries.
-func (c *Capture) SetCurrentTestID(id string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.currentTestID = id
-}
-
-// ClearAll resets all capture buffers atomically.
-func (c *Capture) ClearAll() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.wsEvents = nil
-	c.wsAddedAt = nil
-	c.wsMemoryTotal = 0
-	c.networkBodies = nil
-	c.networkAddedAt = nil
-	c.nbMemoryTotal = 0
-	c.enhancedActions = nil
-	c.actionAddedAt = nil
-	c.connections = make(map[string]*connectionState)
-	c.closedConns = nil
-	c.connOrder = nil
-	c.currentTestID = ""
-
-	// Reset performance data (H-6 fix)
-	c.perf.snapshots = make(map[string]PerformanceSnapshot)
-	c.perf.snapshotOrder = nil
-	c.perf.baselines = make(map[string]PerformanceBaseline)
-	c.perf.baselineOrder = nil
-}

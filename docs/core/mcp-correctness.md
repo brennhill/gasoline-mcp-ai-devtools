@@ -1,6 +1,17 @@
+---
+status: active
+scope: architecture/mcp
+ai-priority: high
+tags: [mcp, correctness, constraints, reference]
+relates-to: [../../.claude/refs/architecture.md, ../../.claude/refs/async-command-architecture.md]
+last-verified: 2026-01-31
+---
+
 # MCP Correctness
 
-Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-11-25) specification using SSE transport and custom HTTP bridge.
+**See Also:** [.claude/refs/architecture.md](../../.claude/refs/architecture.md) (canonical system design)
+
+Gasoline MCP implements the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-11-25) specification using SSE transport and custom HTTP bridge.
 
 **Protocol Version:** `2024-11-05` (with version negotiation for `2025-11-25`)
 
@@ -20,7 +31,7 @@ Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io
 |----|-----------|---------------|
 | L-6, J-6 | Respond to `initialized` notification with `{}` | Some MCP clients (including Claude Code) expect a response. Removing it could break compatibility. Track spec evolution. |
 | — | `_meta` field on tools with `data_counts` | Non-standard but uses `_` prefix convention. Provides AI with buffer state without extra tool call. No spec conflict. |
-| — | `X-Gasoline-Client` header for multi-client | Not part of MCP spec. Internal transport-layer addition for our `/mcp` HTTP bridge. Does not affect SSE transport. |
+| — | `X-Gasoline MCP-Client` header for multi-client | Not part of MCP spec. Internal transport-layer addition for our `/mcp` HTTP bridge. Does not affect SSE transport. |
 | — | Only `type: "text"` content blocks | MCP allows image/resource content types. All our data is textual. No spec violation — we just don't use all content types. |
 
 ## Key Implementation Details

@@ -1,3 +1,13 @@
+---
+status: active
+scope: feature/index
+ai-priority: high
+tags: [feature-index, status, navigation, canonical]
+relates-to: [../README.md, feature/]
+last-verified: 2026-01-30
+canonical: true
+---
+
 # Feature Index
 
 > **For LLM agents:** This is the canonical index of all Gasoline features. Use the `status` column to determine what is implemented vs. planned. Use the `tool` and `mode` columns to find the correct MCP interface.

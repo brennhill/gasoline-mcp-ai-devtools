@@ -2,19 +2,19 @@
 
 ## Overview
 
-Gasoline has migrated from stdio to SSE (Server-Sent Events) transport for MCP 2024-11-05 spec compliance. This document summarizes all changes made.
+Gasoline MCP has migrated from stdio to SSE (Server-Sent Events) transport for MCP 2024-11-05 spec compliance. This document summarizes all changes made.
 
 ## What Changed
 
 ### Architecture
 
 **Before (stdio):**
-- MCP clients spawned Gasoline process
+- MCP clients spawned Gasoline MCP process
 - Communication via stdin/stdout (newline-delimited JSON-RPC)
 - Server exited when stdin closed (unless `--persist` flag used)
 
 **After (SSE):**
-- MCP clients still spawn Gasoline process
+- MCP clients still spawn Gasoline MCP process
 - Communication via HTTP SSE at `/mcp/sse`
 - Bidirectional: SSE for server→client, HTTP POST for client→server
 - Server runs continuously until SIGTERM/SIGINT

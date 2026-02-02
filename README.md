@@ -1,9 +1,9 @@
 <div align="center">
 
-<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline - Browser Observability for AI Coding Agents" width="100%" />
+<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline MCP - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-5.3.0-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
+[![Version](https://img.shields.io/badge/version-5.4.0-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
@@ -88,7 +88,7 @@ curl http://localhost:7890/health
 ```
 
 **How it works:**
-- Gasoline runs as a stdio-based MCP server (bridge mode)
+- Gasoline MCP runs as a stdio-based MCP server (bridge mode)
 - The bridge automatically spawns a persistent daemon on port 7890 if needed
 - Extension connects to the daemon to send browser telemetry
 - MCP client communicates via stdio
@@ -110,42 +110,41 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 | `--check` | Verify setup before running |
 | `--help` | Show all options |
 
-## Comparison
+## How AI Should Debug: Three Paradigms
 
-| | Gasoline | TestSprite MCP | Chrome DevTools MCP | BrowserTools MCP | Cursor Browser |
-|---|:---:|:---:|:---:|:---:|:---:|
-| **Console logs** | ✅ | ❌ | ✅ | ✅ | ✅ |
-| **Network errors** | ✅ | ❌ | ✅ | ✅ | ❌ |
-| **Network bodies** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **WebSocket events** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **User action recording** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **DOM queries** | ✅ | ❌ | ✅ | ✅ | ✅ |
-| **Screenshots** | ✅ | ❌ | ✅ | ✅ | ✅ |
-| | | | | | |
-| **[Web Vitals](https://cookwithgasoline.com/web-vitals/)** | ✅ LCP, CLS, INP, FCP | ❌ | ❌ | ❌ | ❌ |
-| **[Regression detection](https://cookwithgasoline.com/regression-detection/)** | ✅ Automatic | ❌ | ❌ | ❌ | ❌ |
-| **[API schema inference](https://cookwithgasoline.com/api-schema/)** | ✅ OpenAPI from traffic | ❌ | ❌ | ❌ | ❌ |
-| **[Accessibility audits](https://cookwithgasoline.com/accessibility-audit/)** | ✅ WCAG + SARIF | ❌ | ❌ | ❌ | ❌ |
-| **[Session checkpoints](https://cookwithgasoline.com/session-checkpoints/)** | ✅ Named + auto | ❌ | ❌ | ❌ | ❌ |
-| **[Noise filtering](https://cookwithgasoline.com/noise-filtering/)** | ✅ Auto-detect | ❌ | ❌ | ❌ | ❌ |
-| | | | | | |
-| **[Test generation](https://cookwithgasoline.com/generate-test/)** | ✅ Playwright | ✅ AI-driven | ❌ | ❌ | ❌ |
-| **[Reproduction scripts](https://cookwithgasoline.com/reproduction-scripts/)** | ✅ From actions | ❌ | ❌ | ❌ | ❌ |
-| **[PR summaries](https://cookwithgasoline.com/pr-summaries/)** | ✅ Perf impact | ❌ | ❌ | ❌ | ❌ |
-| **[HAR export](https://cookwithgasoline.com/har-export/)** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| | | | | | |
-| **Zero dependencies** | ✅ Single Go binary | ❌ Node.js + cloud | ❌ Node.js + Chrome flags | ❌ Node.js + Puppeteer | ❌ Electron |
-| **Vendor neutral** | ✅ Any MCP tool | ⚠️ Any MCP tool | ⚠️ Any MCP tool | ⚠️ Any MCP tool | ❌ Cursor only |
-| **No debug port** | ✅ | ✅ | ❌ `--remote-debugging-port` | ❌ `--remote-debugging-port` | N/A |
-| **Privacy** | ✅ Localhost only | ❌ Cloud-based | ✅ Local | ⚠️ Optional cloud | ❌ Cursor servers |
-| **Cost** | ✅ Free, open-source | ❌ $29-99/month | ✅ Free | ✅ Free | ⚠️ Cursor subscription |
-| **Performance overhead** | < 0.1ms | Unknown | ~5ms | ~5ms | Unknown |
+Gasoline isn't a test tool. It's a **co-pilot for your entire stack**. Here's how AI debugging evolves:
 
-**[v6.0 Roadmap](docs/roadmap.md)** — Features like self-healing tests, failure classification, and auto-repair suggestions coming in v6.0
+| | **Traditional QA** | **Gasoline v6** | **Gasoline v7** |
+|---|---|---|---|
+| **Philosophy** | Test-First | Explore-First | Understand-First |
+| **AI's Job** | Execute pre-written tests (human-like workflow) | Read spec, explore UI, find bugs (AI-native workflow) | Understand full system, trace root causes (true full-stack AI reasoning) |
+| | | | |
+| **What AI Sees** | | | |
+| *Example: "Checkout failed"* | ❌ Test failed (binary) | ✅ Browser trace: UI actions + network + DOM + console | ✅ Full causality: Browser → API → Backend logs → Database → Which service changed 3 days ago |
+| *Example: "Service A changed"* | Run all tests, hope nothing broke | Test Service A in isolation | ✅ Dependency graph: A impacts B, C, D; validate each contract; test critical paths |
+| *Example: "Prod error"* | Check logs manually | Replay with local mods | ✅ Correlate prod request → backend logs → test coverage → git history |
+| | | | |
+| **AI's Autonomy** | | | |
+| *What can it fix?* | Test code (not real bugs) | ✅ Bugs in single app | ✅ Multi-service bugs, contracts, broken workflows |
+| *Loop prevention?* | 0 (human writes tests) | ✅ Bounded (doom loop detection) | ✅ Bounded + semantic understanding |
+| *Confidence level* | Low (tests ≠ reality) | High for single-app | Very high (full-stack validation + contracts) |
+| | | | |
+| **Multi-Service Reality** | | | |
+| *"Does Service B still work?"* | Run full test suite (30 min) | Only tests A, misses B | ✅ Impact analysis (30 sec), validate contracts, test critical paths |
+| *"Race condition in prod?"* | Can't reproduce | Local timing variations | ✅ Replay exact scenario with prod state + correlation IDs |
+| | | | |
+| **Time to Know It's Safe** | 10–30 min | 30 sec – 2 min | 30 sec – 2 min (full-stack) |
+| **Confidence Signal** | Tests pass? (false confidence) | Behavior matches spec + no loops | ✅ Causality validated + contracts honored + critical paths pass |
 
-## Why You Cook With Gasoline
+**v6 (Current):** AI-native testing for single apps. Read spec, explore UI, find and fix bugs autonomously.
 
-**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline uses a standard extension — your browser stays secure and unmodified.
+**v7 (Roadmap):** Full-stack AI debugging. Add backend correlation, dependency graphs, API contracts, and edge case registry.
+
+[See roadmap →](docs/roadmap.md)
+
+## Why You Cook With Gasoline MCP
+
+**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline MCP uses a standard extension — your browser stays secure and unmodified.
 
 **Single binary, zero runtime.** No Node.js, no Python, no Puppeteer, no package.json. One Go binary that runs anywhere. No supply chain risk. No `node_modules`.
 
@@ -188,7 +187,7 @@ Last benchmarked: 2026-01-28 on darwin/arm64 (v5.2.5)
 
 ## Known Issues
 
-See [docs/core/KNOWN-ISSUES.md](docs/core/KNOWN-ISSUES.md) for current known issues and the v5.3 roadmap.
+See [docs/core/known-issues.md](docs/core/known-issues.md) for current known issues and the v5.3 roadmap.
 
 ## Development
 
@@ -198,7 +197,7 @@ node --test tests/extension/*.test.js  # Extension tests
 make dev                               # Build for current platform
 ```
 
-**[Release process & quality gates →](docs/core/RELEASE.md)** · **[Changelog →](CHANGELOG.md)**
+**[Release process & quality gates →](docs/core/release.md)** · **[Changelog →](CHANGELOG.md)**
 
 ## License
 
@@ -214,7 +213,7 @@ make dev                               # Build for current platform
 
 *Pouring fuel on the AI development fire*
 
-If you find Gasoline useful, please consider giving it a star!
+If you find Gasoline MCP useful, please consider giving it a star!
 
 [![Star on GitHub](https://img.shields.io/github/stars/brennhill/gasoline.svg?style=social)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
 

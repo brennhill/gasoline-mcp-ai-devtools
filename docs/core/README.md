@@ -1,6 +1,6 @@
 # Core Documentation
 
-This folder contains all cross-product and foundational documentation for Gasoline, including:
+This folder contains all cross-product and foundational documentation for Gasoline MCP, including:
 - Core product specifications
 - Technical specifications that apply to the entire system
 - API specifications (OpenAPI/Swagger)

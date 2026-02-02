@@ -41,4 +41,4 @@ What is the change that we're proposing and/or doing?
 ## References
 
 - Related ADRs: [ADR-XXX](ADR-XXX.md)
-- Feature spec: [PRODUCT_SPEC.md](../features/feature/<name>/PRODUCT_SPEC.md)
+- Feature spec: [product-spec.md](../features/feature/<name>/product-spec.md)

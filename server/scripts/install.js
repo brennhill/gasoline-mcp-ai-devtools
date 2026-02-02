@@ -9,7 +9,7 @@ const fs = require('fs')
 const path = require('path')
 const { execSync } = require('child_process')
 
-const VERSION = '5.2.5'
+const VERSION = '5.4.0'
 const GITHUB_REPO = 'brennhill/gasoline-mcp-ai-devtools'
 const BINARY_NAME = 'gasoline'
 

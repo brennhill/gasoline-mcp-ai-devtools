@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/dom-fingerprinting/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # DOM Fingerprinting - Technical Review
 
 **Reviewer:** Principal Engineer

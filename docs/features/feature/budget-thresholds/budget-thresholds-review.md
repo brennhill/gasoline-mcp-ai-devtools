@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/budget-thresholds/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # Budget Thresholds Review
 
 _Migrated from /specs/budget-thresholds-review.md_

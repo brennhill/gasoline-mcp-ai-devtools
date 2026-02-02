@@ -15,6 +15,7 @@ import { initScriptInjection } from './content/script-injection';
 import { initRequestTracking, getPendingRequestStats, clearPendingRequests } from './content/request-tracking';
 import { initWindowMessageListener } from './content/window-message-listener';
 import { initRuntimeMessageListener } from './content/runtime-message-listener';
+import { initFaviconReplacer } from './content/favicon-replacer';
 
 // Export for testing
 export { getPendingRequestStats, clearPendingRequests };
@@ -37,6 +38,9 @@ initWindowMessageListener();
 
 // Initialize runtime message listener
 initRuntimeMessageListener();
+
+// Initialize favicon replacer (visual indicator for tracked tabs)
+initFaviconReplacer();
 
 // Listen for tracking status changes and inject scripts only when tracked
 chrome.storage.onChanged.addListener((changes) => {

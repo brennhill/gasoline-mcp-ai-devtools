@@ -15,6 +15,29 @@ import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSn
 const { debugLog, diagnosticLog } = index;
 
 // =============================================================================
+// TIMEOUT CONFIGURATION
+// =============================================================================
+
+/**
+ * Timeout for async execute commands (JavaScript execution in page context)
+ * Needs to accommodate:
+ * - Axe accessibility audits on large pages (20-30s)
+ * - Complex DOM queries
+ * - Screenshot capture and encoding
+ * - Custom JavaScript execution
+ */
+const ASYNC_EXECUTE_TIMEOUT_MS = 60000; // 60 seconds
+
+/**
+ * Timeout for async browser actions (navigation, refresh, etc.)
+ * Needs to accommodate:
+ * - Page navigation on slow networks
+ * - Page load and rendering
+ * - Resource fetching
+ */
+const ASYNC_BROWSER_ACTION_TIMEOUT_MS = 60000; // 60 seconds
+
+// =============================================================================
 // PENDING QUERY HANDLING
 // =============================================================================
 
@@ -414,7 +437,7 @@ async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number): Pr
     const execResult = await Promise.race([
       executionPromise,
       new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Execution timeout')), 10000);
+        setTimeout(() => reject(new Error('Execution timeout')), ASYNC_EXECUTE_TIMEOUT_MS);
       }),
     ]);
 
@@ -482,7 +505,7 @@ async function handleAsyncBrowserAction(query: PendingQuery, tabId: number, para
     const execResult = await Promise.race([
       executionPromise,
       new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Execution timeout')), 10000);
+        setTimeout(() => reject(new Error('Execution timeout')), ASYNC_BROWSER_ACTION_TIMEOUT_MS);
       }),
     ]);
 

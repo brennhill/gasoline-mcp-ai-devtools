@@ -1,6 +1,6 @@
 {
   "name": "dev-console-extension",
-  "version": "5.2.5",
+  "version": "5.4.0",
   "private": true,
   "type": "module",
   "description": "Browser extension for Dev Console",

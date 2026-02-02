@@ -1,6 +1,6 @@
 # Gasoline Build Makefile
 
-VERSION := 5.3.0
+VERSION := 5.4.0
 BINARY_NAME := gasoline
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION)

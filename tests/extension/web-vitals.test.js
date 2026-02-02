@@ -43,8 +43,8 @@ describe('Web Vitals Capture', () => {
     globalThis.performance = {
       getEntriesByType: mock.fn(() => []),
       now: () => 1000,
-      mark: mock.fn((name, options) => ({ name, startTime: 1000, entryType: 'mark' })),
-      measure: mock.fn((name, startMark, endMark) => ({ name, duration: 0, startTime: 1000, entryType: 'measure' })),
+      mark: mock.fn((name, _options) => ({ name, startTime: 1000, entryType: 'mark' })),
+      measure: mock.fn((name, _startMark, _endMark) => ({ name, duration: 0, startTime: 1000, entryType: 'measure' })),
     }
     globalThis.window = {
       postMessage: mock.fn(),

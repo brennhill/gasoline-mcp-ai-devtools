@@ -141,6 +141,20 @@ export interface GetAiWebPilotEnabledResponse {
 }
 
 /**
+ * Get tracking state message (for favicon replacer)
+ */
+export interface GetTrackingStateMessage {
+  readonly type: 'getTrackingState';
+}
+
+export interface GetTrackingStateResponse {
+  readonly state: {
+    isTracked: boolean;
+    aiPilotEnabled: boolean;
+  };
+}
+
+/**
  * Get diagnostic state message
  */
 export interface GetDiagnosticStateMessage {
@@ -203,6 +217,7 @@ export type BackgroundMessage =
   | SetBooleanSettingMessage
   | SetWebSocketCaptureModeMessage
   | GetAiWebPilotEnabledMessage
+  | GetTrackingStateMessage
   | GetDiagnosticStateMessage
   | CaptureScreenshotMessage
   | GetDebugLogMessage

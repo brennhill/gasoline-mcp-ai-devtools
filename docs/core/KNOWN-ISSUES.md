@@ -1,3 +1,14 @@
+---
+status: active
+scope: issues/blockers
+ai-priority: high
+tags: [known-issues, blockers, v5.3, v6.0]
+version-applies-to: v5.3+
+relates-to: [RELEASE.md, UAT-v5.3-CHECKLIST.md, ../roadmap.md]
+last-verified: 2026-01-30
+canonical: true
+---
+
 # Known Issues & Roadmap
 
 ## v5.2.0 — In Progress
@@ -19,7 +30,7 @@ All known issues have been resolved in v5.2.
 ### v5.2 Planned Improvements (Specs Written)
 
 - ~~**query_dom implementation** (Issue #2) — Complete the message forwarding chain.~~ **DONE**
-- **Tab Tracking UX** — Badge indicator, switch confirmation dialog, tab close recovery. Spec: `docs/features/feature/tab-tracking-ux/PRODUCT_SPEC.md`
+- **Tab Tracking UX** — Badge indicator, switch confirmation dialog, tab close recovery. Spec: `docs/features/feature/tab-tracking-ux/product-spec.md`
 
 ---
 
@@ -29,35 +40,35 @@ All known issues have been resolved in v5.2.
 
 | Feature | Status | Spec |
 |---------|--------|------|
-| Self-Healing Tests | Spec written | `docs/features/feature/self-healing-tests/PRODUCT_SPEC.md` |
-| Gasoline CI Infrastructure | Spec written | `docs/features/feature/gasoline-ci/PRODUCT_SPEC.md` |
-| Context Streaming | Spec written | `docs/features/feature/context-streaming/PRODUCT_SPEC.md` |
-| PR Preview Exploration | Spec written | `docs/features/feature/pr-preview-exploration/PRODUCT_SPEC.md` |
-| Agentic E2E Repair | Spec written | `docs/features/feature/agentic-e2e-repair/PRODUCT_SPEC.md` |
-| Deployment Watchdog | Spec written | `docs/features/feature/deployment-watchdog/PRODUCT_SPEC.md` |
-| Configuration Profiles | Spec written | `docs/features/feature/config-profiles/PRODUCT_SPEC.md` |
+| Self-Healing Tests | Spec written | `docs/features/feature/self-healing-tests/product-spec.md` |
+| Gasoline MCP CI Infrastructure | Spec written | `docs/features/feature/gasoline-ci/product-spec.md` |
+| Context Streaming | Spec written | `docs/features/feature/context-streaming/product-spec.md` |
+| PR Preview Exploration | Spec written | `docs/features/feature/pr-preview-exploration/product-spec.md` |
+| Agentic E2E Repair | Spec written | `docs/features/feature/agentic-e2e-repair/product-spec.md` |
+| Deployment Watchdog | Spec written | `docs/features/feature/deployment-watchdog/product-spec.md` |
+| Configuration Profiles | Spec written | `docs/features/feature/config-profiles/product-spec.md` |
 
 ### Priority 2: Competitive Parity
 
 | Feature | Status | Spec |
 |---------|--------|------|
-| SEO Audit | Spec written | `docs/features/feature/seo-audit/PRODUCT_SPEC.md` |
-| Performance Audit | Spec written | `docs/features/feature/performance-audit/PRODUCT_SPEC.md` |
-| Best Practices Audit | Spec written | `docs/features/feature/best-practices-audit/PRODUCT_SPEC.md` |
-| Enhanced WCAG Audit | Spec written | `docs/features/feature/enhanced-wcag-audit/PRODUCT_SPEC.md` |
-| Auto-Paste Screenshots | Spec written | `docs/features/feature/auto-paste-screenshots/PRODUCT_SPEC.md` |
-| Annotated Screenshots | Spec written | `docs/features/feature/annotated-screenshots/PRODUCT_SPEC.md` |
-| Form Filling Automation | Spec written | `docs/features/feature/form-filling/PRODUCT_SPEC.md` |
-| E2E Testing Integration | Spec written | `docs/features/feature/e2e-testing-integration/PRODUCT_SPEC.md` |
-| CPU/Network Emulation | Spec written | `docs/features/feature/cpu-network-emulation/PRODUCT_SPEC.md` |
-| Dialog Handling | Spec written | `docs/features/feature/dialog-handling/PRODUCT_SPEC.md` |
-| Drag & Drop Automation | Spec written | `docs/features/feature/drag-drop-automation/PRODUCT_SPEC.md` |
-| A11y Tree Snapshots | Spec written | `docs/features/feature/a11y-tree-snapshots/PRODUCT_SPEC.md` |
-| Local Web Scraping | Spec written | `docs/features/feature/local-web-scraping/PRODUCT_SPEC.md` |
+| SEO Audit | Spec written | `docs/features/feature/seo-audit/product-spec.md` |
+| Performance Audit | Spec written | `docs/features/feature/performance-audit/product-spec.md` |
+| Best Practices Audit | Spec written | `docs/features/feature/best-practices-audit/product-spec.md` |
+| Enhanced WCAG Audit | Spec written | `docs/features/feature/enhanced-wcag-audit/product-spec.md` |
+| Auto-Paste Screenshots | Spec written | `docs/features/feature/auto-paste-screenshots/product-spec.md` |
+| Annotated Screenshots | Spec written | `docs/features/feature/annotated-screenshots/product-spec.md` |
+| Form Filling Automation | Spec written | `docs/features/feature/form-filling/product-spec.md` |
+| E2E Testing Integration | Spec written | `docs/features/feature/e2e-testing-integration/product-spec.md` |
+| CPU/Network Emulation | Spec written | `docs/features/feature/cpu-network-emulation/product-spec.md` |
+| Dialog Handling | Spec written | `docs/features/feature/dialog-handling/product-spec.md` |
+| Drag & Drop Automation | Spec written | `docs/features/feature/drag-drop-automation/product-spec.md` |
+| A11y Tree Snapshots | Spec written | `docs/features/feature/a11y-tree-snapshots/product-spec.md` |
+| Local Web Scraping | Spec written | `docs/features/feature/local-web-scraping/product-spec.md` |
 
 ### Code Health
 
-See [docs/core/ARCHITECT-REVIEW.md](docs/core/ARCHITECT-REVIEW.md) for the principal architect code review with 12 prioritized recommendations.
+See [docs/core/architect-review.md](docs/core/architect-review.md) for the principal architect code review with 12 prioritized recommendations.
 
 ---
 

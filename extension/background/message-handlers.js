@@ -119,6 +119,9 @@ function handleMessage(message, sender, sendResponse, deps) {
         case 'getAiWebPilotEnabled':
             sendResponse({ enabled: deps.getAiWebPilotEnabled() });
             return false;
+        case 'getTrackingState':
+            handleGetTrackingState(sendResponse, deps);
+            return true;
         case 'getDiagnosticState':
             handleGetDiagnosticState(sendResponse, deps);
             return true;
@@ -191,8 +194,60 @@ function handleSetAiWebPilotEnabled(enabled, sendResponse, deps) {
     deps.setAiWebPilotEnabled(newValue, () => {
         console.log(`[Gasoline] AI Web Pilot persisted to storage: ${newValue}`);
         deps.postSettings(deps.getServerUrl());
+        // Broadcast tracking state change to tracked tab (for favicon flicker)
+        broadcastTrackingState();
     });
     sendResponse({ success: true });
+}
+/**
+ * Handle getTrackingState request from content script.
+ * Returns current tracking and AI Pilot state for favicon replacer.
+ */
+async function handleGetTrackingState(sendResponse, deps) {
+    try {
+        const result = await chrome.storage.local.get(['trackedTabId']);
+        const trackedTabId = result.trackedTabId;
+        const aiPilotEnabled = deps.getAiWebPilotEnabled();
+        // Get the requesting tab ID
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const currentTabId = tabs[0]?.id;
+        sendResponse({
+            state: {
+                isTracked: currentTabId === trackedTabId,
+                aiPilotEnabled: aiPilotEnabled,
+            },
+        });
+    }
+    catch (err) {
+        console.error('[Gasoline] Failed to get tracking state:', err);
+        sendResponse({ state: { isTracked: false, aiPilotEnabled: false } });
+    }
+}
+/**
+ * Broadcast tracking state to the tracked tab.
+ * Used by favicon replacer to show/hide flicker animation.
+ * Exported for use in init.ts storage change handlers.
+ */
+export async function broadcastTrackingState() {
+    try {
+        const result = await chrome.storage.local.get(['trackedTabId', 'aiWebPilotEnabled']);
+        const trackedTabId = result.trackedTabId;
+        const aiPilotEnabled = result.aiWebPilotEnabled === true;
+        if (trackedTabId) {
+            chrome.tabs.sendMessage(trackedTabId, {
+                type: 'trackingStateChanged',
+                state: {
+                    isTracked: true,
+                    aiPilotEnabled: aiPilotEnabled,
+                },
+            }).catch(() => {
+                // Tab might not have content script loaded yet, ignore
+            });
+        }
+    }
+    catch (err) {
+        console.error('[Gasoline] Failed to broadcast tracking state:', err);
+    }
 }
 function handleGetDiagnosticState(sendResponse, deps) {
     if (typeof chrome === 'undefined' || !chrome.storage) {

@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/compressed-diffs/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # Compressed State Diffs -- Technical Review
 
 **Spec reviewed:** `docs/ai-first/tech-spec-compressed-diffs.md`
