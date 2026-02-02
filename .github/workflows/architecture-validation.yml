@@ -63,6 +63,9 @@ jobs:
       - name: Verify critical files unchanged
         if: github.event_name == 'pull_request'
         run: |
+          # Fetch base branch for comparison
+          git fetch origin ${{ github.base_ref }}
+
           # Get list of changed files
           CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
 
