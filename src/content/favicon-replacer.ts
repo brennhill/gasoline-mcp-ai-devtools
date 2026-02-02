@@ -7,14 +7,6 @@
 import type { TrackingState } from '../types';
 
 /**
- * Current tracking state for this tab
- */
-let currentState: TrackingState = {
-  isTracked: false,
-  aiPilotEnabled: false,
-};
-
-/**
  * Original favicon href (to restore when tracking stops)
  */
 let originalFaviconHref: string | null = null;
@@ -53,7 +45,6 @@ export function initFaviconReplacer(): void {
  * - Tracked (AI Pilot on): Shows flickering flame
  */
 function updateFavicon(state: TrackingState): void {
-  currentState = state;
 
   if (!state.isTracked) {
     // Restore original favicon

@@ -455,10 +455,6 @@
   }
 
   // extension/content/favicon-replacer.js
-  var currentState = {
-    isTracked: false,
-    aiPilotEnabled: false
-  };
   var originalFaviconHref = null;
   var flickerInterval = null;
   function initFaviconReplacer() {
@@ -475,7 +471,6 @@
     });
   }
   function updateFavicon(state) {
-    currentState = state;
     if (!state.isTracked) {
       restoreOriginalFavicon();
       stopFlicker();

@@ -4,13 +4,6 @@
  * Adds flickering animation when AI Pilot is active.
  */
 /**
- * Current tracking state for this tab
- */
-let currentState = {
-    isTracked: false,
-    aiPilotEnabled: false,
-};
-/**
  * Original favicon href (to restore when tracking stops)
  */
 let originalFaviconHref = null;
@@ -45,7 +38,6 @@ export function initFaviconReplacer() {
  * - Tracked (AI Pilot on): Shows flickering flame
  */
 function updateFavicon(state) {
-    currentState = state;
     if (!state.isTracked) {
         // Restore original favicon
         restoreOriginalFavicon();
