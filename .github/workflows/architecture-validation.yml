@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for merge-base
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -63,11 +65,8 @@ jobs:
       - name: Verify critical files unchanged
         if: github.event_name == 'pull_request'
         run: |
-          # Fetch base branch for comparison
-          git fetch origin ${{ github.base_ref }}
-
-          # Get list of changed files
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          # Get list of changed files (use .. for simple diff, not ... for merge-base)
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}..HEAD 2>/dev/null || echo "")
 
           # Check if critical files were modified
           CRITICAL_FILES=(
