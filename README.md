@@ -201,7 +201,7 @@ make dev                               # Build for current platform
 
 ## License
 
-**AGPL-3.0** — Free for personal and internal company use. [Commercial licensing available](https://cookwithgasoline.com/privacy/) for proprietary integration.
+**AGPL-3.0** — Free and open source for all use cases.
 
 ---
 
