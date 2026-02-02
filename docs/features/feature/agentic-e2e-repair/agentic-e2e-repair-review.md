@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/agentic-e2e-repair/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # Agentic E2E Repair Review
 
 _Migrated from /specs/agentic-e2e-repair-review.md_

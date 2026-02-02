@@ -13,6 +13,11 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/performance"
+	"github.com/dev-console/dev-console/internal/types"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -245,7 +250,7 @@ func TestCoverageGroupC_HandleHTTP_ValidRequest(t *testing.T) {
 func TestCoverageGroupC_HandleHTTP_WithHeaders(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`
@@ -459,7 +464,7 @@ func TestCoverageGroupC_extractPageName(t *testing.T) {
 func TestCoverageGroupC_generateFixtures(t *testing.T) {
 	t.Parallel()
 
-	bodies := []NetworkBody{
+	bodies := []types.NetworkBody{
 		{
 			URL:          "http://localhost:3000/api/users",
 			ContentType:  "application/json",
@@ -529,7 +534,7 @@ func TestCoverageGroupC_generateFixtures_Empty(t *testing.T) {
 
 func TestCoverageGroupC_generateFixtures_BadURL(t *testing.T) {
 	t.Parallel()
-	bodies := []NetworkBody{
+	bodies := []types.NetworkBody{
 		{
 			URL:          "://bad-url",
 			ContentType:  "application/json",
@@ -548,7 +553,7 @@ func TestCoverageGroupC_generateFixtures_BadURL(t *testing.T) {
 
 func TestCoverageGroupC_generateEnhancedPlaywrightScript_WithFixtures(t *testing.T) {
 	t.Parallel()
-	actions := []EnhancedAction{
+	actions := []types.EnhancedAction{
 		{
 			Type:      "click",
 			Timestamp: 1000,
@@ -563,7 +568,7 @@ func TestCoverageGroupC_generateEnhancedPlaywrightScript_WithFixtures(t *testing
 		},
 	}
 
-	bodies := []NetworkBody{
+	bodies := []types.NetworkBody{
 		{
 			URL:          "http://localhost:3000/api/data",
 			ContentType:  "application/json",
@@ -603,7 +608,7 @@ func TestCoverageGroupC_generateEnhancedPlaywrightScript_WithFixtures(t *testing
 
 func TestCoverageGroupC_generateEnhancedPlaywrightScript_WithBaseURL(t *testing.T) {
 	t.Parallel()
-	actions := []EnhancedAction{
+	actions := []types.EnhancedAction{
 		{
 			Type:      "click",
 			Timestamp: 1000,
@@ -623,7 +628,7 @@ func TestCoverageGroupC_generateEnhancedPlaywrightScript_WithBaseURL(t *testing.
 
 func TestCoverageGroupC_generateEnhancedPlaywrightScript_AllActionTypes(t *testing.T) {
 	t.Parallel()
-	actions := []EnhancedAction{
+	actions := []types.EnhancedAction{
 		{Type: "click", Timestamp: 1000, URL: "http://localhost:3000/", Selectors: map[string]interface{}{"testId": "btn"}},
 		{Type: "input", Timestamp: 1500, Value: "hello", Selectors: map[string]interface{}{"testId": "input"}},
 		{Type: "keypress", Timestamp: 2000, Key: "Enter"},
@@ -1286,7 +1291,7 @@ func TestCoverageGroupC_toolGetHealth_NilMetrics(t *testing.T) {
 func TestCoverageGroupC_toolGetHealth_WithMetrics(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	metrics := NewHealthMetrics()
 	metrics.IncrementRequest("observe")
 	metrics.IncrementRequest("observe")
@@ -1350,7 +1355,7 @@ func TestCoverageGroupC_entryDisplay(t *testing.T) {
 
 func TestCoverageGroupC_toolGetNetworkBodies_Empty(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	server, _ := setupTestServer(t)
 	overrides := NewCaptureOverrides()
 
@@ -1380,10 +1385,10 @@ func TestCoverageGroupC_toolGetNetworkBodies_Empty(t *testing.T) {
 
 func TestCoverageGroupC_toolGetNetworkBodies_WithBodies(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	server, _ := setupTestServer(t)
 
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{
 			URL:          "http://localhost:3000/api/users",
 			Method:       "GET",
@@ -1437,7 +1442,7 @@ func TestCoverageGroupC_toolGetNetworkBodies_WithBodies(t *testing.T) {
 
 func TestCoverageGroupC_toolGetNetworkBodies_CaptureOff(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	server, _ := setupTestServer(t)
 	overrides := NewCaptureOverrides()
 	// Need to wait to avoid rate limiting
@@ -2205,10 +2210,10 @@ func TestCoverageGroupC_ReadFromWithFilter_EvictedCursor(t *testing.T) {
 
 func TestCoverageGroupC_toolGetNetworkBodies_WithBinaryFormat(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	server, _ := setupTestServer(t)
 
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{
 			URL:             "http://localhost:3000/api/proto",
 			Method:          "POST",
@@ -2287,43 +2292,43 @@ func TestCoverageGroupC_computeVerification_NetworkChangedToDifferentError(t *te
 // ============================================
 
 type mockCoverageGroupCState struct {
-	consoleErrors   []SnapshotError
-	consoleWarnings []SnapshotError
-	networkRequests []SnapshotNetworkRequest
-	wsConnections   []SnapshotWSConnection
-	performance     *PerformanceSnapshot
+	consoleErrors   []types.SnapshotError
+	consoleWarnings []types.SnapshotError
+	networkRequests []types.SnapshotNetworkRequest
+	wsConnections   []types.SnapshotWSConnection
+	performance     *performance.PerformanceSnapshot
 	pageURL         string
 }
 
-func (m *mockCoverageGroupCState) GetConsoleErrors() []SnapshotError {
+func (m *mockCoverageGroupCState) GetConsoleErrors() []types.SnapshotError {
 	if m.consoleErrors == nil {
-		return []SnapshotError{}
+		return []types.SnapshotError{}
 	}
 	return m.consoleErrors
 }
 
-func (m *mockCoverageGroupCState) GetConsoleWarnings() []SnapshotError {
+func (m *mockCoverageGroupCState) GetConsoleWarnings() []types.SnapshotError {
 	if m.consoleWarnings == nil {
-		return []SnapshotError{}
+		return []types.SnapshotError{}
 	}
 	return m.consoleWarnings
 }
 
-func (m *mockCoverageGroupCState) GetNetworkRequests() []SnapshotNetworkRequest {
+func (m *mockCoverageGroupCState) GetNetworkRequests() []types.SnapshotNetworkRequest {
 	if m.networkRequests == nil {
-		return []SnapshotNetworkRequest{}
+		return []types.SnapshotNetworkRequest{}
 	}
 	return m.networkRequests
 }
 
-func (m *mockCoverageGroupCState) GetWSConnections() []SnapshotWSConnection {
+func (m *mockCoverageGroupCState) GetWSConnections() []types.SnapshotWSConnection {
 	if m.wsConnections == nil {
-		return []SnapshotWSConnection{}
+		return []types.SnapshotWSConnection{}
 	}
 	return m.wsConnections
 }
 
-func (m *mockCoverageGroupCState) GetPerformance() *PerformanceSnapshot {
+func (m *mockCoverageGroupCState) GetPerformance() *performance.PerformanceSnapshot {
 	return m.performance
 }
 

@@ -34,6 +34,7 @@ export interface GasolineAPI {
     clearEnhancedActions(): void;
     generateScript(actions?: EnhancedAction[], opts?: Record<string, unknown>): string;
     getSelectors(element: Element): SelectorStrategies;
+    setInputValue(selector: string, value: string | boolean): boolean;
     version: string;
 }
 declare global {

@@ -17,7 +17,7 @@ Collapse granular tool surface into 4 composite tools organized by intent: **rea
 **Impact:**
 - LLM evaluates 4 tools instead of 20 → minimal branching overhead
 - Zero semantic overlap: any request maps to exactly one tool
-- Strictly enforced: no 5th tool may ever be added (rule 4 in CLAUDE.md)
+- Strictly enforced: no 5th tool may ever be added (rule 4 in claude.md)
 
 **New Structure:**
 

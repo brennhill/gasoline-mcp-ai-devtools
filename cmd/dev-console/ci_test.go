@@ -10,6 +10,9 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -19,7 +22,7 @@ import (
 func TestHandleSnapshot_EmptyState(t *testing.T) {
 	t.Parallel()
 	server, _ := NewServer("", 1000)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	handler := handleSnapshot(server, capture)
 	req := httptest.NewRequest("GET", "/snapshot", nil)
@@ -56,7 +59,7 @@ func TestHandleSnapshot_EmptyState(t *testing.T) {
 func TestHandleSnapshot_WithData(t *testing.T) {
 	t.Parallel()
 	server, _ := NewServer("", 1000)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// Add log entries
 	server.addEntries([]LogEntry{
@@ -66,7 +69,7 @@ func TestHandleSnapshot_WithData(t *testing.T) {
 	})
 
 	// Add network bodies
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodiesForTest([]capture.NetworkBody{
 		{URL: "http://example.com/api", Status: 200, Method: "GET"},
 		{URL: "http://example.com/fail", Status: 500, Method: "POST"},
 	})
@@ -109,7 +112,7 @@ func TestHandleSnapshot_WithData(t *testing.T) {
 func TestHandleSnapshot_MethodNotAllowed(t *testing.T) {
 	t.Parallel()
 	server, _ := NewServer("", 1000)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	handler := handleSnapshot(server, capture)
 	req := httptest.NewRequest("POST", "/snapshot", nil)
@@ -125,7 +128,7 @@ func TestHandleSnapshot_MethodNotAllowed(t *testing.T) {
 func TestHandleSnapshot_SinceFilter(t *testing.T) {
 	t.Parallel()
 	server, _ := NewServer("", 1000)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// Add entries with timestamps
 	now := time.Now().UTC()
@@ -163,7 +166,7 @@ func TestHandleSnapshot_SinceFilter(t *testing.T) {
 func TestHandleSnapshot_InvalidSince(t *testing.T) {
 	t.Parallel()
 	server, _ := NewServer("", 1000)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	handler := handleSnapshot(server, capture)
 	req := httptest.NewRequest("GET", "/snapshot?since=not-a-date", nil)
@@ -183,7 +186,7 @@ func TestHandleSnapshot_InvalidSince(t *testing.T) {
 func TestHandleClear_EmptyState(t *testing.T) {
 	t.Parallel()
 	server, _ := NewServer("", 1000)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	handler := handleClear(server, capture)
 	req := httptest.NewRequest("POST", "/clear", nil)
@@ -208,14 +211,14 @@ func TestHandleClear_EmptyState(t *testing.T) {
 func TestHandleClear_WithData(t *testing.T) {
 	t.Parallel()
 	server, _ := NewServer("", 1000)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// Add data
 	server.addEntries([]LogEntry{
 		{"level": "error", "message": "test"},
 		{"level": "warn", "message": "test2"},
 	})
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodiesForTest([]capture.NetworkBody{
 		{URL: "http://example.com", Status: 200, Method: "GET"},
 	})
 
@@ -244,7 +247,7 @@ func TestHandleClear_WithData(t *testing.T) {
 	if server.getEntryCount() != 0 {
 		t.Errorf("expected 0 logs after clear, got %d", server.getEntryCount())
 	}
-	bodies := capture.GetNetworkBodies(NetworkBodyFilter{})
+	bodies := capture.GetNetworkBodies()
 	if len(bodies) != 0 {
 		t.Errorf("expected 0 network bodies after clear, got %d", len(bodies))
 	}
@@ -253,7 +256,7 @@ func TestHandleClear_WithData(t *testing.T) {
 func TestHandleClear_MethodNotAllowed(t *testing.T) {
 	t.Parallel()
 	server, _ := NewServer("", 1000)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	handler := handleClear(server, capture)
 	req := httptest.NewRequest("GET", "/clear", nil)
@@ -269,7 +272,7 @@ func TestHandleClear_MethodNotAllowed(t *testing.T) {
 func TestHandleClear_DeleteMethod(t *testing.T) {
 	t.Parallel()
 	server, _ := NewServer("", 1000)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	server.addEntries([]LogEntry{{"level": "log", "message": "test"}})
 
@@ -290,7 +293,7 @@ func TestHandleClear_DeleteMethod(t *testing.T) {
 
 func TestHandleTestBoundary_Start(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	handler := handleTestBoundary(capture)
 	body := `{"test_id": "login-flow", "action": "start"}`
@@ -316,16 +319,24 @@ func TestHandleTestBoundary_Start(t *testing.T) {
 		t.Errorf("expected action=start, got %v", resp["action"])
 	}
 
-	// Verify current test ID is set
-	if capture.GetCurrentTestID() != "login-flow" {
-		t.Errorf("expected current test ID to be login-flow, got %q", capture.GetCurrentTestID())
+	// Verify test ID is active
+	activeIDs := capture.GetActiveTestIDs()
+	found := false
+	for _, id := range activeIDs {
+		if id == "login-flow" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected login-flow to be active, got %v", activeIDs)
 	}
 }
 
 func TestHandleTestBoundary_End(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
-	capture.SetCurrentTestID("login-flow")
+	capture := capture.NewCapture()
+	capture.SetTestBoundaryStart("login-flow")
 
 	handler := handleTestBoundary(capture)
 	body := `{"test_id": "login-flow", "action": "end"}`
@@ -339,15 +350,18 @@ func TestHandleTestBoundary_End(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	// Verify current test ID is cleared
-	if capture.GetCurrentTestID() != "" {
-		t.Errorf("expected empty test ID after end, got %q", capture.GetCurrentTestID())
+	// Verify test ID is no longer active
+	activeIDs := capture.GetActiveTestIDs()
+	for _, id := range activeIDs {
+		if id == "login-flow" {
+			t.Errorf("expected login-flow to be inactive after end, but it's active in %v", activeIDs)
+		}
 	}
 }
 
 func TestHandleTestBoundary_InvalidAction(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	handler := handleTestBoundary(capture)
 	body := `{"test_id": "test", "action": "pause"}`
@@ -364,7 +378,7 @@ func TestHandleTestBoundary_InvalidAction(t *testing.T) {
 
 func TestHandleTestBoundary_MissingTestID(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	handler := handleTestBoundary(capture)
 	body := `{"action": "start"}`
@@ -381,7 +395,7 @@ func TestHandleTestBoundary_MissingTestID(t *testing.T) {
 
 func TestHandleTestBoundary_MethodNotAllowed(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	handler := handleTestBoundary(capture)
 	req := httptest.NewRequest("GET", "/test-boundary", nil)
@@ -406,7 +420,7 @@ func TestComputeSnapshotStats(t *testing.T) {
 		{"level": "warn", "message": "warn1"},
 		{"level": "log", "message": "info1"},
 	}
-	networkBodies := []NetworkBody{
+	networkBodies := []capture.NetworkBody{
 		{Status: 200},
 		{Status: 404},
 		{Status: 500},
@@ -434,33 +448,33 @@ func TestComputeSnapshotStats(t *testing.T) {
 
 func TestCaptureClearAll(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodiesForTest([]capture.NetworkBody{
 		{URL: "http://example.com", Status: 200, Method: "GET"},
 	})
-	capture.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEventsForTest([]capture.WebSocketEvent{
 		{URL: "ws://example.com", Type: "open"},
 	})
-	capture.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActionsForTest([]capture.EnhancedAction{
 		{Type: "click"},
 	})
 
-	// Set a test ID
-	capture.SetCurrentTestID("test-1")
+	// Set a test boundary
+	capture.SetTestBoundaryStart("test-1")
 
 	capture.ClearAll()
 
-	if len(capture.GetNetworkBodies(NetworkBodyFilter{})) != 0 {
+	if len(capture.GetNetworkBodies()) != 0 {
 		t.Error("expected 0 network bodies after ClearAll")
 	}
-	if len(capture.GetWebSocketEvents(WebSocketEventFilter{})) != 0 {
+	if len(capture.GetAllWebSocketEvents()) != 0 {
 		t.Error("expected 0 ws events after ClearAll")
 	}
-	if len(capture.GetEnhancedActions(EnhancedActionFilter{})) != 0 {
+	if len(capture.GetAllEnhancedActions()) != 0 {
 		t.Error("expected 0 actions after ClearAll")
 	}
-	if capture.GetCurrentTestID() != "" {
-		t.Error("expected empty test ID after ClearAll")
+	if len(capture.GetActiveTestIDs()) != 0 {
+		t.Error("expected no active test IDs after ClearAll")
 	}
 }

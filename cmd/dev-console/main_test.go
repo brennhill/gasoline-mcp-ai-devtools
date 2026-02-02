@@ -13,6 +13,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // TestMain wraps all tests with goroutine leak detection.
@@ -1572,7 +1575,7 @@ func FuzzNetworkBodies(f *testing.F) {
 	f.Add([]byte(`{"bodies":[{"url":"","method":"","status":0}]}`))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		capture := NewCapture()
+		capture := capture.NewCapture()
 		req := httptest.NewRequest("POST", "/network-bodies", bytes.NewReader(data))
 		w := httptest.NewRecorder()
 		capture.HandleNetworkBodies(w, req)
@@ -1587,7 +1590,7 @@ func FuzzWebSocketEvents(f *testing.F) {
 	f.Add([]byte(`not json`))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		capture := NewCapture()
+		capture := capture.NewCapture()
 		req := httptest.NewRequest("POST", "/websocket-events", bytes.NewReader(data))
 		w := httptest.NewRecorder()
 		capture.HandleWebSocketEvents(w, req)
@@ -1602,7 +1605,7 @@ func FuzzEnhancedActions(f *testing.F) {
 	f.Add([]byte(`{"actions":[{"type":"input","inputType":"password","value":"secret"}]}`))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		capture := NewCapture()
+		capture := capture.NewCapture()
 		req := httptest.NewRequest("POST", "/enhanced-actions", bytes.NewReader(data))
 		w := httptest.NewRecorder()
 		capture.HandleEnhancedActions(w, req)
@@ -1699,7 +1702,7 @@ func BenchmarkMCPGetBrowserErrors(b *testing.B) {
 	}
 	server.addEntries(entries)
 
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := NewToolHandler(server, capture, nil)
 	b.Cleanup(func() {
 		if mcp.toolHandler != nil && mcp.toolHandler.sessionStore != nil {
@@ -1737,7 +1740,7 @@ func BenchmarkMCPGetBrowserLogs(b *testing.B) {
 	}
 	server.addEntries(entries)
 
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := NewToolHandler(server, capture, nil)
 	b.Cleanup(func() {
 		if mcp.toolHandler != nil && mcp.toolHandler.sessionStore != nil {

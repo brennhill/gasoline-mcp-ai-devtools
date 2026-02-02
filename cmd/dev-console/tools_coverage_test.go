@@ -10,6 +10,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -1192,8 +1195,8 @@ func TestToolGenerateCSP_WithOrigins(t *testing.T) {
 	// Seed network bodies with some external origins
 	capture.mu.Lock()
 	capture.networkBodies = append(capture.networkBodies,
-		NetworkBody{URL: "https://cdn.example.com/app.js", Method: "GET", Status: 200, ContentType: "application/javascript"},
-		NetworkBody{URL: "https://fonts.googleapis.com/css", Method: "GET", Status: 200, ContentType: "text/css"},
+		types.NetworkBody{URL: "https://cdn.example.com/app.js", Method: "GET", Status: 200, ContentType: "application/javascript"},
+		types.NetworkBody{URL: "https://fonts.googleapis.com/css", Method: "GET", Status: 200, ContentType: "text/css"},
 	)
 	capture.mu.Unlock()
 
@@ -1259,8 +1262,8 @@ func TestToolSecurityAudit_WithData(t *testing.T) {
 	// Add network bodies with potential security issues
 	capture.mu.Lock()
 	capture.networkBodies = append(capture.networkBodies,
-		NetworkBody{URL: "http://api.example.com/login", Method: "POST", Status: 200, ResponseBody: `{"password":"secret123","token":"abc"}`},
-		NetworkBody{URL: "https://api.example.com/data", Method: "GET", Status: 200},
+		types.NetworkBody{URL: "http://api.example.com/login", Method: "POST", Status: 200, ResponseBody: `{"password":"secret123","token":"abc"}`},
+		types.NetworkBody{URL: "https://api.example.com/data", Method: "GET", Status: 200},
 	)
 	capture.mu.Unlock()
 
@@ -1506,8 +1509,8 @@ func TestCaptureStateAdapter_GetNetworkRequests(t *testing.T) {
 
 	capture.mu.Lock()
 	capture.networkBodies = append(capture.networkBodies,
-		NetworkBody{URL: "https://api.example.com/users", Method: "GET", Status: 200, Duration: 150},
-		NetworkBody{URL: "https://api.example.com/data", Method: "POST", Status: 201, Duration: 300},
+		types.NetworkBody{URL: "https://api.example.com/users", Method: "GET", Status: 200, Duration: 150},
+		types.NetworkBody{URL: "https://api.example.com/data", Method: "POST", Status: 201, Duration: 300},
 	)
 	capture.mu.Unlock()
 
@@ -2269,9 +2272,9 @@ func TestHandleEnhancedActions_WithFilters(t *testing.T) {
 	// Add some actions
 	capture.mu.Lock()
 	capture.enhancedActions = append(capture.enhancedActions,
-		EnhancedAction{Type: "click", URL: "https://myapp.com/page1", Timestamp: 1706090400000},
-		EnhancedAction{Type: "input", URL: "https://myapp.com/page2", Timestamp: 1706090460000},
-		EnhancedAction{Type: "navigate", URL: "https://other.com/page", Timestamp: 1706090520000},
+		types.EnhancedAction{Type: "click", URL: "https://myapp.com/page1", Timestamp: 1706090400000},
+		types.EnhancedAction{Type: "input", URL: "https://myapp.com/page2", Timestamp: 1706090460000},
+		types.EnhancedAction{Type: "navigate", URL: "https://other.com/page", Timestamp: 1706090520000},
 	)
 	capture.mu.Unlock()
 
@@ -2299,7 +2302,7 @@ func TestHandleEnhancedActions_LastN(t *testing.T) {
 	capture.mu.Lock()
 	for i := 0; i < 10; i++ {
 		capture.enhancedActions = append(capture.enhancedActions,
-			EnhancedAction{Type: "click", Timestamp: 1706090400000 + int64(i)*1000},
+			types.EnhancedAction{Type: "click", Timestamp: 1706090400000 + int64(i)*1000},
 		)
 	}
 	capture.mu.Unlock()
@@ -2790,7 +2793,7 @@ func TestScanForPII_SSNThirdParty(t *testing.T) {
 func TestScanURLForCredentials_AWSKeyInURL(t *testing.T) {
 	t.Parallel()
 	scanner := NewSecurityScanner()
-	body := NetworkBody{
+	body := types.NetworkBody{
 		URL:    "https://s3.amazonaws.com/bucket?AWSAccessKeyId=AKIAIOSFODNN7PRODKEY&Expires=1234",
 		Method: "GET",
 		Status: 200,
@@ -2817,7 +2820,7 @@ func TestScanURLForCredentials_AWSKeyInURL(t *testing.T) {
 func TestOnEntriesCallback_ArgsString(t *testing.T) {
 	t.Parallel()
 	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	_ = setupToolHandler(t, server, capture)
 
 	entries := []LogEntry{
@@ -2834,7 +2837,7 @@ func TestOnEntriesCallback_ArgsString(t *testing.T) {
 func TestOnEntriesCallback_ArgsErrorObject(t *testing.T) {
 	t.Parallel()
 	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	_ = setupToolHandler(t, server, capture)
 
 	entries := []LogEntry{
@@ -2857,7 +2860,7 @@ func TestOnEntriesCallback_ArgsErrorObject(t *testing.T) {
 func TestOnEntriesCallback_EmptyMessage(t *testing.T) {
 	t.Parallel()
 	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	_ = setupToolHandler(t, server, capture)
 
 	entries := []LogEntry{
@@ -2874,7 +2877,7 @@ func TestOnEntriesCallback_EmptyMessage(t *testing.T) {
 func TestOnEntriesCallback_NonErrorSkipped(t *testing.T) {
 	t.Parallel()
 	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	_ = setupToolHandler(t, server, capture)
 
 	entries := []LogEntry{
@@ -2891,7 +2894,7 @@ func TestOnEntriesCallback_NonErrorSkipped(t *testing.T) {
 
 func TestHandleEnhancedActions_BodyTooLarge(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	largeBody := strings.Repeat("x", 11*1024*1024)
 	req := httptest.NewRequest("POST", "/actions", strings.NewReader(largeBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -2906,16 +2909,16 @@ func TestHandleEnhancedActions_BodyTooLarge(t *testing.T) {
 
 func TestHandleEnhancedActions_RateLimitAfterRecording(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
-	actions := make([]EnhancedAction, 200)
+	actions := make([]types.EnhancedAction, 200)
 	for i := range actions {
-		actions[i] = EnhancedAction{
+		actions[i] = types.EnhancedAction{
 			Type: "click", Timestamp: int64(1706090400000 + i), URL: "http://example.com",
 		}
 	}
 	payload := struct {
-		Actions []EnhancedAction `json:"actions"`
+		Actions []types.EnhancedAction `json:"actions"`
 	}{Actions: actions}
 	data, _ := json.Marshal(payload)
 
@@ -2953,7 +2956,7 @@ func TestHandleRecordEvent_MissingDescription(t *testing.T) {
 func TestToolConfigureRecordEvent_MissingDescription(t *testing.T) {
 	t.Parallel()
 	server := &Server{logFile: filepath.Join(t.TempDir(), "test.jsonl"), maxEntries: 100}
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	handler := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`3`), Method: "tools/call"}

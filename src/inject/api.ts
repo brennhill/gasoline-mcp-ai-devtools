@@ -66,6 +66,7 @@ export interface GasolineAPI {
   clearEnhancedActions(): void;
   generateScript(actions?: EnhancedAction[], opts?: Record<string, unknown>): string;
   getSelectors(element: Element): SelectorStrategies;
+  setInputValue(selector: string, value: string | boolean): boolean;
   version: string;
 }
 
@@ -254,6 +255,105 @@ export function installGasolineAPI(): void {
      */
     getSelectors(element: Element): SelectorStrategies {
       return computeSelectors(element) as unknown as SelectorStrategies;
+    },
+
+    /**
+     * Set input value and trigger React/Vue/Svelte change events
+     * Works with frameworks that track form state internally by dispatching
+     * the events that frameworks listen for.
+     *
+     * @param selector - CSS selector for the input element
+     * @param value - Value to set (string for text inputs, boolean for checkboxes)
+     * @returns true if successful, false if element not found
+     *
+     * @example
+     * // Text input
+     * window.__gasoline.setInputValue('input[name="email"]', 'test@example.com')
+     *
+     * // Checkbox
+     * window.__gasoline.setInputValue('input[type="checkbox"]', true)
+     *
+     * // Select dropdown
+     * window.__gasoline.setInputValue('select[name="country"]', 'US')
+     */
+    setInputValue(selector: string, value: string | boolean): boolean {
+      const element = document.querySelector(selector);
+      if (!element) {
+        console.error('[Gasoline] Element not found:', selector);
+        return false;
+      }
+
+      try {
+        // Handle different input types
+        if (element instanceof HTMLInputElement) {
+          if (element.type === 'checkbox' || element.type === 'radio') {
+            // For checkbox/radio, use checked property
+            const nativeInputCheckedSetter = Object.getOwnPropertyDescriptor(
+              window.HTMLInputElement.prototype,
+              'checked'
+            )?.set;
+            if (nativeInputCheckedSetter) {
+              nativeInputCheckedSetter.call(element, Boolean(value));
+            } else {
+              element.checked = Boolean(value);
+            }
+          } else {
+            // For text/email/password/etc, use value property
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+              window.HTMLInputElement.prototype,
+              'value'
+            )?.set;
+            if (nativeInputValueSetter) {
+              nativeInputValueSetter.call(element, String(value));
+            } else {
+              element.value = String(value);
+            }
+          }
+        } else if (element instanceof HTMLTextAreaElement) {
+          const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLTextAreaElement.prototype,
+            'value'
+          )?.set;
+          if (nativeTextAreaValueSetter) {
+            nativeTextAreaValueSetter.call(element, String(value));
+          } else {
+            element.value = String(value);
+          }
+        } else if (element instanceof HTMLSelectElement) {
+          const nativeSelectValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLSelectElement.prototype,
+            'value'
+          )?.set;
+          if (nativeSelectValueSetter) {
+            nativeSelectValueSetter.call(element, String(value));
+          } else {
+            element.value = String(value);
+          }
+        } else {
+          console.error('[Gasoline] Element is not a form input:', selector);
+          return false;
+        }
+
+        // Dispatch events that React/Vue/Svelte listen for
+        // These events bubble up and trigger framework change handlers
+
+        // Input event (React 16+, Vue 3, Svelte)
+        const inputEvent = new Event('input', { bubbles: true });
+        element.dispatchEvent(inputEvent);
+
+        // Change event (older React, Vue 2)
+        const changeEvent = new Event('change', { bubbles: true });
+        element.dispatchEvent(changeEvent);
+
+        // Blur event (some frameworks validate on blur)
+        const blurEvent = new Event('blur', { bubbles: true });
+        element.dispatchEvent(blurEvent);
+
+        return true;
+      } catch (err) {
+        console.error('[Gasoline] Failed to set input value:', err);
+        return false;
+      }
     },
 
     /**

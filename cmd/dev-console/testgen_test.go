@@ -9,6 +9,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -17,7 +20,7 @@ import (
 
 func setupTestGenHandler(t *testing.T) *ToolHandler {
 	t.Helper()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	server := &Server{
 		entries: make([]LogEntry, 0),
 	}
@@ -68,7 +71,7 @@ func TestGenerateTestFromError_ValidError(t *testing.T) {
 	h.server.mu.Unlock()
 
 	// Add some actions before the error
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now - 1000, // 1 second before error
 		URL:       "https://example.com/test",
@@ -77,7 +80,7 @@ func TestGenerateTestFromError_ValidError(t *testing.T) {
 		},
 	}})
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "input",
 		Timestamp: now - 2000, // 2 seconds before error
 		URL:       "https://example.com/test",
@@ -134,7 +137,7 @@ func TestGenerateTestFromError_SingleError(t *testing.T) {
 	h.server.mu.Unlock()
 
 	// Add action
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now - 500,
 		URL:       "https://example.com",
@@ -193,7 +196,7 @@ func TestGenerateTestFromError_ActionsWithinTimeWindow(t *testing.T) {
 	h.server.mu.Unlock()
 
 	// Add action within window (3s before)
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now - 3000,
 		URL:       "https://example.com",
@@ -201,7 +204,7 @@ func TestGenerateTestFromError_ActionsWithinTimeWindow(t *testing.T) {
 	}})
 
 	// Add action outside window (10s before)
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now - 10000,
 		URL:       "https://example.com",
@@ -271,7 +274,7 @@ func TestGenerateTestFromError_NoErrorContext(t *testing.T) {
 
 	// No errors added
 	// Add some actions
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: time.Now().UnixMilli(),
 		URL:       "https://example.com",
@@ -349,7 +352,7 @@ func TestGenerateTest_SelectorPriority(t *testing.T) {
 	h.server.mu.Unlock()
 
 	// Add action with testId (highest priority)
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now - 1000,
 		URL:       "https://example.com",
@@ -394,7 +397,7 @@ func TestGenerateTestFromError_ResponseFormat(t *testing.T) {
 	h.server.entries = append(h.server.entries, errorEntry)
 	h.server.mu.Unlock()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now - 1000,
 		URL:       "https://example.com",
@@ -454,7 +457,7 @@ func TestGenerateTest_BaseURLOverride(t *testing.T) {
 	h.server.entries = append(h.server.entries, errorEntry)
 	h.server.mu.Unlock()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "navigate",
 		Timestamp: now - 1000,
 		URL:       "https://example.com/test",
@@ -500,7 +503,7 @@ func TestGenerateTest_Metadata(t *testing.T) {
 	h.server.entries = append(h.server.entries, errorEntry)
 	h.server.mu.Unlock()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now - 1000,
 		URL:       "https://example.com",
@@ -542,7 +545,7 @@ func TestGenerateTestFromInteraction_BasicTest(t *testing.T) {
 	now := time.Now().UnixMilli()
 
 	// Add some user interactions (no error needed)
-	h.capture.AddEnhancedActions([]EnhancedAction{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{
 		{
 			Type:      "navigate",
 			Timestamp: now - 3000,
@@ -597,7 +600,7 @@ func TestGenerateTestFromInteraction_ClickActions(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now,
 		URL:       "https://example.com/test",
@@ -641,7 +644,7 @@ func TestGenerateTestFromInteraction_InputActions(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "input",
 		Timestamp: now,
 		URL:       "https://example.com/test",
@@ -681,7 +684,7 @@ func TestGenerateTestFromInteraction_SelectActions(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:          "select",
 		Timestamp:     now,
 		URL:           "https://example.com/test",
@@ -721,7 +724,7 @@ func TestGenerateTestFromInteraction_RedactedPasswords(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "input",
 		Timestamp: now,
 		URL:       "https://example.com/login",
@@ -761,7 +764,7 @@ func TestGenerateTestFromInteraction_ValidSyntax(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now,
 		URL:       "https://example.com/test",
@@ -844,7 +847,7 @@ func TestGenerateTestFromInteraction_Metadata(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now,
 		URL:       "https://example.com/test",
@@ -907,7 +910,7 @@ func TestGenerateTestFromInteraction_BaseURLOverride(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "navigate",
 		Timestamp: now,
 		URL:       "https://example.com/test",
@@ -944,7 +947,7 @@ func TestGenerateTestFromInteraction_MultipleActionTypes(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{
 		{
 			Type:      "navigate",
 			Timestamp: now - 4000,
@@ -1666,7 +1669,7 @@ func TestGenerateTestFromRegression_BasicTest(t *testing.T) {
 	now := time.Now().UnixMilli()
 
 	// Add some user interactions as baseline
-	h.capture.AddEnhancedActions([]EnhancedAction{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{
 		{
 			Type:      "navigate",
 			Timestamp: now - 3000,
@@ -1710,7 +1713,7 @@ func TestGenerateTestFromRegression_ErrorAssertions(t *testing.T) {
 	now := time.Now().UnixMilli()
 
 	// Add actions
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now,
 		URL:       "https://example.com/test",
@@ -1747,7 +1750,7 @@ func TestGenerateTestFromRegression_NetworkAssertions(t *testing.T) {
 	now := time.Now().UnixMilli()
 
 	// Add actions
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now,
 		URL:       "https://example.com/test",
@@ -1758,7 +1761,7 @@ func TestGenerateTestFromRegression_NetworkAssertions(t *testing.T) {
 
 	// Add network body for baseline
 	h.capture.mu.Lock()
-	h.capture.networkBodies = append(h.capture.networkBodies, NetworkBody{
+	h.capture.networkBodies = append(h.capture.networkBodies, types.NetworkBody{
 		URL:         "https://api.example.com/data",
 		Method:      "GET",
 		Status:      200,
@@ -1793,7 +1796,7 @@ func TestGenerateTestFromRegression_PerformanceTODO(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now,
 		URL:       "https://example.com/test",
@@ -1850,7 +1853,7 @@ func TestGenerateTestFromRegression_BaselineWithErrors(t *testing.T) {
 	now := time.Now().UnixMilli()
 
 	// Add actions
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now,
 		URL:       "https://example.com/test",
@@ -1897,7 +1900,7 @@ func TestGenerateTestFromRegression_Metadata(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now,
 		URL:       "https://example.com/test",
@@ -1960,7 +1963,7 @@ func TestGenerateTestFromRegression_ResponseFormat(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	h.capture.AddEnhancedActions([]EnhancedAction{{
+	h.capture.AddEnhancedActions([]types.EnhancedAction{{
 		Type:      "click",
 		Timestamp: now,
 		URL:       "https://example.com/test",

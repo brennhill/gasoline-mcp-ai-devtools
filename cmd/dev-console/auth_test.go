@@ -6,6 +6,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // dummyHandler is a simple handler that returns 200 OK with "authorized" body

@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -156,7 +159,7 @@ func TestCompositeToolsModeEnumValues(t *testing.T) {
 	expectedEnums := map[string][]string{
 		"observe":   {"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "performance", "api", "accessibility", "changes", "timeline", "error_clusters", "history", "security_audit", "third_party_audit", "security_diff", "command_result", "pending_commands", "failed_commands"},
 		"generate":  {"reproduction", "test", "pr_summary", "sarif", "har", "csp", "sri"},
-		"configure": {"store", "load", "noise_rule", "dismiss", "clear", "capture", "record_event", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming"},
+		"configure": {"store", "load", "noise_rule", "dismiss", "clear", "capture", "record_event", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming", "test_boundary_start", "test_boundary_end"},
 		"interact":  {"highlight", "save_state", "load_state", "list_states", "delete_state", "execute_js", "navigate", "refresh", "back", "forward", "new_tab"},
 	}
 
@@ -291,7 +294,7 @@ func TestObserveNetwork(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{URL: "https://api.example.com/users", Method: "GET", Status: 200, ResponseBody: `{"users":[]}`},
 	})
 
@@ -316,7 +319,7 @@ func TestObserveNetworkWithFilters(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{URL: "https://api.example.com/users", Method: "GET", Status: 200},
 		{URL: "https://api.example.com/posts", Method: "POST", Status: 201},
 	})
@@ -338,7 +341,7 @@ func TestObserveWebSocketEvents(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]types.WebSocketEvent{
 		{ID: "ws-1", Event: "message", Data: `{"type":"ping"}`, URL: "wss://echo.example.com"},
 	})
 
@@ -369,7 +372,7 @@ func TestObserveWebSocketStatus(t *testing.T) {
 	mcp := setupToolHandler(t, server, capture)
 
 	// Register a connection via an "open" event (triggers trackConnection)
-	capture.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]types.WebSocketEvent{
 		{ID: "ws-conn-1", Event: "open", URL: "wss://echo.example.com/socket"},
 	})
 
@@ -394,7 +397,7 @@ func TestObserveActions(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]types.EnhancedAction{
 		{Type: "click", Selectors: map[string]interface{}{"css": "#submit-btn"}, URL: "http://localhost:3000/form"},
 	})
 
@@ -590,7 +593,7 @@ func TestObserveTimeline(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]types.EnhancedAction{
 		{Type: "click", Selectors: map[string]interface{}{"css": "#nav"}, URL: "http://localhost:3000", Timestamp: 1704067200000},
 	})
 
@@ -652,7 +655,7 @@ func TestGenerateReproduction(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]types.EnhancedAction{
 		{Type: "click", Selectors: map[string]interface{}{"css": "#login"}, URL: "http://localhost:3000/login"},
 	})
 
@@ -676,7 +679,7 @@ func TestGenerateTest(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.AddEnhancedActions([]EnhancedAction{
+	capture.AddEnhancedActions([]types.EnhancedAction{
 		{Type: "click", Selectors: map[string]interface{}{"css": "#submit"}, URL: "http://localhost:3000/form"},
 	})
 
@@ -720,7 +723,7 @@ func TestGenerateHAR(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{URL: "https://api.example.com/data", Method: "GET", Status: 200, ResponseBody: `{"ok":true}`},
 	})
 
@@ -1107,14 +1110,14 @@ func TestToolsListMetaReflectsBufferSizes(t *testing.T) {
 	server.mu.Unlock()
 
 	capture.mu.Lock()
-	capture.networkBodies = append(capture.networkBodies, NetworkBody{URL: "/api/test", Status: 200})
-	capture.networkBodies = append(capture.networkBodies, NetworkBody{URL: "/api/test2", Status: 201})
-	capture.wsEvents = append(capture.wsEvents, WebSocketEvent{ID: "ws1", Direction: "incoming"})
+	capture.networkBodies = append(capture.networkBodies, types.NetworkBody{URL: "/api/test", Status: 200})
+	capture.networkBodies = append(capture.networkBodies, types.NetworkBody{URL: "/api/test2", Status: 201})
+	capture.wsEvents = append(capture.wsEvents, types.WebSocketEvent{ID: "ws1", Direction: "incoming"})
 	capture.connections["ws1"] = &connectionState{url: "ws://localhost"}
 	capture.enhancedActions = append(capture.enhancedActions,
-		EnhancedAction{Type: "click"},
-		EnhancedAction{Type: "input"},
-		EnhancedAction{Type: "navigate"},
+		types.EnhancedAction{Type: "click"},
+		types.EnhancedAction{Type: "input"},
+		types.EnhancedAction{Type: "navigate"},
 	)
 	capture.perf.snapshots["page1"] = PerformanceSnapshot{URL: "/page1"}
 	capture.mu.Unlock()
@@ -1160,8 +1163,8 @@ func TestToolsListMetaAPISchemaCount(t *testing.T) {
 	})
 
 	// Add some API observations
-	capture.schemaStore.Observe(NetworkBody{URL: "/api/users", Method: "GET", Status: 200})
-	capture.schemaStore.Observe(NetworkBody{URL: "/api/posts", Method: "POST", Status: 201})
+	capture.schemaStore.Observe(types.NetworkBody{URL: "/api/users", Method: "GET", Status: 200})
+	capture.schemaStore.Observe(types.NetworkBody{URL: "/api/posts", Method: "POST", Status: 201})
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 2, Method: "tools/list",
@@ -1309,7 +1312,7 @@ func TestToolSecurityAudit(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{URL: "https://app.com/api?api_key=supersecretvalue123", ContentType: "application/json", Status: 200},
 	})
 
@@ -1335,7 +1338,7 @@ func TestToolAuditThirdParties(t *testing.T) {
 	mcp := setupToolHandler(t, server, capture)
 
 	// Add network bodies with third-party resources
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{URL: "https://myapp.com/page", ContentType: "text/html", Status: 200},
 		{URL: "https://cdn.jsdelivr.net/npm/lib.js", ContentType: "application/javascript", Status: 200},
 		{URL: "https://evil.xyz/track.js", ContentType: "application/javascript", Status: 200},
@@ -1366,7 +1369,7 @@ func TestToolDiffSecuritySnapshot(t *testing.T) {
 	mcp := setupToolHandler(t, server, capture)
 
 	// Add network bodies
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{URL: "https://app.com/", ContentType: "text/html", Status: 200,
 			ResponseHeaders: map[string]string{
 				"X-Frame-Options": "DENY",
@@ -1395,7 +1398,7 @@ func TestToolDiffSecurityList(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{URL: "https://app.com/", ContentType: "text/html", Status: 200},
 	})
 
@@ -1427,7 +1430,7 @@ func TestToolDiffSecurityCompare(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{URL: "https://app.com/", ContentType: "text/html", Status: 200,
 			ResponseHeaders: map[string]string{"X-Frame-Options": "DENY"}},
 	})
@@ -1440,7 +1443,7 @@ func TestToolDiffSecurityCompare(t *testing.T) {
 
 	// Update bodies (remove header)
 	capture.mu.Lock()
-	capture.networkBodies = []NetworkBody{
+	capture.networkBodies = []types.NetworkBody{
 		{URL: "https://app.com/", ContentType: "text/html", Status: 200,
 			ResponseHeaders: map[string]string{}},
 	}
@@ -1460,4 +1463,9 @@ func TestToolDiffSecurityCompare(t *testing.T) {
 	if !strings.Contains(text, "regressions") {
 		t.Error("Expected regressions in compare response")
 	}
+}
+
+// setupTestCapture creates a new Capture instance for testing
+func setupTestCapture(t *testing.T) *capture.Capture {
+	return capture.NewCapture()
 }

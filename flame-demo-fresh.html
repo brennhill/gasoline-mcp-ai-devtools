@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gasoline Flame Flicker - LIVE</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #e0e0e0;
+      padding: 40px;
+      text-align: center;
+    }
+    h1 { color: #fb923c; }
+    .demo { margin: 40px 0; }
+    .flame-display {
+      width: 200px;
+      height: 200px;
+      margin: 20px auto;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 20px;
+      display: inline-block;
+    }
+    img { width: 100%; height: 100%; }
+    .info {
+      color: #8b949e;
+      font-size: 14px;
+      max-width: 600px;
+      margin: 20px auto;
+    }
+    code {
+      background: #2d333b;
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #fb923c;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔥 Gasoline Flame Flicker Animation</h1>
+
+  <div class="demo">
+    <h2 style="color: #58a6ff;">LIVE Animation (75ms per frame)</h2>
+    <div class="flame-display">
+      <img id="flameAnim" src="extension/icons/icon-flicker-1-tiny.svg">
+    </div>
+    <p class="info">
+      <strong>What you should see:</strong><br>
+      • Flame growing/shrinking (85% → 112% → 85%)<br>
+      • Ring color shifting: orange → yellow → pale yellow → back<br>
+      • NO glow/blur effects (those were removed)<br>
+      • 8 frames at 75ms = 0.6 second full cycle
+    </p>
+  </div>
+
+  <div class="info" style="background: #161b22; padding: 20px; border-radius: 8px;">
+    <h3 style="color: #58a6ff; margin-top: 0;">Frame Progression:</h3>
+    <table style="margin: 0 auto; text-align: left;">
+      <tr><td>Frame 1:</td><td>85% flame, <code>#fb923c</code> ring (dark orange)</td></tr>
+      <tr><td>Frame 2:</td><td>92% flame, <code>#fbbf24</code> ring (yellow)</td></tr>
+      <tr><td>Frame 3:</td><td>100% flame, <code>#fde047</code> ring (bright yellow)</td></tr>
+      <tr><td>Frame 4:</td><td>105% flame, <code>#fef08a</code> ring (pale yellow)</td></tr>
+      <tr><td>Frame 5:</td><td><strong>112% PEAK</strong>, <code>#fffbeb</code> ring (almost white)</td></tr>
+      <tr><td>Frame 6:</td><td>105% flame, <code>#fef08a</code> ring</td></tr>
+      <tr><td>Frame 7:</td><td>96% flame, <code>#fde047</code> ring</td></tr>
+      <tr><td>Frame 8:</td><td>92% flame, <code>#fbbf24</code> ring</td></tr>
+    </table>
+  </div>
+
+  <script>
+    const flameAnim = document.getElementById('flameAnim');
+    const frames = [
+      'icon-flicker-1-tiny.svg',
+      'icon-flicker-2-small.svg',
+      'icon-flicker-3-normal.svg',
+      'icon-flicker-4-medium.svg',
+      'icon-flicker-5-large.svg',
+      'icon-flicker-6-medium.svg',
+      'icon-flicker-7-smallmed.svg',
+      'icon-flicker-8-small.svg',
+    ];
+    let currentFrame = 0;
+
+    // Add timestamp to bust cache
+    const cacheBuster = Date.now();
+
+    setInterval(() => {
+      currentFrame = (currentFrame + 1) % frames.length;
+      flameAnim.src = `extension/icons/${frames[currentFrame]}?v=${cacheBuster}`;
+    }, 75);
+  </script>
+</body>
+</html>

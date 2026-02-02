@@ -123,6 +123,7 @@ Solves Problem F (production safety).
 - A11y Tree Snapshots (accessibility compression)
 - Enhanced WCAG Audit (deep accessibility)
 - Annotated Screenshots (visual context for vision models)
+- Design Audit & Archival (screenshot archival + queryable design regression testing across responsive variants)
 
 **v6.7: Advanced Interactions**
 - Form Filling (complex form automation)

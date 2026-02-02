@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gasoline",
-  "version": "5.2.5",
+  "version": "5.4.0",
   "description": "Browser observability for AI coding agents - autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
   "icons": {
     "16": "icons/icon-16.png",
@@ -37,7 +37,16 @@
     {
       "resources": [
         "inject.bundled.js",
-        "lib/axe.min.js"
+        "lib/axe.min.js",
+        "icons/icon-glow.svg",
+        "icons/icon-flicker-1-tiny.svg",
+        "icons/icon-flicker-2-small.svg",
+        "icons/icon-flicker-3-normal.svg",
+        "icons/icon-flicker-4-medium.svg",
+        "icons/icon-flicker-5-large.svg",
+        "icons/icon-flicker-6-medium.svg",
+        "icons/icon-flicker-7-smallmed.svg",
+        "icons/icon-flicker-8-small.svg"
       ],
       "matches": ["<all_urls>"]
     }

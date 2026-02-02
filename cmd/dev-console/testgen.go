@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -388,14 +390,14 @@ func (h *ToolHandler) generateTestFromError(req TestFromContextRequest) (*Genera
 	errorMessage, _ := targetError["message"].(string)
 
 	// 2. Get actions leading up to error (±5 seconds window)
-	allActions := h.capture.GetEnhancedActions(EnhancedActionFilter{})
+	allActions := h.capture.GetAllEnhancedActions()
 	if len(allActions) == 0 {
 		return nil, fmt.Errorf(ErrNoActionsCaptured)
 	}
 
 	// Filter actions within time window
 	const timeWindowMs = 5000 // ±5 seconds
-	var relevantActions []EnhancedAction
+	var relevantActions []capture.EnhancedAction
 	for i := range allActions {
 		action := &allActions[i]
 		timeDiff := action.Timestamp - errorTimestamp
@@ -448,7 +450,7 @@ func (h *ToolHandler) generateTestFromError(req TestFromContextRequest) (*Genera
 // generateTestFromInteraction creates a Playwright test from recorded user interactions
 func (h *ToolHandler) generateTestFromInteraction(req TestFromContextRequest) (*GeneratedTest, error) {
 	// 1. Get all enhanced actions
-	allActions := h.capture.GetEnhancedActions(EnhancedActionFilter{})
+	allActions := h.capture.GetAllEnhancedActions()
 	if len(allActions) == 0 {
 		return nil, fmt.Errorf(ErrNoActionsCaptured)
 	}
@@ -474,16 +476,14 @@ func (h *ToolHandler) generateTestFromInteraction(req TestFromContextRequest) (*
 		copy(entries, h.server.entries)
 		h.server.mu.RUnlock()
 
-		// Get network data from timeline
-		timeline := h.capture.GetSessionTimeline(TimelineFilter{
-			Include: []string{"network"},
-		}, entries)
+		// Get network data from capture
+		networkBodies := h.capture.GetNetworkBodies()
 
 		// Add network assertions to script
-		if len(timeline.Timeline) > 0 {
+		if len(networkBodies) > 0 {
 			// Count network responses that would be asserted
-			for _, entry := range timeline.Timeline {
-				if entry.Kind == "network" && entry.Status > 0 {
+			for _, nb := range networkBodies {
+				if nb.Status > 0 {
 					assertionCount++
 				}
 			}
@@ -537,7 +537,7 @@ func (h *ToolHandler) generateTestFromInteraction(req TestFromContextRequest) (*
 // generateTestFromRegression creates a Playwright test that verifies behavior against a baseline
 func (h *ToolHandler) generateTestFromRegression(req TestFromContextRequest) (*GeneratedTest, error) {
 	// 1. Get current session actions as the baseline
-	allActions := h.capture.GetEnhancedActions(EnhancedActionFilter{})
+	allActions := h.capture.GetAllEnhancedActions()
 	if len(allActions) == 0 {
 		return nil, fmt.Errorf(ErrNoActionsCaptured)
 	}
@@ -562,10 +562,8 @@ func (h *ToolHandler) generateTestFromRegression(req TestFromContextRequest) (*G
 		}
 	}
 
-	// 4. Get network data from timeline
-	timeline := h.capture.GetSessionTimeline(TimelineFilter{
-		Include: []string{"network"},
-	}, entries)
+	// 4. Get network data from capture
+	networkBodies := h.capture.GetNetworkBodies()
 
 	// 5. Build assertions based on baseline state
 	var assertions []string
@@ -586,10 +584,10 @@ func (h *ToolHandler) generateTestFromRegression(req TestFromContextRequest) (*G
 
 	// Add network assertions for key requests
 	networkAssertions := 0
-	for _, entry := range timeline.Timeline {
-		if entry.Kind == "network" && entry.Status > 0 && networkAssertions < 3 {
-			assertions = append(assertions, fmt.Sprintf("  // Assert %s %s returns %d", entry.Method, entry.URL, entry.Status))
-			assertions = append(assertions, fmt.Sprintf("  // TODO: await page.waitForResponse(r => r.url().includes('%s') && r.status() === %d)", entry.URL, entry.Status))
+	for _, nb := range networkBodies {
+		if nb.Status > 0 && networkAssertions < 3 {
+			assertions = append(assertions, fmt.Sprintf("  // Assert %s %s returns %d", nb.Method, nb.URL, nb.Status))
+			assertions = append(assertions, fmt.Sprintf("  // TODO: await page.waitForResponse(r => r.url().includes('%s') && r.status() === %d)", nb.URL, nb.Status))
 			networkAssertions++
 			assertionCount++
 		}
@@ -693,7 +691,7 @@ func generateTestFilename(errorMessage, framework string) string {
 }
 
 // extractSelectorsFromActions extracts all selectors used in actions
-func extractSelectorsFromActions(actions []EnhancedAction) []string {
+func extractSelectorsFromActions(actions []capture.EnhancedAction) []string {
 	selectorSet := make(map[string]bool)
 	for i := range actions {
 		selectors := actions[i].Selectors
@@ -854,11 +852,7 @@ func (h *ToolHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMe
 	}
 
 	// Get project directory
-	projectDir := h.sessionStore.projectPath
-	if projectDir == "" {
-		// Fallback to current working directory
-		projectDir, _ = os.Getwd()
-	}
+	projectDir, _ := os.Getwd()
 
 	// Dispatch based on action
 	var result interface{}
@@ -1690,4 +1684,58 @@ func generateSuggestedFix(category string, errorMsg string) *SuggestedFix {
 	}
 
 	return nil
+}
+
+// normalizeTimestamp converts ISO 8601 timestamp string to milliseconds since epoch
+func normalizeTimestamp(tsStr string) int64 {
+	t, err := time.Parse(time.RFC3339, tsStr)
+	if err != nil {
+		// Try alternate formats if RFC3339 fails
+		t, err = time.Parse(time.RFC3339Nano, tsStr)
+		if err != nil {
+			return 0
+		}
+	}
+	return t.UnixMilli()
+}
+
+// generatePlaywrightScript creates a basic Playwright test script from actions
+func generatePlaywrightScript(actions []capture.EnhancedAction, errorMessage string, baseURL string) string {
+	var script strings.Builder
+	script.WriteString("import { test, expect } from '@playwright/test';\n\n")
+	script.WriteString("test('Reproduce issue', async ({ page }) => {\n")
+
+	if baseURL != "" {
+		script.WriteString(fmt.Sprintf("  await page.goto('%s');\n", baseURL))
+	}
+
+	// Generate Playwright code for each action
+	for _, action := range actions {
+		switch action.Type {
+		case "click":
+			// Extract selector from Selectors map if available
+			if selectors, ok := action.Selectors["target"].(string); ok {
+				script.WriteString(fmt.Sprintf("  await page.click('%s');\n", selectors))
+			}
+		case "input":
+			if selectors, ok := action.Selectors["target"].(string); ok {
+				script.WriteString(fmt.Sprintf("  await page.fill('%s', '%s');\n", selectors, action.Value))
+			}
+		case "navigate":
+			if action.ToURL != "" {
+				script.WriteString(fmt.Sprintf("  await page.goto('%s');\n", action.ToURL))
+			}
+		case "wait":
+			script.WriteString(fmt.Sprintf("  await page.waitForTimeout(%d);\n", 100))
+		}
+	}
+
+	// Add assertion for error if provided
+	if errorMessage != "" {
+		script.WriteString(fmt.Sprintf("  // Expected error: %s\n", errorMessage))
+		script.WriteString("  // TODO: Add specific assertion for this error\n")
+	}
+
+	script.WriteString("});\n")
+	return script.String()
 }

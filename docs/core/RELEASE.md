@@ -1,6 +1,16 @@
+---
+status: active
+scope: process/release
+ai-priority: high
+tags: [release, process, quality-gates, deployment]
+relates-to: [KNOWN-ISSUES.md, docs/core/uat-v5.3-checklist.md]
+last-verified: 2026-01-30
+canonical: true
+---
+
 # Release Process
 
-Gasoline uses a `next` → `main` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
+Gasoline MCP uses a `next` → `main` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
 
 ## Branch Model
 

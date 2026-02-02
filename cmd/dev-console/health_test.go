@@ -9,6 +9,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -181,7 +184,7 @@ func TestGetHealth_ResponseStructure(t *testing.T) {
 	hm.IncrementError("query_dom")
 
 	// Create a mock capture for buffer data
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	response := hm.GetHealth(capture, nil, version)
 
@@ -243,7 +246,7 @@ func TestGetHealth_ResponseStructure(t *testing.T) {
 func TestGetHealth_MemoryStats(t *testing.T) {
 	t.Parallel()
 	hm := NewHealthMetrics()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	response := hm.GetHealth(capture, nil, version)
 
@@ -262,10 +265,10 @@ func TestGetHealth_MemoryStats(t *testing.T) {
 func TestGetHealth_BufferUtilization(t *testing.T) {
 	t.Parallel()
 	hm := NewHealthMetrics()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// Add some data to buffers
-	capture.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]types.WebSocketEvent{
 		{ID: "test1", Event: "message"},
 		{ID: "test2", Event: "message"},
 	})
@@ -287,7 +290,7 @@ func TestGetHealth_BufferUtilization(t *testing.T) {
 func TestGetHealth_RateLimiting(t *testing.T) {
 	t.Parallel()
 	hm := NewHealthMetrics()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	response := hm.GetHealth(capture, nil, version)
 
@@ -302,7 +305,7 @@ func TestGetHealth_RateLimiting(t *testing.T) {
 func TestGetHealth_ErrorRate(t *testing.T) {
 	t.Parallel()
 	hm := NewHealthMetrics()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// 10 requests, 2 errors = 20% error rate
 	for i := 0; i < 10; i++ {
@@ -322,7 +325,7 @@ func TestGetHealth_ErrorRate(t *testing.T) {
 func TestGetHealth_ZeroDivision(t *testing.T) {
 	t.Parallel()
 	hm := NewHealthMetrics()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// No requests yet - error rate should be 0, not NaN or panic
 	response := hm.GetHealth(capture, nil, version)
@@ -335,7 +338,7 @@ func TestGetHealth_ZeroDivision(t *testing.T) {
 func TestGetHealth_JSONSerialization(t *testing.T) {
 	t.Parallel()
 	hm := NewHealthMetrics()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	response := hm.GetHealth(capture, nil, version)
 
@@ -368,7 +371,7 @@ func TestToolHandler_GetHealthTool(t *testing.T) {
 		maxEntries: defaultMaxEntries,
 		entries:    make([]LogEntry, 0),
 	}
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// Create the tool handler
 	mcpHandler := &MCPHandler{server: server}

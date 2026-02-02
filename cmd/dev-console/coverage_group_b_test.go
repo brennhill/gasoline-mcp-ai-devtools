@@ -10,6 +10,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -20,17 +23,17 @@ func TestCoverageGroupB_ObserveWebSocket_Basic(t *testing.T) {
 	t.Parallel()
 	store := NewSchemaStore()
 
-	store.ObserveWebSocket(WebSocketEvent{
+	store.ObserveWebSocket(types.WebSocketEvent{
 		URL:       "wss://echo.example.com/ws",
 		Direction: "incoming",
 		Data:      `{"type":"ping","action":"heartbeat"}`,
 	})
-	store.ObserveWebSocket(WebSocketEvent{
+	store.ObserveWebSocket(types.WebSocketEvent{
 		URL:       "wss://echo.example.com/ws",
 		Direction: "outgoing",
 		Data:      `{"type":"pong"}`,
 	})
-	store.ObserveWebSocket(WebSocketEvent{
+	store.ObserveWebSocket(types.WebSocketEvent{
 		URL:       "wss://echo.example.com/ws",
 		Direction: "incoming",
 		Data:      `not json`,
@@ -63,7 +66,7 @@ func TestCoverageGroupB_ObserveWebSocket_EmptyURL(t *testing.T) {
 	t.Parallel()
 	store := NewSchemaStore()
 
-	store.ObserveWebSocket(WebSocketEvent{
+	store.ObserveWebSocket(types.WebSocketEvent{
 		URL:       "",
 		Direction: "incoming",
 		Data:      `{"type":"test"}`,
@@ -81,7 +84,7 @@ func TestCoverageGroupB_ObserveWebSocket_CapEnforced(t *testing.T) {
 
 	// Fill up to maxWSSchemaConns unique URLs
 	for i := 0; i < maxWSSchemaConns+5; i++ {
-		store.ObserveWebSocket(WebSocketEvent{
+		store.ObserveWebSocket(types.WebSocketEvent{
 			URL:       "wss://example.com/ws/" + intToString(i),
 			Direction: "incoming",
 			Data:      `{"type":"test"}`,
@@ -107,7 +110,7 @@ func TestCoverageGroupB_BuildSchema_Comprehensive(t *testing.T) {
 
 	// Observe multiple endpoints with various data
 	for i := 0; i < 5; i++ {
-		store.Observe(NetworkBody{
+		store.Observe(types.NetworkBody{
 			URL:          "https://api.example.com/users/123?page=1&active=true",
 			Method:       "GET",
 			Status:       200,
@@ -119,7 +122,7 @@ func TestCoverageGroupB_BuildSchema_Comprehensive(t *testing.T) {
 
 	// Observe POST with request body
 	for i := 0; i < 3; i++ {
-		store.Observe(NetworkBody{
+		store.Observe(types.NetworkBody{
 			URL:          "https://api.example.com/users",
 			Method:       "POST",
 			Status:       201,
@@ -131,7 +134,7 @@ func TestCoverageGroupB_BuildSchema_Comprehensive(t *testing.T) {
 	}
 
 	// Observe an endpoint with UUID path segment
-	store.Observe(NetworkBody{
+	store.Observe(types.NetworkBody{
 		URL:          "https://api.example.com/orders/550e8400-e29b-41d4-a716-446655440000/items",
 		Method:       "GET",
 		Status:       200,
@@ -141,7 +144,7 @@ func TestCoverageGroupB_BuildSchema_Comprehensive(t *testing.T) {
 	})
 
 	// Observe an error response
-	store.Observe(NetworkBody{
+	store.Observe(types.NetworkBody{
 		URL:          "https://api.example.com/users/999",
 		Method:       "GET",
 		Status:       404,
@@ -151,7 +154,7 @@ func TestCoverageGroupB_BuildSchema_Comprehensive(t *testing.T) {
 	})
 
 	// Observe a 500 error
-	store.Observe(NetworkBody{
+	store.Observe(types.NetworkBody{
 		URL:      "https://api.example.com/users/123",
 		Method:   "GET",
 		Status:   500,
@@ -221,8 +224,8 @@ func TestCoverageGroupB_BuildSchema_URLFilter(t *testing.T) {
 	t.Parallel()
 	store := NewSchemaStore()
 
-	store.Observe(NetworkBody{URL: "https://api.example.com/users", Method: "GET", Status: 200, Duration: 10})
-	store.Observe(NetworkBody{URL: "https://cdn.example.com/style.css", Method: "GET", Status: 200, Duration: 5})
+	store.Observe(types.NetworkBody{URL: "https://api.example.com/users", Method: "GET", Status: 200, Duration: 10})
+	store.Observe(types.NetworkBody{URL: "https://cdn.example.com/style.css", Method: "GET", Status: 200, Duration: 5})
 
 	schema := store.BuildSchema(SchemaFilter{URLFilter: "/users"})
 	if schema.Coverage.TotalEndpoints != 1 {
@@ -234,9 +237,9 @@ func TestCoverageGroupB_BuildSchema_MinObservations(t *testing.T) {
 	t.Parallel()
 	store := NewSchemaStore()
 
-	store.Observe(NetworkBody{URL: "https://api.example.com/rare", Method: "GET", Status: 200})
+	store.Observe(types.NetworkBody{URL: "https://api.example.com/rare", Method: "GET", Status: 200})
 	for i := 0; i < 5; i++ {
-		store.Observe(NetworkBody{URL: "https://api.example.com/common", Method: "GET", Status: 200})
+		store.Observe(types.NetworkBody{URL: "https://api.example.com/common", Method: "GET", Status: 200})
 	}
 
 	schema := store.BuildSchema(SchemaFilter{MinObservations: 3})
@@ -255,7 +258,7 @@ func TestCoverageGroupB_BuildOpenAPIStub(t *testing.T) {
 
 	// Observe with request body, response body, query params, and path params
 	for i := 0; i < 3; i++ {
-		store.Observe(NetworkBody{
+		store.Observe(types.NetworkBody{
 			URL:          "https://api.example.com/users/42?sort=name&active=true",
 			Method:       "GET",
 			Status:       200,
@@ -264,7 +267,7 @@ func TestCoverageGroupB_BuildOpenAPIStub(t *testing.T) {
 			ResponseBody: `{"id":42,"name":"Alice","active":true}`,
 		})
 	}
-	store.Observe(NetworkBody{
+	store.Observe(types.NetworkBody{
 		URL:          "https://api.example.com/users",
 		Method:       "POST",
 		Status:       201,
@@ -274,7 +277,7 @@ func TestCoverageGroupB_BuildOpenAPIStub(t *testing.T) {
 		ResponseBody: `{"id":99,"name":"Bob"}`,
 	})
 	// Observe an endpoint without response body (just status code)
-	store.Observe(NetworkBody{
+	store.Observe(types.NetworkBody{
 		URL:    "https://api.example.com/health",
 		Method: "GET",
 		Status: 204,
@@ -427,9 +430,9 @@ func TestCoverageGroupB_DetectAuthPattern_WithAuthEndpoint(t *testing.T) {
 	t.Parallel()
 	store := NewSchemaStore()
 
-	store.Observe(NetworkBody{URL: "https://api.example.com/auth/login", Method: "POST", Status: 200})
-	store.Observe(NetworkBody{URL: "https://api.example.com/health", Method: "GET", Status: 200})
-	store.Observe(NetworkBody{URL: "https://api.example.com/api/users", Method: "GET", Status: 200})
+	store.Observe(types.NetworkBody{URL: "https://api.example.com/auth/login", Method: "POST", Status: 200})
+	store.Observe(types.NetworkBody{URL: "https://api.example.com/health", Method: "GET", Status: 200})
+	store.Observe(types.NetworkBody{URL: "https://api.example.com/api/users", Method: "GET", Status: 200})
 
 	schema := store.BuildSchema(SchemaFilter{})
 	if schema.AuthPattern == nil {
@@ -451,8 +454,8 @@ func TestCoverageGroupB_DetectAuthPattern_With401(t *testing.T) {
 	t.Parallel()
 	store := NewSchemaStore()
 
-	store.Observe(NetworkBody{URL: "https://api.example.com/api/secret", Method: "GET", Status: 401})
-	store.Observe(NetworkBody{URL: "https://api.example.com/api/data", Method: "GET", Status: 200})
+	store.Observe(types.NetworkBody{URL: "https://api.example.com/api/secret", Method: "GET", Status: 401})
+	store.Observe(types.NetworkBody{URL: "https://api.example.com/api/data", Method: "GET", Status: 200})
 
 	schema := store.BuildSchema(SchemaFilter{})
 	if schema.AuthPattern == nil {
@@ -464,8 +467,8 @@ func TestCoverageGroupB_DetectAuthPattern_NoAuth(t *testing.T) {
 	t.Parallel()
 	store := NewSchemaStore()
 
-	store.Observe(NetworkBody{URL: "https://api.example.com/api/data", Method: "GET", Status: 200})
-	store.Observe(NetworkBody{URL: "https://api.example.com/api/items", Method: "GET", Status: 200})
+	store.Observe(types.NetworkBody{URL: "https://api.example.com/api/data", Method: "GET", Status: 200})
+	store.Observe(types.NetworkBody{URL: "https://api.example.com/api/items", Method: "GET", Status: 200})
 
 	schema := store.BuildSchema(SchemaFilter{})
 	if schema.AuthPattern != nil {
@@ -483,7 +486,7 @@ func TestCoverageGroupB_BuildEndpoint_QueryParamTypes(t *testing.T) {
 
 	// Observe with various query param types
 	for i := 0; i < 5; i++ {
-		store.Observe(NetworkBody{
+		store.Observe(types.NetworkBody{
 			URL:    "https://api.example.com/search?page=" + intToString(i+1) + "&active=true&q=test",
 			Method: "GET",
 			Status: 200,
@@ -524,7 +527,7 @@ func TestCoverageGroupB_BuildFields_TypeInference(t *testing.T) {
 	store := NewSchemaStore()
 
 	for i := 0; i < 5; i++ {
-		store.Observe(NetworkBody{
+		store.Observe(types.NetworkBody{
 			URL:          "https://api.example.com/data",
 			Method:       "GET",
 			Status:       200,
@@ -742,7 +745,7 @@ func TestCoverageGroupB_ToolValidateAPI(t *testing.T) {
 	mcp := setupToolHandler(t, server, capture)
 
 	// Add some network bodies to analyze
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{URL: "https://api.example.com/users", Method: "GET", Status: 200, ContentType: "application/json", ResponseBody: `{"id":1,"name":"Alice"}`},
 		{URL: "https://api.example.com/users", Method: "GET", Status: 200, ContentType: "application/json", ResponseBody: `{"id":2,"name":"Bob"}`},
 	})
@@ -1651,7 +1654,7 @@ func TestCoverageGroupB_Observe_NonJSONStatusTracking(t *testing.T) {
 	store := NewSchemaStore()
 
 	// Observe a non-JSON response - endpoint should still be tracked
-	store.Observe(NetworkBody{
+	store.Observe(types.NetworkBody{
 		URL:         "https://api.example.com/file",
 		Method:      "GET",
 		Status:      200,
@@ -1691,7 +1694,7 @@ func TestCoverageGroupB_Observe_EndpointCap(t *testing.T) {
 
 	// Add more than maxSchemaEndpoints unique endpoints
 	for i := 0; i < maxSchemaEndpoints+10; i++ {
-		store.Observe(NetworkBody{
+		store.Observe(types.NetworkBody{
 			URL:    "https://api.example.com/endpoint-" + intToString(i),
 			Method: "GET",
 			Status: 200,
@@ -1742,7 +1745,7 @@ func TestCoverageGroupB_Observe_BadURL(t *testing.T) {
 	store := NewSchemaStore()
 
 	// Observe with invalid URL - should not panic
-	store.Observe(NetworkBody{
+	store.Observe(types.NetworkBody{
 		URL:    "://invalid",
 		Method: "GET",
 		Status: 200,
@@ -1761,7 +1764,7 @@ func TestCoverageGroupB_Observe_NonJSONRequestBody(t *testing.T) {
 	t.Parallel()
 	store := NewSchemaStore()
 
-	store.Observe(NetworkBody{
+	store.Observe(types.NetworkBody{
 		URL:         "https://api.example.com/upload",
 		Method:      "POST",
 		Status:      200,
@@ -1788,12 +1791,12 @@ func TestCoverageGroupB_BuildSchema_WithWebSockets(t *testing.T) {
 	t.Parallel()
 	store := NewSchemaStore()
 
-	store.ObserveWebSocket(WebSocketEvent{
+	store.ObserveWebSocket(types.WebSocketEvent{
 		URL:       "wss://ws.example.com/chat",
 		Direction: "incoming",
 		Data:      `{"type":"message","text":"hello"}`,
 	})
-	store.ObserveWebSocket(WebSocketEvent{
+	store.ObserveWebSocket(types.WebSocketEvent{
 		URL:       "wss://ws.example.com/chat",
 		Direction: "outgoing",
 		Data:      `{"type":"typing"}`,
@@ -1828,7 +1831,7 @@ func TestCoverageGroupB_ToolGetAPISchema_DefaultFormat(t *testing.T) {
 	mcp := setupToolHandler(t, server, capture)
 
 	// Observe some data through the schema store
-	capture.schemaStore.Observe(NetworkBody{
+	capture.schemaStore.Observe(types.NetworkBody{
 		URL:          "https://api.example.com/users",
 		Method:       "GET",
 		Status:       200,
@@ -1855,7 +1858,7 @@ func TestCoverageGroupB_ToolGetAPISchema_OpenAPIFormat(t *testing.T) {
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	capture.schemaStore.Observe(NetworkBody{
+	capture.schemaStore.Observe(types.NetworkBody{
 		URL:          "https://api.example.com/users",
 		Method:       "GET",
 		Status:       200,

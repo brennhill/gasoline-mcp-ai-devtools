@@ -18,7 +18,7 @@ import * as stateManager from './state-manager';
 import * as eventListeners from './event-listeners';
 import { handlePendingQuery } from './pending-queries';
 import type { MessageHandlerDependencies } from './message-handlers';
-import { installMessageListener } from './message-handlers';
+import { installMessageListener, broadcastTrackingState } from './message-handlers';
 import * as communication from './communication';
 import * as storageUtils from './storage-utils';
 
@@ -157,9 +157,13 @@ async function initializeExtensionAsync(): Promise<void> {
       onAiWebPilotChanged: (newValue) => {
         setAiWebPilotEnabledCache(newValue);
         console.log('[Gasoline] AI Web Pilot cache updated from storage:', newValue);
+        // Broadcast to tracked tab for favicon flicker
+        broadcastTrackingState().catch(() => {});
       },
       onTrackedTabChanged: () => {
         index.sendStatusPingWrapper();
+        // Broadcast to tracked tab for favicon flicker
+        broadcastTrackingState().catch(() => {});
       },
     });
 
@@ -243,6 +247,11 @@ async function initializeExtensionAsync(): Promise<void> {
     eventListeners.installTabRemovedListener((tabId) => {
       stateManager.clearScreenshotTimestamps(tabId);
       eventListeners.handleTrackedTabClosed(tabId, (msg) => console.log(msg));
+    });
+
+    // ============= STEP 9.5: Install tab updated listener =============
+    eventListeners.installTabUpdatedListener((tabId, newUrl) => {
+      eventListeners.handleTrackedTabUrlChange(tabId, newUrl, (msg) => console.log(msg));
     });
 
     // ============= STEP 10: Initial connection check =============

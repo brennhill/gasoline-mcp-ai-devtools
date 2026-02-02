@@ -211,3 +211,15 @@ export {
   isJsonValue,
   createTypeGuard,
 } from './utils';
+
+// ============================================
+// Favicon Replacer Types
+// ============================================
+
+/**
+ * Tracking state for favicon replacer
+ */
+export interface TrackingState {
+  isTracked: boolean;
+  aiPilotEnabled: boolean;
+}

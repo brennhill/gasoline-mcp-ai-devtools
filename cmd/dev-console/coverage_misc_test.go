@@ -9,6 +9,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -898,13 +901,13 @@ func TestSaveSARIFToFile_TmpPath(t *testing.T) {
 
 func TestExportHARToFile_Success(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
-	capture.AddNetworkBodies([]NetworkBody{
+	capture := capture.NewCapture()
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{Timestamp: "2026-01-23T10:00:00.000Z", Method: "GET", URL: "https://example.com/api", Status: 200, ResponseBody: "ok"},
 	})
 
 	tmpFile := filepath.Join(t.TempDir(), "test-export.har")
-	result, err := capture.ExportHARToFile(NetworkBodyFilter{}, tmpFile)
+	result, err := capture.ExportHARToFile(types.NetworkBodyFilter{}, tmpFile)
 	if err != nil {
 		t.Fatalf("ExportHARToFile failed: %v", err)
 	}
@@ -932,10 +935,10 @@ func TestExportHARToFile_Success(t *testing.T) {
 
 func TestExportHARToFile_UnsafePath(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// Path traversal should be rejected
-	_, err := capture.ExportHARToFile(NetworkBodyFilter{}, "../../etc/passwd")
+	_, err := capture.ExportHARToFile(types.NetworkBodyFilter{}, "../../etc/passwd")
 	if err == nil {
 		t.Error("expected error for unsafe path with traversal")
 	}
@@ -943,9 +946,9 @@ func TestExportHARToFile_UnsafePath(t *testing.T) {
 
 func TestExportHARToFile_AbsoluteUnsafePath(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
-	_, err := capture.ExportHARToFile(NetworkBodyFilter{}, "/etc/hosts")
+	_, err := capture.ExportHARToFile(types.NetworkBodyFilter{}, "/etc/hosts")
 	if err == nil {
 		t.Error("expected error for absolute path outside /tmp")
 	}
@@ -953,10 +956,10 @@ func TestExportHARToFile_AbsoluteUnsafePath(t *testing.T) {
 
 func TestExportHARToFile_EmptyCapture(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	tmpFile := filepath.Join(t.TempDir(), "empty-export.har")
-	result, err := capture.ExportHARToFile(NetworkBodyFilter{}, tmpFile)
+	result, err := capture.ExportHARToFile(types.NetworkBodyFilter{}, tmpFile)
 	if err != nil {
 		t.Fatalf("ExportHARToFile failed: %v", err)
 	}
@@ -974,7 +977,7 @@ func TestToolExportHAR_SaveTo_UnsafePath(t *testing.T) {
 	server := &Server{
 		entries: make([]LogEntry, 0),
 	}
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	handler := &ToolHandler{
 		MCPHandler: NewMCPHandler(server),
 		capture:    capture,
@@ -1005,8 +1008,8 @@ func TestToolExportHAR_SaveTo_Success(t *testing.T) {
 	server := &Server{
 		entries: make([]LogEntry, 0),
 	}
-	capture := NewCapture()
-	capture.AddNetworkBodies([]NetworkBody{
+	capture := capture.NewCapture()
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{Timestamp: "2026-01-23T10:00:00.000Z", Method: "GET", URL: "https://example.com", Status: 200},
 	})
 	handler := &ToolHandler{
@@ -1055,8 +1058,8 @@ func TestToolExportHAR_NoSaveTo_ReturnsJSON(t *testing.T) {
 	server := &Server{
 		entries: make([]LogEntry, 0),
 	}
-	capture := NewCapture()
-	capture.AddNetworkBodies([]NetworkBody{
+	capture := capture.NewCapture()
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{Timestamp: "2026-01-23T10:00:00.000Z", Method: "GET", URL: "https://example.com/test", Status: 200},
 	})
 	handler := &ToolHandler{

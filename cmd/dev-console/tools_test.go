@@ -7,6 +7,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 func TestV4RateLimitWebSocketEvents(t *testing.T) {
@@ -54,7 +57,7 @@ func TestV4WebSocketBufferMemoryLimit(t *testing.T) {
 	// Add events that exceed 4MB memory limit
 	largeData := strings.Repeat("x", 100000) // 100KB per event
 	for i := 0; i < 50; i++ {                // 50 * 100KB = 5MB
-		capture.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]types.WebSocketEvent{
 			{ID: "uuid-1", Event: "message", Data: largeData},
 		})
 	}
@@ -73,7 +76,7 @@ func TestV4NetworkBodiesBufferMemoryLimit(t *testing.T) {
 	// Add bodies that exceed 8MB memory limit
 	largeBody := strings.Repeat("y", 200000) // 200KB per body
 	for i := 0; i < 50; i++ {                // 50 * 200KB = 10MB
-		capture.AddNetworkBodies([]NetworkBody{
+		capture.AddNetworkBodies([]types.NetworkBody{
 			{URL: "/api/test", ResponseBody: largeBody, Status: 200},
 		})
 	}
@@ -205,10 +208,10 @@ func TestV4GetTotalBufferMemory(t *testing.T) {
 	capture := setupTestCapture(t)
 
 	// Add some data to each buffer
-	capture.AddWebSocketEvents([]WebSocketEvent{
+	capture.AddWebSocketEvents([]types.WebSocketEvent{
 		{ID: "uuid-1", Event: "message", Data: strings.Repeat("a", 1000)},
 	})
-	capture.AddNetworkBodies([]NetworkBody{
+	capture.AddNetworkBodies([]types.NetworkBody{
 		{URL: "/api/test", ResponseBody: strings.Repeat("b", 2000)},
 	})
 
@@ -254,7 +257,7 @@ func TestV4GlobalEvictionOnWSIngest(t *testing.T) {
 	// Fill WS buffer to near its per-buffer limit (4MB)
 	largeData := strings.Repeat("x", 100000) // 100KB each
 	for i := 0; i < 38; i++ {                // ~3.8MB
-		capture.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]types.WebSocketEvent{
 			{ID: "uuid-1", Event: "message", Data: largeData},
 		})
 	}
@@ -263,7 +266,7 @@ func TestV4GlobalEvictionOnWSIngest(t *testing.T) {
 
 	// Adding more events should still enforce per-buffer memory limit
 	for i := 0; i < 5; i++ {
-		capture.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]types.WebSocketEvent{
 			{ID: "uuid-1", Event: "message", Data: largeData},
 		})
 	}
@@ -287,14 +290,14 @@ func TestV4GlobalEvictionOnNBIngest(t *testing.T) {
 	// Fill NB buffer to near its per-buffer limit (8MB)
 	largeBody := strings.Repeat("y", 200000) // 200KB each
 	for i := 0; i < 38; i++ {                // ~7.6MB
-		capture.AddNetworkBodies([]NetworkBody{
+		capture.AddNetworkBodies([]types.NetworkBody{
 			{URL: "/api/test", ResponseBody: largeBody, Status: 200},
 		})
 	}
 
 	// Adding more should trigger eviction
 	for i := 0; i < 5; i++ {
-		capture.AddNetworkBodies([]NetworkBody{
+		capture.AddNetworkBodies([]types.NetworkBody{
 			{URL: "/api/test", ResponseBody: largeBody, Status: 200},
 		})
 	}
@@ -332,7 +335,7 @@ func TestV4MemoryExceededHeaderInResponse(t *testing.T) {
 	// Fill buffers close to their limits
 	largeData := strings.Repeat("x", 100000)
 	for i := 0; i < 35; i++ {
-		capture.AddWebSocketEvents([]WebSocketEvent{
+		capture.AddWebSocketEvents([]types.WebSocketEvent{
 			{ID: "uuid-1", Event: "message", Data: largeData},
 		})
 	}
@@ -555,7 +558,7 @@ func TestToolConfigureClearNetwork(t *testing.T) {
 	capture.networkWaterfall = []NetworkWaterfallEntry{{URL: "https://example.com"}}
 	capture.mu.Unlock()
 
-	capture.AddNetworkBodies([]NetworkBody{{URL: "https://example.com", Status: 200}})
+	capture.AddNetworkBodies([]types.NetworkBody{{URL: "https://example.com", Status: 200}})
 
 	// Clear via MCP tool
 	args := json.RawMessage(`{"action": "clear", "buffer": "network"}`)
@@ -671,8 +674,8 @@ func TestToolConfigureClearAll(t *testing.T) {
 	capture.networkWaterfall = []NetworkWaterfallEntry{{URL: "test"}}
 	capture.mu.Unlock()
 
-	capture.AddWebSocketEvents([]WebSocketEvent{{ID: "conn1", Data: "test"}})
-	capture.AddEnhancedActions([]EnhancedAction{{Type: "click", Timestamp: 1738238000000}})
+	capture.AddWebSocketEvents([]types.WebSocketEvent{{ID: "conn1", Data: "test"}})
+	capture.AddEnhancedActions([]types.EnhancedAction{{Type: "click", Timestamp: 1738238000000}})
 	server.addEntries([]LogEntry{{"level": "info", "message": "test", "ts": "2026-01-30T10:00:00Z"}})
 
 	// Clear all

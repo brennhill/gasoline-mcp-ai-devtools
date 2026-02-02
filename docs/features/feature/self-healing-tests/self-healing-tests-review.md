@@ -1,3 +1,12 @@
+---
+status: shipped
+scope: feature/self-healing-tests/review
+ai-priority: high
+tags: [review, issues]
+relates-to: [tech-spec.md, product-spec.md]
+last-verified: 2026-01-31
+---
+
 # Technical Review: Agentic CI/CD Loop (Self-Healing Tests)
 
 **Reviewer:** Principal Engineer

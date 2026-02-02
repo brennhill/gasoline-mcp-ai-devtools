@@ -9,6 +9,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -41,7 +44,7 @@ func TestCoverageGroupA_getSettingsPath(t *testing.T) {
 
 func TestCoverageGroupA_LoadSettingsFromDisk_NoFile(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	// LoadSettingsFromDisk should not panic regardless of whether the file exists.
 	// We only verify it doesn't crash -- the file may or may not exist on the test host.
 	capture.LoadSettingsFromDisk()
@@ -73,7 +76,7 @@ func TestCoverageGroupA_SettingsDiskIO(t *testing.T) {
 	})
 
 	t.Run("SaveSettingsToDisk", func(t *testing.T) {
-		capture := NewCapture()
+		capture := capture.NewCapture()
 		now := time.Now()
 
 		capture.mu.Lock()
@@ -105,7 +108,7 @@ func TestCoverageGroupA_SettingsDiskIO(t *testing.T) {
 	})
 
 	t.Run("SaveAndVerifyFormat", func(t *testing.T) {
-		capture := NewCapture()
+		capture := capture.NewCapture()
 		capture.mu.Lock()
 		capture.pilotEnabled = true
 		capture.pilotUpdatedAt = time.Now()
@@ -142,7 +145,7 @@ func TestCoverageGroupA_SettingsDiskIO(t *testing.T) {
 
 	t.Run("LoadSettingsFromDisk_FreshSettings", func(t *testing.T) {
 		// Save fresh settings
-		capture := NewCapture()
+		capture := capture.NewCapture()
 		now := time.Now()
 
 		capture.mu.Lock()
@@ -156,7 +159,7 @@ func TestCoverageGroupA_SettingsDiskIO(t *testing.T) {
 		}
 
 		// Create a new capture and load settings
-		capture2 := NewCapture()
+		capture2 := capture.NewCapture()
 		capture2.LoadSettingsFromDisk()
 
 		capture2.mu.RLock()
@@ -186,7 +189,7 @@ func TestCoverageGroupA_SettingsDiskIO(t *testing.T) {
 			t.Fatalf("failed to write settings: %v", err)
 		}
 
-		capture := NewCapture()
+		capture := capture.NewCapture()
 		capture.LoadSettingsFromDisk()
 
 		capture.mu.RLock()
@@ -205,7 +208,7 @@ func TestCoverageGroupA_SettingsDiskIO(t *testing.T) {
 			t.Fatalf("failed to write: %v", err)
 		}
 
-		capture := NewCapture()
+		capture := capture.NewCapture()
 		// Should not panic
 		capture.LoadSettingsFromDisk()
 
@@ -221,7 +224,7 @@ func TestCoverageGroupA_SettingsDiskIO(t *testing.T) {
 
 func TestCoverageGroupA_HandleSettings_POST(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	payload := `{"session_id":"test-session","settings":{"aiWebPilotEnabled":true}}`
 	req := httptest.NewRequest("POST", "/settings", strings.NewReader(payload))
@@ -258,7 +261,7 @@ func TestCoverageGroupA_HandleSettings_POST(t *testing.T) {
 
 func TestCoverageGroupA_HandleSettings_GET(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	req := httptest.NewRequest("GET", "/settings", nil)
 	w := httptest.NewRecorder()
@@ -273,7 +276,7 @@ func TestCoverageGroupA_HandleSettings_GET(t *testing.T) {
 
 func TestCoverageGroupA_HandleSettings_MethodNotAllowed(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	req := httptest.NewRequest("DELETE", "/settings", nil)
 	w := httptest.NewRecorder()
@@ -288,7 +291,7 @@ func TestCoverageGroupA_HandleSettings_MethodNotAllowed(t *testing.T) {
 
 func TestCoverageGroupA_HandleSettings_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	req := httptest.NewRequest("POST", "/settings", strings.NewReader("not json"))
 	w := httptest.NewRecorder()
@@ -303,7 +306,7 @@ func TestCoverageGroupA_HandleSettings_InvalidJSON(t *testing.T) {
 
 func TestCoverageGroupA_HandleSettings_SessionChange(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// Set initial session
 	capture.mu.Lock()
@@ -332,7 +335,7 @@ func TestCoverageGroupA_HandleSettings_SessionChange(t *testing.T) {
 
 func TestCoverageGroupA_HandleSettings_PartialUpdate(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// Set initial pilot state
 	capture.mu.Lock()
@@ -362,7 +365,7 @@ func TestCoverageGroupA_HandleSettings_PartialUpdate(t *testing.T) {
 
 func TestCoverageGroupA_HandleSettings_RedactsAuthHeaders(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	payload := `{"session_id":"auth-session","settings":{"aiWebPilotEnabled":true}}`
 	req := httptest.NewRequest("POST", "/settings", strings.NewReader(payload))
@@ -384,7 +387,7 @@ func TestCoverageGroupA_HandleSettings_RedactsAuthHeaders(t *testing.T) {
 
 func TestCoverageGroupA_HandleExtensionStatus_POST(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	body := `{"type":"status","tracking_enabled":true,"tracked_tab_id":42,"tracked_tab_url":"http://localhost:3000","extension_connected":true}`
 	req := httptest.NewRequest("POST", "/api/extension-status", strings.NewReader(body))
@@ -423,7 +426,7 @@ func TestCoverageGroupA_HandleExtensionStatus_POST(t *testing.T) {
 
 func TestCoverageGroupA_HandleExtensionStatus_GET(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// Pre-set tracking state
 	capture.mu.Lock()
@@ -462,7 +465,7 @@ func TestCoverageGroupA_HandleExtensionStatus_GET(t *testing.T) {
 
 func TestCoverageGroupA_HandleExtensionStatus_GET_StaleConnection(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	capture.mu.Lock()
 	capture.trackingEnabled = true
@@ -485,7 +488,7 @@ func TestCoverageGroupA_HandleExtensionStatus_GET_StaleConnection(t *testing.T) 
 
 func TestCoverageGroupA_HandleExtensionStatus_OPTIONS(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	req := httptest.NewRequest("OPTIONS", "/api/extension-status", nil)
 	w := httptest.NewRecorder()
@@ -500,7 +503,7 @@ func TestCoverageGroupA_HandleExtensionStatus_OPTIONS(t *testing.T) {
 
 func TestCoverageGroupA_HandleExtensionStatus_MethodNotAllowed(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	req := httptest.NewRequest("DELETE", "/api/extension-status", nil)
 	w := httptest.NewRecorder()
@@ -515,7 +518,7 @@ func TestCoverageGroupA_HandleExtensionStatus_MethodNotAllowed(t *testing.T) {
 
 func TestCoverageGroupA_HandleExtensionStatus_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	req := httptest.NewRequest("POST", "/api/extension-status", strings.NewReader("not json"))
 	w := httptest.NewRecorder()
@@ -530,7 +533,7 @@ func TestCoverageGroupA_HandleExtensionStatus_InvalidJSON(t *testing.T) {
 
 func TestCoverageGroupA_GetTrackingStatus(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	// Default state
 	enabled, tabID, tabURL := capture.GetTrackingStatus()
@@ -569,7 +572,7 @@ func TestCoverageGroupA_GetTrackingStatus(t *testing.T) {
 
 func TestCoverageGroupA_HandlePilotStatus(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	req := httptest.NewRequest("GET", "/pilot-status", nil)
 	w := httptest.NewRecorder()
@@ -597,7 +600,7 @@ func TestCoverageGroupA_HandlePilotStatus(t *testing.T) {
 
 func TestCoverageGroupA_HandlePilotStatus_Connected(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	capture.mu.Lock()
 	capture.lastPollAt = time.Now()
@@ -631,7 +634,7 @@ func TestCoverageGroupA_HandlePilotStatus_Connected(t *testing.T) {
 
 func TestCoverageGroupA_HandlePilotStatus_ContentType(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	req := httptest.NewRequest("GET", "/pilot-status", nil)
 	w := httptest.NewRecorder()
@@ -646,7 +649,7 @@ func TestCoverageGroupA_HandlePilotStatus_ContentType(t *testing.T) {
 
 func TestCoverageGroupA_GetPilotStatus_SettingsHeartbeat(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	capture.mu.Lock()
 	capture.lastPollAt = time.Now().Add(-10 * time.Second)
@@ -665,7 +668,7 @@ func TestCoverageGroupA_GetPilotStatus_SettingsHeartbeat(t *testing.T) {
 
 func TestCoverageGroupA_GetPilotStatus_StaleWithSettingsNewer(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	capture.mu.Lock()
 	capture.lastPollAt = time.Now().Add(-30 * time.Second)
@@ -687,7 +690,7 @@ func TestCoverageGroupA_GetPilotStatus_StaleWithSettingsNewer(t *testing.T) {
 
 func TestCoverageGroupA_GetPilotStatus_StaleWithPollNewer(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
+	capture := capture.NewCapture()
 
 	capture.mu.Lock()
 	capture.lastPollAt = time.Now().Add(-10 * time.Second)
@@ -710,7 +713,7 @@ func TestCoverageGroupA_GetPilotStatus_StaleWithPollNewer(t *testing.T) {
 func TestCoverageGroupA_toolObservePolling_NoEntries(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -737,7 +740,7 @@ func TestCoverageGroupA_toolObservePolling_NoEntries(t *testing.T) {
 func TestCoverageGroupA_toolObservePolling_WithEntries(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -782,7 +785,7 @@ func TestCoverageGroupA_toolObservePolling_WithEntries(t *testing.T) {
 func TestCoverageGroupA_checkPilotReady_NeverConnected(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -805,7 +808,7 @@ func TestCoverageGroupA_checkPilotReady_NeverConnected(t *testing.T) {
 func TestCoverageGroupA_checkPilotReady_RecentPollEnabled(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -833,7 +836,7 @@ func TestCoverageGroupA_checkPilotReady_RecentPollEnabled(t *testing.T) {
 func TestCoverageGroupA_checkPilotReady_RecentPollDisabled(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -861,7 +864,7 @@ func TestCoverageGroupA_checkPilotReady_RecentPollDisabled(t *testing.T) {
 func TestCoverageGroupA_checkPilotReady_SettingsRecentPollingStale_Enabled(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -887,7 +890,7 @@ func TestCoverageGroupA_checkPilotReady_SettingsRecentPollingStale_Enabled(t *te
 func TestCoverageGroupA_checkPilotReady_SettingsRecentPollingStale_Disabled(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -913,7 +916,7 @@ func TestCoverageGroupA_checkPilotReady_SettingsRecentPollingStale_Disabled(t *t
 func TestCoverageGroupA_checkPilotReady_BothStale(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -942,7 +945,7 @@ func TestCoverageGroupA_checkPilotReady_BothStale(t *testing.T) {
 func TestCoverageGroupA_checkPilotReady_BothStale_PollNewerZero(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -971,7 +974,7 @@ func TestCoverageGroupA_checkPilotReady_BothStale_PollNewerZero(t *testing.T) {
 func TestCoverageGroupA_handleBrowserActionRefresh(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	capture.queryTimeout = 50 * time.Millisecond
 	mcp := setupToolHandler(t, server, capture)
 
@@ -1010,7 +1013,7 @@ func TestCoverageGroupA_handleBrowserActionRefresh(t *testing.T) {
 func TestCoverageGroupA_handleBrowserActionBack(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	capture.queryTimeout = 50 * time.Millisecond
 	mcp := setupToolHandler(t, server, capture)
 
@@ -1045,7 +1048,7 @@ func TestCoverageGroupA_handleBrowserActionBack(t *testing.T) {
 func TestCoverageGroupA_handleBrowserActionForward(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	capture.queryTimeout = 50 * time.Millisecond
 	mcp := setupToolHandler(t, server, capture)
 
@@ -1080,7 +1083,7 @@ func TestCoverageGroupA_handleBrowserActionForward(t *testing.T) {
 func TestCoverageGroupA_handleBrowserActionNewTab(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	capture.queryTimeout = 50 * time.Millisecond
 	mcp := setupToolHandler(t, server, capture)
 
@@ -1115,7 +1118,7 @@ func TestCoverageGroupA_handleBrowserActionNewTab(t *testing.T) {
 func TestCoverageGroupA_handleBrowserActionNewTab_NoURL(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -1153,7 +1156,7 @@ func TestCoverageGroupA_handleBrowserActionNewTab_NoURL(t *testing.T) {
 func TestCoverageGroupA_handlePilotManageStateLoad(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	capture.queryTimeout = 50 * time.Millisecond
 	mcp := setupToolHandler(t, server, capture)
 
@@ -1188,7 +1191,7 @@ func TestCoverageGroupA_handlePilotManageStateLoad(t *testing.T) {
 func TestCoverageGroupA_handlePilotManageStateLoad_NoName(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -1222,7 +1225,7 @@ func TestCoverageGroupA_handlePilotManageStateLoad_NoName(t *testing.T) {
 func TestCoverageGroupA_handlePilotManageStateList(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	capture.queryTimeout = 50 * time.Millisecond
 	mcp := setupToolHandler(t, server, capture)
 
@@ -1257,7 +1260,7 @@ func TestCoverageGroupA_handlePilotManageStateList(t *testing.T) {
 func TestCoverageGroupA_handlePilotManageStateDelete(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	capture.queryTimeout = 50 * time.Millisecond
 	mcp := setupToolHandler(t, server, capture)
 
@@ -1292,7 +1295,7 @@ func TestCoverageGroupA_handlePilotManageStateDelete(t *testing.T) {
 func TestCoverageGroupA_handlePilotManageStateDelete_NoName(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -1330,7 +1333,7 @@ func TestCoverageGroupA_handlePilotManageStateDelete_NoName(t *testing.T) {
 func TestCoverageGroupA_handleBrowserAction_PilotDisabled(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -1364,7 +1367,7 @@ func TestCoverageGroupA_handleBrowserAction_PilotDisabled(t *testing.T) {
 func TestCoverageGroupA_handleBrowserAction_NeverConnected(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1397,7 +1400,7 @@ func TestCoverageGroupA_handleBrowserAction_NeverConnected(t *testing.T) {
 func TestCoverageGroupA_handleBrowserAction_InvalidJSON(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1426,7 +1429,7 @@ func TestCoverageGroupA_handleBrowserAction_InvalidJSON(t *testing.T) {
 func TestCoverageGroupA_handleBrowserAction_MissingAction(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1452,7 +1455,7 @@ func TestCoverageGroupA_handleBrowserAction_MissingAction(t *testing.T) {
 func TestCoverageGroupA_handleBrowserAction_InvalidAction(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1478,7 +1481,7 @@ func TestCoverageGroupA_handleBrowserAction_InvalidAction(t *testing.T) {
 func TestCoverageGroupA_handleBrowserAction_NavigateNoURL(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1508,7 +1511,7 @@ func TestCoverageGroupA_handleBrowserAction_NavigateNoURL(t *testing.T) {
 func TestCoverageGroupA_handlePilotManageState_InvalidJSON(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1534,7 +1537,7 @@ func TestCoverageGroupA_handlePilotManageState_InvalidJSON(t *testing.T) {
 func TestCoverageGroupA_handlePilotManageState_MissingAction(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1560,7 +1563,7 @@ func TestCoverageGroupA_handlePilotManageState_MissingAction(t *testing.T) {
 func TestCoverageGroupA_handlePilotManageState_InvalidAction(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1586,7 +1589,7 @@ func TestCoverageGroupA_handlePilotManageState_InvalidAction(t *testing.T) {
 func TestCoverageGroupA_handlePilotManageState_SaveNoName(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -1621,7 +1624,7 @@ func TestCoverageGroupA_handlePilotManageState_SaveNoName(t *testing.T) {
 func TestCoverageGroupA_handlePilotHighlight_InvalidJSON(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1647,7 +1650,7 @@ func TestCoverageGroupA_handlePilotHighlight_InvalidJSON(t *testing.T) {
 func TestCoverageGroupA_handlePilotHighlight_MissingSelector(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1673,7 +1676,7 @@ func TestCoverageGroupA_handlePilotHighlight_MissingSelector(t *testing.T) {
 func TestCoverageGroupA_handlePilotHighlight_WithDefaultDuration(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	capture.queryTimeout = 50 * time.Millisecond
 	mcp := setupToolHandler(t, server, capture)
 
@@ -1712,7 +1715,7 @@ func TestCoverageGroupA_handlePilotHighlight_WithDefaultDuration(t *testing.T) {
 func TestCoverageGroupA_handlePilotExecuteJS_InvalidJSON(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1738,7 +1741,7 @@ func TestCoverageGroupA_handlePilotExecuteJS_InvalidJSON(t *testing.T) {
 func TestCoverageGroupA_handlePilotExecuteJS_MissingScript(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	req := JSONRPCRequest{
@@ -1764,7 +1767,7 @@ func TestCoverageGroupA_handlePilotExecuteJS_MissingScript(t *testing.T) {
 func TestCoverageGroupA_handlePilotExecuteJS_AsyncResponse(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()
@@ -1798,7 +1801,7 @@ func TestCoverageGroupA_handlePilotExecuteJS_AsyncResponse(t *testing.T) {
 func TestCoverageGroupA_handlePilotExecuteJS_PilotDisabled(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
-	capture := NewCapture()
+	capture := capture.NewCapture()
 	mcp := setupToolHandler(t, server, capture)
 
 	capture.mu.Lock()

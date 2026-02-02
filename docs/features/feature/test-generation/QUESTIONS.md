@@ -1,3 +1,11 @@
+---
+status: proposed
+scope: feature/test-generation
+ai-priority: medium
+tags: [documentation]
+last-verified: 2026-01-31
+---
+
 # Test Generation Feature — Open Questions
 
 ## Questions for User Review
