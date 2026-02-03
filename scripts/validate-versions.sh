@@ -36,9 +36,10 @@ check_version "npm/linux-x64/package.json" '"version":'
 check_version "npm/win32-x64/package.json" '"version":'
 check_version "README.md" 'version-.*-green'
 check_version "cmd/dev-console/testdata/mcp-initialize.golden.json" '"version":'
-
-# Check gasoline-mcp package and its optionalDependencies
 check_version "npm/gasoline-mcp/package.json" '"version":'
+check_version "packages/gasoline-ci/package.json" '"version":'
+check_version "packages/gasoline-playwright/package.json" '"version":'
+check_version "internal/export/export_sarif.go" 'const version = "'
 
 # Special check: optionalDependencies in gasoline-mcp
 echo ""
@@ -57,6 +58,38 @@ else
     else
         echo "✅ optionalDependencies all point to $VERSION"
     fi
+fi
+
+# Check PyPI packages
+echo ""
+echo "Checking PyPI packages..."
+PYPI_ERRORS=0
+for f in pypi/*/pyproject.toml; do
+    if [ -f "$f" ]; then
+        PYPI_VERSION=$(grep '^version = ' "$f" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "NOT_FOUND")
+        if [ "$PYPI_VERSION" != "$VERSION" ]; then
+            echo "❌ $f: Expected $VERSION, found $PYPI_VERSION"
+            PYPI_ERRORS=$((PYPI_ERRORS + 1))
+        else
+            echo "✅ $f"
+        fi
+    fi
+done
+
+for f in pypi/*/*/__init__.py; do
+    if [ -f "$f" ]; then
+        PYPI_VERSION=$(grep '__version__ = ' "$f" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "NOT_FOUND")
+        if [ "$PYPI_VERSION" != "$VERSION" ] && [ "$PYPI_VERSION" != "NOT_FOUND" ]; then
+            echo "❌ $f: Expected $VERSION, found $PYPI_VERSION"
+            PYPI_ERRORS=$((PYPI_ERRORS + 1))
+        else
+            echo "✅ $f"
+        fi
+    fi
+done
+
+if [ $PYPI_ERRORS -gt 0 ]; then
+    ERRORS=$((ERRORS + PYPI_ERRORS))
 fi
 
 echo ""

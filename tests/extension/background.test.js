@@ -19,7 +19,7 @@ const mockChrome = {
       addListener: mock.fn(),
     },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.4.2' }),
+    getManifest: () => ({ version: '5.4.3' }),
   },
   action: {
     setBadgeText: mock.fn(),
@@ -741,7 +741,7 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
-    assert.strictEqual(parsed.version, '5.4.2')
+    assert.strictEqual(parsed.version, '5.4.3')
     assert.ok(Array.isArray(parsed.entries))
   })
 
