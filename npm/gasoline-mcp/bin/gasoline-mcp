@@ -252,6 +252,29 @@ if (args.includes('--help') || args.includes('-h')) {
 }
 
 // No config command, run the binary
+
+// Kill any existing gasoline servers on port 7890 before starting
+// This ensures npx always uses the newly installed version
+try {
+  const { execSync } = require('child_process');
+  const port = args.includes('--port') ? args[args.indexOf('--port') + 1] : '7890';
+
+  // Find PIDs on the port
+  try {
+    const pids = execSync(`lsof -ti :${port}`, { encoding: 'utf8' }).trim();
+    if (pids) {
+      // Kill all processes on that port
+      execSync(`kill ${pids}`, { stdio: 'ignore' });
+      // Wait for port to be free
+      setTimeout(() => {}, 500);
+    }
+  } catch (e) {
+    // No process on port, or lsof failed - that's fine
+  }
+} catch (e) {
+  // Kill failed - continue anyway
+}
+
 const binary = findBinary();
 
 try {
