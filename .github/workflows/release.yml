@@ -62,6 +62,7 @@ jobs:
 
       - name: Publish NPM packages
         run: |
+          npm config set //registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN
           cd npm/darwin-arm64 && npm publish --access public
           cd ../darwin-x64 && npm publish --access public
           cd ../linux-arm64 && npm publish --access public
