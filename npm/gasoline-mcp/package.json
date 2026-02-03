@@ -11,11 +11,11 @@
     "lib"
   ],
   "optionalDependencies": {
-    "@brennhill/gasoline-darwin-arm64": "5.4.1",
-    "@brennhill/gasoline-darwin-x64": "5.4.1",
-    "@brennhill/gasoline-linux-arm64": "5.4.1",
-    "@brennhill/gasoline-linux-x64": "5.4.1",
-    "@brennhill/gasoline-win32-x64": "5.4.1"
+    "@brennhill/gasoline-darwin-arm64": "5.4.2",
+    "@brennhill/gasoline-darwin-x64": "5.4.2",
+    "@brennhill/gasoline-linux-arm64": "5.4.2",
+    "@brennhill/gasoline-linux-x64": "5.4.2",
+    "@brennhill/gasoline-win32-x64": "5.4.2"
   },
   "keywords": [
     "mcp",
