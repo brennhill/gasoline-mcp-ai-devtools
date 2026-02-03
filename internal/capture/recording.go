@@ -3,7 +3,6 @@ package capture
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -192,7 +191,7 @@ func (c *Capture) persistRecordingToDisk(recording *Recording) error {
 
 	// Write file
 	metadataPath := filepath.Join(recordingDir, recordingMetadataFile)
-	err = ioutil.WriteFile(metadataPath, data, 0644)
+	err = os.WriteFile(metadataPath, data, 0644)
 	if err != nil {
 		return fmt.Errorf("write_file_failed: %v", err)
 	}
@@ -218,7 +217,7 @@ func (c *Capture) ListRecordings(limit int) ([]Recording, error) {
 		return []Recording{}, nil // No recordings yet
 	}
 
-	entries, err := ioutil.ReadDir(recordingsDir)
+	entries, err := os.ReadDir(recordingsDir)
 	if err != nil {
 		return nil, fmt.Errorf("readdir_failed: %v", err)
 	}
@@ -275,7 +274,7 @@ func (c *Capture) loadRecordingFromDisk(recordingID string) (*Recording, error) 
 	metadataPath := filepath.Join(homeDir, recordingBaseDir, recordingID, recordingMetadataFile)
 
 	// Read file
-	data, err := ioutil.ReadFile(metadataPath)
+	data, err := os.ReadFile(metadataPath)
 	if err != nil {
 		return nil, fmt.Errorf("read_failed: %v", err)
 	}

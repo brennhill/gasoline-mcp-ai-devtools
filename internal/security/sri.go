@@ -231,7 +231,7 @@ func (g *SRIGenerator) Generate(bodies []capture.NetworkBody, pageURLs []string,
 // ============================================
 
 // HandleGenerateSRI processes MCP tool call parameters and generates SRI hashes.
-func HandleGenerateSRI(params json.RawMessage, bodies []capture.NetworkBody, pageURLs []string) (interface{}, error) {
+func HandleGenerateSRI(params json.RawMessage, bodies []capture.NetworkBody, pageURLs []string) (any, error) {
 	var toolParams SRIParams
 	if len(params) > 0 {
 		if err := json.Unmarshal(params, &toolParams); err != nil {

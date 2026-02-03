@@ -1,0 +1,122 @@
+name: Publish to NPM
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 5.4.0)'
+        required: true
+
+jobs:
+  build-and-publish:
+    name: Build binaries and publish to NPM
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+      - name: Build binaries for all platforms
+        run: make build
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+
+      - name: Copy binaries to npm packages
+        run: |
+          cp dist/gasoline-darwin-arm64 npm/darwin-arm64/bin/gasoline
+          cp dist/gasoline-darwin-x64 npm/darwin-x64/bin/gasoline
+          cp dist/gasoline-linux-x64 npm/linux-x64/bin/gasoline
+          cp dist/gasoline-linux-arm64 npm/linux-arm64/bin/gasoline
+          cp dist/gasoline-win32-x64.exe npm/win32-x64/bin/gasoline.exe
+
+          chmod +x npm/*/bin/*
+
+          echo "✅ Binaries copied to npm packages"
+          ls -lh npm/*/bin/
+
+      - name: Publish darwin-arm64
+        run: |
+          cd npm/darwin-arm64
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish darwin-x64
+        run: |
+          cd npm/darwin-x64
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish linux-x64
+        run: |
+          cd npm/linux-x64
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish linux-arm64
+        run: |
+          cd npm/linux-arm64
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish win32-x64
+        run: |
+          cd npm/win32-x64
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish gasoline-mcp (main package)
+        run: |
+          cd npm/gasoline-mcp
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ Published v${{ steps.version.outputs.VERSION }} to NPM"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Packages published:"
+          echo "  • @brennhill/gasoline-darwin-arm64@${{ steps.version.outputs.VERSION }}"
+          echo "  • @brennhill/gasoline-darwin-x64@${{ steps.version.outputs.VERSION }}"
+          echo "  • @brennhill/gasoline-linux-x64@${{ steps.version.outputs.VERSION }}"
+          echo "  • @brennhill/gasoline-linux-arm64@${{ steps.version.outputs.VERSION }}"
+          echo "  • @brennhill/gasoline-win32-x64@${{ steps.version.outputs.VERSION }}"
+          echo "  • gasoline-mcp@${{ steps.version.outputs.VERSION }}"
+          echo ""
+          echo "Install with: npx gasoline-mcp@${{ steps.version.outputs.VERSION }}"

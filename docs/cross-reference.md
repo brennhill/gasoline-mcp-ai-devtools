@@ -18,7 +18,7 @@ last-verified: 2026-01-31
 ### Core Release & Status Documents
 
 ```
-release.md (process)
+RELEASE.md (process)
 ├── known-issues.md (blockers)
 ├── UAT-v5.3-CHECKLIST.md (testing)
 └── version-checking.md (deployment)
@@ -73,6 +73,19 @@ core/uat-v5.3-checklist.md (canonical UAT)
 
 .claude/docs/spec-review.md (spec approval)
 └── features/feature/*/product-spec.md (feature specs)
+```
+
+### Quality Standards & Verification
+
+```
+quality-standards.md (comprehensive guide)
+├── quality-quick-reference.md (quick checklist)
+├── post-refactor-verification.md (refactor verification)
+├── 5.4-todo.md (refactoring prevention rules)
+├── scripts/check-file-length.sh (800-line enforcer)
+├── scripts/verify-refactor.sh (7-level verification)
+└── .claude/docs/testing.md (includes quality-gate)
+    └── .claude/docs/feature-workflow.md (5-gate process)
 ```
 
 ### Archive & Historical
@@ -221,7 +234,7 @@ When a document is updated, trace the impact:
 
 1. **If PRODUCT_SPEC changes** → Update TECH_SPEC, QA_PLAN, and review doc
 2. **If TECH_SPEC changes** → Update QA_PLAN, and potentially ADR
-3. **If QA_PLAN changes** → Check release.md quality gates
+3. **If QA_PLAN changes** → Check RELEASE.md quality gates
 4. **If status changes** → Update FEATURE-index.md
 5. **If feature supersedes another** → Mark old feature deprecated, update `supersedes:` field
 

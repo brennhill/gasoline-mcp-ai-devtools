@@ -368,7 +368,7 @@ Browser observability for AI coding agents. See console errors, network failures
 }
 
 func (h *MCPHandler) handleResourcesTemplatesList(req JSONRPCRequest) JSONRPCResponse {
-	result := MCPResourceTemplatesListResult{ResourceTemplates: []interface{}{}}
+	result := MCPResourceTemplatesListResult{ResourceTemplates: []any{}}
 	// Error impossible: MCPResourceTemplatesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
@@ -412,7 +412,7 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 				ID:      req.ID,
 				Error: &JSONRPCError{
 					Code:    -32603,
-					Message: "Tool call rate limit exceeded (100 calls/minute). Please wait before retrying.",
+					Message: "Tool call rate limit exceeded (500 calls/minute). Please wait before retrying.",
 				},
 			}
 		}
@@ -440,7 +440,7 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 }
 
 // jsonResponse is a JSON response helper
-func jsonResponse(w http.ResponseWriter, status int, data interface{}) {
+func jsonResponse(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(data); err != nil {

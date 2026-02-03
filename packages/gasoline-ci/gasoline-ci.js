@@ -157,7 +157,7 @@
       for (var i = 0; i < keys.length; i++) {
         try {
           result[keys[i]] = safeSerialize(value[keys[i]], depth + 1, seen)
-        } catch (e) {
+        } catch (_e) {
           result[keys[i]] = '[unserializable]'
         }
       }
@@ -247,7 +247,7 @@
       if (init.body) {
         try {
           requestBody = typeof init.body === 'string' ? init.body.slice(0, MAX_RESPONSE_LENGTH) : '[non-string body]'
-        } catch (e) {
+        } catch (_e) {
           requestBody = '[unreadable]'
         }
       }

@@ -601,7 +601,7 @@ func TestAuditTrail_RedactionNoContent(t *testing.T) {
 	}
 
 	// The JSON should only contain the known fields, nothing else
-	var raw map[string]interface{}
+	var raw map[string]any
 	json.Unmarshal(data, &raw)
 
 	allowed := map[string]bool{

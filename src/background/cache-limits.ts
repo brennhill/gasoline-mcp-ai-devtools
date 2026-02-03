@@ -30,32 +30,32 @@
  * and memory pressure monitoring.
  */
 
-import type { BufferState, MemoryPressureLevel, MemoryPressureState, ParsedSourceMap } from '../types';
+import type { BufferState, MemoryPressureLevel, MemoryPressureState, ParsedSourceMap } from '../types'
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
 /** Screenshot rate limit in milliseconds */
-const SCREENSHOT_RATE_LIMIT_MS = 5000;
+const SCREENSHOT_RATE_LIMIT_MS = 5000
 
 /** Maximum screenshots per session */
-const SCREENSHOT_MAX_PER_SESSION = 10;
+const SCREENSHOT_MAX_PER_SESSION = 10
 
 /** Source map cache size limit */
-export const SOURCE_MAP_CACHE_SIZE = 50;
+export const SOURCE_MAP_CACHE_SIZE = 50
 
 /** Memory limits */
-export const MEMORY_SOFT_LIMIT = 20 * 1024 * 1024;
-export const MEMORY_HARD_LIMIT = 50 * 1024 * 1024;
-export const MEMORY_CHECK_INTERVAL_MS = 30000;
-export const MEMORY_AVG_LOG_ENTRY_SIZE = 500;
-export const MEMORY_AVG_WS_EVENT_SIZE = 300;
-export const MEMORY_AVG_NETWORK_BODY_SIZE = 1000;
-export const MEMORY_AVG_ACTION_SIZE = 400;
+export const MEMORY_SOFT_LIMIT = 20 * 1024 * 1024
+export const MEMORY_HARD_LIMIT = 50 * 1024 * 1024
+export const MEMORY_CHECK_INTERVAL_MS = 30000
+export const MEMORY_AVG_LOG_ENTRY_SIZE = 500
+export const MEMORY_AVG_WS_EVENT_SIZE = 300
+export const MEMORY_AVG_NETWORK_BODY_SIZE = 1000
+export const MEMORY_AVG_ACTION_SIZE = 400
 
 /** Maximum pending buffer size */
-export const MAX_PENDING_BUFFER = 1000;
+export const MAX_PENDING_BUFFER = 1000
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -63,9 +63,9 @@ export const MAX_PENDING_BUFFER = 1000;
 
 /** Rate limit result */
 interface RateLimitResult {
-  allowed: boolean;
-  reason?: 'session_limit' | 'rate_limit';
-  nextAllowedIn?: number | null;
+  allowed: boolean
+  reason?: 'session_limit' | 'rate_limit'
+  nextAllowedIn?: number | null
 }
 
 // =============================================================================
@@ -73,19 +73,19 @@ interface RateLimitResult {
 // =============================================================================
 
 /** Screenshot rate limiting state */
-const screenshotTimestamps = new Map<number, number[]>();
+const screenshotTimestamps = new Map<number, number[]>()
 
 /** Source map cache */
-const sourceMapCache = new Map<string, ParsedSourceMap | null>();
+const sourceMapCache = new Map<string, ParsedSourceMap | null>()
 
 /** Memory pressure state */
-let memoryPressureLevel: MemoryPressureLevel = 'normal';
-let lastMemoryCheck = 0;
-let networkBodyCaptureDisabled = false;
-let reducedCapacities = false;
+let memoryPressureLevel: MemoryPressureLevel = 'normal'
+let lastMemoryCheck = 0
+let networkBodyCaptureDisabled = false
+let reducedCapacities = false
 
 /** Source map enabled flag */
-let sourceMapEnabled = false;
+let sourceMapEnabled = false
 
 // =============================================================================
 // SCREENSHOT RATE LIMITING
@@ -95,29 +95,29 @@ let sourceMapEnabled = false;
  * Check if a screenshot is allowed based on rate limiting
  */
 export function canTakeScreenshot(tabId: number): RateLimitResult {
-  const now = Date.now();
+  const now = Date.now()
 
   if (!screenshotTimestamps.has(tabId)) {
-    screenshotTimestamps.set(tabId, []);
+    screenshotTimestamps.set(tabId, [])
   }
 
-  const timestamps = screenshotTimestamps.get(tabId)!;
-  const recentTimestamps = timestamps.filter((t) => now - t < 60000);
+  const timestamps = screenshotTimestamps.get(tabId)!
+  const recentTimestamps = timestamps.filter((t) => now - t < 60000)
 
   if (recentTimestamps.length >= SCREENSHOT_MAX_PER_SESSION) {
-    return { allowed: false, reason: 'session_limit', nextAllowedIn: null };
+    return { allowed: false, reason: 'session_limit', nextAllowedIn: null }
   }
 
-  const lastTimestamp = recentTimestamps[recentTimestamps.length - 1];
+  const lastTimestamp = recentTimestamps[recentTimestamps.length - 1]
   if (lastTimestamp && now - lastTimestamp < SCREENSHOT_RATE_LIMIT_MS) {
     return {
       allowed: false,
       reason: 'rate_limit',
       nextAllowedIn: SCREENSHOT_RATE_LIMIT_MS - (now - lastTimestamp),
-    };
+    }
   }
 
-  return { allowed: true };
+  return { allowed: true }
 }
 
 /**
@@ -125,16 +125,16 @@ export function canTakeScreenshot(tabId: number): RateLimitResult {
  */
 export function recordScreenshot(tabId: number): void {
   if (!screenshotTimestamps.has(tabId)) {
-    screenshotTimestamps.set(tabId, []);
+    screenshotTimestamps.set(tabId, [])
   }
-  screenshotTimestamps.get(tabId)!.push(Date.now());
+  screenshotTimestamps.get(tabId)!.push(Date.now())
 }
 
 /**
  * Clear screenshot timestamps for a tab
  */
 export function clearScreenshotTimestamps(tabId: number): void {
-  screenshotTimestamps.delete(tabId);
+  screenshotTimestamps.delete(tabId)
 }
 
 // =============================================================================
@@ -145,81 +145,81 @@ export function clearScreenshotTimestamps(tabId: number): void {
  * Estimate total buffer memory usage from buffer contents
  */
 export function estimateBufferMemory(buffers: BufferState): number {
-  let total = 0;
+  let total = 0
 
-  total += buffers.logEntries.length * MEMORY_AVG_LOG_ENTRY_SIZE;
+  total += buffers.logEntries.length * MEMORY_AVG_LOG_ENTRY_SIZE
 
   for (const event of buffers.wsEvents as Array<{ data?: string }>) {
-    total += MEMORY_AVG_WS_EVENT_SIZE;
+    total += MEMORY_AVG_WS_EVENT_SIZE
     if (event.data && typeof event.data === 'string') {
-      total += event.data.length;
+      total += event.data.length
     }
   }
 
   for (const body of buffers.networkBodies as Array<{ requestBody?: string; responseBody?: string }>) {
-    total += MEMORY_AVG_NETWORK_BODY_SIZE;
+    total += MEMORY_AVG_NETWORK_BODY_SIZE
     if (body.requestBody && typeof body.requestBody === 'string') {
-      total += body.requestBody.length;
+      total += body.requestBody.length
     }
     if (body.responseBody && typeof body.responseBody === 'string') {
-      total += body.responseBody.length;
+      total += body.responseBody.length
     }
   }
 
-  total += buffers.enhancedActions.length * MEMORY_AVG_ACTION_SIZE;
+  total += buffers.enhancedActions.length * MEMORY_AVG_ACTION_SIZE
 
-  return total;
+  return total
 }
 
 /**
  * Check memory pressure and take appropriate action
  */
 export function checkMemoryPressure(buffers: BufferState): {
-  level: MemoryPressureLevel;
-  action: string;
-  estimatedMemory: number;
-  alreadyApplied: boolean;
+  level: MemoryPressureLevel
+  action: string
+  estimatedMemory: number
+  alreadyApplied: boolean
 } {
-  const estimatedMemory = estimateBufferMemory(buffers);
-  lastMemoryCheck = Date.now();
+  const estimatedMemory = estimateBufferMemory(buffers)
+  lastMemoryCheck = Date.now()
 
   if (estimatedMemory >= MEMORY_HARD_LIMIT) {
-    const alreadyApplied = memoryPressureLevel === 'hard';
-    memoryPressureLevel = 'hard';
-    networkBodyCaptureDisabled = true;
-    reducedCapacities = true;
+    const alreadyApplied = memoryPressureLevel === 'hard'
+    memoryPressureLevel = 'hard'
+    networkBodyCaptureDisabled = true
+    reducedCapacities = true
     return {
       level: 'hard',
       action: 'disable_network_capture',
       estimatedMemory,
       alreadyApplied,
-    };
+    }
   }
 
   if (estimatedMemory >= MEMORY_SOFT_LIMIT) {
-    const alreadyApplied = memoryPressureLevel === 'soft' || memoryPressureLevel === 'hard';
-    memoryPressureLevel = 'soft';
-    reducedCapacities = true;
+    const alreadyApplied = memoryPressureLevel === 'soft' || memoryPressureLevel === 'hard'
+    memoryPressureLevel = 'soft'
+    reducedCapacities = true
     if (networkBodyCaptureDisabled && estimatedMemory < MEMORY_HARD_LIMIT) {
-      networkBodyCaptureDisabled = false;
+      networkBodyCaptureDisabled = false
     }
     return {
       level: 'soft',
       action: 'reduce_capacities',
       estimatedMemory,
       alreadyApplied,
-    };
+    }
   }
 
-  memoryPressureLevel = 'normal';
-  reducedCapacities = false;
-  networkBodyCaptureDisabled = false;
+  memoryPressureLevel = 'normal'
+  reducedCapacities = false
+  networkBodyCaptureDisabled = false
   return {
     level: 'normal',
     action: 'none',
     estimatedMemory,
     alreadyApplied: false,
-  };
+  }
 }
 
 /**
@@ -231,24 +231,24 @@ export function getMemoryPressureState(): MemoryPressureState {
     lastMemoryCheck,
     networkBodyCaptureDisabled,
     reducedCapacities,
-  };
+  }
 }
 
 /**
  * Reset memory pressure state to initial values (for testing)
  */
 export function resetMemoryPressureState(): void {
-  memoryPressureLevel = 'normal';
-  lastMemoryCheck = 0;
-  networkBodyCaptureDisabled = false;
-  reducedCapacities = false;
+  memoryPressureLevel = 'normal'
+  lastMemoryCheck = 0
+  networkBodyCaptureDisabled = false
+  reducedCapacities = false
 }
 
 /**
  * Check if network body capture is disabled
  */
 export function isNetworkBodyCaptureDisabled(): boolean {
-  return networkBodyCaptureDisabled;
+  return networkBodyCaptureDisabled
 }
 
 // =============================================================================
@@ -259,14 +259,14 @@ export function isNetworkBodyCaptureDisabled(): boolean {
  * Set source map enabled state
  */
 export function setSourceMapEnabled(enabled: boolean): void {
-  sourceMapEnabled = enabled;
+  sourceMapEnabled = enabled
 }
 
 /**
  * Check if source maps are enabled
  */
 export function isSourceMapEnabled(): boolean {
-  return sourceMapEnabled;
+  return sourceMapEnabled
 }
 
 /**
@@ -274,32 +274,32 @@ export function isSourceMapEnabled(): boolean {
  */
 export function setSourceMapCacheEntry(url: string, map: ParsedSourceMap | null): void {
   if (!sourceMapCache.has(url) && sourceMapCache.size >= SOURCE_MAP_CACHE_SIZE) {
-    const firstKey = sourceMapCache.keys().next().value;
+    const firstKey = sourceMapCache.keys().next().value
     if (firstKey) {
-      sourceMapCache.delete(firstKey);
+      sourceMapCache.delete(firstKey)
     }
   }
-  sourceMapCache.delete(url);
-  sourceMapCache.set(url, map);
+  sourceMapCache.delete(url)
+  sourceMapCache.set(url, map)
 }
 
 /**
  * Get an entry from the source map cache
  */
 export function getSourceMapCacheEntry(url: string): ParsedSourceMap | null {
-  return sourceMapCache.get(url) || null;
+  return sourceMapCache.get(url) || null
 }
 
 /**
  * Get the current size of the source map cache
  */
 export function getSourceMapCacheSize(): number {
-  return sourceMapCache.size;
+  return sourceMapCache.size
 }
 
 /**
  * Clear the source map cache
  */
 export function clearSourceMapCache(): void {
-  sourceMapCache.clear();
+  sourceMapCache.clear()
 }

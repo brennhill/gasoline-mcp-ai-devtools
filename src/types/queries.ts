@@ -18,46 +18,46 @@ export type QueryType =
   | 'state_save'
   | 'state_load'
   | 'state_list'
-  | 'state_delete';
+  | 'state_delete'
 
 /**
  * Pending query from server
  */
 export interface PendingQuery {
-  readonly id: string;
-  readonly type: QueryType;
-  readonly params: string | Record<string, unknown>;
-  readonly correlation_id?: string;
+  readonly id: string
+  readonly type: QueryType
+  readonly params: string | Record<string, unknown>
+  readonly correlation_id?: string
 }
 
 /**
  * Browser action parameters
  */
 export interface BrowserActionParams {
-  readonly action: 'refresh' | 'navigate' | 'back' | 'forward';
-  readonly url?: string;
+  readonly action: 'refresh' | 'navigate' | 'back' | 'forward'
+  readonly url?: string
 }
 
 /**
  * Browser action result
  */
 export interface BrowserActionResult {
-  readonly success: boolean;
-  readonly action?: string;
-  readonly url?: string;
-  readonly content_script_status?: 'loaded' | 'refreshed' | 'failed' | 'unavailable';
-  readonly message?: string;
-  readonly error?: string;
+  readonly success: boolean
+  readonly action?: string
+  readonly url?: string
+  readonly content_script_status?: 'loaded' | 'refreshed' | 'failed' | 'unavailable'
+  readonly message?: string
+  readonly error?: string
 }
 
 /**
  * Tabs query result
  */
 export interface TabInfo {
-  readonly id: number;
-  readonly url: string;
-  readonly title: string;
-  readonly active: boolean;
-  readonly windowId: number;
-  readonly index: number;
+  readonly id: number
+  readonly url: string
+  readonly title: string
+  readonly active: boolean
+  readonly windowId: number
+  readonly index: number
 }

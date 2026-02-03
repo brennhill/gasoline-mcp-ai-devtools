@@ -31,11 +31,6 @@ func SetupTestCapture(t *testing.T) *capture.Capture {
 	return capture.NewCapture()
 }
 
-// SetupToolHandler creates a ToolHandler for testing.
-// This is a placeholder that may need adjustment based on actual ToolHandler implementation.
-// For now, it returns nil since ToolHandler doesn't exist in internal packages yet.
-func SetupToolHandler(t *testing.T, srv *server.Server, cap *capture.Capture) interface{} {
-	t.Helper()
-	// TODO: Implement when ToolHandler is moved to internal packages
-	return nil
-}
+// SetupToolHandler has been removed - ToolHandler is in cmd/dev-console and not
+// available to internal packages. Tests requiring ToolHandler should be integration tests
+// in cmd/dev-console with the //go:build integration tag.

@@ -8,7 +8,7 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "test:ext": "node --test tests/extension/*.test.js",
+    "test:ext": "node --test tests/extension/*.test.js extension/background/*.test.js",
     "test:go": "make test",
     "test": "npm run test:go && npm run test:ext",
     "check": "npm run lint && npm run typecheck && npm run format"

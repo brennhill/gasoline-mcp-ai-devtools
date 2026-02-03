@@ -20,7 +20,7 @@ import (
 // SettingsPayload is the POST /settings request body
 type SettingsPayload struct {
 	SessionID string                 `json:"session_id"`
-	Settings  map[string]interface{} `json:"settings"`
+	Settings  map[string]any `json:"settings"`
 }
 
 // PersistedSettings is the disk format for ~/.gasoline-settings.json
@@ -128,7 +128,7 @@ func (c *Capture) HandleSettings(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		// Allow GET for backward compatibility (returns empty for now)
 		if r.Method == "GET" {
-			util.JSONResponse(w, http.StatusOK, map[string]interface{}{})
+			util.JSONResponse(w, http.StatusOK, map[string]any{})
 			return
 		}
 		util.JSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -215,7 +215,7 @@ func (c *Capture) HandleSettings(w http.ResponseWriter, r *http.Request) {
 		PilotEnabled: pilotEnabledPtr,
 	})
 
-	responseData := map[string]interface{}{
+	responseData := map[string]any{
 		"status":    "ok",
 		"timestamp": now.Format(time.RFC3339),
 	}

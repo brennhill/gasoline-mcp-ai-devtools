@@ -3,36 +3,36 @@
  */
 
 export interface IconState {
-    isTracking: boolean;
-    isPilotEnabled: boolean;
+  isTracking: boolean
+  isPilotEnabled: boolean
 }
 
 /**
  * Update the extension icon based on tracking and pilot state
  */
-export declare function updateIcon(state: IconState, tabId?: number | null): void;
+export declare function updateIcon(state: IconState, tabId?: number | null): void
 
 /**
  * Update icon for tracked tab based on current state
  */
-export declare function updateTrackedTabIcon(isPilotEnabled: boolean): Promise<void>;
+export declare function updateTrackedTabIcon(isPilotEnabled: boolean): Promise<void>
 
 /**
  * Update icon for all tabs based on current pilot state
  */
-export declare function updateAllTabIcons(enabled: boolean): Promise<void>;
+export declare function updateAllTabIcons(enabled: boolean): Promise<void>
 
 /**
  * Initialize icon state on extension startup
  */
-export declare function initializeIconState(pilotEnabled: boolean): Promise<void>;
+export declare function initializeIconState(pilotEnabled: boolean): Promise<void>
 
 /**
  * Clean up when Gasoline is disabled
  */
-export declare function cleanup(): void;
+export declare function cleanup(): void
 
 /**
  * Update pilot icon (backward compatibility)
  */
-export declare function updatePilotIcon(enabled: boolean, tabId?: number | null): void;
+export declare function updatePilotIcon(enabled: boolean, tabId?: number | null): void

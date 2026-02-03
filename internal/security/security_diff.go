@@ -300,7 +300,7 @@ func (m *SecurityDiffManager) ListSnapshots() []SecuritySnapshotListEntry {
 // ============================================
 
 // HandleDiffSecurity processes MCP tool call parameters and dispatches to the appropriate action.
-func (m *SecurityDiffManager) HandleDiffSecurity(params json.RawMessage, bodies []capture.NetworkBody) (interface{}, error) {
+func (m *SecurityDiffManager) HandleDiffSecurity(params json.RawMessage, bodies []capture.NetworkBody) (any, error) {
 	var toolParams struct {
 		Action      string `json:"action"`
 		Name        string `json:"name"`

@@ -49,15 +49,6 @@
     // === Type Acquisition ===
     "types": ["chrome"]
   },
-  "include": [
-    "src/**/*.ts",
-    "src/types/**/*.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "extension",
-    "extension/lib/axe.min.js",
-    "tests/**/*"
-  ]
+  "include": ["src/**/*.ts", "src/types/**/*.d.ts"],
+  "exclude": ["node_modules", "dist", "extension", "extension/lib/axe.min.js", "tests/**/*"]
 }

@@ -360,7 +360,7 @@ func (s *SchemaStore) ObserveWebSocket(event capture.WebSocketEvent) {
 
 	// Try to detect "type" or "action" field in JSON messages
 	if event.Data != "" {
-		var msg map[string]interface{}
+		var msg map[string]any
 		if json.Unmarshal([]byte(event.Data), &msg) == nil {
 			if typeVal, ok := msg["type"]; ok {
 				if typeStr, ok := typeVal.(string); ok && len(ws.messageTypes) < maxWSMessageTypes {
@@ -433,7 +433,7 @@ func (s *SchemaStore) observeQueryParams(acc *endpointAccumulator, params url.Va
 }
 
 func (s *SchemaStore) observeRequestBody(acc *endpointAccumulator, body string) {
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if json.Unmarshal([]byte(body), &parsed) != nil {
 		return
 	}
@@ -457,7 +457,7 @@ func (s *SchemaStore) observeRequestBody(acc *endpointAccumulator, body string) 
 }
 
 func (s *SchemaStore) observeResponseBody(acc *endpointAccumulator, status int, body, contentType string) {
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if json.Unmarshal([]byte(body), &parsed) != nil {
 		return
 	}
@@ -506,7 +506,7 @@ var (
 	datetimeValuePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}`)
 )
 
-func inferTypeAndFormat(value interface{}) (string, string) {
+func inferTypeAndFormat(value any) (string, string) {
 	switch v := value.(type) {
 	case nil:
 		return "null", ""
@@ -520,9 +520,9 @@ func inferTypeAndFormat(value interface{}) (string, string) {
 	case string:
 		format := inferStringFormat(v)
 		return "string", format
-	case []interface{}:
+	case []any:
 		return "array", ""
-	case map[string]interface{}:
+	case map[string]any:
 		return "object", ""
 	default:
 		return "string", ""
@@ -989,33 +989,4 @@ func intToString(n int) string {
 		result = "-" + result
 	}
 	return result
-}
-
-// ============================================
-// MCP Tool Handler
-// ============================================
-
-func (h *ToolHandler) toolGetAPISchema(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var arguments struct {
-		URLFilter       string `json:"url"`
-		MinObservations int    `json:"min_observations"`
-		Format          string `json:"format"`
-	}
-	_ = json.Unmarshal(args, &arguments)
-
-	filter := SchemaFilter{
-		URLFilter:       arguments.URLFilter,
-		MinObservations: arguments.MinObservations,
-	}
-
-	var contentText string
-	if arguments.Format == "openapi_stub" {
-		contentText = h.capture.schemaStore.BuildOpenAPIStub(filter)
-	} else {
-		schema := h.capture.schemaStore.BuildSchema(filter)
-		schemaJSON, _ := json.Marshal(schema)
-		contentText = string(schemaJSON)
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse(contentText)}
 }

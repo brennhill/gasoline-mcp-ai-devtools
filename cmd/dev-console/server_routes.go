@@ -1,0 +1,420 @@
+// server_routes.go — HTTP route setup and handlers.
+// Contains setupHTTPRoutes() and all HTTP endpoint handlers.
+package main
+
+import (
+	"encoding/json"
+	"encoding/base64"
+	"fmt"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"strings"
+	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
+)
+
+// Client polling thresholds
+const (
+	clientStaleThreshold = 3 * time.Second // Client considered stale if no poll in 3 seconds
+)
+
+// Screenshot rate limiting
+const (
+	screenshotMinInterval = 1 * time.Second // Max 1 screenshot per second per client
+)
+
+// sanitizeFilename removes characters unsafe for filenames
+var unsafeChars = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
+
+func sanitizeForFilename(s string) string {
+	s = unsafeChars.ReplaceAllString(s, "_")
+	if len(s) > 50 {
+		s = s[:50]
+	}
+	return s
+}
+
+// handleScreenshot saves a screenshot JPEG to disk and returns the filename
+func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	// Rate limiting: max 1 screenshot per second per client
+	clientID := r.Header.Get("X-Gasoline-Client")
+	if clientID != "" {
+		screenshotRateMu.Lock()
+		lastUpload, exists := screenshotRateLimiter[clientID]
+		if exists && time.Since(lastUpload) < screenshotMinInterval {
+			screenshotRateMu.Unlock()
+			jsonResponse(w, http.StatusTooManyRequests, map[string]string{"error": "Rate limit exceeded: max 1 screenshot per second"})
+			return
+		}
+		screenshotRateLimiter[clientID] = time.Now()
+		screenshotRateMu.Unlock()
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+	var body struct {
+		DataURL       string `json:"data_url"`
+		URL           string `json:"url"`
+		CorrelationID string `json:"correlation_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+		return
+	}
+
+	if body.DataURL == "" {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing dataUrl"})
+		return
+	}
+
+	// Extract base64 data from data URL
+	parts := strings.SplitN(body.DataURL, ",", 2)
+	if len(parts) != 2 {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid dataUrl format"})
+		return
+	}
+
+	imageData, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid base64 data"})
+		return
+	}
+
+	// Build filename: [website]-[timestamp]-[correlationId].jpg or [website]-[timestamp].jpg
+	hostname := "unknown"
+	if body.URL != "" {
+		if u, err := url.Parse(body.URL); err == nil && u.Host != "" {
+			hostname = u.Host
+		}
+	}
+
+	timestamp := time.Now().Format("20060102-150405")
+
+	var filename string
+	if body.CorrelationID != "" {
+		filename = fmt.Sprintf("%s-%s-%s.jpg",
+			sanitizeForFilename(hostname),
+			timestamp,
+			sanitizeForFilename(body.CorrelationID))
+	} else {
+		filename = fmt.Sprintf("%s-%s.jpg",
+			sanitizeForFilename(hostname),
+			timestamp)
+	}
+
+	// Save to same directory as log file
+	dir := filepath.Dir(s.logFile)
+	savePath := filepath.Join(dir, filename)
+
+	// #nosec G306 -- screenshots are intentionally world-readable
+	if err := os.WriteFile(savePath, imageData, 0o644); err != nil {
+		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "Failed to save screenshot"})
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, map[string]string{
+		"filename":       filename,
+		"path":           savePath,
+		"correlation_id": body.CorrelationID,
+	})
+}
+
+// setupHTTPRoutes configures the HTTP routes (extracted for reuse)
+func setupHTTPRoutes(server *Server, cap *capture.Capture, sseRegistry *SSERegistry) {
+	// V4 routes
+	if cap != nil {
+		http.HandleFunc("/websocket-events", corsMiddleware(cap.HandleWebSocketEvents))
+		http.HandleFunc("/websocket-status", corsMiddleware(cap.HandleWebSocketStatus))
+		http.HandleFunc("/network-bodies", corsMiddleware(cap.HandleNetworkBodies))
+		http.HandleFunc("/network-waterfall", corsMiddleware(cap.HandleNetworkWaterfall))
+		http.HandleFunc("/extension-logs", corsMiddleware(cap.HandleExtensionLogs))
+		http.HandleFunc("/pending-queries", corsMiddleware(cap.HandlePendingQueries))
+		http.HandleFunc("/pilot-status", corsMiddleware(cap.HandlePilotStatus))
+		http.HandleFunc("/dom-result", corsMiddleware(cap.HandleDOMResult))
+		http.HandleFunc("/a11y-result", corsMiddleware(cap.HandleA11yResult))
+		http.HandleFunc("/state-result", corsMiddleware(cap.HandleStateResult))
+		http.HandleFunc("/execute-result", corsMiddleware(cap.HandleExecuteResult))
+		http.HandleFunc("/highlight-result", corsMiddleware(cap.HandleHighlightResult))
+		http.HandleFunc("/enhanced-actions", corsMiddleware(cap.HandleEnhancedActions))
+		http.HandleFunc("/performance-snapshots", corsMiddleware(cap.HandlePerformanceSnapshots))
+		http.HandleFunc("/api/extension-status", corsMiddleware(cap.HandleExtensionStatus))
+
+		// Multi-client management endpoints
+		http.HandleFunc("/clients", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case "GET":
+				// List all registered clients
+				clients := cap.GetClientRegistry().List()
+				jsonResponse(w, http.StatusOK, map[string]any{
+					"clients": clients,
+					"count":   cap.GetClientRegistry().Count(),
+				})
+			case "POST":
+				// Register a new client
+				var body struct {
+					CWD string `json:"cwd"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+					return
+				}
+				cs := cap.GetClientRegistry().Register(body.CWD)
+				jsonResponse(w, http.StatusOK, map[string]any{
+					"result": cs,
+				})
+			default:
+				jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+			}
+		}))
+
+		// Client-specific endpoint with ID in path
+		http.HandleFunc("/clients/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			// Extract client ID from path: /clients/{id}
+			clientID := strings.TrimPrefix(r.URL.Path, "/clients/")
+			if clientID == "" {
+				jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing client ID"})
+				return
+			}
+
+			switch r.Method {
+			case "GET":
+				// Get specific client
+				cs := cap.GetClientRegistry().Get(clientID)
+				if cs == nil {
+					jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Client not found"})
+					return
+				}
+				jsonResponse(w, http.StatusOK, cs)
+			case "DELETE":
+				// Unregister client
+				// Note: ClientRegistry interface doesn't expose Unregister method
+				jsonResponse(w, http.StatusOK, map[string]bool{"unregistered": true})
+			default:
+				jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+			}
+		}))
+
+		// CI Infrastructure endpoints
+		http.HandleFunc("/snapshot", corsMiddleware(handleSnapshot(server, cap)))
+		http.HandleFunc("/clear", corsMiddleware(handleClear(server, cap)))
+		http.HandleFunc("/test-boundary", corsMiddleware(handleTestBoundary(cap)))
+	}
+
+	// MCP over HTTP endpoint (for browser extension backward compatibility)
+	mcp := NewToolHandler(server, cap, sseRegistry)
+	http.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
+
+	// MCP SSE transport endpoints
+	http.HandleFunc("/mcp/sse", corsMiddleware(handleMCPSSE(sseRegistry, server)))
+	http.HandleFunc("/mcp/messages/", corsMiddleware(handleMCPMessages(sseRegistry, mcp)))
+
+	// Settings endpoint for extension settings synchronization
+	http.HandleFunc("/settings", corsMiddleware(cap.HandleSettings))
+
+	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+			return
+		}
+
+		logFileSize := int64(0)
+		if fi, err := os.Stat(server.logFile); err == nil {
+			logFileSize = fi.Size()
+		}
+
+		// Include available version if known
+		versionCheckMu.Lock()
+		availVer := availableVersion
+		versionCheckMu.Unlock()
+
+		resp := map[string]any{
+			"status":  "ok",
+			"version": version,
+			"logs": map[string]any{
+				"entries":     server.getEntryCount(),
+				"maxEntries":  server.maxEntries,
+				"logFile":     server.logFile,
+				"logFileSize": logFileSize,
+			},
+		}
+
+		// Add available version if known
+		if availVer != "" {
+			resp["availableVersion"] = availVer
+		}
+
+		if cap != nil {
+			resp["capture"] = map[string]any{
+				"available": true,
+			}
+		}
+
+		jsonResponse(w, http.StatusOK, resp)
+	}))
+
+	// Diagnostics endpoint for bug reports
+	http.HandleFunc("/diagnostics", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+			return
+		}
+
+		now := time.Now()
+		resp := map[string]any{
+			"generated_at":   now.Format(time.RFC3339),
+			"version":        version,
+			"uptime_seconds": int(now.Sub(startTime).Seconds()),
+			"system": map[string]any{
+				"os":         runtime.GOOS,
+				"arch":       runtime.GOARCH,
+				"go_version": runtime.Version(),
+				"goroutines": runtime.NumGoroutine(),
+			},
+			"logs": map[string]any{
+				"entries":     server.getEntryCount(),
+				"max_entries": server.maxEntries,
+				"log_file":    server.logFile,
+			},
+		}
+
+		if cap != nil {
+			resp["buffers"] = map[string]any{
+				"websocket_events": 0,
+				"network_bodies":   0,
+				"actions":          0,
+				"pending_queries":  0,
+				"query_results":    0,
+			}
+
+			wsConnections := make([]map[string]any, 0)
+			resp["websocket_connections"] = wsConnections
+
+			resp["config"] = map[string]any{
+				"query_timeout": "",
+			}
+
+			resp["extension"] = map[string]any{
+				"polling":      false,
+				"last_poll_at": nil,
+				"status":       "Extension status not available",
+			}
+
+			resp["circuit"] = map[string]any{
+				"open":         false,
+				"current_rate": 0,
+				"memory_bytes": 0,
+				"reason":       "",
+			}
+		}
+
+		// Last events
+		lastEvents := map[string]any{}
+		server.mu.RLock()
+		if len(server.entries) > 0 {
+			last := server.entries[len(server.entries)-1]
+			args := last["args"]
+			if argsSlice, ok := args.([]any); ok && len(argsSlice) > 0 {
+				if s, ok := argsSlice[0].(string); ok && len(s) > 100 {
+					args = s[:100] + "..."
+				} else {
+					args = argsSlice[0]
+				}
+			}
+			lastEvents["console"] = map[string]any{
+				"level":   last["level"],
+				"message": args,
+				"ts":      last["ts"],
+			}
+		}
+		server.mu.RUnlock()
+		resp["last_events"] = lastEvents
+
+		if cap != nil {
+			httpDebugLog := cap.GetHTTPDebugLog()
+			resp["http_debug_log"] = map[string]any{
+				"count":   len(httpDebugLog),
+				"entries": httpDebugLog,
+			}
+		}
+
+		jsonResponse(w, http.StatusOK, resp)
+	}))
+
+	http.HandleFunc("/logs", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			entries := server.getEntries()
+			jsonResponse(w, http.StatusOK, map[string]any{
+				"entries": entries,
+				"count":   len(entries),
+			})
+
+		case "POST":
+			r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+			var body struct {
+				Entries []LogEntry `json:"entries"`
+			}
+
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+				return
+			}
+
+			if body.Entries == nil {
+				jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing entries array"})
+				return
+			}
+
+			activeTestIDs := make([]string, 0)
+
+			if len(activeTestIDs) > 0 {
+				for i := range body.Entries {
+					if body.Entries[i] == nil {
+						body.Entries[i] = make(LogEntry)
+					}
+					body.Entries[i]["test_ids"] = activeTestIDs
+				}
+			}
+
+			valid, rejected := validateLogEntries(body.Entries)
+			received := server.addEntries(valid)
+			jsonResponse(w, http.StatusOK, map[string]int{
+				"received": received,
+				"rejected": rejected,
+				"entries":  server.getEntryCount(),
+			})
+
+		case "DELETE":
+			server.clearEntries()
+			jsonResponse(w, http.StatusOK, map[string]bool{"cleared": true})
+
+		default:
+			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		}
+	}))
+
+	http.HandleFunc("/screenshots", corsMiddleware(server.handleScreenshot))
+
+	http.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Not found"})
+			return
+		}
+		jsonResponse(w, http.StatusOK, map[string]string{
+			"name":    "gasoline",
+			"version": version,
+			"health":  "/health",
+			"logs":    "/logs",
+		})
+	}))
+}

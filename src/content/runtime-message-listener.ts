@@ -3,7 +3,7 @@
  * Handles chrome.runtime messages from background script
  */
 
-import type { ContentMessage, WebSocketCaptureMode } from '../types';
+import type { ContentMessage, WebSocketCaptureMode } from '../types'
 import {
   isValidBackgroundSender,
   handlePing,
@@ -15,7 +15,7 @@ import {
   handleA11yQuery,
   handleDomQuery,
   handleGetNetworkWaterfall,
-} from './message-handlers';
+} from './message-handlers'
 
 /**
  * Initialize runtime message listener
@@ -26,69 +26,71 @@ export function initRuntimeMessageListener(): void {
     (
       message: ContentMessage & { enabled?: boolean; mode?: WebSocketCaptureMode; url?: string; params?: unknown },
       sender: chrome.runtime.MessageSender,
-      sendResponse: (response?: unknown) => void
+      sendResponse: (response?: unknown) => void,
     ): boolean | undefined => {
       // SECURITY: Validate sender is from the extension background, not from page context
       if (!isValidBackgroundSender(sender)) {
-        console.warn('[Gasoline] Rejected message from untrusted sender:', sender.id);
-        return false;
+        console.warn('[Gasoline] Rejected message from untrusted sender:', sender.id)
+        return false
       }
 
       // Handle ping to check if content script is loaded
       if (message.type === 'GASOLINE_PING') {
-        return handlePing(sendResponse);
+        return handlePing(sendResponse)
       }
 
       // Handle toggle messages
-      handleToggleMessage(message);
+      handleToggleMessage(message)
 
       // Handle GASOLINE_HIGHLIGHT from background
       if (message.type === 'GASOLINE_HIGHLIGHT') {
         forwardHighlightMessage(message)
           .then((result) => {
-            sendResponse(result);
+            sendResponse(result)
           })
           .catch((err: Error) => {
-            sendResponse({ success: false, error: err.message });
-          });
-        return true; // Will respond asynchronously
+            sendResponse({ success: false, error: err.message })
+          })
+        return true // Will respond asynchronously
       }
 
       // Handle state management commands from background
       if (message.type === 'GASOLINE_MANAGE_STATE') {
-        handleStateCommand(message.params as any)
+        // message.params contains action, state, include_url from the manage_state tool
+        // handleStateCommand accepts params with optional action (StateAction), name, state, include_url
+        handleStateCommand(message.params)
           .then((result) => sendResponse(result))
-          .catch((err: Error) => sendResponse({ error: err.message }));
-        return true; // Keep channel open for async response
+          .catch((err: Error) => sendResponse({ error: err.message }))
+        return true // Keep channel open for async response
       }
 
       // Handle GASOLINE_EXECUTE_JS from background (direct pilot command)
       if (message.type === 'GASOLINE_EXECUTE_JS') {
-        const params = (message.params as { script?: string; timeout_ms?: number }) || {};
-        return handleExecuteJs(params, sendResponse);
+        const params = (message.params as { script?: string; timeout_ms?: number }) || {}
+        return handleExecuteJs(params, sendResponse)
       }
 
       // Handle GASOLINE_EXECUTE_QUERY from background (polling system)
       if (message.type === 'GASOLINE_EXECUTE_QUERY') {
-        return handleExecuteQuery(message.params || {}, sendResponse);
+        return handleExecuteQuery(message.params || {}, sendResponse)
       }
 
       // Handle A11Y_QUERY from background (run accessibility audit in page context)
       if (message.type === 'A11Y_QUERY') {
-        return handleA11yQuery(message.params || {}, sendResponse);
+        return handleA11yQuery(message.params || {}, sendResponse)
       }
 
       // Handle DOM_QUERY from background (execute CSS selector query in page context)
       if (message.type === 'DOM_QUERY') {
-        return handleDomQuery(message.params || {}, sendResponse);
+        return handleDomQuery(message.params || {}, sendResponse)
       }
 
       // Handle GET_NETWORK_WATERFALL from background (collect PerformanceResourceTiming data)
       if (message.type === 'GET_NETWORK_WATERFALL') {
-        return handleGetNetworkWaterfall(sendResponse);
+        return handleGetNetworkWaterfall(sendResponse)
       }
 
-      return undefined;
-    }
-  );
+      return undefined
+    },
+  )
 }

@@ -4,47 +4,50 @@
  * for additional entries, and provides error-time performance snapshots.
  */
 
-import { MAX_PERFORMANCE_ENTRIES, PERFORMANCE_TIME_WINDOW_MS } from './constants';
-import type { PerformanceMark, PerformanceMeasure } from '../types/index';
+import { MAX_PERFORMANCE_ENTRIES, PERFORMANCE_TIME_WINDOW_MS } from './constants'
+import type { PerformanceMark, PerformanceMeasure } from '../types/index'
 
 // Performance Marks state
-let performanceMarksEnabled = false;
-let capturedMarks: Array<PerformanceMark & { detail?: unknown; capturedAt: string }> = [];
-let capturedMeasures: Array<PerformanceMeasure & { capturedAt: string }> = [];
-let originalPerformanceMark: ((name: string, options?: PerformanceMarkOptions) => PerformanceMark) | null = null;
-let originalPerformanceMeasure: ((name: string, startMark?: string, endMark?: string) => PerformanceMeasure) | null = null;
-let performanceObserver: PerformanceObserver | null = null;
-let performanceCaptureActive = false;
+let performanceMarksEnabled = false
+let capturedMarks: Array<PerformanceMark & { detail?: unknown; capturedAt: string }> = []
+let capturedMeasures: Array<PerformanceMeasure & { capturedAt: string }> = []
+let originalPerformanceMark: ((name: string, options?: PerformanceMarkOptions) => PerformanceMark) | null = null
+let originalPerformanceMeasure: ((name: string, startMark?: string, endMark?: string) => PerformanceMeasure) | null =
+  null
+let performanceObserver: PerformanceObserver | null = null
+let performanceCaptureActive = false
 
 /**
  * Get performance marks
  */
-export function getPerformanceMarks(options: { since?: number } = {}): Array<Omit<PerformanceMark, 'entryType'> & { detail?: unknown | null }> {
-  if (typeof performance === 'undefined' || !performance) return [];
+export function getPerformanceMarks(
+  options: { since?: number } = {},
+): Array<Omit<PerformanceMark, 'entryType'> & { detail?: unknown | null }> {
+  if (typeof performance === 'undefined' || !performance) return []
 
   try {
-    let marks = (performance.getEntriesByType('mark') as PerformanceEntry[]) || [];
+    let marks = (performance.getEntriesByType('mark') as PerformanceEntry[]) || []
 
     // Filter by time range
     if (options.since) {
-      marks = marks.filter((m) => m.startTime >= options.since!);
+      marks = marks.filter((m) => m.startTime >= options.since!)
     }
 
     // Sort by start time
-    marks.sort((a, b) => a.startTime - b.startTime);
+    marks.sort((a, b) => a.startTime - b.startTime)
 
     // Limit entries
     if (marks.length > MAX_PERFORMANCE_ENTRIES) {
-      marks = marks.slice(-MAX_PERFORMANCE_ENTRIES);
+      marks = marks.slice(-MAX_PERFORMANCE_ENTRIES)
     }
 
     return marks.map((m) => ({
       name: m.name,
       startTime: m.startTime,
       detail: (m as PerformanceEntry & { detail?: unknown }).detail || null,
-    }));
+    }))
   } catch {
-    return [];
+    return []
   }
 }
 
@@ -52,31 +55,31 @@ export function getPerformanceMarks(options: { since?: number } = {}): Array<Omi
  * Get performance measures
  */
 export function getPerformanceMeasures(options: { since?: number } = {}): Array<Omit<PerformanceMeasure, 'entryType'>> {
-  if (typeof performance === 'undefined' || !performance) return [];
+  if (typeof performance === 'undefined' || !performance) return []
 
   try {
-    let measures = (performance.getEntriesByType('measure') as PerformanceEntry[]) || [];
+    let measures = (performance.getEntriesByType('measure') as PerformanceEntry[]) || []
 
     // Filter by time range
     if (options.since) {
-      measures = measures.filter((m) => m.startTime >= options.since!);
+      measures = measures.filter((m) => m.startTime >= options.since!)
     }
 
     // Sort by start time
-    measures.sort((a, b) => a.startTime - b.startTime);
+    measures.sort((a, b) => a.startTime - b.startTime)
 
     // Limit entries
     if (measures.length > MAX_PERFORMANCE_ENTRIES) {
-      measures = measures.slice(-MAX_PERFORMANCE_ENTRIES);
+      measures = measures.slice(-MAX_PERFORMANCE_ENTRIES)
     }
 
     return measures.map((m) => ({
       name: m.name,
       startTime: m.startTime,
       duration: m.duration,
-    }));
+    }))
   } catch {
-    return [];
+    return []
   }
 }
 
@@ -84,59 +87,73 @@ export function getPerformanceMeasures(options: { since?: number } = {}): Array<
  * Get captured marks from wrapper
  */
 export function getCapturedMarks(): Array<PerformanceMark & { detail?: unknown; capturedAt: string }> {
-  return [...capturedMarks];
+  return [...capturedMarks]
 }
 
 /**
  * Get captured measures from wrapper
  */
 export function getCapturedMeasures(): Array<PerformanceMeasure & { capturedAt: string }> {
-  return [...capturedMeasures];
+  return [...capturedMeasures]
 }
 
 /**
  * Install performance capture wrapper
  */
 export function installPerformanceCapture(): void {
-  if (typeof performance === 'undefined' || !performance) return;
+  if (typeof performance === 'undefined' || !performance) return
 
   // Guard against double installation (prevents infinite recursion)
   if (performanceCaptureActive) {
-    console.warn('[Gasoline] Performance capture already installed, skipping');
-    return;
+    console.warn('[Gasoline] Performance capture already installed, skipping')
+    return
   }
 
   // Clear previous captured data
-  capturedMarks = [];
-  capturedMeasures = [];
+  capturedMarks = []
+  capturedMeasures = []
 
   // Store originals
-  originalPerformanceMark = performance.mark.bind(performance) as (name: string, options?: PerformanceMarkOptions) => PerformanceMark;
-  originalPerformanceMeasure = performance.measure.bind(performance) as (name: string, startMark?: string, endMark?: string) => PerformanceMeasure;
+  originalPerformanceMark = performance.mark.bind(performance) as (
+    name: string,
+    options?: PerformanceMarkOptions,
+  ) => PerformanceMark
+  originalPerformanceMeasure = performance.measure.bind(performance) as (
+    name: string,
+    startMark?: string,
+    endMark?: string,
+  ) => PerformanceMeasure
 
   // Wrap performance.mark
-  (performance.mark as any) = function (name: string, options?: PerformanceMarkOptions): PerformanceMark {
-    const result = originalPerformanceMark!.call(performance, name, options) as PerformanceMark;
+  // Note: Monkey-patching requires bypassing TypeScript's strict Performance API types.
+  // This is a standard pattern for browser API instrumentation.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wrappedMark = function (name: string, options?: PerformanceMarkOptions): PerformanceMark {
+    const result = originalPerformanceMark!.call(performance, name, options)
 
     capturedMarks.push({
       name,
-      startTime: (result as PerformanceEntry).startTime || performance.now(),
+      startTime: result.startTime || performance.now(),
       entryType: 'mark',
-      detail: (options as any)?.detail || undefined,
+      detail: options?.detail || undefined,
       capturedAt: new Date().toISOString(),
-    });
+    })
 
     // Limit captured marks
     if (capturedMarks.length > MAX_PERFORMANCE_ENTRIES) {
-      capturedMarks.shift();
+      capturedMarks.shift()
     }
 
-    return result;
-  };
+    return result
+  }
+  // Assign the wrapper, bypassing strict type checking for the overloaded method
+  Object.defineProperty(performance, 'mark', { value: wrappedMark, writable: true, configurable: true })
 
   // Wrap performance.measure
-  (performance.measure as any) = function (name: string, startMark?: string, endMark?: string): PerformanceMeasure {
-    const result = originalPerformanceMeasure!.call(performance, name, startMark, endMark) as PerformanceMeasure;
+  // Note: Monkey-patching requires bypassing TypeScript's strict Performance API types.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wrappedMeasure = function (name: string, startMark?: string, endMark?: string): PerformanceMeasure {
+    const result = originalPerformanceMeasure!.call(performance, name, startMark, endMark)
 
     capturedMeasures.push({
       name,
@@ -144,22 +161,24 @@ export function installPerformanceCapture(): void {
       duration: result.duration || 0,
       entryType: 'measure',
       capturedAt: new Date().toISOString(),
-    });
+    })
 
     // Limit captured measures
     if (capturedMeasures.length > MAX_PERFORMANCE_ENTRIES) {
-      capturedMeasures.shift();
+      capturedMeasures.shift()
     }
 
-    return result;
-  };
+    return result
+  }
+  // Assign the wrapper, bypassing strict type checking for the overloaded method
+  Object.defineProperty(performance, 'measure', { value: wrappedMeasure, writable: true, configurable: true })
 
-  performanceCaptureActive = true;
+  performanceCaptureActive = true
 
   // Try to use PerformanceObserver for additional entries
-  if (typeof window !== 'undefined' && (window as any).PerformanceObserver) {
+  if (typeof window !== 'undefined' && typeof PerformanceObserver !== 'undefined') {
     try {
-      performanceObserver = new (window as any).PerformanceObserver((list: PerformanceObserverEntryList): void => {
+      performanceObserver = new PerformanceObserver((list: PerformanceObserverEntryList): void => {
         for (const entry of list.getEntries()) {
           if (entry.entryType === 'mark') {
             // Avoid duplicates from our wrapper
@@ -168,9 +187,9 @@ export function installPerformanceCapture(): void {
                 name: entry.name,
                 startTime: entry.startTime,
                 entryType: 'mark',
-                detail: (entry as any).detail || undefined,
+                detail: (entry as PerformanceEntry & { detail?: unknown }).detail || undefined,
                 capturedAt: new Date().toISOString(),
-              });
+              })
             }
           } else if (entry.entryType === 'measure') {
             if (!capturedMeasures.some((m) => m.name === entry.name && m.startTime === entry.startTime)) {
@@ -180,13 +199,13 @@ export function installPerformanceCapture(): void {
                 duration: entry.duration,
                 entryType: 'measure',
                 capturedAt: new Date().toISOString(),
-              });
+              })
             }
           }
         }
-      });
+      })
       if (performanceObserver) {
-        performanceObserver.observe({ entryTypes: ['mark', 'measure'] });
+        performanceObserver.observe({ entryTypes: ['mark', 'measure'] })
       }
     } catch {
       // PerformanceObserver not supported, continue without it
@@ -198,76 +217,82 @@ export function installPerformanceCapture(): void {
  * Uninstall performance capture wrapper
  */
 export function uninstallPerformanceCapture(): void {
-  if (typeof performance === 'undefined' || !performance) return;
+  if (typeof performance === 'undefined' || !performance) return
 
   if (originalPerformanceMark) {
-    performance.mark = originalPerformanceMark as any;
-    originalPerformanceMark = null;
+    // Restore original performance.mark using Object.defineProperty for clean restoration
+    Object.defineProperty(performance, 'mark', { value: originalPerformanceMark, writable: true, configurable: true })
+    originalPerformanceMark = null
   }
 
   if (originalPerformanceMeasure) {
-    performance.measure = originalPerformanceMeasure as any;
-    originalPerformanceMeasure = null;
+    // Restore original performance.measure using Object.defineProperty for clean restoration
+    Object.defineProperty(performance, 'measure', {
+      value: originalPerformanceMeasure,
+      writable: true,
+      configurable: true,
+    })
+    originalPerformanceMeasure = null
   }
 
   if (performanceObserver) {
-    performanceObserver.disconnect();
-    performanceObserver = null;
+    performanceObserver.disconnect()
+    performanceObserver = null
   }
 
-  capturedMarks = [];
-  capturedMeasures = [];
-  performanceCaptureActive = false;
+  capturedMarks = []
+  capturedMeasures = []
+  performanceCaptureActive = false
 }
 
 /**
  * Check if performance capture is active
  */
 export function isPerformanceCaptureActive(): boolean {
-  return performanceCaptureActive;
+  return performanceCaptureActive
 }
 
 interface PerformanceSnapshot {
-  type: 'performance';
-  ts: string;
-  _enrichments: readonly string[];
-  _errorTs?: string;
-  marks: Array<Omit<PerformanceMark, 'entryType'> & { detail?: unknown | null }>;
-  measures: Array<Omit<PerformanceMeasure, 'entryType'>>;
+  type: 'performance'
+  ts: string
+  _enrichments: readonly string[]
+  _errorTs?: string
+  marks: Array<Omit<PerformanceMark, 'entryType'> & { detail?: unknown | null }>
+  measures: Array<Omit<PerformanceMeasure, 'entryType'>>
   navigation: {
-    type?: string;
-    startTime: number;
-    domContentLoadedEventEnd: number;
-    loadEventEnd: number;
-  } | null;
+    type?: string
+    startTime: number
+    domContentLoadedEventEnd: number
+    loadEventEnd: number
+  } | null
 }
 
 /**
  * Get performance snapshot for an error
  */
 export async function getPerformanceSnapshotForError(errorEntry: { ts?: string }): Promise<PerformanceSnapshot | null> {
-  if (!performanceMarksEnabled) return null;
+  if (!performanceMarksEnabled) return null
 
-  const now = typeof performance !== 'undefined' && performance?.now ? performance.now() : 0;
-  const since = Math.max(0, now - PERFORMANCE_TIME_WINDOW_MS);
+  const now = typeof performance !== 'undefined' && performance?.now ? performance.now() : 0
+  const since = Math.max(0, now - PERFORMANCE_TIME_WINDOW_MS)
 
-  const marks = getPerformanceMarks({ since });
-  const measures = getPerformanceMeasures({ since });
+  const marks = getPerformanceMarks({ since })
+  const measures = getPerformanceMeasures({ since })
 
   // Include navigation timing if available
-  let navigation: PerformanceSnapshot['navigation'] = null;
+  let navigation: PerformanceSnapshot['navigation'] = null
   if (typeof performance !== 'undefined' && performance) {
     try {
-      const navEntries = (performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]) || [];
+      const navEntries = (performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]) || []
       if (navEntries && navEntries.length > 0) {
-        const nav = navEntries[0];
+        const nav = navEntries[0]
         if (nav) {
           navigation = {
             type: nav.type,
             startTime: nav.startTime,
             domContentLoadedEventEnd: nav.domContentLoadedEventEnd,
             loadEventEnd: nav.loadEventEnd,
-          };
+          }
         }
       }
     } catch {
@@ -283,19 +308,19 @@ export async function getPerformanceSnapshotForError(errorEntry: { ts?: string }
     marks,
     measures,
     navigation,
-  };
+  }
 }
 
 /**
  * Set whether performance marks are enabled
  */
 export function setPerformanceMarksEnabled(enabled: boolean): void {
-  performanceMarksEnabled = enabled;
+  performanceMarksEnabled = enabled
 }
 
 /**
  * Check if performance marks are enabled
  */
 export function isPerformanceMarksEnabled(): boolean {
-  return performanceMarksEnabled;
+  return performanceMarksEnabled
 }

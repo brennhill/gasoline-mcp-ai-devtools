@@ -2,5 +2,5 @@
  * @fileoverview Network Types
  * Network waterfall, request tracking, and body capture
  */
-export {};
+export {}
 //# sourceMappingURL=network.js.map

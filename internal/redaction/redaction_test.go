@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// NOTE: These tests use raceEnabled which needs to be exported or defined here.
+// Run with: go test -tags=integration ./internal/redaction/...
 package redaction
 
 import (

@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// NOTE: These tests use NetworkBody which needs to be imported from capture package.
+// Run with: go test -tags=integration ./internal/security/...
 package security
 
 import (

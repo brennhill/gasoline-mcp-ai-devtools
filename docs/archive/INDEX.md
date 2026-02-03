@@ -21,7 +21,8 @@ This directory contains historical documents, analysis reports, and session summ
 - **typescript-regression-analysis.md** — Analysis of TypeScript compilation issues
 
 ### Security & Quality Analysis
-- **security-audit-summary.md** — Security review findings
+
+- **[../security/audit-summary.md](../security/audit-summary.md)** — Security review findings (moved from root)
 - **prevention-measures-summary.md** — Security prevention measures implemented
 - **large-data-issue-analysis.md** — Analysis of large data handling issues (relevant to v5.3 pagination work)
 

@@ -181,12 +181,13 @@ function serializeDOMElement(
   styleProps: string[] | undefined,
   includeChildren: boolean | undefined,
   maxDepth: number,
-  currentDepth: number
+  currentDepth: number,
 ): DOMElementEntry {
   const entry: DOMElementEntry = {
     tag: el.tagName ? el.tagName.toLowerCase() : '',
     text: (el.textContent || '').slice(0, DOM_QUERY_MAX_TEXT),
-    visible: (el as HTMLElement).offsetParent !== null || (el.getBoundingClientRect && el.getBoundingClientRect().width > 0),
+    visible:
+      (el as HTMLElement).offsetParent !== null || (el.getBoundingClientRect && el.getBoundingClientRect().width > 0),
   }
 
   // Attributes
@@ -328,11 +329,22 @@ export async function runAxeAudit(params: AxeAuditParams): Promise<FormattedAxeR
 /**
  * Run axe audit with a timeout
  */
-export async function runAxeAuditWithTimeout(params: AxeAuditParams, timeoutMs: number = A11Y_AUDIT_TIMEOUT_MS): Promise<FormattedAxeResults> {
+export async function runAxeAuditWithTimeout(
+  params: AxeAuditParams,
+  timeoutMs: number = A11Y_AUDIT_TIMEOUT_MS,
+): Promise<FormattedAxeResults> {
   return Promise.race([
     runAxeAudit(params),
     new Promise<FormattedAxeResults>((resolve) => {
-      setTimeout(() => resolve({ violations: [], summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 }, error: 'Accessibility audit timeout' }), timeoutMs)
+      setTimeout(
+        () =>
+          resolve({
+            violations: [],
+            summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+            error: 'Accessibility audit timeout',
+          }),
+        timeoutMs,
+      )
     }),
   ])
 }

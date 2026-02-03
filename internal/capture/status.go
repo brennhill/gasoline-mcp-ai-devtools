@@ -69,7 +69,7 @@ func (c *Capture) HandleExtensionStatus(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	//nolint:errcheck -- HTTP response encoding errors are logged by client; no recovery possible
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]any{
 		"received": true,
 	})
 }

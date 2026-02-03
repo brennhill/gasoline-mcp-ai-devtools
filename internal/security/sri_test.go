@@ -1,5 +1,10 @@
+//go:build integration
+// +build integration
+
 // sri_test.go — Tests for SRI Hash Generator (generate_sri) MCP tool.
 // Tests hash computation, resource filtering, third-party detection, and output formats.
+// NOTE: These tests use NetworkBody which needs to be imported from capture package.
+// Run with: go test -tags=integration ./internal/security/...
 package security
 
 import (

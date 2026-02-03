@@ -13,17 +13,17 @@
  */
 
 // Re-export all types for backward compatibility
-export * from './telemetry';
-export * from './websocket';
-export * from './network';
-export * from './performance';
-export * from './actions';
-export * from './ai-context';
-export * from './accessibility';
-export * from './dom';
-export * from './state';
-export * from './queries';
-export * from './sourcemap';
-export * from './chrome';
-export * from './debug';
-export * from './runtime-messages';
+export * from './telemetry'
+export * from './websocket'
+export * from './network'
+export * from './performance'
+export * from './actions'
+export * from './ai-context'
+export * from './accessibility'
+export * from './dom'
+export * from './state'
+export * from './queries'
+export * from './sourcemap'
+export * from './chrome'
+export * from './debug'
+export * from './runtime-messages'
