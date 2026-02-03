@@ -158,7 +158,7 @@ func bridgeStdioToHTTP(endpoint string) {
 }
 
 // sendBridgeError sends a JSON-RPC error response to stdout
-func sendBridgeError(id interface{}, code int, message string) {
+func sendBridgeError(id any, code int, message string) {
 	errResp := JSONRPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,

@@ -280,7 +280,7 @@ func (c *Capture) DetectFragileSelectors(sessions []*PlaybackSession) map[string
 // ============================================================================
 
 // GetPlaybackStatus returns the current status of a playback session
-func (c *Capture) GetPlaybackStatus(session *PlaybackSession) map[string]interface{} {
+func (c *Capture) GetPlaybackStatus(session *PlaybackSession) map[string]any {
 	totalTime := time.Since(session.StartedAt)
 
 	status := "ok"
@@ -291,7 +291,7 @@ func (c *Capture) GetPlaybackStatus(session *PlaybackSession) map[string]interfa
 		status = "failed"
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"status":            status,
 		"actions_executed":  session.ActionsExecuted,
 		"actions_failed":    session.ActionsFailed,

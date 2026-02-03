@@ -1,0 +1,141 @@
+package capture
+
+import (
+	"testing"
+	"time"
+
+	"github.com/dev-console/dev-console/internal/types"
+)
+
+// BenchmarkAddWebSocketEvents measures WebSocket event buffering performance
+func BenchmarkAddWebSocketEvents(b *testing.B) {
+	cap := NewCapture()
+
+	events := []WebSocketEvent{
+		{
+			Timestamp: time.Now().Format(time.RFC3339Nano),
+			ID:        "ws_123",
+			Event:     "message",
+			Data:      "test message payload",
+			URL:       "wss://example.com/socket",
+		},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cap.AddWebSocketEvents(events)
+	}
+}
+
+// BenchmarkAddNetworkBodies measures network body capture performance
+func BenchmarkAddNetworkBodies(b *testing.B) {
+	cap := NewCapture()
+
+	bodies := []types.NetworkBody{
+		{
+			Timestamp:    time.Now().Format(time.RFC3339Nano),
+			Method:       "POST",
+			URL:          "https://api.example.com/users",
+			Status:       200,
+			RequestBody:  `{"name":"test"}`,
+			ResponseBody: `{"id":123,"name":"test"}`,
+			ContentType:  "application/json",
+			Duration:     142,
+		},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cap.AddNetworkBodies(bodies)
+	}
+}
+
+// BenchmarkAddEnhancedActions measures user action capture performance
+func BenchmarkAddEnhancedActions(b *testing.B) {
+	cap := NewCapture()
+
+	actions := []EnhancedAction{
+		{
+			Timestamp: time.Now().UnixNano(),
+			Type:      "click",
+			Selectors: map[string]any{"css": "button.submit"},
+			Value:     "",
+			URL:       "https://example.com/page",
+		},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cap.AddEnhancedActions(actions)
+	}
+}
+
+// BenchmarkMemoryEnforcement measures memory limit enforcement overhead
+func BenchmarkMemoryEnforcement(b *testing.B) {
+	cap := NewCapture()
+
+	// Pre-populate with data near soft limit
+	for i := 0; i < 1000; i++ {
+		cap.AddWebSocketEvents([]WebSocketEvent{
+			{
+				Timestamp: time.Now().Format(time.RFC3339Nano),
+				ID:        "ws_bench",
+				Event:     "message",
+				Data:      string(make([]byte, 1000)), // 1KB per event
+			},
+		})
+	}
+
+	event := []WebSocketEvent{{
+		Timestamp: time.Now().Format(time.RFC3339Nano),
+		ID:        "ws_bench",
+		Event:     "message",
+		Data:      "test",
+	}}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cap.AddWebSocketEvents(event)
+	}
+}
+
+// BenchmarkConcurrentCapture measures concurrent capture performance
+func BenchmarkConcurrentCapture(b *testing.B) {
+	cap := NewCapture()
+
+	wsEvent := []WebSocketEvent{{
+		Timestamp: time.Now().Format(time.RFC3339Nano),
+		ID:        "ws_concurrent",
+		Event:     "message",
+		Data:      "test",
+	}}
+
+	networkBody := []types.NetworkBody{{
+		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Method:    "GET",
+		URL:       "https://example.com/api",
+		Status:    200,
+	}}
+
+	action := []EnhancedAction{{
+		Timestamp: time.Now().UnixNano(),
+		Type:      "click",
+		Selectors: map[string]any{"css": "button"},
+	}}
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		i := 0
+		for pb.Next() {
+			switch i % 3 {
+			case 0:
+				cap.AddWebSocketEvents(wsEvent)
+			case 1:
+				cap.AddNetworkBodies(networkBody)
+			case 2:
+				cap.AddEnhancedActions(action)
+			}
+			i++
+		}
+	})
+}

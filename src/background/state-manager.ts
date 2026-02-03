@@ -15,7 +15,7 @@ export {
   flushErrorGroups,
   type ProcessedLogEntry,
   ERROR_GROUP_MAX_AGE_MS,
-} from './error-groups';
+} from './error-groups'
 
 // Re-export cache and memory management
 export {
@@ -42,7 +42,7 @@ export {
   MEMORY_AVG_NETWORK_BODY_SIZE,
   MEMORY_AVG_ACTION_SIZE,
   MAX_PENDING_BUFFER,
-} from './cache-limits';
+} from './cache-limits'
 
 // Re-export source map and context monitoring
 export {
@@ -64,7 +64,7 @@ export {
   removeProcessingQuery,
   isQueryProcessing,
   cleanupStaleProcessingQueries,
-} from './snapshots';
+} from './snapshots'
 
 // Debug log functions are defined and exported below
 
@@ -72,28 +72,28 @@ export {
 // DEBUG LOG BUFFER
 // =============================================================================
 
-import type { DebugLogEntry } from '../types';
+import type { DebugLogEntry } from '../types'
 
 /** Debug log buffer */
-const debugLogBuffer: DebugLogEntry[] = [];
+const debugLogBuffer: DebugLogEntry[] = []
 
 /** Debug log buffer size */
-const DEBUG_LOG_MAX_ENTRIES = 200;
+const DEBUG_LOG_MAX_ENTRIES = 200
 
 /**
  * Get all debug log entries
  */
 export function getDebugLog(): DebugLogEntry[] {
-  return [...debugLogBuffer];
+  return [...debugLogBuffer]
 }
 
 /**
  * Add entry to debug log buffer
  */
 export function addDebugLogEntry(entry: DebugLogEntry): void {
-  debugLogBuffer.push(entry);
+  debugLogBuffer.push(entry)
   if (debugLogBuffer.length > DEBUG_LOG_MAX_ENTRIES) {
-    debugLogBuffer.shift();
+    debugLogBuffer.shift()
   }
 }
 
@@ -101,5 +101,5 @@ export function addDebugLogEntry(entry: DebugLogEntry): void {
  * Clear debug log buffer
  */
 export function clearDebugLog(): void {
-  debugLogBuffer.length = 0;
+  debugLogBuffer.length = 0
 }

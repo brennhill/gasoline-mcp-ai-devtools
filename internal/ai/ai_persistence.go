@@ -69,10 +69,10 @@ type SessionContext struct {
 	ProjectID    string                 `json:"project_id"`
 	SessionCount int                    `json:"session_count"`
 	Baselines    []string               `json:"baselines"`
-	NoiseConfig  map[string]interface{} `json:"noise_config,omitempty"`
+	NoiseConfig  map[string]any `json:"noise_config,omitempty"`
 	ErrorHistory []ErrorHistoryEntry    `json:"error_history"`
-	APISchema    map[string]interface{} `json:"api_schema,omitempty"`
-	Performance  map[string]interface{} `json:"performance,omitempty"`
+	APISchema    map[string]any `json:"api_schema,omitempty"`
+	Performance  map[string]any `json:"performance,omitempty"`
 }
 
 // ErrorHistoryEntry tracks an error across sessions
@@ -483,7 +483,7 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 	noisePath := filepath.Join(s.projectDir, "noise", "config.json")
 	// #nosec G304 -- path is constructed from internal projectDir field
 	if data, err := os.ReadFile(noisePath); err == nil {
-		var config map[string]interface{}
+		var config map[string]any
 		if json.Unmarshal(data, &config) == nil {
 			ctx.NoiseConfig = config
 		}
@@ -499,7 +499,7 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 			ctx.ErrorHistory = entries
 		} else {
 			// Try as generic JSON array (e.g., from tests saving raw maps)
-			var rawEntries []map[string]interface{}
+			var rawEntries []map[string]any
 			if json.Unmarshal(data, &rawEntries) == nil {
 				for _, raw := range rawEntries {
 					entry := ErrorHistoryEntry{}
@@ -522,7 +522,7 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 	schemaPath := filepath.Join(s.projectDir, "api_schema", "schema.json")
 	// #nosec G304 -- path is constructed from internal projectDir field
 	if data, err := os.ReadFile(schemaPath); err == nil {
-		var schema map[string]interface{}
+		var schema map[string]any
 		if json.Unmarshal(data, &schema) == nil {
 			ctx.APISchema = schema
 		}
@@ -532,7 +532,7 @@ func (s *SessionStore) LoadSessionContext() SessionContext {
 	perfPath := filepath.Join(s.projectDir, "performance", "endpoints.json")
 	// #nosec G304 -- path is constructed from internal projectDir field
 	if data, err := os.ReadFile(perfPath); err == nil {
-		var perf map[string]interface{}
+		var perf map[string]any
 		if json.Unmarshal(data, &perf) == nil {
 			ctx.Performance = perf
 		}
@@ -709,8 +709,8 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 		if err := s.Save(args.Namespace, args.Key, []byte(args.Data)); err != nil {
 			return nil, err
 		}
-		// Error impossible: map[string]interface{} with primitive values is always serializable
-		result, _ := json.Marshal(map[string]interface{}{
+		// Error impossible: map[string]any with primitive values is always serializable
+		result, _ := json.Marshal(map[string]any{
 			"status":    "saved",
 			"namespace": args.Namespace,
 			"key":       args.Key,
@@ -728,10 +728,10 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 		if err != nil {
 			return nil, err
 		}
-		var parsed interface{}
+		var parsed any
 		_ = json.Unmarshal(data, &parsed)
-		// Error impossible: map[string]interface{} with primitive values is always serializable
-		result, _ := json.Marshal(map[string]interface{}{
+		// Error impossible: map[string]any with primitive values is always serializable
+		result, _ := json.Marshal(map[string]any{
 			"namespace": args.Namespace,
 			"key":       args.Key,
 			"data":      parsed,
@@ -746,8 +746,8 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 		if err != nil {
 			return nil, err
 		}
-		// Error impossible: map[string]interface{} with primitive values is always serializable
-		result, _ := json.Marshal(map[string]interface{}{
+		// Error impossible: map[string]any with primitive values is always serializable
+		result, _ := json.Marshal(map[string]any{
 			"namespace": args.Namespace,
 			"keys":      keys,
 		})
@@ -763,8 +763,8 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 		if err := s.Delete(args.Namespace, args.Key); err != nil {
 			return nil, err
 		}
-		// Error impossible: map[string]interface{} with primitive values is always serializable
-		result, _ := json.Marshal(map[string]interface{}{
+		// Error impossible: map[string]any with primitive values is always serializable
+		result, _ := json.Marshal(map[string]any{
 			"status":    "deleted",
 			"namespace": args.Namespace,
 			"key":       args.Key,
@@ -776,8 +776,8 @@ func (s *SessionStore) HandleSessionStore(args SessionStoreArgs) (json.RawMessag
 		if err != nil {
 			return nil, err
 		}
-		// Error impossible: map[string]interface{} with primitive values is always serializable
-		result, _ := json.Marshal(map[string]interface{}{
+		// Error impossible: map[string]any with primitive values is always serializable
+		result, _ := json.Marshal(map[string]any{
 			"total_bytes":   stats.TotalBytes,
 			"session_count": stats.SessionCount,
 			"namespaces":    stats.Namespaces,

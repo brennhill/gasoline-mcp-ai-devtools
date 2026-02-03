@@ -11,6 +11,20 @@ import (
 	"strings"
 )
 
+// MCPContentBlock represents a single content block in an MCP tool response.
+// This is duplicated from cmd/dev-console/tools.go to avoid circular imports.
+type MCPContentBlock struct {
+	Type string `json:"type"`
+	Text string `json:"text,omitempty"`
+}
+
+// MCPToolResult represents the result of an MCP tool call.
+// This is duplicated from cmd/dev-console/tools.go to avoid circular imports.
+type MCPToolResult struct {
+	Content []MCPContentBlock `json:"content"`
+	IsError bool              `json:"isError,omitempty"`
+}
+
 // RedactionPattern represents a single redaction rule.
 type RedactionPattern struct {
 	Name        string `json:"name"`

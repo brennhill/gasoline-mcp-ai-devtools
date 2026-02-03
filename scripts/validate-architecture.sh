@@ -19,7 +19,9 @@ CRITICAL_FILES=(
     "internal/capture/handlers.go"
     "internal/capture/types.go"
     "internal/queries/types.go"
-    "cmd/dev-console/tools.go"
+    "cmd/dev-console/tools_core.go"
+    "cmd/dev-console/tools_observe.go"
+    "cmd/dev-console/tools_interact.go"
     "cmd/dev-console/bridge.go"
 )
 
@@ -104,7 +106,7 @@ MCP_TOOL_HANDLERS=(
 )
 
 for handler in "${MCP_TOOL_HANDLERS[@]}"; do
-    if ! grep -q "func.*$handler" cmd/dev-console/tools.go; then
+    if ! grep -rq "func.*$handler" cmd/dev-console/tools_*.go; then
         echo "   ❌ MISSING TOOL HANDLER: $handler"
         ERRORS=$((ERRORS + 1))
     else
@@ -127,10 +129,10 @@ else
     echo "   ✅ No stub in handlers.go"
 fi
 
-# Check tools.go for stub returns in command result observer
-if grep -q 'func (h \*ToolHandler) toolObserveCommandResult.*{' cmd/dev-console/tools.go; then
+# Check tools_observe.go for stub returns in command result observer
+if grep -rq 'func (h \*ToolHandler) toolObserveCommandResult.*{' cmd/dev-console/tools_*.go; then
     # Extract function body and check if it calls GetCommandResult
-    if grep -A 20 'func (h \*ToolHandler) toolObserveCommandResult' cmd/dev-console/tools.go | grep -q 'GetCommandResult'; then
+    if grep -rA 20 'func (h \*ToolHandler) toolObserveCommandResult' cmd/dev-console/tools_*.go | grep -q 'GetCommandResult'; then
         echo "   ✅ toolObserveCommandResult calls GetCommandResult"
     else
         echo "   ❌ STUB DETECTED: toolObserveCommandResult doesn't call GetCommandResult"

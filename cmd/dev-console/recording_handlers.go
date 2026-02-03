@@ -59,7 +59,7 @@ func (h *ToolHandler) toolConfigureRecordingStart(req JSONRPCRequest, args json.
 	}
 	h.MCPHandler.server.mu.Unlock()
 
-	responseData := map[string]interface{}{
+	responseData := map[string]any{
 		"status":       "ok",
 		"recording_id": recordingID,
 		"name":         params.Name,
@@ -115,7 +115,7 @@ func (h *ToolHandler) toolConfigureRecordingStop(req JSONRPCRequest, args json.R
 	}
 	h.MCPHandler.server.mu.Unlock()
 
-	responseData := map[string]interface{}{
+	responseData := map[string]any{
 		"status":        "ok",
 		"recording_id":  params.RecordingID,
 		"action_count":  actionCount,
@@ -155,7 +155,7 @@ func (h *ToolHandler) toolGetRecordings(req JSONRPCRequest, args json.RawMessage
 		)}
 	}
 
-	responseData := map[string]interface{}{
+	responseData := map[string]any{
 		"recordings": recordings,
 		"count":      len(recordings),
 		"limit":      params.Limit,
@@ -190,7 +190,7 @@ func (h *ToolHandler) toolGetRecordingActions(req JSONRPCRequest, args json.RawM
 		)}
 	}
 
-	responseData := map[string]interface{}{
+	responseData := map[string]any{
 		"recording_id": params.RecordingID,
 		"name":         recording.Name,
 		"created_at":   recording.CreatedAt,
@@ -259,7 +259,7 @@ func (h *ToolHandler) toolConfigurePlayback(req JSONRPCRequest, args json.RawMes
 	}
 	h.MCPHandler.server.mu.Unlock()
 
-	responseData := map[string]interface{}{
+	responseData := map[string]any{
 		"status":            status,
 		"recording_id":      params.RecordingID,
 		"actions_executed":  session.ActionsExecuted,
@@ -290,10 +290,10 @@ func (h *ToolHandler) toolGetPlaybackResults(req JSONRPCRequest, args json.RawMe
 	}
 
 	// For now, return a placeholder (would need to store playback sessions)
-	responseData := map[string]interface{}{
+	responseData := map[string]any{
 		"recording_id": params.RecordingID,
 		"message":      "Playback results would be stored here for later retrieval",
-		"results":      []interface{}{},
+		"results":      []any{},
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Playback results", responseData)}
@@ -349,7 +349,7 @@ func (h *ToolHandler) toolConfigureLogDiff(req JSONRPCRequest, args json.RawMess
 	}
 	h.MCPHandler.server.mu.Unlock()
 
-	responseData := map[string]interface{}{
+	responseData := map[string]any{
 		"status":          result.Status,
 		"summary":         result.Summary,
 		"original_id":     params.OriginalID,
@@ -392,7 +392,7 @@ func (h *ToolHandler) toolGetLogDiffReport(req JSONRPCRequest, args json.RawMess
 	// Generate report text
 	report := result.GetRegressionReport()
 
-	responseData := map[string]interface{}{
+	responseData := map[string]any{
 		"status":  result.Status,
 		"report":  report,
 		"summary": result.Summary,

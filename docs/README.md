@@ -21,7 +21,7 @@ docs/
 ├── README.md                  ← You are here (master index)
 ├── core/                      ← Cross-product specs, API specs, UAT
 │   ├── UAT-v5.3-CHECKLIST.md  ← Current UAT checklist (canonical)
-│   ├── release.md             ← Release process & quality gates
+│   ├── RELEASE.md             ← Release process & quality gates
 │   ├── known-issues.md        ← Current blockers & issues
 │   ├── async-command-api.yaml ← OpenAPI 3.0 spec
 │   └── in-progress/           ← Active tracking docs, issue trackers
@@ -63,6 +63,13 @@ Proposed → In-Progress → Shipped → (Deprecated → Archived)
 3. **Shipped** — Implementation complete, tests passing. Status updated to `shipped` with version number.
 4. **Deprecated** — Feature sunset. Status updated to `deprecated`.
 5. **Archived** — Docs moved to `archive/`. Removed from feature index.
+
+## Quality & Verification
+
+- [quality-standards.md](quality-standards.md) — Complete quality guide (20 sections)
+- [quality-quick-reference.md](quality-quick-reference.md) — One-page quality checklist
+- [post-refactor-verification.md](post-refactor-verification.md) — Verification after refactoring
+- [5.4-todo.md](5.4-todo.md) — v5.4 refactoring notes and prevention rules
 
 ## For LLM Agents
 

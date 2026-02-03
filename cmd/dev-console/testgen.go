@@ -325,7 +325,7 @@ func (h *ToolHandler) handleGenerateTestFromContext(req JSONRPCRequest, args jso
 		generatedTest.Filename,
 		generatedTest.Assertions)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"test":     generatedTest,
 		"metadata": generatedTest.Metadata,
 	}
@@ -706,7 +706,7 @@ func extractSelectorsFromActions(actions []capture.EnhancedAction) []string {
 
 		// Extract role
 		if roleData, ok := selectors["role"]; ok {
-			if roleMap, ok := roleData.(map[string]interface{}); ok {
+			if roleMap, ok := roleData.(map[string]any); ok {
 				role, _ := roleMap["role"].(string)
 				if role != "" {
 					selectorSet["[role=\""+role+"\"]"] = true
@@ -855,7 +855,7 @@ func (h *ToolHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMe
 	projectDir, _ := os.Getwd()
 
 	// Dispatch based on action
-	var result interface{}
+	var result any
 	switch params.Action {
 	case "analyze":
 		if params.TestFile == "" {
@@ -900,7 +900,7 @@ func (h *ToolHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMe
 				Result: mcpErrorResponse("Failed to analyze test file: " + err.Error()),
 			}
 		}
-		result = map[string]interface{}{
+		result = map[string]any{
 			"broken_selectors": selectors,
 			"count":            len(selectors),
 		}
@@ -979,7 +979,7 @@ func (h *ToolHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMe
 	// Format response
 	var summary string
 	if params.Action == "analyze" {
-		count := result.(map[string]interface{})["count"].(int)
+		count := result.(map[string]any)["count"].(int)
 		summary = fmt.Sprintf("Found %d selectors in %s", count, params.TestFile)
 	} else if params.Action == "repair" {
 		healResult := result.(*HealResult)
@@ -998,7 +998,7 @@ func (h *ToolHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMe
 			batchResult.TotalUnhealed)
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"result": result,
 	}
 
@@ -1398,7 +1398,7 @@ func (h *ToolHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.R
 	}
 
 	// Handle based on action
-	var result interface{}
+	var result any
 	var summary string
 
 	switch params.Action {
@@ -1440,7 +1440,7 @@ func (h *ToolHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.R
 			classification.Confidence*100,
 			classification.RecommendedAction)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"classification": classification,
 		}
 
@@ -1490,7 +1490,7 @@ func (h *ToolHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.R
 			batchResult.TestBugs,
 			batchResult.Uncertain)
 
-		result = map[string]interface{}{
+		result = map[string]any{
 			"batch_result": batchResult,
 		}
 	}

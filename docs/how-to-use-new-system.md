@@ -304,7 +304,7 @@ docs/
 │       ├── qa-plan.md (tests)
 │       └── <name>-review.md (issues found)
 ├── core/
-│   ├── release.md (process)
+│   ├── RELEASE.md (process)
 │   ├── known-issues.md (blockers)
 │   ├── UAT-v5.3-CHECKLIST.md (canonical UAT)
 │   └── CODEBASE-CANON-V5.3.md (baseline reference)

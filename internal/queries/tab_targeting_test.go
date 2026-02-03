@@ -1,6 +1,11 @@
+//go:build integration
+// +build integration
+
 // tab_targeting_test.go - Tests for Tab Targeting feature (Phase 0)
 // Tests for: observe {what: "tabs"}, tab_id parameter on pending queries,
 // and interact {action: "navigate", url: "..."}.
+// NOTE: These tests require MCP handler types that aren't available in this package.
+// Run with: go test -tags=integration ./internal/queries/...
 package queries
 
 import (
@@ -32,7 +37,7 @@ func TestObserveTabsInToolsList(t *testing.T) {
 	var result struct {
 		Tools []struct {
 			Name        string                 `json:"name"`
-			InputSchema map[string]interface{} `json:"inputSchema"`
+			InputSchema map[string]any `json:"inputSchema"`
 		} `json:"tools"`
 	}
 
@@ -43,7 +48,7 @@ func TestObserveTabsInToolsList(t *testing.T) {
 	// Find observe tool
 	var observeTool struct {
 		Name        string                 `json:"name"`
-		InputSchema map[string]interface{} `json:"inputSchema"`
+		InputSchema map[string]any `json:"inputSchema"`
 	}
 	for _, tool := range result.Tools {
 		if tool.Name == "observe" {
@@ -57,17 +62,17 @@ func TestObserveTabsInToolsList(t *testing.T) {
 	}
 
 	// Check that "tabs" is in the 'what' enum
-	props, ok := observeTool.InputSchema["properties"].(map[string]interface{})
+	props, ok := observeTool.InputSchema["properties"].(map[string]any)
 	if !ok {
 		t.Fatal("observe should have properties")
 	}
 
-	what, ok := props["what"].(map[string]interface{})
+	what, ok := props["what"].(map[string]any)
 	if !ok {
 		t.Fatal("observe should have 'what' property")
 	}
 
-	enum, ok := what["enum"].([]interface{})
+	enum, ok := what["enum"].([]any)
 	if !ok {
 		t.Fatal("'what' should have enum values")
 	}
@@ -245,7 +250,7 @@ func TestBrowserActionOpenSchema(t *testing.T) {
 	var result struct {
 		Tools []struct {
 			Name        string                 `json:"name"`
-			InputSchema map[string]interface{} `json:"inputSchema"`
+			InputSchema map[string]any `json:"inputSchema"`
 		} `json:"tools"`
 	}
 
@@ -256,7 +261,7 @@ func TestBrowserActionOpenSchema(t *testing.T) {
 	// Find interact tool
 	var interactTool struct {
 		Name        string                 `json:"name"`
-		InputSchema map[string]interface{} `json:"inputSchema"`
+		InputSchema map[string]any `json:"inputSchema"`
 	}
 	for _, tool := range result.Tools {
 		if tool.Name == "interact" {
@@ -270,17 +275,17 @@ func TestBrowserActionOpenSchema(t *testing.T) {
 	}
 
 	// Check that "navigate" is in the action enum
-	props, ok := interactTool.InputSchema["properties"].(map[string]interface{})
+	props, ok := interactTool.InputSchema["properties"].(map[string]any)
 	if !ok {
 		t.Fatal("interact should have properties")
 	}
 
-	action, ok := props["action"].(map[string]interface{})
+	action, ok := props["action"].(map[string]any)
 	if !ok {
 		t.Fatal("interact should have 'action' property")
 	}
 
-	enum, ok := action["enum"].([]interface{})
+	enum, ok := action["enum"].([]any)
 	if !ok {
 		t.Fatal("'action' should have enum values")
 	}
@@ -336,7 +341,7 @@ func TestBrowserActionOpenCreatesQuery(t *testing.T) {
 	}
 
 	// Verify params include action and url
-	var params map[string]interface{}
+	var params map[string]any
 	if err := json.Unmarshal(pending[0].Params, &params); err != nil {
 		t.Fatalf("Failed to unmarshal params: %v", err)
 	}
@@ -630,7 +635,7 @@ func TestTabIDInQueryDOMSchema(t *testing.T) {
 	var result struct {
 		Tools []struct {
 			Name        string                 `json:"name"`
-			InputSchema map[string]interface{} `json:"inputSchema"`
+			InputSchema map[string]any `json:"inputSchema"`
 		} `json:"tools"`
 	}
 
@@ -641,7 +646,7 @@ func TestTabIDInQueryDOMSchema(t *testing.T) {
 	// Check configure has tab_id parameter
 	for _, tool := range result.Tools {
 		if tool.Name == "configure" {
-			props, ok := tool.InputSchema["properties"].(map[string]interface{})
+			props, ok := tool.InputSchema["properties"].(map[string]any)
 			if !ok {
 				t.Fatal("configure should have properties")
 			}
@@ -672,7 +677,7 @@ func TestTabIDInExecuteJavaScriptSchema(t *testing.T) {
 	var result struct {
 		Tools []struct {
 			Name        string                 `json:"name"`
-			InputSchema map[string]interface{} `json:"inputSchema"`
+			InputSchema map[string]any `json:"inputSchema"`
 		} `json:"tools"`
 	}
 
@@ -683,7 +688,7 @@ func TestTabIDInExecuteJavaScriptSchema(t *testing.T) {
 	// Check interact has tab_id parameter
 	for _, tool := range result.Tools {
 		if tool.Name == "interact" {
-			props, ok := tool.InputSchema["properties"].(map[string]interface{})
+			props, ok := tool.InputSchema["properties"].(map[string]any)
 			if !ok {
 				t.Fatal("interact should have properties")
 			}

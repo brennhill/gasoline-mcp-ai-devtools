@@ -327,7 +327,7 @@ func (at *AuditTrail) identifyClientUnlocked(client ClientIdentifier) string {
 
 // HandleGetAuditLog is the MCP tool handler for get_audit_log.
 // It parses filter parameters and returns matching audit entries.
-func (at *AuditTrail) HandleGetAuditLog(params json.RawMessage) (interface{}, error) {
+func (at *AuditTrail) HandleGetAuditLog(params json.RawMessage) (any, error) {
 	var filter AuditFilter
 	if len(params) > 0 && string(params) != "{}" {
 		if err := json.Unmarshal(params, &filter); err != nil {

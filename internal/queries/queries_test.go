@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// NOTE: These tests require MCP handler types that aren't available in this package.
+// Run with: go test -tags=integration ./internal/queries/...
 package queries
 
 import (
@@ -491,7 +496,7 @@ func TestMCPRunAccessibilityAuditWithTags(t *testing.T) {
 	pending := capture.GetPendingQueries()
 
 	// Verify the tags are passed through in params
-	var params map[string]interface{}
+	var params map[string]any
 	json.Unmarshal(pending[0].Params, &params)
 
 	if params["tags"] == nil {
@@ -1167,7 +1172,7 @@ func TestA11yCacheForceRefreshParam(t *testing.T) {
 	var toolsResult struct {
 		Tools []struct {
 			Name        string                 `json:"name"`
-			InputSchema map[string]interface{} `json:"inputSchema"`
+			InputSchema map[string]any `json:"inputSchema"`
 		} `json:"tools"`
 	}
 	json.Unmarshal(resp.Result, &toolsResult)
@@ -1469,9 +1474,9 @@ func TestHandlePendingQueries_MethodNotAllowed(t *testing.T) {
 		t.Errorf("Expected 200 (handler does not enforce method), got %d", w.Code)
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	json.NewDecoder(w.Body).Decode(&resp)
-	queries, ok := resp["queries"].([]interface{})
+	queries, ok := resp["queries"].([]any)
 	if !ok {
 		t.Fatal("Expected 'queries' field in response")
 	}
@@ -1553,7 +1558,7 @@ func TestQueryDOM_SchemaHasURLAndPageTitle(t *testing.T) {
 	if jsonStart < 0 {
 		t.Fatalf("Expected summary + JSON, got: %s", text)
 	}
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
 		t.Fatalf("Failed to parse JSON response: %v\nText: %s", err, text)
 	}
@@ -1605,7 +1610,7 @@ func TestQueryDOM_SchemaHasSelectorEcho(t *testing.T) {
 	if jsonStart < 0 {
 		t.Fatalf("Expected summary + JSON, got: %s", text)
 	}
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
@@ -1652,7 +1657,7 @@ func TestQueryDOM_SchemaHasMatchCounts(t *testing.T) {
 	if jsonStart < 0 {
 		t.Fatalf("Expected summary + JSON, got: %s", text)
 	}
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
@@ -1704,7 +1709,7 @@ func TestQueryDOM_SchemaHasMetadata(t *testing.T) {
 	if jsonStart < 0 {
 		t.Fatalf("Expected summary + JSON, got: %s", text)
 	}
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
@@ -1762,24 +1767,24 @@ func TestQueryDOM_SchemaTextTruncated(t *testing.T) {
 	if jsonStart < 0 {
 		t.Fatalf("Expected summary + JSON, got: %s", text)
 	}
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
 
-	matches, ok := data["matches"].([]interface{})
+	matches, ok := data["matches"].([]any)
 	if !ok || len(matches) != 2 {
 		t.Fatalf("Expected 2 matches, got: %v", data["matches"])
 	}
 
 	// First match has text at max length (500 chars) - should be flagged as truncated
-	match0 := matches[0].(map[string]interface{})
+	match0 := matches[0].(map[string]any)
 	if truncated, ok := match0["textTruncated"].(bool); !ok || !truncated {
 		t.Errorf("Expected textTruncated=true for 500-char text, got: %v", match0["textTruncated"])
 	}
 
 	// Second match has short text - should NOT be flagged
-	match1 := matches[1].(map[string]interface{})
+	match1 := matches[1].(map[string]any)
 	if truncated, ok := match1["textTruncated"].(bool); !ok || truncated {
 		t.Errorf("Expected textTruncated=false for short text, got: %v", match1["textTruncated"])
 	}
@@ -1821,13 +1826,13 @@ func TestQueryDOM_SchemaBboxPixelsRename(t *testing.T) {
 	if jsonStart < 0 {
 		t.Fatalf("Expected summary + JSON, got: %s", text)
 	}
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
 
-	matches := data["matches"].([]interface{})
-	match0 := matches[0].(map[string]interface{})
+	matches := data["matches"].([]any)
+	match0 := matches[0].(map[string]any)
 
 	// Should have bboxPixels, NOT boundingBox
 	if _, ok := match0["bboxPixels"]; !ok {
@@ -1838,7 +1843,7 @@ func TestQueryDOM_SchemaBboxPixelsRename(t *testing.T) {
 	}
 
 	// Verify the values are preserved
-	bbox := match0["bboxPixels"].(map[string]interface{})
+	bbox := match0["bboxPixels"].(map[string]any)
 	if bbox["x"].(float64) != 10 || bbox["y"].(float64) != 20 {
 		t.Errorf("Expected bbox x=10, y=20, got: x=%v, y=%v", bbox["x"], bbox["y"])
 	}
@@ -1880,7 +1885,7 @@ func TestQueryDOM_SchemaEmptyHint(t *testing.T) {
 	if jsonStart < 0 {
 		t.Fatalf("Expected summary + JSON, got: %s", text)
 	}
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal([]byte(text[jsonStart+1:]), &data); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
@@ -1935,7 +1940,7 @@ func TestQueryDOM_SchemaFullResponse(t *testing.T) {
 	}
 
 	jsonStart := strings.Index(text, "\n")
-	var data map[string]interface{}
+	var data map[string]any
 	json.Unmarshal([]byte(text[jsonStart+1:]), &data)
 
 	// All top-level fields must be present

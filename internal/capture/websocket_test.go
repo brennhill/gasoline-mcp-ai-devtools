@@ -992,15 +992,15 @@ func TestV4HandleWebSocketEvents_POST_RateLimitAfterRecording(t *testing.T) {
 	capture.mu.Unlock()
 
 	// 10 events pushes count over threshold
-	events := make([]map[string]interface{}, 10)
+	events := make([]map[string]any, 10)
 	for i := range events {
-		events[i] = map[string]interface{}{
+		events[i] = map[string]any{
 			"event":     "message",
 			"id":        "ws-1",
 			"direction": "incoming",
 		}
 	}
-	payload, _ := json.Marshal(map[string]interface{}{"events": events})
+	payload, _ := json.Marshal(map[string]any{"events": events})
 
 	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewReader(payload))
 	rec := httptest.NewRecorder()

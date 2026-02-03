@@ -24,15 +24,15 @@ func TestHandleExtensionLogs_AcceptsValidPayload(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 
-	payload := map[string]interface{}{
-		"logs": []map[string]interface{}{
+	payload := map[string]any{
+		"logs": []map[string]any{
 			{
 				"timestamp": time.Now().Format(time.RFC3339),
 				"level":     "debug",
 				"message":   "Starting settings heartbeat",
 				"source":    "background",
 				"category":  "CONNECTION",
-				"data": map[string]interface{}{
+				"data": map[string]any{
 					"serverUrl": "http://localhost:7890",
 				},
 			},
@@ -91,8 +91,8 @@ func TestHandleExtensionLogs_StoresTimestamp(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 
-	payload := map[string]interface{}{
-		"logs": []map[string]interface{}{
+	payload := map[string]any{
+		"logs": []map[string]any{
 			{
 				"level":    "info",
 				"message":  "Test message",
@@ -124,8 +124,8 @@ func TestHandleExtensionLogs_PreservesProvidedTimestamp(t *testing.T) {
 	capture := NewCapture()
 
 	providedTime := time.Now().Add(-5 * time.Minute)
-	payload := map[string]interface{}{
-		"logs": []map[string]interface{}{
+	payload := map[string]any{
+		"logs": []map[string]any{
 			{
 				"timestamp": providedTime.Format(time.RFC3339),
 				"level":     "debug",
@@ -155,8 +155,8 @@ func TestHandleExtensionLogs_ReturnsCorrectResponse(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 
-	payload := map[string]interface{}{
-		"logs": []map[string]interface{}{
+	payload := map[string]any{
+		"logs": []map[string]any{
 			{
 				"level":   "debug",
 				"message": "Test 1",
@@ -176,7 +176,7 @@ func TestHandleExtensionLogs_ReturnsCorrectResponse(t *testing.T) {
 
 	capture.HandleExtensionLogs(w, req)
 
-	var response map[string]interface{}
+	var response map[string]any
 	json.Unmarshal(w.Body.Bytes(), &response)
 
 	if response["status"] != "ok" {
@@ -195,8 +195,8 @@ func TestHandleExtensionLogs_RejectsOversizedPayload(t *testing.T) {
 
 	// Create a payload larger than maxPostBodySize (5MB)
 	largeMessage := strings.Repeat("x", 6*1024*1024)
-	payload := map[string]interface{}{
-		"logs": []map[string]interface{}{
+	payload := map[string]any{
+		"logs": []map[string]any{
 			{
 				"level":   "debug",
 				"message": largeMessage,
@@ -228,8 +228,8 @@ func TestExtensionLogs_RingBufferEviction(t *testing.T) {
 	entriesToAdd := maxExtensionLogs + 10
 
 	for i := 1; i <= entriesToAdd; i++ {
-		payload := map[string]interface{}{
-			"logs": []map[string]interface{}{
+		payload := map[string]any{
+			"logs": []map[string]any{
 				{
 					"level":   "debug",
 					"message": "Log entry " + string(rune('0'+i%10)),
@@ -258,8 +258,8 @@ func TestExtensionLogs_MultipleEntriesInSinglePayload(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 
-	payload := map[string]interface{}{
-		"logs": []map[string]interface{}{
+	payload := map[string]any{
+		"logs": []map[string]any{
 			{
 				"level":    "debug",
 				"message":  "First log",
@@ -353,8 +353,8 @@ func TestExtensionLogs_ConcurrentWrites(t *testing.T) {
 	done := make(chan bool, 100)
 	for i := 0; i < 100; i++ {
 		go func(index int) {
-			payload := map[string]interface{}{
-				"logs": []map[string]interface{}{
+			payload := map[string]any{
+				"logs": []map[string]any{
 					{
 						"level":   "debug",
 						"message": "Concurrent log",

@@ -54,7 +54,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/types"
 )
+
+// Alert is an alias for types.Alert to avoid qualifying everywhere.
+type Alert = types.Alert
 
 // --- Stack Frame Parsing ---
 
@@ -638,12 +643,6 @@ type ClusterSummary struct {
 	LastSeen         string          `json:"last_seen"`
 	AffectedFiles    []string        `json:"affected_components"`
 	Severity         string          `json:"severity"`
-}
-
-// toolAnalyzeErrors handles the analyze(target: "errors") MCP call.
-func (h *ToolHandler) toolAnalyzeErrors(req JSONRPCRequest) JSONRPCResponse {
-	resp := h.clusters.GetAnalysisResponse()
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Error cluster analysis", resp)}
 }
 
 // GetAnalysisResponse builds the response for analyze(target: "errors").

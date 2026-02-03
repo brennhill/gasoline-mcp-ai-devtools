@@ -182,9 +182,7 @@ export function computeSelectors(element: Element | null): SelectorStrategies {
   // Priority 1: Test ID
   const testId =
     (el.getAttribute &&
-      (el.getAttribute('data-testid') ||
-        el.getAttribute('data-test-id') ||
-        el.getAttribute('data-cy'))) ||
+      (el.getAttribute('data-testid') || el.getAttribute('data-test-id') || el.getAttribute('data-cy'))) ||
     undefined
   if (testId) selectors.testId = testId
 
@@ -245,7 +243,7 @@ interface GasolineEnhancedActionMessage {
 export function recordEnhancedAction(
   type: EnhancedActionType,
   element: Element | null,
-  opts: RecordActionOptions = {}
+  opts: RecordActionOptions = {},
 ): EnhancedActionRecord {
   const action: EnhancedActionRecord = {
     type,
@@ -298,7 +296,7 @@ export function recordEnhancedAction(
   if (typeof window !== 'undefined' && window.postMessage) {
     window.postMessage(
       { type: 'GASOLINE_ENHANCED_ACTION', payload: action } as GasolineEnhancedActionMessage,
-      window.location.origin
+      window.location.origin,
     )
   }
 

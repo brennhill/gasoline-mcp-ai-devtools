@@ -7,14 +7,16 @@
 package analysis
 
 import (
-	"github.com/dev-console/dev-console/internal/capture"
 	"encoding/json"
 	"fmt"
 	"math"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ThirdPartyAuditor performs third-party domain analysis.
@@ -258,7 +260,7 @@ func buildThirdPartyEntry(origin string, bodies []capture.NetworkBody, urls []st
 			entry.Resources.Styles++
 		case "font":
 			entry.Resources.Fonts++
-		case "img":
+		case "image":
 			entry.Resources.Images++
 		default:
 			entry.Resources.Other++
@@ -586,7 +588,7 @@ func loadCustomListsFile(path string) *CustomLists {
 }
 
 // HandleAuditThirdParties is the MCP handler for the audit_third_parties tool.
-func HandleAuditThirdParties(params json.RawMessage, bodies []capture.NetworkBody, pageURLs []string) (interface{}, error) {
+func HandleAuditThirdParties(params json.RawMessage, bodies []capture.NetworkBody, pageURLs []string) (any, error) {
 	var p ThirdPartyParams
 	if len(params) > 0 {
 		if err := json.Unmarshal(params, &p); err != nil {
@@ -597,3 +599,86 @@ func HandleAuditThirdParties(params json.RawMessage, bodies []capture.NetworkBod
 	result := auditor.Audit(bodies, pageURLs, p)
 	return result, nil
 }
+
+// ============================================
+// Helper Functions (duplicated from security package to avoid circular imports)
+// ============================================
+
+// extractOrigin extracts the origin (scheme://host[:port]) from a URL.
+// Returns empty string for data: URLs, blob: URLs (after extracting nested origin), and malformed URLs.
+func extractOrigin(rawURL string) string {
+	// Handle data: URLs
+	if strings.HasPrefix(rawURL, "data:") {
+		return ""
+	}
+
+	// Handle blob: URLs - extract the nested origin
+	// blob:https://example.com/uuid -> https://example.com
+	rawURL = strings.TrimPrefix(rawURL, "blob:")
+
+	// Parse URL
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+
+	// URL must have a scheme and host
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+
+	// Reconstruct origin: scheme://host[:port]
+	return parsed.Scheme + "://" + parsed.Host
+}
+
+// contentTypeToResourceType maps content-type to a resource category.
+func contentTypeToResourceType(ct string) string {
+	ct = strings.ToLower(ct)
+	ct = strings.Split(ct, ";")[0] // strip charset etc
+	ct = strings.TrimSpace(ct)
+
+	switch {
+	case strings.HasPrefix(ct, "application/javascript"),
+		strings.HasPrefix(ct, "text/javascript"):
+		return "script"
+	case strings.HasPrefix(ct, "text/css"):
+		return "style"
+	case strings.HasPrefix(ct, "image/"):
+		return "image"
+	case strings.HasPrefix(ct, "font/"),
+		strings.Contains(ct, "woff"),
+		strings.Contains(ct, "opentype"):
+		return "font"
+	case strings.HasPrefix(ct, "text/html"):
+		return "document"
+	case strings.HasPrefix(ct, "application/json"):
+		return "fetch"
+	case strings.Contains(ct, "form"):
+		return "fetch"
+	default:
+		return "other"
+	}
+}
+
+// detectPIIFields scans a request/response body for common PII patterns.
+// Returns a list of detected PII field names (email, phone, ssn).
+func detectPIIFields(body string) []string {
+	var fields []string
+	if piiEmailPattern.MatchString(body) {
+		fields = append(fields, "email")
+	}
+	if piiPhonePattern.MatchString(body) {
+		fields = append(fields, "phone")
+	}
+	if piiSSNPattern.MatchString(body) {
+		fields = append(fields, "ssn")
+	}
+	return fields
+}
+
+// PII detection patterns for detectPIIFields
+var (
+	piiEmailPattern = regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
+	piiPhonePattern = regexp.MustCompile(`\b(\+?1[-.]?)?\(?[0-9]{3}\)?[-. ]?[0-9]{3}[-. ]?[0-9]{4}\b`)
+	piiSSNPattern   = regexp.MustCompile(`\b[0-9]{3}-[0-9]{2}-[0-9]{4}\b`)
+)

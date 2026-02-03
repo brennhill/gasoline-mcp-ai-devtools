@@ -33,7 +33,7 @@ func setupTestServer(t *testing.T) (*server.Server, string) {
 // setupToolHandler is a placeholder that always returns nil.
 // NOTE: ToolHandler and MCPHandler have not been moved to internal packages.
 // Tests using this function should be skipped until the refactoring is complete.
-func setupToolHandler(t *testing.T, server *server.Server, capture *Capture) interface{} {
+func setupToolHandler(t *testing.T, server *server.Server, capture *Capture) any {
 	t.Helper()
 	return nil
 }

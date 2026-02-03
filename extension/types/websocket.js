@@ -2,5 +2,5 @@
  * @fileoverview WebSocket Types
  * WebSocket capture modes, events, and connection tracking
  */
-export {};
+export {}
 //# sourceMappingURL=websocket.js.map

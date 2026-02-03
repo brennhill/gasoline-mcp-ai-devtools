@@ -3,7 +3,7 @@
  * Manages feature toggle configuration and initialization
  */
 
-import type { FeatureToggleConfig } from './types';
+import type { FeatureToggleConfig } from './types'
 
 /**
  * Feature toggle configuration
@@ -41,7 +41,7 @@ export const FEATURE_TOGGLES: readonly FeatureToggleConfig[] = [
     messageType: 'setNetworkBodyCaptureEnabled',
     default: true,
   },
-];
+]
 
 /**
  * Handle feature toggle change
@@ -54,13 +54,13 @@ export function handleFeatureToggle(storageKey: string, messageType: string, ena
   // Background will handle the write after updating its internal state
   chrome.runtime.sendMessage({ type: messageType, enabled }, (response: { success?: boolean } | undefined) => {
     if (chrome.runtime.lastError) {
-      console.error(`[Gasoline] Message error for ${messageType}:`, chrome.runtime.lastError.message);
+      console.error(`[Gasoline] Message error for ${messageType}:`, chrome.runtime.lastError.message)
     } else if (response?.success) {
-      console.log(`[Gasoline] ${messageType} acknowledged by background`);
+      console.log(`[Gasoline] ${messageType} acknowledged by background`)
     } else {
-      console.warn(`[Gasoline] ${messageType} - no response from background`);
+      console.warn(`[Gasoline] ${messageType} - no response from background`)
     }
-  });
+  })
 }
 
 /**
@@ -68,24 +68,24 @@ export function handleFeatureToggle(storageKey: string, messageType: string, ena
  */
 export async function initFeatureToggles(): Promise<void> {
   // Load saved states
-  const storageKeys = FEATURE_TOGGLES.map((t) => t.storageKey);
+  const storageKeys = FEATURE_TOGGLES.map((t) => t.storageKey)
 
   return new Promise((resolve) => {
     chrome.storage.local.get(storageKeys, (result: Record<string, boolean | undefined>) => {
       for (const toggle of FEATURE_TOGGLES) {
-        const checkbox = document.getElementById(toggle.id) as HTMLInputElement | null;
+        const checkbox = document.getElementById(toggle.id) as HTMLInputElement | null
         if (checkbox) {
           // Use saved value or default
-          const savedValue = result[toggle.storageKey];
-          checkbox.checked = savedValue !== undefined ? savedValue : toggle.default;
+          const savedValue = result[toggle.storageKey]
+          checkbox.checked = savedValue !== undefined ? savedValue : toggle.default
 
           // Set up change handler
           checkbox.addEventListener('change', () => {
-            handleFeatureToggle(toggle.storageKey, toggle.messageType, checkbox.checked);
-          });
+            handleFeatureToggle(toggle.storageKey, toggle.messageType, checkbox.checked)
+          })
         }
       }
-      resolve();
-    });
-  });
+      resolve()
+    })
+  })
 }

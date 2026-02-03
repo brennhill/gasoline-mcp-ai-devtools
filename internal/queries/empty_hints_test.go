@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// NOTE: These tests require MCP handler types that aren't available in this package.
+// Run with: go test -tags=integration ./internal/queries/...
 package queries
 
 import (
@@ -199,7 +204,7 @@ func TestToolGetNetworkBodies_EmptyWithCaptureOff(t *testing.T) {
 	text := extractMCPText(t, resp)
 
 	// Parse JSON response
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal([]byte(text), &data); err != nil {
 		t.Fatalf("Expected JSON response, got: %s", text)
 	}
@@ -240,7 +245,7 @@ func TestToolGetNetworkBodies_EmptyWithCaptureOn(t *testing.T) {
 	text := extractMCPText(t, resp)
 
 	// Parse JSON response
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal([]byte(text), &data); err != nil {
 		t.Fatalf("Expected JSON response, got: %s", text)
 	}

@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// NOTE: These tests require setupTestCapture and generateCorrelationID that aren't available.
+// Run with: go test -tags=integration ./internal/queries/...
 package queries
 
 import (

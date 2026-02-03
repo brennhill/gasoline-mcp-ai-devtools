@@ -3,12 +3,12 @@
  * debounced batching of server requests.
  */
 
-import type { MemoryPressureState, TimeoutId, CircuitBreakerState, CircuitBreakerStats } from '../types';
-import { createCircuitBreaker, type CircuitBreaker } from './circuit-breaker';
-import { MAX_PENDING_BUFFER } from './state-manager';
+import type { MemoryPressureState, TimeoutId, CircuitBreakerState, CircuitBreakerStats } from '../types'
+import { createCircuitBreaker, type CircuitBreaker } from './circuit-breaker'
+import { MAX_PENDING_BUFFER } from './state-manager'
 
-const DEFAULT_DEBOUNCE_MS = 100;
-const DEFAULT_MAX_BATCH_SIZE = 50;
+const DEFAULT_DEBOUNCE_MS = 100
+const DEFAULT_MAX_BATCH_SIZE = 50
 
 /** Rate limit configuration */
 export const RATE_LIMIT_CONFIG = {
@@ -16,42 +16,42 @@ export const RATE_LIMIT_CONFIG = {
   resetTimeout: 30000,
   backoffSchedule: [100, 500, 2000] as readonly number[],
   retryBudget: 3,
-};
+}
 
 /** Batcher instance */
 export interface Batcher<T> {
-  add: (entry: T) => void;
-  flush: () => Promise<void> | void;
-  clear: () => void;
-  getPending?: () => T[];
+  add: (entry: T) => void
+  flush: () => Promise<void> | void
+  clear: () => void
+  getPending?: () => T[]
 }
 
 /** Batcher with circuit breaker result */
 export interface BatcherWithCircuitBreaker<T> {
-  batcher: Batcher<T>;
+  batcher: Batcher<T>
   circuitBreaker: {
-    getState: () => import('./circuit-breaker').CircuitBreakerState;
-    getStats: () => import('../types').CircuitBreakerStats;
-    reset: () => void;
-  };
-  getConnectionStatus: () => { connected: boolean };
+    getState: () => import('./circuit-breaker').CircuitBreakerState
+    getStats: () => import('../types').CircuitBreakerStats
+    reset: () => void
+  }
+  getConnectionStatus: () => { connected: boolean }
 }
 
 /** Batcher configuration options */
 export interface BatcherConfig {
-  debounceMs?: number;
-  maxBatchSize?: number;
-  retryBudget?: number;
-  maxFailures?: number;
-  resetTimeout?: number;
-  sharedCircuitBreaker?: CircuitBreaker;
+  debounceMs?: number
+  maxBatchSize?: number
+  retryBudget?: number
+  maxFailures?: number
+  resetTimeout?: number
+  sharedCircuitBreaker?: CircuitBreaker
 }
 
 /** Log batcher options */
 export interface LogBatcherOptions {
-  debounceMs?: number;
-  maxBatchSize?: number;
-  memoryPressureGetter?: () => MemoryPressureState;
+  debounceMs?: number
+  maxBatchSize?: number
+  memoryPressureGetter?: () => MemoryPressureState
 }
 
 /**
@@ -59,17 +59,17 @@ export interface LogBatcherOptions {
  */
 export function createBatcherWithCircuitBreaker<T>(
   sendFn: (entries: T[]) => Promise<unknown>,
-  options: BatcherConfig = {}
+  options: BatcherConfig = {},
 ): BatcherWithCircuitBreaker<T> {
-  const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS;
-  const maxBatchSize = options.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE;
-  const retryBudget = options.retryBudget ?? RATE_LIMIT_CONFIG.retryBudget;
-  const maxFailures = options.maxFailures ?? RATE_LIMIT_CONFIG.maxFailures;
-  const resetTimeout = options.resetTimeout ?? RATE_LIMIT_CONFIG.resetTimeout;
-  const backoffSchedule = RATE_LIMIT_CONFIG.backoffSchedule;
+  const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS
+  const maxBatchSize = options.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE
+  const retryBudget = options.retryBudget ?? RATE_LIMIT_CONFIG.retryBudget
+  const maxFailures = options.maxFailures ?? RATE_LIMIT_CONFIG.maxFailures
+  const resetTimeout = options.resetTimeout ?? RATE_LIMIT_CONFIG.resetTimeout
+  const backoffSchedule = RATE_LIMIT_CONFIG.backoffSchedule
 
-  const localConnectionStatus = { connected: true };
-  const isSharedCB = !!options.sharedCircuitBreaker;
+  const localConnectionStatus = { connected: true }
+  const isSharedCB = !!options.sharedCircuitBreaker
 
   const cb =
     options.sharedCircuitBreaker ||
@@ -78,100 +78,100 @@ export function createBatcherWithCircuitBreaker<T>(
       resetTimeout,
       initialBackoff: 0,
       maxBackoff: 0,
-    });
+    })
 
   function getScheduledBackoff(failures: number): number {
-    if (failures <= 0) return 0;
-    const idx = Math.min(failures - 1, backoffSchedule.length - 1);
-    return backoffSchedule[idx] as number;
+    if (failures <= 0) return 0
+    const idx = Math.min(failures - 1, backoffSchedule.length - 1)
+    return backoffSchedule[idx] as number
   }
 
   const wrappedCircuitBreaker = {
     getState: () => cb.getState(),
     getStats: () => {
-      const stats = cb.getStats();
+      const stats = cb.getStats()
       return {
         ...stats,
         currentBackoff: getScheduledBackoff(stats.consecutiveFailures),
-      };
+      }
     },
     reset: () => cb.reset(),
-  };
+  }
 
   async function attemptSend(entries: T[]): Promise<unknown> {
     if (!isSharedCB) {
-      return await cb.execute<unknown>(entries);
+      return await cb.execute<unknown>(entries)
     }
 
-    const state = cb.getState();
+    const state = cb.getState()
     if (state === 'open') {
-      throw new Error('Circuit breaker is open');
+      throw new Error('Circuit breaker is open')
     }
 
     try {
-      const result = await sendFn(entries);
-      cb.reset();
-      return result;
+      const result = await sendFn(entries)
+      cb.reset()
+      return result
     } catch (err) {
-      cb.recordFailure();
-      throw err;
+      cb.recordFailure()
+      throw err
     }
   }
 
-  let pending: T[] = [];
-  let timeoutId: TimeoutId | null = null;
+  let pending: T[] = []
+  let timeoutId: TimeoutId | null = null
 
   async function flushWithCircuitBreaker(): Promise<void> {
-    if (pending.length === 0) return;
+    if (pending.length === 0) return
 
-    const entries = pending;
-    pending = [];
+    const entries = pending
+    pending = []
 
     if (timeoutId) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
+      clearTimeout(timeoutId)
+      timeoutId = null
     }
 
-    const currentState = cb.getState();
+    const currentState = cb.getState()
 
     if (currentState === 'open') {
-      pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER);
-      return;
+      pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER)
+      return
     }
 
     try {
-      await attemptSend(entries);
-      localConnectionStatus.connected = true;
+      await attemptSend(entries)
+      localConnectionStatus.connected = true
     } catch {
-      localConnectionStatus.connected = false;
+      localConnectionStatus.connected = false
 
       if (cb.getState() === 'open') {
-        pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER);
-        return;
+        pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER)
+        return
       }
 
-      let retriesLeft = retryBudget - 1;
+      let retriesLeft = retryBudget - 1
       while (retriesLeft > 0) {
-        retriesLeft--;
+        retriesLeft--
 
-        const stats = cb.getStats();
-        const backoff = getScheduledBackoff(stats.consecutiveFailures);
+        const stats = cb.getStats()
+        const backoff = getScheduledBackoff(stats.consecutiveFailures)
         if (backoff > 0) {
           await new Promise<void>((r) => {
-            setTimeout(r, backoff);
-          });
+            setTimeout(r, backoff)
+          })
         }
 
         try {
-          await attemptSend(entries);
-          localConnectionStatus.connected = true;
-          return;
+          await attemptSend(entries)
+          localConnectionStatus.connected = true
+          return
         } catch {
-          localConnectionStatus.connected = false;
+          localConnectionStatus.connected = false
 
           if (cb.getState() === 'open') {
-            pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER);
-            return;
+            pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER)
+            return
           }
         }
       }
@@ -179,118 +179,115 @@ export function createBatcherWithCircuitBreaker<T>(
   }
 
   const scheduleFlush = (): void => {
-    if (timeoutId) return;
+    if (timeoutId) return
     timeoutId = setTimeout(() => {
-      timeoutId = null;
-      flushWithCircuitBreaker();
-    }, debounceMs);
-  };
+      timeoutId = null
+      flushWithCircuitBreaker()
+    }, debounceMs)
+  }
 
   const batcher: Batcher<T> = {
     add(entry: T): void {
-      if (pending.length >= MAX_PENDING_BUFFER) return;
-      pending.push(entry);
+      if (pending.length >= MAX_PENDING_BUFFER) return
+      pending.push(entry)
       if (pending.length >= maxBatchSize) {
-        flushWithCircuitBreaker();
+        flushWithCircuitBreaker()
       } else {
-        scheduleFlush();
+        scheduleFlush()
       }
     },
 
     async flush(): Promise<void> {
-      await flushWithCircuitBreaker();
+      await flushWithCircuitBreaker()
     },
 
     clear(): void {
-      pending = [];
+      pending = []
       if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
+        clearTimeout(timeoutId)
+        timeoutId = null
       }
     },
 
     getPending(): T[] {
-      return [...pending];
+      return [...pending]
     },
-  };
+  }
 
   return {
     batcher,
     circuitBreaker: wrappedCircuitBreaker,
     getConnectionStatus: () => ({ ...localConnectionStatus }),
-  };
+  }
 }
 
 /**
  * Create a simple log batcher without circuit breaker
  */
-export function createLogBatcher<T>(
-  flushFn: (entries: T[]) => void,
-  options: LogBatcherOptions = {}
-): Batcher<T> {
-  const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS;
-  const maxBatchSize = options.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE;
-  const memoryPressureGetter = options.memoryPressureGetter ?? null;
+export function createLogBatcher<T>(flushFn: (entries: T[]) => void, options: LogBatcherOptions = {}): Batcher<T> {
+  const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS
+  const maxBatchSize = options.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE
+  const memoryPressureGetter = options.memoryPressureGetter ?? null
 
-  let pending: T[] = [];
-  let timeoutId: TimeoutId | null = null;
+  let pending: T[] = []
+  let timeoutId: TimeoutId | null = null
 
   const getEffectiveMaxBatchSize = (): number => {
     if (memoryPressureGetter) {
-      const state = memoryPressureGetter();
+      const state = memoryPressureGetter()
       if (state.reducedCapacities) {
-        return Math.floor(maxBatchSize / 2);
+        return Math.floor(maxBatchSize / 2)
       }
     }
-    return maxBatchSize;
-  };
+    return maxBatchSize
+  }
 
   const flush = (): void => {
-    if (pending.length === 0) return;
+    if (pending.length === 0) return
 
-    const entries = pending;
-    pending = [];
+    const entries = pending
+    pending = []
 
     if (timeoutId) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
+      clearTimeout(timeoutId)
+      timeoutId = null
     }
 
-    flushFn(entries);
-  };
+    flushFn(entries)
+  }
 
   const scheduleFlush = (): void => {
-    if (timeoutId) return;
+    if (timeoutId) return
 
     timeoutId = setTimeout(() => {
-      timeoutId = null;
-      flush();
-    }, debounceMs);
-  };
+      timeoutId = null
+      flush()
+    }, debounceMs)
+  }
 
   return {
     add(entry: T): void {
-      if (pending.length >= MAX_PENDING_BUFFER) return;
-      pending.push(entry);
+      if (pending.length >= MAX_PENDING_BUFFER) return
+      pending.push(entry)
 
-      const effectiveMax = getEffectiveMaxBatchSize();
+      const effectiveMax = getEffectiveMaxBatchSize()
       if (pending.length >= effectiveMax) {
-        flush();
+        flush()
       } else {
-        scheduleFlush();
+        scheduleFlush()
       }
     },
 
     flush(): void {
-      flush();
+      flush()
     },
 
     clear(): void {
-      pending = [];
+      pending = []
       if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
+        clearTimeout(timeoutId)
+        timeoutId = null
       }
     },
-  };
+  }
 }

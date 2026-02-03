@@ -11,7 +11,8 @@ import type {
   WaterfallEntry,
   StateAction,
   BrowserStateSnapshot,
-} from '../types';
+  A11yAuditResult,
+} from '../types'
 import type {
   SettingMessage,
   HighlightRequestMessage,
@@ -20,7 +21,7 @@ import type {
   DomQueryRequestMessage,
   GetWaterfallRequestMessage,
   StateCommandMessage,
-} from './types';
+} from './types'
 import {
   registerHighlightRequest,
   hasHighlightRequest,
@@ -28,11 +29,8 @@ import {
   registerExecuteRequest,
   registerA11yRequest,
   registerDomRequest,
-} from './request-tracking';
-import {
-  createDeferredPromise,
-  promiseRaceWithCleanup,
-} from './timeout-utils';
+} from './request-tracking'
+import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils'
 
 // Feature toggle message types forwarded from background to inject.js
 export const TOGGLE_MESSAGES = new Set([
@@ -45,7 +43,7 @@ export const TOGGLE_MESSAGES = new Set([
   'setDeferralEnabled',
   'setNetworkBodyCaptureEnabled',
   'setServerUrl',
-]);
+])
 
 /**
  * Security: Validate sender is from the extension background script
@@ -55,7 +53,7 @@ export function isValidBackgroundSender(sender: chrome.runtime.MessageSender): b
   // Messages from background should NOT have a tab (or have tab with chrome-extension:// url)
   // Messages from content scripts have tab.id
   // We only want messages from the background service worker
-  return typeof sender.id === 'string' && sender.id === (chrome.runtime as any).id;
+  return typeof sender.id === 'string' && sender.id === chrome.runtime.id
 }
 
 /**
@@ -64,25 +62,27 @@ export function isValidBackgroundSender(sender: chrome.runtime.MessageSender): b
 function createRequestTimeoutCleanup<T extends { error: string }>(
   requestId: number,
   pendingMap: Map<number, (result: T) => void>,
-  errorResponse: T
+  errorResponse: T,
 ): () => void {
   return () => {
     if (pendingMap.has(requestId)) {
-      const cb = pendingMap.get(requestId);
-      pendingMap.delete(requestId);
+      const cb = pendingMap.get(requestId)
+      pendingMap.delete(requestId)
       if (cb) {
-        cb(errorResponse);
+        cb(errorResponse)
       }
     }
-  };
+  }
 }
 
 /**
  * Forward a highlight message from background to inject.js
  */
-export function forwardHighlightMessage(message: { params: { selector: string; duration_ms?: number } }): Promise<HighlightResponse> {
-  const requestId = registerHighlightRequest((result) => deferred.resolve(result));
-  const deferred = createDeferredPromise<HighlightResponse>();
+export function forwardHighlightMessage(message: {
+  params: { selector: string; duration_ms?: number }
+}): Promise<HighlightResponse> {
+  const requestId = registerHighlightRequest((result) => deferred.resolve(result))
+  const deferred = createDeferredPromise<HighlightResponse>()
 
   // Post message to page context (inject.js)
   window.postMessage(
@@ -91,46 +91,47 @@ export function forwardHighlightMessage(message: { params: { selector: string; d
       requestId,
       params: message.params,
     } satisfies HighlightRequestMessage,
-    window.location.origin
-  );
+    window.location.origin,
+  )
 
   // Timeout fallback + cleanup stale entries after 30 seconds
-  return promiseRaceWithCleanup(
-    deferred.promise,
-    30000,
-    { success: false, error: 'timeout' },
-    () => {
-      if (hasHighlightRequest(requestId)) {
-        deleteHighlightRequest(requestId);
-      }
+  return promiseRaceWithCleanup(deferred.promise, 30000, { success: false, error: 'timeout' }, () => {
+    if (hasHighlightRequest(requestId)) {
+      deleteHighlightRequest(requestId)
     }
-  );
+  })
 }
 
 /**
  * Handle state capture/restore commands
  */
-export async function handleStateCommand(params: {
-  action?: StateAction;
-  name?: string;
-  state?: BrowserStateSnapshot;
-  include_url?: boolean;
-} | undefined): Promise<{ error?: string; [key: string]: unknown }> {
-  const { action, name, state, include_url } = params || {};
+export async function handleStateCommand(
+  params:
+    | {
+        action?: StateAction
+        name?: string
+        state?: BrowserStateSnapshot
+        include_url?: boolean
+      }
+    | undefined,
+): Promise<{ error?: string; [key: string]: unknown }> {
+  const { action, name, state, include_url } = params || {}
 
   // Create a promise to receive response from inject.js
-  const messageId = `state_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const deferred = createDeferredPromise<{ error?: string; [key: string]: unknown }>();
+  const messageId = `state_${Date.now()}_${Math.random().toString(36).slice(2)}`
+  const deferred = createDeferredPromise<{ error?: string; [key: string]: unknown }>()
 
   // Set up listener for response from inject.js
-  const responseHandler = (event: MessageEvent<{ type?: string; messageId?: string; result?: { error?: string; [key: string]: unknown } }>) => {
-    if (event.source !== window) return;
+  const responseHandler = (
+    event: MessageEvent<{ type?: string; messageId?: string; result?: { error?: string; [key: string]: unknown } }>,
+  ) => {
+    if (event.source !== window) return
     if (event.data?.type === 'GASOLINE_STATE_RESPONSE' && event.data?.messageId === messageId) {
-      window.removeEventListener('message', responseHandler);
-      deferred.resolve(event.data.result || { error: 'No result from state command' });
+      window.removeEventListener('message', responseHandler)
+      deferred.resolve(event.data.result || { error: 'No result from state command' })
     }
-  };
-  window.addEventListener('message', responseHandler);
+  }
+  window.addEventListener('message', responseHandler)
 
   // Send command to inject.js (include state for restore action)
   window.postMessage(
@@ -142,44 +143,41 @@ export async function handleStateCommand(params: {
       state,
       include_url,
     } satisfies StateCommandMessage,
-    window.location.origin
-  );
+    window.location.origin,
+  )
 
   // Timeout after 5 seconds with cleanup
-  return promiseRaceWithCleanup(
-    deferred.promise,
-    5000,
-    { error: 'State command timeout' },
-    () => window.removeEventListener('message', responseHandler)
-  );
+  return promiseRaceWithCleanup(deferred.promise, 5000, { error: 'State command timeout' }, () =>
+    window.removeEventListener('message', responseHandler),
+  )
 }
 
 /**
  * Handle GASOLINE_PING message
  */
 export function handlePing(sendResponse: (response: ContentPingResponse) => void): boolean {
-  sendResponse({ status: 'alive', timestamp: Date.now() });
-  return true;
+  sendResponse({ status: 'alive', timestamp: Date.now() })
+  return true
 }
 
 /**
  * Handle toggle messages
  */
 export function handleToggleMessage(
-  message: ContentMessage & { enabled?: boolean; mode?: WebSocketCaptureMode; url?: string }
+  message: ContentMessage & { enabled?: boolean; mode?: WebSocketCaptureMode; url?: string },
 ): void {
-  if (!TOGGLE_MESSAGES.has(message.type)) return;
+  if (!TOGGLE_MESSAGES.has(message.type)) return
 
-  const payload: SettingMessage = { type: 'GASOLINE_SETTING', setting: message.type };
+  const payload: SettingMessage = { type: 'GASOLINE_SETTING', setting: message.type }
   if (message.type === 'setWebSocketCaptureMode') {
-    payload.mode = message.mode;
+    payload.mode = message.mode
   } else if (message.type === 'setServerUrl') {
-    payload.url = message.url;
+    payload.url = message.url
   } else {
-    payload.enabled = message.enabled;
+    payload.enabled = message.enabled
   }
   // SECURITY: Use explicit targetOrigin (window.location.origin) not "*"
-  window.postMessage(payload, window.location.origin);
+  window.postMessage(payload, window.location.origin)
 }
 
 /**
@@ -187,19 +185,19 @@ export function handleToggleMessage(
  */
 export function handleExecuteJs(
   params: { script?: string; timeout_ms?: number },
-  sendResponse: (result: any) => void
+  sendResponse: (result: { success: boolean; error?: string; message?: string; result?: unknown }) => void,
 ): boolean {
-  const requestId = registerExecuteRequest(sendResponse);
+  const requestId = registerExecuteRequest(sendResponse)
 
   // Timeout fallback: respond with error and cleanup after 30 seconds
   setTimeout(
-    createRequestTimeoutCleanup(
-      requestId,
-      new Map([[requestId, sendResponse]]),
-      { success: false, error: 'timeout', message: 'Execute request timed out after 30s' }
-    ),
-    30000
-  );
+    createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), {
+      success: false,
+      error: 'timeout',
+      message: 'Execute request timed out after 30s',
+    }),
+    30000,
+  )
 
   // Forward to inject.js via postMessage
   window.postMessage(
@@ -209,10 +207,10 @@ export function handleExecuteJs(
       script: params.script || '',
       timeoutMs: params.timeout_ms || 5000,
     } satisfies ExecuteJsRequestMessage,
-    window.location.origin
-  );
+    window.location.origin,
+  )
 
-  return true;
+  return true
 }
 
 /**
@@ -220,21 +218,21 @@ export function handleExecuteJs(
  */
 export function handleExecuteQuery(
   params: string | Record<string, unknown>,
-  sendResponse: (result: any) => void
+  sendResponse: (result: { success: boolean; error?: string; message?: string; result?: unknown }) => void,
 ): boolean {
   // Parse params if it's a string (from JSON)
-  let parsedParams: { script?: string; timeout_ms?: number } = {};
+  let parsedParams: { script?: string; timeout_ms?: number } = {}
   if (typeof params === 'string') {
     try {
-      parsedParams = JSON.parse(params);
+      parsedParams = JSON.parse(params)
     } catch {
-      parsedParams = {};
+      parsedParams = {}
     }
   } else if (typeof params === 'object') {
-    parsedParams = params as { script?: string; timeout_ms?: number };
+    parsedParams = params as { script?: string; timeout_ms?: number }
   }
 
-  return handleExecuteJs(parsedParams, sendResponse);
+  return handleExecuteJs(parsedParams, sendResponse)
 }
 
 /**
@@ -242,31 +240,29 @@ export function handleExecuteQuery(
  */
 export function handleA11yQuery(
   params: string | Record<string, unknown>,
-  sendResponse: (result: any) => void
+  sendResponse: (result: A11yAuditResult | { error: string }) => void,
 ): boolean {
   // Parse params if it's a string (from JSON)
-  let parsedParams: Record<string, unknown> = {};
+  let parsedParams: Record<string, unknown> = {}
   if (typeof params === 'string') {
     try {
-      parsedParams = JSON.parse(params);
+      parsedParams = JSON.parse(params)
     } catch {
-      parsedParams = {};
+      parsedParams = {}
     }
   } else if (typeof params === 'object') {
-    parsedParams = params;
+    parsedParams = params
   }
 
-  const requestId = registerA11yRequest(sendResponse);
+  const requestId = registerA11yRequest(sendResponse)
 
   // Timeout fallback: respond with error and cleanup after 30 seconds
   setTimeout(
-    createRequestTimeoutCleanup(
-      requestId,
-      new Map([[requestId, sendResponse]]),
-      { error: 'Accessibility audit timeout' }
-    ),
-    30000
-  );
+    createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), {
+      error: 'Accessibility audit timeout',
+    }),
+    30000,
+  )
 
   // Forward to inject.js via postMessage
   window.postMessage(
@@ -275,10 +271,10 @@ export function handleA11yQuery(
       requestId,
       params: parsedParams,
     } satisfies A11yQueryRequestMessage,
-    window.location.origin
-  );
+    window.location.origin,
+  )
 
-  return true;
+  return true
 }
 
 /**
@@ -286,31 +282,27 @@ export function handleA11yQuery(
  */
 export function handleDomQuery(
   params: string | Record<string, unknown>,
-  sendResponse: (result: any) => void
+  sendResponse: (result: { error?: string; matches?: unknown[] }) => void,
 ): boolean {
   // Parse params if it's a string (from JSON)
-  let parsedParams: Record<string, unknown> = {};
+  let parsedParams: Record<string, unknown> = {}
   if (typeof params === 'string') {
     try {
-      parsedParams = JSON.parse(params);
+      parsedParams = JSON.parse(params)
     } catch {
-      parsedParams = {};
+      parsedParams = {}
     }
   } else if (typeof params === 'object') {
-    parsedParams = params;
+    parsedParams = params
   }
 
-  const requestId = registerDomRequest(sendResponse);
+  const requestId = registerDomRequest(sendResponse)
 
   // Timeout fallback: respond with error and cleanup after 30 seconds
   setTimeout(
-    createRequestTimeoutCleanup(
-      requestId,
-      new Map([[requestId, sendResponse]]),
-      { error: 'DOM query timeout' }
-    ),
-    30000
-  );
+    createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), { error: 'DOM query timeout' }),
+    30000,
+  )
 
   // Forward to inject.js via postMessage
   window.postMessage(
@@ -319,29 +311,29 @@ export function handleDomQuery(
       requestId,
       params: parsedParams,
     } satisfies DomQueryRequestMessage,
-    window.location.origin
-  );
+    window.location.origin,
+  )
 
-  return true;
+  return true
 }
 
 /**
  * Handle GET_NETWORK_WATERFALL message
  */
 export function handleGetNetworkWaterfall(sendResponse: (result: { entries: WaterfallEntry[] }) => void): boolean {
-  const requestId = Date.now();
-  const deferred = createDeferredPromise<{ entries: WaterfallEntry[] }>();
+  const requestId = Date.now()
+  const deferred = createDeferredPromise<{ entries: WaterfallEntry[] }>()
 
   // Set up a one-time listener for the response
   const responseHandler = (event: MessageEvent<{ type?: string; entries?: WaterfallEntry[] }>) => {
-    if (event.source !== window) return;
+    if (event.source !== window) return
     if (event.data?.type === 'GASOLINE_WATERFALL_RESPONSE') {
-      window.removeEventListener('message', responseHandler);
-      deferred.resolve({ entries: event.data.entries || [] });
+      window.removeEventListener('message', responseHandler)
+      deferred.resolve({ entries: event.data.entries || [] })
     }
-  };
+  }
 
-  window.addEventListener('message', responseHandler);
+  window.addEventListener('message', responseHandler)
 
   // Post message to page context
   window.postMessage(
@@ -349,15 +341,15 @@ export function handleGetNetworkWaterfall(sendResponse: (result: { entries: Wate
       type: 'GASOLINE_GET_WATERFALL',
       requestId,
     } satisfies GetWaterfallRequestMessage,
-    window.location.origin
-  );
+    window.location.origin,
+  )
 
   // Timeout fallback: respond with empty array after 5 seconds
   promiseRaceWithCleanup(deferred.promise, 5000, { entries: [] }, () => {
-    window.removeEventListener('message', responseHandler);
+    window.removeEventListener('message', responseHandler)
   }).then((result) => {
-    sendResponse(result);
-  });
+    sendResponse(result)
+  })
 
-  return true;
+  return true
 }

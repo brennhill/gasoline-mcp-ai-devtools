@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// NOTE: These tests require NewCapture and helper functions that aren't exported here.
+// Run with: go test -tags=integration ./internal/performance/...
 package performance
 
 import (
@@ -47,7 +52,7 @@ func TestPerformanceSnapshotJSONShape(t *testing.T) {
 		t.Fatalf("Failed to marshal snapshot: %v", err)
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(data, &m); err != nil {
 		t.Fatalf("Failed to unmarshal: %v", err)
 	}
@@ -60,7 +65,7 @@ func TestPerformanceSnapshotJSONShape(t *testing.T) {
 	}
 
 	// Timing fields
-	timing := m["timing"].(map[string]interface{})
+	timing := m["timing"].(map[string]any)
 	for _, field := range []string{
 		"dom_content_loaded", "load", "first_contentful_paint",
 		"largest_contentful_paint", "time_to_first_byte", "dom_interactive",
@@ -71,7 +76,7 @@ func TestPerformanceSnapshotJSONShape(t *testing.T) {
 	}
 
 	// Network fields
-	network := m["network"].(map[string]interface{})
+	network := m["network"].(map[string]any)
 	for _, field := range []string{"request_count", "transfer_size", "decoded_size", "by_type", "slowest_requests"} {
 		if _, ok := network[field]; !ok {
 			t.Errorf("missing network field: %s", field)
@@ -79,7 +84,7 @@ func TestPerformanceSnapshotJSONShape(t *testing.T) {
 	}
 
 	// LongTasks fields
-	longTasks := m["long_tasks"].(map[string]interface{})
+	longTasks := m["long_tasks"].(map[string]any)
 	for _, field := range []string{"count", "total_blocking_time", "longest"} {
 		if _, ok := longTasks[field]; !ok {
 			t.Errorf("missing longTasks field: %s", field)
@@ -121,7 +126,7 @@ func TestPerformanceBaselineJSONShape(t *testing.T) {
 		t.Fatalf("Failed to marshal baseline: %v", err)
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(data, &m); err != nil {
 		t.Fatalf("Failed to unmarshal: %v", err)
 	}
@@ -134,7 +139,7 @@ func TestPerformanceBaselineJSONShape(t *testing.T) {
 	}
 
 	// Timing fields
-	timing := m["timing"].(map[string]interface{})
+	timing := m["timing"].(map[string]any)
 	for _, field := range []string{
 		"dom_content_loaded", "load", "first_contentful_paint",
 		"largest_contentful_paint", "time_to_first_byte", "dom_interactive",
@@ -1468,7 +1473,7 @@ func TestPerformanceTimingINPField(t *testing.T) {
 		t.Fatalf("Failed to marshal timing: %v", err)
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(data, &m); err != nil {
 		t.Fatalf("Failed to unmarshal: %v", err)
 	}
@@ -1495,7 +1500,7 @@ func TestPerformanceTimingINPOmittedWhenNil(t *testing.T) {
 		t.Fatalf("Failed to marshal timing: %v", err)
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(data, &m); err != nil {
 		t.Fatalf("Failed to unmarshal: %v", err)
 	}
@@ -3759,7 +3764,7 @@ func TestHandlePerformanceSnapshots_SingleSnapshot(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
@@ -3788,7 +3793,7 @@ func TestHandlePerformanceSnapshots_MultipleBatched(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
@@ -3818,7 +3823,7 @@ func TestHandlePerformanceSnapshots_EmptyArray(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}

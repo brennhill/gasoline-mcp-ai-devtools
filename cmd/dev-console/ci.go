@@ -118,7 +118,7 @@ func handleClear(server *Server, cap *capture.Capture) http.HandlerFunc {
 		server.clearEntries()
 		cap.ClearAll()
 
-		jsonResponse(w, http.StatusOK, map[string]interface{}{
+		jsonResponse(w, http.StatusOK, map[string]any{
 			"cleared":         true,
 			"entries_removed": previousCount,
 		})
@@ -163,7 +163,7 @@ func handleTestBoundary(cap *capture.Capture) http.HandlerFunc {
 			cap.SetTestBoundaryEnd(req.TestID)
 		}
 
-		jsonResponse(w, http.StatusOK, map[string]interface{}{
+		jsonResponse(w, http.StatusOK, map[string]any{
 			"test_id":   req.TestID,
 			"action":    req.Action,
 			"timestamp": now.Format(time.RFC3339Nano),

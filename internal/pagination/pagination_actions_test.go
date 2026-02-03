@@ -483,7 +483,7 @@ func TestSerializeActionEntryWithSequence(t *testing.T) {
 			Type:      "click",
 			Timestamp: 1738238123456,
 			URL:       "https://example.com",
-			Selectors: map[string]interface{}{
+			Selectors: map[string]any{
 				"testId": "submit-button",
 				"role":   "button",
 			},
@@ -513,7 +513,7 @@ func TestSerializeActionEntryWithSequence(t *testing.T) {
 	}
 
 	// Verify selectors preserved
-	selectors, ok := result["selectors"].(map[string]interface{})
+	selectors, ok := result["selectors"].(map[string]any)
 	if !ok {
 		t.Errorf("selectors not a map")
 	} else {

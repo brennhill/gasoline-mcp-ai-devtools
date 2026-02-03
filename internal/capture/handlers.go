@@ -16,23 +16,55 @@ func (c *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 	}
 	bodies := c.GetNetworkBodies()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"bodies": bodies,
 		"count":  len(bodies),
 	})
 }
 
-// HandleNetworkWaterfall returns network waterfall data
+// HandleNetworkWaterfall handles network waterfall data.
+// POST: receives and stores waterfall entries from the extension
+// GET: returns stored waterfall entries
 func (c *Capture) HandleNetworkWaterfall(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	switch r.Method {
+	case "POST":
+		c.handleNetworkWaterfallPOST(w, r)
+	case "GET":
+		c.handleNetworkWaterfallGET(w, r)
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// handleNetworkWaterfallPOST stores waterfall entries from the extension
+func (c *Capture) handleNetworkWaterfallPOST(w http.ResponseWriter, r *http.Request) {
+	var payload NetworkWaterfallPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
 		return
 	}
-	bodies := c.GetNetworkBodies()
+
+	c.AddNetworkWaterfallEntries(payload.Entries, payload.PageURL)
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"waterfall": bodies,
-		"count":     len(bodies),
+	json.NewEncoder(w).Encode(map[string]any{
+		"status": "ok",
+		"count":  len(payload.Entries),
+	})
+}
+
+// handleNetworkWaterfallGET returns stored waterfall entries
+func (c *Capture) handleNetworkWaterfallGET(w http.ResponseWriter, r *http.Request) {
+	c.mu.RLock()
+	entries := make([]NetworkWaterfallEntry, len(c.networkWaterfall))
+	copy(entries, c.networkWaterfall)
+	c.mu.RUnlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"waterfall": entries,
+		"count":     len(entries),
 	})
 }
 
@@ -47,7 +79,7 @@ func (c *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
 	// Check for client ID in multi-client mode
 	clientID := r.Header.Get("X-Gasoline-Client")
 
-	var queries interface{}
+	var queries any
 	if clientID != "" {
 		queries = c.GetPendingQueriesForClient(clientID)
 	} else {
@@ -55,7 +87,7 @@ func (c *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"queries": queries,
 		"count":   len(queries.([]PendingQueryResponse)),
 	})
@@ -72,7 +104,7 @@ func (c *Capture) HandlePilotStatus(w http.ResponseWriter, r *http.Request) {
 	c.mu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"enabled": pilotEnabled,
 	})
 }
@@ -107,7 +139,7 @@ func (c *Capture) HandleDOMResult(w http.ResponseWriter, r *http.Request) {
 	c.SetQueryResultWithClient(body.ID, body.Result, body.ClientID)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"status": "ok",
 	})
 }
@@ -136,7 +168,7 @@ func (c *Capture) HandleA11yResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"status": "ok",
 	})
 }
@@ -165,7 +197,7 @@ func (c *Capture) HandleStateResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"status": "ok",
 	})
 }
@@ -194,7 +226,7 @@ func (c *Capture) HandleExecuteResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"status": "ok",
 	})
 }
@@ -223,7 +255,7 @@ func (c *Capture) HandleHighlightResult(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"status": "ok",
 	})
 }
@@ -236,7 +268,7 @@ func (c *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) 
 	}
 	actions := c.GetAllEnhancedActions()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"actions": actions,
 		"count":   len(actions),
 	})
@@ -249,8 +281,8 @@ func (c *Capture) HandlePerformanceSnapshots(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"snapshots": []interface{}{},
+	json.NewEncoder(w).Encode(map[string]any{
+		"snapshots": []any{},
 		"count":     0,
 	})
 }

@@ -7,12 +7,12 @@
  * via chrome.runtime.sendMessage for status queries and log-level changes.
  */
 
-import type { WebSocketCaptureMode } from './types';
-import type { PopupConnectionStatus, ToggleWarningConfig } from './popup/types';
-import { updateConnectionStatus } from './popup/status-display';
-import { initFeatureToggles } from './popup/feature-toggles';
-import { initTrackPageButton } from './popup/tab-tracking';
-import { initAiWebPilotToggle } from './popup/ai-web-pilot';
+import type { WebSocketCaptureMode } from './types'
+import type { PopupConnectionStatus, ToggleWarningConfig } from './popup/types'
+import { updateConnectionStatus } from './popup/status-display'
+import { initFeatureToggles } from './popup/feature-toggles'
+import { initTrackPageButton } from './popup/tab-tracking'
+import { initAiWebPilotToggle } from './popup/ai-web-pilot'
 import {
   initLogLevelSelector,
   handleLogLevelChange,
@@ -20,21 +20,21 @@ import {
   handleWebSocketModeChange,
   handleClearLogs,
   resetClearConfirm,
-} from './popup/settings';
+} from './popup/settings'
 
 // Re-export for testing
-export { resetClearConfirm, handleClearLogs };
-export { updateConnectionStatus };
-export { FEATURE_TOGGLES, initFeatureToggles } from './popup/feature-toggles';
-export { handleFeatureToggle } from './popup/feature-toggles';
-export { initAiWebPilotToggle, handleAiWebPilotToggle } from './popup/ai-web-pilot';
-export { initTrackPageButton, handleTrackPageClick } from './popup/tab-tracking';
-export { handleLogLevelChange, handleWebSocketModeChange } from './popup/settings';
-export { initLogLevelSelector } from './popup/settings';
-export { initWebSocketModeSelector } from './popup/settings';
-export { isInternalUrl } from './popup/ui-utils';
+export { resetClearConfirm, handleClearLogs }
+export { updateConnectionStatus }
+export { FEATURE_TOGGLES, initFeatureToggles } from './popup/feature-toggles'
+export { handleFeatureToggle } from './popup/feature-toggles'
+export { initAiWebPilotToggle, handleAiWebPilotToggle } from './popup/ai-web-pilot'
+export { initTrackPageButton, handleTrackPageClick } from './popup/tab-tracking'
+export { handleLogLevelChange, handleWebSocketModeChange } from './popup/settings'
+export { initLogLevelSelector } from './popup/settings'
+export { initWebSocketModeSelector } from './popup/settings'
+export { isInternalUrl } from './popup/ui-utils'
 
-const DEFAULT_MAX_ENTRIES = 1000;
+const DEFAULT_MAX_ENTRIES = 1000
 
 /**
  * Initialize the popup
@@ -52,13 +52,13 @@ export async function initPopup(): Promise<void> {
           errorCount: 0,
           logFile: '',
           error: 'Extension restarting - please wait a moment and reopen popup',
-        });
-        return;
+        })
+        return
       }
       if (status) {
-        updateConnectionStatus(status);
+        updateConnectionStatus(status)
       }
-    });
+    })
   } catch {
     // Extension context invalidated or other critical error
     updateConnectionStatus({
@@ -68,50 +68,50 @@ export async function initPopup(): Promise<void> {
       errorCount: 0,
       logFile: '',
       error: 'Extension error - try reloading the extension',
-    });
+    })
   }
 
   // Initialize log level selector
-  await initLogLevelSelector();
+  await initLogLevelSelector()
 
   // Initialize feature toggles
-  await initFeatureToggles();
+  await initFeatureToggles()
 
   // Initialize WebSocket mode selector
-  await initWebSocketModeSelector();
+  await initWebSocketModeSelector()
 
   // Initialize AI Web Pilot toggle
-  await initAiWebPilotToggle();
+  await initAiWebPilotToggle()
 
   // Initialize Track This Page button
-  await initTrackPageButton();
+  await initTrackPageButton()
 
   // Show/hide WebSocket mode selector based on toggle
-  const wsToggle = document.getElementById('toggle-websocket') as HTMLInputElement | null;
-  const wsModeContainer = document.getElementById('ws-mode-container');
+  const wsToggle = document.getElementById('toggle-websocket') as HTMLInputElement | null
+  const wsModeContainer = document.getElementById('ws-mode-container')
   if (wsToggle && wsModeContainer) {
-    wsModeContainer.style.display = wsToggle.checked ? 'block' : 'none';
+    wsModeContainer.style.display = wsToggle.checked ? 'block' : 'none'
     wsToggle.addEventListener('change', () => {
-      wsModeContainer.style.display = wsToggle.checked ? 'block' : 'none';
-    });
+      wsModeContainer.style.display = wsToggle.checked ? 'block' : 'none'
+    })
   }
 
   // Set up WebSocket mode change handler
-  const wsModeSelect = document.getElementById('ws-mode') as HTMLSelectElement | null;
+  const wsModeSelect = document.getElementById('ws-mode') as HTMLSelectElement | null
   if (wsModeSelect) {
     wsModeSelect.addEventListener('change', (e: Event) => {
-      const target = e.target as HTMLSelectElement;
-      handleWebSocketModeChange(target.value as WebSocketCaptureMode);
-    });
+      const target = e.target as HTMLSelectElement
+      handleWebSocketModeChange(target.value as WebSocketCaptureMode)
+    })
   }
 
   // Show/hide WebSocket messages warning based on mode
-  const wsMessagesWarning = document.getElementById('ws-messages-warning');
+  const wsMessagesWarning = document.getElementById('ws-messages-warning')
   if (wsModeSelect && wsMessagesWarning) {
-    wsMessagesWarning.style.display = wsModeSelect.value === 'messages' ? 'block' : 'none';
+    wsMessagesWarning.style.display = wsModeSelect.value === 'messages' ? 'block' : 'none'
     wsModeSelect.addEventListener('change', () => {
-      wsMessagesWarning.style.display = wsModeSelect.value === 'messages' ? 'block' : 'none';
-    });
+      wsMessagesWarning.style.display = wsModeSelect.value === 'messages' ? 'block' : 'none'
+    })
   }
 
   // Show/hide toggle warnings when features are enabled
@@ -119,64 +119,66 @@ export async function initPopup(): Promise<void> {
     { toggleId: 'toggle-screenshot', warningId: 'screenshot-warning' },
     { toggleId: 'toggle-network-waterfall', warningId: 'waterfall-warning' },
     { toggleId: 'toggle-performance-marks', warningId: 'perfmarks-warning' },
-  ];
+  ]
   for (const { toggleId, warningId } of toggleWarnings) {
-    const toggle = document.getElementById(toggleId) as HTMLInputElement | null;
-    const warning = document.getElementById(warningId);
+    const toggle = document.getElementById(toggleId) as HTMLInputElement | null
+    const warning = document.getElementById(warningId)
     if (toggle && warning) {
-      warning.style.display = toggle.checked ? 'block' : 'none';
+      warning.style.display = toggle.checked ? 'block' : 'none'
       toggle.addEventListener('change', () => {
-        warning.style.display = toggle.checked ? 'block' : 'none';
-      });
+        warning.style.display = toggle.checked ? 'block' : 'none'
+      })
     }
   }
 
   // Set up log level change handler
-  const levelSelect = document.getElementById('log-level') as HTMLSelectElement | null;
+  const levelSelect = document.getElementById('log-level') as HTMLSelectElement | null
   if (levelSelect) {
     levelSelect.addEventListener('change', (e: Event) => {
-      const target = e.target as HTMLSelectElement;
-      handleLogLevelChange(target.value);
-    });
+      const target = e.target as HTMLSelectElement
+      handleLogLevelChange(target.value)
+    })
   }
 
   // Set up clear button handler
-  const clearBtn = document.getElementById('clear-btn');
+  const clearBtn = document.getElementById('clear-btn')
   if (clearBtn) {
-    clearBtn.addEventListener('click', handleClearLogs);
+    clearBtn.addEventListener('click', handleClearLogs)
   }
 
   // Listen for status updates
-  chrome.runtime.onMessage.addListener((message: { type: string; status?: PopupConnectionStatus; enabled?: boolean }) => {
-    if (message.type === 'statusUpdate' && message.status) {
-      updateConnectionStatus(message.status);
-    } else if (message.type === 'pilotStatusChanged') {
-      // Update toggle to reflect confirmed state from background
-      const toggle = document.getElementById('aiWebPilotEnabled') as HTMLInputElement | null;
-      if (toggle) {
-        toggle.checked = message.enabled === true;
-        console.log('[Gasoline] Pilot status confirmed:', message.enabled);
+  chrome.runtime.onMessage.addListener(
+    (message: { type: string; status?: PopupConnectionStatus; enabled?: boolean }) => {
+      if (message.type === 'statusUpdate' && message.status) {
+        updateConnectionStatus(message.status)
+      } else if (message.type === 'pilotStatusChanged') {
+        // Update toggle to reflect confirmed state from background
+        const toggle = document.getElementById('aiWebPilotEnabled') as HTMLInputElement | null
+        if (toggle) {
+          toggle.checked = message.enabled === true
+          console.log('[Gasoline] Pilot status confirmed:', message.enabled)
+        }
       }
-    }
-  });
+    },
+  )
 
   // Listen for storage changes (e.g., tracked tab URL updates)
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'local' && changes.trackedTabUrl) {
-      const urlEl = document.getElementById('tracked-url');
+      const urlEl = document.getElementById('tracked-url')
       if (urlEl && changes.trackedTabUrl.newValue) {
-        urlEl.textContent = changes.trackedTabUrl.newValue as string;
-        console.log('[Gasoline] Tracked tab URL updated in popup:', changes.trackedTabUrl.newValue);
+        urlEl.textContent = changes.trackedTabUrl.newValue as string
+        console.log('[Gasoline] Tracked tab URL updated in popup:', changes.trackedTabUrl.newValue)
       }
     }
-  });
+  })
 }
 
 // Initialize when DOM is ready
 if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPopup);
+    document.addEventListener('DOMContentLoaded', initPopup)
   } else {
-    initPopup();
+    initPopup()
   }
 }

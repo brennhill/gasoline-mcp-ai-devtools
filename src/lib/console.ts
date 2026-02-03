@@ -4,23 +4,23 @@
  * and forward them via postLog, while preserving original behavior.
  */
 
-import { safeSerialize } from './serialize';
-import { postLog } from './bridge';
+import { safeSerialize } from './serialize'
+import { postLog } from './bridge'
 
-type ConsoleMethods = 'log' | 'warn' | 'error' | 'info' | 'debug';
+type ConsoleMethods = 'log' | 'warn' | 'error' | 'info' | 'debug'
 
 // Store original methods
-let originalConsole: Partial<Record<ConsoleMethods, (...args: unknown[]) => void>> = {};
+let originalConsole: Partial<Record<ConsoleMethods, (...args: unknown[]) => void>> = {}
 
 /**
  * Install console capture hooks
  */
 export function installConsoleCapture(): void {
-  const methods: ConsoleMethods[] = ['log', 'warn', 'error', 'info', 'debug'];
+  const methods: ConsoleMethods[] = ['log', 'warn', 'error', 'info', 'debug']
 
   methods.forEach((method) => {
     // eslint-disable-next-line security/detect-object-injection -- method from known-safe local array of console methods
-    originalConsole[method] = console[method];
+    originalConsole[method] = console[method]
 
     // eslint-disable-next-line security/detect-object-injection -- method from known-safe local array of console methods
     console[method] = function (...args: unknown[]): void {
@@ -29,13 +29,13 @@ export function installConsoleCapture(): void {
         level: method,
         type: 'console',
         args: args.map((arg) => safeSerialize(arg)),
-      });
+      })
 
       // Call original
       // eslint-disable-next-line security/detect-object-injection -- method from known-safe local array of console methods
-      originalConsole[method]!.apply(console, args);
-    };
-  });
+      originalConsole[method]!.apply(console, args)
+    }
+  })
 }
 
 /**
@@ -44,7 +44,7 @@ export function installConsoleCapture(): void {
 export function uninstallConsoleCapture(): void {
   Object.keys(originalConsole).forEach((method) => {
     // eslint-disable-next-line security/detect-object-injection -- method from Object.keys of our own originalConsole storage
-    console[method as ConsoleMethods] = originalConsole[method as ConsoleMethods]!;
-  });
-  originalConsole = {};
+    console[method as ConsoleMethods] = originalConsole[method as ConsoleMethods]!
+  })
+  originalConsole = {}
 }

@@ -16,6 +16,9 @@
 
 ## 🎯 BY TASK
 
+**Requesting a new feature?**
+→ [docs/examples/feature-request-template.md](docs/examples/feature-request-template.md) — How to maintain quality
+
 **Implementing a feature?**
 → [docs/features/README.md](docs/features/README.md) → Feature folder
 
@@ -48,9 +51,12 @@
 **Core Reference:**
 - [.claude/refs/architecture.md](.claude/refs/architecture.md) — System design
 - [.claude/docs/git-and-concurrency.md](.claude/docs/git-and-concurrency.md) — Git workflow
-- [docs/core/codebase-canon-v5.3.md](docs/core/codebase-canon-v5.3.md) — v5.3 baseline
-- [docs/core/known-issues.md](docs/core/known-issues.md) — Blockers
 - [docs/core/release.md](docs/core/release.md) — Release process
+- [docs/quality-standards.md](docs/quality-standards.md) — Quality maintenance guide
+- [docs/quality-quick-reference.md](docs/quality-quick-reference.md) — Quick quality checklist
+- [docs/standards/](docs/standards/) — Implementation standards (6 focused guides: data, validation, memory, errors, APIs, code quality)
+- [docs/core/code-index.md](docs/core/code-index.md) — Code → feature map (when implementing)
+- [docs/core/feature-to-strategy.md](docs/core/feature-to-strategy.md) — Feature → strategy map (when designing)
 
 ---
 

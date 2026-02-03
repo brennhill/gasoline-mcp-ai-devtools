@@ -587,7 +587,7 @@ type diffSessionsParams struct {
 }
 
 // HandleTool dispatches the diff_sessions MCP tool call.
-func (sm *SessionManager) HandleTool(params json.RawMessage) (interface{}, error) {
+func (sm *SessionManager) HandleTool(params json.RawMessage) (any, error) {
 	var p diffSessionsParams
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, fmt.Errorf("invalid params: %w", err)
@@ -602,10 +602,10 @@ func (sm *SessionManager) HandleTool(params json.RawMessage) (interface{}, error
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{
+		return map[string]any{
 			"action": "captured",
 			"name":   snap.Name,
-			"snapshot": map[string]interface{}{
+			"snapshot": map[string]any{
 				"captured_at":      snap.CapturedAt,
 				"console_errors":   len(snap.ConsoleErrors),
 				"console_warnings": len(snap.ConsoleWarnings),
@@ -622,7 +622,7 @@ func (sm *SessionManager) HandleTool(params json.RawMessage) (interface{}, error
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{
+		return map[string]any{
 			"action":  "compared",
 			"a":       diff.A,
 			"b":       diff.B,
@@ -632,7 +632,7 @@ func (sm *SessionManager) HandleTool(params json.RawMessage) (interface{}, error
 
 	case "list":
 		entries := sm.List()
-		return map[string]interface{}{
+		return map[string]any{
 			"action":    "listed",
 			"snapshots": entries,
 		}, nil
@@ -644,7 +644,7 @@ func (sm *SessionManager) HandleTool(params json.RawMessage) (interface{}, error
 		if err := sm.Delete(p.Name); err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{
+		return map[string]any{
 			"action": "deleted",
 			"name":   p.Name,
 		}, nil

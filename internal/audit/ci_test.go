@@ -1,6 +1,11 @@
+//go:build integration
+// +build integration
+
 // ci_test.go — Tests for Gasoline CI Infrastructure endpoints.
 // Covers /snapshot (aggregated state retrieval), /clear (buffer reset),
 // and /test-boundary (test correlation) endpoints.
+// NOTE: These tests require Server, Capture, handleSnapshot, etc. that aren't exported.
+// Run with: go test -tags=integration ./internal/audit/...
 package audit
 
 import (
@@ -195,7 +200,7 @@ func TestHandleClear_EmptyState(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
@@ -229,7 +234,7 @@ func TestHandleClear_WithData(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
@@ -304,7 +309,7 @@ func TestHandleTestBoundary_Start(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}

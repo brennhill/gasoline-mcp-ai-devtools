@@ -3,17 +3,17 @@
  * Enriches error-level messages with context annotations and user action replay.
  */
 
-import { getContextAnnotations } from './context';
-import { getActionBuffer } from './actions';
+import { getContextAnnotations } from './context'
+import { getActionBuffer } from './actions'
 
 export interface BridgePayload {
-  level?: string;
-  message?: string;
-  error?: string;
-  args?: unknown[];
-  filename?: string;
-  lineno?: number;
-  [key: string]: unknown;
+  level?: string
+  message?: string
+  error?: string
+  args?: unknown[]
+  filename?: string
+  lineno?: number
+  [key: string]: unknown
 }
 
 /**
@@ -21,16 +21,16 @@ export interface BridgePayload {
  */
 export function postLog(payload: BridgePayload): void {
   // Include context annotations and action replay for errors
-  const context = getContextAnnotations();
-  const actions = payload.level === 'error' ? getActionBuffer() : null;
+  const context = getContextAnnotations()
+  const actions = payload.level === 'error' ? getActionBuffer() : null
 
   // Build enrichments list to help AI understand what data is attached
-  const enrichments: string[] = [];
-  if (context && payload.level === 'error') enrichments.push('context');
-  if (actions && actions.length > 0) enrichments.push('userActions');
+  const enrichments: string[] = []
+  if (context && payload.level === 'error') enrichments.push('context')
+  if (actions && actions.length > 0) enrichments.push('userActions')
 
   // Extract fields we want from payload (exclude ts, message, source, url to avoid overwriting enrichments)
-  const { level, type, args, error, stack, ...otherFields } = payload;
+  const { level, type, args, error, stack, ...otherFields } = payload
 
   window.postMessage(
     {
@@ -59,5 +59,5 @@ export function postLog(payload: BridgePayload): void {
       },
     },
     '*',
-  );
+  )
 }

@@ -11,23 +11,23 @@ import type {
   PerformanceSnapshot,
   ConnectionStatus,
   WaterfallEntry,
-} from '../types';
-import { getExtensionVersion } from './version-check';
+} from '../types'
+import { getExtensionVersion } from './version-check'
 
 /**
  * Server health response
  */
 export interface ServerHealthResponse {
-  connected: boolean;
-  error?: string;
-  version?: string;
-  availableVersion?: string;
+  connected: boolean
+  error?: string
+  version?: string
+  availableVersion?: string
   logs?: {
-    logFile?: string;
-    logFileSize?: number;
-    entries?: number;
-    maxEntries?: number;
-  };
+    logFile?: string
+    logFileSize?: number
+    entries?: number
+    maxEntries?: number
+  }
 }
 
 /**
@@ -38,7 +38,7 @@ function getRequestHeaders(additionalHeaders: Record<string, string> = {}): Reco
     'Content-Type': 'application/json',
     'X-Gasoline-Extension-Version': getExtensionVersion(),
     ...additionalHeaders,
-  };
+  }
 }
 
 /**
@@ -47,25 +47,25 @@ function getRequestHeaders(additionalHeaders: Record<string, string> = {}): Reco
 export async function sendLogsToServer(
   serverUrl: string,
   entries: LogEntry[],
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
+  debugLogFn?: (category: string, message: string, data?: unknown) => void,
 ): Promise<{ entries: number }> {
-  if (debugLogFn) debugLogFn('connection', `Sending ${entries.length} entries to server`);
+  if (debugLogFn) debugLogFn('connection', `Sending ${entries.length} entries to server`)
 
   const response = await fetch(`${serverUrl}/logs`, {
     method: 'POST',
     headers: getRequestHeaders(),
     body: JSON.stringify({ entries }),
-  });
+  })
 
   if (!response.ok) {
-    const error = `Server error: ${response.status} ${response.statusText}`;
-    if (debugLogFn) debugLogFn('error', error);
-    throw new Error(error);
+    const error = `Server error: ${response.status} ${response.statusText}`
+    if (debugLogFn) debugLogFn('error', error)
+    throw new Error(error)
   }
 
-  const result = (await response.json()) as { entries: number };
-  if (debugLogFn) debugLogFn('connection', `Server accepted entries, total: ${result.entries}`);
-  return result;
+  const result = (await response.json()) as { entries: number }
+  if (debugLogFn) debugLogFn('connection', `Server accepted entries, total: ${result.entries}`)
+  return result
 }
 
 /**
@@ -74,23 +74,23 @@ export async function sendLogsToServer(
 export async function sendWSEventsToServer(
   serverUrl: string,
   events: WebSocketEvent[],
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
+  debugLogFn?: (category: string, message: string, data?: unknown) => void,
 ): Promise<void> {
-  if (debugLogFn) debugLogFn('connection', `Sending ${events.length} WS events to server`);
+  if (debugLogFn) debugLogFn('connection', `Sending ${events.length} WS events to server`)
 
   const response = await fetch(`${serverUrl}/websocket-events`, {
     method: 'POST',
     headers: getRequestHeaders(),
     body: JSON.stringify({ events }),
-  });
+  })
 
   if (!response.ok) {
-    const error = `Server error (WS): ${response.status} ${response.statusText}`;
-    if (debugLogFn) debugLogFn('error', error);
-    throw new Error(error);
+    const error = `Server error (WS): ${response.status} ${response.statusText}`
+    if (debugLogFn) debugLogFn('error', error)
+    throw new Error(error)
   }
 
-  if (debugLogFn) debugLogFn('connection', `Server accepted ${events.length} WS events`);
+  if (debugLogFn) debugLogFn('connection', `Server accepted ${events.length} WS events`)
 }
 
 /**
@@ -99,23 +99,23 @@ export async function sendWSEventsToServer(
 export async function sendNetworkBodiesToServer(
   serverUrl: string,
   bodies: NetworkBodyPayload[],
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
+  debugLogFn?: (category: string, message: string, data?: unknown) => void,
 ): Promise<void> {
-  if (debugLogFn) debugLogFn('connection', `Sending ${bodies.length} network bodies to server`);
+  if (debugLogFn) debugLogFn('connection', `Sending ${bodies.length} network bodies to server`)
 
   const response = await fetch(`${serverUrl}/network-bodies`, {
     method: 'POST',
     headers: getRequestHeaders(),
     body: JSON.stringify({ bodies }),
-  });
+  })
 
   if (!response.ok) {
-    const error = `Server error (network bodies): ${response.status} ${response.statusText}`;
-    if (debugLogFn) debugLogFn('error', error);
-    throw new Error(error);
+    const error = `Server error (network bodies): ${response.status} ${response.statusText}`
+    if (debugLogFn) debugLogFn('error', error)
+    throw new Error(error)
   }
 
-  if (debugLogFn) debugLogFn('connection', `Server accepted ${bodies.length} network bodies`);
+  if (debugLogFn) debugLogFn('connection', `Server accepted ${bodies.length} network bodies`)
 }
 
 /**
@@ -124,23 +124,23 @@ export async function sendNetworkBodiesToServer(
 export async function sendNetworkWaterfallToServer(
   serverUrl: string,
   payload: { entries: WaterfallEntry[]; pageURL: string },
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
+  debugLogFn?: (category: string, message: string, data?: unknown) => void,
 ): Promise<void> {
-  if (debugLogFn) debugLogFn('connection', `Sending ${payload.entries.length} waterfall entries to server`);
+  if (debugLogFn) debugLogFn('connection', `Sending ${payload.entries.length} waterfall entries to server`)
 
   const response = await fetch(`${serverUrl}/network-waterfall`, {
     method: 'POST',
     headers: getRequestHeaders(),
     body: JSON.stringify(payload),
-  });
+  })
 
   if (!response.ok) {
-    const error = `Server error (network waterfall): ${response.status} ${response.statusText}`;
-    if (debugLogFn) debugLogFn('error', error);
-    throw new Error(error);
+    const error = `Server error (network waterfall): ${response.status} ${response.statusText}`
+    if (debugLogFn) debugLogFn('error', error)
+    throw new Error(error)
   }
 
-  if (debugLogFn) debugLogFn('connection', `Server accepted ${payload.entries.length} waterfall entries`);
+  if (debugLogFn) debugLogFn('connection', `Server accepted ${payload.entries.length} waterfall entries`)
 }
 
 /**
@@ -149,23 +149,23 @@ export async function sendNetworkWaterfallToServer(
 export async function sendEnhancedActionsToServer(
   serverUrl: string,
   actions: EnhancedAction[],
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
+  debugLogFn?: (category: string, message: string, data?: unknown) => void,
 ): Promise<void> {
-  if (debugLogFn) debugLogFn('connection', `Sending ${actions.length} enhanced actions to server`);
+  if (debugLogFn) debugLogFn('connection', `Sending ${actions.length} enhanced actions to server`)
 
   const response = await fetch(`${serverUrl}/enhanced-actions`, {
     method: 'POST',
     headers: getRequestHeaders(),
     body: JSON.stringify({ actions }),
-  });
+  })
 
   if (!response.ok) {
-    const error = `Server error (enhanced actions): ${response.status} ${response.statusText}`;
-    if (debugLogFn) debugLogFn('error', error);
-    throw new Error(error);
+    const error = `Server error (enhanced actions): ${response.status} ${response.statusText}`
+    if (debugLogFn) debugLogFn('error', error)
+    throw new Error(error)
   }
 
-  if (debugLogFn) debugLogFn('connection', `Server accepted ${actions.length} enhanced actions`);
+  if (debugLogFn) debugLogFn('connection', `Server accepted ${actions.length} enhanced actions`)
 }
 
 /**
@@ -174,23 +174,23 @@ export async function sendEnhancedActionsToServer(
 export async function sendPerformanceSnapshotsToServer(
   serverUrl: string,
   snapshots: PerformanceSnapshot[],
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
+  debugLogFn?: (category: string, message: string, data?: unknown) => void,
 ): Promise<void> {
-  if (debugLogFn) debugLogFn('connection', `Sending ${snapshots.length} performance snapshots to server`);
+  if (debugLogFn) debugLogFn('connection', `Sending ${snapshots.length} performance snapshots to server`)
 
   const response = await fetch(`${serverUrl}/performance-snapshots`, {
     method: 'POST',
     headers: getRequestHeaders(),
     body: JSON.stringify({ snapshots }),
-  });
+  })
 
   if (!response.ok) {
-    const error = `Server error (performance snapshots): ${response.status} ${response.statusText}`;
-    if (debugLogFn) debugLogFn('error', error);
-    throw new Error(error);
+    const error = `Server error (performance snapshots): ${response.status} ${response.statusText}`
+    if (debugLogFn) debugLogFn('error', error)
+    throw new Error(error)
   }
 
-  if (debugLogFn) debugLogFn('connection', `Server accepted ${snapshots.length} performance snapshots`);
+  if (debugLogFn) debugLogFn('connection', `Server accepted ${snapshots.length} performance snapshots`)
 }
 
 /**
@@ -198,30 +198,30 @@ export async function sendPerformanceSnapshotsToServer(
  */
 export async function checkServerHealth(serverUrl: string): Promise<ServerHealthResponse> {
   try {
-    const response = await fetch(`${serverUrl}/health`);
+    const response = await fetch(`${serverUrl}/health`)
 
     if (!response.ok) {
-      return { connected: false, error: `HTTP ${response.status}` };
+      return { connected: false, error: `HTTP ${response.status}` }
     }
 
-    let data: ServerHealthResponse;
+    let data: ServerHealthResponse
     try {
-      data = (await response.json()) as ServerHealthResponse;
+      data = (await response.json()) as ServerHealthResponse
     } catch {
       return {
         connected: false,
         error: 'Server returned invalid response - check Server URL in options',
-      };
+      }
     }
     return {
       ...data,
       connected: true,
-    };
+    }
   } catch (error) {
     return {
       connected: false,
       error: (error as Error).message,
-    };
+    }
   }
 }
 
@@ -229,23 +229,23 @@ export async function checkServerHealth(serverUrl: string): Promise<ServerHealth
  * Update extension badge
  */
 export function updateBadge(status: ConnectionStatus): void {
-  if (typeof chrome === 'undefined' || !chrome.action) return;
+  if (typeof chrome === 'undefined' || !chrome.action) return
 
   if (status.connected) {
-    const errorCount = status.errorCount || 0;
+    const errorCount = status.errorCount || 0
 
     chrome.action.setBadgeText({
       text: errorCount === 0 ? '' : errorCount > 99 ? '99+' : String(errorCount),
-    });
+    })
 
     chrome.action.setBadgeBackgroundColor({
       color: '#3fb950',
-    });
+    })
   } else {
-    chrome.action.setBadgeText({ text: '!' });
+    chrome.action.setBadgeText({ text: '!' })
     chrome.action.setBadgeBackgroundColor({
       color: '#f85149',
-    });
+    })
   }
 }
 
@@ -256,19 +256,19 @@ export async function postQueryResult(
   serverUrl: string,
   queryId: string,
   type: string,
-  result: unknown
+  result: unknown,
 ): Promise<void> {
-  let endpoint: string;
+  let endpoint: string
   if (type === 'a11y') {
-    endpoint = '/a11y-result';
+    endpoint = '/a11y-result'
   } else if (type === 'state') {
-    endpoint = '/state-result';
+    endpoint = '/state-result'
   } else if (type === 'highlight') {
-    endpoint = '/highlight-result';
+    endpoint = '/highlight-result'
   } else if (type === 'execute' || type === 'browser_action') {
-    endpoint = '/execute-result';
+    endpoint = '/execute-result'
   } else {
-    endpoint = '/dom-result';
+    endpoint = '/dom-result'
   }
 
   try {
@@ -276,13 +276,13 @@ export async function postQueryResult(
       method: 'POST',
       headers: getRequestHeaders(),
       body: JSON.stringify({ id: queryId, result }),
-    });
+    })
 
     if (!response.ok) {
-      console.error(`[Gasoline] Failed to post query result: HTTP ${response.status}`, { queryId, type, endpoint });
+      console.error(`[Gasoline] Failed to post query result: HTTP ${response.status}`, { queryId, type, endpoint })
     }
   } catch (err) {
-    console.error('[Gasoline] Error posting query result:', { queryId, type, endpoint, error: (err as Error).message });
+    console.error('[Gasoline] Error posting query result:', { queryId, type, endpoint, error: (err as Error).message })
   }
 }
 
@@ -295,22 +295,22 @@ export async function postAsyncCommandResult(
   status: 'pending' | 'complete' | 'timeout',
   result: unknown = null,
   error: string | null = null,
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
+  debugLogFn?: (category: string, message: string, data?: unknown) => void,
 ): Promise<void> {
   const payload: {
-    correlation_id: string;
-    status: string;
-    result?: unknown;
-    error?: string;
+    correlation_id: string
+    status: string
+    result?: unknown
+    error?: string
   } = {
     correlation_id: correlationId,
     status: status,
-  };
+  }
   if (result !== null) {
-    payload.result = result;
+    payload.result = result
   }
   if (error !== null) {
-    payload.error = error;
+    payload.error = error
   }
 
   try {
@@ -318,19 +318,26 @@ export async function postAsyncCommandResult(
       method: 'POST',
       headers: getRequestHeaders(),
       body: JSON.stringify(payload),
-    });
+    })
 
     if (!response.ok) {
-      console.error(`[Gasoline] Failed to post async command result: HTTP ${response.status}`, { correlationId, status });
+      console.error(`[Gasoline] Failed to post async command result: HTTP ${response.status}`, {
+        correlationId,
+        status,
+      })
     }
   } catch (err) {
-    console.error('[Gasoline] Error posting async command result:', { correlationId, status, error: (err as Error).message });
+    console.error('[Gasoline] Error posting async command result:', {
+      correlationId,
+      status,
+      error: (err as Error).message,
+    })
     if (debugLogFn) {
       debugLogFn('connection', 'Failed to post async command result', {
         correlationId,
         status,
         error: (err as Error).message,
-      });
+      })
     }
   }
 }
@@ -342,7 +349,7 @@ export async function postSettings(
   serverUrl: string,
   sessionId: string,
   settings: Record<string, boolean | string>,
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
+  debugLogFn?: (category: string, message: string, data?: unknown) => void,
 ): Promise<void> {
   try {
     const response = await fetch(`${serverUrl}/settings`, {
@@ -352,32 +359,30 @@ export async function postSettings(
         session_id: sessionId,
         settings: settings,
       }),
-    });
+    })
 
     if (!response.ok) {
-      console.error(`[Gasoline] Failed to post settings: HTTP ${response.status}`, { sessionId });
+      console.error(`[Gasoline] Failed to post settings: HTTP ${response.status}`, { sessionId })
     } else {
-      if (debugLogFn) debugLogFn('connection', 'Posted settings to server', settings);
+      if (debugLogFn) debugLogFn('connection', 'Posted settings to server', settings)
     }
   } catch (err) {
-    console.error('[Gasoline] Error posting settings:', { sessionId, error: (err as Error).message });
-    if (debugLogFn) debugLogFn('connection', 'Failed to post settings', { error: (err as Error).message });
+    console.error('[Gasoline] Error posting settings:', { sessionId, error: (err as Error).message })
+    if (debugLogFn) debugLogFn('connection', 'Failed to post settings', { error: (err as Error).message })
   }
 }
 
 /**
  * Poll the server's /settings endpoint for AI capture overrides
  */
-export async function pollCaptureSettings(
-  serverUrl: string
-): Promise<Record<string, string> | null> {
+export async function pollCaptureSettings(serverUrl: string): Promise<Record<string, string> | null> {
   try {
-    const response = await fetch(`${serverUrl}/settings`);
-    if (!response.ok) return null;
-    const data = (await response.json()) as { capture_overrides?: Record<string, string> };
-    return data.capture_overrides || {};
+    const response = await fetch(`${serverUrl}/settings`)
+    if (!response.ok) return null
+    const data = (await response.json()) as { capture_overrides?: Record<string, string> }
+    return data.capture_overrides || {}
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -387,28 +392,28 @@ export async function pollCaptureSettings(
 export async function postExtensionLogs(
   serverUrl: string,
   logs: Array<{
-    timestamp: string;
-    level: string;
-    message: string;
-    source: string;
-    category: string;
-    data?: unknown;
-  }>
+    timestamp: string
+    level: string
+    message: string
+    source: string
+    category: string
+    data?: unknown
+  }>,
 ): Promise<void> {
-  if (logs.length === 0) return;
+  if (logs.length === 0) return
 
   try {
     const response = await fetch(`${serverUrl}/extension-logs`, {
       method: 'POST',
       headers: getRequestHeaders(),
       body: JSON.stringify({ logs }),
-    });
+    })
 
     if (!response.ok) {
-      console.error(`[Gasoline] Failed to post extension logs: HTTP ${response.status}`, { count: logs.length });
+      console.error(`[Gasoline] Failed to post extension logs: HTTP ${response.status}`, { count: logs.length })
     }
   } catch (err) {
-    console.error('[Gasoline] Error posting extension logs:', { count: logs.length, error: (err as Error).message });
+    console.error('[Gasoline] Error posting extension logs:', { count: logs.length, error: (err as Error).message })
   }
 }
 
@@ -418,30 +423,30 @@ export async function postExtensionLogs(
 export async function sendStatusPing(
   serverUrl: string,
   statusMessage: {
-    type: string;
-    tracking_enabled: boolean;
-    tracked_tab_id: number | null;
-    tracked_tab_url: string | null;
-    message: string;
-    extension_connected: boolean;
-    timestamp: string;
+    type: string
+    tracking_enabled: boolean
+    tracked_tab_id: number | null
+    tracked_tab_url: string | null
+    message: string
+    extension_connected: boolean
+    timestamp: string
   },
-  diagnosticLogFn?: (message: string) => void
+  diagnosticLogFn?: (message: string) => void,
 ): Promise<void> {
   try {
     const response = await fetch(`${serverUrl}/api/extension-status`, {
       method: 'POST',
       headers: getRequestHeaders(),
       body: JSON.stringify(statusMessage),
-    });
+    })
 
     if (!response.ok) {
-      console.error(`[Gasoline] Failed to send status ping: HTTP ${response.status}`, { type: statusMessage.type });
+      console.error(`[Gasoline] Failed to send status ping: HTTP ${response.status}`, { type: statusMessage.type })
     }
   } catch (err) {
-    console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: (err as Error).message });
+    console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: (err as Error).message })
     if (diagnosticLogFn) {
-      diagnosticLogFn('[Gasoline] Status ping error: ' + (err as Error).message);
+      diagnosticLogFn('[Gasoline] Status ping error: ' + (err as Error).message)
     }
   }
 }
@@ -454,44 +459,46 @@ export async function pollPendingQueries(
   sessionId: string,
   pilotState: '0' | '1',
   diagnosticLogFn?: (message: string) => void,
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
-): Promise<Array<{
-  id: string;
-  type: string;
-  params: string | Record<string, unknown>;
-  correlation_id?: string;
-}>> {
+  debugLogFn?: (category: string, message: string, data?: unknown) => void,
+): Promise<
+  Array<{
+    id: string
+    type: string
+    params: string | Record<string, unknown>
+    correlation_id?: string
+  }>
+> {
   try {
     if (diagnosticLogFn) {
-      diagnosticLogFn(`[Diagnostic] Poll request: header=${pilotState}`);
+      diagnosticLogFn(`[Diagnostic] Poll request: header=${pilotState}`)
     }
 
     const response = await fetch(`${serverUrl}/pending-queries`, {
       headers: {
         ...getRequestHeaders({ 'X-Gasoline-Session': sessionId, 'X-Gasoline-Pilot': pilotState }),
       },
-    });
+    })
 
     if (!response.ok) {
-      if (debugLogFn) debugLogFn('connection', 'Poll pending-queries failed', { status: response.status });
-      return [];
+      if (debugLogFn) debugLogFn('connection', 'Poll pending-queries failed', { status: response.status })
+      return []
     }
 
     const data = (await response.json()) as {
       queries?: Array<{
-        id: string;
-        type: string;
-        params: string | Record<string, unknown>;
-        correlation_id?: string;
-      }>;
-    };
+        id: string
+        type: string
+        params: string | Record<string, unknown>
+        correlation_id?: string
+      }>
+    }
 
-    if (!data.queries || data.queries.length === 0) return [];
+    if (!data.queries || data.queries.length === 0) return []
 
-    if (debugLogFn) debugLogFn('connection', 'Got pending queries', { count: data.queries.length });
-    return data.queries;
+    if (debugLogFn) debugLogFn('connection', 'Got pending queries', { count: data.queries.length })
+    return data.queries
   } catch (err) {
-    if (debugLogFn) debugLogFn('connection', 'Poll pending-queries error', { error: (err as Error).message });
-    return [];
+    if (debugLogFn) debugLogFn('connection', 'Poll pending-queries error', { error: (err as Error).message })
+    return []
   }
 }

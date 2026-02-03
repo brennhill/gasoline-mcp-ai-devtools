@@ -131,7 +131,7 @@ func (c Cursor) IsNewer(entryTimestamp string, entrySequence int64) bool {
 
 // NormalizeTimestamp converts various timestamp formats to RFC3339 string.
 // Handles: int64 (Unix milliseconds), time.Time, string (passthrough).
-func NormalizeTimestamp(ts interface{}) string {
+func NormalizeTimestamp(ts any) string {
 	switch v := ts.(type) {
 	case string:
 		// Already a string, assume RFC3339 format

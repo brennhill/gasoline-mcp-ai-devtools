@@ -10,6 +10,18 @@ import (
 )
 
 // ============================================
+// BufferCursor
+// ============================================
+
+// BufferCursor tracks a read position in a ring buffer.
+// The timestamp allows detecting when the buffer has wrapped and
+// the position is no longer valid (all data at that position has been evicted).
+type BufferCursor struct {
+	Position  int64     // Monotonic position in the buffer (total items ever added)
+	Timestamp time.Time // When this position was last valid
+}
+
+// ============================================
 // RingBuffer
 // ============================================
 

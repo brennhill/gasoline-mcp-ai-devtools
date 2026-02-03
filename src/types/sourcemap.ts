@@ -7,19 +7,19 @@
  * Parsed source map
  */
 export interface ParsedSourceMap {
-  readonly sources: readonly string[];
-  readonly names: readonly string[];
-  readonly sourceRoot: string;
-  readonly mappings: readonly (readonly (readonly number[])[])[];
-  readonly sourcesContent: readonly string[];
+  readonly sources: readonly string[]
+  readonly names: readonly string[]
+  readonly sourceRoot: string
+  readonly mappings: readonly (readonly (readonly number[])[])[]
+  readonly sourcesContent: readonly string[]
 }
 
 /**
  * Original location from source map
  */
 export interface OriginalLocation {
-  readonly source: string;
-  readonly line: number;
-  readonly column: number;
-  readonly name: string | null;
+  readonly source: string
+  readonly line: number
+  readonly column: number
+  readonly name: string | null
 }

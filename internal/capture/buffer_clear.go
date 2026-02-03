@@ -110,6 +110,7 @@ func (c *Capture) ClearAll() {
 	c.networkBodies = make([]NetworkBody, 0)
 	c.networkAddedAt = make([]time.Time, 0)
 	c.nbMemoryTotal = 0
+	c.networkWaterfall = make([]NetworkWaterfallEntry, 0, c.networkWaterfallCapacity)
 	c.enhancedActions = make([]EnhancedAction, 0)
 	c.actionAddedAt = make([]time.Time, 0)
 	c.connections = make(map[string]*connectionState)

@@ -1,6 +1,6 @@
 # Gasoline Build Makefile
 
-VERSION := 5.4.0
+VERSION := 5.4.1
 BINARY_NAME := gasoline
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION)
@@ -14,7 +14,7 @@ PLATFORMS := \
 	windows-amd64
 
 .PHONY: all clean build test test-js test-fast test-all test-race test-cover test-bench test-fuzz \
-	dev run checksums verify-zero-deps verify-imports verify-size \
+	dev run checksums verify-zero-deps verify-imports verify-size check-file-length \
 	lint lint-go lint-js format format-fix typecheck check ci \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
 	release-check install-hooks bench-baseline sync-version \
@@ -90,6 +90,10 @@ verify-size:
 	MAX=15000000; \
 	if [ $$SIZE -gt $$MAX ]; then echo "FAIL: Binary size $${SIZE} bytes exceeds $${MAX} byte limit"; exit 1; \
 	else echo "OK: Binary size $${SIZE} bytes (limit: $${MAX})"; fi
+
+# Check file line limits (800 lines soft limit)
+check-file-length:
+	@bash scripts/check-file-length.sh
 
 build: $(PLATFORMS)
 
@@ -233,6 +237,20 @@ pre-commit: lint security-check
 # Full verification (lint + security + tests with coverage)
 verify-all: lint security-check test-cover test-js
 	@echo "All verification checks passed"
+
+# Quality gate for top 1% standards (comprehensive)
+quality-gate: check-file-length lint typecheck security-check test test-js
+	@echo ""
+	@echo "═══════════════════════════════════════════"
+	@echo "✅ QUALITY GATE PASSED - Top 1% Standards"
+	@echo "═══════════════════════════════════════════"
+	@echo "  ✓ File length limits enforced"
+	@echo "  ✓ Linting passed (ESLint + go vet)"
+	@echo "  ✓ Type safety verified (TypeScript)"
+	@echo "  ✓ Security checks passed"
+	@echo "  ✓ All Go tests passed"
+	@echo "  ✓ All TypeScript tests passed"
+	@echo "═══════════════════════════════════════════"
 
 # Update all version references to match VERSION (single source of truth)
 sync-version:

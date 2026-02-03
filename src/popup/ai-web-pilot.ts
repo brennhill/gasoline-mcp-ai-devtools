@@ -8,22 +8,22 @@
  * Read the current state from chrome.storage.local.
  */
 export async function initAiWebPilotToggle(): Promise<void> {
-  const toggle = document.getElementById('aiWebPilotEnabled') as HTMLInputElement | null;
-  if (!toggle) return;
+  const toggle = document.getElementById('aiWebPilotEnabled') as HTMLInputElement | null
+  if (!toggle) return
 
   return new Promise((resolve) => {
     // Read from chrome.storage.local (single source of truth)
     chrome.storage.local.get(['aiWebPilotEnabled'], (result: { aiWebPilotEnabled?: boolean }) => {
-      toggle.checked = result.aiWebPilotEnabled === true;
+      toggle.checked = result.aiWebPilotEnabled === true
 
       // Set up change handler
       toggle.addEventListener('change', () => {
-        handleAiWebPilotToggle(toggle.checked);
-      });
+        handleAiWebPilotToggle(toggle.checked)
+      })
 
-      resolve();
-    });
-  });
+      resolve()
+    })
+  })
 }
 
 /**
@@ -47,14 +47,17 @@ export async function initAiWebPilotToggle(): Promise<void> {
  */
 export async function handleAiWebPilotToggle(enabled: boolean): Promise<void> {
   // ONLY communicate with background - do NOT write to storage directly
-  chrome.runtime.sendMessage({ type: 'setAiWebPilotEnabled', enabled }, (response: { success?: boolean } | undefined) => {
-    if (!response || !response.success) {
-      console.error('[Gasoline] Failed to set AI Web Pilot toggle in background');
-      // Revert the UI if background didn't accept the change
-      const toggle = document.getElementById('aiWebPilotEnabled') as HTMLInputElement | null;
-      if (toggle) {
-        toggle.checked = !enabled;
+  chrome.runtime.sendMessage(
+    { type: 'setAiWebPilotEnabled', enabled },
+    (response: { success?: boolean } | undefined) => {
+      if (!response || !response.success) {
+        console.error('[Gasoline] Failed to set AI Web Pilot toggle in background')
+        // Revert the UI if background didn't accept the change
+        const toggle = document.getElementById('aiWebPilotEnabled') as HTMLInputElement | null
+        if (toggle) {
+          toggle.checked = !enabled
+        }
       }
-    }
-  });
+    },
+  )
 }

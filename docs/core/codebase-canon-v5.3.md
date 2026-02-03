@@ -4,7 +4,7 @@ scope: documentation/canonical-reference
 ai-priority: high
 tags: [v5.3, canonical, codebase-truth, reference]
 version-applies-to: v5.3
-relates-to: [../../.claude/refs/architecture.md, known-issues.md, release.md]
+relates-to: [../../.claude/refs/architecture.md, known-issues.md, RELEASE.md]
 last-verified: 2026-01-31
 canonical: true
 ---
@@ -218,7 +218,7 @@ git log -n 5 --oneline cmd/dev-console/tools.go
 ## Related Documents
 
 - `.claude/refs/architecture.md` — System architecture (canonical)
-- `release.md` — Release process and quality gates
+- `RELEASE.md` — Release process and quality gates
 - `known-issues.md` — Current blockers and fixes
 - `UAT-v5.3-CHECKLIST.md` — Comprehensive test verification
 - Features `*/tech-spec.md` — Implementation details per feature

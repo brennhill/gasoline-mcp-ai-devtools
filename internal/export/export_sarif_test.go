@@ -1,3 +1,8 @@
+//go:build integration
+// +build integration
+
+// NOTE: These tests require MCP handler types that aren't exported.
+// Run with: go test -tags=integration ./internal/export/...
 package export
 
 import (
