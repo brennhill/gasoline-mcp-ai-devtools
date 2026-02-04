@@ -23,6 +23,19 @@
 
 ---
 
+<div align="center">
+
+## ⚠️ STABILITY WARNING ⚠️
+
+### The current version is UNSTABLE
+
+**Please wait for the next patch release before using.**
+
+We are actively working on fixes. Check back soon!
+
+</div>
+
+---
 
 ## Quick Start
 
