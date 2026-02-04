@@ -7,7 +7,6 @@ package main
 import (
 	"encoding/json"
 	"io"
-	"os"
 	"sync"
 	"time"
 
@@ -84,7 +83,7 @@ func NewStreamState(sseRegistry *SSERegistry) *StreamState {
 		SeenMessages: make(map[string]time.Time),
 		MinuteStart:  time.Now(),
 		sseRegistry:  sseRegistry,
-		writer:       os.Stdout, // fallback for tests
+		writer:       nil, // CRITICAL: Never write to stdout in MCP mode (causes parse errors in IDEs)
 	}
 }
 

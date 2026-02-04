@@ -282,10 +282,19 @@ func handleMCPMessages(registry *SSERegistry, mcp *MCPHandler) http.HandlerFunc 
 
 		var req JSONRPCRequest
 		if err := json.Unmarshal(bodyBytes, &req); err != nil {
+			// Try to extract ID from malformed JSON
+			var partial map[string]any
+			var errorID any = "error"  // Fallback ID (never null - Cursor rejects it)
+			if json.Unmarshal(bodyBytes, &partial) == nil {
+				if id, ok := partial["id"]; ok && id != nil {
+					errorID = id
+				}
+			}
+
 			// Send JSON-RPC parse error via SSE
 			errResp := JSONRPCResponse{
 				JSONRPC: "2.0",
-				ID:      nil,
+				ID:      errorID,
 				Error: &JSONRPCError{
 					Code:    -32700,
 					Message: "Parse error: " + err.Error(),
@@ -305,8 +314,14 @@ func handleMCPMessages(registry *SSERegistry, mcp *MCPHandler) http.HandlerFunc 
 		// Process request
 		resp := mcp.HandleRequest(req)
 
+		// Notifications return nil - do NOT send a response
+		if resp == nil {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		// Send response via SSE
-		if err := registry.SendMessage(sessionID, resp); err != nil {
+		if err := registry.SendMessage(sessionID, *resp); err != nil {
 			http.Error(w, "Failed to send response", http.StatusInternalServerError)
 			return
 		}

@@ -6,30 +6,30 @@
 /**
  * Original favicon href (to restore when tracking stops)
  */
-let originalFaviconHref = null
+let originalFaviconHref = null;
 /**
  * Interval ID for flicker effect (uses setInterval, not requestAnimationFrame)
  * This ensures animation continues even when tab is hidden (visible in tab bar)
  */
-let flickerInterval = null
+let flickerInterval = null;
 /**
  * Initialize favicon replacement.
  * Listens for tracking state changes and updates favicon accordingly.
  */
 export function initFaviconReplacer() {
-  // Listen for tracking state updates from background
-  chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
-    if (message.type === 'trackingStateChanged') {
-      const newState = message.state
-      updateFavicon(newState)
-    }
-  })
-  // Request initial tracking state
-  chrome.runtime.sendMessage({ type: 'getTrackingState' }, (response) => {
-    if (response && response.state) {
-      updateFavicon(response.state)
-    }
-  })
+    // Listen for tracking state updates from background
+    chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
+        if (message.type === 'trackingStateChanged') {
+            const newState = message.state;
+            updateFavicon(newState);
+        }
+    });
+    // Request initial tracking state
+    chrome.runtime.sendMessage({ type: 'getTrackingState' }, (response) => {
+        if (response && response.state) {
+            updateFavicon(response.state);
+        }
+    });
 }
 /**
  * Update favicon based on tracking state.
@@ -38,58 +38,60 @@ export function initFaviconReplacer() {
  * - Tracked (AI Pilot on): Shows flickering flame
  */
 function updateFavicon(state) {
-  if (!state.isTracked) {
-    // Restore original favicon
-    restoreOriginalFavicon()
-    stopFlicker()
-  } else if (state.aiPilotEnabled) {
-    // Tracked + AI Pilot on = flickering flame
-    replaceFaviconWithFlame(true)
-    startFlicker()
-  } else {
-    // Tracked only = static glowing flame
-    replaceFaviconWithFlame(false)
-    stopFlicker()
-  }
+    if (!state.isTracked) {
+        // Restore original favicon
+        restoreOriginalFavicon();
+        stopFlicker();
+    }
+    else if (state.aiPilotEnabled) {
+        // Tracked + AI Pilot on = flickering flame
+        replaceFaviconWithFlame(true);
+        startFlicker();
+    }
+    else {
+        // Tracked only = static glowing flame
+        replaceFaviconWithFlame(false);
+        stopFlicker();
+    }
 }
 /**
  * Save original favicon and replace with Gasoline flame.
  */
 function replaceFaviconWithFlame(withGlow) {
-  // Save original favicon (only once)
-  if (!originalFaviconHref) {
-    const existingLink = document.querySelector('link[rel*="icon"]')
-    originalFaviconHref = existingLink?.href || ''
-  }
-  // Remove existing favicons
-  const existingIcons = document.querySelectorAll('link[rel*="icon"]')
-  existingIcons.forEach((icon) => icon.remove())
-  // Add Gasoline flame favicon
-  const link = document.createElement('link')
-  link.rel = 'icon'
-  link.type = 'image/svg+xml'
-  link.id = 'gasoline-favicon'
-  // Use glow icon if tracking, regular icon if not
-  const iconPath = withGlow ? 'icons/icon-glow.svg' : 'icons/icon.svg'
-  link.href = chrome.runtime.getURL(iconPath)
-  document.head.appendChild(link)
+    // Save original favicon (only once)
+    if (!originalFaviconHref) {
+        const existingLink = document.querySelector('link[rel*="icon"]');
+        originalFaviconHref = existingLink?.href || '';
+    }
+    // Remove existing favicons
+    const existingIcons = document.querySelectorAll('link[rel*="icon"]');
+    existingIcons.forEach((icon) => icon.remove());
+    // Add Gasoline flame favicon
+    const link = document.createElement('link');
+    link.rel = 'icon';
+    link.type = 'image/svg+xml';
+    link.id = 'gasoline-favicon';
+    // Use glow icon if tracking, regular icon if not
+    const iconPath = withGlow ? 'icons/icon-glow.svg' : 'icons/icon.svg';
+    link.href = chrome.runtime.getURL(iconPath);
+    document.head.appendChild(link);
 }
 /**
  * Restore the original page favicon.
  */
 function restoreOriginalFavicon() {
-  // Remove Gasoline favicon
-  const gasolineIcon = document.getElementById('gasoline-favicon')
-  if (gasolineIcon) {
-    gasolineIcon.remove()
-  }
-  // Restore original
-  if (originalFaviconHref) {
-    const link = document.createElement('link')
-    link.rel = 'icon'
-    link.href = originalFaviconHref
-    document.head.appendChild(link)
-  }
+    // Remove Gasoline favicon
+    const gasolineIcon = document.getElementById('gasoline-favicon');
+    if (gasolineIcon) {
+        gasolineIcon.remove();
+    }
+    // Restore original
+    if (originalFaviconHref) {
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.href = originalFaviconHref;
+        document.head.appendChild(link);
+    }
 }
 /**
  * Start flicker animation (for AI Pilot active state).
@@ -102,40 +104,40 @@ function restoreOriginalFavicon() {
  * - Uses setInterval (not requestAnimationFrame) so it's visible in tab bar when tab is hidden
  */
 function startFlicker() {
-  if (flickerInterval !== null) {
-    return // Already flickering
-  }
-  // 8-frame sequence for smooth breathing effect with color temperature shift
-  const flameFrames = [
-    'icon-flicker-1-tiny.svg', // 85% - dark red/orange (coolest) + small dark ring
-    'icon-flicker-2-small.svg', // 92% - orange + small orange ring
-    'icon-flicker-3-normal.svg', // 100% - orange-yellow (base) + medium orange ring
-    'icon-flicker-4-medium.svg', // 105% - yellow + medium yellow ring
-    'icon-flicker-5-large.svg', // 112% - yellow/white (PEAK - hottest) + large bright ring
-    'icon-flicker-6-medium.svg', // 105% - yellow + medium yellow ring (shrinking)
-    'icon-flicker-7-smallmed.svg', // 96% - orange-yellow + medium ring
-    'icon-flicker-8-small.svg', // 92% - orange + small orange ring (back to small)
-  ]
-  let currentFrameIndex = 0
-  // Use setInterval instead of requestAnimationFrame so animation continues
-  // even when tab is hidden (user can see flicker in browser tab bar)
-  flickerInterval = window.setInterval(() => {
-    currentFrameIndex = (currentFrameIndex + 1) % flameFrames.length
-    // Update favicon
-    const gasolineIcon = document.getElementById('gasoline-favicon')
-    if (gasolineIcon) {
-      const iconPath = `icons/${flameFrames[currentFrameIndex]}`
-      gasolineIcon.href = chrome.runtime.getURL(iconPath)
+    if (flickerInterval !== null) {
+        return; // Already flickering
     }
-  }, 150) // 150ms per frame = 1.2s full cycle (browser-limited, but visible)
+    // 8-frame sequence for smooth breathing effect with color temperature shift
+    const flameFrames = [
+        'icon-flicker-1-tiny.svg', // 85% - dark red/orange (coolest) + small dark ring
+        'icon-flicker-2-small.svg', // 92% - orange + small orange ring
+        'icon-flicker-3-normal.svg', // 100% - orange-yellow (base) + medium orange ring
+        'icon-flicker-4-medium.svg', // 105% - yellow + medium yellow ring
+        'icon-flicker-5-large.svg', // 112% - yellow/white (PEAK - hottest) + large bright ring
+        'icon-flicker-6-medium.svg', // 105% - yellow + medium yellow ring (shrinking)
+        'icon-flicker-7-smallmed.svg', // 96% - orange-yellow + medium ring
+        'icon-flicker-8-small.svg', // 92% - orange + small orange ring (back to small)
+    ];
+    let currentFrameIndex = 0;
+    // Use setInterval instead of requestAnimationFrame so animation continues
+    // even when tab is hidden (user can see flicker in browser tab bar)
+    flickerInterval = window.setInterval(() => {
+        currentFrameIndex = (currentFrameIndex + 1) % flameFrames.length;
+        // Update favicon
+        const gasolineIcon = document.getElementById('gasoline-favicon');
+        if (gasolineIcon) {
+            const iconPath = `icons/${flameFrames[currentFrameIndex]}`;
+            gasolineIcon.href = chrome.runtime.getURL(iconPath);
+        }
+    }, 150); // 150ms per frame = 1.2s full cycle (browser-limited, but visible)
 }
 /**
  * Stop flicker animation.
  */
 function stopFlicker() {
-  if (flickerInterval !== null) {
-    clearInterval(flickerInterval)
-    flickerInterval = null
-  }
+    if (flickerInterval !== null) {
+        clearInterval(flickerInterval);
+        flickerInterval = null;
+    }
 }
 //# sourceMappingURL=favicon-replacer.js.map

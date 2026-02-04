@@ -6,39 +6,39 @@
  * DOM element info from query
  */
 export interface DomElementInfo {
-  readonly tag: string
-  readonly id?: string
-  readonly classes?: readonly string[]
-  readonly text?: string
-  readonly html?: string
-  readonly attributes?: Readonly<Record<string, string>>
-  readonly boundingRect?: {
-    readonly x: number
-    readonly y: number
-    readonly width: number
-    readonly height: number
-  }
+    readonly tag: string;
+    readonly id?: string;
+    readonly classes?: readonly string[];
+    readonly text?: string;
+    readonly html?: string;
+    readonly attributes?: Readonly<Record<string, string>>;
+    readonly boundingRect?: {
+        readonly x: number;
+        readonly y: number;
+        readonly width: number;
+        readonly height: number;
+    };
 }
 /**
  * DOM query result
  */
 export interface DomQueryResult {
-  readonly elements: readonly DomElementInfo[]
-  readonly count: number
-  readonly truncated: boolean
-  readonly error?: string
+    readonly elements: readonly DomElementInfo[];
+    readonly count: number;
+    readonly truncated: boolean;
+    readonly error?: string;
 }
 /**
  * Page info result
  */
 export interface PageInfo {
-  readonly url: string
-  readonly title: string
-  readonly favicon?: string
-  readonly status: string
-  readonly viewport?: {
-    readonly width: number
-    readonly height: number
-  }
+    readonly url: string;
+    readonly title: string;
+    readonly favicon?: string;
+    readonly status: string;
+    readonly viewport?: {
+        readonly width: number;
+        readonly height: number;
+    };
 }
 //# sourceMappingURL=dom.d.ts.map

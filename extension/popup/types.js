@@ -2,5 +2,5 @@
  * @fileoverview Popup Types
  * Type definitions for popup UI
  */
-export {}
+export {};
 //# sourceMappingURL=types.js.map

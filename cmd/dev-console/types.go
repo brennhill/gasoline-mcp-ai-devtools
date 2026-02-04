@@ -31,10 +31,8 @@ type JSONRPCError struct {
 
 // MCPTool represents a tool in the MCP protocol
 type MCPTool struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	// any: JSON Schema is inherently dynamic with nested objects/arrays of varying types
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
 	InputSchema map[string]any `json:"inputSchema"` // camelCase: MCP spec standard
-	// any: MCP _meta field contains arbitrary tool metadata (data counts, hints, etc.)
-	Meta map[string]any `json:"_meta,omitempty"`
+	// Note: _meta removed - not in MCP spec, caused schema validation errors in Cursor
 }
