@@ -5,5 +5,5 @@
  * Usage: import type { LogEntry, BackgroundMessage } from './types';
  */
 // Re-export type guards from utils
-export { isObject, isNonEmptyString, hasType, isJsonValue, createTypeGuard } from './utils'
+export { isObject, isNonEmptyString, hasType, isJsonValue, createTypeGuard } from './utils';
 //# sourceMappingURL=index.js.map

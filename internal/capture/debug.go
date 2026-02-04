@@ -23,16 +23,16 @@ func (c *Capture) logHTTPDebugEntry(entry HTTPDebugEntry) {
 
 // PrintHTTPDebug prints an HTTP debug entry to stderr.
 // Must be called WITHOUT holding the lock to avoid deadlock.
+// Quiet mode: All HTTP debug output suppressed for clean MCP experience.
+// Debug entries are still stored in circular buffer for get_health tool.
 func PrintHTTPDebug(entry HTTPDebugEntry) {
-	fmt.Fprintf(os.Stderr, "[gasoline] HTTP %s %s | session=%s client=%s status=%d duration=%dms\n",
-		entry.Method, entry.Endpoint, entry.SessionID, entry.ClientID, entry.ResponseStatus, entry.DurationMs)
-	if entry.RequestBody != "" {
-		fmt.Fprintf(os.Stderr, "[gasoline]   Request: %s\n", entry.RequestBody)
-	}
-	if entry.ResponseBody != "" {
-		fmt.Fprintf(os.Stderr, "[gasoline]   Response: %s\n", entry.ResponseBody)
-	}
-	if entry.Error != "" {
-		fmt.Fprintf(os.Stderr, "[gasoline]   Error: %s\n", entry.Error)
+	// Quiet mode: HTTP debug goes to circular buffer only, not stderr
+	// Only print errors (non-2xx status codes)
+	if entry.ResponseStatus >= 400 {
+		fmt.Fprintf(os.Stderr, "[gasoline] HTTP %s %s | status=%d\n",
+			entry.Method, entry.Endpoint, entry.ResponseStatus)
+		if entry.Error != "" {
+			fmt.Fprintf(os.Stderr, "[gasoline]   Error: %s\n", entry.Error)
+		}
 	}
 }

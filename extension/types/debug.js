@@ -2,5 +2,5 @@
  * @fileoverview Debug Types
  * Debug logging and categorization
  */
-export {}
+export {};
 //# sourceMappingURL=debug.js.map

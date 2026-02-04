@@ -2,5 +2,5 @@
  * @fileoverview Pending Query Types
  * Query types, browser actions, and tabs information
  */
-export {}
+export {};
 //# sourceMappingURL=queries.js.map

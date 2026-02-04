@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -51,17 +50,18 @@ func checkGitHubVersion() {
 	}
 	versionCheckMu.Unlock()
 
-	// Fetch from GitHub
+	// Fetch from GitHub (silent on errors - version check is optional/non-critical)
 	client := &http.Client{Timeout: httpClientTimeout}
 	resp, err := client.Get(githubAPIURL) // #nosec G107 -- constant GitHub API URL
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] GitHub version check failed: %v\n", err)
+		// Silent: network errors are common, version check is non-critical
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "[gasoline] GitHub API error: %d\n", resp.StatusCode)
+		// Silent: GitHub rate limits (403) and other errors are expected
+		// Version info is available via get_health tool when it succeeds
 		return
 	}
 
@@ -69,14 +69,14 @@ func checkGitHubVersion() {
 		TagName string `json:"tag_name"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&releaseInfo); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Failed to parse GitHub response: %v\n", err)
+		// Silent: parse errors don't affect core functionality
 		return
 	}
 
 	// Extract version from tag (e.g., "v5.2.6" -> "5.2.6")
 	newVersion := strings.TrimPrefix(releaseInfo.TagName, "v")
 	if newVersion == "" {
-		fmt.Fprintf(os.Stderr, "[gasoline] Invalid GitHub release tag: %s\n", releaseInfo.TagName)
+		// Silent: invalid tag doesn't affect core functionality
 		return
 	}
 
@@ -85,9 +85,8 @@ func checkGitHubVersion() {
 	lastVersionCheck = time.Now()
 	versionCheckMu.Unlock()
 
-	if newVersion != version {
-		fmt.Fprintf(os.Stderr, "[gasoline] New version available: %s (current: %s)\n", newVersion, version)
-	}
+	// Quiet mode: Version check results are available via get_health tool
+	// No need to spam stderr - LLMs don't care about version updates
 }
 
 // startVersionCheckLoop starts a periodic check for new versions on GitHub (daily)

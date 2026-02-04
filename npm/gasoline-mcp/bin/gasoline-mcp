@@ -5,6 +5,35 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+// Quiet mode: Log to file instead of stderr for clean MCP experience
+const WRAPPER_LOG_FILE = path.join(os.homedir(), 'gasoline-wrapper.log');
+const MAX_LOG_SIZE = 1024 * 1024; // 1MB max size
+
+function logToFile(message) {
+  try {
+    const timestamp = new Date().toISOString();
+    const logLine = `[${timestamp}] ${message}\n`;
+
+    // Check log size and rotate if needed
+    try {
+      const stats = fs.statSync(WRAPPER_LOG_FILE);
+      if (stats.size > MAX_LOG_SIZE) {
+        // Truncate log - keep last 50% of file
+        const content = fs.readFileSync(WRAPPER_LOG_FILE, 'utf8');
+        const lines = content.split('\n');
+        const keepLines = Math.floor(lines.length / 2);
+        fs.writeFileSync(WRAPPER_LOG_FILE, lines.slice(-keepLines).join('\n') + '\n');
+      }
+    } catch (e) {
+      // File doesn't exist yet or can't stat - that's fine
+    }
+
+    fs.appendFileSync(WRAPPER_LOG_FILE, logLine);
+  } catch (e) {
+    // Silently fail if we can't write to log - don't spam stderr
+  }
+}
+
 // Import lib modules
 const config = require('../lib/config');
 const output = require('../lib/output');
@@ -44,6 +73,24 @@ function getPlatformPackage() {
 function findBinary() {
   const pkg = getPlatformPackage();
   const binaryName = os.platform() === 'win32' ? 'gasoline.exe' : 'gasoline';
+
+  // DEV MODE: Check for local dist/ build first (for testing)
+  const platform = os.platform();
+  const arch = os.arch();
+  const platformKey = `${platform}-${arch}`;
+  const distMap = {
+    'darwin-arm64': 'gasoline-darwin-arm64',
+    'darwin-x64': 'gasoline-darwin-x64',
+    'linux-arm64': 'gasoline-linux-arm64',
+    'linux-x64': 'gasoline-linux-x64',
+    'win32-x64': 'gasoline-win32-x64.exe',
+  };
+
+  const devBinary = path.join(__dirname, '..', '..', '..', 'dist', distMap[platformKey]);
+  if (fs.existsSync(devBinary)) {
+    logToFile(`Using local dev build: ${devBinary}`);
+    return devBinary;
+  }
 
   // Try to resolve from node_modules
   const candidates = [
@@ -253,29 +300,12 @@ if (args.includes('--help') || args.includes('-h')) {
 
 // No config command, run the binary
 
-// Kill any existing gasoline servers on port 7890 before starting
-// This ensures npx always uses the newly installed version
-try {
-  const { execSync } = require('child_process');
-  const port = args.includes('--port') ? args[args.indexOf('--port') + 1] : '7890';
-
-  // Find PIDs on the port
-  try {
-    const pids = execSync(`lsof -ti :${port}`, { encoding: 'utf8' }).trim();
-    if (pids) {
-      // Kill all processes on that port
-      execSync(`kill ${pids}`, { stdio: 'ignore' });
-      // Wait for port to be free
-      setTimeout(() => {}, 500);
-    }
-  } catch (e) {
-    // No process on port, or lsof failed - that's fine
-  }
-} catch (e) {
-  // Kill failed - continue anyway
-}
+// Quiet mode: Wrapper is now completely transparent
+// All connection logic (spawn/connect/retry/recovery) handled by Go binary
+logToFile('Wrapper starting, passing control to Go binary');
 
 const binary = findBinary();
+logToFile(`Using binary: ${binary}`);
 
 try {
   const result = execFileSync(binary, args, {

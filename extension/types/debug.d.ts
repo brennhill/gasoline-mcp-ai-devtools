@@ -5,14 +5,14 @@
 /**
  * Debug log categories
  */
-export type DebugCategory = 'connection' | 'capture' | 'error' | 'lifecycle' | 'settings' | 'sourcemap' | 'query'
+export type DebugCategory = 'connection' | 'capture' | 'error' | 'lifecycle' | 'settings' | 'sourcemap' | 'query';
 /**
  * Debug log entry
  */
 export interface DebugLogEntry {
-  readonly ts: string
-  readonly category: DebugCategory
-  readonly message: string
-  readonly data?: unknown
+    readonly ts: string;
+    readonly category: DebugCategory;
+    readonly message: string;
+    readonly data?: unknown;
 }
 //# sourceMappingURL=debug.d.ts.map

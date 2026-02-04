@@ -2,5 +2,5 @@
  * @fileoverview Accessibility Types
  * Accessibility audit results and violations
  */
-export {}
+export {};
 //# sourceMappingURL=accessibility.js.map

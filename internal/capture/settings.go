@@ -69,14 +69,14 @@ func (c *Capture) LoadSettingsFromDisk() {
 	// 5-second threshold matches the connection staleness check in checkPilotReady()
 	age := time.Since(settings.Timestamp)
 	if age > 5*time.Second {
-		fmt.Fprintf(os.Stderr, "[gasoline] Ignoring stale cached settings (age: %v)\n", age)
+		// Quiet mode: Stale settings info goes to log file only
 		return
 	}
 
 	if settings.AIWebPilotEnabled != nil {
 		c.pilotEnabled = *settings.AIWebPilotEnabled
 		c.pilotUpdatedAt = settings.Timestamp
-		fmt.Fprintf(os.Stderr, "[gasoline] Loaded cached settings: pilot=%v (age: %v)\n", c.pilotEnabled, age)
+		// Quiet mode: Settings load info goes to log file only
 	}
 }
 

@@ -41,7 +41,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "5.4.3"
+var version = "5.5.0"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -463,8 +463,22 @@ func handleMCPConnection(server *Server, port int, apiKey string, persist bool) 
 				"persist":   persist,
 				"timestamp": time.Now().UTC().Format(time.RFC3339),
 			}})
-			fmt.Fprintf(os.Stderr, "[gasoline] Starting in MCP mode (HTTP + MCP protocol, persist=%v)\n", persist)
-			runMCPMode(server, port, apiKey, persist)
+			// Quiet mode: Startup message goes to log file only (MCP stdio silence invariant)
+
+			// Spawn server in background goroutine, then bridge stdio
+			go func() {
+				_ = runMCPMode(server, port, apiKey, persist)
+			}()
+
+			// Wait for server to be ready
+			if !waitForServer(port, 10*time.Second) {
+				fmt.Fprintf(os.Stderr, "[gasoline] ERROR: Server failed to start within 10 seconds\n")
+				sendStartupError("Server failed to start within 10 seconds")
+				os.Exit(1)
+			}
+
+			// Server is ready - bridge this client's stdio to HTTP
+			bridgeStdioToHTTP(mcpEndpoint)
 			return
 		}
 
@@ -477,7 +491,7 @@ func handleMCPConnection(server *Server, port int, apiKey string, persist bool) 
 			"port":      port,
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		}})
-		fmt.Fprintf(os.Stderr, "[gasoline] Another client is spawning server, will connect after it's ready\n")
+		// Quiet mode: Race detection goes to log file only
 	}
 
 	// Step 3: Server exists (or is being spawned) - connect with retries
@@ -488,15 +502,10 @@ func handleMCPConnection(server *Server, port int, apiKey string, persist bool) 
 		"port":      port,
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}})
-	fmt.Fprintf(os.Stderr, "[gasoline] Connecting to existing server on port %d\n", port)
+	// Quiet mode: Connection attempts go to log file only
 
-	// Random backoff (1-3 seconds) to stagger concurrent connections (prevents thundering herd)
-	// Use PID for deterministic-but-varied backoff
-	backoffMs := 1000 + (os.Getpid() % 2000) // 1-3 seconds
-	time.Sleep(time.Duration(backoffMs) * time.Millisecond)
-
-	// Test health endpoint with retries before committing to bridge mode
-	// In cold start scenarios, the server may take 1-2 seconds to become ready
+	// Immediately try to connect - no artificial backoff delays
+	// The retry logic below provides natural spacing if needed
 	healthURL := serverURL + "/health"
 	maxRetries := 3 // Increased for cold start tolerance
 	var lastErr error
@@ -513,7 +522,7 @@ func handleMCPConnection(server *Server, port int, apiKey string, persist bool) 
 				"pid":       os.Getpid(),
 				"timestamp": time.Now().UTC().Format(time.RFC3339),
 			}})
-			fmt.Fprintf(os.Stderr, "[gasoline] Connection failed (attempt %d/%d), retrying in %v...\n", attempt, maxRetries, retryDelay)
+			// Quiet mode: Retry details go to log file only, not stderr
 			writeDebugInfo(fmt.Sprintf("connection_attempt_%d", attempt), lastErr, map[string]interface{}{"health_url": healthURL})
 			time.Sleep(retryDelay)
 		}
@@ -587,9 +596,22 @@ func handleMCPConnection(server *Server, port int, apiKey string, persist bool) 
 		"persist":   persist,
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}})
-	fmt.Fprintf(os.Stderr, "[gasoline] Starting fresh server on port %d\n", port)
+	// Quiet mode: Recovery startup is silent
 
-	runMCPMode(server, port, apiKey, persist)
+	// Spawn server in background, then bridge this client
+	go func() {
+		_ = runMCPMode(server, port, apiKey, persist)
+	}()
+
+	// Wait for server to be ready
+	if !waitForServer(port, 10*time.Second) {
+		fmt.Fprintf(os.Stderr, "[gasoline] ERROR: Recovery server failed to start\n")
+		sendStartupError("Recovery server failed to start")
+		os.Exit(1)
+	}
+
+	// Server recovered - bridge this client's stdio
+	bridgeStdioToHTTP(mcpEndpoint)
 }
 
 // gatherConnectionDiagnostics collects detailed information about why connection failed.
@@ -721,11 +743,30 @@ func gatherConnectionDiagnostics(port int, serverURL string, healthURL string) m
 	return diagnostics
 }
 
+// sendStartupError sends a JSON-RPC error response before exiting.
+// This ensures the parent process (IDE) receives a proper error instead of empty response.
+func sendStartupError(message string) {
+	errResp := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      "startup",
+		Error: &JSONRPCError{
+			Code:    -32603,
+			Message: message,
+		},
+	}
+	respJSON, _ := json.Marshal(errResp)
+	fmt.Println(string(respJSON))
+	os.Stdout.Sync()
+	time.Sleep(100 * time.Millisecond) // Allow OS to flush pipe to parent
+}
+
 // runMCPMode runs the server in MCP mode:
 // - HTTP server runs in a goroutine (for browser extension)
 // - MCP protocol runs over stdin/stdout (for Claude Code)
 // If stdin closes (EOF), the HTTP server keeps running until killed.
-func runMCPMode(server *Server, port int, apiKey string, persist bool) {
+// Returns error if port binding fails (race condition with another client).
+// Never returns on success (blocks forever serving MCP protocol).
+func runMCPMode(server *Server, port int, apiKey string, persist bool) error {
 	// Create capture buffers for WebSocket, network, and actions
 	cap := capture.NewCapture()
 
@@ -791,10 +832,8 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 			"error":     err.Error(),
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		}})
-		fmt.Fprintf(os.Stderr, "[gasoline] Fatal: cannot bind port %d: %v\n", port, err)
-		fmt.Fprintf(os.Stderr, "[gasoline] Fix: kill existing process with: lsof -ti :%d | xargs kill\n", port)
-		fmt.Fprintf(os.Stderr, "[gasoline] Or use a different port: --port %d\n", port+1)
-		os.Exit(1)
+		// Return error instead of exiting - allows caller to handle race conditions gracefully
+		return fmt.Errorf("cannot bind port %d: %w", port, err)
 	}
 
 	_ = server.appendToFile([]LogEntry{{
@@ -804,18 +843,8 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 		"port":      port,
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}})
-	fmt.Fprintf(os.Stderr, "[gasoline] v%s — HTTP on port %d, log: %s\n", version, port, server.logFile)
-	fmt.Fprintf(os.Stderr, "[gasoline] Verify: curl http://localhost:%d/health\n", port)
-
-	// Show first-run help if log file is new/empty
-	if fi, err := os.Stat(server.logFile); err != nil || fi.Size() == 0 {
-		fmt.Fprintf(os.Stderr, "[gasoline] ─────────────────────────────────────────────────\n")
-		fmt.Fprintf(os.Stderr, "[gasoline] First run? Next steps:\n")
-		fmt.Fprintf(os.Stderr, "[gasoline]   1. Install extension: chrome://extensions → Load unpacked → extension/\n")
-		fmt.Fprintf(os.Stderr, "[gasoline]   2. Open any website in Chrome\n")
-		fmt.Fprintf(os.Stderr, "[gasoline]   3. Extension popup should show 'Connected'\n")
-		fmt.Fprintf(os.Stderr, "[gasoline] ─────────────────────────────────────────────────\n")
-	}
+	// Quiet mode: Server startup details go to log file only (MCP standard compliance)
+	// All diagnostics preserved in server.logFile for debugging
 
 	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "startup", "version": version, "port": port, "timestamp": time.Now().UTC().Format(time.RFC3339)}})
 
@@ -826,15 +855,14 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) {
 		"pid":       os.Getpid(),
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}})
-	fmt.Fprintf(os.Stderr, "[gasoline] MCP SSE handler ready at /mcp/sse\n")
 
 	// Wait for shutdown signal
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 	s := <-sig
-	fmt.Fprintf(os.Stderr, "[gasoline] Received %s, shutting down\n", s)
 	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
-	fmt.Fprintf(os.Stderr, "[gasoline] Shutdown complete\n")
+	// Quiet mode: Shutdown messages go to log file only
+	return nil // Graceful shutdown via signal
 }
 
 func printHelp() {

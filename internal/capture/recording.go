@@ -41,9 +41,9 @@ func (c *Capture) StartRecording(name string, pageURL string, sensitiveDataEnabl
 		return "", fmt.Errorf("recording_storage_full: Recording storage at capacity (1GB). Please delete old recordings.")
 	}
 
-	// Warn if approaching limit (80%)
+	// Warn if approaching limit (80%) - goes to stderr, not stdout (MCP stdio silence)
 	if c.recordingStorageUsed >= recordingWarningLevel {
-		fmt.Printf("[WARNING] recording_storage_warning: Recording storage at 80%% (%d bytes / %d bytes)\n",
+		fmt.Fprintf(os.Stderr, "[WARNING] recording_storage_warning: Recording storage at 80%% (%d bytes / %d bytes)\n",
 			c.recordingStorageUsed, recordingStorageMax)
 	}
 

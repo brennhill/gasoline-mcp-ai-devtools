@@ -16,7 +16,7 @@ import (
 
 // version is the Gasoline version used in generated exports.
 // This should be kept in sync with the main version in cmd/dev-console/main.go.
-const version = "5.4.3"
+const version = "5.5.0"
 
 // ============================================
 // SARIF 2.1.0 Types

@@ -105,7 +105,7 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		resp := JSONRPCResponse{
 			JSONRPC: "2.0",
-			ID:      nil,
+			ID:      "error",  // Fallback ID (never null - Cursor rejects it)
 			Error: &JSONRPCError{
 				Code:    -32700,
 				Message: "Read error: " + err.Error(),
@@ -143,9 +143,18 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 				capture.PrintHTTPDebug(debugEntry)
 			}
 		}
+		// Try to extract ID from malformed JSON
+		var partial map[string]any
+		var errorID any = "error"  // Fallback ID (never null - Cursor rejects it)
+		if json.Unmarshal(bodyBytes, &partial) == nil {
+			if id, ok := partial["id"]; ok && id != nil {
+				errorID = id
+			}
+		}
+
 		resp := JSONRPCResponse{
 			JSONRPC: "2.0",
-			ID:      nil,
+			ID:      errorID,
 			Error: &JSONRPCError{
 				Code:    -32700,
 				Message: "Parse error: " + err.Error(),
@@ -160,6 +169,13 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	req.ClientID = clientID
 
 	resp := h.HandleRequest(req)
+
+	// Notifications return nil - do NOT send a response
+	if resp == nil {
+		// For HTTP, we still need to send *something* - send 204 No Content
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 
 	// Log debug entry
 	if h.toolHandler != nil {
@@ -193,28 +209,48 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// HandleRequest processes an MCP request and returns a response
-func (h *MCPHandler) HandleRequest(req JSONRPCRequest) JSONRPCResponse {
+// HandleRequest processes an MCP request and returns a response.
+// Returns nil for notifications (which should not receive a response).
+func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
+	// CRITICAL: Notifications do NOT get responses per JSON-RPC 2.0 spec
+	// Notifications are identified by: no "id" field OR method starting with "notifications/"
+	if req.ID == nil || strings.HasPrefix(req.Method, "notifications/") {
+		// This is a notification - do NOT send a response
+		return nil
+	}
+
 	switch req.Method {
 	case "initialize":
-		return h.handleInitialize(req)
+		resp := h.handleInitialize(req)
+		return &resp
 	case "initialized":
-		// Client notification that initialization is complete
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{}`)}
+		// Legacy: some clients send "initialized" as a request (with id)
+		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{}`)}
+		return &resp
 	case "tools/list":
-		return h.handleToolsList(req)
+		resp := h.handleToolsList(req)
+		return &resp
 	case "tools/call":
-		return h.handleToolsCall(req)
+		resp := h.handleToolsCall(req)
+		return &resp
 	case "resources/list":
-		return h.handleResourcesList(req)
+		resp := h.handleResourcesList(req)
+		return &resp
 	case "resources/read":
-		return h.handleResourcesRead(req)
+		resp := h.handleResourcesRead(req)
+		return &resp
 	case "resources/templates/list":
-		return h.handleResourcesTemplatesList(req)
+		resp := h.handleResourcesTemplatesList(req)
+		return &resp
+	case "prompts/list":
+		// Return empty prompts list (we don't support prompts yet)
+		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"prompts":[]}`)}
+		return &resp
 	case "ping":
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{}`)}
+		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{}`)}
+		return &resp
 	default:
-		return JSONRPCResponse{
+		resp := JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Error: &JSONRPCError{
@@ -222,6 +258,7 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) JSONRPCResponse {
 				Message: "Method not found: " + req.Method,
 			},
 		}
+		return &resp
 	}
 }
 
