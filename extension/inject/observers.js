@@ -2,102 +2,99 @@
  * @fileoverview Observers - Observer registration and management for DOM, network,
  * performance, and WebSocket events.
  */
-import { installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js'
-import { installWebSocketCapture, uninstallWebSocketCapture } from '../lib/websocket.js'
-import { wrapFetchWithBodies } from '../lib/network.js'
-import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js'
-import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js'
-import {
-  installActionCapture,
-  uninstallActionCapture,
-  installNavigationCapture,
-  uninstallNavigationCapture,
-} from '../lib/actions.js'
-import { postLog } from '../lib/bridge.js'
-import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js'
+import { installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js';
+import { installWebSocketCapture, uninstallWebSocketCapture, } from '../lib/websocket.js';
+import { wrapFetchWithBodies, } from '../lib/network.js';
+import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js';
+import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js';
+import { installActionCapture, uninstallActionCapture, installNavigationCapture, uninstallNavigationCapture, } from '../lib/actions.js';
+import { postLog } from '../lib/bridge.js';
+import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js';
 // Store original fetch for restoration
-let originalFetch = null
+let originalFetch = null;
 // Interception deferral state (Phase 1/Phase 2 split)
-let deferralEnabled = true
-let phase2Installed = false
-let injectionTimestamp = 0
-let phase2Timestamp = 0
+let deferralEnabled = true;
+let phase2Installed = false;
+let injectionTimestamp = 0;
+let phase2Timestamp = 0;
 /**
  * Wrap fetch to capture network errors
  */
 export function wrapFetch(originalFetchFn) {
-  return async function (input, init) {
-    const startTime = Date.now()
-    const url = typeof input === 'string' ? input : input.url
-    const method = init?.method || (typeof input === 'object' && 'method' in input ? input.method : 'GET') || 'GET'
-    try {
-      const response = await originalFetchFn(input, init)
-      const duration = Date.now() - startTime
-      // Capture errors (4xx, 5xx)
-      if (!response.ok) {
-        let responseBody = ''
+    return async function (input, init) {
+        const startTime = Date.now();
+        const url = typeof input === 'string' ? input : input.url;
+        const method = init?.method || (typeof input === 'object' && 'method' in input ? input.method : 'GET') || 'GET';
         try {
-          const cloned = response.clone()
-          responseBody = await cloned.text()
-          if (responseBody.length > MAX_RESPONSE_LENGTH) {
-            responseBody = responseBody.slice(0, MAX_RESPONSE_LENGTH) + '... [truncated]'
-          }
-        } catch {
-          responseBody = '[Could not read response]'
-        }
-        // Filter sensitive headers (check both init.headers and Request object headers)
-        const safeHeaders = {}
-        const rawHeaders = init?.headers || (typeof input === 'object' && 'headers' in input ? input.headers : null)
-        if (rawHeaders) {
-          const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders
-          Object.keys(headers).forEach((key) => {
-            const value = headers[key]
-            if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
-              safeHeaders[key] = value
+            const response = await originalFetchFn(input, init);
+            const duration = Date.now() - startTime;
+            // Capture errors (4xx, 5xx)
+            if (!response.ok) {
+                let responseBody = '';
+                try {
+                    const cloned = response.clone();
+                    responseBody = await cloned.text();
+                    if (responseBody.length > MAX_RESPONSE_LENGTH) {
+                        responseBody = responseBody.slice(0, MAX_RESPONSE_LENGTH) + '... [truncated]';
+                    }
+                }
+                catch {
+                    responseBody = '[Could not read response]';
+                }
+                // Filter sensitive headers (check both init.headers and Request object headers)
+                const safeHeaders = {};
+                const rawHeaders = init?.headers || (typeof input === 'object' && 'headers' in input ? input.headers : null);
+                if (rawHeaders) {
+                    const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders;
+                    Object.keys(headers).forEach((key) => {
+                        const value = headers[key];
+                        if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+                            safeHeaders[key] = value;
+                        }
+                    });
+                }
+                const logPayload = {
+                    level: 'error',
+                    type: 'network',
+                    method: method.toUpperCase(),
+                    url,
+                    status: response.status,
+                    statusText: response.statusText,
+                    duration,
+                    response: responseBody,
+                    ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}),
+                };
+                postLog(logPayload);
             }
-          })
+            return response;
         }
-        const logPayload = {
-          level: 'error',
-          type: 'network',
-          method: method.toUpperCase(),
-          url,
-          status: response.status,
-          statusText: response.statusText,
-          duration,
-          response: responseBody,
-          ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}),
+        catch (error) {
+            const duration = Date.now() - startTime;
+            // Filter sensitive headers for the error path
+            const safeHeaders = {};
+            const rawHeaders = init?.headers || (typeof input === 'object' && 'headers' in input ? input.headers : null);
+            if (rawHeaders) {
+                const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders;
+                Object.keys(headers).forEach((key) => {
+                    const value = headers[key];
+                    if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+                        safeHeaders[key] = value;
+                    }
+                });
+            }
+            const logPayload = {
+                level: 'error',
+                type: 'network',
+                method: method.toUpperCase(),
+                url,
+                error: error.message,
+                duration,
+                ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}),
+            };
+            postLog(logPayload);
+            throw error;
         }
-        postLog(logPayload)
-      }
-      return response
-    } catch (error) {
-      const duration = Date.now() - startTime
-      // Filter sensitive headers for the error path
-      const safeHeaders = {}
-      const rawHeaders = init?.headers || (typeof input === 'object' && 'headers' in input ? input.headers : null)
-      if (rawHeaders) {
-        const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders
-        Object.keys(headers).forEach((key) => {
-          const value = headers[key]
-          if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
-            safeHeaders[key] = value
-          }
-        })
-      }
-      const logPayload = {
-        level: 'error',
-        type: 'network',
-        method: method.toUpperCase(),
-        url,
-        error: error.message,
-        duration,
-        ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}),
-      }
-      postLog(logPayload)
-      throw error
-    }
-  }
+    };
 }
 /**
  * Install fetch capture.
@@ -105,129 +102,137 @@ export function wrapFetch(originalFetchFn) {
  * then wraps that with wrapFetch to also capture error details for 4xx/5xx responses.
  */
 export function installFetchCapture() {
-  originalFetch = window.fetch
-  // Layer 1: wrapFetchWithBodies captures request/response bodies for ALL requests
-  // Layer 2: wrapFetch captures detailed error logging for 4xx/5xx responses
-  // Use unknown intermediate cast to handle TypeScript's strict fetch overload types
-  // This is necessary because the DOM lib defines fetch with multiple overloads
-  // that TypeScript cannot reconcile with our simpler function signature
-  const wrappedWithBodies = wrapFetchWithBodies(originalFetch)
-  window.fetch = wrapFetch(wrappedWithBodies)
+    originalFetch = window.fetch;
+    // Layer 1: wrapFetchWithBodies captures request/response bodies for ALL requests
+    // Layer 2: wrapFetch captures detailed error logging for 4xx/5xx responses
+    // Use unknown intermediate cast to handle TypeScript's strict fetch overload types
+    // This is necessary because the DOM lib defines fetch with multiple overloads
+    // that TypeScript cannot reconcile with our simpler function signature
+    const wrappedWithBodies = wrapFetchWithBodies(originalFetch);
+    window.fetch = wrapFetch(wrappedWithBodies);
 }
 /**
  * Uninstall fetch capture
  */
 export function uninstallFetchCapture() {
-  if (originalFetch) {
-    window.fetch = originalFetch
-    originalFetch = null
-  }
+    if (originalFetch) {
+        window.fetch = originalFetch;
+        originalFetch = null;
+    }
 }
 /**
  * Install all capture hooks
  */
 export function install() {
-  installConsoleCapture()
-  installFetchCapture()
-  installExceptionCapture()
-  installActionCapture()
-  installNavigationCapture()
-  installWebSocketCapture()
-  installPerformanceCapture()
+    installConsoleCapture();
+    installFetchCapture();
+    installExceptionCapture();
+    installActionCapture();
+    installNavigationCapture();
+    installWebSocketCapture();
+    installPerformanceCapture();
 }
 /**
  * Uninstall all capture hooks
  */
 export function uninstall() {
-  uninstallConsoleCapture()
-  uninstallFetchCapture()
-  uninstallExceptionCapture()
-  uninstallActionCapture()
-  uninstallNavigationCapture()
-  uninstallWebSocketCapture()
-  uninstallPerformanceCapture()
+    uninstallConsoleCapture();
+    uninstallFetchCapture();
+    uninstallExceptionCapture();
+    uninstallActionCapture();
+    uninstallNavigationCapture();
+    uninstallWebSocketCapture();
+    uninstallPerformanceCapture();
 }
 /**
  * Check if heavy intercepts should be deferred until page load
  */
 export function shouldDeferIntercepts() {
-  if (typeof document === 'undefined') return false
-  return document.readyState === 'loading'
+    if (typeof document === 'undefined')
+        return false;
+    return document.readyState === 'loading';
 }
 /**
  * Check memory pressure and adjust buffer capacities
  */
 export function checkMemoryPressure(state) {
-  const result = { ...state }
-  if (state.memoryUsageMB >= MEMORY_HARD_LIMIT_MB) {
-    // Hard limit: disable network bodies
-    result.networkBodiesEnabled = false
-    result.wsBufferCapacity = Math.floor(state.wsBufferCapacity * 0.25)
-    result.networkBufferCapacity = Math.floor(state.networkBufferCapacity * 0.25)
-  } else if (state.memoryUsageMB >= MEMORY_SOFT_LIMIT_MB) {
-    // Soft limit: reduce buffers
-    result.wsBufferCapacity = Math.floor(state.wsBufferCapacity * 0.5)
-    result.networkBufferCapacity = Math.floor(state.networkBufferCapacity * 0.5)
-  }
-  return result
+    const result = { ...state };
+    if (state.memoryUsageMB >= MEMORY_HARD_LIMIT_MB) {
+        // Hard limit: disable network bodies
+        result.networkBodiesEnabled = false;
+        result.wsBufferCapacity = Math.floor(state.wsBufferCapacity * 0.25);
+        result.networkBufferCapacity = Math.floor(state.networkBufferCapacity * 0.25);
+    }
+    else if (state.memoryUsageMB >= MEMORY_SOFT_LIMIT_MB) {
+        // Soft limit: reduce buffers
+        result.wsBufferCapacity = Math.floor(state.wsBufferCapacity * 0.5);
+        result.networkBufferCapacity = Math.floor(state.networkBufferCapacity * 0.5);
+    }
+    return result;
 }
 /**
  * Phase 1 (Immediate): Lightweight, non-intercepting setup.
  */
 export function installPhase1() {
-  console.log('[Gasoline] Phase 1 installing (lightweight API + perf observers)')
-  injectionTimestamp = performance.now()
-  phase2Installed = false
-  phase2Timestamp = 0
-  // Start PerformanceObservers (passive observers, no prototype modification)
-  installPerformanceCapture()
-  // Now handle Phase 2 scheduling
-  if (!deferralEnabled) {
-    // Deferral disabled: install Phase 2 immediately
-    installPhase2()
-  } else {
-    const installDeferred = () => {
-      if (!phase2Installed) setTimeout(installPhase2, 100)
+    console.log('[Gasoline] Phase 1 installing (lightweight API + perf observers)');
+    injectionTimestamp = performance.now();
+    phase2Installed = false;
+    phase2Timestamp = 0;
+    // Start PerformanceObservers (passive observers, no prototype modification)
+    installPerformanceCapture();
+    // Now handle Phase 2 scheduling
+    if (!deferralEnabled) {
+        // Deferral disabled: install Phase 2 immediately
+        installPhase2();
     }
-    if (document.readyState === 'complete') {
-      // Page already loaded, defer by 100ms
-      installDeferred()
-    } else {
-      // Wait for load event, then defer by 100ms
-      window.addEventListener('load', installDeferred, { once: true })
-      // 10-second timeout fallback
-      setTimeout(() => {
-        if (!phase2Installed) installPhase2()
-      }, 10000)
+    else {
+        const installDeferred = () => {
+            if (!phase2Installed)
+                setTimeout(installPhase2, 100);
+        };
+        if (document.readyState === 'complete') {
+            // Page already loaded, defer by 100ms
+            installDeferred();
+        }
+        else {
+            // Wait for load event, then defer by 100ms
+            window.addEventListener('load', installDeferred, { once: true });
+            // 10-second timeout fallback
+            setTimeout(() => {
+                if (!phase2Installed)
+                    installPhase2();
+            }, 10000);
+        }
     }
-  }
 }
 /**
  * Phase 2 (Deferred): Heavy interceptors.
  */
 export function installPhase2() {
-  // Double-injection guard
-  if (phase2Installed) return
-  // Environment guard
-  if (typeof window === 'undefined' || typeof document === 'undefined') return
-  console.log('[Gasoline] Phase 2 installing (heavy interceptors: console, fetch, WS, errors, actions)')
-  phase2Timestamp = performance.now()
-  phase2Installed = true
-  // Install all heavy interceptors
-  install()
+    // Double-injection guard
+    if (phase2Installed)
+        return;
+    // Environment guard
+    if (typeof window === 'undefined' || typeof document === 'undefined')
+        return;
+    console.log('[Gasoline] Phase 2 installing (heavy interceptors: console, fetch, WS, errors, actions)');
+    phase2Timestamp = performance.now();
+    phase2Installed = true;
+    // Install all heavy interceptors
+    install();
 }
 export function getDeferralState() {
-  return {
-    deferralEnabled,
-    phase2Installed,
-    injectionTimestamp,
-    phase2Timestamp,
-  }
+    return {
+        deferralEnabled,
+        phase2Installed,
+        injectionTimestamp,
+        phase2Timestamp,
+    };
 }
 /**
  * Set whether interception deferral is enabled.
  */
 export function setDeferralEnabled(enabled) {
-  deferralEnabled = enabled
+    deferralEnabled = enabled;
 }
 //# sourceMappingURL=observers.js.map

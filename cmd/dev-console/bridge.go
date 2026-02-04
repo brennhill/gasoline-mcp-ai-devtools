@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 )
 
@@ -94,6 +95,19 @@ func bridgeStdioToHTTP(endpoint string) {
 		Timeout: 30 * time.Second,
 	}
 
+	// Track in-flight HTTP requests to ensure all responses sent before exit
+	var wg sync.WaitGroup
+
+	// Exit gate: Prevent process exit until at least one response has been sent
+	// This ensures the parent process receives the response before we exit
+	responseSent := make(chan bool, 1)
+	var responseOnce sync.Once
+	signalResponseSent := func() {
+		responseOnce.Do(func() {
+			responseSent <- true
+		})
+	}
+
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		if len(line) == 0 {
@@ -103,10 +117,19 @@ func bridgeStdioToHTTP(endpoint string) {
 		// Validate it's JSON-RPC before forwarding
 		var req JSONRPCRequest
 		if err := json.Unmarshal(line, &req); err != nil {
-			// Send parse error back to client
+			// Try to extract ID from malformed JSON for better error response
+			var partial map[string]any
+			var extractedID any = "error"  // Fallback ID for parse errors (never null - Cursor rejects it)
+			if json.Unmarshal(line, &partial) == nil {
+				if id, ok := partial["id"]; ok && id != nil {
+					extractedID = id  // Use whatever ID was in the request
+				}
+			}
+
+			// Send parse error with extracted or fallback ID
 			errResp := JSONRPCResponse{
 				JSONRPC: "2.0",
-				ID:      nil,
+				ID:      extractedID,
 				Error: &JSONRPCError{
 					Code:    -32700,
 					Message: "Parse error: " + err.Error(),
@@ -114,13 +137,21 @@ func bridgeStdioToHTTP(endpoint string) {
 			}
 			respJSON, _ := json.Marshal(errResp)
 			fmt.Println(string(respJSON))
+			os.Stdout.Sync()
+			signalResponseSent()
 			continue
 		}
+
+		// Process request in current goroutine to maintain order
+		wg.Add(1)
 
 		// Forward to HTTP server
 		httpReq, err := http.NewRequest("POST", endpoint, bytes.NewReader(line))
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Bridge error: "+err.Error())
+			os.Stdout.Sync()
+			signalResponseSent()
+			wg.Done()
 			continue
 		}
 
@@ -129,6 +160,9 @@ func bridgeStdioToHTTP(endpoint string) {
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
+			os.Stdout.Sync()
+			signalResponseSent()
+			wg.Done()
 			continue
 		}
 
@@ -138,23 +172,58 @@ func bridgeStdioToHTTP(endpoint string) {
 
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Failed to read response: "+err.Error())
+			os.Stdout.Sync()
+			signalResponseSent()
+			wg.Done()
+			continue
+		}
+
+		// Handle 204 No Content (notification response - no output needed)
+		if resp.StatusCode == 204 {
+			// Notification was processed, no response to forward
+			// Don't signal responseSent - notifications don't count as responses
+			wg.Done()
 			continue
 		}
 
 		if resp.StatusCode != 200 {
 			sendBridgeError(req.ID, -32603, fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body)))
+			os.Stdout.Sync()
+			signalResponseSent()
+			wg.Done()
 			continue
 		}
 
 		// Forward response to stdout
-		fmt.Println(string(body))
+		// Use Print not Println - HTTP response already has trailing newline from json.Encoder.Encode()
+		fmt.Print(string(body))
+		os.Stdout.Sync()  // Flush immediately
+		signalResponseSent()  // Signal that response was sent
+		wg.Done()
 	}
+
+	// CRITICAL: Wait for all in-flight requests to complete before exiting
+	wg.Wait()
 
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline-bridge] ERROR: stdin scanner error: %v\n", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "[gasoline-bridge] stdin closed, bridge shutting down\n")
+	// EXIT GATE: Wait for at least one response to be sent before allowing exit
+	// This prevents the process from exiting before the parent reads stdout
+	select {
+	case <-responseSent:
+		// At least one response was sent and flushed - safe to exit
+	case <-time.After(5 * time.Second):
+		// Timeout fallback - exit anyway to avoid hanging forever
+		fmt.Fprintf(os.Stderr, "[gasoline-bridge] WARNING: No response sent within 5 seconds\n")
+	}
+
+	// CRITICAL: Final flush and give OS time to send buffered data to parent process
+	os.Stdout.Sync()
+	time.Sleep(100 * time.Millisecond)  // Allow OS to flush pipe to parent
+
+	// Quiet mode: Bridge shutdown is silent (normal operation, not an error)
 }
 
 // sendBridgeError sends a JSON-RPC error response to stdout

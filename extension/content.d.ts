@@ -9,6 +9,6 @@
  * tracked tab. Validates message origin (event.source === window) to prevent
  * cross-frame injection. Attaches tabId to all forwarded messages.
  */
-import { getPendingRequestStats, clearPendingRequests } from './content/request-tracking'
-export { getPendingRequestStats, clearPendingRequests }
+import { getPendingRequestStats, clearPendingRequests } from './content/request-tracking';
+export { getPendingRequestStats, clearPendingRequests };
 //# sourceMappingURL=content.d.ts.map
