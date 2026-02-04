@@ -4,7 +4,7 @@ scope: process/release
 ai-priority: high
 tags: [release, process, quality-gates, deployment]
 relates-to: [known-issues.md, docs/core/uat-v5.3-checklist.md]
-last-verified: 2026-01-30
+last-verified: 2026-02-04
 canonical: true
 ---
 
@@ -106,6 +106,87 @@ git tag v{version}-pre-uat-{feature}
 # Push
 git push origin HEAD --follow-tags
 ```
+
+### Gate 8: MCP Command Completeness (MANDATORY)
+
+**This gate cannot be skipped.** Every command exposed via MCP MUST be fully implemented.
+
+**Rule:** If an MCP tool/command is advertised in the tool schema, it MUST:
+
+1. Be fully functional with all documented parameters working
+2. Return proper results (not stubs, placeholders, or "not implemented" errors)
+3. Have corresponding tests verifying the implementation
+4. Have documentation matching the actual behavior
+
+**If a command is not fully implemented:**
+
+1. Remove it from the MCP tool definitions (do not expose it to clients)
+2. Add a TODO in the code marking it for future implementation
+3. Track in `docs/core/known-issues.md` under "Planned Features"
+
+**Verification:**
+
+```bash
+# Review all MCP tool definitions
+grep -r "tools\|inputSchema" cmd/dev-console/tools_*.go
+
+# Ensure no stub implementations
+grep -rn "TODO\|FIXME\|not implemented" cmd/dev-console/tools_*.go
+
+# Cross-reference with test coverage
+go test -v ./cmd/dev-console/ | grep -E "^--- (PASS|FAIL)"
+```
+
+**Why this matters:** Clients (Claude Code, IDEs, automation) rely on MCP tool schemas to understand capabilities. Advertising unimplemented commands breaks client expectations and causes confusing errors.
+
+### Gate 9: Architecture Invariant Tests (MANDATORY)
+
+**This gate cannot be skipped.** Critical architecture invariants must be verified before every release.
+
+#### 9.1 MCP Stdio Silence
+
+The server MUST NOT output anything to stdio except JSON-RPC messages. Any non-JSON-RPC output breaks LLM communication.
+
+```bash
+go test ./cmd/dev-console -run "TestToolHandler.*Stdout" -v
+go test ./cmd/dev-console -run "TestStdioSilence" -v
+```
+
+See: `.claude/refs/mcp-stdio-invariant.md`
+
+#### 9.2 Server Persistence
+
+The HTTP server MUST stay alive as long as stdin remains open. This ensures browser extension connectivity throughout the MCP session.
+
+```bash
+go test ./cmd/dev-console -run "TestServerPersistence" -v
+```
+
+**Key invariants tested:**
+
+- Server survives 10+ seconds with open stdin (no data)
+- Health endpoint responds within 100ms at all times
+- Server survives stdin close (waits for SIGTERM)
+- Server handles rapid health checks under load
+
+See: `.claude/refs/mcp-stdio-invariant.md#server-persistence-invariant---critical`
+
+#### 9.3 Behavioral Audit Tests
+
+All MCP tools must have comprehensive behavioral tests verifying actual functionality, not just "doesn't crash".
+
+```bash
+go test ./cmd/dev-console -run "Test.*Audit" -v
+```
+
+**Test coverage required:**
+
+| Test File | Tools Covered | Minimum Tests |
+|-----------|---------------|---------------|
+| `tools_observe_audit_test.go` | observe (29 modes) | 41 tests |
+| `tools_configure_audit_test.go` | configure (19 actions) | 46 tests |
+| `tools_generate_audit_test.go` | generate (10 formats) | 28 tests |
+| `tools_interact_audit_test.go` | interact (11 actions) | 31 tests |
 
 ## Release Checklist
 

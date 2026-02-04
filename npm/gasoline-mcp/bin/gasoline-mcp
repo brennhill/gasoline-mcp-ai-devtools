@@ -304,6 +304,65 @@ if (args.includes('--help') || args.includes('-h')) {
 // All connection logic (spawn/connect/retry/recovery) handled by Go binary
 logToFile('Wrapper starting, passing control to Go binary');
 
+// Kill any existing gasoline servers on the port before starting
+// This ensures npm/npx always uses the newly installed version
+function killExistingServers(port) {
+  const { execSync } = require('child_process');
+
+  try {
+    if (os.platform() === 'win32') {
+      // Windows: netstat -ano | findstr :PORT
+      const result = execSync(`netstat -ano | findstr :${port}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+      const lines = result.split('\n');
+      for (const line of lines) {
+        if (line.includes('LISTENING')) {
+          const pid = line.trim().split(/\s+/).pop();
+          if (pid && /^\d+$/.test(pid)) {
+            try {
+              execSync(`taskkill /F /PID ${pid}`, { stdio: 'pipe' });
+              logToFile(`Killed existing server (PID ${pid}) on port ${port}`);
+            } catch (e) {
+              // Ignore errors - process might have died
+            }
+          }
+        }
+      }
+    } else {
+      // Unix: lsof -ti :PORT
+      try {
+        const result = execSync(`lsof -ti :${port}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+        const pids = result.trim().split('\n').filter(p => p && /^\d+$/.test(p));
+        for (const pid of pids) {
+          try {
+            execSync(`kill ${pid}`, { stdio: 'pipe' });
+            logToFile(`Killed existing server (PID ${pid}) on port ${port}`);
+          } catch (e) {
+            // Ignore errors - process might have died
+          }
+        }
+      } catch (e) {
+        // lsof returns exit 1 when no process found - that's expected
+      }
+    }
+  } catch (e) {
+    // Kill failed - continue anyway, Go binary will handle port conflict
+    logToFile(`Server cleanup skipped: ${e.message}`);
+  }
+}
+
+// Determine port from args (default 7890)
+let port = 7890;
+const portIndex = args.indexOf('--port');
+if (portIndex !== -1 && portIndex + 1 < args.length) {
+  const portArg = parseInt(args[portIndex + 1], 10);
+  if (!isNaN(portArg)) {
+    port = portArg;
+  }
+}
+
+// Kill any existing server on the port
+killExistingServers(port);
+
 const binary = findBinary();
 logToFile(`Using binary: ${binary}`);
 

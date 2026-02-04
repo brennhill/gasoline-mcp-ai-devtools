@@ -8,18 +8,36 @@ import (
 	"net/http"
 )
 
-// HandleNetworkBodies returns network request bodies
+// HandleNetworkBodies handles network request bodies.
+// POST: receives and stores bodies from the extension
+// GET: returns stored bodies
 func (c *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	switch r.Method {
+	case "POST":
+		var payload struct {
+			Bodies []NetworkBody `json:"bodies"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+			return
+		}
+		c.AddNetworkBodies(payload.Bodies)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"status": "ok",
+			"count":  len(payload.Bodies),
+		})
+	case "GET":
+		bodies := c.GetNetworkBodies()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"bodies": bodies,
+			"count":  len(bodies),
+		})
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
 	}
-	bodies := c.GetNetworkBodies()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"bodies": bodies,
-		"count":  len(bodies),
-	})
 }
 
 // HandleNetworkWaterfall handles network waterfall data.
@@ -260,29 +278,66 @@ func (c *Capture) HandleHighlightResult(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// HandleEnhancedActions returns enhanced action events
+// HandleEnhancedActions handles enhanced action events.
+// POST: receives and stores actions from the extension
+// GET: returns stored actions
 func (c *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	switch r.Method {
+	case "POST":
+		var payload struct {
+			Actions []EnhancedAction `json:"actions"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+			return
+		}
+		c.AddEnhancedActions(payload.Actions)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"status": "ok",
+			"count":  len(payload.Actions),
+		})
+	case "GET":
+		actions := c.GetAllEnhancedActions()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"actions": actions,
+			"count":   len(actions),
+		})
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
 	}
-	actions := c.GetAllEnhancedActions()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"actions": actions,
-		"count":   len(actions),
-	})
 }
 
-// HandlePerformanceSnapshots returns performance data snapshots
+// HandlePerformanceSnapshots handles performance data snapshots.
+// POST: receives and stores snapshots from the extension
+// GET: returns stored snapshots
 func (c *Capture) HandlePerformanceSnapshots(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	switch r.Method {
+	case "POST":
+		var payload struct {
+			Snapshots []PerformanceSnapshot `json:"snapshots"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+			return
+		}
+		c.AddPerformanceSnapshots(payload.Snapshots)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"status": "ok",
+			"count":  len(payload.Snapshots),
+		})
+	case "GET":
+		snapshots := c.GetPerformanceSnapshots()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"snapshots": snapshots,
+			"count":     len(snapshots),
+		})
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"snapshots": []any{},
-		"count":     0,
-	})
 }
