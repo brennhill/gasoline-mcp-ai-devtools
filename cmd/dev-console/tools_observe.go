@@ -149,22 +149,208 @@ func (h *ToolHandler) appendAlertsToResponse(resp JSONRPCResponse, alerts []Aler
 // ============================================
 
 func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// TODO(future): Implementation pending - currently returns empty data
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Browser errors", map[string]any{"errors": []any{}, "count": 0})}
+	// Parse optional limit parameter
+	var params struct {
+		Limit int `json:"limit"`
+	}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &params)
+	}
+	if params.Limit <= 0 {
+		params.Limit = 100 // default limit
+	}
+
+	// Read entries from server and filter for errors
+	h.server.mu.RLock()
+	var errors []map[string]any
+	for i := len(h.server.entries) - 1; i >= 0 && len(errors) < params.Limit; i-- {
+		entry := h.server.entries[i]
+		level, _ := entry["level"].(string)
+		if level == "error" {
+			errors = append(errors, map[string]any{
+				"message":   entry["message"],
+				"source":    entry["source"],
+				"url":       entry["url"],
+				"line":      entry["line"],
+				"column":    entry["column"],
+				"stack":     entry["stack"],
+				"timestamp": entry["timestamp"],
+			})
+		}
+	}
+	h.server.mu.RUnlock()
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Browser errors", map[string]any{"errors": errors, "count": len(errors)})}
 }
 
 func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// TODO(future): Implementation pending - currently returns empty data
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Browser logs", map[string]any{"logs": []any{}, "count": 0})}
+	// Parse optional parameters
+	var params struct {
+		Limit  int    `json:"limit"`
+		Level  string `json:"level"` // filter by level: "log", "warn", "error", "info", "debug"
+		Source string `json:"source"` // filter by source
+	}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &params)
+	}
+	if params.Limit <= 0 {
+		params.Limit = 100 // default limit
+	}
+
+	// Read entries from server with optional filtering
+	h.server.mu.RLock()
+	var logs []map[string]any
+	for i := len(h.server.entries) - 1; i >= 0 && len(logs) < params.Limit; i-- {
+		entry := h.server.entries[i]
+
+		// Skip non-console entries (e.g., lifecycle events)
+		entryType, _ := entry["type"].(string)
+		if entryType == "lifecycle" || entryType == "tracking" || entryType == "extension" {
+			continue
+		}
+
+		// Filter by level if specified
+		if params.Level != "" {
+			level, _ := entry["level"].(string)
+			if level != params.Level {
+				continue
+			}
+		}
+
+		// Filter by source if specified
+		if params.Source != "" {
+			source, _ := entry["source"].(string)
+			if source != params.Source {
+				continue
+			}
+		}
+
+		logs = append(logs, map[string]any{
+			"level":     entry["level"],
+			"message":   entry["message"],
+			"source":    entry["source"],
+			"url":       entry["url"],
+			"line":      entry["line"],
+			"column":    entry["column"],
+			"timestamp": entry["timestamp"],
+		})
+	}
+	h.server.mu.RUnlock()
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Browser logs", map[string]any{"logs": logs, "count": len(logs)})}
 }
 
 func (h *ToolHandler) toolGetExtensionLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// TODO(future): Implementation pending - currently returns empty data
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Extension logs", map[string]any{"logs": []any{}, "count": 0})}
+	// Parse optional parameters
+	var params struct {
+		Limit int    `json:"limit"`
+		Level string `json:"level"` // filter by level
+	}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &params)
+	}
+	if params.Limit <= 0 {
+		params.Limit = 100 // default limit
+	}
+
+	// Read extension logs from capture buffer
+	allLogs := h.capture.GetExtensionLogs()
+
+	// Filter and limit (newest first)
+	var logs []map[string]any
+	for i := len(allLogs) - 1; i >= 0 && len(logs) < params.Limit; i-- {
+		entry := allLogs[i]
+
+		// Filter by level if specified
+		if params.Level != "" && entry.Level != params.Level {
+			continue
+		}
+
+		logs = append(logs, map[string]any{
+			"level":     entry.Level,
+			"message":   entry.Message,
+			"source":    entry.Source,
+			"category":  entry.Category,
+			"data":      entry.Data,
+			"timestamp": entry.Timestamp,
+		})
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Extension logs", map[string]any{"logs": logs, "count": len(logs)})}
 }
 
 func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Network waterfall", map[string]any{"entries": []any{}})}
+	// Parse optional parameters
+	var params struct {
+		Limit     int    `json:"limit"`
+		URLFilter string `json:"url_filter"` // filter by URL substring
+	}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &params)
+	}
+	if params.Limit <= 0 {
+		params.Limit = 100 // default limit
+	}
+
+	// Read network waterfall entries from capture buffer
+	allEntries := h.capture.GetNetworkWaterfallEntries()
+
+	// Filter and limit (newest first)
+	var entries []map[string]any
+	for i := len(allEntries) - 1; i >= 0 && len(entries) < params.Limit; i-- {
+		entry := allEntries[i]
+
+		// Filter by URL if specified
+		if params.URLFilter != "" {
+			if entry.URL == "" || !containsIgnoreCase(entry.URL, params.URLFilter) {
+				continue
+			}
+		}
+
+		entries = append(entries, map[string]any{
+			"url":               entry.URL,
+			"initiator_type":    entry.InitiatorType,
+			"duration_ms":       entry.Duration,
+			"start_time":        entry.StartTime,
+			"transfer_size":     entry.TransferSize,
+			"decoded_body_size": entry.DecodedBodySize,
+			"encoded_body_size": entry.EncodedBodySize,
+			"timestamp":         entry.Timestamp,
+			"page_url":          entry.PageURL,
+		})
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Network waterfall", map[string]any{"entries": entries, "count": len(entries)})}
+}
+
+// containsIgnoreCase checks if s contains substr (case-insensitive)
+func containsIgnoreCase(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > 0 && len(substr) > 0 && findIgnoreCase(s, substr) >= 0))
+}
+
+func findIgnoreCase(s, substr string) int {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		match := true
+		for j := 0; j < len(substr); j++ {
+			sc := s[i+j]
+			pc := substr[j]
+			if sc >= 'A' && sc <= 'Z' {
+				sc += 'a' - 'A'
+			}
+			if pc >= 'A' && pc <= 'Z' {
+				pc += 'a' - 'A'
+			}
+			if sc != pc {
+				match = false
+				break
+			}
+		}
+		if match {
+			return i
+		}
+	}
+	return -1
 }
 
 func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -191,7 +377,39 @@ func (h *ToolHandler) toolGetWebVitals(req JSONRPCRequest, args json.RawMessage)
 }
 
 func (h *ToolHandler) toolGetPageInfo(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Page info", map[string]any{"url": "", "title": ""})}
+	// Extract page info from recent data sources
+	var pageURL, pageTitle string
+
+	// Try to get page URL from most recent network waterfall entry
+	waterfallEntries := h.capture.GetNetworkWaterfallEntries()
+	if len(waterfallEntries) > 0 {
+		// Get the most recent entry's page URL
+		pageURL = waterfallEntries[len(waterfallEntries)-1].PageURL
+	}
+
+	// Try to get page info from recent log entries
+	h.server.mu.RLock()
+	for i := len(h.server.entries) - 1; i >= 0; i-- {
+		entry := h.server.entries[i]
+		// Look for page navigation or URL info
+		if url, ok := entry["url"].(string); ok && url != "" && pageURL == "" {
+			pageURL = url
+		}
+		if title, ok := entry["title"].(string); ok && title != "" {
+			pageTitle = title
+			break
+		}
+		// Also check page_url field
+		if url, ok := entry["page_url"].(string); ok && url != "" && pageURL == "" {
+			pageURL = url
+		}
+	}
+	h.server.mu.RUnlock()
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Page info", map[string]any{
+		"url":   pageURL,
+		"title": pageTitle,
+	})}
 }
 
 func (h *ToolHandler) toolGetTabs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
