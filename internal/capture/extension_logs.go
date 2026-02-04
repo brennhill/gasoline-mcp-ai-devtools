@@ -64,3 +64,13 @@ func (c *Capture) HandleExtensionLogs(w http.ResponseWriter, r *http.Request) {
 		"logs_stored": len(payload.Logs),
 	})
 }
+
+// GetExtensionLogs returns all extension log entries.
+// Thread-safe: acquires read lock.
+func (c *Capture) GetExtensionLogs() []ExtensionLog {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	result := make([]ExtensionLog, len(c.extensionLogs))
+	copy(result, c.extensionLogs)
+	return result
+}
