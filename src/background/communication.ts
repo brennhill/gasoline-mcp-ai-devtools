@@ -18,6 +18,7 @@ export {
 } from './batchers'
 
 // Re-export server communication functions
+// NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
 export {
   sendLogsToServer,
   sendWSEventsToServer,
@@ -29,8 +30,6 @@ export {
   updateBadge,
   postQueryResult,
   postAsyncCommandResult,
-  postSettings,
-  pollCaptureSettings,
   postExtensionLogs,
   sendStatusPing,
   pollPendingQueries,

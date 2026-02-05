@@ -172,7 +172,9 @@ export function installStorageChangeListener(handlers) {
                 handlers.onAiWebPilotChanged(changes.aiWebPilotEnabled.newValue === true);
             }
             if (changes.trackedTabId && handlers.onTrackedTabChanged) {
-                handlers.onTrackedTabChanged();
+                const newTabId = changes.trackedTabId.newValue ?? null;
+                const oldTabId = changes.trackedTabId.oldValue ?? null;
+                handlers.onTrackedTabChanged(newTabId, oldTabId);
             }
         }
     });
@@ -324,13 +326,14 @@ export function getTrackedTabInfo(callback) {
     }
     // Callback-based version
     if (typeof chrome === 'undefined' || !chrome.storage) {
-        callback({ trackedTabId: null, trackedTabUrl: null });
+        callback({ trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null });
         return;
     }
-    chrome.storage.local.get(['trackedTabId', 'trackedTabUrl'], (result) => {
+    chrome.storage.local.get(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'], (result) => {
         callback({
             trackedTabId: result.trackedTabId || null,
             trackedTabUrl: result.trackedTabUrl || null,
+            trackedTabTitle: result.trackedTabTitle || null,
         });
     });
 }
@@ -340,7 +343,7 @@ export function getTrackedTabInfo(callback) {
 export function clearTrackedTab() {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
-    chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl']);
+    chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle']);
 }
 // Implementation
 export function getAllConfigSettings(callback) {

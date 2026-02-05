@@ -8,8 +8,25 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/queries"
 )
+
+// recordAIAction records an AI-driven action to the enhanced actions buffer.
+// This allows distinguishing AI actions from human actions in observe(actions).
+func (h *ToolHandler) recordAIAction(actionType string, url string, details map[string]any) {
+	action := capture.EnhancedAction{
+		Type:      actionType,
+		Timestamp: time.Now().UnixMilli(),
+		URL:       url,
+		Source:    "ai",
+	}
+	// Add optional details as selectors (reusing the selectors field for metadata)
+	if len(details) > 0 {
+		action.Selectors = details
+	}
+	h.capture.AddEnhancedActions([]capture.EnhancedAction{action})
+}
 
 // toolInteract dispatches interact requests based on the 'action' parameter.
 func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -61,23 +78,226 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 // ============================================
 
 func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Highlight", map[string]any{"status": "ok"})}
+	var params struct {
+		Selector   string `json:"selector"`
+		DurationMs int    `json:"duration_ms,omitempty"`
+		TabID      int    `json:"tab_id,omitempty"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	if params.Selector == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing", "Add the 'selector' parameter", withParam("selector"))}
+	}
+
+	if !h.capture.IsPilotEnabled() {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
+	}
+
+	// Queue highlight command for extension
+	correlationID := fmt.Sprintf("highlight_%d_%d", time.Now().UnixNano(), rand.Int63())
+
+	query := queries.PendingQuery{
+		Type:          "highlight",
+		Params:        args,
+		TabID:         params.TabID,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	// Record AI action
+	h.recordAIAction("highlight", "", map[string]any{"selector": params.Selector})
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Highlight queued", map[string]any{
+		"status":         "queued",
+		"correlation_id": correlationID,
+		"message":        "Highlight command queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to check status.",
+	})}
 }
 
+const stateNamespace = "saved_states"
+
 func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Save state", map[string]any{"status": "ok"})}
+	var params struct {
+		SnapshotName string `json:"snapshot_name"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	if params.SnapshotName == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter", withParam("snapshot_name"))}
+	}
+
+	// Ensure session store is initialized
+	if h.sessionStoreImpl == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	}
+
+	// Capture current state from the tracked tab
+	_, tabID, tabURL := h.capture.GetTrackingStatus()
+	tabTitle := h.capture.GetTrackedTabTitle()
+
+	stateData := map[string]any{
+		"url":        tabURL,
+		"title":      tabTitle,
+		"tab_id":     tabID,
+		"saved_at":   time.Now().Format(time.RFC3339),
+	}
+
+	// Serialize and save
+	data, err := json.Marshal(stateData)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to serialize state: "+err.Error(), "Internal error — do not retry")}
+	}
+
+	if err := h.sessionStoreImpl.Save(stateNamespace, params.SnapshotName, data); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to save state: "+err.Error(), "Internal error — check storage")}
+	}
+
+	// Record AI action
+	h.recordAIAction("save_state", tabURL, map[string]any{"snapshot_name": params.SnapshotName})
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State saved", map[string]any{
+		"status":        "saved",
+		"snapshot_name": params.SnapshotName,
+		"state": map[string]any{
+			"url":   tabURL,
+			"title": tabTitle,
+		},
+	})}
 }
 
 func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Load state", map[string]any{"status": "ok"})}
+	var params struct {
+		SnapshotName string `json:"snapshot_name"`
+		IncludeURL   bool   `json:"include_url,omitempty"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	if params.SnapshotName == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter", withParam("snapshot_name"))}
+	}
+
+	// Ensure session store is initialized
+	if h.sessionStoreImpl == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	}
+
+	// Load state data
+	data, err := h.sessionStoreImpl.Load(stateNamespace, params.SnapshotName)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+params.SnapshotName, "Use list_states to see available states")}
+	}
+
+	var stateData map[string]any
+	if err := json.Unmarshal(data, &stateData); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to parse state data", "Internal error — state may be corrupted")}
+	}
+
+	// If include_url is true and pilot is enabled, navigate to the saved URL
+	if params.IncludeURL {
+		if savedURL, ok := stateData["url"].(string); ok && savedURL != "" {
+			if h.capture.IsPilotEnabled() {
+				// Queue navigation command
+				correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), rand.Int63())
+				navArgs, _ := json.Marshal(map[string]any{"action": "navigate", "url": savedURL})
+				query := queries.PendingQuery{
+					Type:          "browser_action",
+					Params:        navArgs,
+					CorrelationID: correlationID,
+				}
+				h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+				stateData["navigation_queued"] = true
+				stateData["correlation_id"] = correlationID
+			}
+		}
+	}
+
+	// Record AI action
+	h.recordAIAction("load_state", "", map[string]any{"snapshot_name": params.SnapshotName})
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State loaded", map[string]any{
+		"status":        "loaded",
+		"snapshot_name": params.SnapshotName,
+		"state":         stateData,
+	})}
 }
 
 func (h *ToolHandler) handlePilotManageStateList(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("List states", map[string]any{"states": []any{}})}
+	// Ensure session store is initialized
+	if h.sessionStoreImpl == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	}
+
+	// List all saved states
+	keys, err := h.sessionStoreImpl.List(stateNamespace)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to list states: "+err.Error(), "Internal error — do not retry")}
+	}
+
+	// Build state list with metadata
+	states := make([]map[string]any, 0, len(keys))
+	for _, key := range keys {
+		stateEntry := map[string]any{
+			"name": key,
+		}
+		// Try to load and extract metadata
+		if data, err := h.sessionStoreImpl.Load(stateNamespace, key); err == nil {
+			var stateData map[string]any
+			if json.Unmarshal(data, &stateData) == nil {
+				if url, ok := stateData["url"].(string); ok {
+					stateEntry["url"] = url
+				}
+				if title, ok := stateData["title"].(string); ok {
+					stateEntry["title"] = title
+				}
+				if savedAt, ok := stateData["saved_at"].(string); ok {
+					stateEntry["saved_at"] = savedAt
+				}
+			}
+		}
+		states = append(states, stateEntry)
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("States listed", map[string]any{
+		"states": states,
+		"count":  len(states),
+	})}
 }
 
 func (h *ToolHandler) handlePilotManageStateDelete(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Delete state", map[string]any{"status": "ok"})}
+	var params struct {
+		SnapshotName string `json:"snapshot_name"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	if params.SnapshotName == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter", withParam("snapshot_name"))}
+	}
+
+	// Ensure session store is initialized
+	if h.sessionStoreImpl == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
+	}
+
+	// Delete the state
+	if err := h.sessionStoreImpl.Delete(stateNamespace, params.SnapshotName); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+params.SnapshotName, "Use list_states to see available states")}
+	}
+
+	// Record AI action
+	h.recordAIAction("delete_state", "", map[string]any{"snapshot_name": params.SnapshotName})
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State deleted", map[string]any{
+		"status":        "deleted",
+		"snapshot_name": params.SnapshotName,
+	})}
 }
 
 func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -111,6 +331,13 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	// Record AI action (truncate script preview)
+	scriptPreview := params.Script
+	if len(scriptPreview) > 100 {
+		scriptPreview = scriptPreview[:100] + "..."
+	}
+	h.recordAIAction("execute_js", "", map[string]any{"script_preview": scriptPreview})
 
 	// Return immediately with "queued" status
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Command queued", map[string]any{
@@ -151,6 +378,9 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
+	// Record AI action
+	h.recordAIAction("navigate", params.URL, map[string]any{"target_url": params.URL})
+
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Navigate queued", map[string]any{
 		"status":         "queued",
 		"correlation_id": correlationID,
@@ -181,6 +411,9 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
+	// Record AI action
+	h.recordAIAction("refresh", "", nil)
+
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Refresh queued", map[string]any{
 		"status":         "queued",
 		"correlation_id": correlationID,
@@ -201,6 +434,9 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
+	// Record AI action
+	h.recordAIAction("back", "", nil)
+
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Back queued", map[string]any{
 		"status":         "queued",
 		"correlation_id": correlationID,
@@ -220,6 +456,9 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	// Record AI action
+	h.recordAIAction("forward", "", nil)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Forward queued", map[string]any{
 		"status":         "queued",
@@ -248,6 +487,9 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	// Record AI action
+	h.recordAIAction("new_tab", params.URL, map[string]any{"target_url": params.URL})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("New tab queued", map[string]any{
 		"status":         "queued",

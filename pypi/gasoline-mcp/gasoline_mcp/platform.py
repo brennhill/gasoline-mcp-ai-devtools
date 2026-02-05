@@ -216,9 +216,87 @@ def run_uninstall(args):
         sys.exit(1)
 
 
+def cleanup_old_processes():
+    """Kill all running gasoline processes to ensure clean upgrade."""
+    killed = []
+
+    try:
+        if sys.platform == "win32":
+            # Windows: Find and kill gasoline processes by name
+            result = subprocess.run(
+                ["tasklist", "/FI", "IMAGENAME eq gasoline*", "/FO", "CSV"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if result.stdout:
+                import re
+                for line in result.stdout.split('\n')[1:]:  # Skip header
+                    match = re.match(r'"gasoline[^"]*","(\d+)"', line)
+                    if match:
+                        pid = match.group(1)
+                        subprocess.run(
+                            ["taskkill", "/F", "/PID", pid],
+                            capture_output=True,
+                            check=False
+                        )
+                        killed.append(pid)
+        else:
+            # Unix: Kill by name using pkill
+            subprocess.run(
+                ["pkill", "-f", "gasoline"],
+                capture_output=True,
+                check=False
+            )
+
+            # Also check common ports (7890, 17890)
+            for port in ["7890", "17890"]:
+                result = subprocess.run(
+                    ["lsof", "-ti", f":{port}"],
+                    capture_output=True,
+                    text=True,
+                    check=False
+                )
+                if result.stdout and result.stdout.strip():
+                    for pid in result.stdout.strip().split('\n'):
+                        if pid:
+                            subprocess.run(
+                                ["kill", "-9", pid],
+                                capture_output=True,
+                                check=False
+                            )
+                            killed.append(pid)
+    except Exception:
+        pass  # Ignore errors - processes might not exist
+
+    return killed
+
+
+def verify_version(binary_path, expected_version):
+    """Verify the installed version matches expected."""
+    try:
+        result = subprocess.run(
+            [binary_path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False
+        )
+        if result.stdout:
+            version = result.stdout.strip()
+            if expected_version in version:
+                print(f"✓ Verified gasoline version: {version}")
+                return True
+            else:
+                print(f"Warning: Expected version {expected_version}, got: {version}")
+    except Exception as e:
+        print(f"Could not verify version: {e}")
+    return False
+
+
 def run():
     """Run the Gasoline MCP CLI or binary."""
-    from . import output
+    from . import output, __version__
 
     args = sys.argv[1:]
 
@@ -244,46 +322,9 @@ def run():
 
     # No config command, run the binary
 
-    # Kill any existing gasoline servers on port 7890 before starting
+    # Clean up ALL existing gasoline processes before starting
     # This ensures pip/pipx always uses the newly installed version
-    port = "7890"  # Default port
-    if "--port" in args:
-        try:
-            port_index = args.index("--port")
-            if port_index + 1 < len(args):
-                port = args[port_index + 1]
-        except (ValueError, IndexError):
-            pass
-
-    try:
-        # Find PIDs on the port (cross-platform: lsof on Unix, netstat on Windows)
-        if sys.platform == "win32":
-            # Windows: netstat -ano | findstr :PORT
-            result = subprocess.run(
-                ["netstat", "-ano"],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            for line in result.stdout.split('\n'):
-                if f":{port}" in line and "LISTENING" in line:
-                    pid = line.strip().split()[-1]
-                    subprocess.run(["taskkill", "/F", "/PID", pid], check=False, capture_output=True)
-        else:
-            # Unix: lsof -ti :PORT
-            result = subprocess.run(
-                ["lsof", "-ti", f":{port}"],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            if result.stdout.strip():
-                pids = result.stdout.strip().split('\n')
-                for pid in pids:
-                    subprocess.run(["kill", pid], check=False, capture_output=True)
-    except Exception:
-        # Kill failed - continue anyway
-        pass
+    cleanup_old_processes()
 
     binary = get_binary_path()
 

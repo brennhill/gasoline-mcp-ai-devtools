@@ -196,7 +196,7 @@ export function handleTrackedTabClosed(closedTabId: number, logFn?: (message: st
  */
 export function installStorageChangeListener(handlers: {
   onAiWebPilotChanged?: (newValue: boolean) => void
-  onTrackedTabChanged?: () => void
+  onTrackedTabChanged?: (newTabId: number | null, oldTabId: number | null) => void
 }): void {
   if (typeof chrome === 'undefined' || !chrome.storage) return
 
@@ -206,7 +206,9 @@ export function installStorageChangeListener(handlers: {
         handlers.onAiWebPilotChanged(changes.aiWebPilotEnabled.newValue === true)
       }
       if (changes.trackedTabId && handlers.onTrackedTabChanged) {
-        handlers.onTrackedTabChanged()
+        const newTabId = (changes.trackedTabId.newValue as number) ?? null
+        const oldTabId = (changes.trackedTabId.oldValue as number) ?? null
+        handlers.onTrackedTabChanged(newTabId, oldTabId)
       }
     }
   })
@@ -380,19 +382,24 @@ export function saveSetting(key: string, value: unknown): void {
   chrome.storage.local.set({ [key]: value })
 }
 
+/** Tracked tab info type */
+export interface TrackedTabInfo {
+  trackedTabId: number | null
+  trackedTabUrl: string | null
+  trackedTabTitle: string | null
+}
+
 /**
  * Get tracked tab information (callback-based for compatibility with pre-async event listeners)
  */
 // Overload: Promise-based (for await usage)
-export function getTrackedTabInfo(): Promise<{ trackedTabId: number | null; trackedTabUrl: string | null }>
+export function getTrackedTabInfo(): Promise<TrackedTabInfo>
 // Overload: Callback-based (for backward compatibility)
-export function getTrackedTabInfo(
-  callback: (info: { trackedTabId: number | null; trackedTabUrl: string | null }) => void,
-): void
+export function getTrackedTabInfo(callback: (info: TrackedTabInfo) => void): void
 // Implementation
 export function getTrackedTabInfo(
-  callback?: (info: { trackedTabId: number | null; trackedTabUrl: string | null }) => void,
-): void | Promise<{ trackedTabId: number | null; trackedTabUrl: string | null }> {
+  callback?: (info: TrackedTabInfo) => void,
+): void | Promise<TrackedTabInfo> {
   if (!callback) {
     // Promise-based version
     return new Promise((resolve) => {
@@ -402,16 +409,17 @@ export function getTrackedTabInfo(
 
   // Callback-based version
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    callback({ trackedTabId: null, trackedTabUrl: null })
+    callback({ trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null })
     return
   }
 
   chrome.storage.local.get(
-    ['trackedTabId', 'trackedTabUrl'],
-    (result: { trackedTabId?: number; trackedTabUrl?: string }) => {
+    ['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'],
+    (result: { trackedTabId?: number; trackedTabUrl?: string; trackedTabTitle?: string }) => {
       callback({
         trackedTabId: result.trackedTabId || null,
         trackedTabUrl: result.trackedTabUrl || null,
+        trackedTabTitle: result.trackedTabTitle || null,
       })
     },
   )
@@ -422,7 +430,7 @@ export function getTrackedTabInfo(
  */
 export function clearTrackedTab(): void {
   if (typeof chrome === 'undefined' || !chrome.storage) return
-  chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl'])
+  chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'])
 }
 
 /**

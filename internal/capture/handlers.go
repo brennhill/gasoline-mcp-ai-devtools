@@ -6,6 +6,7 @@ package capture
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 )
 
 // HandleNetworkBodies handles network request bodies.
@@ -93,6 +94,16 @@ func (c *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Record that extension polled (for extension_connected status)
+	c.mu.Lock()
+	c.lastPollAt = time.Now()
+	// Also capture pilot state from header if present
+	if pilotHeader := r.Header.Get("X-Gasoline-Pilot"); pilotHeader != "" {
+		c.pilotEnabled = pilotHeader == "1"
+		c.pilotUpdatedAt = time.Now()
+	}
+	c.mu.Unlock()
 
 	// Check for client ID in multi-client mode
 	clientID := r.Header.Get("X-Gasoline-Client")
@@ -221,6 +232,7 @@ func (c *Capture) HandleStateResult(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleExecuteResult processes script execution results from extension.
+// Accepts both query_id (as "id") and correlation_id for async command tracking.
 func (c *Capture) HandleExecuteResult(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -228,9 +240,12 @@ func (c *Capture) HandleExecuteResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		ID       string          `json:"id"`
-		Result   json.RawMessage `json:"result"`
-		ClientID string          `json:"client_id,omitempty"`
+		ID            string          `json:"id"`
+		CorrelationID string          `json:"correlation_id"`
+		Status        string          `json:"status"`
+		Result        json.RawMessage `json:"result"`
+		Error         string          `json:"error"`
+		ClientID      string          `json:"client_id,omitempty"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -239,6 +254,12 @@ func (c *Capture) HandleExecuteResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle correlation_id for async commands (execute_js, browser actions)
+	if body.CorrelationID != "" {
+		c.CompleteCommand(body.CorrelationID, body.Result, body.Error)
+	}
+
+	// Handle query_id for synchronous query results
 	if body.ID != "" {
 		c.SetQueryResultWithClient(body.ID, body.Result, body.ClientID)
 	}

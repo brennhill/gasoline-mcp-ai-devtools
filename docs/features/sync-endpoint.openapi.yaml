@@ -1,0 +1,344 @@
+openapi: 3.0.3
+info:
+  title: Gasoline Sync API
+  description: |
+    Unified bidirectional sync endpoint for extension ↔ server communication.
+    Replaces: /pending-queries (GET), /settings (POST), /extension-logs (POST).
+
+    The extension POSTs to /sync every ~1 second (controlled by server via next_poll_ms).
+  version: 1.0.0
+  contact:
+    name: Gasoline
+    url: https://github.com/anthropics/gasoline
+
+servers:
+  - url: http://localhost:9331
+    description: Local development server
+
+paths:
+  /sync:
+    post:
+      operationId: sync
+      summary: Bidirectional sync between extension and server
+      description: |
+        Single endpoint that consolidates all extension ↔ server communication:
+        - Extension sends: settings, logs, command results
+        - Server returns: pending commands, next poll interval
+
+        **Polling behavior:**
+        - Extension polls every `next_poll_ms` milliseconds (default: 1000)
+        - On failure: exponential backoff (1s → 2s → 4s → ... → 30s max)
+        - On success: reset to server-provided interval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncRequest'
+            examples:
+              minimal:
+                summary: Minimal request (just session ID)
+                value:
+                  session_id: "ext_abc123"
+              full:
+                summary: Full request with all fields
+                value:
+                  session_id: "ext_abc123"
+                  settings:
+                    pilot_enabled: true
+                    tracking_enabled: true
+                    tracked_tab_id: 42
+                    tracked_tab_url: "https://example.com"
+                    capture_logs: true
+                    capture_network: true
+                    capture_websocket: true
+                    capture_actions: true
+                  extension_logs:
+                    - timestamp: "2024-01-15T10:30:00Z"
+                      level: "info"
+                      message: "Tab tracking started"
+                      source: "background"
+                      category: "tracking"
+                  last_command_ack: "cmd_xyz789"
+                  command_results:
+                    - id: "cmd_xyz789"
+                      correlation_id: "corr_123"
+                      status: "complete"
+                      result: {"dom": "<html>...</html>"}
+      parameters:
+        - name: X-Gasoline-Client
+          in: header
+          required: false
+          schema:
+            type: string
+          description: |
+            Client identifier for multi-client support.
+            When provided, commands are scoped to this specific client.
+        - name: X-Gasoline-Extension-Version
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Extension version for compatibility tracking.
+      responses:
+        '200':
+          description: Sync successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+              examples:
+                noCommands:
+                  summary: No pending commands
+                  value:
+                    ack: true
+                    commands: []
+                    next_poll_ms: 1000
+                    server_time: "2024-01-15T10:30:01Z"
+                withCommands:
+                  summary: Server has pending commands
+                  value:
+                    ack: true
+                    commands:
+                      - id: "cmd_abc123"
+                        type: "waterfall"
+                        params: {"limit": 100}
+                        correlation_id: "corr_456"
+                      - id: "cmd_def456"
+                        type: "dom"
+                        params: {"selector": "body"}
+                    next_poll_ms: 1000
+                    server_time: "2024-01-15T10:30:01Z"
+        '400':
+          description: Invalid JSON in request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Invalid JSON"
+        '405':
+          description: Method not allowed (must be POST)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Method not allowed"
+
+components:
+  schemas:
+    SyncRequest:
+      type: object
+      required:
+        - session_id
+      properties:
+        session_id:
+          type: string
+          description: |
+            Unique identifier for this extension session.
+            Used to detect session restarts (e.g., after MV3 service worker suspension).
+          example: "ext_abc123"
+        settings:
+          $ref: '#/components/schemas/SyncSettings'
+        extension_logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExtensionLog'
+          description: |
+            Batched logs from the extension.
+            Server stores up to 10,000 logs in a circular buffer.
+        last_command_ack:
+          type: string
+          description: |
+            ID of the last command successfully processed by the extension.
+            Used for reliable delivery semantics.
+          example: "cmd_xyz789"
+        command_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncCommandResult'
+          description: Results of previously received commands.
+
+    SyncSettings:
+      type: object
+      description: Current extension settings/state
+      properties:
+        pilot_enabled:
+          type: boolean
+          description: Whether AI Web Pilot mode is enabled
+          example: true
+        tracking_enabled:
+          type: boolean
+          description: Whether tab tracking is active
+          example: true
+        tracked_tab_id:
+          type: integer
+          description: Chrome tab ID being tracked (0 if none)
+          example: 42
+        tracked_tab_url:
+          type: string
+          description: URL of the tracked tab
+          example: "https://example.com/page"
+        capture_logs:
+          type: boolean
+          description: Whether console log capture is enabled
+          example: true
+        capture_network:
+          type: boolean
+          description: Whether network request capture is enabled
+          example: true
+        capture_websocket:
+          type: boolean
+          description: Whether WebSocket capture is enabled
+          example: true
+        capture_actions:
+          type: boolean
+          description: Whether user action capture is enabled
+          example: true
+
+    ExtensionLog:
+      type: object
+      description: A log entry from the extension
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp (server sets if missing)
+          example: "2024-01-15T10:30:00Z"
+        level:
+          type: string
+          enum: [debug, info, warn, error]
+          description: Log severity level
+          example: "info"
+        message:
+          type: string
+          description: Log message
+          example: "Tab tracking started"
+        source:
+          type: string
+          description: Source component (e.g., "background", "content-script")
+          example: "background"
+        category:
+          type: string
+          description: Log category for filtering
+          example: "tracking"
+        data:
+          type: object
+          description: Additional structured data
+          additionalProperties: true
+
+    SyncCommandResult:
+      type: object
+      required:
+        - id
+        - status
+      description: Result of executing a server command
+      properties:
+        id:
+          type: string
+          description: Command ID this result is for
+          example: "cmd_xyz789"
+        correlation_id:
+          type: string
+          description: LLM-facing tracking ID (passed through from command)
+          example: "corr_123"
+        status:
+          type: string
+          enum: [complete, error, timeout]
+          description: Execution status
+          example: "complete"
+        result:
+          type: object
+          description: Command result data (structure depends on command type)
+          additionalProperties: true
+        error:
+          type: string
+          description: Error message if status is "error"
+          example: "Element not found"
+
+    SyncResponse:
+      type: object
+      required:
+        - ack
+        - commands
+        - next_poll_ms
+        - server_time
+        - capture_overrides
+      properties:
+        ack:
+          type: boolean
+          description: Server acknowledged the sync request
+          example: true
+        commands:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncCommand'
+          description: |
+            Pending commands for the extension to execute.
+            Empty array if no commands pending.
+        next_poll_ms:
+          type: integer
+          description: |
+            Server-controlled poll interval in milliseconds.
+            Extension should wait this long before next /sync call.
+            Default: 1000 (1 second)
+          example: 1000
+        server_time:
+          type: string
+          format: date-time
+          description: Server timestamp in RFC3339 format (for drift detection)
+          example: "2024-01-15T10:30:01Z"
+        server_version:
+          type: string
+          description: Server version string (optional, for compatibility)
+          example: "5.6.0"
+        capture_overrides:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            AI-controlled capture setting overrides.
+            Empty object when no overrides active.
+            Keys: log_level, ws_mode, network_bodies, screenshot_on_error, action_replay
+          example: {}
+
+    SyncCommand:
+      type: object
+      required:
+        - id
+        - type
+        - params
+      description: A command from server to extension
+      properties:
+        id:
+          type: string
+          description: Unique command ID (used for ack and result tracking)
+          example: "cmd_abc123"
+        type:
+          type: string
+          description: |
+            Command type. Known types:
+            - `waterfall`: Request network waterfall data
+            - `dom`: Query DOM elements
+            - `a11y`: Accessibility audit
+            - `execute_js`: Execute JavaScript
+            - `navigate`: Navigate to URL
+            - `highlight`: Highlight element
+          example: "waterfall"
+        params:
+          type: object
+          description: Command parameters (structure depends on type)
+          additionalProperties: true
+        correlation_id:
+          type: string
+          description: LLM-facing tracking ID for async operations
+          example: "corr_456"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid JSON"

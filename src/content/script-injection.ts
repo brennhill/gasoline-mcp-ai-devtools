@@ -1,7 +1,51 @@
 /**
  * @fileoverview Script Injection Module
- * Injects capture script into the page context
+ * Injects capture script into the page context and syncs stored settings
  */
+
+import type { WebSocketCaptureMode } from '../types'
+
+/** Settings that need to be synced to inject script on page load */
+const SYNC_SETTINGS: readonly {
+  storageKey: string
+  messageType: string
+  isMode?: boolean
+}[] = [
+  { storageKey: 'webSocketCaptureEnabled', messageType: 'setWebSocketCaptureEnabled' },
+  { storageKey: 'webSocketCaptureMode', messageType: 'setWebSocketCaptureMode', isMode: true },
+  { storageKey: 'networkWaterfallEnabled', messageType: 'setNetworkWaterfallEnabled' },
+  { storageKey: 'performanceMarksEnabled', messageType: 'setPerformanceMarksEnabled' },
+  { storageKey: 'actionReplayEnabled', messageType: 'setActionReplayEnabled' },
+  { storageKey: 'networkBodyCaptureEnabled', messageType: 'setNetworkBodyCaptureEnabled' },
+  { storageKey: 'performanceSnapshotEnabled', messageType: 'setPerformanceSnapshotEnabled' },
+]
+
+/**
+ * Sync stored settings to the inject script after it loads.
+ * This ensures new pages receive the current settings state.
+ */
+function syncStoredSettings(): void {
+  const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey)
+
+  chrome.storage.local.get(storageKeys, (result: Record<string, boolean | string | undefined>) => {
+    for (const setting of SYNC_SETTINGS) {
+      const value = result[setting.storageKey]
+      if (value === undefined) continue // Use default if not set
+
+      if (setting.isMode) {
+        window.postMessage(
+          { type: 'GASOLINE_SETTING', setting: setting.messageType, mode: value as WebSocketCaptureMode },
+          window.location.origin,
+        )
+      } else {
+        window.postMessage(
+          { type: 'GASOLINE_SETTING', setting: setting.messageType, enabled: value as boolean },
+          window.location.origin,
+        )
+      }
+    }
+  })
+}
 
 /**
  * Inject axe-core library into the page
@@ -21,7 +65,12 @@ export function injectScript(): void {
   const script = document.createElement('script')
   script.src = chrome.runtime.getURL('inject.bundled.js')
   script.type = 'module'
-  script.onload = () => script.remove()
+  script.onload = () => {
+    script.remove()
+    // Sync stored settings after inject script loads
+    // Small delay to ensure inject script has initialized its message listeners
+    setTimeout(syncStoredSettings, 50)
+  }
   ;(document.head || document.documentElement).appendChild(script)
 }
 

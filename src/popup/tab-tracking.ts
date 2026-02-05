@@ -149,7 +149,7 @@ export async function handleTrackPageClick(): Promise<void> {
             return
           }
 
-          chrome.storage.local.set({ trackedTabId: tab.id, trackedTabUrl: tab.url }, () => {
+          chrome.storage.local.set({ trackedTabId: tab.id, trackedTabUrl: tab.url, trackedTabTitle: tab.title || '' }, () => {
             if (btn) {
               btn.textContent = 'Stop Tracking'
               btn.style.background = '#f85149'

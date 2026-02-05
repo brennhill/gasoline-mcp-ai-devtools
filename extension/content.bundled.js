@@ -29,6 +29,30 @@
   }
 
   // extension/content/script-injection.js
+  var SYNC_SETTINGS = [
+    { storageKey: "webSocketCaptureEnabled", messageType: "setWebSocketCaptureEnabled" },
+    { storageKey: "webSocketCaptureMode", messageType: "setWebSocketCaptureMode", isMode: true },
+    { storageKey: "networkWaterfallEnabled", messageType: "setNetworkWaterfallEnabled" },
+    { storageKey: "performanceMarksEnabled", messageType: "setPerformanceMarksEnabled" },
+    { storageKey: "actionReplayEnabled", messageType: "setActionReplayEnabled" },
+    { storageKey: "networkBodyCaptureEnabled", messageType: "setNetworkBodyCaptureEnabled" },
+    { storageKey: "performanceSnapshotEnabled", messageType: "setPerformanceSnapshotEnabled" }
+  ];
+  function syncStoredSettings() {
+    const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey);
+    chrome.storage.local.get(storageKeys, (result) => {
+      for (const setting of SYNC_SETTINGS) {
+        const value = result[setting.storageKey];
+        if (value === void 0)
+          continue;
+        if (setting.isMode) {
+          window.postMessage({ type: "GASOLINE_SETTING", setting: setting.messageType, mode: value }, window.location.origin);
+        } else {
+          window.postMessage({ type: "GASOLINE_SETTING", setting: setting.messageType, enabled: value }, window.location.origin);
+        }
+      }
+    });
+  }
   function injectAxeCore() {
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("lib/axe.min.js");
@@ -39,7 +63,10 @@
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("inject.bundled.js");
     script.type = "module";
-    script.onload = () => script.remove();
+    script.onload = () => {
+      script.remove();
+      setTimeout(syncStoredSettings, 50);
+    };
     (document.head || document.documentElement).appendChild(script);
   }
   function initScriptInjection() {
