@@ -70,7 +70,48 @@ function getPlatformPackage() {
   return pkg;
 }
 
+// Check if a binary in PATH has matching version (for instant startup)
+function findGlobalBinary() {
+  const binaryName = os.platform() === 'win32' ? 'gasoline.exe' : 'gasoline';
+  const expectedVersion = require('../package.json').version;
+
+  try {
+    // Check if gasoline exists in PATH
+    const which = require('child_process').execSync(`which ${binaryName} 2>/dev/null || where ${binaryName} 2>nul`, {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe']
+    }).trim();
+
+    if (!which) return null;
+
+    // Check version matches
+    const versionOutput = require('child_process').execSync(`"${which}" --version`, {
+      encoding: 'utf8',
+      timeout: 2000
+    }).trim();
+
+    // Parse version from output like "gasoline v5.7.4"
+    const match = versionOutput.match(/v?(\d+\.\d+\.\d+)/);
+    if (match && match[1] === expectedVersion) {
+      logToFile(`Using global binary (version ${match[1]}): ${which}`);
+      return which;
+    } else if (match) {
+      logToFile(`Global binary version mismatch: ${match[1]} vs expected ${expectedVersion}`);
+    }
+  } catch (e) {
+    // Global binary not found or version check failed - fall through to bundled
+  }
+
+  return null;
+}
+
 function findBinary() {
+  // FAST PATH: Check for global install with matching version first
+  const globalBinary = findGlobalBinary();
+  if (globalBinary) {
+    return globalBinary;
+  }
+
   const pkg = getPlatformPackage();
   const binaryName = os.platform() === 'win32' ? 'gasoline.exe' : 'gasoline';
 

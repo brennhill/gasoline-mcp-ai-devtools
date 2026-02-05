@@ -12,46 +12,80 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 )
 
+// daemonState tracks the state of daemon startup for fast-start mode
+type daemonState struct {
+	ready    bool
+	failed   bool
+	err      string
+	mu       sync.Mutex
+	readyCh  chan struct{}
+	failedCh chan struct{}
+}
+
 // runBridgeMode bridges stdio (from MCP client) to HTTP (to persistent server)
+// Uses fast-start: responds to initialize/tools/list immediately while spawning daemon async.
 func runBridgeMode(port int) {
 	serverURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 
-	// Check if server is already running
-	if !isServerRunning(port) {
-		fmt.Fprintf(os.Stderr, "[gasoline-bridge] Server not running, starting daemon...\n")
-
-		// Start daemon in background
-		exe, err := os.Executable()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline-bridge] ERROR: cannot get executable path: %v\n", err)
-			os.Exit(1)
-		}
-
-		cmd := exec.Command(exe, "--port", fmt.Sprintf("%d", port))
-		cmd.Stdout = os.Stderr // Redirect server logs to stderr
-		cmd.Stderr = os.Stderr
-		if err := cmd.Start(); err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline-bridge] ERROR: failed to start daemon: %v\n", err)
-			os.Exit(1)
-		}
-
-		// Wait for server to be ready (max 10 seconds)
-		if !waitForServer(port, 10*time.Second) {
-			fmt.Fprintf(os.Stderr, "[gasoline-bridge] ERROR: server failed to start within 10 seconds\n")
-			os.Exit(1)
-		}
-
-		fmt.Fprintf(os.Stderr, "[gasoline-bridge] Daemon started successfully\n")
-	} else {
-		fmt.Fprintf(os.Stderr, "[gasoline-bridge] Connecting to existing daemon on port %d\n", port)
+	// Track daemon state with proper failure handling
+	state := &daemonState{
+		readyCh:  make(chan struct{}),
+		failedCh: make(chan struct{}),
 	}
 
-	// Bridge stdio <-> HTTP
-	bridgeStdioToHTTP(serverURL + "/mcp")
+	// Check if server is already running
+	if isServerRunning(port) {
+		state.ready = true
+		close(state.readyCh)
+	} else {
+		// Spawn daemon in background (don't block on it)
+		go func() {
+			exe, err := os.Executable()
+			if err != nil {
+				state.mu.Lock()
+				state.failed = true
+				state.err = "Cannot find executable: " + err.Error()
+				state.mu.Unlock()
+				close(state.failedCh)
+				return
+			}
+
+			cmd := exec.Command(exe, "--daemon", "--port", fmt.Sprintf("%d", port))
+			cmd.Stdout = nil
+			cmd.Stderr = nil
+			cmd.Stdin = nil
+			if err := cmd.Start(); err != nil {
+				state.mu.Lock()
+				state.failed = true
+				state.err = "Failed to start daemon: " + err.Error()
+				state.mu.Unlock()
+				close(state.failedCh)
+				return
+			}
+
+			// Wait for server to be ready (max 4 seconds - fail fast)
+			if waitForServer(port, 4*time.Second) {
+				state.mu.Lock()
+				state.ready = true
+				state.mu.Unlock()
+				close(state.readyCh)
+			} else {
+				state.mu.Lock()
+				state.failed = true
+				state.err = fmt.Sprintf("Daemon started but not responding on port %d after 4s", port)
+				state.mu.Unlock()
+				close(state.failedCh)
+			}
+		}()
+	}
+
+	// Bridge stdio <-> HTTP with fast-start support
+	bridgeStdioToHTTPFast(serverURL+"/mcp", state, port)
 }
 
 // isServerRunning checks if a server is healthy on the given port via HTTP health check.
@@ -81,6 +115,224 @@ func waitForServer(port int, timeout time.Duration) bool {
 		time.Sleep(100 * time.Millisecond)
 	}
 	return false
+}
+
+// bridgeStdioToHTTPFast forwards JSON-RPC with fast-start: responds to initialize/tools/list
+// immediately while daemon starts in background. Only blocks on tools/call.
+func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
+	scanner := bufio.NewScanner(os.Stdin)
+
+	const maxScanTokenSize = 10 * 1024 * 1024
+	buf := make([]byte, maxScanTokenSize)
+	scanner.Buffer(buf, maxScanTokenSize)
+
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	var wg sync.WaitGroup
+	responseSent := make(chan bool, 1)
+	var responseOnce sync.Once
+	signalResponseSent := func() {
+		responseOnce.Do(func() {
+			responseSent <- true
+		})
+	}
+
+	// Get static tools list for fast response (ToolsList doesn't use receiver fields)
+	var toolsHandler *ToolHandler
+	toolsList := toolsHandler.ToolsList()
+
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+
+		var req JSONRPCRequest
+		if err := json.Unmarshal(line, &req); err != nil {
+			var partial map[string]any
+			var extractedID any = "error"
+			if json.Unmarshal(line, &partial) == nil {
+				if id, ok := partial["id"]; ok && id != nil {
+					extractedID = id
+				}
+			}
+			errResp := JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      extractedID,
+				Error:   &JSONRPCError{Code: -32700, Message: "Parse error: " + err.Error()},
+			}
+			respJSON, _ := json.Marshal(errResp)
+			fmt.Println(string(respJSON))
+			os.Stdout.Sync()
+			signalResponseSent()
+			continue
+		}
+
+		// FAST PATH: Handle initialize and tools/list directly (no daemon needed)
+		switch req.Method {
+		case "initialize":
+			// Respond immediately with capabilities
+			result := map[string]any{
+				"protocolVersion": "2024-11-05",
+				"serverInfo":      map[string]any{"name": "gasoline", "version": version},
+				"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
+			}
+			resultJSON, _ := json.Marshal(result)
+			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+			respJSON, _ := json.Marshal(resp)
+			fmt.Println(string(respJSON))
+			os.Stdout.Sync()
+			signalResponseSent()
+			continue
+
+		case "initialized":
+			// Notification - no response needed, but some clients send with ID
+			if req.ID != nil {
+				resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{}`)}
+				respJSON, _ := json.Marshal(resp)
+				fmt.Println(string(respJSON))
+				os.Stdout.Sync()
+				signalResponseSent()
+			}
+			continue
+
+		case "tools/list":
+			// Respond immediately with static tools schema
+			result := map[string]any{"tools": toolsList}
+			resultJSON, _ := json.Marshal(result)
+			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
+			respJSON, _ := json.Marshal(resp)
+			fmt.Println(string(respJSON))
+			os.Stdout.Sync()
+			signalResponseSent()
+			continue
+
+		case "ping":
+			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{}`)}
+			respJSON, _ := json.Marshal(resp)
+			fmt.Println(string(respJSON))
+			os.Stdout.Sync()
+			signalResponseSent()
+			continue
+
+		case "prompts/list":
+			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"prompts":[]}`)}
+			respJSON, _ := json.Marshal(resp)
+			fmt.Println(string(respJSON))
+			os.Stdout.Sync()
+			signalResponseSent()
+			continue
+
+		case "resources/list":
+			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"resources":[]}`)}
+			respJSON, _ := json.Marshal(resp)
+			fmt.Println(string(respJSON))
+			os.Stdout.Sync()
+			signalResponseSent()
+			continue
+
+		case "resources/templates/list":
+			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"resourceTemplates":[]}`)}
+			respJSON, _ := json.Marshal(resp)
+			fmt.Println(string(respJSON))
+			os.Stdout.Sync()
+			signalResponseSent()
+			continue
+		}
+
+		// SLOW PATH: Check daemon status for tools/call and other methods
+		state.mu.Lock()
+		isReady := state.ready
+		isFailed := state.failed
+		failErr := state.err
+		state.mu.Unlock()
+
+		if isFailed {
+			// Daemon failed to start - return tool error with details and suggestions
+			suggestion := fmt.Sprintf("Server failed to start: %s. ", failErr)
+			if strings.Contains(failErr, "port") || strings.Contains(failErr, "bind") || strings.Contains(failErr, "address") {
+				suggestion += fmt.Sprintf("Port may be in use. Try: npx gasoline-mcp --port %d", port+1)
+			} else {
+				suggestion += "Try: npx gasoline-mcp --doctor"
+			}
+			sendToolError(req.ID, suggestion)
+			os.Stdout.Sync()
+			signalResponseSent()
+			continue
+		}
+
+		if !isReady {
+			// Server is still starting - tell LLM to retry
+			sendToolError(req.ID, "Server is starting up. Please retry this tool call in 2 seconds.")
+			os.Stdout.Sync()
+			signalResponseSent()
+			continue
+		}
+
+		// Forward to HTTP server
+		wg.Add(1)
+		httpReq, err := http.NewRequest("POST", endpoint, bytes.NewReader(line))
+		if err != nil {
+			sendBridgeError(req.ID, -32603, "Bridge error: "+err.Error())
+			os.Stdout.Sync()
+			signalResponseSent()
+			wg.Done()
+			continue
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+
+		resp, err := client.Do(httpReq)
+		if err != nil {
+			sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
+			os.Stdout.Sync()
+			signalResponseSent()
+			wg.Done()
+			continue
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			sendBridgeError(req.ID, -32603, "Failed to read response: "+err.Error())
+			os.Stdout.Sync()
+			signalResponseSent()
+			wg.Done()
+			continue
+		}
+
+		if resp.StatusCode == 204 {
+			wg.Done()
+			continue
+		}
+
+		if resp.StatusCode != 200 {
+			sendBridgeError(req.ID, -32603, fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body)))
+			os.Stdout.Sync()
+			signalResponseSent()
+			wg.Done()
+			continue
+		}
+
+		fmt.Print(string(body))
+		os.Stdout.Sync()
+		signalResponseSent()
+		wg.Done()
+	}
+
+	wg.Wait()
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline-bridge] ERROR: stdin scanner error: %v\n", err)
+	}
+
+	select {
+	case <-responseSent:
+	case <-time.After(5 * time.Second):
+	}
+
+	os.Stdout.Sync()
+	time.Sleep(100 * time.Millisecond)
 }
 
 // bridgeStdioToHTTP forwards JSON-RPC messages between stdin/stdout and HTTP endpoint
@@ -238,5 +490,24 @@ func sendBridgeError(id any, code int, message string) {
 		},
 	}
 	respJSON, _ := json.Marshal(errResp)
+	fmt.Println(string(respJSON))
+}
+
+// sendToolError sends a tool result with isError: true (soft error, not protocol error)
+// This tells the LLM the tool ran but returned an error, allowing it to retry.
+func sendToolError(id any, message string) {
+	result := map[string]any{
+		"content": []map[string]any{
+			{"type": "text", "text": message},
+		},
+		"isError": true,
+	}
+	resultJSON, _ := json.Marshal(result)
+	resp := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Result:  resultJSON,
+	}
+	respJSON, _ := json.Marshal(resp)
 	fmt.Println(string(respJSON))
 }
