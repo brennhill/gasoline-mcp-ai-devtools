@@ -4,8 +4,55 @@
  */
 
 const fs = require('fs');
+const net = require('net');
 const { execSync } = require('child_process');
 const { getConfigCandidates, getToolNameFromPath, readConfigFile } = require('./config');
+
+/**
+ * Check if a port is available
+ * @param {number} port Port to check
+ * @returns {Promise<{available: bool, error?: string}>}
+ */
+function checkPort(port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        resolve({ available: false, error: `Port ${port} is in use by another process` });
+      } else {
+        resolve({ available: false, error: err.message });
+      }
+    });
+    server.once('listening', () => {
+      server.close();
+      resolve({ available: true });
+    });
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+/**
+ * Synchronous port check (for CLI)
+ * @param {number} port Port to check
+ * @returns {{available: bool, error?: string}}
+ */
+function checkPortSync(port) {
+  try {
+    // Try to check if something is listening
+    const result = execSync(`lsof -ti :${port} 2>/dev/null || true`, {
+      encoding: 'utf8',
+      timeout: 2000,
+    }).trim();
+
+    if (result) {
+      return { available: false, error: `Port ${port} is in use (PID: ${result.split('\n')[0]})` };
+    }
+    return { available: true };
+  } catch (e) {
+    // If lsof fails, assume port is available
+    return { available: true };
+  }
+}
 
 /**
  * Test if gasoline binary is available and working
@@ -152,6 +199,10 @@ function runDiagnostics(verbose = false) {
   // Check binary availability
   const binary = testBinary();
 
+  // Check default port availability (7890)
+  const defaultPort = 7890;
+  const port = checkPortSync(defaultPort);
+
   // Generate summary
   const okCount = tools.filter(t => t.status === 'ok').length;
   const errorCount = tools.filter(t => t.status === 'error').length;
@@ -168,6 +219,7 @@ function runDiagnostics(verbose = false) {
   return {
     tools,
     binary,
+    port: { port: defaultPort, ...port },
     summary,
   };
 }
