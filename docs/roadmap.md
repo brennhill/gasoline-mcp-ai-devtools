@@ -268,6 +268,7 @@ observe({what: "network_stats", group_by: "host"})
 
 ### v6.1: Advanced Exploration & Observation
 
+- **Universal Script Injection** — Use `chrome.debugger` API or `chrome.scripting.executeScript` to inject content scripts on pages where manifest-based injection fails. Enables JS execution on sites with strict CSP or where content scripts don't auto-load. Fallback chain: content script → executeScript → debugger API.
 - **Advanced Filtering (Signal-to-Noise)** — Content-type filters, domain allowlist/blocklist, regex patterns, response size thresholds. Reduce noise before AI sees it. Complements v5.3 pagination.
 - **Visual-Semantic Bridge** — Computed layout maps. Auto-generate unique test-IDs. Solves "ghost clicks" and "hallucinated selectors." [Spec](features/feature/visual-semantic-bridge/product-spec.md)
 - **State "Time Travel"** — Persistent event buffer. Before/after snapshots. Enables causal debugging across crashes. [Spec](features/feature/state-time-travel/product-spec.md)

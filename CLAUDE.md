@@ -33,6 +33,13 @@ Tests: cold start, tool calls, concurrent clients, stdout purity, persistence, g
 ./scripts/test-all-tools-comprehensive.sh  # Run full UAT
 ```
 
+**UAT Rules:**
+
+- **NEVER modify tests during UAT** — run tests as-is, report results
+- If tests have issues, note them and propose changes AFTER UAT completes
+- UAT validates the npm-installed version (`gasoline-mcp` from PATH)
+- Extension must be connected for data flow tests to pass
+
 ## Code Standards
 
 **JSON API fields:** Use `snake_case` for MCP responses. Exception: browser API pass-through fields (PerformanceResourceTiming, etc.) keep camelCase.
@@ -59,6 +66,36 @@ product-spec.md → tech-spec.md → Review → qa-plan.md → Implementation
 ```
 
 Don't skip gates. Tests before code.
+
+### Tech Spec Requirements
+
+Every tech spec must include:
+
+1. **Sequence Diagram** — Visual flow of the feature using mermaid
+   - Cold start (initial state)
+   - Warm start (subsequent uses)
+   - Concurrent operations (if applicable)
+
+2. **Edge Case Analysis** — Enumerate and answer all edge cases
+   - What happens when X fails?
+   - What if Y happens simultaneously?
+   - How do we recover from Z?
+   - Document resolution for each edge case
+
+3. **State Machine** — Describe state transitions (or mark N/A)
+   - Valid states
+   - Transition triggers
+   - Invalid transitions
+   - Terminal states
+
+4. **Network Communication** — For any service-to-service or network calls
+   - Protocol specification (HTTP, WebSocket, stdio, etc.)
+   - Request/response schemas
+   - Failure modes (timeout, refused, crash, etc.)
+   - Recovery strategies (retry, fallback, graceful degradation)
+   - Race condition protection
+
+**Example:** See [`docs/features/mcp-persistent-server/architecture.md`](docs/features/mcp-persistent-server/architecture.md) for reference implementation with 3 sequence diagrams and 14 edge cases.
 
 ## Finding Things
 

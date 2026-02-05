@@ -42,7 +42,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "5.7.0"
+var version = "5.7.4"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -606,13 +606,13 @@ func handleMCPConnection(server *Server, port int, apiKey string) {
 	// Immediately try to connect - no artificial backoff delays
 	// The retry logic below provides natural spacing if needed
 	healthURL := serverURL + "/health"
-	maxRetries := 3 // Increased for cold start tolerance
+	maxRetries := 2 // Fail fast: max 4 seconds total (2 retries × 1s delay + initial)
 	var lastErr error
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
-			// Exponential backoff for retries: 1s, 2s, 3s
-			retryDelay := time.Duration(attempt) * time.Second
+			// Fast retry with 1 second delay (total: 0s, 1s, 2s)
+			retryDelay := 1 * time.Second
 			_ = server.appendToFile([]LogEntry{{
 				"type":      "lifecycle",
 				"event":     "connection_retry",
@@ -626,111 +626,140 @@ func handleMCPConnection(server *Server, port int, apiKey string) {
 			time.Sleep(retryDelay)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		req, err := http.NewRequestWithContext(ctx, "GET", healthURL, nil)
-		cancel()
-
-		if err == nil {
-			resp, err := http.DefaultClient.Do(req)
-			if err == nil && resp.StatusCode == http.StatusOK {
-				_ = resp.Body.Close()
-				// Connection successful - use bridge mode
-				if attempt > 0 {
-					fmt.Fprintf(os.Stderr, "[gasoline] Connection successful after %d retries\n", attempt)
-				}
-				bridgeStdioToHTTP(mcpEndpoint)
-				return
-			}
-			if resp != nil {
-				_ = resp.Body.Close()
-			}
+		if err != nil {
+			cancel()
 			lastErr = err
-		} else {
-			lastErr = err
+			continue
 		}
+
+		resp, err := http.DefaultClient.Do(req)
+		cancel() // Cancel after request completes, not before
+		if err == nil && resp.StatusCode == http.StatusOK {
+			_ = resp.Body.Close()
+			// Connection successful - use bridge mode
+			if attempt > 0 {
+				fmt.Fprintf(os.Stderr, "[gasoline] Connection successful after %d retries\n", attempt)
+			}
+			bridgeStdioToHTTP(mcpEndpoint)
+			return
+		}
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+		lastErr = err
 	}
 
-	// Step 5: Still failing after retries - gather comprehensive diagnostics before recovery
+	// Step 5: Server unresponsive - attempt graceful zombie recovery
 	diagnostics := gatherConnectionDiagnostics(port, serverURL, healthURL)
 
 	_ = server.appendToFile([]LogEntry{{
 		"type":        "lifecycle",
-		"event":       "server_recovery",
+		"event":       "zombie_recovery_start",
 		"error":       fmt.Sprintf("%v", lastErr),
 		"pid":         os.Getpid(),
 		"timestamp":   time.Now().UTC().Format(time.RFC3339),
 		"diagnostics": diagnostics,
 	}})
 
-	fmt.Fprintf(os.Stderr, "[gasoline] Server unresponsive after %d retries\n", maxRetries)
-	fmt.Fprintf(os.Stderr, "[gasoline] Diagnostics:\n")
-	fmt.Fprintf(os.Stderr, "  Port %d status: %s\n", port, diagnostics["port_status"])
-	fmt.Fprintf(os.Stderr, "  Process info: %s\n", diagnostics["process_info"])
-	fmt.Fprintf(os.Stderr, "  Health check: %s\n", diagnostics["health_check"])
-	fmt.Fprintf(os.Stderr, "[gasoline] Attempting automatic recovery...\n")
+	// Check if we can identify and recover from a zombie server
+	zombiePID := readPIDFile(port)
+	if zombiePID > 0 {
+		// Check if process is alive
+		zombieProcess, err := os.FindProcess(zombiePID)
+		if err == nil {
+			// Try to signal the process (Signal 0 checks existence without killing)
+			if zombieProcess.Signal(syscall.Signal(0)) == nil {
+				// Process is alive but not responding - attempt graceful shutdown
+				_ = server.appendToFile([]LogEntry{{
+					"type":       "lifecycle",
+					"event":      "zombie_sigterm",
+					"zombie_pid": zombiePID,
+					"pid":        os.Getpid(),
+					"timestamp":  time.Now().UTC().Format(time.RFC3339),
+				}})
 
-	writeDebugInfo("connection_failure_with_diagnostics", lastErr, diagnostics)
+				_ = zombieProcess.Signal(syscall.SIGTERM)
+				time.Sleep(2 * time.Second)
 
-	// Kill processes on the port
-	killCmd := exec.Command("lsof", "-ti", fmt.Sprintf(":%d", port))
-	if output, err := killCmd.Output(); err == nil {
-		pids := string(output)
-		for _, pidStr := range []string{pids} {
-			pidStr = strings.TrimSpace(pidStr)
-			if pidStr != "" {
-				_ = exec.Command("kill", "-9", pidStr).Run()
+				// Check if it exited
+				if zombieProcess.Signal(syscall.Signal(0)) != nil {
+					// Process exited - remove PID file and respawn
+					removePIDFile(port)
+				} else {
+					// Still alive after SIGTERM - force kill
+					_ = server.appendToFile([]LogEntry{{
+						"type":       "lifecycle",
+						"event":      "zombie_sigkill",
+						"zombie_pid": zombiePID,
+						"pid":        os.Getpid(),
+						"timestamp":  time.Now().UTC().Format(time.RFC3339),
+					}})
+					_ = zombieProcess.Signal(syscall.SIGKILL)
+					time.Sleep(500 * time.Millisecond)
+					removePIDFile(port)
+				}
+
+				// Now respawn fresh server
+				_ = server.appendToFile([]LogEntry{{
+					"type":      "lifecycle",
+					"event":     "zombie_recovery_respawn",
+					"pid":       os.Getpid(),
+					"port":      port,
+					"timestamp": time.Now().UTC().Format(time.RFC3339),
+				}})
+
+				exe, _ := os.Executable()
+				args := []string{"--daemon", "--port", fmt.Sprintf("%d", port)}
+				if apiKey != "" {
+					args = append(args, "--api-key", apiKey)
+				}
+
+				cmd := exec.Command(exe, args...) // #nosec G204 -- exe is our own binary
+				cmd.Stdout = nil
+				cmd.Stderr = nil
+				util.SetDetachedProcess(cmd)
+				if err := cmd.Start(); err != nil {
+					sendStartupError("Failed to respawn after zombie recovery: " + err.Error())
+					os.Exit(1)
+				}
+
+				// Wait for fresh server
+				if waitForServer(port, 10*time.Second) {
+					_ = server.appendToFile([]LogEntry{{
+						"type":      "lifecycle",
+						"event":     "zombie_recovery_success",
+						"pid":       os.Getpid(),
+						"timestamp": time.Now().UTC().Format(time.RFC3339),
+					}})
+					bridgeStdioToHTTP(mcpEndpoint)
+					return
+				}
 			}
 		}
 	}
 
-	// Wait for port to be free
-	time.Sleep(500 * time.Millisecond)
-
-	// Start fresh server as SEPARATE background process
+	// Recovery failed or no PID file - give up
 	_ = server.appendToFile([]LogEntry{{
-		"type":      "lifecycle",
-		"event":     "mcp_mode_recovery_spawn",
-		"pid":       os.Getpid(),
-		"port":      port,
-		"timestamp": time.Now().UTC().Format(time.RFC3339),
-	}})
-	// Quiet mode: Recovery startup is silent
-
-	// Spawn server as SEPARATE background process so it persists after client exits
-	exe, _ := os.Executable()
-	args := []string{"--daemon", "--port", fmt.Sprintf("%d", port)}
-	if apiKey != "" {
-		args = append(args, "--api-key", apiKey)
-	}
-
-	cmd := exec.Command(exe, args...) // #nosec G204 -- exe is our own binary
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	util.SetDetachedProcess(cmd)
-	if err := cmd.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] ERROR: Failed to spawn recovery server: %v\n", err)
-		sendStartupError("Failed to spawn recovery server: " + err.Error())
-		os.Exit(1)
-	}
-
-	_ = server.appendToFile([]LogEntry{{
-		"type":           "lifecycle",
-		"event":          "mcp_recovery_server_spawned",
-		"client_pid":     os.Getpid(),
-		"server_pid":     cmd.Process.Pid,
-		"port":           port,
-		"timestamp":      time.Now().UTC().Format(time.RFC3339),
+		"type":        "lifecycle",
+		"event":       "connection_failed",
+		"error":       fmt.Sprintf("%v", lastErr),
+		"pid":         os.Getpid(),
+		"timestamp":   time.Now().UTC().Format(time.RFC3339),
+		"diagnostics": diagnostics,
 	}})
 
-	// Wait for server to be ready
-	if !waitForServer(port, 10*time.Second) {
-		fmt.Fprintf(os.Stderr, "[gasoline] ERROR: Recovery server failed to start\n")
-		sendStartupError("Recovery server failed to start")
-		os.Exit(1)
-	}
+	fmt.Fprintf(os.Stderr, "[gasoline] ERROR: Server unresponsive after %d retries and recovery failed\n", maxRetries)
+	fmt.Fprintf(os.Stderr, "[gasoline] Port %d status: %s\n", port, diagnostics["port_status"])
+	fmt.Fprintf(os.Stderr, "[gasoline] Process info: %s\n", diagnostics["process_info"])
+	fmt.Fprintf(os.Stderr, "[gasoline]\n")
+	fmt.Fprintf(os.Stderr, "[gasoline] To fix: gasoline --stop --port %d\n", port)
+	fmt.Fprintf(os.Stderr, "[gasoline] Or kill manually: pkill -9 gasoline\n")
 
-	// Server recovered - bridge this client's stdio, then exit normally
-	bridgeStdioToHTTP(mcpEndpoint)
+	writeDebugInfo("connection_failure_with_diagnostics", lastErr, diagnostics)
+	sendStartupError(fmt.Sprintf("Server unresponsive on port %d after %d retries", port, maxRetries))
+	os.Exit(1)
 }
 
 // gatherConnectionDiagnostics collects detailed information about why connection failed.
@@ -889,6 +918,24 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 	// Create capture buffers for WebSocket, network, and actions
 	cap := capture.NewCapture()
 
+	// Set server version for /sync endpoint compatibility checking
+	cap.SetServerVersion(version)
+
+	// Set up lifecycle event logging callback
+	cap.SetLifecycleCallback(func(event string, data map[string]any) {
+		entry := LogEntry{
+			"type":      "lifecycle",
+			"event":     event,
+			"pid":       os.Getpid(),
+			"port":      port,
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}
+		for k, v := range data {
+			entry[k] = v
+		}
+		_ = server.appendToFile([]LogEntry{entry})
+	})
+
 	// Load cached settings from disk (pilot state, etc.)
 	_ = server.appendToFile([]LogEntry{{
 		"type":      "lifecycle",
@@ -918,6 +965,62 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 
 	// Start version checking loop (checks GitHub daily for new releases)
 	startVersionCheckLoop(ctx)
+
+	// Startup cleanup: Check PID file and kill stale process before binding
+	pidFile := pidFilePath(port)
+	if _, err := os.Stat(pidFile); err == nil {
+		// PID file exists - check if process is alive
+		pidBytes, err := os.ReadFile(pidFile)
+		if err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(pidBytes))); err == nil {
+				// Check if process exists
+				process, err := os.FindProcess(pid)
+				if err == nil {
+					// Try to signal the process (Signal 0 doesn't kill, just checks existence)
+					err := process.Signal(syscall.Signal(0))
+					if err == nil {
+						// Process is alive - this is a real conflict, fail fast
+						_ = server.appendToFile([]LogEntry{{
+							"type":      "lifecycle",
+							"event":     "port_conflict_detected",
+							"pid":       os.Getpid(),
+							"port":      port,
+							"existing_pid": pid,
+							"timestamp": time.Now().UTC().Format(time.RFC3339),
+						}})
+						return fmt.Errorf("port %d already in use by PID %d (run 'gasoline --stop --port %d' to stop it)", port, pid, port)
+					}
+					// Process is dead - remove stale PID file
+					_ = server.appendToFile([]LogEntry{{
+						"type":      "lifecycle",
+						"event":     "stale_pid_removed",
+						"pid":       os.Getpid(),
+						"port":      port,
+						"stale_pid": pid,
+						"timestamp": time.Now().UTC().Format(time.RFC3339),
+					}})
+					os.Remove(pidFile)
+				}
+			}
+		}
+	}
+
+	// Fast-fail: Check if port is available before trying to bind
+	// This catches cases where PID file is missing but port is still in use
+	testAddr := fmt.Sprintf("127.0.0.1:%d", port)
+	testLn, err := net.Listen("tcp", testAddr)
+	if err != nil {
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "port_conflict_detected",
+			"pid":       os.Getpid(),
+			"port":      port,
+			"error":     err.Error(),
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
+		return fmt.Errorf("port %d already in use (unknown process, try 'lsof -ti :%d | xargs kill -9'): %w", port, port, err)
+	}
+	testLn.Close()
 
 	// Start HTTP server in background for browser extension
 	httpReady := make(chan error, 1)
@@ -977,7 +1080,17 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 		// Non-fatal: server can still run without PID file
 	}
 
-	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "startup", "version": version, "port": port, "timestamp": time.Now().UTC().Format(time.RFC3339)}})
+	_ = server.appendToFile([]LogEntry{{
+		"type":       "lifecycle",
+		"event":      "startup",
+		"version":    version,
+		"port":       port,
+		"pid":        os.Getpid(),
+		"go_version": runtime.Version(),
+		"os":         runtime.GOOS,
+		"arch":       runtime.GOARCH,
+		"timestamp":  time.Now().UTC().Format(time.RFC3339),
+	}})
 
 	// MCP SSE transport ready
 	_ = server.appendToFile([]LogEntry{{
@@ -989,9 +1102,36 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 
 	// Wait for shutdown signal
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	s := <-sig
-	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
+
+	// Map signal to human-readable source
+	var shutdownSource string
+	switch s {
+	case os.Interrupt:
+		shutdownSource = "Ctrl+C (SIGINT)"
+	case syscall.SIGTERM:
+		shutdownSource = "SIGTERM (likely --stop or kill)"
+	case syscall.SIGHUP:
+		shutdownSource = "SIGHUP (terminal closed)"
+	default:
+		shutdownSource = s.String()
+	}
+
+	_ = server.appendToFile([]LogEntry{{
+		"type":            "lifecycle",
+		"event":           "shutdown",
+		"signal":          s.String(),
+		"signal_num":      int(s.(syscall.Signal)),
+		"shutdown_source": shutdownSource,
+		"uptime_seconds":  time.Since(startTime).Seconds(),
+		"pid":             os.Getpid(),
+		"port":            port,
+		"timestamp":       time.Now().UTC().Format(time.RFC3339),
+	}})
+
+	// Shutdown async logger (drain remaining logs)
+	server.shutdownAsyncLogger(2 * time.Second)
 
 	// Clean up PID file on shutdown
 	removePIDFile(port)
@@ -1004,6 +1144,27 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 // Uses hybrid approach: PID file (fast) → HTTP /shutdown (graceful) → lsof+kill (fallback).
 func runStopMode(port int) {
 	fmt.Printf("Stopping gasoline server on port %d...\n", port)
+
+	// Log the stop command invocation to the shared log file
+	// This helps diagnose "who stopped the server" questions
+	home, _ := os.UserHomeDir()
+	logFile := filepath.Join(home, "gasoline-logs.jsonl")
+	stopEntry := map[string]any{
+		"type":      "lifecycle",
+		"event":     "stop_command_invoked",
+		"port":      port,
+		"source":    "gasoline --stop",
+		"caller_pid": os.Getpid(),
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}
+	if data, err := json.Marshal(stopEntry); err == nil {
+		// #nosec G302 G304 -- log file path from trusted home directory
+		if f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644); err == nil {
+			_, _ = f.Write(data)
+			_, _ = f.Write([]byte{'\n'})
+			_ = f.Close()
+		}
+	}
 
 	// Step 1: Try PID file (fast path)
 	pid := readPIDFile(port)

@@ -95,6 +95,7 @@ export class SyncClient {
             const logs = this.callbacks.getExtensionLogs();
             const request = {
                 session_id: this.sessionId,
+                extension_version: this.extensionVersion || undefined,
                 settings,
             };
             // Include logs if any
@@ -128,6 +129,14 @@ export class SyncClient {
             const data = await response.json();
             // Success - update state
             this.onSuccess();
+            // Check for version mismatch (compare major.minor only, ignore patch)
+            if (data.server_version && this.extensionVersion && this.callbacks.onVersionMismatch) {
+                const serverMajorMinor = data.server_version.split('.').slice(0, 2).join('.');
+                const extensionMajorMinor = this.extensionVersion.split('.').slice(0, 2).join('.');
+                if (serverMajorMinor !== extensionMajorMinor) {
+                    this.callbacks.onVersionMismatch(this.extensionVersion, data.server_version);
+                }
+            }
             // Clear sent logs and results
             if (logs.length > 0) {
                 this.callbacks.clearExtensionLogs();

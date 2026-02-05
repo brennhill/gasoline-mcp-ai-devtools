@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -55,14 +54,16 @@ func runBridgeMode(port int) {
 	bridgeStdioToHTTP(serverURL + "/mcp")
 }
 
-// isServerRunning checks if a server is listening on the given port
+// isServerRunning checks if a server is healthy on the given port via HTTP health check.
+// This catches zombie servers that accept TCP connections but don't respond to HTTP.
 func isServerRunning(port int) bool {
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 500*time.Millisecond)
+	client := &http.Client{Timeout: 500 * time.Millisecond}
+	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port))
 	if err != nil {
 		return false
 	}
-	conn.Close()
-	return true
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
 }
 
 // waitForServer waits for the server to start accepting connections
@@ -92,7 +93,7 @@ func bridgeStdioToHTTP(endpoint string) {
 	scanner.Buffer(buf, maxScanTokenSize)
 
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: 5 * time.Second, // Fast failure for MCP clients
 	}
 
 	// Track in-flight HTTP requests to ensure all responses sent before exit
