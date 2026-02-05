@@ -10,14 +10,14 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 	return []MCPTool{
 		{
 			Name:        "observe",
-			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.",
+			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, accessibility, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"what": map[string]any{
 						"type":        "string",
 						"description": "What to observe or analyze",
-						"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "performance", "api", "accessibility", "changes", "timeline", "error_clusters", "history", "security_audit", "third_party_audit", "security_diff", "command_result", "pending_commands", "failed_commands"},
+						"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "performance", "accessibility", "timeline", "error_clusters", "history", "security_audit", "third_party_audit", "security_diff", "command_result", "pending_commands", "failed_commands"},
 					},
 					"limit": map[string]any{
 						"type":        "number",
@@ -68,15 +68,6 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "number",
 						"description": "Return only the last N items",
 					},
-					"min_observations": map[string]any{
-						"type":        "number",
-						"description": "Minimum endpoint observations (applies to api)",
-					},
-					"format": map[string]any{
-						"type":        "string",
-						"description": "Output format: gasoline or openapi_stub (applies to api)",
-						"enum":        []string{"gasoline", "openapi_stub"},
-					},
 					"scope": map[string]any{
 						"type":        "string",
 						"description": "CSS selector to scope audit (applies to accessibility)",
@@ -90,19 +81,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "boolean",
 						"description": "Bypass cache (applies to accessibility)",
 					},
-					"checkpoint": map[string]any{
-						"type":        "string",
-						"description": "Named checkpoint or ISO 8601 timestamp (applies to changes)",
-					},
 					"include": map[string]any{
 						"type":        "array",
-						"description": "Categories to include (applies to changes, timeline)",
+						"description": "Categories to include (applies to timeline)",
 						"items":       map[string]any{"type": "string"},
-					},
-					"severity": map[string]any{
-						"type":        "string",
-						"description": "Minimum severity: all, warnings, errors_only (applies to changes)",
-						"enum":        []string{"all", "warnings", "errors_only"},
 					},
 					"checks": map[string]any{
 						"type":        "array",

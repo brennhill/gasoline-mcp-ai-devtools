@@ -41,22 +41,6 @@ export function installMessageListener(deps) {
     });
 }
 /**
- * Type guard to validate message structure before processing
- * Returns true if message passes validation, logs rejection otherwise
- */
-function validateMessageType(message, expectedType, deps) {
-    if (typeof message !== 'object' || message === null) {
-        deps.debugLog('error', `Invalid message: not an object`, { messageType: typeof message });
-        return false;
-    }
-    const msg = message;
-    if (msg.type !== expectedType) {
-        deps.debugLog('error', `Message type mismatch`, { expected: expectedType, received: msg.type });
-        return false;
-    }
-    return true;
-}
-/**
  * Handle incoming message
  * Returns true if response will be sent asynchronously
  * Security: All messages are type-validated using discriminated unions

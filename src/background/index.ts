@@ -604,6 +604,27 @@ function startSyncClient(): void {
         applyCaptureOverrides(overrides)
       },
 
+      // Handle version mismatch between extension and server
+      onVersionMismatch: (extensionVersion: string, serverVersion: string) => {
+        debugLog(DebugCategory.CONNECTION, 'Version mismatch detected', { extensionVersion, serverVersion })
+        // Update connection status with version info
+        connectionStatus.serverVersion = serverVersion
+        connectionStatus.extensionVersion = extensionVersion
+        connectionStatus.versionMismatch = extensionVersion !== serverVersion
+        // Notify popup about version mismatch
+        if (typeof chrome !== 'undefined' && chrome.runtime) {
+          chrome.runtime
+            .sendMessage({
+              type: 'versionMismatch',
+              extensionVersion,
+              serverVersion,
+            })
+            .catch(() => {
+              /* popup may not be open */
+            })
+        }
+      },
+
       // Get current settings to send to server
       getSettings: async (): Promise<SyncSettings> => {
         const trackingInfo = await eventListeners.getTrackedTabInfo()

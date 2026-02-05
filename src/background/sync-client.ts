@@ -44,6 +44,7 @@ export interface SyncCommandResult {
 /** Request sent to /sync */
 interface SyncRequest {
   session_id: string
+  extension_version?: string
   settings?: SyncSettings
   extension_logs?: SyncExtensionLog[]
   last_command_ack?: string
@@ -81,6 +82,7 @@ export interface SyncClientCallbacks {
   onCommand: (command: SyncCommand) => Promise<void>
   onConnectionChange: (connected: boolean) => void
   onCaptureOverrides?: (overrides: Record<string, string>) => void
+  onVersionMismatch?: (extensionVersion: string, serverVersion: string) => void
   getSettings: () => Promise<SyncSettings>
   getExtensionLogs: () => SyncExtensionLog[]
   clearExtensionLogs: () => void
@@ -193,6 +195,7 @@ export class SyncClient {
 
       const request: SyncRequest = {
         session_id: this.sessionId,
+        extension_version: this.extensionVersion || undefined,
         settings,
       }
 
@@ -235,6 +238,15 @@ export class SyncClient {
 
       // Success - update state
       this.onSuccess()
+
+      // Check for version mismatch (compare major.minor only, ignore patch)
+      if (data.server_version && this.extensionVersion && this.callbacks.onVersionMismatch) {
+        const serverMajorMinor = data.server_version.split('.').slice(0, 2).join('.')
+        const extensionMajorMinor = this.extensionVersion.split('.').slice(0, 2).join('.')
+        if (serverMajorMinor !== extensionMajorMinor) {
+          this.callbacks.onVersionMismatch(this.extensionVersion, data.server_version)
+        }
+      }
 
       // Clear sent logs and results
       if (logs.length > 0) {

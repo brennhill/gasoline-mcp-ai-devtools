@@ -329,7 +329,7 @@ async function handleBrowserAction(tabId, params) {
                 }
                 await chrome.tabs.update(tabId, { url });
                 await eventListeners.waitForTabLoad(tabId);
-                await new Promise((r) => setTimeout(r, 500));
+                await new Promise((r) => { setTimeout(r, 500); });
                 const contentScriptLoaded = await eventListeners.pingContentScript(tabId);
                 if (contentScriptLoaded) {
                     return {
@@ -353,7 +353,7 @@ async function handleBrowserAction(tabId, params) {
                 debugLog(DebugCategory.CAPTURE, 'Content script not loaded after navigate, refreshing', { tabId, url });
                 await chrome.tabs.reload(tabId);
                 await eventListeners.waitForTabLoad(tabId);
-                await new Promise((r) => setTimeout(r, 1000));
+                await new Promise((r) => { setTimeout(r, 1000); });
                 const loadedAfterRefresh = await eventListeners.pingContentScript(tabId);
                 if (loadedAfterRefresh) {
                     return {
