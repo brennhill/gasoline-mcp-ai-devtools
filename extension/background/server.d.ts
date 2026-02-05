@@ -58,19 +58,11 @@ export declare function updateBadge(status: ConnectionStatus): void;
 /**
  * Post query results back to the server
  */
-export declare function postQueryResult(serverUrl: string, queryId: string, type: string, result: unknown): Promise<void>;
+export declare function postQueryResult(serverUrl: string, queryId: string, type: string, result: unknown, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
 /**
  * POST async command result to server using correlation_id
  */
 export declare function postAsyncCommandResult(serverUrl: string, correlationId: string, status: 'pending' | 'complete' | 'timeout', result?: unknown, error?: string | null, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
-/**
- * Post extension settings to server
- */
-export declare function postSettings(serverUrl: string, sessionId: string, settings: Record<string, boolean | string>, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
-/**
- * Poll the server's /settings endpoint for AI capture overrides
- */
-export declare function pollCaptureSettings(serverUrl: string): Promise<Record<string, string> | null>;
 /**
  * Post extension logs to server
  */

@@ -19,7 +19,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dev-console/dev-console/internal/ai"
+	"github.com/dev-console/dev-console/internal/analysis"
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/security"
 	"github.com/dev-console/dev-console/internal/session"
 	"github.com/dev-console/dev-console/internal/types"
 )
@@ -525,6 +528,13 @@ type ToolHandler struct {
 	ciResults []CIResult
 	// Anomaly detection: sliding window error counter
 	errorTimes []time.Time
+
+	// Concrete implementations (interface signatures differ from types package)
+	// These are used directly by tool handlers rather than through the interface fields above.
+	noiseConfig           *ai.NoiseConfig
+	sessionStoreImpl      *ai.SessionStore
+	securityScannerImpl   *security.SecurityScanner
+	thirdPartyAuditorImpl *analysis.ThirdPartyAuditor
 }
 
 // GetCapture returns the capture instance
@@ -557,6 +567,21 @@ func NewToolHandler(server *Server, capture *capture.Capture, sseRegistry *SSERe
 	handler.healthMetrics = NewHealthMetrics()
 	handler.toolCallLimiter = NewToolCallLimiter(500, time.Minute)
 	handler.streamState = NewStreamState(sseRegistry)
+
+	// Initialize noise filtering (concrete type, not interface - signatures differ)
+	handler.noiseConfig = ai.NewNoiseConfig()
+
+	// Initialize session store (use current working directory as project path)
+	cwd, err := os.Getwd()
+	if err == nil {
+		if store, err := ai.NewSessionStore(cwd); err == nil {
+			handler.sessionStoreImpl = store
+		}
+	}
+
+	// Initialize security tools (concrete types - interface signatures differ)
+	handler.securityScannerImpl = security.NewSecurityScanner()
+	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.
 	// Use SetOnEntries for thread-safe assignment (avoids racing with addEntries).

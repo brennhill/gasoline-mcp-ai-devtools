@@ -18,7 +18,7 @@ export { EXTENSION_SESSION_ID, serverUrl, debugMode, connectionStatus, currentLo
 export { debugLog, getDebugLog, clearDebugLog, exportDebugLog } from './background/index';
 export { sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher, } from './background/index';
 export { handleLogMessage, handleClearLogs, isConnectionCheckRunning, checkConnectionAndUpdate, applyCaptureOverrides, } from './background/index';
-export { pollPendingQueriesWrapper, postSettingsWrapper, postNetworkWaterfall, postExtensionLogsWrapper, sendStatusPingWrapper, } from './background/index';
+export { sendStatusPingWrapper, } from './background/index';
 export { getExtensionVersion, isNewVersionAvailable, getAvailableVersion, updateVersionFromHealth, updateVersionBadge, getUpdateInfo, resetVersionCheck, } from './background/version-check';
 export { handlePendingQuery, handlePilotCommand, isAiWebPilotEnabled } from './background/index';
 export { createErrorSignature, processErrorGroup, flushErrorGroups, canTakeScreenshot, recordScreenshot, estimateBufferMemory, checkMemoryPressure, getMemoryPressureState, resetMemoryPressureState, } from './background/state-manager';

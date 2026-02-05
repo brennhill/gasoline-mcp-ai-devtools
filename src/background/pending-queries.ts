@@ -121,6 +121,39 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
       return
     }
 
+    // Waterfall query - fetch network waterfall data on demand
+    if (query.type === 'waterfall') {
+      debugLog(DebugCategory.CAPTURE, 'Handling waterfall query', { queryId: query.id, tabId })
+      try {
+        const tab = await chrome.tabs.get(tabId)
+        debugLog(DebugCategory.CAPTURE, 'Got tab for waterfall', { tabId, url: tab.url })
+        const result = (await chrome.tabs.sendMessage(tabId, {
+          type: 'GET_NETWORK_WATERFALL',
+        })) as { entries?: unknown[] }
+        debugLog(DebugCategory.CAPTURE, 'Waterfall result from content script', {
+          entries: result?.entries?.length || 0
+        })
+
+        await communication.postQueryResult(index.serverUrl, query.id, 'dom', {
+          entries: result?.entries || [],
+          pageURL: tab.url || '',
+          count: result?.entries?.length || 0,
+        })
+        debugLog(DebugCategory.CAPTURE, 'Posted waterfall result', { queryId: query.id })
+      } catch (err) {
+        debugLog(DebugCategory.CAPTURE, 'Waterfall query error', {
+          queryId: query.id,
+          error: (err as Error).message
+        })
+        await communication.postQueryResult(index.serverUrl, query.id, 'dom', {
+          error: 'waterfall_query_failed',
+          message: (err as Error).message || 'Failed to fetch network waterfall',
+          entries: [],
+        })
+      }
+      return
+    }
+
     if (query.type === 'dom') {
       try {
         const result = await chrome.tabs.sendMessage(tabId, {

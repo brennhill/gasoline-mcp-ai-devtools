@@ -7,11 +7,11 @@
  */
 import * as stateManager from './state-manager.js';
 import * as communication from './communication.js';
-import * as polling from './polling.js';
 import * as eventListeners from './event-listeners.js';
 import { DebugCategory } from './debug.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, } from './message-handlers.js';
 import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl, } from './pending-queries.js';
+import { createSyncClient } from './sync-client.js';
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -21,6 +21,9 @@ export const DEFAULT_SERVER_URL = 'http://localhost:7890';
 // =============================================================================
 /** Session ID for detecting extension reloads */
 export const EXTENSION_SESSION_ID = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+// All communication now uses unified /sync endpoint
+/** Sync client instance (initialized lazily) */
+let syncClient = null;
 /** Server URL */
 export let serverUrl = DEFAULT_SERVER_URL;
 /** Debug mode flag */
@@ -104,6 +107,11 @@ export function debugLog(category, message, data = null) {
             category,
             ...(data !== null ? { data } : {}),
         });
+        // Cap queue size to prevent memory leak if server is unreachable
+        const MAX_EXTENSION_LOGS = 2000;
+        if (extensionLogQueue.length > MAX_EXTENSION_LOGS) {
+            extensionLogQueue.splice(0, extensionLogQueue.length - MAX_EXTENSION_LOGS);
+        }
     }
     if (debugMode) {
         const prefix = `[Gasoline:${category}]`;
@@ -333,20 +341,9 @@ export async function checkConnectionAndUpdate() {
                 serverVersion: health.version || null,
             });
         }
-        if (health.connected) {
-            const overrides = await communication.pollCaptureSettings(serverUrl);
-            if (overrides !== null) {
-                applyCaptureOverrides(overrides);
-            }
-            polling.startQueryPolling(() => pollPendingQueriesWrapper(), debugLog);
-            polling.startSettingsHeartbeat(() => postSettingsWrapper(), debugLog);
-            polling.startWaterfallPosting(() => postNetworkWaterfall(), debugLog);
-            polling.startExtensionLogsPosting(() => postExtensionLogsWrapper());
-            polling.startStatusPing(() => sendStatusPingWrapper());
-        }
-        else {
-            polling.stopAllPolling();
-        }
+        // Always start sync client - it handles failures gracefully with 1s retry
+        // Don't gate on health check - sync client IS the connection mechanism
+        startSyncClient();
         if (typeof chrome !== 'undefined' && chrome.runtime) {
             chrome.runtime
                 .sendMessage({
@@ -371,97 +368,8 @@ export function applyCaptureOverrides(overrides) {
     }
 }
 // =============================================================================
-// POLLING WRAPPERS
+// STATUS PING (still used for tracked tab change notifications)
 // =============================================================================
-export async function pollPendingQueriesWrapper() {
-    stateManager.cleanupStaleProcessingQueries(debugLog);
-    const pilotState = (__aiWebPilotEnabledCache ? '1' : '0');
-    const queries = await communication.pollPendingQueries(serverUrl, EXTENSION_SESSION_ID, pilotState, diagnosticLog, debugLog);
-    debugLog(DebugCategory.CONNECTION, 'Poll result', {
-        count: queries.length,
-        queries: queries.map((q) => ({ id: q.id, type: q.type })),
-    });
-    for (const query of queries) {
-        debugLog(DebugCategory.CONNECTION, 'Processing query', { type: query.type, id: query.id });
-        if (stateManager.isQueryProcessing(query.id)) {
-            debugLog(DebugCategory.CONNECTION, 'Skipping already processing query', { id: query.id });
-            continue;
-        }
-        stateManager.addProcessingQuery(query.id);
-        try {
-            debugLog(DebugCategory.CONNECTION, 'Calling handlePendingQuery', { type: query.type });
-            await handlePendingQuery(query);
-            debugLog(DebugCategory.CONNECTION, 'handlePendingQuery completed', { type: query.type });
-        }
-        catch (err) {
-            debugLog(DebugCategory.CONNECTION, 'Error in handlePendingQuery', {
-                type: query.type,
-                error: err.message,
-            });
-            console.error('[Gasoline] Error in handlePendingQuery:', query.type, err);
-        }
-        finally {
-            stateManager.removeProcessingQuery(query.id);
-        }
-    }
-}
-export async function postSettingsWrapper() {
-    if (!__aiWebPilotCacheInitialized) {
-        debugLog(DebugCategory.CONNECTION, 'Skipping settings POST: cache not initialized');
-        return;
-    }
-    const configSettings = await eventListeners.getAllConfigSettings();
-    const settings = {};
-    if (configSettings.aiWebPilotEnabled !== undefined) {
-        settings.aiWebPilotEnabled = configSettings.aiWebPilotEnabled;
-    }
-    else if (__aiWebPilotEnabledCache !== undefined) {
-        settings.aiWebPilotEnabled = __aiWebPilotEnabledCache;
-    }
-    for (const key of [
-        'webSocketCaptureEnabled',
-        'networkWaterfallEnabled',
-        'performanceMarksEnabled',
-        'actionReplayEnabled',
-        'screenshotOnError',
-        'sourceMapEnabled',
-        'networkBodyCaptureEnabled',
-    ]) {
-        if (configSettings[key] !== undefined) {
-            settings[key] = configSettings[key];
-        }
-    }
-    await communication.postSettings(serverUrl, EXTENSION_SESSION_ID, settings, debugLog);
-}
-export async function postNetworkWaterfall() {
-    if (typeof chrome === 'undefined' || !chrome.tabs)
-        return;
-    try {
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        const firstTab = tabs[0];
-        if (!firstTab?.id)
-            return;
-        const tabId = firstTab.id;
-        const pageURL = firstTab.url;
-        const result = (await chrome.tabs.sendMessage(tabId, {
-            type: 'GET_NETWORK_WATERFALL',
-        }));
-        if (!result || !result.entries || result.entries.length === 0) {
-            debugLog(DebugCategory.CAPTURE, 'No waterfall entries to send');
-            return;
-        }
-        await communication.sendNetworkWaterfallToServer(serverUrl, { entries: result.entries, pageURL: pageURL || '' }, debugLog);
-    }
-    catch (err) {
-        debugLog(DebugCategory.CAPTURE, 'Failed to post waterfall', { error: err.message });
-    }
-}
-export async function postExtensionLogsWrapper() {
-    if (extensionLogQueue.length === 0)
-        return;
-    const logsToSend = extensionLogQueue.splice(0);
-    await communication.postExtensionLogs(serverUrl, logsToSend);
-}
 export async function sendStatusPingWrapper() {
     const trackingInfo = await eventListeners.getTrackedTabInfo();
     const statusMessage = {
@@ -474,6 +382,125 @@ export async function sendStatusPingWrapper() {
         timestamp: new Date().toISOString(),
     };
     await communication.sendStatusPing(serverUrl, statusMessage, diagnosticLog);
+}
+// =============================================================================
+// SYNC CLIENT
+// =============================================================================
+/**
+ * Get extension version safely
+ */
+function getExtensionVersion() {
+    if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) {
+        return chrome.runtime.getManifest().version;
+    }
+    return '';
+}
+/**
+ * Start the sync client (unified /sync endpoint)
+ */
+function startSyncClient() {
+    if (syncClient) {
+        // Already running, nothing to do
+        return;
+    }
+    syncClient = createSyncClient(serverUrl, EXTENSION_SESSION_ID, {
+        // Handle commands from server
+        onCommand: async (command) => {
+            debugLog(DebugCategory.CONNECTION, 'Processing sync command', { type: command.type, id: command.id });
+            if (stateManager.isQueryProcessing(command.id)) {
+                debugLog(DebugCategory.CONNECTION, 'Skipping already processing command', { id: command.id });
+                return;
+            }
+            stateManager.addProcessingQuery(command.id);
+            try {
+                await handlePendingQueryImpl(command);
+            }
+            catch (err) {
+                debugLog(DebugCategory.CONNECTION, 'Error processing sync command', {
+                    type: command.type,
+                    error: err.message,
+                });
+            }
+            finally {
+                stateManager.removeProcessingQuery(command.id);
+            }
+        },
+        // Handle connection state changes
+        onConnectionChange: (connected) => {
+            connectionStatus.connected = connected;
+            communication.updateBadge(connectionStatus);
+            debugLog(DebugCategory.CONNECTION, connected ? 'Sync connected' : 'Sync disconnected');
+            // Notify popup
+            if (typeof chrome !== 'undefined' && chrome.runtime) {
+                chrome.runtime
+                    .sendMessage({
+                    type: 'statusUpdate',
+                    status: { ...connectionStatus, aiControlled },
+                })
+                    .catch(() => {
+                    /* popup may not be open */
+                });
+            }
+        },
+        // Handle capture overrides from server
+        onCaptureOverrides: (overrides) => {
+            applyCaptureOverrides(overrides);
+        },
+        // Get current settings to send to server
+        getSettings: async () => {
+            const trackingInfo = await eventListeners.getTrackedTabInfo();
+            return {
+                pilot_enabled: __aiWebPilotEnabledCache,
+                tracking_enabled: !!trackingInfo.trackedTabId,
+                tracked_tab_id: trackingInfo.trackedTabId || 0,
+                tracked_tab_url: trackingInfo.trackedTabUrl || '',
+                tracked_tab_title: trackingInfo.trackedTabTitle || '',
+                capture_logs: true,
+                capture_network: true,
+                capture_websocket: true,
+                capture_actions: true,
+            };
+        },
+        // Get pending extension logs
+        getExtensionLogs: () => {
+            return extensionLogQueue.map((log) => ({
+                timestamp: log.timestamp,
+                level: log.level,
+                message: log.message,
+                source: log.source,
+                category: log.category,
+                data: log.data,
+            }));
+        },
+        // Clear extension logs after sending
+        clearExtensionLogs: () => {
+            extensionLogQueue.length = 0;
+        },
+        // Debug logging
+        debugLog: (category, message, data) => {
+            debugLog(DebugCategory.CONNECTION, `[Sync] ${message}`, data);
+        },
+    }, getExtensionVersion());
+    syncClient.start();
+    debugLog(DebugCategory.CONNECTION, 'Sync client started');
+}
+/**
+ * Stop the sync client
+ */
+function stopSyncClient() {
+    if (syncClient) {
+        syncClient.stop();
+        debugLog(DebugCategory.CONNECTION, 'Sync client stopped');
+    }
+}
+/**
+ * Reset sync client connection (call when user enables pilot/tracking)
+ */
+export function resetSyncClientConnection() {
+    if (syncClient) {
+        syncClient.resetConnection();
+        debugLog(DebugCategory.CONNECTION, 'Sync client connection reset');
+    }
 }
 // =============================================================================
 // AI WEB PILOT UTILITIES

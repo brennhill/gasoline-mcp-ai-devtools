@@ -13,6 +13,7 @@ import {
   setAiWebPilotEnabledCache,
   setAiWebPilotCacheInitialized,
   setPilotInitCallback,
+  resetSyncClientConnection,
 } from './index'
 import * as stateManager from './state-manager'
 import * as eventListeners from './event-listeners'
@@ -147,23 +148,28 @@ async function initializeExtensionAsync(): Promise<void> {
     stateManager.setSourceMapEnabled(settings.sourceMapEnabled || false)
     setDebugMode(settings.debugMode || false)
 
-    // If server URL was loaded from settings, post them to server
-    if (settings.serverUrl) {
-      index.postSettingsWrapper()
-    }
-
     // ============= STEP 6: Install storage change listener =============
     eventListeners.installStorageChangeListener({
       onAiWebPilotChanged: (newValue) => {
         setAiWebPilotEnabledCache(newValue)
         console.log('[Gasoline] AI Web Pilot cache updated from storage:', newValue)
+        // Reset connection when AI Web Pilot is enabled to allow immediate reconnection
+        if (newValue) {
+          resetSyncClientConnection()
+          console.log('[Gasoline] Sync client reset due to AI Web Pilot enabled')
+        }
         // Broadcast to tracked tab for favicon flicker
         broadcastTrackingState().catch((err) => console.error('[Gasoline] Error broadcasting tracking state:', err))
       },
-      onTrackedTabChanged: () => {
+      onTrackedTabChanged: (newTabId, oldTabId) => {
         index.sendStatusPingWrapper()
-        // Broadcast to tracked tab for favicon flicker
-        broadcastTrackingState().catch((err) => console.error('[Gasoline] Error broadcasting tracking state:', err))
+        // Reset connection when tracking is enabled to allow immediate reconnection
+        if (newTabId !== null) {
+          resetSyncClientConnection()
+          console.log('[Gasoline] Sync client reset due to tracking enabled')
+        }
+        // Broadcast to tracked tab for favicon flicker (pass old tab to notify it to stop flicker)
+        broadcastTrackingState(oldTabId).catch((err) => console.error('[Gasoline] Error broadcasting tracking state:', err))
       },
     })
 
@@ -199,6 +205,11 @@ async function initializeExtensionAsync(): Promise<void> {
       setAiWebPilotEnabled: (enabled, callback) => {
         chrome.storage.local.set({ aiWebPilotEnabled: enabled }, () => {
           setAiWebPilotEnabledCache(enabled)
+          // Reset connection when enabling to allow immediate reconnection
+          if (enabled) {
+            resetSyncClientConnection()
+            console.log('[Gasoline] Sync client reset due to AI Web Pilot enabled (direct)')
+          }
           if (callback) callback()
         })
       },
@@ -223,7 +234,6 @@ async function initializeExtensionAsync(): Promise<void> {
         ),
       checkConnectionAndUpdate: index.checkConnectionAndUpdate,
       clearSourceMapCache: stateManager.clearSourceMapCache,
-      postSettings: index.postSettingsWrapper,
 
       debugLog: index.debugLog,
       exportDebugLog: index.exportDebugLog,

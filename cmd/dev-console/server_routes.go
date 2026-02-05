@@ -3,8 +3,8 @@
 package main
 
 import (
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
@@ -149,6 +150,9 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture, sseRegistry *SSERegis
 		http.HandleFunc("/performance-snapshots", corsMiddleware(cap.HandlePerformanceSnapshots))
 		http.HandleFunc("/api/extension-status", corsMiddleware(cap.HandleExtensionStatus))
 
+		// Unified sync endpoint (replaces multiple polling loops)
+		http.HandleFunc("/sync", corsMiddleware(cap.HandleSync))
+
 		// Multi-client management endpoints
 		http.HandleFunc("/clients", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -218,8 +222,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture, sseRegistry *SSERegis
 	http.HandleFunc("/mcp/sse", corsMiddleware(handleMCPSSE(sseRegistry, server)))
 	http.HandleFunc("/mcp/messages/", corsMiddleware(handleMCPMessages(sseRegistry, mcp)))
 
-	// Settings endpoint for extension settings synchronization
-	http.HandleFunc("/settings", corsMiddleware(cap.HandleSettings))
+	// NOTE: /settings endpoint removed - use /sync for all extension communication
 
 	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
@@ -260,6 +263,42 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture, sseRegistry *SSERegis
 		}
 
 		jsonResponse(w, http.StatusOK, resp)
+	}))
+
+	// Shutdown endpoint for graceful server stop
+	http.HandleFunc("/shutdown", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+			return
+		}
+
+		// Log shutdown request
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "shutdown_requested",
+			"source":    "http",
+			"pid":       os.Getpid(),
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
+
+		// Send response before shutting down
+		jsonResponse(w, http.StatusOK, map[string]string{
+			"status":  "shutting_down",
+			"message": "Server shutdown initiated",
+		})
+
+		// Flush response, then signal shutdown
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+
+		// Give response time to be sent, then shutdown
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			// Send SIGTERM to self for clean shutdown
+			p, _ := os.FindProcess(os.Getpid())
+			_ = p.Signal(syscall.SIGTERM)
+		}()
 	}))
 
 	// Diagnostics endpoint for bug reports

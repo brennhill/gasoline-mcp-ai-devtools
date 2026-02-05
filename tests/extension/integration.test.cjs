@@ -171,7 +171,7 @@ describe('Module Import Chain', () => {
       './communication',
       './event-listeners',
       './state-manager',
-      './polling',
+      // Note: ./polling removed - replaced by sync-client
     ];
 
     for (const importPath of expectedImports) {

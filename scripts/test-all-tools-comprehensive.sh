@@ -5,7 +5,12 @@ set -e
 # Tests all tools with various scenarios: cold start, immediate use, concurrent calls
 
 PORT=$((8000 + RANDOM % 1000))
-WRAPPER="gasoline-mcp"
+# Use local build if available, otherwise fall back to PATH
+if [ -x "./gasoline-mcp" ]; then
+    WRAPPER="./gasoline-mcp"
+else
+    WRAPPER="gasoline-mcp"
+fi
 TEMP_DIR=$(mktemp -d)
 
 echo "========================================"
@@ -142,27 +147,45 @@ done
 
 echo ""
 
-# Test 6: Stdio silence verification
-echo "Test 6: Stdio Silence Verification"
-echo "==================================="
+# Test 6: Stdout purity verification (critical for MCP protocol)
+echo "Test 6: Stdout Purity (JSON-RPC Only)"
+echo "====================================="
 kill_server
 
-REQUEST='{"jsonrpc":"2.0","id":7,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"silence-test","version":"1.0"}}}'
-(echo "$REQUEST"; sleep 0.5) | $WRAPPER --port $PORT > "$TEMP_DIR/silence_stdout.txt" 2>"$TEMP_DIR/silence_stderr.txt"
+REQUEST='{"jsonrpc":"2.0","id":7,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"purity-test","version":"1.0"}}}'
+(echo "$REQUEST"; sleep 0.5) | $WRAPPER --port $PORT > "$TEMP_DIR/purity_stdout.txt" 2>"$TEMP_DIR/purity_stderr.txt"
 
-STDERR_LINES=$(wc -l < "$TEMP_DIR/silence_stderr.txt" | tr -d ' ')
-if [ "$STDERR_LINES" -eq 0 ]; then
-    echo "  ✅ Zero stderr lines (completely silent)"
+# CRITICAL: Verify stdout contains ONLY valid JSON-RPC (no stray output)
+# Each non-empty line must be valid JSON with "jsonrpc":"2.0"
+STDOUT_ERRORS=0
+STDOUT_LINES=0
+while IFS= read -r line; do
+    [ -z "$line" ] && continue  # Skip empty lines
+    STDOUT_LINES=$((STDOUT_LINES + 1))
+
+    # Check if line is valid JSON
+    if ! echo "$line" | jq -e . >/dev/null 2>&1; then
+        echo "  ❌ Non-JSON output on stdout: $line"
+        STDOUT_ERRORS=$((STDOUT_ERRORS + 1))
+    # Check if it's a JSON-RPC message
+    elif ! echo "$line" | jq -e 'has("jsonrpc")' >/dev/null 2>&1; then
+        echo "  ❌ Non-JSON-RPC JSON on stdout: $line"
+        STDOUT_ERRORS=$((STDOUT_ERRORS + 1))
+    fi
+done < "$TEMP_DIR/purity_stdout.txt"
+
+if [ "$STDOUT_ERRORS" -eq 0 ] && [ "$STDOUT_LINES" -gt 0 ]; then
+    echo "  ✅ Stdout contains only valid JSON-RPC ($STDOUT_LINES messages)"
+elif [ "$STDOUT_LINES" -eq 0 ]; then
+    echo "  ❌ No output on stdout (expected JSON-RPC response)"
 else
-    echo "  ❌ Found $STDERR_LINES stderr lines:"
-    cat "$TEMP_DIR/silence_stderr.txt" | sed 's/^/    /'
+    echo "  ❌ Found $STDOUT_ERRORS invalid lines on stdout"
 fi
 
-# Check stdout is JSON-RPC
-if grep -q '"jsonrpc":"2.0"' "$TEMP_DIR/silence_stdout.txt" 2>/dev/null; then
-    echo "  ✅ Stdout contains valid JSON-RPC"
-else
-    echo "  ❌ Stdout does not contain JSON-RPC"
+# Note: stderr is allowed for logging (doesn't break protocol)
+STDERR_LINES=$(wc -l < "$TEMP_DIR/purity_stderr.txt" | tr -d ' ')
+if [ "$STDERR_LINES" -gt 0 ]; then
+    echo "  ℹ️  $STDERR_LINES stderr lines (allowed for logging)"
 fi
 
 echo ""
@@ -184,7 +207,68 @@ fi
 
 echo ""
 
-# Final cleanup
+# Test 8: Graceful shutdown with --stop
+echo "Test 8: Graceful Shutdown (--stop)"
+echo "==================================="
+
+# Start a fresh server in daemon mode (for reliable PID file testing)
+kill_server
+$WRAPPER --daemon --port $PORT >/dev/null 2>&1 &
+
+# Wait for server to be ready (health check)
+for i in $(seq 1 30); do
+    if curl -s http://localhost:$PORT/health >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.1
+done
+
+# Verify server is running
+if curl -s http://localhost:$PORT/health >/dev/null 2>&1; then
+    echo "  ✅ Server started successfully"
+else
+    echo "  ❌ Server failed to start"
+fi
+
+# Check PID file exists (daemon creates it after HTTP bind)
+PID_FILE="$HOME/.gasoline-$PORT.pid"
+if [ -f "$PID_FILE" ]; then
+    SAVED_PID=$(cat "$PID_FILE")
+    echo "  ✅ PID file exists (PID: $SAVED_PID)"
+else
+    echo "  ⚠️  PID file not found (fallback methods will be used)"
+fi
+
+# Stop server using --stop flag
+echo "  Stopping server with --stop..."
+$WRAPPER --stop --port $PORT > "$TEMP_DIR/stop_output.txt" 2>&1
+STOP_EXIT=$?
+
+if [ $STOP_EXIT -eq 0 ]; then
+    echo "  ✅ --stop command succeeded"
+else
+    echo "  ❌ --stop command failed (exit code: $STOP_EXIT)"
+fi
+
+# Verify server is stopped
+sleep 1
+if ! lsof -ti :$PORT >/dev/null 2>&1; then
+    echo "  ✅ Server stopped successfully"
+else
+    echo "  ❌ Server still running after --stop"
+fi
+
+# Verify PID file is cleaned up
+if [ ! -f "$PID_FILE" ]; then
+    echo "  ✅ PID file cleaned up"
+else
+    echo "  ⚠️  PID file still exists (stale)"
+    rm -f "$PID_FILE"
+fi
+
+echo ""
+
+# Final cleanup (server should already be stopped, but just in case)
 kill_server
 rm -rf "$TEMP_DIR"
 
@@ -198,8 +282,9 @@ echo "  - Cold start + tool list"
 echo "  - Immediate tool calls after spawn"
 echo "  - Sequential tool calls"
 echo "  - Concurrent clients (5 simultaneous)"
-echo "  - Stdio silence (0 stderr lines)"
+echo "  - Stdout purity (JSON-RPC only, no stray output)"
 echo "  - Server persistence"
+echo "  - Graceful shutdown (--stop + PID file)"
 echo ""
 echo "✅ Test suite complete!"
 echo ""

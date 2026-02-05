@@ -85,11 +85,16 @@ func (s *Server) loadEntries() error {
 		s.entries = append(s.entries, entry)
 	}
 
+	// Initialize logAddedAt for loaded entries (we don't have actual add times,
+	// but the slice must have the same length as entries for rotation to work)
+	s.logAddedAt = make([]time.Time, len(s.entries))
+
 	// Bound entries (file may have more from append-only writes between rotations)
 	if len(s.entries) > s.maxEntries {
 		kept := make([]LogEntry, s.maxEntries)
 		copy(kept, s.entries[len(s.entries)-s.maxEntries:])
 		s.entries = kept
+		s.logAddedAt = make([]time.Time, s.maxEntries)
 	}
 
 	return scanner.Err()

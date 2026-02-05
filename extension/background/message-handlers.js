@@ -193,7 +193,7 @@ function handleSetAiWebPilotEnabled(enabled, sendResponse, deps) {
     console.log(`[Gasoline] AI Web Pilot toggle: -> ${newValue}`);
     deps.setAiWebPilotEnabled(newValue, () => {
         console.log(`[Gasoline] AI Web Pilot persisted to storage: ${newValue}`);
-        deps.postSettings(deps.getServerUrl());
+        // Settings now sent automatically via /sync
         // Broadcast tracking state change to tracked tab (for favicon flicker)
         broadcastTrackingState();
     });
@@ -227,12 +227,14 @@ async function handleGetTrackingState(sendResponse, deps) {
  * Broadcast tracking state to the tracked tab.
  * Used by favicon replacer to show/hide flicker animation.
  * Exported for use in init.ts storage change handlers.
+ * @param untrackedTabId - Optional tab ID that was just untracked (to notify it to stop flicker)
  */
-export async function broadcastTrackingState() {
+export async function broadcastTrackingState(untrackedTabId) {
     try {
         const result = await chrome.storage.local.get(['trackedTabId', 'aiWebPilotEnabled']);
         const trackedTabId = result.trackedTabId;
         const aiPilotEnabled = result.aiWebPilotEnabled === true;
+        // Notify the currently tracked tab it's being tracked
         if (trackedTabId) {
             chrome.tabs
                 .sendMessage(trackedTabId, {
@@ -244,6 +246,20 @@ export async function broadcastTrackingState() {
             })
                 .catch(() => {
                 // Tab might not have content script loaded yet, ignore
+            });
+        }
+        // Notify the previously tracked tab it's no longer tracked (to stop favicon flicker)
+        if (untrackedTabId && untrackedTabId !== trackedTabId) {
+            chrome.tabs
+                .sendMessage(untrackedTabId, {
+                type: 'trackingStateChanged',
+                state: {
+                    isTracked: false,
+                    aiPilotEnabled: false,
+                },
+            })
+                .catch(() => {
+                // Tab might not have content script loaded, ignore
             });
         }
     }

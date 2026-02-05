@@ -14,6 +14,7 @@ export type QueryType =
   | 'page_info'
   | 'tabs'
   | 'browser_action'
+  | 'waterfall'
   | 'state_capture'
   | 'state_save'
   | 'state_load'
