@@ -4,7 +4,7 @@ set -e
 # Comprehensive MCP Tool Test Suite
 # Tests all tools with various scenarios: cold start, immediate use, concurrent calls
 
-PORT=$((8000 + RANDOM % 1000))
+PORT=7890
 # Use local build if available, otherwise fall back to PATH
 if [ -x "./gasoline-mcp" ]; then
     WRAPPER="./gasoline-mcp"

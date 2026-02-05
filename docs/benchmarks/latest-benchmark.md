@@ -3,7 +3,7 @@
 **Generated:** 2026-01-28T00:51:00Z
 **Machine:** Darwin arm64, Apple M1 Pro, 32 GB RAM
 **Go:** go1.25.6 | **Node:** v24.1.0
-**Version:** 5.6.6
+**Version:** 5.7.4
 **Commit:** 3d1dc3d
 
 ## Binary Sizes

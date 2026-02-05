@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -26,6 +27,11 @@ type Server struct {
 	onEntries           func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
 	TTL                 time.Duration    // TTL for read-time filtering (0 means unlimited)
 	redactionConfigPath string           // path to redaction config JSON file (optional)
+
+	// Async logging
+	logChan      chan []LogEntry // buffered channel for async log writes
+	logDropCount int64           // atomic counter for dropped logs (when channel full)
+	logDone      chan struct{}   // signal when async logger exits
 }
 
 // NewServer creates a new server instance
@@ -34,7 +40,12 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 		logFile:    logFile,
 		maxEntries: maxEntries,
 		entries:    make([]LogEntry, 0),
+		logChan:    make(chan []LogEntry, 10000), // 10k buffer for burst traffic
+		logDone:    make(chan struct{}),
 	}
+
+	// Start async logger goroutine
+	go s.asyncLoggerWorker()
 
 	// Ensure log directory exists
 	dir := filepath.Dir(logFile)
@@ -189,7 +200,21 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 }
 
 // appendToFile writes only the new entries to the file (append-only, no rewrite)
-func (s *Server) appendToFile(entries []LogEntry) error {
+// asyncLoggerWorker runs in a background goroutine and handles all file I/O
+func (s *Server) asyncLoggerWorker() {
+	defer close(s.logDone)
+
+	for entries := range s.logChan {
+		// Synchronous file I/O happens here (off the hot path)
+		if err := s.appendToFileSync(entries); err != nil {
+			// Log to stderr but don't crash
+			fmt.Fprintf(os.Stderr, "[gasoline] Async logger error: %v\n", err)
+		}
+	}
+}
+
+// appendToFileSync does synchronous file I/O (called by async worker only)
+func (s *Server) appendToFileSync(entries []LogEntry) error {
 	f, err := os.OpenFile(s.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) // #nosec G302 G304 -- log files are intentionally world-readable; path set at startup
 	if err != nil {
 		return err
@@ -215,6 +240,25 @@ func (s *Server) appendToFile(entries []LogEntry) error {
 	return nil
 }
 
+// appendToFile queues log entries for async writing (never blocks)
+func (s *Server) appendToFile(entries []LogEntry) error {
+	select {
+	case s.logChan <- entries:
+		// Queued successfully
+		return nil
+	default:
+		// Channel full - drop log to maintain availability
+		dropped := atomic.AddInt64(&s.logDropCount, 1)
+
+		// Alert to stderr (but don't spam)
+		if dropped%1000 == 1 { // Alert on 1st, 1001st, 2001st, etc.
+			fmt.Fprintf(os.Stderr, "[gasoline] WARNING: Log buffer full, %d logs dropped\n", dropped)
+		}
+
+		return fmt.Errorf("log buffer full (%d total drops)", dropped)
+	}
+}
+
 // clearEntries removes all entries
 func (s *Server) clearEntries() {
 	s.mu.Lock()
@@ -227,6 +271,25 @@ func (s *Server) clearEntries() {
 		if err := os.WriteFile(s.logFile, []byte{}, 0600); err != nil {
 			fmt.Fprintf(os.Stderr, "[gasoline] Error clearing log file: %v\n", err)
 		}
+	}
+}
+
+// shutdownAsyncLogger gracefully shuts down the async logger, draining remaining logs
+func (s *Server) shutdownAsyncLogger(timeout time.Duration) {
+	// Close channel to signal worker to exit after draining
+	close(s.logChan)
+
+	// Wait for worker to finish draining, with timeout
+	select {
+	case <-s.logDone:
+		// Worker exited cleanly
+		dropped := atomic.LoadInt64(&s.logDropCount)
+		if dropped > 0 {
+			fmt.Fprintf(os.Stderr, "[gasoline] Async logger shutdown: %d logs were dropped during session\n", dropped)
+		}
+	case <-time.After(timeout):
+		// Timeout - worker still draining, but we need to exit
+		fmt.Fprintf(os.Stderr, "[gasoline] Async logger shutdown timeout, %d logs may be lost\n", len(s.logChan))
 	}
 }
 
