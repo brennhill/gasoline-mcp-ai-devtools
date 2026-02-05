@@ -257,6 +257,7 @@ export async function postQueryResult(
   queryId: string,
   type: string,
   result: unknown,
+  debugLogFn?: (category: string, message: string, data?: unknown) => void,
 ): Promise<void> {
   let endpoint: string
   if (type === 'a11y') {
@@ -271,6 +272,10 @@ export async function postQueryResult(
     endpoint = '/dom-result'
   }
 
+  const logData = { queryId, type, endpoint, resultSize: JSON.stringify(result).length }
+  if (debugLogFn) debugLogFn('api', `POST ${endpoint}`, logData)
+  console.log(`[Gasoline API] POST ${endpoint}`, logData)
+
   try {
     const response = await fetch(`${serverUrl}${endpoint}`, {
       method: 'POST',
@@ -279,10 +284,17 @@ export async function postQueryResult(
     })
 
     if (!response.ok) {
-      console.error(`[Gasoline] Failed to post query result: HTTP ${response.status}`, { queryId, type, endpoint })
+      const errMsg = `Failed to post query result: HTTP ${response.status}`
+      if (debugLogFn) debugLogFn('api', errMsg, { queryId, type, endpoint })
+      console.error(`[Gasoline API] ${errMsg}`, { queryId, type, endpoint })
+    } else {
+      if (debugLogFn) debugLogFn('api', `POST ${endpoint} success`, { queryId })
+      console.log(`[Gasoline API] POST ${endpoint} success`, { queryId })
     }
   } catch (err) {
-    console.error('[Gasoline] Error posting query result:', { queryId, type, endpoint, error: (err as Error).message })
+    const errMsg = (err as Error).message
+    if (debugLogFn) debugLogFn('api', `POST ${endpoint} error: ${errMsg}`, { queryId, type })
+    console.error('[Gasoline API] Error posting query result:', { queryId, type, endpoint, error: errMsg })
   }
 }
 
@@ -342,49 +354,7 @@ export async function postAsyncCommandResult(
   }
 }
 
-/**
- * Post extension settings to server
- */
-export async function postSettings(
-  serverUrl: string,
-  sessionId: string,
-  settings: Record<string, boolean | string>,
-  debugLogFn?: (category: string, message: string, data?: unknown) => void,
-): Promise<void> {
-  try {
-    const response = await fetch(`${serverUrl}/settings`, {
-      method: 'POST',
-      headers: getRequestHeaders(),
-      body: JSON.stringify({
-        session_id: sessionId,
-        settings: settings,
-      }),
-    })
-
-    if (!response.ok) {
-      console.error(`[Gasoline] Failed to post settings: HTTP ${response.status}`, { sessionId })
-    } else {
-      if (debugLogFn) debugLogFn('connection', 'Posted settings to server', settings)
-    }
-  } catch (err) {
-    console.error('[Gasoline] Error posting settings:', { sessionId, error: (err as Error).message })
-    if (debugLogFn) debugLogFn('connection', 'Failed to post settings', { error: (err as Error).message })
-  }
-}
-
-/**
- * Poll the server's /settings endpoint for AI capture overrides
- */
-export async function pollCaptureSettings(serverUrl: string): Promise<Record<string, string> | null> {
-  try {
-    const response = await fetch(`${serverUrl}/settings`)
-    if (!response.ok) return null
-    const data = (await response.json()) as { capture_overrides?: Record<string, string> }
-    return data.capture_overrides || {}
-  } catch {
-    return null
-  }
-}
+// NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
 
 /**
  * Post extension logs to server

@@ -29,6 +29,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -41,7 +42,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "5.6.0"
+var version = "5.7.0"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -106,6 +107,63 @@ func contains(s, substr string) bool {
 	return false
 }
 
+// pidFilePath returns the path to the PID file for a given port
+func pidFilePath(port int) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, fmt.Sprintf(".gasoline-%d.pid", port))
+}
+
+// writePIDFile writes the current process ID to the PID file
+func writePIDFile(port int) error {
+	path := pidFilePath(port)
+	if path == "" {
+		return fmt.Errorf("cannot determine PID file path")
+	}
+	return os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0600)
+}
+
+// readPIDFile reads the PID from the PID file, returns 0 if not found or invalid
+func readPIDFile(port int) int {
+	path := pidFilePath(port)
+	if path == "" {
+		return 0
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return 0
+	}
+	return pid
+}
+
+// removePIDFile removes the PID file for a given port
+func removePIDFile(port int) {
+	path := pidFilePath(port)
+	if path != "" {
+		_ = os.Remove(path)
+	}
+}
+
+// isProcessAlive checks if a process with the given PID is still running
+func isProcessAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	// On Unix, FindProcess always succeeds. Use Signal(0) to check if process exists.
+	err = process.Signal(syscall.Signal(0))
+	return err == nil
+}
+
 func main() {
 	// Install panic recovery with diagnostic logging
 	defer func() {
@@ -160,10 +218,11 @@ func main() {
 	showHelp := flag.Bool("help", false, "Show help")
 	apiKey := flag.String("api-key", "", "API key for HTTP authentication (optional)")
 	checkSetup := flag.Bool("check", false, "Verify setup: check if port is available and print status")
-	persistMode := flag.Bool("persist", true, "Keep server running after MCP client disconnects (default: true)")
+	stopMode := flag.Bool("stop", false, "Stop the running server on the specified port")
 	connectMode := flag.Bool("connect", false, "Connect to existing server (multi-client mode)")
 	clientID := flag.String("client-id", "", "Override client ID (default: derived from CWD)")
 	bridgeMode := flag.Bool("bridge", false, "Run as stdio-to-HTTP bridge (spawns daemon if needed)")
+	daemonMode := flag.Bool("daemon", false, "Run as background server daemon (internal use)")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 
 	flag.Parse()
@@ -181,6 +240,12 @@ func main() {
 	if *checkSetup {
 		runSetupCheck(*port)
 		os.Exit(0)
+	}
+
+	// Stop mode: gracefully stop a running server
+	if *stopMode {
+		runStopMode(*port)
+		return
 	}
 
 	// Connect mode: forward MCP to existing server
@@ -224,6 +289,23 @@ func main() {
 		}})
 		fmt.Fprintf(os.Stderr, "[gasoline] Starting in bridge mode (stdio -> HTTP)\n")
 		runBridgeMode(*port)
+		return
+	}
+
+	// Daemon mode: run server directly (internal use - spawned by MCP client)
+	// This bypasses spawn logic to avoid infinite recursion
+	if *daemonMode {
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "daemon_mode_start",
+			"pid":       os.Getpid(),
+			"port":      *port,
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
+		if err := runMCPMode(server, *port, *apiKey); err != nil {
+			fmt.Fprintf(os.Stderr, "[gasoline] Daemon error: %v\n", err)
+			os.Exit(1)
+		}
 		return
 	}
 
@@ -291,19 +373,16 @@ func main() {
 		}
 
 		exe, _ := os.Executable()
-		args := []string{"--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)}
-		if !*persistMode {
-			args = append(args, "--persist=false")
-		}
+		args := []string{"--daemon", "--port", fmt.Sprintf("%d", *port), "--log-file", *logFile, "--max-entries", fmt.Sprintf("%d", *maxEntries)}
 		if *apiKey != "" {
 			args = append(args, "--api-key", *apiKey)
 		}
 
-		// Spawn background process with piped stdin (so it detects as MCP mode, not TTY)
+		// Spawn background server in daemon mode
 		cmd := exec.Command(exe, args...) // #nosec G204 -- exe is our own binary path from os.Executable()
 		cmd.Stdout = nil
 		cmd.Stderr = nil
-		// Create a pipe for stdin so child process sees piped input (not TTY)
+		// Stdin not needed - daemon mode doesn't read from stdin
 		_, err := cmd.StdinPipe()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to create stdin pipe: %v\n", err)
@@ -390,7 +469,7 @@ func main() {
 
 	// stdin is piped -> MCP mode (HTTP + MCP protocol)
 	// Enhanced lifecycle with retry and auto-recovery
-	handleMCPConnection(server, *port, *apiKey, *persistMode)
+	handleMCPConnection(server, *port, *apiKey)
 }
 
 // handleMCPConnection implements the enhanced connection lifecycle with retry and auto-recovery.
@@ -401,7 +480,7 @@ func main() {
 //  4. If connection fails: retry once
 //  5. If still fails: kill existing server and spawn new one
 //  6. If final attempt fails: write debug file and exit
-func handleMCPConnection(server *Server, port int, apiKey string, persist bool) {
+func handleMCPConnection(server *Server, port int, apiKey string) {
 	serverURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 	mcpEndpoint := serverURL + "/mcp"
 	debugFile := ""
@@ -457,18 +536,38 @@ func handleMCPConnection(server *Server, port int, apiKey string, persist bool) 
 			_ = ln.Close()
 			_ = server.appendToFile([]LogEntry{{
 				"type":      "lifecycle",
-				"event":     "mcp_mode_start",
+				"event":     "mcp_mode_spawn_server",
 				"pid":       os.Getpid(),
 				"port":      port,
-				"persist":   persist,
 				"timestamp": time.Now().UTC().Format(time.RFC3339),
 			}})
 			// Quiet mode: Startup message goes to log file only (MCP stdio silence invariant)
 
-			// Spawn server in background goroutine, then bridge stdio
-			go func() {
-				_ = runMCPMode(server, port, apiKey, persist)
-			}()
+			// Spawn server as SEPARATE background process so it persists after client exits
+			exe, _ := os.Executable()
+			args := []string{"--daemon", "--port", fmt.Sprintf("%d", port)}
+			if apiKey != "" {
+				args = append(args, "--api-key", apiKey)
+			}
+
+			cmd := exec.Command(exe, args...) // #nosec G204 -- exe is our own binary
+			cmd.Stdout = nil
+			cmd.Stderr = nil
+			util.SetDetachedProcess(cmd)
+			if err := cmd.Start(); err != nil {
+				fmt.Fprintf(os.Stderr, "[gasoline] ERROR: Failed to spawn background server: %v\n", err)
+				sendStartupError("Failed to spawn background server: " + err.Error())
+				os.Exit(1)
+			}
+
+			_ = server.appendToFile([]LogEntry{{
+				"type":           "lifecycle",
+				"event":          "mcp_server_spawned",
+				"client_pid":     os.Getpid(),
+				"server_pid":     cmd.Process.Pid,
+				"port":           port,
+				"timestamp":      time.Now().UTC().Format(time.RFC3339),
+			}})
 
 			// Wait for server to be ready
 			if !waitForServer(port, 10*time.Second) {
@@ -477,7 +576,7 @@ func handleMCPConnection(server *Server, port int, apiKey string, persist bool) 
 				os.Exit(1)
 			}
 
-			// Server is ready - bridge this client's stdio to HTTP
+			// Server is ready - bridge this client's stdio to HTTP, then exit normally
 			bridgeStdioToHTTP(mcpEndpoint)
 			return
 		}
@@ -587,21 +686,41 @@ func handleMCPConnection(server *Server, port int, apiKey string, persist bool) 
 	// Wait for port to be free
 	time.Sleep(500 * time.Millisecond)
 
-	// Start fresh server
+	// Start fresh server as SEPARATE background process
 	_ = server.appendToFile([]LogEntry{{
 		"type":      "lifecycle",
-		"event":     "mcp_mode_start_recovery",
+		"event":     "mcp_mode_recovery_spawn",
 		"pid":       os.Getpid(),
 		"port":      port,
-		"persist":   persist,
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}})
 	// Quiet mode: Recovery startup is silent
 
-	// Spawn server in background, then bridge this client
-	go func() {
-		_ = runMCPMode(server, port, apiKey, persist)
-	}()
+	// Spawn server as SEPARATE background process so it persists after client exits
+	exe, _ := os.Executable()
+	args := []string{"--daemon", "--port", fmt.Sprintf("%d", port)}
+	if apiKey != "" {
+		args = append(args, "--api-key", apiKey)
+	}
+
+	cmd := exec.Command(exe, args...) // #nosec G204 -- exe is our own binary
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	util.SetDetachedProcess(cmd)
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] ERROR: Failed to spawn recovery server: %v\n", err)
+		sendStartupError("Failed to spawn recovery server: " + err.Error())
+		os.Exit(1)
+	}
+
+	_ = server.appendToFile([]LogEntry{{
+		"type":           "lifecycle",
+		"event":          "mcp_recovery_server_spawned",
+		"client_pid":     os.Getpid(),
+		"server_pid":     cmd.Process.Pid,
+		"port":           port,
+		"timestamp":      time.Now().UTC().Format(time.RFC3339),
+	}})
 
 	// Wait for server to be ready
 	if !waitForServer(port, 10*time.Second) {
@@ -610,7 +729,7 @@ func handleMCPConnection(server *Server, port int, apiKey string, persist bool) 
 		os.Exit(1)
 	}
 
-	// Server recovered - bridge this client's stdio
+	// Server recovered - bridge this client's stdio, then exit normally
 	bridgeStdioToHTTP(mcpEndpoint)
 }
 
@@ -766,7 +885,7 @@ func sendStartupError(message string) {
 // If stdin closes (EOF), the HTTP server keeps running until killed.
 // Returns error if port binding fails (race condition with another client).
 // Never returns on success (blocks forever serving MCP protocol).
-func runMCPMode(server *Server, port int, apiKey string, persist bool) error {
+func runMCPMode(server *Server, port int, apiKey string) error {
 	// Create capture buffers for WebSocket, network, and actions
 	cap := capture.NewCapture()
 
@@ -846,6 +965,18 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) error {
 	// Quiet mode: Server startup details go to log file only (MCP standard compliance)
 	// All diagnostics preserved in server.logFile for debugging
 
+	// Write PID file for clean shutdown support
+	if err := writePIDFile(port); err != nil {
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "pid_file_error",
+			"error":     err.Error(),
+			"pid":       os.Getpid(),
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
+		// Non-fatal: server can still run without PID file
+	}
+
 	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "startup", "version": version, "port": port, "timestamp": time.Now().UTC().Format(time.RFC3339)}})
 
 	// MCP SSE transport ready
@@ -861,8 +992,96 @@ func runMCPMode(server *Server, port int, apiKey string, persist bool) error {
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 	s := <-sig
 	_ = server.appendToFile([]LogEntry{{"type": "lifecycle", "event": "shutdown", "reason": s.String(), "timestamp": time.Now().UTC().Format(time.RFC3339)}})
+
+	// Clean up PID file on shutdown
+	removePIDFile(port)
+
 	// Quiet mode: Shutdown messages go to log file only
 	return nil // Graceful shutdown via signal
+}
+
+// runStopMode gracefully stops a running server on the specified port.
+// Uses hybrid approach: PID file (fast) → HTTP /shutdown (graceful) → lsof+kill (fallback).
+func runStopMode(port int) {
+	fmt.Printf("Stopping gasoline server on port %d...\n", port)
+
+	// Step 1: Try PID file (fast path)
+	pid := readPIDFile(port)
+	if pid > 0 && isProcessAlive(pid) {
+		fmt.Printf("Found server (PID %d) via PID file\n", pid)
+		process, err := os.FindProcess(pid)
+		if err == nil {
+			if err := process.Signal(syscall.SIGTERM); err == nil {
+				fmt.Printf("Sent SIGTERM to PID %d\n", pid)
+				// Wait briefly for process to exit
+				for i := 0; i < 20; i++ {
+					time.Sleep(100 * time.Millisecond)
+					if !isProcessAlive(pid) {
+						fmt.Println("Server stopped successfully")
+						removePIDFile(port)
+						return
+					}
+				}
+				fmt.Println("Server did not exit within 2 seconds, sending SIGKILL")
+				_ = process.Kill()
+				removePIDFile(port)
+				fmt.Println("Server killed")
+				return
+			}
+		}
+	}
+
+	// Step 2: Try HTTP /shutdown endpoint (graceful)
+	shutdownURL := fmt.Sprintf("http://127.0.0.1:%d/shutdown", port)
+	client := &http.Client{Timeout: 3 * time.Second}
+	req, _ := http.NewRequest("POST", shutdownURL, nil)
+	resp, err := client.Do(req)
+	if err == nil && resp.StatusCode == http.StatusOK {
+		_ = resp.Body.Close()
+		fmt.Println("Server stopped via HTTP endpoint")
+		removePIDFile(port)
+		return
+	}
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+
+	// Step 3: Fallback to lsof+kill
+	fmt.Println("Trying lsof fallback...")
+	lsofCmd := exec.Command("lsof", "-ti", fmt.Sprintf(":%d", port))
+	pidBytes, err := lsofCmd.Output()
+	if err != nil || len(pidBytes) == 0 {
+		fmt.Printf("No server found on port %d\n", port)
+		// Clean up stale PID file if it exists
+		removePIDFile(port)
+		return
+	}
+
+	pidStr := strings.TrimSpace(string(pidBytes))
+	for _, p := range strings.Split(pidStr, "\n") {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		pidNum, err := strconv.Atoi(p)
+		if err != nil {
+			continue
+		}
+		process, err := os.FindProcess(pidNum)
+		if err == nil {
+			fmt.Printf("Sending SIGTERM to PID %d\n", pidNum)
+			_ = process.Signal(syscall.SIGTERM)
+		}
+	}
+
+	// Wait briefly then check
+	time.Sleep(500 * time.Millisecond)
+	if !isServerRunning(port) {
+		fmt.Println("Server stopped successfully")
+		removePIDFile(port)
+	} else {
+		fmt.Printf("Server may still be running, try: kill -9 $(lsof -ti :%d)\n", port)
+	}
 }
 
 func printHelp() {
@@ -875,8 +1094,7 @@ Options:
   --port <number>        Port to listen on (default: 7890)
   --log-file <path>      Path to log file (default: ~/gasoline-logs.jsonl)
   --max-entries <number> Max log entries before rotation (default: 1000)
-  --persist              Keep server running after MCP client disconnects (default: true)
-  --persist=false        Exit after MCP client disconnects
+  --stop                 Stop the running server on the specified port
   --api-key <key>        Require API key for HTTP requests (optional)
   --connect              Connect to existing server (multi-client mode)
   --client-id <id>       Override client ID (default: derived from CWD)
@@ -886,12 +1104,13 @@ Options:
 
 Gasoline always runs in MCP mode: the HTTP server starts in the background
 (for the browser extension) and MCP protocol runs over stdio (for Claude Code, Cursor, etc.).
-The server persists by default, even after the MCP client disconnects.
+The server persists until explicitly stopped with --stop or killed.
 
 Examples:
-  gasoline                              # MCP mode (default, persist on)
-  gasoline --persist=false              # Exit when MCP client disconnects
-  gasoline --api-key s3cret             # MCP mode with API key auth
+  gasoline                              # Start server (daemon mode)
+  gasoline --stop                       # Stop server on default port
+  gasoline --stop --port 8080           # Stop server on specific port
+  gasoline --api-key s3cret             # Start with API key auth
   gasoline --connect --port 7890        # Connect to existing server
   gasoline --check                      # Verify setup before running
   gasoline --port 8080 --max-entries 500

@@ -39,7 +39,6 @@ export interface MessageHandlerDependencies {
     }>;
     checkConnectionAndUpdate: () => Promise<void>;
     clearSourceMapCache: () => void;
-    postSettings: (serverUrl: string) => Promise<void>;
     debugLog: (category: string, message: string, data?: unknown) => void;
     exportDebugLog: () => string;
     clearDebugLog: () => void;
@@ -58,8 +57,9 @@ export declare function installMessageListener(deps: MessageHandlerDependencies)
  * Broadcast tracking state to the tracked tab.
  * Used by favicon replacer to show/hide flicker animation.
  * Exported for use in init.ts storage change handlers.
+ * @param untrackedTabId - Optional tab ID that was just untracked (to notify it to stop flicker)
  */
-export declare function broadcastTrackingState(): Promise<void>;
+export declare function broadcastTrackingState(untrackedTabId?: number | null): Promise<void>;
 interface StoredStateSnapshot extends BrowserStateSnapshot {
     name: string;
     size_bytes: number;

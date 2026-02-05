@@ -2,16 +2,181 @@
 
 /**
  * Postinstall script to download the correct binary for the platform
+ * Also handles cleanup of old gasoline processes for clean upgrades
  */
 
 const https = require('https')
+const http = require('http')
 const fs = require('fs')
 const path = require('path')
-const { execSync } = require('child_process')
+const { execSync, spawnSync, spawn } = require('child_process')
 
-const VERSION = '5.6.0'
+const VERSION = '5.6.6'
 const GITHUB_REPO = 'brennhill/gasoline-mcp-ai-devtools'
 const BINARY_NAME = 'gasoline'
+
+/**
+ * Kill all running gasoline processes to ensure clean upgrade
+ */
+function cleanupOldProcesses() {
+  if (process.platform === 'win32') {
+    // Windows: Find and kill gasoline processes
+    try {
+      const result = spawnSync('tasklist', ['/FI', 'IMAGENAME eq gasoline*', '/FO', 'CSV'], {
+        encoding: 'utf8',
+        windowsHide: true
+      })
+      if (result.stdout) {
+        const lines = result.stdout.split('\n').slice(1) // Skip header
+        for (const line of lines) {
+          const match = line.match(/"gasoline[^"]*","(\d+)"/)
+          if (match) {
+            const pid = match[1]
+            spawnSync('taskkill', ['/F', '/PID', pid], { windowsHide: true })
+            console.log(`Killed old gasoline process (PID: ${pid})`)
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore errors - process might not exist
+    }
+  } else {
+    // Unix: Find and kill gasoline processes by name
+    try {
+      // Method 1: pkill by name (most reliable)
+      const pkillResult = spawnSync('pkill', ['-f', 'gasoline'], {
+        encoding: 'utf8'
+      })
+
+      // Method 2: Also check for processes on common ports (7890, 17890)
+      const ports = ['7890', '17890']
+      for (const port of ports) {
+        const lsofResult = spawnSync('lsof', ['-ti', `:${port}`], {
+          encoding: 'utf8'
+        })
+        if (lsofResult.stdout && lsofResult.stdout.trim()) {
+          const pids = lsofResult.stdout.trim().split('\n')
+          for (const pid of pids) {
+            if (pid) {
+              spawnSync('kill', ['-9', pid])
+              console.log(`Killed process on port ${port} (PID: ${pid})`)
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore errors - processes might not exist
+    }
+  }
+}
+
+/**
+ * Verify the installed version matches expected
+ */
+function verifyVersion(binaryPath) {
+  try {
+    const result = spawnSync(binaryPath, ['--version'], {
+      encoding: 'utf8',
+      timeout: 5000
+    })
+    if (result.stdout) {
+      const version = result.stdout.trim()
+      if (version.includes(VERSION)) {
+        console.log(`✓ Verified gasoline version: ${version}`)
+        return true
+      } else {
+        console.warn(`Warning: Expected version ${VERSION}, got: ${version}`)
+        return false
+      }
+    }
+  } catch (e) {
+    console.warn(`Could not verify version: ${e.message}`)
+  }
+  return false
+}
+
+/**
+ * Start the gasoline server in the background
+ * Returns true if server started successfully
+ */
+function autoStartServer(binaryPath, port = 7890) {
+  return new Promise((resolve) => {
+    console.log(`Starting gasoline server on port ${port}...`)
+
+    // Check if port is already in use
+    const testServer = http.createServer()
+    testServer.once('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`Port ${port} already in use - server may already be running`)
+        resolve(true) // Consider this success - something is already there
+      } else {
+        console.warn(`Port check failed: ${err.message}`)
+        resolve(false)
+      }
+    })
+
+    testServer.once('listening', () => {
+      testServer.close(() => {
+        // Port is free, start the server
+        try {
+          // Spawn detached process that survives npm exit
+          const child = spawn(binaryPath, ['--port', String(port)], {
+            detached: true,
+            stdio: ['pipe', 'ignore', 'ignore'], // pipe stdin to keep it open
+            windowsHide: true
+          })
+
+          // Unref so npm can exit
+          child.unref()
+
+          // Wait for server to be ready
+          let attempts = 0
+          const maxAttempts = 30 // 3 seconds
+          const checkHealth = () => {
+            attempts++
+            const req = http.request({
+              hostname: '127.0.0.1',
+              port: port,
+              path: '/health',
+              method: 'GET',
+              timeout: 200
+            }, (res) => {
+              if (res.statusCode === 200) {
+                console.log(`✓ Server started on http://127.0.0.1:${port}`)
+                resolve(true)
+              } else if (attempts < maxAttempts) {
+                setTimeout(checkHealth, 100)
+              } else {
+                console.warn('Server started but health check failed')
+                resolve(false)
+              }
+            })
+
+            req.on('error', () => {
+              if (attempts < maxAttempts) {
+                setTimeout(checkHealth, 100)
+              } else {
+                console.warn('Server failed to respond within 3 seconds')
+                resolve(false)
+              }
+            })
+
+            req.end()
+          }
+
+          // Start health checking after a brief delay
+          setTimeout(checkHealth, 100)
+
+        } catch (e) {
+          console.warn(`Failed to start server: ${e.message}`)
+          resolve(false)
+        }
+      })
+    })
+
+    testServer.listen(port, '127.0.0.1')
+  })
+}
 
 // Map Node.js platform/arch to binary names
 function getBinaryName() {
@@ -82,6 +247,10 @@ async function main() {
   const binaryPath = path.join(binDir, binaryName)
   const shimPath = path.join(binDir, BINARY_NAME)
 
+  // Clean up any old gasoline processes before installing new version
+  console.log('Cleaning up old gasoline processes...')
+  cleanupOldProcesses()
+
   // Ensure bin directory exists
   if (!fs.existsSync(binDir)) {
     fs.mkdirSync(binDir, { recursive: true })
@@ -148,6 +317,12 @@ async function main() {
   if (process.platform !== 'win32') {
     fs.chmodSync(shimPath, 0o755)
   }
+
+  // Verify the installed version
+  verifyVersion(binaryPath)
+
+  // Auto-start the server so extension reconnects immediately
+  await autoStartServer(binaryPath)
 
   console.log('gasoline installed successfully!')
 }

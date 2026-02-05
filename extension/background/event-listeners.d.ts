@@ -55,7 +55,7 @@ export declare function handleTrackedTabClosed(closedTabId: number, logFn?: (mes
  */
 export declare function installStorageChangeListener(handlers: {
     onAiWebPilotChanged?: (newValue: boolean) => void;
-    onTrackedTabChanged?: () => void;
+    onTrackedTabChanged?: (newTabId: number | null, oldTabId: number | null) => void;
 }): void;
 /**
  * Install browser startup listener (clears tracking state)
@@ -98,17 +98,17 @@ export declare function loadDebugModeState(callback: (enabled: boolean) => void)
  * Save setting to chrome.storage.local
  */
 export declare function saveSetting(key: string, value: unknown): void;
+/** Tracked tab info type */
+export interface TrackedTabInfo {
+    trackedTabId: number | null;
+    trackedTabUrl: string | null;
+    trackedTabTitle: string | null;
+}
 /**
  * Get tracked tab information (callback-based for compatibility with pre-async event listeners)
  */
-export declare function getTrackedTabInfo(): Promise<{
-    trackedTabId: number | null;
-    trackedTabUrl: string | null;
-}>;
-export declare function getTrackedTabInfo(callback: (info: {
-    trackedTabId: number | null;
-    trackedTabUrl: string | null;
-}) => void): void;
+export declare function getTrackedTabInfo(): Promise<TrackedTabInfo>;
+export declare function getTrackedTabInfo(callback: (info: TrackedTabInfo) => void): void;
 /**
  * Clear tracked tab state
  */

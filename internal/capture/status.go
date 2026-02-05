@@ -81,3 +81,10 @@ func (c *Capture) GetTrackingStatus() (enabled bool, tabID int, tabURL string) {
 	defer c.mu.RUnlock()
 	return c.trackingEnabled, c.trackedTabID, c.trackedTabURL
 }
+
+// GetTrackedTabTitle returns the tracked tab's title (may be stale).
+func (c *Capture) GetTrackedTabTitle() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.trackedTabTitle
+}

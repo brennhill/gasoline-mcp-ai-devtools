@@ -420,6 +420,75 @@ func TestObservePage_ExtractsFromWaterfall(t *testing.T) {
 	t.Logf("✅ observe page extracted URL: %s", pageURL)
 }
 
+// TestObservePage_PrioritizesTrackedURL verifies that page info prioritizes
+// the tracked tab URL from extension sync over stale waterfall entries.
+// This is a REGRESSION TEST for the fix in commit b4c06b7.
+// If this test fails, it means observe(page) is returning stale URLs.
+func TestObservePage_PrioritizesTrackedURL(t *testing.T) {
+	t.Parallel()
+
+	server, err := NewServer("/tmp/test-page-priority.jsonl", 1000)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+	cap := capture.NewCapture()
+	sseRegistry := NewSSERegistry()
+	handler := NewToolHandler(server, cap, sseRegistry)
+
+	// Add STALE waterfall entry with old URL
+	cap.AddNetworkWaterfallEntries([]capture.NetworkWaterfallEntry{sampleNetworkEntry}, "https://old-stale-url.com/page")
+
+	// Simulate extension sync with FRESH tracked tab URL
+	// This is what the extension sends via /sync endpoint
+	syncReq := httptest.NewRequest("POST", "/sync", bytes.NewReader([]byte(`{
+		"session_id": "test-session",
+		"settings": {
+			"pilot_enabled": true,
+			"tracking_enabled": true,
+			"tracked_tab_id": 123,
+			"tracked_tab_url": "https://current-tracked-tab.com/fresh",
+			"capture_logs": true,
+			"capture_network": true,
+			"capture_websocket": true,
+			"capture_actions": true
+		}
+	}`)))
+	syncReq.Header.Set("Content-Type", "application/json")
+	syncW := httptest.NewRecorder()
+	cap.HandleSync(syncW, syncReq)
+
+	if syncW.Code != http.StatusOK {
+		t.Fatalf("Sync request failed: %d", syncW.Code)
+	}
+
+	// Call observe page - should return tracked URL, NOT waterfall URL
+	th := handler.toolHandler.(*ToolHandler)
+	resp := th.toolGetPageInfo(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+
+	var result map[string]any
+	json.Unmarshal(resp.Result, &result)
+	content := result["content"].([]any)
+	textBlock := content[0].(map[string]any)
+	var data map[string]any
+	json.Unmarshal([]byte(extractJSONFromText(textBlock["text"].(string))), &data)
+
+	pageURL := data["url"].(string)
+
+	// CRITICAL ASSERTION: Must return tracked URL, not stale waterfall URL
+	if pageURL == "https://old-stale-url.com/page" {
+		t.Fatalf("REGRESSION: observe(page) returned stale waterfall URL instead of tracked URL!\n"+
+			"Expected: https://current-tracked-tab.com/fresh\n"+
+			"Got: %s\n"+
+			"This means GetTrackingStatus() is not being used correctly.", pageURL)
+	}
+
+	if pageURL != "https://current-tracked-tab.com/fresh" {
+		t.Errorf("Expected tracked URL 'https://current-tracked-tab.com/fresh', got: %s", pageURL)
+	}
+
+	t.Logf("✅ observe page correctly prioritized tracked URL over stale waterfall")
+}
+
 // TestObserveNetworkBodies_EndToEnd verifies network bodies flow
 func TestObserveNetworkBodies_EndToEnd(t *testing.T) {
 	t.Parallel()

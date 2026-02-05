@@ -85,10 +85,6 @@ export {
 // =============================================================================
 
 export {
-  pollPendingQueriesWrapper,
-  postSettingsWrapper,
-  postNetworkWaterfall,
-  postExtensionLogsWrapper,
   sendStatusPingWrapper,
 } from './background/index'
 

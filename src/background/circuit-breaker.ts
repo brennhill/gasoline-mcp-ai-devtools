@@ -8,12 +8,35 @@ import type { CircuitBreakerState, CircuitBreakerStats } from '../types'
 // Re-export types for external use
 export type { CircuitBreakerState, CircuitBreakerStats }
 
+/** State change callback type */
+export type CircuitBreakerStateChangeCallback = (
+  oldState: CircuitBreakerState,
+  newState: CircuitBreakerState,
+  reason: string
+) => void
+
 /** Circuit breaker options */
 export interface CircuitBreakerOptions {
   maxFailures?: number
   resetTimeout?: number
   initialBackoff?: number
   maxBackoff?: number
+  onStateChange?: CircuitBreakerStateChangeCallback
+}
+
+/** Transition history entry */
+export interface CircuitBreakerTransition {
+  from: CircuitBreakerState
+  to: CircuitBreakerState
+  reason: string
+  timestamp: number
+}
+
+/** Extended circuit breaker stats */
+export interface CircuitBreakerExtendedStats extends CircuitBreakerStats {
+  lastFailureTime: number
+  lastResetReason: string | null
+  transitionHistory: CircuitBreakerTransition[]
 }
 
 /** Circuit breaker instance */
@@ -21,8 +44,10 @@ export interface CircuitBreaker {
   execute: <T>(args: unknown) => Promise<T>
   getState: () => CircuitBreakerState
   getStats: () => CircuitBreakerStats
-  reset: () => void
+  getExtendedStats: () => CircuitBreakerExtendedStats
+  reset: (reason?: string) => void
   recordFailure: () => void
+  onStateChange: (callback: CircuitBreakerStateChangeCallback) => () => void
 }
 
 /**
@@ -45,10 +70,39 @@ export function createCircuitBreaker(
   let currentBackoff = 0
   let lastFailureTime = 0
   let probeInFlight = false
+  let lastResetReason: string | null = null
+  const stateChangeCallbacks: CircuitBreakerStateChangeCallback[] = []
+  const transitionHistory: CircuitBreakerTransition[] = []
+  const maxHistorySize = 20
+
+  // Add initial callback if provided
+  if (options.onStateChange) {
+    stateChangeCallbacks.push(options.onStateChange)
+  }
+
+  function recordTransition(from: CircuitBreakerState, to: CircuitBreakerState, reason: string): void {
+    if (from === to) return
+
+    transitionHistory.push({ from, to, reason, timestamp: Date.now() })
+    if (transitionHistory.length > maxHistorySize) {
+      transitionHistory.shift()
+    }
+
+    // Notify callbacks
+    for (const callback of stateChangeCallbacks) {
+      try {
+        callback(from, to, reason)
+      } catch (err) {
+        console.error('[CircuitBreaker] State change callback error:', err)
+      }
+    }
+  }
 
   function getState(): CircuitBreakerState {
+    const oldState = state
     if (state === 'open' && Date.now() - lastFailureTime >= resetTimeout) {
       state = 'half-open'
+      recordTransition(oldState, state, 'reset_timeout_elapsed')
     }
     return state
   }
@@ -63,29 +117,48 @@ export function createCircuitBreaker(
     }
   }
 
-  function reset(): void {
+  function getExtendedStats(): CircuitBreakerExtendedStats {
+    return {
+      ...getStats(),
+      lastFailureTime,
+      lastResetReason,
+      transitionHistory: [...transitionHistory],
+    }
+  }
+
+  function reset(reason: string = 'manual_reset'): void {
+    const oldState = state
     state = 'closed'
     consecutiveFailures = 0
     currentBackoff = 0
     probeInFlight = false
+    lastResetReason = reason
+    recordTransition(oldState, 'closed', reason)
+    console.log(`[CircuitBreaker] Reset: ${reason}`)
   }
 
   function onSuccess(): void {
+    const oldState = state
     consecutiveFailures = 0
     currentBackoff = 0
     totalSuccesses++
     state = 'closed'
     probeInFlight = false
+    if (oldState !== 'closed') {
+      recordTransition(oldState, 'closed', 'request_success')
+    }
   }
 
   function onFailure(): void {
+    const oldState = state
     consecutiveFailures++
     totalFailures++
     lastFailureTime = Date.now()
     probeInFlight = false
 
-    if (consecutiveFailures >= maxFailures) {
+    if (consecutiveFailures >= maxFailures && state !== 'open') {
       state = 'open'
+      recordTransition(oldState, 'open', `consecutive_failures_${consecutiveFailures}`)
     }
 
     if (consecutiveFailures > 1) {
@@ -126,15 +199,25 @@ export function createCircuitBreaker(
   }
 
   function recordFailure(): void {
+    const oldState = state
     consecutiveFailures++
     totalFailures++
     lastFailureTime = Date.now()
-    if (consecutiveFailures >= maxFailures) {
+    if (consecutiveFailures >= maxFailures && state !== 'open') {
       state = 'open'
+      recordTransition(oldState, 'open', `consecutive_failures_${consecutiveFailures}`)
     }
     currentBackoff =
       consecutiveFailures >= 2 ? Math.min(initialBackoff * Math.pow(2, consecutiveFailures - 2), maxBackoff) : 0
   }
 
-  return { execute, getState, getStats, reset, recordFailure }
+  function onStateChange(callback: CircuitBreakerStateChangeCallback): () => void {
+    stateChangeCallbacks.push(callback)
+    return () => {
+      const index = stateChangeCallbacks.indexOf(callback)
+      if (index > -1) stateChangeCallbacks.splice(index, 1)
+    }
+  }
+
+  return { execute, getState, getStats, getExtendedStats, reset, recordFailure, onStateChange }
 }
