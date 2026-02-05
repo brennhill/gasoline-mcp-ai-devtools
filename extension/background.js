@@ -40,7 +40,7 @@ export { handleLogMessage, handleClearLogs, isConnectionCheckRunning, checkConne
 // =============================================================================
 // === PUBLIC API: POLLING WRAPPERS
 // =============================================================================
-export { pollPendingQueriesWrapper, postSettingsWrapper, postNetworkWaterfall, postExtensionLogsWrapper, sendStatusPingWrapper, } from './background/index.js';
+export { sendStatusPingWrapper, } from './background/index.js';
 // =============================================================================
 // === PUBLIC API: VERSION CHECKING
 // =============================================================================

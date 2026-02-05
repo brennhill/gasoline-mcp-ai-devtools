@@ -1,6 +1,6 @@
 /**
  * @fileoverview Script Injection Module
- * Injects capture script into the page context
+ * Injects capture script into the page context and syncs stored settings
  */
 /**
  * Inject axe-core library into the page

@@ -5,7 +5,7 @@
 /**
  * Query types from server
  */
-export type QueryType = 'dom' | 'a11y' | 'execute' | 'highlight' | 'page_info' | 'tabs' | 'browser_action' | 'state_capture' | 'state_save' | 'state_load' | 'state_list' | 'state_delete';
+export type QueryType = 'dom' | 'a11y' | 'execute' | 'highlight' | 'page_info' | 'tabs' | 'browser_action' | 'waterfall' | 'state_capture' | 'state_save' | 'state_load' | 'state_list' | 'state_delete';
 /**
  * Pending query from server
  */

@@ -101,12 +101,120 @@ func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) 
 		}
 	}
 
+	// Default to "moderate" mode if not provided (matches internal CSP generator default)
+	mode := arguments.Mode
+	if mode == "" {
+		mode = "moderate"
+	}
+
+	// Check if we have network body data to generate CSP from
+	networkBodies := h.capture.GetNetworkBodies()
+	if len(networkBodies) == 0 {
+		responseData := map[string]any{
+			"status":  "unavailable",
+			"mode":    mode,
+			"policy":  "",
+			"reason":  "No network requests captured yet. CSP generation requires observing network traffic to identify resource origins.",
+			"hint":    "Navigate the tracked page to load resources (scripts, stylesheets, images, fonts), then call generate(csp) again.",
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("CSP policy unavailable", responseData)}
+	}
+
+	// Build a basic CSP policy from observed origins
+	// Extract unique origins from network bodies
+	originsByType := make(map[string]map[string]bool) // directive -> origins
+	for _, body := range networkBodies {
+		origin := extractOrigin(body.URL)
+		if origin == "" {
+			continue
+		}
+		directive := resourceTypeToCSPDirective(body.ContentType)
+		if originsByType[directive] == nil {
+			originsByType[directive] = make(map[string]bool)
+		}
+		originsByType[directive][origin] = true
+	}
+
+	// Build CSP directives
+	directives := make(map[string][]string)
+	directives["default-src"] = []string{"'self'"}
+	for directive, origins := range originsByType {
+		var originList []string
+		for origin := range origins {
+			originList = append(originList, origin)
+		}
+		if len(originList) > 0 {
+			directives[directive] = append([]string{"'self'"}, originList...)
+		}
+	}
+
+	// Generate policy string
+	var policyParts []string
+	for directive, sources := range directives {
+		policyParts = append(policyParts, directive+" "+joinStrings(sources, " "))
+	}
+	policy := joinStrings(policyParts, "; ")
+
 	responseData := map[string]any{
-		"status": "ok",
-		"mode":   arguments.Mode,
-		"policy": "",
+		"status":           "ok",
+		"mode":             mode,
+		"policy":           policy,
+		"directives":       directives,
+		"origins_observed": len(networkBodies),
 	}
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("CSP policy generated", responseData)}
+}
+
+// extractOrigin extracts the origin (scheme://host:port) from a URL
+func extractOrigin(urlStr string) string {
+	if urlStr == "" {
+		return ""
+	}
+	// Simple extraction - find scheme://host
+	idx := 0
+	if len(urlStr) > 8 && urlStr[:8] == "https://" {
+		idx = 8
+	} else if len(urlStr) > 7 && urlStr[:7] == "http://" {
+		idx = 7
+	} else {
+		return ""
+	}
+	// Find end of host (first / or end of string)
+	endIdx := idx
+	for endIdx < len(urlStr) && urlStr[endIdx] != '/' && urlStr[endIdx] != '?' {
+		endIdx++
+	}
+	return urlStr[:endIdx]
+}
+
+// resourceTypeToCSPDirective maps content-type to CSP directive
+func resourceTypeToCSPDirective(contentType string) string {
+	switch {
+	case containsIgnoreCase(contentType, "javascript"):
+		return "script-src"
+	case containsIgnoreCase(contentType, "css"):
+		return "style-src"
+	case containsIgnoreCase(contentType, "font"):
+		return "font-src"
+	case containsIgnoreCase(contentType, "image"):
+		return "img-src"
+	case containsIgnoreCase(contentType, "video"), containsIgnoreCase(contentType, "audio"):
+		return "media-src"
+	default:
+		return "connect-src"
+	}
+}
+
+// joinStrings joins strings with a separator
+func joinStrings(strs []string, sep string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	result := strs[0]
+	for i := 1; i < len(strs); i++ {
+		result += sep + strs[i]
+	}
+	return result
 }
 
 // toolGenerateSRI generates Subresource Integrity hashes for third-party scripts/styles.

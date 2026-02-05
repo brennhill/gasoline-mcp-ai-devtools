@@ -1,6 +1,6 @@
 # Gasoline Build Makefile
 
-VERSION := 5.6.0
+VERSION := 5.6.6
 BINARY_NAME := gasoline
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION)
@@ -152,7 +152,10 @@ format-fix:
 typecheck:
 	npx tsc --noEmit
 
-check: lint format typecheck
+check: lint format typecheck check-invariants
+
+check-invariants:
+	@./scripts/check-sync-invariants.sh
 
 ci: check test test-js
 

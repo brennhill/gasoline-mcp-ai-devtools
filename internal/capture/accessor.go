@@ -31,7 +31,7 @@ func (c *Capture) GetNetworkTimestamps() []time.Time {
 	defer c.mu.RUnlock()
 
 	if len(c.networkAddedAt) == 0 {
-		return nil
+		return []time.Time{}
 	}
 
 	copy := make([]time.Time, len(c.networkAddedAt))
@@ -47,7 +47,7 @@ func (c *Capture) GetWebSocketTimestamps() []time.Time {
 	defer c.mu.RUnlock()
 
 	if len(c.wsAddedAt) == 0 {
-		return nil
+		return []time.Time{}
 	}
 
 	copy := make([]time.Time, len(c.wsAddedAt))
@@ -63,7 +63,7 @@ func (c *Capture) GetActionTimestamps() []time.Time {
 	defer c.mu.RUnlock()
 
 	if len(c.actionAddedAt) == 0 {
-		return nil
+		return []time.Time{}
 	}
 
 	copy := make([]time.Time, len(c.actionAddedAt))
@@ -104,7 +104,7 @@ func (c *Capture) GetNetworkBodies() []NetworkBody {
 	defer c.mu.RUnlock()
 
 	if len(c.networkBodies) == 0 {
-		return nil
+		return []NetworkBody{}
 	}
 
 	copy := make([]NetworkBody, len(c.networkBodies))
@@ -122,7 +122,7 @@ func (c *Capture) GetAllWebSocketEvents() []WebSocketEvent {
 	defer c.mu.RUnlock()
 
 	if len(c.wsEvents) == 0 {
-		return nil
+		return []WebSocketEvent{}
 	}
 
 	copy := make([]WebSocketEvent, len(c.wsEvents))
@@ -139,7 +139,7 @@ func (c *Capture) GetAllEnhancedActions() []EnhancedAction {
 	defer c.mu.RUnlock()
 
 	if len(c.enhancedActions) == 0 {
-		return nil
+		return []EnhancedAction{}
 	}
 
 	copy := make([]EnhancedAction, len(c.enhancedActions))
@@ -217,7 +217,7 @@ func (c *Capture) GetHTTPDebugLog() []HTTPDebugEntry {
 	defer c.mu.RUnlock()
 
 	if len(c.httpDebugLog) == 0 {
-		return nil
+		return []HTTPDebugEntry{}
 	}
 
 	copy := make([]HTTPDebugEntry, len(c.httpDebugLog))
@@ -277,7 +277,7 @@ func (c *Capture) GetPerformanceSnapshots() []PerformanceSnapshot {
 	defer c.mu.RUnlock()
 
 	if len(c.perf.snapshots) == 0 {
-		return nil
+		return []PerformanceSnapshot{}
 	}
 
 	result := make([]PerformanceSnapshot, 0, len(c.perf.snapshots))

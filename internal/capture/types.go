@@ -254,12 +254,12 @@ type NetworkBodyFilter = types.NetworkBodyFilter
 
 // ExtensionLog represents a log entry from the extension's background or content scripts
 type ExtensionLog struct {
-	Timestamp time.Time              `json:"timestamp"`
-	Level     string                 `json:"level"`    // "debug", "info", "warn", "error"
-	Message   string                 `json:"message"`  // Log message
-	Source    string                 `json:"source"`   // "background", "content", "inject"
-	Category  string                 `json:"category,omitempty"` // DebugCategory (CONNECTION, CAPTURE, etc.)
-	Data      map[string]any `json:"data,omitempty"`     // Additional structured data
+	Timestamp time.Time       `json:"timestamp"`
+	Level     string          `json:"level"`              // "debug", "info", "warn", "error"
+	Message   string          `json:"message"`            // Log message
+	Source    string          `json:"source"`             // "background", "content", "inject"
+	Category  string          `json:"category,omitempty"` // DebugCategory (CONNECTION, CAPTURE, etc.)
+	Data      json.RawMessage `json:"data,omitempty"`     // Additional structured data (any JSON)
 }
 
 // PollingLogEntry tracks a single polling request (GET /pending-queries or POST /settings)
@@ -310,6 +310,7 @@ type EnhancedAction struct {
 	ScrollY       int            `json:"scrollY,omitempty"`
 	TabId         int            `json:"tab_id,omitempty"`    // Chrome tab ID that produced this action
 	TestIDs       []string       `json:"test_ids,omitempty"` // Test IDs this action belongs to (for test boundary correlation)
+	Source        string         `json:"source,omitempty"`   // "human" for user actions, "ai" for AI-driven actions via interact tool
 }
 
 // EnhancedActionFilter defines filtering criteria for enhanced actions
@@ -561,6 +562,7 @@ type Capture struct {
 	trackingEnabled bool      // Single-tab mode active. true=track specific tab. false=observe all tabs (multi-tab).
 	trackedTabID    int       // Browser tab ID when single-tab tracking (0=none). Invariant: if trackingEnabled then trackedTabID>0.
 	trackedTabURL   string    // Tracked tab URL (informational, may be stale).
+	trackedTabTitle string    // Tracked tab title (informational, may be stale).
 	trackingUpdated time.Time // When tracking status last refreshed from extension.
 
 	// ============================================

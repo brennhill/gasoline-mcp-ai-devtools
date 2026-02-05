@@ -104,11 +104,11 @@ export declare function handleClearLogs(): Promise<{
 export declare function isConnectionCheckRunning(): boolean;
 export declare function checkConnectionAndUpdate(): Promise<void>;
 export declare function applyCaptureOverrides(overrides: Record<string, string>): void;
-export declare function pollPendingQueriesWrapper(): Promise<void>;
-export declare function postSettingsWrapper(): Promise<void>;
-export declare function postNetworkWaterfall(): Promise<void>;
-export declare function postExtensionLogsWrapper(): Promise<void>;
 export declare function sendStatusPingWrapper(): Promise<void>;
+/**
+ * Reset sync client connection (call when user enables pilot/tracking)
+ */
+export declare function resetSyncClientConnection(): void;
 /**
  * Reset pilot cache for testing
  */
