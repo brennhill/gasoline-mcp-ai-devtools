@@ -208,6 +208,14 @@ func (c *Capture) evaluateCircuit() {
 			c.circuitOpen = true
 			c.circuitOpenedAt = time.Now()
 			c.circuitReason = "rate_exceeded"
+			// Emit lifecycle event (outside lock)
+			go c.emitLifecycleEvent("circuit_opened", map[string]any{
+				"reason":      "rate_exceeded",
+				"streak":      c.rateLimitStreak,
+				"rate":        c.windowEventCount,
+				"threshold":   rateLimitThreshold,
+				"memory_bytes": c.getMemoryForCircuit(),
+			})
 			return
 		}
 		// Memory-based opening: buffer memory exceeds hard limit
@@ -215,6 +223,13 @@ func (c *Capture) evaluateCircuit() {
 			c.circuitOpen = true
 			c.circuitOpenedAt = time.Now()
 			c.circuitReason = "memory_exceeded"
+			// Emit lifecycle event (outside lock)
+			go c.emitLifecycleEvent("circuit_opened", map[string]any{
+				"reason":       "memory_exceeded",
+				"memory_bytes": c.getMemoryForCircuit(),
+				"hard_limit":   memoryHardLimit,
+				"rate":         c.windowEventCount,
+			})
 			return
 		}
 		return
@@ -245,9 +260,19 @@ func (c *Capture) evaluateCircuit() {
 	}
 
 	// All conditions met - close the circuit
+	openDuration := time.Since(c.circuitOpenedAt)
+	prevReason := c.circuitReason
 	c.circuitOpen = false
 	c.circuitReason = ""
 	c.rateLimitStreak = 0
+
+	// Emit lifecycle event (outside lock)
+	go c.emitLifecycleEvent("circuit_closed", map[string]any{
+		"previous_reason":    prevReason,
+		"open_duration_secs": openDuration.Seconds(),
+		"memory_bytes":       c.getMemoryForCircuit(),
+		"rate":               c.windowEventCount,
+	})
 }
 
 // getMemoryForCircuit returns the memory to use for circuit evaluation.

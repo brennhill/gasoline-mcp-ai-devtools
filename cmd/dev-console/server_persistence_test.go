@@ -224,8 +224,8 @@ func TestServerPersistence_PersistModeKeepsAlive(t *testing.T) {
 	binary := buildTestBinary(t)
 	defer os.Remove(binary)
 
-	// Start server with persist=true (default)
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port), "--persist")
+	// Start server (persistence is default behavior - server stays alive after stdin closes)
+	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -237,6 +237,12 @@ func TestServerPersistence_PersistModeKeepsAlive(t *testing.T) {
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
 	}()
+
+	// Send initialize request to trigger server spawn (MCP bridge mode waits for input)
+	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}` + "\n"
+	if _, err := stdin.Write([]byte(initReq)); err != nil {
+		t.Fatalf("Failed to send initialize request: %v", err)
+	}
 
 	if !waitForServer(port, 5*time.Second) {
 		t.Fatalf("Server failed to start")

@@ -604,6 +604,20 @@ type Capture struct {
 	// ============================================
 
 	clientRegistry ClientRegistry // Registry of connected MCP clients. HAS OWN LOCK. Lock hierarchy: ClientRegistry.mu is position 1 (outermost), before Capture.mu.
+
+	// ============================================
+	// Lifecycle Event Callbacks
+	// ============================================
+
+	lifecycleCallback      func(event string, data map[string]any) // Optional callback for lifecycle events (circuit breaker, extension state, buffer overflow)
+	lastExtensionConnected bool                                    // Track previous extension connection state for transition detection
+
+	// ============================================
+	// Version Information
+	// ============================================
+
+	serverVersion    string // Server version (e.g., "5.7.0"), set via SetServerVersion()
+	extensionVersion string // Last reported extension version from sync request
 }
 
 // NewCapture creates a new Capture instance with initialized buffers
@@ -654,4 +668,47 @@ func NewCapture() *Capture {
 	// Note: schemaStore, clientRegistry, cspGen are initialized by capture.New() in capture package
 	// to avoid circular import (those packages import capture for NetworkBody, WebSocketEvent, etc.)
 	return c
+}
+
+// SetLifecycleCallback sets a callback function for lifecycle events.
+// The callback receives an event name and data map with event-specific fields.
+// Events: "circuit_opened", "circuit_closed", "extension_connected", "extension_disconnected",
+// "buffer_eviction", "rate_limit_triggered"
+func (c *Capture) SetLifecycleCallback(cb func(event string, data map[string]any)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.lifecycleCallback = cb
+}
+
+// emitLifecycleEvent calls the lifecycle callback if set.
+// Caller must NOT hold the lock (callback may do I/O).
+func (c *Capture) emitLifecycleEvent(event string, data map[string]any) {
+	c.mu.RLock()
+	cb := c.lifecycleCallback
+	c.mu.RUnlock()
+	if cb != nil {
+		cb(event, data)
+	}
+}
+
+// SetServerVersion sets the server version for compatibility checking.
+// Called once at startup with the version from main.go.
+func (c *Capture) SetServerVersion(v string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.serverVersion = v
+}
+
+// GetServerVersion returns the server version.
+func (c *Capture) GetServerVersion() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.serverVersion
+}
+
+// GetExtensionVersion returns the last reported extension version.
+func (c *Capture) GetExtensionVersion() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.extensionVersion
 }

@@ -27,15 +27,17 @@ export async function promiseRaceWithCleanup(promise, timeoutMs, timeoutFallback
     try {
         return await Promise.race([
             promise,
-            new Promise((_, reject) => setTimeout(() => {
-                cleanup?.();
-                if (timeoutFallback !== undefined) {
-                    reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
-                }
-                else {
-                    reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
-                }
-            }, timeoutMs)),
+            new Promise((_, reject) => {
+                setTimeout(() => {
+                    cleanup?.();
+                    if (timeoutFallback !== undefined) {
+                        reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
+                    }
+                    else {
+                        reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
+                    }
+                }, timeoutMs);
+            }),
         ]);
     }
     catch (err) {

@@ -1,6 +1,6 @@
 # Gasoline Build Makefile
 
-VERSION := 5.6.6
+VERSION := $(shell cat VERSION)
 BINARY_NAME := gasoline
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION)
@@ -19,7 +19,7 @@ PLATFORMS := \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
-	security-check pre-commit verify-all \
+	security-check pre-commit verify-all npm-binaries \
 	$(PLATFORMS)
 
 all: clean build
@@ -116,6 +116,23 @@ linux-arm64:
 windows-amd64:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe ./cmd/dev-console
+
+# Build and copy binaries to NPM package directories (for releases)
+npm-binaries: build
+	@echo "=== Copying binaries to NPM packages ==="
+	cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 npm/darwin-arm64/bin/gasoline
+	cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 npm/darwin-x64/bin/gasoline
+	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 npm/linux-arm64/bin/gasoline
+	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 npm/linux-x64/bin/gasoline
+	cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe npm/win32-x64/bin/gasoline.exe
+	@echo "=== Verifying embedded versions ==="
+	@EMBEDDED=$$(npm/darwin-arm64/bin/gasoline --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+'); \
+	EXPECTED=$$(cat VERSION); \
+	if [ "$$EMBEDDED" != "$$EXPECTED" ]; then \
+		echo "❌ ERROR: Embedded version $$EMBEDDED does not match VERSION file $$EXPECTED"; \
+		exit 1; \
+	fi
+	@echo "✅ NPM binaries ready with version $(VERSION)"
 
 # Build for current platform only (for development)
 dev:

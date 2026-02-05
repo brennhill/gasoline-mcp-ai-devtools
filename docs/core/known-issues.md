@@ -122,3 +122,42 @@ Add content script ready handshake:
 2. Background script waits for ready signal before accepting interact() commands
 3. Queue commands if received before ready, execute after
 
+---
+
+## Extension Tracking Loss During Navigation (Added 2026-02-05)
+
+**Problem:**
+Extension loses tab tracking state during AI-initiated navigation via `interact({action: "navigate"})`. Symptoms:
+- `observe({what: "tabs"})` returns empty array
+- `tracking_active: false`
+- Page info shows stale data
+- Commands expire before extension can execute them
+
+**Observed in:**
+- Multiple sequential navigate commands
+- Cross-origin navigation (e.g., GitHub → Binance → Socket.IO)
+
+**Extension Logs Show:**
+```
+"Sync client connection reset"
+"[Sync] Connection state reset"
+```
+
+**Workaround:**
+- Manually re-enable tracking via extension popup after navigation
+- Extension reconnects automatically, but tracking must be re-enabled
+
+**Root Cause (To Investigate):**
+- Tab tracking state may be cleared when content script reloads on navigation
+- Cross-origin navigation destroys content script context
+- Background service worker may lose tab association
+
+**Priority:** Medium
+**Affects:** v5.7.x
+**Tracking:** To investigate in v5.8
+
+**Proposed Fix:**
+1. Persist tracking state in `chrome.storage.local` (survives navigation)
+2. Re-inject content script automatically after navigation completes
+3. Add "auto-track" option to maintain tracking across navigations
+

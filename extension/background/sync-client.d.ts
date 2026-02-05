@@ -50,6 +50,7 @@ export interface SyncClientCallbacks {
     onCommand: (command: SyncCommand) => Promise<void>;
     onConnectionChange: (connected: boolean) => void;
     onCaptureOverrides?: (overrides: Record<string, string>) => void;
+    onVersionMismatch?: (extensionVersion: string, serverVersion: string) => void;
     getSettings: () => Promise<SyncSettings>;
     getExtensionLogs: () => SyncExtensionLog[];
     clearExtensionLogs: () => void;

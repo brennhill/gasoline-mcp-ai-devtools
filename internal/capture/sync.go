@@ -19,6 +19,9 @@ type SyncRequest struct {
 	// Session identification
 	SessionID string `json:"session_id"`
 
+	// Extension version for compatibility checking
+	ExtensionVersion string `json:"extension_version,omitempty"`
+
 	// Extension settings (replaces /settings POST)
 	Settings *SyncSettings `json:"settings,omitempty"`
 
@@ -110,14 +113,37 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 
 	// Update state (lock scope 1)
 	c.mu.Lock()
+
+	// Detect extension connection state transitions
+	wasConnected := c.lastExtensionConnected
+	timeSinceLastPoll := now.Sub(c.lastPollAt)
+	isReconnect := !c.lastPollAt.IsZero() && timeSinceLastPoll > 3*time.Second
+
 	// Update last poll time (for health endpoint extension_connected status)
 	c.lastPollAt = now
+	c.lastExtensionConnected = true
 
 	// Handle session ID (detect session changes)
 	if req.SessionID != "" && req.SessionID != c.extensionSession {
 		c.extensionSession = req.SessionID
 		c.sessionChangedAt = now
 	}
+
+	// Capture data for lifecycle event before releasing lock
+	sessionID := c.extensionSession
+	c.mu.Unlock()
+
+	// Emit extension connection lifecycle event (outside lock)
+	if !wasConnected || isReconnect {
+		go c.emitLifecycleEvent("extension_connected", map[string]any{
+			"session_id":         sessionID,
+			"is_reconnect":       isReconnect,
+			"disconnect_seconds": timeSinceLastPoll.Seconds(),
+		})
+	}
+
+	// Re-acquire lock for settings
+	c.mu.Lock()
 
 	// Store extension settings
 	if req.Settings != nil {
@@ -189,12 +215,20 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Update extension version tracking
+	if req.ExtensionVersion != "" {
+		c.mu.Lock()
+		c.extensionVersion = req.ExtensionVersion
+		c.mu.Unlock()
+	}
+
 	// Build response
 	resp := SyncResponse{
 		Ack:              true,
 		Commands:         commands,
 		NextPollMs:       1000, // Default 1 second, can be made dynamic later
 		ServerTime:       now.Format(time.RFC3339),
+		ServerVersion:    c.GetServerVersion(),
 		CaptureOverrides: map[string]string{}, // Empty for now, placeholder for AI capture control
 	}
 
