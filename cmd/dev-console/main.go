@@ -42,7 +42,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "5.7.4"
+var version = "5.7.5"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -468,8 +468,9 @@ func main() {
 	}
 
 	// stdin is piped -> MCP mode (HTTP + MCP protocol)
-	// Enhanced lifecycle with retry and auto-recovery
-	handleMCPConnection(server, *port, *apiKey)
+	// Use bridge mode with fast-start: responds to initialize/tools/list immediately
+	// while spawning daemon in background. This gives MCP clients instant feedback.
+	runBridgeMode(*port)
 }
 
 // handleMCPConnection implements the enhanced connection lifecycle with retry and auto-recovery.
