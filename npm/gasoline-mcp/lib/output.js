@@ -135,6 +135,18 @@ function diagnosticReport(report) {
       output += `❌ Binary Check\n`;
       output += `   ${report.binary.error}\n`;
     }
+    output += '\n';
+  }
+
+  if (report.port) {
+    if (report.port.available) {
+      output += `✅ Port ${report.port.port}\n`;
+      output += `   Default port is available\n`;
+    } else {
+      output += `⚠️  Port ${report.port.port}\n`;
+      output += `   ${report.port.error}\n`;
+      output += `   Suggestion: Use --port ${report.port.port + 1} or kill the process using the port\n`;
+    }
   }
 
   output += `\n${report.summary}\n`;

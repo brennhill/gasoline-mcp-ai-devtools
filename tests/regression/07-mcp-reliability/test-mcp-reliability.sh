@@ -5,7 +5,7 @@
 set -e
 
 PORT=17899
-BINARY="${GASOLINE_BINARY:-dist/gasoline-darwin-arm64}"
+BINARY="${GASOLINE_BINARY:-./dist/gasoline}"
 PID_FILE="$HOME/.gasoline-$PORT.pid"
 
 # Colors
@@ -81,11 +81,18 @@ set +e
 RESPONSE=$(mcp_connect 5)
 set -e
 if echo "$RESPONSE" | grep -q '"protocolVersion"'; then
+    # With fast-start, daemon spawns asynchronously - wait for it to be ready
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+        if is_server_healthy; then
+            break
+        fi
+        sleep 0.5
+    done
     if is_server_healthy; then
         PID1=$(get_server_pid)
         pass "Cold start successful (server PID: $PID1)"
     else
-        fail "Initialize succeeded but server not healthy"
+        fail "Initialize succeeded but server not healthy after 5s"
     fi
 else
     fail "No initialize response"
@@ -161,7 +168,9 @@ else
     fail "Failed to recover from killed server"
 fi
 
-# Test 5: Fast fail on port conflict (external process)
+# Test 5: Fast-start responds immediately even when port blocked
+# With fast-start mode, initialize/tools/list respond immediately from bridge
+# without needing the daemon. Only tools/call checks daemon availability.
 info "Test 5: Fast fail when port blocked by external process"
 
 # Kill our server
@@ -180,33 +189,36 @@ if ! lsof -ti :$PORT >/dev/null 2>&1; then
     fail "Could not start port blocker"
 fi
 
-# Try to connect - measure how long the binary takes to exit (not response time)
+# With fast-start, initialize should succeed immediately even with port blocked
+# The daemon spawn will fail, but we still get the fast-start response
+tmp_out=$(mktemp)
 START=$(date +%s)
-(echo '{"jsonrpc":"2.0","method":"initialize","id":1}'; sleep 30) | \
-    "$BINARY" --port "$PORT" >/dev/null 2>&1 &
+(echo '{"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'; sleep 5) | \
+    "$BINARY" --port "$PORT" > "$tmp_out" 2>/dev/null &
 BIN_PID=$!
 
-# Wait for binary to exit (max 5s)
-EXITED=0
-for i in $(seq 1 5); do
-    if ! kill -0 $BIN_PID 2>/dev/null; then
-        EXITED=1
+# Wait for response to appear in file
+for i in 1 2 3 4 5 6 7 8 9 10; do
+    if [ -s "$tmp_out" ] && grep -q '"protocolVersion"' "$tmp_out" 2>/dev/null; then
         break
     fi
-    sleep 1
+    sleep 0.5
 done
 END=$(date +%s)
 ELAPSED=$((END - START))
 
+# Check we got initialize response quickly
+if grep -q '"protocolVersion"' "$tmp_out"; then
+    pass "Fast fail on blocked port (${ELAPSED}s < 5s)"
+else
+    cat "$tmp_out"  # Debug: show what we got
+    fail "Did not get initialize response (expected fast-start behavior)"
+fi
+
 # Clean up
 kill $BIN_PID 2>/dev/null || true
 kill $BLOCKER_PID 2>/dev/null || true
-
-if [ $EXITED -eq 1 ] && [ $ELAPSED -lt 5 ]; then
-    pass "Fast fail on blocked port (${ELAPSED}s < 5s)"
-else
-    fail "Took too long to fail on blocked port (${ELAPSED}s, exited=$EXITED)"
-fi
+rm -f "$tmp_out"
 
 # Final cleanup
 cleanup
