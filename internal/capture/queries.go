@@ -43,7 +43,6 @@ func (c *Capture) CreatePendingQueryWithClient(query queries.PendingQuery, clien
 // 4. Return query ID for extension to use when posting result
 func (c *Capture) CreatePendingQueryWithTimeout(query queries.PendingQuery, timeout time.Duration, clientID string) string {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	// Enforce max pending queries (drop oldest if full)
 	if len(c.pendingQueries) >= maxPendingQueries {
@@ -68,28 +67,25 @@ func (c *Capture) CreatePendingQueryWithTimeout(query queries.PendingQuery, time
 	}
 
 	c.pendingQueries = append(c.pendingQueries, entry)
+	correlationID := query.CorrelationID
+	c.mu.Unlock()
 
-	// Register command for correlation ID tracking (if async command)
-	if query.CorrelationID != "" {
-		c.mu.Unlock() // Release mu before acquiring resultsMu to avoid deadlock
-		c.RegisterCommand(query.CorrelationID, id, timeout)
-		c.mu.Lock() // Re-acquire mu for defer unlock
+	// Register command outside mu lock to respect lock ordering (resultsMu must not be acquired under mu)
+	if correlationID != "" {
+		c.RegisterCommand(correlationID, id, timeout)
 	}
 
 	// Schedule cleanup after timeout
 	go func() {
-		correlationID := query.CorrelationID // Capture for goroutine
 		time.Sleep(timeout)
 		c.mu.Lock()
-		defer c.mu.Unlock()
 		c.cleanExpiredQueries()
 		c.queryCond.Broadcast()
+		c.mu.Unlock()
 
-		// Mark command as expired if it had a correlation ID
+		// ExpireCommand acquires resultsMu — called outside mu to respect lock ordering
 		if correlationID != "" {
-			c.mu.Unlock() // Release mu before ExpireCommand (which needs resultsMu)
 			c.ExpireCommand(correlationID)
-			c.mu.Lock() // Re-acquire for defer
 		}
 	}()
 

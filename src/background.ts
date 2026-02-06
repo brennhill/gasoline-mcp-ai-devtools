@@ -117,12 +117,15 @@ export {
   createErrorSignature,
   processErrorGroup,
   flushErrorGroups,
+  cleanupStaleErrorGroups,
   canTakeScreenshot,
   recordScreenshot,
   estimateBufferMemory,
   checkMemoryPressure,
   getMemoryPressureState,
   resetMemoryPressureState,
+  getProcessingQueriesState,
+  cleanupStaleProcessingQueries,
 } from './background/state-manager'
 
 // Context and annotations
@@ -135,6 +138,14 @@ export {
 
 // Source map management
 export { setSourceMapEnabled, isSourceMapEnabled, clearSourceMapCache } from './background/state-manager'
+
+// Cache limits and source map cache
+export {
+  SOURCE_MAP_CACHE_SIZE,
+  setSourceMapCacheEntry,
+  getSourceMapCacheEntry,
+  getSourceMapCacheSize,
+} from './background/cache-limits'
 
 // =============================================================================
 // === PUBLIC API: COMMUNICATION (Tests)
@@ -152,7 +163,7 @@ export {
   shouldCaptureLog,
 } from './background/communication'
 
-export { postQueryResult } from './background/server'
+export { postQueryResult, pollPendingQueries } from './background/server'
 
 // =============================================================================
 // === PUBLIC API: STATE SNAPSHOTS (Initialization)
@@ -179,13 +190,12 @@ export {
 } from './background/index'
 
 // =============================================================================
-// INITIALIZATION
+// INITIALIZATION — Only in Chrome extension context, not in Node.js test environment
 // =============================================================================
 
-const _moduleLoadTime = performance.now()
-console.log(`[DIAGNOSTIC] Module load start at ${_moduleLoadTime.toFixed(2)}ms (${new Date().toISOString()})`)
-
-console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`)
-
-// Initialize the extension
-initializeExtension()
+if (typeof (globalThis as Record<string, unknown>).process === 'undefined') {
+  const _moduleLoadTime = performance.now()
+  console.log(`[DIAGNOSTIC] Module load start at ${_moduleLoadTime.toFixed(2)}ms (${new Date().toISOString()})`)
+  console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`)
+  initializeExtension()
+}

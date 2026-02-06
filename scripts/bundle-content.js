@@ -5,6 +5,9 @@
  */
 
 import * as esbuild from 'esbuild'
+import { readFileSync } from 'fs'
+
+const version = readFileSync('VERSION', 'utf-8').trim()
 
 try {
   // Bundle content.js (IIFE for content script context)
@@ -30,8 +33,23 @@ try {
     target: ['chrome120'],
     sourcemap: true,
     minify: false,
+    define: { '__GASOLINE_VERSION__': JSON.stringify(version) },
   })
   console.log('✅ Inject script bundled successfully')
+
+  // Bundle early-patch.js (IIFE for MAIN world content script)
+  // Runs on ALL pages at document_start — minified to minimize overhead
+  await esbuild.build({
+    entryPoints: ['extension/early-patch.js'],
+    bundle: true,
+    format: 'iife',
+    outfile: 'extension/early-patch.bundled.js',
+    platform: 'browser',
+    target: ['chrome120'],
+    sourcemap: true,
+    minify: true,
+  })
+  console.log('✅ Early-patch script bundled successfully')
 } catch (error) {
   console.error('❌ Script bundling failed:', error)
   process.exit(1)

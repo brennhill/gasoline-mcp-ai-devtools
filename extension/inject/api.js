@@ -260,7 +260,7 @@ export function installGasolineAPI() {
         /**
          * Version of the Gasoline API
          */
-        version: '5.2.0',
+        version: __GASOLINE_VERSION__,
     };
 }
 /**

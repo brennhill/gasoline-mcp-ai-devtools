@@ -207,7 +207,7 @@ func (a *ThirdPartyAuditor) Audit(bodies []capture.NetworkBody, pageURLs []strin
 	}
 
 	// Build entries for each third-party origin
-	var entries []ThirdPartyEntry
+	entries := make([]ThirdPartyEntry, 0)
 	for origin, data := range originMap {
 		entry := buildThirdPartyEntry(origin, data.bodies, data.urls, customLists)
 		entries = append(entries, entry)
@@ -494,7 +494,7 @@ func buildThirdPartySummary(entries []ThirdPartyEntry) ThirdPartySummary {
 
 // buildRecommendations generates actionable recommendation strings.
 func buildRecommendations(entries []ThirdPartyEntry) []string {
-	var recs []string
+	recs := make([]string, 0)
 
 	// Check for suspicious origins with scripts
 	for _, e := range entries {

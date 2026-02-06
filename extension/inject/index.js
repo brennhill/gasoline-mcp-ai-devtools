@@ -21,7 +21,7 @@ export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } fro
 // Export API module
 export { installGasolineAPI, uninstallGasolineAPI } from './api.js';
 // Export observer module
-export { install, uninstall, installFetchCapture, uninstallFetchCapture, installPhase1, installPhase2, getDeferralState, setDeferralEnabled, shouldDeferIntercepts, checkMemoryPressure, } from './observers.js';
+export { install, uninstall, wrapFetch, installFetchCapture, uninstallFetchCapture, installPhase1, installPhase2, getDeferralState, setDeferralEnabled, shouldDeferIntercepts, checkMemoryPressure, } from './observers.js';
 // Export message handlers module
 export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers.js';
 // Export state management functions
@@ -34,7 +34,7 @@ import { sendPerformanceSnapshot } from '../lib/perf-snapshot.js';
 /**
  * Auto-install when loaded in browser
  */
-if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof globalThis.process === 'undefined') {
     // Install Phase 1 (lightweight API + observers)
     installPhase1();
     // Install message listener with state functions

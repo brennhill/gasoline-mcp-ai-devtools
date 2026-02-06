@@ -9,6 +9,9 @@
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 
+// Define esbuild constant not available in Node test env
+globalThis.__GASOLINE_VERSION__ = 'test'
+
 let originalWindow
 let originalPerformance
 let originalDocument
@@ -574,6 +577,8 @@ describe('Performance Marks - PerformanceObserver', () => {
       onerror: null,
     }
     globalThis.performance = globalThis.window.performance
+    // Code checks typeof PerformanceObserver (global), not window.PerformanceObserver
+    globalThis.PerformanceObserver = globalThis.window.PerformanceObserver
 
     // Now install with the mock in place
     installPerformanceCapture()

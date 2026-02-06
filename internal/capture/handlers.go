@@ -118,7 +118,7 @@ func (c *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"queries": queries,
-		"count":   len(queries.([]PendingQueryResponse)),
+		"count":   func() int { if q, ok := queries.([]PendingQueryResponse); ok { return len(q) }; return 0 }(),
 	})
 }
 

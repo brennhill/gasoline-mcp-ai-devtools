@@ -32,7 +32,7 @@ test.describe('WebSocket Capture', () => {
     await page.waitForTimeout(1000)
 
     // Enable WebSocket capture (sends message through background → content → inject)
-    await enableWebSocketCapture(page, 'lifecycle')
+    await enableWebSocketCapture(page, 'medium')
 
     // Connect WebSocket
     await page.click('#connect-ws')
@@ -55,7 +55,7 @@ test.describe('WebSocket Capture', () => {
     await page.goto(`file://${path.join(fixturesDir, 'websocket-page.html')}?wsPort=${wsServer.port}`)
     await page.waitForTimeout(1000)
 
-    await enableWebSocketCapture(page, 'lifecycle')
+    await enableWebSocketCapture(page, 'medium')
 
     // Connect then disconnect
     await page.click('#connect-ws')
@@ -74,12 +74,12 @@ test.describe('WebSocket Capture', () => {
     expect(closeEvent).toBeDefined()
   })
 
-  test('should capture messages when mode is "messages"', async ({ page, serverUrl, extensionId, context }) => {
+  test('should capture messages when mode is "all"', async ({ page, serverUrl, extensionId, context }) => {
     await page.goto(`file://${path.join(fixturesDir, 'websocket-page.html')}?wsPort=${wsServer.port}`)
     await page.waitForTimeout(1000)
 
-    // Enable with messages mode
-    await enableWebSocketCapture(page, 'messages')
+    // Enable with all mode (no sampling)
+    await enableWebSocketCapture(page, 'all')
 
     // Connect and send message
     await page.click('#connect-ws')
@@ -98,12 +98,12 @@ test.describe('WebSocket Capture', () => {
     expect(outgoing).toBeDefined()
   })
 
-  test('should NOT capture messages when mode is "lifecycle"', async ({ page, serverUrl, extensionId, context }) => {
+  test('should capture messages with low sampling mode', async ({ page, serverUrl, extensionId, context }) => {
     await page.goto(`file://${path.join(fixturesDir, 'websocket-page.html')}?wsPort=${wsServer.port}`)
     await page.waitForTimeout(1000)
 
-    // Enable with lifecycle mode (default)
-    await enableWebSocketCapture(page, 'lifecycle')
+    // Enable with low sampling mode (~2 msg/s cap)
+    await enableWebSocketCapture(page, 'low')
 
     // Connect and send message
     await page.click('#connect-ws')
@@ -116,12 +116,12 @@ test.describe('WebSocket Capture', () => {
     const response = await fetch(`${serverUrl}/websocket-events`)
     const data = await response.json()
 
-    // Should have open event but no message events
+    // All modes capture messages now (with sampling), so at low rate a single message should be captured
     const openEvents = (data.events || []).filter((e) => e.event === 'open')
     const messageEvents = (data.events || []).filter((e) => e.event === 'message')
 
     expect(openEvents.length).toBeGreaterThan(0)
-    expect(messageEvents.length).toBe(0)
+    expect(messageEvents.length).toBeGreaterThan(0)
   })
 
   test('should not capture WebSocket events when disabled', async ({ page, serverUrl, extensionId, context }) => {

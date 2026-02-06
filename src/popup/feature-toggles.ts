@@ -13,19 +13,19 @@ export const FEATURE_TOGGLES: readonly FeatureToggleConfig[] = [
     id: 'toggle-websocket',
     storageKey: 'webSocketCaptureEnabled',
     messageType: 'setWebSocketCaptureEnabled',
-    default: false,
+    default: true,
   },
   {
     id: 'toggle-network-waterfall',
     storageKey: 'networkWaterfallEnabled',
     messageType: 'setNetworkWaterfallEnabled',
-    default: false,
+    default: true,
   },
   {
     id: 'toggle-performance-marks',
     storageKey: 'performanceMarksEnabled',
     messageType: 'setPerformanceMarksEnabled',
-    default: false,
+    default: true,
   },
   {
     id: 'toggle-action-replay',
@@ -33,8 +33,8 @@ export const FEATURE_TOGGLES: readonly FeatureToggleConfig[] = [
     messageType: 'setActionReplayEnabled',
     default: true,
   },
-  { id: 'toggle-screenshot', storageKey: 'screenshotOnError', messageType: 'setScreenshotOnError', default: false },
-  { id: 'toggle-source-maps', storageKey: 'sourceMapEnabled', messageType: 'setSourceMapEnabled', default: false },
+  { id: 'toggle-screenshot', storageKey: 'screenshotOnError', messageType: 'setScreenshotOnError', default: true },
+  { id: 'toggle-source-maps', storageKey: 'sourceMapEnabled', messageType: 'setSourceMapEnabled', default: true },
   {
     id: 'toggle-network-body-capture',
     storageKey: 'networkBodyCaptureEnabled',

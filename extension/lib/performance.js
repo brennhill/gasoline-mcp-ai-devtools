@@ -62,6 +62,9 @@ export function getPerformanceMeasures(options = {}) {
             name: m.name,
             startTime: m.startTime,
             duration: m.duration,
+            ...(m.detail !== undefined
+                ? { detail: m.detail }
+                : {}),
         }));
     }
     catch {
@@ -100,6 +103,7 @@ export function installPerformanceCapture() {
     // Wrap performance.mark
     // Note: Monkey-patching requires bypassing TypeScript's strict Performance API types.
     // This is a standard pattern for browser API instrumentation.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const wrappedMark = function (name, options) {
         const result = originalPerformanceMark.call(performance, name, options);
         capturedMarks.push({
@@ -119,6 +123,7 @@ export function installPerformanceCapture() {
     Object.defineProperty(performance, 'mark', { value: wrappedMark, writable: true, configurable: true });
     // Wrap performance.measure
     // Note: Monkey-patching requires bypassing TypeScript's strict Performance API types.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const wrappedMeasure = function (name, startMark, endMark) {
         const result = originalPerformanceMeasure.call(performance, name, startMark, endMark);
         capturedMeasures.push({

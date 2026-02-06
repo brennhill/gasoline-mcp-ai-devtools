@@ -58,7 +58,7 @@ func (c *Capture) readIngestBody(w http.ResponseWriter, r *http.Request) ([]byte
 		c.WriteRateLimitResponse(w)
 		return nil, false
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+	r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)

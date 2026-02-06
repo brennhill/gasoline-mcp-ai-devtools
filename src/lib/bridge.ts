@@ -58,6 +58,6 @@ export function postLog(payload: BridgePayload): void {
         ...otherFields,
       },
     },
-    '*',
+    window.location.origin,
   )
 }

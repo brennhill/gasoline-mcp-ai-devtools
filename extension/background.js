@@ -53,16 +53,18 @@ export { handlePendingQuery, handlePilotCommand, isAiWebPilotEnabled } from './b
 // === PUBLIC API: STATE MANAGEMENT (Tests, Initialization)
 // =============================================================================
 // Error and memory management
-export { createErrorSignature, processErrorGroup, flushErrorGroups, canTakeScreenshot, recordScreenshot, estimateBufferMemory, checkMemoryPressure, getMemoryPressureState, resetMemoryPressureState, } from './background/state-manager.js';
+export { createErrorSignature, processErrorGroup, flushErrorGroups, cleanupStaleErrorGroups, canTakeScreenshot, recordScreenshot, estimateBufferMemory, checkMemoryPressure, getMemoryPressureState, resetMemoryPressureState, getProcessingQueriesState, cleanupStaleProcessingQueries, } from './background/state-manager.js';
 // Context and annotations
 export { measureContextSize, checkContextAnnotations, getContextWarning, resetContextWarning, } from './background/state-manager.js';
 // Source map management
 export { setSourceMapEnabled, isSourceMapEnabled, clearSourceMapCache } from './background/state-manager.js';
+// Cache limits and source map cache
+export { SOURCE_MAP_CACHE_SIZE, setSourceMapCacheEntry, getSourceMapCacheEntry, getSourceMapCacheSize, } from './background/cache-limits.js';
 // =============================================================================
 // === PUBLIC API: COMMUNICATION (Tests)
 // =============================================================================
 export { createCircuitBreaker, createBatcherWithCircuitBreaker, createLogBatcher, sendLogsToServer, sendEnhancedActionsToServer, checkServerHealth, updateBadge, formatLogEntry, shouldCaptureLog, } from './background/communication.js';
-export { postQueryResult } from './background/server.js';
+export { postQueryResult, pollPendingQueries } from './background/server.js';
 // =============================================================================
 // === PUBLIC API: STATE SNAPSHOTS (Initialization)
 // =============================================================================
@@ -72,11 +74,12 @@ export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSn
 // =============================================================================
 export { _captureOverrides, _connectionCheckRunning, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, _resetPilotCacheForTesting, } from './background/index.js';
 // =============================================================================
-// INITIALIZATION
+// INITIALIZATION — Only in Chrome extension context, not in Node.js test environment
 // =============================================================================
-const _moduleLoadTime = performance.now();
-console.log(`[DIAGNOSTIC] Module load start at ${_moduleLoadTime.toFixed(2)}ms (${new Date().toISOString()})`);
-console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`);
-// Initialize the extension
-initializeExtension();
+if (typeof globalThis.process === 'undefined') {
+    const _moduleLoadTime = performance.now();
+    console.log(`[DIAGNOSTIC] Module load start at ${_moduleLoadTime.toFixed(2)}ms (${new Date().toISOString()})`);
+    console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`);
+    initializeExtension();
+}
 //# sourceMappingURL=background.js.map

@@ -988,7 +988,7 @@ func TestV4HandleWebSocketEvents_POST_RateLimitAfterRecording(t *testing.T) {
 
 	capture.mu.Lock()
 	capture.rateWindowStart = time.Now()
-	capture.windowEventCount = rateLimitThreshold - 1
+	capture.windowEventCount = RateLimitThreshold - 1
 	capture.mu.Unlock()
 
 	// 10 events pushes count over threshold

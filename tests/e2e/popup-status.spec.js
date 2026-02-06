@@ -134,30 +134,19 @@ test.describe('Popup Connection Status', () => {
     const wsToggle = popupPage.locator('#toggle-websocket')
     const wsModeContainer = popupPage.locator('#ws-mode-container')
 
-    // Initially unchecked (default: OFF)
-    await expect(wsToggle).not.toBeChecked()
-    // Mode container should be hidden
-    await expect(wsModeContainer).toBeHidden()
-
-    // Enable WebSocket capture via JS (element may be outside viewport in popup)
-    await popupPage.evaluate(() => {
-      const el = document.getElementById('toggle-websocket')
-      el.checked = true
-      el.dispatchEvent(new Event('change', { bubbles: true }))
-    })
-    await popupPage.waitForTimeout(500)
-
-    // Mode container should now be visible
+    // Initially checked (default: ON)
+    await expect(wsToggle).toBeChecked()
+    // Mode container should be visible
     await expect(wsModeContainer).toBeVisible()
 
-    // Check that mode defaults to lifecycle
+    // Check that mode defaults to medium
     const modeSelect = popupPage.locator('#ws-mode')
-    await expect(modeSelect).toHaveValue('lifecycle')
+    await expect(modeSelect).toHaveValue('medium')
 
     await popupPage.close()
   })
 
-  test('should show warning when messages mode selected', async ({ context, extensionId }) => {
+  test('should show warning when all mode selected', async ({ context, extensionId }) => {
     const popupPage = await context.newPage()
     await popupPage.goto(`chrome-extension://${extensionId}/popup.html`)
     await popupPage.waitForTimeout(1000)
@@ -165,23 +154,15 @@ test.describe('Popup Connection Status', () => {
     const wsModeContainer = popupPage.locator('#ws-mode-container')
     const warning = popupPage.locator('#ws-messages-warning')
 
-    // Enable WebSocket via JS (element may be outside viewport in popup)
-    await popupPage.evaluate(() => {
-      const el = document.getElementById('toggle-websocket')
-      el.checked = true
-      el.dispatchEvent(new Event('change', { bubbles: true }))
-    })
-    await popupPage.waitForTimeout(500)
-
-    // Mode container should be visible
+    // WS capture is ON by default, mode container should be visible
     await expect(wsModeContainer).toBeVisible()
 
-    // Warning should be hidden in lifecycle mode
+    // Warning should be hidden in medium mode (default)
     await expect(warning).toBeHidden()
 
-    // Switch to messages mode
+    // Switch to all mode
     const modeSelect = popupPage.locator('#ws-mode')
-    await modeSelect.selectOption('messages')
+    await modeSelect.selectOption('all')
     await popupPage.waitForTimeout(500)
 
     // Warning should now be visible

@@ -35,6 +35,7 @@ import {
   handlePilotCommand as handlePilotCommandImpl,
 } from './pending-queries'
 import { createSyncClient, type SyncClient, type SyncCommand, type SyncSettings } from './sync-client'
+import { updateVersionFromHealth } from './version-check'
 
 // =============================================================================
 // CONSTANTS
@@ -436,19 +437,17 @@ export async function checkConnectionAndUpdate(): Promise<void> {
 
     // Update version information from health response
     if (health.connected) {
-      import('./version-check')
-        .then((vc) => {
-          vc.updateVersionFromHealth(
-            {
-              version: health.version,
-              availableVersion: health.availableVersion,
-            },
-            debugLog,
-          )
-        })
-        .catch((err) => {
-          debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: (err as Error).message })
-        })
+      try {
+        updateVersionFromHealth(
+          {
+            version: health.version,
+            availableVersion: health.availableVersion,
+          },
+          debugLog,
+        )
+      } catch (err) {
+        debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: (err as Error).message })
+      }
     }
 
     const wasConnected = connectionStatus.connected
@@ -569,7 +568,7 @@ function startSyncClient(): void {
         }
         stateManager.addProcessingQuery(command.id)
         try {
-          await handlePendingQueryImpl(command as unknown as PendingQuery)
+          await handlePendingQueryImpl(command as unknown as PendingQuery, syncClient!)
         } catch (err) {
           debugLog(DebugCategory.CONNECTION, 'Error processing sync command', {
             type: command.type,

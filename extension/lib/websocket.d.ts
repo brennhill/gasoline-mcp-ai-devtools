@@ -75,7 +75,9 @@ export declare function truncateWsMessage(message: string): TruncationResult;
  */
 export declare function createConnectionTracker(id: string, url: string): ConnectionTracker;
 /**
- * Install WebSocket capture by wrapping the WebSocket constructor
+ * Install WebSocket capture by wrapping the WebSocket constructor.
+ * If the early-patch script ran first (world: "MAIN", document_start),
+ * uses the saved original constructor and adopts buffered connections.
  */
 export declare function installWebSocketCapture(): void;
 /**

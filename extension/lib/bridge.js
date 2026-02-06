@@ -42,6 +42,6 @@ export function postLog(payload) {
             // Any other fields from payload (excluding the ones we destructured)
             ...otherFields,
         },
-    }, '*');
+    }, window.location.origin);
 }
 //# sourceMappingURL=bridge.js.map

@@ -29,7 +29,7 @@ test.describe('WebSocket Status', () => {
     await page.goto(`file://${path.join(fixturesDir, 'websocket-page.html')}?wsPort=${wsServer.port}`)
     await page.waitForTimeout(1000)
 
-    await enableWebSocketCapture(page, 'messages')
+    await enableWebSocketCapture(page, 'all')
 
     // Connect WebSocket
     await page.click('#connect-ws')
@@ -56,7 +56,7 @@ test.describe('WebSocket Status', () => {
     await page.goto(`file://${path.join(fixturesDir, 'websocket-page.html')}?wsPort=${wsServer.port}`)
     await page.waitForTimeout(1000)
 
-    await enableWebSocketCapture(page, 'messages')
+    await enableWebSocketCapture(page, 'all')
 
     // Connect and send messages
     await page.click('#connect-ws')
@@ -88,7 +88,7 @@ test.describe('WebSocket Status', () => {
     await page.goto(`file://${path.join(fixturesDir, 'websocket-page.html')}?wsPort=${wsServer.port}`)
     await page.waitForTimeout(1000)
 
-    await enableWebSocketCapture(page, 'messages')
+    await enableWebSocketCapture(page, 'all')
 
     // Connect and send a message
     await page.click('#connect-ws')
@@ -123,7 +123,7 @@ test.describe('WebSocket Status', () => {
     await page.goto(`file://${path.join(fixturesDir, 'websocket-page.html')}?wsPort=${wsServer.port}`)
     await page.waitForTimeout(1000)
 
-    await enableWebSocketCapture(page, 'messages')
+    await enableWebSocketCapture(page, 'all')
 
     // Connect, send, disconnect
     await page.click('#connect-ws')

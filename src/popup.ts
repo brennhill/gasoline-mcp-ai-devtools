@@ -14,8 +14,6 @@ import { initFeatureToggles } from './popup/feature-toggles'
 import { initTrackPageButton } from './popup/tab-tracking'
 import { initAiWebPilotToggle } from './popup/ai-web-pilot'
 import {
-  initLogLevelSelector,
-  handleLogLevelChange,
   initWebSocketModeSelector,
   handleWebSocketModeChange,
   handleClearLogs,
@@ -29,8 +27,7 @@ export { FEATURE_TOGGLES, initFeatureToggles } from './popup/feature-toggles'
 export { handleFeatureToggle } from './popup/feature-toggles'
 export { initAiWebPilotToggle, handleAiWebPilotToggle } from './popup/ai-web-pilot'
 export { initTrackPageButton, handleTrackPageClick } from './popup/tab-tracking'
-export { handleLogLevelChange, handleWebSocketModeChange } from './popup/settings'
-export { initLogLevelSelector } from './popup/settings'
+export { handleWebSocketModeChange } from './popup/settings'
 export { initWebSocketModeSelector } from './popup/settings'
 export { isInternalUrl } from './popup/ui-utils'
 
@@ -71,9 +68,6 @@ export async function initPopup(): Promise<void> {
     })
   }
 
-  // Initialize log level selector
-  await initLogLevelSelector()
-
   // Initialize feature toggles
   await initFeatureToggles()
 
@@ -108,9 +102,9 @@ export async function initPopup(): Promise<void> {
   // Show/hide WebSocket messages warning based on mode
   const wsMessagesWarning = document.getElementById('ws-messages-warning')
   if (wsModeSelect && wsMessagesWarning) {
-    wsMessagesWarning.style.display = wsModeSelect.value === 'messages' ? 'block' : 'none'
+    wsMessagesWarning.style.display = wsModeSelect.value === 'all' ? 'block' : 'none'
     wsModeSelect.addEventListener('change', () => {
-      wsMessagesWarning.style.display = wsModeSelect.value === 'messages' ? 'block' : 'none'
+      wsMessagesWarning.style.display = wsModeSelect.value === 'all' ? 'block' : 'none'
     })
   }
 
@@ -129,15 +123,6 @@ export async function initPopup(): Promise<void> {
         warning.style.display = toggle.checked ? 'block' : 'none'
       })
     }
-  }
-
-  // Set up log level change handler
-  const levelSelect = document.getElementById('log-level') as HTMLSelectElement | null
-  if (levelSelect) {
-    levelSelect.addEventListener('change', (e: Event) => {
-      const target = e.target as HTMLSelectElement
-      handleLogLevelChange(target.value)
-    })
   }
 
   // Set up clear button handler
@@ -175,7 +160,7 @@ export async function initPopup(): Promise<void> {
 }
 
 // Initialize when DOM is ready
-if (typeof document !== 'undefined') {
+if (typeof document !== 'undefined' && typeof (globalThis as Record<string, unknown>).process === 'undefined') {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initPopup)
   } else {

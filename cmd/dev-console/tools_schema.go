@@ -10,7 +10,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 	return []MCPTool{
 		{
 			Name:        "observe",
-			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, accessibility, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.",
+			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, accessibility, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity, min_level.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.\nNote: extension_logs are internal Gasoline extension debug logs for troubleshooting the extension itself — NOT browser console output. Use 'logs' for browser console output.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -38,6 +38,11 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"restart_on_eviction": map[string]any{
 						"type":        "boolean",
 						"description": "If cursor expired (buffer overflow), automatically restart from oldest available entry.",
+					},
+					"min_level": map[string]any{
+						"type":        "string",
+						"description": "Minimum log level to return (applies to logs). Levels: debug < log < info < warn < error",
+						"enum":        []string{"debug", "log", "info", "warn", "error"},
 					},
 					"url": map[string]any{
 						"type":        "string",
@@ -246,14 +251,14 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "configure",
-			Description: "CUSTOMIZE THE SESSION. Actions: noise_rule, store, load, diff_sessions, validate_api, audit_log, streaming, query_dom, capture, record_event, dismiss, clear, health, test_boundary_start, test_boundary_end.",
+			Description: "CUSTOMIZE THE SESSION. Actions: noise_rule, store, load, diff_sessions, validate_api, audit_log, streaming, query_dom, clear, health, test_boundary_start, test_boundary_end.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"action": map[string]any{
 						"type":        "string",
 						"description": "Configuration action to perform",
-						"enum":        []string{"store", "load", "noise_rule", "dismiss", "clear", "capture", "record_event", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming", "test_boundary_start", "test_boundary_end"},
+						"enum":        []string{"store", "load", "noise_rule", "clear", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming", "test_boundary_start", "test_boundary_end"},
 					},
 					"store_action": map[string]any{
 						"type":        "string",
@@ -288,7 +293,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"pattern": map[string]any{
 						"type":        "string",
-						"description": "Regex pattern to dismiss",
+						"description": "Regex pattern to match",
 					},
 					"category": map[string]any{
 						"type":        "string",

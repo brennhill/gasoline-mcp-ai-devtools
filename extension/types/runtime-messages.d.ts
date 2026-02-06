@@ -248,9 +248,17 @@ export interface ManageStateMessage {
     };
 }
 /**
+ * Action toast message — visual indicator for AI actions
+ */
+export interface ActionToastMessage {
+    readonly type: 'GASOLINE_ACTION_TOAST';
+    readonly text: string;
+    readonly duration_ms?: number;
+}
+/**
  * Union of all content-script-bound messages
  */
-export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | ManageStateMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
+export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | ManageStateMessage | ActionToastMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
 /**
  * Page to content script messages (postMessage types)
  */

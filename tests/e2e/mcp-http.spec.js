@@ -4,8 +4,8 @@
  * Tests the full pipeline via the HTTP-accessible MCP endpoint:
  *   Browser extension captures → Server stores → POST /mcp retrieves
  *
- * Covers: tools/list, observe (errors, logs, network, websocket_events,
- *         websocket_status), analyze (performance), configure (clear), query_dom
+ * Covers: tools/list, observe (errors, logs, network_bodies, websocket_events,
+ *         websocket_status, performance), configure (clear)
  */
 import { test, expect } from './helpers/extension.js'
 import { mcpCall, mcpToolText } from './helpers/mcp.js'
@@ -24,12 +24,11 @@ test.describe('MCP HTTP Endpoint', () => {
 
     const toolNames = resp.result.tools.map((t) => t.name)
 
-    // V5 composite tools
+    // 4 composite tools
     expect(toolNames).toContain('observe')
-    expect(toolNames).toContain('analyze')
     expect(toolNames).toContain('generate')
     expect(toolNames).toContain('configure')
-    expect(toolNames).toContain('query_dom')
+    expect(toolNames).toContain('interact')
   })
 
   test('should return error for unknown method', async ({ page, serverUrl }) => {
@@ -98,14 +97,14 @@ test.describe('MCP: WebSocket Events', () => {
 
 test.describe('MCP: Network Bodies', () => {
   test('should return empty message when nothing captured', async ({ page, serverUrl }) => {
-    const text = await mcpToolText(serverUrl, 'observe', { what: 'network' })
+    const text = await mcpToolText(serverUrl, 'observe', { what: 'network_bodies' })
     expect(text).toBe('No network bodies captured')
   })
 })
 
 test.describe('MCP: Performance', () => {
   test('should return no data message when no snapshots captured', async ({ page, serverUrl }) => {
-    const text = await mcpToolText(serverUrl, 'analyze', { target: 'performance' })
+    const text = await mcpToolText(serverUrl, 'observe', { what: 'performance' })
     expect(text).toContain('No performance snapshot available')
   })
 })

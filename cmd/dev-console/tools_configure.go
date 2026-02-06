@@ -35,14 +35,8 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 		resp = h.toolLoadSessionContext(req, args)
 	case "noise_rule":
 		resp = h.toolConfigureNoiseRule(req, args)
-	case "dismiss":
-		resp = h.toolConfigureDismiss(req, args)
 	case "clear":
 		resp = h.toolConfigureClear(req, args)
-	case "capture":
-		resp = h.toolConfigureCapture(req, args)
-	case "record_event":
-		resp = h.toolConfigureRecordEvent(req, args)
 	case "query_dom":
 		resp = h.toolQueryDOM(req, args)
 	case "diff_sessions":
@@ -306,29 +300,6 @@ func (h *ToolHandler) toolConfigureNoise(req JSONRPCRequest, args json.RawMessag
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Noise configuration updated", responseData)}
 }
 
-func (h *ToolHandler) toolConfigureDismiss(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.toolDismissNoise(req, args)
-}
-
-func (h *ToolHandler) toolDismissNoise(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var arguments struct {
-		Pattern  string `json:"pattern"`
-		Category string `json:"category"`
-		Reason   string `json:"reason"`
-	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &arguments); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	responseData := map[string]any{
-		"status":     "ok",
-		"totalRules": 0,
-	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Noise pattern dismissed", responseData)}
-}
-
 // toolConfigureClear handles buffer-specific clearing with optional buffer parameter.
 // Supported buffer values: "all", "network", "websocket", "actions", "logs"
 func (h *ToolHandler) toolConfigureClear(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -396,14 +367,6 @@ func (h *ToolHandler) toolConfigureClear(req JSONRPCRequest, args json.RawMessag
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Buffer cleared", responseData)}
-}
-
-func (h *ToolHandler) toolConfigureCapture(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Configure", map[string]any{"status": "ok"})}
-}
-
-func (h *ToolHandler) toolConfigureRecordEvent(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Record event", map[string]any{"status": "ok"})}
 }
 
 func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

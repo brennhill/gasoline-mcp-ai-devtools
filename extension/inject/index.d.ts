@@ -17,7 +17,7 @@ export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, form
 export { mapInitiatorType, aggregateResourceTiming, capturePerformanceSnapshot, installPerfObservers, uninstallPerfObservers, getLongTaskMetrics, getFCP, getLCP, getCLS, getINP, sendPerformanceSnapshot, isPerformanceSnapshotEnabled, setPerformanceSnapshotEnabled, } from '../lib/perf-snapshot';
 export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants';
 export { installGasolineAPI, uninstallGasolineAPI, type GasolineAPI } from './api';
-export { install, uninstall, installFetchCapture, uninstallFetchCapture, installPhase1, installPhase2, getDeferralState, setDeferralEnabled, shouldDeferIntercepts, checkMemoryPressure, type DeferralState, } from './observers';
+export { install, uninstall, wrapFetch, installFetchCapture, uninstallFetchCapture, installPhase1, installPhase2, getDeferralState, setDeferralEnabled, shouldDeferIntercepts, checkMemoryPressure, type DeferralState, } from './observers';
 export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers';
 export { captureState, restoreState, highlightElement, clearHighlight, type RestoreStateResult, type RestoredCounts, type HighlightResult, } from './state';
 //# sourceMappingURL=index.d.ts.map

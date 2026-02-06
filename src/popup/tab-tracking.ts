@@ -169,6 +169,10 @@ export async function handleTrackPageClick(): Promise<void> {
             const noTrackEl = document.getElementById('no-tracking-warning')
             if (noTrackEl) noTrackEl.style.display = 'none'
             console.log('[Gasoline] Now tracking tab:', tab.id, tab.url)
+            // Auto-reload so content script can inject capture hooks
+            if (tab.id) {
+              chrome.tabs.reload(tab.id)
+            }
           })
         }
       })

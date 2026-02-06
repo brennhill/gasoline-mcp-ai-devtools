@@ -163,6 +163,10 @@ export async function handleTrackPageClick() {
                         if (noTrackEl)
                             noTrackEl.style.display = 'none';
                         console.log('[Gasoline] Now tracking tab:', tab.id, tab.url);
+                        // Auto-reload so content script can inject capture hooks
+                        if (tab.id) {
+                            chrome.tabs.reload(tab.id);
+                        }
                     });
                 }
             });
