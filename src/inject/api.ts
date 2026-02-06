@@ -3,6 +3,8 @@
  * to interact with Gasoline capture capabilities.
  */
 
+declare const __GASOLINE_VERSION__: string
+
 import type {
   LogEntry,
   ActionEntry,
@@ -354,7 +356,7 @@ export function installGasolineAPI(): void {
     /**
      * Version of the Gasoline API
      */
-    version: '5.2.0',
+    version: __GASOLINE_VERSION__,
   }
 }
 

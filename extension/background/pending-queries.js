@@ -67,7 +67,18 @@ export async function handlePendingQuery(query) {
         if (!tabId)
             return;
         if (query.type === 'browser_action') {
-            const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
+            let params;
+            try {
+                params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
+            }
+            catch {
+                await communication.postQueryResult(index.serverUrl, query.id, 'browser_action', {
+                    success: false,
+                    error: 'invalid_params',
+                    message: 'Failed to parse browser_action params as JSON',
+                });
+                return;
+            }
             if (query.correlation_id) {
                 await handleAsyncBrowserAction(query, tabId, params);
             }
@@ -78,7 +89,17 @@ export async function handlePendingQuery(query) {
             return;
         }
         if (query.type === 'highlight') {
-            const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
+            let params;
+            try {
+                params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
+            }
+            catch {
+                await communication.postQueryResult(index.serverUrl, query.id, 'highlight', {
+                    error: 'invalid_params',
+                    message: 'Failed to parse highlight params as JSON',
+                });
+                return;
+            }
             const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params);
             await communication.postQueryResult(index.serverUrl, query.id, 'highlight', result);
             return;
@@ -230,7 +251,17 @@ async function handleStateQuery(query) {
         await communication.postQueryResult(index.serverUrl, query.id, 'state', { error: 'ai_web_pilot_disabled' });
         return;
     }
-    const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
+    let params;
+    try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
+    }
+    catch {
+        await communication.postQueryResult(index.serverUrl, query.id, 'state', {
+            error: 'invalid_params',
+            message: 'Failed to parse state query params as JSON',
+        });
+        return;
+    }
     const action = params.action;
     try {
         let result;
@@ -329,7 +360,7 @@ async function handleBrowserAction(tabId, params) {
                 }
                 await chrome.tabs.update(tabId, { url });
                 await eventListeners.waitForTabLoad(tabId);
-                await new Promise((r) => { setTimeout(r, 500); });
+                await new Promise((r) => setTimeout(r, 500));
                 const contentScriptLoaded = await eventListeners.pingContentScript(tabId);
                 if (contentScriptLoaded) {
                     return {
@@ -353,7 +384,7 @@ async function handleBrowserAction(tabId, params) {
                 debugLog(DebugCategory.CAPTURE, 'Content script not loaded after navigate, refreshing', { tabId, url });
                 await chrome.tabs.reload(tabId);
                 await eventListeners.waitForTabLoad(tabId);
-                await new Promise((r) => { setTimeout(r, 1000); });
+                await new Promise((r) => setTimeout(r, 1000));
                 const loadedAfterRefresh = await eventListeners.pingContentScript(tabId);
                 if (loadedAfterRefresh) {
                     return {

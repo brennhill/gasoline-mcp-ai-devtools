@@ -262,7 +262,7 @@ function handleSetting(data) {
             }
             break;
         case 'setWebSocketCaptureMode':
-            setWebSocketCaptureMode((data.mode || 'lifecycle'));
+            setWebSocketCaptureMode((data.mode || 'medium'));
             break;
         case 'setPerformanceSnapshotEnabled':
             setPerformanceSnapshotEnabled(data.enabled);

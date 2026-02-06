@@ -13,14 +13,8 @@ import (
 	"time"
 )
 
-// Constants imported from capture package for health metrics
 const (
-	defaultMaxEntries  = 1000
-	maxNetworkBodies   = 100
-	maxWSEvents        = 500
-	maxEnhancedActions = 50
-	rateLimitThreshold = 1000
-	memoryHardLimit    = 50 * 1024 * 1024 // 50MB
+	defaultMaxEntries = 1000
 )
 
 // ============================================
@@ -187,7 +181,7 @@ type PilotInfo struct {
 
 // GetHealth computes and returns the current health metrics.
 // This is called on-demand when the get_health tool is invoked.
-func (hm *HealthMetrics) GetHealth(capture *capture.Capture, server *Server, ver string) MCPHealthResponse {
+func (hm *HealthMetrics) GetHealth(cap *capture.Capture, server *Server, ver string) MCPHealthResponse {
 	// Server info
 	serverInfo := ServerInfo{
 		Version:       ver,
@@ -201,7 +195,7 @@ func (hm *HealthMetrics) GetHealth(capture *capture.Capture, server *Server, ver
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
-	hardLimitMB := float64(memoryHardLimit) / (1024 * 1024)
+	hardLimitMB := float64(capture.MemoryHardLimit) / (1024 * 1024)
 	currentMB := float64(memStats.Alloc) / (1024 * 1024)
 	usedPct := (currentMB / hardLimitMB) * 100
 	if usedPct > 100 {
@@ -220,9 +214,9 @@ func (hm *HealthMetrics) GetHealth(capture *capture.Capture, server *Server, ver
 		consoleEntries = len(server.entries)
 		server.mu.RUnlock()
 	}
-	if capture != nil {
+	if cap != nil {
 		// Use getter methods instead of direct field access
-		health := capture.GetHealthSnapshot()
+		health := cap.GetHealthSnapshot()
 		networkEntries = health.NetworkBodyCount
 		wsEntries = health.WebSocketCount
 		actionEntries = health.ActionCount
@@ -261,24 +255,24 @@ func (hm *HealthMetrics) GetHealth(capture *capture.Capture, server *Server, ver
 		},
 		Network: BufferStats{
 			Entries:        networkEntries,
-			Capacity:       maxNetworkBodies,
-			UtilizationPct: calcUtilization(networkEntries, maxNetworkBodies),
+			Capacity:       capture.MaxNetworkBodies,
+			UtilizationPct: calcUtilization(networkEntries, capture.MaxNetworkBodies),
 		},
 		WebSocket: BufferStats{
 			Entries:        wsEntries,
-			Capacity:       maxWSEvents,
-			UtilizationPct: calcUtilization(wsEntries, maxWSEvents),
+			Capacity:       capture.MaxWSEvents,
+			UtilizationPct: calcUtilization(wsEntries, capture.MaxWSEvents),
 		},
 		Actions: BufferStats{
 			Entries:        actionEntries,
-			Capacity:       maxEnhancedActions,
-			UtilizationPct: calcUtilization(actionEntries, maxEnhancedActions),
+			Capacity:       capture.MaxEnhancedActions,
+			UtilizationPct: calcUtilization(actionEntries, capture.MaxEnhancedActions),
 		},
 	}
 
 	rateLimitInfo := RateLimitingInfo{
 		CurrentRate:   currentRate,
-		Threshold:     rateLimitThreshold,
+		Threshold:     capture.RateLimitThreshold,
 		CircuitOpen:   circuitOpen,
 		CircuitReason: circuitReason,
 		Total429s:     0, // Could be tracked separately if needed
@@ -315,8 +309,8 @@ func (hm *HealthMetrics) GetHealth(capture *capture.Capture, server *Server, ver
 		Source:             "never_connected",
 		ExtensionConnected: false,
 	}
-	if capture != nil {
-		statusMap := capture.GetPilotStatus()
+	if cap != nil {
+		statusMap := cap.GetPilotStatus()
 		if m, ok := statusMap.(map[string]any); ok {
 			enabled := false
 			if e, ok := m["enabled"].(bool); ok {

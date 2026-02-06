@@ -26,7 +26,7 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
     const localConnectionStatus = { connected: true };
     const isSharedCB = !!options.sharedCircuitBreaker;
     const cb = options.sharedCircuitBreaker ||
-        createCircuitBreaker(() => Promise.reject(new Error('batcher circuit breaker')), {
+        createCircuitBreaker(sendFn, {
             maxFailures,
             resetTimeout,
             initialBackoff: 0,

@@ -14,7 +14,7 @@ export async function initAiWebPilotToggle(): Promise<void> {
   return new Promise((resolve) => {
     // Read from chrome.storage.local (single source of truth)
     chrome.storage.local.get(['aiWebPilotEnabled'], (result: { aiWebPilotEnabled?: boolean }) => {
-      toggle.checked = result.aiWebPilotEnabled === true
+      toggle.checked = result.aiWebPilotEnabled !== false
 
       // Set up change handler
       toggle.addEventListener('change', () => {

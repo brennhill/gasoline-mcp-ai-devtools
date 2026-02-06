@@ -19,13 +19,17 @@
   function getCurrentTabId() {
     return currentTabId;
   }
-  function initTabTracking() {
-    updateTrackingStatus();
-    chrome.storage.onChanged.addListener((changes) => {
+  function initTabTracking(onChange) {
+    const ready = updateTrackingStatus().then(() => {
+      onChange?.(isTrackedTab);
+    });
+    chrome.storage.onChanged.addListener(async (changes) => {
       if (changes.trackedTabId) {
-        updateTrackingStatus();
+        await updateTrackingStatus();
+        onChange?.(isTrackedTab);
       }
     });
+    return ready;
   }
 
   // extension/content/script-injection.js
@@ -35,8 +39,7 @@
     { storageKey: "networkWaterfallEnabled", messageType: "setNetworkWaterfallEnabled" },
     { storageKey: "performanceMarksEnabled", messageType: "setPerformanceMarksEnabled" },
     { storageKey: "actionReplayEnabled", messageType: "setActionReplayEnabled" },
-    { storageKey: "networkBodyCaptureEnabled", messageType: "setNetworkBodyCaptureEnabled" },
-    { storageKey: "performanceSnapshotEnabled", messageType: "setPerformanceSnapshotEnabled" }
+    { storageKey: "networkBodyCaptureEnabled", messageType: "setNetworkBodyCaptureEnabled" }
   ];
   function syncStoredSettings() {
     const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey);
@@ -583,24 +586,15 @@
 
   // extension/content.js
   var scriptsInjected = false;
-  initTabTracking();
+  initTabTracking((tracked) => {
+    if (tracked && !scriptsInjected) {
+      initScriptInjection();
+      scriptsInjected = true;
+    }
+  });
   initRequestTracking();
   initWindowMessageListener();
   initRuntimeMessageListener();
   initFaviconReplacer();
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes.trackedTabId) {
-      if (getIsTrackedTab() && !scriptsInjected) {
-        initScriptInjection();
-        scriptsInjected = true;
-      }
-    }
-  });
-  setTimeout(() => {
-    if (getIsTrackedTab() && !scriptsInjected) {
-      initScriptInjection();
-      scriptsInjected = true;
-    }
-  }, 100);
 })();
 //# sourceMappingURL=content.bundled.js.map

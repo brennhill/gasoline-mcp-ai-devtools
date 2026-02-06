@@ -59,7 +59,7 @@ func (c *Capture) GetMemoryStatus() MemoryStatus {
 		NetworkBytes:   nbMem,
 		ActionsBytes:   actionMem,
 		SoftLimit:      memorySoftLimit,
-		HardLimit:      memoryHardLimit,
+		HardLimit:      MemoryHardLimit,
 		CriticalLimit:  memoryCriticalLimit,
 		MinimalMode:    c.mem.minimalMode,
 		TotalEvictions: c.mem.totalEvictions,
@@ -111,27 +111,27 @@ func (c *Capture) calcActionMemory() int64 {
 // caller must hold lock
 func (c *Capture) effectiveWSCapacity() int {
 	if c.mem.minimalMode {
-		return maxWSEvents / 2
+		return MaxWSEvents / 2
 	}
-	return maxWSEvents
+	return MaxWSEvents
 }
 
 // effectiveNBCapacity returns the current network body buffer capacity (halved in minimal mode)
 // caller must hold lock
 func (c *Capture) effectiveNBCapacity() int {
 	if c.mem.minimalMode {
-		return maxNetworkBodies / 2
+		return MaxNetworkBodies / 2
 	}
-	return maxNetworkBodies
+	return MaxNetworkBodies
 }
 
 // effectiveActionCapacity returns the current action buffer capacity (halved in minimal mode)
 // caller must hold lock
 func (c *Capture) effectiveActionCapacity() int {
 	if c.mem.minimalMode {
-		return maxEnhancedActions / 2
+		return MaxEnhancedActions / 2
 	}
-	return maxEnhancedActions
+	return MaxEnhancedActions
 }
 
 // ============================================
@@ -163,7 +163,7 @@ func (c *Capture) enforceMemory() {
 	}
 
 	// Check hard limit (50MB)
-	if totalMem > memoryHardLimit {
+	if totalMem > MemoryHardLimit {
 		c.evictHard()
 		return
 	}
@@ -189,7 +189,7 @@ func (c *Capture) evictSoft() {
 // Strategy: Aggressive eviction, recover memory quickly, network bodies removed first.
 // Once memory drops below limit, early exit (don't evict actions unnecessarily).
 func (c *Capture) evictHard() {
-	c.evictBuffers(2, memoryHardLimit)  // 1/2 removed from each buffer
+	c.evictBuffers(2, MemoryHardLimit)  // 1/2 removed from each buffer
 }
 
 // evictBuffers removes oldest 1/denominator entries from each buffer in priority order.
@@ -330,9 +330,9 @@ func (c *Capture) IsMemoryExceeded() bool {
 // isMemoryExceeded is the internal version (caller must hold lock)
 func (c *Capture) isMemoryExceeded() bool {
 	if c.mem.simulatedMemory > 0 {
-		return c.mem.simulatedMemory > memoryHardLimit
+		return c.mem.simulatedMemory > MemoryHardLimit
 	}
-	return c.calcTotalMemory() > memoryHardLimit
+	return c.calcTotalMemory() > MemoryHardLimit
 }
 
 // ============================================

@@ -136,18 +136,18 @@ func TestToolGetWSEvents_EmptyWithOffHint(t *testing.T) {
 	if !strings.Contains(text, "WebSocket capture is OFF") {
 		t.Error("Expected hint that WS capture is OFF")
 	}
-	if !strings.Contains(text, `configure({action: "capture", settings: {ws_mode: "lifecycle"}})`) {
-		t.Error("Expected hint to suggest ws_mode lifecycle")
+	if !strings.Contains(text, `configure({action: "capture", settings: {ws_mode: "low"}})`) {
+		t.Error("Expected hint to suggest ws_mode low")
 	}
 }
 
-func TestToolGetWSEvents_EmptyWithLifecycleNote(t *testing.T) {
+func TestToolGetWSEvents_EmptyWithLowMode(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	mcp.toolHandler.captureOverrides.Set("ws_mode", "lifecycle")
+	mcp.toolHandler.captureOverrides.Set("ws_mode", "low")
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
@@ -158,18 +158,18 @@ func TestToolGetWSEvents_EmptyWithLifecycleNote(t *testing.T) {
 	if !strings.Contains(text, "No WebSocket events captured") {
 		t.Error("Expected 'No WebSocket events captured' message")
 	}
-	if !strings.Contains(text, `configure({action: "capture", settings: {ws_mode: "messages"}})`) {
-		t.Error("Expected hint to suggest ws_mode messages")
+	if !strings.Contains(text, `configure({action: "capture", settings: {ws_mode: "medium"}})`) {
+		t.Error("Expected hint to suggest ws_mode medium")
 	}
 }
 
-func TestToolGetWSEvents_EmptyMessagesMode(t *testing.T) {
+func TestToolGetWSEvents_EmptyAllMode(t *testing.T) {
 	t.Parallel()
 	server, _ := setupTestServer(t)
 	capture := setupTestCapture(t)
 	mcp := setupToolHandler(t, server, capture)
 
-	mcp.toolHandler.captureOverrides.Set("ws_mode", "messages")
+	mcp.toolHandler.captureOverrides.Set("ws_mode", "all")
 
 	resp := mcp.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
@@ -182,7 +182,7 @@ func TestToolGetWSEvents_EmptyMessagesMode(t *testing.T) {
 	}
 	// No hint when mode is already at maximum
 	if strings.Contains(text, "configure") {
-		t.Error("Expected NO hint when ws_mode is 'messages' — genuinely empty")
+		t.Error("Expected NO hint when ws_mode is 'all' — genuinely empty")
 	}
 }
 

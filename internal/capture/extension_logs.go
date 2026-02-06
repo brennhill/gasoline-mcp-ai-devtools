@@ -30,7 +30,7 @@ func (c *Capture) HandleExtensionLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse JSON payload
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+	r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
@@ -52,8 +52,8 @@ func (c *Capture) HandleExtensionLogs(w http.ResponseWriter, r *http.Request) {
 		c.extensionLogs = append(c.extensionLogs, log)
 
 		// Evict oldest entries if over capacity
-		if len(c.extensionLogs) > maxExtensionLogs {
-			c.extensionLogs = c.extensionLogs[len(c.extensionLogs)-maxExtensionLogs:]
+		if len(c.extensionLogs) > MaxExtensionLogs {
+			c.extensionLogs = c.extensionLogs[len(c.extensionLogs)-MaxExtensionLogs:]
 		}
 	}
 

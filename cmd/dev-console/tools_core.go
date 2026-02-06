@@ -23,8 +23,6 @@ import (
 	"github.com/dev-console/dev-console/internal/analysis"
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/security"
-	"github.com/dev-console/dev-console/internal/session"
-	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -486,29 +484,10 @@ type ToolHandler struct {
 	*MCPHandler
 	capture *capture.Capture
 
-	// Cross-package dependencies use interfaces from internal/types to avoid circular imports.
-	// Implementations are in their respective packages (ai, analysis, security, etc.).
-	checkpoints       types.CheckpointManager    // Session state snapshots
-	sessionStore      types.SessionStore         // Persistent session data
-	noise             types.NoiseConfig          // Noise filtering rules
-	clusters          types.ClusterManager       // Error clustering
-	temporalGraph     types.TemporalGraph        // Temporal event tracking
-	alertBuffer       types.AlertBuffer          // Alert streaming buffer
-	cspGenerator      types.CSPGenerator         // CSP policy generation
-	securityScanner   types.SecurityScanner      // Security auditing
-	thirdPartyAuditor types.ThirdPartyAuditor    // Third-party resource audit
-	securityDiffMgr   types.SecurityDiffManager  // Security snapshot comparison
-	auditTrail        types.AuditTrail           // Tool invocation audit log
-	sessionManager    types.SessionManager       // Browser session management
-	contractValidator types.APIContractValidator // API contract validation
-
 	// Fields that remain as any (not yet abstracted or local types)
 	captureOverrides any // *capture.CaptureOverrides - internal to capture package
 	auditLogger      any // *audit.AuditLogger - TODO: add to interfaces
 	healthMetrics    any // *ServerHealthMetrics - local type
-
-	// Verification loop for fix verification
-	verificationMgr *session.VerificationManager
 
 	// Redaction engine for scrubbing sensitive data from tool responses
 	redactionEngine *RedactionEngine
@@ -592,101 +571,6 @@ func NewToolHandler(server *Server, capture *capture.Capture, sseRegistry *SSERe
 		server:      server,
 		toolHandler: handler,
 	}
-}
-
-// captureStateAdapter bridges the Capture/Server data to the CaptureStateReader interface
-// required by SessionManager.
-type captureStateAdapter struct {
-	capture *capture.Capture
-	server  *Server
-}
-
-func (a *captureStateAdapter) GetConsoleErrors() []session.SnapshotError {
-	a.server.mu.RLock()
-	defer a.server.mu.RUnlock()
-	var errors []session.SnapshotError
-	for _, entry := range a.server.entries {
-		if level, _ := entry["level"].(string); level == "error" {
-			msg, _ := entry["message"].(string)
-			errors = append(errors, session.SnapshotError{Type: "error", Message: msg, Count: 1})
-		}
-	}
-	return errors
-}
-
-func (a *captureStateAdapter) GetConsoleWarnings() []session.SnapshotError {
-	a.server.mu.RLock()
-	defer a.server.mu.RUnlock()
-	var warnings []session.SnapshotError
-	for _, entry := range a.server.entries {
-		if level, _ := entry["level"].(string); level == "warn" {
-			msg, _ := entry["message"].(string)
-			warnings = append(warnings, session.SnapshotError{Type: "warning", Message: msg, Count: 1})
-		}
-	}
-	return warnings
-}
-
-func (a *captureStateAdapter) GetNetworkRequests() []session.SnapshotNetworkRequest {
-	var requests []session.SnapshotNetworkRequest
-	for _, body := range a.capture.GetNetworkBodies() {
-		requests = append(requests, session.SnapshotNetworkRequest{
-			Method:   body.Method,
-			URL:      body.URL,
-			Status:   body.Status,
-			Duration: body.Duration,
-		})
-	}
-	return requests
-}
-
-func (a *captureStateAdapter) GetWSConnections() []session.SnapshotWSConnection {
-	var conns []session.SnapshotWSConnection
-	// WebSocket connections not accessible via public API - return empty
-	return conns
-}
-
-func (a *captureStateAdapter) GetPerformance() *capture.PerformanceSnapshot {
-	return nil // Performance snapshots not yet integrated
-}
-
-func (a *captureStateAdapter) GetCurrentPageURL() string {
-	// Current page URL not accessible via public API
-	return ""
-}
-
-// checkTrackingStatus returns a tracking status hint to include in tool responses.
-// If no tab is being tracked AND the extension has reported status at least once,
-// the LLM receives a clear warning so it can guide the user.
-// Returns enabled=true if tracking is active OR if the extension hasn't reported yet
-// (to avoid false warnings on fresh server start).
-func (h *ToolHandler) checkTrackingStatus() (enabled bool, hint string) {
-	// Tracking status not accessible via public API - assume enabled
-	return true, ""
-}
-
-// computeDataCounts reads current buffer sizes from server and capture under read locks.
-// Returns counts for each observable mode.
-func (h *ToolHandler) computeDataCounts() (errorCount, logCount, extensionLogsCount, waterfallCount, networkCount, wsEventCount, wsStatusCount, actionCount, vitalCount, apiCount int) {
-	h.server.mu.RLock()
-	logCount = len(h.server.entries)
-	for _, entry := range h.server.entries {
-		if level, ok := entry["level"].(string); ok && level == "error" {
-			errorCount++
-		}
-	}
-	h.server.mu.RUnlock()
-
-	// Use public API methods for capture data
-	extensionLogsCount = 0 // Not accessible
-	waterfallCount = 0     // Not accessible
-	networkCount = len(h.capture.GetNetworkBodies())
-	wsEventCount = len(h.capture.GetAllWebSocketEvents())
-	wsStatusCount = 0 // Connections not accessible
-	actionCount = len(h.capture.GetAllEnhancedActions())
-	vitalCount = 0    // Performance data not accessible
-	apiCount = 0      // Schema store not accessible
-	return
 }
 
 // handleToolCall dispatches composite tool calls by mode parameter.

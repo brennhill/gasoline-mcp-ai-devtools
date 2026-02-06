@@ -74,7 +74,17 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
     if (!tabId) return
 
     if (query.type === 'browser_action') {
-      const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      let params: { action?: string; url?: string }
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        await communication.postQueryResult(index.serverUrl, query.id, 'browser_action', {
+          success: false,
+          error: 'invalid_params',
+          message: 'Failed to parse browser_action params as JSON',
+        })
+        return
+      }
       if (query.correlation_id) {
         await handleAsyncBrowserAction(query, tabId, params)
       } else {
@@ -85,7 +95,16 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
     }
 
     if (query.type === 'highlight') {
-      const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      let params: unknown
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        await communication.postQueryResult(index.serverUrl, query.id, 'highlight', {
+          error: 'invalid_params',
+          message: 'Failed to parse highlight params as JSON',
+        })
+        return
+      }
       const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params)
       await communication.postQueryResult(index.serverUrl, query.id, 'highlight', result)
       return
@@ -246,7 +265,16 @@ async function handleStateQuery(query: PendingQuery): Promise<void> {
     return
   }
 
-  const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+  let params: Record<string, unknown>
+  try {
+    params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+  } catch {
+    await communication.postQueryResult(index.serverUrl, query.id, 'state', {
+      error: 'invalid_params',
+      message: 'Failed to parse state query params as JSON',
+    })
+    return
+  }
   const action = params.action as string
 
   try {

@@ -222,6 +222,7 @@ export class SyncClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Gasoline-Client': `gasoline-extension/${this.extensionVersion}`,
           'X-Gasoline-Extension-Version': this.extensionVersion,
         },
         body: JSON.stringify(request),

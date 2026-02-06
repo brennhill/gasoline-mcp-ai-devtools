@@ -9,7 +9,7 @@ const _textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : nu
 // WebSocket capture state
 let originalWebSocket = null;
 let webSocketCaptureEnabled = false;
-let webSocketCaptureMode = 'lifecycle';
+let webSocketCaptureMode = 'medium';
 /**
  * Get the byte size of a WebSocket message
  */
@@ -153,24 +153,19 @@ export function createConnectionTracker(id, url) {
          */
         shouldSample(_direction) {
             this._sampleCounter++;
+            // 'all' mode: no sampling
+            if (webSocketCaptureMode === 'all')
+                return true;
             // Always log first 5 messages on a connection
             if (this.messageCount > 0 && this.messageCount <= 5)
                 return true;
             const rate = this._messageRate || this.getMessageRate();
-            if (rate < 10)
+            // Mode-based target caps:
+            // 'high': ~10 msg/s, 'medium': ~5 msg/s, 'low': ~2 msg/s
+            const targetRate = webSocketCaptureMode === 'high' ? 10 : webSocketCaptureMode === 'medium' ? 5 : 2;
+            if (rate <= targetRate)
                 return true;
-            if (rate < 50) {
-                // Target ~10 msg/s
-                const n = Math.max(1, Math.round(rate / 10));
-                return this._sampleCounter % n === 0;
-            }
-            if (rate < 200) {
-                // Target ~5 msg/s
-                const n = Math.max(1, Math.round(rate / 5));
-                return this._sampleCounter % n === 0;
-            }
-            // > 200: target ~2 msg/s
-            const n = Math.max(1, Math.round(rate / 2));
+            const n = Math.max(1, Math.round(rate / targetRate));
             return this._sampleCounter % n === 0;
         },
         /**
@@ -282,13 +277,14 @@ export function installWebSocketCapture() {
         const ws = new OriginalWS(url, protocols);
         const connectionId = crypto.randomUUID();
         const urlString = url.toString();
+        const tracker = createConnectionTracker(connectionId, urlString);
         ws.addEventListener('open', () => {
             if (!webSocketCaptureEnabled)
                 return;
             window.postMessage({
                 type: 'GASOLINE_WS',
                 payload: { type: 'websocket', event: 'open', id: connectionId, url: urlString, ts: new Date().toISOString() },
-            }, '*');
+            }, window.location.origin);
         });
         ws.addEventListener('close', (event) => {
             if (!webSocketCaptureEnabled)
@@ -304,7 +300,7 @@ export function installWebSocketCapture() {
                     reason: event.reason,
                     ts: new Date().toISOString(),
                 },
-            }, '*');
+            }, window.location.origin);
         });
         ws.addEventListener('error', () => {
             if (!webSocketCaptureEnabled)
@@ -318,12 +314,13 @@ export function installWebSocketCapture() {
                     url: urlString,
                     ts: new Date().toISOString(),
                 },
-            }, '*');
+            }, window.location.origin);
         });
         ws.addEventListener('message', (event) => {
             if (!webSocketCaptureEnabled)
                 return;
-            if (webSocketCaptureMode !== 'messages')
+            tracker.recordMessage('incoming', event.data);
+            if (!tracker.shouldSample('incoming'))
                 return;
             const data = event.data;
             const size = getSize(data);
@@ -342,12 +339,15 @@ export function installWebSocketCapture() {
                     truncated: truncated || undefined,
                     ts: new Date().toISOString(),
                 },
-            }, '*');
+            }, window.location.origin);
         });
         // Wrap send() to capture outgoing messages
         const originalSend = ws.send.bind(ws);
         ws.send = function (data) {
-            if (webSocketCaptureEnabled && webSocketCaptureMode === 'messages') {
+            if (webSocketCaptureEnabled) {
+                tracker.recordMessage('outgoing', data);
+            }
+            if (webSocketCaptureEnabled && tracker.shouldSample('outgoing')) {
                 const size = getSize(data);
                 const formatted = formatPayload(data);
                 const { data: truncatedData, truncated } = truncateWsMessage(formatted);
@@ -415,7 +415,7 @@ export function uninstallWebSocketCapture() {
 export function resetForTesting() {
     uninstallWebSocketCapture();
     webSocketCaptureEnabled = false;
-    webSocketCaptureMode = 'lifecycle';
+    webSocketCaptureMode = 'medium';
     originalWebSocket = null;
 }
 //# sourceMappingURL=websocket.js.map

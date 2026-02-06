@@ -140,7 +140,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	}
 
 	// Get static tools list for fast response (ToolsList doesn't use receiver fields)
-	var toolsHandler *ToolHandler
+	toolsHandler := &ToolHandler{}
 	toolsList := toolsHandler.ToolsList()
 
 	for scanner.Scan() {
@@ -292,7 +292,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			continue
 		}
 
-		body, err := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxPostBodySize))
 		resp.Body.Close()
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Failed to read response: "+err.Error())
@@ -419,8 +419,8 @@ func bridgeStdioToHTTP(endpoint string) {
 			continue
 		}
 
-		// Read response
-		body, err := io.ReadAll(resp.Body)
+		// Read response (limit size to prevent memory exhaustion)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxPostBodySize))
 		resp.Body.Close()
 
 		if err != nil {

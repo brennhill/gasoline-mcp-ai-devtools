@@ -227,14 +227,15 @@ func (c *Capture) GetHTTPDebugLog() []HTTPDebugEntry {
 	return copy
 }
 
-// GetPilotStatus returns pilot status information (stub implementation)
+// GetPilotStatus returns pilot status information.
+// extension_connected is true only if the extension polled within the last 5 seconds.
 func (c *Capture) GetPilotStatus() any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return map[string]any{
 		"enabled":             c.pilotEnabled,
 		"source":              "extension_poll",
-		"extension_connected": !c.lastPollAt.IsZero(),
+		"extension_connected": !c.lastPollAt.IsZero() && time.Since(c.lastPollAt) < 5*time.Second,
 	}
 }
 

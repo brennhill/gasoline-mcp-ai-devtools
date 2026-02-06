@@ -111,7 +111,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	// Get client ID for multi-client support
 	clientID := r.Header.Get("X-Gasoline-Client")
 
-	// Update state (lock scope 1)
+	// Update connection state and settings (single lock scope)
 	c.mu.Lock()
 
 	// Detect extension connection state transitions
@@ -128,22 +128,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		c.extensionSession = req.SessionID
 		c.sessionChangedAt = now
 	}
-
-	// Capture data for lifecycle event before releasing lock
 	sessionID := c.extensionSession
-	c.mu.Unlock()
-
-	// Emit extension connection lifecycle event (outside lock)
-	if !wasConnected || isReconnect {
-		go c.emitLifecycleEvent("extension_connected", map[string]any{
-			"session_id":         sessionID,
-			"is_reconnect":       isReconnect,
-			"disconnect_seconds": timeSinceLastPoll.Seconds(),
-		})
-	}
-
-	// Re-acquire lock for settings
-	c.mu.Lock()
 
 	// Store extension settings
 	if req.Settings != nil {
@@ -155,7 +140,17 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		c.trackedTabTitle = req.Settings.TrackedTabTitle
 		c.trackingUpdated = now
 	}
+
 	c.mu.Unlock()
+
+	// Emit extension connection lifecycle event (outside lock, non-blocking)
+	if !wasConnected || isReconnect {
+		go c.emitLifecycleEvent("extension_connected", map[string]any{
+			"session_id":         sessionID,
+			"is_reconnect":       isReconnect,
+			"disconnect_seconds": timeSinceLastPoll.Seconds(),
+		})
+	}
 
 	// Process command results (these methods have their own locks)
 	for _, result := range req.CommandResults {
@@ -172,8 +167,9 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		pendingQueries = c.GetPendingQueries()
 	}
 
-	// Log the sync (lock scope 2)
+	// Update remaining state (single lock scope for logging, extension logs, and version)
 	c.mu.Lock()
+
 	pilotEnabled := c.pilotEnabled
 	c.logPollingActivity(PollingLogEntry{
 		Timestamp:    now,
@@ -183,29 +179,26 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		PilotEnabled: &pilotEnabled,
 		QueryCount:   len(pendingQueries),
 	})
-	c.mu.Unlock()
 
-	// Buffer extension logs (lock scope 3)
-	if len(req.ExtensionLogs) > 0 {
-		c.mu.Lock()
-		for _, log := range req.ExtensionLogs {
-			// Set server-side timestamp if not provided
-			if log.Timestamp.IsZero() {
-				log.Timestamp = now
-			}
-			c.extensionLogs = append(c.extensionLogs, log)
-			// Evict oldest entries if over capacity
-			if len(c.extensionLogs) > maxExtensionLogs {
-				c.extensionLogs = c.extensionLogs[len(c.extensionLogs)-maxExtensionLogs:]
-			}
+	for _, log := range req.ExtensionLogs {
+		if log.Timestamp.IsZero() {
+			log.Timestamp = now
 		}
-		c.mu.Unlock()
+		c.extensionLogs = append(c.extensionLogs, log)
+		if len(c.extensionLogs) > MaxExtensionLogs {
+			c.extensionLogs = c.extensionLogs[len(c.extensionLogs)-MaxExtensionLogs:]
+		}
 	}
+
+	if req.ExtensionVersion != "" {
+		c.extensionVersion = req.ExtensionVersion
+	}
+
+	c.mu.Unlock()
 
 	// Convert pending queries to sync commands
 	commands := make([]SyncCommand, len(pendingQueries))
 	for i, q := range pendingQueries {
-		// Convert params to json.RawMessage
 		paramsJSON, _ := json.Marshal(q.Params)
 		commands[i] = SyncCommand{
 			ID:            q.ID,
@@ -213,13 +206,6 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 			Params:        paramsJSON,
 			CorrelationID: q.CorrelationID,
 		}
-	}
-
-	// Update extension version tracking
-	if req.ExtensionVersion != "" {
-		c.mu.Lock()
-		c.extensionVersion = req.ExtensionVersion
-		c.mu.Unlock()
 	}
 
 	// Build response

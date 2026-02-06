@@ -40,7 +40,7 @@ describe('pollCaptureSettings', () => {
         json: () =>
           Promise.resolve({
             connected: true,
-            capture_overrides: { ws_mode: 'messages', log_level: 'all' },
+            capture_overrides: { ws_mode: 'medium', log_level: 'all' },
           }),
       }),
     )
@@ -48,7 +48,7 @@ describe('pollCaptureSettings', () => {
     const { pollCaptureSettings } = await loadModule()
     const result = await pollCaptureSettings('http://localhost:7890')
 
-    assert.deepStrictEqual(result, { ws_mode: 'messages', log_level: 'all' })
+    assert.deepStrictEqual(result, { ws_mode: 'medium', log_level: 'all' })
   })
 
   test('returns empty object when no overrides', async () => {
@@ -100,10 +100,10 @@ describe('applyCaptureOverrides', () => {
 
   test('applies ws_mode override', async () => {
     const { applyCaptureOverrides, getCaptureState } = await loadModule()
-    applyCaptureOverrides({ ws_mode: 'messages' })
+    applyCaptureOverrides({ ws_mode: 'medium' })
 
     const state = getCaptureState()
-    assert.strictEqual(state.wsMode, 'messages')
+    assert.strictEqual(state.wsMode, 'medium')
   })
 
   test('applies network_bodies override', async () => {

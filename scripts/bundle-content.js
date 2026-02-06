@@ -5,6 +5,9 @@
  */
 
 import * as esbuild from 'esbuild'
+import { readFileSync } from 'fs'
+
+const version = readFileSync('VERSION', 'utf-8').trim()
 
 try {
   // Bundle content.js (IIFE for content script context)
@@ -30,6 +33,7 @@ try {
     target: ['chrome120'],
     sourcemap: true,
     minify: false,
+    define: { '__GASOLINE_VERSION__': JSON.stringify(version) },
   })
   console.log('✅ Inject script bundled successfully')
 } catch (error) {

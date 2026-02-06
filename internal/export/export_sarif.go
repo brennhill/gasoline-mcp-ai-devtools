@@ -18,6 +18,12 @@ import (
 // This should be kept in sync with the main version in cmd/dev-console/main.go.
 const version = "5.5.0"
 
+// SARIF 2.1.0 specification constants
+const (
+	sarifSpecVersion = "2.1.0"
+	sarifSchemaURL   = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json"
+)
+
 // ============================================
 // SARIF 2.1.0 Types
 // ============================================
@@ -154,8 +160,8 @@ func ExportSARIF(a11yResultJSON json.RawMessage, opts SARIFExportOptions) (*SARI
 	}
 
 	log := &SARIFLog{
-		Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
-		Version: "2.1.0",
+		Schema:  sarifSchemaURL,
+		Version: sarifSpecVersion,
 		Runs: []SARIFRun{{
 			Tool: SARIFTool{
 				Driver: SARIFDriver{

@@ -125,6 +125,7 @@ export {
   uninstallGasolineAPI,
   install,
   uninstall,
+  wrapFetch,
   installFetchCapture,
   uninstallFetchCapture,
   installPhase1,

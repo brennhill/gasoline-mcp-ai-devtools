@@ -21,11 +21,12 @@ export { handleLogMessage, handleClearLogs, isConnectionCheckRunning, checkConne
 export { sendStatusPingWrapper, } from './background/index';
 export { getExtensionVersion, isNewVersionAvailable, getAvailableVersion, updateVersionFromHealth, updateVersionBadge, getUpdateInfo, resetVersionCheck, } from './background/version-check';
 export { handlePendingQuery, handlePilotCommand, isAiWebPilotEnabled } from './background/index';
-export { createErrorSignature, processErrorGroup, flushErrorGroups, canTakeScreenshot, recordScreenshot, estimateBufferMemory, checkMemoryPressure, getMemoryPressureState, resetMemoryPressureState, } from './background/state-manager';
+export { createErrorSignature, processErrorGroup, flushErrorGroups, cleanupStaleErrorGroups, canTakeScreenshot, recordScreenshot, estimateBufferMemory, checkMemoryPressure, getMemoryPressureState, resetMemoryPressureState, getProcessingQueriesState, cleanupStaleProcessingQueries, } from './background/state-manager';
 export { measureContextSize, checkContextAnnotations, getContextWarning, resetContextWarning, } from './background/state-manager';
 export { setSourceMapEnabled, isSourceMapEnabled, clearSourceMapCache } from './background/state-manager';
+export { SOURCE_MAP_CACHE_SIZE, setSourceMapCacheEntry, getSourceMapCacheEntry, getSourceMapCacheSize, } from './background/cache-limits';
 export { createCircuitBreaker, createBatcherWithCircuitBreaker, createLogBatcher, sendLogsToServer, sendEnhancedActionsToServer, checkServerHealth, updateBadge, formatLogEntry, shouldCaptureLog, } from './background/communication';
-export { postQueryResult } from './background/server';
+export { postQueryResult, pollPendingQueries } from './background/server';
 export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, } from './background/message-handlers';
 export { _captureOverrides, _connectionCheckRunning, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, _resetPilotCacheForTesting, } from './background/index';
 //# sourceMappingURL=background.d.ts.map

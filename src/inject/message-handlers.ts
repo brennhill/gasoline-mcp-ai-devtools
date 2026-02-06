@@ -387,7 +387,7 @@ function handleSetting(data: SettingMessageData): void {
       }
       break
     case 'setWebSocketCaptureMode':
-      setWebSocketCaptureMode((data.mode || 'lifecycle') as WebSocketCaptureMode)
+      setWebSocketCaptureMode((data.mode || 'medium') as WebSocketCaptureMode)
       break
     case 'setPerformanceSnapshotEnabled':
       setPerformanceSnapshotEnabled(data.enabled!)

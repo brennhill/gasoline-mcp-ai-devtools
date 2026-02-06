@@ -33,6 +33,7 @@ type SSEConnection struct {
 type SSERegistry struct {
 	connections map[string]*SSEConnection
 	mu          sync.RWMutex
+	done        chan struct{} // signals cleanup goroutine to stop
 }
 
 // generateSessionID creates a new random session ID
@@ -49,10 +50,15 @@ func generateSessionID() string {
 func NewSSERegistry() *SSERegistry {
 	registry := &SSERegistry{
 		connections: make(map[string]*SSEConnection),
+		done:        make(chan struct{}),
 	}
-	// Start cleanup goroutine
 	go registry.cleanupStaleConnections()
 	return registry
+}
+
+// Close shuts down the SSE registry and stops the cleanup goroutine.
+func (r *SSERegistry) Close() {
+	close(r.done)
 }
 
 // Register adds a new SSE connection to the registry
@@ -178,16 +184,20 @@ func (r *SSERegistry) cleanupStaleConnections() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		r.mu.Lock()
-		now := time.Now()
-		for sessionID, conn := range r.connections {
-			// Remove connections idle for > 1 hour
-			if now.Sub(conn.LastActivity) > 1*time.Hour {
-				delete(r.connections, sessionID)
+	for {
+		select {
+		case <-r.done:
+			return
+		case <-ticker.C:
+			r.mu.Lock()
+			now := time.Now()
+			for sessionID, conn := range r.connections {
+				if now.Sub(conn.LastActivity) > 1*time.Hour {
+					delete(r.connections, sessionID)
+				}
 			}
+			r.mu.Unlock()
 		}
-		r.mu.Unlock()
 	}
 }
 
@@ -273,7 +283,8 @@ func handleMCPMessages(registry *SSERegistry, mcp *MCPHandler) http.HandlerFunc 
 
 		fmt.Fprintf(os.Stderr, "[gasoline] Processing MCP request for session: %s\n", sessionID)
 
-		// Read JSON-RPC request
+		// Read JSON-RPC request (limit body size to prevent memory exhaustion)
+		r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 		bodyBytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "Failed to read request body", http.StatusBadRequest)

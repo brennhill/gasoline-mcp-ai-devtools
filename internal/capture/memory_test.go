@@ -103,9 +103,9 @@ func TestMemory_AboveSoftLimit_Evicts25Percent(t *testing.T) {
 	// 4KB + 200 = ~4400 bytes per event
 	// Need ~21MB / 4400 = ~5000 events... but max is 500
 	// Instead, fill network bodies: each ~2300 bytes
-	// 21MB / 2300 = ~9130 entries (more than maxNetworkBodies=100)
+	// 21MB / 2300 = ~9130 entries (more than MaxNetworkBodies=100)
 	// Use large bodies: 100KB each -> 21MB / 100300 = ~210 entries
-	// But maxNetworkBodies is 100, so we need to bypass ring buffer limits for the test
+	// But MaxNetworkBodies is 100, so we need to bypass ring buffer limits for the test
 	// Let's use the raw buffer approach
 	c.mu.Lock()
 	for i := 0; i < 100; i++ {
@@ -254,14 +254,14 @@ func TestMemory_MinimalMode_HalvedCapacities(t *testing.T) {
 	actionCap := c.effectiveActionCapacity()
 	c.mu.RUnlock()
 
-	if wsCap != maxWSEvents/2 {
-		t.Errorf("expected WS capacity %d in minimal mode, got %d", maxWSEvents/2, wsCap)
+	if wsCap != MaxWSEvents/2 {
+		t.Errorf("expected WS capacity %d in minimal mode, got %d", MaxWSEvents/2, wsCap)
 	}
-	if nbCap != maxNetworkBodies/2 {
-		t.Errorf("expected NB capacity %d in minimal mode, got %d", maxNetworkBodies/2, nbCap)
+	if nbCap != MaxNetworkBodies/2 {
+		t.Errorf("expected NB capacity %d in minimal mode, got %d", MaxNetworkBodies/2, nbCap)
 	}
-	if actionCap != maxEnhancedActions/2 {
-		t.Errorf("expected action capacity %d in minimal mode, got %d", maxEnhancedActions/2, actionCap)
+	if actionCap != MaxEnhancedActions/2 {
+		t.Errorf("expected action capacity %d in minimal mode, got %d", MaxEnhancedActions/2, actionCap)
 	}
 }
 
@@ -628,15 +628,15 @@ func TestMemory_RingBufferRotation_AfterEviction(t *testing.T) {
 	c := NewCapture()
 
 	// Fill WS buffer to near capacity
-	events := make([]WebSocketEvent, maxWSEvents-5)
+	events := make([]WebSocketEvent, MaxWSEvents-5)
 	for i := range events {
 		events[i] = makeWSEvent(100)
 	}
 	c.AddWebSocketEvents(events)
 
 	initialCount := c.GetWebSocketEventCount()
-	if initialCount != maxWSEvents-5 {
-		t.Errorf("expected %d events initially, got %d", maxWSEvents-5, initialCount)
+	if initialCount != MaxWSEvents-5 {
+		t.Errorf("expected %d events initially, got %d", MaxWSEvents-5, initialCount)
 	}
 
 	// Add more events (should trigger ring buffer rotation)
@@ -647,8 +647,8 @@ func TestMemory_RingBufferRotation_AfterEviction(t *testing.T) {
 	c.AddWebSocketEvents(moreEvents)
 
 	finalCount := c.GetWebSocketEventCount()
-	if finalCount > maxWSEvents {
-		t.Errorf("expected at most %d events after rotation, got %d", maxWSEvents, finalCount)
+	if finalCount > MaxWSEvents {
+		t.Errorf("expected at most %d events after rotation, got %d", MaxWSEvents, finalCount)
 	}
 }
 
@@ -700,7 +700,7 @@ func TestMemory_MinimalMode_IngestAtReducedCapacity(t *testing.T) {
 	c.mu.Unlock()
 
 	// Add more WS events than the halved capacity
-	events := make([]WebSocketEvent, maxWSEvents) // Full normal capacity
+	events := make([]WebSocketEvent, MaxWSEvents) // Full normal capacity
 	for i := range events {
 		events[i] = makeWSEvent(100)
 	}
@@ -708,7 +708,7 @@ func TestMemory_MinimalMode_IngestAtReducedCapacity(t *testing.T) {
 
 	c.mu.RLock()
 	wsCount := len(c.wsEvents)
-	expectedCap := maxWSEvents / 2
+	expectedCap := MaxWSEvents / 2
 	c.mu.RUnlock()
 
 	if wsCount > expectedCap {
@@ -735,8 +735,8 @@ func TestMemory_ExtensionSoftLimit_BufferCapacitiesHalved(t *testing.T) {
 	wsCap := c.effectiveWSCapacity()
 	c.mu.RUnlock()
 
-	if wsCap != maxWSEvents/2 {
-		t.Errorf("expected halved WS capacity %d, got %d", maxWSEvents/2, wsCap)
+	if wsCap != MaxWSEvents/2 {
+		t.Errorf("expected halved WS capacity %d, got %d", MaxWSEvents/2, wsCap)
 	}
 }
 
@@ -821,8 +821,8 @@ func TestMemory_GetMemoryStatus(t *testing.T) {
 	if status.SoftLimit != memorySoftLimit {
 		t.Errorf("expected SoftLimit=%d, got %d", memorySoftLimit, status.SoftLimit)
 	}
-	if status.HardLimit != memoryHardLimit {
-		t.Errorf("expected HardLimit=%d, got %d", memoryHardLimit, status.HardLimit)
+	if status.HardLimit != MemoryHardLimit {
+		t.Errorf("expected HardLimit=%d, got %d", MemoryHardLimit, status.HardLimit)
 	}
 	if status.CriticalLimit != memoryCriticalLimit {
 		t.Errorf("expected CriticalLimit=%d, got %d", memoryCriticalLimit, status.CriticalLimit)
@@ -1026,8 +1026,8 @@ func TestMemory_EvictHard_NBAndWS(t *testing.T) {
 	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
-	if c.GetTotalBufferMemory() <= memoryHardLimit {
-		t.Fatalf("setup: expected memory > hard limit (%d), got %d", memoryHardLimit, c.GetTotalBufferMemory())
+	if c.GetTotalBufferMemory() <= MemoryHardLimit {
+		t.Fatalf("setup: expected memory > hard limit (%d), got %d", MemoryHardLimit, c.GetTotalBufferMemory())
 	}
 
 	// Trigger enforcement
@@ -1085,8 +1085,8 @@ func TestMemory_EvictHard_NBAndWSAndActions(t *testing.T) {
 	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
-	if c.GetTotalBufferMemory() <= memoryHardLimit {
-		t.Fatalf("setup: expected memory > hard limit (%d), got %d", memoryHardLimit, c.GetTotalBufferMemory())
+	if c.GetTotalBufferMemory() <= MemoryHardLimit {
+		t.Fatalf("setup: expected memory > hard limit (%d), got %d", MemoryHardLimit, c.GetTotalBufferMemory())
 	}
 
 	actionsBefore := c.GetEnhancedActionCount()
@@ -1238,7 +1238,7 @@ func TestMemory_EvictHard_SingleEntryWS(t *testing.T) {
 	recalcMemoryTotals(c)
 	c.mu.Unlock()
 
-	if c.GetTotalBufferMemory() <= memoryHardLimit {
+	if c.GetTotalBufferMemory() <= MemoryHardLimit {
 		t.Fatalf("setup: expected memory > hard limit, got %d", c.GetTotalBufferMemory())
 	}
 
@@ -1451,7 +1451,7 @@ func TestMemory_RunningTotal_WSAccurateAfterRotation(t *testing.T) {
 	c := NewCapture()
 
 	// Fill to capacity, then add more to trigger ring buffer rotation
-	events := make([]WebSocketEvent, maxWSEvents+10)
+	events := make([]WebSocketEvent, MaxWSEvents+10)
 	for i := range events {
 		events[i] = makeWSEvent(100 + i) // varying sizes
 	}
@@ -1463,8 +1463,8 @@ func TestMemory_RunningTotal_WSAccurateAfterRotation(t *testing.T) {
 	count := len(c.wsEvents)
 	c.mu.RUnlock()
 
-	if count > maxWSEvents {
-		t.Errorf("expected at most %d events, got %d", maxWSEvents, count)
+	if count > MaxWSEvents {
+		t.Errorf("expected at most %d events, got %d", MaxWSEvents, count)
 	}
 	if runningTotal != expected {
 		t.Errorf("after rotation: wsMemoryTotal = %d, brute force = %d", runningTotal, expected)
@@ -1477,7 +1477,7 @@ func TestMemory_RunningTotal_NBAccurateAfterRotation(t *testing.T) {
 	c := NewCapture()
 
 	// Fill to capacity, then add more to trigger ring buffer rotation
-	bodies := make([]NetworkBody, maxNetworkBodies+5)
+	bodies := make([]NetworkBody, MaxNetworkBodies+5)
 	for i := range bodies {
 		bodies[i] = makeNetworkBody(100+i, 200+i) // varying sizes
 	}
@@ -1489,8 +1489,8 @@ func TestMemory_RunningTotal_NBAccurateAfterRotation(t *testing.T) {
 	count := len(c.networkBodies)
 	c.mu.RUnlock()
 
-	if count > maxNetworkBodies {
-		t.Errorf("expected at most %d bodies, got %d", maxNetworkBodies, count)
+	if count > MaxNetworkBodies {
+		t.Errorf("expected at most %d bodies, got %d", MaxNetworkBodies, count)
 	}
 	if runningTotal != expected {
 		t.Errorf("after rotation: nbMemoryTotal = %d, brute force = %d", runningTotal, expected)

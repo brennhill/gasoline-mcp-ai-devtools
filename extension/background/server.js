@@ -9,6 +9,7 @@ import { getExtensionVersion } from './version-check.js';
 function getRequestHeaders(additionalHeaders = {}) {
     return {
         'Content-Type': 'application/json',
+        'X-Gasoline-Client': `gasoline-extension/${getExtensionVersion()}`,
         'X-Gasoline-Extension-Version': getExtensionVersion(),
         ...additionalHeaders,
     };

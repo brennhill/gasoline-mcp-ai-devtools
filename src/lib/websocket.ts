@@ -83,7 +83,7 @@ const _textEncoder: TextEncoder | null = typeof TextEncoder !== 'undefined' ? ne
 // WebSocket capture state
 let originalWebSocket: typeof WebSocket | null = null
 let webSocketCaptureEnabled = false
-let webSocketCaptureMode: WebSocketCaptureMode = 'lifecycle'
+let webSocketCaptureMode: WebSocketCaptureMode = 'medium'
 
 /**
  * Get the byte size of a WebSocket message
@@ -240,24 +240,21 @@ export function createConnectionTracker(id: string, url: string): ConnectionTrac
     shouldSample(_direction: MessageDirection): boolean {
       this._sampleCounter++
 
+      // 'all' mode: no sampling
+      if (webSocketCaptureMode === 'all') return true
+
       // Always log first 5 messages on a connection
       if (this.messageCount > 0 && this.messageCount <= 5) return true
 
       const rate = this._messageRate || this.getMessageRate()
 
-      if (rate < 10) return true
-      if (rate < 50) {
-        // Target ~10 msg/s
-        const n = Math.max(1, Math.round(rate / 10))
-        return this._sampleCounter % n === 0
-      }
-      if (rate < 200) {
-        // Target ~5 msg/s
-        const n = Math.max(1, Math.round(rate / 5))
-        return this._sampleCounter % n === 0
-      }
-      // > 200: target ~2 msg/s
-      const n = Math.max(1, Math.round(rate / 2))
+      // Mode-based target caps:
+      // 'high': ~10 msg/s, 'medium': ~5 msg/s, 'low': ~2 msg/s
+      const targetRate = webSocketCaptureMode === 'high' ? 10 : webSocketCaptureMode === 'medium' ? 5 : 2
+
+      if (rate <= targetRate) return true
+
+      const n = Math.max(1, Math.round(rate / targetRate))
       return this._sampleCounter % n === 0
     },
 
@@ -392,6 +389,7 @@ export function installWebSocketCapture(): void {
     const ws = new OriginalWS(url, protocols)
     const connectionId = crypto.randomUUID()
     const urlString = url.toString()
+    const tracker = createConnectionTracker(connectionId, urlString)
 
     ws.addEventListener('open', () => {
       if (!webSocketCaptureEnabled) return
@@ -400,7 +398,7 @@ export function installWebSocketCapture(): void {
           type: 'GASOLINE_WS',
           payload: { type: 'websocket', event: 'open', id: connectionId, url: urlString, ts: new Date().toISOString() },
         } as GasolineWsMessage,
-        '*',
+        window.location.origin,
       )
     })
 
@@ -419,7 +417,7 @@ export function installWebSocketCapture(): void {
             ts: new Date().toISOString(),
           },
         } as GasolineWsMessage,
-        '*',
+        window.location.origin,
       )
     })
 
@@ -436,13 +434,14 @@ export function installWebSocketCapture(): void {
             ts: new Date().toISOString(),
           },
         } as GasolineWsMessage,
-        '*',
+        window.location.origin,
       )
     })
 
     ws.addEventListener('message', (event: MessageEvent<WebSocketMessageData>) => {
       if (!webSocketCaptureEnabled) return
-      if (webSocketCaptureMode !== 'messages') return
+      tracker.recordMessage('incoming', event.data)
+      if (!tracker.shouldSample('incoming')) return
 
       const data = event.data
       const size = getSize(data)
@@ -464,14 +463,17 @@ export function installWebSocketCapture(): void {
             ts: new Date().toISOString(),
           },
         } as GasolineWsMessage,
-        '*',
+        window.location.origin,
       )
     })
 
     // Wrap send() to capture outgoing messages
     const originalSend = ws.send.bind(ws)
     ws.send = function (data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
-      if (webSocketCaptureEnabled && webSocketCaptureMode === 'messages') {
+      if (webSocketCaptureEnabled) {
+        tracker.recordMessage('outgoing', data as WebSocketMessageData)
+      }
+      if (webSocketCaptureEnabled && tracker.shouldSample('outgoing')) {
         const size = getSize(data as WebSocketMessageData)
         const formatted = formatPayload(data as WebSocketMessageData)
         const { data: truncatedData, truncated } = truncateWsMessage(formatted)
@@ -551,6 +553,6 @@ export function uninstallWebSocketCapture(): void {
 export function resetForTesting(): void {
   uninstallWebSocketCapture()
   webSocketCaptureEnabled = false
-  webSocketCaptureMode = 'lifecycle'
+  webSocketCaptureMode = 'medium'
   originalWebSocket = null
 }
