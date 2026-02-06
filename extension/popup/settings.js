@@ -3,28 +3,6 @@
  * Handles log level, WebSocket mode, and clear logs functionality
  */
 /**
- * Initialize the log level selector
- */
-export async function initLogLevelSelector() {
-    const levelSelect = document.getElementById('log-level');
-    if (!levelSelect)
-        return;
-    // Load saved level
-    return new Promise((resolve) => {
-        chrome.storage.local.get(['logLevel'], (result) => {
-            levelSelect.value = result.logLevel || 'error';
-            resolve();
-        });
-    });
-}
-/**
- * Handle log level change
- */
-export async function handleLogLevelChange(level) {
-    chrome.storage.local.set({ logLevel: level });
-    chrome.runtime.sendMessage({ type: 'setLogLevel', level });
-}
-/**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode) {
@@ -40,7 +18,7 @@ export async function initWebSocketModeSelector() {
         return;
     return new Promise((resolve) => {
         chrome.storage.local.get(['webSocketCaptureMode'], (result) => {
-            modeSelect.value = result.webSocketCaptureMode || 'lifecycle';
+            modeSelect.value = result.webSocketCaptureMode || 'medium';
             resolve();
         });
     });

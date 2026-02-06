@@ -63,6 +63,8 @@ export declare class SyncClient {
     private state;
     private intervalId;
     private running;
+    private syncing;
+    private flushRequested;
     private pendingResults;
     private extensionVersion;
     constructor(serverUrl: string, sessionId: string, callbacks: SyncClientCallbacks, extensionVersion?: string);
@@ -74,8 +76,10 @@ export declare class SyncClient {
     start(): void;
     /** Stop the sync loop */
     stop(): void;
-    /** Queue a command result to send on next sync */
+    /** Queue a command result to send on next sync, then flush immediately */
     queueCommandResult(result: SyncCommandResult): void;
+    /** Trigger an immediate sync to deliver queued results with minimal latency */
+    flush(): void;
     /** Reset connection state (e.g., when user toggles pilot/tracking) */
     resetConnection(): void;
     /** Update server URL */

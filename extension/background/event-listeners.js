@@ -288,7 +288,7 @@ export function loadAiWebPilotState(callback, logFn) {
     }
     const startTime = performance.now();
     chrome.storage.local.get(['aiWebPilotEnabled'], (result) => {
-        const wasLoaded = result.aiWebPilotEnabled === true;
+        const wasLoaded = result.aiWebPilotEnabled !== false;
         const loadTime = performance.now() - startTime;
         if (logFn) {
             logFn(`[Gasoline] AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`);

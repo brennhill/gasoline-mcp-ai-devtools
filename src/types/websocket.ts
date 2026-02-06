@@ -6,7 +6,7 @@
 /**
  * WebSocket capture modes
  */
-export type WebSocketCaptureMode = 'lifecycle' | 'messages' | 'full'
+export type WebSocketCaptureMode = 'low' | 'medium' | 'high' | 'all'
 
 /**
  * WebSocket event types

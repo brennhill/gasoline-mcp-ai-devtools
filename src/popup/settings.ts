@@ -6,30 +6,6 @@
 import type { WebSocketCaptureMode } from '../types'
 
 /**
- * Initialize the log level selector
- */
-export async function initLogLevelSelector(): Promise<void> {
-  const levelSelect = document.getElementById('log-level') as HTMLSelectElement | null
-  if (!levelSelect) return
-
-  // Load saved level
-  return new Promise((resolve) => {
-    chrome.storage.local.get(['logLevel'], (result: { logLevel?: string }) => {
-      levelSelect.value = result.logLevel || 'error'
-      resolve()
-    })
-  })
-}
-
-/**
- * Handle log level change
- */
-export async function handleLogLevelChange(level: string): Promise<void> {
-  chrome.storage.local.set({ logLevel: level })
-  chrome.runtime.sendMessage({ type: 'setLogLevel', level })
-}
-
-/**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode: WebSocketCaptureMode): void {
@@ -46,7 +22,7 @@ export async function initWebSocketModeSelector(): Promise<void> {
 
   return new Promise((resolve) => {
     chrome.storage.local.get(['webSocketCaptureMode'], (result: { webSocketCaptureMode?: WebSocketCaptureMode }) => {
-      modeSelect.value = result.webSocketCaptureMode || 'lifecycle'
+      modeSelect.value = result.webSocketCaptureMode || 'medium'
       resolve()
     })
   })

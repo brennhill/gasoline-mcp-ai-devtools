@@ -17,7 +17,6 @@ const SYNC_SETTINGS: readonly {
   { storageKey: 'performanceMarksEnabled', messageType: 'setPerformanceMarksEnabled' },
   { storageKey: 'actionReplayEnabled', messageType: 'setActionReplayEnabled' },
   { storageKey: 'networkBodyCaptureEnabled', messageType: 'setNetworkBodyCaptureEnabled' },
-  { storageKey: 'performanceSnapshotEnabled', messageType: 'setPerformanceSnapshotEnabled' },
 ]
 
 /**

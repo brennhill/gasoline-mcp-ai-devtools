@@ -126,6 +126,7 @@ export { installGasolineAPI, uninstallGasolineAPI, type GasolineAPI } from './ap
 export {
   install,
   uninstall,
+  wrapFetch,
   installFetchCapture,
   uninstallFetchCapture,
   installPhase1,
@@ -160,7 +161,7 @@ import { sendPerformanceSnapshot } from '../lib/perf-snapshot'
 /**
  * Auto-install when loaded in browser
  */
-if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof (globalThis as Record<string, unknown>).process === 'undefined') {
   // Install Phase 1 (lightweight API + observers)
   installPhase1()
 

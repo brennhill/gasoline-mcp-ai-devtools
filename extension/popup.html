@@ -499,15 +499,6 @@
     </div>
 
     <div class="section">
-      <div class="section-title">Capture Level</div>
-      <select id="log-level">
-        <option value="error">Errors Only</option>
-        <option value="warn">Warnings & Errors</option>
-        <option value="all">All Logs</option>
-      </select>
-    </div>
-
-    <div class="section">
       <div class="section-title">AI Web Pilot</div>
       <div class="feature-section">
         <div class="toggle-row">
@@ -516,7 +507,7 @@
             <span class="toggle-desc" style="color: #d29922">Can take a few seconds to reflect on the server</span>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="aiWebPilotEnabled" />
+            <input type="checkbox" id="aiWebPilotEnabled" checked />
             <span class="toggle-slider"></span>
           </label>
         </div>
@@ -532,7 +523,7 @@
             <span class="toggle-desc">Monitor WebSocket connections</span>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="toggle-websocket" />
+            <input type="checkbox" id="toggle-websocket" checked />
             <span class="toggle-slider"></span>
           </label>
         </div>
@@ -552,11 +543,13 @@
               color: #e0e0e0;
             "
           >
-            <option value="lifecycle">Lifecycle only (connect/disconnect/error)</option>
-            <option value="messages">Include messages (with sampling)</option>
+            <option value="low">Low sampling (~2 msg/s)</option>
+            <option value="medium" selected>Medium sampling (~5 msg/s)</option>
+            <option value="high">High sampling (~10 msg/s)</option>
+            <option value="all">All messages</option>
           </select>
           <span class="toggle-desc" id="ws-messages-warning" style="color: #d29922; display: none; margin-top: 6px"
-            >Message capture with sampling may produce significant log data on high-traffic connections.</span
+            >Capturing all messages may produce significant data on high-traffic connections.</span
           >
         </div>
 
@@ -569,7 +562,7 @@
             >
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="toggle-network-waterfall" />
+            <input type="checkbox" id="toggle-network-waterfall" checked />
             <span class="toggle-slider"></span>
           </label>
         </div>
@@ -594,7 +587,7 @@
             >
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="toggle-performance-marks" />
+            <input type="checkbox" id="toggle-performance-marks" checked />
             <span class="toggle-slider"></span>
           </label>
         </div>
@@ -619,7 +612,7 @@
             >
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="toggle-screenshot" />
+            <input type="checkbox" id="toggle-screenshot" checked />
             <span class="toggle-slider"></span>
           </label>
         </div>
@@ -630,7 +623,7 @@
             <span class="toggle-desc">Resolve minified stack traces to original source</span>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="toggle-source-maps" />
+            <input type="checkbox" id="toggle-source-maps" checked />
             <span class="toggle-slider"></span>
           </label>
         </div>

@@ -12,6 +12,7 @@ import { DebugCategory } from './debug.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, } from './message-handlers.js';
 import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl, } from './pending-queries.js';
 import { createSyncClient } from './sync-client.js';
+import { updateVersionFromHealth } from './version-check.js';
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -302,16 +303,15 @@ export async function checkConnectionAndUpdate() {
         const health = await communication.checkServerHealth(serverUrl);
         // Update version information from health response
         if (health.connected) {
-            import('./version-check')
-                .then((vc) => {
-                vc.updateVersionFromHealth({
+            try {
+                updateVersionFromHealth({
                     version: health.version,
                     availableVersion: health.availableVersion,
                 }, debugLog);
-            })
-                .catch((err) => {
+            }
+            catch (err) {
                 debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: err.message });
-            });
+            }
         }
         const wasConnected = connectionStatus.connected;
         connectionStatus = {
@@ -413,7 +413,7 @@ function startSyncClient() {
             }
             stateManager.addProcessingQuery(command.id);
             try {
-                await handlePendingQueryImpl(command);
+                await handlePendingQueryImpl(command, syncClient);
             }
             catch (err) {
                 debugLog(DebugCategory.CONNECTION, 'Error processing sync command', {

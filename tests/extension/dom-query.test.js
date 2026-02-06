@@ -395,7 +395,7 @@ describe('Background Script: DOM query dispatch', () => {
         onMessage: { addListener: mock.fn() },
         onInstalled: { addListener: mock.fn() },
         sendMessage: mock.fn(() => Promise.resolve()),
-        getManifest: () => ({ version: '5.2.0' }),
+        getManifest: () => ({ version: '5.7.5' }),
       },
       action: {
         setBadgeText: mock.fn(),
