@@ -196,7 +196,7 @@ Gasoline isn't a test tool. It's a **co-pilot for your entire stack**. Here's ho
 
 See [latest benchmarks](docs/benchmarks/latest-benchmark.md) for current performance data.
 
-Last benchmarked: 2026-02-06 on darwin/arm64 (v5.7.5)
+Last benchmarked: 2026-02-06 on darwin/arm64 (v5.8.0)
 
 ## Known Issues
 
