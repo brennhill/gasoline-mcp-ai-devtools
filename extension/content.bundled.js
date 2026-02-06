@@ -19,13 +19,17 @@
   function getCurrentTabId() {
     return currentTabId;
   }
-  function initTabTracking() {
-    updateTrackingStatus();
-    chrome.storage.onChanged.addListener((changes) => {
+  function initTabTracking(onChange) {
+    const ready = updateTrackingStatus().then(() => {
+      onChange?.(isTrackedTab);
+    });
+    chrome.storage.onChanged.addListener(async (changes) => {
       if (changes.trackedTabId) {
-        updateTrackingStatus();
+        await updateTrackingStatus();
+        onChange?.(isTrackedTab);
       }
     });
+    return ready;
   }
 
   // extension/content/script-injection.js
@@ -35,8 +39,7 @@
     { storageKey: "networkWaterfallEnabled", messageType: "setNetworkWaterfallEnabled" },
     { storageKey: "performanceMarksEnabled", messageType: "setPerformanceMarksEnabled" },
     { storageKey: "actionReplayEnabled", messageType: "setActionReplayEnabled" },
-    { storageKey: "networkBodyCaptureEnabled", messageType: "setNetworkBodyCaptureEnabled" },
-    { storageKey: "performanceSnapshotEnabled", messageType: "setPerformanceSnapshotEnabled" }
+    { storageKey: "networkBodyCaptureEnabled", messageType: "setNetworkBodyCaptureEnabled" }
   ];
   function syncStoredSettings() {
     const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey);
@@ -445,6 +448,43 @@
   }
 
   // extension/content/runtime-message-listener.js
+  function showActionToast(text, durationMs = 3e3) {
+    const existing = document.getElementById("gasoline-action-toast");
+    if (existing)
+      existing.remove();
+    const toast = document.createElement("div");
+    toast.id = "gasoline-action-toast";
+    toast.textContent = text;
+    Object.assign(toast.style, {
+      position: "fixed",
+      top: "16px",
+      left: "50%",
+      transform: "translateX(-50%)",
+      padding: "10px 24px",
+      background: "linear-gradient(135deg, #ff6b00 0%, #ff9500 100%)",
+      color: "#fff",
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontSize: "14px",
+      fontWeight: "600",
+      borderRadius: "8px",
+      boxShadow: "0 4px 20px rgba(255, 107, 0, 0.4)",
+      zIndex: "2147483647",
+      pointerEvents: "none",
+      opacity: "0",
+      transition: "opacity 0.2s ease-in"
+    });
+    const target = document.body || document.documentElement;
+    if (!target)
+      return;
+    target.appendChild(toast);
+    requestAnimationFrame(() => {
+      toast.style.opacity = "1";
+    });
+    setTimeout(() => {
+      toast.style.opacity = "0";
+      setTimeout(() => toast.remove(), 300);
+    }, durationMs);
+  }
   function initRuntimeMessageListener() {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isValidBackgroundSender(sender)) {
@@ -453,6 +493,12 @@
       }
       if (message.type === "GASOLINE_PING") {
         return handlePing(sendResponse);
+      }
+      if (message.type === "GASOLINE_ACTION_TOAST") {
+        const { text, duration_ms } = message;
+        if (text)
+          showActionToast(text, duration_ms);
+        return false;
       }
       handleToggleMessage(message);
       if (message.type === "GASOLINE_HIGHLIGHT") {
@@ -583,24 +629,15 @@
 
   // extension/content.js
   var scriptsInjected = false;
-  initTabTracking();
+  initTabTracking((tracked) => {
+    if (tracked && !scriptsInjected) {
+      initScriptInjection();
+      scriptsInjected = true;
+    }
+  });
   initRequestTracking();
   initWindowMessageListener();
   initRuntimeMessageListener();
   initFaviconReplacer();
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes.trackedTabId) {
-      if (getIsTrackedTab() && !scriptsInjected) {
-        initScriptInjection();
-        scriptsInjected = true;
-      }
-    }
-  });
-  setTimeout(() => {
-    if (getIsTrackedTab() && !scriptsInjected) {
-      initScriptInjection();
-      scriptsInjected = true;
-    }
-  }, 100);
 })();
 //# sourceMappingURL=content.bundled.js.map

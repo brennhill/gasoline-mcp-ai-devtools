@@ -82,8 +82,8 @@ const _textEncoder: TextEncoder | null = typeof TextEncoder !== 'undefined' ? ne
 
 // WebSocket capture state
 let originalWebSocket: typeof WebSocket | null = null
-let webSocketCaptureEnabled = false
-let webSocketCaptureMode: WebSocketCaptureMode = 'lifecycle'
+let webSocketCaptureEnabled = true
+let webSocketCaptureMode: WebSocketCaptureMode = 'medium'
 
 /**
  * Get the byte size of a WebSocket message
@@ -240,24 +240,21 @@ export function createConnectionTracker(id: string, url: string): ConnectionTrac
     shouldSample(_direction: MessageDirection): boolean {
       this._sampleCounter++
 
+      // 'all' mode: no sampling
+      if (webSocketCaptureMode === 'all') return true
+
       // Always log first 5 messages on a connection
       if (this.messageCount > 0 && this.messageCount <= 5) return true
 
       const rate = this._messageRate || this.getMessageRate()
 
-      if (rate < 10) return true
-      if (rate < 50) {
-        // Target ~10 msg/s
-        const n = Math.max(1, Math.round(rate / 10))
-        return this._sampleCounter % n === 0
-      }
-      if (rate < 200) {
-        // Target ~5 msg/s
-        const n = Math.max(1, Math.round(rate / 5))
-        return this._sampleCounter % n === 0
-      }
-      // > 200: target ~2 msg/s
-      const n = Math.max(1, Math.round(rate / 2))
+      // Mode-based target caps:
+      // 'high': ~10 msg/s, 'medium': ~5 msg/s, 'low': ~2 msg/s
+      const targetRate = webSocketCaptureMode === 'high' ? 10 : webSocketCaptureMode === 'medium' ? 5 : 2
+
+      if (rate <= targetRate) return true
+
+      const n = Math.max(1, Math.round(rate / targetRate))
       return this._sampleCounter % n === 0
     },
 
@@ -377,21 +374,26 @@ interface GasolineWsMessage {
 }
 
 /**
- * Install WebSocket capture by wrapping the WebSocket constructor
+ * Install WebSocket capture by wrapping the WebSocket constructor.
+ * If the early-patch script ran first (world: "MAIN", document_start),
+ * uses the saved original constructor and adopts buffered connections.
  */
 export function installWebSocketCapture(): void {
   if (typeof window === 'undefined') return
   if (!window.WebSocket) return // No WebSocket support
   if (originalWebSocket) return // Already installed
 
-  originalWebSocket = window.WebSocket
+  // Check for early-patch: use the saved original, not the early-patch wrapper
+  const earlyOriginal = window.__GASOLINE_ORIGINAL_WS__
+  originalWebSocket = earlyOriginal || window.WebSocket
 
-  const OriginalWS = window.WebSocket
+  const OriginalWS = originalWebSocket
 
   function GasolineWebSocket(this: WebSocket, url: string | URL, protocols?: string | string[]): WebSocket {
     const ws = new OriginalWS(url, protocols)
     const connectionId = crypto.randomUUID()
     const urlString = url.toString()
+    const tracker = createConnectionTracker(connectionId, urlString)
 
     ws.addEventListener('open', () => {
       if (!webSocketCaptureEnabled) return
@@ -400,7 +402,7 @@ export function installWebSocketCapture(): void {
           type: 'GASOLINE_WS',
           payload: { type: 'websocket', event: 'open', id: connectionId, url: urlString, ts: new Date().toISOString() },
         } as GasolineWsMessage,
-        '*',
+        window.location.origin,
       )
     })
 
@@ -419,7 +421,7 @@ export function installWebSocketCapture(): void {
             ts: new Date().toISOString(),
           },
         } as GasolineWsMessage,
-        '*',
+        window.location.origin,
       )
     })
 
@@ -436,13 +438,14 @@ export function installWebSocketCapture(): void {
             ts: new Date().toISOString(),
           },
         } as GasolineWsMessage,
-        '*',
+        window.location.origin,
       )
     })
 
     ws.addEventListener('message', (event: MessageEvent<WebSocketMessageData>) => {
       if (!webSocketCaptureEnabled) return
-      if (webSocketCaptureMode !== 'messages') return
+      tracker.recordMessage('incoming', event.data)
+      if (!tracker.shouldSample('incoming')) return
 
       const data = event.data
       const size = getSize(data)
@@ -464,14 +467,17 @@ export function installWebSocketCapture(): void {
             ts: new Date().toISOString(),
           },
         } as GasolineWsMessage,
-        '*',
+        window.location.origin,
       )
     })
 
     // Wrap send() to capture outgoing messages
     const originalSend = ws.send.bind(ws)
     ws.send = function (data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
-      if (webSocketCaptureEnabled && webSocketCaptureMode === 'messages') {
+      if (webSocketCaptureEnabled) {
+        tracker.recordMessage('outgoing', data as WebSocketMessageData)
+      }
+      if (webSocketCaptureEnabled && tracker.shouldSample('outgoing')) {
         const size = getSize(data as WebSocketMessageData)
         const formatted = formatPayload(data as WebSocketMessageData)
         const { data: truncatedData, truncated } = truncateWsMessage(formatted)
@@ -509,6 +515,161 @@ export function installWebSocketCapture(): void {
   Object.defineProperty(GasolineWebSocket, 'CLOSED', { value: OriginalWS.CLOSED, writable: false })
 
   window.WebSocket = GasolineWebSocket as unknown as typeof WebSocket
+
+  // Adopt connections buffered by the early-patch script
+  adoptEarlyConnections()
+}
+
+/**
+ * Adopt WebSocket connections buffered by the early-patch script.
+ * For each still-active connection, creates a tracker and attaches event listeners
+ * so ongoing messages are captured. Posts synthetic "open" events for connections
+ * that opened before the inject script loaded.
+ */
+function adoptEarlyConnections(): void {
+  const earlyConnections = window.__GASOLINE_EARLY_WS__
+  if (!earlyConnections || earlyConnections.length === 0) {
+    // Clean up globals even if no connections
+    delete window.__GASOLINE_ORIGINAL_WS__
+    delete window.__GASOLINE_EARLY_WS__
+    return
+  }
+
+  let adopted = 0
+
+  for (const conn of earlyConnections) {
+    const ws = conn.ws
+
+    // Skip fully closed connections
+    if (ws.readyState === WebSocket.CLOSED) continue
+
+    adopted++
+    const connectionId = crypto.randomUUID()
+    const urlString = conn.url
+    const tracker = createConnectionTracker(connectionId, urlString)
+
+    // Post synthetic "open" event for connections that already opened
+    const hasOpened = conn.events.some((e) => e.type === 'open')
+    if (hasOpened && webSocketCaptureEnabled) {
+      const openEvent = conn.events.find((e) => e.type === 'open')
+      window.postMessage(
+        {
+          type: 'GASOLINE_WS',
+          payload: {
+            type: 'websocket',
+            event: 'open',
+            id: connectionId,
+            url: urlString,
+            ts: openEvent ? new Date(openEvent.ts).toISOString() : new Date().toISOString(),
+          },
+        } as GasolineWsMessage,
+        window.location.origin,
+      )
+    }
+
+    // Attach ongoing capture: close
+    ws.addEventListener('close', (event: CloseEvent) => {
+      if (!webSocketCaptureEnabled) return
+      window.postMessage(
+        {
+          type: 'GASOLINE_WS',
+          payload: {
+            type: 'websocket',
+            event: 'close',
+            id: connectionId,
+            url: urlString,
+            code: event.code,
+            reason: event.reason,
+            ts: new Date().toISOString(),
+          },
+        } as GasolineWsMessage,
+        window.location.origin,
+      )
+    })
+
+    // Attach ongoing capture: error
+    ws.addEventListener('error', () => {
+      if (!webSocketCaptureEnabled) return
+      window.postMessage(
+        {
+          type: 'GASOLINE_WS',
+          payload: { type: 'websocket', event: 'error', id: connectionId, url: urlString, ts: new Date().toISOString() },
+        } as GasolineWsMessage,
+        window.location.origin,
+      )
+    })
+
+    // Attach ongoing capture: incoming messages
+    ws.addEventListener('message', (event: MessageEvent<WebSocketMessageData>) => {
+      if (!webSocketCaptureEnabled) return
+      tracker.recordMessage('incoming', event.data)
+      if (!tracker.shouldSample('incoming')) return
+
+      const data = event.data
+      const size = getSize(data)
+      const formatted = formatPayload(data)
+      const { data: truncatedData, truncated } = truncateWsMessage(formatted)
+
+      window.postMessage(
+        {
+          type: 'GASOLINE_WS',
+          payload: {
+            type: 'websocket',
+            event: 'message',
+            id: connectionId,
+            url: urlString,
+            direction: 'incoming' as const,
+            data: truncatedData,
+            size,
+            truncated: truncated || undefined,
+            ts: new Date().toISOString(),
+          },
+        } as GasolineWsMessage,
+        window.location.origin,
+      )
+    })
+
+    // Wrap send() for outgoing capture
+    const originalSend = ws.send.bind(ws)
+    ws.send = function (data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
+      if (webSocketCaptureEnabled) {
+        tracker.recordMessage('outgoing', data as WebSocketMessageData)
+      }
+      if (webSocketCaptureEnabled && tracker.shouldSample('outgoing')) {
+        const size = getSize(data as WebSocketMessageData)
+        const formatted = formatPayload(data as WebSocketMessageData)
+        const { data: truncatedData, truncated } = truncateWsMessage(formatted)
+
+        window.postMessage(
+          {
+            type: 'GASOLINE_WS',
+            payload: {
+              type: 'websocket',
+              event: 'message',
+              id: connectionId,
+              url: urlString,
+              direction: 'outgoing' as const,
+              data: truncatedData,
+              size,
+              truncated: truncated || undefined,
+              ts: new Date().toISOString(),
+            },
+          } as GasolineWsMessage,
+          '*',
+        )
+      }
+
+      return originalSend(data)
+    }
+  }
+
+  if (adopted > 0) {
+    console.log(`[Gasoline] Adopted ${adopted} early WebSocket connection(s)`)
+  }
+
+  // Clean up early-patch globals
+  delete window.__GASOLINE_ORIGINAL_WS__
+  delete window.__GASOLINE_EARLY_WS__
 }
 
 /**
@@ -551,6 +712,11 @@ export function uninstallWebSocketCapture(): void {
 export function resetForTesting(): void {
   uninstallWebSocketCapture()
   webSocketCaptureEnabled = false
-  webSocketCaptureMode = 'lifecycle'
+  webSocketCaptureMode = 'medium'
   originalWebSocket = null
+  // Clean up early-patch globals if present
+  if (typeof window !== 'undefined') {
+    delete window.__GASOLINE_ORIGINAL_WS__
+    delete window.__GASOLINE_EARLY_WS__
+  }
 }

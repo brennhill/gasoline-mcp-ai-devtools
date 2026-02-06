@@ -106,6 +106,8 @@ export class SyncClient {
   private state: SyncState
   private intervalId: ReturnType<typeof setInterval> | null = null
   private running = false
+  private syncing = false
+  private flushRequested = false
   private pendingResults: SyncCommandResult[] = []
   private extensionVersion: string
 
@@ -150,7 +152,7 @@ export class SyncClient {
     this.log('Stopped sync client')
   }
 
-  /** Queue a command result to send on next sync */
+  /** Queue a command result to send on next sync, then flush immediately */
   queueCommandResult(result: SyncCommandResult): void {
     this.pendingResults.push(result)
     // Cap queue size to prevent memory leak if server is unreachable
@@ -158,6 +160,21 @@ export class SyncClient {
     if (this.pendingResults.length > MAX_PENDING_RESULTS) {
       this.pendingResults.splice(0, this.pendingResults.length - MAX_PENDING_RESULTS)
     }
+    this.flush()
+  }
+
+  /** Trigger an immediate sync to deliver queued results with minimal latency */
+  flush(): void {
+    if (!this.running) return
+    if (this.syncing) {
+      // Sync in progress — schedule another immediately after it finishes
+      this.flushRequested = true
+      return
+    }
+    if (this.intervalId) {
+      clearTimeout(this.intervalId)
+    }
+    this.scheduleNextSync(0)
   }
 
   /** Reset connection state (e.g., when user toggles pilot/tracking) */
@@ -187,6 +204,8 @@ export class SyncClient {
 
   private async doSync(): Promise<void> {
     if (!this.running) return
+    this.syncing = true
+    this.flushRequested = false
 
     try {
       // Build request
@@ -222,6 +241,7 @@ export class SyncClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Gasoline-Client': `gasoline-extension/${this.extensionVersion}`,
           'X-Gasoline-Extension-Version': this.extensionVersion,
         },
         body: JSON.stringify(request),
@@ -235,6 +255,14 @@ export class SyncClient {
       }
 
       const data: SyncResponse = await response.json()
+
+      // Log sync cycle summary
+      this.log('Sync OK', {
+        commands: data.commands?.length || 0,
+        resultsSent: request.command_results?.length || 0,
+        logsSent: request.extension_logs?.length || 0,
+        nextPollMs: data.next_poll_ms,
+      })
 
       // Success - update state
       this.onSuccess()
@@ -256,14 +284,16 @@ export class SyncClient {
 
       // Process commands
       if (data.commands && data.commands.length > 0) {
-        this.log('Received commands', { count: data.commands.length })
+        this.log('Received commands', { count: data.commands.length, ids: data.commands.map(c => c.id) })
         for (const command of data.commands) {
+          this.log('Dispatching command', { id: command.id, type: command.type, correlation_id: command.correlation_id })
           // Track last command for ack
           this.state.lastCommandAck = command.id
           try {
             await this.callbacks.onCommand(command)
+            this.log('Command dispatched OK', { id: command.id })
           } catch (err) {
-            this.log('Error processing command', { id: command.id, error: (err as Error).message })
+            this.log('Command dispatch FAILED', { id: command.id, error: (err as Error).message })
           }
         }
       }
@@ -273,11 +303,19 @@ export class SyncClient {
         this.callbacks.onCaptureOverrides(data.capture_overrides)
       }
 
-      // Schedule next sync (use server-provided interval or default)
-      const nextPollMs = data.next_poll_ms || BASE_POLL_MS
-      this.scheduleNextSync(nextPollMs)
+      // Schedule next sync — flush immediately if results were queued during this sync
+      this.syncing = false
+      if (this.flushRequested) {
+        this.flushRequested = false
+        this.scheduleNextSync(0)
+      } else {
+        const nextPollMs = data.next_poll_ms || BASE_POLL_MS
+        this.scheduleNextSync(nextPollMs)
+      }
     } catch (err) {
       // Failure - just retry after 1 second (no exponential backoff needed)
+      this.syncing = false
+      this.flushRequested = false
       this.onFailure()
       this.log('Sync failed, retrying', { error: (err as Error).message })
       this.scheduleNextSync(BASE_POLL_MS)

@@ -9,6 +9,9 @@
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 
+// Define esbuild constant not available in Node test env
+globalThis.__GASOLINE_VERSION__ = 'test'
+
 // Mock performance API
 let originalPerformance
 let originalWindow

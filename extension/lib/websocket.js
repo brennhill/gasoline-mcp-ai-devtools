@@ -8,8 +8,8 @@ import { WS_MAX_BODY_SIZE, WS_PREVIEW_LIMIT } from './constants.js';
 const _textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
 // WebSocket capture state
 let originalWebSocket = null;
-let webSocketCaptureEnabled = false;
-let webSocketCaptureMode = 'lifecycle';
+let webSocketCaptureEnabled = true;
+let webSocketCaptureMode = 'medium';
 /**
  * Get the byte size of a WebSocket message
  */
@@ -153,24 +153,19 @@ export function createConnectionTracker(id, url) {
          */
         shouldSample(_direction) {
             this._sampleCounter++;
+            // 'all' mode: no sampling
+            if (webSocketCaptureMode === 'all')
+                return true;
             // Always log first 5 messages on a connection
             if (this.messageCount > 0 && this.messageCount <= 5)
                 return true;
             const rate = this._messageRate || this.getMessageRate();
-            if (rate < 10)
+            // Mode-based target caps:
+            // 'high': ~10 msg/s, 'medium': ~5 msg/s, 'low': ~2 msg/s
+            const targetRate = webSocketCaptureMode === 'high' ? 10 : webSocketCaptureMode === 'medium' ? 5 : 2;
+            if (rate <= targetRate)
                 return true;
-            if (rate < 50) {
-                // Target ~10 msg/s
-                const n = Math.max(1, Math.round(rate / 10));
-                return this._sampleCounter % n === 0;
-            }
-            if (rate < 200) {
-                // Target ~5 msg/s
-                const n = Math.max(1, Math.round(rate / 5));
-                return this._sampleCounter % n === 0;
-            }
-            // > 200: target ~2 msg/s
-            const n = Math.max(1, Math.round(rate / 2));
+            const n = Math.max(1, Math.round(rate / targetRate));
             return this._sampleCounter % n === 0;
         },
         /**
@@ -267,7 +262,9 @@ export function createConnectionTracker(id, url) {
     return tracker;
 }
 /**
- * Install WebSocket capture by wrapping the WebSocket constructor
+ * Install WebSocket capture by wrapping the WebSocket constructor.
+ * If the early-patch script ran first (world: "MAIN", document_start),
+ * uses the saved original constructor and adopts buffered connections.
  */
 export function installWebSocketCapture() {
     if (typeof window === 'undefined')
@@ -276,19 +273,22 @@ export function installWebSocketCapture() {
         return; // No WebSocket support
     if (originalWebSocket)
         return; // Already installed
-    originalWebSocket = window.WebSocket;
-    const OriginalWS = window.WebSocket;
+    // Check for early-patch: use the saved original, not the early-patch wrapper
+    const earlyOriginal = window.__GASOLINE_ORIGINAL_WS__;
+    originalWebSocket = earlyOriginal || window.WebSocket;
+    const OriginalWS = originalWebSocket;
     function GasolineWebSocket(url, protocols) {
         const ws = new OriginalWS(url, protocols);
         const connectionId = crypto.randomUUID();
         const urlString = url.toString();
+        const tracker = createConnectionTracker(connectionId, urlString);
         ws.addEventListener('open', () => {
             if (!webSocketCaptureEnabled)
                 return;
             window.postMessage({
                 type: 'GASOLINE_WS',
                 payload: { type: 'websocket', event: 'open', id: connectionId, url: urlString, ts: new Date().toISOString() },
-            }, '*');
+            }, window.location.origin);
         });
         ws.addEventListener('close', (event) => {
             if (!webSocketCaptureEnabled)
@@ -304,7 +304,7 @@ export function installWebSocketCapture() {
                     reason: event.reason,
                     ts: new Date().toISOString(),
                 },
-            }, '*');
+            }, window.location.origin);
         });
         ws.addEventListener('error', () => {
             if (!webSocketCaptureEnabled)
@@ -318,12 +318,13 @@ export function installWebSocketCapture() {
                     url: urlString,
                     ts: new Date().toISOString(),
                 },
-            }, '*');
+            }, window.location.origin);
         });
         ws.addEventListener('message', (event) => {
             if (!webSocketCaptureEnabled)
                 return;
-            if (webSocketCaptureMode !== 'messages')
+            tracker.recordMessage('incoming', event.data);
+            if (!tracker.shouldSample('incoming'))
                 return;
             const data = event.data;
             const size = getSize(data);
@@ -342,12 +343,15 @@ export function installWebSocketCapture() {
                     truncated: truncated || undefined,
                     ts: new Date().toISOString(),
                 },
-            }, '*');
+            }, window.location.origin);
         });
         // Wrap send() to capture outgoing messages
         const originalSend = ws.send.bind(ws);
         ws.send = function (data) {
-            if (webSocketCaptureEnabled && webSocketCaptureMode === 'messages') {
+            if (webSocketCaptureEnabled) {
+                tracker.recordMessage('outgoing', data);
+            }
+            if (webSocketCaptureEnabled && tracker.shouldSample('outgoing')) {
                 const size = getSize(data);
                 const formatted = formatPayload(data);
                 const { data: truncatedData, truncated } = truncateWsMessage(formatted);
@@ -377,6 +381,134 @@ export function installWebSocketCapture() {
     Object.defineProperty(GasolineWebSocket, 'CLOSING', { value: OriginalWS.CLOSING, writable: false });
     Object.defineProperty(GasolineWebSocket, 'CLOSED', { value: OriginalWS.CLOSED, writable: false });
     window.WebSocket = GasolineWebSocket;
+    // Adopt connections buffered by the early-patch script
+    adoptEarlyConnections();
+}
+/**
+ * Adopt WebSocket connections buffered by the early-patch script.
+ * For each still-active connection, creates a tracker and attaches event listeners
+ * so ongoing messages are captured. Posts synthetic "open" events for connections
+ * that opened before the inject script loaded.
+ */
+function adoptEarlyConnections() {
+    const earlyConnections = window.__GASOLINE_EARLY_WS__;
+    if (!earlyConnections || earlyConnections.length === 0) {
+        // Clean up globals even if no connections
+        delete window.__GASOLINE_ORIGINAL_WS__;
+        delete window.__GASOLINE_EARLY_WS__;
+        return;
+    }
+    let adopted = 0;
+    for (const conn of earlyConnections) {
+        const ws = conn.ws;
+        // Skip fully closed connections
+        if (ws.readyState === WebSocket.CLOSED)
+            continue;
+        adopted++;
+        const connectionId = crypto.randomUUID();
+        const urlString = conn.url;
+        const tracker = createConnectionTracker(connectionId, urlString);
+        // Post synthetic "open" event for connections that already opened
+        const hasOpened = conn.events.some((e) => e.type === 'open');
+        if (hasOpened && webSocketCaptureEnabled) {
+            const openEvent = conn.events.find((e) => e.type === 'open');
+            window.postMessage({
+                type: 'GASOLINE_WS',
+                payload: {
+                    type: 'websocket',
+                    event: 'open',
+                    id: connectionId,
+                    url: urlString,
+                    ts: openEvent ? new Date(openEvent.ts).toISOString() : new Date().toISOString(),
+                },
+            }, window.location.origin);
+        }
+        // Attach ongoing capture: close
+        ws.addEventListener('close', (event) => {
+            if (!webSocketCaptureEnabled)
+                return;
+            window.postMessage({
+                type: 'GASOLINE_WS',
+                payload: {
+                    type: 'websocket',
+                    event: 'close',
+                    id: connectionId,
+                    url: urlString,
+                    code: event.code,
+                    reason: event.reason,
+                    ts: new Date().toISOString(),
+                },
+            }, window.location.origin);
+        });
+        // Attach ongoing capture: error
+        ws.addEventListener('error', () => {
+            if (!webSocketCaptureEnabled)
+                return;
+            window.postMessage({
+                type: 'GASOLINE_WS',
+                payload: { type: 'websocket', event: 'error', id: connectionId, url: urlString, ts: new Date().toISOString() },
+            }, window.location.origin);
+        });
+        // Attach ongoing capture: incoming messages
+        ws.addEventListener('message', (event) => {
+            if (!webSocketCaptureEnabled)
+                return;
+            tracker.recordMessage('incoming', event.data);
+            if (!tracker.shouldSample('incoming'))
+                return;
+            const data = event.data;
+            const size = getSize(data);
+            const formatted = formatPayload(data);
+            const { data: truncatedData, truncated } = truncateWsMessage(formatted);
+            window.postMessage({
+                type: 'GASOLINE_WS',
+                payload: {
+                    type: 'websocket',
+                    event: 'message',
+                    id: connectionId,
+                    url: urlString,
+                    direction: 'incoming',
+                    data: truncatedData,
+                    size,
+                    truncated: truncated || undefined,
+                    ts: new Date().toISOString(),
+                },
+            }, window.location.origin);
+        });
+        // Wrap send() for outgoing capture
+        const originalSend = ws.send.bind(ws);
+        ws.send = function (data) {
+            if (webSocketCaptureEnabled) {
+                tracker.recordMessage('outgoing', data);
+            }
+            if (webSocketCaptureEnabled && tracker.shouldSample('outgoing')) {
+                const size = getSize(data);
+                const formatted = formatPayload(data);
+                const { data: truncatedData, truncated } = truncateWsMessage(formatted);
+                window.postMessage({
+                    type: 'GASOLINE_WS',
+                    payload: {
+                        type: 'websocket',
+                        event: 'message',
+                        id: connectionId,
+                        url: urlString,
+                        direction: 'outgoing',
+                        data: truncatedData,
+                        size,
+                        truncated: truncated || undefined,
+                        ts: new Date().toISOString(),
+                    },
+                }, '*');
+            }
+            return originalSend(data);
+        };
+    }
+    if (adopted > 0) {
+        console.log(`[Gasoline] Adopted ${adopted} early WebSocket connection(s)`);
+    }
+    // Clean up early-patch globals
+    delete window.__GASOLINE_ORIGINAL_WS__;
+    delete window.__GASOLINE_EARLY_WS__;
 }
 /**
  * Set the WebSocket capture mode
@@ -415,7 +547,12 @@ export function uninstallWebSocketCapture() {
 export function resetForTesting() {
     uninstallWebSocketCapture();
     webSocketCaptureEnabled = false;
-    webSocketCaptureMode = 'lifecycle';
+    webSocketCaptureMode = 'medium';
     originalWebSocket = null;
+    // Clean up early-patch globals if present
+    if (typeof window !== 'undefined') {
+        delete window.__GASOLINE_ORIGINAL_WS__;
+        delete window.__GASOLINE_EARLY_WS__;
+    }
 }
 //# sourceMappingURL=websocket.js.map

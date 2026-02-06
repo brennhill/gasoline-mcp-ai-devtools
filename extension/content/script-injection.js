@@ -10,7 +10,6 @@ const SYNC_SETTINGS = [
     { storageKey: 'performanceMarksEnabled', messageType: 'setPerformanceMarksEnabled' },
     { storageKey: 'actionReplayEnabled', messageType: 'setActionReplayEnabled' },
     { storageKey: 'networkBodyCaptureEnabled', messageType: 'setNetworkBodyCaptureEnabled' },
-    { storageKey: 'performanceSnapshotEnabled', messageType: 'setPerformanceSnapshotEnabled' },
 ];
 /**
  * Sync stored settings to the inject script after it loads.

@@ -156,6 +156,14 @@ interface GasolineAPI {
 // =============================================================================
 
 declare global {
+  /** Early-patch buffered WebSocket connection */
+  interface EarlyWsConnection {
+    ws: WebSocket
+    url: string
+    createdAt: number
+    events: Array<{ type: string; ts: number; code?: number; reason?: string }>
+  }
+
   interface Window {
     /** Gasoline developer API */
     __gasoline?: GasolineAPI
@@ -165,6 +173,12 @@ declare global {
 
     /** Fetch function (for monkey-patching) */
     fetch: typeof fetch
+
+    /** Early-patch: original WebSocket constructor saved before page scripts run */
+    __GASOLINE_ORIGINAL_WS__?: typeof WebSocket
+
+    /** Early-patch: buffered WebSocket connections created before inject script loaded */
+    __GASOLINE_EARLY_WS__?: EarlyWsConnection[]
   }
 }
 

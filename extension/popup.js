@@ -10,7 +10,7 @@ import { updateConnectionStatus } from './popup/status-display.js';
 import { initFeatureToggles } from './popup/feature-toggles.js';
 import { initTrackPageButton } from './popup/tab-tracking.js';
 import { initAiWebPilotToggle } from './popup/ai-web-pilot.js';
-import { initLogLevelSelector, handleLogLevelChange, initWebSocketModeSelector, handleWebSocketModeChange, handleClearLogs, resetClearConfirm, } from './popup/settings.js';
+import { initWebSocketModeSelector, handleWebSocketModeChange, handleClearLogs, resetClearConfirm, } from './popup/settings.js';
 // Re-export for testing
 export { resetClearConfirm, handleClearLogs };
 export { updateConnectionStatus };
@@ -18,8 +18,7 @@ export { FEATURE_TOGGLES, initFeatureToggles } from './popup/feature-toggles.js'
 export { handleFeatureToggle } from './popup/feature-toggles.js';
 export { initAiWebPilotToggle, handleAiWebPilotToggle } from './popup/ai-web-pilot.js';
 export { initTrackPageButton, handleTrackPageClick } from './popup/tab-tracking.js';
-export { handleLogLevelChange, handleWebSocketModeChange } from './popup/settings.js';
-export { initLogLevelSelector } from './popup/settings.js';
+export { handleWebSocketModeChange } from './popup/settings.js';
 export { initWebSocketModeSelector } from './popup/settings.js';
 export { isInternalUrl } from './popup/ui-utils.js';
 const DEFAULT_MAX_ENTRIES = 1000;
@@ -58,8 +57,6 @@ export async function initPopup() {
             error: 'Extension error - try reloading the extension',
         });
     }
-    // Initialize log level selector
-    await initLogLevelSelector();
     // Initialize feature toggles
     await initFeatureToggles();
     // Initialize WebSocket mode selector
@@ -88,9 +85,9 @@ export async function initPopup() {
     // Show/hide WebSocket messages warning based on mode
     const wsMessagesWarning = document.getElementById('ws-messages-warning');
     if (wsModeSelect && wsMessagesWarning) {
-        wsMessagesWarning.style.display = wsModeSelect.value === 'messages' ? 'block' : 'none';
+        wsMessagesWarning.style.display = wsModeSelect.value === 'all' ? 'block' : 'none';
         wsModeSelect.addEventListener('change', () => {
-            wsMessagesWarning.style.display = wsModeSelect.value === 'messages' ? 'block' : 'none';
+            wsMessagesWarning.style.display = wsModeSelect.value === 'all' ? 'block' : 'none';
         });
     }
     // Show/hide toggle warnings when features are enabled
@@ -108,14 +105,6 @@ export async function initPopup() {
                 warning.style.display = toggle.checked ? 'block' : 'none';
             });
         }
-    }
-    // Set up log level change handler
-    const levelSelect = document.getElementById('log-level');
-    if (levelSelect) {
-        levelSelect.addEventListener('change', (e) => {
-            const target = e.target;
-            handleLogLevelChange(target.value);
-        });
     }
     // Set up clear button handler
     const clearBtn = document.getElementById('clear-btn');
@@ -148,7 +137,7 @@ export async function initPopup() {
     });
 }
 // Initialize when DOM is ready
-if (typeof document !== 'undefined') {
+if (typeof document !== 'undefined' && typeof globalThis.process === 'undefined') {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initPopup);
     }

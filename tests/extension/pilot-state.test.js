@@ -15,7 +15,7 @@ const mockChrome = {
     onMessage: {
       addListener: mock.fn(),
     },
-    getManifest: () => ({ version: '5.2.0' }),
+    getManifest: () => ({ version: '5.7.5' }),
   },
   storage: {
     sync: {
@@ -35,7 +35,7 @@ const mockChrome = {
     },
   },
   tabs: {
-    query: mock.fn((query, callback) => callback([{ id: 1 }])),
+    query: mock.fn(() => Promise.resolve([{ id: 1 }])),
     sendMessage: mock.fn(() => Promise.resolve()),
     onRemoved: { addListener: mock.fn() },
   },

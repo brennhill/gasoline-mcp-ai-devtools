@@ -16,7 +16,9 @@ export declare function getIsTrackedTab(): boolean;
  */
 export declare function getCurrentTabId(): number | null;
 /**
- * Initialize tab tracking (call once on script load)
+ * Initialize tab tracking (call once on script load).
+ * Returns a promise that resolves when initial tracking status is known.
+ * The onChange callback fires after each status update (initial + storage changes).
  */
-export declare function initTabTracking(): void;
+export declare function initTabTracking(onChange?: (tracked: boolean) => void): Promise<void>;
 //# sourceMappingURL=tab-tracking.d.ts.map

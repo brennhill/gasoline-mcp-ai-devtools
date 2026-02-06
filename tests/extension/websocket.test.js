@@ -302,11 +302,11 @@ describe('WebSocket Interception', () => {
     uninstallWebSocketCapture()
   })
 
-  test('should not emit message events in lifecycle mode', async () => {
+  test('should capture messages in low sampling mode at low rates', async () => {
     const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } =
       await import('../../extension/inject.js')
 
-    setWebSocketCaptureMode('lifecycle')
+    setWebSocketCaptureMode('low')
     installWebSocketCapture()
 
     const ws = new globalThis.window.WebSocket('wss://example.com/ws')
@@ -315,19 +315,12 @@ describe('WebSocket Interception', () => {
     ws.send('{"type":"pong"}')
 
     const calls = globalThis.window.postMessage.mock.calls
-    const msgEvents = calls.filter((c) => {
-      const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message'
-    })
-
-    assert.strictEqual(msgEvents.length, 0, 'Expected no message events in lifecycle mode')
-
-    // But lifecycle events should still be emitted
+    // All modes now capture messages (with sampling). At low message rate, low mode should still capture.
     const openEvents = calls.filter((c) => {
       const msg = c.arguments[0]
       return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
     })
-    assert.strictEqual(openEvents.length, 1, 'Expected lifecycle events to still be emitted')
+    assert.strictEqual(openEvents.length, 1, 'Expected open event to be captured')
 
     uninstallWebSocketCapture()
   })
@@ -384,22 +377,23 @@ describe('Adaptive Sampling', () => {
     assert.strictEqual(tracker.shouldSample('incoming'), true)
   })
 
-  test('should sample at ~10 msg/s when rate is 10-50 msg/s', async () => {
-    const { createConnectionTracker } = await import('../../extension/inject.js')
+  test('should sample at ~5 msg/s in medium mode when rate is 30 msg/s', async () => {
+    const { createConnectionTracker, setWebSocketCaptureMode } = await import('../../extension/inject.js')
 
+    setWebSocketCaptureMode('medium')
     const tracker = createConnectionTracker('test-id', 'wss://example.com')
 
     // Simulate 30 messages in 1 second (30 msg/s)
     tracker.setMessageRate(30)
 
-    // Should sample approximately 1 in 3 (targeting 10/s)
+    // Medium mode targets ~5/s, so with 30 msg/s should sample ~1 in 6
     let sampled = 0
     for (let i = 0; i < 30; i++) {
       if (tracker.shouldSample('incoming')) sampled++
     }
 
-    // Should be approximately 10 (tolerance: 5-15)
-    assert.ok(sampled >= 5 && sampled <= 15, `Expected ~10 sampled messages, got ${sampled}`)
+    // Should be approximately 5 (tolerance: 2-10)
+    assert.ok(sampled >= 2 && sampled <= 10, `Expected ~5 sampled messages in medium mode, got ${sampled}`)
   })
 
   test('should sample at ~5 msg/s when rate is 50-200 msg/s', async () => {

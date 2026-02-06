@@ -2,14 +2,17 @@
  * @fileoverview Pending Query Handlers
  * Handles all query types from the server: DOM, accessibility, browser actions,
  * execute commands, and state management.
+ *
+ * All results are returned via syncClient.queueCommandResult() which routes them
+ * through the unified /sync endpoint. No direct HTTP POSTs to legacy endpoints.
  */
 
 import type { PendingQuery } from '../types'
-import * as communication from './communication'
+import type { SyncClient } from './sync-client'
 import * as eventListeners from './event-listeners'
 import * as index from './index'
 import { DebugCategory } from './debug'
-import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers'
+import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, broadcastTrackingState } from './message-handlers'
 
 // Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
 const { debugLog, diagnosticLog } = index
@@ -38,13 +41,53 @@ const ASYNC_EXECUTE_TIMEOUT_MS = 60000 // 60 seconds
 const ASYNC_BROWSER_ACTION_TIMEOUT_MS = 60000 // 60 seconds
 
 // =============================================================================
+// RESULT HELPERS
+// =============================================================================
+
+/** Send a query result back through /sync */
+function sendResult(syncClient: SyncClient, queryId: string, result: unknown): void {
+  debugLog(DebugCategory.CONNECTION, 'sendResult via /sync', { queryId, hasResult: result != null })
+  syncClient.queueCommandResult({ id: queryId, status: 'complete', result })
+}
+
+/** Send an async command result back through /sync */
+function sendAsyncResult(
+  syncClient: SyncClient,
+  queryId: string,
+  correlationId: string,
+  status: 'complete' | 'error' | 'timeout',
+  result?: unknown,
+  error?: string,
+): void {
+  debugLog(DebugCategory.CONNECTION, 'sendAsyncResult via /sync', { queryId, correlationId, status, hasResult: result != null, error: error || null })
+  syncClient.queueCommandResult({
+    id: queryId,
+    correlation_id: correlationId,
+    status,
+    result,
+    error,
+  })
+}
+
+/** Show a visual action toast on the tracked tab */
+function actionToast(tabId: number, text: string): void {
+  chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_ACTION_TOAST', text, duration_ms: 3000 }).catch(() => {})
+}
+
+// =============================================================================
 // PENDING QUERY HANDLING
 // =============================================================================
 
-export async function handlePendingQuery(query: PendingQuery): Promise<void> {
+export async function handlePendingQuery(query: PendingQuery, syncClient: SyncClient): Promise<void> {
+  debugLog(DebugCategory.CONNECTION, 'handlePendingQuery ENTER', {
+    id: query.id,
+    type: query.type,
+    correlation_id: query.correlation_id || null,
+    hasSyncClient: !!syncClient,
+  })
   try {
     if (query.type.startsWith('state_')) {
-      await handleStateQuery(query)
+      await handleStateQuery(query, syncClient)
       return
     }
 
@@ -74,20 +117,39 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
     if (!tabId) return
 
     if (query.type === 'browser_action') {
-      const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      let params: { action?: string; url?: string }
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        sendResult(syncClient, query.id, {
+          success: false,
+          error: 'invalid_params',
+          message: 'Failed to parse browser_action params as JSON',
+        })
+        return
+      }
       if (query.correlation_id) {
-        await handleAsyncBrowserAction(query, tabId, params)
+        await handleAsyncBrowserAction(query, tabId, params, syncClient)
       } else {
         const result = await handleBrowserAction(tabId, params)
-        await communication.postQueryResult(index.serverUrl, query.id, 'browser_action', result)
+        sendResult(syncClient, query.id, result)
       }
       return
     }
 
     if (query.type === 'highlight') {
-      const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      let params: unknown
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        sendResult(syncClient, query.id, {
+          error: 'invalid_params',
+          message: 'Failed to parse highlight params as JSON',
+        })
+        return
+      }
       const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params)
-      await communication.postQueryResult(index.serverUrl, query.id, 'highlight', result)
+      sendResult(syncClient, query.id, result)
       return
     }
 
@@ -103,7 +165,7 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
           height: tab.height,
         },
       }
-      await communication.postQueryResult(index.serverUrl, query.id, 'page_info', result)
+      sendResult(syncClient, query.id, result)
       return
     }
 
@@ -117,7 +179,7 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
         windowId: tab.windowId,
         index: tab.index,
       }))
-      await communication.postQueryResult(index.serverUrl, query.id, 'dom', { tabs: tabsList })
+      sendResult(syncClient, query.id, { tabs: tabsList })
       return
     }
 
@@ -134,7 +196,7 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
           entries: result?.entries?.length || 0
         })
 
-        await communication.postQueryResult(index.serverUrl, query.id, 'dom', {
+        sendResult(syncClient, query.id, {
           entries: result?.entries || [],
           pageURL: tab.url || '',
           count: result?.entries?.length || 0,
@@ -145,7 +207,7 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
           queryId: query.id,
           error: (err as Error).message
         })
-        await communication.postQueryResult(index.serverUrl, query.id, 'dom', {
+        sendResult(syncClient, query.id, {
           error: 'waterfall_query_failed',
           message: (err as Error).message || 'Failed to fetch network waterfall',
           entries: [],
@@ -160,9 +222,9 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
           type: 'DOM_QUERY',
           params: query.params,
         })
-        await communication.postQueryResult(index.serverUrl, query.id, 'dom', result)
+        sendResult(syncClient, query.id, result)
       } catch (err) {
-        await communication.postQueryResult(index.serverUrl, query.id, 'dom', {
+        sendResult(syncClient, query.id, {
           error: 'dom_query_failed',
           message: (err as Error).message || 'Failed to execute DOM query',
         })
@@ -176,9 +238,9 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
           type: 'A11Y_QUERY',
           params: query.params,
         })
-        await communication.postQueryResult(index.serverUrl, query.id, 'a11y', result)
+        sendResult(syncClient, query.id, result)
       } catch (err) {
-        await communication.postQueryResult(index.serverUrl, query.id, 'a11y', {
+        sendResult(syncClient, query.id, {
           error: 'a11y_audit_failed',
           message: (err as Error).message || 'Failed to execute accessibility audit',
         })
@@ -189,15 +251,9 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
     if (query.type === 'execute') {
       if (!index.__aiWebPilotEnabledCache) {
         if (query.correlation_id) {
-          await communication.postAsyncCommandResult(
-            index.serverUrl,
-            query.correlation_id,
-            'complete',
-            null,
-            'ai_web_pilot_disabled',
-          )
+          sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled')
         } else {
-          await communication.postQueryResult(index.serverUrl, query.id, 'execute', {
+          sendResult(syncClient, query.id, {
             success: false,
             error: 'ai_web_pilot_disabled',
             message: 'AI Web Pilot is not enabled in the extension popup',
@@ -207,7 +263,7 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
       }
 
       if (query.correlation_id) {
-        await handleAsyncExecuteCommand(query, tabId)
+        await handleAsyncExecuteCommand(query, tabId, syncClient)
       } else {
         try {
           const result = await chrome.tabs.sendMessage(tabId, {
@@ -215,14 +271,14 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
             queryId: query.id,
             params: query.params,
           })
-          await communication.postQueryResult(index.serverUrl, query.id, 'execute', result)
+          sendResult(syncClient, query.id, result)
         } catch (err) {
           let message = (err as Error).message || 'Tab communication failed'
           if (message.includes('Receiving end does not exist')) {
             message =
               'Content script not loaded. REQUIRED ACTION: Refresh the page first using this command:\n\ninteract({action: "refresh"})\n\nThen retry your command.'
           }
-          await communication.postQueryResult(index.serverUrl, query.id, 'execute', {
+          sendResult(syncClient, query.id, {
             success: false,
             error: 'content_script_not_loaded',
             message,
@@ -240,13 +296,22 @@ export async function handlePendingQuery(query: PendingQuery): Promise<void> {
   }
 }
 
-async function handleStateQuery(query: PendingQuery): Promise<void> {
+async function handleStateQuery(query: PendingQuery, syncClient: SyncClient): Promise<void> {
   if (!index.__aiWebPilotEnabledCache) {
-    await communication.postQueryResult(index.serverUrl, query.id, 'state', { error: 'ai_web_pilot_disabled' })
+    sendResult(syncClient, query.id, { error: 'ai_web_pilot_disabled' })
     return
   }
 
-  const params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+  let params: Record<string, unknown>
+  try {
+    params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+  } catch {
+    sendResult(syncClient, query.id, {
+      error: 'invalid_params',
+      message: 'Failed to parse state query params as JSON',
+    })
+    return
+  }
   const action = params.action as string
 
   try {
@@ -257,7 +322,7 @@ async function handleStateQuery(query: PendingQuery): Promise<void> {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
         const firstTab = tabs[0]
         if (!firstTab?.id) {
-          await communication.postQueryResult(index.serverUrl, query.id, 'state', { error: 'no_active_tab' })
+          sendResult(syncClient, query.id, { error: 'no_active_tab' })
           return
         }
         result = await chrome.tabs.sendMessage(firstTab.id, {
@@ -271,7 +336,7 @@ async function handleStateQuery(query: PendingQuery): Promise<void> {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
         const firstTab = tabs[0]
         if (!firstTab?.id) {
-          await communication.postQueryResult(index.serverUrl, query.id, 'state', { error: 'no_active_tab' })
+          sendResult(syncClient, query.id, { error: 'no_active_tab' })
           return
         }
         const captureResult = (await chrome.tabs.sendMessage(firstTab.id, {
@@ -285,7 +350,7 @@ async function handleStateQuery(query: PendingQuery): Promise<void> {
           cookies: string
         }
         if (captureResult.error) {
-          await communication.postQueryResult(index.serverUrl, query.id, 'state', { error: captureResult.error })
+          sendResult(syncClient, query.id, { error: captureResult.error })
           return
         }
         result = await saveStateSnapshot(params.name as string, captureResult)
@@ -295,7 +360,7 @@ async function handleStateQuery(query: PendingQuery): Promise<void> {
       case 'load': {
         const snapshot = await loadStateSnapshot(params.name as string)
         if (!snapshot) {
-          await communication.postQueryResult(index.serverUrl, query.id, 'state', {
+          sendResult(syncClient, query.id, {
             error: `Snapshot '${params.name}' not found`,
           })
           return
@@ -303,7 +368,7 @@ async function handleStateQuery(query: PendingQuery): Promise<void> {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
         const firstTab = tabs[0]
         if (!firstTab?.id) {
-          await communication.postQueryResult(index.serverUrl, query.id, 'state', { error: 'no_active_tab' })
+          sendResult(syncClient, query.id, { error: 'no_active_tab' })
           return
         }
         result = await chrome.tabs.sendMessage(firstTab.id, {
@@ -329,9 +394,9 @@ async function handleStateQuery(query: PendingQuery): Promise<void> {
         result = { error: `Unknown action: ${action}` }
     }
 
-    await communication.postQueryResult(index.serverUrl, query.id, 'state', result)
+    sendResult(syncClient, query.id, result)
   } catch (err) {
-    await communication.postQueryResult(index.serverUrl, query.id, 'state', { error: (err as Error).message })
+    sendResult(syncClient, query.id, { error: (err as Error).message })
   }
 }
 
@@ -357,6 +422,7 @@ async function handleBrowserAction(
       case 'refresh':
         await chrome.tabs.reload(tabId)
         await eventListeners.waitForTabLoad(tabId)
+        actionToast(tabId, 'Gasoline refreshed page')
         return { success: true, action: 'refresh' }
 
       case 'navigate': {
@@ -379,6 +445,8 @@ async function handleBrowserAction(
         const contentScriptLoaded = await eventListeners.pingContentScript(tabId)
 
         if (contentScriptLoaded) {
+          broadcastTrackingState().catch(() => {})
+          actionToast(tabId, `Gasoline navigated to ${url}`)
           return {
             success: true,
             action: 'navigate',
@@ -408,6 +476,7 @@ async function handleBrowserAction(
         const loadedAfterRefresh = await eventListeners.pingContentScript(tabId)
 
         if (loadedAfterRefresh) {
+          broadcastTrackingState().catch(() => {})
           return {
             success: true,
             action: 'navigate',
@@ -442,10 +511,8 @@ async function handleBrowserAction(
   }
 }
 
-async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number): Promise<void> {
+async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number, syncClient: SyncClient): Promise<void> {
   const startTime = Date.now()
-  let completed = false
-  let pendingPosted = false
 
   type ExecSuccess = { success: true; result: unknown }
   type ExecFailure = { success: false; error: string; message: string }
@@ -458,11 +525,9 @@ async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number): Pr
       params: query.params,
     })
     .then((result): ExecSuccess => {
-      completed = true
       return { success: true, result }
     })
     .catch((err: Error): ExecFailure => {
-      completed = true
       let message = err.message || 'Tab communication failed'
       if (message.includes('Receiving end does not exist')) {
         message =
@@ -475,17 +540,6 @@ async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number): Pr
       }
     })
 
-  const pendingTimer = setTimeout(async () => {
-    if (!completed && !pendingPosted) {
-      pendingPosted = true
-      await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id!, 'pending')
-      debugLog(DebugCategory.CONNECTION, 'Posted pending status for async command', {
-        correlationId: query.correlation_id,
-        elapsed: Date.now() - startTime,
-      })
-    }
-  }, 3000)
-
   try {
     const execResult = await Promise.race([
       executionPromise,
@@ -494,13 +548,13 @@ async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number): Pr
       }),
     ])
 
-    clearTimeout(pendingTimer)
-
     if (execResult.success) {
-      await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id!, 'complete', execResult.result)
+      actionToast(tabId, 'Gasoline executed script')
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', execResult.result)
     } else {
-      await communication.postAsyncCommandResult(
-        index.serverUrl,
+      sendAsyncResult(
+        syncClient,
+        query.id,
         query.correlation_id!,
         'complete',
         null,
@@ -514,15 +568,13 @@ async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number): Pr
       success: execResult.success,
     })
   } catch {
-    clearTimeout(pendingTimer)
-
     const timeoutMessage = `JavaScript execution exceeded 10s timeout. RECOMMENDED ACTIONS:
 
 1. Break your task into smaller discrete steps that execute in < 2s for best results
 2. Check your script for infinite loops or blocking operations
 3. Simplify the operation or target a smaller DOM scope`
 
-    await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id!, 'timeout', null, timeoutMessage)
+    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'timeout', null, timeoutMessage)
 
     debugLog(DebugCategory.CONNECTION, 'Async command timeout', {
       correlationId: query.correlation_id,
@@ -535,34 +587,20 @@ async function handleAsyncBrowserAction(
   query: PendingQuery,
   tabId: number,
   params: { action?: string; url?: string },
+  syncClient: SyncClient,
 ): Promise<void> {
   const startTime = Date.now()
-  let completed = false
-  let pendingPosted = false
 
   const executionPromise = handleBrowserAction(tabId, params)
     .then((result) => {
-      completed = true
       return result
     })
     .catch((err: Error) => {
-      completed = true
       return {
-        success: false,
+        success: false as const,
         error: err.message || 'Browser action failed',
       }
     })
-
-  const pendingTimer = setTimeout(async () => {
-    if (!completed && !pendingPosted) {
-      pendingPosted = true
-      await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id!, 'pending')
-      debugLog(DebugCategory.CONNECTION, 'Posted pending status for async browser action', {
-        correlationId: query.correlation_id,
-        elapsed: Date.now() - startTime,
-      })
-    }
-  }, 3000)
 
   try {
     const execResult = await Promise.race([
@@ -572,13 +610,12 @@ async function handleAsyncBrowserAction(
       }),
     ])
 
-    clearTimeout(pendingTimer)
-
     if (execResult.success !== false) {
-      await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id!, 'complete', execResult)
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', execResult)
     } else {
-      await communication.postAsyncCommandResult(
-        index.serverUrl,
+      sendAsyncResult(
+        syncClient,
+        query.id,
         query.correlation_id!,
         'complete',
         null,
@@ -592,15 +629,13 @@ async function handleAsyncBrowserAction(
       success: execResult.success !== false,
     })
   } catch {
-    clearTimeout(pendingTimer)
-
     const timeoutMessage = `Browser action exceeded 10s timeout. DIAGNOSTIC STEPS:
 
 1. Check page status: observe({what: 'page'})
 2. Check for console errors: observe({what: 'errors'})
 3. Check network requests: observe({what: 'network', status_min: 400})`
 
-    await communication.postAsyncCommandResult(index.serverUrl, query.correlation_id!, 'timeout', null, timeoutMessage)
+    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'timeout', null, timeoutMessage)
 
     debugLog(DebugCategory.CONNECTION, 'Async browser action timeout', {
       correlationId: query.correlation_id,

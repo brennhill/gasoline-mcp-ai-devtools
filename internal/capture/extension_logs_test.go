@@ -193,7 +193,7 @@ func TestHandleExtensionLogs_RejectsOversizedPayload(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 
-	// Create a payload larger than maxPostBodySize (5MB)
+	// Create a payload larger than maxExtensionPostBody (5MB)
 	largeMessage := strings.Repeat("x", 6*1024*1024)
 	payload := map[string]any{
 		"logs": []map[string]any{
@@ -224,8 +224,8 @@ func TestExtensionLogs_RingBufferEviction(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 
-	// Add maxExtensionLogs + 10 entries (should keep only last maxExtensionLogs)
-	entriesToAdd := maxExtensionLogs + 10
+	// Add MaxExtensionLogs + 10 entries (should keep only last MaxExtensionLogs)
+	entriesToAdd := MaxExtensionLogs + 10
 
 	for i := 1; i <= entriesToAdd; i++ {
 		payload := map[string]any{
@@ -249,8 +249,8 @@ func TestExtensionLogs_RingBufferEviction(t *testing.T) {
 	count := len(capture.extensionLogs)
 	capture.mu.RUnlock()
 
-	if count != maxExtensionLogs {
-		t.Errorf("Expected %d entries (capacity), got %d", maxExtensionLogs, count)
+	if count != MaxExtensionLogs {
+		t.Errorf("Expected %d entries (capacity), got %d", MaxExtensionLogs, count)
 	}
 }
 
@@ -305,8 +305,8 @@ func TestExtensionLogs_PreallocatedBuffer(t *testing.T) {
 		t.Error("Extension logs buffer should be pre-allocated, not nil")
 	}
 
-	if cap(capture.extensionLogs) != maxExtensionLogs {
-		t.Errorf("Expected pre-allocated capacity %d, got %d", maxExtensionLogs, cap(capture.extensionLogs))
+	if cap(capture.extensionLogs) != MaxExtensionLogs {
+		t.Errorf("Expected pre-allocated capacity %d, got %d", MaxExtensionLogs, cap(capture.extensionLogs))
 	}
 }
 

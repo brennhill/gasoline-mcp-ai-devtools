@@ -18,17 +18,16 @@ const mockChrome = {
   },
   storage: {
     local: {
-      get: mock.fn((keys, callback) =>
-        callback({
-          logLevel: 'error',
-        }),
-      ),
+      get: mock.fn((keys, callback) => callback({})),
       set: mock.fn((data, callback) => callback && callback()),
       remove: mock.fn((keys, callback) => callback && callback()),
     },
     sync: {
       get: mock.fn((keys, callback) => callback({})),
       set: mock.fn((data, callback) => callback && callback()),
+    },
+    onChanged: {
+      addListener: mock.fn(),
     },
   },
   tabs: {
@@ -84,7 +83,7 @@ describe('Popup State Display', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error' }),
+      callback({}),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -144,67 +143,8 @@ describe('Popup State Display', () => {
   })
 })
 
-describe('Log Level Selector', () => {
-  beforeEach(() => {
-    mock.reset()
-    mockDocument = createMockDocument()
-    globalThis.document = mockDocument
-    // Restore default mock implementations after reset
-    mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
-    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error' }),
-    )
-    mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
-      callback([{ id: 1, url: 'http://localhost:3000' }]),
-    )
-  })
-
-  test('should load saved log level on init', async () => {
-    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
-      callback({ logLevel: 'warn' })
-    })
-
-    const { initLogLevelSelector } = await import('../../extension/popup.js')
-
-    await initLogLevelSelector()
-
-    const levelSelect = mockDocument.getElementById('log-level')
-    assert.strictEqual(levelSelect.value, 'warn')
-  })
-
-  test('should save log level on change', async () => {
-    const { handleLogLevelChange } = await import('../../extension/popup.js')
-
-    await handleLogLevelChange('error')
-
-    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0]?.logLevel === 'error'))
-  })
-
-  test('should notify background when level changes', async () => {
-    const { handleLogLevelChange } = await import('../../extension/popup.js')
-
-    await handleLogLevelChange('all')
-
-    assert.ok(
-      mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0]?.type === 'setLogLevel' && c.arguments[0]?.level === 'all',
-      ),
-    )
-  })
-
-  test('should default to "error" level', async () => {
-    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
-      callback({}) // No saved value
-    })
-
-    const { initLogLevelSelector } = await import('../../extension/popup.js')
-
-    await initLogLevelSelector()
-
-    const levelSelect = mockDocument.getElementById('log-level')
-    assert.strictEqual(levelSelect.value, 'error')
-  })
-})
+// Log Level Selector tests removed — log level dropdown was removed from popup UI.
+// Log level is now hardcoded to 'all' in background/init.ts.
 
 describe('Clear Logs Button', () => {
   beforeEach(async () => {
@@ -217,7 +157,7 @@ describe('Clear Logs Button', () => {
       return Promise.resolve()
     })
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error' }),
+      callback({}),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -326,7 +266,7 @@ describe('Status Updates', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error' }),
+      callback({}),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -392,7 +332,7 @@ describe('Context Annotation Warning', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error' }),
+      callback({}),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -485,7 +425,7 @@ describe('Quick Actions', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error' }),
+      callback({}),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -519,7 +459,7 @@ describe('Server URL Display', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error' }),
+      callback({}),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -559,7 +499,7 @@ describe('WebSocket Toggle', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error' }),
+      callback({}),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -569,7 +509,7 @@ describe('WebSocket Toggle', () => {
 
   test('should load saved WebSocket capture state on init', async () => {
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
-      callback({ webSocketCaptureEnabled: true, webSocketCaptureMode: 'messages' })
+      callback({ webSocketCaptureEnabled: true, webSocketCaptureMode: 'high' })
     })
 
     const { initFeatureToggles } = await import('../../extension/popup.js')
@@ -580,9 +520,9 @@ describe('WebSocket Toggle', () => {
     assert.strictEqual(wsToggle.checked, true)
   })
 
-  test('should default WebSocket capture to OFF', async () => {
+  test('should default WebSocket capture to ON', async () => {
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
-      callback({}) // No saved value
+      callback({}) // No saved value — defaults to ON
     })
 
     const { initFeatureToggles } = await import('../../extension/popup.js')
@@ -590,7 +530,7 @@ describe('WebSocket Toggle', () => {
     await initFeatureToggles()
 
     const wsToggle = mockDocument.getElementById('toggle-websocket')
-    assert.strictEqual(wsToggle.checked, false)
+    assert.strictEqual(wsToggle.checked, true)
   })
 
   test('should send message to background when WebSocket toggled', async () => {
@@ -608,16 +548,16 @@ describe('WebSocket Toggle', () => {
   test('should send mode change message to background', async () => {
     const { handleWebSocketModeChange } = await import('../../extension/popup.js')
 
-    handleWebSocketModeChange('messages')
+    handleWebSocketModeChange('high')
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setWebSocketCaptureMode' && c.arguments[0].mode === 'messages',
+        (c) => c.arguments[0].type === 'setWebSocketCaptureMode' && c.arguments[0].mode === 'high',
       ),
     )
   })
 
-  test('should default mode to lifecycle', async () => {
+  test('should default mode to medium', async () => {
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
       callback({}) // No saved value
     })
@@ -627,12 +567,12 @@ describe('WebSocket Toggle', () => {
     await initWebSocketModeSelector()
 
     const modeSelect = mockDocument.getElementById('ws-mode')
-    assert.strictEqual(modeSelect.value, 'lifecycle')
+    assert.strictEqual(modeSelect.value, 'medium')
   })
 
   test('should load saved mode on init', async () => {
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
-      callback({ webSocketCaptureMode: 'messages' })
+      callback({ webSocketCaptureMode: 'high' })
     })
 
     const { initWebSocketModeSelector } = await import('../../extension/popup.js')
@@ -640,7 +580,7 @@ describe('WebSocket Toggle', () => {
     await initWebSocketModeSelector()
 
     const modeSelect = mockDocument.getElementById('ws-mode')
-    assert.strictEqual(modeSelect.value, 'messages')
+    assert.strictEqual(modeSelect.value, 'high')
   })
 })
 
@@ -652,7 +592,7 @@ describe('Debug Logging', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error' }),
+      callback({}),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -682,7 +622,7 @@ describe('Health Indicators', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error' }),
+      callback({}),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
@@ -864,7 +804,7 @@ describe('Network Body Capture Toggle', () => {
     // Restore default mock implementations after reset
     mockChrome.runtime.sendMessage.mock.mockImplementation(() => Promise.resolve())
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) =>
-      callback({ logLevel: 'error' }),
+      callback({}),
     )
     mockChrome.tabs.query.mock.mockImplementation((queryInfo, callback) =>
       callback([{ id: 1, url: 'http://localhost:3000' }]),
