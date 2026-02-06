@@ -46,10 +46,14 @@ compile-ts:
 		echo "❌ ERROR: Inject script bundling failed"; \
 		exit 1; \
 	fi
+	@if [ ! -f extension/early-patch.bundled.js ]; then \
+		echo "❌ ERROR: Early-patch script bundling failed"; \
+		exit 1; \
+	fi
 	@echo "✅ TypeScript compilation successful"
 
 test:
-	CGO_ENABLED=0 go test -v ./cmd/dev-console/...
+	CGO_ENABLED=0 go test -v ./...
 
 test-js:
 	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
@@ -61,10 +65,10 @@ test-fast:
 test-all: test test-js
 
 test-race:
-	go test -race -v ./cmd/dev-console/...
+	go test -race -v ./...
 
 test-cover:
-	go test -coverprofile=coverage.out ./cmd/dev-console/...
+	go test -coverprofile=coverage.out ./...
 	@go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//' | \
 		awk '{if ($$1 < 89) {print "FAIL: Coverage " $$1 "% is below 89% threshold"; exit 1} else {print "OK: Coverage " $$1 "%"}}'
 
@@ -188,7 +192,8 @@ extension-zip:
 	@mkdir -p $(BUILD_DIR)
 	@rm -f $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip
 	cd extension && zip -r ../$(BUILD_DIR)/gasoline-extension-v$(VERSION).zip \
-		manifest.json background.js content.js inject.js \
+		manifest.json background.js content.js inject.js early-patch.js \
+		early-patch.bundled.js content.bundled.js inject.bundled.js \
 		popup.html popup.js options.html options.js \
 		icons/ lib/ \
 		-x "*.DS_Store" "package.json"

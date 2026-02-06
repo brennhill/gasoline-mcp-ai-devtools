@@ -958,7 +958,8 @@ function getPerformanceMeasures(options = {}) {
     return measures.map((m) => ({
       name: m.name,
       startTime: m.startTime,
-      duration: m.duration
+      duration: m.duration,
+      ...m.detail !== void 0 ? { detail: m.detail } : {}
     }));
   } catch {
     return [];
@@ -1145,7 +1146,7 @@ function postLog(payload) {
       // Any other fields from payload (excluding the ones we destructured)
       ...otherFields
     }
-  }, "*");
+  }, window.location.origin);
 }
 
 // extension/lib/console.js
@@ -1567,8 +1568,8 @@ function uninstallExceptionCapture() {
 // extension/lib/websocket.js
 var _textEncoder = typeof TextEncoder !== "undefined" ? new TextEncoder() : null;
 var originalWebSocket = null;
-var webSocketCaptureEnabled = false;
-var webSocketCaptureMode = "lifecycle";
+var webSocketCaptureEnabled = true;
+var webSocketCaptureMode = "medium";
 function getSize(data) {
   if (typeof data === "string") {
     return _textEncoder ? _textEncoder.encode(data).length : data.length;
@@ -1685,20 +1686,15 @@ function createConnectionTracker(id, url) {
      */
     shouldSample(_direction) {
       this._sampleCounter++;
+      if (webSocketCaptureMode === "all")
+        return true;
       if (this.messageCount > 0 && this.messageCount <= 5)
         return true;
       const rate = this._messageRate || this.getMessageRate();
-      if (rate < 10)
+      const targetRate = webSocketCaptureMode === "high" ? 10 : webSocketCaptureMode === "medium" ? 5 : 2;
+      if (rate <= targetRate)
         return true;
-      if (rate < 50) {
-        const n2 = Math.max(1, Math.round(rate / 10));
-        return this._sampleCounter % n2 === 0;
-      }
-      if (rate < 200) {
-        const n2 = Math.max(1, Math.round(rate / 5));
-        return this._sampleCounter % n2 === 0;
-      }
-      const n = Math.max(1, Math.round(rate / 2));
+      const n = Math.max(1, Math.round(rate / targetRate));
       return this._sampleCounter % n === 0;
     },
     /**
@@ -1795,19 +1791,21 @@ function installWebSocketCapture() {
     return;
   if (originalWebSocket)
     return;
-  originalWebSocket = window.WebSocket;
-  const OriginalWS = window.WebSocket;
+  const earlyOriginal = window.__GASOLINE_ORIGINAL_WS__;
+  originalWebSocket = earlyOriginal || window.WebSocket;
+  const OriginalWS = originalWebSocket;
   function GasolineWebSocket(url, protocols) {
     const ws = new OriginalWS(url, protocols);
     const connectionId = crypto.randomUUID();
     const urlString = url.toString();
+    const tracker = createConnectionTracker(connectionId, urlString);
     ws.addEventListener("open", () => {
       if (!webSocketCaptureEnabled)
         return;
       window.postMessage({
         type: "GASOLINE_WS",
         payload: { type: "websocket", event: "open", id: connectionId, url: urlString, ts: (/* @__PURE__ */ new Date()).toISOString() }
-      }, "*");
+      }, window.location.origin);
     });
     ws.addEventListener("close", (event) => {
       if (!webSocketCaptureEnabled)
@@ -1823,7 +1821,7 @@ function installWebSocketCapture() {
           reason: event.reason,
           ts: (/* @__PURE__ */ new Date()).toISOString()
         }
-      }, "*");
+      }, window.location.origin);
     });
     ws.addEventListener("error", () => {
       if (!webSocketCaptureEnabled)
@@ -1837,12 +1835,13 @@ function installWebSocketCapture() {
           url: urlString,
           ts: (/* @__PURE__ */ new Date()).toISOString()
         }
-      }, "*");
+      }, window.location.origin);
     });
     ws.addEventListener("message", (event) => {
       if (!webSocketCaptureEnabled)
         return;
-      if (webSocketCaptureMode !== "messages")
+      tracker.recordMessage("incoming", event.data);
+      if (!tracker.shouldSample("incoming"))
         return;
       const data = event.data;
       const size = getSize(data);
@@ -1861,11 +1860,14 @@ function installWebSocketCapture() {
           truncated: truncated || void 0,
           ts: (/* @__PURE__ */ new Date()).toISOString()
         }
-      }, "*");
+      }, window.location.origin);
     });
     const originalSend = ws.send.bind(ws);
     ws.send = function(data) {
-      if (webSocketCaptureEnabled && webSocketCaptureMode === "messages") {
+      if (webSocketCaptureEnabled) {
+        tracker.recordMessage("outgoing", data);
+      }
+      if (webSocketCaptureEnabled && tracker.shouldSample("outgoing")) {
         const size = getSize(data);
         const formatted = formatPayload(data);
         const { data: truncatedData, truncated } = truncateWsMessage(formatted);
@@ -1894,6 +1896,119 @@ function installWebSocketCapture() {
   Object.defineProperty(GasolineWebSocket, "CLOSING", { value: OriginalWS.CLOSING, writable: false });
   Object.defineProperty(GasolineWebSocket, "CLOSED", { value: OriginalWS.CLOSED, writable: false });
   window.WebSocket = GasolineWebSocket;
+  adoptEarlyConnections();
+}
+function adoptEarlyConnections() {
+  const earlyConnections = window.__GASOLINE_EARLY_WS__;
+  if (!earlyConnections || earlyConnections.length === 0) {
+    delete window.__GASOLINE_ORIGINAL_WS__;
+    delete window.__GASOLINE_EARLY_WS__;
+    return;
+  }
+  let adopted = 0;
+  for (const conn of earlyConnections) {
+    const ws = conn.ws;
+    if (ws.readyState === WebSocket.CLOSED)
+      continue;
+    adopted++;
+    const connectionId = crypto.randomUUID();
+    const urlString = conn.url;
+    const tracker = createConnectionTracker(connectionId, urlString);
+    const hasOpened = conn.events.some((e) => e.type === "open");
+    if (hasOpened && webSocketCaptureEnabled) {
+      const openEvent = conn.events.find((e) => e.type === "open");
+      window.postMessage({
+        type: "GASOLINE_WS",
+        payload: {
+          type: "websocket",
+          event: "open",
+          id: connectionId,
+          url: urlString,
+          ts: openEvent ? new Date(openEvent.ts).toISOString() : (/* @__PURE__ */ new Date()).toISOString()
+        }
+      }, window.location.origin);
+    }
+    ws.addEventListener("close", (event) => {
+      if (!webSocketCaptureEnabled)
+        return;
+      window.postMessage({
+        type: "GASOLINE_WS",
+        payload: {
+          type: "websocket",
+          event: "close",
+          id: connectionId,
+          url: urlString,
+          code: event.code,
+          reason: event.reason,
+          ts: (/* @__PURE__ */ new Date()).toISOString()
+        }
+      }, window.location.origin);
+    });
+    ws.addEventListener("error", () => {
+      if (!webSocketCaptureEnabled)
+        return;
+      window.postMessage({
+        type: "GASOLINE_WS",
+        payload: { type: "websocket", event: "error", id: connectionId, url: urlString, ts: (/* @__PURE__ */ new Date()).toISOString() }
+      }, window.location.origin);
+    });
+    ws.addEventListener("message", (event) => {
+      if (!webSocketCaptureEnabled)
+        return;
+      tracker.recordMessage("incoming", event.data);
+      if (!tracker.shouldSample("incoming"))
+        return;
+      const data = event.data;
+      const size = getSize(data);
+      const formatted = formatPayload(data);
+      const { data: truncatedData, truncated } = truncateWsMessage(formatted);
+      window.postMessage({
+        type: "GASOLINE_WS",
+        payload: {
+          type: "websocket",
+          event: "message",
+          id: connectionId,
+          url: urlString,
+          direction: "incoming",
+          data: truncatedData,
+          size,
+          truncated: truncated || void 0,
+          ts: (/* @__PURE__ */ new Date()).toISOString()
+        }
+      }, window.location.origin);
+    });
+    const originalSend = ws.send.bind(ws);
+    ws.send = function(data) {
+      if (webSocketCaptureEnabled) {
+        tracker.recordMessage("outgoing", data);
+      }
+      if (webSocketCaptureEnabled && tracker.shouldSample("outgoing")) {
+        const size = getSize(data);
+        const formatted = formatPayload(data);
+        const { data: truncatedData, truncated } = truncateWsMessage(formatted);
+        window.postMessage({
+          type: "GASOLINE_WS",
+          payload: {
+            type: "websocket",
+            event: "message",
+            id: connectionId,
+            url: urlString,
+            direction: "outgoing",
+            data: truncatedData,
+            size,
+            truncated: truncated || void 0,
+            ts: (/* @__PURE__ */ new Date()).toISOString()
+          }
+        }, "*");
+      }
+      return originalSend(data);
+    };
+  }
+  if (adopted > 0) {
+    console.log(`[Gasoline] Adopted ${adopted} early WebSocket connection(s)`);
+  }
+  delete window.__GASOLINE_ORIGINAL_WS__;
+  delete window.__GASOLINE_EARLY_WS__;
 }
 function setWebSocketCaptureMode(mode) {
   webSocketCaptureMode = mode;
@@ -2526,7 +2641,7 @@ function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: "5.2.0"
+    version: "5.8.0"
   };
 }
 function uninstallGasolineAPI() {
@@ -2930,7 +3045,7 @@ function handleSetting(data) {
       }
       break;
     case "setWebSocketCaptureMode":
-      setWebSocketCaptureMode(data.mode || "lifecycle");
+      setWebSocketCaptureMode(data.mode || "medium");
       break;
     case "setPerformanceSnapshotEnabled":
       setPerformanceSnapshotEnabled(data.enabled);
@@ -3091,10 +3206,21 @@ function handleGetWaterfall(data) {
   const { requestId } = data;
   try {
     const entries = getNetworkWaterfall({});
+    const snakeEntries = (entries || []).map((e) => ({
+      url: e.url,
+      name: e.url,
+      initiator_type: e.initiatorType,
+      start_time: e.startTime,
+      duration: e.duration,
+      transfer_size: e.transferSize,
+      encoded_body_size: e.encodedBodySize,
+      decoded_body_size: e.decodedBodySize
+    }));
     window.postMessage({
       type: "GASOLINE_WATERFALL_RESPONSE",
       requestId,
-      entries: entries || []
+      entries: snakeEntries,
+      pageURL: window.location.href
     }, window.location.origin);
   } catch (err) {
     console.error("[Gasoline] Failed to get network waterfall:", err);
@@ -3303,7 +3429,7 @@ if (typeof window !== "undefined") {
 }
 
 // extension/inject/index.js
-if (typeof window !== "undefined" && typeof document !== "undefined") {
+if (typeof window !== "undefined" && typeof document !== "undefined" && typeof globalThis.process === "undefined") {
   installPhase1();
   installMessageListener(captureState, restoreState);
   installGasolineAPI();
@@ -3438,6 +3564,7 @@ export {
   uninstallPerfObservers,
   uninstallPerformanceCapture,
   uninstallWebSocketCapture,
+  wrapFetch,
   wrapFetchWithBodies
 };
 //# sourceMappingURL=inject.bundled.js.map

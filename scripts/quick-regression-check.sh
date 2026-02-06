@@ -62,7 +62,7 @@ echo "5️⃣  Checking for stubs..."
 if grep -q 'queries.*\[\]interface{}{}' internal/capture/handlers.go 2>/dev/null; then
     echo "   ❌ STUB in handlers.go"
     ERRORS=$((ERRORS + 1))
-elif ! grep -A 20 'func (h \*ToolHandler) toolObserveCommandResult' cmd/dev-console/tools_observe.go 2>/dev/null | grep -q 'GetCommandResult'; then
+elif ! grep -A 20 'func (h \*ToolHandler) toolObserveCommandResult' cmd/dev-console/tools_observe_analysis.go 2>/dev/null | grep -q 'GetCommandResult'; then
     echo "   ❌ STUB in toolObserveCommandResult"
     ERRORS=$((ERRORS + 1))
 else

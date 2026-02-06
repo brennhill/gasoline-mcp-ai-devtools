@@ -73,7 +73,7 @@ export function createBatcherWithCircuitBreaker<T>(
 
   const cb =
     options.sharedCircuitBreaker ||
-    createCircuitBreaker(() => Promise.reject(new Error('batcher circuit breaker')), {
+    createCircuitBreaker(sendFn as (args: unknown) => Promise<unknown>, {
       maxFailures,
       resetTimeout,
       initialBackoff: 0,

@@ -363,13 +363,17 @@ type queryResultEntry struct {
 // ============================================
 
 const (
-	maxWSEvents             = 500
-	maxNetworkBodies        = 100
-	maxExtensionLogs        = 500
-	maxEnhancedActions      = 50
-	maxActiveConns          = 20
-	maxClosedConns          = 10
-	maxPendingQueries       = 5
+	// Buffer capacity constants (exported for health metrics)
+	MaxWSEvents        = 500
+	MaxNetworkBodies   = 100
+	MaxExtensionLogs   = 500
+	MaxEnhancedActions = 50
+	RateLimitThreshold = 1000
+	MemoryHardLimit    = 50 * 1024 * 1024 // 50MB
+
+	maxActiveConns    = 20
+	maxClosedConns    = 10
+	maxPendingQueries = 5
 
 	// Network waterfall capacity configuration
 	DefaultNetworkWaterfallCapacity = 1000
@@ -378,17 +382,15 @@ const (
 
 	defaultWSLimit          = 50
 	defaultBodyLimit        = 20
-	maxPostBodySize         = 5 << 20         // 5MB - max size for incoming POST request bodies
+	maxExtensionPostBody    = 5 << 20         // 5MB - max size for incoming extension POST bodies
 	maxRequestBodySize      = 8192            // 8KB - truncation limit for captured request bodies
 	maxResponseBodySize     = 16384           // 16KB
 	wsBufferMemoryLimit     = 4 * 1024 * 1024 // 4MB
 	nbBufferMemoryLimit     = 8 * 1024 * 1024 // 8MB
-	rateLimitThreshold      = 1000
-	memoryHardLimit         = 50 * 1024 * 1024 // 50MB
 	circuitOpenStreakCount  = 5                // consecutive seconds over threshold to open circuit
 	circuitCloseSeconds     = 10               // seconds below threshold to close circuit
 	circuitCloseMemoryLimit = 30 * 1024 * 1024 // 30MB - memory must be below this to close circuit
-	rateWindow              = 5 * time.Second // rolling window for msg/s calculation
+	rateWindow              = 5 * time.Second  // rolling window for msg/s calculation
 )
 
 // ============================================
@@ -478,7 +480,7 @@ type Capture struct {
 	// Network Body Buffer (Ring Buffer)
 	// ============================================
 
-	networkBodies     []NetworkBody   // Ring buffer of HTTP request/response bodies (cap: maxNetworkBodies=100). Parallel with networkAddedAt.
+	networkBodies     []NetworkBody   // Ring buffer of HTTP request/response bodies (cap: MaxNetworkBodies=100). Parallel with networkAddedAt.
 	networkAddedAt    []time.Time     // Parallel slice: insertion time for each networkBodies[i]. Used for TTL filtering and LRU eviction.
 	networkTotalAdded int64           // Monotonic counter: total bodies ever added (never reset/decremented). Survives eviction. Used for cursor-based delta queries.
 	nbMemoryTotal     int64           // Approximate memory: len(RequestBody)+len(ResponseBody)+300 bytes per entry. Updated incrementally on append/eviction.
@@ -522,7 +524,7 @@ type Capture struct {
 	// Rate Limiting & Circuit Breaker
 	// ============================================
 
-	windowEventCount     int       // Events in current 1-second window. Reset to 0 when window expires. Compared to rateLimitThreshold (1000 events/sec).
+	windowEventCount     int       // Events in current 1-second window. Reset to 0 when window expires. Compared to RateLimitThreshold (1000 events/sec).
 	rateWindowStart      time.Time // Monotonic time: when current window started. Used to detect expiration (now.Sub(rateWindowStart) > 1 second).
 	rateLimitStreak      int       // Consecutive seconds window was over threshold. Incremented per second if over, reset to 0 if below. Circuit opens at 5 consecutive seconds.
 	lastBelowThresholdAt time.Time // When rate first dropped below threshold. Initialized to time.Now() at startup (prevents false circuit-close on boot). Set to zero when over threshold. Used to measure "below threshold duration" for circuit close (10+ seconds required).
@@ -624,10 +626,10 @@ type Capture struct {
 func NewCapture() *Capture {
 	now := time.Now()
 	c := &Capture{
-		wsEvents:                 make([]WebSocketEvent, 0, maxWSEvents),
-		networkBodies:            make([]NetworkBody, 0, maxNetworkBodies),
-		extensionLogs:            make([]ExtensionLog, 0, maxExtensionLogs),
-		enhancedActions:          make([]EnhancedAction, 0, maxEnhancedActions),
+		wsEvents:                 make([]WebSocketEvent, 0, MaxWSEvents),
+		networkBodies:            make([]NetworkBody, 0, MaxNetworkBodies),
+		extensionLogs:            make([]ExtensionLog, 0, MaxExtensionLogs),
+		enhancedActions:          make([]EnhancedAction, 0, MaxEnhancedActions),
 		networkWaterfall:         make([]NetworkWaterfallEntry, 0, DefaultNetworkWaterfallCapacity),
 		networkWaterfallCapacity: DefaultNetworkWaterfallCapacity,
 		connections:              make(map[string]*connectionState),

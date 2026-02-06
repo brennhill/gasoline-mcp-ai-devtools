@@ -44,7 +44,7 @@ func (c *Capture) GetNetworkWaterfallEntries() []NetworkWaterfallEntry {
 	defer c.mu.RUnlock()
 
 	if len(c.networkWaterfall) == 0 {
-		return nil
+		return []NetworkWaterfallEntry{}
 	}
 
 	result := make([]NetworkWaterfallEntry, len(c.networkWaterfall))

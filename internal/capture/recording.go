@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	recordingtypes "github.com/dev-console/dev-console/internal/recording"
@@ -245,16 +246,11 @@ func (c *Capture) ListRecordings(limit int) ([]Recording, error) {
 	}
 
 	// Sort by created_at (newest first)
-	// Simple bubble sort for now (could use sort.Slice)
-	for i := 0; i < len(recordings)-1; i++ {
-		for j := i + 1; j < len(recordings); j++ {
-			t1, _ := time.Parse(time.RFC3339, recordings[i].CreatedAt)
-			t2, _ := time.Parse(time.RFC3339, recordings[j].CreatedAt)
-			if t2.After(t1) {
-				recordings[i], recordings[j] = recordings[j], recordings[i]
-			}
-		}
-	}
+	sort.Slice(recordings, func(i, j int) bool {
+		t1, _ := time.Parse(time.RFC3339, recordings[i].CreatedAt)
+		t2, _ := time.Parse(time.RFC3339, recordings[j].CreatedAt)
+		return t2.Before(t1)
+	})
 
 	return recordings, nil
 }

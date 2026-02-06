@@ -1,290 +1,269 @@
 #!/bin/bash
-set -e
+# test-all-tools-comprehensive.sh — Parallel UAT runner for Gasoline MCP.
+# Launches 8 groups of category tests, collects results, prints summary.
+# Compatible with bash 3.2+ (macOS default).
+# NO set -e: we need to collect all results even if some groups fail.
 
-# Comprehensive MCP Tool Test Suite
-# Tests all tools with various scenarios: cold start, immediate use, concurrent calls
+# ── Dependency Checks ─────────────────────────────────────
+check_deps() {
+    local missing=""
 
-PORT=7890
-# Use local build if available, otherwise fall back to PATH
-if [ -x "./gasoline-mcp" ]; then
-    WRAPPER="./gasoline-mcp"
-else
-    WRAPPER="gasoline-mcp"
-fi
-TEMP_DIR=$(mktemp -d)
+    for cmd in jq curl lsof; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            missing="$missing $cmd"
+        fi
+    done
 
-echo "========================================"
-echo "Comprehensive MCP Tool Test Suite"
-echo "========================================"
-echo ""
-echo "Port: $PORT"
-echo "Temp dir: $TEMP_DIR"
-echo ""
+    # timeout may be gtimeout on macOS
+    if ! command -v timeout >/dev/null 2>&1 && ! command -v gtimeout >/dev/null 2>&1; then
+        missing="$missing timeout(brew install coreutils)"
+    fi
 
-# Helper: Kill all servers
-kill_server() {
-    lsof -ti :$PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
-    sleep 0.5
-}
-
-# Helper: Send MCP request and check response
-send_mcp_request() {
-    local name=$1
-    local request=$2
-    local log_file="$TEMP_DIR/${name}.log"
-
-    echo "$request" | $WRAPPER --port $PORT > "$log_file" 2>&1
-
-    # Check for JSON-RPC response
-    if grep -q '"result"' "$log_file" 2>/dev/null; then
-        echo "  ✅ $name"
-        return 0
-    elif grep -q '"error"' "$log_file" 2>/dev/null; then
-        echo "  ⚠️  $name (returned error)"
-        return 0
-    else
-        echo "  ❌ $name (no response)"
-        return 1
+    if [ -n "$missing" ]; then
+        echo "FATAL: Missing dependencies:$missing" >&2
+        exit 1
     fi
 }
 
-# Test 1: Cold start + list tools
-echo "Test 1: Cold Start + List Tools"
-echo "================================"
-kill_server
+check_deps
 
-REQUEST='{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
-send_mcp_request "cold_start_list_tools" "$REQUEST"
+# ── Resolve Binary ────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+TESTS_DIR="$SCRIPT_DIR/tests"
 
-# Verify server is still running
-if lsof -ti :$PORT >/dev/null 2>&1; then
-    echo "  ✅ Server persisted after client exit"
+if [ -x "$PROJECT_ROOT/gasoline-mcp" ]; then
+    WRAPPER="$PROJECT_ROOT/gasoline-mcp"
+elif command -v gasoline-mcp >/dev/null 2>&1; then
+    WRAPPER="$(command -v gasoline-mcp)"
 else
-    echo "  ❌ Server died after client exit"
+    echo "FATAL: gasoline-mcp not found in $PROJECT_ROOT or PATH" >&2
+    exit 1
 fi
 
-echo ""
-
-# Test 2: List all available tools
-echo "Test 2: Get Full Tool List"
-echo "==========================="
-
-REQUEST='{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
-RESULT=$($WRAPPER --port $PORT <<< "$REQUEST" 2>/dev/null | grep '"result"' || echo "")
-
-if [ -n "$RESULT" ]; then
-    TOOL_COUNT=$(echo "$RESULT" | jq -r '.result.tools | length' 2>/dev/null || echo "0")
-    echo "  ✅ Found $TOOL_COUNT tools"
-
-    # Extract tool names
-    TOOLS=$(echo "$RESULT" | jq -r '.result.tools[].name' 2>/dev/null || echo "")
-    echo "  Tools:"
-    echo "$TOOLS" | sed 's/^/    - /'
-else
-    echo "  ❌ Could not get tool list"
-fi
+# ── Temp Dir for Results ──────────────────────────────────
+RESULTS_DIR=$(mktemp -d)
+OVERALL_START=$(date +%s)
 
 echo ""
-
-# Test 3: Immediate tool calls after cold start
-echo "Test 3: Cold Start + Immediate Tool Calls"
-echo "=========================================="
-kill_server
-
-# Test observe_page
-REQUEST='{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"observe_page","arguments":{}}}'
-send_mcp_request "cold_observe_page" "$REQUEST"
-
+echo "############################################################"
+echo "# GASOLINE MCP — COMPREHENSIVE UAT"
+echo "############################################################"
+echo ""
+echo "Binary:     $WRAPPER"
+echo "Tests dir:  $TESTS_DIR"
+echo "Results:    $RESULTS_DIR"
 echo ""
 
-# Test 4: Sequential tool calls (same server)
-echo "Test 4: Sequential Tool Calls"
-echo "=============================="
+# ── Port Assignments ──────────────────────────────────────
+# 9 parallel groups, each with a unique port
+PORT_GROUP1=7890  # cat-01-protocol
+PORT_GROUP2=7891  # cat-02-observe
+PORT_GROUP3=7892  # cat-03-generate
+PORT_GROUP4=7893  # cat-04-configure + cat-05-interact (sequential)
+PORT_GROUP5=7894  # cat-07-concurrency
+PORT_GROUP6=7895  # cat-08-security + cat-09-http (sequential)
+PORT_GROUP7=7896  # cat-06-lifecycle
+PORT_GROUP8=7897  # cat-10-regression
+PORT_GROUP9=7898  # cat-11-data-pipeline
 
-# observe_logs
-REQUEST='{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"observe_logs","arguments":{}}}'
-send_mcp_request "observe_logs" "$REQUEST"
+# Kill anything on our ports before starting
+for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9; do
+    lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
+done
+sleep 0.5
 
-# observe_network
-REQUEST='{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"observe_network","arguments":{}}}'
-send_mcp_request "observe_network" "$REQUEST"
+# ── Launch Groups ─────────────────────────────────────────
+PIDS=""
 
-# get_health
-REQUEST='{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_health","arguments":{}}}'
-send_mcp_request "get_health" "$REQUEST"
+# Group 1: Protocol (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-01-protocol.sh" "$PORT_GROUP1" "$RESULTS_DIR/results-01.txt" \
+        > "$RESULTS_DIR/output-01.txt" 2>&1
+) &
+PIDS="$PIDS $!"
 
+# Group 2: Observe (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-02-observe.sh" "$PORT_GROUP2" "$RESULTS_DIR/results-02.txt" \
+        > "$RESULTS_DIR/output-02.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
+# Group 3: Generate (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-03-generate.sh" "$PORT_GROUP3" "$RESULTS_DIR/results-03.txt" \
+        > "$RESULTS_DIR/output-03.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
+# Group 4: Configure then Interact (sequential, same port)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-04-configure.sh" "$PORT_GROUP4" "$RESULTS_DIR/results-04.txt" \
+        > "$RESULTS_DIR/output-04.txt" 2>&1
+    bash "$TESTS_DIR/cat-05-interact.sh" "$PORT_GROUP4" "$RESULTS_DIR/results-05.txt" \
+        > "$RESULTS_DIR/output-05.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
+# Group 5: Concurrency (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-07-concurrency.sh" "$PORT_GROUP5" "$RESULTS_DIR/results-07.txt" \
+        > "$RESULTS_DIR/output-07.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
+# Group 6: Security then HTTP (sequential, same port)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-08-security.sh" "$PORT_GROUP6" "$RESULTS_DIR/results-08.txt" \
+        > "$RESULTS_DIR/output-08.txt" 2>&1
+    bash "$TESTS_DIR/cat-09-http.sh" "$PORT_GROUP6" "$RESULTS_DIR/results-09.txt" \
+        > "$RESULTS_DIR/output-09.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
+# Group 7: Lifecycle (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-06-lifecycle.sh" "$PORT_GROUP7" "$RESULTS_DIR/results-06.txt" \
+        > "$RESULTS_DIR/output-06.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
+# Group 8: Regression (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-10-regression.sh" "$PORT_GROUP8" "$RESULTS_DIR/results-10.txt" \
+        > "$RESULTS_DIR/output-10.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
+# Group 9: Data Pipeline (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-11-data-pipeline.sh" "$PORT_GROUP9" "$RESULTS_DIR/results-11.txt" \
+        > "$RESULTS_DIR/output-11.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
+# ── Wait for All Groups ──────────────────────────────────
+echo "Running 9 parallel groups..."
 echo ""
 
-# Test 5: Concurrent clients
-echo "Test 5: Concurrent Clients (5 simultaneous)"
-echo "============================================"
-kill_server
-
-PIDS=()
-for i in 1 2 3 4 5; do
-    REQUEST='{"jsonrpc":"2.0","id":'$i',"method":"tools/list","params":{}}'
-    (echo "$REQUEST"; sleep 0.5) | $WRAPPER --port $PORT > "$TEMP_DIR/concurrent_$i.log" 2>&1 &
-    PIDS+=($!)
+for pid in $PIDS; do
+    wait "$pid" 2>/dev/null || true
 done
 
-# Wait for all clients
-sleep 3
+# ── Collect and Display Results ───────────────────────────
 
-# Check results
-CONCURRENT_SUCCESS=0
-for i in 1 2 3 4 5; do
-    if grep -q '"result"' "$TEMP_DIR/concurrent_$i.log" 2>/dev/null; then
-        CONCURRENT_SUCCESS=$((CONCURRENT_SUCCESS + 1))
+# Category display order and default names
+CAT_IDS="01 02 03 04 05 06 07 08 09 10 11"
+get_default_name() {
+    case "$1" in
+        01) echo "Protocol Compliance" ;;
+        02) echo "Observe Tool" ;;
+        03) echo "Generate Tool" ;;
+        04) echo "Configure Tool" ;;
+        05) echo "Interact Tool" ;;
+        06) echo "Server Lifecycle" ;;
+        07) echo "Concurrency" ;;
+        08) echo "Security" ;;
+        09) echo "HTTP Endpoints" ;;
+        10) echo "Regression Guards" ;;
+        11) echo "Data Pipeline" ;;
+        *)  echo "Unknown" ;;
+    esac
+}
+
+TOTAL_PASS=0
+TOTAL_FAIL=0
+
+# Print category outputs in order
+for cat_id in $CAT_IDS; do
+    output_file="$RESULTS_DIR/output-${cat_id}.txt"
+    if [ -f "$output_file" ]; then
+        cat "$output_file"
     fi
 done
 
-echo "  ✅ $CONCURRENT_SUCCESS/5 clients succeeded"
+echo ""
+echo ""
 
-# Kill any remaining processes
-for pid in "${PIDS[@]}"; do
-    kill $pid 2>/dev/null || true
+# ── Summary Table ─────────────────────────────────────────
+echo "############################################################"
+echo "# COMPREHENSIVE UAT RESULTS"
+echo "############################################################"
+echo ""
+printf "%-28s | %4s | %4s | %5s | %5s\n" "Category" "Pass" "Fail" "Total" "Time"
+echo "------------------------------------------------------------"
+
+for cat_id in $CAT_IDS; do
+    results_file="$RESULTS_DIR/results-${cat_id}.txt"
+    cat_pass=0
+    cat_fail=0
+    cat_elapsed="?"
+    cat_name=$(get_default_name "$cat_id")
+
+    if [ -f "$results_file" ]; then
+        # Source the results file to read variables
+        eval "$(grep '^PASS_COUNT=' "$results_file" 2>/dev/null)"
+        eval "$(grep '^FAIL_COUNT=' "$results_file" 2>/dev/null)"
+        eval "$(grep '^ELAPSED=' "$results_file" 2>/dev/null)"
+        eval "$(grep '^CATEGORY_NAME=' "$results_file" 2>/dev/null)"
+
+        cat_pass="${PASS_COUNT:-0}"
+        cat_fail="${FAIL_COUNT:-0}"
+        cat_elapsed="${ELAPSED:-?}"
+        if [ -n "$CATEGORY_NAME" ]; then
+            cat_name="$CATEGORY_NAME"
+        fi
+
+        # Reset for next iteration
+        unset PASS_COUNT FAIL_COUNT ELAPSED CATEGORY_NAME
+    fi
+
+    cat_total=$((cat_pass + cat_fail))
+    TOTAL_PASS=$((TOTAL_PASS + cat_pass))
+    TOTAL_FAIL=$((TOTAL_FAIL + cat_fail))
+
+    printf "%2s. %-24s | %4d | %4d | %5d | %3ss\n" \
+        "$cat_id" "$cat_name" "$cat_pass" "$cat_fail" "$cat_total" "$cat_elapsed"
 done
 
+TOTAL_ALL=$((TOTAL_PASS + TOTAL_FAIL))
+OVERALL_ELAPSED=$(( $(date +%s) - OVERALL_START ))
+
+echo "------------------------------------------------------------"
+printf "%-28s | %4d | %4d | %5d | %3ss\n" \
+    "TOTAL" "$TOTAL_PASS" "$TOTAL_FAIL" "$TOTAL_ALL" "$OVERALL_ELAPSED"
+
 echo ""
 
-# Test 6: Stdout purity verification (critical for MCP protocol)
-echo "Test 6: Stdout Purity (JSON-RPC Only)"
-echo "====================================="
-kill_server
-
-REQUEST='{"jsonrpc":"2.0","id":7,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"purity-test","version":"1.0"}}}'
-(echo "$REQUEST"; sleep 0.5) | $WRAPPER --port $PORT > "$TEMP_DIR/purity_stdout.txt" 2>"$TEMP_DIR/purity_stderr.txt"
-
-# CRITICAL: Verify stdout contains ONLY valid JSON-RPC (no stray output)
-# Each non-empty line must be valid JSON with "jsonrpc":"2.0"
-STDOUT_ERRORS=0
-STDOUT_LINES=0
-while IFS= read -r line; do
-    [ -z "$line" ] && continue  # Skip empty lines
-    STDOUT_LINES=$((STDOUT_LINES + 1))
-
-    # Check if line is valid JSON
-    if ! echo "$line" | jq -e . >/dev/null 2>&1; then
-        echo "  ❌ Non-JSON output on stdout: $line"
-        STDOUT_ERRORS=$((STDOUT_ERRORS + 1))
-    # Check if it's a JSON-RPC message
-    elif ! echo "$line" | jq -e 'has("jsonrpc")' >/dev/null 2>&1; then
-        echo "  ❌ Non-JSON-RPC JSON on stdout: $line"
-        STDOUT_ERRORS=$((STDOUT_ERRORS + 1))
-    fi
-done < "$TEMP_DIR/purity_stdout.txt"
-
-if [ "$STDOUT_ERRORS" -eq 0 ] && [ "$STDOUT_LINES" -gt 0 ]; then
-    echo "  ✅ Stdout contains only valid JSON-RPC ($STDOUT_LINES messages)"
-elif [ "$STDOUT_LINES" -eq 0 ]; then
-    echo "  ❌ No output on stdout (expected JSON-RPC response)"
+# ── Final Verdict ─────────────────────────────────────────
+if [ "$TOTAL_FAIL" -eq 0 ] && [ "$TOTAL_PASS" -gt 0 ]; then
+    echo "ALL $TOTAL_PASS TESTS PASSED"
 else
-    echo "  ❌ Found $STDOUT_ERRORS invalid lines on stdout"
-fi
-
-# Note: stderr is allowed for logging (doesn't break protocol)
-STDERR_LINES=$(wc -l < "$TEMP_DIR/purity_stderr.txt" | tr -d ' ')
-if [ "$STDERR_LINES" -gt 0 ]; then
-    echo "  ℹ️  $STDERR_LINES stderr lines (allowed for logging)"
+    echo "FAILURES: $TOTAL_FAIL of $TOTAL_ALL tests failed"
 fi
 
 echo ""
 
-# Test 7: Server persistence
-echo "Test 7: Server Persistence"
-echo "==========================="
-
-# Check server is still running
-if lsof -ti :$PORT >/dev/null 2>&1; then
-    echo "  ✅ Server persisted through all tests"
-
-    # Get uptime
-    UPTIME=$(curl -s http://localhost:$PORT/health 2>/dev/null | jq -r '.server.uptime' 2>/dev/null || echo "unknown")
-    echo "  Server uptime: $UPTIME"
-else
-    echo "  ❌ Server not running"
-fi
-
-echo ""
-
-# Test 8: Graceful shutdown with --stop
-echo "Test 8: Graceful Shutdown (--stop)"
-echo "==================================="
-
-# Start a fresh server in daemon mode (for reliable PID file testing)
-kill_server
-$WRAPPER --daemon --port $PORT >/dev/null 2>&1 &
-
-# Wait for server to be ready (health check)
-for i in $(seq 1 30); do
-    if curl -s http://localhost:$PORT/health >/dev/null 2>&1; then
-        break
-    fi
-    sleep 0.1
+# ── Cleanup ───────────────────────────────────────────────
+# Kill any remaining daemons on our ports
+for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9; do
+    lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 
-# Verify server is running
-if curl -s http://localhost:$PORT/health >/dev/null 2>&1; then
-    echo "  ✅ Server started successfully"
-else
-    echo "  ❌ Server failed to start"
+rm -rf "$RESULTS_DIR"
+
+# Exit code
+if [ "$TOTAL_FAIL" -gt 0 ]; then
+    exit 1
 fi
-
-# Check PID file exists (daemon creates it after HTTP bind)
-PID_FILE="$HOME/.gasoline-$PORT.pid"
-if [ -f "$PID_FILE" ]; then
-    SAVED_PID=$(cat "$PID_FILE")
-    echo "  ✅ PID file exists (PID: $SAVED_PID)"
-else
-    echo "  ⚠️  PID file not found (fallback methods will be used)"
-fi
-
-# Stop server using --stop flag
-echo "  Stopping server with --stop..."
-$WRAPPER --stop --port $PORT > "$TEMP_DIR/stop_output.txt" 2>&1
-STOP_EXIT=$?
-
-if [ $STOP_EXIT -eq 0 ]; then
-    echo "  ✅ --stop command succeeded"
-else
-    echo "  ❌ --stop command failed (exit code: $STOP_EXIT)"
-fi
-
-# Verify server is stopped
-sleep 1
-if ! lsof -ti :$PORT >/dev/null 2>&1; then
-    echo "  ✅ Server stopped successfully"
-else
-    echo "  ❌ Server still running after --stop"
-fi
-
-# Verify PID file is cleaned up
-if [ ! -f "$PID_FILE" ]; then
-    echo "  ✅ PID file cleaned up"
-else
-    echo "  ⚠️  PID file still exists (stale)"
-    rm -f "$PID_FILE"
-fi
-
-echo ""
-
-# Final cleanup (server should already be stopped, but just in case)
-kill_server
-rm -rf "$TEMP_DIR"
-
-# Summary
-echo "========================================"
-echo "Summary"
-echo "========================================"
-echo ""
-echo "✅ All core MCP operations tested:"
-echo "  - Cold start + tool list"
-echo "  - Immediate tool calls after spawn"
-echo "  - Sequential tool calls"
-echo "  - Concurrent clients (5 simultaneous)"
-echo "  - Stdout purity (JSON-RPC only, no stray output)"
-echo "  - Server persistence"
-echo "  - Graceful shutdown (--stop + PID file)"
-echo ""
-echo "✅ Test suite complete!"
-echo ""
+exit 0

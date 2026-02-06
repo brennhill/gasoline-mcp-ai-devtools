@@ -13,6 +13,8 @@ const SOURCE_MAP_FETCH_TIMEOUT = 5000;
 const CONTEXT_SIZE_THRESHOLD = 20 * 1024;
 const CONTEXT_WARNING_WINDOW_MS = 60000;
 const CONTEXT_WARNING_COUNT = 3;
+/** Debug log buffer size */
+const DEBUG_LOG_MAX_ENTRIES = 200;
 /** Processing query TTL */
 const PROCESSING_QUERY_TTL_MS = 60000;
 /** Stack frame regex patterns */

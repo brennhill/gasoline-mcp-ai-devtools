@@ -95,20 +95,3 @@ func (h *ToolHandler) toolDiffSecurity(req JSONRPCRequest, args json.RawMessage)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security diff complete", responseData)}
 }
 
-// ============================================
-// Verification Loop Tool
-// ============================================
-
-// toolVerifyFix handles the verify_fix MCP tool for before/after fix verification.
-func (h *ToolHandler) toolVerifyFix(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if h.verificationMgr == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Verification manager not initialized", "Internal server error — do not retry")}
-	}
-
-	result, err := h.verificationMgr.HandleTool(args)
-	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Internal server error — do not retry")}
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Verification result", result)}
-}

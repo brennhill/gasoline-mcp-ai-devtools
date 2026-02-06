@@ -81,6 +81,9 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Limit request body size to prevent memory exhaustion
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+
 	// Read body for logging
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {

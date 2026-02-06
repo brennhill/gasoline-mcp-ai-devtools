@@ -56,10 +56,10 @@ export async function createWsEchoServer() {
  * This simulates what content.js does when it receives messages from background.
  * Must be called AFTER the target page is loaded.
  * @param {Object} page - Playwright page object
- * @param {string} mode - Capture mode: 'lifecycle' or 'messages' (required)
+ * @param {string} mode - Capture mode: 'low', 'medium', 'high', or 'all' (required)
  */
 export async function enableWebSocketCapture(page, mode) {
-  if (!mode) throw new Error('enableWebSocketCapture requires a mode parameter ("lifecycle" or "messages")')
+  if (!mode) throw new Error('enableWebSocketCapture requires a mode parameter ("low", "medium", "high", or "all")')
   // Post settings directly to the page (same as content.js would)
   await page.evaluate((m) => {
     window.postMessage({ type: 'GASOLINE_SETTING', setting: 'setWebSocketCaptureEnabled', enabled: true }, '*')

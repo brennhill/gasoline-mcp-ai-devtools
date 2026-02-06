@@ -36,6 +36,7 @@ export interface ServerHealthResponse {
 function getRequestHeaders(additionalHeaders: Record<string, string> = {}): Record<string, string> {
   return {
     'Content-Type': 'application/json',
+    'X-Gasoline-Client': `gasoline-extension/${getExtensionVersion()}`,
     'X-Gasoline-Extension-Version': getExtensionVersion(),
     ...additionalHeaders,
   }

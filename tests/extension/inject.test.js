@@ -9,6 +9,9 @@ import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 import { createMockWindow, createMockConsole, createMockDocument } from './helpers.js'
 
+// Define esbuild constant not available in Node test env
+globalThis.__GASOLINE_VERSION__ = 'test'
+
 // Store original
 let originalWindow
 let originalConsole
@@ -399,7 +402,7 @@ describe('Safe Serialization', () => {
   test('should handle undefined and null', async () => {
     const { safeSerialize } = await import('../../extension/inject.js')
 
-    assert.strictEqual(safeSerialize(undefined), undefined)
+    assert.strictEqual(safeSerialize(undefined), null) // JSON has no undefined type
     assert.strictEqual(safeSerialize(null), null)
   })
 

@@ -10,7 +10,7 @@
  * cross-frame injection. Attaches tabId to all forwarded messages.
  */
 
-import { initTabTracking, getIsTrackedTab } from './content/tab-tracking'
+import { initTabTracking } from './content/tab-tracking'
 import { initScriptInjection } from './content/script-injection'
 import { initRequestTracking, getPendingRequestStats, clearPendingRequests } from './content/request-tracking'
 import { initWindowMessageListener } from './content/window-message-listener'
@@ -27,8 +27,13 @@ export { getPendingRequestStats, clearPendingRequests }
 // Track whether scripts have been injected
 let scriptsInjected = false
 
-// Initialize tab tracking first
-initTabTracking()
+// Initialize tab tracking first, with callback for injection
+initTabTracking((tracked) => {
+  if (tracked && !scriptsInjected) {
+    initScriptInjection()
+    scriptsInjected = true
+  }
+})
 
 // Initialize request tracking (cleanup handlers)
 initRequestTracking()
@@ -41,26 +46,3 @@ initRuntimeMessageListener()
 
 // Initialize favicon replacer (visual indicator for tracked tabs)
 initFaviconReplacer()
-
-// Listen for tracking status changes and inject scripts only when tracked
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.trackedTabId) {
-    // Check if this tab is now tracked
-    if (getIsTrackedTab() && !scriptsInjected) {
-      // Tab just became tracked - inject scripts
-      initScriptInjection()
-      scriptsInjected = true
-    }
-    // Note: We don't remove scripts when tab becomes untracked
-    // because that could break the page. Just stop injecting on new tracked tabs.
-  }
-})
-
-// Check initial tracking status and inject if already tracked
-// Use setTimeout to ensure initTabTracking() has completed its async work
-setTimeout(() => {
-  if (getIsTrackedTab() && !scriptsInjected) {
-    initScriptInjection()
-    scriptsInjected = true
-  }
-}, 100)

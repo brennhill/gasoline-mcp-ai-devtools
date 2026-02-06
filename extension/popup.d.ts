@@ -14,8 +14,7 @@ export { FEATURE_TOGGLES, initFeatureToggles } from './popup/feature-toggles';
 export { handleFeatureToggle } from './popup/feature-toggles';
 export { initAiWebPilotToggle, handleAiWebPilotToggle } from './popup/ai-web-pilot';
 export { initTrackPageButton, handleTrackPageClick } from './popup/tab-tracking';
-export { handleLogLevelChange, handleWebSocketModeChange } from './popup/settings';
-export { initLogLevelSelector } from './popup/settings';
+export { handleWebSocketModeChange } from './popup/settings';
 export { initWebSocketModeSelector } from './popup/settings';
 export { isInternalUrl } from './popup/ui-utils';
 /**

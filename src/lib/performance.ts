@@ -77,6 +77,9 @@ export function getPerformanceMeasures(options: { since?: number } = {}): Array<
       name: m.name,
       startTime: m.startTime,
       duration: m.duration,
+      ...((m as PerformanceEntry & { detail?: unknown }).detail !== undefined
+        ? { detail: (m as PerformanceEntry & { detail?: unknown }).detail }
+        : {}),
     }))
   } catch {
     return []

@@ -122,7 +122,7 @@ func (c *Capture) CheckRateLimit() bool {
 		// Window expired, rate is effectively 0
 		return false
 	}
-	return c.windowEventCount > rateLimitThreshold
+	return c.windowEventCount > RateLimitThreshold
 }
 
 // tickRateWindow is called when a window expires (every 1 second).
@@ -140,7 +140,7 @@ func (c *Capture) CheckRateLimit() bool {
 // Then calls evaluateCircuit() to check opening/closing conditions.
 // This is the state machine heartbeat—runs once per second via window expiration.
 func (c *Capture) tickRateWindow() {
-	if c.windowEventCount > rateLimitThreshold {
+	if c.windowEventCount > RateLimitThreshold {
 		c.rateLimitStreak++
 		// Reset the below-threshold timer since we're over
 		c.lastBelowThresholdAt = time.Time{}
@@ -167,7 +167,7 @@ func (c *Capture) tickRateWindow() {
 //   1. Rate-based: rateLimitStreak >= 5 consecutive seconds
 //      - Means 5+ consecutive seconds with > 1000 events/sec
 //      - Set circuitReason = "rate_exceeded"
-//   2. Memory-based: total memory > 50MB (memoryHardLimit)
+//   2. Memory-based: total memory > 50MB (MemoryHardLimit)
 //      - Set circuitReason = "memory_exceeded"
 //
 // OPEN → CLOSED Conditions (AND logic, must BOTH be true):
@@ -213,13 +213,13 @@ func (c *Capture) evaluateCircuit() {
 				"reason":      "rate_exceeded",
 				"streak":      c.rateLimitStreak,
 				"rate":        c.windowEventCount,
-				"threshold":   rateLimitThreshold,
+				"threshold":   RateLimitThreshold,
 				"memory_bytes": c.getMemoryForCircuit(),
 			})
 			return
 		}
 		// Memory-based opening: buffer memory exceeds hard limit
-		if c.getMemoryForCircuit() > memoryHardLimit {
+		if c.getMemoryForCircuit() > MemoryHardLimit {
 			c.circuitOpen = true
 			c.circuitOpenedAt = time.Now()
 			c.circuitReason = "memory_exceeded"
@@ -227,7 +227,7 @@ func (c *Capture) evaluateCircuit() {
 			go c.emitLifecycleEvent("circuit_opened", map[string]any{
 				"reason":       "memory_exceeded",
 				"memory_bytes": c.getMemoryForCircuit(),
-				"hard_limit":   memoryHardLimit,
+				"hard_limit":   MemoryHardLimit,
 				"rate":         c.windowEventCount,
 			})
 			return
@@ -316,7 +316,7 @@ func (c *Capture) WriteRateLimitResponse(w http.ResponseWriter) {
 		RetryAfterMs: 1000,
 		CircuitOpen:  isCircuitOpen,
 		CurrentRate:  currentRate,
-		Threshold:    rateLimitThreshold,
+		Threshold:    RateLimitThreshold,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

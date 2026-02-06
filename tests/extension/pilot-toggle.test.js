@@ -42,7 +42,7 @@ const mockChrome = {
     onMessage: {
       addListener: mock.fn(),
     },
-    getManifest: () => ({ version: '5.2.0' }),
+    getManifest: () => ({ version: '5.7.5' }),
   },
   storage: {
     sync: {
@@ -62,7 +62,7 @@ const mockChrome = {
     },
   },
   tabs: {
-    query: mock.fn((query, callback) => callback([{ id: 1, url: 'http://localhost:3000' }])),
+    query: mock.fn(() => Promise.resolve([{ id: 1, url: 'http://localhost:3000' }])),
     get: mock.fn((tabId) => Promise.resolve({ id: tabId, url: 'http://localhost:3000' })),
     sendMessage: mock.fn(() => Promise.resolve()),
     onRemoved: { addListener: mock.fn() },
@@ -123,10 +123,10 @@ describe('AI Web Pilot Toggle Default State', () => {
     mockChrome.storage.local.set.mock.resetCalls()
   })
 
-  test('toggle should default to false (disabled)', async () => {
-    // Mock no saved value
+  test('toggle should default to true (enabled) when no saved value', async () => {
+    // Mock no saved value — defaults to ON via !== false pattern
     mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
-      callback({}) // Empty - no saved value
+      callback({}) // Empty - no saved value, defaults to true
     })
 
     const { initAiWebPilotToggle } = await import('../../extension/popup.js')
@@ -134,7 +134,7 @@ describe('AI Web Pilot Toggle Default State', () => {
     await initAiWebPilotToggle()
 
     const toggle = mockDocument.getElementById('aiWebPilotEnabled')
-    assert.strictEqual(toggle.checked, false, 'AI Web Pilot toggle should default to OFF')
+    assert.strictEqual(toggle.checked, true, 'AI Web Pilot toggle should default to ON')
   })
 
   test('toggle should load saved state from chrome.storage.local', async () => {

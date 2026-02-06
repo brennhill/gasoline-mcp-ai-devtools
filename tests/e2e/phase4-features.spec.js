@@ -3,8 +3,8 @@
  *
  * Tests the full pipeline for:
  *   1. AI Capture Control — configure(action: "capture") + GET /settings
- *   2. Error Clustering — analyze(target: "errors")
- *   3. Cross-Session Temporal Graph — configure(action: "record_event") + analyze(target: "history")
+ *   2. Error Clustering — observe(what: "error_clusters")
+ *   3. Navigation History — observe(what: "history")
  */
 import { test, expect } from './helpers/extension.js'
 import { mcpCall, mcpToolText } from './helpers/mcp.js'
@@ -33,7 +33,7 @@ test.describe('Phase 4: Capture Control', () => {
     // Set an override first
     await mcpToolText(serverUrl, 'configure', {
       action: 'capture',
-      settings: { ws_mode: 'messages' },
+      settings: { ws_mode: 'medium' },
     })
 
     // Poll /settings
@@ -42,7 +42,7 @@ test.describe('Phase 4: Capture Control', () => {
 
     expect(data.connected).toBe(true)
     expect(data.capture_overrides).toBeDefined()
-    expect(data.capture_overrides.ws_mode).toBe('messages')
+    expect(data.capture_overrides.ws_mode).toBe('medium')
   })
 
   test('should reset overrides to defaults', async ({ page, serverUrl }) => {
@@ -110,12 +110,11 @@ test.describe('Phase 4: Capture Control', () => {
 
 test.describe('Phase 4: Error Clustering', () => {
   test('should return empty cluster state initially', async ({ page, serverUrl }) => {
-    const text = await mcpToolText(serverUrl, 'analyze', { target: 'errors' })
+    const text = await mcpToolText(serverUrl, 'observe', { what: 'error_clusters' })
     const data = JSON.parse(text)
 
     expect(data.clusters).toBeDefined()
-    expect(data.total_errors).toBe(0)
-    expect(data.unclustered_errors).toBe(0)
+    expect(data.total_count).toBe(0)
   })
 
   test('should cluster similar errors from the page', async ({ page, serverUrl }) => {
@@ -128,37 +127,31 @@ test.describe('Phase 4: Error Clustering', () => {
     // Wait for errors to be captured and sent to server
     await page.waitForTimeout(4000)
 
-    const text = await mcpToolText(serverUrl, 'analyze', { target: 'errors' })
+    const text = await mcpToolText(serverUrl, 'observe', { what: 'error_clusters' })
     const data = JSON.parse(text)
 
-    expect(data.total_errors).toBeGreaterThan(0)
+    expect(data.total_count).toBeGreaterThan(0)
     // Errors should have clustered (at least one cluster formed from 3 similar errors)
     if (data.clusters.length > 0) {
       const cluster = data.clusters[0]
-      expect(cluster.instance_count).toBeGreaterThanOrEqual(2)
-      expect(cluster.root_cause).toBeDefined()
-      expect(cluster.severity).toBe('error')
+      expect(cluster.count).toBeGreaterThanOrEqual(2)
+      expect(cluster.message).toBeDefined()
     }
   })
 })
 
 // ===================================================
-// Temporal Graph
+// Navigation History
 // ===================================================
 
-test.describe('Phase 4: Temporal Graph', () => {
+test.describe('Phase 4: Navigation History', () => {
   test('should return valid history response structure', async ({ page, serverUrl }) => {
-    const text = await mcpToolText(serverUrl, 'analyze', {
-      target: 'history',
-      query: { since: '1h' },
-    })
+    const text = await mcpToolText(serverUrl, 'observe', { what: 'history' })
     const data = JSON.parse(text)
 
-    expect(data.events).toBeDefined()
-    expect(Array.isArray(data.events)).toBe(true)
-    expect(typeof data.total_events).toBe('number')
-    expect(data.time_range).toBe('1h')
-    expect(data.summary).toBeDefined()
+    expect(data.entries).toBeDefined()
+    expect(Array.isArray(data.entries)).toBe(true)
+    expect(typeof data.count).toBe('number')
   })
 
   test('should record an event via configure', async ({ page, serverUrl }) => {
@@ -173,80 +166,6 @@ test.describe('Phase 4: Temporal Graph', () => {
 
     expect(text).toContain('Event recorded')
     expect(text).toContain('fix')
-  })
-
-  test('should query recorded events by type', async ({ page, serverUrl }) => {
-    // Record two events of different types
-    await mcpToolText(serverUrl, 'configure', {
-      action: 'record_event',
-      event: { type: 'error', description: 'TypeError in render' },
-    })
-    await mcpToolText(serverUrl, 'configure', {
-      action: 'record_event',
-      event: { type: 'deploy', description: 'Deployed v2.1.0' },
-    })
-
-    // Query only errors
-    const text = await mcpToolText(serverUrl, 'analyze', {
-      target: 'history',
-      query: { type: 'error', since: '1h' },
-    })
-    const data = JSON.parse(text)
-
-    expect(data.total_events).toBeGreaterThan(0)
-    for (const event of data.events) {
-      expect(event.type).toBe('error')
-    }
-  })
-
-  test('should query events by pattern', async ({ page, serverUrl }) => {
-    // Use a unique pattern per test run to avoid collisions with persisted events
-    const uniqueToken = `PATTERN_${Date.now()}_${Math.random().toString(36).slice(2)}`
-
-    await mcpToolText(serverUrl, 'configure', {
-      action: 'record_event',
-      event: { type: 'fix', description: `Fixed ${uniqueToken} bug` },
-    })
-
-    const text = await mcpToolText(serverUrl, 'analyze', {
-      target: 'history',
-      query: { pattern: uniqueToken, since: '1h' },
-    })
-    const data = JSON.parse(text)
-
-    expect(data.total_events).toBe(1)
-    expect(data.events[0].description).toContain(uniqueToken)
-  })
-
-  test('should record events with causal links', async ({ page, serverUrl }) => {
-    // Record an error event first
-    await mcpToolText(serverUrl, 'configure', {
-      action: 'record_event',
-      event: { type: 'error', description: 'Crash in checkout flow' },
-    })
-
-    // Record a fix linked to a target
-    await mcpToolText(serverUrl, 'configure', {
-      action: 'record_event',
-      event: {
-        type: 'fix',
-        description: 'Fixed checkout crash',
-        related_to: 'evt_some_id',
-      },
-    })
-
-    // Query events linked to that ID
-    const text = await mcpToolText(serverUrl, 'analyze', {
-      target: 'history',
-      query: { related_to: 'evt_some_id', since: '1h' },
-    })
-    const data = JSON.parse(text)
-
-    expect(data.total_events).toBeGreaterThan(0)
-    const linked = data.events[0]
-    expect(linked.links).toBeDefined()
-    expect(linked.links[0].target).toBe('evt_some_id')
-    expect(linked.links[0].confidence).toBe('explicit')
   })
 
   test('should reject record_event with missing type', async ({ page, serverUrl }) => {
@@ -273,23 +192,5 @@ test.describe('Phase 4: Temporal Graph', () => {
     })
 
     expect(text).toContain("'event' is missing")
-  })
-
-  test('should set origin to agent for AI-recorded events', async ({ page, serverUrl }) => {
-    const uniqueToken = `ORIGIN_${Date.now()}_${Math.random().toString(36).slice(2)}`
-
-    await mcpToolText(serverUrl, 'configure', {
-      action: 'record_event',
-      event: { type: 'fix', description: `Agent fix ${uniqueToken}` },
-    })
-
-    const text = await mcpToolText(serverUrl, 'analyze', {
-      target: 'history',
-      query: { pattern: uniqueToken, since: '1h' },
-    })
-    const data = JSON.parse(text)
-
-    expect(data.total_events).toBe(1)
-    expect(data.events[0].origin).toBe('agent')
   })
 })

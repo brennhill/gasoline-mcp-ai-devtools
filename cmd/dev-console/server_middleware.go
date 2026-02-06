@@ -94,13 +94,28 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Gasoline-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Gasoline-Key, X-Gasoline-Client, X-Gasoline-Extension-Version")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
+		next(w, r)
+	}
+}
+
+// extensionOnly wraps a handler to require the X-Gasoline-Client header
+// with a value starting with "gasoline-extension". Rejects with 403 if missing
+// or invalid. This ensures only the Gasoline browser extension can call
+// extension-facing endpoints.
+func extensionOnly(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		client := r.Header.Get("X-Gasoline-Client")
+		if !strings.HasPrefix(client, "gasoline-extension") {
+			http.Error(w, `{"error":"forbidden: missing or invalid X-Gasoline-Client header"}`, http.StatusForbidden)
+			return
+		}
 		next(w, r)
 	}
 }

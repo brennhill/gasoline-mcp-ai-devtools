@@ -4,14 +4,6 @@
  */
 import type { WebSocketCaptureMode } from '../types';
 /**
- * Initialize the log level selector
- */
-export declare function initLogLevelSelector(): Promise<void>;
-/**
- * Handle log level change
- */
-export declare function handleLogLevelChange(level: string): Promise<void>;
-/**
  * Handle WebSocket mode change
  */
 export declare function handleWebSocketModeChange(mode: WebSocketCaptureMode): void;

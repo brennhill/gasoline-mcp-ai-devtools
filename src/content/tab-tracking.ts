@@ -44,16 +44,21 @@ export function getCurrentTabId(): number | null {
 }
 
 /**
- * Initialize tab tracking (call once on script load)
+ * Initialize tab tracking (call once on script load).
+ * Returns a promise that resolves when initial tracking status is known.
+ * The onChange callback fires after each status update (initial + storage changes).
  */
-export function initTabTracking(): void {
-  // Initialize tracking status on script load
-  updateTrackingStatus()
+export function initTabTracking(onChange?: (tracked: boolean) => void): Promise<void> {
+  const ready = updateTrackingStatus().then(() => {
+    onChange?.(isTrackedTab)
+  })
 
-  // Listen for tracking changes in storage
-  chrome.storage.onChanged.addListener((changes: { [key: string]: StorageChange }) => {
+  chrome.storage.onChanged.addListener(async (changes: { [key: string]: StorageChange }) => {
     if (changes.trackedTabId) {
-      updateTrackingStatus()
+      await updateTrackingStatus()
+      onChange?.(isTrackedTab)
     }
   })
+
+  return ready
 }

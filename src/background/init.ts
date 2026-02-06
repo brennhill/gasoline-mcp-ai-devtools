@@ -143,9 +143,9 @@ async function initializeExtensionAsync(): Promise<void> {
     // ============= STEP 5: Load saved settings =============
     const settings = await loadSavedSettingsAsync()
     setServerUrl(settings.serverUrl || 'http://localhost:7890')
-    setCurrentLogLevel(settings.logLevel || 'error')
-    setScreenshotOnError(settings.screenshotOnError || false)
-    stateManager.setSourceMapEnabled(settings.sourceMapEnabled || false)
+    setCurrentLogLevel('all')
+    setScreenshotOnError(settings.screenshotOnError !== false)
+    stateManager.setSourceMapEnabled(settings.sourceMapEnabled !== false)
     setDebugMode(settings.debugMode || false)
 
     // ============= STEP 6: Install storage change listener =============

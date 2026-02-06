@@ -134,24 +134,24 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 func setupHTTPRoutes(server *Server, cap *capture.Capture, sseRegistry *SSERegistry) {
 	// V4 routes
 	if cap != nil {
-		http.HandleFunc("/websocket-events", corsMiddleware(cap.HandleWebSocketEvents))
-		http.HandleFunc("/websocket-status", corsMiddleware(cap.HandleWebSocketStatus))
-		http.HandleFunc("/network-bodies", corsMiddleware(cap.HandleNetworkBodies))
-		http.HandleFunc("/network-waterfall", corsMiddleware(cap.HandleNetworkWaterfall))
-		http.HandleFunc("/extension-logs", corsMiddleware(cap.HandleExtensionLogs))
-		http.HandleFunc("/pending-queries", corsMiddleware(cap.HandlePendingQueries))
-		http.HandleFunc("/pilot-status", corsMiddleware(cap.HandlePilotStatus))
-		http.HandleFunc("/dom-result", corsMiddleware(cap.HandleDOMResult))
-		http.HandleFunc("/a11y-result", corsMiddleware(cap.HandleA11yResult))
-		http.HandleFunc("/state-result", corsMiddleware(cap.HandleStateResult))
-		http.HandleFunc("/execute-result", corsMiddleware(cap.HandleExecuteResult))
-		http.HandleFunc("/highlight-result", corsMiddleware(cap.HandleHighlightResult))
-		http.HandleFunc("/enhanced-actions", corsMiddleware(cap.HandleEnhancedActions))
-		http.HandleFunc("/performance-snapshots", corsMiddleware(cap.HandlePerformanceSnapshots))
-		http.HandleFunc("/api/extension-status", corsMiddleware(cap.HandleExtensionStatus))
+		http.HandleFunc("/websocket-events", corsMiddleware(extensionOnly(cap.HandleWebSocketEvents)))
+		http.HandleFunc("/websocket-status", corsMiddleware(extensionOnly(cap.HandleWebSocketStatus)))
+		http.HandleFunc("/network-bodies", corsMiddleware(extensionOnly(cap.HandleNetworkBodies)))
+		http.HandleFunc("/network-waterfall", corsMiddleware(extensionOnly(cap.HandleNetworkWaterfall)))
+		http.HandleFunc("/extension-logs", corsMiddleware(extensionOnly(cap.HandleExtensionLogs)))
+		http.HandleFunc("/pending-queries", corsMiddleware(extensionOnly(cap.HandlePendingQueries)))
+		http.HandleFunc("/pilot-status", corsMiddleware(extensionOnly(cap.HandlePilotStatus)))
+		http.HandleFunc("/dom-result", corsMiddleware(extensionOnly(cap.HandleDOMResult)))
+		http.HandleFunc("/a11y-result", corsMiddleware(extensionOnly(cap.HandleA11yResult)))
+		http.HandleFunc("/state-result", corsMiddleware(extensionOnly(cap.HandleStateResult)))
+		http.HandleFunc("/execute-result", corsMiddleware(extensionOnly(cap.HandleExecuteResult)))
+		http.HandleFunc("/highlight-result", corsMiddleware(extensionOnly(cap.HandleHighlightResult)))
+		http.HandleFunc("/enhanced-actions", corsMiddleware(extensionOnly(cap.HandleEnhancedActions)))
+		http.HandleFunc("/performance-snapshots", corsMiddleware(extensionOnly(cap.HandlePerformanceSnapshots)))
+		http.HandleFunc("/api/extension-status", corsMiddleware(extensionOnly(cap.HandleExtensionStatus)))
 
 		// Unified sync endpoint (replaces multiple polling loops)
-		http.HandleFunc("/sync", corsMiddleware(cap.HandleSync))
+		http.HandleFunc("/sync", corsMiddleware(extensionOnly(cap.HandleSync)))
 
 		// Multi-client management endpoints
 		http.HandleFunc("/clients", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,331 @@
+#!/bin/bash
+# framework.sh — Shared test harness for Gasoline MCP UAT.
+# Sourced by each category file. Provides assertion helpers,
+# MCP request sending, daemon lifecycle, and structured output.
+
+# ── Timeout Compatibility ──────────────────────────────────
+# macOS doesn't ship with `timeout`. Use gtimeout from coreutils if available.
+if command -v timeout >/dev/null 2>&1; then
+    TIMEOUT_CMD="timeout"
+elif command -v gtimeout >/dev/null 2>&1; then
+    TIMEOUT_CMD="gtimeout"
+else
+    echo "FATAL: 'timeout' not found. Install with: brew install coreutils" >&2
+    exit 1
+fi
+
+# ── Globals ────────────────────────────────────────────────
+PASS_COUNT=0
+FAIL_COUNT=0
+SKIP_COUNT=0
+MCP_ID=100
+TEMP_DIR=""
+WRAPPER=""
+VERSION=""
+CATEGORY_NAME=""
+CATEGORY_ID=""
+RESULTS_FILE=""
+OUTPUT_FILE=""
+START_TIME=""
+
+# ── Init ───────────────────────────────────────────────────
+init_framework() {
+    PORT="${1:-7890}"
+    RESULTS_FILE="${2:-/dev/null}"
+    TEMP_DIR=$(mktemp -d)
+    START_TIME=$(date +%s)
+
+    # Resolve binary: local build > PATH
+    if [ -x "./gasoline-mcp" ]; then
+        WRAPPER="./gasoline-mcp"
+    elif command -v gasoline-mcp >/dev/null 2>&1; then
+        WRAPPER="gasoline-mcp"
+    else
+        echo "FATAL: gasoline-mcp not found in PATH or current directory" >&2
+        exit 1
+    fi
+
+    # Read VERSION file
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local project_root="$script_dir/../.."
+    if [ -f "$project_root/VERSION" ]; then
+        VERSION=$(cat "$project_root/VERSION" | tr -d '[:space:]')
+    else
+        VERSION="unknown"
+    fi
+
+    # Output file for the runner to read
+    OUTPUT_FILE="$TEMP_DIR/output.txt"
+    touch "$OUTPUT_FILE"
+}
+
+# ── Category/Test Headers ──────────────────────────────────
+begin_category() {
+    CATEGORY_ID="$1"
+    CATEGORY_NAME="$2"
+    local count="$3"
+    {
+        echo ""
+        echo "############################################################"
+        echo "# CATEGORY ${CATEGORY_ID}: ${CATEGORY_NAME} (${count} tests)"
+        echo "############################################################"
+        echo ""
+    } | tee -a "$OUTPUT_FILE"
+}
+
+begin_test() {
+    local id="$1"
+    local name="$2"
+    local purpose="$3"
+    local trust="$4"
+    {
+        echo "============================================================"
+        echo "TEST ${id}: ${name}"
+        echo "============================================================"
+        echo "Purpose: ${purpose}"
+        echo "Trust:   ${trust}"
+        echo ""
+    } | tee -a "$OUTPUT_FILE"
+}
+
+# ── Pass/Fail ──────────────────────────────────────────────
+pass() {
+    local description="$1"
+    PASS_COUNT=$((PASS_COUNT + 1))
+    {
+        echo "  PASS: ${description}"
+        echo ""
+    } | tee -a "$OUTPUT_FILE"
+}
+
+fail() {
+    local description="$1"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    {
+        echo "  FAIL: ${description}"
+        echo ""
+    } | tee -a "$OUTPUT_FILE"
+}
+
+skip() {
+    local description="$1"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
+    {
+        echo "  SKIP: ${description}"
+        echo ""
+    } | tee -a "$OUTPUT_FILE"
+}
+
+# ── MCP Request Sending ───────────────────────────────────
+# Sends raw JSON-RPC via stdio to the wrapper binary.
+# Sets globals: LAST_RESPONSE, LAST_EXIT_CODE
+# Returns: the response text on stdout
+send_mcp() {
+    local request="$1"
+    local prefix="${2:-mcp}"
+    local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
+    local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
+
+    echo "$request" | $TIMEOUT_CMD 15 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
+    LAST_EXIT_CODE=$?
+
+    # Get last non-empty line (the JSON-RPC response)
+    LAST_RESPONSE=$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1)
+    LAST_STDOUT_FILE="$stdout_file"
+    LAST_STDERR_FILE="$stderr_file"
+
+    MCP_ID=$((MCP_ID + 1))
+    echo "$LAST_RESPONSE"
+}
+
+# Sends multiple requests in a single pipe. Returns all non-empty stdout lines.
+send_mcp_multi() {
+    local requests="$1"
+    local prefix="${2:-multi}"
+    local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
+    local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
+
+    echo "$requests" | $TIMEOUT_CMD 20 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
+    LAST_EXIT_CODE=$?
+    LAST_STDOUT_FILE="$stdout_file"
+    LAST_STDERR_FILE="$stderr_file"
+
+    MCP_ID=$((MCP_ID + 1))
+    grep -v '^$' "$stdout_file" 2>/dev/null
+}
+
+# Builds a tools/call JSON-RPC request and sends it.
+# Usage: call_tool "observe" '{"what":"page"}'
+call_tool() {
+    local tool_name="$1"
+    local arguments="${2:-\{\}}"
+    local request="{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/call\",\"params\":{\"name\":\"${tool_name}\",\"arguments\":${arguments}}}"
+    send_mcp "$request" "call_${tool_name}"
+}
+
+# ── Response Extraction ────────────────────────────────────
+# Extracts result.content[0].text from a JSON-RPC tool response
+extract_content_text() {
+    local response="$1"
+    echo "$response" | jq -r '.result.content[0].text // empty' 2>/dev/null
+}
+
+# Truncates a string for display in pass/fail messages
+truncate() {
+    local text="$1"
+    local max="${2:-300}"
+    if [ ${#text} -gt "$max" ]; then
+        echo "${text:0:$max}..."
+    else
+        echo "$text"
+    fi
+}
+
+# ── Assertion Helpers ──────────────────────────────────────
+# Each returns 0 on success, 1 on failure.
+# They do NOT call pass/fail — the caller decides how to report.
+# This allows multi-assertion tests to use early-return-on-failure.
+
+check_not_error() {
+    local response="$1"
+    local is_error
+    is_error=$(echo "$response" | jq -r '.result.isError // false' 2>/dev/null)
+    [ "$is_error" != "true" ]
+}
+
+check_is_error() {
+    local response="$1"
+    local is_error
+    is_error=$(echo "$response" | jq -r '.result.isError // false' 2>/dev/null)
+    [ "$is_error" = "true" ]
+}
+
+check_json_field() {
+    local json="$1"
+    local jq_path="$2"
+    local expected="$3"
+    local actual
+    actual=$(echo "$json" | jq -r "$jq_path" 2>/dev/null)
+    [ "$actual" = "$expected" ]
+}
+
+check_json_has() {
+    local json="$1"
+    local jq_path="$2"
+    local value
+    value=$(echo "$json" | jq -e "$jq_path" 2>/dev/null)
+    [ $? -eq 0 ] && [ "$value" != "null" ]
+}
+
+check_contains() {
+    local haystack="$1"
+    local needle="$2"
+    echo "$haystack" | grep -q "$needle"
+}
+
+check_protocol_error() {
+    local response="$1"
+    local expected_code="$2"
+    local code
+    code=$(echo "$response" | jq -r '.error.code // empty' 2>/dev/null)
+    [ "$code" = "$expected_code" ]
+}
+
+check_valid_jsonrpc() {
+    local line="$1"
+    echo "$line" | jq -e '.jsonrpc == "2.0"' >/dev/null 2>&1
+}
+
+# Returns 0 if response is a bridge→daemon connection timeout (expected without extension)
+check_bridge_timeout() {
+    local response="$1"
+    echo "$response" | jq -e '.error.message | test("deadline exceeded|connection refused")' >/dev/null 2>&1
+}
+
+check_http_status() {
+    local url="$1"
+    local expected="$2"
+    local extra_headers="${3:-}"
+    local actual
+    if [ -n "$extra_headers" ]; then
+        actual=$(curl -s -o /dev/null -w "%{http_code}" $extra_headers "$url" 2>/dev/null)
+    else
+        actual=$(curl -s -o /dev/null -w "%{http_code}" "$url" 2>/dev/null)
+    fi
+    [ "$actual" = "$expected" ]
+}
+
+get_http_status() {
+    local url="$1"
+    shift
+    curl -s -o /dev/null -w "%{http_code}" "$@" "$url" 2>/dev/null
+}
+
+get_http_body() {
+    local url="$1"
+    shift
+    curl -s "$@" "$url" 2>/dev/null
+}
+
+# ── Daemon Lifecycle ───────────────────────────────────────
+kill_server() {
+    lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+    sleep 0.3
+    # Double-check
+    if lsof -ti :"$PORT" >/dev/null 2>&1; then
+        sleep 0.5
+        lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+        sleep 0.3
+    fi
+}
+
+wait_for_health() {
+    local max_attempts="${1:-50}"
+    for i in $(seq 1 "$max_attempts"); do
+        if curl -s "http://localhost:${PORT}/health" >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 0.1
+    done
+    return 1
+}
+
+start_daemon() {
+    $WRAPPER --daemon --port "$PORT" >/dev/null 2>&1 &
+    wait_for_health 50
+}
+
+ensure_daemon() {
+    if ! curl -s "http://localhost:${PORT}/health" >/dev/null 2>&1; then
+        start_daemon
+    fi
+}
+
+# ── Category Finish ────────────────────────────────────────
+finish_category() {
+    # Kill our daemon
+    kill_server
+
+    # Clean up temp
+    local elapsed=$(( $(date +%s) - START_TIME ))
+
+    # Write structured results for the runner
+    if [ "$RESULTS_FILE" != "/dev/null" ]; then
+        cat > "$RESULTS_FILE" <<RESULTS_EOF
+PASS_COUNT=$PASS_COUNT
+FAIL_COUNT=$FAIL_COUNT
+SKIP_COUNT=$SKIP_COUNT
+ELAPSED=${elapsed}
+CATEGORY_ID=$CATEGORY_ID
+CATEGORY_NAME="$CATEGORY_NAME"
+RESULTS_EOF
+    fi
+
+    # Exit with appropriate code
+    if [ "$FAIL_COUNT" -gt 0 ]; then
+        exit 1
+    else
+        exit 0
+    fi
+}

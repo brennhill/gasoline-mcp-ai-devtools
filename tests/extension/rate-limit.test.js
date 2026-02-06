@@ -15,7 +15,7 @@ globalThis.chrome = {
   runtime: {
     onMessage: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.2.0' }),
+    getManifest: () => ({ version: '5.7.5' }),
   },
   action: { setBadgeText: mock.fn(), setBadgeBackgroundColor: mock.fn() },
   storage: {
@@ -215,7 +215,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
     assert.strictEqual(circuitBreaker.getState(), 'open')
 
     // Wait for reset timeout
-    await new Promise((r) => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 150))
     assert.strictEqual(circuitBreaker.getState(), 'half-open')
 
     // Next flush should send a probe
@@ -250,7 +250,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
     assert.strictEqual(circuitBreaker.getState(), 'open')
 
     // Wait for half-open
-    await new Promise((r) => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 150))
 
     // Probe succeeds
     shouldFail = false
@@ -280,7 +280,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
     assert.strictEqual(circuitBreaker.getState(), 'open')
 
     // Wait for half-open
-    await new Promise((r) => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 150))
     assert.strictEqual(circuitBreaker.getState(), 'half-open')
 
     // Probe fails - circuit re-opens

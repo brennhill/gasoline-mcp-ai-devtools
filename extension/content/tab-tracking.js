@@ -36,16 +36,20 @@ export function getCurrentTabId() {
     return currentTabId;
 }
 /**
- * Initialize tab tracking (call once on script load)
+ * Initialize tab tracking (call once on script load).
+ * Returns a promise that resolves when initial tracking status is known.
+ * The onChange callback fires after each status update (initial + storage changes).
  */
-export function initTabTracking() {
-    // Initialize tracking status on script load
-    updateTrackingStatus();
-    // Listen for tracking changes in storage
-    chrome.storage.onChanged.addListener((changes) => {
+export function initTabTracking(onChange) {
+    const ready = updateTrackingStatus().then(() => {
+        onChange?.(isTrackedTab);
+    });
+    chrome.storage.onChanged.addListener(async (changes) => {
         if (changes.trackedTabId) {
-            updateTrackingStatus();
+            await updateTrackingStatus();
+            onChange?.(isTrackedTab);
         }
     });
+    return ready;
 }
 //# sourceMappingURL=tab-tracking.js.map
