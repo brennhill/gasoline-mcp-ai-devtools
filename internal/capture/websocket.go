@@ -172,26 +172,26 @@ func (c *Capture) trackConnection(event WebSocketEvent) {
 	switch event.Event {
 	case "open":
 		// Enforce max active connections
-		if len(c.connections) >= maxActiveConns {
+		if len(c.ws.connections) >= maxActiveConns {
 			// Evict oldest
-			if len(c.connOrder) > 0 {
-				oldestID := c.connOrder[0]
-				delete(c.connections, oldestID)
-				newOrder := make([]string, len(c.connOrder)-1)
-				copy(newOrder, c.connOrder[1:])
-				c.connOrder = newOrder
+			if len(c.ws.connOrder) > 0 {
+				oldestID := c.ws.connOrder[0]
+				delete(c.ws.connections, oldestID)
+				newOrder := make([]string, len(c.ws.connOrder)-1)
+				copy(newOrder, c.ws.connOrder[1:])
+				c.ws.connOrder = newOrder
 			}
 		}
-		c.connections[event.ID] = &connectionState{
+		c.ws.connections[event.ID] = &connectionState{
 			id:       event.ID,
 			url:      event.URL,
 			state:    "open",
 			openedAt: event.Timestamp,
 		}
-		c.connOrder = append(c.connOrder, event.ID)
+		c.ws.connOrder = append(c.ws.connOrder, event.ID)
 
 	case "close":
-		conn := c.connections[event.ID]
+		conn := c.ws.connections[event.ID]
 		if conn == nil {
 			return
 		}
@@ -208,26 +208,26 @@ func (c *Capture) trackConnection(event WebSocketEvent) {
 		closed.TotalMessages.Incoming = conn.incoming.total
 		closed.TotalMessages.Outgoing = conn.outgoing.total
 
-		c.closedConns = append(c.closedConns, closed)
-		if len(c.closedConns) > maxClosedConns {
-			keep := len(c.closedConns) - maxClosedConns
+		c.ws.closedConns = append(c.ws.closedConns, closed)
+		if len(c.ws.closedConns) > maxClosedConns {
+			keep := len(c.ws.closedConns) - maxClosedConns
 			surviving := make([]WebSocketClosedConnection, maxClosedConns)
-			copy(surviving, c.closedConns[keep:])
-			c.closedConns = surviving
+			copy(surviving, c.ws.closedConns[keep:])
+			c.ws.closedConns = surviving
 		}
 
-		delete(c.connections, event.ID)
+		delete(c.ws.connections, event.ID)
 		// Remove from order
-		c.connOrder = removeFromSlice(c.connOrder, event.ID)
+		c.ws.connOrder = removeFromSlice(c.ws.connOrder, event.ID)
 
 	case "error":
-		conn := c.connections[event.ID]
+		conn := c.ws.connections[event.ID]
 		if conn != nil {
 			conn.state = "error"
 		}
 
 	case "message":
-		conn := c.connections[event.ID]
+		conn := c.ws.connections[event.ID]
 		if conn == nil {
 			return
 		}
@@ -341,7 +341,7 @@ func (c *Capture) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStat
 		Closed:      make([]WebSocketClosedConnection, 0),
 	}
 
-	for _, conn := range c.connections {
+	for _, conn := range c.ws.connections {
 		if filter.URLFilter != "" && !strings.Contains(conn.url, filter.URLFilter) {
 			continue
 		}
@@ -395,7 +395,7 @@ func (c *Capture) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStat
 		resp.Connections = append(resp.Connections, wc)
 	}
 
-	for _, closed := range c.closedConns {
+	for _, closed := range c.ws.closedConns {
 		if filter.URLFilter != "" && !strings.Contains(closed.URL, filter.URLFilter) {
 			continue
 		}

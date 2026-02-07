@@ -200,7 +200,7 @@ func (c *Capture) GetHealthSnapshot() HealthSnapshot {
 		WebSocketCount:      len(c.wsEvents),
 		NetworkBodyCount:    len(c.networkBodies),
 		ActionCount:         len(c.enhancedActions),
-		ConnectionCount:     len(c.connections),
+		ConnectionCount:     len(c.ws.connections),
 		LastPollTime:        c.ext.lastPollAt,
 		ExtensionSession:    c.ext.extensionSession,
 		SessionChangedTime:  c.ext.sessionChangedAt,

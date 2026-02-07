@@ -430,6 +430,14 @@ type ExtensionLogBuffer struct {
 	logs []ExtensionLog // Ring buffer of extension internal logs (max MaxExtensionLogs=500)
 }
 
+// WSConnectionTracker groups WebSocket connection tracking fields.
+// Protected by parent Capture.mu (no separate lock).
+type WSConnectionTracker struct {
+	connections map[string]*connectionState  // Active WS connections by ID (max 20 total). LRU eviction via connOrder.
+	closedConns []WebSocketClosedConnection  // Ring buffer of closed connections (max 10, maxClosedConns). Preserves history for a while.
+	connOrder   []string                     // Insertion order for LRU eviction of active connections.
+}
+
 // MemoryState tracks memory enforcement state including eviction counters
 // and minimal mode flag.
 type MemoryState struct {
@@ -505,10 +513,7 @@ type Capture struct {
 	// WebSocket Connection Tracking
 	// ============================================
 
-	connections map[string]*connectionState  // Active WS connections by ID (max 20 total). LRU eviction via connOrder.
-	observeSem  chan struct{}                // Semaphore limiting concurrent observer goroutines to 4. Prevents goroutine explosion.
-	closedConns []WebSocketClosedConnection  // Ring buffer of closed connections (max 10, maxClosedConns). Preserves history for a while.
-	connOrder   []string                     // Insertion order for LRU eviction of active connections.
+	ws WSConnectionTracker // Active + closed WS connections, LRU eviction order. Protected by parent mu (no separate lock).
 
 	// ============================================
 	// Query Dispatch (Own Locks)
@@ -581,9 +586,11 @@ func NewCapture() *Capture {
 		elb: ExtensionLogBuffer{
 			logs: make([]ExtensionLog, 0, MaxExtensionLogs),
 		},
-		connections:              make(map[string]*connectionState),
-		closedConns:              make([]WebSocketClosedConnection, 0),
-		connOrder:                make([]string, 0),
+		ws: WSConnectionTracker{
+			connections: make(map[string]*connectionState),
+			closedConns: make([]WebSocketClosedConnection, 0),
+			connOrder:   make([]string, 0),
+		},
 		ext: ExtensionState{
 			activeTestIDs: make(map[string]bool),
 		},
@@ -605,7 +612,6 @@ func NewCapture() *Capture {
 		debug: NewDebugLogger(),
 		rec:   NewRecordingManager(),
 	}
-	c.observeSem = make(chan struct{}, 4)
 	c.qd = NewQueryDispatcher()
 	c.circuit = NewCircuitBreaker(
 		func() int64 { return c.getMemoryForCircuit() },

@@ -76,7 +76,7 @@ func TestClearWebSocketBuffers(t *testing.T) {
 
 	// Add WS connections
 	capture.mu.Lock()
-	capture.connections["conn1"] = &connectionState{id: "conn1", url: "ws://localhost", state: "open"}
+	capture.ws.connections["conn1"] = &connectionState{id: "conn1", url: "ws://localhost", state: "open"}
 	capture.mu.Unlock()
 
 	// Clear
@@ -95,8 +95,8 @@ func TestClearWebSocketBuffers(t *testing.T) {
 	if len(capture.wsEvents) != 0 {
 		t.Errorf("Expected wsEvents to be empty, got %d entries", len(capture.wsEvents))
 	}
-	if len(capture.connections) != 0 {
-		t.Errorf("Expected connections to be empty, got %d entries", len(capture.connections))
+	if len(capture.ws.connections) != 0 {
+		t.Errorf("Expected connections to be empty, got %d entries", len(capture.ws.connections))
 	}
 	capture.mu.RUnlock()
 }

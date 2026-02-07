@@ -32,6 +32,7 @@ func (h *ToolHandler) toolSecurityAudit(req JSONRPCRequest, args json.RawMessage
 
 	// Gather data from capture buffers
 	networkBodies := h.capture.GetNetworkBodies()
+	waterfallEntries := h.capture.GetNetworkWaterfallEntries()
 
 	// Convert console entries to security.LogEntry
 	h.server.mu.RLock()
@@ -49,7 +50,7 @@ func (h *ToolHandler) toolSecurityAudit(req JSONRPCRequest, args json.RawMessage
 	}
 
 	// Run the security scan
-	result, err := h.securityScannerImpl.HandleSecurityAudit(args, networkBodies, consoleEntries, pageURLs)
+	result, err := h.securityScannerImpl.HandleSecurityAudit(args, networkBodies, consoleEntries, pageURLs, waterfallEntries)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, err.Error(), "Internal error — do not retry")}
 	}
