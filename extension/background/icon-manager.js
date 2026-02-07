@@ -80,6 +80,7 @@ function startAnimation(targetTabId = null) {
 
     // Cycle through electric flame emojis
     const flames = ['⚡', '✨', '💫']
+    // eslint-disable-next-line security/detect-object-injection -- Safe: currentFrame is bounded by animation frame modulo
     const emoji = flames[currentFrame]
 
     const updateTab = (tabId) => {

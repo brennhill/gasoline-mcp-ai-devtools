@@ -118,6 +118,7 @@ export function extractSnippet(sourceContent, line) {
     const end = Math.min(lines.length, line + AI_CONTEXT_SNIPPET_LINES);
     const snippet = [];
     for (let i = start; i < end; i++) {
+        // eslint-disable-next-line security/detect-object-injection -- Safe: i is bounded by loop condition
         let text = lines[i];
         if (!text)
             continue;
@@ -245,12 +246,15 @@ export function captureStateSnapshot(errorMessage) {
         const keys = {};
         for (const [key, value] of Object.entries(state)) {
             if (Array.isArray(value)) {
+                // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.entries() iteration
                 keys[key] = { type: 'array' };
             }
             else if (value === null) {
+                // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.entries() iteration
                 keys[key] = { type: 'null' };
             }
             else {
+                // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.entries() iteration
                 keys[key] = { type: typeof value };
             }
         }
@@ -317,6 +321,7 @@ export function generateAiSummary(data) {
     if (data.stateSnapshot && data.stateSnapshot.relevantSlice) {
         const sliceKeys = Object.keys(data.stateSnapshot.relevantSlice);
         if (sliceKeys.length > 0) {
+            // eslint-disable-next-line security/detect-object-injection -- Safe: k is from Object.keys() iteration
             const stateInfo = sliceKeys.map((k) => `${k}=${JSON.stringify(data.stateSnapshot.relevantSlice[k])}`).join(', ');
             parts.push(`State: ${stateInfo}.`);
         }

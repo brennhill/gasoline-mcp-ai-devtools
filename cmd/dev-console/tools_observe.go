@@ -4,7 +4,57 @@ package main
 
 import (
 	"encoding/json"
+	"sort"
+	"strings"
 )
+
+// ObserveHandler is the function signature for observe tool handlers.
+type ObserveHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
+
+// observeHandlers maps observe mode names to their handler functions.
+var observeHandlers = map[string]ObserveHandler{
+	"errors":            func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetBrowserErrors(req, args) },
+	"logs":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetBrowserLogs(req, args) },
+	"extension_logs":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetExtensionLogs(req, args) },
+	"network_waterfall": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetNetworkWaterfall(req, args) },
+	"network_bodies":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetNetworkBodies(req, args) },
+	"websocket_events":  func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetWSEvents(req, args) },
+	"websocket_status":  func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetWSStatus(req, args) },
+	"actions":           func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetEnhancedActions(req, args) },
+	"vitals":            func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetWebVitals(req, args) },
+	"page":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetPageInfo(req, args) },
+	"tabs":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetTabs(req, args) },
+	"pilot":             func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObservePilot(req, args) },
+	"performance":       func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolCheckPerformance(req, args) },
+	"api":               func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetAPISchema(req, args) },
+	"accessibility":     func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolRunA11yAudit(req, args) },
+	"changes":           func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetChangesSince(req, args) },
+	"timeline":          func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetSessionTimeline(req, args) },
+	"error_clusters":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolAnalyzeErrors(req) },
+	"error_bundles":     func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetErrorBundles(req, args) },
+	"history":           func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolAnalyzeHistory(req, args) },
+	"security_audit":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolSecurityAudit(req, args) },
+	"third_party_audit": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolAuditThirdParties(req, args) },
+	"security_diff":     func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolDiffSecurity(req, args) },
+	"screenshot":        func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetScreenshot(req, args) },
+	"command_result":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObserveCommandResult(req, args) },
+	"pending_commands":  func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObservePendingCommands(req, args) },
+	"failed_commands":   func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObserveFailedCommands(req, args) },
+	"recordings":        func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetRecordings(req, args) },
+	"recording_actions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetRecordingActions(req, args) },
+	"playback_results":  func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetPlaybackResults(req, args) },
+	"log_diff_report":   func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetLogDiffReport(req, args) },
+}
+
+// getValidObserveModes returns a sorted, comma-separated list of valid observe modes.
+func getValidObserveModes() string {
+	modes := make([]string, 0, len(observeHandlers))
+	for mode := range observeHandlers {
+		modes = append(modes, mode)
+	}
+	sort.Strings(modes)
+	return strings.Join(modes, ", ")
+}
 
 // toolObserve dispatches observe requests based on the 'what' parameter.
 func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -18,80 +68,17 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	}
 
 	if params.What == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, error_bundles, screenshot, history, security_audit, third_party_audit, security_diff"))}
+		validModes := getValidObserveModes()
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validModes))}
 	}
 
-	var resp JSONRPCResponse
-	switch params.What {
-	case "errors":
-		resp = h.toolGetBrowserErrors(req, args)
-	case "logs":
-		resp = h.toolGetBrowserLogs(req, args)
-	case "extension_logs":
-		resp = h.toolGetExtensionLogs(req, args)
-	case "network_waterfall":
-		resp = h.toolGetNetworkWaterfall(req, args)
-	case "network_bodies":
-		resp = h.toolGetNetworkBodies(req, args)
-	case "websocket_events":
-		resp = h.toolGetWSEvents(req, args)
-	case "websocket_status":
-		resp = h.toolGetWSStatus(req, args)
-	case "actions":
-		resp = h.toolGetEnhancedActions(req, args)
-	case "vitals":
-		resp = h.toolGetWebVitals(req, args)
-	case "page":
-		resp = h.toolGetPageInfo(req, args)
-	case "tabs":
-		resp = h.toolGetTabs(req, args)
-	case "pilot":
-		resp = h.toolObservePilot(req, args)
-	// Analyze modes (formerly separate analyze tool)
-	case "performance":
-		resp = h.toolCheckPerformance(req, args)
-	case "api":
-		resp = h.toolGetAPISchema(req, args)
-	case "accessibility":
-		resp = h.toolRunA11yAudit(req, args)
-	case "changes":
-		resp = h.toolGetChangesSince(req, args)
-	case "timeline":
-		resp = h.toolGetSessionTimeline(req, args)
-	case "error_clusters":
-		resp = h.toolAnalyzeErrors(req)
-	case "error_bundles":
-		resp = h.toolGetErrorBundles(req, args)
-	case "history":
-		resp = h.toolAnalyzeHistory(req, args)
-	// Security scan modes (formerly separate security tool)
-	case "security_audit":
-		resp = h.toolSecurityAudit(req, args)
-	case "third_party_audit":
-		resp = h.toolAuditThirdParties(req, args)
-	case "security_diff":
-		resp = h.toolDiffSecurity(req, args)
-	case "screenshot":
-		resp = h.toolGetScreenshot(req, args)
-	// Async command tracking modes
-	case "command_result":
-		resp = h.toolObserveCommandResult(req, args)
-	case "pending_commands":
-		resp = h.toolObservePendingCommands(req, args)
-	case "failed_commands":
-		resp = h.toolObserveFailedCommands(req, args)
-	// capture.Recording modes
-	case "recordings":
-		resp = h.toolGetRecordings(req, args)
-	case "recording_actions":
-		resp = h.toolGetRecordingActions(req, args)
-	case "playback_results":
-		resp = h.toolGetPlaybackResults(req, args)
-	case "log_diff_report":
-		resp = h.toolGetLogDiffReport(req, args)
-	default:
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+params.What, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, error_bundles, screenshot, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands, recordings, recording_actions, playback_results, log_diff_report"))}
+	handler, ok := observeHandlers[params.What]
+	if !ok {
+		validModes := getValidObserveModes()
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+params.What, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes))}
 	}
+
+	resp := handler(h, req, args)
 
 	// Piggyback alerts: append as second content block if any pending
 	alerts := h.drainAlerts()

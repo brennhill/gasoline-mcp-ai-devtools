@@ -146,9 +146,11 @@ async function executeViaScriptingAPI(tabId, script, timeoutMs) {
                     const result = {};
                     for (const key of Object.keys(obj).slice(0, 50)) {
                         try {
+                            // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.keys() iteration
                             result[key] = serialize(obj[key], depth + 1, seen);
                         }
                         catch {
+                            // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.keys() iteration
                             result[key] = '[unserializable]';
                         }
                     }
@@ -625,7 +627,7 @@ async function handleBrowserAction(tabId, params) {
                 actionToast(tabId, 'navigate', reason || url, 'trying', 10000);
                 await chrome.tabs.update(tabId, { url });
                 await eventListeners.waitForTabLoad(tabId);
-                await new Promise((r) => setTimeout(r, 500));
+                await new Promise((resolve) => { setTimeout(resolve, 500); });
                 const contentScriptLoaded = await eventListeners.pingContentScript(tabId);
                 if (contentScriptLoaded) {
                     broadcastTrackingState().catch(() => { });
@@ -651,7 +653,7 @@ async function handleBrowserAction(tabId, params) {
                 debugLog(DebugCategory.CAPTURE, 'Content script not loaded after navigate, refreshing', { tabId, url });
                 await chrome.tabs.reload(tabId);
                 await eventListeners.waitForTabLoad(tabId);
-                await new Promise((r) => setTimeout(r, 1000));
+                await new Promise((resolve) => { setTimeout(resolve, 1000); });
                 const loadedAfterRefresh = await eventListeners.pingContentScript(tabId);
                 if (loadedAfterRefresh) {
                     broadcastTrackingState().catch(() => { });

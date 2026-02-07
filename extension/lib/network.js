@@ -213,6 +213,7 @@ export function sanitizeHeaders(headers) {
         ;
         headers.forEach((value, key) => {
             if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+                // eslint-disable-next-line security/detect-object-injection -- Safe: key from Headers iteration, validated against SENSITIVE_HEADER_PATTERNS
                 result[key] = value;
             }
         });
@@ -220,6 +221,7 @@ export function sanitizeHeaders(headers) {
     else if (typeof headers.entries === 'function') {
         for (const [key, value] of headers.entries()) {
             if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+                // eslint-disable-next-line security/detect-object-injection -- Safe: key from entries() iteration, validated against SENSITIVE_HEADER_PATTERNS
                 result[key] = value;
             }
         }
@@ -227,6 +229,7 @@ export function sanitizeHeaders(headers) {
     else if (typeof headers === 'object') {
         for (const [key, value] of Object.entries(headers)) {
             if (!SENSITIVE_HEADER_PATTERNS.test(key)) {
+                // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.entries(), validated against SENSITIVE_HEADER_PATTERNS
                 result[key] = value;
             }
         }

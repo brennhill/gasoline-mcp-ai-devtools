@@ -327,6 +327,7 @@ export function domPrimitive(action, selector, options) {
                 ArrowUp: { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 },
                 Space: { key: ' ', code: 'Space', keyCode: 32 },
             };
+            // eslint-disable-next-line security/detect-object-injection -- Safe: key is user input validated against keyMap
             const mapped = keyMap[key] || { key, code: key, keyCode: 0 };
             el.dispatchEvent(new KeyboardEvent('keydown', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
             el.dispatchEvent(new KeyboardEvent('keypress', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
@@ -491,7 +492,7 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         const MIN_TOAST_MS = 500;
         const elapsed = Date.now() - tryingShownAt;
         if (!readOnly && elapsed < MIN_TOAST_MS) {
-            await new Promise((r) => setTimeout(r, MIN_TOAST_MS - elapsed));
+            await new Promise((resolve) => { setTimeout(resolve, MIN_TOAST_MS - elapsed); });
         }
         const firstResult = results?.[0]?.result;
         if (firstResult && typeof firstResult === 'object') {

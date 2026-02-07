@@ -35,6 +35,7 @@ export function formatPayload(data) {
             // Small binary: hex preview
             let hex = '';
             for (let i = 0; i < bytes.length; i++) {
+                // eslint-disable-next-line security/detect-object-injection -- Safe: i is bounded by array.length
                 const byte = bytes[i];
                 if (byte !== undefined) {
                     hex += byte.toString(16).padStart(2, '0');
@@ -46,6 +47,7 @@ export function formatPayload(data) {
             // Large binary: size + magic bytes (first 4 bytes)
             let magic = '';
             for (let i = 0; i < Math.min(4, bytes.length); i++) {
+                // eslint-disable-next-line security/detect-object-injection -- Safe: i is bounded by Math.min()
                 const byte = bytes[i];
                 if (byte !== undefined) {
                     magic += byte.toString(16).padStart(2, '0');
@@ -95,10 +97,14 @@ export function createConnectionTracker(id, url) {
             this.messageCount++;
             const size = data ? (typeof data === 'string' ? data.length : getSize(data)) : 0;
             const now = Date.now();
+            // eslint-disable-next-line security/detect-object-injection -- Safe: direction is 'incoming' or 'outgoing' enum from method parameter
             this.stats[direction].count++;
+            // eslint-disable-next-line security/detect-object-injection -- Safe: direction is 'incoming' or 'outgoing' enum from method parameter
             this.stats[direction].bytes += size;
+            // eslint-disable-next-line security/detect-object-injection -- Safe: direction is 'incoming' or 'outgoing' enum from method parameter
             this.stats[direction].lastAt = now;
             if (data && typeof data === 'string') {
+                // eslint-disable-next-line security/detect-object-injection -- Safe: direction is 'incoming' or 'outgoing' enum from method parameter
                 this.stats[direction].lastPreview = data.length > WS_PREVIEW_LIMIT ? data.slice(0, WS_PREVIEW_LIMIT) : data;
             }
             // Track timestamps for rate calculation

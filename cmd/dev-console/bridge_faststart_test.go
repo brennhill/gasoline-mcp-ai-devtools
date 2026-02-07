@@ -43,16 +43,16 @@ func TestFastStart_InitializeRespondsImmediately(t *testing.T) {
 	}
 
 	defer func() {
-		stdin.Close()
-		cmd.Process.Kill()
-		cmd.Wait()
+		_ = stdin.Close()
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
 	}()
 
 	// Send initialize request
 	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"faststart-test","version":"1.0"}}}`
 
 	start := time.Now()
-	_, err = stdin.Write([]byte(initReq + "\n"))
+	_, err = _ = stdin.Write([]byte(initReq + "\n"))
 	if err != nil {
 		t.Fatalf("Failed to write initialize: %v", err)
 	}
@@ -145,14 +145,14 @@ func TestFastStart_ToolsListRespondsImmediately(t *testing.T) {
 	}
 
 	defer func() {
-		stdin.Close()
-		cmd.Process.Kill()
-		cmd.Wait()
+		_ = stdin.Close()
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
 	}()
 
 	// Send initialize first (required by MCP protocol)
 	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`
-	stdin.Write([]byte(initReq + "\n"))
+	_ = stdin.Write([]byte(initReq + "\n"))
 
 	reader := bufio.NewReader(stdout)
 	reader.ReadString('\n') // consume initialize response
@@ -161,7 +161,7 @@ func TestFastStart_ToolsListRespondsImmediately(t *testing.T) {
 	toolsReq := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`
 
 	start := time.Now()
-	stdin.Write([]byte(toolsReq + "\n"))
+	_ = stdin.Write([]byte(toolsReq + "\n"))
 
 	responseChan := make(chan string, 1)
 	errChan := make(chan error, 1)
@@ -309,9 +309,9 @@ func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
 	}
 
 	defer func() {
-		stdin.Close()
-		cmd.Process.Kill()
-		cmd.Wait()
+		_ = stdin.Close()
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
 	}()
 
 	reader := bufio.NewReader(stdout)
@@ -332,7 +332,7 @@ func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			start := time.Now()
-			stdin.Write([]byte(tc.request + "\n"))
+			_ = stdin.Write([]byte(tc.request + "\n"))
 
 			line, err := reader.ReadString('\n')
 			elapsed := time.Since(start)
@@ -393,23 +393,23 @@ func TestFastStart_ToolsCallReturnsRetryWhenBooting(t *testing.T) {
 	}
 
 	defer func() {
-		stdin.Close()
-		cmd.Process.Kill()
-		cmd.Wait()
+		_ = stdin.Close()
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
 	}()
 
 	reader := bufio.NewReader(stdout)
 
 	// Send initialize first
 	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`
-	stdin.Write([]byte(initReq + "\n"))
+	_ = stdin.Write([]byte(initReq + "\n"))
 	reader.ReadString('\n') // consume initialize response
 
 	// Immediately send tools/call - daemon won't be ready yet
 	toolsCallReq := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`
 
 	start := time.Now()
-	stdin.Write([]byte(toolsCallReq + "\n"))
+	_ = stdin.Write([]byte(toolsCallReq + "\n"))
 
 	line, err := reader.ReadString('\n')
 	elapsed := time.Since(start)
@@ -484,13 +484,13 @@ func TestFastStart_VersionInResponse(t *testing.T) {
 	}
 
 	defer func() {
-		stdin.Close()
-		cmd.Process.Kill()
-		cmd.Wait()
+		_ = stdin.Close()
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
 	}()
 
 	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`
-	stdin.Write([]byte(initReq + "\n"))
+	_ = stdin.Write([]byte(initReq + "\n"))
 
 	reader := bufio.NewReader(stdout)
 	line, err := reader.ReadString('\n')

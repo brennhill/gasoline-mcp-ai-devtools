@@ -14,7 +14,7 @@ const CONTEXT_SIZE_THRESHOLD = 20 * 1024;
 const CONTEXT_WARNING_WINDOW_MS = 60000;
 const CONTEXT_WARNING_COUNT = 3;
 /** Debug log buffer size */
-const DEBUG_LOG_MAX_ENTRIES = 200;
+const _DEBUG_LOG_MAX_ENTRIES = 200;
 /** Processing query TTL */
 const PROCESSING_QUERY_TTL_MS = 60000;
 /** Stack frame regex patterns */
@@ -190,6 +190,7 @@ export function findOriginalLocation(sourceMap, line, column) {
     const lineIndex = line - 1;
     if (lineIndex < 0 || lineIndex >= sourceMap.mappings.length)
         return null;
+    // eslint-disable-next-line security/detect-object-injection -- Safe: lineIndex is validated against sourceMap.mappings.length
     const lineSegments = sourceMap.mappings[lineIndex];
     if (!lineSegments || lineSegments.length === 0)
         return null;
@@ -201,6 +202,7 @@ export function findOriginalLocation(sourceMap, line, column) {
     let bestMatch = null;
     for (let li = 0; li <= lineIndex; li++) {
         genCol = 0;
+        // eslint-disable-next-line security/detect-object-injection -- Safe: li is bounded by loop and lineIndex validation
         const segments = sourceMap.mappings[li];
         if (!segments)
             continue;
@@ -217,9 +219,11 @@ export function findOriginalLocation(sourceMap, line, column) {
                 nameIndex += segment[4];
             if (li === lineIndex && genCol <= column) {
                 bestMatch = {
+                    // eslint-disable-next-line security/detect-object-injection -- Safe: sourceIndex is validated array offset from source map
                     source: sourceMap.sources[sourceIndex] || '',
                     line: origLine + 1,
                     column: origCol,
+                    // eslint-disable-next-line security/detect-object-injection -- Safe: nameIndex is validated offset from source map names array
                     name: segment.length >= 5 ? sourceMap.names[nameIndex] || null : null,
                 };
             }

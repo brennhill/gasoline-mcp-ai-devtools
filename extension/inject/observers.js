@@ -47,8 +47,10 @@ export function wrapFetch(originalFetchFn) {
                 if (rawHeaders) {
                     const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders;
                     Object.keys(headers).forEach((key) => {
+                        // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.keys() iteration
                         const value = headers[key];
                         if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+                            // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.keys() iteration
                             safeHeaders[key] = value;
                         }
                     });
@@ -76,8 +78,10 @@ export function wrapFetch(originalFetchFn) {
             if (rawHeaders) {
                 const headers = rawHeaders instanceof Headers ? Object.fromEntries(rawHeaders) : rawHeaders;
                 Object.keys(headers).forEach((key) => {
+                    // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.keys() iteration
                     const value = headers[key];
                     if (value && !SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+                        // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.keys() iteration
                         safeHeaders[key] = value;
                     }
                 });

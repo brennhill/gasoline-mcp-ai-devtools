@@ -18,6 +18,7 @@ export default [
       'extension/background/index.js',
       'extension/content.bundled.js',
       'extension/inject.bundled.js',
+      'extension/early-patch.bundled.js',
     ],
   },
 
@@ -36,6 +37,7 @@ export default [
         clients: 'readonly',
         registration: 'readonly',
         self: 'readonly',
+        __GASOLINE_VERSION__: 'readonly',
       },
     },
     plugins: {
@@ -44,7 +46,7 @@ export default [
     rules: {
       'no-var': 'error',
       'prefer-const': ['error', { destructuring: 'all' }],
-      eqeqeq: ['error', 'always'],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
       'prefer-arrow-callback': 'error',
       'no-unused-vars': [
         'error',
@@ -92,7 +94,7 @@ export default [
     rules: {
       'no-var': 'error',
       'prefer-const': ['error', { destructuring: 'all' }],
-      eqeqeq: ['error', 'always'],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
       'no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },

@@ -15,6 +15,7 @@ export function getContextAnnotations() {
         return null;
     const result = {};
     for (const [key, value] of contextAnnotations) {
+        // eslint-disable-next-line security/detect-object-injection -- Safe: key from Map iteration
         result[key] = value;
     }
     return result;

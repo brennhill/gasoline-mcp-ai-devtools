@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/performance"
 )
@@ -309,7 +310,7 @@ func TestRichAction_CommandResultEnrichedWithPerfDiff(t *testing.T) {
 	// Call refresh to stash the before-snapshot
 	result, _ := env.callInteract(t, `{"action":"refresh"}`)
 	var resultData map[string]any
-	json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate extension sending the "after" snapshot (overwrites the old one)
@@ -386,7 +387,7 @@ func TestRichAction_CommandResultNoPerfDiffWhenNoSnapshots(t *testing.T) {
 	// Call refresh — no before-snapshot available
 	result, _ := env.callInteract(t, `{"action":"refresh"}`)
 	var resultData map[string]any
-	json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	// Complete the command
@@ -398,12 +399,49 @@ func TestRichAction_CommandResultNoPerfDiffWhenNoSnapshots(t *testing.T) {
 	resp := env.handler.toolObserveCommandResult(req, args)
 
 	var observeResult MCPToolResult
-	json.Unmarshal(resp.Result, &observeResult)
+	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData)
+	_ = json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData)
 
 	if _, exists := responseData["perf_diff"]; exists {
 		t.Error("perf_diff should NOT be present when no before-snapshot exists")
+	}
+}
+
+func TestRichAction_CommandResultIncludesTimingMs(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	// Click action
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	var resultData map[string]any
+	json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	// Simulate extension completing the click after a small delay
+	time.Sleep(10 * time.Millisecond)
+	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":true,"action":"click"}`), "")
+
+	// Observe command_result
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData)
+
+	timingMs, exists := responseData["timing_ms"]
+	if !exists {
+		t.Fatal("timing_ms missing from completed command result")
+	}
+	tm, ok := timingMs.(float64)
+	if !ok {
+		t.Fatalf("timing_ms should be a number, got %T", timingMs)
+	}
+	if tm < 0 {
+		t.Errorf("timing_ms should be non-negative, got %v", tm)
 	}
 }
