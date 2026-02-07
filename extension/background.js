@@ -72,7 +72,7 @@ export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSn
 // =============================================================================
 // === INTERNAL USE (Underscore Prefix)
 // =============================================================================
-export { _captureOverrides, _connectionCheckRunning, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, __aiWebPilotInitPromise, _resetPilotCacheForTesting, } from './background/index.js';
+export { _captureOverrides, _connectionCheckRunning, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, _resetPilotCacheForTesting, } from './background/index.js';
 // =============================================================================
 // INITIALIZATION — Only in Chrome extension context, not in Node.js test environment
 // =============================================================================
