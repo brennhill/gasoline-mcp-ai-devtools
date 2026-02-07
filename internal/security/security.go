@@ -38,12 +38,13 @@ type LogEntry map[string]any
 
 // SecurityScanInput contains the data to scan.
 type SecurityScanInput struct {
-	NetworkBodies []capture.NetworkBody
-	ConsoleEntries []LogEntry
-	PageURLs       []string
-	URLFilter      string
-	Checks         []string // Which checks to run; empty = all
-	SeverityMin    string   // Minimum severity to report
+	NetworkBodies    []capture.NetworkBody
+	WaterfallEntries []capture.NetworkWaterfallEntry
+	ConsoleEntries   []LogEntry
+	PageURLs         []string
+	URLFilter        string
+	Checks           []string // Which checks to run; empty = all
+	SeverityMin      string   // Minimum severity to report
 }
 
 // SecurityScanResult contains all findings from a scan.
@@ -91,7 +92,7 @@ func (s *SecurityScanner) Scan(input SecurityScanInput) SecurityScanResult {
 	findings := make([]SecurityFinding, 0)
 	checks := input.Checks
 	if len(checks) == 0 {
-		checks = []string{"credentials", "pii", "headers", "cookies", "transport", "auth"}
+		checks = []string{"credentials", "pii", "headers", "cookies", "transport", "auth", "network"}
 	}
 
 	checkSet := make(map[string]bool)
@@ -120,6 +121,9 @@ func (s *SecurityScanner) Scan(input SecurityScanInput) SecurityScanResult {
 	if checkSet["auth"] {
 		findings = append(findings, s.checkAuthPatterns(bodies)...)
 	}
+	if checkSet["network"] {
+		findings = append(findings, s.checkNetworkSecurity(input.WaterfallEntries, input.PageURLs)...)
+	}
 
 	// Apply severity filter
 	if input.SeverityMin != "" {
@@ -140,8 +144,68 @@ func (s *SecurityScanner) Scan(input SecurityScanInput) SecurityScanResult {
 // MCP Tool Handler
 // ============================================
 
+// checkNetworkSecurity analyzes waterfall entries for suspicious origins, typosquatting,
+// mixed content, non-standard ports, and IP address origins.
+func (s *SecurityScanner) checkNetworkSecurity(entries []capture.NetworkWaterfallEntry, pageURLs []string) []SecurityFinding {
+	var findings []SecurityFinding
+	pageURL := ""
+	if len(pageURLs) > 0 {
+		pageURL = pageURLs[0]
+	}
+
+	for _, entry := range entries {
+		flags := analyzeNetworkSecurity(entry, pageURL)
+		for _, flag := range flags {
+			findings = append(findings, SecurityFinding{
+				Check:       "network",
+				Severity:    flag.Severity,
+				Title:       flag.Message,
+				Description: networkFlagDescription(flag.Type),
+				Location:    flag.Resource,
+				Evidence:    flag.Origin,
+				Remediation: networkFlagRemediation(flag.Type),
+			})
+		}
+	}
+	return findings
+}
+
+func networkFlagDescription(flagType string) string {
+	switch flagType {
+	case "suspicious_tld":
+		return "Resource loaded from a TLD with elevated abuse rates. May indicate a supply chain attack or compromised dependency."
+	case "non_standard_port":
+		return "Resource loaded from a non-standard port, which may indicate compromised or temporary infrastructure."
+	case "mixed_content":
+		return "HTTP resource loaded on an HTTPS page. An attacker on the network can modify this resource."
+	case "ip_address_origin":
+		return "Resource loaded from an IP address instead of a domain name. May indicate compromised or ephemeral infrastructure."
+	case "potential_typosquatting":
+		return "Domain is suspiciously similar to a popular CDN or service. May be a typosquatting attack."
+	default:
+		return "Suspicious network origin detected."
+	}
+}
+
+func networkFlagRemediation(flagType string) string {
+	switch flagType {
+	case "suspicious_tld":
+		return "Verify the domain is legitimate. Consider using well-known CDNs for third-party resources."
+	case "non_standard_port":
+		return "Use standard ports (80/443) for production resources. Investigate why a non-standard port is in use."
+	case "mixed_content":
+		return "Upgrade all resource URLs to HTTPS. Use Content-Security-Policy: upgrade-insecure-requests."
+	case "ip_address_origin":
+		return "Use domain names with proper DNS. Investigate why a direct IP address is being used."
+	case "potential_typosquatting":
+		return "Verify the exact domain name. Check package.json / CDN references for typos."
+	default:
+		return "Investigate the flagged origin and verify it is legitimate."
+	}
+}
+
 // HandleSecurityAudit processes MCP tool call parameters and runs the scan.
-func (s *SecurityScanner) HandleSecurityAudit(params json.RawMessage, bodies []capture.NetworkBody, entries []LogEntry, pageURLs []string) (any, error) {
+func (s *SecurityScanner) HandleSecurityAudit(params json.RawMessage, bodies []capture.NetworkBody, entries []LogEntry, pageURLs []string, waterfallEntries []capture.NetworkWaterfallEntry) (any, error) {
 	var toolParams struct {
 		Checks      []string `json:"checks"`
 		URLFilter   string   `json:"url"`
@@ -152,12 +216,13 @@ func (s *SecurityScanner) HandleSecurityAudit(params json.RawMessage, bodies []c
 	}
 
 	input := SecurityScanInput{
-		NetworkBodies:  bodies,
-		ConsoleEntries: entries,
-		PageURLs:       pageURLs,
-		URLFilter:      toolParams.URLFilter,
-		Checks:         toolParams.Checks,
-		SeverityMin:    toolParams.SeverityMin,
+		NetworkBodies:    bodies,
+		WaterfallEntries: waterfallEntries,
+		ConsoleEntries:   entries,
+		PageURLs:         pageURLs,
+		URLFilter:        toolParams.URLFilter,
+		Checks:           toolParams.Checks,
+		SeverityMin:      toolParams.SeverityMin,
 	}
 
 	result := s.Scan(input)

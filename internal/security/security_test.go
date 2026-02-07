@@ -944,7 +944,7 @@ func TestHandleSecurityAudit_EmptyParams(t *testing.T) {
 	t.Parallel()
 	scanner := NewSecurityScanner()
 	params := json.RawMessage(`{}`)
-	result, err := scanner.HandleSecurityAudit(params, nil, nil, nil)
+	result, err := scanner.HandleSecurityAudit(params, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("HandleSecurityAudit with empty params should not error, got: %v", err)
 	}
@@ -964,7 +964,7 @@ func TestHandleSecurityAudit_WithChecksParam(t *testing.T) {
 			Status: 200,
 		},
 	}
-	result, err := scanner.HandleSecurityAudit(params, bodies, nil, nil)
+	result, err := scanner.HandleSecurityAudit(params, bodies, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -995,7 +995,7 @@ func TestHandleSecurityAudit_URLFilter(t *testing.T) {
 			Status: 200,
 		},
 	}
-	result, err := scanner.HandleSecurityAudit(params, bodies, nil, nil)
+	result, err := scanner.HandleSecurityAudit(params, bodies, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

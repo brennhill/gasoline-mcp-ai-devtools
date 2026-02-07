@@ -53,7 +53,7 @@ func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 
 	counts := BufferClearCounts{
 		WebSocketEvents: len(c.wsEvents),
-		WebSocketStatus: len(c.connections),
+		WebSocketStatus: len(c.ws.connections),
 	}
 
 	// Clear WebSocket events buffer
@@ -63,8 +63,8 @@ func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 	c.wsMemoryTotal = 0
 
 	// Clear WebSocket connections map
-	c.connections = make(map[string]*connectionState)
-	c.connOrder = make([]string, 0)
+	c.ws.connections = make(map[string]*connectionState)
+	c.ws.connOrder = make([]string, 0)
 
 	return counts
 }
@@ -113,9 +113,9 @@ func (c *Capture) ClearAll() {
 	c.nw.entries = make([]NetworkWaterfallEntry, 0, c.nw.capacity)
 	c.enhancedActions = make([]EnhancedAction, 0)
 	c.actionAddedAt = make([]time.Time, 0)
-	c.connections = make(map[string]*connectionState)
-	c.closedConns = make([]WebSocketClosedConnection, 0)
-	c.connOrder = make([]string, 0)
+	c.ws.connections = make(map[string]*connectionState)
+	c.ws.closedConns = make([]WebSocketClosedConnection, 0)
+	c.ws.connOrder = make([]string, 0)
 	c.ext.activeTestIDs = make(map[string]bool)
 
 	// Reset performance data
