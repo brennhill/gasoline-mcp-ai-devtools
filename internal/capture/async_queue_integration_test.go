@@ -23,6 +23,7 @@ import (
 //
 // If ANY of these steps break, this test fails.
 func TestAsyncQueueIntegration(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Step 1: MCP creates async command (simulate interact({action: 'execute_js', ...}))
@@ -107,6 +108,7 @@ func TestAsyncQueueIntegration(t *testing.T) {
 // TestAsyncQueueArchitectureInvariants verifies critical methods exist.
 // This test ensures refactoring doesn't accidentally remove required methods.
 func TestAsyncQueueArchitectureInvariants(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Verify CreatePendingQueryWithTimeout exists and works
@@ -165,6 +167,7 @@ func TestAsyncQueueArchitectureInvariants(t *testing.T) {
 
 // TestAsyncQueueMultiClientIntegration verifies multi-client isolation works correctly.
 func TestAsyncQueueMultiClientIntegration(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Client A creates command
@@ -227,6 +230,7 @@ func TestAsyncQueueMultiClientIntegration(t *testing.T) {
 
 // TestAsyncQueueExpirationIntegration verifies command expiration works end-to-end.
 func TestAsyncQueueExpirationIntegration(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Create command with short timeout (will expire)

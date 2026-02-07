@@ -180,8 +180,20 @@ type HealthSnapshot struct {
 
 // GetHealthSnapshot returns a snapshot of capture health state for /health endpoint
 func (c *Capture) GetHealthSnapshot() HealthSnapshot {
+	// Get circuit state from sub-struct (own lock) before acquiring c.mu
+	circuitOpen, circuitReason, circuitOpenedAt, windowEventCount := c.circuit.GetState()
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
+	// Compute memory inline — we already hold c.mu.RLock, so calling
+	// getMemoryForCircuit() would risk reentrant lock deadlock.
+	var memBytes int64
+	if c.mem.simulatedMemory > 0 {
+		memBytes = c.mem.simulatedMemory
+	} else {
+		memBytes = c.calcTotalMemory()
+	}
 
 	return HealthSnapshot{
 		WebSocketCount:      len(c.wsEvents),
@@ -192,11 +204,11 @@ func (c *Capture) GetHealthSnapshot() HealthSnapshot {
 		ExtensionSession:    c.extensionSession,
 		SessionChangedTime:  c.sessionChangedAt,
 		PilotEnabled:        c.pilotEnabled,
-		CircuitOpen:         c.circuitOpen,
-		WindowEventCount:    c.windowEventCount,
-		MemoryBytes:         c.getMemoryForCircuit(),
-		CircuitReason:       c.circuitReason,
-		CircuitOpenedTime:   c.circuitOpenedAt,
+		CircuitOpen:         circuitOpen,
+		WindowEventCount:    windowEventCount,
+		MemoryBytes:         memBytes,
+		CircuitReason:       circuitReason,
+		CircuitOpenedTime:   circuitOpenedAt,
 		PendingQueryCount:   len(c.pendingQueries),
 		QueryResultCount:    len(c.queryResults),
 		ActiveTestIDCount:   len(c.activeTestIDs),

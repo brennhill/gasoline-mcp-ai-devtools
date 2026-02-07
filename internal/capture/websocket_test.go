@@ -933,11 +933,7 @@ func TestV4HandleWebSocketEvents_POST_RateLimited(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	capture.mu.Lock()
-	capture.circuitOpen = true
-	capture.circuitOpenedAt = time.Now()
-	capture.circuitReason = "rate_exceeded"
-	capture.mu.Unlock()
+	capture.circuit.ForceOpen("rate_exceeded")
 
 	body := `{"events":[{"event":"open","id":"ws-1","url":"wss://example.com/ws"}]}`
 	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewBufferString(body))
@@ -986,10 +982,7 @@ func TestV4HandleWebSocketEvents_POST_RateLimitAfterRecording(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	capture.mu.Lock()
-	capture.rateWindowStart = time.Now()
-	capture.windowEventCount = RateLimitThreshold - 1
-	capture.mu.Unlock()
+	capture.circuit.SetWindowState(time.Now(), RateLimitThreshold-1)
 
 	// 10 events pushes count over threshold
 	events := make([]map[string]any, 10)

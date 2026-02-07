@@ -11,6 +11,7 @@ import (
 )
 
 func TestHandleSync_BasicRequest(t *testing.T) {
+	t.Parallel()
 	cap := NewCapture()
 
 	// Create a sync request
@@ -73,6 +74,7 @@ func TestHandleSync_BasicRequest(t *testing.T) {
 }
 
 func TestHandleSync_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	cap := NewCapture()
 
 	// Try GET instead of POST
@@ -87,6 +89,7 @@ func TestHandleSync_MethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleSync_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	cap := NewCapture()
 
 	// Send invalid JSON
@@ -102,6 +105,7 @@ func TestHandleSync_InvalidJSON(t *testing.T) {
 }
 
 func TestHandleSync_WithExtensionLogs(t *testing.T) {
+	t.Parallel()
 	cap := NewCapture()
 
 	// Create request with extension logs
@@ -139,6 +143,7 @@ func TestHandleSync_WithExtensionLogs(t *testing.T) {
 }
 
 func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
+	t.Parallel()
 	cap := NewCapture()
 
 	// Initially lastPollAt should be zero
@@ -175,6 +180,7 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 // TestHandleSync_WaterfallQueryDelivery verifies that waterfall queries
 // are delivered to extension via sync response commands.
 func TestHandleSync_WaterfallQueryDelivery(t *testing.T) {
+	t.Parallel()
 	cap := NewCapture()
 
 	// Create a waterfall query (simulating MCP requesting fresh data)
@@ -224,6 +230,7 @@ func TestHandleSync_WaterfallQueryDelivery(t *testing.T) {
 // TestHandleSync_WaterfallResultDelivery verifies that waterfall results
 // are stored correctly when extension posts them via sync.
 func TestHandleSync_WaterfallResultDelivery(t *testing.T) {
+	t.Parallel()
 	cap := NewCapture()
 
 	// Create a waterfall query

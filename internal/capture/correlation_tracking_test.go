@@ -12,6 +12,7 @@ import (
 
 // TestCorrelationIDTracking verifies command lifecycle tracking
 func TestCorrelationIDTracking(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Create async command with correlation ID
@@ -58,6 +59,7 @@ func TestCorrelationIDTracking(t *testing.T) {
 
 // TestCorrelationIDExpiration verifies command expires after timeout
 func TestCorrelationIDExpiration(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	correlationID := "test_expired_67890"
@@ -96,6 +98,7 @@ func TestCorrelationIDExpiration(t *testing.T) {
 
 // TestCorrelationIDListCommands verifies listing commands by status
 func TestCorrelationIDListCommands(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Create 3 pending commands
@@ -161,6 +164,7 @@ func TestCorrelationIDListCommands(t *testing.T) {
 
 // TestCorrelationIDNoTracking verifies commands without correlation ID are not tracked
 func TestCorrelationIDNoTracking(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Create command without correlation ID (synchronous query)
@@ -181,6 +185,7 @@ func TestCorrelationIDNoTracking(t *testing.T) {
 
 // TestCorrelationIDMultiClient verifies client isolation doesn't affect tracking
 func TestCorrelationIDMultiClient(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Client A creates command

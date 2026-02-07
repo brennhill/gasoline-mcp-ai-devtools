@@ -9,6 +9,7 @@ import (
 )
 
 func TestDebugLogger_LogPollingActivity(t *testing.T) {
+	t.Parallel()
 	dl := NewDebugLogger()
 
 	entry := PollingLogEntry{
@@ -33,6 +34,7 @@ func TestDebugLogger_LogPollingActivity(t *testing.T) {
 }
 
 func TestDebugLogger_LogHTTPDebugEntry(t *testing.T) {
+	t.Parallel()
 	dl := NewDebugLogger()
 
 	entry := HTTPDebugEntry{
@@ -56,6 +58,7 @@ func TestDebugLogger_LogHTTPDebugEntry(t *testing.T) {
 }
 
 func TestDebugLogger_CircularBufferWrapping(t *testing.T) {
+	t.Parallel()
 	dl := NewDebugLogger()
 
 	// Write 60 entries (exceeds buffer size of 50)
@@ -92,6 +95,7 @@ func TestDebugLogger_CircularBufferWrapping(t *testing.T) {
 }
 
 func TestDebugLogger_GetHTTPDebugLogReturnsCopy(t *testing.T) {
+	t.Parallel()
 	dl := NewDebugLogger()
 
 	dl.LogHTTPDebugEntry(HTTPDebugEntry{
@@ -118,6 +122,7 @@ func TestDebugLogger_GetHTTPDebugLogReturnsCopy(t *testing.T) {
 }
 
 func TestDebugLogger_ConcurrentWrites(t *testing.T) {
+	t.Parallel()
 	dl := NewDebugLogger()
 	var wg sync.WaitGroup
 
@@ -148,6 +153,7 @@ func TestDebugLogger_ConcurrentWrites(t *testing.T) {
 }
 
 func TestDebugLogger_PollingLogCircularWrapping(t *testing.T) {
+	t.Parallel()
 	dl := NewDebugLogger()
 
 	for i := 0; i < 55; i++ {
