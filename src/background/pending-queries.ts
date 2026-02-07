@@ -764,7 +764,7 @@ async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number, wor
     const result = await Promise.race([
       executeWithWorldRouting(tabId, query.params, world),
       new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Execution timeout')), ASYNC_EXECUTE_TIMEOUT_MS)
+        setTimeout(() => reject(new Error(`Script execution timed out after ${ASYNC_EXECUTE_TIMEOUT_MS}ms. Script may be stuck in a loop or waiting for user input.`)), ASYNC_EXECUTE_TIMEOUT_MS)
       }),
     ])
 
@@ -818,7 +818,7 @@ async function handleAsyncBrowserAction(
     const execResult = await Promise.race([
       executionPromise,
       new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Execution timeout')), ASYNC_BROWSER_ACTION_TIMEOUT_MS)
+        setTimeout(() => reject(new Error(`Browser action execution timed out after ${ASYNC_BROWSER_ACTION_TIMEOUT_MS}ms. Action may be waiting for user interaction or network response.`)), ASYNC_BROWSER_ACTION_TIMEOUT_MS)
       }),
     ])
 

@@ -172,12 +172,12 @@ export function createCircuitBreaker(
     const currentState = getState()
 
     if (currentState === 'open') {
-      throw new Error('Circuit breaker is open')
+      throw new Error(`Server connection blocked: circuit breaker is open after ${consecutiveFailures} failures. Retrying in ${currentBackoff}ms.`)
     }
 
     if (currentState === 'half-open') {
       if (probeInFlight) {
-        throw new Error('Circuit breaker is open')
+        throw new Error('Server connection blocked: circuit breaker testing connection recovery')
       }
       probeInFlight = true
     }

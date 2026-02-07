@@ -105,7 +105,8 @@ export function createBatcherWithCircuitBreaker<T>(
 
     const state = cb.getState()
     if (state === 'open') {
-      throw new Error('Circuit breaker is open')
+      const stats = cb.getStats()
+      throw new Error(`Cannot send batch: circuit breaker is open after ${stats.consecutiveFailures} consecutive failures. Will retry automatically.`)
     }
 
     try {

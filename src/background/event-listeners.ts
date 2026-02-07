@@ -242,7 +242,7 @@ export async function pingContentScript(tabId: number, timeoutMs = 500): Promise
     const response = (await Promise.race([
       chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
       new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('timeout')), timeoutMs)
+        setTimeout(() => reject(new Error(`Content script ping timeout after ${timeoutMs}ms on tab ${tabId}`)), timeoutMs)
       }),
     ])) as { status?: string }
     return response?.status === 'alive'
