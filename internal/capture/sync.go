@@ -183,11 +183,11 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		if log.Timestamp.IsZero() {
 			log.Timestamp = now
 		}
-		c.extensionLogs = append(c.extensionLogs, log)
-		if len(c.extensionLogs) > MaxExtensionLogs {
+		c.elb.logs = append(c.elb.logs, log)
+		if len(c.elb.logs) > MaxExtensionLogs {
 			kept := make([]ExtensionLog, MaxExtensionLogs)
-			copy(kept, c.extensionLogs[len(c.extensionLogs)-MaxExtensionLogs:])
-			c.extensionLogs = kept
+			copy(kept, c.elb.logs[len(c.elb.logs)-MaxExtensionLogs:])
+			c.elb.logs = kept
 		}
 	}
 

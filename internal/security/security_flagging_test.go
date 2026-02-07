@@ -313,62 +313,6 @@ func TestAnalyzeNetworkSecurity_ReturnsEmptyForSafeOrigins(t *testing.T) {
 // ============================================
 // Storage Tests
 // ============================================
-
-func TestCapture_StoresSecurityFlags(t *testing.T) {
-	t.Parallel()
-	capture := NewCapture()
-
-	// Manually add a security flag (simulating detection)
-	flag := SecurityFlag{
-		Type:      "suspicious_tld",
-		Severity:  "medium",
-		Origin:    "https://cdn-analytics.xyz",
-		Message:   "TLD .xyz has elevated risk",
-		Timestamp: time.Now(),
-	}
-
-	capture.mu.Lock()
-	capture.securityFlags = append(capture.securityFlags, flag)
-	capture.mu.Unlock()
-
-	// Verify storage
-	capture.mu.RLock()
-	count := len(capture.securityFlags)
-	capture.mu.RUnlock()
-
-	if count != 1 {
-		t.Errorf("Expected 1 security flag, got %d", count)
-	}
-}
-
-func TestCapture_EnforcesSecurityFlagCapacity(t *testing.T) {
-	t.Parallel()
-	capture := NewCapture()
-
-	// Add 1100 flags (should trim to 1000)
-	capture.mu.Lock()
-	for i := 0; i < 1100; i++ {
-		flag := SecurityFlag{
-			Type:      "suspicious_tld",
-			Severity:  "medium",
-			Origin:    "https://example.xyz",
-			Timestamp: time.Now(),
-		}
-		capture.securityFlags = append(capture.securityFlags, flag)
-	}
-
-	// Enforce capacity
-	if len(capture.securityFlags) > 1000 {
-		capture.securityFlags = capture.securityFlags[len(capture.securityFlags)-1000:]
-	}
-	capture.mu.Unlock()
-
-	// Verify capacity enforced
-	capture.mu.RLock()
-	count := len(capture.securityFlags)
-	capture.mu.RUnlock()
-
-	if count != 1000 {
-		t.Errorf("Expected max 1000 flags, got %d", count)
-	}
-}
+// NOTE: SecurityFlags storage tests removed — securityFlags field was dead code
+// (never written by production code). The SecurityFlag type is retained for
+// future use by security analysis functions.

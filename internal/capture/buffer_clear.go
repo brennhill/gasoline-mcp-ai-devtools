@@ -30,12 +30,12 @@ func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 	defer c.mu.Unlock()
 
 	counts := BufferClearCounts{
-		NetworkWaterfall: len(c.networkWaterfall),
+		NetworkWaterfall: len(c.nw.entries),
 		NetworkBodies:    len(c.networkBodies),
 	}
 
 	// Clear network waterfall buffer
-	c.networkWaterfall = make([]NetworkWaterfallEntry, 0, c.networkWaterfallCapacity)
+	c.nw.entries = make([]NetworkWaterfallEntry, 0, c.nw.capacity)
 
 	// Clear network bodies buffer and reset memory tracking
 	c.networkBodies = make([]NetworkBody, 0)
@@ -92,8 +92,8 @@ func (c *Capture) ClearExtensionLogs() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	count := len(c.extensionLogs)
-	c.extensionLogs = make([]ExtensionLog, 0)
+	count := len(c.elb.logs)
+	c.elb.logs = make([]ExtensionLog, 0)
 
 	return count
 }
@@ -110,7 +110,7 @@ func (c *Capture) ClearAll() {
 	c.networkBodies = make([]NetworkBody, 0)
 	c.networkAddedAt = make([]time.Time, 0)
 	c.nbMemoryTotal = 0
-	c.networkWaterfall = make([]NetworkWaterfallEntry, 0, c.networkWaterfallCapacity)
+	c.nw.entries = make([]NetworkWaterfallEntry, 0, c.nw.capacity)
 	c.enhancedActions = make([]EnhancedAction, 0)
 	c.actionAddedAt = make([]time.Time, 0)
 	c.connections = make(map[string]*connectionState)

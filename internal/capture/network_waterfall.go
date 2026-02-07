@@ -21,15 +21,15 @@ func (c *Capture) AddNetworkWaterfallEntries(entries []NetworkWaterfallEntry, pa
 		entries[i].Timestamp = now
 
 		// Add to ring buffer
-		c.networkWaterfall = append(c.networkWaterfall, entries[i])
+		c.nw.entries = append(c.nw.entries, entries[i])
 	}
 
 	// Enforce capacity - keep only the most recent entries.
 	// Allocate new slice to release old backing array for GC.
-	if len(c.networkWaterfall) > c.networkWaterfallCapacity {
-		kept := make([]NetworkWaterfallEntry, c.networkWaterfallCapacity)
-		copy(kept, c.networkWaterfall[len(c.networkWaterfall)-c.networkWaterfallCapacity:])
-		c.networkWaterfall = kept
+	if len(c.nw.entries) > c.nw.capacity {
+		kept := make([]NetworkWaterfallEntry, c.nw.capacity)
+		copy(kept, c.nw.entries[len(c.nw.entries)-c.nw.capacity:])
+		c.nw.entries = kept
 	}
 }
 
@@ -37,7 +37,7 @@ func (c *Capture) AddNetworkWaterfallEntries(entries []NetworkWaterfallEntry, pa
 func (c *Capture) GetNetworkWaterfallCount() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return len(c.networkWaterfall)
+	return len(c.nw.entries)
 }
 
 // GetNetworkWaterfallEntries returns all waterfall entries.
@@ -45,11 +45,11 @@ func (c *Capture) GetNetworkWaterfallEntries() []NetworkWaterfallEntry {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if len(c.networkWaterfall) == 0 {
+	if len(c.nw.entries) == 0 {
 		return []NetworkWaterfallEntry{}
 	}
 
-	result := make([]NetworkWaterfallEntry, len(c.networkWaterfall))
-	copy(result, c.networkWaterfall)
+	result := make([]NetworkWaterfallEntry, len(c.nw.entries))
+	copy(result, c.nw.entries)
 	return result
 }

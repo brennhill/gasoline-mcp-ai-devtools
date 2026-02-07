@@ -12,7 +12,7 @@ func TestClearNetworkBuffers(t *testing.T) {
 
 	// Add network data directly to buffers
 	capture.mu.Lock()
-	capture.networkWaterfall = []NetworkWaterfallEntry{
+	capture.nw.entries = []NetworkWaterfallEntry{
 		{URL: "https://example.com/1"},
 		{URL: "https://example.com/2"},
 	}
@@ -24,7 +24,7 @@ func TestClearNetworkBuffers(t *testing.T) {
 
 	// Verify data exists
 	capture.mu.RLock()
-	initialWaterfall := len(capture.networkWaterfall)
+	initialWaterfall := len(capture.nw.entries)
 	initialBodies := len(capture.networkBodies)
 	capture.mu.RUnlock()
 
@@ -51,8 +51,8 @@ func TestClearNetworkBuffers(t *testing.T) {
 
 	// Verify buffers empty
 	capture.mu.RLock()
-	if len(capture.networkWaterfall) != 0 {
-		t.Errorf("Expected networkWaterfall to be empty, got %d entries", len(capture.networkWaterfall))
+	if len(capture.nw.entries) != 0 {
+		t.Errorf("Expected networkWaterfall to be empty, got %d entries", len(capture.nw.entries))
 	}
 	if len(capture.networkBodies) != 0 {
 		t.Errorf("Expected networkBodies to be empty, got %d entries", len(capture.networkBodies))
@@ -135,7 +135,7 @@ func TestClearExtensionLogs(t *testing.T) {
 
 	// Add extension logs
 	capture.mu.Lock()
-	capture.extensionLogs = append(capture.extensionLogs, ExtensionLog{Level: "debug", Message: "ext log", Timestamp: time.Now()})
+	capture.elb.logs = append(capture.elb.logs, ExtensionLog{Level: "debug", Message: "ext log", Timestamp: time.Now()})
 	capture.mu.Unlock()
 
 	// Clear
@@ -148,8 +148,8 @@ func TestClearExtensionLogs(t *testing.T) {
 
 	// Verify buffer empty
 	capture.mu.RLock()
-	if len(capture.extensionLogs) != 0 {
-		t.Errorf("Expected extensionLogs to be empty, got %d entries", len(capture.extensionLogs))
+	if len(capture.elb.logs) != 0 {
+		t.Errorf("Expected extensionLogs to be empty, got %d entries", len(capture.elb.logs))
 	}
 	capture.mu.RUnlock()
 }
@@ -161,7 +161,7 @@ func TestClearAllCapture(t *testing.T) {
 
 	// Add data to all capture buffers
 	capture.mu.Lock()
-	capture.networkWaterfall = []NetworkWaterfallEntry{{URL: "test"}}
+	capture.nw.entries = []NetworkWaterfallEntry{{URL: "test"}}
 	capture.mu.Unlock()
 
 	capture.AddWebSocketEvents([]WebSocketEvent{{ID: "conn1", Data: "test"}})
@@ -174,7 +174,7 @@ func TestClearAllCapture(t *testing.T) {
 	capture.mu.RLock()
 	defer capture.mu.RUnlock()
 
-	if len(capture.networkWaterfall) != 0 {
+	if len(capture.nw.entries) != 0 {
 		t.Error("Expected networkWaterfall to be empty")
 	}
 	if len(capture.wsEvents) != 0 {
