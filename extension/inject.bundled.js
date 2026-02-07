@@ -914,6 +914,230 @@ function wrapFetchWithBodies(fetchFn) {
   };
 }
 
+// extension/lib/perf-snapshot.js
+var perfSnapshotEnabled = true;
+var longTaskEntries = [];
+var longTaskObserver = null;
+var paintObserver = null;
+var lcpObserver = null;
+var clsObserver = null;
+var inpObserver = null;
+var fcpValue = null;
+var lcpValue = null;
+var clsValue = 0;
+var inpValue = null;
+function mapInitiatorType(type) {
+  switch (type) {
+    case "script":
+      return "script";
+    case "link":
+    case "css":
+      return "style";
+    case "img":
+      return "image";
+    case "fetch":
+    case "xmlhttprequest":
+      return "fetch";
+    case "font":
+      return "font";
+    default:
+      return "other";
+  }
+}
+function aggregateResourceTiming() {
+  const resources = performance.getEntriesByType("resource") || [];
+  const byType = {};
+  let transferSize = 0;
+  let decodedSize = 0;
+  for (const entry of resources) {
+    const category = mapInitiatorType(entry.initiatorType);
+    if (!byType[category]) {
+      byType[category] = { count: 0, size: 0 };
+    }
+    byType[category].count++;
+    byType[category].size += entry.transferSize || 0;
+    transferSize += entry.transferSize || 0;
+    decodedSize += entry.decodedBodySize || 0;
+  }
+  const sorted = [...resources].sort((a, b) => b.duration - a.duration);
+  const slowestRequests = sorted.slice(0, MAX_SLOWEST_REQUESTS).map((r) => ({
+    url: r.name.length > MAX_URL_LENGTH ? r.name.slice(0, MAX_URL_LENGTH) : r.name,
+    duration: r.duration,
+    size: r.transferSize || 0
+  }));
+  return {
+    request_count: resources.length,
+    transfer_size: transferSize,
+    decoded_size: decodedSize,
+    by_type: byType,
+    slowest_requests: slowestRequests
+  };
+}
+function capturePerformanceSnapshot() {
+  const navEntries = performance.getEntriesByType("navigation") || [];
+  if (!navEntries || navEntries.length === 0)
+    return null;
+  const nav = navEntries[0];
+  if (!nav)
+    return null;
+  const timing = {
+    dom_content_loaded: nav.domContentLoadedEventEnd,
+    load: nav.loadEventEnd,
+    first_contentful_paint: getFCP(),
+    largest_contentful_paint: getLCP(),
+    interaction_to_next_paint: getINP(),
+    time_to_first_byte: nav.responseStart - nav.requestStart,
+    dom_interactive: nav.domInteractive
+  };
+  const network = aggregateResourceTiming();
+  const longTasks = getLongTaskMetrics();
+  const marks = performance.getEntriesByType("mark") || [];
+  const measures = performance.getEntriesByType("measure") || [];
+  const userTiming = marks.length > 0 || measures.length > 0 ? {
+    marks: marks.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime })),
+    measures: measures.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime, duration: m.duration }))
+  } : void 0;
+  return {
+    url: window.location.pathname,
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    timing,
+    network,
+    long_tasks: longTasks,
+    cumulative_layout_shift: getCLS(),
+    user_timing: userTiming
+  };
+}
+function installPerfObservers() {
+  longTaskEntries = [];
+  fcpValue = null;
+  lcpValue = null;
+  clsValue = 0;
+  inpValue = null;
+  longTaskObserver = new PerformanceObserver((list) => {
+    const entries = list.getEntries();
+    for (const entry of entries) {
+      if (longTaskEntries.length < MAX_LONG_TASKS) {
+        longTaskEntries.push(entry);
+      }
+    }
+  });
+  longTaskObserver.observe({ type: "longtask" });
+  paintObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      if (entry.name === "first-contentful-paint") {
+        fcpValue = entry.startTime;
+      }
+    }
+  });
+  paintObserver.observe({ type: "paint" });
+  lcpObserver = new PerformanceObserver((list) => {
+    const entries = list.getEntries();
+    if (entries.length > 0) {
+      const lastEntry = entries[entries.length - 1];
+      if (lastEntry) {
+        lcpValue = lastEntry.startTime;
+      }
+    }
+  });
+  lcpObserver.observe({ type: "largest-contentful-paint" });
+  clsObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      const clsEntry = entry;
+      if (!clsEntry.hadRecentInput) {
+        clsValue += clsEntry.value || 0;
+      }
+    }
+  });
+  clsObserver.observe({ type: "layout-shift" });
+  inpObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      const inpEntry = entry;
+      if (inpEntry.interactionId) {
+        if (inpValue === null || inpEntry.duration > inpValue) {
+          inpValue = inpEntry.duration;
+        }
+      }
+    }
+  });
+  inpObserver.observe({ type: "event", durationThreshold: 40 });
+}
+function uninstallPerfObservers() {
+  if (longTaskObserver) {
+    longTaskObserver.disconnect();
+    longTaskObserver = null;
+  }
+  if (paintObserver) {
+    paintObserver.disconnect();
+    paintObserver = null;
+  }
+  if (lcpObserver) {
+    lcpObserver.disconnect();
+    lcpObserver = null;
+  }
+  if (clsObserver) {
+    clsObserver.disconnect();
+    clsObserver = null;
+  }
+  if (inpObserver) {
+    inpObserver.disconnect();
+    inpObserver = null;
+  }
+  longTaskEntries = [];
+}
+function getLongTaskMetrics() {
+  let totalBlockingTime = 0;
+  let longest = 0;
+  for (const entry of longTaskEntries) {
+    const blocking = entry.duration - 50;
+    if (blocking > 0)
+      totalBlockingTime += blocking;
+    if (entry.duration > longest)
+      longest = entry.duration;
+  }
+  return {
+    count: longTaskEntries.length,
+    total_blocking_time: totalBlockingTime,
+    longest
+  };
+}
+function getFCP() {
+  return fcpValue;
+}
+function getLCP() {
+  return lcpValue;
+}
+function getCLS() {
+  return clsValue;
+}
+function getINP() {
+  return inpValue;
+}
+function sendPerformanceSnapshot() {
+  if (!perfSnapshotEnabled)
+    return;
+  const snapshot = capturePerformanceSnapshot();
+  if (!snapshot)
+    return;
+  window.postMessage({ type: "GASOLINE_PERFORMANCE_SNAPSHOT", payload: snapshot }, window.location.origin);
+}
+var snapshotResendTimer = null;
+function scheduleSnapshotResend() {
+  if (!perfSnapshotEnabled)
+    return;
+  if (snapshotResendTimer)
+    clearTimeout(snapshotResendTimer);
+  snapshotResendTimer = setTimeout(() => {
+    snapshotResendTimer = null;
+    sendPerformanceSnapshot();
+  }, 500);
+}
+function isPerformanceSnapshotEnabled() {
+  return perfSnapshotEnabled;
+}
+function setPerformanceSnapshotEnabled(enabled) {
+  perfSnapshotEnabled = enabled;
+}
+
 // extension/lib/performance.js
 var performanceMarksEnabled = false;
 var capturedMarks = [];
@@ -994,6 +1218,7 @@ function installPerformanceCapture() {
     if (capturedMarks.length > MAX_PERFORMANCE_ENTRIES) {
       capturedMarks.shift();
     }
+    scheduleSnapshotResend();
     return result;
   };
   Object.defineProperty(performance, "mark", { value: wrappedMark, writable: true, configurable: true });
@@ -1009,6 +1234,7 @@ function installPerformanceCapture() {
     if (capturedMeasures.length > MAX_PERFORMANCE_ENTRIES) {
       capturedMeasures.shift();
     }
+    scheduleSnapshotResend();
     return result;
   };
   Object.defineProperty(performance, "measure", { value: wrappedMeasure, writable: true, configurable: true });
@@ -2256,212 +2482,6 @@ function formatAxeResults(axeResult) {
       inapplicable: (axeResult.inapplicable || []).length
     }
   };
-}
-
-// extension/lib/perf-snapshot.js
-var perfSnapshotEnabled = true;
-var longTaskEntries = [];
-var longTaskObserver = null;
-var paintObserver = null;
-var lcpObserver = null;
-var clsObserver = null;
-var inpObserver = null;
-var fcpValue = null;
-var lcpValue = null;
-var clsValue = 0;
-var inpValue = null;
-function mapInitiatorType(type) {
-  switch (type) {
-    case "script":
-      return "script";
-    case "link":
-    case "css":
-      return "style";
-    case "img":
-      return "image";
-    case "fetch":
-    case "xmlhttprequest":
-      return "fetch";
-    case "font":
-      return "font";
-    default:
-      return "other";
-  }
-}
-function aggregateResourceTiming() {
-  const resources = performance.getEntriesByType("resource") || [];
-  const byType = {};
-  let transferSize = 0;
-  let decodedSize = 0;
-  for (const entry of resources) {
-    const category = mapInitiatorType(entry.initiatorType);
-    if (!byType[category]) {
-      byType[category] = { count: 0, size: 0 };
-    }
-    byType[category].count++;
-    byType[category].size += entry.transferSize || 0;
-    transferSize += entry.transferSize || 0;
-    decodedSize += entry.decodedBodySize || 0;
-  }
-  const sorted = [...resources].sort((a, b) => b.duration - a.duration);
-  const slowestRequests = sorted.slice(0, MAX_SLOWEST_REQUESTS).map((r) => ({
-    url: r.name.length > MAX_URL_LENGTH ? r.name.slice(0, MAX_URL_LENGTH) : r.name,
-    duration: r.duration,
-    size: r.transferSize || 0
-  }));
-  return {
-    requestCount: resources.length,
-    transferSize,
-    decodedSize,
-    byType,
-    slowestRequests
-  };
-}
-function capturePerformanceSnapshot() {
-  const navEntries = performance.getEntriesByType("navigation") || [];
-  if (!navEntries || navEntries.length === 0)
-    return null;
-  const nav = navEntries[0];
-  if (!nav)
-    return null;
-  const timing = {
-    domContentLoaded: nav.domContentLoadedEventEnd,
-    load: nav.loadEventEnd,
-    firstContentfulPaint: getFCP(),
-    largestContentfulPaint: getLCP(),
-    interactionToNextPaint: getINP(),
-    timeToFirstByte: nav.responseStart - nav.requestStart,
-    domInteractive: nav.domInteractive
-  };
-  const network = aggregateResourceTiming();
-  const longTasks = getLongTaskMetrics();
-  return {
-    url: window.location.pathname,
-    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-    timing,
-    network,
-    longTasks,
-    cumulativeLayoutShift: getCLS()
-  };
-}
-function installPerfObservers() {
-  longTaskEntries = [];
-  fcpValue = null;
-  lcpValue = null;
-  clsValue = 0;
-  inpValue = null;
-  longTaskObserver = new PerformanceObserver((list) => {
-    const entries = list.getEntries();
-    for (const entry of entries) {
-      if (longTaskEntries.length < MAX_LONG_TASKS) {
-        longTaskEntries.push(entry);
-      }
-    }
-  });
-  longTaskObserver.observe({ type: "longtask" });
-  paintObserver = new PerformanceObserver((list) => {
-    for (const entry of list.getEntries()) {
-      if (entry.name === "first-contentful-paint") {
-        fcpValue = entry.startTime;
-      }
-    }
-  });
-  paintObserver.observe({ type: "paint" });
-  lcpObserver = new PerformanceObserver((list) => {
-    const entries = list.getEntries();
-    if (entries.length > 0) {
-      const lastEntry = entries[entries.length - 1];
-      if (lastEntry) {
-        lcpValue = lastEntry.startTime;
-      }
-    }
-  });
-  lcpObserver.observe({ type: "largest-contentful-paint" });
-  clsObserver = new PerformanceObserver((list) => {
-    for (const entry of list.getEntries()) {
-      const clsEntry = entry;
-      if (!clsEntry.hadRecentInput) {
-        clsValue += clsEntry.value || 0;
-      }
-    }
-  });
-  clsObserver.observe({ type: "layout-shift" });
-  inpObserver = new PerformanceObserver((list) => {
-    for (const entry of list.getEntries()) {
-      const inpEntry = entry;
-      if (inpEntry.interactionId) {
-        if (inpValue === null || inpEntry.duration > inpValue) {
-          inpValue = inpEntry.duration;
-        }
-      }
-    }
-  });
-  inpObserver.observe({ type: "event", durationThreshold: 40 });
-}
-function uninstallPerfObservers() {
-  if (longTaskObserver) {
-    longTaskObserver.disconnect();
-    longTaskObserver = null;
-  }
-  if (paintObserver) {
-    paintObserver.disconnect();
-    paintObserver = null;
-  }
-  if (lcpObserver) {
-    lcpObserver.disconnect();
-    lcpObserver = null;
-  }
-  if (clsObserver) {
-    clsObserver.disconnect();
-    clsObserver = null;
-  }
-  if (inpObserver) {
-    inpObserver.disconnect();
-    inpObserver = null;
-  }
-  longTaskEntries = [];
-}
-function getLongTaskMetrics() {
-  let totalBlockingTime = 0;
-  let longest = 0;
-  for (const entry of longTaskEntries) {
-    const blocking = entry.duration - 50;
-    if (blocking > 0)
-      totalBlockingTime += blocking;
-    if (entry.duration > longest)
-      longest = entry.duration;
-  }
-  return {
-    count: longTaskEntries.length,
-    totalBlockingTime,
-    longest
-  };
-}
-function getFCP() {
-  return fcpValue;
-}
-function getLCP() {
-  return lcpValue;
-}
-function getCLS() {
-  return clsValue;
-}
-function getINP() {
-  return inpValue;
-}
-function sendPerformanceSnapshot() {
-  if (!perfSnapshotEnabled)
-    return;
-  const snapshot = capturePerformanceSnapshot();
-  if (!snapshot)
-    return;
-  window.postMessage({ type: "GASOLINE_PERFORMANCE_SNAPSHOT", payload: snapshot }, window.location.origin);
-}
-function isPerformanceSnapshotEnabled() {
-  return perfSnapshotEnabled;
-}
-function setPerformanceSnapshotEnabled(enabled) {
-  perfSnapshotEnabled = enabled;
 }
 
 // extension/inject/api.js

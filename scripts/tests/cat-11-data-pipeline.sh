@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
-begin_category "11" "Data Pipeline" "29"
+begin_category "11" "Data Pipeline" "31"
 ensure_daemon
 
 # ── Helpers ──────────────────────────────────────────────
@@ -397,15 +397,25 @@ run_test_11_13() {
         fail "observe(vitals) missing has_data field. Content: $(truncate "$text")"
         return
     fi
-    if ! check_contains "$text" "lcp"; then
-        fail "observe(vitals) missing lcp field. Content: $(truncate "$text")"
+    # Verify actual values — not just field names.
+    # These fail if JSON tags are wrong (e.g. camelCase instead of snake_case).
+    if ! check_contains "$text" "1200"; then
+        fail "observe(vitals) missing FCP value 1200. Content: $(truncate "$text")"
         return
     fi
-    if ! check_contains "$text" "fcp"; then
-        fail "observe(vitals) missing fcp field. Content: $(truncate "$text")"
+    if ! check_contains "$text" "2500"; then
+        fail "observe(vitals) missing LCP value 2500. Content: $(truncate "$text")"
         return
     fi
-    pass "Performance vitals verified: POST snapshot → observe(vitals) has has_data, lcp, fcp fields. Pipeline working."
+    if ! check_contains "$text" "0.1"; then
+        fail "observe(vitals) missing CLS value 0.1. Content: $(truncate "$text")"
+        return
+    fi
+    if ! check_contains "$text" "200"; then
+        fail "observe(vitals) missing TTFB value 200. Content: $(truncate "$text")"
+        return
+    fi
+    pass "Performance vitals verified: POST snapshot → observe(vitals) has FCP=1200, LCP=2500, CLS=0.1, TTFB=200. Values preserved."
 }
 run_test_11_13
 
@@ -778,6 +788,79 @@ run_test_11_29() {
     fi
 }
 run_test_11_29
+
+###########################################################
+# GROUP E: Performance Snapshot Data Integrity (2 tests)
+###########################################################
+
+# ── 11.30 — Performance snapshot field values roundtrip ───
+begin_test "11.30" "Performance snapshot field values preserved through observe(performance)" \
+    "POST snapshot with specific FCP/LCP/TTFB/CLS values, verify observe(performance) returns exact values" \
+    "If JSON tags are wrong (camelCase vs snake_case), fields deserialize to zero. Must verify actual values."
+run_test_11_30() {
+    post_extension "/performance-snapshots" '{"snapshots":[{"url":"/uat-fields-11-30","timestamp":"2026-02-06T12:05:00Z","timing":{"dom_content_loaded":777,"load":1234,"first_contentful_paint":888,"largest_contentful_paint":2222,"interaction_to_next_paint":155,"time_to_first_byte":99,"dom_interactive":555},"network":{"request_count":33,"transfer_size":123456,"decoded_size":234567},"long_tasks":{"count":2,"total_blocking_time":120,"longest":80},"cumulative_layout_shift":0.05}]}'
+    if [ "$LAST_HTTP_STATUS" != "200" ]; then
+        fail "POST /performance-snapshots returned HTTP $LAST_HTTP_STATUS."
+        return
+    fi
+    sleep 0.2
+    RESPONSE=$(call_tool "observe" '{"what":"performance"}')
+    local text
+    text=$(extract_content_text "$RESPONSE")
+    # Verify specific values that would be 0 if JSON tags were wrong
+    if ! check_contains "$text" "888"; then
+        fail "FCP value 888 missing — first_contentful_paint JSON tag likely wrong. Content: $(truncate "$text" 500)"
+        return
+    fi
+    if ! check_contains "$text" "2222"; then
+        fail "LCP value 2222 missing — largest_contentful_paint JSON tag likely wrong. Content: $(truncate "$text" 500)"
+        return
+    fi
+    if ! check_contains "$text" "777"; then
+        fail "DCL value 777 missing — dom_content_loaded JSON tag likely wrong. Content: $(truncate "$text" 500)"
+        return
+    fi
+    if ! check_contains "$text" "0.05"; then
+        fail "CLS value 0.05 missing — cumulative_layout_shift JSON tag likely wrong. Content: $(truncate "$text" 500)"
+        return
+    fi
+    if ! check_contains "$text" "155"; then
+        fail "INP value 155 missing — interaction_to_next_paint JSON tag likely wrong. Content: $(truncate "$text" 500)"
+        return
+    fi
+    pass "Snapshot field values preserved: FCP=888, LCP=2222, DCL=777, CLS=0.05, INP=155. All snake_case JSON tags working."
+}
+run_test_11_30
+
+# ── 11.31 — User timing in performance snapshot roundtrip ─
+begin_test "11.31" "User timing in performance snapshot preserved through observe(performance)" \
+    "POST snapshot with user_timing marks/measures, verify observe(performance) returns mark names" \
+    "User timing is the newest snapshot field. If the Go type or JSON tag is wrong, marks disappear."
+run_test_11_31() {
+    post_extension "/performance-snapshots" '{"snapshots":[{"url":"/uat-usertiming-11-31","timestamp":"2026-02-06T12:05:05Z","timing":{"dom_content_loaded":500,"load":1000,"time_to_first_byte":80,"dom_interactive":400},"network":{"request_count":10,"transfer_size":50000,"decoded_size":100000},"long_tasks":{"count":0,"total_blocking_time":0,"longest":0},"cumulative_layout_shift":0.01,"user_timing":{"marks":[{"name":"UAT_MARK_11_31","startTime":150},{"name":"hydration-done","startTime":800}],"measures":[{"name":"UAT_MEASURE_11_31","startTime":150,"duration":650}]}}]}'
+    if [ "$LAST_HTTP_STATUS" != "200" ]; then
+        fail "POST /performance-snapshots with user_timing returned HTTP $LAST_HTTP_STATUS."
+        return
+    fi
+    sleep 0.2
+    RESPONSE=$(call_tool "observe" '{"what":"performance"}')
+    local text
+    text=$(extract_content_text "$RESPONSE")
+    if ! check_contains "$text" "UAT_MARK_11_31"; then
+        fail "User timing mark 'UAT_MARK_11_31' missing from observe(performance). user_timing field not preserved. Content: $(truncate "$text" 500)"
+        return
+    fi
+    if ! check_contains "$text" "UAT_MEASURE_11_31"; then
+        fail "User timing measure 'UAT_MEASURE_11_31' missing from observe(performance). Measures not preserved. Content: $(truncate "$text" 500)"
+        return
+    fi
+    if ! check_contains "$text" "user_timing"; then
+        fail "user_timing field name missing from response. Content: $(truncate "$text" 500)"
+        return
+    fi
+    pass "User timing preserved: mark 'UAT_MARK_11_31' and measure 'UAT_MEASURE_11_31' found in observe(performance). Pipeline working."
+}
+run_test_11_31
 
 # ── Done ────────────────────────────────────────────────
 finish_category

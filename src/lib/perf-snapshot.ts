@@ -18,27 +18,33 @@ interface SlowRequest {
 }
 
 interface ResourceTimingSummary {
-  requestCount: number
-  transferSize: number
-  decodedSize: number
-  byType: Record<string, ResourceByType>
-  slowestRequests: SlowRequest[]
+  request_count: number
+  transfer_size: number
+  decoded_size: number
+  by_type: Record<string, ResourceByType>
+  slowest_requests: SlowRequest[]
 }
 
 interface LongTaskMetrics {
   count: number
-  totalBlockingTime: number
+  total_blocking_time: number
   longest: number
 }
 
 interface NetworkTiming {
-  domContentLoaded: number
+  dom_content_loaded: number
   load: number
-  firstContentfulPaint: number | null
-  largestContentfulPaint: number | null
-  interactionToNextPaint: number | null
-  timeToFirstByte: number
-  domInteractive: number
+  first_contentful_paint: number | null
+  largest_contentful_paint: number | null
+  interaction_to_next_paint: number | null
+  time_to_first_byte: number
+  dom_interactive: number
+}
+
+interface UserTimingEntry {
+  name: string
+  startTime: number
+  duration?: number
 }
 
 interface PerformanceSnapshotData {
@@ -46,8 +52,12 @@ interface PerformanceSnapshotData {
   timestamp: string
   timing: NetworkTiming
   network: ResourceTimingSummary
-  longTasks: LongTaskMetrics
-  cumulativeLayoutShift: number
+  long_tasks: LongTaskMetrics
+  cumulative_layout_shift: number
+  user_timing?: {
+    marks: UserTimingEntry[]
+    measures: UserTimingEntry[]
+  }
 }
 
 // Performance snapshot state
@@ -118,11 +128,11 @@ export function aggregateResourceTiming(): ResourceTimingSummary {
   }))
 
   return {
-    requestCount: resources.length,
-    transferSize,
-    decodedSize,
-    byType,
-    slowestRequests,
+    request_count: resources.length,
+    transfer_size: transferSize,
+    decoded_size: decodedSize,
+    by_type: byType,
+    slowest_requests: slowestRequests,
   }
 }
 
@@ -137,25 +147,34 @@ export function capturePerformanceSnapshot(): PerformanceSnapshotData | null {
   if (!nav) return null
 
   const timing: NetworkTiming = {
-    domContentLoaded: nav.domContentLoadedEventEnd,
+    dom_content_loaded: nav.domContentLoadedEventEnd,
     load: nav.loadEventEnd,
-    firstContentfulPaint: getFCP(),
-    largestContentfulPaint: getLCP(),
-    interactionToNextPaint: getINP(),
-    timeToFirstByte: nav.responseStart - nav.requestStart,
-    domInteractive: nav.domInteractive,
+    first_contentful_paint: getFCP(),
+    largest_contentful_paint: getLCP(),
+    interaction_to_next_paint: getINP(),
+    time_to_first_byte: nav.responseStart - nav.requestStart,
+    dom_interactive: nav.domInteractive,
   }
 
   const network = aggregateResourceTiming()
   const longTasks = getLongTaskMetrics()
+
+  // Capture user timing marks and measures
+  const marks = (performance.getEntriesByType('mark') as PerformanceEntry[]) || []
+  const measures = (performance.getEntriesByType('measure') as PerformanceEntry[]) || []
+  const userTiming = (marks.length > 0 || measures.length > 0) ? {
+    marks: marks.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime })),
+    measures: measures.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime, duration: m.duration })),
+  } : undefined
 
   return {
     url: window.location.pathname,
     timestamp: new Date().toISOString(),
     timing,
     network,
-    longTasks,
-    cumulativeLayoutShift: getCLS(),
+    long_tasks: longTasks,
+    cumulative_layout_shift: getCLS(),
+    user_timing: userTiming,
   }
 }
 
@@ -271,7 +290,7 @@ export function getLongTaskMetrics(): LongTaskMetrics {
 
   return {
     count: longTaskEntries.length,
-    totalBlockingTime,
+    total_blocking_time: totalBlockingTime,
     longest,
   }
 }
@@ -314,6 +333,22 @@ export function sendPerformanceSnapshot(): void {
   if (!snapshot) return
 
   window.postMessage({ type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: snapshot }, window.location.origin)
+}
+
+// Debounce timer for snapshot re-sends triggered by user timing changes
+let snapshotResendTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * Schedule a debounced re-send of the performance snapshot.
+ * Called when user timing marks/measures are created to keep server data fresh.
+ */
+export function scheduleSnapshotResend(): void {
+  if (!perfSnapshotEnabled) return
+  if (snapshotResendTimer) clearTimeout(snapshotResendTimer)
+  snapshotResendTimer = setTimeout(() => {
+    snapshotResendTimer = null
+    sendPerformanceSnapshot()
+  }, 500)
 }
 
 /**

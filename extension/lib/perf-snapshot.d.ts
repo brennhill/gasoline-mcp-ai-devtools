@@ -13,33 +13,42 @@ interface SlowRequest {
     size: number;
 }
 interface ResourceTimingSummary {
-    requestCount: number;
-    transferSize: number;
-    decodedSize: number;
-    byType: Record<string, ResourceByType>;
-    slowestRequests: SlowRequest[];
+    request_count: number;
+    transfer_size: number;
+    decoded_size: number;
+    by_type: Record<string, ResourceByType>;
+    slowest_requests: SlowRequest[];
 }
 interface LongTaskMetrics {
     count: number;
-    totalBlockingTime: number;
+    total_blocking_time: number;
     longest: number;
 }
 interface NetworkTiming {
-    domContentLoaded: number;
+    dom_content_loaded: number;
     load: number;
-    firstContentfulPaint: number | null;
-    largestContentfulPaint: number | null;
-    interactionToNextPaint: number | null;
-    timeToFirstByte: number;
-    domInteractive: number;
+    first_contentful_paint: number | null;
+    largest_contentful_paint: number | null;
+    interaction_to_next_paint: number | null;
+    time_to_first_byte: number;
+    dom_interactive: number;
+}
+interface UserTimingEntry {
+    name: string;
+    startTime: number;
+    duration?: number;
 }
 interface PerformanceSnapshotData {
     url: string;
     timestamp: string;
     timing: NetworkTiming;
     network: ResourceTimingSummary;
-    longTasks: LongTaskMetrics;
-    cumulativeLayoutShift: number;
+    long_tasks: LongTaskMetrics;
+    cumulative_layout_shift: number;
+    user_timing?: {
+        marks: UserTimingEntry[];
+        measures: UserTimingEntry[];
+    };
 }
 /**
  * Map resource initiator types to standard categories
@@ -85,6 +94,11 @@ export declare function getINP(): number | null;
  * Send performance snapshot via postMessage to content script
  */
 export declare function sendPerformanceSnapshot(): void;
+/**
+ * Schedule a debounced re-send of the performance snapshot.
+ * Called when user timing marks/measures are created to keep server data fresh.
+ */
+export declare function scheduleSnapshotResend(): void;
 /**
  * Check if performance snapshot capture is enabled
  */

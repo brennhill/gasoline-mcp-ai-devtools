@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
-begin_category "12" "Rich Action Results" "7"
+begin_category "12" "Rich Action Results" "12"
 ensure_daemon
 
 # ── 12.1 — Schema: analyze boolean param exists ──────────
@@ -150,5 +150,85 @@ run_test_12_7() {
     fi
 }
 run_test_12_7
+
+# ── 12.8 — Behavioral: snake_case JSON deserializes into PerformanceSnapshot ─
+begin_test "12.8" "snake_case JSON → PerformanceSnapshot with all Web Vitals" \
+    "Go unit test: extension snake_case JSON populates all PerformanceSnapshot fields" \
+    "If JSON tags revert to camelCase, FCP/LCP/TTFB/INP/CLS all deserialize to zero."
+run_test_12_8() {
+    local go_result
+    go_result=$(go test ./internal/performance/ -run "TestSnapshotJSON_AllWebVitalsDeserialize" -count=1 2>&1)
+
+    if echo "$go_result" | grep -q "^ok"; then
+        pass "snake_case JSON correctly populates all PerformanceSnapshot fields (FCP, LCP, TTFB, INP, CLS, DCL)."
+    else
+        fail "snake_case deserialization broken. Go test output: $(truncate "$go_result" 300)"
+    fi
+}
+run_test_12_8
+
+# ── 12.9 — Behavioral: FCP and TTFB have correct Web Vitals ratings ─
+begin_test "12.9" "FCP and TTFB ratings follow Web Vitals thresholds" \
+    "Go unit test: FCP needs_improvement (1800-3000ms), TTFB poor (>1800ms)" \
+    "Rating thresholds must match Web Vitals standards. Wrong thresholds mislead AI."
+run_test_12_9() {
+    local go_result
+    go_result=$(go test ./internal/performance/ -run "TestPerfDiff_FCP_NeedsImprovement|TestPerfDiff_TTFB_Poor" -count=1 2>&1)
+
+    if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
+        pass "FCP needs_improvement at 2500ms, TTFB poor at 2000ms — thresholds correct."
+    else
+        fail "FCP/TTFB rating tests failed. Go test output: $(truncate "$go_result" 300)"
+    fi
+}
+run_test_12_9
+
+# ── 12.10 — Behavioral: full Web Vitals through snapshot→diff pipeline ─
+begin_test "12.10" "Full Web Vitals (FCP+LCP+TTFB+CLS) produce ratings through snapshot→diff pipeline" \
+    "Go unit test: PerformanceSnapshot → SnapshotToPageLoadMetrics → ComputePerfDiff with all 4 Web Vitals" \
+    "End-to-end pipeline must preserve all Web Vitals. A broken mapping means missing metrics in perf_diff."
+run_test_12_10() {
+    local go_result
+    go_result=$(go test ./internal/performance/ -run "TestPerfDiff_FullWebVitals_AllRatings" -count=1 2>&1)
+
+    if echo "$go_result" | grep -q "^ok"; then
+        pass "Full pipeline: snapshot → PageLoadMetrics → perf_diff with FCP/LCP/TTFB/CLS ratings verified."
+    else
+        fail "Full Web Vitals pipeline test failed. Go test output: $(truncate "$go_result" 300)"
+    fi
+}
+run_test_12_10
+
+# ── 12.11 — Behavioral: UserTiming JSON round-trip ─
+begin_test "12.11" "UserTiming marks/measures survive JSON round-trip" \
+    "Go unit test: JSON with user_timing → unmarshal → verify marks/measures → marshal → verify output" \
+    "UserTiming is the newest snapshot field. Must survive serialization/deserialization."
+run_test_12_11() {
+    local go_result
+    go_result=$(go test ./internal/performance/ -run "TestSnapshotJSON_UserTimingRoundTrip|TestSnapshotJSON_UserTimingOmitted" -count=1 2>&1)
+
+    if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
+        pass "UserTiming marks/measures survive JSON round-trip. Omitted when absent."
+    else
+        fail "UserTiming round-trip tests failed. Go test output: $(truncate "$go_result" 300)"
+    fi
+}
+run_test_12_11
+
+# ── 12.12 — Behavioral: dom_summary and analyze fields pass through command results ─
+begin_test "12.12" "dom_summary/analyze fields pass through command_result" \
+    "Go unit test: extension result with dom_summary/timing/analysis → observe(command_result) returns them" \
+    "Extension enriches click results with DOM changes. If passthrough is broken, AI loses mutation context."
+run_test_12_12() {
+    local go_result
+    go_result=$(go test ./cmd/dev-console/ -run "TestRichAction_DomSummaryPassthrough|TestRichAction_PerfDiffWithFullWebVitals" -count=1 2>&1)
+
+    if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
+        pass "dom_summary, timing, analysis pass through. Full Web Vitals perf_diff with ratings verified."
+    else
+        fail "Command result passthrough tests failed. Go test output: $(truncate "$go_result" 300)"
+    fi
+}
+run_test_12_12
 
 finish_category

@@ -6,6 +6,7 @@
 
 import { MAX_PERFORMANCE_ENTRIES, PERFORMANCE_TIME_WINDOW_MS } from './constants'
 import type { PerformanceMark, PerformanceMeasure } from '../types/index'
+import { scheduleSnapshotResend } from './perf-snapshot'
 
 // Performance Marks state
 let performanceMarksEnabled = false
@@ -147,6 +148,7 @@ export function installPerformanceCapture(): void {
       capturedMarks.shift()
     }
 
+    scheduleSnapshotResend()
     return result
   }
   // Assign the wrapper, bypassing strict type checking for the overloaded method
@@ -171,6 +173,7 @@ export function installPerformanceCapture(): void {
       capturedMeasures.shift()
     }
 
+    scheduleSnapshotResend()
     return result
   }
   // Assign the wrapper, bypassing strict type checking for the overloaded method

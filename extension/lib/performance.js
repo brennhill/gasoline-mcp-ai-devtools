@@ -4,6 +4,7 @@
  * for additional entries, and provides error-time performance snapshots.
  */
 import { MAX_PERFORMANCE_ENTRIES, PERFORMANCE_TIME_WINDOW_MS } from './constants.js';
+import { scheduleSnapshotResend } from './perf-snapshot.js';
 // Performance Marks state
 let performanceMarksEnabled = false;
 let capturedMarks = [];
@@ -117,6 +118,7 @@ export function installPerformanceCapture() {
         if (capturedMarks.length > MAX_PERFORMANCE_ENTRIES) {
             capturedMarks.shift();
         }
+        scheduleSnapshotResend();
         return result;
     };
     // Assign the wrapper, bypassing strict type checking for the overloaded method
@@ -137,6 +139,7 @@ export function installPerformanceCapture() {
         if (capturedMeasures.length > MAX_PERFORMANCE_ENTRIES) {
             capturedMeasures.shift();
         }
+        scheduleSnapshotResend();
         return result;
     };
     // Assign the wrapper, bypassing strict type checking for the overloaded method
