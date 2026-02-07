@@ -3,35 +3,68 @@
  * Handles chrome.runtime messages from background script
  */
 import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, } from './message-handlers.js';
+/** Color themes for each toast state */
+const TOAST_THEMES = {
+    trying: { bg: 'linear-gradient(135deg, #ff6b00 0%, #ff9500 100%)', shadow: 'rgba(255, 107, 0, 0.4)' },
+    success: { bg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', shadow: 'rgba(34, 197, 94, 0.4)' },
+    warning: { bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', shadow: 'rgba(245, 158, 11, 0.4)' },
+    error: { bg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', shadow: 'rgba(239, 68, 68, 0.4)' },
+};
+/** Truncate text to maxLen characters with ellipsis */
+function truncateText(text, maxLen) {
+    if (text.length <= maxLen)
+        return text;
+    return text.slice(0, maxLen - 1) + '\u2026';
+}
 /**
- * Show a brief visual toast overlay for AI actions (navigate, execute_js, etc.)
- * Injected directly into the page DOM by the content script.
+ * Show a brief visual toast overlay for AI actions.
+ * Supports color-coded states and structured content with truncation.
  */
-function showActionToast(text, durationMs = 3000) {
+function showActionToast(text, detail, state = 'trying', durationMs = 3000) {
     // Remove existing toast
     const existing = document.getElementById('gasoline-action-toast');
     if (existing)
         existing.remove();
+    const theme = TOAST_THEMES[state] ?? TOAST_THEMES.trying;
     const toast = document.createElement('div');
     toast.id = 'gasoline-action-toast';
-    toast.textContent = text;
+    // Build content: label + truncated detail
+    const label = document.createElement('span');
+    label.textContent = truncateText(text, 30);
+    Object.assign(label.style, { fontWeight: '700' });
+    toast.appendChild(label);
+    if (detail) {
+        const sep = document.createElement('span');
+        sep.textContent = '  ';
+        Object.assign(sep.style, { opacity: '0.6', margin: '0 4px' });
+        toast.appendChild(sep);
+        const det = document.createElement('span');
+        det.textContent = truncateText(detail, 50);
+        Object.assign(det.style, { fontWeight: '400', opacity: '0.9' });
+        toast.appendChild(det);
+    }
     Object.assign(toast.style, {
         position: 'fixed',
         top: '16px',
         left: '50%',
         transform: 'translateX(-50%)',
-        padding: '10px 24px',
-        background: 'linear-gradient(135deg, #ff6b00 0%, #ff9500 100%)',
+        padding: '8px 20px',
+        background: theme.bg,
         color: '#fff',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        fontSize: '14px',
-        fontWeight: '600',
+        fontSize: '13px',
         borderRadius: '8px',
-        boxShadow: '0 4px 20px rgba(255, 107, 0, 0.4)',
+        boxShadow: `0 4px 20px ${theme.shadow}`,
         zIndex: '2147483647',
         pointerEvents: 'none',
         opacity: '0',
         transition: 'opacity 0.2s ease-in',
+        maxWidth: '500px',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0',
     });
     const target = document.body || document.documentElement;
     if (!target)
@@ -64,9 +97,9 @@ export function initRuntimeMessageListener() {
         }
         // Show AI action toast overlay
         if (message.type === 'GASOLINE_ACTION_TOAST') {
-            const { text, duration_ms } = message;
-            if (text)
-                showActionToast(text, duration_ms);
+            const msg = message;
+            if (msg.text)
+                showActionToast(msg.text, msg.detail, msg.state || 'trying', msg.duration_ms);
             return false;
         }
         // Handle toggle messages

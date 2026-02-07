@@ -37,7 +37,7 @@ Gasoline MCP implements the [Model Context Protocol](https://modelcontextprotoco
 ## Key Implementation Details
 
 **Capabilities declared:**
-- `tools` — 5 tools: observe, generate, configure, interact, analyze
+- `tools` — 4 tools: observe, generate, configure, interact
 - `resources` — 1 resource: `gasoline://guide`
 
 **Error handling:**

@@ -259,13 +259,17 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
       const error = err as Error
       if (
         error.message &&
-        (error.message.includes('Content Security Policy') || error.message.includes('unsafe-eval'))
+        (error.message.includes('Content Security Policy') ||
+          error.message.includes('unsafe-eval') ||
+          error.message.includes('Trusted Type'))
       ) {
         deferred.resolve({
           success: false,
           error: 'csp_blocked',
           message:
-            'This page has a Content Security Policy that blocks script execution. Try on a different page (e.g., localhost, about:blank, or a page without strict CSP).',
+            'This page has a Content Security Policy that blocks script execution in the MAIN world. ' +
+            'Use world: "isolated" to bypass CSP (DOM access only, no page JS globals). ' +
+            'With world: "auto" (default), this fallback happens automatically.',
         })
       } else {
         deferred.resolve({

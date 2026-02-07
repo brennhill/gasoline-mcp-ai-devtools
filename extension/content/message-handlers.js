@@ -4,6 +4,7 @@
  */
 import { registerHighlightRequest, hasHighlightRequest, deleteHighlightRequest, registerExecuteRequest, registerA11yRequest, registerDomRequest, } from './request-tracking.js';
 import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils.js';
+import { isInjectScriptLoaded } from './script-injection.js';
 // Feature toggle message types forwarded from background to inject.js
 export const TOGGLE_MESSAGES = new Set([
     'setNetworkWaterfallEnabled',
@@ -116,30 +117,49 @@ export function handleToggleMessage(message) {
     window.postMessage(payload, window.location.origin);
 }
 /**
- * Handle GASOLINE_EXECUTE_JS message
+ * Execute JS in the MAIN world via inject script, with safety timeout.
  */
-export function handleExecuteJs(params, sendResponse) {
+function executeInMainWorld(params, sendResponse) {
+    const timeoutMs = params.timeout_ms || 5000;
     const requestId = registerExecuteRequest(sendResponse);
-    // Timeout fallback: respond with error and cleanup after 30 seconds
+    // Safety timeout: user's timeout + 2s buffer (NOT fixed 30s)
+    // If inject script responds, its own timeout handles slow scripts.
+    // This only fires if inject script never responds at all.
+    const safetyTimeoutMs = timeoutMs + 2000;
     setTimeout(createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), {
         success: false,
-        error: 'timeout',
-        message: 'Execute request timed out after 30s',
-    }), 30000);
-    // Forward to inject.js via postMessage
+        error: 'inject_not_responding',
+        message: `Inject script did not respond within ${safetyTimeoutMs}ms. The tab may not be tracked or the inject script failed to load.`,
+    }), safetyTimeoutMs);
     window.postMessage({
         type: 'GASOLINE_EXECUTE_JS',
         requestId,
         script: params.script || '',
-        timeoutMs: params.timeout_ms || 5000,
+        timeoutMs,
     }, window.location.origin);
+}
+/**
+ * Handle GASOLINE_EXECUTE_JS message.
+ * Always executes in MAIN world via inject script.
+ * Returns inject_not_loaded error if inject script isn't available,
+ * so background can fallback to chrome.scripting API.
+ */
+export function handleExecuteJs(params, sendResponse) {
+    if (!isInjectScriptLoaded()) {
+        sendResponse({
+            success: false,
+            error: 'inject_not_loaded',
+            message: 'Inject script not loaded in page context. Tab may not be tracked.',
+        });
+        return true;
+    }
+    executeInMainWorld(params, sendResponse);
     return true;
 }
 /**
- * Handle GASOLINE_EXECUTE_QUERY message
+ * Handle GASOLINE_EXECUTE_QUERY message (async command path)
  */
 export function handleExecuteQuery(params, sendResponse) {
-    // Parse params if it's a string (from JSON)
     let parsedParams = {};
     if (typeof params === 'string') {
         try {

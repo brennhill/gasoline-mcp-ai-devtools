@@ -35,15 +35,14 @@ Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io
 
 ## <i class="fas fa-tools"></i> Available MCP Tools
 
-Gasoline exposes **5 composite tools** — each with multiple sub-modes controlled by a single parameter. This reduces decision space by 79% compared to individual tool calls.
+Gasoline exposes **4 tools** — each with multiple sub-modes controlled by a single parameter.
 
-| Tool | What it does | Sub-modes |
-|------|-------------|-----------|
-| `observe` | <i class="fas fa-eye"></i> Real-time browser state | errors, logs, network, websocket_events, websocket_status, actions, vitals, page |
-| `analyze` | <i class="fas fa-chart-line"></i> Data analysis and insights | performance, api, accessibility, changes, timeline |
-| `generate` | <i class="fas fa-code"></i> Code generation from captured data | reproduction, test, pr_summary, sarif, har |
-| `configure` | <i class="fas fa-cog"></i> Session and noise management | store, noise_rule, dismiss, clear |
-| `query_dom` | <i class="fas fa-search"></i> Live DOM inspection | CSS selector queries |
+| Tool | What it does | Key sub-modes |
+|------|-------------|---------------|
+| `observe` | Real-time browser state | errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, performance, accessibility, security_audit, third_party_audit, error_clusters, timeline |
+| `generate` | Code and report generation | reproduction, test, pr_summary, sarif, har, csp, sri |
+| `configure` | Session management | store, noise_rule, query_dom, clear, validate_api, diff_sessions, health, streaming |
+| `interact` | Browser control | navigate, execute_js, highlight, refresh, back, forward, save_state, load_state |
 
 ### observe
 
@@ -52,29 +51,24 @@ Monitor browser state in real time. Use the `what` parameter to select:
 | Mode | Returns |
 |------|---------|
 | `errors` | Console errors with deduplication and noise filtering |
-| `logs` | All console output (configurable limit) |
-| `network` | HTTP requests — filter by URL, method, status range |
+| `logs` | All console output (configurable level and limit) |
+| `network_waterfall` | Resource timing from PerformanceObserver |
+| `network_bodies` | Request/response payloads for API debugging |
 | `websocket_events` | WebSocket messages — filter by connection ID, direction |
-| `websocket_status` | Active WebSocket connections and stats |
+| `websocket_status` | Active WebSocket connections with message rates |
 | `actions` | User interactions (click, input, navigate, scroll, select) |
 | `vitals` | Core Web Vitals — FCP, LCP, CLS, INP |
-| `page` | Current page URL, title, viewport |
-
-### analyze
-
-Derive insights from captured data. Use the `target` parameter:
-
-| Target | Returns |
-|--------|---------|
-| `performance` | Performance snapshot with regression detection against baselines |
-| `api` | Auto-inferred API schema (OpenAPI stub or gasoline format) |
-| `accessibility` | WCAG audit results with caching |
-| `changes` | Compressed state diff since a named/auto checkpoint |
+| `page` | Current page URL and title |
+| `performance` | Performance snapshots with regression detection |
+| `accessibility` | WCAG audit results (axe-core) |
+| `security_audit` | Security checks (credentials, PII, headers, cookies) |
+| `third_party_audit` | Third-party script and origin analysis |
+| `error_clusters` | Deduplicated error grouping |
 | `timeline` | Merged session timeline (actions + network + errors) |
 
 ### generate
 
-Generate code artifacts from your session. Use the `format` parameter:
+Generate artifacts from your session. Use the `format` parameter:
 
 | Format | Output |
 |--------|--------|
@@ -83,17 +77,35 @@ Generate code artifacts from your session. Use the `format` parameter:
 | `pr_summary` | Markdown performance impact summary |
 | `sarif` | SARIF accessibility report (standard format) |
 | `har` | HTTP Archive export |
+| `csp` | Content Security Policy from observed origins |
+| `sri` | Subresource Integrity hashes for scripts/stylesheets |
 
 ### configure
 
-Manage session state and noise filtering. Use the `action` parameter:
+Manage session state and settings. Use the `action` parameter:
 
 | Action | Effect |
 |--------|--------|
 | `store` | Persistent key-value storage (save/load/list/delete/stats) |
 | `noise_rule` | Manage noise filtering rules (add/remove/list/auto_detect) |
-| `dismiss` | Quick one-off noise dismissal by regex pattern |
-| `clear` | Clear all browser logs |
+| `query_dom` | Live DOM inspection with CSS selectors |
+| `clear` | Clear buffers (network, websocket, actions, logs, all) |
+| `validate_api` | API contract validation from captured traffic |
+| `diff_sessions` | Compare session snapshots |
+| `health` | Server health and memory stats |
+
+### interact
+
+Control the browser. Use the `action` parameter:
+
+| Action | Effect |
+|--------|--------|
+| `navigate` | Navigate to a URL |
+| `execute_js` | Run JavaScript in the page context |
+| `highlight` | Highlight a DOM element by CSS selector |
+| `refresh` | Refresh the current page |
+| `back` / `forward` | Browser history navigation |
+| `save_state` / `load_state` | Save and restore browser state snapshots |
 
 ## <i class="fas fa-cog"></i> Custom Port
 

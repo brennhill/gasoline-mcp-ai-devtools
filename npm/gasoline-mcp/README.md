@@ -174,15 +174,14 @@ Once installed, you'll see the Gasoline icon in your browser toolbar. Click it t
 
 ### That's It!
 
-Your AI assistant now has access to 5 composite tools:
+Your AI assistant now has access to 4 tools:
 
 | Tool | What it does |
 | ---- | ------------ |
-| `observe` | Real-time browser state (errors, logs, network, websocket, actions, vitals, page) |
-| `analyze` | Data analysis and insights (performance, api, accessibility, changes, timeline) |
-| `generate` | Code generation from captured data (reproduction, test, pr_summary, sarif, har) |
-| `configure` | Session and noise management (store, noise_rule, dismiss, clear) |
-| `query_dom` | Live DOM inspection via CSS selectors |
+| `observe` | Real-time browser state (errors, logs, network, websocket, actions, vitals, page, performance, accessibility, security) |
+| `generate` | Code and report generation (reproduction, test, pr_summary, sarif, har, csp, sri) |
+| `configure` | Session management (store, noise_rule, query_dom, clear, validate_api, diff_sessions, health) |
+| `interact` | Browser control (navigate, execute_js, highlight, refresh, save_state, load_state) |
 
 Try it: open your web app, trigger an error, then ask your AI assistant _"What browser errors do you see?"_
 

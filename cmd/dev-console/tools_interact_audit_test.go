@@ -324,6 +324,73 @@ func TestInteractAudit_Navigate_MissingURL(t *testing.T) {
 }
 
 // ============================================
+// Behavioral Tests: World Parameter Validation
+// execute_js world parameter should accept auto/main/isolated
+// World validation happens BEFORE pilot check, so these don't need pilot enabled
+// ============================================
+
+// TestInteractAudit_ExecuteJS_InvalidWorld verifies invalid world returns error
+func TestInteractAudit_ExecuteJS_InvalidWorld(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	result, ok := env.callInteract(t, `{"action":"execute_js","script":"1+1","world":"invalid"}`)
+	if !ok {
+		t.Fatal("execute_js with invalid world should return result")
+	}
+
+	// ASSERTION: IsError is true
+	if !result.IsError {
+		t.Error("execute_js with invalid world MUST return isError:true")
+	}
+
+	// ASSERTION: Error mentions world parameter
+	if len(result.Content) > 0 {
+		text := result.Content[0].Text
+		if !strings.Contains(strings.ToLower(text), "world") {
+			t.Errorf("error should mention invalid world parameter\nGot: %s", text)
+		}
+	}
+}
+
+// TestInteractAudit_ExecuteJS_ValidWorldValues verifies valid world values pass validation
+// These still fail with pilot-disabled (expected), but NOT with world validation error
+func TestInteractAudit_ExecuteJS_ValidWorldValues(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	// Pilot is disabled, so all will return pilot-disabled error
+	// The key assertion: none should return a "world" error
+	worlds := []string{"auto", "main", "isolated", ""}
+	for _, world := range worlds {
+		name := world
+		if name == "" {
+			name = "default"
+		}
+		t.Run(name, func(t *testing.T) {
+			args := `{"action":"execute_js","script":"1+1"}`
+			if world != "" {
+				args = `{"action":"execute_js","script":"1+1","world":"` + world + `"}`
+			}
+
+			result, ok := env.callInteract(t, args)
+			if !ok {
+				t.Fatalf("execute_js with world=%q should return result", world)
+			}
+
+			// ASSERTION: Returns pilot-disabled error, NOT world error
+			if len(result.Content) > 0 {
+				text := strings.ToLower(result.Content[0].Text)
+				if strings.Contains(text, "world") {
+					t.Errorf("world=%q should pass validation but got world error\nGot: %s", world, result.Content[0].Text)
+				}
+				if !strings.Contains(text, "pilot") {
+					t.Errorf("world=%q should reach pilot check\nGot: %s", world, result.Content[0].Text)
+				}
+			}
+		})
+	}
+}
+
+// ============================================
 // Behavioral Tests: Error Handling
 // Invalid inputs should return structured errors
 // ============================================

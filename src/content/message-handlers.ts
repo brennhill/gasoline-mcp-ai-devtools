@@ -31,6 +31,7 @@ import {
   registerDomRequest,
 } from './request-tracking'
 import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils'
+import { isInjectScriptLoaded } from './script-injection'
 
 // Feature toggle message types forwarded from background to inject.js
 export const TOGGLE_MESSAGES = new Set([
@@ -180,47 +181,77 @@ export function handleToggleMessage(
   window.postMessage(payload, window.location.origin)
 }
 
+// ============================================
+// Execute JS Handlers (MAIN world via inject script)
+// Background handles world routing and fallback to chrome.scripting API.
+// ============================================
+
+type ExecuteJsResponse = { success: boolean; error?: string; message?: string; result?: unknown; stack?: string }
+
 /**
- * Handle GASOLINE_EXECUTE_JS message
+ * Execute JS in the MAIN world via inject script, with safety timeout.
  */
-export function handleExecuteJs(
+function executeInMainWorld(
   params: { script?: string; timeout_ms?: number },
-  sendResponse: (result: { success: boolean; error?: string; message?: string; result?: unknown }) => void,
-): boolean {
+  sendResponse: (result: ExecuteJsResponse) => void,
+): void {
+  const timeoutMs = params.timeout_ms || 5000
   const requestId = registerExecuteRequest(sendResponse)
 
-  // Timeout fallback: respond with error and cleanup after 30 seconds
+  // Safety timeout: user's timeout + 2s buffer (NOT fixed 30s)
+  // If inject script responds, its own timeout handles slow scripts.
+  // This only fires if inject script never responds at all.
+  const safetyTimeoutMs = timeoutMs + 2000
   setTimeout(
     createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), {
       success: false,
-      error: 'timeout',
-      message: 'Execute request timed out after 30s',
+      error: 'inject_not_responding',
+      message: `Inject script did not respond within ${safetyTimeoutMs}ms. The tab may not be tracked or the inject script failed to load.`,
     }),
-    30000,
+    safetyTimeoutMs,
   )
 
-  // Forward to inject.js via postMessage
   window.postMessage(
     {
       type: 'GASOLINE_EXECUTE_JS',
       requestId,
       script: params.script || '',
-      timeoutMs: params.timeout_ms || 5000,
+      timeoutMs,
     } satisfies ExecuteJsRequestMessage,
     window.location.origin,
   )
+}
 
+/**
+ * Handle GASOLINE_EXECUTE_JS message.
+ * Always executes in MAIN world via inject script.
+ * Returns inject_not_loaded error if inject script isn't available,
+ * so background can fallback to chrome.scripting API.
+ */
+export function handleExecuteJs(
+  params: { script?: string; timeout_ms?: number },
+  sendResponse: (result: ExecuteJsResponse) => void,
+): boolean {
+  if (!isInjectScriptLoaded()) {
+    sendResponse({
+      success: false,
+      error: 'inject_not_loaded',
+      message: 'Inject script not loaded in page context. Tab may not be tracked.',
+    })
+    return true
+  }
+
+  executeInMainWorld(params, sendResponse)
   return true
 }
 
 /**
- * Handle GASOLINE_EXECUTE_QUERY message
+ * Handle GASOLINE_EXECUTE_QUERY message (async command path)
  */
 export function handleExecuteQuery(
   params: string | Record<string, unknown>,
-  sendResponse: (result: { success: boolean; error?: string; message?: string; result?: unknown }) => void,
+  sendResponse: (result: ExecuteJsResponse) => void,
 ): boolean {
-  // Parse params if it's a string (from JSON)
   let parsedParams: { script?: string; timeout_ms?: number } = {}
   if (typeof params === 'string') {
     try {

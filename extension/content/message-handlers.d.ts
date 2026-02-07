@@ -42,27 +42,27 @@ export declare function handleToggleMessage(message: ContentMessage & {
     mode?: WebSocketCaptureMode;
     url?: string;
 }): void;
+type ExecuteJsResponse = {
+    success: boolean;
+    error?: string;
+    message?: string;
+    result?: unknown;
+    stack?: string;
+};
 /**
- * Handle GASOLINE_EXECUTE_JS message
+ * Handle GASOLINE_EXECUTE_JS message.
+ * Always executes in MAIN world via inject script.
+ * Returns inject_not_loaded error if inject script isn't available,
+ * so background can fallback to chrome.scripting API.
  */
 export declare function handleExecuteJs(params: {
     script?: string;
     timeout_ms?: number;
-}, sendResponse: (result: {
-    success: boolean;
-    error?: string;
-    message?: string;
-    result?: unknown;
-}) => void): boolean;
+}, sendResponse: (result: ExecuteJsResponse) => void): boolean;
 /**
- * Handle GASOLINE_EXECUTE_QUERY message
+ * Handle GASOLINE_EXECUTE_QUERY message (async command path)
  */
-export declare function handleExecuteQuery(params: string | Record<string, unknown>, sendResponse: (result: {
-    success: boolean;
-    error?: string;
-    message?: string;
-    result?: unknown;
-}) => void): boolean;
+export declare function handleExecuteQuery(params: string | Record<string, unknown>, sendResponse: (result: ExecuteJsResponse) => void): boolean;
 /**
  * Handle A11Y_QUERY message
  */
@@ -82,4 +82,5 @@ export declare function handleDomQuery(params: string | Record<string, unknown>,
 export declare function handleGetNetworkWaterfall(sendResponse: (result: {
     entries: WaterfallEntry[];
 }) => void): boolean;
+export {};
 //# sourceMappingURL=message-handlers.d.ts.map
