@@ -75,6 +75,12 @@ func (e *generateTestEnv) callGenerate(t *testing.T, argsJSON string) (MCPToolRe
 func TestGenerateAudit_Reproduction_DataFlow(t *testing.T) {
 	env := newGenerateTestEnv(t)
 
+	// Seed actions so reproduction has data to work with
+	env.capture.AddEnhancedActionsForTest([]capture.EnhancedAction{
+		{Type: "navigate", Timestamp: 1000, URL: "https://example.com", ToURL: "https://example.com"},
+		{Type: "click", Timestamp: 2000, URL: "https://example.com", Selectors: map[string]any{"text": "Go"}},
+	})
+
 	result, ok := env.callGenerate(t, `{"format":"reproduction"}`)
 	if !ok {
 		t.Fatal("reproduction should return result")
@@ -327,12 +333,12 @@ func TestGenerateAudit_InvalidJSON_ReturnsParseError(t *testing.T) {
 func TestGenerateAudit_EmptyState_ReturnsEmptyNotError(t *testing.T) {
 	env := newGenerateTestEnv(t)
 
-	// These formats should return success even with no data
+	// These formats should return success even with no data.
+	// Note: reproduction requires actions and correctly returns an error when empty.
 	formats := []struct {
 		name string
 		args string
 	}{
-		{"reproduction", `{"format":"reproduction"}`},
 		{"test", `{"format":"test"}`},
 		{"pr_summary", `{"format":"pr_summary"}`},
 		{"sarif", `{"format":"sarif"}`},
