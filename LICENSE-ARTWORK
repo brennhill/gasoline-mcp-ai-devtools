@@ -1,0 +1,21 @@
+Artwork & Brand Assets License
+===============================
+
+Copyright (c) 2024-2026 Brenn Hill. All rights reserved.
+
+The following assets are NOT licensed under the AGPL-3.0 and are the
+exclusive property of Brenn Hill:
+
+  - All image files (*.png, *.jpg, *.jpeg, *.gif, *.webp, *.svg, *.ico)
+    in the following directories and their subdirectories:
+      - docs/assets/images/
+      - extension/icons/
+
+  - The Gasoline name, logo, and "Sparky" mascot character in any form
+
+These assets may not be used, copied, modified, or distributed without
+explicit written permission from Brenn Hill, except as required for
+the functional operation of the Gasoline software as distributed in
+this repository (e.g., the extension icons displayed by the browser).
+
+For licensing inquiries, contact: legal@gasoline.dev

@@ -184,6 +184,8 @@ make dev                               # Build for current platform
 
 **AGPL-3.0** — Free and open source for all use cases.
 
+Artwork, logos, and the Sparky mascot are **Copyright (c) Brenn Hill** and are not covered by the AGPL. See [LICENSE-ARTWORK](LICENSE-ARTWORK) for details.
+
 ---
 
 <div align="center">
