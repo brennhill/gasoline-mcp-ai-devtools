@@ -159,23 +159,22 @@ func (c *Capture) GetClientRegistry() ClientRegistry {
 
 // HealthSnapshot contains health information about capture state
 type HealthSnapshot struct {
-	WebSocketCount      int
-	NetworkBodyCount    int
-	ActionCount         int
-	ConnectionCount     int
-	LastPollTime        time.Time
-	ExtensionSession    string
-	SessionChangedTime  time.Time
-	PilotEnabled        bool
-	CircuitOpen         bool
-	WindowEventCount    int
-	MemoryBytes         int64
-	CircuitReason       string
-	CircuitOpenedTime   time.Time
-	PendingQueryCount   int
-	QueryResultCount    int
-	ActiveTestIDCount   int
-	QueryTimeout        time.Duration
+	WebSocketCount     int
+	NetworkBodyCount   int
+	ActionCount        int
+	ConnectionCount    int
+	LastPollTime       time.Time
+	ExtensionSession   string
+	SessionChangedTime time.Time
+	PilotEnabled       bool
+	CircuitOpen        bool
+	WindowEventCount   int
+	CircuitReason      string
+	CircuitOpenedTime  time.Time
+	PendingQueryCount  int
+	QueryResultCount   int
+	ActiveTestIDCount  int
+	QueryTimeout       time.Duration
 }
 
 // GetHealthSnapshot returns a snapshot of capture health state for /health endpoint
@@ -187,33 +186,23 @@ func (c *Capture) GetHealthSnapshot() HealthSnapshot {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	// Compute memory inline — we already hold c.mu.RLock, so calling
-	// getMemoryForCircuit() would risk reentrant lock deadlock.
-	var memBytes int64
-	if c.mem.simulatedMemory > 0 {
-		memBytes = c.mem.simulatedMemory
-	} else {
-		memBytes = c.calcTotalMemory()
-	}
-
 	return HealthSnapshot{
-		WebSocketCount:      len(c.wsEvents),
-		NetworkBodyCount:    len(c.networkBodies),
-		ActionCount:         len(c.enhancedActions),
-		ConnectionCount:     len(c.ws.connections),
-		LastPollTime:        c.ext.lastPollAt,
-		ExtensionSession:    c.ext.extensionSession,
-		SessionChangedTime:  c.ext.sessionChangedAt,
-		PilotEnabled:        c.ext.pilotEnabled,
-		CircuitOpen:         circuitOpen,
-		WindowEventCount:    windowEventCount,
-		MemoryBytes:         memBytes,
-		CircuitReason:       circuitReason,
-		CircuitOpenedTime:   circuitOpenedAt,
-		PendingQueryCount:   querySnap.PendingQueryCount,
-		QueryResultCount:    querySnap.QueryResultCount,
-		ActiveTestIDCount:   len(c.ext.activeTestIDs),
-		QueryTimeout:        querySnap.QueryTimeout,
+		WebSocketCount:     len(c.wsEvents),
+		NetworkBodyCount:   len(c.networkBodies),
+		ActionCount:        len(c.enhancedActions),
+		ConnectionCount:    len(c.ws.connections),
+		LastPollTime:       c.ext.lastPollAt,
+		ExtensionSession:   c.ext.extensionSession,
+		SessionChangedTime: c.ext.sessionChangedAt,
+		PilotEnabled:       c.ext.pilotEnabled,
+		CircuitOpen:        circuitOpen,
+		WindowEventCount:   windowEventCount,
+		CircuitReason:      circuitReason,
+		CircuitOpenedTime:  circuitOpenedAt,
+		PendingQueryCount:  querySnap.PendingQueryCount,
+		QueryResultCount:   querySnap.QueryResultCount,
+		ActiveTestIDCount:  len(c.ext.activeTestIDs),
+		QueryTimeout:       querySnap.QueryTimeout,
 	}
 }
 

@@ -24,9 +24,6 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 		c.actionAddedAt = c.actionAddedAt[:minLen]
 	}
 
-	// Enforce memory limits before adding
-	c.enforceMemory()
-
 	c.actionTotalAdded += int64(len(actions))
 	now := time.Now()
 
@@ -45,14 +42,13 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 		c.actionAddedAt = append(c.actionAddedAt, now)
 	}
 
-	// Enforce max count (respecting minimal mode)
-	capacity := c.effectiveActionCapacity()
-	if len(c.enhancedActions) > capacity {
-		keep := len(c.enhancedActions) - capacity
-		newActions := make([]EnhancedAction, capacity)
+	// Enforce max count
+	if len(c.enhancedActions) > MaxEnhancedActions {
+		keep := len(c.enhancedActions) - MaxEnhancedActions
+		newActions := make([]EnhancedAction, MaxEnhancedActions)
 		copy(newActions, c.enhancedActions[keep:])
 		c.enhancedActions = newActions
-		newAddedAt := make([]time.Time, capacity)
+		newAddedAt := make([]time.Time, MaxEnhancedActions)
 		copy(newAddedAt, c.actionAddedAt[keep:])
 		c.actionAddedAt = newAddedAt
 	}

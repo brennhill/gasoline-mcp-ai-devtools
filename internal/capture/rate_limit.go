@@ -15,7 +15,6 @@ type HealthResponse struct {
 	CircuitOpen bool   `json:"circuit_open"`
 	OpenedAt    string `json:"opened_at,omitempty"`
 	CurrentRate int    `json:"current_rate"`
-	MemoryBytes int64  `json:"memory_bytes"`
 	Reason      string `json:"reason,omitempty"`
 }
 
@@ -61,16 +60,4 @@ func (c *Capture) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	//nolint:errcheck -- HTTP response encoding errors are logged by client
 	_ = json.NewEncoder(w).Encode(health)
-}
-
-// getMemoryForCircuit returns buffer memory for circuit evaluation.
-// Uses simulated memory if set, otherwise real buffer memory.
-// Called by the CircuitBreaker via injected callback. Acquires c.mu.RLock.
-func (c *Capture) getMemoryForCircuit() int64 {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if c.mem.simulatedMemory > 0 {
-		return c.mem.simulatedMemory
-	}
-	return c.calcTotalMemory()
 }

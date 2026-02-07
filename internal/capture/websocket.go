@@ -34,9 +34,6 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 		c.wsAddedAt = c.wsAddedAt[:minLen]
 	}
 
-	// Enforce memory limits before adding
-	c.enforceMemory()
-
 	c.wsTotalAdded += int64(len(events))
 	now := time.Now()
 
@@ -67,18 +64,17 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 		c.wsMemoryTotal += wsEventMemory(&events[i])
 	}
 
-	// Enforce max count (respecting minimal mode)
-	capacity := c.effectiveWSCapacity()
-	if len(c.wsEvents) > capacity {
-		keep := len(c.wsEvents) - capacity
+	// Enforce max count
+	if len(c.wsEvents) > MaxWSEvents {
+		keep := len(c.wsEvents) - MaxWSEvents
 		// Subtract memory for evicted entries
 		for j := 0; j < keep; j++ {
 			c.wsMemoryTotal -= wsEventMemory(&c.wsEvents[j])
 		}
-		newEvents := make([]WebSocketEvent, capacity)
+		newEvents := make([]WebSocketEvent, MaxWSEvents)
 		copy(newEvents, c.wsEvents[keep:])
 		c.wsEvents = newEvents
-		newAddedAt := make([]time.Time, capacity)
+		newAddedAt := make([]time.Time, MaxWSEvents)
 		copy(newAddedAt, c.wsAddedAt[keep:])
 		c.wsAddedAt = newAddedAt
 	}

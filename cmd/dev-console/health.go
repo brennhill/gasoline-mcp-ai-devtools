@@ -120,12 +120,10 @@ type ServerInfo struct {
 
 // MemoryInfo contains memory usage statistics.
 type MemoryInfo struct {
-	CurrentMB     float64 `json:"current_mb"`
-	AllocMB       float64 `json:"alloc_mb"`
-	SysMB         float64 `json:"sys_mb"`
-	HardLimitMB   float64 `json:"hard_limit_mb"`
-	UsedPct       float64 `json:"used_pct"`
-	BufferBreakdown BufferMemoryBreakdown `json:"buffer_breakdown"`
+	CurrentMB       float64               `json:"current_mb"`
+	AllocMB         float64               `json:"alloc_mb"`
+	SysMB           float64               `json:"sys_mb"`
+	BufferBreakdown BufferMemoryBreakdown  `json:"buffer_breakdown"`
 }
 
 // BufferMemoryBreakdown shows memory usage per buffer type.
@@ -195,12 +193,7 @@ func (hm *HealthMetrics) GetHealth(cap *capture.Capture, server *Server, ver str
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
-	hardLimitMB := float64(capture.MemoryHardLimit) / (1024 * 1024)
 	currentMB := float64(memStats.Alloc) / (1024 * 1024)
-	usedPct := (currentMB / hardLimitMB) * 100
-	if usedPct > 100 {
-		usedPct = 100
-	}
 
 	// Read all capture state under a single lock for atomic snapshot
 	var wsMem, nbMem, actionMem int64
@@ -231,11 +224,9 @@ func (hm *HealthMetrics) GetHealth(cap *capture.Capture, server *Server, ver str
 	}
 
 	memInfo := MemoryInfo{
-		CurrentMB:   currentMB,
-		AllocMB:     float64(memStats.Alloc) / (1024 * 1024),
-		SysMB:       float64(memStats.Sys) / (1024 * 1024),
-		HardLimitMB: hardLimitMB,
-		UsedPct:     usedPct,
+		CurrentMB: currentMB,
+		AllocMB:   float64(memStats.Alloc) / (1024 * 1024),
+		SysMB:     float64(memStats.Sys) / (1024 * 1024),
 		BufferBreakdown: BufferMemoryBreakdown{
 			WebSocketBytes: wsMem,
 			NetworkBytes:   nbMem,
