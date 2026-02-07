@@ -204,27 +204,14 @@ func (c *Capture) GetHealthSnapshot() HealthSnapshot {
 	}
 }
 
-// LogHTTPDebugEntry logs an HTTP debug entry with proper locking
+// LogHTTPDebugEntry logs an HTTP debug entry. Delegates to DebugLogger (own lock).
 func (c *Capture) LogHTTPDebugEntry(entry HTTPDebugEntry) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.logHTTPDebugEntry(entry)
+	c.debug.LogHTTPDebugEntry(entry)
 }
 
-// GetHTTPDebugLog returns a copy of the HTTP debug log (thread-safe)
+// GetHTTPDebugLog returns a copy of the HTTP debug log. Delegates to DebugLogger (own lock).
 func (c *Capture) GetHTTPDebugLog() []HTTPDebugEntry {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	if len(c.httpDebugLog) == 0 {
-		return []HTTPDebugEntry{}
-	}
-
-	copy := make([]HTTPDebugEntry, len(c.httpDebugLog))
-	for i, entry := range c.httpDebugLog {
-		copy[i] = entry
-	}
-	return copy
+	return c.debug.GetHTTPDebugLog()
 }
 
 // GetPilotStatus returns pilot status information.
