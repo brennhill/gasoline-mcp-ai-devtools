@@ -16,6 +16,12 @@ source "$SCRIPT_DIR/tests/framework.sh"
 
 init_framework "${1:-7890}" "${2:-/dev/null}"
 
+# Diagnostic log file for raw responses
+DIAGNOSTICS_FILE="/tmp/gasoline-smoke-diagnostics-$$.log"
+echo "Smoke Test Diagnostics — $(date)" > "$DIAGNOSTICS_FILE"
+echo "Port: ${1:-7890}" >> "$DIAGNOSTICS_FILE"
+echo "======================================" >> "$DIAGNOSTICS_FILE"
+
 begin_category "0" "Human Smoke Test" "24"
 
 SKIPPED_COUNT=0
@@ -58,6 +64,25 @@ pause_for_human() {
     echo ""
 }
 
+# ── Log diagnostic data ──────────────────────────────────
+log_diagnostic() {
+    local test_name="$1"
+    local action="$2"
+    local response="$3"
+    local result="$4"
+    {
+        echo ""
+        echo "═══════ $test_name — $action ═══════"
+        echo "Response:"
+        echo "$response" | head -100
+        if [ -n "$result" ]; then
+            echo ""
+            echo "Result:"
+            echo "$result" | head -100
+        fi
+    } >> "$DIAGNOSTICS_FILE"
+}
+
 # ── Interact helper ──────────────────────────────────────
 # Fires an interact command and waits for completion via polling.
 # Sets INTERACT_RESULT to the command result text (or empty on timeout).
@@ -70,6 +95,13 @@ interact_and_wait() {
     response=$(call_tool "interact" "$args")
     local content_text
     content_text=$(extract_content_text "$response")
+
+    # Log raw response
+    {
+        echo ""
+        echo "─ $(date +%H:%M:%S) interact($action) initial response:"
+        echo "$content_text" | head -50
+    } >> "$DIAGNOSTICS_FILE"
 
     # Extract correlation_id from response
     local corr_id
@@ -90,15 +122,26 @@ interact_and_wait() {
 
         if echo "$poll_text" | grep -q '"status":"complete"'; then
             INTERACT_RESULT="$poll_text"
+            {
+                echo "✓ Complete after poll $i"
+                echo "$poll_text" | head -30
+            } >> "$DIAGNOSTICS_FILE"
             return 0
         fi
         if echo "$poll_text" | grep -q '"status":"failed"'; then
             INTERACT_RESULT="$poll_text"
+            {
+                echo "✗ Failed after poll $i"
+                echo "$poll_text" | head -30
+            } >> "$DIAGNOSTICS_FILE"
             return 1
         fi
     done
 
     INTERACT_RESULT="timeout waiting for $action"
+    {
+        echo "✗ Timeout after $max_polls polls"
+    } >> "$DIAGNOSTICS_FILE"
     return 1
 }
 
@@ -1276,6 +1319,9 @@ run_test_s16
     else
         echo "  Result: FAILED"
     fi
+    echo ""
+    echo "Diagnostics saved to: $DIAGNOSTICS_FILE"
+    echo "View with: cat $DIAGNOSTICS_FILE"
     echo ""
 } | tee -a "$OUTPUT_FILE"
 
