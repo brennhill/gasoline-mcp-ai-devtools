@@ -572,8 +572,10 @@ export async function executeDOMAction(
     return
   }
 
-  // Toast detail: show reason if provided, otherwise selector
-  const toastDetail = reason || selector || 'page'
+  // Toast: if reason provided, use it as the sole label (e.g. "Click button")
+  // Otherwise, show pretty action label + selector (e.g. "Click: #submit-btn")
+  const toastLabel = reason || action
+  const toastDetail = reason ? undefined : (selector || 'page')
 
   try {
     let results: chrome.scripting.InjectionResult[]
@@ -587,7 +589,7 @@ export async function executeDOMAction(
     const readOnly = action === 'list_interactive' || action.startsWith('get_')
     const tryingShownAt = Date.now()
     if (!readOnly) {
-      actionToast(tabId, action, toastDetail, 'trying', 10000)
+      actionToast(tabId, toastLabel, toastDetail, 'trying', 10000)
     }
 
     // For wait_for: check if element exists first with domPrimitive.
@@ -601,7 +603,7 @@ export async function executeDOMAction(
       })
       const quickResult = quickCheck?.[0]?.result as DOMResult | undefined
       if (quickResult && quickResult.success) {
-        actionToast(tabId, 'wait_for', toastDetail, 'success')
+        actionToast(tabId, toastLabel, toastDetail, 'success')
         sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', quickResult)
         return
       }
@@ -641,15 +643,15 @@ export async function executeDOMAction(
       const result = firstResult as { success?: boolean; error?: string }
       if (!readOnly) {
         if (result.success) {
-          actionToast(tabId, action, toastDetail, 'success')
+          actionToast(tabId, toastLabel, toastDetail, 'success')
         } else {
-          actionToast(tabId, action, result.error || 'failed', 'error')
+          actionToast(tabId, toastLabel, result.error || 'failed', 'error')
         }
       }
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', firstResult)
     } else {
       if (!readOnly) {
-        actionToast(tabId, action, 'no result', 'error')
+        actionToast(tabId, toastLabel, 'no result', 'error')
       }
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'no_result')
     }
