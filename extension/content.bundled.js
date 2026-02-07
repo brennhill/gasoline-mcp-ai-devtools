@@ -580,10 +580,8 @@
       target.appendChild(bar);
     }
     bar.textContent = text;
-    setTimeout(() => {
-      if (bar)
-        bar.style.opacity = "1";
-    }, 50);
+    void bar.offsetHeight;
+    bar.style.opacity = "1";
   }
   function initRuntimeMessageListener() {
     chrome.storage.local.get(["actionToastsEnabled", "subtitlesEnabled"], (result) => {

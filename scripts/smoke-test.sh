@@ -257,7 +257,7 @@ run_test_s4() {
     call_tool "configure" '{"action":"clear","buffer":"all"}' >/dev/null
 
     # Navigate the tracked tab
-    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com"}'
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Initial page load"}'
 
     # Check if pilot is disabled
     if echo "$INTERACT_RESULT" | grep -qi "pilot.*disabled\|not enabled\|web pilot"; then
@@ -298,13 +298,13 @@ run_test_s5() {
     fi
 
     # Fire console.log
-    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"script\":\"console.log('${SMOKE_MARKER}_LOG')\"}"
+    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Trigger console.log\",\"script\":\"console.log('${SMOKE_MARKER}_LOG')\"}"
 
     # Fire console.error with stack
-    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"script\":\"console.error('${SMOKE_MARKER}_ERROR')\"}"
+    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Trigger console.error\",\"script\":\"console.error('${SMOKE_MARKER}_ERROR')\"}"
 
     # Fire a thrown error
-    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"script\":\"try { throw new Error('${SMOKE_MARKER}_THROWN') } catch(e) { console.error(e.message, e.stack) }\"}"
+    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Trigger thrown error\",\"script\":\"try { throw new Error('${SMOKE_MARKER}_THROWN') } catch(e) { console.error(e.message, e.stack) }\"}"
 
     # Give the extension time to send logs to daemon
     sleep 2
@@ -354,7 +354,7 @@ run_test_s6() {
 
     # Inject a button and click it
     local js="var btn = document.createElement('button'); btn.id = 'smoke-btn-${SMOKE_MARKER}'; btn.textContent = 'Smoke Test'; document.body.appendChild(btn); btn.click(); 'clicked'"
-    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"script\":\"$js\"}"
+    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Inject + click button\",\"script\":\"$js\"}"
 
     sleep 1
 
@@ -384,7 +384,7 @@ run_test_s7() {
 
     # Inject an input and fill it
     local js="var inp = document.createElement('input'); inp.id = 'smoke-input-${SMOKE_MARKER}'; inp.type = 'text'; document.body.appendChild(inp); inp.focus(); inp.value = 'smoke-test-value'; inp.dispatchEvent(new Event('input', {bubbles:true})); 'filled'"
-    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"script\":\"$js\"}"
+    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Inject + fill input\",\"script\":\"$js\"}"
 
     sleep 1
 
@@ -413,7 +413,7 @@ run_test_s8() {
     fi
 
     # Highlight body element (should work on any page)
-    interact_and_wait "highlight" '{"action":"highlight","selector":"body","duration_ms":2000}'
+    interact_and_wait "highlight" '{"action":"highlight","selector":"body","duration_ms":2000,"reason":"Highlight page body"}'
 
     if echo "$INTERACT_RESULT" | grep -qi "complete\|success\|highlighted"; then
         pass "Highlight command completed successfully. Result: $(truncate "$INTERACT_RESULT" 200)"
@@ -442,7 +442,7 @@ run_test_s21() {
     fi
 
     # Navigate to a clean page first
-    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com"}' 20
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Clean page for subtitle test"}' 20
     sleep 2
 
     # Set subtitle text
@@ -456,7 +456,7 @@ run_test_s21() {
     # Verify the subtitle element exists in the DOM
     # Return a simple string (not JSON.stringify) to avoid escaping issues in command result pipeline
     sleep 1
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"NOT_FOUND\"; var style = window.getComputedStyle(el); var visible = style.display !== \"none\" && style.opacity !== \"0\"; return (visible ? \"VISIBLE\" : \"HIDDEN\") + \":\" + el.textContent; })()"}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check subtitle visibility","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"NOT_FOUND\"; var style = window.getComputedStyle(el); var visible = style.display !== \"none\" && style.opacity !== \"0\"; return (visible ? \"VISIBLE\" : \"HIDDEN\") + \":\" + el.textContent; })()"}'
 
     local dom_check="$INTERACT_RESULT"
 
@@ -489,7 +489,7 @@ run_test_s21() {
     sleep 0.5
 
     # Verify it's gone or hidden
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"REMOVED\"; var style = window.getComputedStyle(el); if (style.display === \"none\" || style.opacity === \"0\" || el.textContent === \"\") return \"HIDDEN\"; return \"STILL_VISIBLE:\" + el.textContent; })()"}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Verify subtitle cleared","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"REMOVED\"; var style = window.getComputedStyle(el); if (style.display === \"none\" || style.opacity === \"0\" || el.textContent === \"\") return \"HIDDEN\"; return \"STILL_VISIBLE:\" + el.textContent; })()"}'
 
     local clear_check="$INTERACT_RESULT"
 
@@ -536,7 +536,7 @@ run_test_s22() {
     fi
 
     # Verify the subtitle is visible
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"NOT_FOUND\"; return JSON.stringify({ text: el.textContent, visible: window.getComputedStyle(el).display !== \"none\" }); })()"}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check composable subtitle","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"NOT_FOUND\"; return JSON.stringify({ text: el.textContent, visible: window.getComputedStyle(el).display !== \"none\" }); })()"}'
 
     local subtitle_check="$INTERACT_RESULT"
     local has_subtitle=false
@@ -672,7 +672,7 @@ run_test_s10() {
     fi
 
     # Query for headings and links — should exist on most pages
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"document.querySelectorAll(\"h1, h2, a, button, input\").length"}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Count interactive elements","script":"document.querySelectorAll(\"h1, h2, a, button, input\").length"}'
 
     local dom_response
     dom_response=$(call_tool "configure" '{"action":"query_dom","selector":"h1, a, button, input"}')
@@ -740,23 +740,23 @@ run_test_s11() {
         document.body.appendChild(f);
         return 'form-injected';
     })()"
-    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"script\":$(echo "$form_js" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))")}"
+    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Create form\",\"script\":$(echo "$form_js" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))")}"
 
     sleep 0.5
 
     # Fill each field
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"var el = document.getElementById(\"sf-user\"); el.focus(); el.value = \"smokeuser\"; el.dispatchEvent(new Event(\"input\", {bubbles:true})); \"filled-user\""}'
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"var el = document.getElementById(\"sf-email\"); el.focus(); el.value = \"smoke@test.com\"; el.dispatchEvent(new Event(\"input\", {bubbles:true})); \"filled-email\""}'
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"var el = document.getElementById(\"sf-pass\"); el.focus(); el.value = \"s3cure!\"; el.dispatchEvent(new Event(\"input\", {bubbles:true})); \"filled-pass\""}'
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"var el = document.getElementById(\"sf-role\"); el.value = \"admin\"; el.dispatchEvent(new Event(\"change\", {bubbles:true})); \"selected-role\""}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill username","script":"var el = document.getElementById(\"sf-user\"); el.focus(); el.value = \"smokeuser\"; el.dispatchEvent(new Event(\"input\", {bubbles:true})); \"filled-user\""}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill email","script":"var el = document.getElementById(\"sf-email\"); el.focus(); el.value = \"smoke@test.com\"; el.dispatchEvent(new Event(\"input\", {bubbles:true})); \"filled-email\""}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill password","script":"var el = document.getElementById(\"sf-pass\"); el.focus(); el.value = \"s3cure!\"; el.dispatchEvent(new Event(\"input\", {bubbles:true})); \"filled-pass\""}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Select role","script":"var el = document.getElementById(\"sf-role\"); el.value = \"admin\"; el.dispatchEvent(new Event(\"change\", {bubbles:true})); \"selected-role\""}'
 
     # Submit the form
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"document.getElementById(\"sf-submit\").click(); \"submitted\""}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Submit form","script":"document.getElementById(\"sf-submit\").click(); \"submitted\""}'
 
     sleep 1
 
     # Verify form submission happened
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"window.__SMOKE_FORM_SUBMITTED__ === true ? \"submit-confirmed\" : \"no-submit\""}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Verify form submitted","script":"window.__SMOKE_FORM_SUBMITTED__ === true ? \"submit-confirmed\" : \"no-submit\""}'
 
     local submit_confirmed=false
     if echo "$INTERACT_RESULT" | grep -q "submit-confirmed"; then
@@ -812,7 +812,7 @@ run_test_s12() {
     fi
 
     # Navigate to a WebSocket-heavy page (live crypto trading)
-    interact_and_wait "navigate" '{"action":"navigate","url":"https://www.binance.com/en/trade/BTC_USDT"}' 20
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://www.binance.com/en/trade/BTC_USDT","reason":"Load WebSocket-heavy page"}' 20
 
     # Give WebSocket connections time to establish
     sleep 5
@@ -982,15 +982,15 @@ run_test_s17() {
     fi
 
     # Navigate to establish baseline metrics
-    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com"}' 20
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Load baseline page"}' 20
     sleep 3
 
     # First refresh — establishes baseline (no perf_diff expected)
-    interact_and_wait "refresh" '{"action":"refresh"}' 20
+    interact_and_wait "refresh" '{"action":"refresh","reason":"Establish perf baseline"}' 20
     sleep 3
 
     # Second refresh — should have perf_diff comparing to first load
-    interact_and_wait "refresh" '{"action":"refresh"}' 20
+    interact_and_wait "refresh" '{"action":"refresh","reason":"Measure perf diff"}' 20
 
     if [ -z "$INTERACT_RESULT" ]; then
         fail "No result from refresh command."
@@ -1045,7 +1045,7 @@ run_test_s23() {
     fi
 
     # Refresh — baseline is warm from S.17's refresh cycle
-    interact_and_wait "refresh" '{"action":"refresh"}' 20
+    interact_and_wait "refresh" '{"action":"refresh","reason":"Check LLM perf fields"}' 20
 
     if ! echo "$INTERACT_RESULT" | grep -q '"perf_diff"'; then
         fail "No perf_diff in refresh result (needed for LLM field checks). Result: $(truncate "$INTERACT_RESULT" 300)"
@@ -1137,15 +1137,15 @@ run_test_s18() {
     fi
 
     # Navigate to example.com for a clean page
-    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com"}' 20
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Clean page for click test"}' 20
     sleep 2
 
     # Inject a button that modifies the DOM when clicked
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"var btn = document.createElement(\"button\"); btn.id = \"perf-test-btn\"; btn.textContent = \"Test\"; btn.onclick = function() { var d = document.createElement(\"div\"); d.textContent = \"clicked\"; document.body.appendChild(d); }; document.body.appendChild(btn); \"injected\""}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Inject test button","script":"var btn = document.createElement(\"button\"); btn.id = \"perf-test-btn\"; btn.textContent = \"Test\"; btn.onclick = function() { var d = document.createElement(\"div\"); d.textContent = \"clicked\"; document.body.appendChild(d); }; document.body.appendChild(btn); \"injected\""}'
     sleep 0.5
 
     # Click the button via DOM primitive
-    interact_and_wait "click" '{"action":"click","selector":"#perf-test-btn"}'
+    interact_and_wait "click" '{"action":"click","selector":"#perf-test-btn","reason":"Click test button"}'
 
     echo "  [click result]"
     echo "$INTERACT_RESULT" | python3 -c "
@@ -1183,11 +1183,11 @@ run_test_s19() {
     fi
 
     # Inject a button that triggers DOM changes + a network request
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"var btn2 = document.createElement(\"button\"); btn2.id = \"analyze-btn\"; btn2.textContent = \"Analyze Me\"; btn2.onclick = function() { for (var i=0; i<5; i++) { var d = document.createElement(\"p\"); d.textContent = \"item-\" + i; document.body.appendChild(d); } }; document.body.appendChild(btn2); \"injected\""}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Inject profiling button","script":"var btn2 = document.createElement(\"button\"); btn2.id = \"analyze-btn\"; btn2.textContent = \"Analyze Me\"; btn2.onclick = function() { for (var i=0; i<5; i++) { var d = document.createElement(\"p\"); d.textContent = \"item-\" + i; document.body.appendChild(d); } }; document.body.appendChild(btn2); \"injected\""}'
     sleep 0.5
 
     # Click with analyze:true
-    interact_and_wait "click" '{"action":"click","selector":"#analyze-btn","analyze":true}'
+    interact_and_wait "click" '{"action":"click","selector":"#analyze-btn","analyze":true,"reason":"Profile DOM changes"}'
 
     echo "  [analyze:true result]"
     echo "$INTERACT_RESULT" | python3 -c "
@@ -1246,7 +1246,7 @@ run_test_s20() {
     local marker="gasoline_uat_$(date +%s)"
 
     # Insert performance marks and a measure
-    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"script\":\"performance.mark('${marker}_start'); for(var i=0;i<1000000;i++){} performance.mark('${marker}_end'); performance.measure('${marker}_duration','${marker}_start','${marker}_end'); 'marked'\"}"
+    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Insert User Timing marks\",\"script\":\"performance.mark('${marker}_start'); for(var i=0;i<1000000;i++){} performance.mark('${marker}_end'); performance.measure('${marker}_duration','${marker}_start','${marker}_end'); 'marked'\"}"
     sleep 2
 
     # Check observe(performance) for user timing entries
