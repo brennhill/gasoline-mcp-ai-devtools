@@ -16,7 +16,7 @@ source "$SCRIPT_DIR/tests/framework.sh"
 
 init_framework "${1:-7890}" "${2:-/dev/null}"
 
-begin_category "0" "Human Smoke Test" "22"
+begin_category "0" "Human Smoke Test" "23"
 
 SKIPPED_COUNT=0
 EXTENSION_CONNECTED=false
@@ -931,6 +931,85 @@ except Exception as e:
     fi
 }
 run_test_s17
+
+# ── Test S.23: LLM-optimized perf_diff fields ────────────
+begin_test "S.23" "perf_diff has verdict, unit, rating, clean summary" \
+    "Refresh (baseline warm from S.17), verify perf_diff has LLM-optimized fields" \
+    "Tests: verdict (overall signal), unit (ms/KB/count), rating (Web Vitals thresholds), no redundant sign in summary"
+
+run_test_s23() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    # Refresh — baseline is warm from S.17's refresh cycle
+    interact_and_wait "refresh" '{"action":"refresh"}' 20
+
+    if ! echo "$INTERACT_RESULT" | grep -q '"perf_diff"'; then
+        fail "No perf_diff in refresh result (needed for LLM field checks). Result: $(truncate "$INTERACT_RESULT" 300)"
+        return
+    fi
+
+    echo "  [LLM optimization fields]"
+    echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    pd = data.get('perf_diff', {})
+    print(f'    verdict: {pd.get(\"verdict\", \"MISSING\")}')
+    summary = pd.get('summary', 'MISSING')
+    print(f'    summary: {summary[:120]}')
+    metrics = pd.get('metrics', {})
+    for name in list(metrics.keys())[:5]:
+        m = metrics[name]
+        unit = m.get('unit', '')
+        rating = m.get('rating', '')
+        print(f'    {name}: {m.get(\"before\",\"?\")}{unit} -> {m.get(\"after\",\"?\")}{unit} ({m.get(\"pct\",\"?\")}) rating={rating or \"(none)\"}')
+except Exception as e:
+    print(f'    (parse: {e})')
+" 2>/dev/null || true
+
+    local checks_passed=0
+    local checks_total=4
+
+    # 1. verdict field exists and is valid
+    if echo "$INTERACT_RESULT" | grep -qE '"verdict":\s*"(improved|regressed|mixed|unchanged)"'; then
+        checks_passed=$((checks_passed + 1))
+    else
+        echo "  MISSING: verdict field"
+    fi
+
+    # 2. unit field on timing metrics
+    if echo "$INTERACT_RESULT" | grep -q '"unit":"ms"'; then
+        checks_passed=$((checks_passed + 1))
+    else
+        echo "  MISSING: unit field (expected 'ms' on timing metrics)"
+    fi
+
+    # 3. rating field on at least one Web Vital
+    if echo "$INTERACT_RESULT" | grep -qE '"rating":"(good|needs_improvement|poor)"'; then
+        checks_passed=$((checks_passed + 1))
+    else
+        echo "  MISSING: rating field (expected on LCP/FCP/TTFB/CLS)"
+    fi
+
+    # 4. summary uses absolute percentage (no "improved -" or "regressed +")
+    local summary
+    summary=$(echo "$INTERACT_RESULT" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('perf_diff',{}).get('summary',''))" 2>/dev/null || echo "")
+    if [ -n "$summary" ] && ! echo "$summary" | grep -qE "improved -|regressed \+"; then
+        checks_passed=$((checks_passed + 1))
+    else
+        echo "  MISSING: summary has redundant sign ('improved -' or 'regressed +')"
+    fi
+
+    if [ "$checks_passed" -eq "$checks_total" ]; then
+        pass "perf_diff has all LLM fields: verdict, unit, rating, clean summary ($checks_passed/$checks_total)."
+    else
+        fail "perf_diff missing LLM fields: $checks_passed/$checks_total. Result: $(truncate "$INTERACT_RESULT" 300)"
+    fi
+}
+run_test_s23
 
 # ── Test S.18: Rich Action Results — click returns compact feedback ──
 begin_test "S.18" "Click returns timing_ms and dom_summary" \

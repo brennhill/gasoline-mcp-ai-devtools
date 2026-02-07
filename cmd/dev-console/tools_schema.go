@@ -406,7 +406,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "interact",
-			Description: "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, subtitle, save_state, load_state, list_states, delete_state. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. Subtitle: persistent narration text at bottom of viewport (like closed captions). Use action='subtitle' with text param, or add 'subtitle' param to any other action for composable narration. Requires AI Web Pilot enabled.",
+			Description: "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, subtitle, save_state, load_state, list_states, delete_state. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. Subtitle: persistent narration text at bottom of viewport (like closed captions). Use action='subtitle' with text param, or add 'subtitle' param to any other action for composable narration. Performance: set analyze=true on DOM actions to get perf_diff with timing breakdown and resource changes in the async result. Requires AI Web Pilot enabled.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -490,6 +490,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"correlation_id": map[string]any{
 						"type":        "string",
 						"description": "Optional ID to link this action to a specific error or investigation.",
+					},
+					"analyze": map[string]any{
+						"type":        "boolean",
+						"description": "Enable performance profiling for this action. When true, captures timing breakdown and perf_diff (before/after metrics) in the async result.",
 					},
 				},
 				"required": []string{"action"},

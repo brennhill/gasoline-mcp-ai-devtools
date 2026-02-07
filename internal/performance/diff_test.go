@@ -365,6 +365,239 @@ func TestSummary_Under200Chars(t *testing.T) {
 }
 
 // ============================================
+// Verdict: top-level signal for LLM decision-making
+// ============================================
+
+func TestPerfDiff_Verdict_Improved(t *testing.T) {
+	t.Parallel()
+	lcp2800 := 2800.0
+	lcp1200 := 1200.0
+
+	before := PageLoadMetrics{Timing: MetricsTiming{LCP: &lcp2800, TTFB: 120, Load: 1500}}
+	after := PageLoadMetrics{Timing: MetricsTiming{LCP: &lcp1200, TTFB: 80, Load: 1100}}
+
+	diff := ComputePerfDiff(before, after)
+	if diff.Verdict != "improved" {
+		t.Errorf("Verdict = %q, want 'improved' when all metrics improve", diff.Verdict)
+	}
+}
+
+func TestPerfDiff_Verdict_Regressed(t *testing.T) {
+	t.Parallel()
+	lcp1200 := 1200.0
+	lcp2800 := 2800.0
+
+	before := PageLoadMetrics{Timing: MetricsTiming{LCP: &lcp1200, TTFB: 80, Load: 1100}}
+	after := PageLoadMetrics{Timing: MetricsTiming{LCP: &lcp2800, TTFB: 200, Load: 2500}}
+
+	diff := ComputePerfDiff(before, after)
+	if diff.Verdict != "regressed" {
+		t.Errorf("Verdict = %q, want 'regressed' when all metrics get worse", diff.Verdict)
+	}
+}
+
+func TestPerfDiff_Verdict_Mixed(t *testing.T) {
+	t.Parallel()
+	lcp2800 := 2800.0
+	lcp1200 := 1200.0
+
+	// LCP improves, TTFB regresses
+	before := PageLoadMetrics{Timing: MetricsTiming{LCP: &lcp2800, TTFB: 80, Load: 1100}}
+	after := PageLoadMetrics{Timing: MetricsTiming{LCP: &lcp1200, TTFB: 200, Load: 1100}}
+
+	diff := ComputePerfDiff(before, after)
+	if diff.Verdict != "mixed" {
+		t.Errorf("Verdict = %q, want 'mixed' when some improve and some regress", diff.Verdict)
+	}
+}
+
+func TestPerfDiff_Verdict_Unchanged(t *testing.T) {
+	t.Parallel()
+	before := PageLoadMetrics{}
+	after := PageLoadMetrics{}
+
+	diff := ComputePerfDiff(before, after)
+	if diff.Verdict != "unchanged" {
+		t.Errorf("Verdict = %q, want 'unchanged' when no metrics to compare", diff.Verdict)
+	}
+}
+
+// ============================================
+// Rating: Web Vitals thresholds for LLM context
+// ============================================
+
+func TestPerfDiff_LCP_Rating_Good(t *testing.T) {
+	t.Parallel()
+	lcp4000 := 4000.0
+	lcp1200 := 1200.0
+
+	before := PageLoadMetrics{Timing: MetricsTiming{LCP: &lcp4000, TTFB: 120, Load: 1500}}
+	after := PageLoadMetrics{Timing: MetricsTiming{LCP: &lcp1200, TTFB: 80, Load: 1100}}
+
+	diff := ComputePerfDiff(before, after)
+	lcp := diff.Metrics["lcp"]
+	if lcp.Rating != "good" {
+		t.Errorf("LCP 1200ms rating = %q, want 'good' (<2500ms)", lcp.Rating)
+	}
+}
+
+func TestPerfDiff_LCP_Rating_Poor(t *testing.T) {
+	t.Parallel()
+	lcp1200 := 1200.0
+	lcp5000 := 5000.0
+
+	before := PageLoadMetrics{Timing: MetricsTiming{LCP: &lcp1200, TTFB: 80, Load: 1100}}
+	after := PageLoadMetrics{Timing: MetricsTiming{LCP: &lcp5000, TTFB: 80, Load: 1100}}
+
+	diff := ComputePerfDiff(before, after)
+	lcp := diff.Metrics["lcp"]
+	if lcp.Rating != "poor" {
+		t.Errorf("LCP 5000ms rating = %q, want 'poor' (>4000ms)", lcp.Rating)
+	}
+}
+
+func TestPerfDiff_CLS_Rating_NeedsImprovement(t *testing.T) {
+	t.Parallel()
+	cls01 := 0.01
+	cls015 := 0.15
+
+	before := PageLoadMetrics{
+		CLS:   &cls01,
+		Timing: MetricsTiming{TTFB: 80, Load: 1100},
+	}
+	after := PageLoadMetrics{
+		CLS:   &cls015,
+		Timing: MetricsTiming{TTFB: 80, Load: 1100},
+	}
+
+	diff := ComputePerfDiff(before, after)
+	cls := diff.Metrics["cls"]
+	if cls.Rating != "needs_improvement" {
+		t.Errorf("CLS 0.15 rating = %q, want 'needs_improvement' (0.1-0.25)", cls.Rating)
+	}
+}
+
+// ============================================
+// Summary: percentage-based sort
+// ============================================
+
+func TestSummary_SortsByPercentageNotAbsoluteDelta(t *testing.T) {
+	t.Parallel()
+	// CLS has tiny absolute delta (0.2) but huge percentage (+200%)
+	// TTFB has large absolute delta (100) but small percentage (+50%)
+	// Summary should lead with CLS because percentage is bigger
+	diff := PerfDiff{
+		Metrics: map[string]MetricDiff{
+			"cls":  {Before: 0.1, After: 0.3, Delta: 0.2, Pct: "+200%", Improved: false},
+			"ttfb": {Before: 200, After: 300, Delta: 100, Pct: "+50%", Improved: false},
+		},
+	}
+
+	summary := GeneratePerfSummary(diff)
+	if !strings.HasPrefix(strings.ToUpper(summary), "CLS") {
+		t.Errorf("Summary should lead with highest percentage (CLS +200%%), not highest delta (TTFB +100ms). Got: %q", summary)
+	}
+}
+
+// ============================================
+// Unit: metric values must carry units for LLM clarity
+// ============================================
+
+func TestPerfDiff_MetricUnit(t *testing.T) {
+	t.Parallel()
+	lcp2800 := 2800.0
+	lcp1200 := 1200.0
+	cls02 := 0.02
+	cls01 := 0.01
+
+	before := PageLoadMetrics{
+		Timing:       MetricsTiming{LCP: &lcp2800, TTFB: 120, DomContentLoaded: 800, Load: 1500},
+		CLS:          &cls02,
+		TransferSize: 768 * 1024,
+		RequestCount: 58,
+	}
+	after := PageLoadMetrics{
+		Timing:       MetricsTiming{LCP: &lcp1200, TTFB: 80, DomContentLoaded: 700, Load: 1100},
+		CLS:          &cls01,
+		TransferSize: 512 * 1024,
+		RequestCount: 42,
+	}
+
+	diff := ComputePerfDiff(before, after)
+
+	checks := map[string]string{
+		"lcp":                "ms",
+		"ttfb":               "ms",
+		"load":               "ms",
+		"dom_content_loaded": "ms",
+		"transfer_kb":        "KB",
+		"requests":           "count",
+	}
+	for name, wantUnit := range checks {
+		md, ok := diff.Metrics[name]
+		if !ok {
+			t.Errorf("metric %q missing", name)
+			continue
+		}
+		if md.Unit != wantUnit {
+			t.Errorf("%s.Unit = %q, want %q", name, md.Unit, wantUnit)
+		}
+	}
+	// CLS is unitless — no unit string
+	if diff.Metrics["cls"].Unit != "" {
+		t.Errorf("cls.Unit = %q, want empty (unitless)", diff.Metrics["cls"].Unit)
+	}
+}
+
+// ============================================
+// Summary: no redundant sign, includes rating
+// ============================================
+
+func TestSummary_NoRedundantSign(t *testing.T) {
+	t.Parallel()
+	diff := PerfDiff{
+		Metrics: map[string]MetricDiff{
+			"lcp": {Before: 2800, After: 1200, Delta: -1600, Pct: "-57%", Improved: true, Rating: "good"},
+		},
+	}
+	summary := GeneratePerfSummary(diff)
+	// "improved" already conveys direction — sign is redundant noise
+	if strings.Contains(summary, "improved -") || strings.Contains(summary, "improved +") {
+		t.Errorf("Summary has redundant sign after direction word. Got: %q", summary)
+	}
+}
+
+func TestSummary_IncludesRating(t *testing.T) {
+	t.Parallel()
+	diff := PerfDiff{
+		Metrics: map[string]MetricDiff{
+			"lcp": {Before: 4000, After: 1200, Delta: -2800, Pct: "-70%", Improved: true, Rating: "good"},
+		},
+	}
+	summary := GeneratePerfSummary(diff)
+	if !strings.Contains(summary, "good") {
+		t.Errorf("Summary should include Web Vitals rating. Got: %q", summary)
+	}
+}
+
+func TestSummary_RegressionShowsAbsolutePercentage(t *testing.T) {
+	t.Parallel()
+	diff := PerfDiff{
+		Metrics: map[string]MetricDiff{
+			"lcp": {Before: 1200, After: 4000, Delta: 2800, Pct: "+233%", Improved: false, Rating: "poor"},
+		},
+	}
+	summary := GeneratePerfSummary(diff)
+	// Should say "regressed 233%" not "regressed +233%"
+	if strings.Contains(summary, "regressed +") {
+		t.Errorf("Summary has redundant + sign after 'regressed'. Got: %q", summary)
+	}
+	if !strings.Contains(summary, "233%") {
+		t.Errorf("Summary should include percentage. Got: %q", summary)
+	}
+}
+
+// ============================================
 // Types: PageLoadMetrics and PerfDiff structs
 // ============================================
 
