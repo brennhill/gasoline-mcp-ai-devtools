@@ -54,28 +54,28 @@ func (c *Capture) AddEnhancedActionsForTest(actions []EnhancedAction) {
 func (c *Capture) SetPilotEnabled(enabled bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.pilotEnabled = enabled
+	c.ext.pilotEnabled = enabled
 }
 
 // SetTrackingStatusForTest sets the tracked tab URL and ID (TEST ONLY)
 func (c *Capture) SetTrackingStatusForTest(tabID int, tabURL string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.trackingEnabled = true
-	c.trackedTabID = tabID
-	c.trackedTabURL = tabURL
-	c.trackingUpdated = time.Now()
+	c.ext.trackingEnabled = true
+	c.ext.trackedTabID = tabID
+	c.ext.trackedTabURL = tabURL
+	c.ext.trackingUpdated = time.Now()
 }
 
 // GetLastPendingQuery returns the most recently created pending query (TEST ONLY)
 // Returns nil if no queries exist.
 func (c *Capture) GetLastPendingQuery() *queries.PendingQuery {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if len(c.pendingQueries) == 0 {
+	c.qd.mu.Lock()
+	defer c.qd.mu.Unlock()
+	if len(c.qd.pendingQueries) == 0 {
 		return nil
 	}
-	last := c.pendingQueries[len(c.pendingQueries)-1]
+	last := c.qd.pendingQueries[len(c.qd.pendingQueries)-1]
 	return &queries.PendingQuery{
 		Type:          last.query.Type,
 		Params:        last.query.Params,

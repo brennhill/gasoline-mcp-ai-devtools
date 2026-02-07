@@ -344,19 +344,6 @@ type directionStats struct {
 	recentTimes []time.Time // timestamps within rate window for rate calculation
 }
 
-// pendingQueryEntry tracks a pending query with timeout
-type pendingQueryEntry struct {
-	query    queries.PendingQueryResponse
-	expires  time.Time
-	clientID string // owning client for multi-client isolation
-}
-
-// queryResultEntry stores a query result with client ownership
-type queryResultEntry struct {
-	result    json.RawMessage
-	clientID  string // owning client for multi-client isolation
-	createdAt time.Time
-}
 
 // ============================================
 // Constants
@@ -513,13 +500,10 @@ type Capture struct {
 	connOrder   []string                     // Insertion order for LRU eviction of active connections.
 
 	// ============================================
-	// Pending Queries (Extension ↔ Server RPC)
+	// Query Dispatch (Own Locks)
 	// ============================================
 
-	pendingQueries []pendingQueryEntry        // FIFO queue of pending queries awaiting extension response (max 5). Each has an expires timeout. Oldest dropped if full.
-	queryResults   map[string]queryResultEntry // Completed query results keyed by query ID (not correlation_id). 60s TTL. Cleaned by startResultCleanup goroutine.
-	queryCond      *sync.Cond                 // Condition var initialized with sync.NewCond(&c.mu). Broadcast when result arrives or cleanup happens.
-	queryIDCounter int                        // Monotonic ID for next query (format: "q-<counter>"). Incremented in CreatePendingQueryWithClient.
+	qd *QueryDispatcher // Pending queries, results, async command tracking. Has own sync.Mutex + sync.RWMutex — independent of Capture.mu.
 
 	// ============================================
 	// Rate Limiting & Circuit Breaker (Own Lock)
@@ -528,39 +512,10 @@ type Capture struct {
 	circuit *CircuitBreaker // Rate limiting + circuit breaker state machine. Has own sync.RWMutex — independent of Capture.mu.
 
 	// ============================================
-	// Query Timeout
+	// Extension State (Protected by parent mu)
 	// ============================================
 
-	queryTimeout time.Duration // Default: 2 seconds (queries.DefaultQueryTimeout=2*time.Second). Configurable. Applied to pending queries. Rationale: extension polls every 1-2s, fast timeout prevents MCP hangs.
-
-	// ============================================
-	// Async Command Results (Protected by resultsMu, NOT mu)
-	// ============================================
-
-	completedResults map[string]*queries.CommandResult // Completed async results keyed by correlation_id (60s TTL). Protected by resultsMu. Cleaned by startResultCleanup goroutine every 10s. Expired entries moved to failedCommands.
-	failedCommands   []*queries.CommandResult          // Ring buffer of failed/expired commands for diagnostics (pre-allocated 100). Protected by resultsMu. Trimmed to max 100.
-	resultsMu        sync.RWMutex              // SEPARATE lock protecting completedResults and failedCommands. Separate from mu to avoid blocking event ingest during async result operations. Observer goroutines use this lock.
-
-	// ============================================
-	// Extension Communication State
-	// ============================================
-
-	lastPollAt        time.Time // When extension last polled GET /pending-queries. Updated in HandlePendingQueries (line 373). Health endpoint uses 3s threshold to determine "connected" vs "stale".
-	extensionSession  string    // Extension session ID from header (changes when extension reloads). Detects browser restart or extension update. Session change logged but does NOT auto-clear pending queries.
-	sessionChangedAt  time.Time // When extensionSession last changed (used for display in health endpoint).
-	pilotEnabled      bool           // AI Web Pilot toggle from POST /settings (or GET header fallback if settings >10s stale). Check before dispatching browser actions.
-	pilotUpdatedAt    time.Time      // When pilotEnabled was last updated from POST /settings. Staleness threshold: 10 seconds (queries.go:377-378). If >10s old, extension header takes priority.
-	activeTestIDs     map[string]bool // Active test boundaries (concurrent test support). Maps test_id -> true for all active tests. Used to tag all events with test context. Keys added on test_boundary_start, removed on test_boundary_end.
-
-	// ============================================
-	// Tab Tracking
-	// ============================================
-
-	trackingEnabled bool      // Single-tab mode active. true=track specific tab. false=observe all tabs (multi-tab).
-	trackedTabID    int       // Browser tab ID when single-tab tracking (0=none). Invariant: if trackingEnabled then trackedTabID>0.
-	trackedTabURL   string    // Tracked tab URL (informational, may be stale).
-	trackedTabTitle string    // Tracked tab title (informational, may be stale).
-	trackingUpdated time.Time // When tracking status last refreshed from extension.
+	ext ExtensionState // Connection, pilot, tracking, test boundaries. Protected by parent mu (no separate lock).
 
 	// ============================================
 	// Debug Logging (Own Lock)
@@ -592,21 +547,14 @@ type Capture struct {
 	// Lifecycle Event Callbacks
 	// ============================================
 
-	lifecycleCallback      func(event string, data map[string]any) // Optional callback for lifecycle events (circuit breaker, extension state, buffer overflow)
-	lastExtensionConnected bool                                    // Track previous extension connection state for transition detection
+	lifecycleCallback func(event string, data map[string]any) // Optional callback for lifecycle events (circuit breaker, extension state, buffer overflow)
 
 	// ============================================
 	// Version Information
 	// ============================================
 
-	serverVersion    string // Server version (e.g., "5.7.0"), set via SetServerVersion()
-	extensionVersion string // Last reported extension version from sync request
+	serverVersion string // Server version (e.g., "5.7.0"), set via SetServerVersion()
 
-	// ============================================
-	// Background Goroutine Lifecycle
-	// ============================================
-
-	stopCleanup func() // Stops the startResultCleanup background goroutine. Called by Close().
 }
 
 // NewCapture creates a new Capture instance with initialized buffers
@@ -621,12 +569,9 @@ func NewCapture() *Capture {
 		connections:              make(map[string]*connectionState),
 		closedConns:              make([]WebSocketClosedConnection, 0),
 		connOrder:                make([]string, 0),
-		pendingQueries:           make([]pendingQueryEntry, 0),
-		queryResults:             make(map[string]queryResultEntry),
-		queryTimeout:             queries.DefaultQueryTimeout,
-		completedResults:         make(map[string]*queries.CommandResult),
-		failedCommands:           make([]*queries.CommandResult, 0, 100), // Pre-allocate for 100 failed commands
-		activeTestIDs:            make(map[string]bool),          // Initialize empty map for concurrent test boundaries
+		ext: ExtensionState{
+			activeTestIDs: make(map[string]bool),
+		},
 		perf: PerformanceStore{
 			snapshots:       make(map[string]performance.PerformanceSnapshot),
 			snapshotOrder:   make([]string, 0),
@@ -646,14 +591,11 @@ func NewCapture() *Capture {
 		rec:   NewRecordingManager(),
 	}
 	c.observeSem = make(chan struct{}, 4)
-	c.queryCond = sync.NewCond(&c.mu)
+	c.qd = NewQueryDispatcher()
 	c.circuit = NewCircuitBreaker(
 		func() int64 { return c.getMemoryForCircuit() },
 		c.emitLifecycleEvent,
 	)
-
-	// Start background cleanup for expired query results
-	c.stopCleanup = c.startResultCleanup()
 
 	// Note: schemaStore, clientRegistry, cspGen are initialized by capture.New() in capture package
 	// to avoid circular import (those packages import capture for NetworkBody, WebSocketEvent, etc.)
@@ -662,9 +604,8 @@ func NewCapture() *Capture {
 
 // Close stops background goroutines. Safe to call multiple times.
 func (c *Capture) Close() {
-	if c.stopCleanup != nil {
-		c.stopCleanup()
-		c.stopCleanup = nil
+	if c.qd != nil {
+		c.qd.Close()
 	}
 }
 
@@ -704,9 +645,3 @@ func (c *Capture) GetServerVersion() string {
 	return c.serverVersion
 }
 
-// GetExtensionVersion returns the last reported extension version.
-func (c *Capture) GetExtensionVersion() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.extensionVersion
-}

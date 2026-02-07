@@ -74,8 +74,8 @@ func (c *Capture) LoadSettingsFromDisk() {
 	}
 
 	if settings.AIWebPilotEnabled != nil {
-		c.pilotEnabled = *settings.AIWebPilotEnabled
-		c.pilotUpdatedAt = settings.Timestamp
+		c.ext.pilotEnabled = *settings.AIWebPilotEnabled
+		c.ext.pilotUpdatedAt = settings.Timestamp
 		// Quiet mode: Settings load info goes to log file only
 	}
 }
@@ -89,9 +89,9 @@ func (c *Capture) SaveSettingsToDisk() error {
 
 	c.mu.RLock()
 	settings := PersistedSettings{
-		AIWebPilotEnabled: &c.pilotEnabled,
-		Timestamp:         c.pilotUpdatedAt,
-		SessionID:         c.extensionSession,
+		AIWebPilotEnabled: &c.ext.pilotEnabled,
+		Timestamp:         c.ext.pilotUpdatedAt,
+		SessionID:         c.ext.extensionSession,
 	}
 	c.mu.RUnlock()
 
@@ -192,18 +192,18 @@ func (c *Capture) HandleSettings(w http.ResponseWriter, r *http.Request) {
 	// This allows the extension to send partial updates (only initialized values)
 	var pilotEnabledPtr *bool
 	if aiPilot, ok := payload.Settings["aiWebPilotEnabled"].(bool); ok {
-		c.pilotEnabled = aiPilot
-		c.pilotUpdatedAt = now
+		c.ext.pilotEnabled = aiPilot
+		c.ext.pilotUpdatedAt = now
 		pilotEnabledPtr = &aiPilot
 	}
 
 	// Track session if provided
-	if payload.SessionID != "" && payload.SessionID != c.extensionSession {
-		if c.extensionSession != "" {
-			fmt.Fprintf(os.Stderr, "[gasoline] Settings: session changed %s -> %s\n", c.extensionSession, payload.SessionID)
+	if payload.SessionID != "" && payload.SessionID != c.ext.extensionSession {
+		if c.ext.extensionSession != "" {
+			fmt.Fprintf(os.Stderr, "[gasoline] Settings: session changed %s -> %s\n", c.ext.extensionSession, payload.SessionID)
 		}
-		c.extensionSession = payload.SessionID
-		c.sessionChangedAt = now
+		c.ext.extensionSession = payload.SessionID
+		c.ext.sessionChangedAt = now
 	}
 
 	// Log settings POST to circular buffer
