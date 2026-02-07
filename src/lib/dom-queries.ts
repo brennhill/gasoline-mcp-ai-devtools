@@ -298,7 +298,7 @@ function loadAxeCore(): Promise<void> {
     // Timeout after 5 seconds
     setTimeout(() => {
       clearInterval(checkInterval)
-      reject(new Error('axe-core not available - content script may not have loaded it'))
+      reject(new Error('Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit.'))
     }, 5000)
   })
 }

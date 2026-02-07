@@ -310,20 +310,21 @@ export async function retryWithBackoff<T>(
  * Create a cancellable promise that can be aborted
  * @template T The type of the result
  * @param promise The promise to wrap
+ * @param operationName Optional human-readable name of the operation for error messages
  * @returns Object with the promise and a cancel function
  *
  * @example
- * const { promise, cancel } = makeCancellable(fetch('/api/data'));
+ * const { promise, cancel } = makeCancellable(fetch('/api/data'), 'fetch user data');
  * setTimeout(() => cancel(), 5000);
  * try {
  *   const result = await promise;
  * } catch (err) {
- *   if (err.message === 'cancelled') {
- *     console.log('Operation was cancelled');
+ *   if (err.message.includes('cancelled')) {
+ *     console.log('Operation was cancelled:', err.message);
  *   }
  * }
  */
-export function makeCancellable<T>(promise: Promise<T>): {
+export function makeCancellable<T>(promise: Promise<T>, operationName?: string): {
   promise: Promise<T>
   cancel: () => void
 } {
@@ -349,7 +350,10 @@ export function makeCancellable<T>(promise: Promise<T>): {
     promise: wrappedPromise,
     cancel: () => {
       cancelled = true
-      rejectFn(new Error('cancelled'))
+      const msg = operationName
+        ? `Operation cancelled: ${operationName}`
+        : 'cancelled'
+      rejectFn(new Error(msg))
     },
   }
 }
