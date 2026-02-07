@@ -109,6 +109,10 @@ export class SyncClient {
         this.syncing = true;
         this.flushRequested = false;
         try {
+            // CRITICAL: Wait for pilot state to be fully initialized from storage
+            // This prevents sending wrong pilot_enabled state on first sync after service worker restart
+            const { __aiWebPilotInitPromise } = await import('./index.js');
+            await __aiWebPilotInitPromise;
             // Build request
             const settings = await this.callbacks.getSettings();
             const logs = this.callbacks.getExtensionLogs();
