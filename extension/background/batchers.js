@@ -36,6 +36,7 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
         if (failures <= 0)
             return 0;
         const idx = Math.min(failures - 1, backoffSchedule.length - 1);
+        // eslint-disable-next-line security/detect-object-injection -- Safe: idx is bounded by array length
         return backoffSchedule[idx];
     }
     const wrappedCircuitBreaker = {

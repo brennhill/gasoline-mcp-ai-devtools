@@ -27,7 +27,7 @@ export async function promiseRaceWithCleanup(promise, timeoutMs, timeoutFallback
     try {
         return await Promise.race([
             promise,
-            new Promise((_, reject) => setTimeout(() => {
+            new Promise((resolve, reject) => { setTimeout(() => {
                 cleanup?.();
                 if (timeoutFallback !== undefined) {
                     reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
@@ -35,7 +35,7 @@ export async function promiseRaceWithCleanup(promise, timeoutMs, timeoutFallback
                 else {
                     reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
                 }
-            }, timeoutMs)),
+            }, timeoutMs); }),
         ]);
     }
     catch (err) {

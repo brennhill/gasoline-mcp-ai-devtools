@@ -50,7 +50,7 @@ func TestMCPConnectionLifecycle_FreshStart(t *testing.T) {
 
 	// Build gasoline binary
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+	defer func() { _ = os.Remove(binary) }()
 
 	// Start first client (should spawn server)
 	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
@@ -99,7 +99,7 @@ func TestMCPConnectionLifecycle_MultiClient(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+	defer func() { _ = os.Remove(binary) }()
 
 	// Start first client (spawns server)
 	cmd1 := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
@@ -187,7 +187,7 @@ func TestMCPConnectionLifecycle_RetryLogic(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+	defer func() { _ = os.Remove(binary) }()
 
 	// Start a server that will be killed quickly
 	cmd1 := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
@@ -265,7 +265,7 @@ func TestMCPConnectionLifecycle_MassiveConcurrency(t *testing.T) {
 	const numClients = 100
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+	defer func() { _ = os.Remove(binary) }()
 
 	// Define variety of MCP requests to test
 	mcpRequests := []struct {
@@ -448,7 +448,7 @@ func TestMCPConnectionLifecycle_ColdStartRace(t *testing.T) {
 	const numClients = 20 // Enough to stress test without timing out
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+	defer func() { _ = os.Remove(binary) }()
 
 	// Verify no server is running
 	if isServerRunning(port) {
@@ -645,7 +645,7 @@ func TestMCPConnectionLifecycle_ColdStart(t *testing.T) {
 	const numClients = 10
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+	defer func() { _ = os.Remove(binary) }()
 
 	// Verify no server is running
 	if isServerRunning(port) {

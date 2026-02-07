@@ -27,6 +27,13 @@ type daemonState struct {
 	failedCh chan struct{}
 }
 
+// flushStdout syncs stdout and logs any errors (best-effort)
+func flushStdout() {
+	if err := os.Stdout.Sync(); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] warning: stdout.Sync failed: %v\n", err)
+	}
+}
+
 // runBridgeMode bridges stdio (from MCP client) to HTTP (to persistent server)
 // Uses fast-start: responds to initialize/tools/list immediately while spawning daemon async.
 func runBridgeMode(port int) {
@@ -96,7 +103,7 @@ func isServerRunning(port int) bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() //nolint:errcheck -- best-effort cleanup
 	return resp.StatusCode == http.StatusOK
 }
 
@@ -108,7 +115,7 @@ func waitForServer(port int, timeout time.Duration) bool {
 			// Additional check: try to hit the health endpoint
 			resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port))
 			if err == nil && resp.StatusCode == 200 {
-				resp.Body.Close()
+				_ = resp.Body.Close() //nolint:errcheck -- best-effort cleanup
 				return true
 			}
 		}
@@ -165,7 +172,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			}
 			respJSON, _ := json.Marshal(errResp)
 			fmt.Println(string(respJSON))
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			continue
 		}
@@ -183,7 +190,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 			respJSON, _ := json.Marshal(resp)
 			fmt.Println(string(respJSON))
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			continue
 
@@ -193,7 +200,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 				resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{}`)}
 				respJSON, _ := json.Marshal(resp)
 				fmt.Println(string(respJSON))
-				os.Stdout.Sync()
+				flushStdout()
 				signalResponseSent()
 			}
 			continue
@@ -205,7 +212,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 			respJSON, _ := json.Marshal(resp)
 			fmt.Println(string(respJSON))
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			continue
 
@@ -213,7 +220,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{}`)}
 			respJSON, _ := json.Marshal(resp)
 			fmt.Println(string(respJSON))
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			continue
 
@@ -221,7 +228,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"prompts":[]}`)}
 			respJSON, _ := json.Marshal(resp)
 			fmt.Println(string(respJSON))
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			continue
 
@@ -229,7 +236,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"resources":[]}`)}
 			respJSON, _ := json.Marshal(resp)
 			fmt.Println(string(respJSON))
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			continue
 
@@ -237,7 +244,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"resourceTemplates":[]}`)}
 			respJSON, _ := json.Marshal(resp)
 			fmt.Println(string(respJSON))
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			continue
 		}
@@ -258,7 +265,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 				suggestion += "Try: npx gasoline-mcp --doctor"
 			}
 			sendToolError(req.ID, suggestion)
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			continue
 		}
@@ -266,7 +273,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		if !isReady {
 			// Server is still starting - tell LLM to retry
 			sendToolError(req.ID, "Server is starting up. Please retry this tool call in 2 seconds.")
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			continue
 		}
@@ -276,7 +283,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		httpReq, err := http.NewRequest("POST", endpoint, bytes.NewReader(line))
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Bridge error: "+err.Error())
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			wg.Done()
 			continue
@@ -286,17 +293,17 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			wg.Done()
 			continue
 		}
 
 		body, err := io.ReadAll(io.LimitReader(resp.Body, maxPostBodySize))
-		resp.Body.Close()
+		_ = resp.Body.Close() //nolint:errcheck -- best-effort cleanup
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Failed to read response: "+err.Error())
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			wg.Done()
 			continue
@@ -309,14 +316,14 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 
 		if resp.StatusCode != 200 {
 			sendBridgeError(req.ID, -32603, fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body)))
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			wg.Done()
 			continue
 		}
 
 		fmt.Print(string(body))
-		os.Stdout.Sync()
+		flushStdout()
 		signalResponseSent()
 		wg.Done()
 	}
@@ -331,7 +338,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	case <-time.After(5 * time.Second):
 	}
 
-	os.Stdout.Sync()
+	flushStdout()
 	time.Sleep(100 * time.Millisecond)
 }
 
@@ -390,7 +397,7 @@ func bridgeStdioToHTTP(endpoint string) {
 			}
 			respJSON, _ := json.Marshal(errResp)
 			fmt.Println(string(respJSON))
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			continue
 		}
@@ -402,7 +409,7 @@ func bridgeStdioToHTTP(endpoint string) {
 		httpReq, err := http.NewRequest("POST", endpoint, bytes.NewReader(line))
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Bridge error: "+err.Error())
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			wg.Done()
 			continue
@@ -413,7 +420,7 @@ func bridgeStdioToHTTP(endpoint string) {
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			wg.Done()
 			continue
@@ -421,11 +428,11 @@ func bridgeStdioToHTTP(endpoint string) {
 
 		// Read response (limit size to prevent memory exhaustion)
 		body, err := io.ReadAll(io.LimitReader(resp.Body, maxPostBodySize))
-		resp.Body.Close()
+		_ = resp.Body.Close() //nolint:errcheck -- best-effort cleanup
 
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Failed to read response: "+err.Error())
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			wg.Done()
 			continue
@@ -441,7 +448,7 @@ func bridgeStdioToHTTP(endpoint string) {
 
 		if resp.StatusCode != 200 {
 			sendBridgeError(req.ID, -32603, fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body)))
-			os.Stdout.Sync()
+			flushStdout()
 			signalResponseSent()
 			wg.Done()
 			continue
@@ -450,7 +457,7 @@ func bridgeStdioToHTTP(endpoint string) {
 		// Forward response to stdout
 		// Use Print not Println - HTTP response already has trailing newline from json.Encoder.Encode()
 		fmt.Print(string(body))
-		os.Stdout.Sync()  // Flush immediately
+		flushStdout()  // Flush immediately
 		signalResponseSent()  // Signal that response was sent
 		wg.Done()
 	}
@@ -473,7 +480,7 @@ func bridgeStdioToHTTP(endpoint string) {
 	}
 
 	// CRITICAL: Final flush and give OS time to send buffered data to parent process
-	os.Stdout.Sync()
+	flushStdout()
 	time.Sleep(100 * time.Millisecond)  // Allow OS to flush pipe to parent
 
 	// Quiet mode: Bridge shutdown is silent (normal operation, not an error)

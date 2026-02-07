@@ -143,9 +143,52 @@ func TestPerfDiff_FirstLoad_NoPrevious(t *testing.T) {
 
 	diff := ComputePerfDiff(before, after)
 
-	// Should have no meaningful metrics (no baseline to compare)
-	if len(diff.Metrics) > 0 {
-		t.Errorf("First load should have no diff metrics, got %d", len(diff.Metrics))
+	// Should have metrics with "n/a" pct (no baseline to compare, but after values exist)
+	if len(diff.Metrics) != 2 {
+		t.Errorf("Expected 2 metrics (ttfb, load), got %d: %v", len(diff.Metrics), diff.Metrics)
+	}
+	if ttfb, ok := diff.Metrics["ttfb"]; ok {
+		if ttfb.Pct != "n/a" {
+			t.Errorf("TTFB pct should be 'n/a' when before=0, got %q", ttfb.Pct)
+		}
+	}
+}
+
+func TestComputePerfDiff_TTFBZeroNotSkipped(t *testing.T) {
+	t.Parallel()
+	before := PageLoadMetrics{
+		Timing: MetricsTiming{TTFB: 0, Load: 400},
+	}
+	after := PageLoadMetrics{
+		Timing: MetricsTiming{TTFB: 10, Load: 500},
+	}
+
+	diff := ComputePerfDiff(before, after)
+
+	if _, ok := diff.Metrics["ttfb"]; !ok {
+		t.Fatal("TTFB metric missing — TTFB=0 should not be skipped")
+	}
+	if diff.Metrics["ttfb"].Pct != "n/a" {
+		t.Errorf("TTFB pct should be 'n/a' when before=0, got %q", diff.Metrics["ttfb"].Pct)
+	}
+}
+
+func TestComputePerfDiff_BothZeroSkipped(t *testing.T) {
+	t.Parallel()
+	before := PageLoadMetrics{
+		Timing: MetricsTiming{TTFB: 0, Load: 400},
+	}
+	after := PageLoadMetrics{
+		Timing: MetricsTiming{TTFB: 0, Load: 500},
+	}
+
+	diff := ComputePerfDiff(before, after)
+
+	if _, ok := diff.Metrics["ttfb"]; ok {
+		t.Error("Both-zero TTFB should be skipped")
+	}
+	if _, ok := diff.Metrics["load"]; !ok {
+		t.Error("Load metric should still be present")
 	}
 }
 

@@ -96,18 +96,27 @@ func ComputePerfDiff(before, after PageLoadMetrics) PerfDiff {
 		Metrics: make(map[string]MetricDiff),
 	}
 
-	// Helper: add a metric if both values are meaningful
+	// Helper: add a metric if at least one value is non-zero
 	addMetric := func(name string, beforeVal, afterVal float64) {
-		if beforeVal == 0 {
-			return // no baseline
+		if beforeVal == 0 && afterVal == 0 {
+			return // both zero, nothing meaningful
 		}
-		d := round1(afterVal - beforeVal)
-		pct := (afterVal - beforeVal) / beforeVal * 100
+		var d float64
+		var pctStr string
+		if beforeVal == 0 {
+			// No baseline (e.g. TTFB=0 on a fast cached page) — include metric but mark pct as n/a
+			d = round1(afterVal)
+			pctStr = "n/a"
+		} else {
+			d = round1(afterVal - beforeVal)
+			pct := (afterVal - beforeVal) / beforeVal * 100
+			pctStr = formatPct(pct)
+		}
 		diff.Metrics[name] = MetricDiff{
 			Before:   round1(beforeVal),
 			After:    round1(afterVal),
 			Delta:    d,
-			Pct:      formatPct(pct),
+			Pct:      pctStr,
 			Unit:     unitForMetric(name),
 			Improved: d < 0, // lower is better for timing/size
 			Rating:   rateMetric(name, round1(afterVal)),

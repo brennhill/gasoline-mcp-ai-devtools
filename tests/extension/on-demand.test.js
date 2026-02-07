@@ -749,7 +749,7 @@ describe('Accessibility Audit Execution', () => {
       }
     }, 50)
 
-    const result = await runAxeAudit({})
+    const _result = await runAxeAudit({})
 
     assert.ok(globalThis.window.axe, 'axe-core should be loaded on window')
     assert.ok(globalThis.window.axe.run.mock.calls.length > 0, 'axe.run should have been called')

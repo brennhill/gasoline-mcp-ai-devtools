@@ -632,6 +632,7 @@ func (h *ToolHandler) toolObserveCommandResult(req JSONRPCRequest, args json.Raw
 	if cmd.Status == "complete" {
 		responseData["result"] = cmd.Result
 		responseData["completed_at"] = cmd.CompletedAt.Format(time.RFC3339)
+		responseData["timing_ms"] = cmd.CompletedAt.Sub(cmd.CreatedAt).Milliseconds()
 		if cmd.Error != "" {
 			responseData["error"] = cmd.Error
 		}
