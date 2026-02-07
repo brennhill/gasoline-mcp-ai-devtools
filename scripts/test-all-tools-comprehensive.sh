@@ -67,9 +67,10 @@ PORT_GROUP7=7896  # cat-06-lifecycle
 PORT_GROUP8=7897  # cat-10-regression
 PORT_GROUP9=7898  # cat-11-data-pipeline
 PORT_GROUP10=7899 # cat-12-rich-actions
+PORT_GROUP11=7900 # cat-13-pilot-contract
 
 # Kill anything on our ports before starting
-for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10; do
+for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 0.5
@@ -161,8 +162,16 @@ PIDS="$PIDS $!"
 ) &
 PIDS="$PIDS $!"
 
+# Group 11: Pilot Contract Tests (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-13-pilot-contract.sh" "$PORT_GROUP11" "$RESULTS_DIR/results-13.txt" \
+        > "$RESULTS_DIR/output-13.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
 # ── Wait for All Groups ──────────────────────────────────
-echo "Running 10 parallel groups..."
+echo "Running 11 parallel groups..."
 echo ""
 
 for pid in $PIDS; do
@@ -172,7 +181,7 @@ done
 # ── Collect and Display Results ───────────────────────────
 
 # Category display order and default names
-CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12"
+CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12 13"
 get_default_name() {
     case "$1" in
         01) echo "Protocol Compliance" ;;
@@ -187,6 +196,7 @@ get_default_name() {
         10) echo "Regression Guards" ;;
         11) echo "Data Pipeline" ;;
         12) echo "Rich Action Results" ;;
+        13) echo "Pilot State Contract" ;;
         *)  echo "Unknown" ;;
     esac
 }
