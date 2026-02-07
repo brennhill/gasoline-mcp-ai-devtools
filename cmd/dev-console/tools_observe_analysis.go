@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/performance"
 	"github.com/dev-console/dev-console/internal/queries"
 )
 
@@ -303,6 +304,43 @@ func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("A11y audit", auditResult)}
 }
 
+func (h *ToolHandler) toolGetScreenshot(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	// Check if extension is connected (tab is being tracked)
+	enabled, _, _ := h.capture.GetTrackingStatus()
+	if !enabled {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "No tab being tracked", "Ensure the Gasoline extension is connected and a tab is being tracked")}
+	}
+
+	// Create pending query for screenshot capture
+	queryID := h.capture.CreatePendingQueryWithTimeout(
+		queries.PendingQuery{
+			Type:   "screenshot",
+			Params: json.RawMessage(`{}`),
+		},
+		15*time.Second,
+		"",
+	)
+
+	// Wait for extension to capture and save screenshot
+	result, err := h.capture.WaitForResult(queryID, 15*time.Second)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExtTimeout, "Screenshot capture timeout: "+err.Error(), "Ensure the extension is connected and the page has loaded")}
+	}
+
+	// Parse and return the result
+	var screenshotResult map[string]any
+	if err := json.Unmarshal(result, &screenshotResult); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Failed to parse screenshot result: "+err.Error(), "Check extension logs for errors")}
+	}
+
+	// Check for error from extension
+	if errMsg, ok := screenshotResult["error"].(string); ok {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExtTimeout, "Screenshot capture failed: "+errMsg, "Check that the tab is visible and accessible")}
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Screenshot captured", screenshotResult)}
+}
+
 func (h *ToolHandler) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Limit   int      `json:"limit"`
@@ -596,6 +634,16 @@ func (h *ToolHandler) toolObserveCommandResult(req JSONRPCRequest, args json.Raw
 		responseData["completed_at"] = cmd.CompletedAt.Format(time.RFC3339)
 		if cmd.Error != "" {
 			responseData["error"] = cmd.Error
+		}
+
+		// Enrich with perf_diff if a before-snapshot was stashed (refresh/navigate)
+		if beforeSnap, ok := h.capture.GetAndDeleteBeforeSnapshot(params.CorrelationID); ok {
+			if afterSnap, ok := h.capture.GetPerformanceSnapshotByURL(beforeSnap.URL); ok {
+				before := performance.SnapshotToPageLoadMetrics(beforeSnap)
+				after := performance.SnapshotToPageLoadMetrics(afterSnap)
+				diff := performance.ComputePerfDiff(before, after)
+				responseData["perf_diff"] = diff
+			}
 		}
 	} else if cmd.Status == "expired" || cmd.Status == "timeout" {
 		responseData["error"] = cmd.Error

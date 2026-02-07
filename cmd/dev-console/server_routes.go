@@ -40,8 +40,9 @@ func sanitizeForFilename(s string) string {
 	return s
 }
 
-// handleScreenshot saves a screenshot JPEG to disk and returns the filename
-func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
+// handleScreenshot saves a screenshot JPEG to disk and returns the filename.
+// If query_id is provided, resolves the pending query directly (on-demand screenshot flow).
+func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
@@ -66,6 +67,7 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		DataURL       string `json:"data_url"`
 		URL           string `json:"url"`
 		CorrelationID string `json:"correlation_id"`
+		QueryID       string `json:"query_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -123,11 +125,19 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonResponse(w, http.StatusOK, map[string]string{
+	result := map[string]string{
 		"filename":       filename,
 		"path":           savePath,
 		"correlation_id": body.CorrelationID,
-	})
+	}
+
+	// If query_id is present, resolve the pending query directly
+	if body.QueryID != "" && cap != nil {
+		resultJSON, _ := json.Marshal(result)
+		cap.SetQueryResult(body.QueryID, resultJSON)
+	}
+
+	jsonResponse(w, http.StatusOK, result)
 }
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
@@ -442,7 +452,9 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture, sseRegistry *SSERegis
 		}
 	}))
 
-	http.HandleFunc("/screenshots", corsMiddleware(server.handleScreenshot))
+	http.HandleFunc("/screenshots", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		server.handleScreenshot(w, r, cap)
+	}))
 
 	http.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {

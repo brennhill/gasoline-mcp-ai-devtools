@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/performance"
 )
 
 // ============================================
@@ -229,5 +231,179 @@ func TestRichAction_CorrelationID_HasAction(t *testing.T) {
 	}
 	if !strings.Contains(text, "dom_click_") {
 		t.Errorf("Correlation ID should start with dom_click_. Got: %s", text)
+	}
+}
+
+// ============================================
+// PerfDiff enrichment: refresh command_result
+// ============================================
+
+// extractJSON extracts JSON from an mcpJSONResponse text (strips "Summary\n" prefix)
+func extractJSON(text string) string {
+	if i := strings.Index(text, "\n{"); i >= 0 {
+		return text[i+1:]
+	}
+	if strings.HasPrefix(text, "{") {
+		return text
+	}
+	return text
+}
+
+func TestRichAction_RefreshStoresBeforeSnapshot(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	env.capture.SetTrackingStatusForTest(1, "https://example.com/dashboard")
+
+	// Seed a perf snapshot for the tracked URL's path
+	env.capture.AddPerformanceSnapshots([]performance.PerformanceSnapshot{{
+		URL:       "/dashboard",
+		Timestamp: "2024-01-01T00:00:00Z",
+		Timing:    performance.PerformanceTiming{TimeToFirstByte: 120, DomContentLoaded: 800, Load: 1500},
+	}})
+
+	// Call refresh — should stash the before-snapshot
+	result, ok := env.callInteract(t, `{"action":"refresh"}`)
+	if !ok {
+		t.Fatal("refresh should return result")
+	}
+	if result.IsError {
+		t.Fatalf("refresh with pilot enabled should not error. Got: %s", result.Content[0].Text)
+	}
+
+	// Extract correlation_id from result
+	var resultData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("Failed to parse result JSON: %v", err)
+	}
+	corrID, _ := resultData["correlation_id"].(string)
+	if corrID == "" {
+		t.Fatal("No correlation_id in refresh result")
+	}
+
+	// Verify before-snapshot was stored
+	snap, ok := env.capture.GetAndDeleteBeforeSnapshot(corrID)
+	if !ok {
+		t.Fatal("Before-snapshot should have been stored for refresh correlation_id")
+	}
+	if snap.URL != "/dashboard" {
+		t.Errorf("Before-snapshot URL = %q, want /dashboard", snap.URL)
+	}
+	if snap.Timing.TimeToFirstByte != 120 {
+		t.Errorf("Before-snapshot TTFB = %v, want 120", snap.Timing.TimeToFirstByte)
+	}
+}
+
+func TestRichAction_CommandResultEnrichedWithPerfDiff(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	env.capture.SetTrackingStatusForTest(1, "https://example.com/dashboard")
+
+	// Seed "before" snapshot
+	env.capture.AddPerformanceSnapshots([]performance.PerformanceSnapshot{{
+		URL:       "/dashboard",
+		Timestamp: "2024-01-01T00:00:00Z",
+		Timing:    performance.PerformanceTiming{TimeToFirstByte: 200, DomContentLoaded: 1000, Load: 2000},
+		Network:   performance.NetworkSummary{TransferSize: 500000, RequestCount: 40},
+	}})
+
+	// Call refresh to stash the before-snapshot
+	result, _ := env.callInteract(t, `{"action":"refresh"}`)
+	var resultData map[string]any
+	json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	// Simulate extension sending the "after" snapshot (overwrites the old one)
+	env.capture.AddPerformanceSnapshots([]performance.PerformanceSnapshot{{
+		URL:       "/dashboard",
+		Timestamp: "2024-01-01T00:00:05Z",
+		Timing:    performance.PerformanceTiming{TimeToFirstByte: 100, DomContentLoaded: 600, Load: 1200},
+		Network:   performance.NetworkSummary{TransferSize: 300000, RequestCount: 30},
+	}})
+
+	// Simulate extension completing the command
+	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":true,"action":"refresh"}`), "")
+
+	// Now observe the command_result — should include perf_diff
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	if resp.Result == nil {
+		t.Fatal("No result from toolObserveCommandResult")
+	}
+
+	var observeResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("Failed to parse observe result: %v", err)
+	}
+	if observeResult.IsError {
+		t.Fatalf("observe should not error. Got: %s", observeResult.Content[0].Text)
+	}
+
+	// Parse the JSON response to check for perf_diff
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	perfDiff, exists := responseData["perf_diff"]
+	if !exists {
+		t.Fatal("perf_diff missing from command_result response")
+	}
+
+	diffMap, ok := perfDiff.(map[string]any)
+	if !ok {
+		t.Fatal("perf_diff is not an object")
+	}
+
+	// Verify verdict
+	verdict, _ := diffMap["verdict"].(string)
+	if verdict != "improved" {
+		t.Errorf("verdict = %q, want 'improved' (all metrics got better)", verdict)
+	}
+
+	// Verify summary exists
+	summary, _ := diffMap["summary"].(string)
+	if summary == "" {
+		t.Error("perf_diff.summary should not be empty")
+	}
+
+	// Verify metrics exist
+	metrics, _ := diffMap["metrics"].(map[string]any)
+	if metrics == nil {
+		t.Fatal("perf_diff.metrics missing")
+	}
+	if _, hasTTFB := metrics["ttfb"]; !hasTTFB {
+		t.Error("perf_diff.metrics should include ttfb")
+	}
+}
+
+func TestRichAction_CommandResultNoPerfDiffWhenNoSnapshots(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	// No tracking status set, no snapshots
+
+	// Call refresh — no before-snapshot available
+	result, _ := env.callInteract(t, `{"action":"refresh"}`)
+	var resultData map[string]any
+	json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	// Complete the command
+	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":true,"action":"refresh"}`), "")
+
+	// Observe — should return without perf_diff (no crash)
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData)
+
+	if _, exists := responseData["perf_diff"]; exists {
+		t.Error("perf_diff should NOT be present when no before-snapshot exists")
 	}
 }

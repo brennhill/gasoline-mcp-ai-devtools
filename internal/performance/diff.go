@@ -53,6 +53,38 @@ type PerfDiff struct {
 }
 
 // ============================================
+// SnapshotToPageLoadMetrics: type mapping
+// ============================================
+
+// SnapshotToPageLoadMetrics maps a PerformanceSnapshot (from the extension)
+// to a PageLoadMetrics (used by ComputePerfDiff).
+func SnapshotToPageLoadMetrics(s PerformanceSnapshot) PageLoadMetrics {
+	m := PageLoadMetrics{
+		URL:          s.URL,
+		TransferSize: s.Network.TransferSize,
+		RequestCount: s.Network.RequestCount,
+		Timing: MetricsTiming{
+			TTFB:             s.Timing.TimeToFirstByte,
+			DomContentLoaded: s.Timing.DomContentLoaded,
+			Load:             s.Timing.Load,
+		},
+	}
+	if s.Timing.FirstContentfulPaint != nil {
+		v := *s.Timing.FirstContentfulPaint
+		m.Timing.FCP = &v
+	}
+	if s.Timing.LargestContentfulPaint != nil {
+		v := *s.Timing.LargestContentfulPaint
+		m.Timing.LCP = &v
+	}
+	if s.CLS != nil {
+		v := *s.CLS
+		m.CLS = &v
+	}
+	return m
+}
+
+// ============================================
 // ComputePerfDiff: before/after metric comparison
 // ============================================
 

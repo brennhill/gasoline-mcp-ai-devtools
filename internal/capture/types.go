@@ -423,10 +423,11 @@ type a11yInflightEntry struct {
 
 // PerformanceStore manages performance snapshots and baselines with LRU eviction.
 type PerformanceStore struct {
-	snapshots     map[string]performance.PerformanceSnapshot
-	snapshotOrder []string
-	baselines     map[string]performance.PerformanceBaseline
-	baselineOrder []string
+	snapshots       map[string]performance.PerformanceSnapshot
+	snapshotOrder   []string
+	baselines       map[string]performance.PerformanceBaseline
+	baselineOrder   []string
+	beforeSnapshots map[string]performance.PerformanceSnapshot // keyed by correlation_id, for perf_diff
 }
 
 // MemoryState tracks memory enforcement state including eviction counters
@@ -644,10 +645,11 @@ func NewCapture() *Capture {
 		failedCommands:           make([]*queries.CommandResult, 0, 100), // Pre-allocate for 100 failed commands
 		activeTestIDs:            make(map[string]bool),          // Initialize empty map for concurrent test boundaries
 		perf: PerformanceStore{
-			snapshots:     make(map[string]performance.PerformanceSnapshot),
-			snapshotOrder: make([]string, 0),
-			baselines:     make(map[string]performance.PerformanceBaseline),
-			baselineOrder: make([]string, 0),
+			snapshots:       make(map[string]performance.PerformanceSnapshot),
+			snapshotOrder:   make([]string, 0),
+			baselines:       make(map[string]performance.PerformanceBaseline),
+			baselineOrder:   make([]string, 0),
+			beforeSnapshots: make(map[string]performance.PerformanceSnapshot),
 		},
 		session: SessionTracker{
 			FirstSnapshots: make(map[string]performance.PerformanceSnapshot),
