@@ -640,6 +640,39 @@ func TestSummary_RegressionShowsAbsolutePercentage(t *testing.T) {
 	}
 }
 
+func TestSummary_DeltaZeroSaysUnchanged(t *testing.T) {
+	t.Parallel()
+	diff := PerfDiff{
+		Metrics: map[string]MetricDiff{
+			"load": {Before: 200, After: 200, Delta: 0, Pct: "+0%", Improved: false},
+		},
+	}
+	summary := GeneratePerfSummary(diff)
+	// delta=0 should NOT say "regressed" — it's unchanged
+	if strings.Contains(strings.ToLower(summary), "regress") {
+		t.Errorf("Summary says 'regressed' for delta=0, should say 'unchanged'. Got: %q", summary)
+	}
+}
+
+func TestPerfDiff_DeltaZeroVerdict(t *testing.T) {
+	t.Parallel()
+	before := PageLoadMetrics{
+		Timing: MetricsTiming{TTFB: 80, Load: 200},
+	}
+	after := PageLoadMetrics{
+		Timing: MetricsTiming{TTFB: 80, Load: 200},
+	}
+
+	diff := ComputePerfDiff(before, after)
+	if diff.Verdict != "unchanged" {
+		t.Errorf("Verdict = %q, want 'unchanged' when all deltas are 0", diff.Verdict)
+	}
+	// Summary should not claim regression
+	if strings.Contains(strings.ToLower(diff.Summary), "regress") {
+		t.Errorf("Summary claims regression for identical metrics. Got: %q", diff.Summary)
+	}
+}
+
 // ============================================
 // Types: PageLoadMetrics and PerfDiff structs
 // ============================================

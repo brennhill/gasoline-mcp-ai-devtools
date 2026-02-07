@@ -1,12 +1,9 @@
 #!/bin/bash
-# cat-12-rich-actions.sh — UAT tests for Rich Action Results schema contract.
-# Validates that the interact tool schema advertises the analyze param
-# and that the tool description guides AI toward perf_diff / timing features.
-#
-# These tests will FAIL until the schema is updated in tools_schema.go.
-# They test ONLY the schema contract — behavioral tests are in Go unit tests:
-#   - internal/performance/diff_test.go (ComputePerfDiff, ResourceDiff, Summary)
-#   - cmd/dev-console/tools_interact_rich_test.go (analyze param passthrough)
+# cat-12-rich-actions.sh — UAT tests for Rich Action Results.
+# Tests BOTH schema contract AND behavioral contract:
+#   - Schema: analyze param exists, descriptions guide AI
+#   - Behavior: perf_diff produces correct output (via Go unit tests)
+#   - Behavior: command_result response has timing_ms field
 #
 # Run: bash scripts/tests/cat-12-rich-actions.sh [port] [results-file]
 
@@ -14,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
-begin_category "12" "Rich Action Results" "3"
+begin_category "12" "Rich Action Results" "7"
 ensure_daemon
 
 # ── 12.1 — Schema: analyze boolean param exists ──────────
@@ -89,5 +86,69 @@ run_test_12_3() {
     fi
 }
 run_test_12_3
+
+# ── 12.4 — Behavioral: perf_diff summary doesn't say 'regressed 0%' ─
+begin_test "12.4" "perf_diff summary says 'unchanged' for delta=0 (not 'regressed')" \
+    "Go unit test: when all metrics have delta=0, summary must not say 'regressed'" \
+    "Saying 'regressed 0%' is misleading. delta=0 = unchanged."
+run_test_12_4() {
+    local go_result
+    go_result=$(go test ./internal/performance/ -run "TestSummary_DeltaZeroSaysUnchanged" -count=1 2>&1)
+
+    if echo "$go_result" | grep -q "^ok"; then
+        pass "delta=0 summary correctly says 'unchanged', not 'regressed'."
+    else
+        fail "delta=0 summary still says 'regressed'. Go test output: $(truncate "$go_result" 300)"
+    fi
+}
+run_test_12_4
+
+# ── 12.5 — Behavioral: perf_diff metrics have rating on Web Vitals ─
+begin_test "12.5" "perf_diff rating field exists on Web Vitals metrics" \
+    "Go unit test: LCP, FCP, TTFB, CLS metrics include rating: good/needs_improvement/poor" \
+    "Rating gives AI immediate Web Vitals assessment without threshold lookup."
+run_test_12_5() {
+    local go_result
+    go_result=$(go test ./internal/performance/ -run "TestPerfDiff_LCP_Rating|TestPerfDiff_CLS_Rating" -count=1 2>&1)
+
+    if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
+        pass "LCP and CLS metrics have correct rating values (good/needs_improvement/poor)."
+    else
+        fail "Rating tests failed. Go test output: $(truncate "$go_result" 300)"
+    fi
+}
+run_test_12_5
+
+# ── 12.6 — Behavioral: perf_diff verdict uses valid enum ─
+begin_test "12.6" "perf_diff verdict enum: improved/regressed/mixed/unchanged" \
+    "Go unit tests: all 4 verdict values are correctly computed" \
+    "Invalid verdict breaks AI decision-making."
+run_test_12_6() {
+    local go_result
+    go_result=$(go test ./internal/performance/ -run "TestPerfDiff_Verdict" -count=1 2>&1)
+
+    if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
+        pass "All 4 verdict values (improved/regressed/mixed/unchanged) computed correctly."
+    else
+        fail "Verdict tests failed. Go test output: $(truncate "$go_result" 300)"
+    fi
+}
+run_test_12_6
+
+# ── 12.7 — Behavioral: perf_diff summary < 200 chars with no redundant sign ─
+begin_test "12.7" "perf_diff summary: <200 chars, no redundant signs" \
+    "Go unit tests: summary is concise and uses absolute percentages" \
+    "Redundant signs waste tokens. 'improved -57%' should be 'improved 57%'."
+run_test_12_7() {
+    local go_result
+    go_result=$(go test ./internal/performance/ -run "TestSummary_NoRedundant|TestSummary_Under200|TestSummary_Regression" -count=1 2>&1)
+
+    if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
+        pass "Summary is concise (<200 chars), uses absolute percentages, no redundant signs."
+    else
+        fail "Summary format tests failed. Go test output: $(truncate "$go_result" 300)"
+    fi
+}
+run_test_12_7
 
 finish_category
