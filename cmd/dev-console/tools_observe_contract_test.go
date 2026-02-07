@@ -281,6 +281,31 @@ func TestObserveContract_ErrorClusters(t *testing.T) {
 	})
 }
 
+func TestObserveContract_ErrorBundles(t *testing.T) {
+	s := newScenario(t)
+	s.loadConsoleData(t)
+
+	result, ok := s.callObserve(t, "error_bundles")
+	if !ok {
+		t.Fatal("observe error_bundles: no result")
+	}
+
+	assertResponseShape(t, "error_bundles", result, []fieldSpec{
+		required("bundles", "array"),
+		required("count", "number"),
+	})
+}
+
+func TestObserveContract_ErrorBundles_EmptyArray(t *testing.T) {
+	s := newScenario(t)
+	result, ok := s.callObserve(t, "error_bundles")
+	if !ok {
+		t.Fatal("observe error_bundles: no result")
+	}
+	data := parseResponseJSON(t, result)
+	assertArrayNotNull(t, "error_bundles (empty)", data, "bundles")
+}
+
 func TestObserveContract_History(t *testing.T) {
 	s := newScenario(t)
 	s.loadActionData(t)

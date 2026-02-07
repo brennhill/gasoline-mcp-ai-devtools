@@ -1,5 +1,5 @@
 #!/bin/bash
-# cat-02-observe.sh — Category 2: Observe Tool (24 tests).
+# cat-02-observe.sh — Category 2: Observe Tool (25 tests).
 # Tests all observe modes plus negative cases.
 # Each mode must return a valid response shape, even with no data.
 
@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
-begin_category "2" "Observe Tool" "24"
+begin_category "2" "Observe Tool" "25"
 
 ensure_daemon
 
@@ -353,11 +353,11 @@ run_test_2_13() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "enabled" && ! check_contains "$text" "pilot" && ! check_contains "$text" "status"; then
-        fail "observe(pilot) response missing pilot state fields (enabled/pilot/status). Content: $(truncate "$text")"
+    if ! check_contains "$text" "enabled"; then
+        fail "observe(pilot) response missing 'enabled' field. Content: $(truncate "$text")"
         return
     fi
-    pass "Sent observe(pilot), got valid response with pilot state fields. Content: $(truncate "$text" 200)"
+    pass "Sent observe(pilot), got valid response with 'enabled' field. Content: $(truncate "$text" 200)"
 }
 run_test_2_13
 
@@ -507,11 +507,11 @@ run_test_2_19() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "findings" && ! check_contains "$text" "checks" && ! check_contains "$text" "summary" && ! check_contains "$text" "audit"; then
-        fail "observe(security_audit) response missing audit fields (findings/checks/summary/audit). Content: $(truncate "$text")"
+    if ! check_contains "$text" "findings"; then
+        fail "observe(security_audit) response missing 'findings' field. Content: $(truncate "$text")"
         return
     fi
-    pass "Sent observe(security_audit), got valid response with audit data fields. Content: $(truncate "$text" 200)"
+    pass "Sent observe(security_audit), got valid response with 'findings' field. Content: $(truncate "$text" 200)"
 }
 run_test_2_19
 
@@ -531,11 +531,11 @@ run_test_2_20() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "origins" && ! check_contains "$text" "third_party" && ! check_contains "$text" "domains" && ! check_contains "$text" "scripts" && ! check_contains "$text" "status"; then
-        fail "observe(third_party_audit) response missing audit fields (origins/third_party/domains/scripts/status). Content: $(truncate "$text")"
+    if ! check_contains "$text" "origins"; then
+        fail "observe(third_party_audit) response missing 'origins' field. Content: $(truncate "$text")"
         return
     fi
-    pass "Sent observe(third_party_audit), got valid response with audit data fields. Content: $(truncate "$text" 200)"
+    pass "Sent observe(third_party_audit), got valid response with 'origins' field. Content: $(truncate "$text" 200)"
 }
 run_test_2_20
 
@@ -599,11 +599,39 @@ run_test_2_22() {
 }
 run_test_2_22
 
-# ── 2.23 — observe with invalid "what" ───────────────────
-begin_test "2.23" "observe with invalid what returns structured error" \
+# ── 2.23 — observe(error_bundles) ──────────────────────────
+begin_test "2.23" "observe(error_bundles) returns bundles array" \
+    "Call observe with what:error_bundles. Verify response has bundles array and count." \
+    "Error bundles assemble complete debugging context per error in one call."
+run_test_2_23() {
+    RESPONSE=$(call_tool "observe" '{"what":"error_bundles"}')
+    if ! check_not_error "$RESPONSE"; then
+        fail "Expected success but got isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
+        return
+    fi
+    local text
+    text=$(extract_content_text "$RESPONSE")
+    if [ -z "$text" ]; then
+        fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
+        return
+    fi
+    if ! check_contains "$text" "bundles"; then
+        fail "Expected content to contain 'bundles' field. Got: $(truncate "$text")"
+        return
+    fi
+    if ! check_contains "$text" "count"; then
+        fail "Expected content to contain 'count' field. Got: $(truncate "$text")"
+        return
+    fi
+    pass "Sent observe(error_bundles), got valid response with 'bundles' and 'count'. Content: ${#text} chars."
+}
+run_test_2_23
+
+# ── 2.24 — observe with invalid "what" ───────────────────
+begin_test "2.24" "observe with invalid what returns structured error" \
     "Call observe with what:nonexistent_mode. Verify isError:true with helpful message." \
     "Typos in mode names must produce helpful errors, not empty success responses."
-run_test_2_23() {
+run_test_2_24() {
     RESPONSE=$(call_tool "observe" '{"what":"nonexistent_mode"}')
     if ! check_is_error "$RESPONSE"; then
         fail "Expected isError:true but got success. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
@@ -622,13 +650,13 @@ run_test_2_23() {
     fi
     pass "Sent observe(nonexistent_mode), got isError:true. Error mentions valid options. Content: $(truncate "$text" 150)"
 }
-run_test_2_23
+run_test_2_24
 
-# ── 2.24 — observe with missing "what" ───────────────────
-begin_test "2.24" "observe with missing what returns error" \
+# ── 2.25 — observe with missing "what" ───────────────────
+begin_test "2.25" "observe with missing what returns error" \
     "Call observe with empty params {}. Verify error about missing required parameter." \
     "Missing required params must fail loudly."
-run_test_2_24() {
+run_test_2_25() {
     RESPONSE=$(call_tool "observe" '{}')
     if ! check_is_error "$RESPONSE"; then
         fail "Expected isError:true but got success. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
@@ -646,6 +674,6 @@ run_test_2_24() {
     fi
     pass "Sent observe({}), got isError:true. Error mentions missing 'what' parameter. Content: $(truncate "$text" 150)"
 }
-run_test_2_24
+run_test_2_25
 
 finish_category

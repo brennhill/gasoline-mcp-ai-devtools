@@ -1,11 +1,11 @@
 #!/bin/bash
-# cat-05-interact.sh — UAT tests for the interact tool (13 tests).
+# cat-05-interact.sh — UAT tests for the interact tool (19 tests).
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
-begin_category "5" "Interact Tool" "15"
+begin_category "5" "Interact Tool" "19"
 ensure_daemon
 
 # ── 5.1 — interact(list_states) returns array ─────────────
@@ -20,11 +20,15 @@ run_test_5_1() {
     fi
     local text
     text=$(extract_content_text "$RESPONSE")
-    if check_contains "$text" "states" || check_contains "$text" "count"; then
-        pass "list_states returned valid response with states/count. Content: $(truncate "$text" 200)"
-    else
-        fail "list_states response missing 'states' or 'count'. Content: $(truncate "$text")"
+    if ! check_contains "$text" "states"; then
+        fail "list_states response missing 'states' field. Content: $(truncate "$text")"
+        return
     fi
+    if ! check_contains "$text" "count"; then
+        fail "list_states response missing 'count' field. Content: $(truncate "$text")"
+        return
+    fi
+    pass "list_states returned valid response with 'states' and 'count'. Content: $(truncate "$text" 200)"
 }
 run_test_5_1
 
@@ -198,7 +202,13 @@ run_test_5_9() {
         esac
         RESPONSE=$(call_tool "interact" "$args")
         if ! check_is_error "$RESPONSE"; then
-            failed="$failed $action"
+            failed="$failed $action(not_error)"
+        else
+            local err_text
+            err_text=$(extract_content_text "$RESPONSE")
+            if ! check_contains "$err_text" "pilot" && ! check_contains "$err_text" "Pilot"; then
+                failed="$failed $action(no_pilot_mention)"
+            fi
         fi
     done
     if [ -n "$failed" ]; then
@@ -339,5 +349,88 @@ run_test_5_15() {
     fi
 }
 run_test_5_15
+
+# ── 5.16 — interact(subtitle) standalone: set text ────────
+begin_test "5.16" "interact(subtitle) standalone sets text" \
+    "Send subtitle action with text, verify response confirms subtitle was set" \
+    "Core subtitle functionality — standalone text overlay."
+run_test_5_16() {
+    RESPONSE=$(call_tool "interact" '{"action":"subtitle","text":"UAT subtitle test message"}')
+    if ! check_not_error "$RESPONSE"; then
+        fail "subtitle returned isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
+        return
+    fi
+    local text
+    text=$(extract_content_text "$RESPONSE")
+    if check_contains "$text" "subtitle" || check_contains "$text" "queued" || check_contains "$text" "status"; then
+        pass "subtitle standalone accepted. Response: $(truncate "$text" 200)"
+    else
+        fail "subtitle response missing expected fields (subtitle/queued/status). Content: $(truncate "$text" 200)"
+    fi
+}
+run_test_5_16
+
+# ── 5.17 — interact(subtitle) standalone: clear text ─────
+begin_test "5.17" "interact(subtitle) with empty text clears subtitle" \
+    "Send subtitle with empty string text, verify response confirms subtitle was cleared" \
+    "Clearing subtitle must work — empty text = dismiss overlay."
+run_test_5_17() {
+    RESPONSE=$(call_tool "interact" '{"action":"subtitle","text":""}')
+    if ! check_not_error "$RESPONSE"; then
+        fail "subtitle clear returned isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
+        return
+    fi
+    local text
+    text=$(extract_content_text "$RESPONSE")
+    if check_contains "$text" "clear" || check_contains "$text" "subtitle" || check_contains "$text" "status"; then
+        pass "subtitle clear accepted. Response: $(truncate "$text" 200)"
+    else
+        fail "subtitle clear response missing expected fields. Content: $(truncate "$text" 200)"
+    fi
+}
+run_test_5_17
+
+# ── 5.18 — interact(subtitle) missing text returns error ──
+begin_test "5.18" "interact(subtitle) missing text returns error" \
+    "subtitle action requires text parameter; omitting it should return isError" \
+    "Required param validation for subtitle."
+run_test_5_18() {
+    RESPONSE=$(call_tool "interact" '{"action":"subtitle"}')
+    if ! check_is_error "$RESPONSE"; then
+        fail "Expected isError:true for subtitle without text. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
+        return
+    fi
+    local text
+    text=$(extract_content_text "$RESPONSE")
+    if check_contains "$text" "text"; then
+        pass "subtitle without text correctly returned error mentioning 'text' parameter."
+    else
+        fail "subtitle error should mention 'text'. Content: $(truncate "$text")"
+    fi
+}
+run_test_5_18
+
+# ── 5.19 — interact(navigate) with subtitle param ────────
+begin_test "5.19" "interact(navigate) with subtitle param accepted" \
+    "Send navigate with optional subtitle param, verify response does not error on the param" \
+    "Subtitle as optional param on any interact action — must not reject unknown field."
+run_test_5_19() {
+    RESPONSE=$(call_tool "interact" '{"action":"navigate","url":"https://example.com","subtitle":"Navigating to example.com for testing"}')
+    # navigate without pilot will return isError (pilot not enabled in UAT),
+    # but the error should be about pilot, NOT about an unknown 'subtitle' param
+    local text
+    text=$(extract_content_text "$RESPONSE")
+    if check_contains "$text" "subtitle.*unknown\|unknown.*subtitle\|invalid.*param.*subtitle\|unrecognized.*subtitle"; then
+        fail "Server rejected 'subtitle' as unknown parameter. It should be accepted as optional. Content: $(truncate "$text" 200)"
+        return
+    fi
+    # Expected: pilot error (not connected), OR success if pilot is running
+    if check_contains "$text" "pilot\|Pilot\|queued\|navigat"; then
+        pass "navigate with subtitle param accepted (got expected pilot error or success, not param rejection)."
+    else
+        pass "navigate with subtitle param did not reject the subtitle field. Content: $(truncate "$text" 200)"
+    fi
+}
+run_test_5_19
 
 finish_category

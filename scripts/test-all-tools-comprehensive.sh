@@ -66,9 +66,10 @@ PORT_GROUP6=7895  # cat-08-security + cat-09-http (sequential)
 PORT_GROUP7=7896  # cat-06-lifecycle
 PORT_GROUP8=7897  # cat-10-regression
 PORT_GROUP9=7898  # cat-11-data-pipeline
+PORT_GROUP10=7899 # cat-12-rich-actions
 
 # Kill anything on our ports before starting
-for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9; do
+for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 0.5
@@ -152,8 +153,16 @@ PIDS="$PIDS $!"
 ) &
 PIDS="$PIDS $!"
 
+# Group 10: Rich Action Results (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-12-rich-actions.sh" "$PORT_GROUP10" "$RESULTS_DIR/results-12.txt" \
+        > "$RESULTS_DIR/output-12.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
 # ── Wait for All Groups ──────────────────────────────────
-echo "Running 9 parallel groups..."
+echo "Running 10 parallel groups..."
 echo ""
 
 for pid in $PIDS; do
@@ -163,7 +172,7 @@ done
 # ── Collect and Display Results ───────────────────────────
 
 # Category display order and default names
-CAT_IDS="01 02 03 04 05 06 07 08 09 10 11"
+CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12"
 get_default_name() {
     case "$1" in
         01) echo "Protocol Compliance" ;;
@@ -177,6 +186,7 @@ get_default_name() {
         09) echo "HTTP Endpoints" ;;
         10) echo "Regression Guards" ;;
         11) echo "Data Pipeline" ;;
+        12) echo "Rich Action Results" ;;
         *)  echo "Unknown" ;;
     esac
 }
@@ -256,7 +266,7 @@ echo ""
 
 # ── Cleanup ───────────────────────────────────────────────
 # Kill any remaining daemons on our ports
-for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9; do
+for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 
