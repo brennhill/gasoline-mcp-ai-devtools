@@ -626,10 +626,10 @@ async function handleBrowserAction(tabId, params) {
     try {
         switch (action) {
             case 'refresh':
-                actionToast(tabId, 'refresh', reason || 'reloading page', 'trying', 10000);
+                actionToast(tabId, reason || 'refresh', reason ? undefined : 'reloading page', 'trying', 10000);
                 await chrome.tabs.reload(tabId);
                 await eventListeners.waitForTabLoad(tabId);
-                actionToast(tabId, 'refresh', reason || 'page reloaded', 'success');
+                actionToast(tabId, reason || 'refresh', undefined, 'success');
                 return { success: true, action: 'refresh' };
             case 'navigate': {
                 if (!url) {
@@ -642,14 +642,14 @@ async function handleBrowserAction(tabId, params) {
                         message: 'Cannot navigate to Chrome internal pages',
                     };
                 }
-                actionToast(tabId, 'navigate', reason || url, 'trying', 10000);
+                actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'trying', 10000);
                 await chrome.tabs.update(tabId, { url });
                 await eventListeners.waitForTabLoad(tabId);
                 await new Promise((r) => setTimeout(r, 500));
                 const contentScriptLoaded = await eventListeners.pingContentScript(tabId);
                 if (contentScriptLoaded) {
                     broadcastTrackingState().catch(() => { });
-                    actionToast(tabId, 'navigate', reason || url, 'success');
+                    actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'success');
                     return {
                         success: true,
                         action: 'navigate',
@@ -722,7 +722,7 @@ async function handleAsyncExecuteCommand(query, tabId, world, syncClient) {
             }),
         ]);
         if (result.success) {
-            actionToast(tabId, 'execute_js', reason || 'done', 'success');
+            actionToast(tabId, reason || 'execute_js', undefined, 'success');
         }
         sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result);
         debugLog(DebugCategory.CONNECTION, 'Completed async command', {

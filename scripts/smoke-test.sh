@@ -870,6 +870,10 @@ run_test_s13() {
         return
     fi
 
+    # example.com has no sub-resources, so inject a fetch to seed the resource timing buffer
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Seed resource timing buffer","script":"fetch(window.location.href).then(function(r){return r.ok?\"fetched\":\"error\"}).catch(function(){return \"error\"})"}'
+    sleep 0.5
+
     local response
     response=$(call_tool "observe" '{"what":"network_waterfall"}')
 
