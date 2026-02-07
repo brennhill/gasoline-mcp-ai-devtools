@@ -303,6 +303,24 @@ export async function extractSourceSnippets(
   frames: InternalStackFrame[],
   mockSourceMaps: SourceMapLookup,
 ): Promise<InternalSourceSnippet[]> {
+  // SOURCE MAP CACHING STRATEGY:
+  // This function works with a mockSourceMaps lookup that is pre-populated by
+  // resolveSourceMap(). The caching layer is managed separately via the module-level
+  // aiSourceMapCache Map, which stores up to AI_CONTEXT_SOURCE_MAP_CACHE_SIZE entries
+  // using LRU eviction. When a source map is needed here, it should already be cached
+  // by the MCP observe handler that parsed the HTTP response headers.
+  //
+  // OPTIMIZATION: We only process the top 3 stack frames to limit computation and avoid
+  // redundant snippets. Most stack traces have the root cause in the first 1-3 frames.
+  //
+  // PARSE ERROR HANDLING: If sourcesContent is missing, we skip the frame entirely
+  // rather than erroring. This gracefully handles source maps generated without embedded
+  // sources (which only contain mappings, not code). We never throw here.
+  //
+  // SIZE ENFORCEMENT: Total snippets are capped at AI_CONTEXT_MAX_SNIPPETS_SIZE to prevent
+  // bloating the error entry. Each snippet's JSON serialized size is checked before adding.
+  // This ensures the enriched error entry stays lightweight for AI processing.
+
   const snippets: InternalSourceSnippet[] = []
   let totalSize = 0
 
@@ -426,6 +444,34 @@ export function captureStateSnapshot(errorMessage: string): StateSnapshotResult 
 
     const state = store.getState()
     if (!state || typeof state !== 'object') return null
+
+    // REACT COMPONENT ANCESTRY DETECTION ALGORITHM:
+    // This function captures application state from Redux to provide context for AI debugging.
+    // The "ancestry" aspect applies to the React component tree via the accompanying
+    // getReactComponentAncestry() function that walks React fibers. Here, we focus on
+    // state relevance matching.
+    //
+    // STATE RELEVANCE MATCHING STRATEGY:
+    // 1. Extract error keywords from the error message (words > 2 chars) to contextually
+    //    identify relevant state slices. For example, "TypeError: Cannot read property 'user'"
+    //    makes 'user' a search keyword.
+    // 2. Build a "relevant slice" by traversing nested state objects and matching against:
+    //    - COMMON ERROR STATE KEYS: 'error', 'loading', 'status', 'failed' (always relevant)
+    //    - ERROR MESSAGE KEYWORDS: Any state key containing matched words from the error
+    // 3. This multi-strategy approach surfaces both generic error states and error-specific
+    //    slices without needing to inspect the entire state tree (which could be enormous).
+    //
+    // PERFORMANCE IMPLICATIONS:
+    // - Top-level state entries are iterated once (O(n) where n = Redux root keys)
+    // - Nested object entries only processed if parent is object && not array (simple guard)
+    // - Slice collection caps at AI_CONTEXT_MAX_RELEVANT_SLICE (typically 10 entries) to
+    //   prevent large state objects from dominating the error context
+    // - Individual values truncated at AI_CONTEXT_MAX_VALUE_LENGTH (2000 chars) to keep
+    //   serialized error entry small
+    // - Error message keyword extraction is single-pass, O(m) where m = error message length
+    //
+    // NOTE: This only supports Redux. Other state management (Zustand, Recoil, MobX)
+    // would require additional window.__* patterns and corresponding modifications.
 
     // Build keys with types
     const keys: Record<string, { type: string }> = {}

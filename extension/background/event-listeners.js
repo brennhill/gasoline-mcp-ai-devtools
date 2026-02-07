@@ -140,12 +140,10 @@ export function handleTrackedTabClosed(closedTabId, logFn) {
         return;
     // Check both session and local storage for backward compatibility
     const checkStorageArea = (area) => {
-        // eslint-disable-next-line security/detect-object-injection -- Safe: area is validated as 'session' or 'local' string literal
         chrome.storage[area].get(['trackedTabId'], (result) => {
             if (result.trackedTabId === closedTabId) {
                 if (logFn)
                     logFn('[Gasoline] Tracked tab closed (id:', closedTabId);
-                // eslint-disable-next-line security/detect-object-injection -- Safe: area is validated string literal from checkStorageArea
                 chrome.storage[area].remove(['trackedTabId', 'trackedTabUrl']);
             }
         });
@@ -207,7 +205,7 @@ export async function pingContentScript(tabId, timeoutMs = 500) {
         const response = (await Promise.race([
             chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
             new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('timeout')), timeoutMs);
+                setTimeout(() => reject(new Error(`Content script ping timeout after ${timeoutMs}ms on tab ${tabId}`)), timeoutMs);
             }),
         ]));
         return response?.status === 'alive';

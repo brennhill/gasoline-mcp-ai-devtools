@@ -25,7 +25,6 @@ function showActionToast(text, detail, state = 'trying', durationMs = 3000) {
     const existing = document.getElementById('gasoline-action-toast');
     if (existing)
         existing.remove();
-    // eslint-disable-next-line security/detect-object-injection -- Safe: state is validated enum from actionToast()
     const theme = TOAST_THEMES[state] ?? TOAST_THEMES.trying;
     const toast = document.createElement('div');
     toast.id = 'gasoline-action-toast';

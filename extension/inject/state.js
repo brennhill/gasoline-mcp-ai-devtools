@@ -20,7 +20,6 @@ export function captureState() {
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key) {
-            // eslint-disable-next-line security/detect-object-injection -- Safe: key from localStorage.key() iteration
             localStorageData[key] = localStorage.getItem(key) || '';
         }
     }
@@ -30,7 +29,6 @@ export function captureState() {
     for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i);
         if (key) {
-            // eslint-disable-next-line security/detect-object-injection -- Safe: key from sessionStorage.key() iteration
             sessionStorageData[key] = sessionStorage.getItem(key) || '';
         }
     }

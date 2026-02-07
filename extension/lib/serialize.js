@@ -76,11 +76,9 @@ export function safeSerialize(value, depth = 0, seen = new WeakSet()) {
         const result = {};
         for (const key of Object.keys(objValue).slice(0, 50)) {
             try {
-                // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.keys() iteration
                 result[key] = safeSerialize(objValue[key], depth + 1, seen);
             }
             catch {
-                // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.keys() iteration
                 result[key] = '[Unserializable]';
             }
         }

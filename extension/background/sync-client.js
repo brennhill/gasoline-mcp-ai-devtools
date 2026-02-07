@@ -144,7 +144,7 @@ export class SyncClient {
             });
             clearTimeout(timeoutId);
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+                throw new Error(`Sync request failed: HTTP ${response.status} ${response.statusText} from ${this.serverUrl}/sync`);
             }
             const data = await response.json();
             // Log sync cycle summary

@@ -44,7 +44,7 @@ export function installMessageListener(deps) {
  * Type guard to validate message structure before processing
  * Returns true if message passes validation, logs rejection otherwise
  */
-function _validateMessageType(message, expectedType, deps) {
+function validateMessageType(message, expectedType, deps) {
     if (typeof message !== 'object' || message === null) {
         deps.debugLog('error', `Invalid message: not an object`, { messageType: typeof message });
         return false;
@@ -329,10 +329,8 @@ const SNAPSHOT_KEY = 'gasoline_state_snapshots';
 export async function saveStateSnapshot(name, state) {
     return new Promise((resolve) => {
         chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            // eslint-disable-next-line security/detect-object-injection -- Safe: SNAPSHOT_KEY is string constant
             const snapshots = result[SNAPSHOT_KEY] || {};
             const sizeBytes = JSON.stringify(state).length;
-            // eslint-disable-next-line security/detect-object-injection -- Safe: name is user-provided snapshot identifier, used as storage key
             snapshots[name] = {
                 ...state,
                 name,
@@ -354,9 +352,7 @@ export async function saveStateSnapshot(name, state) {
 export async function loadStateSnapshot(name) {
     return new Promise((resolve) => {
         chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            // eslint-disable-next-line security/detect-object-injection -- Safe: SNAPSHOT_KEY is string constant
             const snapshots = result[SNAPSHOT_KEY] || {};
-            // eslint-disable-next-line security/detect-object-injection -- Safe: name is user-provided snapshot identifier
             resolve(snapshots[name] || null);
         });
     });
@@ -367,7 +363,6 @@ export async function loadStateSnapshot(name) {
 export async function listStateSnapshots() {
     return new Promise((resolve) => {
         chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            // eslint-disable-next-line security/detect-object-injection -- Safe: SNAPSHOT_KEY is string constant
             const snapshots = result[SNAPSHOT_KEY] || {};
             const list = Object.values(snapshots).map((s) => ({
                 name: s.name,
@@ -385,9 +380,7 @@ export async function listStateSnapshots() {
 export async function deleteStateSnapshot(name) {
     return new Promise((resolve) => {
         chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            // eslint-disable-next-line security/detect-object-injection -- Safe: SNAPSHOT_KEY is string constant
             const snapshots = result[SNAPSHOT_KEY] || {};
-            // eslint-disable-next-line security/detect-object-injection -- Safe: name is user-provided snapshot identifier
             delete snapshots[name];
             chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
                 resolve({ success: true, deleted: name });

@@ -94,7 +94,7 @@ export async function captureScreenshot(tabId, serverUrl, relatedErrorId, errorT
             }),
         });
         if (!response.ok) {
-            throw new Error(`Server returned ${response.status}`);
+            throw new Error(`Failed to upload screenshot: server returned HTTP ${response.status} ${response.statusText}`);
         }
         const result = (await response.json());
         const screenshotEntry = {

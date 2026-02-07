@@ -146,11 +146,9 @@ async function executeViaScriptingAPI(tabId, script, timeoutMs) {
                     const result = {};
                     for (const key of Object.keys(obj).slice(0, 50)) {
                         try {
-                            // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.keys() iteration
                             result[key] = serialize(obj[key], depth + 1, seen);
                         }
                         catch {
-                            // eslint-disable-next-line security/detect-object-injection -- Safe: key from Object.keys() iteration
                             result[key] = '[unserializable]';
                         }
                     }
@@ -627,7 +625,7 @@ async function handleBrowserAction(tabId, params) {
                 actionToast(tabId, 'navigate', reason || url, 'trying', 10000);
                 await chrome.tabs.update(tabId, { url });
                 await eventListeners.waitForTabLoad(tabId);
-                await new Promise((resolve) => { setTimeout(resolve, 500); });
+                await new Promise((r) => setTimeout(r, 500));
                 const contentScriptLoaded = await eventListeners.pingContentScript(tabId);
                 if (contentScriptLoaded) {
                     broadcastTrackingState().catch(() => { });
@@ -653,7 +651,7 @@ async function handleBrowserAction(tabId, params) {
                 debugLog(DebugCategory.CAPTURE, 'Content script not loaded after navigate, refreshing', { tabId, url });
                 await chrome.tabs.reload(tabId);
                 await eventListeners.waitForTabLoad(tabId);
-                await new Promise((resolve) => { setTimeout(resolve, 1000); });
+                await new Promise((r) => setTimeout(r, 1000));
                 const loadedAfterRefresh = await eventListeners.pingContentScript(tabId);
                 if (loadedAfterRefresh) {
                     broadcastTrackingState().catch(() => { });
@@ -693,7 +691,7 @@ async function handleAsyncExecuteCommand(query, tabId, world, syncClient) {
         const result = await Promise.race([
             executeWithWorldRouting(tabId, query.params, world),
             new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Execution timeout')), ASYNC_EXECUTE_TIMEOUT_MS);
+                setTimeout(() => reject(new Error(`Script execution timed out after ${ASYNC_EXECUTE_TIMEOUT_MS}ms. Script may be stuck in a loop or waiting for user input.`)), ASYNC_EXECUTE_TIMEOUT_MS);
             }),
         ]);
         if (result.success) {
@@ -735,7 +733,7 @@ async function handleAsyncBrowserAction(query, tabId, params, syncClient) {
         const execResult = await Promise.race([
             executionPromise,
             new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Execution timeout')), ASYNC_BROWSER_ACTION_TIMEOUT_MS);
+                setTimeout(() => reject(new Error(`Browser action execution timed out after ${ASYNC_BROWSER_ACTION_TIMEOUT_MS}ms. Action may be waiting for user interaction or network response.`)), ASYNC_BROWSER_ACTION_TIMEOUT_MS);
             }),
         ]);
         if (execResult.success !== false) {
