@@ -283,10 +283,10 @@ func GeneratePerfSummary(diff PerfDiff) string {
 		return parsePctAbs(sorted[i].md) > parsePctAbs(sorted[j].md)
 	})
 
-	// Check for regressions
+	// Check for regressions (delta=0 is not a regression)
 	hasRegression := false
 	for _, e := range sorted {
-		if !e.md.Improved {
+		if !e.md.Improved && e.md.Delta != 0 {
 			hasRegression = true
 			break
 		}
@@ -298,7 +298,9 @@ func GeneratePerfSummary(diff PerfDiff) string {
 		label := strings.ToUpper(top.name)
 		absPct := fmt.Sprintf("%.0f%%", parsePctAbs(top.md))
 		direction := "improved"
-		if !top.md.Improved {
+		if top.md.Delta == 0 {
+			direction = "unchanged"
+		} else if !top.md.Improved {
 			direction = "regressed"
 		}
 		entry := fmt.Sprintf("%s %s %s", label, direction, absPct)
