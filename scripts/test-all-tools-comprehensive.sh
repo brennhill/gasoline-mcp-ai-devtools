@@ -68,9 +68,12 @@ PORT_GROUP8=7897  # cat-10-regression
 PORT_GROUP9=7898  # cat-11-data-pipeline
 PORT_GROUP10=7899 # cat-12-rich-actions
 PORT_GROUP11=7900 # cat-13-pilot-contract
+PORT_GROUP12=7901 # cat-14-extension-startup
+PORT_GROUP13=7902 # cat-15-pilot-success-path
+PORT_GROUP14=7903 # cat-16-api-contract
 
 # Kill anything on our ports before starting
-for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11; do
+for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 0.5
@@ -170,8 +173,32 @@ PIDS="$PIDS $!"
 ) &
 PIDS="$PIDS $!"
 
+# Group 12: Extension Startup (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-14-extension-startup.sh" "$PORT_GROUP12" "$RESULTS_DIR/results-14.txt" \
+        > "$RESULTS_DIR/output-14.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
+# Group 13: Pilot Success Path (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-15-pilot-success-path.sh" "$PORT_GROUP13" "$RESULTS_DIR/results-15.txt" \
+        > "$RESULTS_DIR/output-15.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
+# Group 14: API Contract (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-16-api-contract.sh" "$PORT_GROUP14" "$RESULTS_DIR/results-16.txt" \
+        > "$RESULTS_DIR/output-16.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
 # ── Wait for All Groups ──────────────────────────────────
-echo "Running 11 parallel groups..."
+echo "Running 14 parallel groups..."
 echo ""
 
 for pid in $PIDS; do
@@ -181,7 +208,7 @@ done
 # ── Collect and Display Results ───────────────────────────
 
 # Category display order and default names
-CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12 13"
+CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16"
 get_default_name() {
     case "$1" in
         01) echo "Protocol Compliance" ;;
@@ -197,6 +224,9 @@ get_default_name() {
         11) echo "Data Pipeline" ;;
         12) echo "Rich Action Results" ;;
         13) echo "Pilot State Contract" ;;
+        14) echo "Extension Startup" ;;
+        15) echo "Pilot Success Path" ;;
+        16) echo "API Contract" ;;
         *)  echo "Unknown" ;;
     esac
 }
