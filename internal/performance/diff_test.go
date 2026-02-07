@@ -601,6 +601,91 @@ func TestSummary_RegressionShowsAbsolutePercentage(t *testing.T) {
 // Types: PageLoadMetrics and PerfDiff structs
 // ============================================
 
+// ============================================
+// SnapshotToPageLoadMetrics: type mapping
+// ============================================
+
+func TestSnapshotToPageLoadMetrics(t *testing.T) {
+	t.Parallel()
+	fcp := 900.0
+	lcp := 2800.0
+	cls := 0.15
+
+	snap := PerformanceSnapshot{
+		URL:       "/dashboard",
+		Timestamp: "2024-01-01T00:00:00Z",
+		Timing: PerformanceTiming{
+			TimeToFirstByte:        120,
+			FirstContentfulPaint:   &fcp,
+			LargestContentfulPaint: &lcp,
+			DomContentLoaded:       800,
+			Load:                   1500,
+		},
+		Network: NetworkSummary{
+			TransferSize: 768 * 1024,
+			RequestCount: 58,
+		},
+		CLS: &cls,
+	}
+
+	m := SnapshotToPageLoadMetrics(snap)
+
+	if m.URL != "/dashboard" {
+		t.Errorf("URL = %q, want /dashboard", m.URL)
+	}
+	if m.Timing.TTFB != 120 {
+		t.Errorf("TTFB = %v, want 120", m.Timing.TTFB)
+	}
+	if m.Timing.FCP == nil || *m.Timing.FCP != 900 {
+		t.Errorf("FCP = %v, want 900", m.Timing.FCP)
+	}
+	if m.Timing.LCP == nil || *m.Timing.LCP != 2800 {
+		t.Errorf("LCP = %v, want 2800", m.Timing.LCP)
+	}
+	if m.Timing.DomContentLoaded != 800 {
+		t.Errorf("DCL = %v, want 800", m.Timing.DomContentLoaded)
+	}
+	if m.Timing.Load != 1500 {
+		t.Errorf("Load = %v, want 1500", m.Timing.Load)
+	}
+	if m.CLS == nil || *m.CLS != 0.15 {
+		t.Errorf("CLS = %v, want 0.15", m.CLS)
+	}
+	if m.TransferSize != 768*1024 {
+		t.Errorf("TransferSize = %d, want %d", m.TransferSize, 768*1024)
+	}
+	if m.RequestCount != 58 {
+		t.Errorf("RequestCount = %d, want 58", m.RequestCount)
+	}
+}
+
+func TestSnapshotToPageLoadMetrics_NilOptionals(t *testing.T) {
+	t.Parallel()
+	snap := PerformanceSnapshot{
+		URL: "/page",
+		Timing: PerformanceTiming{
+			TimeToFirstByte:        100,
+			DomContentLoaded:       500,
+			Load:                   1000,
+			FirstContentfulPaint:   nil,
+			LargestContentfulPaint: nil,
+		},
+		// CLS is nil
+	}
+
+	m := SnapshotToPageLoadMetrics(snap)
+
+	if m.Timing.FCP != nil {
+		t.Errorf("FCP should be nil, got %v", m.Timing.FCP)
+	}
+	if m.Timing.LCP != nil {
+		t.Errorf("LCP should be nil, got %v", m.Timing.LCP)
+	}
+	if m.CLS != nil {
+		t.Errorf("CLS should be nil, got %v", m.CLS)
+	}
+}
+
 func TestMetricDiff_Round(t *testing.T) {
 	t.Parallel()
 	// MetricDiff values should be rounded to avoid floating point noise

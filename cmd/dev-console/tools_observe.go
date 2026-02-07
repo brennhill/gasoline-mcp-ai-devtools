@@ -18,7 +18,7 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	}
 
 	if params.What == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, error_bundles, history, security_audit, third_party_audit, security_diff"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, error_bundles, screenshot, history, security_audit, third_party_audit, security_diff"))}
 	}
 
 	var resp JSONRPCResponse
@@ -71,6 +71,8 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		resp = h.toolAuditThirdParties(req, args)
 	case "security_diff":
 		resp = h.toolDiffSecurity(req, args)
+	case "screenshot":
+		resp = h.toolGetScreenshot(req, args)
 	// Async command tracking modes
 	case "command_result":
 		resp = h.toolObserveCommandResult(req, args)
@@ -88,7 +90,7 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	case "log_diff_report":
 		resp = h.toolGetLogDiffReport(req, args)
 	default:
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+params.What, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, error_bundles, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands, recordings, recording_actions, playback_results, log_diff_report"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+params.What, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, error_bundles, screenshot, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands, recordings, recording_actions, playback_results, log_diff_report"))}
 	}
 
 	// Piggyback alerts: append as second content block if any pending

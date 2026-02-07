@@ -22,6 +22,7 @@ export type QueryType =
   | 'state_list'
   | 'state_delete'
   | 'subtitle'
+  | 'screenshot'
 
 /**
  * Pending query from server

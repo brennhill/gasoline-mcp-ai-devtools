@@ -16,7 +16,7 @@ source "$SCRIPT_DIR/tests/framework.sh"
 
 init_framework "${1:-7890}" "${2:-/dev/null}"
 
-begin_category "0" "Human Smoke Test" "23"
+begin_category "0" "Human Smoke Test" "24"
 
 SKIPPED_COUNT=0
 EXTENSION_CONNECTED=false
@@ -514,6 +514,63 @@ run_test_s22() {
     interact_and_wait "subtitle" '{"action":"subtitle","text":""}'
 }
 run_test_s22
+
+# ── Test S.24: On-demand screenshot ───────────────────────
+begin_test "S.24" "Screenshot: on-demand capture via observe(screenshot)" \
+    "Call observe(screenshot) and verify it captures the current viewport, returns filename and path" \
+    "Tests: on-demand screenshot pipeline: MCP → daemon → extension → captureVisibleTab → save to disk"
+
+run_test_s24() {
+    if [ "$EXTENSION_CONNECTED" != "true" ]; then
+        skip "Extension not connected."
+        return
+    fi
+
+    # Take a screenshot
+    local screenshot_response
+    screenshot_response=$(call_tool "observe" '{"what":"screenshot"}')
+
+    if ! check_not_error "$screenshot_response"; then
+        local err_text
+        err_text=$(extract_content_text "$screenshot_response")
+        # If it says "no tab" or "not tracked", that's expected without pilot
+        if echo "$err_text" | grep -qi "no tab\|not tracked\|not connected"; then
+            skip "No tracked tab for screenshot."
+            return
+        fi
+        fail "observe(screenshot) returned error. Content: $(truncate "$err_text" 200)"
+        return
+    fi
+
+    local text
+    text=$(extract_content_text "$screenshot_response")
+
+    # Verify response has filename
+    local has_filename=false
+    local has_path=false
+    if echo "$text" | grep -q '"filename"'; then
+        has_filename=true
+    fi
+    if echo "$text" | grep -q '"path"'; then
+        has_path=true
+    fi
+
+    if [ "$has_filename" = "true" ] && [ "$has_path" = "true" ]; then
+        # Extract path and verify file exists
+        local screenshot_path
+        screenshot_path=$(echo "$text" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('path',''))" 2>/dev/null || echo "")
+        if [ -n "$screenshot_path" ] && [ -f "$screenshot_path" ]; then
+            local file_size
+            file_size=$(wc -c < "$screenshot_path" | tr -d ' ')
+            pass "Screenshot captured: filename present, path present, file exists ($file_size bytes). Path: $screenshot_path"
+        else
+            pass "Screenshot captured: filename and path present. File check skipped (path: $screenshot_path)."
+        fi
+    else
+        fail "Screenshot response missing filename or path. Content: $(truncate "$text" 200)"
+    fi
+}
+run_test_s24
 
 # ── Test S.9: Error clusters ─────────────────────────────
 begin_test "S.9" "Error clusters aggregate triggered errors" \

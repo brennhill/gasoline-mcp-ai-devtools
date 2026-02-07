@@ -14,6 +14,7 @@ import * as index from './index'
 import { DebugCategory } from './debug'
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, broadcastTrackingState } from './message-handlers'
 import { executeDOMAction } from './dom-primitives'
+import { canTakeScreenshot, recordScreenshot } from './state-manager'
 
 // Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
 const { debugLog, diagnosticLog } = index
@@ -306,6 +307,47 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
         text: params.text ?? '',
       }).catch(() => {})
       sendResult(syncClient, query.id, { success: true, subtitle: params.text || 'cleared' })
+      return
+    }
+
+    if (query.type === 'screenshot') {
+      try {
+        const rateCheck = canTakeScreenshot(tabId)
+        if (!rateCheck.allowed) {
+          sendResult(syncClient, query.id, {
+            error: `Rate limited: ${rateCheck.reason}`,
+            ...(rateCheck.nextAllowedIn != null ? { next_allowed_in: rateCheck.nextAllowedIn } : {}),
+          })
+          return
+        }
+
+        const tab = await chrome.tabs.get(tabId)
+        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+          format: 'jpeg',
+          quality: 80,
+        })
+        recordScreenshot(tabId)
+
+        // POST to /screenshots with query_id — server saves file and resolves query directly
+        const response = await fetch(`${index.serverUrl}/screenshots`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data_url: dataUrl,
+            url: tab.url,
+            query_id: query.id,
+          }),
+        })
+        if (!response.ok) {
+          sendResult(syncClient, query.id, { error: `Server returned ${response.status}` })
+        }
+        // No sendResult needed — server resolves the query via query_id
+      } catch (err) {
+        sendResult(syncClient, query.id, {
+          error: 'screenshot_failed',
+          message: (err as Error).message || 'Failed to capture screenshot',
+        })
+      }
       return
     }
 

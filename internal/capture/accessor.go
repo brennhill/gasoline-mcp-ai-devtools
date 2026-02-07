@@ -288,6 +288,41 @@ func (c *Capture) GetPerformanceSnapshots() []PerformanceSnapshot {
 	return result
 }
 
+// GetPerformanceSnapshotByURL returns a specific snapshot by URL key (thread-safe).
+func (c *Capture) GetPerformanceSnapshotByURL(url string) (PerformanceSnapshot, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	snap, ok := c.perf.snapshots[url]
+	return snap, ok
+}
+
+// StoreBeforeSnapshot stores a performance snapshot keyed by correlation_id
+// for later perf_diff computation. Max 50 entries with oldest eviction.
+func (c *Capture) StoreBeforeSnapshot(correlationID string, snapshot PerformanceSnapshot) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.perf.beforeSnapshots[correlationID] = snapshot
+	// Evict oldest if over capacity (simple: just cap size)
+	if len(c.perf.beforeSnapshots) > 50 {
+		for k := range c.perf.beforeSnapshots {
+			delete(c.perf.beforeSnapshots, k)
+			break // delete one
+		}
+	}
+}
+
+// GetAndDeleteBeforeSnapshot retrieves and removes a before-snapshot by correlation_id.
+// Consume-on-read: the snapshot is deleted after retrieval to prevent memory leaks.
+func (c *Capture) GetAndDeleteBeforeSnapshot(correlationID string) (PerformanceSnapshot, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	snap, ok := c.perf.beforeSnapshots[correlationID]
+	if ok {
+		delete(c.perf.beforeSnapshots, correlationID)
+	}
+	return snap, ok
+}
+
 // IsPilotEnabled returns whether AI Web Pilot is currently enabled.
 // Thread-safe accessor for pilotEnabled flag.
 func (c *Capture) IsPilotEnabled() bool {

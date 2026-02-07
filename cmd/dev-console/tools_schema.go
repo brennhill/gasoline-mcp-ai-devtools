@@ -10,14 +10,14 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 	return []MCPTool{
 		{
 			Name:        "observe",
-			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, accessibility, timeline, error_clusters, error_bundles, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity, min_level.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.\nNote: extension_logs are internal Gasoline extension debug logs for troubleshooting the extension itself — NOT browser console output. Use 'logs' for browser console output.\nNote: error_bundles returns pre-assembled debugging context per error (error + recent network + actions + logs in one call). Use window_seconds param to control context window (default 3s).",
+			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, accessibility, timeline, error_clusters, error_bundles, screenshot, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity, min_level.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.\nNote: extension_logs are internal Gasoline extension debug logs for troubleshooting the extension itself — NOT browser console output. Use 'logs' for browser console output.\nNote: error_bundles returns pre-assembled debugging context per error (error + recent network + actions + logs in one call). Use window_seconds param to control context window (default 3s).",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"what": map[string]any{
 						"type":        "string",
 						"description": "What to observe or analyze",
-						"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "performance", "accessibility", "timeline", "error_clusters", "error_bundles", "history", "security_audit", "third_party_audit", "security_diff", "command_result", "pending_commands", "failed_commands"},
+						"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "performance", "accessibility", "timeline", "error_clusters", "error_bundles", "screenshot", "history", "security_audit", "third_party_audit", "security_diff", "command_result", "pending_commands", "failed_commands"},
 					},
 					"limit": map[string]any{
 						"type":        "number",
@@ -406,7 +406,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "interact",
-			Description: "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, subtitle, save_state, load_state, list_states, delete_state. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. Subtitle: persistent narration text at bottom of viewport (like closed captions). Use action='subtitle' with text param, or add 'subtitle' param to any other action for composable narration. Performance: set analyze=true on DOM actions to get perf_diff with timing breakdown and resource changes in the async result. Requires AI Web Pilot enabled.",
+			Description: "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, subtitle, save_state, load_state, list_states, delete_state. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. Subtitle: persistent narration text at bottom of viewport (like closed captions). Use action='subtitle' with text param, or add 'subtitle' param to any other action for composable narration. Performance: refresh and navigate automatically include perf_diff in the async result (before/after timing comparison with verdict, Web Vitals ratings, and summary). For DOM actions, set analyze=true to get perf_diff. Requires AI Web Pilot enabled.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{

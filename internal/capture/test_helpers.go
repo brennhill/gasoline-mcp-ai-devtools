@@ -57,6 +57,16 @@ func (c *Capture) SetPilotEnabled(enabled bool) {
 	c.pilotEnabled = enabled
 }
 
+// SetTrackingStatusForTest sets the tracked tab URL and ID (TEST ONLY)
+func (c *Capture) SetTrackingStatusForTest(tabID int, tabURL string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.trackingEnabled = true
+	c.trackedTabID = tabID
+	c.trackedTabURL = tabURL
+	c.trackingUpdated = time.Now()
+}
+
 // GetLastPendingQuery returns the most recently created pending query (TEST ONLY)
 // Returns nil if no queries exist.
 func (c *Capture) GetLastPendingQuery() *queries.PendingQuery {

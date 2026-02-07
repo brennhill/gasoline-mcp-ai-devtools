@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
@@ -439,6 +440,14 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 
 	correlationID := fmt.Sprintf("refresh_%d_%d", time.Now().UnixNano(), rand.Int63())
 
+	// Stash current perf snapshot as "before" for perf_diff computation
+	_, _, trackedURL := h.capture.GetTrackingStatus()
+	if u, err := url.Parse(trackedURL); err == nil && u.Path != "" {
+		if snap, ok := h.capture.GetPerformanceSnapshotByURL(u.Path); ok {
+			h.capture.StoreBeforeSnapshot(correlationID, snap)
+		}
+	}
+
 	query := queries.PendingQuery{
 		Type:          "browser_action",
 		Params:        json.RawMessage(`{"action":"refresh"}`),
@@ -453,6 +462,7 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Refresh queued", map[string]any{
 		"status":         "queued",
 		"correlation_id": correlationID,
+		"message":        "Refresh queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result with perf_diff (before/after timing comparison).",
 	})}
 }
 

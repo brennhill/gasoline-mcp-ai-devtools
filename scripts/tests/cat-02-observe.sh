@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
-begin_category "2" "Observe Tool" "25"
+begin_category "2" "Observe Tool" "26"
 
 ensure_daemon
 
@@ -675,5 +675,27 @@ run_test_2_25() {
     pass "Sent observe({}), got isError:true. Error mentions missing 'what' parameter. Content: $(truncate "$text" 150)"
 }
 run_test_2_25
+
+# ── 2.26 — observe(screenshot) ─────────────────────────────
+begin_test "2.26" "observe(screenshot) returns valid response" \
+    "Call observe with what:screenshot. Verify valid JSON-RPC response (screenshot data or no-extension message)." \
+    "On-demand screenshot capture. Returns error if no extension connected, success with filename if connected."
+run_test_2_26() {
+    RESPONSE=$(call_tool "observe" '{"what":"screenshot"}')
+    # screenshot may return isError when no extension/tab is tracked — that is acceptable
+    local text
+    text=$(extract_content_text "$RESPONSE")
+    if [ -z "$text" ]; then
+        fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
+        return
+    fi
+    # Verify it is a valid JSON-RPC response (not a crash)
+    if ! check_valid_jsonrpc "$RESPONSE"; then
+        fail "Response is not valid JSON-RPC. Full response: $(truncate "$RESPONSE")"
+        return
+    fi
+    pass "Sent observe(screenshot), got valid JSON-RPC response. Content: ${#text} chars. May be error (no extension) or screenshot data."
+}
+run_test_2_26
 
 finish_category
