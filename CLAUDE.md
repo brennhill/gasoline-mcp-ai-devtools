@@ -9,7 +9,7 @@ Browser extension + MCP server for real-time browser telemetry.
 2. **No `any`** — TypeScript strict mode, no implicit any
 3. **Zero Deps** — No production dependencies in Go or extension
 4. **Compile TS** — Run `make compile-ts` after ANY src/ change
-5. **5 Tools Only** — observe, generate, configure, interact, analyze
+5. **4 Tools Only** — observe, generate, configure, interact
 6. **Performance** — WebSocket < 0.1ms, HTTP < 0.5ms
 7. **Privacy** — All data stays local, no external transmission
 

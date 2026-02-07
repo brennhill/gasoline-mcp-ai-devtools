@@ -3,7 +3,7 @@
 <img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline MCP - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-5.7.5-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
+[![Version](https://img.shields.io/badge/version-5.8.0-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
@@ -27,10 +27,10 @@
 
 ## 📦 Upgrade Notice
 
-If you're on an older version, please upgrade to **v5.7.5** for improved stability and MCP reliability:
+If you're on an older version, please upgrade to **v5.8.0** for early-patch WebSocket capture and improved stability:
 
 ```bash
-npx gasoline-mcp@5.7.5
+npx gasoline-mcp@5.8.0
 ```
 
 </div>
@@ -97,7 +97,7 @@ Choose one option below based on your setup:
 **Verify setup:**
 ```bash
 curl http://localhost:7890/health
-# Should return: {"status":"ok","version":"5.3.0",...}
+# Should return: {"status":"ok","version":"5.8.0",...}
 ```
 
 **How it works:**
@@ -122,38 +122,6 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 | `--connect` | Connect to existing server (multi-client) |
 | `--check` | Verify setup before running |
 | `--help` | Show all options |
-
-## How AI Should Debug: Three Paradigms
-
-Gasoline isn't a test tool. It's a **co-pilot for your entire stack**. Here's how AI debugging evolves:
-
-| | **Traditional QA** | **Gasoline v6** | **Gasoline v7** |
-|---|---|---|---|
-| **Philosophy** | Test-First | Explore-First | Understand-First |
-| **AI's Job** | Execute pre-written tests (human-like workflow) | Read spec, explore UI, find bugs (AI-native workflow) | Understand full system, trace root causes (true full-stack AI reasoning) |
-| | | | |
-| **What AI Sees** | | | |
-| *Example: "Checkout failed"* | ❌ Test failed (binary) | ✅ Browser trace: UI actions + network + DOM + console | ✅ Full causality: Browser → API → Backend logs → Database → Which service changed 3 days ago |
-| *Example: "Service A changed"* | Run all tests, hope nothing broke | Test Service A in isolation | ✅ Dependency graph: A impacts B, C, D; validate each contract; test critical paths |
-| *Example: "Prod error"* | Check logs manually | Replay with local mods | ✅ Correlate prod request → backend logs → test coverage → git history |
-| | | | |
-| **AI's Autonomy** | | | |
-| *What can it fix?* | Test code (not real bugs) | ✅ Bugs in single app | ✅ Multi-service bugs, contracts, broken workflows |
-| *Loop prevention?* | 0 (human writes tests) | ✅ Bounded (doom loop detection) | ✅ Bounded + semantic understanding |
-| *Confidence level* | Low (tests ≠ reality) | High for single-app | Very high (full-stack validation + contracts) |
-| | | | |
-| **Multi-Service Reality** | | | |
-| *"Does Service B still work?"* | Run full test suite (30 min) | Only tests A, misses B | ✅ Impact analysis (30 sec), validate contracts, test critical paths |
-| *"Race condition in prod?"* | Can't reproduce | Local timing variations | ✅ Replay exact scenario with prod state + correlation IDs |
-| | | | |
-| **Time to Know It's Safe** | 10–30 min | 30 sec – 2 min | 30 sec – 2 min (full-stack) |
-| **Confidence Signal** | Tests pass? (false confidence) | Behavior matches spec + no loops | ✅ Causality validated + contracts honored + critical paths pass |
-
-**v6 (Current):** AI-native testing for single apps. Read spec, explore UI, find and fix bugs autonomously.
-
-**v7 (Roadmap):** Full-stack AI debugging. Add backend correlation, dependency graphs, API contracts, and edge case registry.
-
-[See roadmap →](docs/roadmap.md)
 
 ## Why You Cook With Gasoline MCP
 
@@ -200,7 +168,7 @@ Last benchmarked: 2026-02-06 on darwin/arm64 (v5.8.0)
 
 ## Known Issues
 
-See [docs/core/known-issues.md](docs/core/known-issues.md) for current known issues and the v5.3 roadmap.
+See [docs/core/known-issues.md](docs/core/known-issues.md) for current known issues.
 
 ## Development
 

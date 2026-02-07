@@ -2,6 +2,12 @@
  * @fileoverview Script Injection Module
  * Injects capture script into the page context and syncs stored settings
  */
+/** Whether inject.bundled.js has been injected into the page (MAIN world) */
+let injected = false;
+/** Check if inject script has been loaded into the page context */
+export function isInjectScriptLoaded() {
+    return injected;
+}
 /** Settings that need to be synced to inject script on page load */
 const SYNC_SETTINGS = [
     { storageKey: 'webSocketCaptureEnabled', messageType: 'setWebSocketCaptureEnabled' },
@@ -50,6 +56,7 @@ export function injectScript() {
     script.type = 'module';
     script.onload = () => {
         script.remove();
+        injected = true;
         // Sync stored settings after inject script loads
         // Small delay to ensure inject script has initialized its message listeners
         setTimeout(syncStoredSettings, 50);

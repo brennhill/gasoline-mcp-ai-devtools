@@ -5,6 +5,14 @@
 
 import type { WebSocketCaptureMode } from '../types'
 
+/** Whether inject.bundled.js has been injected into the page (MAIN world) */
+let injected = false
+
+/** Check if inject script has been loaded into the page context */
+export function isInjectScriptLoaded(): boolean {
+  return injected
+}
+
 /** Settings that need to be synced to inject script on page load */
 const SYNC_SETTINGS: readonly {
   storageKey: string
@@ -66,6 +74,7 @@ export function injectScript(): void {
   script.type = 'module'
   script.onload = () => {
     script.remove()
+    injected = true
     // Sync stored settings after inject script loads
     // Small delay to ensure inject script has initialized its message listeners
     setTimeout(syncStoredSettings, 50)

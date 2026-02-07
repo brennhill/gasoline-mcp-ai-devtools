@@ -15,6 +15,7 @@ export type QueryType =
   | 'tabs'
   | 'browser_action'
   | 'waterfall'
+  | 'dom_action'
   | 'state_capture'
   | 'state_save'
   | 'state_load'

@@ -402,18 +402,25 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "interact",
-			Description: "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, save_state, load_state, list_states, delete_state. Requires AI Web Pilot enabled.",
+			Description: "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, save_state, load_state, list_states, delete_state. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. DOM primitives work on CSP-restricted pages (Gmail, etc.) and support semantic selectors: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close. Requires AI Web Pilot enabled.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"action": map[string]any{
 						"type":        "string",
 						"description": "Browser interaction to perform",
-						"enum":        []string{"highlight", "save_state", "load_state", "list_states", "delete_state", "execute_js", "navigate", "refresh", "back", "forward", "new_tab"},
+						"enum": []string{
+							"highlight", "save_state", "load_state", "list_states", "delete_state",
+							"execute_js", "navigate", "refresh", "back", "forward", "new_tab",
+							"click", "type", "select", "check",
+							"get_text", "get_value", "get_attribute",
+							"set_attribute", "focus", "scroll_to", "wait_for", "key_press",
+							"list_interactive",
+						},
 					},
 					"selector": map[string]any{
 						"type":        "string",
-						"description": "CSS selector for element (applies to highlight)",
+						"description": "CSS selector or semantic selector for element (applies to highlight, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press). Semantic: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close.",
 					},
 					"duration_ms": map[string]any{
 						"type":        "number",
@@ -433,7 +440,32 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"timeout_ms": map[string]any{
 						"type":        "number",
-						"description": "Execution timeout in ms, default 5000",
+						"description": "Execution timeout in ms, default 5000 (applies to execute_js, wait_for)",
+					},
+					"text": map[string]any{
+						"type":        "string",
+						"description": "Text to type into the element (applies to type). Key name for key_press: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space.",
+					},
+					"value": map[string]any{
+						"type":        "string",
+						"description": "Value to set (applies to select, set_attribute)",
+					},
+					"clear": map[string]any{
+						"type":        "boolean",
+						"description": "Clear existing value before typing (applies to type)",
+					},
+					"checked": map[string]any{
+						"type":        "boolean",
+						"description": "Whether to check or uncheck (applies to check, default: true)",
+					},
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Attribute name (applies to get_attribute, set_attribute)",
+					},
+					"world": map[string]any{
+						"type":        "string",
+						"description": "Execution world: 'auto' (default, tries main then isolated on CSP error), 'main' (access page JS globals), or 'isolated' (bypasses page CSP, DOM access only). Use 'isolated' for sites with Trusted Types CSP like Gmail.",
+						"enum":        []string{"auto", "main", "isolated"},
 					},
 					"url": map[string]any{
 						"type":        "string",
@@ -442,6 +474,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"tab_id": map[string]any{
 						"type":        "number",
 						"description": "Target tab ID. Omit for active tab.",
+					},
+					"reason": map[string]any{
+						"type":        "string",
+						"description": "Why this action is being performed (shown in visual toast). Example: 'Opening compose to send test email'.",
 					},
 					"correlation_id": map[string]any{
 						"type":        "string",

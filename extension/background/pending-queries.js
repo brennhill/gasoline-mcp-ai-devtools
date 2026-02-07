@@ -10,6 +10,7 @@ import * as eventListeners from './event-listeners.js';
 import * as index from './index.js';
 import { DebugCategory } from './debug.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, broadcastTrackingState } from './message-handlers.js';
+import { executeDOMAction } from './dom-primitives.js';
 // Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
 const { debugLog, diagnosticLog } = index;
 // =============================================================================
@@ -52,8 +53,175 @@ function sendAsyncResult(syncClient, queryId, correlationId, status, result, err
     });
 }
 /** Show a visual action toast on the tracked tab */
-function actionToast(tabId, text) {
-    chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_ACTION_TOAST', text, duration_ms: 3000 }).catch(() => { });
+function actionToast(tabId, text, detail, state = 'success', durationMs = 3000) {
+    chrome.tabs.sendMessage(tabId, {
+        type: 'GASOLINE_ACTION_TOAST',
+        text,
+        detail,
+        state,
+        duration_ms: durationMs,
+    }).catch(() => { });
+}
+// =============================================================================
+// ISOLATED WORLD EXECUTION (chrome.scripting API)
+// =============================================================================
+/**
+ * Execute JavaScript via chrome.scripting.executeScript.
+ * Used as fallback when MAIN world execution fails due to page CSP,
+ * or when inject script is not loaded.
+ * The func is injected natively by Chrome's extension system.
+ */
+async function executeViaScriptingAPI(tabId, script, timeoutMs) {
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`Script exceeded ${timeoutMs}ms timeout`)), timeoutMs + 2000);
+    });
+    const executionPromise = chrome.scripting.executeScript({
+        target: { tabId },
+        world: 'MAIN',
+        func: (code) => {
+            try {
+                const cleaned = code.trim();
+                const hasMultiple = cleaned.includes(';');
+                const hasReturn = /\breturn\b/.test(cleaned);
+                const body = hasMultiple || hasReturn
+                    ? `"use strict"; ${cleaned}`
+                    : `"use strict"; return (${cleaned});`;
+                // eslint-disable-next-line no-new-func
+                const fn = new Function(body);
+                const result = fn();
+                if (result !== null && result !== undefined && typeof result.then === 'function') {
+                    return result.then((v) => {
+                        return { success: true, result: serialize(v) };
+                    }).catch((err) => {
+                        const e = err;
+                        return { success: false, error: 'promise_rejected', message: e.message };
+                    });
+                }
+                return { success: true, result: serialize(result) };
+            }
+            catch (err) {
+                const e = err;
+                const msg = e.message || '';
+                if (msg.includes('Content Security Policy') || msg.includes('Trusted Type') || msg.includes('unsafe-eval')) {
+                    return {
+                        success: false,
+                        error: 'csp_blocked_all_worlds',
+                        message: 'Page CSP blocks dynamic script execution. ' +
+                            'Use query_dom for DOM operations or navigate away from this CSP-restricted page.',
+                    };
+                }
+                return { success: false, error: 'execution_error', message: msg, stack: e.stack };
+            }
+            function serialize(value, depth = 0, seen = new WeakSet()) {
+                if (depth > 10)
+                    return '[max depth]';
+                if (value === null || value === undefined)
+                    return value;
+                const t = typeof value;
+                if (t === 'string' || t === 'number' || t === 'boolean')
+                    return value;
+                if (t === 'function')
+                    return '[Function]';
+                if (t === 'symbol')
+                    return String(value);
+                if (t === 'object') {
+                    const obj = value;
+                    if (seen.has(obj))
+                        return '[Circular]';
+                    seen.add(obj);
+                    if (Array.isArray(obj))
+                        return obj.slice(0, 100).map(v => serialize(v, depth + 1, seen));
+                    if (obj instanceof Error)
+                        return { error: obj.message };
+                    if (obj instanceof Date)
+                        return obj.toISOString();
+                    if (obj instanceof RegExp)
+                        return String(obj);
+                    // DOM node duck-type check (works across worlds)
+                    if ('nodeType' in obj && 'nodeName' in obj) {
+                        const node = obj;
+                        return `[${node.nodeName}${node.id ? '#' + node.id : ''}]`;
+                    }
+                    const result = {};
+                    for (const key of Object.keys(obj).slice(0, 50)) {
+                        try {
+                            result[key] = serialize(obj[key], depth + 1, seen);
+                        }
+                        catch {
+                            result[key] = '[unserializable]';
+                        }
+                    }
+                    return result;
+                }
+                return String(value);
+            }
+        },
+        args: [script],
+    });
+    try {
+        const results = await Promise.race([executionPromise, timeoutPromise]);
+        const firstResult = results?.[0]?.result;
+        if (firstResult && typeof firstResult === 'object') {
+            return firstResult;
+        }
+        return { success: false, error: 'no_result', message: 'chrome.scripting.executeScript produced no result' };
+    }
+    catch (err) {
+        const msg = err.message || '';
+        if (msg.includes('timeout')) {
+            return { success: false, error: 'execution_timeout', message: msg };
+        }
+        return { success: false, error: 'scripting_api_error', message: msg };
+    }
+}
+/**
+ * Execute JS with world-aware routing.
+ * - isolated: execute directly via chrome.scripting API
+ * - main: send to content script (MAIN world via inject)
+ * - auto: try content script, fallback to scripting API on CSP/inject errors
+ */
+async function executeWithWorldRouting(tabId, queryParams, world) {
+    let parsedParams;
+    try {
+        parsedParams = typeof queryParams === 'string' ? JSON.parse(queryParams) : queryParams;
+    }
+    catch {
+        parsedParams = {};
+    }
+    const script = parsedParams.script || '';
+    const timeoutMs = parsedParams.timeout_ms || 5000;
+    if (world === 'isolated') {
+        return executeViaScriptingAPI(tabId, script, timeoutMs);
+    }
+    // MAIN or AUTO: try content script (MAIN world) first
+    try {
+        const result = await chrome.tabs.sendMessage(tabId, {
+            type: 'GASOLINE_EXECUTE_QUERY',
+            params: queryParams,
+        });
+        // Auto-fallback: retry via scripting API on CSP or inject issues
+        if (world === 'auto' && result && !result.success &&
+            (result.error === 'csp_blocked' || result.error === 'inject_not_loaded')) {
+            debugLog(DebugCategory.CONNECTION, 'Auto-fallback to chrome.scripting API', {
+                error: result.error, tabId,
+            });
+            return executeViaScriptingAPI(tabId, script, timeoutMs);
+        }
+        return result;
+    }
+    catch (err) {
+        let message = err.message || 'Tab communication failed';
+        // Auto-fallback: content script not reachable
+        if (world === 'auto' && message.includes('Receiving end does not exist')) {
+            debugLog(DebugCategory.CONNECTION, 'Auto-fallback (content script unreachable)', { tabId });
+            return executeViaScriptingAPI(tabId, script, timeoutMs);
+        }
+        if (message.includes('Receiving end does not exist')) {
+            message =
+                'Content script not loaded. REQUIRED ACTION: Refresh the page first using this command:\n\ninteract({action: "refresh"})\n\nThen retry your command.';
+        }
+        return { success: false, error: 'content_script_not_loaded', message };
+    }
 }
 // =============================================================================
 // PENDING QUERY HANDLING
@@ -227,6 +395,14 @@ export async function handlePendingQuery(query, syncClient) {
             }
             return;
         }
+        if (query.type === 'dom_action') {
+            if (!index.__aiWebPilotEnabledCache) {
+                sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled');
+                return;
+            }
+            await executeDOMAction(query, tabId, syncClient, sendAsyncResult, actionToast);
+            return;
+        }
         if (query.type === 'execute') {
             if (!index.__aiWebPilotEnabledCache) {
                 if (query.correlation_id) {
@@ -241,28 +417,28 @@ export async function handlePendingQuery(query, syncClient) {
                 }
                 return;
             }
+            // Parse world param for routing
+            let execParams;
+            try {
+                execParams = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
+            }
+            catch {
+                execParams = {};
+            }
+            const world = execParams.world || 'auto';
             if (query.correlation_id) {
-                await handleAsyncExecuteCommand(query, tabId, syncClient);
+                await handleAsyncExecuteCommand(query, tabId, world, syncClient);
             }
             else {
                 try {
-                    const result = await chrome.tabs.sendMessage(tabId, {
-                        type: 'GASOLINE_EXECUTE_QUERY',
-                        queryId: query.id,
-                        params: query.params,
-                    });
+                    const result = await executeWithWorldRouting(tabId, query.params, world);
                     sendResult(syncClient, query.id, result);
                 }
                 catch (err) {
-                    let message = err.message || 'Tab communication failed';
-                    if (message.includes('Receiving end does not exist')) {
-                        message =
-                            'Content script not loaded. REQUIRED ACTION: Refresh the page first using this command:\n\ninteract({action: "refresh"})\n\nThen retry your command.';
-                    }
                     sendResult(syncClient, query.id, {
                         success: false,
-                        error: 'content_script_not_loaded',
-                        message,
+                        error: 'execution_failed',
+                        message: err.message || 'Execution failed',
                     });
                 }
             }
@@ -368,16 +544,17 @@ async function handleStateQuery(query, syncClient) {
     }
 }
 async function handleBrowserAction(tabId, params) {
-    const { action, url } = params || {};
+    const { action, url, reason } = params || {};
     if (!index.__aiWebPilotEnabledCache) {
         return { success: false, error: 'ai_web_pilot_disabled', message: 'AI Web Pilot is not enabled' };
     }
     try {
         switch (action) {
             case 'refresh':
+                actionToast(tabId, 'refresh', reason || 'reloading page', 'trying', 10000);
                 await chrome.tabs.reload(tabId);
                 await eventListeners.waitForTabLoad(tabId);
-                actionToast(tabId, 'Gasoline refreshed page');
+                actionToast(tabId, 'refresh', reason || 'page reloaded', 'success');
                 return { success: true, action: 'refresh' };
             case 'navigate': {
                 if (!url) {
@@ -390,13 +567,14 @@ async function handleBrowserAction(tabId, params) {
                         message: 'Cannot navigate to Chrome internal pages',
                     };
                 }
+                actionToast(tabId, 'navigate', reason || url, 'trying', 10000);
                 await chrome.tabs.update(tabId, { url });
                 await eventListeners.waitForTabLoad(tabId);
                 await new Promise((r) => setTimeout(r, 500));
                 const contentScriptLoaded = await eventListeners.pingContentScript(tabId);
                 if (contentScriptLoaded) {
                     broadcastTrackingState().catch(() => { });
-                    actionToast(tabId, `Gasoline navigated to ${url}`);
+                    actionToast(tabId, 'navigate', reason || url, 'success');
                     return {
                         success: true,
                         action: 'navigate',
@@ -452,51 +630,27 @@ async function handleBrowserAction(tabId, params) {
         return { success: false, error: 'browser_action_failed', message: err.message };
     }
 }
-async function handleAsyncExecuteCommand(query, tabId, syncClient) {
+async function handleAsyncExecuteCommand(query, tabId, world, syncClient) {
     const startTime = Date.now();
-    const executionPromise = chrome.tabs
-        .sendMessage(tabId, {
-        type: 'GASOLINE_EXECUTE_QUERY',
-        queryId: query.id,
-        params: query.params,
-    })
-        .then((result) => {
-        return { success: true, result };
-    })
-        .catch((err) => {
-        let message = err.message || 'Tab communication failed';
-        if (message.includes('Receiving end does not exist')) {
-            message =
-                'Content script not loaded. REQUIRED ACTION: Refresh the page first using this command:\n\ninteract({action: "refresh"})\n\nThen retry your command.';
-        }
-        return {
-            success: false,
-            error: 'content_script_not_loaded',
-            message,
-        };
-    });
     try {
-        const execResult = await Promise.race([
-            executionPromise,
+        const result = await Promise.race([
+            executeWithWorldRouting(tabId, query.params, world),
             new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('Execution timeout')), ASYNC_EXECUTE_TIMEOUT_MS);
             }),
         ]);
-        if (execResult.success) {
-            actionToast(tabId, 'Gasoline executed script');
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', execResult.result);
+        if (result.success) {
+            actionToast(tabId, 'execute_js', 'script completed', 'success');
         }
-        else {
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, execResult.error || execResult.message);
-        }
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result);
         debugLog(DebugCategory.CONNECTION, 'Completed async command', {
             correlationId: query.correlation_id,
             elapsed: Date.now() - startTime,
-            success: execResult.success,
+            success: result.success,
         });
     }
     catch {
-        const timeoutMessage = `JavaScript execution exceeded 10s timeout. RECOMMENDED ACTIONS:
+        const timeoutMessage = `JavaScript execution exceeded timeout. RECOMMENDED ACTIONS:
 
 1. Break your task into smaller discrete steps that execute in < 2s for best results
 2. Check your script for infinite loops or blocking operations

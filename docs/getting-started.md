@@ -121,17 +121,16 @@ Ask your AI: _"What browser errors do you see?"_
 
 ## <i class="fas fa-tools"></i> Available Tools
 
-Your AI now has 5 composite tools covering the full debugging lifecycle:
+Your AI now has 4 tools covering the full debugging lifecycle:
 
 | Tool | What it does |
 |------|-------------|
-| `observe` | <i class="fas fa-eye"></i> Browser state — errors, logs, network, WebSocket, actions, Web Vitals, page info |
-| `analyze` | <i class="fas fa-chart-line"></i> Insights — performance regression, API schema, accessibility, session diffs, timeline |
-| `generate` | <i class="fas fa-code"></i> Artifacts — Playwright tests, reproduction scripts, PR summaries, SARIF, HAR |
-| `configure` | <i class="fas fa-cog"></i> Session — persistent memory, noise filtering, log management |
-| `query_dom` | <i class="fas fa-search"></i> Live DOM query with CSS selectors |
+| `observe` | Browser state — errors, logs, network, WebSocket, actions, Web Vitals, page info, performance, accessibility, security audits |
+| `generate` | Artifacts — Playwright tests, reproduction scripts, PR summaries, SARIF, HAR, CSP, SRI |
+| `configure` | Session — persistent memory, noise filtering, DOM queries, API validation, session diffs |
+| `interact` | Browser control — navigate, execute JS, highlight elements, save/load state |
 
-Each tool has sub-modes. For example, `observe` with `what: "errors"` returns console errors, while `what: "vitals"` returns Core Web Vitals.
+Each tool has sub-modes. For example, `observe` with `what: "errors"` returns console errors, while `what: "websocket_status"` returns active WebSocket connections.
 
 See [MCP Integration](/mcp-integration/) for full tool documentation.
 
