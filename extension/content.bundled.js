@@ -533,7 +533,61 @@
       setTimeout(() => toast.remove(), 300);
     }, durationMs);
   }
+  var actionToastsEnabled = true;
+  var subtitlesEnabled = true;
+  function showSubtitle(text) {
+    const ELEMENT_ID = "gasoline-subtitle";
+    if (!text) {
+      const existing = document.getElementById(ELEMENT_ID);
+      if (existing) {
+        existing.style.opacity = "0";
+        setTimeout(() => existing.remove(), 200);
+      }
+      return;
+    }
+    let bar = document.getElementById(ELEMENT_ID);
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = ELEMENT_ID;
+      Object.assign(bar.style, {
+        position: "fixed",
+        bottom: "0",
+        left: "0",
+        width: "100%",
+        padding: "12px 24px",
+        background: "rgba(0, 0, 0, 0.85)",
+        color: "#fff",
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontSize: "16px",
+        lineHeight: "1.4",
+        zIndex: "2147483646",
+        pointerEvents: "none",
+        opacity: "0",
+        transition: "opacity 0.2s ease-in",
+        maxHeight: "4.2em",
+        // ~3 lines
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        boxSizing: "border-box"
+      });
+      const target = document.body || document.documentElement;
+      if (!target)
+        return;
+      target.appendChild(bar);
+    }
+    bar.textContent = text;
+    requestAnimationFrame(() => {
+      if (bar)
+        bar.style.opacity = "1";
+    });
+  }
   function initRuntimeMessageListener() {
+    chrome.storage.local.get(["actionToastsEnabled", "subtitlesEnabled"], (result) => {
+      if (result.actionToastsEnabled !== void 0)
+        actionToastsEnabled = result.actionToastsEnabled;
+      if (result.subtitlesEnabled !== void 0)
+        subtitlesEnabled = result.subtitlesEnabled;
+    });
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isValidBackgroundSender(sender)) {
         console.warn("[Gasoline] Rejected message from untrusted sender:", sender.id);
@@ -543,9 +597,26 @@
         return handlePing(sendResponse);
       }
       if (message.type === "GASOLINE_ACTION_TOAST") {
+        if (!actionToastsEnabled)
+          return false;
         const msg = message;
         if (msg.text)
           showActionToast(msg.text, msg.detail, msg.state || "trying", msg.duration_ms);
+        return false;
+      }
+      if (message.type === "GASOLINE_SUBTITLE") {
+        if (!subtitlesEnabled)
+          return false;
+        const msg = message;
+        showSubtitle(msg.text ?? "");
+        return false;
+      }
+      if (message.type === "setActionToastsEnabled") {
+        actionToastsEnabled = message.enabled;
+        return false;
+      }
+      if (message.type === "setSubtitlesEnabled") {
+        subtitlesEnabled = message.enabled;
         return false;
       }
       handleToggleMessage(message);

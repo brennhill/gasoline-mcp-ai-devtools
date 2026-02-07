@@ -42,11 +42,13 @@ run_test_7_1() {
         sleep 0.5
         waited=$((waited + 1))
     done
-    # Kill only the forked test processes (not the daemon)
+    # Kill only the forked test processes (not the daemon), then wait for them
     for pid in "${pids[@]}"; do
         kill "$pid" 2>/dev/null || true
     done
-    wait 2>/dev/null
+    for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null || true
+    done
 
     # Count successes
     local success=0

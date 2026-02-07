@@ -40,7 +40,15 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 
 	if params.Action == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: highlight, execute_js, navigate, refresh, back, forward, new_tab, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive, save_state, load_state, list_states, delete_state"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: highlight, subtitle, execute_js, navigate, refresh, back, forward, new_tab, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive, save_state, load_state, list_states, delete_state"))}
+	}
+
+	// Extract optional subtitle param (composable: works on any action)
+	var composableSubtitle struct {
+		Subtitle *string `json:"subtitle"`
+	}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &composableSubtitle)
 	}
 
 	var resp JSONRPCResponse
@@ -67,6 +75,8 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		resp = h.handleBrowserActionForward(req, args)
 	case "new_tab":
 		resp = h.handleBrowserActionNewTab(req, args)
+	case "subtitle":
+		resp = h.handleSubtitle(req, args)
 	case "click", "type", "select", "check", "get_text", "get_value",
 		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for", "key_press":
 		resp = h.handleDOMPrimitive(req, args, params.Action)
@@ -75,6 +85,18 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
 	}
+
+	// If a composable subtitle was provided on a non-subtitle action, queue it
+	if composableSubtitle.Subtitle != nil && params.Action != "subtitle" {
+		subtitleArgs, _ := json.Marshal(map[string]string{"text": *composableSubtitle.Subtitle})
+		subtitleQuery := queries.PendingQuery{
+			Type:          "subtitle",
+			Params:        subtitleArgs,
+			CorrelationID: fmt.Sprintf("subtitle_%d_%d", time.Now().UnixNano(), rand.Int63()),
+		}
+		h.capture.CreatePendingQueryWithTimeout(subtitleQuery, queries.AsyncCommandTimeout, req.ClientID)
+	}
+
 	return resp
 }
 
@@ -573,6 +595,40 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		"status":         "queued",
 		"correlation_id": correlationID,
 		"message":        "DOM action queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to check status.",
+	})}
+}
+
+func (h *ToolHandler) handleSubtitle(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Text *string `json:"text"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	if params.Text == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'text' is missing for subtitle action", "Add the 'text' parameter with subtitle text, or empty string to clear", withParam("text"))}
+	}
+
+	correlationID := fmt.Sprintf("subtitle_%d_%d", time.Now().UnixNano(), rand.Int63())
+
+	query := queries.PendingQuery{
+		Type:          "subtitle",
+		Params:        args,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	if *params.Text == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Subtitle cleared", map[string]any{
+			"status":  "queued",
+			"subtitle": "cleared",
+		})}
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Subtitle set", map[string]any{
+		"status":  "queued",
+		"subtitle": *params.Text,
 	})}
 }
 

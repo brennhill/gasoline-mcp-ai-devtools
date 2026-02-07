@@ -111,6 +111,8 @@ export interface SetBooleanSettingMessage {
     | 'setPerformanceSnapshotEnabled'
     | 'setDeferralEnabled'
     | 'setNetworkBodyCaptureEnabled'
+    | 'setActionToastsEnabled'
+    | 'setSubtitlesEnabled'
     | 'setDebugMode'
   readonly enabled: boolean
 }
@@ -337,6 +339,14 @@ export interface ActionToastMessage {
 }
 
 /**
+ * Subtitle overlay message (persistent narration text)
+ */
+export interface SubtitleMessage {
+  readonly type: 'GASOLINE_SUBTITLE'
+  readonly text: string
+}
+
+/**
  * Union of all content-script-bound messages
  */
 export type ContentMessage =
@@ -349,6 +359,7 @@ export type ContentMessage =
   | GetNetworkWaterfallMessage
   | ManageStateMessage
   | ActionToastMessage
+  | SubtitleMessage
   | SetBooleanSettingMessage
   | SetWebSocketCaptureModeMessage
   | SetServerUrlMessage

@@ -294,6 +294,21 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
 
     if (!tabId) return
 
+    if (query.type === 'subtitle') {
+      let params: { text?: string }
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        params = {}
+      }
+      chrome.tabs.sendMessage(tabId, {
+        type: 'GASOLINE_SUBTITLE',
+        text: params.text ?? '',
+      }).catch(() => {})
+      sendResult(syncClient, query.id, { success: true, subtitle: params.text || 'cleared' })
+      return
+    }
+
     if (query.type === 'browser_action') {
       let params: { action?: string; url?: string; reason?: string }
       try {

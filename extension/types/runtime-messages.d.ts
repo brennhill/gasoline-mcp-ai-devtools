@@ -82,7 +82,7 @@ export interface SetLogLevelMessage {
  * Toggle boolean setting messages
  */
 export interface SetBooleanSettingMessage {
-    readonly type: 'setScreenshotOnError' | 'setAiWebPilotEnabled' | 'setSourceMapEnabled' | 'setNetworkWaterfallEnabled' | 'setPerformanceMarksEnabled' | 'setActionReplayEnabled' | 'setWebSocketCaptureEnabled' | 'setPerformanceSnapshotEnabled' | 'setDeferralEnabled' | 'setNetworkBodyCaptureEnabled' | 'setDebugMode';
+    readonly type: 'setScreenshotOnError' | 'setAiWebPilotEnabled' | 'setSourceMapEnabled' | 'setNetworkWaterfallEnabled' | 'setPerformanceMarksEnabled' | 'setActionReplayEnabled' | 'setWebSocketCaptureEnabled' | 'setPerformanceSnapshotEnabled' | 'setDeferralEnabled' | 'setNetworkBodyCaptureEnabled' | 'setActionToastsEnabled' | 'setSubtitlesEnabled' | 'setDebugMode';
     readonly enabled: boolean;
 }
 /**
@@ -259,9 +259,16 @@ export interface ActionToastMessage {
     readonly duration_ms?: number;
 }
 /**
+ * Subtitle overlay message (persistent narration text)
+ */
+export interface SubtitleMessage {
+    readonly type: 'GASOLINE_SUBTITLE';
+    readonly text: string;
+}
+/**
  * Union of all content-script-bound messages
  */
-export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | ManageStateMessage | ActionToastMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
+export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
 /**
  * Page to content script messages (postMessage types)
  */
