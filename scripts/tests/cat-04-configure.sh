@@ -201,11 +201,11 @@ run_test_4_8() {
     fi
     local status_text
     status_text=$(extract_content_text "$STATUS_RESP")
-    if check_contains "$status_text" "stream" || check_contains "$status_text" "enabl" || check_contains "$status_text" "active"; then
-        pass "Streaming enable/status roundtrip succeeded. Status mentions streaming state. Content: $(truncate "$status_text" 200)"
-    else
-        fail "Streaming status does not mention streaming/enabled/active state. Content: $(truncate "$status_text" 200)"
+    if ! check_contains "$status_text" "enabled"; then
+        fail "Streaming status missing 'enabled' field. Content: $(truncate "$status_text" 200)"
+        return
     fi
+    pass "Streaming enable/status roundtrip succeeded. Status contains 'enabled' field. Content: $(truncate "$status_text" 200)"
 }
 run_test_4_8
 

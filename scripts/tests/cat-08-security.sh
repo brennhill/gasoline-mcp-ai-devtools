@@ -30,10 +30,10 @@ begin_test "8.2" "Extension endpoints accept valid X-Gasoline-Client header" \
 run_test_8_2() {
     local status
     status=$(get_http_status "http://localhost:${PORT}/sync" -H "X-Gasoline-Client: gasoline-extension/5.7.6" -X POST)
-    if [ "$status" = "403" ]; then
-        fail "/sync with valid X-Gasoline-Client header returned 403. Middleware is over-blocking."
+    if [ "$status" = "200" ] || [ "$status" = "400" ]; then
+        pass "/sync with valid X-Gasoline-Client header returned HTTP $status. Middleware accepted the request."
     else
-        pass "/sync with valid X-Gasoline-Client header returned HTTP $status (not 403). Middleware accepted the request."
+        fail "/sync with valid X-Gasoline-Client header returned HTTP $status. Expected 200 or 400 (missing body), not $status."
     fi
 }
 run_test_8_2

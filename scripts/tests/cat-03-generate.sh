@@ -27,11 +27,11 @@ run_test_3_1() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "playwright" && ! check_contains "$text" "page" && ! check_contains "$text" "goto" && ! check_contains "$text" "actions" && ! check_contains "$text" "No " && ! check_contains "$text" "reproduction" && ! check_contains "$text" "script"; then
-        fail "generate(reproduction) content missing expected keywords (playwright/page/goto/actions/reproduction/script). Content: $(truncate "$text" 300)"
+    if ! echo "$text" | grep -qi "reproduction" && ! echo "$text" | grep -qi "playwright"; then
+        fail "generate(reproduction) content must mention 'reproduction' or 'playwright'. Content: $(truncate "$text" 300)"
         return
     fi
-    pass "Sent generate(reproduction), got valid response with reproduction-related content. Content: $(truncate "$text" 200)"
+    pass "Sent generate(reproduction), got valid response mentioning reproduction/playwright. Content: $(truncate "$text" 200)"
 }
 run_test_3_1
 
@@ -51,11 +51,11 @@ run_test_3_2() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "test" && ! check_contains "$text" "playwright" && ! check_contains "$text" "expect" && ! check_contains "$text" "No " && ! check_contains "$text" "actions" && ! check_contains "$text" "script"; then
-        fail "generate(test) content missing expected keywords (test/playwright/expect/actions/script). Content: $(truncate "$text" 300)"
+    if ! echo "$text" | grep -qi "test" && ! echo "$text" | grep -qi "playwright"; then
+        fail "generate(test) content must mention 'test' or 'playwright'. Content: $(truncate "$text" 300)"
         return
     fi
-    pass "Sent generate(test), got valid response with test-related content. Content: $(truncate "$text" 200)"
+    pass "Sent generate(test), got valid response mentioning test/playwright. Content: $(truncate "$text" 200)"
 }
 run_test_3_2
 
@@ -75,11 +75,11 @@ run_test_3_3() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "summary" && ! check_contains "$text" "Summary" && ! check_contains "$text" "session" && ! check_contains "$text" "changes" && ! check_contains "$text" "observations" && ! check_contains "$text" "No "; then
-        fail "generate(pr_summary) content missing expected keywords (summary/session/changes/observations). Content: $(truncate "$text" 300)"
+    if ! check_contains "$text" "summary" && ! check_contains "$text" "Summary"; then
+        fail "generate(pr_summary) content must mention 'summary'. Content: $(truncate "$text" 300)"
         return
     fi
-    pass "Sent generate(pr_summary), got valid response with summary-related content. Content: $(truncate "$text" 200)"
+    pass "Sent generate(pr_summary), got valid response mentioning summary. Content: $(truncate "$text" 200)"
 }
 run_test_3_3
 
@@ -99,12 +99,11 @@ run_test_3_4() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    # SARIF response should contain status or SARIF-related fields
-    if ! check_contains "$text" "SARIF" && ! check_contains "$text" "sarif" && ! check_contains "$text" "status"; then
-        fail "Expected content to mention SARIF or have status field. Got: $(truncate "$text")"
+    if ! check_contains "$text" "SARIF" && ! check_contains "$text" "sarif"; then
+        fail "generate(sarif) content must mention 'SARIF'. Content: $(truncate "$text")"
         return
     fi
-    pass "Sent generate(sarif), got valid response with SARIF data. Content: ${#text} chars."
+    pass "Sent generate(sarif), got valid response mentioning SARIF. Content: ${#text} chars."
 }
 run_test_3_4
 
@@ -124,11 +123,11 @@ run_test_3_5() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "log" && ! check_contains "$text" "HAR" && ! check_contains "$text" "har" && ! check_contains "$text" "entries" && ! check_contains "$text" "version"; then
-        fail "generate(har) content missing expected HAR keywords (log/HAR/entries/version). Content: $(truncate "$text" 300)"
+    if ! check_contains "$text" "HAR" && ! check_contains "$text" "har" && ! check_contains "$text" "entries"; then
+        fail "generate(har) content must mention 'HAR' or 'entries'. Content: $(truncate "$text" 300)"
         return
     fi
-    pass "Sent generate(har), got valid response with HAR-related content. Content: $(truncate "$text" 200)"
+    pass "Sent generate(har), got valid response mentioning HAR/entries. Content: $(truncate "$text" 200)"
 }
 run_test_3_5
 

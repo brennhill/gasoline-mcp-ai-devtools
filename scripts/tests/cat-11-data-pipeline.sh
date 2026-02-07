@@ -667,11 +667,11 @@ run_test_11_22() {
     if check_contains "$text" "action"; then types_found=$((types_found + 1)); fi
     if check_contains "$text" "network"; then types_found=$((types_found + 1)); fi
     if check_contains "$text" "websocket"; then types_found=$((types_found + 1)); fi
-    if [ "$types_found" -lt 3 ]; then
-        fail "Timeline only has $types_found/4 expected types. Content: $(truncate "$text" 500)"
+    if [ "$types_found" -lt 4 ]; then
+        fail "Timeline has $types_found/4 expected types (need all 4). Content: $(truncate "$text" 500)"
         return
     fi
-    pass "Multi-source timeline verified: $types_found/4 data types found in observe(timeline). All sources merge correctly."
+    pass "Multi-source timeline verified: all 4 data types (error, action, network, websocket) found in observe(timeline)."
 }
 run_test_11_22
 
@@ -743,10 +743,10 @@ run_test_11_27() {
     LAST_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
         -X POST -H "Content-Type: application/json" \
         "http://localhost:${PORT}/logs" 2>/dev/null)
-    if [ "$LAST_HTTP_STATUS" = "500" ]; then
-        fail "Empty body POST returned HTTP 500 (server error). Should handle gracefully."
+    if [ "$LAST_HTTP_STATUS" = "400" ]; then
+        pass "Empty body POST to /logs returned HTTP 400 (Bad Request). Handled gracefully."
     else
-        pass "Empty body POST to /logs returned HTTP $LAST_HTTP_STATUS. Server did not crash."
+        fail "Empty body POST to /logs returned HTTP $LAST_HTTP_STATUS, expected 400."
     fi
 }
 run_test_11_27

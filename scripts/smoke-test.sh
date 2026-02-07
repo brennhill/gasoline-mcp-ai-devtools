@@ -16,7 +16,7 @@ source "$SCRIPT_DIR/tests/framework.sh"
 
 init_framework "${1:-7890}" "${2:-/dev/null}"
 
-begin_category "0" "Human Smoke Test" "16"
+begin_category "0" "Human Smoke Test" "22"
 
 SKIPPED_COUNT=0
 EXTENSION_CONNECTED=false
@@ -291,7 +291,7 @@ run_test_s5() {
     if [ "$log_ok" = "true" ] && [ "$err_ok" = "true" ]; then
         pass "Log marker '${SMOKE_MARKER}_LOG' in observe(logs) AND error marker in observe(errors)."
     elif [ "$log_ok" = "true" ]; then
-        pass "Log marker found in observe(logs). Error marker not in observe(errors) — acceptable."
+        fail "Log marker found but error marker '${SMOKE_MARKER}' missing from observe(errors). Errors: $(truncate "$err_text" 200)"
     else
         fail "Log marker '${SMOKE_MARKER}_LOG' NOT found in observe(logs). Console monkey-patch may be broken. Logs: $(truncate "$log_text" 200)"
     fi
@@ -386,6 +386,134 @@ run_test_s8() {
     fi
 }
 run_test_s8
+
+# ── Test S.21: Subtitle standalone ─────────────────────────
+begin_test "S.21" "Subtitle: standalone set, verify visible, then clear" \
+    "Use interact(subtitle) to display text at bottom of viewport, verify it appears, then clear it" \
+    "Tests: subtitle pipeline: MCP → daemon → extension → content script overlay"
+
+run_test_s21() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    # Navigate to a clean page first
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com"}' 20
+    sleep 2
+
+    # Set subtitle text
+    interact_and_wait "subtitle" '{"action":"subtitle","text":"Gasoline smoke test — this text should appear at the bottom of the viewport"}'
+
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
+        fail "Subtitle set returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
+        return
+    fi
+
+    # Verify the subtitle element exists in the DOM
+    sleep 1
+    interact_and_wait "execute_js" '{"action":"execute_js","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"NOT_FOUND\"; var style = window.getComputedStyle(el); return JSON.stringify({ text: el.textContent, visible: style.display !== \"none\" && style.opacity !== \"0\", bottom: style.bottom, position: style.position }); })()"}'
+
+    local dom_check="$INTERACT_RESULT"
+
+    if echo "$dom_check" | grep -q "NOT_FOUND"; then
+        fail "Subtitle element #gasoline-subtitle not found in DOM after setting text."
+        return
+    fi
+
+    local has_text=false
+    local is_visible=false
+    if echo "$dom_check" | grep -q "smoke test"; then
+        has_text=true
+    fi
+    if echo "$dom_check" | grep -q '"visible":true\|"visible": true'; then
+        is_visible=true
+    fi
+
+    if [ "$has_text" != "true" ]; then
+        fail "Subtitle element exists but text content doesn't match. DOM: $(truncate "$dom_check" 300)"
+        return
+    fi
+
+    if [ "$is_visible" != "true" ]; then
+        fail "Subtitle element has correct text but is not visible. DOM: $(truncate "$dom_check" 300)"
+        return
+    fi
+
+    # Now clear the subtitle
+    interact_and_wait "subtitle" '{"action":"subtitle","text":""}'
+    sleep 0.5
+
+    # Verify it's gone or hidden
+    interact_and_wait "execute_js" '{"action":"execute_js","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"REMOVED\"; var style = window.getComputedStyle(el); if (style.display === \"none\" || style.opacity === \"0\" || el.textContent === \"\") return \"HIDDEN\"; return \"STILL_VISIBLE:\" + el.textContent; })()"}'
+
+    local clear_check="$INTERACT_RESULT"
+
+    if echo "$clear_check" | grep -qi "REMOVED\|HIDDEN"; then
+        pass "Subtitle: set text (visible + correct content), then cleared (element removed/hidden). Full lifecycle works."
+    elif echo "$clear_check" | grep -qi "STILL_VISIBLE"; then
+        fail "Subtitle still visible after clear. Result: $(truncate "$clear_check" 200)"
+    else
+        pass "Subtitle: set and clear commands accepted. DOM check: $(truncate "$clear_check" 200)"
+    fi
+}
+run_test_s21
+
+# ── Test S.22: Subtitle as optional param on navigate ─────
+begin_test "S.22" "Subtitle as optional param on interact(navigate)" \
+    "Navigate with subtitle param in same call, verify both navigation and subtitle happen" \
+    "Tests: composable subtitle — single tool call for action + narration"
+
+run_test_s22() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    # Single call: navigate + subtitle
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","subtitle":"Navigating to example.com — verifying composable subtitle"}' 20
+
+    if echo "$INTERACT_RESULT" | grep -qi "unknown.*subtitle\|invalid.*subtitle\|unrecognized"; then
+        fail "Server rejected subtitle as unknown parameter. It must be accepted on all interact actions. Result: $(truncate "$INTERACT_RESULT" 200)"
+        return
+    fi
+
+    sleep 3
+
+    # Verify the page navigated
+    local page_response
+    page_response=$(call_tool "observe" '{"what":"page"}')
+    local page_text
+    page_text=$(extract_content_text "$page_response")
+
+    local navigated=false
+    if echo "$page_text" | grep -qi "example.com"; then
+        navigated=true
+    fi
+
+    # Verify the subtitle is visible
+    interact_and_wait "execute_js" '{"action":"execute_js","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"NOT_FOUND\"; return JSON.stringify({ text: el.textContent, visible: window.getComputedStyle(el).display !== \"none\" }); })()"}'
+
+    local subtitle_check="$INTERACT_RESULT"
+    local has_subtitle=false
+    if echo "$subtitle_check" | grep -q "composable subtitle\|example.com"; then
+        has_subtitle=true
+    fi
+
+    if [ "$navigated" = "true" ] && [ "$has_subtitle" = "true" ]; then
+        pass "Composable subtitle: single call navigated to example.com AND displayed subtitle text."
+    elif [ "$navigated" = "true" ] && [ "$has_subtitle" != "true" ]; then
+        fail "Navigation worked but subtitle not visible. Subtitle check: $(truncate "$subtitle_check" 200)"
+    elif [ "$navigated" != "true" ] && [ "$has_subtitle" = "true" ]; then
+        fail "Subtitle visible but navigation didn't work. Page: $(truncate "$page_text" 200)"
+    else
+        fail "Neither navigation nor subtitle worked. Page: $(truncate "$page_text" 200), Subtitle: $(truncate "$subtitle_check" 200)"
+    fi
+
+    # Clean up: clear subtitle
+    interact_and_wait "subtitle" '{"action":"subtitle","text":""}'
+}
+run_test_s22
 
 # ── Test S.9: Error clusters ─────────────────────────────
 begin_test "S.9" "Error clusters aggregate triggered errors" \
@@ -559,14 +687,14 @@ except: pass
     has_input=$(echo "$content_text" | grep -ci "input\|change\|focus" || true)
     has_click=$(echo "$content_text" | grep -ci "click\|submit" || true)
 
-    if [ "$submit_confirmed" = "true" ] && [ "$has_input" -gt 0 ] && [ "$has_click" -gt 0 ]; then
-        pass "Full form lifecycle: injected, filled 4 fields, submitted. $has_input input events + $has_click click/submit events captured."
-    elif [ "$submit_confirmed" = "true" ] && [ "$has_input" -gt 0 ]; then
-        pass "Form submitted and input events captured. Click/submit event not in actions (may be filtered)."
-    elif [ "$submit_confirmed" = "true" ]; then
-        fail "Form submitted but no input/click actions captured. Action tracking may be broken. Actions: $(truncate "$content_text" 200)"
-    else
+    if [ "$submit_confirmed" != "true" ]; then
         fail "Form submission not confirmed. Form lifecycle test failed. Actions: $(truncate "$content_text" 200)"
+    elif [ "$has_input" -eq 0 ]; then
+        fail "Form submitted but no input/change/focus actions captured. Actions: $(truncate "$content_text" 200)"
+    elif [ "$has_click" -eq 0 ]; then
+        fail "Form submitted but no click/submit actions captured. Actions: $(truncate "$content_text" 200)"
+    else
+        pass "Full form lifecycle: submitted, $has_input input events + $has_click click/submit events captured."
     fi
 }
 run_test_s11
@@ -686,12 +814,10 @@ except: pass
         has_start_time=$(echo "$content_text" | grep -oE '"start_time":[1-9]' | head -1)
         has_transfer=$(echo "$content_text" | grep -oE '"transfer_size":[1-9]' | head -1)
 
-        if [ -n "$has_initiator" ] && [ -n "$has_start_time" ]; then
-            pass "Real waterfall data: ${entry_count:-some} entries with URLs, timing, and initiator types."
-        elif [ -n "$has_initiator" ] || [ -n "$has_start_time" ] || [ -n "$has_transfer" ]; then
-            pass "Waterfall data: ${entry_count:-some} entries (some fields populated)."
+        if [ -n "$has_initiator" ] && [ -n "$has_start_time" ] && [ -n "$has_transfer" ]; then
+            pass "Real waterfall data: ${entry_count:-some} entries with URLs, timing, initiator types, and transfer sizes."
         else
-            fail "Waterfall entries have URLs but all timing/size fields are zero — field mapping broken."
+            fail "Waterfall entries have URLs but missing fields: initiator_type=$([ -n "$has_initiator" ] && echo 'ok' || echo 'MISSING'), start_time=$([ -n "$has_start_time" ] && echo 'ok' || echo 'MISSING'), transfer_size=$([ -n "$has_transfer" ] && echo 'ok' || echo 'MISSING')."
         fi
     else
         fail "No real URLs in waterfall. Content: $(truncate "$content_text" 200)"
@@ -742,6 +868,225 @@ run_test_s15() {
     pass "Daemon still healthy after full smoke test. status='ok'."
 }
 run_test_s15
+
+# ── Test S.17: Rich Action Results — refresh returns perf_diff ──
+begin_test "S.17" "Refresh returns perf_diff after baseline" \
+    "Navigate to a page (baseline), refresh (comparison), verify perf_diff in command result" \
+    "Tests: extension perf tracking → auto-diff → enriched action result"
+
+run_test_s17() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    # Navigate to establish baseline metrics
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com"}' 20
+    sleep 3
+
+    # First refresh — establishes baseline (no perf_diff expected)
+    interact_and_wait "refresh" '{"action":"refresh"}' 20
+    sleep 3
+
+    # Second refresh — should have perf_diff comparing to first load
+    interact_and_wait "refresh" '{"action":"refresh"}' 20
+
+    if [ -z "$INTERACT_RESULT" ]; then
+        fail "No result from refresh command."
+        return
+    fi
+
+    echo "  [refresh result]"
+    echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    if 'perf_diff' in data:
+        pd = data['perf_diff']
+        metrics = pd.get('metrics', {})
+        for k, v in list(metrics.items())[:4]:
+            print(f'    {k}: {v.get(\"before\",\"?\")} -> {v.get(\"after\",\"?\")} ({v.get(\"pct\",\"?\")})')
+        if 'summary' in pd:
+            print(f'    summary: {pd[\"summary\"][:120]}')
+    else:
+        print(f'    keys: {list(data.keys())[:8]}')
+        print(f'    (no perf_diff found)')
+except Exception as e:
+    print(f'    (parse: {e})')
+" 2>/dev/null || true
+
+    if ! echo "$INTERACT_RESULT" | grep -q '"perf_diff"'; then
+        fail "Refresh result missing perf_diff. Result: $(truncate "$INTERACT_RESULT" 300)"
+        return
+    fi
+
+    local has_metrics has_summary
+    has_metrics=$(echo "$INTERACT_RESULT" | grep -c '"metrics"' || true)
+    has_summary=$(echo "$INTERACT_RESULT" | grep -c '"summary"' || true)
+
+    if [ "$has_metrics" -gt 0 ] && [ "$has_summary" -gt 0 ]; then
+        pass "Refresh returns perf_diff with metrics and summary."
+    else
+        fail "perf_diff present but incomplete: metrics=$has_metrics, summary=$has_summary. Result: $(truncate "$INTERACT_RESULT" 300)"
+    fi
+}
+run_test_s17
+
+# ── Test S.18: Rich Action Results — click returns compact feedback ──
+begin_test "S.18" "Click returns timing_ms and dom_summary" \
+    "Click a button, verify the command result includes timing_ms and dom_summary" \
+    "Tests: always-on compact DOM feedback (~30 tokens per action)"
+
+run_test_s18() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    # Navigate to example.com for a clean page
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com"}' 20
+    sleep 2
+
+    # Inject a button that modifies the DOM when clicked
+    interact_and_wait "execute_js" '{"action":"execute_js","script":"var btn = document.createElement(\"button\"); btn.id = \"perf-test-btn\"; btn.textContent = \"Test\"; btn.onclick = function() { var d = document.createElement(\"div\"); d.textContent = \"clicked\"; document.body.appendChild(d); }; document.body.appendChild(btn); \"injected\""}'
+    sleep 0.5
+
+    # Click the button via DOM primitive
+    interact_and_wait "click" '{"action":"click","selector":"#perf-test-btn"}'
+
+    echo "  [click result]"
+    echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    print(f'    timing_ms: {data.get(\"timing_ms\", \"MISSING\")}')
+    print(f'    dom_summary: {data.get(\"dom_summary\", \"MISSING\")}')
+    print(f'    success: {data.get(\"success\", \"?\")}')
+except Exception as e:
+    print(f'    (parse: {e})')
+" 2>/dev/null || true
+
+    local has_timing has_dom_summary
+    has_timing=$(echo "$INTERACT_RESULT" | grep -c '"timing_ms"' || true)
+    has_dom_summary=$(echo "$INTERACT_RESULT" | grep -c '"dom_summary"' || true)
+
+    if [ "$has_timing" -gt 0 ] && [ "$has_dom_summary" -gt 0 ]; then
+        pass "Click result includes timing_ms and dom_summary."
+    else
+        fail "Click result missing required fields: timing_ms=$has_timing, dom_summary=$has_dom_summary. Result: $(truncate "$INTERACT_RESULT" 300)"
+    fi
+}
+run_test_s18
+
+# ── Test S.19: Rich Action Results — analyze:true returns full breakdown ──
+begin_test "S.19" "Click with analyze:true returns full breakdown" \
+    "Click with analyze:true, verify timing breakdown, dom_changes, and analysis string" \
+    "Tests: opt-in detailed profiling for interaction debugging"
+
+run_test_s19() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    # Inject a button that triggers DOM changes + a network request
+    interact_and_wait "execute_js" '{"action":"execute_js","script":"var btn2 = document.createElement(\"button\"); btn2.id = \"analyze-btn\"; btn2.textContent = \"Analyze Me\"; btn2.onclick = function() { for (var i=0; i<5; i++) { var d = document.createElement(\"p\"); d.textContent = \"item-\" + i; document.body.appendChild(d); } }; document.body.appendChild(btn2); \"injected\""}'
+    sleep 0.5
+
+    # Click with analyze:true
+    interact_and_wait "click" '{"action":"click","selector":"#analyze-btn","analyze":true}'
+
+    echo "  [analyze:true result]"
+    echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    if 'timing' in data:
+        t = data['timing']
+        print(f'    timing.total_ms: {t.get(\"total_ms\", \"?\")}')
+        print(f'    timing.js_blocking_ms: {t.get(\"js_blocking_ms\", \"?\")}')
+        print(f'    timing.render_ms: {t.get(\"render_ms\", \"?\")}')
+    elif 'timing_ms' in data:
+        print(f'    timing_ms: {data[\"timing_ms\"]} (compact, not full breakdown)')
+    if 'dom_changes' in data:
+        dc = data['dom_changes']
+        print(f'    dom_changes.summary: {dc.get(\"summary\", \"?\")}')
+        added = dc.get('added', [])
+        print(f'    dom_changes.added: {len(added)} entries')
+    elif 'dom_summary' in data:
+        print(f'    dom_summary: {data[\"dom_summary\"]} (compact)')
+    if 'analysis' in data:
+        print(f'    analysis: {data[\"analysis\"][:120]}')
+    if 'long_tasks' in data:
+        print(f'    long_tasks: {data[\"long_tasks\"]}')
+    if 'layout_shifts' in data:
+        print(f'    layout_shifts: {data[\"layout_shifts\"]}')
+    print(f'    all keys: {list(data.keys())}')
+except Exception as e:
+    print(f'    (parse: {e})')
+" 2>/dev/null || true
+
+    local has_timing_breakdown has_dom_changes has_analysis
+    has_timing_breakdown=$(echo "$INTERACT_RESULT" | grep -c '"total_ms"\|"js_blocking_ms"\|"render_ms"' || true)
+    has_dom_changes=$(echo "$INTERACT_RESULT" | grep -c '"dom_changes"' || true)
+    has_analysis=$(echo "$INTERACT_RESULT" | grep -c '"analysis"' || true)
+
+    if [ "$has_timing_breakdown" -gt 0 ] && [ "$has_dom_changes" -gt 0 ] && [ "$has_analysis" -gt 0 ]; then
+        pass "analyze:true returns full breakdown: timing, dom_changes, and analysis."
+    else
+        fail "analyze:true missing required fields: timing_breakdown=$has_timing_breakdown, dom_changes=$has_dom_changes, analysis=$has_analysis. Result: $(truncate "$INTERACT_RESULT" 300)"
+    fi
+}
+run_test_s19
+
+# ── Test S.20: Rich Action Results — User Timing in observe(performance) ──
+begin_test "S.20" "User Timing entries in observe(performance)" \
+    "Insert performance.mark/measure via execute_js, verify they appear in observe(performance)" \
+    "Tests: extension captures standard User Timing API entries"
+
+run_test_s20() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    local marker="gasoline_uat_$(date +%s)"
+
+    # Insert performance marks and a measure
+    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"script\":\"performance.mark('${marker}_start'); for(var i=0;i<1000000;i++){} performance.mark('${marker}_end'); performance.measure('${marker}_duration','${marker}_start','${marker}_end'); 'marked'\"}"
+    sleep 2
+
+    # Check observe(performance) for user timing entries
+    local response
+    response=$(call_tool "observe" '{"what":"performance"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    echo "  [user timing check]"
+    echo "$content_text" | python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    ut = data.get('user_timing', {})
+    marks = ut.get('marks', [])
+    measures = ut.get('measures', [])
+    print(f'    marks: {len(marks)}')
+    for m in marks[:4]:
+        print(f'      {m.get(\"name\",\"?\")} @ {m.get(\"time\",m.get(\"startTime\",\"?\"))}')
+    print(f'    measures: {len(measures)}')
+    for m in measures[:2]:
+        print(f'      {m.get(\"name\",\"?\")} duration={m.get(\"duration\",\"?\")}ms')
+except Exception as e:
+    print(f'    (no user_timing in response: {e})')
+" 2>/dev/null || true
+
+    if echo "$content_text" | grep -q "$marker"; then
+        pass "User Timing markers ($marker) found in observe(performance)."
+    else
+        fail "User Timing marker '$marker' not found in observe(performance). Content keys: $(echo "$content_text" | python3 -c 'import sys,json; print(list(json.loads(sys.stdin.read()).keys()))' 2>/dev/null || echo 'parse error')"
+    fi
+}
+run_test_s20
 
 # ── Test S.16: Graceful shutdown ─────────────────────────
 begin_test "S.16" "Graceful shutdown via --stop" \

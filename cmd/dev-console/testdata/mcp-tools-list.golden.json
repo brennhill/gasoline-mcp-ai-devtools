@@ -211,6 +211,7 @@
               "changes",
               "timeline",
               "error_clusters",
+              "error_bundles",
               "history",
               "security_audit",
               "third_party_audit",

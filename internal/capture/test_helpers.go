@@ -4,7 +4,11 @@
 
 package capture
 
-import "time"
+import (
+	"time"
+
+	"github.com/dev-console/dev-console/internal/queries"
+)
 
 // AddNetworkBodiesForTest adds network bodies directly to the buffer (TEST ONLY)
 // Normal production code should use HTTP handlers
@@ -43,5 +47,29 @@ func (c *Capture) AddEnhancedActionsForTest(actions []EnhancedAction) {
 		c.enhancedActions = append(c.enhancedActions, action)
 		c.actionAddedAt = append(c.actionAddedAt, now)
 		c.actionTotalAdded++
+	}
+}
+
+// SetPilotEnabled sets the pilot enabled state (TEST ONLY)
+func (c *Capture) SetPilotEnabled(enabled bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.pilotEnabled = enabled
+}
+
+// GetLastPendingQuery returns the most recently created pending query (TEST ONLY)
+// Returns nil if no queries exist.
+func (c *Capture) GetLastPendingQuery() *queries.PendingQuery {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if len(c.pendingQueries) == 0 {
+		return nil
+	}
+	last := c.pendingQueries[len(c.pendingQueries)-1]
+	return &queries.PendingQuery{
+		Type:          last.query.Type,
+		Params:        last.query.Params,
+		TabID:         last.query.TabID,
+		CorrelationID: last.query.CorrelationID,
 	}
 }

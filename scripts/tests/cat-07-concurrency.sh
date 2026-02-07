@@ -18,26 +18,34 @@ run_test_7_1() {
     local total=10
     local request='{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
-    # Fork 10 background processes
+    # Fork 10 background processes, tracking PIDs to avoid killing daemon
+    local pids=()
     for i in $(seq 1 $total); do
         (
             echo "$request" | $TIMEOUT_CMD 15 $WRAPPER --port "$PORT" > "$concurrent_dir/resp_${i}.txt" 2>/dev/null
         ) &
+        pids+=($!)
     done
 
     # Wait for all with a timeout
     local waited=0
     while [ "$waited" -lt 30 ]; do
-        local running
-        running=$(jobs -r | wc -l | tr -d ' ')
-        if [ "$running" -eq 0 ]; then
+        local still_running=0
+        for pid in "${pids[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then
+                still_running=$((still_running + 1))
+            fi
+        done
+        if [ "$still_running" -eq 0 ]; then
             break
         fi
         sleep 0.5
         waited=$((waited + 1))
     done
-    # Kill any stragglers
-    jobs -p 2>/dev/null | xargs kill 2>/dev/null || true
+    # Kill only the forked test processes (not the daemon)
+    for pid in "${pids[@]}"; do
+        kill "$pid" 2>/dev/null || true
+    done
     wait 2>/dev/null
 
     # Count successes
@@ -68,7 +76,9 @@ begin_test "7.2" "20 rapid sequential tool calls" \
 run_test_7_2() {
     local total=20
     local success=0
-    local modes=("page" "logs" "network_waterfall" "errors" "vitals" "actions" "tabs" "pilot" "performance" "timeline")
+    # Exclude network_waterfall — it does on-demand extension queries that can timeout without extension.
+    # It's tested separately in cat-02 and cat-11.
+    local modes=("page" "logs" "errors" "vitals" "actions" "tabs" "pilot" "performance" "timeline" "error_clusters")
     local mode_count=${#modes[@]}
 
     for i in $(seq 1 $total); do
@@ -76,7 +86,7 @@ run_test_7_2() {
         local mode="${modes[$mode_idx]}"
         local resp
         resp=$(call_tool "observe" "{\"what\":\"$mode\"}")
-        if check_valid_jsonrpc "$resp"; then
+        if check_valid_jsonrpc "$resp" && check_not_error "$resp"; then
             success=$((success + 1))
         fi
     done
