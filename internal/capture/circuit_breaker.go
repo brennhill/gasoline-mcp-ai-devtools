@@ -1,7 +1,6 @@
 // circuit_breaker.go — Rate limiting and circuit breaker state machine.
 // Extracted from the Capture god object. Owns its own sync.RWMutex,
-// independent of Capture.mu. Cross-cutting dependencies (memory, lifecycle)
-// are injected as function callbacks.
+// independent of Capture.mu. Uses rate-based triggering only.
 package capture
 
 import (
@@ -24,19 +23,16 @@ type CircuitBreaker struct {
 	circuitOpenedAt      time.Time
 	circuitReason        string
 
-	// Injected: returns current buffer memory in bytes (acquires Capture.mu.RLock)
-	getMemory func() int64
 	// Injected: emits lifecycle events (circuit_opened, circuit_closed)
 	emitEvent func(event string, data map[string]any)
 }
 
 // NewCircuitBreaker creates a CircuitBreaker with injected dependencies.
-func NewCircuitBreaker(getMemory func() int64, emitEvent func(string, map[string]any)) *CircuitBreaker {
+func NewCircuitBreaker(emitEvent func(string, map[string]any)) *CircuitBreaker {
 	now := time.Now()
 	return &CircuitBreaker{
 		rateWindowStart:      now,
 		lastBelowThresholdAt: now,
-		getMemory:            getMemory,
 		emitEvent:            emitEvent,
 	}
 }
@@ -81,17 +77,12 @@ func (cb *CircuitBreaker) RecordEvents(count int) {
 }
 
 // CheckRateLimit returns true if the request should be rejected (429).
-// Checks: 1) circuit open, 2) memory hard limit, 3) window rate.
+// Checks: 1) circuit open, 2) window rate.
 func (cb *CircuitBreaker) CheckRateLimit() bool {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
 
 	if cb.circuitOpen {
-		return true
-	}
-
-	// Memory hard limit — immediate rejection
-	if cb.getMemory() > MemoryHardLimit {
 		return true
 	}
 
@@ -118,7 +109,7 @@ func (cb *CircuitBreaker) tickRateWindow() {
 }
 
 // evaluateCircuit implements the circuit breaker FSM.
-// CLOSED→OPEN: streak>=5 OR memory>50MB. OPEN→CLOSED: streak=0 AND below for 10s AND memory<30MB.
+// CLOSED→OPEN: streak>=5. OPEN→CLOSED: streak=0 AND below for 10s.
 // Caller must hold lock.
 func (cb *CircuitBreaker) evaluateCircuit() {
 	if !cb.circuitOpen {
@@ -128,24 +119,10 @@ func (cb *CircuitBreaker) evaluateCircuit() {
 			cb.circuitOpenedAt = time.Now()
 			cb.circuitReason = "rate_exceeded"
 			go cb.emitEvent("circuit_opened", map[string]any{
-				"reason":       "rate_exceeded",
-				"streak":       cb.rateLimitStreak,
-				"rate":         cb.windowEventCount,
-				"threshold":    RateLimitThreshold,
-				"memory_bytes": cb.getMemory(),
-			})
-			return
-		}
-		// Memory-based opening
-		if cb.getMemory() > MemoryHardLimit {
-			cb.circuitOpen = true
-			cb.circuitOpenedAt = time.Now()
-			cb.circuitReason = "memory_exceeded"
-			go cb.emitEvent("circuit_opened", map[string]any{
-				"reason":       "memory_exceeded",
-				"memory_bytes": cb.getMemory(),
-				"hard_limit":   MemoryHardLimit,
-				"rate":         cb.windowEventCount,
+				"reason":    "rate_exceeded",
+				"streak":    cb.rateLimitStreak,
+				"rate":      cb.windowEventCount,
+				"threshold": RateLimitThreshold,
 			})
 			return
 		}
@@ -162,9 +139,6 @@ func (cb *CircuitBreaker) evaluateCircuit() {
 	if time.Since(cb.lastBelowThresholdAt) < time.Duration(circuitCloseSeconds)*time.Second {
 		return
 	}
-	if cb.getMemory() > circuitCloseMemoryLimit {
-		return
-	}
 
 	// All conditions met — close
 	openDuration := time.Since(cb.circuitOpenedAt)
@@ -176,7 +150,6 @@ func (cb *CircuitBreaker) evaluateCircuit() {
 	go cb.emitEvent("circuit_closed", map[string]any{
 		"previous_reason":    prevReason,
 		"open_duration_secs": openDuration.Seconds(),
-		"memory_bytes":       cb.getMemory(),
 		"rate":               cb.windowEventCount,
 	})
 }
@@ -189,7 +162,6 @@ func (cb *CircuitBreaker) GetHealthStatus() HealthResponse {
 	resp := HealthResponse{
 		CircuitOpen: cb.circuitOpen,
 		CurrentRate: cb.windowEventCount,
-		MemoryBytes: cb.getMemory(),
 		Reason:      cb.circuitReason,
 	}
 	if cb.circuitOpen {

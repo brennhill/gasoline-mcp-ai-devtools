@@ -354,9 +354,8 @@ const (
 	MaxWSEvents        = 500
 	MaxNetworkBodies   = 100
 	MaxExtensionLogs   = 500
-	MaxEnhancedActions = 50
+	MaxEnhancedActions = 1000
 	RateLimitThreshold = 1000
-	MemoryHardLimit    = 50 * 1024 * 1024 // 50MB
 
 	maxActiveConns    = 20
 	maxClosedConns    = 10
@@ -374,10 +373,9 @@ const (
 	maxResponseBodySize     = 16384           // 16KB
 	wsBufferMemoryLimit     = 4 * 1024 * 1024 // 4MB
 	nbBufferMemoryLimit     = 8 * 1024 * 1024 // 8MB
-	circuitOpenStreakCount  = 5                // consecutive seconds over threshold to open circuit
-	circuitCloseSeconds     = 10               // seconds below threshold to close circuit
-	circuitCloseMemoryLimit = 30 * 1024 * 1024 // 30MB - memory must be below this to close circuit
-	rateWindow              = 5 * time.Second  // rolling window for msg/s calculation
+	circuitOpenStreakCount = 5               // consecutive seconds over threshold to open circuit
+	circuitCloseSeconds   = 10              // seconds below threshold to close circuit
+	rateWindow            = 5 * time.Second // rolling window for msg/s calculation
 )
 
 // ============================================
@@ -438,16 +436,6 @@ type WSConnectionTracker struct {
 	connOrder   []string                     // Insertion order for LRU eviction of active connections.
 }
 
-// MemoryState tracks memory enforcement state including eviction counters
-// and minimal mode flag.
-type MemoryState struct {
-	minimalMode      bool
-	lastEvictionTime time.Time
-	totalEvictions   int
-	evictedEntries   int
-	simulatedMemory  int64
-}
-
 // ============================================
 // Capture
 // ============================================
@@ -480,7 +468,7 @@ type Capture struct {
 	// WebSocket Event Buffer (Ring Buffer)
 	// ============================================
 
-	wsEvents      []WebSocketEvent // Ring buffer of WS events (cap: effectiveWSCapacity). Kept in sync with wsAddedAt.
+	wsEvents      []WebSocketEvent // Ring buffer of WS events (cap: MaxWSEvents). Kept in sync with wsAddedAt.
 	wsAddedAt     []time.Time      // Parallel slice: insertion time for each wsEvents[i]. Used for TTL filtering and eviction order (oldest first).
 	wsTotalAdded  int64            // Monotonic counter: total events ever added (never reset/decremented). Survives eviction. Used for cursor-based delta queries.
 	wsMemoryTotal int64            // Approximate memory: sum of wsEventMemory(&wsEvents[i]). Estimate: len(Data)+200 bytes per event. Updated incrementally; recalc on critical eviction.
@@ -549,7 +537,6 @@ type Capture struct {
 	a11y        A11yCache        // Accessibility audit cache. Protected by parent mu (no separate lock). Accessed via getA11yCacheEntry/setA11yCacheEntry.
 	perf        PerformanceStore // Performance snapshots and baselines. Protected by parent mu (no separate lock).
 	session     SessionTracker   // Session-level performance aggregation. Protected by parent mu (no separate lock).
-	mem         MemoryState      // Memory tracking and enforcement state. Protected by parent mu (no separate lock).
 	schemaStore SchemaStore      // API schema detection and tracking. HAS OWN LOCK (api_schema.go:199). Accessed by observer goroutines outside mu.
 	cspGen      CSPGenerator     // CSP policy generation. HAS OWN LOCK (csp.go:36). Accessed by observer goroutines outside mu.
 
@@ -613,10 +600,7 @@ func NewCapture() *Capture {
 		rec:   NewRecordingManager(),
 	}
 	c.qd = NewQueryDispatcher()
-	c.circuit = NewCircuitBreaker(
-		func() int64 { return c.getMemoryForCircuit() },
-		c.emitLifecycleEvent,
-	)
+	c.circuit = NewCircuitBreaker(c.emitLifecycleEvent)
 
 	// Note: schemaStore, clientRegistry, cspGen are initialized by capture.New() in capture package
 	// to avoid circular import (those packages import capture for NetworkBody, WebSocketEvent, etc.)

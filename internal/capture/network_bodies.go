@@ -26,9 +26,6 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 		c.networkAddedAt = c.networkAddedAt[:minLen]
 	}
 
-	// Enforce memory limits before adding
-	c.enforceMemory()
-
 	c.networkTotalAdded += int64(len(bodies))
 	now := time.Now()
 
@@ -64,18 +61,17 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 		c.nbMemoryTotal += nbEntryMemory(&bodies[i])
 	}
 
-	// Enforce max count (respecting minimal mode)
-	capacity := c.effectiveNBCapacity()
-	if len(c.networkBodies) > capacity {
-		keep := len(c.networkBodies) - capacity
+	// Enforce max count
+	if len(c.networkBodies) > MaxNetworkBodies {
+		keep := len(c.networkBodies) - MaxNetworkBodies
 		// Subtract memory for evicted entries
 		for j := 0; j < keep; j++ {
 			c.nbMemoryTotal -= nbEntryMemory(&c.networkBodies[j])
 		}
-		newBodies := make([]NetworkBody, capacity)
+		newBodies := make([]NetworkBody, MaxNetworkBodies)
 		copy(newBodies, c.networkBodies[keep:])
 		c.networkBodies = newBodies
-		newAddedAt := make([]time.Time, capacity)
+		newAddedAt := make([]time.Time, MaxNetworkBodies)
 		copy(newAddedAt, c.networkAddedAt[keep:])
 		c.networkAddedAt = newAddedAt
 	}
