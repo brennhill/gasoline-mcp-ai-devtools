@@ -14,7 +14,6 @@ export async function executeDOMQuery(params) {
     const cappedDepth = Math.min(max_depth || 3, DOM_QUERY_MAX_DEPTH);
     const matches = [];
     for (let i = 0; i < Math.min(elements.length, DOM_QUERY_MAX_ELEMENTS); i++) {
-        // eslint-disable-next-line security/detect-object-injection -- Safe: i is bounded by Math.min()
         const el = elements[i];
         if (!el)
             continue;
@@ -56,7 +55,6 @@ function serializeDOMElement(el, includeStyles, styleProps, includeChildren, max
         entry.styles = {};
         if (styleProps && styleProps.length > 0) {
             for (const prop of styleProps) {
-                // eslint-disable-next-line security/detect-object-injection -- Safe: prop is CSS property name from validated styleProps array
                 entry.styles[prop] = computed.getPropertyValue(prop);
             }
         }
@@ -69,7 +67,6 @@ function serializeDOMElement(el, includeStyles, styleProps, includeChildren, max
         entry.children = [];
         const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS);
         for (let i = 0; i < maxChildren; i++) {
-            // eslint-disable-next-line security/detect-object-injection -- Safe: i is bounded by maxChildren
             const child = el.children[i];
             if (child) {
                 entry.children.push(serializeDOMElement(child, false, undefined, true, maxDepth, currentDepth + 1));
@@ -140,7 +137,7 @@ function loadAxeCore() {
         // Timeout after 5 seconds
         setTimeout(() => {
             clearInterval(checkInterval);
-            reject(new Error('axe-core not available - content script may not have loaded it'));
+            reject(new Error('Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit.'));
         }, 5000);
     });
 }

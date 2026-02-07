@@ -126,7 +126,7 @@ export async function testConnection() {
     try {
         const resp = await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) });
         if (!resp.ok) {
-            throw new Error(`HTTP ${resp.status}`);
+            throw new Error(`Failed to check server health at ${serverUrl}: HTTP ${resp.status} ${resp.statusText}`);
         }
         const data = (await resp.json());
         if (resultEl) {
@@ -135,11 +135,23 @@ export async function testConnection() {
             resultEl.textContent = `Connected — v${data.version}, ${data.logs?.entries ?? 0} entries`;
         }
     }
-    catch {
+    catch (err) {
         if (resultEl) {
             resultEl.style.background = 'rgba(248, 81, 73, 0.1)';
             resultEl.style.color = '#f85149';
-            resultEl.textContent = 'Failed — is the server running? Run: npx gasoline-mcp';
+            const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+            if (errorMsg.includes('timeout')) {
+                resultEl.textContent = `Failed — server not responding at ${serverUrl}. Is it running? Run: npx gasoline-mcp`;
+            }
+            else if (errorMsg.includes('HTTP 404')) {
+                resultEl.textContent = `Failed — server running but health endpoint not found. Is this Gasoline MCP v5.8.0+?`;
+            }
+            else if (errorMsg.includes('HTTP')) {
+                resultEl.textContent = `Failed — server error (${errorMsg}). Check server logs.`;
+            }
+            else {
+                resultEl.textContent = `Failed — ${errorMsg}. Is the server running? Run: npx gasoline-mcp`;
+            }
         }
     }
     finally {

@@ -51,7 +51,6 @@ export function initWindowMessageListener() {
         }
         // Handle MESSAGE_MAP forwarding - attach tabId to every message
         if (messageType && messageType in MESSAGE_MAP && payload && typeof payload === 'object') {
-            // eslint-disable-next-line security/detect-object-injection -- Safe: messageType checked with 'in' operator before access
             const mappedType = MESSAGE_MAP[messageType];
             if (mappedType) {
                 safeSendMessage({

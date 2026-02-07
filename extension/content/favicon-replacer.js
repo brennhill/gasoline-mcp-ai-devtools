@@ -126,7 +126,6 @@ function startFlicker() {
         // Update favicon
         const gasolineIcon = document.getElementById('gasoline-favicon');
         if (gasolineIcon) {
-            // eslint-disable-next-line security/detect-object-injection -- Safe: currentFrameIndex is bounded animation frame counter
             const iconPath = `icons/${flameFrames[currentFrameIndex]}`;
             gasolineIcon.href = chrome.runtime.getURL(iconPath);
         }

@@ -11,7 +11,6 @@ export function formatFileSize(bytes) {
     const units = ['B', 'KB', 'MB', 'GB'];
     const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
     const value = bytes / Math.pow(1024, i);
-    // eslint-disable-next-line security/detect-object-injection -- Safe: i is bounded by Math.min(units.length - 1)
     return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
 }
 /**

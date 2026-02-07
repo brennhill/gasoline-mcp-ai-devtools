@@ -1634,7 +1634,60 @@ function createConnectionTracker(id, url) {
     },
     /**
      * Record a message for stats and schema detection
-     */
+     *
+     * WEBSOCKET PAYLOAD SCHEMA INFERENCE LOGIC:
+     *
+     * This method implements a three-phase schema detection strategy to identify the
+     * shape of JSON messages flowing over a WebSocket connection. Understanding the
+     * schema is crucial for debugging: it reveals whether messages are uniform (good
+     * for testing) or polymorphic (suggests different message types or errors).
+     *
+     * PHASE 1: BOOTSTRAP DETECTION (messages 1-5)
+     *   Purpose: Quickly infer the "canonical" schema from the first JSON messages.
+     *   Strategy:
+     *     - Extract sorted object keys from each incoming JSON message
+     *     - Stop after 5 messages (samples are enough to detect schema; balance between
+     *       coverage and memory/CPU cost)
+     *     - Compute consistency: if all 5 messages have identical key sets, mark as
+     *       consistent=true
+     *     - Store key strings as comma-separated sorted lists (e.g., "id,status,timestamp")
+     *   Why 5: Statistically sufficient for most API patterns. First message might be
+     *     special (connection ACK). By message 5, the pattern is clear.
+     *   Early exit: If not JSON or message is array, skip (only track object schemas).
+     *
+     * PHASE 2: CONSISTENCY CHECKING (after first 2 messages)
+     *   Trigger: Once _schemaKeys.length >= 2, begin checking if all keys match the first.
+     *   Result: Sets _schemaConsistent = boolean indicating if messages have uniform schema.
+     *   Why check early: Detect schema changes immediately without waiting for all 5 messages.
+     *   Performance: O(n) single pass over _schemaKeys array; no redundant comparisons.
+     *
+     * PHASE 3: VARIANT TRACKING (messages 6+)
+     *   Purpose: After bootstrap, track schema variants without resetting detection.
+     *   Strategy:
+     *     - Continue parsing incoming JSON messages after _schemaDetected = true
+     *     - Build variants Map: key -> count (e.g., "id,status" -> 5 occurrences)
+     *     - Memory bound: Cap Map at 50 entries. Only add new variants if under cap;
+     *       always increment existing keys (ensures frequent patterns stay tracked).
+     *     - This bounds memory to ~50KB even on long-lived connections.
+     *   Why variants matter: Detects polymorphic message types (e.g., "id,status,data"
+     *     vs "id,error,code"). Useful for debugging API versioning issues.
+     *   Why cap variants: Long-running connections might emit hundreds of unique schemas.
+     *     Capping prevents unbounded growth while keeping the 50 most frequent variants.
+     *
+     * SAMPLING RATE DECISION:
+     *   The schema info (keys, consistency, variants) flows to getSchema() which returns:
+     *     - detectedKeys: union of all seen keys (for understanding message structure)
+     *     - consistent: boolean (true if all bootstrap messages matched)
+     *     - variants: array of key strings (top variants seen after bootstrap)
+     *   MCP observe handler uses this to emit SchemaInfo in WebSocket capture events,
+     *   helping users understand payload patterns without logging every message.
+     *
+     * MESSAGE RATE TRACKING:
+     *   Maintains _messageTimestamps for the last 5 seconds (sliding window). This powers
+     *   shouldSample() which implements adaptive sampling: high-frequency connections
+     *   (>200 msg/s) sample at 1-in-100; low-frequency (<2 msg/s) capture all messages.
+     *   This ensures detailed visibility on slow links without bloating on high-volume.
+    */
     recordMessage(direction, data) {
       this.messageCount++;
       const size = data ? typeof data === "string" ? data.length : getSize(data) : 0;
@@ -2138,7 +2191,7 @@ function loadAxeCore() {
     }, 100);
     setTimeout(() => {
       clearInterval(checkInterval);
-      reject(new Error("axe-core not available - content script may not have loaded it"));
+      reject(new Error("Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit."));
     }, 5e3);
   });
 }

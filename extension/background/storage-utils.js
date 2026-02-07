@@ -68,7 +68,6 @@ export function getSessionValue(key, callback) {
         return;
     }
     storage.session.get([key], (result) => {
-        // eslint-disable-next-line security/detect-object-injection -- Safe: key is string parameter from caller
         callback(result[key]);
     });
 }
@@ -136,7 +135,6 @@ export function getLocalValue(key, callback) {
             callback(undefined);
             return;
         }
-        // eslint-disable-next-line security/detect-object-injection -- Safe: key is string parameter from caller
         callback(result[key]);
     });
 }

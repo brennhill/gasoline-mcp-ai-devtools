@@ -36,7 +36,6 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
         if (failures <= 0)
             return 0;
         const idx = Math.min(failures - 1, backoffSchedule.length - 1);
-        // eslint-disable-next-line security/detect-object-injection -- Safe: idx is bounded by array length
         return backoffSchedule[idx];
     }
     const wrappedCircuitBreaker = {
@@ -56,7 +55,8 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
         }
         const state = cb.getState();
         if (state === 'open') {
-            throw new Error('Circuit breaker is open');
+            const stats = cb.getStats();
+            throw new Error(`Cannot send batch: circuit breaker is open after ${stats.consecutiveFailures} consecutive failures. Will retry automatically.`);
         }
         try {
             const result = await sendFn(entries);

@@ -114,6 +114,60 @@ export function computeSelectors(element) {
         return { cssPath: '' };
     const selectors = {};
     const el = element;
+    // MULTI-STRATEGY SELECTOR FALLBACK ORDER & RATIONALE:
+    //
+    // Playwright test generation requires reliable selectors to reproduce user interactions.
+    // This function implements a priority-based fallback strategy to handle diverse DOM
+    // patterns. Each selector type has different reliability characteristics:
+    //
+    // PRIORITY 1: TEST ID (data-testid, data-test-id, data-cy)
+    //   Why first: Explicitly designed for testing, guaranteed unique, stable across refactors.
+    //   Reliability: Highest. Used by developers as test hooks. Never changes in production.
+    //   Fallback trigger: Element has no test attribute.
+    //
+    // PRIORITY 2: ARIA LABEL (aria-label)
+    //   Why second: Accessibility-first, explicitly describes element, human-readable.
+    //   Reliability: High. Well-maintained in modern apps. Semantic meaning stable.
+    //   Fallback trigger: Element has no aria-label or it's empty.
+    //   Edge case: Ignored if empty or whitespace-only.
+    //
+    // PRIORITY 3: ROLE + ACCESSIBLE NAME (role + implicit/explicit name)
+    //   Why third: Combines semantic role (button, link, textbox) with accessible name
+    //   (either aria-label or text content). Playwright's getByRole() is powerful for
+    //   interactive elements but requires a name to disambiguate siblings.
+    //   Reliability: Medium-high. Role is stable; text content can change in i18n apps.
+    //   Edge cases:
+    //     - Elements without roles (divs, spans) fall through
+    //     - Multiple elements with same role+name require additional strategies
+    //   Optimization: Only considers implicit roles from HTML semantics or explicit @role
+    //
+    // PRIORITY 4: ID (element.id)
+    //   Why fourth: Simple, unique within page, but often dynamically generated or missing.
+    //   Reliability: Medium. Some frameworks auto-generate IDs; some don't use IDs at all.
+    //   Risk: If ID is dynamic (e.g., "mui-123"), test becomes fragile.
+    //   Advantage: Playwright's locator('#id') is efficient (native DOM API).
+    //
+    // PRIORITY 5: TEXT CONTENT (innerText/textContent for clickables)
+    //   Why fifth: Accessible fallback for buttons, links, list items. Users click text.
+    //   Reliability: Low-medium. Changes with UX copy; vulnerable to localization.
+    //   Constraint: Only used for elements in CLICKABLE_TAGS (button, a, li, etc.)
+    //   or elements with explicit role="button". Prevents false matches on labels, headers.
+    //   Truncation: Limited to SELECTOR_TEXT_MAX_LENGTH (128 chars) to avoid long predicates.
+    //
+    // PRIORITY 6: CSS PATH (always computed as fallback)
+    //   Why last: Brittle but guaranteed to exist. DOM tree structure often changes during
+    //   refactoring or with dynamic content. Used only when all else fails.
+    //   Computation: Via computeCssPath() which builds CSS selectors up the tree, filtering
+    //   dynamic classes and stopping at elements with IDs.
+    //   Risk: Highly sensitive to DOM changes. Test breaks if any parent node is removed.
+    //
+    // EDGE CASES HANDLED:
+    //   - No attributes: Falls through to CSS path (always safe).
+    //   - Dynamic classes (css-*, sc-*, emotion-*): Filtered by isDynamicClass().
+    //   - iframes: CSS path may not work cross-frame; role/text often more reliable.
+    //   - Shadow DOM: Element attributes visible but CSS path doesn't cross boundaries.
+    //   - Hidden elements: All strategies still apply (Playwright can interact with hidden).
+    //   - Dynamically created elements: All text/ID strategies remain valid; CSS path may shift.
     // Priority 1: Test ID
     const testId = (el.getAttribute &&
         (el.getAttribute('data-testid') || el.getAttribute('data-test-id') || el.getAttribute('data-cy'))) ||
