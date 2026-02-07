@@ -569,18 +569,10 @@ type Capture struct {
 	trackingUpdated time.Time // When tracking status last refreshed from extension.
 
 	// ============================================
-	// Polling Activity Log (Circular Buffer, size 50)
+	// Debug Logging (Own Lock)
 	// ============================================
 
-	pollingLog      []PollingLogEntry // Circular buffer of GET /pending-queries and POST /settings calls (50 entries). No TTL. For operator debugging.
-	pollingLogIndex int               // Next write position (0-49, wraps to 0 after 49).
-
-	// ============================================
-	// HTTP Debug Log (Circular Buffer, size 50)
-	// ============================================
-
-	httpDebugLog      []HTTPDebugEntry // Circular buffer of HTTP requests/responses (50 entries). No TTL. For operator debugging.
-	httpDebugLogIndex int              // Next write position (0-49, wraps to 0 after 49).
+	debug DebugLogger // Polling activity + HTTP debug circular buffers. Has own sync.Mutex — independent of Capture.mu.
 
 	// ============================================
 	// Recording Management (Flow Recording & Playback)
@@ -665,9 +657,8 @@ func NewCapture() *Capture {
 			cacheOrder: make([]string, 0),
 			inflight:   make(map[string]*a11yInflightEntry),
 		},
-		pollingLog:   make([]PollingLogEntry, 50),  // Pre-allocate 50-entry circular buffer
-		httpDebugLog: make([]HTTPDebugEntry, 50), // Pre-allocate 50-entry circular buffer for HTTP debug
-		recordings:   make(map[string]*recording.Recording), // Active recordings in memory
+		debug:      NewDebugLogger(),
+		recordings: make(map[string]*recording.Recording), // Active recordings in memory
 	}
 	c.observeSem = make(chan struct{}, 4)
 	c.queryCond = sync.NewCond(&c.mu)
