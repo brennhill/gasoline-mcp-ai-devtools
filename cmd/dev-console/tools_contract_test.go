@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/queries"
 )
 
@@ -118,6 +119,11 @@ func newGenerateContractEnv(t *testing.T) *generateContractEnv {
 
 func TestContractGenerate_Reproduction(t *testing.T) {
 	env := newGenerateContractEnv(t)
+	// Seed actions so reproduction has data to generate from
+	env.capture.AddEnhancedActionsForTest([]capture.EnhancedAction{
+		{Type: "navigate", Timestamp: 1000, URL: "https://example.com", ToURL: "https://example.com"},
+		{Type: "click", Timestamp: 2000, URL: "https://example.com", Selectors: map[string]any{"text": "Go"}},
+	})
 	result, ok := env.callGenerate(t, `{"format":"reproduction"}`)
 	if !ok {
 		t.Fatal("generate reproduction: no result")
