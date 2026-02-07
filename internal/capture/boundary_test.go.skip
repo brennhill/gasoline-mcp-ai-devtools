@@ -13,12 +13,12 @@ func TestBoundaryStart(t *testing.T) {
 
 	// Start a test boundary
 	capture.mu.Lock()
-	capture.activeTestIDs["test-1"] = true
+	capture.ext.activeTestIDs["test-1"] = true
 	capture.mu.Unlock()
 
 	// Verify the test ID is active
 	capture.mu.RLock()
-	isActive := capture.activeTestIDs["test-1"]
+	isActive := capture.ext.activeTestIDs["test-1"]
 	capture.mu.RUnlock()
 
 	if !isActive {
@@ -32,16 +32,16 @@ func TestBoundaryEnd(t *testing.T) {
 
 	// Start and then end a test boundary
 	capture.mu.Lock()
-	capture.activeTestIDs["test-1"] = true
+	capture.ext.activeTestIDs["test-1"] = true
 	capture.mu.Unlock()
 
 	capture.mu.Lock()
-	delete(capture.activeTestIDs, "test-1")
+	delete(capture.ext.activeTestIDs, "test-1")
 	capture.mu.Unlock()
 
 	// Verify the test ID is no longer active
 	capture.mu.RLock()
-	isActive := capture.activeTestIDs["test-1"]
+	isActive := capture.ext.activeTestIDs["test-1"]
 	capture.mu.RUnlock()
 
 	if isActive {
@@ -55,17 +55,17 @@ func TestConcurrentBoundaries(t *testing.T) {
 
 	// Start multiple test boundaries
 	capture.mu.Lock()
-	capture.activeTestIDs["test-1"] = true
-	capture.activeTestIDs["test-2"] = true
-	capture.activeTestIDs["test-3"] = true
+	capture.ext.activeTestIDs["test-1"] = true
+	capture.ext.activeTestIDs["test-2"] = true
+	capture.ext.activeTestIDs["test-3"] = true
 	capture.mu.Unlock()
 
 	// Verify all are active
 	capture.mu.RLock()
-	count := len(capture.activeTestIDs)
-	test1Active := capture.activeTestIDs["test-1"]
-	test2Active := capture.activeTestIDs["test-2"]
-	test3Active := capture.activeTestIDs["test-3"]
+	count := len(capture.ext.activeTestIDs)
+	test1Active := capture.ext.activeTestIDs["test-1"]
+	test2Active := capture.ext.activeTestIDs["test-2"]
+	test3Active := capture.ext.activeTestIDs["test-3"]
 	capture.mu.RUnlock()
 
 	if count != 3 {
@@ -77,12 +77,12 @@ func TestConcurrentBoundaries(t *testing.T) {
 
 	// End one boundary while others remain
 	capture.mu.Lock()
-	delete(capture.activeTestIDs, "test-2")
+	delete(capture.ext.activeTestIDs, "test-2")
 	capture.mu.Unlock()
 
 	capture.mu.RLock()
-	count = len(capture.activeTestIDs)
-	test2Active = capture.activeTestIDs["test-2"]
+	count = len(capture.ext.activeTestIDs)
+	test2Active = capture.ext.activeTestIDs["test-2"]
 	capture.mu.RUnlock()
 
 	if count != 2 {
@@ -99,8 +99,8 @@ func TestNetworkBodyTagging(t *testing.T) {
 
 	// Start two test boundaries
 	capture.mu.Lock()
-	capture.activeTestIDs["test-a"] = true
-	capture.activeTestIDs["test-b"] = true
+	capture.ext.activeTestIDs["test-a"] = true
+	capture.ext.activeTestIDs["test-b"] = true
 	capture.mu.Unlock()
 
 	// Add a network body
@@ -144,7 +144,7 @@ func TestNetworkBodyFiltering(t *testing.T) {
 
 	// Start test-a, add a body, end test-a, start test-b, add another body
 	capture.mu.Lock()
-	capture.activeTestIDs["test-a"] = true
+	capture.ext.activeTestIDs["test-a"] = true
 	capture.mu.Unlock()
 
 	capture.AddNetworkBodies([]NetworkBody{
@@ -152,8 +152,8 @@ func TestNetworkBodyFiltering(t *testing.T) {
 	})
 
 	capture.mu.Lock()
-	delete(capture.activeTestIDs, "test-a")
-	capture.activeTestIDs["test-b"] = true
+	delete(capture.ext.activeTestIDs, "test-a")
+	capture.ext.activeTestIDs["test-b"] = true
 	capture.mu.Unlock()
 
 	capture.AddNetworkBodies([]NetworkBody{
@@ -191,7 +191,7 @@ func TestWebSocketEventTagging(t *testing.T) {
 
 	// Start a test boundary
 	capture.mu.Lock()
-	capture.activeTestIDs["ws-test"] = true
+	capture.ext.activeTestIDs["ws-test"] = true
 	capture.mu.Unlock()
 
 	// Add a WebSocket event
@@ -228,7 +228,7 @@ func TestWebSocketEventFiltering(t *testing.T) {
 
 	// Add events for test-x and test-y
 	capture.mu.Lock()
-	capture.activeTestIDs["test-x"] = true
+	capture.ext.activeTestIDs["test-x"] = true
 	capture.mu.Unlock()
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -236,8 +236,8 @@ func TestWebSocketEventFiltering(t *testing.T) {
 	})
 
 	capture.mu.Lock()
-	delete(capture.activeTestIDs, "test-x")
-	capture.activeTestIDs["test-y"] = true
+	delete(capture.ext.activeTestIDs, "test-x")
+	capture.ext.activeTestIDs["test-y"] = true
 	capture.mu.Unlock()
 
 	capture.AddWebSocketEvents([]WebSocketEvent{
@@ -263,7 +263,7 @@ func TestEnhancedActionTagging(t *testing.T) {
 
 	// Start test boundary
 	capture.mu.Lock()
-	capture.activeTestIDs["action-test"] = true
+	capture.ext.activeTestIDs["action-test"] = true
 	capture.mu.Unlock()
 
 	// Add an action
@@ -298,7 +298,7 @@ func TestEnhancedActionFiltering(t *testing.T) {
 
 	// Add actions for test-1 and test-2
 	capture.mu.Lock()
-	capture.activeTestIDs["test-1"] = true
+	capture.ext.activeTestIDs["test-1"] = true
 	capture.mu.Unlock()
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -306,8 +306,8 @@ func TestEnhancedActionFiltering(t *testing.T) {
 	})
 
 	capture.mu.Lock()
-	delete(capture.activeTestIDs, "test-1")
-	capture.activeTestIDs["test-2"] = true
+	delete(capture.ext.activeTestIDs, "test-1")
+	capture.ext.activeTestIDs["test-2"] = true
 	capture.mu.Unlock()
 
 	capture.AddEnhancedActions([]EnhancedAction{
@@ -333,7 +333,7 @@ func TestConcurrentBoundaryTagging(t *testing.T) {
 
 	// Start performance test
 	capture.mu.Lock()
-	capture.activeTestIDs["perf"] = true
+	capture.ext.activeTestIDs["perf"] = true
 	capture.mu.Unlock()
 
 	// Add entry (should be tagged with perf)
@@ -343,7 +343,7 @@ func TestConcurrentBoundaryTagging(t *testing.T) {
 
 	// Start feature test while perf is running
 	capture.mu.Lock()
-	capture.activeTestIDs["feature"] = true
+	capture.ext.activeTestIDs["feature"] = true
 	capture.mu.Unlock()
 
 	// Add entry (should be tagged with both perf and feature)
@@ -353,7 +353,7 @@ func TestConcurrentBoundaryTagging(t *testing.T) {
 
 	// End feature test, perf still running
 	capture.mu.Lock()
-	delete(capture.activeTestIDs, "feature")
+	delete(capture.ext.activeTestIDs, "feature")
 	capture.mu.Unlock()
 
 	// Add entry (should be tagged with perf only)
@@ -399,7 +399,7 @@ func TestBoundaryWithJSON(t *testing.T) {
 
 	// Start a test
 	capture.mu.Lock()
-	capture.activeTestIDs["json-test"] = true
+	capture.ext.activeTestIDs["json-test"] = true
 	capture.mu.Unlock()
 
 	// Add a body
@@ -441,7 +441,7 @@ func TestFilteringWithMultipleCriteria(t *testing.T) {
 
 	// Add entries with test-a
 	capture.mu.Lock()
-	capture.activeTestIDs["test-a"] = true
+	capture.ext.activeTestIDs["test-a"] = true
 	capture.mu.Unlock()
 
 	capture.AddNetworkBodies([]NetworkBody{
@@ -452,8 +452,8 @@ func TestFilteringWithMultipleCriteria(t *testing.T) {
 
 	// Add entries with test-b
 	capture.mu.Lock()
-	delete(capture.activeTestIDs, "test-a")
-	capture.activeTestIDs["test-b"] = true
+	delete(capture.ext.activeTestIDs, "test-a")
+	capture.ext.activeTestIDs["test-b"] = true
 	capture.mu.Unlock()
 
 	capture.AddNetworkBodies([]NetworkBody{

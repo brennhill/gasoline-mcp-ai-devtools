@@ -97,11 +97,11 @@ func (c *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
 
 	// Record that extension polled (for extension_connected status)
 	c.mu.Lock()
-	c.lastPollAt = time.Now()
+	c.ext.lastPollAt = time.Now()
 	// Also capture pilot state from header if present
 	if pilotHeader := r.Header.Get("X-Gasoline-Pilot"); pilotHeader != "" {
-		c.pilotEnabled = pilotHeader == "1"
-		c.pilotUpdatedAt = time.Now()
+		c.ext.pilotEnabled = pilotHeader == "1"
+		c.ext.pilotUpdatedAt = time.Now()
 	}
 	c.mu.Unlock()
 
@@ -129,7 +129,7 @@ func (c *Capture) HandlePilotStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.mu.RLock()
-	pilotEnabled := c.pilotEnabled
+	pilotEnabled := c.ext.pilotEnabled
 	c.mu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")

@@ -34,11 +34,11 @@ func (c *Capture) HandleExtensionStatus(w http.ResponseWriter, r *http.Request) 
 		c.mu.RLock()
 		status := ExtensionStatus{
 			Type:              "status",
-			TrackingEnabled:   c.trackingEnabled,
-			TrackedTabID:      c.trackedTabID,
-			TrackedTabURL:     c.trackedTabURL,
-			ExtensionConnected: !c.trackingUpdated.IsZero() && time.Since(c.trackingUpdated) < 2*time.Minute,
-			Timestamp:         c.trackingUpdated.Format(time.RFC3339),
+			TrackingEnabled:   c.ext.trackingEnabled,
+			TrackedTabID:      c.ext.trackedTabID,
+			TrackedTabURL:     c.ext.trackedTabURL,
+			ExtensionConnected: !c.ext.trackingUpdated.IsZero() && time.Since(c.ext.trackingUpdated) < 2*time.Minute,
+			Timestamp:         c.ext.trackingUpdated.Format(time.RFC3339),
 		}
 		c.mu.RUnlock()
 
@@ -60,10 +60,10 @@ func (c *Capture) HandleExtensionStatus(w http.ResponseWriter, r *http.Request) 
 	}
 
 	c.mu.Lock()
-	c.trackingEnabled = status.TrackingEnabled
-	c.trackedTabID = status.TrackedTabID
-	c.trackedTabURL = status.TrackedTabURL
-	c.trackingUpdated = time.Now()
+	c.ext.trackingEnabled = status.TrackingEnabled
+	c.ext.trackedTabID = status.TrackedTabID
+	c.ext.trackedTabURL = status.TrackedTabURL
+	c.ext.trackingUpdated = time.Now()
 	c.mu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -74,17 +74,3 @@ func (c *Capture) HandleExtensionStatus(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// GetTrackingStatus returns the current tab tracking state.
-// Used by MCP tools to check if tracking is enabled before processing requests.
-func (c *Capture) GetTrackingStatus() (enabled bool, tabID int, tabURL string) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.trackingEnabled, c.trackedTabID, c.trackedTabURL
-}
-
-// GetTrackedTabTitle returns the tracked tab's title (may be stale).
-func (c *Capture) GetTrackedTabTitle() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.trackedTabTitle
-}

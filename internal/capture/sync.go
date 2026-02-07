@@ -115,30 +115,30 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	c.mu.Lock()
 
 	// Detect extension connection state transitions
-	wasConnected := c.lastExtensionConnected
-	timeSinceLastPoll := now.Sub(c.lastPollAt)
-	isReconnect := !c.lastPollAt.IsZero() && timeSinceLastPoll > 3*time.Second
+	wasConnected := c.ext.lastExtensionConnected
+	timeSinceLastPoll := now.Sub(c.ext.lastPollAt)
+	isReconnect := !c.ext.lastPollAt.IsZero() && timeSinceLastPoll > 3*time.Second
 
 	// Update last poll time (for health endpoint extension_connected status)
-	c.lastPollAt = now
-	c.lastExtensionConnected = true
+	c.ext.lastPollAt = now
+	c.ext.lastExtensionConnected = true
 
 	// Handle session ID (detect session changes)
-	if req.SessionID != "" && req.SessionID != c.extensionSession {
-		c.extensionSession = req.SessionID
-		c.sessionChangedAt = now
+	if req.SessionID != "" && req.SessionID != c.ext.extensionSession {
+		c.ext.extensionSession = req.SessionID
+		c.ext.sessionChangedAt = now
 	}
-	sessionID := c.extensionSession
+	sessionID := c.ext.extensionSession
 
 	// Store extension settings
 	if req.Settings != nil {
-		c.pilotEnabled = req.Settings.PilotEnabled
-		c.pilotUpdatedAt = now
-		c.trackingEnabled = req.Settings.TrackingEnabled
-		c.trackedTabID = req.Settings.TrackedTabID
-		c.trackedTabURL = req.Settings.TrackedTabURL
-		c.trackedTabTitle = req.Settings.TrackedTabTitle
-		c.trackingUpdated = now
+		c.ext.pilotEnabled = req.Settings.PilotEnabled
+		c.ext.pilotUpdatedAt = now
+		c.ext.trackingEnabled = req.Settings.TrackingEnabled
+		c.ext.trackedTabID = req.Settings.TrackedTabID
+		c.ext.trackedTabURL = req.Settings.TrackedTabURL
+		c.ext.trackedTabTitle = req.Settings.TrackedTabTitle
+		c.ext.trackingUpdated = now
 	}
 
 	c.mu.Unlock()
@@ -169,7 +169,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	// Update remaining state (single lock scope for logging, extension logs, and version)
 	c.mu.Lock()
 
-	pilotEnabled := c.pilotEnabled
+	pilotEnabled := c.ext.pilotEnabled
 	c.logPollingActivity(PollingLogEntry{
 		Timestamp:    now,
 		Endpoint:     "sync",
@@ -192,7 +192,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.ExtensionVersion != "" {
-		c.extensionVersion = req.ExtensionVersion
+		c.ext.extensionVersion = req.ExtensionVersion
 	}
 
 	c.mu.Unlock()

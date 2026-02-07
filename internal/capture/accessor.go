@@ -180,8 +180,9 @@ type HealthSnapshot struct {
 
 // GetHealthSnapshot returns a snapshot of capture health state for /health endpoint
 func (c *Capture) GetHealthSnapshot() HealthSnapshot {
-	// Get circuit state from sub-struct (own lock) before acquiring c.mu
+	// Get sub-struct state (own locks) before acquiring c.mu
 	circuitOpen, circuitReason, circuitOpenedAt, windowEventCount := c.circuit.GetState()
+	querySnap := c.qd.GetSnapshot()
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -200,19 +201,19 @@ func (c *Capture) GetHealthSnapshot() HealthSnapshot {
 		NetworkBodyCount:    len(c.networkBodies),
 		ActionCount:         len(c.enhancedActions),
 		ConnectionCount:     len(c.connections),
-		LastPollTime:        c.lastPollAt,
-		ExtensionSession:    c.extensionSession,
-		SessionChangedTime:  c.sessionChangedAt,
-		PilotEnabled:        c.pilotEnabled,
+		LastPollTime:        c.ext.lastPollAt,
+		ExtensionSession:    c.ext.extensionSession,
+		SessionChangedTime:  c.ext.sessionChangedAt,
+		PilotEnabled:        c.ext.pilotEnabled,
 		CircuitOpen:         circuitOpen,
 		WindowEventCount:    windowEventCount,
 		MemoryBytes:         memBytes,
 		CircuitReason:       circuitReason,
 		CircuitOpenedTime:   circuitOpenedAt,
-		PendingQueryCount:   len(c.pendingQueries),
-		QueryResultCount:    len(c.queryResults),
-		ActiveTestIDCount:   len(c.activeTestIDs),
-		QueryTimeout:        c.queryTimeout,
+		PendingQueryCount:   querySnap.PendingQueryCount,
+		QueryResultCount:    querySnap.QueryResultCount,
+		ActiveTestIDCount:   len(c.ext.activeTestIDs),
+		QueryTimeout:        querySnap.QueryTimeout,
 	}
 }
 
@@ -224,18 +225,6 @@ func (c *Capture) LogHTTPDebugEntry(entry HTTPDebugEntry) {
 // GetHTTPDebugLog returns a copy of the HTTP debug log. Delegates to DebugLogger (own lock).
 func (c *Capture) GetHTTPDebugLog() []HTTPDebugEntry {
 	return c.debug.GetHTTPDebugLog()
-}
-
-// GetPilotStatus returns pilot status information.
-// extension_connected is true only if the extension polled within the last 5 seconds.
-func (c *Capture) GetPilotStatus() any {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return map[string]any{
-		"enabled":             c.pilotEnabled,
-		"source":              "extension_poll",
-		"extension_connected": !c.lastPollAt.IsZero() && time.Since(c.lastPollAt) < 5*time.Second,
-	}
 }
 
 // AddPerformanceSnapshots stores performance snapshots from the extension.
@@ -322,10 +311,3 @@ func (c *Capture) GetAndDeleteBeforeSnapshot(correlationID string) (PerformanceS
 	return snap, ok
 }
 
-// IsPilotEnabled returns whether AI Web Pilot is currently enabled.
-// Thread-safe accessor for pilotEnabled flag.
-func (c *Capture) IsPilotEnabled() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.pilotEnabled
-}

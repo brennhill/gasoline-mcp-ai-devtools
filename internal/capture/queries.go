@@ -23,14 +23,14 @@ const (
 
 // CreatePendingQuery creates a pending query with default timeout and no client ID.
 // Returns the query ID that extension will use to post the result.
-func (c *Capture) CreatePendingQuery(query queries.PendingQuery) string {
-	return c.CreatePendingQueryWithTimeout(query, c.queryTimeout, "")
+func (qd *QueryDispatcher) CreatePendingQuery(query queries.PendingQuery) string {
+	return qd.CreatePendingQueryWithTimeout(query, qd.queryTimeout, "")
 }
 
 // CreatePendingQueryWithClient creates a pending query for a specific client.
 // Used in multi-client mode to isolate queries between different MCP clients.
-func (c *Capture) CreatePendingQueryWithClient(query queries.PendingQuery, clientID string) string {
-	return c.CreatePendingQueryWithTimeout(query, c.queryTimeout, clientID)
+func (qd *QueryDispatcher) CreatePendingQueryWithClient(query queries.PendingQuery, clientID string) string {
+	return qd.CreatePendingQueryWithTimeout(query, qd.queryTimeout, clientID)
 }
 
 // CreatePendingQueryWithTimeout creates a pending query with custom timeout.
@@ -41,17 +41,17 @@ func (c *Capture) CreatePendingQueryWithClient(query queries.PendingQuery, clien
 // 2. Add to pendingQueries queue (FIFO, max 5)
 // 3. Schedule cleanup goroutine after timeout
 // 4. Return query ID for extension to use when posting result
-func (c *Capture) CreatePendingQueryWithTimeout(query queries.PendingQuery, timeout time.Duration, clientID string) string {
-	c.mu.Lock()
+func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQuery, timeout time.Duration, clientID string) string {
+	qd.mu.Lock()
 
 	// Enforce max pending queries (drop oldest if full)
-	if len(c.pendingQueries) >= maxPendingQueries {
-		c.pendingQueries = c.pendingQueries[1:]
+	if len(qd.pendingQueries) >= maxPendingQueries {
+		qd.pendingQueries = qd.pendingQueries[1:]
 	}
 
 	// Generate unique query ID
-	c.queryIDCounter++
-	id := fmt.Sprintf("q-%d", c.queryIDCounter)
+	qd.queryIDCounter++
+	id := fmt.Sprintf("q-%d", qd.queryIDCounter)
 
 	// Create query entry
 	entry := pendingQueryEntry{
@@ -66,26 +66,26 @@ func (c *Capture) CreatePendingQueryWithTimeout(query queries.PendingQuery, time
 		clientID: clientID,
 	}
 
-	c.pendingQueries = append(c.pendingQueries, entry)
+	qd.pendingQueries = append(qd.pendingQueries, entry)
 	correlationID := query.CorrelationID
-	c.mu.Unlock()
+	qd.mu.Unlock()
 
 	// Register command outside mu lock to respect lock ordering (resultsMu must not be acquired under mu)
 	if correlationID != "" {
-		c.RegisterCommand(correlationID, id, timeout)
+		qd.RegisterCommand(correlationID, id, timeout)
 	}
 
 	// Schedule cleanup after timeout
 	go func() {
 		time.Sleep(timeout)
-		c.mu.Lock()
-		c.cleanExpiredQueries()
-		c.queryCond.Broadcast()
-		c.mu.Unlock()
+		qd.mu.Lock()
+		qd.cleanExpiredQueries()
+		qd.queryCond.Broadcast()
+		qd.mu.Unlock()
 
 		// ExpireCommand acquires resultsMu — called outside mu to respect lock ordering
 		if correlationID != "" {
-			c.ExpireCommand(correlationID)
+			qd.ExpireCommand(correlationID)
 		}
 	}()
 
@@ -97,16 +97,16 @@ func (c *Capture) CreatePendingQueryWithTimeout(query queries.PendingQuery, time
 // ============================================
 
 // cleanExpiredQueries removes expired pending queries.
-// MUST be called with c.mu held (Lock, not RLock).
-func (c *Capture) cleanExpiredQueries() {
+// MUST be called with qd.mu held (Lock, not RLock).
+func (qd *QueryDispatcher) cleanExpiredQueries() {
 	now := time.Now()
-	remaining := c.pendingQueries[:0]
-	for _, pq := range c.pendingQueries {
+	remaining := qd.pendingQueries[:0]
+	for _, pq := range qd.pendingQueries {
 		if pq.expires.After(now) {
 			remaining = append(remaining, pq)
 		}
 	}
-	c.pendingQueries = remaining
+	qd.pendingQueries = remaining
 }
 
 // ============================================
@@ -116,14 +116,14 @@ func (c *Capture) cleanExpiredQueries() {
 // GetPendingQueries returns all pending queries for extension to execute.
 // Used by HandlePendingQueries HTTP handler.
 // Cleans expired queries before returning.
-func (c *Capture) GetPendingQueries() []queries.PendingQueryResponse {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (qd *QueryDispatcher) GetPendingQueries() []queries.PendingQueryResponse {
+	qd.mu.Lock()
+	defer qd.mu.Unlock()
 
-	c.cleanExpiredQueries()
+	qd.cleanExpiredQueries()
 
-	result := make([]queries.PendingQueryResponse, 0, len(c.pendingQueries))
-	for _, pq := range c.pendingQueries {
+	result := make([]queries.PendingQueryResponse, 0, len(qd.pendingQueries))
+	for _, pq := range qd.pendingQueries {
 		result = append(result, pq.query)
 	}
 	return result
@@ -131,14 +131,14 @@ func (c *Capture) GetPendingQueries() []queries.PendingQueryResponse {
 
 // GetPendingQueriesForClient returns pending queries for a specific client.
 // Used in multi-client mode.
-func (c *Capture) GetPendingQueriesForClient(clientID string) []queries.PendingQueryResponse {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []queries.PendingQueryResponse {
+	qd.mu.Lock()
+	defer qd.mu.Unlock()
 
-	c.cleanExpiredQueries()
+	qd.cleanExpiredQueries()
 
 	result := make([]queries.PendingQueryResponse, 0)
-	for _, pq := range c.pendingQueries {
+	for _, pq := range qd.pendingQueries {
 		if pq.clientID == clientID {
 			result = append(result, pq.query)
 		}
@@ -152,21 +152,21 @@ func (c *Capture) GetPendingQueriesForClient(clientID string) []queries.PendingQ
 
 // SetQueryResult stores the result for a pending query.
 // Called when extension posts result back to server.
+func (qd *QueryDispatcher) SetQueryResult(id string, result json.RawMessage) {
+	qd.SetQueryResultWithClient(id, result, "")
+}
+
+// SetQueryResultWithClient stores result with client isolation.
 //
 // Flow:
 // 1. Store result in queryResults map
 // 2. Remove from pendingQueries
 // 3. Broadcast to wake up any WaitForResult callers
-func (c *Capture) SetQueryResult(id string, result json.RawMessage) {
-	c.SetQueryResultWithClient(id, result, "")
-}
-
-// SetQueryResultWithClient stores result with client isolation.
-func (c *Capture) SetQueryResultWithClient(id string, result json.RawMessage, clientID string) {
-	c.mu.Lock()
+func (qd *QueryDispatcher) SetQueryResultWithClient(id string, result json.RawMessage, clientID string) {
+	qd.mu.Lock()
 
 	// Store result
-	c.queryResults[id] = queryResultEntry{
+	qd.queryResults[id] = queryResultEntry{
 		result:    result,
 		clientID:  clientID,
 		createdAt: time.Now(),
@@ -174,7 +174,7 @@ func (c *Capture) SetQueryResultWithClient(id string, result json.RawMessage, cl
 
 	// Find correlation ID before removing from pending
 	var correlationID string
-	for _, pq := range c.pendingQueries {
+	for _, pq := range qd.pendingQueries {
 		if pq.query.ID == id {
 			correlationID = pq.query.CorrelationID
 			break
@@ -182,22 +182,22 @@ func (c *Capture) SetQueryResultWithClient(id string, result json.RawMessage, cl
 	}
 
 	// Remove from pending
-	remaining := c.pendingQueries[:0]
-	for _, pq := range c.pendingQueries {
+	remaining := qd.pendingQueries[:0]
+	for _, pq := range qd.pendingQueries {
 		if pq.query.ID != id {
 			remaining = append(remaining, pq)
 		}
 	}
-	c.pendingQueries = remaining
+	qd.pendingQueries = remaining
 
-	c.mu.Unlock()
+	qd.mu.Unlock()
 
 	// Wake up waiters
-	c.queryCond.Broadcast()
+	qd.queryCond.Broadcast()
 
 	// Mark command as complete if it has a correlation ID
 	if correlationID != "" {
-		c.CompleteCommand(correlationID, result, "")
+		qd.CompleteCommand(correlationID, result, "")
 	}
 }
 
@@ -207,16 +207,16 @@ func (c *Capture) SetQueryResultWithClient(id string, result json.RawMessage, cl
 
 // GetQueryResult retrieves and deletes a query result.
 // Returns (result, found).
-func (c *Capture) GetQueryResult(id string) (json.RawMessage, bool) {
-	return c.GetQueryResultForClient(id, "")
+func (qd *QueryDispatcher) GetQueryResult(id string) (json.RawMessage, bool) {
+	return qd.GetQueryResultForClient(id, "")
 }
 
 // GetQueryResultForClient retrieves result with client isolation.
-func (c *Capture) GetQueryResultForClient(id string, clientID string) (json.RawMessage, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (qd *QueryDispatcher) GetQueryResultForClient(id string, clientID string) (json.RawMessage, bool) {
+	qd.mu.Lock()
+	defer qd.mu.Unlock()
 
-	entry, found := c.queryResults[id]
+	entry, found := qd.queryResults[id]
 	if !found {
 		return nil, false
 	}
@@ -227,7 +227,7 @@ func (c *Capture) GetQueryResultForClient(id string, clientID string) (json.RawM
 	}
 
 	// Delete after retrieval (one-time use)
-	delete(c.queryResults, id)
+	delete(qd.queryResults, id)
 	return entry.result, true
 }
 
@@ -237,19 +237,19 @@ func (c *Capture) GetQueryResultForClient(id string, clientID string) (json.RawM
 
 // WaitForResult blocks until result is available or timeout.
 // Used by synchronous tool handlers that need immediate results.
+func (qd *QueryDispatcher) WaitForResult(id string, timeout time.Duration) (json.RawMessage, error) {
+	return qd.WaitForResultWithClient(id, timeout, "")
+}
+
+// WaitForResultWithClient waits with client isolation.
+// Uses a single wakeup goroutine (not per-iteration) to avoid goroutine explosion.
 //
 // Flow:
 // 1. Check if result already exists
 // 2. If not, wait on condition variable
 // 3. Recheck periodically (10ms intervals)
 // 4. Return result or timeout error
-func (c *Capture) WaitForResult(id string, timeout time.Duration) (json.RawMessage, error) {
-	return c.WaitForResultWithClient(id, timeout, "")
-}
-
-// WaitForResultWithClient waits with client isolation.
-// Uses a single wakeup goroutine (not per-iteration) to avoid goroutine explosion.
-func (c *Capture) WaitForResultWithClient(id string, timeout time.Duration, clientID string) (json.RawMessage, error) {
+func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Duration, clientID string) (json.RawMessage, error) {
 	deadline := time.Now().Add(timeout)
 
 	// Single wakeup goroutine: broadcasts every 10ms to recheck condition.
@@ -261,23 +261,23 @@ func (c *Capture) WaitForResultWithClient(id string, timeout time.Duration, clie
 		for {
 			select {
 			case <-ticker.C:
-				c.queryCond.Broadcast()
+				qd.queryCond.Broadcast()
 			case <-done:
 				return
 			}
 		}
 	}()
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	qd.mu.Lock()
+	defer qd.mu.Unlock()
 	defer close(done) // Stop wakeup goroutine on return (runs before Unlock per LIFO)
 
 	for {
 		// Check if result exists
-		if entry, found := c.queryResults[id]; found {
+		if entry, found := qd.queryResults[id]; found {
 			// Check client isolation
 			if clientID == "" || entry.clientID == clientID {
-				delete(c.queryResults, id)
+				delete(qd.queryResults, id)
 				return entry.result, nil
 			}
 		}
@@ -287,7 +287,7 @@ func (c *Capture) WaitForResultWithClient(id string, timeout time.Duration, clie
 			return nil, fmt.Errorf("timeout waiting for result %s", id)
 		}
 
-		c.queryCond.Wait()
+		qd.queryCond.Wait()
 	}
 }
 
@@ -298,8 +298,8 @@ func (c *Capture) WaitForResultWithClient(id string, timeout time.Duration, clie
 // startResultCleanup starts a background goroutine that periodically cleans
 // expired query results (60s TTL).
 // Returns a stop function that terminates the goroutine.
-// Called once during Capture initialization; stop func stored in Capture.stopCleanup.
-func (c *Capture) startResultCleanup() func() {
+// Called once during QueryDispatcher initialization; stop func stored in stopCleanup.
+func (qd *QueryDispatcher) startResultCleanup() func() {
 	stop := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
@@ -307,7 +307,7 @@ func (c *Capture) startResultCleanup() func() {
 		for {
 			select {
 			case <-ticker.C:
-				c.cleanExpiredResults()
+				qd.cleanExpiredResults()
 			case <-stop:
 				return
 			}
@@ -317,14 +317,14 @@ func (c *Capture) startResultCleanup() func() {
 }
 
 // cleanExpiredResults removes query results older than queryResultTTL.
-func (c *Capture) cleanExpiredResults() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (qd *QueryDispatcher) cleanExpiredResults() {
+	qd.mu.Lock()
+	defer qd.mu.Unlock()
 
 	now := time.Now()
-	for id, entry := range c.queryResults {
+	for id, entry := range qd.queryResults {
 		if now.Sub(entry.createdAt) > queryResultTTL {
-			delete(c.queryResults, id)
+			delete(qd.queryResults, id)
 		}
 	}
 }
@@ -334,17 +334,17 @@ func (c *Capture) cleanExpiredResults() {
 // ============================================
 
 // SetQueryTimeout sets the default timeout for queries.
-func (c *Capture) SetQueryTimeout(timeout time.Duration) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.queryTimeout = timeout
+func (qd *QueryDispatcher) SetQueryTimeout(timeout time.Duration) {
+	qd.mu.Lock()
+	defer qd.mu.Unlock()
+	qd.queryTimeout = timeout
 }
 
 // GetQueryTimeout returns the current query timeout.
-func (c *Capture) GetQueryTimeout() time.Duration {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.queryTimeout
+func (qd *QueryDispatcher) GetQueryTimeout() time.Duration {
+	qd.mu.Lock()
+	defer qd.mu.Unlock()
+	return qd.queryTimeout
 }
 
 // ============================================
@@ -353,15 +353,15 @@ func (c *Capture) GetQueryTimeout() time.Duration {
 
 // RegisterCommand creates a "pending" CommandResult for an async command.
 // Called when command is queued. Uses resultsMu (separate from mu).
-func (c *Capture) RegisterCommand(correlationID string, queryID string, timeout time.Duration) {
+func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string, timeout time.Duration) {
 	if correlationID == "" {
 		return // No correlation ID = not an async command
 	}
 
-	c.resultsMu.Lock()
-	defer c.resultsMu.Unlock()
+	qd.resultsMu.Lock()
+	defer qd.resultsMu.Unlock()
 
-	c.completedResults[correlationID] = &queries.CommandResult{
+	qd.completedResults[correlationID] = &queries.CommandResult{
 		CorrelationID: correlationID,
 		Status:        "pending",
 		CreatedAt:     time.Now(),
@@ -370,15 +370,15 @@ func (c *Capture) RegisterCommand(correlationID string, queryID string, timeout 
 
 // CompleteCommand updates a command's status to "complete" with result.
 // Called when extension posts result back.
-func (c *Capture) CompleteCommand(correlationID string, result json.RawMessage, err string) {
+func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.RawMessage, err string) {
 	if correlationID == "" {
 		return
 	}
 
-	c.resultsMu.Lock()
-	defer c.resultsMu.Unlock()
+	qd.resultsMu.Lock()
+	defer qd.resultsMu.Unlock()
 
-	cmd, exists := c.completedResults[correlationID]
+	cmd, exists := qd.completedResults[correlationID]
 	if !exists {
 		// Command may have expired and been moved to failedCommands
 		return
@@ -392,15 +392,15 @@ func (c *Capture) CompleteCommand(correlationID string, result json.RawMessage, 
 
 // ExpireCommand marks a command as "expired" and moves it to failedCommands.
 // Called by cleanup goroutine when command times out without result.
-func (c *Capture) ExpireCommand(correlationID string) {
+func (qd *QueryDispatcher) ExpireCommand(correlationID string) {
 	if correlationID == "" {
 		return
 	}
 
-	c.resultsMu.Lock()
-	defer c.resultsMu.Unlock()
+	qd.resultsMu.Lock()
+	defer qd.resultsMu.Unlock()
 
-	cmd, exists := c.completedResults[correlationID]
+	cmd, exists := qd.completedResults[correlationID]
 	if !exists {
 		return
 	}
@@ -410,28 +410,28 @@ func (c *Capture) ExpireCommand(correlationID string) {
 	cmd.Error = "Command expired before extension could execute it"
 
 	// Move to failedCommands ring buffer
-	c.failedCommands = append(c.failedCommands, cmd)
-	if len(c.failedCommands) > 100 {
-		c.failedCommands = c.failedCommands[1:]
+	qd.failedCommands = append(qd.failedCommands, cmd)
+	if len(qd.failedCommands) > 100 {
+		qd.failedCommands = qd.failedCommands[1:]
 	}
 
 	// Remove from active tracking
-	delete(c.completedResults, correlationID)
+	delete(qd.completedResults, correlationID)
 }
 
 // GetCommandResult retrieves command status by correlation ID.
 // Returns (CommandResult, found). Used by toolObserveCommandResult.
-func (c *Capture) GetCommandResult(correlationID string) (*queries.CommandResult, bool) {
-	c.resultsMu.RLock()
-	defer c.resultsMu.RUnlock()
+func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*queries.CommandResult, bool) {
+	qd.resultsMu.RLock()
+	defer qd.resultsMu.RUnlock()
 
 	// Check active commands
-	if cmd, exists := c.completedResults[correlationID]; exists {
+	if cmd, exists := qd.completedResults[correlationID]; exists {
 		return cmd, true
 	}
 
 	// Check failed/expired commands
-	for _, cmd := range c.failedCommands {
+	for _, cmd := range qd.failedCommands {
 		if cmd.CorrelationID == correlationID {
 			return cmd, true
 		}
@@ -442,12 +442,12 @@ func (c *Capture) GetCommandResult(correlationID string) (*queries.CommandResult
 
 // GetPendingCommands returns all commands with status "pending".
 // Used by toolObservePendingCommands.
-func (c *Capture) GetPendingCommands() []*queries.CommandResult {
-	c.resultsMu.RLock()
-	defer c.resultsMu.RUnlock()
+func (qd *QueryDispatcher) GetPendingCommands() []*queries.CommandResult {
+	qd.resultsMu.RLock()
+	defer qd.resultsMu.RUnlock()
 
 	result := make([]*queries.CommandResult, 0)
-	for _, cmd := range c.completedResults {
+	for _, cmd := range qd.completedResults {
 		if cmd.Status == "pending" {
 			result = append(result, cmd)
 		}
@@ -457,12 +457,12 @@ func (c *Capture) GetPendingCommands() []*queries.CommandResult {
 
 // GetCompletedCommands returns all commands with status "complete".
 // Used by toolObservePendingCommands.
-func (c *Capture) GetCompletedCommands() []*queries.CommandResult {
-	c.resultsMu.RLock()
-	defer c.resultsMu.RUnlock()
+func (qd *QueryDispatcher) GetCompletedCommands() []*queries.CommandResult {
+	qd.resultsMu.RLock()
+	defer qd.resultsMu.RUnlock()
 
 	result := make([]*queries.CommandResult, 0)
-	for _, cmd := range c.completedResults {
+	for _, cmd := range qd.completedResults {
 		if cmd.Status == "complete" {
 			result = append(result, cmd)
 		}
@@ -472,12 +472,12 @@ func (c *Capture) GetCompletedCommands() []*queries.CommandResult {
 
 // GetFailedCommands returns recent failed/expired commands.
 // Used by toolObserveFailedCommands.
-func (c *Capture) GetFailedCommands() []*queries.CommandResult {
-	c.resultsMu.RLock()
-	defer c.resultsMu.RUnlock()
+func (qd *QueryDispatcher) GetFailedCommands() []*queries.CommandResult {
+	qd.resultsMu.RLock()
+	defer qd.resultsMu.RUnlock()
 
 	// Return copy to avoid concurrent modification
-	result := make([]*queries.CommandResult, len(c.failedCommands))
-	copy(result, c.failedCommands)
+	result := make([]*queries.CommandResult, len(qd.failedCommands))
+	copy(result, qd.failedCommands)
 	return result
 }

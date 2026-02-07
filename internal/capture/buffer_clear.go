@@ -116,7 +116,7 @@ func (c *Capture) ClearAll() {
 	c.connections = make(map[string]*connectionState)
 	c.closedConns = make([]WebSocketClosedConnection, 0)
 	c.connOrder = make([]string, 0)
-	c.activeTestIDs = make(map[string]bool)
+	c.ext.activeTestIDs = make(map[string]bool)
 
 	// Reset performance data
 	c.perf.snapshots = make(map[string]PerformanceSnapshot)

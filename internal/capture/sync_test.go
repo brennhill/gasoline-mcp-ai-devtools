@@ -64,10 +64,10 @@ func TestHandleSync_BasicRequest(t *testing.T) {
 
 	// Verify state was updated
 	cap.mu.RLock()
-	if cap.extensionSession != "test_session_123" {
-		t.Errorf("Expected session to be 'test_session_123', got '%s'", cap.extensionSession)
+	if cap.ext.extensionSession != "test_session_123" {
+		t.Errorf("Expected session to be 'test_session_123', got '%s'", cap.ext.extensionSession)
 	}
-	if !cap.pilotEnabled {
+	if !cap.ext.pilotEnabled {
 		t.Error("Expected pilotEnabled to be true")
 	}
 	cap.mu.RUnlock()
@@ -148,7 +148,7 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 
 	// Initially lastPollAt should be zero
 	cap.mu.RLock()
-	initialPollAt := cap.lastPollAt
+	initialPollAt := cap.ext.lastPollAt
 	cap.mu.RUnlock()
 
 	if !initialPollAt.IsZero() {
@@ -165,7 +165,7 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 
 	// Verify lastPollAt was updated
 	cap.mu.RLock()
-	newPollAt := cap.lastPollAt
+	newPollAt := cap.ext.lastPollAt
 	cap.mu.RUnlock()
 
 	if newPollAt.IsZero() {

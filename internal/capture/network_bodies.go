@@ -34,7 +34,7 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 
 	// Collect active test IDs for tagging
 	activeTestIDs := make([]string, 0)
-	for testID := range c.activeTestIDs {
+	for testID := range c.ext.activeTestIDs {
 		activeTestIDs = append(activeTestIDs, testID)
 	}
 
