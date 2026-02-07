@@ -52,8 +52,7 @@ func TestFastStart_InitializeRespondsImmediately(t *testing.T) {
 	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"faststart-test","version":"1.0"}}}`
 
 	start := time.Now()
-	_, err = _ = stdin.Write([]byte(initReq + "\n"))
-	if err != nil {
+	if _, err := stdin.Write([]byte(initReq + "\n")); err != nil {
 		t.Fatalf("Failed to write initialize: %v", err)
 	}
 
@@ -152,7 +151,9 @@ func TestFastStart_ToolsListRespondsImmediately(t *testing.T) {
 
 	// Send initialize first (required by MCP protocol)
 	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`
-	_ = stdin.Write([]byte(initReq + "\n"))
+	if _, err := stdin.Write([]byte(initReq + "\n")); err != nil {
+		t.Fatalf("Failed to write initialize: %v", err)
+	}
 
 	reader := bufio.NewReader(stdout)
 	reader.ReadString('\n') // consume initialize response
@@ -161,7 +162,9 @@ func TestFastStart_ToolsListRespondsImmediately(t *testing.T) {
 	toolsReq := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`
 
 	start := time.Now()
-	_ = stdin.Write([]byte(toolsReq + "\n"))
+	if _, err := stdin.Write([]byte(toolsReq + "\n")); err != nil {
+		t.Fatalf("Failed to write tools/list: %v", err)
+	}
 
 	responseChan := make(chan string, 1)
 	errChan := make(chan error, 1)
@@ -332,7 +335,9 @@ func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			start := time.Now()
-			_ = stdin.Write([]byte(tc.request + "\n"))
+			if _, writeErr := stdin.Write([]byte(tc.request + "\n")); writeErr != nil {
+				t.Fatalf("Failed to write request: %v", writeErr)
+			}
 
 			line, err := reader.ReadString('\n')
 			elapsed := time.Since(start)
@@ -402,14 +407,18 @@ func TestFastStart_ToolsCallReturnsRetryWhenBooting(t *testing.T) {
 
 	// Send initialize first
 	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`
-	_ = stdin.Write([]byte(initReq + "\n"))
+	if _, initErr := stdin.Write([]byte(initReq + "\n")); initErr != nil {
+		t.Fatalf("Failed to write initialize: %v", initErr)
+	}
 	reader.ReadString('\n') // consume initialize response
 
 	// Immediately send tools/call - daemon won't be ready yet
 	toolsCallReq := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`
 
 	start := time.Now()
-	_ = stdin.Write([]byte(toolsCallReq + "\n"))
+	if _, callErr := stdin.Write([]byte(toolsCallReq + "\n")); callErr != nil {
+		t.Fatalf("Failed to write tools/call: %v", callErr)
+	}
 
 	line, err := reader.ReadString('\n')
 	elapsed := time.Since(start)
@@ -490,7 +499,9 @@ func TestFastStart_VersionInResponse(t *testing.T) {
 	}()
 
 	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`
-	_ = stdin.Write([]byte(initReq + "\n"))
+	if _, lastErr := stdin.Write([]byte(initReq + "\n")); lastErr != nil {
+		t.Fatalf("Failed to write initialize: %v", lastErr)
+	}
 
 	reader := bufio.NewReader(stdout)
 	line, err := reader.ReadString('\n')
