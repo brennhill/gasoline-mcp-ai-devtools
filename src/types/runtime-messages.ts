@@ -347,6 +347,14 @@ export interface SubtitleMessage {
 }
 
 /**
+ * Recording watermark overlay message
+ */
+export interface RecordingWatermarkMessage {
+  readonly type: 'GASOLINE_RECORDING_WATERMARK'
+  readonly visible: boolean
+}
+
+/**
  * Union of all content-script-bound messages
  */
 export type ContentMessage =
@@ -360,6 +368,7 @@ export type ContentMessage =
   | ManageStateMessage
   | ActionToastMessage
   | SubtitleMessage
+  | RecordingWatermarkMessage
   | SetBooleanSettingMessage
   | SetWebSocketCaptureModeMessage
   | SetServerUrlMessage

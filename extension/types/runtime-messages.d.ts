@@ -266,9 +266,16 @@ export interface SubtitleMessage {
     readonly text: string;
 }
 /**
+ * Recording watermark overlay message
+ */
+export interface RecordingWatermarkMessage {
+    readonly type: 'GASOLINE_RECORDING_WATERMARK';
+    readonly visible: boolean;
+}
+/**
  * Union of all content-script-bound messages
  */
-export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
+export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
 /**
  * Page to content script messages (postMessage types)
  */

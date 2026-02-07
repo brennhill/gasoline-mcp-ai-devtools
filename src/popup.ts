@@ -68,6 +68,9 @@ export async function initPopup(): Promise<void> {
     })
   }
 
+  // Initialize recording UI
+  setupRecordingUI()
+
   // Initialize feature toggles
   await initFeatureToggles()
 
@@ -156,6 +159,80 @@ export async function initPopup(): Promise<void> {
         console.log('[Gasoline] Tracked tab URL updated in popup:', changes.trackedTabUrl.newValue)
       }
     }
+  })
+}
+
+/**
+ * Set up recording Start/Stop buttons and timer display.
+ * Syncs with chrome.storage.local for MCP-initiated recordings.
+ */
+function setupRecordingUI(): void {
+  const startBtn = document.getElementById('btn-record-start') as HTMLButtonElement | null
+  const stopBtn = document.getElementById('btn-record-stop') as HTMLButtonElement | null
+  const statusEl = document.getElementById('recording-status')
+  if (!startBtn || !stopBtn || !statusEl) return
+
+  let timerInterval: ReturnType<typeof setInterval> | null = null
+
+  function showRecording(name: string, startTime: number): void {
+    startBtn!.style.display = 'none'
+    stopBtn!.style.display = 'block'
+    statusEl!.style.display = 'block'
+
+    // Update timer every second
+    if (timerInterval) clearInterval(timerInterval)
+    timerInterval = setInterval(() => {
+      const elapsed = Math.round((Date.now() - startTime) / 1000)
+      const mins = Math.floor(elapsed / 60)
+      const secs = elapsed % 60
+      statusEl!.textContent = `Recording: ${name} — ${mins}:${secs.toString().padStart(2, '0')}`
+    }, 1000)
+  }
+
+  function showIdle(): void {
+    startBtn!.style.display = 'block'
+    stopBtn!.style.display = 'none'
+    statusEl!.style.display = 'none'
+    statusEl!.textContent = ''
+    if (timerInterval) {
+      clearInterval(timerInterval)
+      timerInterval = null
+    }
+  }
+
+  // Check if a recording is already active (e.g., started via MCP)
+  chrome.storage.local.get('gasoline_recording', (result: Record<string, { active?: boolean; name?: string; startTime?: number } | undefined>) => {
+    const rec = result.gasoline_recording
+    if (rec?.active && rec.name && rec.startTime) {
+      showRecording(rec.name, rec.startTime)
+    }
+  })
+
+  // Listen for recording state changes (MCP-initiated start/stop)
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes.gasoline_recording) {
+      const rec = changes.gasoline_recording.newValue as { active?: boolean; name?: string; startTime?: number } | undefined
+      if (rec?.active && rec.name && rec.startTime) {
+        showRecording(rec.name, rec.startTime)
+      } else {
+        showIdle()
+      }
+    }
+  })
+
+  startBtn.addEventListener('click', () => {
+    startBtn.disabled = true
+    chrome.runtime.sendMessage({ type: 'record_start' }, () => {
+      startBtn.disabled = false
+    })
+  })
+
+  stopBtn.addEventListener('click', () => {
+    stopBtn.disabled = true
+    chrome.runtime.sendMessage({ type: 'record_stop' }, () => {
+      stopBtn.disabled = false
+      showIdle()
+    })
   })
 }
 
