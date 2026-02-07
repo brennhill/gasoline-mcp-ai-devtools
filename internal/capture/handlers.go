@@ -76,8 +76,8 @@ func (c *Capture) handleNetworkWaterfallPOST(w http.ResponseWriter, r *http.Requ
 // handleNetworkWaterfallGET returns stored waterfall entries
 func (c *Capture) handleNetworkWaterfallGET(w http.ResponseWriter, r *http.Request) {
 	c.mu.RLock()
-	entries := make([]NetworkWaterfallEntry, len(c.networkWaterfall))
-	copy(entries, c.networkWaterfall)
+	entries := make([]NetworkWaterfallEntry, len(c.nw.entries))
+	copy(entries, c.nw.entries)
 	c.mu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")

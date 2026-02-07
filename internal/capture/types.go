@@ -417,6 +417,19 @@ type PerformanceStore struct {
 	beforeSnapshots map[string]performance.PerformanceSnapshot // keyed by correlation_id, for perf_diff
 }
 
+// NetworkWaterfallBuffer groups network waterfall ring buffer fields.
+// Protected by parent Capture.mu (no separate lock).
+type NetworkWaterfallBuffer struct {
+	entries  []NetworkWaterfallEntry // Ring buffer of PerformanceResourceTiming data
+	capacity int                     // Configurable capacity (default DefaultNetworkWaterfallCapacity=1000)
+}
+
+// ExtensionLogBuffer groups extension log ring buffer fields.
+// Protected by parent Capture.mu (no separate lock).
+type ExtensionLogBuffer struct {
+	logs []ExtensionLog // Ring buffer of extension internal logs (max MaxExtensionLogs=500)
+}
+
 // MemoryState tracks memory enforcement state including eviction counters
 // and minimal mode flag.
 type MemoryState struct {
@@ -485,10 +498,8 @@ type Capture struct {
 	// Timings and Performance Data
 	// ============================================
 
-	networkWaterfall         []NetworkWaterfallEntry // Ring buffer of browser PerformanceResourceTiming data (cap: networkWaterfallCapacity, default 1000, reconfigurable).
-	networkWaterfallCapacity int                     // Configurable capacity for network waterfall (default DefaultNetworkWaterfallCapacity=1000).
-	securityFlags            []SecurityFlag          // Ring buffer of security threat flags detected from network waterfall (max 1000). FIFO eviction.
-	extensionLogs            []ExtensionLog          // Ring buffer of extension internal logs (max 500). FIFO eviction. No TTL filtering.
+	nw  NetworkWaterfallBuffer // Ring buffer of browser PerformanceResourceTiming data (configurable capacity, default 1000).
+	elb ExtensionLogBuffer     // Ring buffer of extension internal logs (max 500). FIFO eviction. No TTL filtering.
 
 	// ============================================
 	// WebSocket Connection Tracking
@@ -562,10 +573,14 @@ func NewCapture() *Capture {
 	c := &Capture{
 		wsEvents:                 make([]WebSocketEvent, 0, MaxWSEvents),
 		networkBodies:            make([]NetworkBody, 0, MaxNetworkBodies),
-		extensionLogs:            make([]ExtensionLog, 0, MaxExtensionLogs),
-		enhancedActions:          make([]EnhancedAction, 0, MaxEnhancedActions),
-		networkWaterfall:         make([]NetworkWaterfallEntry, 0, DefaultNetworkWaterfallCapacity),
-		networkWaterfallCapacity: DefaultNetworkWaterfallCapacity,
+		enhancedActions: make([]EnhancedAction, 0, MaxEnhancedActions),
+		nw: NetworkWaterfallBuffer{
+			entries:  make([]NetworkWaterfallEntry, 0, DefaultNetworkWaterfallCapacity),
+			capacity: DefaultNetworkWaterfallCapacity,
+		},
+		elb: ExtensionLogBuffer{
+			logs: make([]ExtensionLog, 0, MaxExtensionLogs),
+		},
 		connections:              make(map[string]*connectionState),
 		closedConns:              make([]WebSocketClosedConnection, 0),
 		connOrder:                make([]string, 0),

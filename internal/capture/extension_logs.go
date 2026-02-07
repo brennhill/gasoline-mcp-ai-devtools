@@ -49,14 +49,14 @@ func (c *Capture) HandleExtensionLogs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Append to ring buffer with capacity enforcement
-		c.extensionLogs = append(c.extensionLogs, log)
+		c.elb.logs = append(c.elb.logs, log)
 
 		// Evict oldest entries if over capacity.
 		// Allocate new slice to release old backing array for GC.
-		if len(c.extensionLogs) > MaxExtensionLogs {
+		if len(c.elb.logs) > MaxExtensionLogs {
 			kept := make([]ExtensionLog, MaxExtensionLogs)
-			copy(kept, c.extensionLogs[len(c.extensionLogs)-MaxExtensionLogs:])
-			c.extensionLogs = kept
+			copy(kept, c.elb.logs[len(c.elb.logs)-MaxExtensionLogs:])
+			c.elb.logs = kept
 		}
 	}
 
@@ -73,7 +73,7 @@ func (c *Capture) HandleExtensionLogs(w http.ResponseWriter, r *http.Request) {
 func (c *Capture) GetExtensionLogs() []ExtensionLog {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]ExtensionLog, len(c.extensionLogs))
-	copy(result, c.extensionLogs)
+	result := make([]ExtensionLog, len(c.elb.logs))
+	copy(result, c.elb.logs)
 	return result
 }

@@ -51,7 +51,7 @@ func TestHandleExtensionLogs_AcceptsValidPayload(t *testing.T) {
 
 	// Verify entry was stored
 	capture.mu.RLock()
-	count := len(capture.extensionLogs)
+	count := len(capture.elb.logs)
 	capture.mu.RUnlock()
 
 	if count != 1 {
@@ -111,7 +111,7 @@ func TestHandleExtensionLogs_StoresTimestamp(t *testing.T) {
 	after := time.Now()
 
 	capture.mu.RLock()
-	entry := capture.extensionLogs[0]
+	entry := capture.elb.logs[0]
 	capture.mu.RUnlock()
 
 	if entry.Timestamp.Before(before) || entry.Timestamp.After(after) {
@@ -142,7 +142,7 @@ func TestHandleExtensionLogs_PreservesProvidedTimestamp(t *testing.T) {
 	capture.HandleExtensionLogs(w, req)
 
 	capture.mu.RLock()
-	entry := capture.extensionLogs[0]
+	entry := capture.elb.logs[0]
 	capture.mu.RUnlock()
 
 	// Allow 1 second tolerance
@@ -246,7 +246,7 @@ func TestExtensionLogs_RingBufferEviction(t *testing.T) {
 	}
 
 	capture.mu.RLock()
-	count := len(capture.extensionLogs)
+	count := len(capture.elb.logs)
 	capture.mu.RUnlock()
 
 	if count != MaxExtensionLogs {
@@ -288,7 +288,7 @@ func TestExtensionLogs_MultipleEntriesInSinglePayload(t *testing.T) {
 	capture.HandleExtensionLogs(w, req)
 
 	capture.mu.RLock()
-	count := len(capture.extensionLogs)
+	count := len(capture.elb.logs)
 	capture.mu.RUnlock()
 
 	if count != 3 {
@@ -301,12 +301,12 @@ func TestExtensionLogs_PreallocatedBuffer(t *testing.T) {
 	capture := NewCapture()
 
 	// Verify buffer was pre-allocated
-	if capture.extensionLogs == nil {
+	if capture.elb.logs == nil {
 		t.Error("Extension logs buffer should be pre-allocated, not nil")
 	}
 
-	if cap(capture.extensionLogs) != MaxExtensionLogs {
-		t.Errorf("Expected pre-allocated capacity %d, got %d", MaxExtensionLogs, cap(capture.extensionLogs))
+	if cap(capture.elb.logs) != MaxExtensionLogs {
+		t.Errorf("Expected pre-allocated capacity %d, got %d", MaxExtensionLogs, cap(capture.elb.logs))
 	}
 }
 
@@ -378,7 +378,7 @@ func TestExtensionLogs_ConcurrentWrites(t *testing.T) {
 	}
 
 	capture.mu.RLock()
-	count := len(capture.extensionLogs)
+	count := len(capture.elb.logs)
 	capture.mu.RUnlock()
 
 	if count != 100 {

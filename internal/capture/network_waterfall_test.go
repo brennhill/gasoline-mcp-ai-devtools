@@ -88,10 +88,10 @@ func TestHandleNetworkWaterfall_StoresTimestamp(t *testing.T) {
 	afterTime := time.Now()
 
 	capture.mu.RLock()
-	if len(capture.networkWaterfall) == 0 {
-		t.Fatalf("Expected 1 entry, got %d", len(capture.networkWaterfall))
+	if len(capture.nw.entries) == 0 {
+		t.Fatalf("Expected 1 entry, got %d", len(capture.nw.entries))
 	}
-	entryTime := capture.networkWaterfall[0].Timestamp
+	entryTime := capture.nw.entries[0].Timestamp
 	capture.mu.RUnlock()
 
 	if entryTime.Before(beforeTime) || entryTime.After(afterTime) {
@@ -122,10 +122,10 @@ func TestHandleNetworkWaterfall_StoresPageURL(t *testing.T) {
 	capture.HandleNetworkWaterfall(w, req)
 
 	capture.mu.RLock()
-	if len(capture.networkWaterfall) == 0 {
-		t.Fatalf("Expected 1 entry, got %d", len(capture.networkWaterfall))
+	if len(capture.nw.entries) == 0 {
+		t.Fatalf("Expected 1 entry, got %d", len(capture.nw.entries))
 	}
-	storedURL := capture.networkWaterfall[0].PageURL
+	storedURL := capture.nw.entries[0].PageURL
 	capture.mu.RUnlock()
 
 	if storedURL != expectedURL {
@@ -143,7 +143,7 @@ func TestNetworkWaterfall_RingBufferEviction(t *testing.T) {
 
 	// Override capacity to test eviction behavior
 	capture.mu.Lock()
-	capture.networkWaterfallCapacity = 10
+	capture.nw.capacity = 10
 	capture.mu.Unlock()
 
 	// Add 12 entries which should trigger eviction since we set max to 10
@@ -167,7 +167,7 @@ func TestNetworkWaterfall_RingBufferEviction(t *testing.T) {
 	}
 
 	capture.mu.RLock()
-	count := len(capture.networkWaterfall)
+	count := len(capture.nw.entries)
 	capture.mu.RUnlock()
 
 	// Should keep only the last 10 (the configured capacity)
@@ -203,8 +203,8 @@ func TestNetworkWaterfall_MultipleEntriesInSinglePayload(t *testing.T) {
 	capture.HandleNetworkWaterfall(w, req)
 
 	capture.mu.RLock()
-	if len(capture.networkWaterfall) != 2 {
-		t.Errorf("Expected 2 entries, got %d", len(capture.networkWaterfall))
+	if len(capture.nw.entries) != 2 {
+		t.Errorf("Expected 2 entries, got %d", len(capture.nw.entries))
 	}
 	capture.mu.RUnlock()
 }
@@ -260,7 +260,7 @@ func TestNetworkWaterfall_DefaultCapacity(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 	capture.mu.RLock()
-	if cap(capture.networkWaterfall) == 0 {
+	if cap(capture.nw.entries) == 0 {
 		t.Errorf("Expected networkWaterfall buffer to be initialized")
 	}
 	capture.mu.RUnlock()
@@ -270,7 +270,7 @@ func TestNetworkWaterfall_CustomCapacity(t *testing.T) {
 	t.Parallel()
 	capture := NewCapture()
 	capture.mu.RLock()
-	capacity := cap(capture.networkWaterfall)
+	capacity := cap(capture.nw.entries)
 	capture.mu.RUnlock()
 
 	if capacity == 0 {
@@ -316,7 +316,7 @@ func TestNetworkWaterfall_ConcurrentWrites(t *testing.T) {
 	}
 
 	capture.mu.RLock()
-	count := len(capture.networkWaterfall)
+	count := len(capture.nw.entries)
 	capture.mu.RUnlock()
 
 	if count != 100 {
