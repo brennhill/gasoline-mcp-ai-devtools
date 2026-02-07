@@ -454,8 +454,9 @@ run_test_s21() {
     fi
 
     # Verify the subtitle element exists in the DOM
+    # Return a simple string (not JSON.stringify) to avoid escaping issues in command result pipeline
     sleep 1
-    interact_and_wait "execute_js" '{"action":"execute_js","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"NOT_FOUND\"; var style = window.getComputedStyle(el); return JSON.stringify({ text: el.textContent, visible: style.display !== \"none\" && style.opacity !== \"0\", bottom: style.bottom, position: style.position }); })()"}'
+    interact_and_wait "execute_js" '{"action":"execute_js","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"NOT_FOUND\"; var style = window.getComputedStyle(el); var visible = style.display !== \"none\" && style.opacity !== \"0\"; return (visible ? \"VISIBLE\" : \"HIDDEN\") + \":\" + el.textContent; })()"}'
 
     local dom_check="$INTERACT_RESULT"
 
@@ -469,7 +470,7 @@ run_test_s21() {
     if echo "$dom_check" | grep -q "smoke test"; then
         has_text=true
     fi
-    if echo "$dom_check" | grep -q '"visible":true\|"visible": true'; then
+    if echo "$dom_check" | grep -q "VISIBLE:"; then
         is_visible=true
     fi
 
@@ -479,7 +480,7 @@ run_test_s21() {
     fi
 
     if [ "$is_visible" != "true" ]; then
-        fail "Subtitle element has correct text but is not visible. DOM: $(truncate "$dom_check" 300)"
+        fail "Subtitle element has correct text but is not visible (opacity still 0). DOM: $(truncate "$dom_check" 300)"
         return
     fi
 
