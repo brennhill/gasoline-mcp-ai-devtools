@@ -12,6 +12,7 @@ interface RecordingState {
   name: string
   startTime: number
   fps: number
+  audioMode: string
   recorder: MediaRecorder | null
   stream: MediaStream | null
   chunks: Blob[]
@@ -26,6 +27,7 @@ const defaultState: RecordingState = {
   name: '',
   startTime: 0,
   fps: 15,
+  audioMode: '',
   recorder: null,
   stream: null,
   chunks: [],
@@ -36,6 +38,9 @@ const defaultState: RecordingState = {
 }
 
 let recordingState: RecordingState = { ...defaultState }
+
+/** Listener to re-send watermark when recording tab navigates or content script re-injects. */
+let tabUpdateListener: ((tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => void) | null = null
 
 // Clear stale recording state from previous session (e.g., browser crash during recording)
 chrome.storage.local.remove('gasoline_recording').catch(() => {})
@@ -59,11 +64,13 @@ export function getRecordingInfo(): { active: boolean; name: string; startTime: 
  * @param name — Pre-generated filename from the Go server (e.g., "checkout-bug--2026-02-07-1423")
  * @param fps — Framerate (5–60, default 15)
  * @param queryId — PendingQuery ID for result resolution
+ * @param audio — Audio mode: 'tab', 'mic', 'both', or '' (no audio)
  */
 export async function startRecording(
   name: string,
   fps: number = 15,
   queryId: string = '',
+  audio: string = '',
 ): Promise<{ status: string; name: string; error?: string }> {
   if (recordingState.active) {
     return { status: 'error', name: '', error: 'RECORD_START: Already recording. Stop current recording first.' }
@@ -77,6 +84,9 @@ export async function startRecording(
 
   // Scale bitrate proportionally: 500kbps at 15fps baseline
   const bitrate = Math.round((fps / 15) * 500_000)
+
+  // Tab audio capture (Phase 1: 'tab' and 'both' modes enable tab audio)
+  const hasAudio = audio === 'tab' || audio === 'both'
 
   try {
     // Get active tab
@@ -101,7 +111,7 @@ export async function startRecording(
               maxFrameRate: fps,
             },
           },
-          audio: false,
+          audio: hasAudio,
         } as chrome.tabCapture.CaptureOptions,
         (s) => resolve(s ?? null),
       )
@@ -112,8 +122,9 @@ export async function startRecording(
       return { status: 'error', name: '', error: 'RECORD_START: Tab capture returned null stream. Check tabCapture permission.' }
     }
 
+    const mimeType = hasAudio ? 'video/webm;codecs=vp8,opus' : 'video/webm;codecs=vp8'
     const recorder = new MediaRecorder(stream, {
-      mimeType: 'video/webm;codecs=vp8',
+      mimeType,
       videoBitsPerSecond: bitrate,
     })
 
@@ -154,6 +165,7 @@ export async function startRecording(
       name,
       startTime: Date.now(),
       fps,
+      audioMode: audio,
       recorder,
       stream,
       chunks,
@@ -171,6 +183,15 @@ export async function startRecording(
 
     // Show recording watermark overlay in the page
     chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_RECORDING_WATERMARK', visible: true }).catch(() => {})
+
+    // Re-send watermark when recording tab navigates or content script re-injects
+    if (tabUpdateListener) chrome.tabs.onUpdated.removeListener(tabUpdateListener)
+    tabUpdateListener = (updatedTabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+      if (updatedTabId === recordingState.tabId && changeInfo.status === 'complete' && recordingState.active) {
+        chrome.tabs.sendMessage(updatedTabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: true }).catch(() => {})
+      }
+    }
+    chrome.tabs.onUpdated.addListener(tabUpdateListener)
 
     return { status: 'recording', name }
   } catch (err) {
@@ -199,7 +220,7 @@ export async function stopRecording(truncated: boolean = false): Promise<{
     return { status: 'error', name: '', error: 'RECORD_STOP: No active recording.' }
   }
 
-  const { name, startTime, recorder, stream, chunks, url, tabId, fps } = recordingState
+  const { name, startTime, recorder, stream, chunks, url, tabId, fps, audioMode } = recordingState
 
   // Mark as no longer active immediately to prevent double-stop
   recordingState.active = false
@@ -249,8 +270,10 @@ export async function stopRecording(truncated: boolean = false): Promise<{
             url,
             tab_id: tabId,
             resolution: '1920x1080',
-            format: 'video/webm;codecs=vp8',
+            format: audioMode === 'tab' || audioMode === 'both' ? 'video/webm;codecs=vp8,opus' : 'video/webm;codecs=vp8',
             fps,
+            has_audio: audioMode === 'tab' || audioMode === 'both',
+            audio_mode: audioMode || undefined,
             truncated,
           }),
         )
@@ -294,5 +317,9 @@ export async function stopRecording(truncated: boolean = false): Promise<{
 
 async function clearRecordingState(): Promise<void> {
   recordingState = { ...defaultState }
+  if (tabUpdateListener) {
+    chrome.tabs.onUpdated.removeListener(tabUpdateListener)
+    tabUpdateListener = null
+  }
   await chrome.storage.local.remove('gasoline_recording')
 }

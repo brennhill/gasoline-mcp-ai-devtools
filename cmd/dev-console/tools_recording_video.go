@@ -29,6 +29,8 @@ type VideoRecordingMetadata struct {
 	Resolution      string `json:"resolution"`
 	Format          string `json:"format"`
 	FPS             int    `json:"fps"`
+	HasAudio        bool   `json:"has_audio,omitempty"`
+	AudioMode       string `json:"audio_mode,omitempty"`
 	Truncated       bool   `json:"truncated,omitempty"`
 }
 
@@ -84,6 +86,7 @@ func (h *ToolHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage
 		Name  string `json:"name"`
 		FPS   int    `json:"fps,omitempty"`
 		TabID int    `json:"tab_id,omitempty"`
+		Audio string `json:"audio,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -103,6 +106,12 @@ func (h *ToolHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage
 	}
 	if fps > 60 {
 		fps = 60
+	}
+
+	// Validate audio mode
+	audio := params.Audio
+	if audio != "" && audio != "tab" && audio != "mic" && audio != "both" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid audio mode: must be 'tab', 'mic', 'both', or omitted", "Use audio: 'tab', 'mic', 'both', or omit for no audio")}
 	}
 
 	// Generate filename
@@ -133,6 +142,7 @@ func (h *ToolHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage
 		"action": "record_start",
 		"name":   fullName,
 		"fps":    fps,
+		"audio":  audio,
 	}
 	extJSON, _ := json.Marshal(extParams)
 
@@ -144,13 +154,14 @@ func (h *ToolHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("record_start", "", map[string]any{"name": fullName, "fps": fps})
+	h.recordAIAction("record_start", "", map[string]any{"name": fullName, "fps": fps, "audio": audio})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording queued", map[string]any{
 		"status":         "queued",
 		"correlation_id": correlationID,
 		"name":           fullName,
 		"fps":            fps,
+		"audio":          audio,
 		"path":           filepath.Join(dir, fullName+".webm"),
 		"message":        "Recording start queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to confirm.",
 	})}

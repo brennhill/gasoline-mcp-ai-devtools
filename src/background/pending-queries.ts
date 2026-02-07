@@ -518,13 +518,13 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
         sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', undefined, 'ai_web_pilot_disabled')
         return
       }
-      let params: { name?: string; fps?: number }
+      let params: { name?: string; fps?: number; audio?: string }
       try {
         params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
       } catch {
         params = {}
       }
-      const result = await startRecording(params.name ?? 'recording', params.fps ?? 15, query.id)
+      const result = await startRecording(params.name ?? 'recording', params.fps ?? 15, query.id, params.audio ?? '')
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', result, result.error || undefined)
       return
     }

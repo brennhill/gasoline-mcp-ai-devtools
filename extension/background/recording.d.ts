@@ -11,8 +11,9 @@ export declare function getRecordingInfo(): {
  * @param name — Pre-generated filename from the Go server (e.g., "checkout-bug--2026-02-07-1423")
  * @param fps — Framerate (5–60, default 15)
  * @param queryId — PendingQuery ID for result resolution
+ * @param audio — Audio mode: 'tab', 'mic', 'both', or '' (no audio)
  */
-export declare function startRecording(name: string, fps?: number, queryId?: string): Promise<{
+export declare function startRecording(name: string, fps?: number, queryId?: string, audio?: string): Promise<{
     status: string;
     name: string;
     error?: string;
