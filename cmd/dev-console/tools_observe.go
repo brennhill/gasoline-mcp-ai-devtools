@@ -147,23 +147,7 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Browser errors", map[string]any{"errors": errors, "count": len(errors)})}
 }
 
-// logLevelRank returns the severity rank of a log level (higher = more severe).
-func logLevelRank(level string) int {
-	switch level {
-	case "debug":
-		return 0
-	case "log":
-		return 1
-	case "info":
-		return 2
-	case "warn":
-		return 3
-	case "error":
-		return 4
-	default:
-		return -1
-	}
-}
+// Note: logLevelRank has been moved to observe_filtering.go
 
 func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	// Parse optional parameters
