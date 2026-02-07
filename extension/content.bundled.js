@@ -583,6 +583,42 @@
     void bar.offsetHeight;
     bar.style.opacity = "1";
   }
+  function toggleRecordingWatermark(visible) {
+    const ELEMENT_ID = "gasoline-recording-watermark";
+    if (!visible) {
+      const existing = document.getElementById(ELEMENT_ID);
+      if (existing) {
+        existing.style.opacity = "0";
+        setTimeout(() => existing.remove(), 300);
+      }
+      return;
+    }
+    if (document.getElementById(ELEMENT_ID))
+      return;
+    const container = document.createElement("div");
+    container.id = ELEMENT_ID;
+    Object.assign(container.style, {
+      position: "fixed",
+      bottom: "16px",
+      right: "16px",
+      width: "32px",
+      height: "32px",
+      opacity: "0",
+      transition: "opacity 0.3s ease-in",
+      zIndex: "2147483645",
+      pointerEvents: "none"
+    });
+    const img = document.createElement("img");
+    img.src = chrome.runtime.getURL("icons/icon.svg");
+    Object.assign(img.style, { width: "100%", height: "100%", opacity: "0.5" });
+    container.appendChild(img);
+    const target = document.body || document.documentElement;
+    if (!target)
+      return;
+    target.appendChild(container);
+    void container.offsetHeight;
+    container.style.opacity = "1";
+  }
   function initRuntimeMessageListener() {
     chrome.storage.local.get(["actionToastsEnabled", "subtitlesEnabled"], (result) => {
       if (result.actionToastsEnabled !== void 0)
@@ -604,6 +640,11 @@
         const msg = message;
         if (msg.text)
           showActionToast(msg.text, msg.detail, msg.state || "trying", msg.duration_ms);
+        return false;
+      }
+      if (message.type === "GASOLINE_RECORDING_WATERMARK") {
+        const msg = message;
+        toggleRecordingWatermark(msg.visible ?? false);
         return false;
       }
       if (message.type === "GASOLINE_SUBTITLE") {

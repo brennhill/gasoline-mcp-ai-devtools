@@ -172,6 +172,53 @@ function showSubtitle(text: string): void {
 }
 
 /**
+ * Show or hide a recording watermark (Gasoline flame icon) in the bottom-right corner.
+ * The icon renders at 32x32px with 50% opacity, captured in the tab video.
+ */
+function toggleRecordingWatermark(visible: boolean): void {
+  const ELEMENT_ID = 'gasoline-recording-watermark'
+
+  if (!visible) {
+    const existing = document.getElementById(ELEMENT_ID)
+    if (existing) {
+      existing.style.opacity = '0'
+      setTimeout(() => existing.remove(), 300)
+    }
+    return
+  }
+
+  // Don't create a duplicate
+  if (document.getElementById(ELEMENT_ID)) return
+
+  const container = document.createElement('div')
+  container.id = ELEMENT_ID
+  Object.assign(container.style, {
+    position: 'fixed',
+    bottom: '16px',
+    right: '16px',
+    width: '32px',
+    height: '32px',
+    opacity: '0',
+    transition: 'opacity 0.3s ease-in',
+    zIndex: '2147483645',
+    pointerEvents: 'none',
+  })
+
+  const img = document.createElement('img')
+  img.src = chrome.runtime.getURL('icons/icon.svg')
+  Object.assign(img.style, { width: '100%', height: '100%', opacity: '0.5' })
+  container.appendChild(img)
+
+  const target = document.body || document.documentElement
+  if (!target) return
+  target.appendChild(container)
+
+  // Trigger reflow then fade in
+  void container.offsetHeight
+  container.style.opacity = '1'
+}
+
+/**
  * Initialize runtime message listener
  * Listens for messages from background (feature toggles and pilot commands)
  */
@@ -204,6 +251,13 @@ export function initRuntimeMessageListener(): void {
         if (!actionToastsEnabled) return false
         const msg = message as { type: string; text?: string; detail?: string; state?: 'trying' | 'success' | 'warning' | 'error'; duration_ms?: number }
         if (msg.text) showActionToast(msg.text, msg.detail, msg.state || 'trying', msg.duration_ms)
+        return false
+      }
+
+      // Show/hide recording watermark overlay
+      if (message.type === 'GASOLINE_RECORDING_WATERMARK') {
+        const msg = message as { type: string; visible?: boolean }
+        toggleRecordingWatermark(msg.visible ?? false)
         return false
       }
 

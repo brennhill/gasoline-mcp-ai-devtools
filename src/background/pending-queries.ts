@@ -15,6 +15,7 @@ import { DebugCategory } from './debug'
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, broadcastTrackingState } from './message-handlers'
 import { executeDOMAction } from './dom-primitives'
 import { canTakeScreenshot, recordScreenshot } from './state-manager'
+import { startRecording, stopRecording } from './recording'
 
 // Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
 const { debugLog, diagnosticLog } = index
@@ -509,6 +510,32 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
         return
       }
       await executeDOMAction(query, tabId, syncClient, sendAsyncResult, actionToast)
+      return
+    }
+
+    if (query.type === 'record_start') {
+      if (!index.__aiWebPilotEnabledCache) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', undefined, 'ai_web_pilot_disabled')
+        return
+      }
+      let params: { name?: string; fps?: number }
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        params = {}
+      }
+      const result = await startRecording(params.name ?? 'recording', params.fps ?? 15, query.id)
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', result, result.error || undefined)
+      return
+    }
+
+    if (query.type === 'record_stop') {
+      if (!index.__aiWebPilotEnabledCache) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', undefined, 'ai_web_pilot_disabled')
+        return
+      }
+      const result = await stopRecording()
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', result, result.error || undefined)
       return
     }
 

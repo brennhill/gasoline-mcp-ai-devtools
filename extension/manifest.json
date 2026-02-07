@@ -33,7 +33,7 @@
       "run_at": "document_start"
     }
   ],
-  "permissions": ["storage", "alarms", "tabs", "scripting"],
+  "permissions": ["storage", "alarms", "tabs", "scripting", "tabCapture"],
   "host_permissions": ["<all_urls>"],
   "options_ui": {
     "page": "options.html",
@@ -52,7 +52,8 @@
         "icons/icon-flicker-5-large.svg",
         "icons/icon-flicker-6-medium.svg",
         "icons/icon-flicker-7-smallmed.svg",
-        "icons/icon-flicker-8-small.svg"
+        "icons/icon-flicker-8-small.svg",
+        "icons/icon.svg"
       ],
       "matches": ["<all_urls>"]
     }

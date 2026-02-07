@@ -218,6 +218,11 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 			}
 		}))
 
+		// Video recording save endpoint
+		http.HandleFunc("/recordings/save", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+			server.handleVideoRecordingSave(w, r, cap)
+		})))
+
 		// CI Infrastructure endpoints
 		http.HandleFunc("/snapshot", corsMiddleware(handleSnapshot(server, cap)))
 		http.HandleFunc("/clear", corsMiddleware(handleClear(server, cap)))

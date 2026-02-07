@@ -81,6 +81,10 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		resp = h.handleDOMPrimitive(req, args, params.Action)
 	case "list_interactive":
 		resp = h.handleListInteractive(req, args)
+	case "record_start":
+		resp = h.handleRecordStart(req, args)
+	case "record_stop":
+		resp = h.handleRecordStop(req, args)
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
 	}
