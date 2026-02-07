@@ -132,13 +132,11 @@ function showSubtitle(text) {
         target.appendChild(bar);
     }
     bar.textContent = text;
-    // Use setTimeout instead of requestAnimationFrame to ensure opacity
-    // transitions even when the tab is in the background (rAF is paused
-    // in background tabs, causing the subtitle to stay invisible).
-    setTimeout(() => {
-        if (bar)
-            bar.style.opacity = '1';
-    }, 50);
+    // Force reflow so the browser registers opacity:0, then set to 1
+    // for the CSS transition. No timer needed — avoids rAF (paused in
+    // background tabs) and setTimeout (throttled to 1s in background tabs).
+    void bar.offsetHeight;
+    bar.style.opacity = '1';
 }
 /**
  * Initialize runtime message listener

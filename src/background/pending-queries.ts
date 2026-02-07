@@ -71,17 +71,34 @@ function sendAsyncResult(
   })
 }
 
+/** Map raw action names to human-readable toast labels */
+const PRETTY_LABELS: Record<string, string> = {
+  navigate: 'Navigate to',
+  refresh: 'Refresh',
+  execute_js: 'Execute',
+  click: 'Click',
+  type: 'Type',
+  select: 'Select',
+  check: 'Check',
+  focus: 'Focus',
+  scroll_to: 'Scroll to',
+  wait_for: 'Wait for',
+  key_press: 'Key press',
+  highlight: 'Highlight',
+  subtitle: 'Subtitle',
+}
+
 /** Show a visual action toast on the tracked tab */
 function actionToast(
   tabId: number,
-  text: string,
+  action: string,
   detail?: string,
   state: 'trying' | 'success' | 'warning' | 'error' = 'success',
   durationMs = 3000,
 ): void {
   chrome.tabs.sendMessage(tabId, {
     type: 'GASOLINE_ACTION_TOAST',
-    text,
+    text: PRETTY_LABELS[action] || action,
     detail,
     state,
     duration_ms: durationMs,
@@ -763,6 +780,13 @@ async function handleBrowserAction(
 async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number, world: string, syncClient: SyncClient): Promise<void> {
   const startTime = Date.now()
 
+  // Extract reason for toast display
+  let reason: string | undefined
+  try {
+    const p = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+    reason = (p as { reason?: string })?.reason
+  } catch { /* ignore parse errors */ }
+
   try {
     const result = await Promise.race([
       executeWithWorldRouting(tabId, query.params, world),
@@ -772,7 +796,7 @@ async function handleAsyncExecuteCommand(query: PendingQuery, tabId: number, wor
     ])
 
     if (result.success) {
-      actionToast(tabId, 'execute_js', 'script completed', 'success')
+      actionToast(tabId, 'execute_js', reason || 'done', 'success')
     }
 
     sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', result)

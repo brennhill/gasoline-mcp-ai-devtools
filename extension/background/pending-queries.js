@@ -53,11 +53,27 @@ function sendAsyncResult(syncClient, queryId, correlationId, status, result, err
         error,
     });
 }
+/** Map raw action names to human-readable toast labels */
+const PRETTY_LABELS = {
+    navigate: 'Navigate to',
+    refresh: 'Refresh',
+    execute_js: 'Execute',
+    click: 'Click',
+    type: 'Type',
+    select: 'Select',
+    check: 'Check',
+    focus: 'Focus',
+    scroll_to: 'Scroll to',
+    wait_for: 'Wait for',
+    key_press: 'Key press',
+    highlight: 'Highlight',
+    subtitle: 'Subtitle',
+};
 /** Show a visual action toast on the tracked tab */
-function actionToast(tabId, text, detail, state = 'success', durationMs = 3000) {
+function actionToast(tabId, action, detail, state = 'success', durationMs = 3000) {
     chrome.tabs.sendMessage(tabId, {
         type: 'GASOLINE_ACTION_TOAST',
-        text,
+        text: PRETTY_LABELS[action] || action,
         detail,
         state,
         duration_ms: durationMs,
@@ -691,6 +707,13 @@ async function handleBrowserAction(tabId, params) {
 }
 async function handleAsyncExecuteCommand(query, tabId, world, syncClient) {
     const startTime = Date.now();
+    // Extract reason for toast display
+    let reason;
+    try {
+        const p = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
+        reason = p?.reason;
+    }
+    catch { /* ignore parse errors */ }
     try {
         const result = await Promise.race([
             executeWithWorldRouting(tabId, query.params, world),
@@ -699,7 +722,7 @@ async function handleAsyncExecuteCommand(query, tabId, world, syncClient) {
             }),
         ]);
         if (result.success) {
-            actionToast(tabId, 'execute_js', 'script completed', 'success');
+            actionToast(tabId, 'execute_js', reason || 'done', 'success');
         }
         sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result);
         debugLog(DebugCategory.CONNECTION, 'Completed async command', {
