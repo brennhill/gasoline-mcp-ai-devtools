@@ -15,7 +15,7 @@ const mockChrome = {
     onMessage: {
       addListener: mock.fn(),
     },
-    getManifest: () => ({ version: '5.7.5' }),
+    getManifest: () => ({ version: '5.8.0' }),
   },
   storage: {
     sync: {

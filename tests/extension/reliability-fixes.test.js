@@ -36,7 +36,7 @@ const mockChrome = {
       addListener: mock.fn(),
     },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.7.5' }),
+    getManifest: () => ({ version: '5.8.0' }),
   },
   action: {
     setBadgeText: mock.fn(),
