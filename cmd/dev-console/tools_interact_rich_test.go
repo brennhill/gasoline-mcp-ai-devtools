@@ -445,3 +445,186 @@ func TestRichAction_CommandResultIncludesTimingMs(t *testing.T) {
 		t.Errorf("timing_ms should be non-negative, got %v", tm)
 	}
 }
+
+// ============================================
+// Command result passthrough: dom_summary, analyze fields
+// ============================================
+
+func TestRichAction_DomSummaryPassthrough(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	// Click with analyze:true
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	// Simulate extension result with dom_summary and analyze fields
+	extensionResult := json.RawMessage(`{
+		"success": true,
+		"action": "click",
+		"dom_summary": "2 added, 1 modified",
+		"timing": {"total_ms": 42},
+		"dom_changes": {"added": 2, "removed": 0, "modified": 1, "summary": "2 added, 1 modified"},
+		"analysis": "click completed in 42ms. 2 added, 1 modified."
+	}`)
+	env.capture.CompleteCommand(corrID, extensionResult, "")
+
+	// Observe command_result — verify extension fields pass through
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	// Extension result fields should be inside the "result" envelope
+	extResult, ok := responseData["result"].(map[string]any)
+	if !ok {
+		t.Fatal("response should contain 'result' object with extension data")
+	}
+
+	domSummary, exists := extResult["dom_summary"]
+	if !exists {
+		t.Fatal("dom_summary missing from command result — extension field not passed through")
+	}
+	if domSummary != "2 added, 1 modified" {
+		t.Errorf("dom_summary = %q, want '2 added, 1 modified'", domSummary)
+	}
+
+	analysis, exists := extResult["analysis"]
+	if !exists {
+		t.Fatal("analysis missing from command result — extension field not passed through")
+	}
+	if analysis != "click completed in 42ms. 2 added, 1 modified." {
+		t.Errorf("analysis = %q, want 'click completed in 42ms. 2 added, 1 modified.'", analysis)
+	}
+
+	timing, exists := extResult["timing"].(map[string]any)
+	if !exists {
+		t.Fatal("timing missing from command result")
+	}
+	if totalMs, _ := timing["total_ms"].(float64); totalMs != 42 {
+		t.Errorf("timing.total_ms = %v, want 42", totalMs)
+	}
+}
+
+func TestRichAction_PerfDiffWithFullWebVitals(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	env.capture.SetTrackingStatusForTest(1, "https://example.com/dashboard")
+
+	fcp := 3500.0
+	lcp := 4500.0
+	cls := 0.3
+
+	// Seed before snapshot with ALL Web Vitals populated
+	env.capture.AddPerformanceSnapshots([]performance.PerformanceSnapshot{{
+		URL:       "/dashboard",
+		Timestamp: "2024-01-01T00:00:00Z",
+		Timing: performance.PerformanceTiming{
+			TimeToFirstByte:        900,
+			FirstContentfulPaint:   &fcp,
+			LargestContentfulPaint: &lcp,
+			DomContentLoaded:       1200,
+			Load:                   2500,
+		},
+		CLS:     &cls,
+		Network: performance.NetworkSummary{TransferSize: 800000, RequestCount: 60},
+	}})
+
+	// Call refresh to stash before-snapshot
+	result, _ := env.callInteract(t, `{"action":"refresh"}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	// Simulate improved "after" snapshot with all Web Vitals
+	fcp2 := 800.0
+	lcp2 := 1200.0
+	cls2 := 0.02
+	env.capture.AddPerformanceSnapshots([]performance.PerformanceSnapshot{{
+		URL:       "/dashboard",
+		Timestamp: "2024-01-01T00:00:05Z",
+		Timing: performance.PerformanceTiming{
+			TimeToFirstByte:        150,
+			FirstContentfulPaint:   &fcp2,
+			LargestContentfulPaint: &lcp2,
+			DomContentLoaded:       500,
+			Load:                   1000,
+		},
+		CLS:     &cls2,
+		Network: performance.NetworkSummary{TransferSize: 300000, RequestCount: 25},
+	}})
+
+	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":true,"action":"refresh"}`), "")
+
+	// Observe command_result
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData)
+
+	perfDiff, exists := responseData["perf_diff"]
+	if !exists {
+		t.Fatal("perf_diff missing from command_result with full Web Vitals")
+	}
+	diffMap := perfDiff.(map[string]any)
+	metrics := diffMap["metrics"].(map[string]any)
+
+	// FCP must be present with "good" rating
+	fcpMetric, hasFCP := metrics["fcp"]
+	if !hasFCP {
+		t.Fatal("perf_diff.metrics missing 'fcp' — FCP not wired through snapshot→diff pipeline")
+	}
+	fcpMap := fcpMetric.(map[string]any)
+	if fcpMap["rating"] != "good" {
+		t.Errorf("FCP 800ms rating = %q, want 'good'", fcpMap["rating"])
+	}
+
+	// LCP must be present with "good" rating
+	lcpMetric, hasLCP := metrics["lcp"]
+	if !hasLCP {
+		t.Fatal("perf_diff.metrics missing 'lcp'")
+	}
+	lcpMap := lcpMetric.(map[string]any)
+	if lcpMap["rating"] != "good" {
+		t.Errorf("LCP 1200ms rating = %q, want 'good'", lcpMap["rating"])
+	}
+
+	// CLS must be present with "good" rating
+	clsMetric, hasCLS := metrics["cls"]
+	if !hasCLS {
+		t.Fatal("perf_diff.metrics missing 'cls' — CLS not wired through snapshot→diff pipeline")
+	}
+	clsMap := clsMetric.(map[string]any)
+	if clsMap["rating"] != "good" {
+		t.Errorf("CLS 0.02 rating = %q, want 'good'", clsMap["rating"])
+	}
+
+	// TTFB must be present with "good" rating
+	ttfbMetric, hasTTFB := metrics["ttfb"]
+	if !hasTTFB {
+		t.Fatal("perf_diff.metrics missing 'ttfb'")
+	}
+	ttfbMap := ttfbMetric.(map[string]any)
+	if ttfbMap["rating"] != "good" {
+		t.Errorf("TTFB 150ms rating = %q, want 'good'", ttfbMap["rating"])
+	}
+
+	// Verdict must be "improved"
+	if diffMap["verdict"] != "improved" {
+		t.Errorf("verdict = %q, want 'improved'", diffMap["verdict"])
+	}
+}

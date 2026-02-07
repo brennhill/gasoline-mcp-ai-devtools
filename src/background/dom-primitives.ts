@@ -13,6 +13,10 @@ interface DOMResult {
   value?: unknown
   error?: string
   message?: string
+  dom_summary?: string
+  timing?: { total_ms: number }
+  dom_changes?: { added: number; removed: number; modified: number; summary: string }
+  analysis?: string
 }
 
 type SendAsyncResult = (
@@ -47,6 +51,7 @@ export function domPrimitive(
     checked?: boolean
     name?: string
     timeout_ms?: number
+    analyze?: boolean
   },
 ): DOMResult | Promise<DOMResult> | { success: boolean; elements: unknown[] } {
   // ---------------------------------------------------------------
@@ -254,84 +259,136 @@ export function domPrimitive(
   }
 
   // ---------------------------------------------------------------
+  // Mutation tracking: wraps an action with MutationObserver to capture DOM changes.
+  // Returns a compact dom_summary (always) and detailed dom_changes (when analyze:true).
+  // ---------------------------------------------------------------
+  function withMutationTracking(fn: () => DOMResult): Promise<DOMResult> {
+    const t0 = performance.now()
+    const mutations: MutationRecord[] = []
+    const observer = new MutationObserver((records) => {
+      mutations.push(...records)
+    })
+    observer.observe(document.body || document.documentElement, {
+      childList: true, subtree: true, attributes: true,
+    })
+
+    const result = fn()
+
+    if (!result.success) {
+      observer.disconnect()
+      return Promise.resolve(result)
+    }
+
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          observer.disconnect()
+          const totalMs = Math.round(performance.now() - t0)
+          const added = mutations.reduce((s, m) => s + m.addedNodes.length, 0)
+          const removed = mutations.reduce((s, m) => s + m.removedNodes.length, 0)
+          const modified = mutations.filter((m) => m.type === 'attributes').length
+          const parts: string[] = []
+          if (added > 0) parts.push(`${added} added`)
+          if (removed > 0) parts.push(`${removed} removed`)
+          if (modified > 0) parts.push(`${modified} modified`)
+          const summary = parts.length > 0 ? parts.join(', ') : 'no DOM changes'
+
+          const enriched: DOMResult = { ...result, dom_summary: summary }
+
+          if (options.analyze) {
+            enriched.timing = { total_ms: totalMs }
+            enriched.dom_changes = { added, removed, modified, summary }
+            enriched.analysis = `${result.action} completed in ${totalMs}ms. ${summary}.`
+          }
+
+          resolve(enriched)
+        }, 50)
+      })
+    })
+  }
+
+  // ---------------------------------------------------------------
   // Action dispatch
   // ---------------------------------------------------------------
   switch (action) {
     case 'click': {
-      if (!(el instanceof HTMLElement)) {
-        return { success: false, action, selector, error: 'not_interactive', message: `Element is not an HTMLElement: ${el.tagName}` }
-      }
-      el.click()
-      return { success: true, action, selector }
+      return withMutationTracking(() => {
+        if (!(el instanceof HTMLElement)) {
+          return { success: false, action, selector, error: 'not_interactive', message: `Element is not an HTMLElement: ${el.tagName}` }
+        }
+        el.click()
+        return { success: true, action, selector }
+      })
     }
 
     case 'type': {
-      const text = options.text || ''
+      return withMutationTracking(() => {
+        const text = options.text || ''
 
-      // Contenteditable elements (Gmail compose body, rich text editors)
-      // Use execCommand('insertText') — fires beforeinput/input events properly,
-      // integrates with undo/redo, and works with Gmail's editor framework.
-      if (el instanceof HTMLElement && el.isContentEditable) {
-        el.focus()
-        if (options.clear) {
-          // Select all then replace
-          const selection = document.getSelection()
-          if (selection) {
-            selection.selectAllChildren(el)
-            selection.deleteFromDocument()
+        // Contenteditable elements (Gmail compose body, rich text editors)
+        if (el instanceof HTMLElement && el.isContentEditable) {
+          el.focus()
+          if (options.clear) {
+            const selection = document.getSelection()
+            if (selection) {
+              selection.selectAllChildren(el)
+              selection.deleteFromDocument()
+            }
           }
+          document.execCommand('insertText', false, text)
+          return { success: true, action, selector, value: el.textContent }
         }
-        document.execCommand('insertText', false, text)
-        return { success: true, action, selector, value: el.textContent }
-      }
 
-      if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement)) {
-        return { success: false, action, selector, error: 'not_typeable', message: `Element is not an input, textarea, or contenteditable: ${el.tagName}` }
-      }
-      // Use native prototype setter to trigger React/Vue/Angular state updates
-      const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement
-      const nativeSetter = Object.getOwnPropertyDescriptor(proto.prototype, 'value')?.set
-      if (nativeSetter) {
-        const newValue = options.clear ? text : el.value + text
-        nativeSetter.call(el, newValue)
-      } else {
-        el.value = options.clear ? text : el.value + text
-      }
-      el.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }))
-      el.dispatchEvent(new Event('change', { bubbles: true }))
-      return { success: true, action, selector, value: el.value }
+        if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement)) {
+          return { success: false, action, selector, error: 'not_typeable', message: `Element is not an input, textarea, or contenteditable: ${el.tagName}` }
+        }
+        const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement
+        const nativeSetter = Object.getOwnPropertyDescriptor(proto.prototype, 'value')?.set
+        if (nativeSetter) {
+          const newValue = options.clear ? text : el.value + text
+          nativeSetter.call(el, newValue)
+        } else {
+          el.value = options.clear ? text : el.value + text
+        }
+        el.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }))
+        el.dispatchEvent(new Event('change', { bubbles: true }))
+        return { success: true, action, selector, value: el.value }
+      })
     }
 
     case 'select': {
-      if (!(el instanceof HTMLSelectElement)) {
-        return { success: false, action, selector, error: 'not_select', message: `Element is not a <select>: ${el.tagName}` }
-      }
-      const nativeSelectSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set
-      if (nativeSelectSetter) {
-        nativeSelectSetter.call(el, options.value || '')
-      } else {
-        el.value = options.value || ''
-      }
-      el.dispatchEvent(new Event('change', { bubbles: true }))
-      return { success: true, action, selector, value: el.value }
+      return withMutationTracking(() => {
+        if (!(el instanceof HTMLSelectElement)) {
+          return { success: false, action, selector, error: 'not_select', message: `Element is not a <select>: ${el.tagName}` }
+        }
+        const nativeSelectSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set
+        if (nativeSelectSetter) {
+          nativeSelectSetter.call(el, options.value || '')
+        } else {
+          el.value = options.value || ''
+        }
+        el.dispatchEvent(new Event('change', { bubbles: true }))
+        return { success: true, action, selector, value: el.value }
+      })
     }
 
     case 'check': {
-      if (!(el instanceof HTMLInputElement) || (el.type !== 'checkbox' && el.type !== 'radio')) {
-        return {
-          success: false,
-          action,
-          selector,
-          error: 'not_checkable',
-          message: `Element is not a checkbox or radio: ${el.tagName} type=${(el as HTMLInputElement).type || 'N/A'}`,
+      return withMutationTracking(() => {
+        if (!(el instanceof HTMLInputElement) || (el.type !== 'checkbox' && el.type !== 'radio')) {
+          return {
+            success: false,
+            action,
+            selector,
+            error: 'not_checkable',
+            message: `Element is not a checkbox or radio: ${el.tagName} type=${(el as HTMLInputElement).type || 'N/A'}`,
+          }
         }
-      }
-      const desired = options.checked !== undefined ? options.checked : true
-      // Use .click() for React compatibility — toggles checked and fires all events
-      if (el.checked !== desired) {
-        el.click()
-      }
-      return { success: true, action, selector, value: el.checked }
+        const desired = options.checked !== undefined ? options.checked : true
+        if (el.checked !== desired) {
+          el.click()
+        }
+        return { success: true, action, selector, value: el.checked }
+      })
     }
 
     case 'get_text': {
@@ -350,8 +407,10 @@ export function domPrimitive(
     }
 
     case 'set_attribute': {
-      el.setAttribute(options.name || '', options.value || '')
-      return { success: true, action, selector, value: el.getAttribute(options.name || '') }
+      return withMutationTracking(() => {
+        el.setAttribute(options.name || '', options.value || '')
+        return { success: true, action, selector, value: el.getAttribute(options.name || '') }
+      })
     }
 
     case 'focus': {
@@ -373,24 +432,26 @@ export function domPrimitive(
     }
 
     case 'key_press': {
-      if (!(el instanceof HTMLElement)) {
-        return { success: false, action, selector, error: 'not_interactive', message: `Element is not an HTMLElement: ${el.tagName}` }
-      }
-      const key = options.text || 'Enter'
-      const keyMap: Record<string, { key: string; code: string; keyCode: number }> = {
-        Enter: { key: 'Enter', code: 'Enter', keyCode: 13 },
-        Tab: { key: 'Tab', code: 'Tab', keyCode: 9 },
-        Escape: { key: 'Escape', code: 'Escape', keyCode: 27 },
-        Backspace: { key: 'Backspace', code: 'Backspace', keyCode: 8 },
-        ArrowDown: { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 },
-        ArrowUp: { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 },
-        Space: { key: ' ', code: 'Space', keyCode: 32 },
-      }
-      const mapped = keyMap[key] || { key, code: key, keyCode: 0 }
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }))
-      el.dispatchEvent(new KeyboardEvent('keypress', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }))
-      el.dispatchEvent(new KeyboardEvent('keyup', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }))
-      return { success: true, action, selector, value: key }
+      return withMutationTracking(() => {
+        if (!(el instanceof HTMLElement)) {
+          return { success: false, action, selector, error: 'not_interactive', message: `Element is not an HTMLElement: ${el.tagName}` }
+        }
+        const key = options.text || 'Enter'
+        const keyMap: Record<string, { key: string; code: string; keyCode: number }> = {
+          Enter: { key: 'Enter', code: 'Enter', keyCode: 13 },
+          Tab: { key: 'Tab', code: 'Tab', keyCode: 9 },
+          Escape: { key: 'Escape', code: 'Escape', keyCode: 27 },
+          Backspace: { key: 'Backspace', code: 'Backspace', keyCode: 8 },
+          ArrowDown: { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 },
+          ArrowUp: { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 },
+          Space: { key: ' ', code: 'Space', keyCode: 32 },
+        }
+        const mapped = keyMap[key] || { key, code: key, keyCode: 0 }
+        el.dispatchEvent(new KeyboardEvent('keydown', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }))
+        el.dispatchEvent(new KeyboardEvent('keypress', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }))
+        el.dispatchEvent(new KeyboardEvent('keyup', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }))
+        return { success: true, action, selector, value: key }
+      })
     }
 
     default:
@@ -496,6 +557,7 @@ export async function executeDOMAction(
     name?: string
     timeout_ms?: number
     reason?: string
+    analyze?: boolean
   }
   try {
     params = typeof query.params === 'string' ? JSON.parse(query.params) : (query.params as typeof params)
@@ -562,6 +624,7 @@ export async function executeDOMAction(
           checked: params.checked,
           name: params.name,
           timeout_ms: params.timeout_ms,
+          analyze: params.analyze,
         }],
       })
     }

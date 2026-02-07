@@ -67,11 +67,11 @@ export function aggregateResourceTiming() {
         size: r.transferSize || 0,
     }));
     return {
-        requestCount: resources.length,
-        transferSize,
-        decodedSize,
-        byType,
-        slowestRequests,
+        request_count: resources.length,
+        transfer_size: transferSize,
+        decoded_size: decodedSize,
+        by_type: byType,
+        slowest_requests: slowestRequests,
     };
 }
 /**
@@ -85,23 +85,31 @@ export function capturePerformanceSnapshot() {
     if (!nav)
         return null;
     const timing = {
-        domContentLoaded: nav.domContentLoadedEventEnd,
+        dom_content_loaded: nav.domContentLoadedEventEnd,
         load: nav.loadEventEnd,
-        firstContentfulPaint: getFCP(),
-        largestContentfulPaint: getLCP(),
-        interactionToNextPaint: getINP(),
-        timeToFirstByte: nav.responseStart - nav.requestStart,
-        domInteractive: nav.domInteractive,
+        first_contentful_paint: getFCP(),
+        largest_contentful_paint: getLCP(),
+        interaction_to_next_paint: getINP(),
+        time_to_first_byte: nav.responseStart - nav.requestStart,
+        dom_interactive: nav.domInteractive,
     };
     const network = aggregateResourceTiming();
     const longTasks = getLongTaskMetrics();
+    // Capture user timing marks and measures
+    const marks = performance.getEntriesByType('mark') || [];
+    const measures = performance.getEntriesByType('measure') || [];
+    const userTiming = (marks.length > 0 || measures.length > 0) ? {
+        marks: marks.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime })),
+        measures: measures.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime, duration: m.duration })),
+    } : undefined;
     return {
         url: window.location.pathname,
         timestamp: new Date().toISOString(),
         timing,
         network,
-        longTasks,
-        cumulativeLayoutShift: getCLS(),
+        long_tasks: longTasks,
+        cumulative_layout_shift: getCLS(),
+        user_timing: userTiming,
     };
 }
 /**
@@ -209,7 +217,7 @@ export function getLongTaskMetrics() {
     }
     return {
         count: longTaskEntries.length,
-        totalBlockingTime,
+        total_blocking_time: totalBlockingTime,
         longest,
     };
 }
@@ -247,6 +255,22 @@ export function sendPerformanceSnapshot() {
     if (!snapshot)
         return;
     window.postMessage({ type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: snapshot }, window.location.origin);
+}
+// Debounce timer for snapshot re-sends triggered by user timing changes
+let snapshotResendTimer = null;
+/**
+ * Schedule a debounced re-send of the performance snapshot.
+ * Called when user timing marks/measures are created to keep server data fresh.
+ */
+export function scheduleSnapshotResend() {
+    if (!perfSnapshotEnabled)
+        return;
+    if (snapshotResendTimer)
+        clearTimeout(snapshotResendTimer);
+    snapshotResendTimer = setTimeout(() => {
+        snapshotResendTimer = null;
+        sendPerformanceSnapshot();
+    }, 500);
 }
 /**
  * Check if performance snapshot capture is enabled

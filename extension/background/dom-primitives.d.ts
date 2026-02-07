@@ -7,6 +7,17 @@ interface DOMResult {
     value?: unknown;
     error?: string;
     message?: string;
+    dom_summary?: string;
+    timing?: {
+        total_ms: number;
+    };
+    dom_changes?: {
+        added: number;
+        removed: number;
+        modified: number;
+        summary: string;
+    };
+    analysis?: string;
 }
 type SendAsyncResult = (syncClient: SyncClient, queryId: string, correlationId: string, status: 'complete' | 'error' | 'timeout', result?: unknown, error?: string) => void;
 type ActionToast = (tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error', durationMs?: number) => void;
@@ -22,6 +33,7 @@ export declare function domPrimitive(action: string, selector: string, options: 
     checked?: boolean;
     name?: string;
     timeout_ms?: number;
+    analyze?: boolean;
 }): DOMResult | Promise<DOMResult> | {
     success: boolean;
     elements: unknown[];
