@@ -43,8 +43,7 @@ func newInteractTestEnv(t *testing.T) *interactTestEnv {
 		t.Fatalf("NewServer failed: %v", err)
 	}
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 	return &interactTestEnv{handler: handler, server: server, capture: cap}
 }

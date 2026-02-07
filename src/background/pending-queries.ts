@@ -113,14 +113,17 @@ async function executeViaScriptingAPI(
     func: (code: string) => {
       try {
         const cleaned = code.trim()
-        const hasMultiple = cleaned.includes(';')
-        const hasReturn = /\breturn\b/.test(cleaned)
-        const body = hasMultiple || hasReturn
-          ? `"use strict"; ${cleaned}`
-          : `"use strict"; return (${cleaned});`
 
-        // eslint-disable-next-line no-new-func
-        const fn = new Function(body) as () => unknown
+        // Try expression form first (captures return values from IIFEs, expressions).
+        // If SyntaxError (statements like try/catch, if/else), fall back to statement form.
+        let fn: () => unknown
+        try {
+          // eslint-disable-next-line no-new-func
+          fn = new Function(`"use strict"; return (${cleaned});`) as () => unknown
+        } catch {
+          // eslint-disable-next-line no-new-func
+          fn = new Function(`"use strict"; ${cleaned}`) as () => unknown
+        }
         const result = fn()
 
         if (result !== null && result !== undefined && typeof (result as { then?: unknown }).then === 'function') {

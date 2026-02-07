@@ -51,9 +51,12 @@ func (c *Capture) HandleExtensionLogs(w http.ResponseWriter, r *http.Request) {
 		// Append to ring buffer with capacity enforcement
 		c.extensionLogs = append(c.extensionLogs, log)
 
-		// Evict oldest entries if over capacity
+		// Evict oldest entries if over capacity.
+		// Allocate new slice to release old backing array for GC.
 		if len(c.extensionLogs) > MaxExtensionLogs {
-			c.extensionLogs = c.extensionLogs[len(c.extensionLogs)-MaxExtensionLogs:]
+			kept := make([]ExtensionLog, MaxExtensionLogs)
+			copy(kept, c.extensionLogs[len(c.extensionLogs)-MaxExtensionLogs:])
+			c.extensionLogs = kept
 		}
 	}
 

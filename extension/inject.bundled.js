@@ -1029,7 +1029,7 @@ function installPerfObservers() {
       }
     }
   });
-  paintObserver.observe({ type: "paint" });
+  paintObserver.observe({ type: "paint", buffered: true });
   lcpObserver = new PerformanceObserver((list) => {
     const entries = list.getEntries();
     if (entries.length > 0) {
@@ -1039,7 +1039,7 @@ function installPerfObservers() {
       }
     }
   });
-  lcpObserver.observe({ type: "largest-contentful-paint" });
+  lcpObserver.observe({ type: "largest-contentful-paint", buffered: true });
   clsObserver = new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
       const clsEntry = entry;
@@ -1048,7 +1048,7 @@ function installPerfObservers() {
       }
     }
   });
-  clsObserver.observe({ type: "layout-shift" });
+  clsObserver.observe({ type: "layout-shift", buffered: true });
   inpObserver = new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
       const inpEntry = entry;
@@ -1059,7 +1059,7 @@ function installPerfObservers() {
       }
     }
   });
-  inpObserver.observe({ type: "event", durationThreshold: 40 });
+  inpObserver.observe({ type: "event", durationThreshold: 40, buffered: true });
 }
 function uninstallPerfObservers() {
   if (longTaskObserver) {
@@ -2879,6 +2879,7 @@ function installPhase2() {
   phase2Timestamp = performance.now();
   phase2Installed = true;
   install();
+  installPerfObservers();
 }
 function getDeferralState() {
   return {
@@ -2988,15 +2989,12 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`
     }, timeoutMs);
     try {
       const cleanScript = script.trim();
-      const hasMultipleStatements = cleanScript.includes(";");
-      const hasExplicitReturn = /\breturn\b/.test(cleanScript);
-      let fnBody;
-      if (hasMultipleStatements || hasExplicitReturn) {
-        fnBody = `"use strict"; ${cleanScript}`;
-      } else {
-        fnBody = `"use strict"; return (${cleanScript});`;
+      let fn;
+      try {
+        fn = new Function(`"use strict"; return (${cleanScript});`);
+      } catch {
+        fn = new Function(`"use strict"; ${cleanScript}`);
       }
-      const fn = new Function(fnBody);
       const result = fn();
       if (result && typeof result.then === "function") {
         ;

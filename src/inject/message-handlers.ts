@@ -218,18 +218,16 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
     try {
       const cleanScript = script.trim()
 
-      const hasMultipleStatements = cleanScript.includes(';')
-      const hasExplicitReturn = /\breturn\b/.test(cleanScript)
-
-      let fnBody: string
-      if (hasMultipleStatements || hasExplicitReturn) {
-        fnBody = `"use strict"; ${cleanScript}`
-      } else {
-        fnBody = `"use strict"; return (${cleanScript});`
+      // Try expression form first (captures return values from IIFEs, expressions).
+      // If it throws SyntaxError (statements like try/catch, if/else), fall back to statement form.
+      let fn: () => unknown
+      try {
+        // eslint-disable-next-line no-new-func
+        fn = new Function(`"use strict"; return (${cleanScript});`) as () => unknown
+      } catch {
+        // eslint-disable-next-line no-new-func
+        fn = new Function(`"use strict"; ${cleanScript}`) as () => unknown
       }
-
-      // eslint-disable-next-line no-new-func
-      const fn = new Function(fnBody) as () => unknown
 
       const result = fn()
 

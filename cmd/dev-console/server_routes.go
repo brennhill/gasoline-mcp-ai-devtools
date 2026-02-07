@@ -141,7 +141,7 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *c
 }
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
-func setupHTTPRoutes(server *Server, cap *capture.Capture, sseRegistry *SSERegistry) {
+func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 	// V4 routes
 	if cap != nil {
 		http.HandleFunc("/websocket-events", corsMiddleware(extensionOnly(cap.HandleWebSocketEvents)))
@@ -225,12 +225,8 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture, sseRegistry *SSERegis
 	}
 
 	// MCP over HTTP endpoint (for browser extension backward compatibility)
-	mcp := NewToolHandler(server, cap, sseRegistry)
+	mcp := NewToolHandler(server, cap)
 	http.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
-
-	// MCP SSE transport endpoints
-	http.HandleFunc("/mcp/sse", corsMiddleware(handleMCPSSE(sseRegistry, server)))
-	http.HandleFunc("/mcp/messages/", corsMiddleware(handleMCPMessages(sseRegistry, mcp)))
 
 	// NOTE: /settings endpoint removed - use /sync for all extension communication
 

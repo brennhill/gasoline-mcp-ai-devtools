@@ -13,9 +13,7 @@ func (h *ToolHandler) toolGetErrorBundles(req JSONRPCRequest, args json.RawMessa
 		Limit         int `json:"limit"`
 		WindowSeconds int `json:"window_seconds"`
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
-	}
+	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
 		params.Limit = 5
 	}

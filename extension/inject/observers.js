@@ -3,6 +3,7 @@
  * performance, and WebSocket events.
  */
 import { installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js';
+import { installPerfObservers } from '../lib/perf-snapshot.js';
 import { installWebSocketCapture, uninstallWebSocketCapture, } from '../lib/websocket.js';
 import { wrapFetchWithBodies, } from '../lib/network.js';
 import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js';
@@ -220,6 +221,8 @@ export function installPhase2() {
     phase2Installed = true;
     // Install all heavy interceptors
     install();
+    // FCP/LCP/CLS/INP/long-task observers (buffered: true replays pre-Phase-2 entries)
+    installPerfObservers();
 }
 export function getDeferralState() {
     return {

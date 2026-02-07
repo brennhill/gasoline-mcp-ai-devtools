@@ -185,7 +185,9 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		}
 		c.extensionLogs = append(c.extensionLogs, log)
 		if len(c.extensionLogs) > MaxExtensionLogs {
-			c.extensionLogs = c.extensionLogs[len(c.extensionLogs)-MaxExtensionLogs:]
+			kept := make([]ExtensionLog, MaxExtensionLogs)
+			copy(kept, c.extensionLogs[len(c.extensionLogs)-MaxExtensionLogs:])
+			c.extensionLogs = kept
 		}
 	}
 

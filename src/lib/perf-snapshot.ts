@@ -207,7 +207,7 @@ export function installPerfObservers(): void {
       }
     }
   })
-  paintObserver.observe({ type: 'paint' })
+  paintObserver.observe({ type: 'paint', buffered: true })
 
   // LCP observer
   lcpObserver = new PerformanceObserver((list: PerformanceObserverEntryList): void => {
@@ -219,7 +219,7 @@ export function installPerfObservers(): void {
       }
     }
   })
-  lcpObserver.observe({ type: 'largest-contentful-paint' })
+  lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true })
 
   // CLS observer
   // LayoutShift interface extends PerformanceEntry with hadRecentInput and value
@@ -231,7 +231,7 @@ export function installPerfObservers(): void {
       }
     }
   })
-  clsObserver.observe({ type: 'layout-shift' })
+  clsObserver.observe({ type: 'layout-shift', buffered: true })
 
   // INP observer (Interaction to Next Paint)
   // Event timing entries have interactionId and duration properties
@@ -245,7 +245,7 @@ export function installPerfObservers(): void {
       }
     }
   })
-  inpObserver.observe({ type: 'event', durationThreshold: 40 } as PerformanceObserverInit)
+  inpObserver.observe({ type: 'event', durationThreshold: 40, buffered: true } as PerformanceObserverInit)
 }
 
 /**

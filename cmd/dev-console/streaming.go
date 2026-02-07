@@ -49,8 +49,7 @@ type StreamState struct {
 	MinuteStart  time.Time
 	PendingBatch []types.Alert
 	mu           sync.Mutex
-	sseRegistry  *SSERegistry // SSE connections for broadcasting
-	writer       io.Writer    // defaults to os.Stdout (for testing)
+	writer io.Writer // defaults to os.Stdout (for testing)
 }
 
 // MCPNotification is the MCP notification format for streaming alerts.
@@ -72,7 +71,7 @@ type NotificationParams struct {
 // ============================================
 
 // NewStreamState creates a new StreamState with defaults.
-func NewStreamState(sseRegistry *SSERegistry) *StreamState {
+func NewStreamState() *StreamState {
 	return &StreamState{
 		Config: StreamConfig{
 			Enabled:         false,
@@ -82,7 +81,6 @@ func NewStreamState(sseRegistry *SSERegistry) *StreamState {
 		},
 		SeenMessages: make(map[string]time.Time),
 		MinuteStart:  time.Now(),
-		sseRegistry:  sseRegistry,
 		writer:       nil, // CRITICAL: Never write to stdout in MCP mode (causes parse errors in IDEs)
 	}
 }
@@ -382,19 +380,13 @@ func (s *StreamState) EmitAlert(alert types.Alert) {
 		}
 	}
 
-	sseReg := s.sseRegistry
 	w := s.writer
 	s.mu.Unlock()
 
-	// === Emit notification via SSE (outside StreamState lock) ===
+	// === Emit notification (outside StreamState lock) ===
 	notification := formatMCPNotification(alert)
 
-	// Broadcast to all SSE clients
-	if sseReg != nil {
-		sseReg.BroadcastNotification(notification)
-	}
-
-	// Also write to writer for backward compatibility (testing)
+	// Write to writer (for testing)
 	if w != nil {
 		data, err := json.Marshal(notification)
 		if err == nil {

@@ -171,9 +171,6 @@ type ToolHandler struct {
 	// Rate limiter for MCP tool calls (sliding window)
 	toolCallLimiter *ToolCallLimiter
 
-	// SSE registry for MCP streaming transport
-	sseRegistry *SSERegistry
-
 	// Context streaming: active push notifications via MCP
 	streamState *StreamState
 
@@ -211,17 +208,16 @@ func (h *ToolHandler) GetRedactionEngine() RedactionEngine {
 }
 
 // NewToolHandler creates an MCP handler with composite tool capabilities
-func NewToolHandler(server *Server, capture *capture.Capture, sseRegistry *SSERegistry) *MCPHandler {
+func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	handler := &ToolHandler{
-		MCPHandler:  NewMCPHandler(server, version),
-		capture:     capture,
-		sseRegistry: sseRegistry,
+		MCPHandler: NewMCPHandler(server, version),
+		capture:    capture,
 	}
 
 	// Initialize health metrics
 	handler.healthMetrics = NewHealthMetrics()
 	handler.toolCallLimiter = NewToolCallLimiter(500, time.Minute)
-	handler.streamState = NewStreamState(sseRegistry)
+	handler.streamState = NewStreamState()
 
 	// Initialize noise filtering (concrete type, not interface - signatures differ)
 	handler.noiseConfig = ai.NewNoiseConfig()

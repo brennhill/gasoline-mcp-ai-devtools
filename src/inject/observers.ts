@@ -4,6 +4,7 @@
  */
 
 import { installPerformanceCapture, uninstallPerformanceCapture, setPerformanceMarksEnabled } from '../lib/performance'
+import { installPerfObservers } from '../lib/perf-snapshot'
 import {
   installWebSocketCapture,
   setWebSocketCaptureMode,
@@ -287,6 +288,9 @@ export function installPhase2(): void {
 
   // Install all heavy interceptors
   install()
+
+  // FCP/LCP/CLS/INP/long-task observers (buffered: true replays pre-Phase-2 entries)
+  installPerfObservers()
 }
 
 /**

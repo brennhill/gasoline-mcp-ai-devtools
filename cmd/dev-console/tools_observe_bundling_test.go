@@ -32,8 +32,7 @@ func newBundleTestEnv(t *testing.T) *bundleTestEnv {
 		t.Fatalf("NewServer failed: %v", err)
 	}
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 	return &bundleTestEnv{handler: handler, server: server, capture: cap}
 }

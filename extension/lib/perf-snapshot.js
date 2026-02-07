@@ -139,7 +139,7 @@ export function installPerfObservers() {
             }
         }
     });
-    paintObserver.observe({ type: 'paint' });
+    paintObserver.observe({ type: 'paint', buffered: true });
     // LCP observer
     lcpObserver = new PerformanceObserver((list) => {
         const entries = list.getEntries();
@@ -150,7 +150,7 @@ export function installPerfObservers() {
             }
         }
     });
-    lcpObserver.observe({ type: 'largest-contentful-paint' });
+    lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
     // CLS observer
     // LayoutShift interface extends PerformanceEntry with hadRecentInput and value
     clsObserver = new PerformanceObserver((list) => {
@@ -161,7 +161,7 @@ export function installPerfObservers() {
             }
         }
     });
-    clsObserver.observe({ type: 'layout-shift' });
+    clsObserver.observe({ type: 'layout-shift', buffered: true });
     // INP observer (Interaction to Next Paint)
     // Event timing entries have interactionId and duration properties
     inpObserver = new PerformanceObserver((list) => {
@@ -174,7 +174,7 @@ export function installPerfObservers() {
             }
         }
     });
-    inpObserver.observe({ type: 'event', durationThreshold: 40 });
+    inpObserver.observe({ type: 'event', durationThreshold: 40, buffered: true });
 }
 /**
  * Disconnect all performance observers

@@ -621,6 +621,12 @@ type Capture struct {
 
 	serverVersion    string // Server version (e.g., "5.7.0"), set via SetServerVersion()
 	extensionVersion string // Last reported extension version from sync request
+
+	// ============================================
+	// Background Goroutine Lifecycle
+	// ============================================
+
+	stopCleanup func() // Stops the startResultCleanup background goroutine. Called by Close().
 }
 
 // NewCapture creates a new Capture instance with initialized buffers
@@ -667,11 +673,19 @@ func NewCapture() *Capture {
 	c.queryCond = sync.NewCond(&c.mu)
 
 	// Start background cleanup for expired query results
-	c.startResultCleanup()
+	c.stopCleanup = c.startResultCleanup()
 
 	// Note: schemaStore, clientRegistry, cspGen are initialized by capture.New() in capture package
 	// to avoid circular import (those packages import capture for NetworkBody, WebSocketEvent, etc.)
 	return c
+}
+
+// Close stops background goroutines. Safe to call multiple times.
+func (c *Capture) Close() {
+	if c.stopCleanup != nil {
+		c.stopCleanup()
+		c.stopCleanup = nil
+	}
 }
 
 // SetLifecycleCallback sets a callback function for lifecycle events.
