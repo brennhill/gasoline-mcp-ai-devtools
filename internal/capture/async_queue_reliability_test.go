@@ -14,6 +14,7 @@ import (
 
 // TestAsyncQueueReliability tests that commands survive timing jitter
 func TestAsyncQueueReliability(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		commandCount   int
@@ -22,38 +23,40 @@ func TestAsyncQueueReliability(t *testing.T) {
 		expectedSucces float64 // 0.0 to 1.0
 	}{
 		{
-			name:           "Normal polling (1s interval, no jitter)",
-			commandCount:   10,
-			pollInterval:   1 * time.Second,
-			pollJitter:     0,
-			expectedSucces: 1.0, // Should get 100% with 30s timeout
-		},
-		{
-			name:           "Polling with jitter (1s ± 500ms)",
-			commandCount:   10,
-			pollInterval:   1 * time.Second,
-			pollJitter:     500 * time.Millisecond,
-			expectedSucces: 1.0, // Should still get 100% with 30s timeout
-		},
-		{
-			name:           "Slow polling (3s interval)",
+			name:           "Normal polling (100ms interval, no jitter)",
 			commandCount:   5,
-			pollInterval:   3 * time.Second,
+			pollInterval:   100 * time.Millisecond,
 			pollJitter:     0,
-			expectedSucces: 1.0, // Should get 100% with 30s timeout
+			expectedSucces: 1.0,
+		},
+		{
+			name:           "Polling with jitter (100ms ± 50ms)",
+			commandCount:   5,
+			pollInterval:   100 * time.Millisecond,
+			pollJitter:     50 * time.Millisecond,
+			expectedSucces: 1.0,
+		},
+		{
+			name:           "Slow polling (300ms interval)",
+			commandCount:   5,
+			pollInterval:   300 * time.Millisecond,
+			pollJitter:     0,
+			expectedSucces: 1.0,
 		},
 		{
 			name:           "Rapid commands (within queue limit)",
 			commandCount:   10,
-			pollInterval:   500 * time.Millisecond,
+			pollInterval:   50 * time.Millisecond,
 			pollJitter:     0,
-			expectedSucces: 1.0, // Should get 100%
+			expectedSucces: 1.0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			capture := NewCapture()
+			defer capture.Close()
 
 			// Background cleanup runs automatically in NewCapture()
 
@@ -108,8 +111,7 @@ func TestAsyncQueueReliability(t *testing.T) {
 					CorrelationID: fmt.Sprintf("test_%d", i),
 				}
 
-				// Use the new AsyncCommandTimeout (30s)
-				capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, "")
+				capture.CreatePendingQueryWithTimeout(query, 5*time.Second, "")
 
 				mu.Lock()
 				commandsSent++
@@ -147,32 +149,34 @@ func TestAsyncQueueReliability(t *testing.T) {
 			}
 
 			if commandsExpired > 0 {
-				t.Errorf("Found %d expired commands (should be 0 with 30s timeout)", commandsExpired)
+				t.Errorf("Found %d expired commands (should be 0 with 5s timeout)", commandsExpired)
 			}
 		})
 	}
 }
 
-// TestAsyncQueueTimeout verifies that commands DO expire after 30s
+// TestAsyncQueueTimeout verifies that commands expire after their timeout.
+// Uses a short timeout (3s) to test the mechanism without slowing the suite.
 func TestAsyncQueueTimeout(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
+	defer capture.Close()
 
-	// Queue a command with 30s timeout
 	query := queries.PendingQuery{
 		Type:          "execute",
 		Params:        json.RawMessage(`{"script":"test"}`),
 		CorrelationID: "timeout_test",
 	}
 
-	id := capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, "")
+	id := capture.CreatePendingQueryWithTimeout(query, 3*time.Second, "")
 
 	// Wait slightly less than timeout
-	time.Sleep(29 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	// Should still be in queue
 	pendingQueries := capture.GetPendingQueries()
 	if len(pendingQueries) != 1 {
-		t.Errorf("Expected 1 pending query after 29s, got %d", len(pendingQueries))
+		t.Errorf("Expected 1 pending query after 2s, got %d", len(pendingQueries))
 	}
 
 	// Wait for expiration
@@ -181,7 +185,7 @@ func TestAsyncQueueTimeout(t *testing.T) {
 	// Should be expired now
 	pendingQueries = capture.GetPendingQueries()
 	if len(pendingQueries) != 0 {
-		t.Errorf("Expected 0 pending queries after 31s (expired), got %d", len(pendingQueries))
+		t.Errorf("Expected 0 pending queries after 4s (expired), got %d", len(pendingQueries))
 	}
 
 	// Result should not exist
@@ -193,6 +197,7 @@ func TestAsyncQueueTimeout(t *testing.T) {
 
 // TestAsyncQueueConcurrentAccess tests thread safety under concurrent load
 func TestAsyncQueueConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	capture := NewCapture()
 
 	// Background cleanup runs automatically in NewCapture()

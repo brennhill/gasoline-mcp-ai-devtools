@@ -522,16 +522,10 @@ type Capture struct {
 	queryIDCounter int                        // Monotonic ID for next query (format: "q-<counter>"). Incremented in CreatePendingQueryWithClient.
 
 	// ============================================
-	// Rate Limiting & Circuit Breaker
+	// Rate Limiting & Circuit Breaker (Own Lock)
 	// ============================================
 
-	windowEventCount     int       // Events in current 1-second window. Reset to 0 when window expires. Compared to RateLimitThreshold (1000 events/sec).
-	rateWindowStart      time.Time // Monotonic time: when current window started. Used to detect expiration (now.Sub(rateWindowStart) > 1 second).
-	rateLimitStreak      int       // Consecutive seconds window was over threshold. Incremented per second if over, reset to 0 if below. Circuit opens at 5 consecutive seconds.
-	lastBelowThresholdAt time.Time // When rate first dropped below threshold. Initialized to time.Now() at startup (prevents false circuit-close on boot). Set to zero when over threshold. Used to measure "below threshold duration" for circuit close (10+ seconds required).
-	circuitOpen          bool      // Circuit breaker state. true=reject all with 429. false=accept if within rate/memory limits. Opened when rateLimitStreak>=5 or memory>hard(50MB). Closed when rate below threshold for 10+ seconds AND memory<30MB.
-	circuitOpenedAt      time.Time // Informational: when circuit was opened (display only, not used for enforcing minimum duration). Zero when circuit closed.
-	circuitReason        string    // Reason circuit opened: "rate_exceeded" or "memory_exceeded". Reflects reason AT OPEN TIME (not necessarily current state). Cleared when closed.
+	circuit *CircuitBreaker // Rate limiting + circuit breaker state machine. Has own sync.RWMutex — independent of Capture.mu.
 
 	// ============================================
 	// Query Timeout
@@ -623,7 +617,6 @@ type Capture struct {
 
 // NewCapture creates a new Capture instance with initialized buffers
 func NewCapture() *Capture {
-	now := time.Now()
 	c := &Capture{
 		wsEvents:                 make([]WebSocketEvent, 0, MaxWSEvents),
 		networkBodies:            make([]NetworkBody, 0, MaxNetworkBodies),
@@ -636,8 +629,6 @@ func NewCapture() *Capture {
 		connOrder:                make([]string, 0),
 		pendingQueries:           make([]pendingQueryEntry, 0),
 		queryResults:             make(map[string]queryResultEntry),
-		rateWindowStart:          now,
-		lastBelowThresholdAt:     now,
 		queryTimeout:             queries.DefaultQueryTimeout,
 		completedResults:         make(map[string]*queries.CommandResult),
 		failedCommands:           make([]*queries.CommandResult, 0, 100), // Pre-allocate for 100 failed commands
@@ -662,6 +653,10 @@ func NewCapture() *Capture {
 	}
 	c.observeSem = make(chan struct{}, 4)
 	c.queryCond = sync.NewCond(&c.mu)
+	c.circuit = NewCircuitBreaker(
+		func() int64 { return c.getMemoryForCircuit() },
+		c.emitLifecycleEvent,
+	)
 
 	// Start background cleanup for expired query results
 	c.stopCleanup = c.startResultCleanup()
