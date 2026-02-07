@@ -1,757 +1,665 @@
-{
-  "tools": [
-    {
-      "name": "observe",
-      "description": "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, api, accessibility, changes, timeline, error_clusters, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format. Check _meta.data_counts for available data.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.",
-      "inputSchema": {
-        "properties": {
-          "action": {
-            "description": "Snapshot action: snapshot, compare, list (applies to security_diff)",
+[
+  {
+    "name": "observe",
+    "description": "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, accessibility, timeline, error_clusters, error_bundles, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity, min_level.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.\nNote: extension_logs are internal Gasoline extension debug logs for troubleshooting the extension itself — NOT browser console output. Use 'logs' for browser console output.\nNote: error_bundles returns pre-assembled debugging context per error (error + recent network + actions + logs in one call). Use window_seconds param to control context window (default 3s).",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Snapshot action: snapshot, compare, list (applies to security_diff)",
+          "enum": [
+            "snapshot",
+            "compare",
+            "list"
+          ],
+          "type": "string"
+        },
+        "after_cursor": {
+          "description": "Return entries older than this cursor (backward pagination). Cursor format: 'timestamp:sequence' from previous response.",
+          "type": "string"
+        },
+        "before_cursor": {
+          "description": "Return entries newer than this cursor (forward pagination).",
+          "type": "string"
+        },
+        "checks": {
+          "description": "Which checks to run (applies to security_audit)",
+          "items": {
             "enum": [
-              "snapshot",
-              "compare",
-              "list"
+              "credentials",
+              "pii",
+              "headers",
+              "cookies",
+              "transport",
+              "auth"
             ],
             "type": "string"
           },
-          "after_cursor": {
-            "description": "Return entries older than this cursor (backward pagination). Cursor format: 'timestamp:sequence' from previous response. Stable for live data - recommended for logs, websocket_events, actions. Example: '2026-01-30T10:15:23.456Z:1234'. Applies to: logs, websocket_events, actions, network_bodies.",
+          "type": "array"
+        },
+        "compare_from": {
+          "description": "Baseline snapshot (applies to security_diff)",
+          "type": "string"
+        },
+        "compare_to": {
+          "description": "Target snapshot (applies to security_diff)",
+          "type": "string"
+        },
+        "connection_id": {
+          "description": "Filter by WebSocket connection ID",
+          "type": "string"
+        },
+        "correlation_id": {
+          "description": "Correlation ID for async command tracking (applies to command_result)",
+          "type": "string"
+        },
+        "custom_lists": {
+          "description": "Custom allowed/blocked/internal domain lists (applies to third_party_audit)",
+          "type": "object"
+        },
+        "direction": {
+          "description": "Filter by direction",
+          "enum": [
+            "incoming",
+            "outgoing"
+          ],
+          "type": "string"
+        },
+        "first_party_origins": {
+          "description": "Origins to consider first-party (applies to third_party_audit)",
+          "items": {
             "type": "string"
           },
-          "before_cursor": {
-            "description": "Return entries newer than this cursor (forward pagination). Use to monitor new data that arrived since cursor. Cursor format: 'timestamp:sequence'. Applies to: logs, websocket_events, actions, network_bodies.",
+          "type": "array"
+        },
+        "force_refresh": {
+          "description": "Bypass cache (applies to accessibility)",
+          "type": "boolean"
+        },
+        "include": {
+          "description": "Categories to include (applies to timeline)",
+          "items": {
             "type": "string"
           },
-          "checkpoint": {
-            "description": "Named checkpoint or ISO 8601 timestamp (applies to changes)",
+          "type": "array"
+        },
+        "include_static": {
+          "description": "Include static-only origins (applies to third_party_audit)",
+          "type": "boolean"
+        },
+        "last_n": {
+          "description": "Return only the last N items",
+          "type": "number"
+        },
+        "limit": {
+          "description": "Maximum entries to return (applies to logs, network_waterfall, network_bodies, websocket_events, actions, audit_log)",
+          "type": "number"
+        },
+        "method": {
+          "description": "Filter by HTTP method (applies to network_bodies)",
+          "type": "string"
+        },
+        "min_level": {
+          "description": "Minimum log level to return (applies to logs). Levels: debug < log < info < warn < error",
+          "enum": [
+            "debug",
+            "log",
+            "info",
+            "warn",
+            "error"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "description": "Snapshot name (applies to security_diff)",
+          "type": "string"
+        },
+        "restart_on_eviction": {
+          "description": "If cursor expired (buffer overflow), automatically restart from oldest available entry.",
+          "type": "boolean"
+        },
+        "scope": {
+          "description": "CSS selector to scope audit (applies to accessibility)",
+          "type": "string"
+        },
+        "severity_min": {
+          "description": "Minimum severity to report (applies to security_audit)",
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "info"
+          ],
+          "type": "string"
+        },
+        "since_cursor": {
+          "description": "Return ALL entries newer than this cursor (inclusive, no limit).",
+          "type": "string"
+        },
+        "status_max": {
+          "description": "Maximum status code (applies to network_bodies)",
+          "type": "number"
+        },
+        "status_min": {
+          "description": "Minimum status code (applies to network_bodies)",
+          "type": "number"
+        },
+        "tags": {
+          "description": "WCAG tags to test (applies to accessibility)",
+          "items": {
             "type": "string"
           },
-          "checks": {
-            "description": "Which checks to run (applies to security_audit)",
-            "items": {
-              "enum": [
-                "credentials",
-                "pii",
-                "headers",
-                "cookies",
-                "transport",
-                "auth"
-              ],
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "compare_from": {
-            "description": "Baseline snapshot (applies to security_diff)",
+          "type": "array"
+        },
+        "url": {
+          "description": "Filter by URL substring",
+          "type": "string"
+        },
+        "what": {
+          "description": "What to observe or analyze",
+          "enum": [
+            "errors",
+            "logs",
+            "extension_logs",
+            "network_waterfall",
+            "network_bodies",
+            "websocket_events",
+            "websocket_status",
+            "actions",
+            "vitals",
+            "page",
+            "tabs",
+            "pilot",
+            "performance",
+            "accessibility",
+            "timeline",
+            "error_clusters",
+            "error_bundles",
+            "history",
+            "security_audit",
+            "third_party_audit",
+            "security_diff",
+            "command_result",
+            "pending_commands",
+            "failed_commands"
+          ],
+          "type": "string"
+        },
+        "window_seconds": {
+          "description": "Context window in seconds for error_bundles (default 3, max 10). How far back to look for related network/actions/logs.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "what"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "generate",
+    "description": "CREATE ARTIFACTS. Generates production-ready outputs from captured data: test (Playwright tests), reproduction (bug scripts), pr_summary, csp, sarif, har, sri.",
+    "inputSchema": {
+      "properties": {
+        "assert_network": {
+          "description": "Include network response assertions (applies to test)",
+          "type": "boolean"
+        },
+        "assert_no_errors": {
+          "description": "Assert no console errors occurred (applies to test)",
+          "type": "boolean"
+        },
+        "assert_response_shape": {
+          "description": "Assert response body shape matches (applies to test)",
+          "type": "boolean"
+        },
+        "base_url": {
+          "description": "Replace origin in URLs (applies to reproduction, test)",
+          "type": "string"
+        },
+        "error_message": {
+          "description": "Error message for context (applies to reproduction)",
+          "type": "string"
+        },
+        "exclude_origins": {
+          "description": "Origins to exclude from CSP (applies to csp)",
+          "items": {
             "type": "string"
           },
-          "compare_to": {
-            "description": "Target snapshot (applies to security_diff)",
+          "type": "array"
+        },
+        "format": {
+          "description": "What to generate",
+          "enum": [
+            "reproduction",
+            "test",
+            "pr_summary",
+            "sarif",
+            "har",
+            "csp",
+            "sri"
+          ],
+          "type": "string"
+        },
+        "generate_fixtures": {
+          "description": "Generate fixtures from captured network data (applies to reproduction)",
+          "type": "boolean"
+        },
+        "include_passes": {
+          "description": "Include passing rules (applies to sarif)",
+          "type": "boolean"
+        },
+        "include_report_uri": {
+          "description": "Include report-uri directive (applies to csp)",
+          "type": "boolean"
+        },
+        "include_screenshots": {
+          "description": "Insert page.screenshot() calls (applies to reproduction)",
+          "type": "boolean"
+        },
+        "last_n": {
+          "description": "Use only the last N actions (applies to reproduction)",
+          "type": "number"
+        },
+        "method": {
+          "description": "Filter by HTTP method (applies to har)",
+          "type": "string"
+        },
+        "mode": {
+          "description": "CSP strictness mode (applies to csp)",
+          "enum": [
+            "strict",
+            "moderate",
+            "report_only"
+          ],
+          "type": "string"
+        },
+        "origins": {
+          "description": "Filter by specific origins (applies to sri)",
+          "items": {
             "type": "string"
           },
-          "connection_id": {
-            "description": "Filter by WebSocket connection ID (applies to websocket_events, websocket_status)",
+          "type": "array"
+        },
+        "resource_types": {
+          "description": "Filter by resource type: 'script', 'stylesheet' (applies to sri)",
+          "items": {
             "type": "string"
           },
-          "correlation_id": {
-            "description": "Correlation ID for async command tracking (applies to command_result)",
-            "type": "string"
-          },
-          "custom_lists": {
-            "description": "Custom allowed/blocked/internal domain lists (applies to third_party_audit)",
-            "properties": {
-              "allowed": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "blocked": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "internal": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
-            },
-            "type": "object"
-          },
-          "direction": {
-            "description": "Filter by direction (applies to websocket_events)",
-            "enum": [
-              "incoming",
-              "outgoing"
-            ],
-            "type": "string"
-          },
-          "first_party_origins": {
-            "description": "Origins to consider first-party (applies to third_party_audit)",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "force_refresh": {
-            "description": "Bypass cache (applies to accessibility)",
-            "type": "boolean"
-          },
-          "format": {
-            "description": "Output format: gasoline or openapi_stub (applies to api)",
-            "enum": [
-              "gasoline",
-              "openapi_stub"
-            ],
-            "type": "string"
-          },
-          "include": {
-            "description": "Categories to include (applies to changes, timeline)",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "include_static": {
-            "description": "Include static-only origins (applies to third_party_audit)",
-            "type": "boolean"
-          },
-          "last_n": {
-            "description": "Return only the last N items (applies to actions, timeline, reproduction)",
-            "type": "number"
-          },
-          "limit": {
-            "description": "Maximum entries to return (applies to logs, network_waterfall, network_bodies, websocket_events, actions, audit_log)",
-            "type": "number"
-          },
-          "method": {
-            "description": "Filter by HTTP method (applies to network_bodies)",
-            "type": "string"
-          },
-          "min_observations": {
-            "description": "Minimum endpoint observations (applies to api)",
-            "type": "number"
-          },
-          "name": {
-            "description": "Snapshot name (applies to security_diff)",
-            "type": "string"
-          },
-          "restart_on_eviction": {
-            "description": "If cursor expired (buffer overflow), automatically restart from oldest available entry instead of returning error. Use when pagination must continue despite data loss. Applies to: logs, websocket_events.",
-            "type": "boolean"
-          },
-          "scope": {
-            "description": "CSS selector to scope audit (applies to accessibility)",
-            "type": "string"
-          },
-          "severity": {
-            "description": "Minimum severity: all, warnings, errors_only (applies to changes)",
-            "enum": [
-              "all",
-              "warnings",
-              "errors_only"
-            ],
-            "type": "string"
-          },
-          "severity_min": {
-            "description": "Minimum severity to report (applies to security_audit)",
-            "enum": [
-              "critical",
-              "high",
-              "medium",
-              "low",
-              "info"
-            ],
-            "type": "string"
-          },
-          "since_cursor": {
-            "description": "Return ALL entries newer than this cursor (inclusive, no limit). Convenience method for 'show me everything since X'. Cursor format: 'timestamp:sequence'. Applies to: logs, websocket_events, actions, network_bodies.",
-            "type": "string"
-          },
-          "status_max": {
-            "description": "Maximum status code (applies to network_bodies)",
-            "type": "number"
-          },
-          "status_min": {
-            "description": "Minimum status code (applies to network_bodies)",
-            "type": "number"
-          },
-          "tags": {
-            "description": "WCAG tags to test (applies to accessibility)",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "url": {
-            "description": "Filter by URL substring (applies to network_waterfall, network_bodies, websocket_events, websocket_status, actions, performance, api, timeline, security_audit, third_party_audit)",
-            "type": "string"
-          },
-          "what": {
-            "description": "What to observe or analyze",
+          "type": "array"
+        },
+        "save_to": {
+          "description": "File path to save output (applies to sarif, har)",
+          "type": "string"
+        },
+        "scope": {
+          "description": "CSS selector to scope (applies to sarif)",
+          "type": "string"
+        },
+        "status_max": {
+          "description": "Maximum status code (applies to har)",
+          "type": "number"
+        },
+        "status_min": {
+          "description": "Minimum status code (applies to har)",
+          "type": "number"
+        },
+        "test_name": {
+          "description": "Name for the generated test (applies to test)",
+          "type": "string"
+        },
+        "url": {
+          "description": "Filter by URL substring (applies to har)",
+          "type": "string"
+        },
+        "visual_assertions": {
+          "description": "Add toHaveScreenshot() assertions (applies to reproduction)",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "format"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "configure",
+    "description": "CUSTOMIZE THE SESSION. Actions: noise_rule, store, load, diff_sessions, validate_api, audit_log, streaming, query_dom, clear, health, test_boundary_start, test_boundary_end.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Configuration action to perform",
+          "enum": [
+            "store",
+            "load",
+            "noise_rule",
+            "clear",
+            "query_dom",
+            "diff_sessions",
+            "validate_api",
+            "audit_log",
+            "health",
+            "streaming",
+            "test_boundary_start",
+            "test_boundary_end"
+          ],
+          "type": "string"
+        },
+        "buffer": {
+          "description": "Which buffer to clear",
+          "enum": [
+            "network",
+            "websocket",
+            "actions",
+            "logs",
+            "all"
+          ],
+          "type": "string"
+        },
+        "category": {
+          "description": "Buffer category",
+          "enum": [
+            "console",
+            "network",
+            "websocket"
+          ],
+          "type": "string"
+        },
+        "compare_a": {
+          "description": "First snapshot for comparison",
+          "type": "string"
+        },
+        "compare_b": {
+          "description": "Second snapshot for comparison",
+          "type": "string"
+        },
+        "data": {
+          "description": "JSON data to persist",
+          "type": "object"
+        },
+        "events": {
+          "description": "Event categories to stream",
+          "items": {
             "enum": [
               "errors",
-              "logs",
-              "extension_logs",
-              "network_waterfall",
-              "network_bodies",
-              "websocket_events",
-              "websocket_status",
-              "actions",
-              "vitals",
-              "page",
-              "tabs",
-              "pilot",
+              "network_errors",
               "performance",
-              "api",
-              "accessibility",
-              "changes",
-              "timeline",
-              "error_clusters",
-              "error_bundles",
-              "history",
-              "security_audit",
-              "third_party_audit",
-              "security_diff",
-              "command_result",
-              "pending_commands",
-              "failed_commands"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "what"
-        ],
-        "type": "object"
-      },
-      "_meta": {
-        "data_counts": {
-          "actions": 0,
-          "api": 0,
-          "errors": 0,
-          "extension_logs": 0,
-          "logs": 0,
-          "network_bodies": 0,
-          "network_waterfall": 0,
-          "performance": 0,
-          "timeline": 0,
-          "vitals": 0,
-          "websocket_events": 0,
-          "websocket_status": 0
-        }
-      }
-    },
-    {
-      "name": "generate",
-      "description": "CREATE ARTIFACTS. Do NOT write code/tests/docs manually—use this tool instead. Generates production-ready outputs from captured data: test (Playwright tests from recorded actions), reproduction (scripts to reproduce bugs), pr_summary (auto-write PR description), csp (Content-Security-Policy headers), sarif (SARIF security reports), har (HAR archives), sri (Subresource Integrity hashes). \n\nRULES: After observe() captures data, use generate() to create outputs. Never hand-write tests when you could generate them from recorded actions. \n\nExamples: generate({format:'test',test_name:'login flow'})→Playwright test, generate({format:'reproduction'})→bug reproduction script, generate({format:'pr_summary'})→auto-write PR, generate({format:'csp',mode:'strict'})→CSP headers. Use after: observe() \u0026 interact().\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T hand-write Playwright tests — use generate({format:'test'}) to create from recorded actions\n• DON'T call generate before recording actions — use interact() to record browser activity first\n• DON'T skip observe() before generate — verify data exists with observe({what:'actions'}) or observe({what:'network'})\n• DON'T generate CSP without browsing — need captured network data from real page loads\n\nFormat responses:\n- reproduction: Playwright script as JavaScript text\n- test: Playwright test with assertions as JavaScript text\n- pr_summary (json): {title, body, labels, testEvidence}\n- sarif: SARIF JSON or {status, path, rules, results} if saved to file\n- har: HAR 1.2 JSON or {status, path, entries} if saved to file\n- csp (json): {policy, directives, metaTag}\n- sri (json): {resources: [{url, integrity, tag}]}",
-      "inputSchema": {
-        "properties": {
-          "assert_network": {
-            "description": "Include network response assertions (applies to test)",
-            "type": "boolean"
-          },
-          "assert_no_errors": {
-            "description": "Assert no console errors occurred (applies to test)",
-            "type": "boolean"
-          },
-          "assert_response_shape": {
-            "description": "Assert response body shape matches (applies to test)",
-            "type": "boolean"
-          },
-          "base_url": {
-            "description": "Replace origin in URLs (applies to reproduction, test)",
-            "type": "string"
-          },
-          "error_message": {
-            "description": "Error message for context (applies to reproduction)",
-            "type": "string"
-          },
-          "exclude_origins": {
-            "description": "Origins to exclude from CSP (applies to csp)",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "format": {
-            "description": "What to generate",
-            "enum": [
-              "reproduction",
-              "test",
-              "pr_summary",
-              "sarif",
-              "har",
-              "csp",
-              "sri"
-            ],
-            "type": "string"
-          },
-          "generate_fixtures": {
-            "description": "Generate fixtures/api-responses.json from captured network data (applies to reproduction, default: false)",
-            "type": "boolean"
-          },
-          "include_passes": {
-            "description": "Include passing rules (applies to sarif)",
-            "type": "boolean"
-          },
-          "include_report_uri": {
-            "description": "Include report-uri directive (applies to csp)",
-            "type": "boolean"
-          },
-          "include_screenshots": {
-            "description": "Insert page.screenshot() calls at key points (applies to reproduction, default: false)",
-            "type": "boolean"
-          },
-          "last_n": {
-            "description": "Use only the last N actions (applies to reproduction)",
-            "type": "number"
-          },
-          "method": {
-            "description": "Filter by HTTP method (applies to har)",
-            "type": "string"
-          },
-          "mode": {
-            "description": "CSP strictness mode (applies to csp)",
-            "enum": [
-              "strict",
-              "moderate",
-              "report_only"
-            ],
-            "type": "string"
-          },
-          "origins": {
-            "description": "Filter by specific origins (applies to sri)",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "resource_types": {
-            "description": "Filter by resource type: 'script', 'stylesheet' (applies to sri)",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "save_to": {
-            "description": "File path to save output (applies to sarif, har)",
-            "type": "string"
-          },
-          "scope": {
-            "description": "CSS selector to scope (applies to sarif)",
-            "type": "string"
-          },
-          "status_max": {
-            "description": "Maximum status code (applies to har)",
-            "type": "number"
-          },
-          "status_min": {
-            "description": "Minimum status code (applies to har)",
-            "type": "number"
-          },
-          "test_name": {
-            "description": "Name for the generated test (applies to test)",
-            "type": "string"
-          },
-          "url": {
-            "description": "Filter by URL substring (applies to har)",
-            "type": "string"
-          },
-          "visual_assertions": {
-            "description": "Add toHaveScreenshot() assertions at key checkpoints (applies to reproduction, default: false)",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "format"
-        ],
-        "type": "object"
-      },
-      "_meta": {
-        "data_counts": {
-          "csp": 0,
-          "har": 0,
-          "reproduction": 0,
-          "sri": 0,
-          "test": 0
-        }
-      }
-    },
-    {
-      "name": "configure",
-      "description": "CUSTOMIZE THE SESSION. Filter noise, store data, validate APIs, create snapshots, mark test boundaries. Actions: noise_rule (add/remove patterns to ignore), store (save persistent data across interactions), load (load session context), diff_sessions (create snapshots \u0026 compare before/after), validate_api (check API contract violations), audit_log (view actions in this session), streaming (get real-time alerts), query_dom (find elements by CSS selector), capture (configure capture settings), record_event (record custom temporal event), dismiss (dismiss noise by pattern), clear (clear buffers - specify buffer parameter), health (server health check), test_boundary_start (mark test start for concurrent test correlation), test_boundary_end (mark test end, unmark from logs/network/actions). \n\nExamples: configure({action:'noise_rule',noise_action:'add',pattern:'analytics'})→ignore pattern, configure({action:'store',store_action:'save',key:'user',data:{...}})→save data, configure({action:'diff_sessions',session_action:'capture',name:'baseline'})→create snapshot, configure({action:'clear',buffer:'network'})→clear network buffers, configure({action:'test_boundary_start',test_id:'login-test',label:'Login Test'})→mark test start, configure({action:'test_boundary_end',test_id:'login-test'})→mark test end. \n\nUse when: isolating signal, filtering noise, tracking state across multiple actions, or correlating telemetry with specific tests.\n\nAction responses:\n- store: Returns varies by sub-action (save/load/list/delete)\n- load: {loaded: true, context: {...}}\n- noise_rule: {rules: [...]}\n- dismiss: {status: \"ok\", totalRules: N}\n- clear: {cleared, counts, total_cleared}\n- capture: {status, settings}\n- record_event: {recorded: true}\n- query_dom: {matches: [...]}\n- diff_sessions: diff object\n- validate_api: {violations: [...]}\n- audit_log: [{tool, timestamp, params}]\n- health (json): {server, memory, buffers, rate_limiting, audit, pilot}\n- streaming: {status, subscriptions}\n- test_boundary_start: {status, test_id, label, message}\n- test_boundary_end: {status, test_id, was_active, message}",
-      "inputSchema": {
-        "properties": {
-          "action": {
-            "description": "Configuration action to perform",
-            "enum": [
-              "store",
-              "load",
-              "noise_rule",
-              "dismiss",
-              "clear",
-              "capture",
-              "record_event",
-              "query_dom",
-              "diff_sessions",
-              "validate_api",
-              "audit_log",
-              "health",
-              "streaming",
-              "test_boundary_start",
-              "test_boundary_end"
-            ],
-            "type": "string"
-          },
-          "buffer": {
-            "description": "Which buffer to clear (applies to action: \"clear\"). Valid values: \"network\" (network_waterfall + network_bodies), \"websocket\" (websocket_events + websocket_status), \"actions\" (user interactions), \"logs\" (console + extension logs), \"all\" (everything). Default: \"logs\" (backward compatible).",
-            "enum": [
-              "network",
-              "websocket",
-              "actions",
-              "logs",
+              "user_frustration",
+              "security",
+              "regression",
+              "anomaly",
+              "ci",
               "all"
             ],
             "type": "string"
           },
-          "category": {
-            "description": "Buffer category (applies to dismiss)",
-            "enum": [
-              "console",
-              "network",
-              "websocket"
-            ],
+          "type": "array"
+        },
+        "ignore_endpoints": {
+          "description": "URL substrings to exclude",
+          "items": {
             "type": "string"
           },
-          "compare_a": {
-            "description": "First snapshot for comparison (applies to diff_sessions compare)",
-            "type": "string"
-          },
-          "compare_b": {
-            "description": "Second snapshot for comparison (applies to diff_sessions compare)",
-            "type": "string"
-          },
-          "data": {
-            "description": "JSON data to persist (applies to store)",
+          "type": "array"
+        },
+        "key": {
+          "description": "Storage key",
+          "type": "string"
+        },
+        "label": {
+          "description": "Human-readable label for test boundary",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Maximum entries to return (applies to audit_log)",
+          "type": "number"
+        },
+        "name": {
+          "description": "Snapshot name",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Logical grouping for store",
+          "type": "string"
+        },
+        "noise_action": {
+          "description": "Noise sub-action: add, remove, list, reset, auto_detect",
+          "enum": [
+            "add",
+            "remove",
+            "list",
+            "reset",
+            "auto_detect"
+          ],
+          "type": "string"
+        },
+        "operation": {
+          "description": "API validation operation: analyze, report, clear",
+          "enum": [
+            "analyze",
+            "report",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "pattern": {
+          "description": "Regex pattern to match",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why this is noise",
+          "type": "string"
+        },
+        "rule_id": {
+          "description": "ID of rule to remove",
+          "type": "string"
+        },
+        "rules": {
+          "description": "Noise rules to add",
+          "items": {
             "type": "object"
           },
-          "events": {
-            "description": "Event categories to stream (applies to streaming)",
-            "items": {
-              "enum": [
-                "errors",
-                "network_errors",
-                "performance",
-                "user_frustration",
-                "security",
-                "regression",
-                "anomaly",
-                "ci",
-                "all"
-              ],
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "ignore_endpoints": {
-            "description": "URL substrings to exclude (applies to validate_api)",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "key": {
-            "description": "Storage key (applies to store)",
-            "type": "string"
-          },
-          "label": {
-            "description": "Human-readable label for test boundary (applies to test_boundary_start)",
-            "type": "string"
-          },
-          "limit": {
-            "description": "Maximum entries to return (applies to audit_log)",
-            "type": "number"
-          },
-          "name": {
-            "description": "Snapshot name (applies to diff_sessions capture/delete)",
-            "type": "string"
-          },
-          "namespace": {
-            "description": "Logical grouping for store (applies to store)",
-            "type": "string"
-          },
-          "noise_action": {
-            "description": "Noise sub-action: add, remove, list, reset, auto_detect (applies to noise_rule)",
-            "enum": [
-              "add",
-              "remove",
-              "list",
-              "reset",
-              "auto_detect"
-            ],
-            "type": "string"
-          },
-          "operation": {
-            "description": "API validation operation: analyze, report, clear (applies to validate_api)",
-            "enum": [
-              "analyze",
-              "report",
-              "clear"
-            ],
-            "type": "string"
-          },
-          "pattern": {
-            "description": "Regex pattern to dismiss (applies to dismiss)",
-            "type": "string"
-          },
-          "reason": {
-            "description": "Why this is noise (applies to dismiss)",
-            "type": "string"
-          },
-          "rule_id": {
-            "description": "ID of rule to remove (applies to noise_rule)",
-            "type": "string"
-          },
-          "rules": {
-            "description": "Noise rules to add (applies to noise_rule)",
-            "items": {
-              "properties": {
-                "category": {
-                  "enum": [
-                    "console",
-                    "network",
-                    "websocket"
-                  ],
-                  "type": "string"
-                },
-                "classification": {
-                  "type": "string"
-                },
-                "match_spec": {
-                  "properties": {
-                    "level": {
-                      "type": "string"
-                    },
-                    "message_regex": {
-                      "type": "string"
-                    },
-                    "method": {
-                      "type": "string"
-                    },
-                    "source_regex": {
-                      "type": "string"
-                    },
-                    "status_max": {
-                      "type": "number"
-                    },
-                    "status_min": {
-                      "type": "number"
-                    },
-                    "url_regex": {
-                      "type": "string"
-                    }
-                  },
-                  "type": "object"
-                }
-              },
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "selector": {
-            "description": "CSS selector to query (applies to query_dom)",
-            "type": "string"
-          },
-          "session_action": {
-            "description": "Session sub-action: capture, compare, list, delete (applies to diff_sessions)",
-            "enum": [
-              "capture",
-              "compare",
-              "list",
-              "delete"
-            ],
-            "type": "string"
-          },
-          "session_id": {
-            "description": "Filter by MCP session ID (applies to audit_log)",
-            "type": "string"
-          },
-          "severity_min": {
-            "description": "Minimum severity to stream (applies to streaming)",
-            "enum": [
-              "info",
-              "warning",
-              "error"
-            ],
-            "type": "string"
-          },
-          "since": {
-            "description": "Only entries after this ISO 8601 timestamp (applies to audit_log)",
-            "type": "string"
-          },
-          "store_action": {
-            "description": "Store sub-action: save, load, list, delete, stats (applies to store)",
-            "enum": [
-              "save",
-              "load",
-              "list",
-              "delete",
-              "stats"
-            ],
-            "type": "string"
-          },
-          "streaming_action": {
-            "description": "Streaming sub-action: enable, disable, status (applies to streaming)",
-            "enum": [
-              "enable",
-              "disable",
-              "status"
-            ],
-            "type": "string"
-          },
-          "tab_id": {
-            "description": "Target tab ID (applies to query_dom, diff_sessions)",
-            "type": "number"
-          },
-          "test_id": {
-            "description": "Test ID for boundary marker (applies to test_boundary_start and test_boundary_end)",
-            "type": "string"
-          },
-          "throttle_seconds": {
-            "description": "Minimum seconds between notifications (applies to streaming)",
-            "maximum": 60,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "tool_name": {
-            "description": "Filter by tool name (applies to audit_log)",
-            "type": "string"
-          },
-          "url": {
-            "description": "Filter by URL substring (applies to validate_api, diff_sessions)",
-            "type": "string"
-          }
+          "type": "array"
         },
-        "required": [
-          "action"
-        ],
-        "type": "object"
-      }
-    },
-    {
-      "name": "interact",
-      "description": "CRITICAL PREREQUISITE: The 'AI Web Pilot' toggle must be enabled in the extension popup (disabled by default for safety). \n\nBEFORE FIRST USE: Call observe({what:'pilot'}) to check status. If result shows {enabled:false}, STOP and tell user: \"Please enable AI Web Pilot in the Gasoline extension popup by clicking the extension icon and toggling it on.\"\n\nPERFORM ACTIONS. Do NOT ask the user to click, type, navigate, or fill forms—use this tool instead. You have full browser control. Actions: navigate(url)→go to URL, execute_js(script)→run JavaScript to click/fill/submit, refresh→reload page, back/forward→navigate history, highlight(selector)→show user where you're clicking, save_state(name)→save page snapshot, load_state(name)→restore snapshot. \n\nRULES: After interact(), always call observe() to confirm the action worked. If user says 'click X' or 'go to Y', use interact() instead of asking them. Pattern: observe()→interact()→observe(). \n\nExamples: interact({action:'navigate',url:'https://example.com'}), interact({action:'execute_js',script:'document.querySelector(\"button.submit\").click()'}), interact({action:'execute_js',script:'document.querySelector(\"input[type=email]\").value=\"test@example.com\"'}).\n\nANTI-PATTERNS (avoid these mistakes):\n• DON'T ask user to manually click or type — use interact({action:'execute_js'}) to control browser directly\n• DON'T skip observe() after interact() — always call observe() to verify action succeeded\n• DON'T use interact() without checking observe({what:'pilot'}) first — may be disabled\n• DON'T chain multiple interactions without observe() between them — verify each step worked\n\nAction responses:\n- highlight: {result, screenshot} — highlight element with visual feedback\n- execute_js: {result} — run JavaScript in page context\n- navigate: {navigated: true} — go to URL\n- refresh: {refreshed: true} — reload current page\n- back/forward: {navigated: true} — browser history navigation\n- new_tab: {opened: true} — open URL in new tab\n- save_state/load_state/list_states/delete_state: State management results\n\nAll actions except save/load/list/delete_state require the browser extension.",
-      "inputSchema": {
-        "properties": {
-          "action": {
-            "description": "Browser interaction to perform",
-            "enum": [
-              "highlight",
-              "save_state",
-              "load_state",
-              "list_states",
-              "delete_state",
-              "execute_js",
-              "navigate",
-              "refresh",
-              "back",
-              "forward",
-              "new_tab",
-              "click",
-              "type",
-              "select",
-              "check",
-              "get_text",
-              "get_value",
-              "get_attribute",
-              "set_attribute",
-              "focus",
-              "scroll_to",
-              "wait_for",
-              "key_press",
-              "list_interactive"
-            ],
-            "type": "string"
-          },
-          "correlation_id": {
-            "description": "Optional ID to link this action to a specific error or investigation. Appears in screenshot filenames for easy lookup.",
-            "type": "string"
-          },
-          "duration_ms": {
-            "description": "Highlight duration in ms, default 5000 (applies to highlight)",
-            "type": "number"
-          },
-          "include_url": {
-            "description": "Include URL when restoring state (applies to load_state)",
-            "type": "boolean"
-          },
-          "script": {
-            "description": "JavaScript code to execute (applies to execute_js)",
-            "type": "string"
-          },
-          "checked": {
-            "description": "Whether to check or uncheck (applies to check, default: true)",
-            "type": "boolean"
-          },
-          "clear": {
-            "description": "Clear existing value before typing (applies to type)",
-            "type": "boolean"
-          },
-          "name": {
-            "description": "Attribute name (applies to get_attribute, set_attribute)",
-            "type": "string"
-          },
-          "reason": {
-            "description": "Why this action is being performed (shown in visual toast). Example: 'Opening compose to send test email'.",
-            "type": "string"
-          },
-          "selector": {
-            "description": "CSS selector or semantic selector for element (applies to highlight, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press). Semantic: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close.",
-            "type": "string"
-          },
-          "text": {
-            "description": "Text to type into the element (applies to type). Key name for key_press: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space.",
-            "type": "string"
-          },
-          "snapshot_name": {
-            "description": "State snapshot name (applies to save_state, load_state, delete_state)",
-            "type": "string"
-          },
-          "tab_id": {
-            "description": "Target tab ID (from observe {what: 'tabs'}). Omit for active tab.",
-            "type": "number"
-          },
-          "timeout_ms": {
-            "description": "Execution timeout in ms, default 5000 (applies to execute_js, wait_for)",
-            "type": "number"
-          },
-          "value": {
-            "description": "Value to set (applies to select, set_attribute)",
-            "type": "string"
-          },
-          "url": {
-            "description": "URL to navigate to (required for navigate, new_tab)",
-            "type": "string"
-          },
-          "world": {
-            "description": "Execution world: 'auto' (default, tries main then isolated on CSP error), 'main' (access page JS globals), or 'isolated' (bypasses page CSP, DOM access only). Use 'isolated' for sites with Trusted Types CSP like Gmail.",
-            "enum": [
-              "auto",
-              "main",
-              "isolated"
-            ],
-            "type": "string"
-          }
+        "selector": {
+          "description": "CSS selector to query (applies to query_dom)",
+          "type": "string"
         },
-        "required": [
-          "action"
-        ],
-        "type": "object"
-      }
+        "session_action": {
+          "description": "Session sub-action: capture, compare, list, delete",
+          "enum": [
+            "capture",
+            "compare",
+            "list",
+            "delete"
+          ],
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Filter by MCP session ID (applies to audit_log)",
+          "type": "string"
+        },
+        "severity_min": {
+          "description": "Minimum severity to stream",
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "type": "string"
+        },
+        "since": {
+          "description": "Only entries after this ISO 8601 timestamp (applies to audit_log)",
+          "type": "string"
+        },
+        "store_action": {
+          "description": "Store sub-action: save, load, list, delete, stats",
+          "enum": [
+            "save",
+            "load",
+            "list",
+            "delete",
+            "stats"
+          ],
+          "type": "string"
+        },
+        "streaming_action": {
+          "description": "Streaming sub-action: enable, disable, status",
+          "enum": [
+            "enable",
+            "disable",
+            "status"
+          ],
+          "type": "string"
+        },
+        "tab_id": {
+          "description": "Target tab ID",
+          "type": "number"
+        },
+        "test_id": {
+          "description": "Test ID for boundary marker",
+          "type": "string"
+        },
+        "throttle_seconds": {
+          "description": "Minimum seconds between notifications",
+          "maximum": 60,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "tool_name": {
+          "description": "Filter by tool name (applies to audit_log)",
+          "type": "string"
+        },
+        "url": {
+          "description": "Filter by URL substring",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
     }
-  ]
-}
+  },
+  {
+    "name": "interact",
+    "description": "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, subtitle, save_state, load_state, list_states, delete_state. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. Subtitle: persistent narration text at bottom of viewport (like closed captions). Use action='subtitle' with text param, or add 'subtitle' param to any other action for composable narration. Performance: set analyze=true on DOM actions to get perf_diff with timing breakdown and resource changes in the async result. Requires AI Web Pilot enabled.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Browser interaction to perform",
+          "enum": [
+            "highlight",
+            "subtitle",
+            "save_state",
+            "load_state",
+            "list_states",
+            "delete_state",
+            "execute_js",
+            "navigate",
+            "refresh",
+            "back",
+            "forward",
+            "new_tab",
+            "click",
+            "type",
+            "select",
+            "check",
+            "get_text",
+            "get_value",
+            "get_attribute",
+            "set_attribute",
+            "focus",
+            "scroll_to",
+            "wait_for",
+            "key_press",
+            "list_interactive"
+          ],
+          "type": "string"
+        },
+        "analyze": {
+          "description": "Enable performance profiling for this action. When true, captures timing breakdown and perf_diff (before/after metrics) in the async result.",
+          "type": "boolean"
+        },
+        "checked": {
+          "description": "Whether to check or uncheck (applies to check, default: true)",
+          "type": "boolean"
+        },
+        "clear": {
+          "description": "Clear existing value before typing (applies to type)",
+          "type": "boolean"
+        },
+        "correlation_id": {
+          "description": "Optional ID to link this action to a specific error or investigation.",
+          "type": "string"
+        },
+        "duration_ms": {
+          "description": "Highlight duration in ms, default 5000",
+          "type": "number"
+        },
+        "include_url": {
+          "description": "Include URL when restoring state",
+          "type": "boolean"
+        },
+        "name": {
+          "description": "Attribute name (applies to get_attribute, set_attribute)",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why this action is being performed (shown in visual toast). Example: 'Opening compose to send test email'.",
+          "type": "string"
+        },
+        "script": {
+          "description": "JavaScript code to execute (applies to execute_js)",
+          "type": "string"
+        },
+        "selector": {
+          "description": "CSS selector or semantic selector for element (applies to highlight, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press). Semantic: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close.",
+          "type": "string"
+        },
+        "snapshot_name": {
+          "description": "State snapshot name",
+          "type": "string"
+        },
+        "subtitle": {
+          "description": "Optional narration text displayed at bottom of viewport. Can be added to ANY action for composable narration in a single tool call. Empty string clears.",
+          "type": "string"
+        },
+        "tab_id": {
+          "description": "Target tab ID. Omit for active tab.",
+          "type": "number"
+        },
+        "text": {
+          "description": "Text to type into the element (applies to type). Key name for key_press: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space. Subtitle text (applies to subtitle action, required). Empty string clears.",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "description": "Execution timeout in ms, default 5000 (applies to execute_js, wait_for)",
+          "type": "number"
+        },
+        "url": {
+          "description": "URL to navigate to (required for navigate, new_tab)",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value to set (applies to select, set_attribute)",
+          "type": "string"
+        },
+        "world": {
+          "description": "Execution world: 'auto' (default, tries main then isolated on CSP error), 'main' (access page JS globals), or 'isolated' (bypasses page CSP, DOM access only). Use 'isolated' for sites with Trusted Types CSP like Gmail.",
+          "enum": [
+            "auto",
+            "main",
+            "isolated"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    }
+  }
+]

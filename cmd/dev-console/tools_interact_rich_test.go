@@ -131,39 +131,19 @@ func TestRichAction_AnalyzeOnNavigationAction(t *testing.T) {
 func TestRichAction_SchemaHasAnalyze(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	// Get tools list
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/list"}
-	resp := env.handler.handleToolsList(req)
-
-	if resp.Result == nil {
-		t.Fatal("tools/list returned nil result")
-	}
-
-	data, err := json.Marshal(resp.Result)
-	if err != nil {
-		t.Fatalf("Failed to marshal result: %v", err)
-	}
+	// Get tools list directly (not via embedded MCPHandler which has no toolHandler)
+	tools := env.handler.ToolsList()
 
 	// Find interact tool schema
-	var result struct {
-		Tools []struct {
-			Name        string         `json:"name"`
-			InputSchema map[string]any `json:"inputSchema"`
-		} `json:"tools"`
-	}
-	if err := json.Unmarshal(data, &result); err != nil {
-		t.Fatalf("Failed to parse tools list: %v", err)
-	}
-
 	var interactSchema map[string]any
-	for _, tool := range result.Tools {
+	for _, tool := range tools {
 		if tool.Name == "interact" {
 			interactSchema = tool.InputSchema
 			break
 		}
 	}
 	if interactSchema == nil {
-		t.Fatal("interact tool not found in tools/list")
+		t.Fatal("interact tool not found in ToolsList()")
 	}
 
 	props, ok := interactSchema["properties"].(map[string]any)
@@ -203,30 +183,19 @@ func TestRichAction_SchemaHasAnalyze(t *testing.T) {
 func TestRichAction_SchemaDescriptionMentionsPerf(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/list"}
-	resp := env.handler.handleToolsList(req)
-
-	data, err := json.Marshal(resp.Result)
-	if err != nil {
-		t.Fatalf("Failed to marshal result: %v", err)
-	}
-
-	var result struct {
-		Tools []struct {
-			Name        string `json:"name"`
-			Description string `json:"description"`
-		} `json:"tools"`
-	}
-	if err := json.Unmarshal(data, &result); err != nil {
-		t.Fatalf("Failed to parse tools list: %v", err)
-	}
+	// Get tools list directly
+	tools := env.handler.ToolsList()
 
 	var desc string
-	for _, tool := range result.Tools {
+	for _, tool := range tools {
 		if tool.Name == "interact" {
 			desc = tool.Description
 			break
 		}
+	}
+
+	if desc == "" {
+		t.Fatal("interact tool not found or has empty description")
 	}
 
 	lower := strings.ToLower(desc)
