@@ -406,7 +406,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "interact",
-			Description: "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, save_state, load_state, list_states, delete_state. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. DOM primitives work on CSP-restricted pages (Gmail, etc.) and support semantic selectors: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close. Requires AI Web Pilot enabled.",
+			Description: "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, subtitle, save_state, load_state, list_states, delete_state. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. Subtitle: persistent narration text at bottom of viewport (like closed captions). Use action='subtitle' with text param, or add 'subtitle' param to any other action for composable narration. Requires AI Web Pilot enabled.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -414,7 +414,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "string",
 						"description": "Browser interaction to perform",
 						"enum": []string{
-							"highlight", "save_state", "load_state", "list_states", "delete_state",
+							"highlight", "subtitle", "save_state", "load_state", "list_states", "delete_state",
 							"execute_js", "navigate", "refresh", "back", "forward", "new_tab",
 							"click", "type", "select", "check",
 							"get_text", "get_value", "get_attribute",
@@ -448,7 +448,11 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"text": map[string]any{
 						"type":        "string",
-						"description": "Text to type into the element (applies to type). Key name for key_press: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space.",
+						"description": "Text to type into the element (applies to type). Key name for key_press: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space. Subtitle text (applies to subtitle action, required). Empty string clears.",
+					},
+					"subtitle": map[string]any{
+						"type":        "string",
+						"description": "Optional narration text displayed at bottom of viewport. Can be added to ANY action for composable narration in a single tool call. Empty string clears.",
 					},
 					"value": map[string]any{
 						"type":        "string",

@@ -252,6 +252,8 @@ function handleMessage(
     case 'setPerformanceSnapshotEnabled':
     case 'setDeferralEnabled':
     case 'setNetworkBodyCaptureEnabled':
+    case 'setActionToastsEnabled':
+    case 'setSubtitlesEnabled':
       handleForwardedSetting(message, sendResponse, deps)
       return false
 

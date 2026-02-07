@@ -41,6 +41,18 @@ export const FEATURE_TOGGLES: readonly FeatureToggleConfig[] = [
     messageType: 'setNetworkBodyCaptureEnabled',
     default: true,
   },
+  {
+    id: 'toggle-action-toasts',
+    storageKey: 'actionToastsEnabled',
+    messageType: 'setActionToastsEnabled',
+    default: true,
+  },
+  {
+    id: 'toggle-subtitles',
+    storageKey: 'subtitlesEnabled',
+    messageType: 'setSubtitlesEnabled',
+    default: true,
+  },
 ]
 
 /**
