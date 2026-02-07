@@ -77,18 +77,38 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 		}
 	}
 
+	// SARIF 2.1.0 spec: top-level requires version, $schema, runs[]
 	responseData := map[string]any{
-		"status":  "ok",
-		"scope":   arguments.Scope,
-		"rules":   0,
-		"results": 0,
+		"version": "2.1.0",
+		"$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+		"runs": []map[string]any{{
+			"tool": map[string]any{
+				"driver": map[string]any{
+					"name":    "gasoline",
+					"version": version,
+					"rules":   []any{},
+				},
+			},
+			"results": []any{},
+		}},
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("SARIF export complete", responseData)}
 }
 
 func (h *ToolHandler) toolExportHAR(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("HAR export", map[string]any{"har": map[string]any{}})}
+	// HAR 1.2 spec: top-level requires log object with version, creator, entries[]
+	responseData := map[string]any{
+		"log": map[string]any{
+			"version": "1.2",
+			"creator": map[string]any{
+				"name":    "gasoline",
+				"version": version,
+			},
+			"entries": []any{},
+		},
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("HAR export", responseData)}
 }
 
 func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

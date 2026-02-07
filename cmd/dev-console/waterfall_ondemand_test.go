@@ -29,8 +29,7 @@ func TestWaterfallOnDemand_FreshDataNoQuery(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 	th := handler.toolHandler.(*ToolHandler)
 
 	// Add fresh entries (just now)
@@ -77,8 +76,7 @@ func TestWaterfallOnDemand_StaleDataCreatesQuery(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 	th := handler.toolHandler.(*ToolHandler)
 
 	// Add stale entries (2 seconds ago - simulated by waiting)
@@ -166,8 +164,7 @@ func TestWaterfallOnDemand_EmptyBufferCreatesQuery(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 	th := handler.toolHandler.(*ToolHandler)
 
 	// Don't add any entries - buffer is empty
@@ -225,8 +222,7 @@ func TestWaterfallOnDemand_TimeoutHandling(t *testing.T) {
 	cap := capture.NewCapture()
 	// Set a very short timeout for this test
 	cap.SetQueryTimeout(100 * time.Millisecond)
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 	th := handler.toolHandler.(*ToolHandler)
 
 	// Don't respond to the query - let it timeout
@@ -263,8 +259,7 @@ func TestWaterfallOnDemand_ConcurrentRequests(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 	th := handler.toolHandler.(*ToolHandler)
 
 	// Simulate extension responding to queries
@@ -371,8 +366,7 @@ func TestWaterfallStalenessThreshold(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 	th := handler.toolHandler.(*ToolHandler)
 
 	// Add entries

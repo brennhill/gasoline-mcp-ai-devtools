@@ -117,9 +117,7 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 	var params struct {
 		Limit int `json:"limit"`
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
-	}
+	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
 		params.Limit = 100 // default limit
 	}
@@ -157,9 +155,7 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 		MinLevel string `json:"min_level"` // minimum level threshold
 		Source   string `json:"source"`    // filter by source
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
-	}
+	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
 		params.Limit = 100 // default limit
 	}
@@ -216,9 +212,7 @@ func (h *ToolHandler) toolGetExtensionLogs(req JSONRPCRequest, args json.RawMess
 		Limit int    `json:"limit"`
 		Level string `json:"level"` // filter by level
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
-	}
+	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
 		params.Limit = 100 // default limit
 	}

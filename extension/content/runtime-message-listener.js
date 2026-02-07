@@ -132,10 +132,13 @@ function showSubtitle(text) {
         target.appendChild(bar);
     }
     bar.textContent = text;
-    requestAnimationFrame(() => {
+    // Use setTimeout instead of requestAnimationFrame to ensure opacity
+    // transitions even when the tab is in the background (rAF is paused
+    // in background tabs, causing the subtitle to stay invisible).
+    setTimeout(() => {
         if (bar)
             bar.style.opacity = '1';
-    });
+    }, 50);
 }
 /**
  * Initialize runtime message listener

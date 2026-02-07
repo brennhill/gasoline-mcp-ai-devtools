@@ -21,10 +21,8 @@ func TestNewToolHandler(t *testing.T) {
 	}
 
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-
 	// Create handler
-	handler := NewToolHandler(server, cap, registry)
+	handler := NewToolHandler(server, cap)
 
 	if handler == nil {
 		t.Fatal("NewToolHandler returned nil")
@@ -41,8 +39,7 @@ func TestNewToolHandler(t *testing.T) {
 func TestHandleToolCall_UnknownTool(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 
 	// Get the tool handler
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
@@ -67,8 +64,7 @@ func TestHandleToolCall_UnknownTool(t *testing.T) {
 func TestHandleToolCall_ObserveTool(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -97,8 +93,7 @@ func TestHandleToolCall_ObserveTool(t *testing.T) {
 func TestHandleToolCall_GenerateTool(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -121,8 +116,7 @@ func TestHandleToolCall_GenerateTool(t *testing.T) {
 func TestHandleToolCall_ConfigureTool(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -145,8 +139,7 @@ func TestHandleToolCall_ConfigureTool(t *testing.T) {
 func TestHandleToolCall_InteractTool(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -174,8 +167,7 @@ func TestHandleToolCall_InteractTool(t *testing.T) {
 func TestToolObserve_MissingWhat(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -198,8 +190,7 @@ func TestToolObserve_MissingWhat(t *testing.T) {
 func TestToolObserve_UnknownMode(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -222,8 +213,7 @@ func TestToolObserve_UnknownMode(t *testing.T) {
 func TestToolObserve_NetworkBodies(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -250,8 +240,7 @@ func TestToolObserve_NetworkBodies(t *testing.T) {
 func TestToolGenerate_MissingFormat(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -274,8 +263,7 @@ func TestToolGenerate_MissingFormat(t *testing.T) {
 func TestToolGenerate_UnknownFormat(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -302,8 +290,7 @@ func TestToolGenerate_UnknownFormat(t *testing.T) {
 func TestToolConfigure_MissingAction(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -326,8 +313,7 @@ func TestToolConfigure_MissingAction(t *testing.T) {
 func TestToolConfigure_UnknownAction(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -350,8 +336,7 @@ func TestToolConfigure_UnknownAction(t *testing.T) {
 func TestToolConfigure_Health(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -378,8 +363,7 @@ func TestToolConfigure_Health(t *testing.T) {
 func TestToolInteract_MissingAction(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -402,8 +386,7 @@ func TestToolInteract_MissingAction(t *testing.T) {
 func TestToolInteract_UnknownAction(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	req := JSONRPCRequest{
@@ -430,8 +413,7 @@ func TestToolInteract_UnknownAction(t *testing.T) {
 func TestToolsList(t *testing.T) {
 	server, _ := NewServer("/tmp/test-gasoline.jsonl", 100)
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)
 
 	tools := toolHandler.ToolsList()

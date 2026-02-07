@@ -109,8 +109,7 @@ func TestObserveErrors_EndToEnd(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 
 	// Step 1: POST console errors (simulating browser extension)
 	logsPayload := map[string]any{
@@ -188,8 +187,7 @@ func TestObserveLogs_EndToEnd(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 
 	// POST logs
 	server.mu.Lock()
@@ -226,8 +224,7 @@ func TestObserveLogs_LevelFilter(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 
 	server.mu.Lock()
 	server.entries = append(server.entries, sampleConsoleError, sampleConsoleWarning, sampleConsoleLog)
@@ -261,8 +258,7 @@ func TestObserveNetworkWaterfall_EndToEnd(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 
 	// Add network waterfall entry directly to capture
 	cap.AddNetworkWaterfallEntries([]capture.NetworkWaterfallEntry{sampleNetworkEntry}, "https://example.com/dashboard")
@@ -302,8 +298,7 @@ func TestObserveNetworkWaterfall_URLFilter(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 
 	// Add multiple entries
 	entries := []capture.NetworkWaterfallEntry{
@@ -341,8 +336,7 @@ func TestObserveExtensionLogs_EndToEnd(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 
 	// Simulate extension logs POST
 	logsPayload := struct {
@@ -395,8 +389,7 @@ func TestObservePage_ExtractsFromWaterfall(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 
 	// Add network entry with page_url
 	cap.AddNetworkWaterfallEntries([]capture.NetworkWaterfallEntry{sampleNetworkEntry}, "https://example.com/dashboard")
@@ -432,8 +425,7 @@ func TestObservePage_PrioritizesTrackedURL(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 
 	// Add STALE waterfall entry with old URL
 	cap.AddNetworkWaterfallEntries([]capture.NetworkWaterfallEntry{sampleNetworkEntry}, "https://old-stale-url.com/page")
@@ -498,8 +490,7 @@ func TestObserveNetworkBodies_EndToEnd(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 
 	// Add network body using test helper (simulates browser extension POST)
 	cap.AddNetworkBodiesForTest([]capture.NetworkBody{
@@ -541,8 +532,7 @@ func TestObserveWebSocketEvents_EndToEnd(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 
 	// Simulate WebSocket event POST
 	wsPayload := struct {
@@ -596,8 +586,7 @@ func TestMCPToolsCall_ObserveErrors_FullFlow(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
-	sseRegistry := NewSSERegistry()
-	handler := NewToolHandler(server, cap, sseRegistry)
+	handler := NewToolHandler(server, cap)
 
 	// Populate with test data
 	server.mu.Lock()

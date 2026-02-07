@@ -248,11 +248,29 @@ func (c *Capture) WaitForResult(id string, timeout time.Duration) (json.RawMessa
 }
 
 // WaitForResultWithClient waits with client isolation.
+// Uses a single wakeup goroutine (not per-iteration) to avoid goroutine explosion.
 func (c *Capture) WaitForResultWithClient(id string, timeout time.Duration, clientID string) (json.RawMessage, error) {
 	deadline := time.Now().Add(timeout)
 
+	// Single wakeup goroutine: broadcasts every 10ms to recheck condition.
+	// Replaces per-iteration goroutine spawn that caused ~3000 goroutines per 30s call.
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				c.queryCond.Broadcast()
+			case <-done:
+				return
+			}
+		}
+	}()
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	defer close(done) // Stop wakeup goroutine on return (runs before Unlock per LIFO)
 
 	for {
 		// Check if result exists
@@ -269,11 +287,6 @@ func (c *Capture) WaitForResultWithClient(id string, timeout time.Duration, clie
 			return nil, fmt.Errorf("timeout waiting for result %s", id)
 		}
 
-		// Wait with short timeout to recheck
-		go func() {
-			time.Sleep(10 * time.Millisecond)
-			c.queryCond.Broadcast()
-		}()
 		c.queryCond.Wait()
 	}
 }
@@ -284,16 +297,23 @@ func (c *Capture) WaitForResultWithClient(id string, timeout time.Duration, clie
 
 // startResultCleanup starts a background goroutine that periodically cleans
 // expired query results (60s TTL).
-// Called once during Capture initialization.
-func (c *Capture) startResultCleanup() {
+// Returns a stop function that terminates the goroutine.
+// Called once during Capture initialization; stop func stored in Capture.stopCleanup.
+func (c *Capture) startResultCleanup() func() {
+	stop := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
-
-		for range ticker.C {
-			c.cleanExpiredResults()
+		for {
+			select {
+			case <-ticker.C:
+				c.cleanExpiredResults()
+			case <-stop:
+				return
+			}
 		}
 	}()
+	return func() { close(stop) }
 }
 
 // cleanExpiredResults removes query results older than queryResultTTL.

@@ -80,10 +80,9 @@ func createTestToolHandler(t *testing.T) *ToolHandler {
 	}
 
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
 
 	// Create handler using proper constructor
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 
 	// Extract the ToolHandler from MCPHandler.toolHandler
 	toolHandler := mcpHandler.toolHandler.(*ToolHandler)

@@ -24,10 +24,12 @@ func (c *Capture) AddNetworkWaterfallEntries(entries []NetworkWaterfallEntry, pa
 		c.networkWaterfall = append(c.networkWaterfall, entries[i])
 	}
 
-	// Enforce capacity - keep only the most recent entries
+	// Enforce capacity - keep only the most recent entries.
+	// Allocate new slice to release old backing array for GC.
 	if len(c.networkWaterfall) > c.networkWaterfallCapacity {
-		keep := len(c.networkWaterfall) - c.networkWaterfallCapacity
-		c.networkWaterfall = c.networkWaterfall[keep:]
+		kept := make([]NetworkWaterfallEntry, c.networkWaterfallCapacity)
+		copy(kept, c.networkWaterfall[len(c.networkWaterfall)-c.networkWaterfallCapacity:])
+		c.networkWaterfall = kept
 	}
 }
 

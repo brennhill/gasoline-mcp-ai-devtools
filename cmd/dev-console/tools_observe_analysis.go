@@ -18,9 +18,7 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 		Limit     int    `json:"limit"`
 		URLFilter string `json:"url_filter"` // filter by URL substring
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
-	}
+	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
 		params.Limit = 100 // default limit
 	}
@@ -248,9 +246,7 @@ func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage)
 		Tags         []string `json:"tags"`          // WCAG tags to test
 		ForceRefresh bool     `json:"force_refresh"` // Bypass cache
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
-	}
+	lenientUnmarshal(args, &params)
 
 	// Check if extension is connected (tab is being tracked)
 	enabled, _, _ := h.capture.GetTrackingStatus()
@@ -346,9 +342,7 @@ func (h *ToolHandler) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMe
 		Limit   int      `json:"limit"`
 		Include []string `json:"include"` // "actions", "errors", "network", "websocket"
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
-	}
+	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
 		params.Limit = 50
 	}

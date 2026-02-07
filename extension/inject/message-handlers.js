@@ -106,17 +106,17 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
         }, timeoutMs);
         try {
             const cleanScript = script.trim();
-            const hasMultipleStatements = cleanScript.includes(';');
-            const hasExplicitReturn = /\breturn\b/.test(cleanScript);
-            let fnBody;
-            if (hasMultipleStatements || hasExplicitReturn) {
-                fnBody = `"use strict"; ${cleanScript}`;
+            // Try expression form first (captures return values from IIFEs, expressions).
+            // If it throws SyntaxError (statements like try/catch, if/else), fall back to statement form.
+            let fn;
+            try {
+                // eslint-disable-next-line no-new-func
+                fn = new Function(`"use strict"; return (${cleanScript});`);
             }
-            else {
-                fnBody = `"use strict"; return (${cleanScript});`;
+            catch {
+                // eslint-disable-next-line no-new-func
+                fn = new Function(`"use strict"; ${cleanScript}`);
             }
-            // eslint-disable-next-line no-new-func
-            const fn = new Function(fnBody);
             const result = fn();
             // Handle promises
             if (result && typeof result.then === 'function') {

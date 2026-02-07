@@ -48,9 +48,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	var composableSubtitle struct {
 		Subtitle *string `json:"subtitle"`
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &composableSubtitle)
-	}
+	lenientUnmarshal(args, &composableSubtitle)
 
 	var resp JSONRPCResponse
 	switch params.Action {

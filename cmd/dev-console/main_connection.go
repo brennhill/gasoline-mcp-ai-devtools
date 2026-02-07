@@ -486,11 +486,8 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}})
 
-	// Create SSE registry for MCP connections
-	sseRegistry := NewSSERegistry()
-
 	// Register HTTP routes before starting the goroutine.
-	setupHTTPRoutes(server, cap, sseRegistry)
+	setupHTTPRoutes(server, cap)
 
 	// Create context for clean shutdown of background goroutines
 	ctx, cancel := context.WithCancel(context.Background())
@@ -538,8 +535,9 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 		}
 	}
 
-	// Fast-fail: Check if port is available before trying to bind
-	// This catches cases where PID file is missing but port is still in use
+	// Fast-fail: Check if port is available before trying to bind.
+	// Intentional double-bind: the pre-flight check provides better error messages
+	// and handles concurrent server launch attempts intelligently for the bridge wrapper.
 	testAddr := fmt.Sprintf("127.0.0.1:%d", port)
 	testLn, err := net.Listen("tcp", testAddr)
 	if err != nil {
@@ -557,6 +555,12 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 
 	// Start HTTP server in background for browser extension
 	httpReady := make(chan error, 1)
+	srv := &http.Server{
+		ReadTimeout:  5 * time.Second,   // Localhost should be fast
+		WriteTimeout: 10 * time.Second,  // Localhost should be fast
+		IdleTimeout:  120 * time.Second, // Keep-alive for polling connections
+		Handler:      AuthMiddleware(apiKey)(http.DefaultServeMux),
+	}
 	go func() {
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
 		ln, err := net.Listen("tcp", addr)
@@ -565,14 +569,8 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 			return
 		}
 		httpReady <- nil
-		srv := &http.Server{
-			ReadTimeout:  5 * time.Second,   // Localhost should be fast
-			WriteTimeout: 10 * time.Second,  // Localhost should be fast
-			IdleTimeout:  120 * time.Second, // Keep-alive for polling connections
-			Handler:      AuthMiddleware(apiKey)(http.DefaultServeMux),
-		}
 		// #nosec G114 -- localhost-only MCP background server
-		if err := srv.Serve(ln); err != nil {
+		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
 		}
 	}()
@@ -662,6 +660,19 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 		"port":            port,
 		"timestamp":       time.Now().UTC().Format(time.RFC3339),
 	}})
+
+	// Graceful HTTP server shutdown: finish in-flight requests (3s timeout)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		_ = server.appendToFile([]LogEntry{{
+			"type":      "lifecycle",
+			"event":     "http_shutdown_error",
+			"error":     err.Error(),
+			"pid":       os.Getpid(),
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}})
+	}
 
 	// Shutdown async logger (drain remaining logs)
 	server.shutdownAsyncLogger(2 * time.Second)

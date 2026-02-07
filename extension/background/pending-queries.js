@@ -82,13 +82,17 @@ async function executeViaScriptingAPI(tabId, script, timeoutMs) {
         func: (code) => {
             try {
                 const cleaned = code.trim();
-                const hasMultiple = cleaned.includes(';');
-                const hasReturn = /\breturn\b/.test(cleaned);
-                const body = hasMultiple || hasReturn
-                    ? `"use strict"; ${cleaned}`
-                    : `"use strict"; return (${cleaned});`;
-                // eslint-disable-next-line no-new-func
-                const fn = new Function(body);
+                // Try expression form first (captures return values from IIFEs, expressions).
+                // If SyntaxError (statements like try/catch, if/else), fall back to statement form.
+                let fn;
+                try {
+                    // eslint-disable-next-line no-new-func
+                    fn = new Function(`"use strict"; return (${cleaned});`);
+                }
+                catch {
+                    // eslint-disable-next-line no-new-func
+                    fn = new Function(`"use strict"; ${cleaned}`);
+                }
                 const result = fn();
                 if (result !== null && result !== undefined && typeof result.then === 'function') {
                     return result.then((v) => {

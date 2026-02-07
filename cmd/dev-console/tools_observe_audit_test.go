@@ -45,8 +45,7 @@ func newObserveTestEnv(t *testing.T) *observeTestEnv {
 		t.Fatalf("NewServer failed: %v", err)
 	}
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 	return &observeTestEnv{handler: handler, server: server, capture: cap}
 }

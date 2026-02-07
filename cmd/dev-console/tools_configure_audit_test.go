@@ -42,8 +42,7 @@ func newConfigureTestEnv(t *testing.T) *configureTestEnv {
 		t.Fatalf("NewServer failed: %v", err)
 	}
 	cap := capture.NewCapture()
-	registry := NewSSERegistry()
-	mcpHandler := NewToolHandler(server, cap, registry)
+	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 	return &configureTestEnv{handler: handler, server: server, capture: cap}
 }

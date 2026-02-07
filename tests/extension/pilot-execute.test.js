@@ -165,6 +165,82 @@ describe('executeJavaScript Function', () => {
   })
 })
 
+describe('executeJavaScript Script Wrapping', () => {
+  beforeEach(() => {
+    mockChrome = createMockChrome()
+    mockDocument = createMockDocument()
+    mockWindow = createMockWindow()
+    globalThis.chrome = mockChrome
+    globalThis.document = mockDocument
+    globalThis.window = mockWindow
+  })
+
+  afterEach(() => {
+    delete globalThis.document
+    delete globalThis.window
+  })
+
+  test('IIFE with semicolons should return its value', async () => {
+    const { executeJavaScript } = await import('../../extension/inject.js')
+
+    // IIFE bodies contain semicolons but the outer form is a single expression.
+    // The return value of the IIFE must be captured.
+    const response = await executeJavaScript('(function(){ var x = 42; return x; })()')
+
+    assert.strictEqual(response.success, true, 'Should succeed')
+    assert.strictEqual(response.result, 42, 'IIFE return value must be captured, not lost')
+  })
+
+  test('try/catch block should execute without SyntaxError', async () => {
+    const { executeJavaScript } = await import('../../extension/inject.js')
+
+    // try/catch is a statement, not an expression.
+    // Wrapping it as return(try{...}catch{...}) is invalid JS.
+    const response = await executeJavaScript("try { JSON.parse('{}') } catch(e) { }")
+
+    assert.strictEqual(response.success, true, 'try/catch must not throw SyntaxError')
+    assert.notStrictEqual(response.error, 'execution_error', 'Must not be a wrapping error')
+  })
+
+  test('if/else block should execute without SyntaxError', async () => {
+    const { executeJavaScript } = await import('../../extension/inject.js')
+
+    const response = await executeJavaScript('if (true) { 1 } else { 2 }')
+
+    assert.strictEqual(response.success, true, 'if/else must not throw SyntaxError')
+  })
+
+  test('multi-statement script with trailing expression should return value', async () => {
+    const { executeJavaScript } = await import('../../extension/inject.js')
+
+    // Scripts like "var x = 1; x" should ideally return x,
+    // but at minimum must not crash.
+    const response = await executeJavaScript('var x = 99; x')
+
+    assert.strictEqual(response.success, true, 'Should succeed')
+    // The return value capture for multi-statement scripts is best-effort
+  })
+
+  test('arrow IIFE with semicolons should return its value', async () => {
+    const { executeJavaScript } = await import('../../extension/inject.js')
+
+    const response = await executeJavaScript('(() => { var a = 1; var b = 2; return a + b; })()')
+
+    assert.strictEqual(response.success, true, 'Should succeed')
+    assert.strictEqual(response.result, 3, 'Arrow IIFE return value must be captured')
+  })
+
+  test('IIFE returning JSON string should return the string', async () => {
+    const { executeJavaScript } = await import('../../extension/inject.js')
+
+    // This is the exact pattern used by the smoke test subtitle check
+    const response = await executeJavaScript('(function() { var x = "hello"; return JSON.stringify({text: x}); })()')
+
+    assert.strictEqual(response.success, true, 'Should succeed')
+    assert.strictEqual(response.result, '{"text":"hello"}', 'IIFE should return the JSON string')
+  })
+})
+
 describe('safeSerializeForExecute Function', () => {
   beforeEach(() => {
     mockChrome = createMockChrome()

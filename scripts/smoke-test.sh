@@ -601,7 +601,7 @@ run_test_s24() {
     if [ "$has_filename" = "true" ] && [ "$has_path" = "true" ]; then
         # Extract path and verify file exists
         local screenshot_path
-        screenshot_path=$(echo "$text" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('path',''))" 2>/dev/null || echo "")
+        screenshot_path=$(echo "$text" | python3 -c "import sys,json; t=sys.stdin.read(); i=t.find('{'); print(json.loads(t[i:]).get('path','') if i>=0 else '')" 2>/dev/null || echo "")
         if [ -n "$screenshot_path" ] && [ -f "$screenshot_path" ]; then
             local file_size
             file_size=$(wc -c < "$screenshot_path" | tr -d ' ')
@@ -641,7 +641,7 @@ run_test_s9() {
     echo "$content_text" | python3 -c "
 import sys, json
 try:
-    data = json.loads(sys.stdin.read())
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     clusters = data.get('clusters', [])
     print(f'    total clusters: {len(clusters)}')
     for c in clusters[:3]:
@@ -683,7 +683,7 @@ run_test_s10() {
     echo "$dom_text" | python3 -c "
 import sys, json
 try:
-    data = json.loads(sys.stdin.read())
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     elements = data.get('elements', data.get('results', []))
     if isinstance(elements, list):
         print(f'    found: {len(elements)} element(s)')
@@ -772,7 +772,7 @@ run_test_s11() {
     echo "$content_text" | python3 -c "
 import sys, json
 try:
-    data = json.loads(sys.stdin.read())
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     entries = data.get('entries', [])
     form_actions = [e for e in entries if any(k in str(e).lower() for k in ['input', 'change', 'click', 'submit', 'focus'])]
     print(f'    total actions: {len(entries)}, form-related: {len(form_actions)}')
@@ -830,7 +830,7 @@ run_test_s12() {
         echo "$content_text" | python3 -c "
 import sys, json
 try:
-    data = json.loads(sys.stdin.read())
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     for c in data.get('connections', [])[:3]:
         url = c.get('url', '')[:80]
         state = c.get('state', '')
@@ -894,7 +894,7 @@ run_test_s13() {
         echo "$content_text" | python3 -c "
 import sys, json
 try:
-    data = json.loads(sys.stdin.read())
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     entries = data.get('entries', [])
     if entries:
         e = entries[0]
@@ -1000,7 +1000,7 @@ run_test_s17() {
     echo "$INTERACT_RESULT" | python3 -c "
 import sys, json
 try:
-    data = json.loads(sys.stdin.read())
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     if 'perf_diff' in data:
         pd = data['perf_diff']
         metrics = pd.get('metrics', {})
@@ -1055,7 +1055,13 @@ run_test_s23() {
     echo "$INTERACT_RESULT" | python3 -c "
 import sys, json
 try:
-    data = json.loads(sys.stdin.read())
+    text = sys.stdin.read()
+    # Content may be prefixed with summary line (e.g. 'Command ...: complete')
+    # Find first '{' to locate the JSON object
+    idx = text.find('{')
+    if idx < 0:
+        raise ValueError('no JSON object found')
+    data = json.loads(text[idx:])
     pd = data.get('perf_diff', {})
     print(f'    verdict: {pd.get(\"verdict\", \"MISSING\")}')
     summary = pd.get('summary', 'MISSING')
@@ -1096,7 +1102,14 @@ except Exception as e:
 
     # 4. summary uses absolute percentage (no "improved -" or "regressed +")
     local summary
-    summary=$(echo "$INTERACT_RESULT" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('perf_diff',{}).get('summary',''))" 2>/dev/null || echo "")
+    summary=$(echo "$INTERACT_RESULT" | python3 -c "
+import sys,json
+text = sys.stdin.read()
+idx = text.find('{')
+if idx >= 0:
+    data = json.loads(text[idx:])
+    print(data.get('perf_diff',{}).get('summary',''))
+" 2>/dev/null || echo "")
     if [ -n "$summary" ] && ! echo "$summary" | grep -qE "improved -|regressed \+"; then
         checks_passed=$((checks_passed + 1))
     else
@@ -1137,7 +1150,7 @@ run_test_s18() {
     echo "$INTERACT_RESULT" | python3 -c "
 import sys, json
 try:
-    data = json.loads(sys.stdin.read())
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     print(f'    timing_ms: {data.get(\"timing_ms\", \"MISSING\")}')
     print(f'    dom_summary: {data.get(\"dom_summary\", \"MISSING\")}')
     print(f'    success: {data.get(\"success\", \"?\")}')
@@ -1179,7 +1192,7 @@ run_test_s19() {
     echo "$INTERACT_RESULT" | python3 -c "
 import sys, json
 try:
-    data = json.loads(sys.stdin.read())
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     if 'timing' in data:
         t = data['timing']
         print(f'    timing.total_ms: {t.get(\"total_ms\", \"?\")}')
@@ -1245,7 +1258,7 @@ run_test_s20() {
     echo "$content_text" | python3 -c "
 import sys, json
 try:
-    data = json.loads(sys.stdin.read())
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     ut = data.get('user_timing', {})
     marks = ut.get('marks', [])
     measures = ut.get('measures', [])
@@ -1262,7 +1275,7 @@ except Exception as e:
     if echo "$content_text" | grep -q "$marker"; then
         pass "User Timing markers ($marker) found in observe(performance)."
     else
-        fail "User Timing marker '$marker' not found in observe(performance). Content keys: $(echo "$content_text" | python3 -c 'import sys,json; print(list(json.loads(sys.stdin.read()).keys()))' 2>/dev/null || echo 'parse error')"
+        fail "User Timing marker '$marker' not found in observe(performance). Content keys: $(echo "$content_text" | python3 -c 'import sys,json; t=sys.stdin.read(); i=t.find("{"); print(list(json.loads(t[i:]).keys()) if i>=0 else [])' 2>/dev/null || echo 'parse error')"
     fi
 }
 run_test_s20

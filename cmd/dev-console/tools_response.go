@@ -20,6 +20,18 @@ func safeMarshal(v any, fallback string) json.RawMessage {
 	return json.RawMessage(resultJSON)
 }
 
+// lenientUnmarshal parses optional JSON params, logging failures to stderr for debugging.
+// Behavior is deliberately lenient: malformed optional params are logged but not rejected,
+// allowing callers to fall through to defaults.
+func lenientUnmarshal(args json.RawMessage, v any) {
+	if len(args) == 0 {
+		return
+	}
+	if err := json.Unmarshal(args, v); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] optional param parse: %v (args: %.100s)\n", err, string(args))
+	}
+}
+
 // mcpTextResponse constructs an MCP tool result containing a single text content block.
 func mcpTextResponse(text string) json.RawMessage {
 	result := MCPToolResult{

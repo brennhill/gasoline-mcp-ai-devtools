@@ -233,7 +233,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			continue
 
 		case "resources/list":
-			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"resources":[]}`)}
+			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"resources":[{"uri":"gasoline://guide","name":"Gasoline Usage Guide","description":"How to use Gasoline MCP tools for browser debugging","mimeType":"text/markdown"}]}`)}
 			respJSON, _ := json.Marshal(resp)
 			fmt.Println(string(respJSON))
 			flushStdout()
