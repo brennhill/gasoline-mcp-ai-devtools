@@ -1,3 +1,5 @@
+// recording.go — Recording lifecycle and persistence methods on RecordingManager.
+// Handles start/stop/add-action lifecycle and disk I/O for recordings.
 package capture
 
 import (
@@ -26,26 +28,26 @@ const (
 // Recording Lifecycle Methods
 // ============================================================================
 
-// StartRecording starts a new recording session
-// Returns recording_id and error status
-func (c *Capture) StartRecording(name string, pageURL string, sensitiveDataEnabled bool) (string, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+// StartRecording starts a new recording session.
+// Returns recording_id and error status.
+func (r *RecordingManager) StartRecording(name string, pageURL string, sensitiveDataEnabled bool) (string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	// Check if already recording
-	if c.activeRecordingID != "" {
-		return "", fmt.Errorf("already_recording: A recording is already active (id: %s)", c.activeRecordingID)
+	if r.activeRecordingID != "" {
+		return "", fmt.Errorf("already_recording: A recording is already active (id: %s)", r.activeRecordingID)
 	}
 
 	// Check storage quota
-	if c.recordingStorageUsed >= recordingStorageMax {
+	if r.recordingStorageUsed >= recordingStorageMax {
 		return "", fmt.Errorf("recording_storage_full: Recording storage at capacity (1GB). Please delete old recordings.")
 	}
 
 	// Warn if approaching limit (80%) - goes to stderr, not stdout (MCP stdio silence)
-	if c.recordingStorageUsed >= recordingWarningLevel {
+	if r.recordingStorageUsed >= recordingWarningLevel {
 		fmt.Fprintf(os.Stderr, "[WARNING] recording_storage_warning: Recording storage at 80%% (%d bytes / %d bytes)\n",
-			c.recordingStorageUsed, recordingStorageMax)
+			r.recordingStorageUsed, recordingStorageMax)
 	}
 
 	// Generate recording ID: name-YYYYMMDDTHHMMSSZ
@@ -75,20 +77,20 @@ func (c *Capture) StartRecording(name string, pageURL string, sensitiveDataEnabl
 	recording.Viewport = recordingtypes.ViewportInfo{Width: 1920, Height: 1080}
 
 	// Store in memory
-	c.recordings[recordingID] = recording
-	c.activeRecordingID = recordingID
+	r.recordings[recordingID] = recording
+	r.activeRecordingID = recordingID
 
 	return recordingID, nil
 }
 
-// StopRecording stops the current recording and persists it to disk
-// Returns action count and duration
-func (c *Capture) StopRecording(recordingID string) (int, int64, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+// StopRecording stops the current recording and persists it to disk.
+// Returns action count and duration.
+func (r *RecordingManager) StopRecording(recordingID string) (int, int64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	// Validate recording exists
-	recording, exists := c.recordings[recordingID]
+	recording, exists := r.recordings[recordingID]
 	if !exists {
 		return 0, 0, fmt.Errorf("recording_not_found: No active recording with id: %s", recordingID)
 	}
@@ -103,32 +105,32 @@ func (c *Capture) StopRecording(recordingID string) (int, int64, error) {
 	recording.ActionCount = actionCount
 
 	// Persist to disk
-	err := c.persistRecordingToDisk(recording)
+	err := r.persistRecordingToDisk(recording)
 	if err != nil {
 		return 0, 0, fmt.Errorf("recording_save_failed: Failed to save recording: %v", err)
 	}
 
 	// Update storage used
-	c.recordingStorageUsed += calculateRecordingSize(recording)
+	r.recordingStorageUsed += calculateRecordingSize(recording)
 
 	// Clear active recording
-	if c.activeRecordingID == recordingID {
-		c.activeRecordingID = ""
+	if r.activeRecordingID == recordingID {
+		r.activeRecordingID = ""
 	}
 
 	return actionCount, duration, nil
 }
 
-// AddRecordingAction adds an action to the current recording
-func (c *Capture) AddRecordingAction(action RecordingAction) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+// AddRecordingAction adds an action to the current recording.
+func (r *RecordingManager) AddRecordingAction(action RecordingAction) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	if c.activeRecordingID == "" {
+	if r.activeRecordingID == "" {
 		return fmt.Errorf("not_recording: No active recording")
 	}
 
-	recording := c.recordings[c.activeRecordingID]
+	recording := r.recordings[r.activeRecordingID]
 	if recording == nil {
 		return fmt.Errorf("recording_missing: Active recording not found")
 	}
@@ -155,7 +157,7 @@ func (c *Capture) AddRecordingAction(action RecordingAction) error {
 // ============================================================================
 
 // persistRecordingToDisk writes recording metadata.json to ~/.gasoline/recordings/{id}/
-func (c *Capture) persistRecordingToDisk(recording *Recording) error {
+func (r *RecordingManager) persistRecordingToDisk(recording *Recording) error {
 	// Determine storage directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -204,8 +206,8 @@ func (c *Capture) persistRecordingToDisk(recording *Recording) error {
 // Querying
 // ============================================================================
 
-// ListRecordings returns all saved recordings from disk
-func (c *Capture) ListRecordings(limit int) ([]Recording, error) {
+// ListRecordings returns all saved recordings from disk.
+func (r *RecordingManager) ListRecordings(limit int) ([]Recording, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("cannot_find_home: %v", err)
@@ -231,7 +233,7 @@ func (c *Capture) ListRecordings(limit int) ([]Recording, error) {
 		}
 
 		// Try to load metadata
-		recording, err := c.loadRecordingFromDisk(entry.Name())
+		recording, err := r.loadRecordingFromDisk(entry.Name())
 		if err != nil {
 			// Skip broken recordings
 			continue
@@ -255,13 +257,13 @@ func (c *Capture) ListRecordings(limit int) ([]Recording, error) {
 	return recordings, nil
 }
 
-// GetRecording loads a specific recording by ID
-func (c *Capture) GetRecording(recordingID string) (*Recording, error) {
-	return c.loadRecordingFromDisk(recordingID)
+// GetRecording loads a specific recording by ID.
+func (r *RecordingManager) GetRecording(recordingID string) (*Recording, error) {
+	return r.loadRecordingFromDisk(recordingID)
 }
 
-// loadRecordingFromDisk reads metadata.json and returns the Recording
-func (c *Capture) loadRecordingFromDisk(recordingID string) (*Recording, error) {
+// loadRecordingFromDisk reads metadata.json and returns the Recording.
+func (r *RecordingManager) loadRecordingFromDisk(recordingID string) (*Recording, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("cannot_find_home: %v", err)

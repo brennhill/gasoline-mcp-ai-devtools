@@ -568,14 +568,8 @@ type Capture struct {
 
 	debug DebugLogger // Polling activity + HTTP debug circular buffers. Has own sync.Mutex — independent of Capture.mu.
 
-	// ============================================
-	// Recording Management (Flow Recording & Playback)
-	// ============================================
-
-	activeRecordingID   string              // Current recording ID (empty if not recording). Set by recording_start, cleared by recording_stop.
-	recordings          map[string]*recording.Recording // Active recordings in memory, keyed by recording_id. Persisted to disk on recording_stop.
-	recordingStorageDir string              // Base directory for recording storage: ~/.gasoline/recordings. Set during init.
-	recordingStorageUsed int64               // Approximate used storage in bytes (sum of all recording directories). Updated on recording_stop and periodically. Max: 1GB.
+	// Recording Management — delegates to RecordingManager sub-struct.
+	rec *RecordingManager // Recording lifecycle, playback, and log-diff. Has own sync.Mutex — independent of Capture.mu.
 
 	// ============================================
 	// Composed Sub-Structures
@@ -648,8 +642,8 @@ func NewCapture() *Capture {
 			cacheOrder: make([]string, 0),
 			inflight:   make(map[string]*a11yInflightEntry),
 		},
-		debug:      NewDebugLogger(),
-		recordings: make(map[string]*recording.Recording), // Active recordings in memory
+		debug: NewDebugLogger(),
+		rec:   NewRecordingManager(),
 	}
 	c.observeSem = make(chan struct{}, 4)
 	c.queryCond = sync.NewCond(&c.mu)

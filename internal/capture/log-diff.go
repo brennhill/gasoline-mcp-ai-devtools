@@ -60,15 +60,15 @@ type ActionComparison struct {
 // Log Diffing
 // ============================================================================
 
-// DiffRecordings compares two recordings and detects regressions
-func (c *Capture) DiffRecordings(originalRecordingID, replayRecordingID string) (*LogDiffResult, error) {
+// DiffRecordings compares two recordings and detects regressions.
+func (r *RecordingManager) DiffRecordings(originalRecordingID, replayRecordingID string) (*LogDiffResult, error) {
 	// Load both recordings
-	original, err := c.GetRecording(originalRecordingID)
+	original, err := r.GetRecording(originalRecordingID)
 	if err != nil {
 		return nil, fmt.Errorf("logdiff_load_original_failed: Failed to load original recording: %v", err)
 	}
 
-	replay, err := c.GetRecording(replayRecordingID)
+	replay, err := r.GetRecording(replayRecordingID)
 	if err != nil {
 		return nil, fmt.Errorf("logdiff_load_replay_failed: Failed to load replay recording: %v", err)
 	}
@@ -82,21 +82,21 @@ func (c *Capture) DiffRecordings(originalRecordingID, replayRecordingID string) 
 	}
 
 	// Categorize actions by type in both recordings
-	result.ActionStats = c.compareActions(original, replay)
+	result.ActionStats = r.compareActions(original, replay)
 
 	// Detect differences
-	c.detectRegressions(original, replay, result)
-	c.detectFixes(original, replay, result)
-	c.detectValueChanges(original, replay, result)
+	r.detectRegressions(original, replay, result)
+	r.detectFixes(original, replay, result)
+	r.detectValueChanges(original, replay, result)
 
 	// Determine overall status and summary
-	c.determineStatus(result)
+	r.determineStatus(result)
 
 	return result, nil
 }
 
-// compareActions builds action comparison statistics
-func (c *Capture) compareActions(original, replay *Recording) ActionComparison {
+// compareActions builds action comparison statistics.
+func (r *RecordingManager) compareActions(original, replay *Recording) ActionComparison {
 	stats := ActionComparison{
 		OriginalCount: original.ActionCount,
 		ReplayCount:   replay.ActionCount,
@@ -133,8 +133,8 @@ func (c *Capture) compareActions(original, replay *Recording) ActionComparison {
 	return stats
 }
 
-// detectRegressions finds new errors in replay
-func (c *Capture) detectRegressions(original, replay *Recording, result *LogDiffResult) {
+// detectRegressions finds new errors in replay.
+func (r *RecordingManager) detectRegressions(original, replay *Recording, result *LogDiffResult) {
 	// Build set of error messages in original
 	originalErrors := make(map[string]bool)
 	for _, action := range original.Actions {
@@ -162,8 +162,8 @@ func (c *Capture) detectRegressions(original, replay *Recording, result *LogDiff
 	}
 }
 
-// detectFixes finds errors that disappeared in replay
-func (c *Capture) detectFixes(original, replay *Recording, result *LogDiffResult) {
+// detectFixes finds errors that disappeared in replay.
+func (r *RecordingManager) detectFixes(original, replay *Recording, result *LogDiffResult) {
 	// Build set of error messages in replay
 	replayErrors := make(map[string]bool)
 	for _, action := range replay.Actions {
@@ -191,8 +191,8 @@ func (c *Capture) detectFixes(original, replay *Recording, result *LogDiffResult
 	}
 }
 
-// detectValueChanges finds changed field values between recordings
-func (c *Capture) detectValueChanges(original, replay *Recording, result *LogDiffResult) {
+// detectValueChanges finds changed field values between recordings.
+func (r *RecordingManager) detectValueChanges(original, replay *Recording, result *LogDiffResult) {
 	// Build map of type actions from original by selector
 	originalValues := make(map[string]string)
 	for _, action := range original.Actions {
@@ -219,8 +219,8 @@ func (c *Capture) detectValueChanges(original, replay *Recording, result *LogDif
 	}
 }
 
-// determineStatus sets overall status and summary based on findings
-func (c *Capture) determineStatus(result *LogDiffResult) {
+// determineStatus sets overall status and summary based on findings.
+func (r *RecordingManager) determineStatus(result *LogDiffResult) {
 	if len(result.NewErrors) > 0 {
 		result.Status = "regression"
 		result.Summary = fmt.Sprintf("⚠️ REGRESSION: %d new errors detected", len(result.NewErrors))
@@ -247,8 +247,8 @@ func (c *Capture) determineStatus(result *LogDiffResult) {
 // Categorization
 // ============================================================================
 
-// CategorizeActionTypes returns counts of each action type
-func (c *Capture) CategorizeActionTypes(recording *Recording) map[string]int {
+// CategorizeActionTypes returns counts of each action type.
+func (r *RecordingManager) CategorizeActionTypes(recording *Recording) map[string]int {
 	counts := make(map[string]int)
 
 	for _, action := range recording.Actions {
@@ -258,7 +258,7 @@ func (c *Capture) CategorizeActionTypes(recording *Recording) map[string]int {
 	return counts
 }
 
-// GetRegressionReport generates a human-readable regression report
+// GetRegressionReport generates a human-readable regression report.
 func (result *LogDiffResult) GetRegressionReport() string {
 	report := fmt.Sprintf("Log Diff Report\n")
 	report += fmt.Sprintf("===============\n")

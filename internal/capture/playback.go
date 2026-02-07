@@ -46,16 +46,16 @@ type PlaybackSession struct {
 // Playback Execution
 // ============================================================================
 
-// StartPlayback initializes a new playback session for a recording
-func (c *Capture) StartPlayback(recordingID string) (*PlaybackSession, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+// StartPlayback initializes a new playback session for a recording.
+func (r *RecordingManager) StartPlayback(recordingID string) (*PlaybackSession, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	// Verify recording exists
-	recording, exists := c.recordings[recordingID]
+	recording, exists := r.recordings[recordingID]
 	if !exists {
 		// Try to load from disk
-		loaded, err := c.loadRecordingFromDisk(recordingID)
+		loaded, err := r.loadRecordingFromDisk(recordingID)
 		if err != nil {
 			return nil, fmt.Errorf("playback_recording_not_found: Recording %s not found: %v", recordingID, err)
 		}
@@ -76,19 +76,19 @@ func (c *Capture) StartPlayback(recordingID string) (*PlaybackSession, error) {
 	return session, nil
 }
 
-// ExecutePlayback runs all actions in a recording and returns session results
-func (c *Capture) ExecutePlayback(recordingID string) (*PlaybackSession, error) {
-	session, err := c.StartPlayback(recordingID)
+// ExecutePlayback runs all actions in a recording and returns session results.
+func (r *RecordingManager) ExecutePlayback(recordingID string) (*PlaybackSession, error) {
+	session, err := r.StartPlayback(recordingID)
 	if err != nil {
 		return nil, err
 	}
 
-	c.mu.Lock()
-	recording, exists := c.recordings[recordingID]
+	r.mu.Lock()
+	recording, exists := r.recordings[recordingID]
 	if !exists {
-		recording, _ = c.loadRecordingFromDisk(recordingID)
+		recording, _ = r.loadRecordingFromDisk(recordingID)
 	}
-	c.mu.Unlock()
+	r.mu.Unlock()
 
 	if recording == nil {
 		return nil, fmt.Errorf("playback_load_failed: Could not load recording")
@@ -96,7 +96,7 @@ func (c *Capture) ExecutePlayback(recordingID string) (*PlaybackSession, error) 
 
 	// Execute each action (non-blocking - continue even if some fail)
 	for i, action := range recording.Actions {
-		result := c.executeAction(i, action)
+		result := r.executeAction(i, action)
 		session.Results = append(session.Results, result)
 
 		if result.Status == "error" {
@@ -115,8 +115,8 @@ func (c *Capture) ExecutePlayback(recordingID string) (*PlaybackSession, error) 
 	return session, nil
 }
 
-// executeAction executes a single recorded action
-func (c *Capture) executeAction(index int, action RecordingAction) PlaybackResult {
+// executeAction executes a single recorded action.
+func (r *RecordingManager) executeAction(index int, action RecordingAction) PlaybackResult {
 	startTime := time.Now()
 
 	result := PlaybackResult{
@@ -137,7 +137,7 @@ func (c *Capture) executeAction(index int, action RecordingAction) PlaybackResul
 
 	case "click":
 		// Try multiple selector strategies (self-healing)
-		result = c.executeClickWithHealing(action)
+		result = r.executeClickWithHealing(action)
 
 	case "type":
 		result.Status = "ok"
@@ -159,8 +159,8 @@ func (c *Capture) executeAction(index int, action RecordingAction) PlaybackResul
 	return result
 }
 
-// executeClickWithHealing attempts to find and click element with fallback strategies
-func (c *Capture) executeClickWithHealing(action RecordingAction) PlaybackResult {
+// executeClickWithHealing attempts to find and click element with fallback strategies.
+func (r *RecordingManager) executeClickWithHealing(action RecordingAction) PlaybackResult {
 	result := PlaybackResult{
 		Status:      "error",
 		ActionType:  "click",
@@ -171,7 +171,7 @@ func (c *Capture) executeClickWithHealing(action RecordingAction) PlaybackResult
 	// Strategy 1: Try data-testid selector (most reliable)
 	if action.DataTestID != "" {
 		selector := fmt.Sprintf("[data-testid=%s]", action.DataTestID)
-		if c.tryClickSelector(selector, action) {
+		if r.tryClickSelector(selector, action) {
 			result.Status = "ok"
 			result.SelectorUsed = "data-testid"
 			return result
@@ -180,7 +180,7 @@ func (c *Capture) executeClickWithHealing(action RecordingAction) PlaybackResult
 
 	// Strategy 2: Try original CSS selector
 	if action.Selector != "" {
-		if c.tryClickSelector(action.Selector, action) {
+		if r.tryClickSelector(action.Selector, action) {
 			result.Status = "ok"
 			result.SelectorUsed = "css"
 			return result
@@ -210,8 +210,8 @@ func (c *Capture) executeClickWithHealing(action RecordingAction) PlaybackResult
 	return result
 }
 
-// tryClickSelector attempts to click an element matching the selector
-func (c *Capture) tryClickSelector(selector string, action RecordingAction) bool {
+// tryClickSelector attempts to click an element matching the selector.
+func (r *RecordingManager) tryClickSelector(selector string, action RecordingAction) bool {
 	// In real implementation, would use CDP to query and click element
 	// For tests, just verify the selector is valid
 	if selector == "" {
@@ -239,8 +239,8 @@ func (c *Capture) tryClickSelector(selector string, action RecordingAction) bool
 // Fragile Selector Detection
 // ============================================================================
 
-// DetectFragileSelectors identifies selectors that fail across multiple playback runs
-func (c *Capture) DetectFragileSelectors(sessions []*PlaybackSession) map[string]bool {
+// DetectFragileSelectors identifies selectors that fail across multiple playback runs.
+func (r *RecordingManager) DetectFragileSelectors(sessions []*PlaybackSession) map[string]bool {
 	fragile := make(map[string]bool)
 
 	if len(sessions) < 2 {
@@ -279,8 +279,8 @@ func (c *Capture) DetectFragileSelectors(sessions []*PlaybackSession) map[string
 // Session Result Queries
 // ============================================================================
 
-// GetPlaybackStatus returns the current status of a playback session
-func (c *Capture) GetPlaybackStatus(session *PlaybackSession) map[string]any {
+// GetPlaybackStatus returns the current status of a playback session.
+func (r *RecordingManager) GetPlaybackStatus(session *PlaybackSession) map[string]any {
 	totalTime := time.Since(session.StartedAt)
 
 	status := "ok"
@@ -301,7 +301,3 @@ func (c *Capture) GetPlaybackStatus(session *PlaybackSession) map[string]any {
 		"selector_failures": session.SelectorFailures,
 	}
 }
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
