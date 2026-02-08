@@ -17,6 +17,7 @@ import (
 func (c *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
+		r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
 		var payload struct {
 			Bodies []NetworkBody `json:"bodies"`
 		}
@@ -325,6 +326,7 @@ func (c *Capture) HandleHighlightResult(w http.ResponseWriter, r *http.Request) 
 func (c *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
+		r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
 		var payload struct {
 			Actions []EnhancedAction `json:"actions"`
 		}
@@ -418,6 +420,7 @@ func (c *Capture) HandleRecordingStorage(w http.ResponseWriter, r *http.Request)
 func (c *Capture) HandlePerformanceSnapshots(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
+		r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
 		var payload struct {
 			Snapshots []PerformanceSnapshot `json:"snapshots"`
 		}

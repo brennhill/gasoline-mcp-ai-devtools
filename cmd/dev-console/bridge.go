@@ -134,7 +134,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	scanner.Buffer(buf, maxScanTokenSize)
 
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 35 * time.Second, // Match standard bridge timeout (must exceed longest handler wait)
 	}
 
 	var wg sync.WaitGroup
