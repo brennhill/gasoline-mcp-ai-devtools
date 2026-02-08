@@ -50,7 +50,7 @@ run_test_13_2() {
     # Test with pilot OFF
     local response_off
     response_off=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"test-pilot-off","settings":{"pilot_enabled":false}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -58,7 +58,7 @@ run_test_13_2() {
     # Test with pilot ON
     local response_on
     response_on=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"test-pilot-on","settings":{"pilot_enabled":true}}' \
         "http://localhost:${PORT}/sync" 2>&1)

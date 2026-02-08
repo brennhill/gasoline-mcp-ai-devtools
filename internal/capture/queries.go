@@ -75,19 +75,8 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQu
 		qd.RegisterCommand(correlationID, id, timeout)
 	}
 
-	// Schedule cleanup after timeout
-	go func() {
-		time.Sleep(timeout)
-		qd.mu.Lock()
-		qd.cleanExpiredQueries()
-		qd.queryCond.Broadcast()
-		qd.mu.Unlock()
-
-		// ExpireCommand acquires resultsMu — called outside mu to respect lock ordering
-		if correlationID != "" {
-			qd.ExpireCommand(correlationID)
-		}
-	}()
+	// Query expires are checked during periodic cleanup cycles, not individual goroutines.
+	// This is more efficient than spawning a goroutine per query.
 
 	return id
 }

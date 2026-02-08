@@ -2019,7 +2019,7 @@ this is not json
 {broken json here
 {"level":"warn","msg":"valid entry 3"}
 `
-	if err := os.WriteFile(logFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(logFile, []byte(content), 0600); err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
@@ -2046,7 +2046,7 @@ func TestLoadEntries_EmptyLines(t *testing.T) {
 {"level":"info","msg":"entry 2"}
 
 `
-	if err := os.WriteFile(logFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(logFile, []byte(content), 0600); err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
@@ -2113,7 +2113,7 @@ func TestClearEntries_SaveError(t *testing.T) {
 		t.Fatalf("Failed to chmod: %v", err)
 	}
 	t.Cleanup(func() {
-		os.Chmod(logFile, 0644) // restore for cleanup
+		os.Chmod(logFile, 0600) // restore for cleanup
 	})
 
 	// clearEntries should not panic even though save fails

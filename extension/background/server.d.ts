@@ -19,6 +19,10 @@ export interface ServerHealthResponse {
     };
 }
 /**
+ * Get standard headers for API requests including version header
+ */
+export declare function getRequestHeaders(additionalHeaders?: Record<string, string>): Record<string, string>;
+/**
  * Send log entries to the server
  */
 export declare function sendLogsToServer(serverUrl: string, entries: LogEntry[], debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<{

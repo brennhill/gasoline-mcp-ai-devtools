@@ -1,6 +1,7 @@
 /**
  * @fileoverview Request Tracking Module
  * Manages pending requests for AI Web Pilot features
+ * Includes periodic cleanup timer to handle edge cases where pagehide/beforeunload don't fire.
  */
 import type { HighlightResponse, ExecuteJsResult, A11yAuditResult, DomQueryResult } from '../types';
 import type { PendingRequestStats } from './types';
@@ -78,6 +79,11 @@ export declare function hasDomRequest(requestId: number): boolean;
  * Delete a DOM request without resolving
  */
 export declare function deleteDomRequest(requestId: number): void;
+/**
+ * Cleanup periodic timer (Issue #2 fix).
+ * Should be called when content script is shutting down.
+ */
+export declare function cleanupRequestTracking(): void;
 /**
  * Initialize request tracking (register cleanup handlers)
  */

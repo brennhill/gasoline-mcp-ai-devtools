@@ -33,7 +33,7 @@ export interface ServerHealthResponse {
 /**
  * Get standard headers for API requests including version header
  */
-function getRequestHeaders(additionalHeaders: Record<string, string> = {}): Record<string, string> {
+export function getRequestHeaders(additionalHeaders: Record<string, string> = {}): Record<string, string> {
   return {
     'Content-Type': 'application/json',
     'X-Gasoline-Client': `gasoline-extension/${getExtensionVersion()}`,

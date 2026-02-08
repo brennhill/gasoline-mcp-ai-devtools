@@ -11,12 +11,12 @@
  */
 import { initTabTracking } from './content/tab-tracking.js';
 import { initScriptInjection } from './content/script-injection.js';
-import { initRequestTracking, getPendingRequestStats, clearPendingRequests } from './content/request-tracking.js';
+import { initRequestTracking, getPendingRequestStats, clearPendingRequests, cleanupRequestTracking } from './content/request-tracking.js';
 import { initWindowMessageListener } from './content/window-message-listener.js';
 import { initRuntimeMessageListener } from './content/runtime-message-listener.js';
 import { initFaviconReplacer } from './content/favicon-replacer.js';
 // Export for testing
-export { getPendingRequestStats, clearPendingRequests };
+export { getPendingRequestStats, clearPendingRequests, cleanupRequestTracking };
 // ============================================================================
 // INITIALIZATION
 // ============================================================================

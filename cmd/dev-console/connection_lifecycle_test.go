@@ -776,7 +776,7 @@ func findFreePort(t *testing.T) int {
 func buildTestBinary(t *testing.T) string {
 	t.Helper()
 	tmpfile := fmt.Sprintf("/tmp/gasoline-test-%d", time.Now().UnixNano())
-	cmd := exec.Command("go", "build", "-o", tmpfile, ".")
+	cmd := exec.Command("go", "build", "-o", tmpfile, ".") // #nosec G204,G202 -- test binary from buildTestBinary(t)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("Failed to build gasoline: %v\nOutput: %s", err, output)
 	}

@@ -19,19 +19,20 @@ post_extension() {
     LAST_HTTP_STATUS=$(curl -s -o "$response_file" -w "%{http_code}" \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/5.7.6" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         "http://localhost:${PORT}${endpoint}" \
         -d "$payload" 2>/dev/null)
     LAST_HTTP_BODY=$(cat "$response_file" 2>/dev/null)
 }
 
-# POST to /logs endpoint (no extensionOnly middleware)
+# POST to /logs endpoint (requires X-Gasoline-Client header)
 post_logs() {
     local payload="$1"
     local response_file="$TEMP_DIR/http_post_${MCP_ID}.txt"
     LAST_HTTP_STATUS=$(curl -s -o "$response_file" -w "%{http_code}" \
         -X POST \
         -H "Content-Type: application/json" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         "http://localhost:${PORT}/logs" \
         -d "$payload" 2>/dev/null)
     LAST_HTTP_BODY=$(cat "$response_file" 2>/dev/null)
@@ -442,6 +443,7 @@ run_test_11_14() {
 
     LAST_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
         -X POST -H "Content-Type: application/json" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         "http://localhost:${PORT}/logs" \
         -d @"$payload_file" 2>/dev/null)
     if [ "$LAST_HTTP_STATUS" != "200" ]; then
@@ -752,6 +754,7 @@ begin_test "11.27" "Empty body to /logs does not crash" \
 run_test_11_27() {
     LAST_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
         -X POST -H "Content-Type: application/json" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         "http://localhost:${PORT}/logs" 2>/dev/null)
     if [ "$LAST_HTTP_STATUS" = "400" ]; then
         pass "Empty body POST to /logs returned HTTP 400 (Bad Request). Handled gracefully."
@@ -780,7 +783,7 @@ begin_test "11.29" "Wrong HTTP method to GET-only endpoint" \
     "POST to /pending-queries (GET-only), verify rejection" \
     "Method enforcement must work. POST to GET-only must not silently succeed."
 run_test_11_29() {
-    post_raw "http://localhost:${PORT}/pending-queries" '{"test":true}' "X-Gasoline-Client: gasoline-extension/5.7.6"
+    post_raw "http://localhost:${PORT}/pending-queries" '{"test":true}' "X-Gasoline-Client: gasoline-extension/${VERSION}"
     if [ "$LAST_HTTP_STATUS" = "405" ]; then
         pass "POST /pending-queries returned HTTP 405 (Method Not Allowed). Method enforcement working."
     else

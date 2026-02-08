@@ -174,10 +174,10 @@ export class SyncClient {
                 this.log('Received commands', { count: data.commands.length, ids: data.commands.map(c => c.id) });
                 for (const command of data.commands) {
                     this.log('Dispatching command', { id: command.id, type: command.type, correlation_id: command.correlation_id });
-                    // Track last command for ack
-                    this.state.lastCommandAck = command.id;
                     try {
                         await this.callbacks.onCommand(command);
+                        // Track ack only after successful execution
+                        this.state.lastCommandAck = command.id;
                         this.log('Command dispatched OK', { id: command.id });
                     }
                     catch (err) {

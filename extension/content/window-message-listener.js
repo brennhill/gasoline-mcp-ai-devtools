@@ -11,8 +11,8 @@ import { getIsTrackedTab, getCurrentTabId } from './tab-tracking.js';
  */
 export function initWindowMessageListener() {
     window.addEventListener('message', (event) => {
-        // Only accept messages from this window
-        if (event.source !== window)
+        // Only accept messages from this window with correct origin
+        if (event.source !== window || event.origin !== window.location.origin)
             return;
         const { type: messageType, requestId, result, payload } = event.data || {};
         // Handle highlight responses

@@ -140,14 +140,38 @@ export function restoreState(state: BrowserStateSnapshot, includeUrl: boolean = 
     if (namePart) {
       const name = namePart.trim()
       if (name) {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+        // Delete cookie with security attributes for consistency
+        let deleteCookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+        if (window.location.protocol === 'https:') {
+          deleteCookie += '; Secure'
+        }
+        deleteCookie += '; SameSite=Strict'
+        document.cookie = deleteCookie
       }
     }
   })
 
   if (state.cookies) {
+    // Note: document.cookie API cannot set HttpOnly flag (browser limitation).
+    // Restored cookies lose HttpOnly protection but regain it on next server request.
     state.cookies.split(';').forEach((c) => {
-      document.cookie = c.trim()
+      const trimmed = c.trim()
+      if (!trimmed) return
+
+      // Add security attributes: Secure (if HTTPS) and SameSite=Strict
+      let securedCookie = trimmed
+
+      // Add Secure flag if page is HTTPS (already set on secure pages, add for safety)
+      if (window.location.protocol === 'https:' && !securedCookie.toLowerCase().includes('secure')) {
+        securedCookie += '; Secure'
+      }
+
+      // Add SameSite=Strict if not already present (CSRF protection)
+      if (!securedCookie.toLowerCase().includes('samesite')) {
+        securedCookie += '; SameSite=Strict'
+      }
+
+      document.cookie = securedCookie
     })
   }
 
@@ -158,15 +182,15 @@ export function restoreState(state: BrowserStateSnapshot, includeUrl: boolean = 
     skipped,
   }
 
-  // Navigate if requested (with basic URL validation)
+  // Navigate if requested (with URL validation)
   if (includeUrl && state.url && state.url !== window.location.href) {
-    // Basic URL validation: must be http/https
     try {
       const url = new URL(state.url)
-      if (url.protocol === 'http:' || url.protocol === 'https:') {
+      // Security: only navigate within same origin to prevent open redirect
+      if ((url.protocol === 'http:' || url.protocol === 'https:') && url.origin === window.location.origin) {
         window.location.href = state.url
       } else {
-        console.warn('[gasoline] Skipped navigation to non-HTTP(S) URL:', state.url)
+        console.warn('[gasoline] Skipped navigation: URL must be same origin', state.url, 'current:', window.location.origin)
       }
     } catch (e) {
       console.warn('[gasoline] Invalid URL for navigation:', state.url, e)
@@ -274,7 +298,7 @@ if (typeof window !== 'undefined') {
  */
 if (typeof window !== 'undefined') {
   window.addEventListener('message', (event: MessageEvent) => {
-    if (event.source !== window) return
+    if (event.source !== window || event.origin !== window.location.origin) return
     if (event.data?.type === 'GASOLINE_HIGHLIGHT_REQUEST') {
       const { requestId, params } = event.data
       const { selector, duration_ms } = params || { selector: '' }

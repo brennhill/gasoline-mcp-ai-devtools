@@ -334,6 +334,108 @@
         color: #58a6ff !important;
         text-decoration: underline;
       }
+
+      /* Record icon — thin circle + heavy inner dot */
+      .record-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid #555;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: border-color 0.2s;
+      }
+
+      .record-icon-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #555;
+        transition: background 0.2s, box-shadow 0.2s;
+      }
+
+      /* Idle state — dim grey, lights up on hover */
+      .record-row:hover .record-icon {
+        border-color: #888;
+      }
+      .record-row:hover .record-icon-dot {
+        background: #a52a2a;
+      }
+
+      /* Recording state — glowing red */
+      .record-row.is-recording .record-icon {
+        border-color: #e53935;
+      }
+      .record-row.is-recording .record-icon-dot {
+        background: #e53935;
+        box-shadow: 0 0 8px 2px rgba(229, 57, 53, 0.6);
+        animation: record-pulse 1.5s ease-in-out infinite;
+      }
+
+      /* Row layout */
+      .record-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 0;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .record-label {
+        font-size: 13px;
+        color: #aaa;
+        transition: color 0.2s;
+      }
+      .record-row:hover .record-label {
+        color: #ccc;
+      }
+      .record-row.is-recording .record-label {
+        color: #e53935;
+      }
+
+      .record-status {
+        font-size: 12px;
+        color: #888;
+        margin-left: auto;
+      }
+
+      @keyframes record-pulse {
+        0%, 100% { box-shadow: 0 0 8px 2px rgba(229, 57, 53, 0.6); }
+        50% { box-shadow: 0 0 14px 4px rgba(229, 57, 53, 0.9); }
+      }
+
+      /* Collapsible Advanced Capture */
+      details.advanced-capture summary {
+        font-size: 11px;
+        font-weight: 600;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        user-select: none;
+      }
+
+      details.advanced-capture summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.advanced-capture summary::before {
+        content: '▶';
+        font-size: 9px;
+        transition: transform 0.2s;
+      }
+
+      details.advanced-capture[open] summary::before {
+        transform: rotate(90deg);
+      }
     </style>
   </head>
   <body>
@@ -515,7 +617,30 @@
     </div>
 
     <div class="section">
-      <div class="section-title">Advanced Capture</div>
+      <div class="section-title">Recording</div>
+      <div class="feature-section">
+        <div id="record-row" class="record-row">
+          <div class="record-icon">
+            <div class="record-icon-dot"></div>
+          </div>
+          <span id="record-label" class="record-label">Record</span>
+          <span id="recording-status" class="record-status"></span>
+        </div>
+        <div id="record-options" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #333">
+          <select id="record-audio-mode" style="width: 100%; padding: 6px 10px; font-size: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #aaa; cursor: pointer">
+            <option value="">Video only</option>
+            <option value="tab">Video + Tab audio</option>
+            <option value="mic">Video + Microphone</option>
+            <option value="both">Video + Tab + Mic</option>
+          </select>
+        </div>
+        <div id="record-save-info" style="display: none; margin-top: 8px; padding: 6px 10px; background: rgba(63, 185, 80, 0.1); border-radius: 4px; font-size: 11px; color: #3fb950; word-break: break-all"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <details class="advanced-capture">
+      <summary>Advanced Capture</summary>
       <div class="feature-section">
         <div class="toggle-row">
           <div class="toggle-info">
@@ -650,6 +775,7 @@
           </label>
         </div>
       </div>
+      </details>
     </div>
 
     <div class="section">

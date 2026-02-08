@@ -9,6 +9,7 @@ import * as stateManager from './state-manager.js';
 import * as communication from './communication.js';
 import * as eventListeners from './event-listeners.js';
 import { DebugCategory } from './debug.js';
+import { getRequestHeaders } from './server.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, } from './message-handlers.js';
 import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl, } from './pending-queries.js';
 import { createSyncClient } from './sync-client.js';
@@ -274,7 +275,7 @@ async function maybeAutoScreenshot(errorEntry, sender) {
 }
 export async function handleClearLogs() {
     try {
-        await fetch(`${serverUrl}/logs`, { method: 'DELETE' });
+        await fetch(`${serverUrl}/logs`, { method: 'DELETE', headers: getRequestHeaders() });
         connectionStatus.entries = 0;
         connectionStatus.errorCount = 0;
         communication.updateBadge(connectionStatus);
@@ -293,6 +294,7 @@ export async function handleClearLogs() {
 export function isConnectionCheckRunning() {
     return _connectionCheckRunning;
 }
+// eslint-disable-next-line security-node/detect-unhandled-async-errors
 export async function checkConnectionAndUpdate() {
     if (_connectionCheckRunning) {
         debugLog(DebugCategory.CONNECTION, 'Skipping connection check - already running');

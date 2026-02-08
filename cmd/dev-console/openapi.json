@@ -1,0 +1,1559 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Gasoline MCP Server",
+    "description": "Browser observability for AI agents. Streams console logs, network errors, and user actions from Chrome to Claude Code, Cursor, and Copilot via MCP protocol.",
+    "version": "5.8.1",
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:{port}",
+      "description": "Local Gasoline server",
+      "variables": {
+        "port": {
+          "default": "7890",
+          "description": "Server port (configurable via --port flag)"
+        }
+      }
+    }
+  ],
+  "tags": [
+    { "name": "Core", "description": "Server health, discovery, and lifecycle" },
+    { "name": "MCP", "description": "MCP JSON-RPC 2.0 protocol bridge" },
+    { "name": "Logs", "description": "Console log ingestion and retrieval" },
+    { "name": "Network", "description": "Network waterfall and request body capture" },
+    { "name": "WebSocket", "description": "WebSocket event and connection monitoring" },
+    { "name": "Actions", "description": "User action recording and retrieval" },
+    { "name": "Performance", "description": "Web Vitals and performance snapshots" },
+    { "name": "Queries", "description": "Pending query polling and result submission" },
+    { "name": "Media", "description": "Screenshot and video recording" },
+    { "name": "Clients", "description": "Multi-client registration and management" },
+    { "name": "CI", "description": "CI infrastructure: snapshots, clear, test boundaries" },
+    { "name": "Sync", "description": "Unified extension sync endpoint" },
+    { "name": "Extension", "description": "Extension status and internal logs" }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "API discovery",
+        "description": "Returns server name, version, and links to key endpoints.",
+        "operationId": "getRoot",
+        "responses": {
+          "200": {
+            "description": "Server info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string", "example": "gasoline" },
+                    "version": { "type": "string", "example": "5.8.1" },
+                    "health": { "type": "string", "example": "/health" },
+                    "logs": { "type": "string", "example": "/logs" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "Health check",
+        "description": "Returns server status, version, log stats, and capture state.",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Server health",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/diagnostics": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "Diagnostic report",
+        "description": "Comprehensive diagnostic information for bug reports: system info, buffer counts, extension state, circuit breaker status.",
+        "operationId": "getDiagnostics",
+        "responses": {
+          "200": {
+            "description": "Diagnostic data",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DiagnosticsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shutdown": {
+      "post": {
+        "tags": ["Core"],
+        "summary": "Graceful shutdown",
+        "description": "Initiates graceful server shutdown. Sends SIGTERM after response.",
+        "operationId": "postShutdown",
+        "responses": {
+          "200": {
+            "description": "Shutdown initiated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "shutting_down" },
+                    "message": { "type": "string", "example": "Server shutdown initiated" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "OpenAPI specification",
+        "description": "Returns this OpenAPI 3.1.0 specification as JSON.",
+        "operationId": "getOpenAPI",
+        "responses": {
+          "200": {
+            "description": "OpenAPI spec",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp": {
+      "post": {
+        "tags": ["MCP"],
+        "summary": "MCP JSON-RPC bridge",
+        "description": "MCP protocol bridge for HTTP clients. Accepts JSON-RPC 2.0 requests with methods: observe, generate, configure, interact.",
+        "operationId": "postMcp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/JsonRpcRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JSON-RPC response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JsonRpcResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logs": {
+      "get": {
+        "tags": ["Logs"],
+        "summary": "Get log entries",
+        "description": "Retrieve all buffered console log entries.",
+        "operationId": "getLogs",
+        "responses": {
+          "200": {
+            "description": "Log entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "entries": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/LogEntry" }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Logs"],
+        "summary": "Add log entries",
+        "description": "Ingest console log entries from the browser extension.",
+        "operationId": "postLogs",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "entries": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/LogEntry" }
+                  }
+                },
+                "required": ["entries"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ingestion result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "received": { "type": "integer" },
+                    "rejected": { "type": "integer" },
+                    "entries": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Logs"],
+        "summary": "Clear logs",
+        "description": "Clear all buffered log entries.",
+        "operationId": "deleteLogs",
+        "responses": {
+          "200": {
+            "description": "Logs cleared",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cleared": { "type": "boolean", "example": true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/network-waterfall": {
+      "get": {
+        "tags": ["Network"],
+        "summary": "Get network waterfall",
+        "description": "Retrieve network waterfall entries with PerformanceResourceTiming data.",
+        "operationId": "getNetworkWaterfall",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "Waterfall entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "waterfall": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/WaterfallEntry" }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Network"],
+        "summary": "Record waterfall entries",
+        "description": "Record network waterfall entries from the browser extension.",
+        "operationId": "postNetworkWaterfall",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "page_url": { "type": "string" },
+                  "entries": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/WaterfallEntry" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/network-bodies": {
+      "get": {
+        "tags": ["Network"],
+        "summary": "Get network bodies",
+        "description": "Retrieve captured network request/response bodies.",
+        "operationId": "getNetworkBodies",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "Network bodies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bodies": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/NetworkBody" }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Network"],
+        "summary": "Record network bodies",
+        "description": "Record network request/response bodies from the browser extension.",
+        "operationId": "postNetworkBodies",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bodies": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/NetworkBody" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/websocket-events": {
+      "get": {
+        "tags": ["WebSocket"],
+        "summary": "Get WebSocket events",
+        "description": "Retrieve captured WebSocket events (newest first).",
+        "operationId": "getWebSocketEvents",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "WebSocket events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/WebSocketEvent" }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["WebSocket"],
+        "summary": "Record WebSocket events",
+        "description": "Record WebSocket events from the browser extension.",
+        "operationId": "postWebSocketEvents",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "events": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/WebSocketEvent" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded"
+          }
+        }
+      }
+    },
+    "/websocket-status": {
+      "get": {
+        "tags": ["WebSocket"],
+        "summary": "Get WebSocket connection status",
+        "description": "Returns active and recently-closed WebSocket connections with message rates and sampling info.",
+        "operationId": "getWebSocketStatus",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "WebSocket status",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WebSocketStatusResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/enhanced-actions": {
+      "get": {
+        "tags": ["Actions"],
+        "summary": "Get user actions",
+        "description": "Retrieve recorded user actions (clicks, types, scrolls, etc.).",
+        "operationId": "getEnhancedActions",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "User actions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "actions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/EnhancedAction" }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Actions"],
+        "summary": "Record user actions",
+        "description": "Record user actions from the browser extension.",
+        "operationId": "postEnhancedActions",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "actions": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/EnhancedAction" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/performance-snapshots": {
+      "get": {
+        "tags": ["Performance"],
+        "summary": "Get performance snapshots",
+        "description": "Retrieve Web Vitals performance snapshots.",
+        "operationId": "getPerformanceSnapshots",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "Performance data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "snapshots": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/PerformanceSnapshot" }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Performance"],
+        "summary": "Record performance snapshots",
+        "description": "Record Web Vitals snapshots from the browser extension.",
+        "operationId": "postPerformanceSnapshots",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "snapshots": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/PerformanceSnapshot" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pending-queries": {
+      "get": {
+        "tags": ["Queries"],
+        "summary": "Poll pending queries",
+        "description": "Extension polls for pending DOM, accessibility, execute, highlight, state, and recording queries.",
+        "operationId": "getPendingQueries",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "Pending queries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "queries": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/PendingQuery" }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dom-result": {
+      "post": {
+        "tags": ["Queries"],
+        "summary": "Submit DOM query result",
+        "description": "Extension submits the result of a DOM query.",
+        "operationId": "postDomResult",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/QueryResult" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StatusOk" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/a11y-result": {
+      "post": {
+        "tags": ["Queries"],
+        "summary": "Submit accessibility result",
+        "description": "Extension submits the result of an accessibility audit.",
+        "operationId": "postA11yResult",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/QueryResult" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StatusOk" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/execute-result": {
+      "post": {
+        "tags": ["Queries"],
+        "summary": "Submit execute result",
+        "description": "Extension submits the result of a script execution or async command.",
+        "operationId": "postExecuteResult",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AsyncCommandResult" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StatusOk" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/highlight-result": {
+      "post": {
+        "tags": ["Queries"],
+        "summary": "Submit highlight result",
+        "description": "Extension submits the result of an element highlight operation.",
+        "operationId": "postHighlightResult",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/QueryResult" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StatusOk" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/state-result": {
+      "post": {
+        "tags": ["Queries"],
+        "summary": "Submit state result",
+        "description": "Extension submits the result of a state management operation.",
+        "operationId": "postStateResult",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/QueryResult" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StatusOk" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/screenshots": {
+      "post": {
+        "tags": ["Media"],
+        "summary": "Save screenshot",
+        "description": "Save a screenshot JPEG from the browser extension. Rate limited to 1/second per client.",
+        "operationId": "postScreenshot",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data_url": { "type": "string", "description": "Base64 data URL (data:image/jpeg;base64,...)" },
+                  "url": { "type": "string", "description": "Page URL" },
+                  "correlation_id": { "type": "string" },
+                  "query_id": { "type": "string", "description": "Pending query ID for on-demand flow" }
+                },
+                "required": ["data_url"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Screenshot saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "filename": { "type": "string" },
+                    "path": { "type": "string" },
+                    "correlation_id": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
+    "/recordings/save": {
+      "post": {
+        "tags": ["Media"],
+        "summary": "Save video recording",
+        "description": "Save a tab video recording from the offscreen document. Accepts multipart form with video blob and metadata JSON.",
+        "operationId": "postRecordingSave",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "video": { "type": "string", "format": "binary", "description": "WebM video file" },
+                  "metadata": { "type": "string", "description": "JSON string with VideoRecordingMetadata" },
+                  "query_id": { "type": "string", "description": "Pending query ID to resolve" }
+                },
+                "required": ["video", "metadata"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recording saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "saved" },
+                    "name": { "type": "string" },
+                    "path": { "type": "string" },
+                    "size": { "type": "integer", "format": "int64" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clients": {
+      "get": {
+        "tags": ["Clients"],
+        "summary": "List MCP clients",
+        "description": "List all registered MCP clients.",
+        "operationId": "getClients",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "Client list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clients": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ClientRegistration" }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Clients"],
+        "summary": "Register MCP client",
+        "description": "Register a new MCP client with a working directory.",
+        "operationId": "postClients",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cwd": { "type": "string", "description": "Client working directory" }
+                },
+                "required": ["cwd"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Client registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "result": { "$ref": "#/components/schemas/ClientRegistration" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clients/{id}": {
+      "get": {
+        "tags": ["Clients"],
+        "summary": "Get client",
+        "description": "Get a specific MCP client registration.",
+        "operationId": "getClient",
+        "security": [{ "extensionClient": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Client info",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ClientRegistration" }
+              }
+            }
+          },
+          "404": {
+            "description": "Client not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Clients"],
+        "summary": "Unregister client",
+        "description": "Unregister an MCP client.",
+        "operationId": "deleteClient",
+        "security": [{ "extensionClient": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Client unregistered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "unregistered": { "type": "boolean", "example": true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync": {
+      "post": {
+        "tags": ["Sync"],
+        "summary": "Extension sync",
+        "description": "Unified bidirectional sync endpoint. Replaces separate polling for pending-queries, settings, extension-logs, and extension-status. The extension sends its state and receives commands in a single round-trip.",
+        "operationId": "postSync",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SyncRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sync response with commands",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SyncResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/snapshot": {
+      "get": {
+        "tags": ["CI"],
+        "summary": "Get capture snapshot",
+        "description": "Aggregated snapshot of all capture buffers for CI/testing. Supports filtering by timestamp and test ID.",
+        "operationId": "getSnapshot",
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "schema": { "type": "string", "format": "date-time" },
+            "description": "Only include entries after this RFC3339Nano timestamp"
+          },
+          {
+            "name": "test_id",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Label for the snapshot"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Capture snapshot",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SnapshotResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clear": {
+      "post": {
+        "tags": ["CI"],
+        "summary": "Clear all buffers",
+        "description": "Atomically reset all capture buffers (logs, network, WebSocket, actions).",
+        "operationId": "postClear",
+        "responses": {
+          "200": {
+            "description": "Buffers cleared",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cleared": { "type": "boolean", "example": true },
+                    "entries_removed": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/test-boundary": {
+      "post": {
+        "tags": ["CI"],
+        "summary": "Mark test boundary",
+        "description": "Mark test start/end for correlation. Entries added while a test boundary is active are tagged with the test ID.",
+        "operationId": "postTestBoundary",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "test_id": { "type": "string" },
+                  "action": { "type": "string", "enum": ["start", "end"] }
+                },
+                "required": ["test_id", "action"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Boundary set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "test_id": { "type": "string" },
+                    "action": { "type": "string" },
+                    "timestamp": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pilot-status": {
+      "get": {
+        "tags": ["Extension"],
+        "summary": "Get AI Pilot status",
+        "description": "Check if AI Web Pilot is enabled in the extension.",
+        "operationId": "getPilotStatus",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "Pilot status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extension-logs": {
+      "post": {
+        "tags": ["Extension"],
+        "summary": "Record extension logs",
+        "description": "Record internal logs from extension background/content scripts.",
+        "operationId": "postExtensionLogs",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "logs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "timestamp": { "type": "string", "format": "date-time" },
+                        "level": { "type": "string" },
+                        "message": { "type": "string" },
+                        "context": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logs recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "logs_stored": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/extension-status": {
+      "get": {
+        "tags": ["Extension"],
+        "summary": "Get extension status",
+        "description": "Get current extension tracking status.",
+        "operationId": "getExtensionStatus",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "Extension status",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ExtensionStatus" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Extension"],
+        "summary": "Update extension status",
+        "description": "Update extension tracking state.",
+        "operationId": "postExtensionStatus",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ExtensionStatus" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status received",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "received": { "type": "boolean", "example": true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "extensionClient": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Gasoline-Client",
+        "description": "Extension client identifier. Must match pattern 'gasoline-extension-*'. Required for extension-only endpoints."
+      }
+    },
+    "schemas": {
+      "StatusOk": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "version": { "type": "string" },
+          "availableVersion": { "type": "string" },
+          "logs": {
+            "type": "object",
+            "properties": {
+              "entries": { "type": "integer" },
+              "maxEntries": { "type": "integer" },
+              "logFile": { "type": "string" },
+              "logFileSize": { "type": "integer", "format": "int64" }
+            }
+          },
+          "capture": {
+            "type": "object",
+            "properties": {
+              "available": { "type": "boolean" },
+              "pilot_enabled": { "type": "boolean" }
+            }
+          }
+        }
+      },
+      "DiagnosticsResponse": {
+        "type": "object",
+        "properties": {
+          "generated_at": { "type": "string", "format": "date-time" },
+          "version": { "type": "string" },
+          "uptime_seconds": { "type": "integer" },
+          "system": {
+            "type": "object",
+            "properties": {
+              "os": { "type": "string" },
+              "arch": { "type": "string" },
+              "go_version": { "type": "string" },
+              "goroutines": { "type": "integer" }
+            }
+          },
+          "logs": {
+            "type": "object",
+            "properties": {
+              "entries": { "type": "integer" },
+              "max_entries": { "type": "integer" },
+              "log_file": { "type": "string" }
+            }
+          },
+          "buffers": {
+            "type": "object",
+            "properties": {
+              "websocket_events": { "type": "integer" },
+              "network_bodies": { "type": "integer" },
+              "actions": { "type": "integer" },
+              "pending_queries": { "type": "integer" },
+              "query_results": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "JsonRpcRequest": {
+        "type": "object",
+        "required": ["jsonrpc", "method"],
+        "properties": {
+          "jsonrpc": { "type": "string", "enum": ["2.0"] },
+          "id": { "oneOf": [{ "type": "string" }, { "type": "integer" }] },
+          "method": { "type": "string", "enum": ["observe", "generate", "configure", "interact"] },
+          "params": { "type": "object" }
+        }
+      },
+      "JsonRpcResponse": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": { "type": "string", "enum": ["2.0"] },
+          "id": { "oneOf": [{ "type": "string" }, { "type": "integer" }] },
+          "result": { "type": "object" },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "integer" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      },
+      "LogEntry": {
+        "type": "object",
+        "description": "Console log entry. Arbitrary key-value pairs; level is required.",
+        "properties": {
+          "level": { "type": "string", "enum": ["error", "warn", "info", "debug", "log"] },
+          "args": { "description": "Log arguments" },
+          "ts": { "type": "string", "format": "date-time" },
+          "url": { "type": "string" }
+        },
+        "required": ["level"]
+      },
+      "WaterfallEntry": {
+        "type": "object",
+        "description": "Network request with PerformanceResourceTiming data.",
+        "properties": {
+          "url": { "type": "string" },
+          "status": { "type": "integer" },
+          "statusText": { "type": "string" },
+          "timing": { "type": "number", "description": "Duration in milliseconds" }
+        }
+      },
+      "NetworkBody": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "method": { "type": "string" },
+          "status": { "type": "integer" },
+          "request_body": { "type": "string" },
+          "response_body": { "type": "string" }
+        }
+      },
+      "WebSocketEvent": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "Connection ID" },
+          "url": { "type": "string" },
+          "event": { "type": "string", "enum": ["open", "message", "close", "error"] },
+          "direction": { "type": "string", "enum": ["incoming", "outgoing"] },
+          "data": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "size": { "type": "integer" }
+        }
+      },
+      "WebSocketStatusResponse": {
+        "type": "object",
+        "properties": {
+          "connections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "url": { "type": "string" },
+                "state": { "type": "string" },
+                "opened_at": { "type": "string", "format": "date-time" },
+                "duration": { "type": "string" },
+                "message_rate": { "type": "object" },
+                "sampling": { "type": "object" }
+              }
+            }
+          },
+          "closed": {
+            "type": "array",
+            "items": { "type": "object" }
+          }
+        }
+      },
+      "EnhancedAction": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string" },
+          "selector": { "type": "string" },
+          "value": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PerformanceSnapshot": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "fcp": { "type": "number", "description": "First Contentful Paint (ms)" },
+          "lcp": { "type": "number", "description": "Largest Contentful Paint (ms)" },
+          "cls": { "type": "number", "description": "Cumulative Layout Shift" },
+          "ttfb": { "type": "number", "description": "Time to First Byte (ms)" }
+        }
+      },
+      "PendingQuery": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string", "enum": ["dom", "a11y", "execute", "highlight", "state", "record_start", "record_stop", "browser_action", "page_info", "tabs", "subtitle", "screenshot", "dom_action", "state_capture", "state_save", "state_load", "state_list", "state_delete"] },
+          "params": { "type": "object" },
+          "correlation_id": { "type": "string" }
+        }
+      },
+      "QueryResult": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "Query ID" },
+          "result": { "description": "Query result data" },
+          "client_id": { "type": "string" }
+        },
+        "required": ["id"]
+      },
+      "AsyncCommandResult": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "correlation_id": { "type": "string" },
+          "status": { "type": "string", "enum": ["complete", "error", "timeout"] },
+          "result": { "description": "Command result data" },
+          "error": { "type": "string" },
+          "client_id": { "type": "string" }
+        }
+      },
+      "VideoRecordingMetadata": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "display_name": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "duration_seconds": { "type": "integer" },
+          "size_bytes": { "type": "integer", "format": "int64" },
+          "url": { "type": "string" },
+          "tab_id": { "type": "integer" },
+          "resolution": { "type": "string", "example": "1920x1080" },
+          "format": { "type": "string" },
+          "fps": { "type": "integer" },
+          "has_audio": { "type": "boolean" },
+          "audio_mode": { "type": "string", "enum": ["tab", "mic", "both"] },
+          "truncated": { "type": "boolean" }
+        },
+        "required": ["name"]
+      },
+      "ClientRegistration": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "cwd": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "last_activity": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SyncRequest": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "extension_version": { "type": "string" },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "pilot_enabled": { "type": "boolean" },
+              "tracking_enabled": { "type": "boolean" },
+              "tracked_tab_id": { "type": "integer" },
+              "tracked_tab_url": { "type": "string" },
+              "tracked_tab_title": { "type": "string" }
+            }
+          },
+          "extension_logs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "timestamp": { "type": "string", "format": "date-time" },
+                "level": { "type": "string" },
+                "message": { "type": "string" },
+                "context": { "type": "string" }
+              }
+            }
+          },
+          "command_results": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AsyncCommandResult" }
+          }
+        }
+      },
+      "SyncResponse": {
+        "type": "object",
+        "properties": {
+          "ack": { "type": "boolean" },
+          "commands": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PendingQuery" }
+          },
+          "next_poll_ms": { "type": "integer" },
+          "server_time": { "type": "string", "format": "date-time" },
+          "server_version": { "type": "string" },
+          "capture_overrides": { "type": "object" }
+        }
+      },
+      "SnapshotResponse": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "test_id": { "type": "string" },
+          "logs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/LogEntry" }
+          },
+          "websocket_events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WebSocketEvent" }
+          },
+          "network_bodies": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/NetworkBody" }
+          },
+          "enhanced_actions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/EnhancedAction" }
+          },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "total_logs": { "type": "integer" },
+              "error_count": { "type": "integer" },
+              "warning_count": { "type": "integer" },
+              "network_failures": { "type": "integer" },
+              "ws_connections": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "ExtensionStatus": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "example": "status" },
+          "tracking_enabled": { "type": "boolean" },
+          "tracked_tab_id": { "type": "integer" },
+          "tracked_tab_url": { "type": "string" },
+          "extension_connected": { "type": "boolean" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

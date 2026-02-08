@@ -62,8 +62,8 @@ export async function enableWebSocketCapture(page, mode) {
   if (!mode) throw new Error('enableWebSocketCapture requires a mode parameter ("low", "medium", "high", or "all")')
   // Post settings directly to the page (same as content.js would)
   await page.evaluate((m) => {
-    window.postMessage({ type: 'GASOLINE_SETTING', setting: 'setWebSocketCaptureEnabled', enabled: true }, '*')
-    window.postMessage({ type: 'GASOLINE_SETTING', setting: 'setWebSocketCaptureMode', mode: m }, '*')
+    window.postMessage({ type: 'GASOLINE_SETTING', setting: 'setWebSocketCaptureEnabled', enabled: true }, window.location.origin)
+    window.postMessage({ type: 'GASOLINE_SETTING', setting: 'setWebSocketCaptureMode', mode: m }, window.location.origin)
   }, mode)
   // Wait for inject.js to process the messages
   await page.waitForTimeout(500)

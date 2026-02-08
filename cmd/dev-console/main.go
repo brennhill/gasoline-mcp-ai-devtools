@@ -38,7 +38,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "5.8.0"
+var version = "5.8.2"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -159,11 +159,10 @@ func main() {
 			n := runtime.Stack(stack, false)
 			stack = stack[:n]
 
-			// Log to stderr
-			fmt.Fprintf(os.Stderr, "\n[gasoline] FATAL PANIC: %v\n", r)
-			fmt.Fprintf(os.Stderr, "[gasoline] Stack trace:\n%s\n", stack)
+			// Log generic error to stderr (avoid leaking sensitive file paths, env vars, etc)
+			fmt.Fprintf(os.Stderr, "\n[gasoline] FATAL ERROR\n")
 
-			// Try to log to file
+			// Try to log full details to file for debugging
 			home, _ := os.UserHomeDir()
 			logFile := filepath.Join(home, "gasoline-logs.jsonl")
 			entry := map[string]any{
@@ -177,8 +176,8 @@ func main() {
 				"arch":       runtime.GOARCH,
 			}
 			if data, err := json.Marshal(entry); err == nil {
-				// #nosec G302 G304 -- crash logs are intentionally world-readable for debugging
-				if f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644); err == nil {
+				// #nosec G304 -- crash logs file path from trusted home directory
+				if f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600); err == nil {
 					_, _ = f.Write(data)         // #nosec G104 -- best-effort crash logging
 					_, _ = f.Write([]byte{'\n'}) // #nosec G104 -- best-effort crash logging
 					_ = f.Close()                // #nosec G104 -- best-effort crash logging
@@ -189,7 +188,7 @@ func main() {
 			crashFile := filepath.Join(home, "gasoline-crash.log")
 			crashContent := fmt.Sprintf("GASOLINE CRASH at %s\nPanic: %v\nStack:\n%s\n",
 				time.Now().Format(time.RFC3339), r, stack)
-			_ = os.WriteFile(crashFile, []byte(crashContent), 0644) // #nosec G104 G306 -- best-effort crash logging; intentionally world-readable
+			_ = os.WriteFile(crashFile, []byte(crashContent), 0600) // #nosec G104 -- best-effort crash logging; owner-only for privacy
 
 			fmt.Fprintf(os.Stderr, "[gasoline] Crash details written to: %s\n", crashFile)
 			os.Exit(1)
@@ -212,6 +211,12 @@ func main() {
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 
 	flag.Parse()
+
+	// Validate port is in valid range (prevents SSRF through invalid port values)
+	if *port < 1 || *port > 65535 {
+		fmt.Fprintf(os.Stderr, "[gasoline] Invalid port: %d (must be 1-65535)\n", *port)
+		os.Exit(1)
+	}
 
 	if *showVersion {
 		fmt.Printf("gasoline v%s\n", version)
@@ -274,7 +279,7 @@ func main() {
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		}})
 		fmt.Fprintf(os.Stderr, "[gasoline] Starting in bridge mode (stdio -> HTTP)\n")
-		runBridgeMode(*port)
+		runBridgeMode(*port, *logFile, *maxEntries)
 		return
 	}
 
@@ -456,7 +461,7 @@ func main() {
 	// stdin is piped -> MCP mode (HTTP + MCP protocol)
 	// Use bridge mode with fast-start: responds to initialize/tools/list immediately
 	// while spawning daemon in background. This gives MCP clients instant feedback.
-	runBridgeMode(*port)
+	runBridgeMode(*port, *logFile, *maxEntries)
 }
 
 // sendStartupError sends a JSON-RPC error response before exiting.

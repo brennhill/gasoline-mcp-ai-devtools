@@ -20,8 +20,8 @@ import { getIsTrackedTab, getCurrentTabId } from './tab-tracking'
  */
 export function initWindowMessageListener(): void {
   window.addEventListener('message', (event: MessageEvent<PageMessageEventData>) => {
-    // Only accept messages from this window
-    if (event.source !== window) return
+    // Only accept messages from this window with correct origin
+    if (event.source !== window || event.origin !== window.location.origin) return
 
     const { type: messageType, requestId, result, payload } = event.data || {}
 

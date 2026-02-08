@@ -549,7 +549,7 @@ func TestLoadCustomListsFile(t *testing.T) {
 
 	// Invalid JSON returns nil
 	tmpInvalid := t.TempDir() + "/invalid.json"
-	os.WriteFile(tmpInvalid, []byte(`{not json}`), 0644)
+	os.WriteFile(tmpInvalid, []byte(`{not json}`), 0600)
 	result = loadCustomListsFile(tmpInvalid)
 	if result != nil {
 		t.Error("expected nil for invalid JSON file")
@@ -557,7 +557,7 @@ func TestLoadCustomListsFile(t *testing.T) {
 
 	// Valid JSON is parsed
 	tmpValid := t.TempDir() + "/valid.json"
-	os.WriteFile(tmpValid, []byte(`{"allowed":["cdn.example.com"],"blocked":["evil.xyz"]}`), 0644)
+	os.WriteFile(tmpValid, []byte(`{"allowed":["cdn.example.com"],"blocked":["evil.xyz"]}`), 0600)
 	result = loadCustomListsFile(tmpValid)
 	if result == nil {
 		t.Fatal("expected non-nil for valid JSON file")
@@ -609,7 +609,7 @@ func TestThirdPartyCustomListsFromFile(t *testing.T) {
 	auditor := NewThirdPartyAuditor()
 
 	tmpFile := t.TempDir() + "/lists.json"
-	os.WriteFile(tmpFile, []byte(`{"allowed":["trusted-cdn.com"],"blocked":["blocked-site.com"]}`), 0644)
+	os.WriteFile(tmpFile, []byte(`{"allowed":["trusted-cdn.com"],"blocked":["blocked-site.com"]}`), 0600)
 
 	bodies := []NetworkBody{
 		{URL: "https://myapp.com/page", ContentType: "text/html", Status: 200},

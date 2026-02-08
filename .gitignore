@@ -6,6 +6,7 @@ dist/
 
 # Local config
 .mcp.json
+.env
 
 # Dependencies
 node_modules/
@@ -47,3 +48,7 @@ docs/benchmarks/*.txt
 # Runtime state
 .gasoline/
 .claude/
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md

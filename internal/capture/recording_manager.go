@@ -83,3 +83,18 @@ func (c *Capture) DiffRecordings(originalID, replayID string) (*LogDiffResult, e
 func (c *Capture) CategorizeActionTypes(recording *Recording) map[string]int {
 	return c.rec.CategorizeActionTypes(recording)
 }
+
+// GetStorageInfo delegates to RecordingManager.
+func (c *Capture) GetStorageInfo() (StorageInfo, error) {
+	return c.rec.GetStorageInfo()
+}
+
+// DeleteRecording delegates to RecordingManager.
+func (c *Capture) DeleteRecording(recordingID string) error {
+	return c.rec.DeleteRecording(recordingID)
+}
+
+// RecalculateStorageUsed delegates to RecordingManager.
+func (c *Capture) RecalculateStorageUsed() error {
+	return c.rec.RecalculateStorageUsed()
+}

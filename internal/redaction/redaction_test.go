@@ -338,7 +338,7 @@ func TestRedactCustomPatterns(t *testing.T) {
 	}
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "redaction.json")
-	if err := os.WriteFile(configPath, configJSON, 0644); err != nil {
+	if err := os.WriteFile(configPath, configJSON, 0600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -385,7 +385,7 @@ func TestRedactCustomPatternWithReplacement(t *testing.T) {
 	configJSON, _ := json.Marshal(config)
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "redaction.json")
-	os.WriteFile(configPath, configJSON, 0644)
+	os.WriteFile(configPath, configJSON, 0600)
 
 	engine := NewRedactionEngine(configPath)
 	got := engine.Redact("Value: SECRET-ABCDEF")
@@ -431,7 +431,7 @@ func TestRedactionEngineInvalidJSON(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "bad.json")
-	os.WriteFile(configPath, []byte(`not valid json`), 0644)
+	os.WriteFile(configPath, []byte(`not valid json`), 0600)
 
 	// Should not panic, just use built-ins
 	engine := NewRedactionEngine(configPath)
@@ -452,7 +452,7 @@ func TestRedactionEngineInvalidRegex(t *testing.T) {
 	configJSON, _ := json.Marshal(config)
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "redaction.json")
-	os.WriteFile(configPath, configJSON, 0644)
+	os.WriteFile(configPath, configJSON, 0600)
 
 	// Should not panic; valid patterns still work, invalid ones are skipped
 	engine := NewRedactionEngine(configPath)

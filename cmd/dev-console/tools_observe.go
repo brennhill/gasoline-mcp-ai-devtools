@@ -40,6 +40,7 @@ var observeHandlers = map[string]ObserveHandler{
 	"command_result":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObserveCommandResult(req, args) },
 	"pending_commands":  func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObservePendingCommands(req, args) },
 	"failed_commands":   func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObserveFailedCommands(req, args) },
+	"saved_videos":      func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObserveSavedVideos(req, args) },
 	"recordings":        func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetRecordings(req, args) },
 	"recording_actions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetRecordingActions(req, args) },
 	"playback_results":  func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetPlaybackResults(req, args) },

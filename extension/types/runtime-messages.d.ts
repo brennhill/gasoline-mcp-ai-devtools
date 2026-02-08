@@ -249,13 +249,13 @@ export interface ManageStateMessage {
 }
 /**
  * Action toast message — visual indicator for AI actions.
- * Supports color-coded states: trying (orange), success (green), warning (amber), error (red).
+ * Supports color-coded states: trying (blue), success (green), warning (amber), error (red), audio (orange with animation).
  */
 export interface ActionToastMessage {
     readonly type: 'GASOLINE_ACTION_TOAST';
     readonly text: string;
     readonly detail?: string;
-    readonly state?: 'trying' | 'success' | 'warning' | 'error';
+    readonly state?: 'trying' | 'success' | 'warning' | 'error' | 'audio';
     readonly duration_ms?: number;
 }
 /**
@@ -266,9 +266,16 @@ export interface SubtitleMessage {
     readonly text: string;
 }
 /**
+ * Recording watermark overlay message
+ */
+export interface RecordingWatermarkMessage {
+    readonly type: 'GASOLINE_RECORDING_WATERMARK';
+    readonly visible: boolean;
+}
+/**
  * Union of all content-script-bound messages
  */
-export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
+export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
 /**
  * Page to content script messages (postMessage types)
  */
@@ -277,6 +284,54 @@ export type PageMessageType = 'GASOLINE_LOG' | 'GASOLINE_WS' | 'GASOLINE_NETWORK
  * Content to page messages (postMessage types)
  */
 export type ContentToPageMessageType = 'GASOLINE_SETTING' | 'GASOLINE_HIGHLIGHT_REQUEST' | 'GASOLINE_EXECUTE_JS' | 'GASOLINE_A11Y_QUERY' | 'GASOLINE_DOM_QUERY' | 'GASOLINE_STATE_COMMAND' | 'GASOLINE_GET_WATERFALL';
+/**
+ * Start recording message (SW → offscreen)
+ */
+export interface OffscreenStartRecordingMessage {
+    readonly target: 'offscreen';
+    readonly type: 'OFFSCREEN_START_RECORDING';
+    readonly streamId: string;
+    readonly serverUrl: string;
+    readonly name: string;
+    readonly fps: number;
+    readonly audioMode: string;
+    readonly tabId: number;
+    readonly url: string;
+}
+/**
+ * Stop recording message (SW → offscreen)
+ */
+export interface OffscreenStopRecordingMessage {
+    readonly target: 'offscreen';
+    readonly type: 'OFFSCREEN_STOP_RECORDING';
+}
+/**
+ * Recording started confirmation (offscreen → SW)
+ */
+export interface OffscreenRecordingStartedMessage {
+    readonly target: 'background';
+    readonly type: 'OFFSCREEN_RECORDING_STARTED';
+    readonly success: boolean;
+    readonly error?: string;
+}
+/**
+ * Recording stopped result (offscreen → SW)
+ */
+export interface OffscreenRecordingStoppedMessage {
+    readonly target: 'background';
+    readonly type: 'OFFSCREEN_RECORDING_STOPPED';
+    readonly status: string;
+    readonly name: string;
+    readonly duration_seconds?: number;
+    readonly size_bytes?: number;
+    readonly truncated?: boolean;
+    readonly path?: string;
+    readonly error?: string;
+}
+/**
+ * Union of offscreen messages
+ */
+export type OffscreenMessage = OffscreenStartRecordingMessage | OffscreenStopRecordingMessage | OffscreenRecordingStartedMessage | OffscreenRecordingStoppedMessage;
 /**
  * Execute JS result
  */

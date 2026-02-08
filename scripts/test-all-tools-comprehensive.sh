@@ -56,7 +56,10 @@ echo "Results:    $RESULTS_DIR"
 echo ""
 
 # ── Port Assignments ──────────────────────────────────────
-# 9 parallel groups, each with a unique port
+# Each parallel group gets its own port so it can spin up an
+# independent daemon. This lets all groups run simultaneously
+# without contention — total UAT wall time is ~the slowest group
+# instead of the sum of all groups.
 PORT_GROUP1=7890  # cat-01-protocol
 PORT_GROUP2=7891  # cat-02-observe
 PORT_GROUP3=7892  # cat-03-generate
@@ -71,9 +74,10 @@ PORT_GROUP11=7900 # cat-13-pilot-contract
 PORT_GROUP12=7901 # cat-14-extension-startup
 PORT_GROUP13=7902 # cat-15-pilot-success-path
 PORT_GROUP14=7903 # cat-16-api-contract
+PORT_GROUP15=7904 # cat-18-recording
 
 # Kill anything on our ports before starting
-for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14; do
+for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 0.5
@@ -197,8 +201,16 @@ PIDS="$PIDS $!"
 ) &
 PIDS="$PIDS $!"
 
+# Group 15: Recording & Audio (single script)
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-18-recording.sh" "$PORT_GROUP15" "$RESULTS_DIR/results-18.txt" \
+        > "$RESULTS_DIR/output-18.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
 # ── Wait for All Groups ──────────────────────────────────
-echo "Running 14 parallel groups..."
+echo "Running 15 parallel groups..."
 echo ""
 
 for pid in $PIDS; do
@@ -208,7 +220,7 @@ done
 # ── Collect and Display Results ───────────────────────────
 
 # Category display order and default names
-CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16"
+CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 18"
 get_default_name() {
     case "$1" in
         01) echo "Protocol Compliance" ;;
@@ -227,6 +239,7 @@ get_default_name() {
         14) echo "Extension Startup" ;;
         15) echo "Pilot Success Path" ;;
         16) echo "API Contract" ;;
+        18) echo "Recording & Audio" ;;
         *)  echo "Unknown" ;;
     esac
 }
@@ -306,7 +319,7 @@ echo ""
 
 # ── Cleanup ───────────────────────────────────────────────
 # Kill any remaining daemons on our ports
-for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10; do
+for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 
