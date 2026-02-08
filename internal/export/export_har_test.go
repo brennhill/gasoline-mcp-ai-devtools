@@ -798,7 +798,7 @@ func TestExportHARToFile_WriteError(t *testing.T) {
 	// Use a path where the parent is a file (not a directory), so WriteFile fails
 	tmpDir := t.TempDir()
 	blockingFile := filepath.Join(tmpDir, "blocker")
-	if err := os.WriteFile(blockingFile, []byte("file"), 0644); err != nil {
+	if err := os.WriteFile(blockingFile, []byte("file"), 0600); err != nil {
 		t.Fatalf("Failed to create blocking file: %v", err)
 	}
 	badPath := filepath.Join(blockingFile, "output.har")
