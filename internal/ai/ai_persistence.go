@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -665,19 +666,14 @@ func enforceErrorHistoryCap(entries []ErrorHistoryEntry) []ErrorHistoryEntry {
 		return entries
 	}
 
-	// Sort by FirstSeen (newest first) and keep only maxErrorHistory
-	// Simple approach: find and remove the oldest
-	for len(entries) > maxErrorHistory {
-		oldestIdx := 0
-		for i := 1; i < len(entries); i++ {
-			if entries[i].FirstSeen.Before(entries[oldestIdx].FirstSeen) {
-				oldestIdx = i
-			}
-		}
-		entries = append(entries[:oldestIdx], entries[oldestIdx+1:]...)
-	}
+	// Sort by FirstSeen (oldest first) and keep only the newest maxErrorHistory entries
+	// O(n log n) sort is more efficient than O(n*k) loop-remove pattern
+	slices.SortFunc(entries, func(a, b ErrorHistoryEntry) int {
+		return a.FirstSeen.Compare(b.FirstSeen)
+	})
 
-	return entries
+	// Keep only the newest entries (after sorting, they're at the end)
+	return entries[len(entries)-maxErrorHistory:]
 }
 
 // evictStaleErrors removes entries whose LastSeen is older than the given threshold.
