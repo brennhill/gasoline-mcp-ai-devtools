@@ -45,7 +45,7 @@ last-verified: 2026-01-31
 
 **Setup:**
 - Frontend service with variables:
-  - API_ENDPOINT=http://localhost:3001
+  - API_ENDPOINT=<http://localhost:3001>
   - API_KEY=sk_test_12345abc (secret)
   - DEBUG=false
 
@@ -75,7 +75,7 @@ last-verified: 2026-01-31
 **Objective:** Verify single environment variable can be modified
 
 **Setup:**
-- Frontend running with API_ENDPOINT=http://localhost:3001
+- Frontend running with API_ENDPOINT=<http://localhost:3001>
 - No modifications yet
 
 **Steps:**

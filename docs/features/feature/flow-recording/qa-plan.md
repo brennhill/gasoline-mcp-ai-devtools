@@ -856,7 +856,7 @@ jq . ~/.gasoline/recordings/real-flow-test-*/metadata.json
 
 **Steps:**
 1. Have recording from UAT 1
-2. Open browser to fresh session of https://example.com
+2. Open browser to fresh session of <https://example.com>
 3. In Claude Code or console:
    ```javascript
    interact({

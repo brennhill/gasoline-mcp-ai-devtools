@@ -27,7 +27,7 @@ npm run demo
 
 ### 2. Trigger WebSocket Bug
 
-1. Open http://localhost:3000
+1. Open <http://localhost:3000>
 2. Click "Chat" button
 3. See WebSocket connection error
 

@@ -63,7 +63,7 @@ shasum -a 256 *.crx > checksums.txt
 ```
 
 ### 3. Users Install
-- Visit: https://cookwithgasoline.com/install/
+- Visit: <https://cookwithgasoline.com/install/>
 - Download: gasoline-extension-v5.8.2.crx
 - Install: Drag to `chrome://extensions/`
 

@@ -36,7 +36,7 @@ make dev
 
 ### Step 1: Trigger the WebSocket Errors
 
-1. Open http://localhost:3000 in Chrome with Gasoline extension
+1. Open <http://localhost:3000> in Chrome with Gasoline extension
 2. Click "Chat" in the header to open live chat widget
 3. Observe multiple errors:
    - WebSocket connection error (wrong endpoint `/ws/chat` instead of `/chat`)

@@ -46,7 +46,7 @@ feature: missing-tab-id
 1. Setup:
    - Start Gasoline server: `./dist/gasoline`
    - Load Chrome with extension
-   - Open Tab A, navigate to https://example.com
+   - Open Tab A, navigate to <https://example.com>
    - Note Tab A's ID (visible in chrome://extensions developer mode console)
 2. Steps:
    - [ ] Trigger a console error in Tab A
@@ -70,8 +70,8 @@ feature: missing-tab-id
 
 **Scenario 2: Multiple Tabs with Different tabIds**
 1. Setup:
-   - Open Tab A (id: 101) with https://example.com
-   - Open Tab B (id: 102) with https://other.com
+   - Open Tab A (id: 101) with <https://example.com>
+   - Open Tab B (id: 102) with <https://other.com>
    - Each tab triggers different console errors
 2. Steps:
    - [ ] Call MCP tool: `observe({what: "errors"})`
@@ -130,8 +130,8 @@ feature: missing-tab-id
 **Scenario 4: Network Requests with tabId**
 1. Setup: Open 2 tabs, each makes API requests
 2. Steps:
-   - [ ] Tab A: fetch('https://api.example.com/data')
-   - [ ] Tab B: fetch('https://api.other.com/users')
+   - [ ] Tab A: fetch('<https://api.example.com/data>')
+   - [ ] Tab B: fetch('<https://api.other.com/users>')
    - [ ] Call MCP tool: `observe({what: "network_waterfall"})`
    - [ ] Observe response
 3. Expected Result:

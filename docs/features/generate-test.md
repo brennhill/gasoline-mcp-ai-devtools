@@ -189,7 +189,7 @@ With `assert_response_shape: true`, the test validates that API responses mainta
 
 ### Portable Tests
 
-> "Generate a test using http://localhost:3000 as the base URL."
+> "Generate a test using <http://localhost:3000> as the base URL."
 
 The `base_url` parameter rewrites captured URLs (e.g., from `https://staging.example.com`) to your local dev server.
 

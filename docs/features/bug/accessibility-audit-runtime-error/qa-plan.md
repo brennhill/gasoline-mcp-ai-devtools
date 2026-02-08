@@ -56,7 +56,7 @@ feature: accessibility-audit-runtime-error
 1. Setup:
    - Start Gasoline server: `./dist/gasoline`
    - Load Chrome with extension
-   - Navigate to https://example.com
+   - Navigate to <https://example.com>
    - Start tracking the tab via interact tool
 2. Steps:
    - [ ] Call MCP tool: `generate({action: "query_accessibility"})`

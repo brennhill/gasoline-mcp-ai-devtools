@@ -23,9 +23,9 @@ last-verified: 2026-01-31
 | DL-2 | Password field values in accessible names | Verify password fields do not leak their value through `textContent`, `aria-label`, or any other accessible name resolution path. | critical |
 | DL-3 | Visible PII in accessible names | Headings, links, buttons may contain user-visible PII (emails, usernames). The fingerprint captures `text` from accessible name resolution. Since data stays on localhost, document this as expected behavior. | medium |
 | DL-4 | CSRF tokens in hidden inputs | `extractInteractive()` includes hidden inputs. Verify only `"[has value]"` is reported, not the actual token value. | high |
-| DL-5 | Page state text containing sensitive messages | Error elements and notifications may contain user-specific messages (e.g., "Invalid password for john@example.com"). These are captured in `error_elements` and `notifications` text content (truncated to 200 chars). | medium |
+| DL-5 | Page state text containing sensitive messages | Error elements and notifications may contain user-specific messages (e.g., "Invalid password for <john@example.com>"). These are captured in `error_elements` and `notifications` text content (truncated to 200 chars). | medium |
 | DL-6 | Link hrefs exposing session tokens | Some apps embed session tokens in URLs. The `href` field for links captures the path. Verify only the path portion is captured, not query params containing tokens. | high |
-| DL-7 | Form field labels containing PII | `extractContent()` captures form field labels. Labels like "Email: john@example.com" could leak PII. This is structural data on localhost. | medium |
+| DL-7 | Form field labels containing PII | `extractContent()` captures form field labels. Labels like "Email: <john@example.com>" could leak PII. This is structural data on localhost. | medium |
 | DL-8 | Fingerprint hash reversibility | Verify the 8-character hash cannot be reversed to reconstruct page content. Hash is derived from structure, not content. | low |
 | DL-9 | Comparison result leaking baseline data | `compare_dom_fingerprint` returns change descriptions. Verify descriptions do not echo sensitive content from either the current or baseline fingerprint. | medium |
 | DL-10 | Data transmission path | Verify all fingerprint data flows only over localhost (127.0.0.1:7890). No external endpoints contacted. | critical |

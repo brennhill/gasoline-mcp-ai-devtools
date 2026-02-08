@@ -182,7 +182,7 @@ lsof -i -n -P | grep gasoline
 
 ### 4. Transparency
 **Open source:**
-- Full source code: https://github.com/brennhill/gasoline-mcp-ai-devtools
+- Full source code: <https://github.com/brennhill/gasoline-mcp-ai-devtools>
 - License: AGPL-3.0
 - All code is readable (no obfuscation)
 - Community can audit and verify privacy claims
@@ -249,7 +249,7 @@ When you use Gasoline, the browser extension captures:
 ## Where It Goes
 100% localhost only. All data is sent to:
 ```
-http://localhost:7890
+<http://localhost:7890>
 ```
 
 The MCP server runs on YOUR machine. We (Gasoline developers) cannot access this data.

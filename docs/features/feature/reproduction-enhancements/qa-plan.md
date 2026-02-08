@@ -114,7 +114,7 @@ last-verified: 2026-01-31
 | UT-10 | `generate_test` with `mask_dynamic` | Dynamic elements detected + `assert_visual: true` + `mask_dynamic: true` | Test contains `mask: [page.locator(...)]` arrays | must |
 | UT-11 | `generate_test` with `include_fixtures` | Network bodies captured + `include_fixtures: true` | Test contains `beforeAll` block with API setup calls | must |
 | UT-12 | Fixture sanitizes passwords | POST /api/login with password in body | Fixture replaces password with "test-password" or similar | must |
-| UT-13 | Fixture sanitizes email addresses | Response body with real email | Fixture replaces with "test@example.com" | should |
+| UT-13 | Fixture sanitizes email addresses | Response body with real email | Fixture replaces with "<test@example.com>" | should |
 | UT-14 | Fixture trims arrays to minimum | Response with 500-item array | Fixture creates minimum needed (e.g., 11 for "more than 10" test) | should |
 | UT-15 | Fixture includes only relevant fields | Complex response object | Only fields affecting the test are included (IDs, names, statuses) | should |
 | UT-16 | `generate_bug_report` produces valid Markdown | Screenshots + actions + errors captured | Markdown with headers, embedded images, steps, error details | must |

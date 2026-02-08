@@ -25,7 +25,7 @@ last-verified: 2026-01-31
 | DL-4 | UID map CSS selectors revealing structure | `uidMap` contains CSS selectors like `nav > a:nth-child(1)`. These reveal DOM structure but not sensitive data. Verify selectors do not contain user data. | low |
 | DL-5 | Form input current values in tree text | Non-password text inputs may show their current `value=` attribute in the tree. Verify `value=` shows current value for non-sensitive inputs and `"[REDACTED]"` for sensitive ones. | high |
 | DL-6 | Link URLs containing session tokens | The tree shows `url=/path` for links. Verify only the pathname is included, not full URLs with query parameters containing tokens. | high |
-| DL-7 | Alert/notification text containing PII | The tree captures `text "..."` from all visible elements. Error messages or notifications may contain user-specific data like "Account john@example.com locked". | medium |
+| DL-7 | Alert/notification text containing PII | The tree captures `text "..."` from all visible elements. Error messages or notifications may contain user-specific data like "Account <john@example.com> locked". | medium |
 | DL-8 | localStorage/sessionStorage not accessed | Verify the tree traversal reads only DOM element properties and ARIA attributes, not browser storage APIs. | critical |
 | DL-9 | Data transmission path | Verify all a11y tree data flows only over localhost (127.0.0.1:7890). No external network calls. | critical |
 | DL-10 | Hidden ARIA elements skipping | Verify `aria-hidden="true"` elements and their descendants are properly skipped, preventing accidental capture of hidden-but-present sensitive data. | high |
