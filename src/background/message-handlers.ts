@@ -224,7 +224,7 @@ function handleMessage(
       return false
 
     case 'getTrackingState':
-      handleGetTrackingState(sendResponse, deps)
+      handleGetTrackingState(sendResponse, deps, sender.tab?.id)
       return true
 
     case 'getDiagnosticState':
@@ -330,20 +330,17 @@ function handleSetAiWebPilotEnabled(
 /**
  * Handle getTrackingState request from content script.
  * Returns current tracking and AI Pilot state for favicon replacer.
+ * Uses sender's tab ID (not active tab query) to correctly identify the requesting tab.
  */
-async function handleGetTrackingState(sendResponse: SendResponse, deps: MessageHandlerDependencies): Promise<void> {
+async function handleGetTrackingState(sendResponse: SendResponse, deps: MessageHandlerDependencies, senderTabId?: number): Promise<void> {
   try {
     const result = await chrome.storage.local.get(['trackedTabId'])
     const trackedTabId = result.trackedTabId as number | undefined
     const aiPilotEnabled = deps.getAiWebPilotEnabled()
 
-    // Get the requesting tab ID
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-    const currentTabId = tabs[0]?.id
-
     sendResponse({
       state: {
-        isTracked: currentTabId === trackedTabId,
+        isTracked: senderTabId !== undefined && senderTabId === trackedTabId,
         aiPilotEnabled: aiPilotEnabled,
       },
     })

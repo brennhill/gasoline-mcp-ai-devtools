@@ -223,11 +223,20 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 			server.handleVideoRecordingSave(w, r, cap)
 		})))
 
+		// Recording storage management endpoint
+		http.HandleFunc("/recordings/storage", corsMiddleware(extensionOnly(cap.HandleRecordingStorage)))
+
+		// Reveal recording in file manager (Finder/Explorer)
+		http.HandleFunc("/recordings/reveal", corsMiddleware(handleRevealRecording))
+
 		// CI Infrastructure endpoints
 		http.HandleFunc("/snapshot", corsMiddleware(handleSnapshot(server, cap)))
 		http.HandleFunc("/clear", corsMiddleware(handleClear(server, cap)))
 		http.HandleFunc("/test-boundary", corsMiddleware(handleTestBoundary(cap)))
 	}
+
+	// OpenAPI specification endpoint
+	http.HandleFunc("/openapi.json", corsMiddleware(handleOpenAPI))
 
 	// MCP over HTTP endpoint (for browser extension backward compatibility)
 	mcp := NewToolHandler(server, cap)
@@ -269,7 +278,8 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 
 		if cap != nil {
 			resp["capture"] = map[string]any{
-				"available": true,
+				"available":     true,
+				"pilot_enabled": cap.IsPilotEnabled(),
 			}
 		}
 

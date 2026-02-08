@@ -50,6 +50,19 @@ try {
     minify: true,
   })
   console.log('✅ Early-patch script bundled successfully')
+
+  // Bundle offscreen.js (IIFE for offscreen document — recording engine)
+  await esbuild.build({
+    entryPoints: ['extension/offscreen.js'],
+    bundle: true,
+    format: 'iife',
+    outfile: 'extension/offscreen.bundled.js',
+    platform: 'browser',
+    target: ['chrome120'],
+    sourcemap: true,
+    minify: false,
+  })
+  console.log('✅ Offscreen recording script bundled successfully')
 } catch (error) {
   console.error('❌ Script bundling failed:', error)
   process.exit(1)

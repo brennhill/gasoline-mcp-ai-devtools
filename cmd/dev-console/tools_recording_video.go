@@ -9,7 +9,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -312,6 +314,59 @@ func (s *Server) handleVideoRecordingSave(w http.ResponseWriter, r *http.Request
 	})
 }
 
+// handleRevealRecording handles POST /recordings/reveal — opens Finder/Explorer to the file.
+func handleRevealRecording(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	var body struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+		return
+	}
+	if body.Path == "" {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing path"})
+		return
+	}
+
+	// Security: validate path is within recordings directory
+	dir, err := recordingsDir()
+	if err != nil {
+		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	absPath, err := filepath.Abs(body.Path)
+	if err != nil || !strings.HasPrefix(absPath, dir) {
+		jsonResponse(w, http.StatusForbidden, map[string]string{"error": "Path not within recordings directory"})
+		return
+	}
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		jsonResponse(w, http.StatusNotFound, map[string]string{"error": "File not found"})
+		return
+	}
+
+	// Platform-specific reveal-in-file-manager
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", "-R", absPath)
+	case "windows":
+		cmd = exec.Command("explorer", "/select,", absPath)
+	default:
+		cmd = exec.Command("xdg-open", filepath.Dir(absPath))
+	}
+	if err := cmd.Run(); err != nil {
+		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "Failed to reveal file: " + err.Error()})
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, map[string]string{"status": "revealed", "path": absPath})
+}
+
 // toolObserveSavedVideos handles observe({what: "saved_videos"}).
 // Globs ~/.gasoline/recordings/*_meta.json and returns recording metadata.
 func (h *ToolHandler) toolObserveSavedVideos(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -357,9 +412,6 @@ func (h *ToolHandler) toolObserveSavedVideos(req JSONRPCRequest, args json.RawMe
 				continue
 			}
 		}
-
-		// Add full path
-		meta.Name = meta.Name // keep as-is; path is derived
 
 		recordings = append(recordings, meta)
 		totalSize += meta.SizeBytes
