@@ -92,6 +92,15 @@ last-verified: 2026-02-08
 - Migration checklist
 - Estimated effort (6.8 hours)
 
+## 3. `internal/session/sessions.go` (694 LOC → ~400 LOC)
+
+**Refactoring Plan:** See [`sessions-go-refactor-plan.md`](sessions-go-refactor-plan.md) for detailed split strategy including:
+- 11 new files organized by domain/concern
+- Phase-by-phase refactoring approach
+- Testing strategy
+- Migration checklist
+- Estimated effort (4.6 hours)
+
 **Current concerns:**
 - Abstracted component interfaces (SchemaStore, CSPGenerator, ClientRegistry)
 - Type aliases for imported packages

@@ -261,6 +261,13 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         await chrome.storage.local.set({
             gasoline_recording: { active: true, name, startTime: Date.now() },
         });
+        // Show "Recording started" toast (fades after 2s)
+        chrome.tabs.sendMessage(tab.id, {
+            type: 'GASOLINE_ACTION_TOAST',
+            text: 'Recording started',
+            state: 'success',
+            duration_ms: 2000,
+        }).catch(() => { });
         // Show recording watermark overlay in the page
         chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_RECORDING_WATERMARK', visible: true }).catch(() => { });
         // Re-send watermark when recording tab navigates or content script re-injects

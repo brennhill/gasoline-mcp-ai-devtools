@@ -309,6 +309,14 @@ export async function startRecording(
       gasoline_recording: { active: true, name, startTime: Date.now() },
     })
 
+    // Show "Recording started" toast (fades after 2s)
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'GASOLINE_ACTION_TOAST',
+      text: 'Recording started',
+      state: 'success' as const,
+      duration_ms: 2000,
+    }).catch(() => {})
+
     // Show recording watermark overlay in the page
     chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_RECORDING_WATERMARK', visible: true }).catch(() => {})
 
