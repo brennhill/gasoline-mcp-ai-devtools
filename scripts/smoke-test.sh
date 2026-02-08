@@ -1296,6 +1296,13 @@ run_test_s25() {
         return
     fi
 
+    # Navigate to YouTube video (same as S.26, but without audio)
+    echo "  Navigating to YouTube lofi stream..."
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://youtu.be/n61ULEU7CO0?si=xT8FVrq5eIsJTfuI&t=646&autoplay=1","reason":"Load YouTube video for recording"}' 20
+
+    # Give the video time to load and start auto-playing
+    sleep 3
+
     # Start recording (no audio)
     interact_and_wait "record_start" '{"action":"record_start","name":"smoke-video-test","reason":"Record tab video"}'
 
@@ -1469,8 +1476,9 @@ run_test_s27() {
         return
     fi
 
-    # Navigate to example.com
-    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Clean page for watermark test"}' 20
+    # Navigate to YouTube video with auto-play (ensures extension is properly invoked)
+    echo "  Navigating to YouTube lofi stream..."
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://youtu.be/n61ULEU7CO0?si=xT8FVrq5eIsJTfuI&t=646&autoplay=1","reason":"Load YouTube video for watermark test"}' 20
     sleep 2
 
     # Start recording
