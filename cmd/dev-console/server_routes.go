@@ -58,6 +58,12 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *c
 			jsonResponse(w, http.StatusTooManyRequests, map[string]string{"error": "Rate limit exceeded: max 1 screenshot per second"})
 			return
 		}
+		// Prevent unbounded map growth from hostile clients (max 10k unique clientIDs)
+		if len(screenshotRateLimiter) >= 10000 && !exists {
+			screenshotRateMu.Unlock()
+			jsonResponse(w, http.StatusServiceUnavailable, map[string]string{"error": "Rate limiter capacity exceeded"})
+			return
+		}
 		screenshotRateLimiter[clientID] = time.Now()
 		screenshotRateMu.Unlock()
 	}

@@ -34,6 +34,18 @@ func flushStdout() {
 	}
 }
 
+// sendJSONResponse marshals a response and sends it to stdout, handling errors gracefully
+func sendJSONResponse(resp any, id any) {
+	respJSON, err := json.Marshal(resp)
+	if err != nil {
+		sendBridgeError(id, -32603, "Failed to serialize response: "+err.Error())
+		flushStdout()
+		return
+	}
+	fmt.Println(string(respJSON))
+	flushStdout()
+}
+
 // runBridgeMode bridges stdio (from MCP client) to HTTP (to persistent server)
 // Uses fast-start: responds to initialize/tools/list immediately while spawning daemon async.
 func runBridgeMode(port int, logFile string, maxEntries int) {
@@ -344,6 +356,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	case <-responseSent:
 	case <-time.After(5 * time.Second):
 	}
+	close(responseSent) // Ensure channel is closed to unblock any pending sends
 
 	flushStdout()
 	time.Sleep(100 * time.Millisecond)
@@ -485,6 +498,7 @@ func bridgeStdioToHTTP(endpoint string) {
 		// Timeout fallback - exit anyway to avoid hanging forever
 		fmt.Fprintf(os.Stderr, "[gasoline-bridge] WARNING: No response sent within 5 seconds\n")
 	}
+	close(responseSent) // Ensure channel is closed to unblock any pending sends
 
 	// CRITICAL: Final flush and give OS time to send buffered data to parent process
 	flushStdout()
