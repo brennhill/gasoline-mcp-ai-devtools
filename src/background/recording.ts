@@ -167,6 +167,9 @@ export async function startRecording(
         chrome.tabs.reload(tab.id)
         await waitForTabLoad(tab.id, 5000)
       }
+      // Add extra delay to ensure extension is fully initialized for tabCapture
+      console.log(LOG, 'Waiting for extension to fully initialize...')
+      await new Promise((r) => setTimeout(r, 1000))
     } else {
       console.log(LOG, 'Skipping content script ping (fromPopup=true)')
     }
@@ -179,6 +182,9 @@ export async function startRecording(
       streamId = await getStreamIdWithRecovery(tab.id)
     } else if (audio) {
       // MCP-initiated audio: requires activeTab via user gesture.
+      // Auto-activate the tracked tab to ensure content script is loaded and user sees the toast
+      chrome.tabs.update(tab.id, { active: true })
+
       // Prompt the user to click the Gasoline extension icon with orange highlight.
       chrome.tabs.sendMessage(tab.id, {
         type: 'GASOLINE_ACTION_TOAST',
@@ -196,6 +202,7 @@ export async function startRecording(
       await chrome.storage.local.remove('gasoline_pending_recording')
 
       if (!gestureGranted) {
+        console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s')
         chrome.tabs.sendMessage(tab.id, {
           type: 'GASOLINE_ACTION_TOAST',
           text: 'Audio Permission Required',
@@ -207,7 +214,7 @@ export async function startRecording(
         return {
           status: 'error',
           name: '',
-          error: 'RECORD_START: Audio recording timed out waiting for user to click the Gasoline icon. Click the icon to grant audio recording permission and try again.',
+          error: 'RECORD_START: Audio recording requires permission. Click the Gasoline icon (↗ upper right) to grant audio recording permission, then try again.',
         }
       }
 
@@ -231,9 +238,55 @@ export async function startRecording(
         })
       })
     } else {
-      // MCP video-only: try directly without user prompt
+      // MCP video-only: requires activeTab via user gesture, same as audio recording
+      // Auto-activate the tracked tab to ensure content script is loaded and user sees the toast
+      chrome.tabs.update(tab.id, { active: true })
+
+      // Prompt the user to click the Gasoline extension icon with orange highlight.
+      chrome.tabs.sendMessage(tab.id, {
+        type: 'GASOLINE_ACTION_TOAST',
+        text: 'Video Recording - Click Gasoline Icon',
+        detail: 'Click the Gasoline icon (↗ upper right) to grant video recording permission',
+        state: 'audio' as const,
+        duration_ms: 30000,
+      }).catch(() => {})
+
+      await chrome.storage.local.set({
+        gasoline_pending_recording: { name, fps, audio, tabId: tab.id, url: tab.url },
+      })
+
+      const gestureGranted = await waitForRecordingGesture(30000)
+      await chrome.storage.local.remove('gasoline_pending_recording')
+
+      if (!gestureGranted) {
+        console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s')
+        chrome.tabs.sendMessage(tab.id, {
+          type: 'GASOLINE_ACTION_TOAST',
+          text: 'Video Permission Required',
+          detail: 'Click the Gasoline icon (↗ upper right) to grant video recording permission',
+          state: 'audio' as const,
+          duration_ms: 8000,
+        }).catch(() => {})
+        recordingState.active = false // eslint-disable-line require-atomic-updates
+        return {
+          status: 'error',
+          name: '',
+          error: 'RECORD_START: Video recording requires permission. Click the Gasoline icon (↗ upper right) to grant video recording permission, then try again.',
+        }
+      }
+
+      // Dismiss the prompt toast with a success confirmation
+      chrome.tabs.sendMessage(tab.id, {
+        type: 'GASOLINE_ACTION_TOAST',
+        text: 'Recording',
+        detail: 'Recording started',
+        state: 'success' as const,
+        duration_ms: 2000,
+      }).catch(() => {})
+
+      // activeTab granted — get stream ID with targetTabId
       streamId = await new Promise<string>((resolve, reject) => {
-        chrome.tabCapture.getMediaStreamId({}, (id) => {
+        chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id! }, (id) => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message ?? 'getMediaStreamId failed'))
           } else {
