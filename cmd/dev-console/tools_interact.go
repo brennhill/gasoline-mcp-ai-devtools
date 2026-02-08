@@ -5,7 +5,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/url"
 	"time"
 
@@ -95,7 +94,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		subtitleQuery := queries.PendingQuery{
 			Type:          "subtitle",
 			Params:        subtitleArgs,
-			CorrelationID: fmt.Sprintf("subtitle_%d_%d", time.Now().UnixNano(), rand.Int63()),
+			CorrelationID: fmt.Sprintf("subtitle_%d_%d", time.Now().UnixNano(), randomInt63()),
 		}
 		h.capture.CreatePendingQueryWithTimeout(subtitleQuery, queries.AsyncCommandTimeout, req.ClientID)
 	}
@@ -126,7 +125,7 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	}
 
 	// Queue highlight command for extension
-	correlationID := fmt.Sprintf("highlight_%d_%d", time.Now().UnixNano(), rand.Int63())
+	correlationID := fmt.Sprintf("highlight_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	query := queries.PendingQuery{
 		Type:          "highlight",
@@ -233,7 +232,7 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 		if savedURL, ok := stateData["url"].(string); ok && savedURL != "" {
 			if h.capture.IsPilotEnabled() {
 				// Queue navigation command
-				correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), rand.Int63())
+				correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
 				navArgs, _ := json.Marshal(map[string]any{"action": "navigate", "url": savedURL})
 				query := queries.PendingQuery{
 					Type:          "browser_action",
@@ -360,7 +359,7 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 	}
 
 	// Generate correlation ID for async tracking
-	correlationID := fmt.Sprintf("exec_%d_%d", time.Now().UnixNano(), rand.Int63())
+	correlationID := fmt.Sprintf("exec_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	// Queue command for extension to pick up (use long timeout for async commands)
 	query := queries.PendingQuery{
@@ -406,7 +405,7 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 	}
 
 	// Generate correlation ID
-	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), rand.Int63())
+	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	// Queue command
 	query := queries.PendingQuery{
@@ -440,7 +439,7 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
 	}
 
-	correlationID := fmt.Sprintf("refresh_%d_%d", time.Now().UnixNano(), rand.Int63())
+	correlationID := fmt.Sprintf("refresh_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	// Stash current perf snapshot as "before" for perf_diff computation
 	_, _, trackedURL := h.capture.GetTrackingStatus()
@@ -473,7 +472,7 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
 	}
 
-	correlationID := fmt.Sprintf("back_%d_%d", time.Now().UnixNano(), rand.Int63())
+	correlationID := fmt.Sprintf("back_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -496,7 +495,7 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
 	}
 
-	correlationID := fmt.Sprintf("forward_%d_%d", time.Now().UnixNano(), rand.Int63())
+	correlationID := fmt.Sprintf("forward_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -527,7 +526,7 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
 	}
 
-	correlationID := fmt.Sprintf("newtab_%d_%d", time.Now().UnixNano(), rand.Int63())
+	correlationID := fmt.Sprintf("newtab_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -591,7 +590,7 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
 	}
 
-	correlationID := fmt.Sprintf("dom_%s_%d_%d", action, time.Now().UnixNano(), rand.Int63())
+	correlationID := fmt.Sprintf("dom_%s_%d_%d", action, time.Now().UnixNano(), randomInt63())
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",
@@ -622,7 +621,7 @@ func (h *ToolHandler) handleSubtitle(req JSONRPCRequest, args json.RawMessage) J
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'text' is missing for subtitle action", "Add the 'text' parameter with subtitle text, or empty string to clear", withParam("text"))}
 	}
 
-	correlationID := fmt.Sprintf("subtitle_%d_%d", time.Now().UnixNano(), rand.Int63())
+	correlationID := fmt.Sprintf("subtitle_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	query := queries.PendingQuery{
 		Type:          "subtitle",
@@ -656,7 +655,7 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
 	}
 
-	correlationID := fmt.Sprintf("dom_list_%d_%d", time.Now().UnixNano(), rand.Int63())
+	correlationID := fmt.Sprintf("dom_list_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",
