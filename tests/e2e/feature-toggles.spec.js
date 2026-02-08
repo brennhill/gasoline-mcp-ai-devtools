@@ -47,7 +47,7 @@ async function setBackgroundToggle(context, extensionId, messageType, enabled) {
  */
 async function setPageFeature(page, setting, enabled) {
   await page.evaluate(({ setting, enabled }) => {
-    window.postMessage({ type: 'GASOLINE_SETTING', setting, enabled }, '*')
+    window.postMessage({ type: 'GASOLINE_SETTING', setting, enabled }, window.location.origin)
   }, { setting, enabled })
   await page.waitForTimeout(500)
 }

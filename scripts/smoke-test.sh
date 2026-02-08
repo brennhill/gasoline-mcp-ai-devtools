@@ -1372,9 +1372,12 @@ run_test_s26() {
         return
     fi
 
-    echo "  TIP: Navigate the tracked tab to a YouTube video or any page with audio."
-    echo "       Audio playing during this recording will be captured."
-    pause_for_human
+    # Navigate to YouTube video with auto-play (Lofi Girl stream)
+    echo "  Navigating to YouTube lofi stream..."
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://youtu.be/n61ULEU7CO0?si=xT8FVrq5eIsJTfuI&t=646&autoplay=1","reason":"Load YouTube video with audio for recording"}' 20
+
+    # Give the video time to load and start auto-playing
+    sleep 3
 
     # Start recording WITH tab audio
     interact_and_wait "record_start" '{"action":"record_start","name":"smoke-audio-test","audio":"tab","reason":"Record tab with audio"}'
