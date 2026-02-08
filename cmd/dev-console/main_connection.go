@@ -702,8 +702,8 @@ func runStopMode(port int) {
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}
 	if data, err := json.Marshal(stopEntry); err == nil {
-		// #nosec G302 G304 -- log file path from trusted home directory
-		if f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644); err == nil {
+		// #nosec G304 -- log file path from trusted home directory
+		if f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600); err == nil {
 			_, _ = f.Write(data)
 			_, _ = f.Write([]byte{'\n'})
 			_ = f.Close()
