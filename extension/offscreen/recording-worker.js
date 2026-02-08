@@ -76,7 +76,10 @@ async function handleStartRecording(msg) {
         let stream;
         if (hasMicAudio && hasTabAudio) {
             // Both: mix tab audio + mic audio via AudioContext
-            const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Tab audio is captured digitally so disable echo cancellation to avoid degrading mic quality
+            const micStream = await navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true },
+            });
             acquiredStreams.push(micStream);
             const audioCtx = new AudioContext();
             const tabSource = audioCtx.createMediaStreamSource(new MediaStream(tabStream.getAudioTracks()));
@@ -87,8 +90,10 @@ async function handleStartRecording(msg) {
             stream = new MediaStream([...tabStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
         }
         else if (hasMicAudio) {
-            // Mic only: tab video + mic audio
-            const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Mic only: no tab audio playing, keep default processing
+            const micStream = await navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+            });
             acquiredStreams.push(micStream);
             stream = new MediaStream([...tabStream.getVideoTracks(), ...micStream.getAudioTracks()]);
         }

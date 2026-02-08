@@ -132,6 +132,10 @@ export async function handleTrackPageClick(): Promise<void> {
         // Show "no tracking" warning
         const noTrackEl = document.getElementById('no-tracking-warning')
         if (noTrackEl) noTrackEl.style.display = 'block'
+        // Stop recording if active
+        chrome.runtime.sendMessage({ type: 'record_stop' }, () => {
+          if (chrome.runtime.lastError) { /* no recording active — expected */ }
+        })
         // Notify content script so favicon restores without reload
         chrome.tabs.sendMessage(prevTabId, {
           type: 'trackingStateChanged',
