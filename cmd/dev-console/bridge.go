@@ -6,6 +6,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -153,7 +154,8 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	scanner.Buffer(buf, maxScanTokenSize)
 
 	client := &http.Client{
-		Timeout: 35 * time.Second, // Match standard bridge timeout (must exceed longest handler wait)
+		Timeout: 5 * time.Second, // Default timeout for fast localhost operations
+		// A11y audits use per-request timeout (30s) via context
 	}
 
 	var wg sync.WaitGroup
@@ -309,6 +311,27 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		}
 		httpReq.Header.Set("Content-Type", "application/json")
 
+		// A11y audits can take up to 30 seconds, use per-request timeout
+		// All other requests use the default 5-second client timeout
+		if req.Method == "tools/call" && req.Params != nil {
+			var params map[string]any
+			if err := json.Unmarshal(req.Params, &params); err == nil {
+				if toolName, ok := params["name"].(string); ok && toolName == "observe" {
+					var observeArgs map[string]any
+					if argsRaw, ok := params["arguments"].(map[string]any); ok {
+						observeArgs = argsRaw
+					}
+					// Check if this is an accessibility audit request
+					if modeVal, ok := observeArgs["what"].(string); ok && modeVal == "accessibility" {
+						// Use extended timeout for a11y audits
+						ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
+						httpReq = httpReq.WithContext(ctx)
+						defer cancel()
+					}
+				}
+			}
+		}
+
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
@@ -372,7 +395,8 @@ func bridgeStdioToHTTP(endpoint string) {
 	scanner.Buffer(buf, maxScanTokenSize)
 
 	client := &http.Client{
-		Timeout: 35 * time.Second, // Must exceed longest handler wait (a11y: 30s)
+		Timeout: 5 * time.Second, // Default timeout for fast localhost operations
+		// A11y audits use per-request timeout (30s) via context
 	}
 
 	// Track in-flight HTTP requests to ensure all responses sent before exit
@@ -436,6 +460,27 @@ func bridgeStdioToHTTP(endpoint string) {
 		}
 
 		httpReq.Header.Set("Content-Type", "application/json")
+
+		// A11y audits can take up to 30 seconds, use per-request timeout
+		// All other requests use the default 5-second client timeout
+		if req.Method == "tools/call" && req.Params != nil {
+			var params map[string]any
+			if err := json.Unmarshal(req.Params, &params); err == nil {
+				if toolName, ok := params["name"].(string); ok && toolName == "observe" {
+					var observeArgs map[string]any
+					if argsRaw, ok := params["arguments"].(map[string]any); ok {
+						observeArgs = argsRaw
+					}
+					// Check if this is an accessibility audit request
+					if modeVal, ok := observeArgs["what"].(string); ok && modeVal == "accessibility" {
+						// Use extended timeout for a11y audits
+						ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
+						httpReq = httpReq.WithContext(ctx)
+						defer cancel()
+					}
+				}
+			}
+		}
 
 		resp, err := client.Do(httpReq)
 		if err != nil {
