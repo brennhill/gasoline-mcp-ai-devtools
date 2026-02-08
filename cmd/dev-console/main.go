@@ -159,11 +159,10 @@ func main() {
 			n := runtime.Stack(stack, false)
 			stack = stack[:n]
 
-			// Log to stderr
-			fmt.Fprintf(os.Stderr, "\n[gasoline] FATAL PANIC: %v\n", r)
-			fmt.Fprintf(os.Stderr, "[gasoline] Stack trace:\n%s\n", stack)
+			// Log generic error to stderr (avoid leaking sensitive file paths, env vars, etc)
+			fmt.Fprintf(os.Stderr, "\n[gasoline] FATAL ERROR\n")
 
-			// Try to log to file
+			// Try to log full details to file for debugging
 			home, _ := os.UserHomeDir()
 			logFile := filepath.Join(home, "gasoline-logs.jsonl")
 			entry := map[string]any{
