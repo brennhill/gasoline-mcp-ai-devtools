@@ -62,7 +62,7 @@ feature: network-bodies-empty
    - Start Gasoline server: `./dist/gasoline`
    - Load Chrome with extension
    - Enable body capture via: `configure({action: "network_body_capture", enabled: true})` (or default ON if changed)
-   - Navigate to https://jsonplaceholder.typicode.com/users
+   - Navigate to <https://jsonplaceholder.typicode.com/users>
 2. Steps:
    - [ ] Page loads and makes GET request to API
    - [ ] Call MCP tool: `observe({what: "network_bodies"})`
@@ -120,8 +120,7 @@ feature: network-bodies-empty
 **Scenario 4: Binary Response Skipped**
 1. Setup: Enable body capture, navigate to page with images
 2. Steps:
-   - [ ] Page loads image: https://example.com/image.png
-   - [ ] Call MCP tool: `observe({what: "network_bodies"})`
+   - [ ] Page loads image: <https://example.com/image.png>   - [ ] Call MCP tool: `observe({what: "network_bodies"})`
    - [ ] Observe response
 3. Expected Result:
    - [ ] No entry for image.png in bodies (or entry with body: null and note: "binary content skipped")

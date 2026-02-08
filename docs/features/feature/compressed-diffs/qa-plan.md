@@ -19,7 +19,7 @@ last-verified: 2026-01-31
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
-| DL-1 | Console error messages containing PII | Verify console error text (truncated to 200 chars) does not expose user data (e.g., "Error for user john@example.com") | high |
+| DL-1 | Console error messages containing PII | Verify console error text (truncated to 200 chars) does not expose user data (e.g., "Error for user <john@example.com>") | high |
 | DL-2 | Network endpoint URLs with auth tokens | Verify URL path normalization strips query parameters (which may contain tokens) | critical |
 | DL-3 | Checkpoint persistence storing sensitive state | Verify named checkpoints stored to disk do not contain raw log/network data, only buffer positions | critical |
 | DL-4 | User action tracking details | Verify actions diff does not expose typed text content (e.g., passwords entered in forms) | critical |

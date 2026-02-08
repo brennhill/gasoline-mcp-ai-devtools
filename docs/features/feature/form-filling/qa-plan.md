@@ -52,7 +52,7 @@ feature: form-filling
 
 **Scenario 1: Simple Login Form (Happy Path)**
 1. Setup:
-   - Open https://example.com/login (or local test page with login form)
+   - Open <https://example.com/login> (or local test page with login form)
    - Start Gasoline, enable AI Web Pilot toggle in extension
    - Observe DOM to identify form fields
 2. Steps:
@@ -65,7 +65,7 @@ feature: form-filling
 
 **Scenario 2: Multi-Step Registration Form with Validation**
 1. Setup:
-   - Open https://example.com/register (or local test page with complex form)
+   - Open <https://example.com/register> (or local test page with complex form)
    - Form has: first name, last name, email (validated), password (min length), confirm password, country (select), agree to terms (checkbox)
 2. Steps:
    - [ ] Call `interact({action: "fill_form", fields: [{selector: "#firstName", value: "John"}, {selector: "#lastName", value: "Doe"}, {selector: "#email", value: "invalid-email"}, {selector: "#password", value: "abc"}, {selector: "#confirmPassword", value: "abc"}, {selector: "#country", value: "US"}, {selector: "#terms", value: true}]})`

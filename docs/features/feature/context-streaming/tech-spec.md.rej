@@ -1,0 +1,3 @@
+@@ -327,1 +327,1 @@
+-5. URL pattern filter: "^https://api" â only API events streamed
++5. URL pattern filter: "^<https://api>" â only API events streamed
