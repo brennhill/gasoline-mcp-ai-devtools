@@ -183,8 +183,8 @@ export function installMessageListener(captureStateFn, restoreStateFn) {
     if (typeof window === 'undefined')
         return;
     window.addEventListener('message', (event) => {
-        // Only accept messages from this window
-        if (event.source !== window)
+        // Only accept messages from this window with correct origin
+        if (event.source !== window || event.origin !== window.location.origin)
             return;
         // Handle settings messages from content script
         if (event.data?.type === 'GASOLINE_SETTING') {

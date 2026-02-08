@@ -3047,7 +3047,7 @@ function installMessageListener(captureStateFn, restoreStateFn) {
   if (typeof window === "undefined")
     return;
   window.addEventListener("message", (event) => {
-    if (event.source !== window)
+    if (event.source !== window || event.origin !== window.location.origin)
       return;
     if (event.data?.type === "GASOLINE_SETTING") {
       const data = event.data;
@@ -3402,10 +3402,10 @@ function restoreState(state, includeUrl = true) {
   if (includeUrl && state.url && state.url !== window.location.href) {
     try {
       const url = new URL(state.url);
-      if (url.protocol === "http:" || url.protocol === "https:") {
+      if ((url.protocol === "http:" || url.protocol === "https:") && url.origin === window.location.origin) {
         window.location.href = state.url;
       } else {
-        console.warn("[gasoline] Skipped navigation to non-HTTP(S) URL:", state.url);
+        console.warn("[gasoline] Skipped navigation: URL must be same origin", state.url, "current:", window.location.origin);
       }
     } catch (e) {
       console.warn("[gasoline] Invalid URL for navigation:", state.url, e);
@@ -3484,7 +3484,7 @@ if (typeof window !== "undefined") {
 }
 if (typeof window !== "undefined") {
   window.addEventListener("message", (event) => {
-    if (event.source !== window)
+    if (event.source !== window || event.origin !== window.location.origin)
       return;
     if (event.data?.type === "GASOLINE_HIGHLIGHT_REQUEST") {
       const { requestId, params } = event.data;
