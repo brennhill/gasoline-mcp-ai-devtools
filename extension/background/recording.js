@@ -159,16 +159,16 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
             if (!gestureGranted) {
                 chrome.tabs.sendMessage(tab.id, {
                     type: 'GASOLINE_ACTION_TOAST',
-                    text: 'Recording',
-                    detail: 'Timed out',
+                    text: 'Recording Failed',
+                    detail: 'Audio recording requires clicking the Gasoline icon to grant permission. Try again and click the icon when prompted.',
                     state: 'error',
-                    duration_ms: 3000,
+                    duration_ms: 5000,
                 }).catch(() => { });
                 recordingState.active = false; // eslint-disable-line require-atomic-updates
                 return {
                     status: 'error',
                     name: '',
-                    error: 'RECORD_START: Timed out waiting for user to click the Gasoline icon. User must click the icon to grant audio recording permission.',
+                    error: 'RECORD_START: Audio recording timed out waiting for user to click the Gasoline icon. Click the icon to grant audio recording permission and try again.',
                 };
             }
             // Dismiss the prompt toast with a success confirmation
