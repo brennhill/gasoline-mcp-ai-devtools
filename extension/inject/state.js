@@ -101,7 +101,13 @@ export function restoreState(state, includeUrl = true) {
         if (namePart) {
             const name = namePart.trim();
             if (name) {
-                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+                // Delete cookie with security attributes for consistency
+                let deleteCookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+                if (window.location.protocol === 'https:') {
+                    deleteCookie += '; Secure';
+                }
+                deleteCookie += '; SameSite=Strict';
+                document.cookie = deleteCookie;
             }
         }
     });
