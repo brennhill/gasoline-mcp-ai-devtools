@@ -368,7 +368,10 @@ export async function stopRecording(truncated = false) {
 /**
  * Listen for unsolicited messages from offscreen (auto-stop from memory guard or tab close).
  */
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender) => {
+    // Only accept messages from the extension itself
+    if (sender.id !== chrome.runtime.id)
+        return;
     if (message.target !== 'background' || message.type !== 'OFFSCREEN_RECORDING_STOPPED')
         return;
     // Only handle if we think we're still recording (auto-stop case)
@@ -385,7 +388,10 @@ chrome.runtime.onMessage.addListener((message) => {
  * Handle popup-initiated record_start / record_stop messages.
  * These are direct chrome.runtime messages from the popup, not MCP pending queries.
  */
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // Only accept messages from the extension itself (popup)
+    if (sender.id !== chrome.runtime.id)
+        return false;
     if (message.type === 'record_start') {
         console.log(LOG, 'Popup record_start received', { audio: message.audio });
         chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
@@ -429,6 +435,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
  * Closes the permission tab, activates the original tab, and shows a guidance toast.
  */
 chrome.runtime.onMessage.addListener((message, sender) => {
+    // Only accept messages from the extension itself
+    if (sender.id !== chrome.runtime.id)
+        return false;
     if (message.type !== 'MIC_GRANTED_CLOSE_TAB')
         return false;
     console.log(LOG, 'MIC_GRANTED_CLOSE_TAB received from tab', sender.tab?.id);
@@ -472,7 +481,10 @@ chrome.runtime.onMessage.addListener((message, sender) => {
 /**
  * Handle REVEAL_FILE — opens the file in the OS file manager via the Go server.
  */
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // Only accept messages from the extension itself
+    if (sender.id !== chrome.runtime.id)
+        return false;
     if (message.type !== 'REVEAL_FILE' || !message.path)
         return false;
     fetch(`${index.serverUrl}/recordings/reveal`, {

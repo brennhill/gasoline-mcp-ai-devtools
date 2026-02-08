@@ -146,6 +146,8 @@ export function restoreState(state: BrowserStateSnapshot, includeUrl: boolean = 
   })
 
   if (state.cookies) {
+    // Note: document.cookie API cannot set HttpOnly flag (browser limitation).
+    // Restored cookies lose HttpOnly protection but regain it on next server request.
     state.cookies.split(';').forEach((c) => {
       document.cookie = c.trim()
     })

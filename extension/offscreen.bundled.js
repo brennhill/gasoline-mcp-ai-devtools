@@ -264,7 +264,9 @@
     recorder.stop();
   }
   console.log(LOG, "Offscreen recording worker loaded");
-  chrome.runtime.onMessage.addListener((message) => {
+  chrome.runtime.onMessage.addListener((message, sender) => {
+    if (sender.id !== chrome.runtime.id)
+      return;
     if (message.target !== "offscreen")
       return;
     console.log(LOG, "Received message:", message.type);

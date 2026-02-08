@@ -38,6 +38,7 @@ export {
 
 // Import for logging formatting functions (still in this file for now)
 import type { LogEntry } from '../types'
+import { getRequestHeaders } from './server'
 
 /**
  * Truncate a single argument if too large
@@ -138,7 +139,7 @@ export async function captureScreenshot(
 
     const response = await fetch(`${serverUrl}/screenshots`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getRequestHeaders(),
       body: JSON.stringify({
         dataUrl,
         url: tab.url,

@@ -297,7 +297,10 @@ function handleStopRecording(truncated = false) {
 }
 // Listen for messages from the service worker
 console.log(LOG, 'Offscreen recording worker loaded');
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender) => {
+    // Only handle messages from the extension itself
+    if (sender.id !== chrome.runtime.id)
+        return;
     // Only handle messages targeted at offscreen
     if (message.target !== 'offscreen')
         return;

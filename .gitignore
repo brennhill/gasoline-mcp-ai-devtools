@@ -47,3 +47,7 @@ docs/benchmarks/*.txt
 # Runtime state
 .gasoline/
 .claude/
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
