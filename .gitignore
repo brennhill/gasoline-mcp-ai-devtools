@@ -6,6 +6,7 @@ dist/
 
 # Local config
 .mcp.json
+.env
 
 # Dependencies
 node_modules/
