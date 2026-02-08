@@ -249,13 +249,13 @@ export interface ManageStateMessage {
 }
 /**
  * Action toast message — visual indicator for AI actions.
- * Supports color-coded states: trying (orange), success (green), warning (amber), error (red).
+ * Supports color-coded states: trying (blue), success (green), warning (amber), error (red), audio (orange with animation).
  */
 export interface ActionToastMessage {
     readonly type: 'GASOLINE_ACTION_TOAST';
     readonly text: string;
     readonly detail?: string;
-    readonly state?: 'trying' | 'success' | 'warning' | 'error';
+    readonly state?: 'trying' | 'success' | 'warning' | 'error' | 'audio';
     readonly duration_ms?: number;
 }
 /**

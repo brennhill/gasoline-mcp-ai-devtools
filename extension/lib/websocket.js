@@ -421,7 +421,7 @@ export function installWebSocketCapture() {
                         truncated: truncated || undefined,
                         ts: new Date().toISOString(),
                     },
-                }, window.location.origin);
+                }, '*');
             }
             return originalSend(data);
         };
@@ -551,7 +551,7 @@ function adoptEarlyConnections() {
                         truncated: truncated || undefined,
                         ts: new Date().toISOString(),
                     },
-                }, window.location.origin);
+                }, '*');
             }
             return originalSend(data);
         };
