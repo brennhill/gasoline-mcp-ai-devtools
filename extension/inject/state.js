@@ -109,7 +109,20 @@ export function restoreState(state, includeUrl = true) {
         // Note: document.cookie API cannot set HttpOnly flag (browser limitation).
         // Restored cookies lose HttpOnly protection but regain it on next server request.
         state.cookies.split(';').forEach((c) => {
-            document.cookie = c.trim();
+            const trimmed = c.trim();
+            if (!trimmed)
+                return;
+            // Add security attributes: Secure (if HTTPS) and SameSite=Strict
+            let securedCookie = trimmed;
+            // Add Secure flag if page is HTTPS (already set on secure pages, add for safety)
+            if (window.location.protocol === 'https:' && !securedCookie.toLowerCase().includes('secure')) {
+                securedCookie += '; Secure';
+            }
+            // Add SameSite=Strict if not already present (CSRF protection)
+            if (!securedCookie.toLowerCase().includes('samesite')) {
+                securedCookie += '; SameSite=Strict';
+            }
+            document.cookie = securedCookie;
         });
     }
     const restored = {
