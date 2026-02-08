@@ -420,6 +420,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"get_text", "get_value", "get_attribute",
 							"set_attribute", "focus", "scroll_to", "wait_for", "key_press",
 							"list_interactive",
+							"record_start", "record_stop",
 						},
 					},
 					"selector": map[string]any{
@@ -468,7 +469,16 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"name": map[string]any{
 						"type":        "string",
-						"description": "Attribute name (applies to get_attribute, set_attribute)",
+						"description": "Attribute name (applies to get_attribute, set_attribute). Recording name (applies to record_start).",
+					},
+					"audio": map[string]any{
+						"type":        "string",
+						"description": "Audio capture mode (applies to record_start): 'tab' (capture tab audio), 'mic' (microphone), 'both', or omit for video-only. Audio modes require the user to click the Gasoline icon to grant permission.",
+						"enum":        []string{"tab", "mic", "both"},
+					},
+					"fps": map[string]any{
+						"type":        "number",
+						"description": "Framerate for recording (applies to record_start). Range: 5-60, default 15.",
 					},
 					"world": map[string]any{
 						"type":        "string",

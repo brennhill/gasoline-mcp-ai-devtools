@@ -21,10 +21,12 @@ export default [
       'extension/lib/',
       'extension/popup/',
       'extension/types/',
+      'extension/offscreen/',
       // Bundled files
       'extension/content.bundled.js',
       'extension/inject.bundled.js',
       'extension/early-patch.bundled.js',
+      'extension/offscreen.bundled.js',
     ],
   },
 
