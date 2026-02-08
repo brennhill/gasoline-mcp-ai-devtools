@@ -3,14 +3,25 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/ai"
 	"github.com/dev-console/dev-console/internal/queries"
 )
+
+// randomInt63 generates a random int64 for correlation IDs using crypto/rand.
+func randomInt63() int64 {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to time-based if rand fails (should never happen)
+		return time.Now().UnixNano()
+	}
+	return int64(binary.BigEndian.Uint64(b) & 0x7FFFFFFFFFFFFFFF)
+}
 
 // toolConfigure dispatches configure requests based on the 'action' parameter.
 func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -385,7 +396,7 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 
 	// Generate correlation ID for tracking
-	correlationID := fmt.Sprintf("dom_%d_%d", time.Now().UnixNano(), rand.Int63())
+	correlationID := fmt.Sprintf("dom_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	// Create pending query for DOM query
 	query := queries.PendingQuery{
