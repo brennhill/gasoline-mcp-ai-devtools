@@ -104,7 +104,7 @@ begin_test "9.4" "/shutdown POST stops the server" \
     "Programmatic shutdown is used by CI cleanup."
 run_test_9_4() {
     local shutdown_body
-    shutdown_body=$(get_http_body "http://localhost:${PORT}/shutdown" -X POST)
+    shutdown_body=$(get_http_body "http://localhost:${PORT}/shutdown" -X POST -H "X-Gasoline-Client: gasoline-extension/${VERSION}")
     # Give the server time to shut down
     sleep 3
     # Verify port is freed
