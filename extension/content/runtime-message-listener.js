@@ -9,7 +9,34 @@ const TOAST_THEMES = {
     success: { bg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', shadow: 'rgba(34, 197, 94, 0.4)' },
     warning: { bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', shadow: 'rgba(245, 158, 11, 0.4)' },
     error: { bg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', shadow: 'rgba(239, 68, 68, 0.4)' },
+    audio: { bg: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', shadow: 'rgba(249, 115, 22, 0.5)' },
 };
+/** Add animation keyframes to document */
+function injectToastAnimationStyles() {
+    if (document.getElementById('gasoline-toast-animations'))
+        return;
+    const style = document.createElement('style');
+    style.id = 'gasoline-toast-animations';
+    style.textContent = `
+    @keyframes gasolineArrowBounce {
+      0%, 100% { transform: translateY(0) translateX(0); opacity: 1; }
+      50% { transform: translateY(-4px) translateX(4px); opacity: 0.7; }
+    }
+    @keyframes gasolineToastPulse {
+      0%, 100% { box-shadow: 0 4px 20px var(--toast-shadow); }
+      50% { box-shadow: 0 8px 32px var(--toast-shadow-intense); }
+    }
+    .gasoline-toast-arrow {
+      display: inline-block;
+      margin-left: 8px;
+      animation: gasolineArrowBounce 1.5s ease-in-out infinite;
+    }
+    .gasoline-toast-pulse {
+      animation: gasolineToastPulse 2s ease-in-out infinite;
+    }
+  `;
+    document.head.appendChild(style);
+}
 /** Truncate text to maxLen characters with ellipsis */
 function truncateText(text, maxLen) {
     if (text.length <= maxLen)
@@ -19,15 +46,22 @@ function truncateText(text, maxLen) {
 /**
  * Show a brief visual toast overlay for AI actions.
  * Supports color-coded states and structured content with truncation.
+ * For audio-related toasts, adds animated arrow pointing to extension icon.
  */
 function showActionToast(text, detail, state = 'trying', durationMs = 3000) {
     // Remove existing toast
     const existing = document.getElementById('gasoline-action-toast');
     if (existing)
         existing.remove();
+    // Inject animation styles once
+    injectToastAnimationStyles();
     const theme = TOAST_THEMES[state] ?? TOAST_THEMES.trying;
+    const isAudioPrompt = state === 'audio' || (detail && detail.toLowerCase().includes('audio') && detail.toLowerCase().includes('click'));
     const toast = document.createElement('div');
     toast.id = 'gasoline-action-toast';
+    if (isAudioPrompt) {
+        toast.className = 'gasoline-toast-pulse';
+    }
     // Build content: label + truncated detail
     const label = document.createElement('span');
     label.textContent = truncateText(text, 30);
@@ -43,28 +77,45 @@ function showActionToast(text, detail, state = 'trying', durationMs = 3000) {
         Object.assign(det.style, { fontWeight: '400', opacity: '0.9' });
         toast.appendChild(det);
     }
+    // Add animated arrow for audio prompts pointing to extension icon (↗)
+    if (isAudioPrompt) {
+        const arrow = document.createElement('span');
+        arrow.className = 'gasoline-toast-arrow';
+        arrow.textContent = '↗';
+        Object.assign(arrow.style, {
+            fontSize: '16px',
+            fontWeight: '700',
+            marginLeft: '12px',
+            display: 'inline-block',
+        });
+        toast.appendChild(arrow);
+    }
     Object.assign(toast.style, {
         position: 'fixed',
         top: '16px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        padding: '8px 20px',
+        right: '16px',
+        left: isAudioPrompt ? 'auto' : '50%',
+        transform: isAudioPrompt ? 'none' : 'translateX(-50%)',
+        padding: isAudioPrompt ? '12px 24px' : '8px 20px',
         background: theme.bg,
         color: '#fff',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        fontSize: '13px',
+        fontSize: isAudioPrompt ? '14px' : '13px',
+        fontWeight: isAudioPrompt ? '600' : '400',
         borderRadius: '8px',
         boxShadow: `0 4px 20px ${theme.shadow}`,
         zIndex: '2147483647',
         pointerEvents: 'none',
         opacity: '0',
         transition: 'opacity 0.2s ease-in',
-        maxWidth: '500px',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
+        maxWidth: isAudioPrompt ? '320px' : '500px',
+        whiteSpace: isAudioPrompt ? 'normal' : 'nowrap',
+        overflow: isAudioPrompt ? 'visible' : 'hidden',
         display: 'flex',
         alignItems: 'center',
         gap: '0',
+        '--toast-shadow': theme.shadow,
+        '--toast-shadow-intense': theme.shadow.replace('0.4)', '0.7)'),
     });
     const target = document.body || document.documentElement;
     if (!target)

@@ -143,12 +143,12 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         }
         else if (audio) {
             // MCP-initiated audio: requires activeTab via user gesture.
-            // Prompt the user to click the Gasoline extension icon.
+            // Prompt the user to click the Gasoline extension icon with orange highlight.
             chrome.tabs.sendMessage(tab.id, {
                 type: 'GASOLINE_ACTION_TOAST',
-                text: 'Recording',
-                detail: 'Click the Gasoline icon to start audio recording',
-                state: 'trying',
+                text: 'Audio Recording - Click Gasoline Icon',
+                detail: 'Click the Gasoline icon (↗ upper right) to grant audio recording permission',
+                state: 'audio',
                 duration_ms: 30000,
             }).catch(() => { });
             await chrome.storage.local.set({
@@ -159,10 +159,10 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
             if (!gestureGranted) {
                 chrome.tabs.sendMessage(tab.id, {
                     type: 'GASOLINE_ACTION_TOAST',
-                    text: 'Recording Failed',
-                    detail: 'Audio recording requires clicking the Gasoline icon to grant permission. Try again and click the icon when prompted.',
-                    state: 'error',
-                    duration_ms: 5000,
+                    text: 'Audio Permission Required',
+                    detail: 'Click the Gasoline icon (↗ upper right) to grant audio recording permission',
+                    state: 'audio',
+                    duration_ms: 8000,
                 }).catch(() => { });
                 recordingState.active = false; // eslint-disable-line require-atomic-updates
                 return {
