@@ -215,7 +215,7 @@ func (s *Server) asyncLoggerWorker() {
 
 // appendToFileSync does synchronous file I/O (called by async worker only)
 func (s *Server) appendToFileSync(entries []LogEntry) error {
-	f, err := os.OpenFile(s.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) // #nosec G302 G304 -- log files are intentionally world-readable; path set at startup
+	f, err := os.OpenFile(s.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304 -- path set at startup
 	if err != nil {
 		return err
 	}

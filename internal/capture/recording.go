@@ -208,7 +208,7 @@ func (r *RecordingManager) persistRecordingToDisk(recording *Recording) error {
 
 	// Write file
 	metadataPath := filepath.Join(recordingDir, recordingMetadataFile)
-	err = os.WriteFile(metadataPath, data, 0644)
+	err = os.WriteFile(metadataPath, data, 0600)
 	if err != nil {
 		return fmt.Errorf("write_file_failed: %v", err)
 	}
