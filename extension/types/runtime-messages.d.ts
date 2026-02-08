@@ -285,6 +285,54 @@ export type PageMessageType = 'GASOLINE_LOG' | 'GASOLINE_WS' | 'GASOLINE_NETWORK
  */
 export type ContentToPageMessageType = 'GASOLINE_SETTING' | 'GASOLINE_HIGHLIGHT_REQUEST' | 'GASOLINE_EXECUTE_JS' | 'GASOLINE_A11Y_QUERY' | 'GASOLINE_DOM_QUERY' | 'GASOLINE_STATE_COMMAND' | 'GASOLINE_GET_WATERFALL';
 /**
+ * Start recording message (SW → offscreen)
+ */
+export interface OffscreenStartRecordingMessage {
+    readonly target: 'offscreen';
+    readonly type: 'OFFSCREEN_START_RECORDING';
+    readonly streamId: string;
+    readonly serverUrl: string;
+    readonly name: string;
+    readonly fps: number;
+    readonly audioMode: string;
+    readonly tabId: number;
+    readonly url: string;
+}
+/**
+ * Stop recording message (SW → offscreen)
+ */
+export interface OffscreenStopRecordingMessage {
+    readonly target: 'offscreen';
+    readonly type: 'OFFSCREEN_STOP_RECORDING';
+}
+/**
+ * Recording started confirmation (offscreen → SW)
+ */
+export interface OffscreenRecordingStartedMessage {
+    readonly target: 'background';
+    readonly type: 'OFFSCREEN_RECORDING_STARTED';
+    readonly success: boolean;
+    readonly error?: string;
+}
+/**
+ * Recording stopped result (offscreen → SW)
+ */
+export interface OffscreenRecordingStoppedMessage {
+    readonly target: 'background';
+    readonly type: 'OFFSCREEN_RECORDING_STOPPED';
+    readonly status: string;
+    readonly name: string;
+    readonly duration_seconds?: number;
+    readonly size_bytes?: number;
+    readonly truncated?: boolean;
+    readonly path?: string;
+    readonly error?: string;
+}
+/**
+ * Union of offscreen messages
+ */
+export type OffscreenMessage = OffscreenStartRecordingMessage | OffscreenStopRecordingMessage | OffscreenRecordingStartedMessage | OffscreenRecordingStoppedMessage;
+/**
  * Execute JS result
  */
 export interface ExecuteJsResult {

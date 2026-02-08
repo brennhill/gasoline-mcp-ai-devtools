@@ -98,11 +98,35 @@
   var a11yRequestId = 0;
   var pendingDomRequests = /* @__PURE__ */ new Map();
   var domRequestId = 0;
+  var CLEANUP_INTERVAL_MS = 3e4;
+  var cleanupTimer = null;
+  var requestTimestamps = /* @__PURE__ */ new Map();
+  function getRequestTimestamps() {
+    const timestamps = [];
+    for (const [id, timestamp] of requestTimestamps) {
+      timestamps.push([id, timestamp]);
+    }
+    return timestamps;
+  }
   function clearPendingRequests() {
     pendingHighlightRequests.clear();
     pendingExecuteRequests.clear();
     pendingA11yRequests.clear();
     pendingDomRequests.clear();
+    requestTimestamps.clear();
+  }
+  function performPeriodicCleanup() {
+    const now = Date.now();
+    const staleThreshold = 6e4;
+    for (const [id, timestamp] of getRequestTimestamps()) {
+      if (now - timestamp > staleThreshold) {
+        pendingHighlightRequests.delete(id);
+        pendingExecuteRequests.delete(id);
+        pendingA11yRequests.delete(id);
+        pendingDomRequests.delete(id);
+        requestTimestamps.delete(id);
+      }
+    }
   }
   function getPendingRequestStats() {
     return {
@@ -166,9 +190,17 @@
       resolve(result);
     }
   }
+  function cleanupRequestTracking() {
+    if (cleanupTimer) {
+      clearInterval(cleanupTimer);
+      cleanupTimer = null;
+    }
+    clearPendingRequests();
+  }
   function initRequestTracking() {
     window.addEventListener("pagehide", clearPendingRequests);
     window.addEventListener("beforeunload", clearPendingRequests);
+    cleanupTimer = setInterval(performPeriodicCleanup, CLEANUP_INTERVAL_MS);
   }
 
   // extension/content/message-forwarding.js
