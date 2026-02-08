@@ -164,7 +164,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 		http.HandleFunc("/sync", corsMiddleware(extensionOnly(cap.HandleSync)))
 
 		// Multi-client management endpoints
-		http.HandleFunc("/clients", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		http.HandleFunc("/clients", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case "GET":
 				// List all registered clients
@@ -189,10 +189,10 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 			default:
 				jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 			}
-		}))
+		})))
 
 		// Client-specific endpoint with ID in path
-		http.HandleFunc("/clients/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		http.HandleFunc("/clients/", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 			// Extract client ID from path: /clients/{id}
 			clientID := strings.TrimPrefix(r.URL.Path, "/clients/")
 			if clientID == "" {
@@ -216,7 +216,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 			default:
 				jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 			}
-		}))
+		})))
 
 		// Video recording save endpoint
 		http.HandleFunc("/recordings/save", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
@@ -227,12 +227,12 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 		http.HandleFunc("/recordings/storage", corsMiddleware(extensionOnly(cap.HandleRecordingStorage)))
 
 		// Reveal recording in file manager (Finder/Explorer)
-		http.HandleFunc("/recordings/reveal", corsMiddleware(handleRevealRecording))
+		http.HandleFunc("/recordings/reveal", corsMiddleware(extensionOnly(handleRevealRecording)))
 
 		// CI Infrastructure endpoints
-		http.HandleFunc("/snapshot", corsMiddleware(handleSnapshot(server, cap)))
-		http.HandleFunc("/clear", corsMiddleware(handleClear(server, cap)))
-		http.HandleFunc("/test-boundary", corsMiddleware(handleTestBoundary(cap)))
+		http.HandleFunc("/snapshot", corsMiddleware(extensionOnly(handleSnapshot(server, cap))))
+		http.HandleFunc("/clear", corsMiddleware(extensionOnly(handleClear(server, cap))))
+		http.HandleFunc("/test-boundary", corsMiddleware(extensionOnly(handleTestBoundary(cap))))
 	}
 
 	// OpenAPI specification endpoint
@@ -287,7 +287,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 	}))
 
 	// Shutdown endpoint for graceful server stop
-	http.HandleFunc("/shutdown", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/shutdown", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 			return
@@ -320,7 +320,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 			p, _ := os.FindProcess(os.Getpid())
 			_ = p.Signal(syscall.SIGTERM)
 		}()
-	}))
+	})))
 
 	// Diagnostics endpoint for bug reports
 	http.HandleFunc("/diagnostics", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
@@ -410,7 +410,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 		jsonResponse(w, http.StatusOK, resp)
 	}))
 
-	http.HandleFunc("/logs", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/logs", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
 			entries := server.getEntries()
@@ -461,7 +461,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 		default:
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		}
-	}))
+	})))
 
 	http.HandleFunc("/screenshots", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleScreenshot(w, r, cap)

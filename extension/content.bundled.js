@@ -731,7 +731,9 @@
   var originalFaviconHref = null;
   var flickerInterval = null;
   function initFaviconReplacer() {
-    chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
+    chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
+      if (sender.id !== chrome.runtime.id)
+        return;
       if (message.type === "trackingStateChanged") {
         const newState = message.state;
         updateFavicon(newState);

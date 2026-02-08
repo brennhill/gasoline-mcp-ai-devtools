@@ -437,7 +437,9 @@ export async function stopRecording(truncated: boolean = false): Promise<{
 /**
  * Listen for unsolicited messages from offscreen (auto-stop from memory guard or tab close).
  */
-chrome.runtime.onMessage.addListener((message: OffscreenRecordingStoppedMessage) => {
+chrome.runtime.onMessage.addListener((message: OffscreenRecordingStoppedMessage, sender: chrome.runtime.MessageSender) => {
+  // Only accept messages from the extension itself
+  if (sender.id !== chrome.runtime.id) return
   if (message.target !== 'background' || message.type !== 'OFFSCREEN_RECORDING_STOPPED') return
   // Only handle if we think we're still recording (auto-stop case)
   if (!recordingState.active) return
@@ -455,7 +457,9 @@ chrome.runtime.onMessage.addListener((message: OffscreenRecordingStoppedMessage)
  * These are direct chrome.runtime messages from the popup, not MCP pending queries.
  */
 chrome.runtime.onMessage.addListener(
-  (message: { type?: string; audio?: string }, _sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void) => {
+  (message: { type?: string; audio?: string }, sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void) => {
+    // Only accept messages from the extension itself (popup)
+    if (sender.id !== chrome.runtime.id) return false
     if (message.type === 'record_start') {
       console.log(LOG, 'Popup record_start received', { audio: message.audio })
       chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
@@ -501,6 +505,8 @@ chrome.runtime.onMessage.addListener(
  */
 chrome.runtime.onMessage.addListener(
   (message: { type?: string }, sender: chrome.runtime.MessageSender) => {
+    // Only accept messages from the extension itself
+    if (sender.id !== chrome.runtime.id) return false
     if (message.type !== 'MIC_GRANTED_CLOSE_TAB') return false
     console.log(LOG, 'MIC_GRANTED_CLOSE_TAB received from tab', sender.tab?.id)
 
@@ -549,7 +555,9 @@ chrome.runtime.onMessage.addListener(
  * Handle REVEAL_FILE — opens the file in the OS file manager via the Go server.
  */
 chrome.runtime.onMessage.addListener(
-  (message: { type?: string; path?: string }, _sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void) => {
+  (message: { type?: string; path?: string }, sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void) => {
+    // Only accept messages from the extension itself
+    if (sender.id !== chrome.runtime.id) return false
     if (message.type !== 'REVEAL_FILE' || !message.path) return false
 
     fetch(`${index.serverUrl}/recordings/reveal`, {

@@ -255,10 +255,18 @@ function setupRecordingUI() {
                 if (resp?.status === 'saved' && resp.name && saveInfoEl) {
                     const displayName = resp.name.replace(/--\d{4}-\d{2}-\d{2}-\d{4}(-\d+)?$/, '');
                     if (resp.path) {
-                        saveInfoEl.innerHTML = `Saved: <a href="#" id="reveal-recording" style="color: #58a6ff; text-decoration: underline; cursor: pointer">${displayName}</a>`;
-                        const link = document.getElementById('reveal-recording');
-                        if (link) {
-                            link.addEventListener('click', (e) => {
+                        saveInfoEl.textContent = 'Saved: ';
+                        const link = document.createElement('a');
+                        link.href = '#';
+                        link.id = 'reveal-recording';
+                        link.textContent = displayName;
+                        link.style.color = '#58a6ff';
+                        link.style.textDecoration = 'underline';
+                        link.style.cursor = 'pointer';
+                        saveInfoEl.appendChild(link);
+                        const linkEl = document.getElementById('reveal-recording');
+                        if (linkEl) {
+                            linkEl.addEventListener('click', (e) => {
                                 e.preventDefault();
                                 chrome.runtime.sendMessage({ type: 'REVEAL_FILE', path: resp.path }, (result) => {
                                     if (result?.error && saveInfoEl) {
