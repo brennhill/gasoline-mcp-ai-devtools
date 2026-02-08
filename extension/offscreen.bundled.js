@@ -64,7 +64,9 @@
       console.log(LOG, "Got tab stream", { videoTracks: tabStream.getVideoTracks().length, audioTracks: tabStream.getAudioTracks().length });
       let stream;
       if (hasMicAudio && hasTabAudio) {
-        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true }
+        });
         acquiredStreams.push(micStream);
         const audioCtx = new AudioContext();
         const tabSource = audioCtx.createMediaStreamSource(new MediaStream(tabStream.getAudioTracks()));
@@ -74,7 +76,9 @@
         micSource.connect(dest);
         stream = new MediaStream([...tabStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
       } else if (hasMicAudio) {
-        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
         acquiredStreams.push(micStream);
         stream = new MediaStream([...tabStream.getVideoTracks(), ...micStream.getAudioTracks()]);
       } else {
