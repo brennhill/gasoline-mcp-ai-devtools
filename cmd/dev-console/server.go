@@ -118,14 +118,18 @@ func (s *Server) saveEntries() error {
 
 // saveEntriesCopy writes the given entries to file without acquiring the lock.
 // The caller is responsible for providing a snapshot of the entries.
+// Uses atomic write pattern: write to temp file then rename for safety.
 func (s *Server) saveEntriesCopy(entries []LogEntry) error {
-	file, err := os.Create(s.logFile)
+	// Write to temporary file first, then atomically rename
+	// This ensures log file remains intact if write fails partway through
+	tmpFile := s.logFile + ".tmp"
+	file, err := os.Create(tmpFile)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if closeErr := file.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Error closing log file: %v\n", closeErr)
+			fmt.Fprintf(os.Stderr, "[gasoline] Error closing temp log file: %v\n", closeErr)
 		}
 	}()
 
@@ -135,11 +139,21 @@ func (s *Server) saveEntriesCopy(entries []LogEntry) error {
 			continue
 		}
 		if _, err := file.Write(data); err != nil {
+			// Clean up temp file on write failure
+			_ = os.Remove(tmpFile)
 			return err
 		}
 		if _, err := file.WriteString("\n"); err != nil {
+			// Clean up temp file on write failure
+			_ = os.Remove(tmpFile)
 			return err
 		}
+	}
+
+	// Atomic rename: ensures log file is only updated if write succeeded
+	if err := os.Rename(tmpFile, s.logFile); err != nil {
+		_ = os.Remove(tmpFile)
+		return err
 	}
 
 	return nil
