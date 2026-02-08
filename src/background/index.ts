@@ -426,6 +426,7 @@ export function isConnectionCheckRunning(): boolean {
   return _connectionCheckRunning
 }
 
+// eslint-disable-next-line security-node/detect-unhandled-async-errors
 export async function checkConnectionAndUpdate(): Promise<void> {
   if (_connectionCheckRunning) {
     debugLog(DebugCategory.CONNECTION, 'Skipping connection check - already running')
