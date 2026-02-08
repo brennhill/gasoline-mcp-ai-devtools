@@ -29,7 +29,7 @@ begin_test "8.2" "Extension endpoints accept valid X-Gasoline-Client header" \
     "The middleware must not over-block. Valid extension requests must pass."
 run_test_8_2() {
     local status
-    status=$(get_http_status "http://localhost:${PORT}/sync" -H "X-Gasoline-Client: gasoline-extension/5.7.6" -X POST)
+    status=$(get_http_status "http://localhost:${PORT}/sync" -H "X-Gasoline-Client: gasoline-extension/${VERSION}" -X POST)
     if [ "$status" = "200" ] || [ "$status" = "400" ]; then
         pass "/sync with valid X-Gasoline-Client header returned HTTP $status. Middleware accepted the request."
     else

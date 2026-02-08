@@ -302,8 +302,8 @@ export function installMessageListener(
   if (typeof window === 'undefined') return
 
   window.addEventListener('message', (event: MessageEvent<PageMessageData>) => {
-    // Only accept messages from this window
-    if (event.source !== window) return
+    // Only accept messages from this window with correct origin
+    if (event.source !== window || event.origin !== window.location.origin) return
 
     // Handle settings messages from content script
     if (event.data?.type === 'GASOLINE_SETTING') {

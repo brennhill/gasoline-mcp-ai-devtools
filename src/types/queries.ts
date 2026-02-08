@@ -23,6 +23,8 @@ export type QueryType =
   | 'state_delete'
   | 'subtitle'
   | 'screenshot'
+  | 'record_start'
+  | 'record_stop'
 
 /**
  * Pending query from server

@@ -30,6 +30,13 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 		fmt.Fprintf(os.Stderr, "[gasoline] WARNING: wsEvents/wsAddedAt length mismatch: %d != %d (recovering by truncating)\n",
 			len(c.wsEvents), len(c.wsAddedAt))
 		minLen := min(len(c.wsEvents), len(c.wsAddedAt))
+
+		// Recalculate memory total for remaining entries to prevent accounting drift
+		c.wsMemoryTotal = 0
+		for i := 0; i < minLen; i++ {
+			c.wsMemoryTotal += wsEventMemory(&c.wsEvents[i])
+		}
+
 		c.wsEvents = c.wsEvents[:minLen]
 		c.wsAddedAt = c.wsAddedAt[:minLen]
 	}
@@ -439,4 +446,3 @@ func (c *Capture) HandleWebSocketStatus(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(status)
 }
-

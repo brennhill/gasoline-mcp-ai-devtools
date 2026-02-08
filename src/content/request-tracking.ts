@@ -1,6 +1,7 @@
 /**
  * @fileoverview Request Tracking Module
  * Manages pending requests for AI Web Pilot features
+ * Includes periodic cleanup timer to handle edge cases where pagehide/beforeunload don't fire.
  */
 
 import type { HighlightResponse, ExecuteJsResult, A11yAuditResult, DomQueryResult } from '../types'
@@ -22,6 +23,25 @@ let a11yRequestId = 0
 const pendingDomRequests = new Map<number, (result: DomQueryResult) => void>()
 let domRequestId = 0
 
+// Periodic cleanup timer (Issue #2 fix)
+const CLEANUP_INTERVAL_MS = 30000 // 30 seconds
+let cleanupTimer: ReturnType<typeof setInterval> | null = null
+
+// Track request timestamps for stale detection
+const requestTimestamps = new Map<number, number>()
+
+/**
+ * Get request timestamps for stale detection (Issue #2 fix).
+ * Returns array of [requestId, timestamp] pairs for cleanup.
+ */
+function getRequestTimestamps(): [number, number][] {
+  const timestamps: [number, number][] = []
+  for (const [id, timestamp] of requestTimestamps) {
+    timestamps.push([id, timestamp])
+  }
+  return timestamps
+}
+
 /**
  * Clear all pending request Maps on page unload (Issue 2 fix).
  * Prevents memory leaks and stale request accumulation across navigations.
@@ -31,6 +51,27 @@ export function clearPendingRequests(): void {
   pendingExecuteRequests.clear()
   pendingA11yRequests.clear()
   pendingDomRequests.clear()
+  requestTimestamps.clear()
+}
+
+/**
+ * Perform periodic cleanup of stale requests (Issue #2 fix).
+ * Removes requests older than 60 seconds as a fallback when pagehide/beforeunload don't fire.
+ */
+function performPeriodicCleanup(): void {
+  const now = Date.now()
+  const staleThreshold = 60000 // 60 seconds
+
+  for (const [id, timestamp] of getRequestTimestamps()) {
+    if (now - timestamp > staleThreshold) {
+      // Remove stale request from all maps
+      pendingHighlightRequests.delete(id)
+      pendingExecuteRequests.delete(id)
+      pendingA11yRequests.delete(id)
+      pendingDomRequests.delete(id)
+      requestTimestamps.delete(id)
+    }
+  }
 }
 
 /**
@@ -183,6 +224,18 @@ export function deleteDomRequest(requestId: number): void {
 }
 
 /**
+ * Cleanup periodic timer (Issue #2 fix).
+ * Should be called when content script is shutting down.
+ */
+export function cleanupRequestTracking(): void {
+  if (cleanupTimer) {
+    clearInterval(cleanupTimer)
+    cleanupTimer = null
+  }
+  clearPendingRequests()
+}
+
+/**
  * Initialize request tracking (register cleanup handlers)
  */
 export function initRequestTracking(): void {
@@ -190,4 +243,8 @@ export function initRequestTracking(): void {
   // Using 'pagehide' (modern, fires on both close and navigation) + 'beforeunload' (legacy fallback)
   window.addEventListener('pagehide', clearPendingRequests)
   window.addEventListener('beforeunload', clearPendingRequests)
+  
+  // Start periodic cleanup timer (Issue #2 fix)
+  // Provides fallback when pagehide/beforeunload don't fire (e.g., page crash)
+  cleanupTimer = setInterval(performPeriodicCleanup, CLEANUP_INTERVAL_MS)
 }

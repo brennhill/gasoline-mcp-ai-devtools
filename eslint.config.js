@@ -14,11 +14,19 @@ export default [
       'server/',
       'docs/',
       'demo/',
-      'extension/lib/*.min.js',
-      'extension/background/index.js',
+      // Compiled TypeScript output (linted at the .ts source level)
+      'extension/background/',
+      'extension/content/',
+      'extension/inject/',
+      'extension/lib/',
+      'extension/popup/',
+      'extension/types/',
+      'extension/offscreen/',
+      // Bundled files
       'extension/content.bundled.js',
       'extension/inject.bundled.js',
       'extension/early-patch.bundled.js',
+      'extension/offscreen.bundled.js',
     ],
   },
 

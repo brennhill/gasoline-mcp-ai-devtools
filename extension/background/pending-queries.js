@@ -12,6 +12,7 @@ import { DebugCategory } from './debug.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, broadcastTrackingState } from './message-handlers.js';
 import { executeDOMAction } from './dom-primitives.js';
 import { canTakeScreenshot, recordScreenshot } from './state-manager.js';
+import { startRecording, stopRecording } from './recording.js';
 // Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
 const { debugLog, diagnosticLog } = index;
 // =============================================================================
@@ -476,6 +477,31 @@ export async function handlePendingQuery(query, syncClient) {
                 return;
             }
             await executeDOMAction(query, tabId, syncClient, sendAsyncResult, actionToast);
+            return;
+        }
+        if (query.type === 'record_start') {
+            if (!index.__aiWebPilotEnabledCache) {
+                sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', undefined, 'ai_web_pilot_disabled');
+                return;
+            }
+            let params;
+            try {
+                params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
+            }
+            catch {
+                params = {};
+            }
+            const result = await startRecording(params.name ?? 'recording', params.fps ?? 15, query.id, params.audio ?? '');
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, result.error || undefined);
+            return;
+        }
+        if (query.type === 'record_stop') {
+            if (!index.__aiWebPilotEnabledCache) {
+                sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', undefined, 'ai_web_pilot_disabled');
+                return;
+            }
+            const result = await stopRecording();
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, result.error || undefined);
             return;
         }
         if (query.type === 'execute') {

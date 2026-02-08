@@ -200,6 +200,9 @@ extension-zip:
 	@echo "Built $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip"
 	@ls -lh $(BUILD_DIR)/gasoline-extension-v$(VERSION).zip
 
+extension-crx:
+	@node scripts/build-crx.js
+
 release-check: ci-local ci-e2e
 	@echo "All release checks passed (CI + E2E)"
 

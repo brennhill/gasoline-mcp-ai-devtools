@@ -328,13 +328,13 @@ export interface ManageStateMessage {
 
 /**
  * Action toast message — visual indicator for AI actions.
- * Supports color-coded states: trying (orange), success (green), warning (amber), error (red).
+ * Supports color-coded states: trying (blue), success (green), warning (amber), error (red), audio (orange with animation).
  */
 export interface ActionToastMessage {
   readonly type: 'GASOLINE_ACTION_TOAST'
   readonly text: string
   readonly detail?: string
-  readonly state?: 'trying' | 'success' | 'warning' | 'error'
+  readonly state?: 'trying' | 'success' | 'warning' | 'error' | 'audio'
   readonly duration_ms?: number
 }
 
@@ -344,6 +344,14 @@ export interface ActionToastMessage {
 export interface SubtitleMessage {
   readonly type: 'GASOLINE_SUBTITLE'
   readonly text: string
+}
+
+/**
+ * Recording watermark overlay message
+ */
+export interface RecordingWatermarkMessage {
+  readonly type: 'GASOLINE_RECORDING_WATERMARK'
+  readonly visible: boolean
 }
 
 /**
@@ -360,6 +368,7 @@ export type ContentMessage =
   | ManageStateMessage
   | ActionToastMessage
   | SubtitleMessage
+  | RecordingWatermarkMessage
   | SetBooleanSettingMessage
   | SetWebSocketCaptureModeMessage
   | SetServerUrlMessage
@@ -395,6 +404,67 @@ export type ContentToPageMessageType =
   | 'GASOLINE_DOM_QUERY'
   | 'GASOLINE_STATE_COMMAND'
   | 'GASOLINE_GET_WATERFALL'
+
+// =============================================================================
+// OFFSCREEN DOCUMENT MESSAGE TYPES (service worker ↔ offscreen)
+// =============================================================================
+
+/**
+ * Start recording message (SW → offscreen)
+ */
+export interface OffscreenStartRecordingMessage {
+  readonly target: 'offscreen'
+  readonly type: 'OFFSCREEN_START_RECORDING'
+  readonly streamId: string
+  readonly serverUrl: string
+  readonly name: string
+  readonly fps: number
+  readonly audioMode: string
+  readonly tabId: number
+  readonly url: string
+}
+
+/**
+ * Stop recording message (SW → offscreen)
+ */
+export interface OffscreenStopRecordingMessage {
+  readonly target: 'offscreen'
+  readonly type: 'OFFSCREEN_STOP_RECORDING'
+}
+
+/**
+ * Recording started confirmation (offscreen → SW)
+ */
+export interface OffscreenRecordingStartedMessage {
+  readonly target: 'background'
+  readonly type: 'OFFSCREEN_RECORDING_STARTED'
+  readonly success: boolean
+  readonly error?: string
+}
+
+/**
+ * Recording stopped result (offscreen → SW)
+ */
+export interface OffscreenRecordingStoppedMessage {
+  readonly target: 'background'
+  readonly type: 'OFFSCREEN_RECORDING_STOPPED'
+  readonly status: string
+  readonly name: string
+  readonly duration_seconds?: number
+  readonly size_bytes?: number
+  readonly truncated?: boolean
+  readonly path?: string
+  readonly error?: string
+}
+
+/**
+ * Union of offscreen messages
+ */
+export type OffscreenMessage =
+  | OffscreenStartRecordingMessage
+  | OffscreenStopRecordingMessage
+  | OffscreenRecordingStartedMessage
+  | OffscreenRecordingStoppedMessage
 
 /**
  * Execute JS result

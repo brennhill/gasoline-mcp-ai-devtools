@@ -49,7 +49,7 @@ func TestReliability_Stress_ConcurrentConnections(t *testing.T) {
 	binary := buildTestBinary(t)
 	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -162,7 +162,7 @@ func TestReliability_Stress_ExtendedOperation(t *testing.T) {
 	binary := buildTestBinary(t)
 	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -243,7 +243,7 @@ func TestReliability_ResourceLeaks_Goroutines(t *testing.T) {
 	binary := buildTestBinary(t)
 	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -327,7 +327,7 @@ func TestReliability_ResourceLeaks_ConnectionDrain(t *testing.T) {
 	binary := buildTestBinary(t)
 	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -385,7 +385,7 @@ func TestReliability_Recovery_MalformedJSON(t *testing.T) {
 	binary := buildTestBinary(t)
 	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -464,7 +464,7 @@ func TestReliability_Recovery_InvalidToolCalls(t *testing.T) {
 	binary := buildTestBinary(t)
 	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)

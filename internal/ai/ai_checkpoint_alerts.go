@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/performance"
-	"github.com/dev-console/dev-console/internal/session"
+	gasTypes "github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -61,7 +61,7 @@ func (cm *CheckpointManager) DetectAndStoreAlerts(snapshot performance.Performan
 	// Create the alert
 	cm.alertCounter++
 	cm.alertDelivery++
-	alert := session.PerformanceAlert{
+	alert := gasTypes.PerformanceAlert{
 		ID:             cm.alertCounter,
 		Type:           "regression",
 		URL:            url,
@@ -77,7 +77,7 @@ func (cm *CheckpointManager) DetectAndStoreAlerts(snapshot performance.Performan
 	// Cap at maxPendingAlerts, dropping oldest
 	if len(cm.pendingAlerts) > maxPendingAlerts {
 		keep := len(cm.pendingAlerts) - maxPendingAlerts
-		surviving := make([]session.PerformanceAlert, maxPendingAlerts)
+		surviving := make([]gasTypes.PerformanceAlert, maxPendingAlerts)
 		copy(surviving, cm.pendingAlerts[keep:])
 		cm.pendingAlerts = surviving
 	}
@@ -85,15 +85,15 @@ func (cm *CheckpointManager) DetectAndStoreAlerts(snapshot performance.Performan
 
 // detectPushRegressions compares snapshot against baseline using the push-notification thresholds.
 // Returns only metrics that exceed their thresholds.
-func (cm *CheckpointManager) detectPushRegressions(snapshot performance.PerformanceSnapshot, baseline performance.PerformanceBaseline) map[string]session.AlertMetricDelta {
-	metrics := make(map[string]session.AlertMetricDelta)
+func (cm *CheckpointManager) detectPushRegressions(snapshot performance.PerformanceSnapshot, baseline performance.PerformanceBaseline) map[string]gasTypes.AlertMetricDelta {
+	metrics := make(map[string]gasTypes.AlertMetricDelta)
 
 	// Load time: >20% regression
 	if baseline.Timing.Load > 0 {
 		delta := snapshot.Timing.Load - baseline.Timing.Load
 		pct := delta / baseline.Timing.Load * 100
 		if pct > loadRegressionPct {
-			metrics["load"] = session.AlertMetricDelta{
+			metrics["load"] = gasTypes.AlertMetricDelta{
 				Baseline: baseline.Timing.Load,
 				Current:  snapshot.Timing.Load,
 				DeltaMs:  delta,
@@ -107,7 +107,7 @@ func (cm *CheckpointManager) detectPushRegressions(snapshot performance.Performa
 		delta := *snapshot.Timing.FirstContentfulPaint - *baseline.Timing.FirstContentfulPaint
 		pct := delta / *baseline.Timing.FirstContentfulPaint * 100
 		if pct > fcpRegressionPct {
-			metrics["fcp"] = session.AlertMetricDelta{
+			metrics["fcp"] = gasTypes.AlertMetricDelta{
 				Baseline: *baseline.Timing.FirstContentfulPaint,
 				Current:  *snapshot.Timing.FirstContentfulPaint,
 				DeltaMs:  delta,
@@ -121,7 +121,7 @@ func (cm *CheckpointManager) detectPushRegressions(snapshot performance.Performa
 		delta := *snapshot.Timing.LargestContentfulPaint - *baseline.Timing.LargestContentfulPaint
 		pct := delta / *baseline.Timing.LargestContentfulPaint * 100
 		if pct > lcpRegressionPct {
-			metrics["lcp"] = session.AlertMetricDelta{
+			metrics["lcp"] = gasTypes.AlertMetricDelta{
 				Baseline: *baseline.Timing.LargestContentfulPaint,
 				Current:  *snapshot.Timing.LargestContentfulPaint,
 				DeltaMs:  delta,
@@ -135,7 +135,7 @@ func (cm *CheckpointManager) detectPushRegressions(snapshot performance.Performa
 		delta := snapshot.Timing.TimeToFirstByte - baseline.Timing.TimeToFirstByte
 		pct := delta / baseline.Timing.TimeToFirstByte * 100
 		if pct > ttfbRegressionPct {
-			metrics["ttfb"] = session.AlertMetricDelta{
+			metrics["ttfb"] = gasTypes.AlertMetricDelta{
 				Baseline: baseline.Timing.TimeToFirstByte,
 				Current:  snapshot.Timing.TimeToFirstByte,
 				DeltaMs:  delta,
@@ -152,7 +152,7 @@ func (cm *CheckpointManager) detectPushRegressions(snapshot performance.Performa
 			if *baseline.CLS > 0 {
 				pct = delta / *baseline.CLS * 100
 			}
-			metrics["cls"] = session.AlertMetricDelta{
+			metrics["cls"] = gasTypes.AlertMetricDelta{
 				Baseline: *baseline.CLS,
 				Current:  *snapshot.CLS,
 				DeltaMs:  delta, // for CLS this is the absolute delta, not ms
@@ -166,7 +166,7 @@ func (cm *CheckpointManager) detectPushRegressions(snapshot performance.Performa
 		delta := float64(snapshot.Network.TransferSize - baseline.Network.TransferSize)
 		pct := delta / float64(baseline.Network.TransferSize) * 100
 		if pct > transferRegressionPct {
-			metrics["transfer_bytes"] = session.AlertMetricDelta{
+			metrics["transfer_bytes"] = gasTypes.AlertMetricDelta{
 				Baseline: float64(baseline.Network.TransferSize),
 				Current:  float64(snapshot.Network.TransferSize),
 				DeltaMs:  delta, // for transfer this is the byte delta
@@ -181,7 +181,7 @@ func (cm *CheckpointManager) detectPushRegressions(snapshot performance.Performa
 // resolveAlertsForURL removes any pending alerts for the given URL
 func (cm *CheckpointManager) resolveAlertsForURL(url string) {
 	// Use new slice to allow GC of resolved alerts (avoids [:0] backing-array pinning)
-	filtered := make([]session.PerformanceAlert, 0, len(cm.pendingAlerts))
+	filtered := make([]gasTypes.PerformanceAlert, 0, len(cm.pendingAlerts))
 	for _, alert := range cm.pendingAlerts {
 		if alert.URL != url {
 			filtered = append(filtered, alert)
@@ -191,7 +191,7 @@ func (cm *CheckpointManager) resolveAlertsForURL(url string) {
 }
 
 // buildAlertSummary generates a human-readable summary for an alert
-func (cm *CheckpointManager) buildAlertSummary(url string, metrics map[string]session.AlertMetricDelta) string {
+func (cm *CheckpointManager) buildAlertSummary(url string, metrics map[string]gasTypes.AlertMetricDelta) string {
 	if loadMetric, ok := metrics["load"]; ok {
 		return fmt.Sprintf("Load time regressed by %.0fms (%.0fms -> %.0fms) on %s",
 			loadMetric.DeltaMs, loadMetric.Baseline, loadMetric.Current, url)
@@ -209,8 +209,8 @@ func (cm *CheckpointManager) buildAlertSummary(url string, metrics map[string]se
 
 // getPendingAlerts returns alerts that should be included in the response
 // based on the checkpoint's alertDelivery counter.
-func (cm *CheckpointManager) getPendingAlerts(checkpointDelivery int64) []session.PerformanceAlert {
-	var result []session.PerformanceAlert
+func (cm *CheckpointManager) getPendingAlerts(checkpointDelivery int64) []gasTypes.PerformanceAlert {
+	var result []gasTypes.PerformanceAlert
 	for i := range cm.pendingAlerts {
 		// Include alerts that haven't been delivered yet, or were delivered after this checkpoint
 		if cm.pendingAlerts[i].DeliveredAt == 0 || cm.pendingAlerts[i].DeliveredAt > checkpointDelivery {

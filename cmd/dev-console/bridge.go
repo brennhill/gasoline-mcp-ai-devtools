@@ -6,6 +6,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -34,9 +35,21 @@ func flushStdout() {
 	}
 }
 
+// sendJSONResponse marshals a response and sends it to stdout, handling errors gracefully
+func sendJSONResponse(resp any, id any) {
+	respJSON, err := json.Marshal(resp)
+	if err != nil {
+		sendBridgeError(id, -32603, "Failed to serialize response: "+err.Error())
+		flushStdout()
+		return
+	}
+	fmt.Println(string(respJSON))
+	flushStdout()
+}
+
 // runBridgeMode bridges stdio (from MCP client) to HTTP (to persistent server)
 // Uses fast-start: responds to initialize/tools/list immediately while spawning daemon async.
-func runBridgeMode(port int) {
+func runBridgeMode(port int, logFile string, maxEntries int) {
 	serverURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 
 	// Track daemon state with proper failure handling
@@ -62,7 +75,14 @@ func runBridgeMode(port int) {
 				return
 			}
 
-			cmd := exec.Command(exe, "--daemon", "--port", fmt.Sprintf("%d", port))
+			args := []string{"--daemon", "--port", fmt.Sprintf("%d", port)}
+			if logFile != "" {
+				args = append(args, "--log-file", logFile)
+			}
+			if maxEntries > 0 {
+				args = append(args, "--max-entries", fmt.Sprintf("%d", maxEntries))
+			}
+			cmd := exec.Command(exe, args...)
 			cmd.Stdout = nil
 			cmd.Stderr = nil
 			cmd.Stdin = nil
@@ -134,7 +154,8 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	scanner.Buffer(buf, maxScanTokenSize)
 
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 5 * time.Second, // Default timeout for fast localhost operations
+		// A11y audits use per-request timeout (30s) via context
 	}
 
 	var wg sync.WaitGroup
@@ -290,6 +311,27 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		}
 		httpReq.Header.Set("Content-Type", "application/json")
 
+		// A11y audits can take up to 30 seconds, use per-request timeout
+		// All other requests use the default 5-second client timeout
+		if req.Method == "tools/call" && req.Params != nil {
+			var params map[string]any
+			if err := json.Unmarshal(req.Params, &params); err == nil {
+				if toolName, ok := params["name"].(string); ok && toolName == "observe" {
+					var observeArgs map[string]any
+					if argsRaw, ok := params["arguments"].(map[string]any); ok {
+						observeArgs = argsRaw
+					}
+					// Check if this is an accessibility audit request
+					if modeVal, ok := observeArgs["what"].(string); ok && modeVal == "accessibility" {
+						// Use extended timeout for a11y audits
+						ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
+						httpReq = httpReq.WithContext(ctx)
+						defer cancel()
+					}
+				}
+			}
+		}
+
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
@@ -337,6 +379,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	case <-responseSent:
 	case <-time.After(5 * time.Second):
 	}
+	close(responseSent) // Ensure channel is closed to unblock any pending sends
 
 	flushStdout()
 	time.Sleep(100 * time.Millisecond)
@@ -352,7 +395,8 @@ func bridgeStdioToHTTP(endpoint string) {
 	scanner.Buffer(buf, maxScanTokenSize)
 
 	client := &http.Client{
-		Timeout: 35 * time.Second, // Must exceed longest handler wait (a11y: 30s)
+		Timeout: 5 * time.Second, // Default timeout for fast localhost operations
+		// A11y audits use per-request timeout (30s) via context
 	}
 
 	// Track in-flight HTTP requests to ensure all responses sent before exit
@@ -417,6 +461,27 @@ func bridgeStdioToHTTP(endpoint string) {
 
 		httpReq.Header.Set("Content-Type", "application/json")
 
+		// A11y audits can take up to 30 seconds, use per-request timeout
+		// All other requests use the default 5-second client timeout
+		if req.Method == "tools/call" && req.Params != nil {
+			var params map[string]any
+			if err := json.Unmarshal(req.Params, &params); err == nil {
+				if toolName, ok := params["name"].(string); ok && toolName == "observe" {
+					var observeArgs map[string]any
+					if argsRaw, ok := params["arguments"].(map[string]any); ok {
+						observeArgs = argsRaw
+					}
+					// Check if this is an accessibility audit request
+					if modeVal, ok := observeArgs["what"].(string); ok && modeVal == "accessibility" {
+						// Use extended timeout for a11y audits
+						ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
+						httpReq = httpReq.WithContext(ctx)
+						defer cancel()
+					}
+				}
+			}
+		}
+
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
@@ -478,6 +543,7 @@ func bridgeStdioToHTTP(endpoint string) {
 		// Timeout fallback - exit anyway to avoid hanging forever
 		fmt.Fprintf(os.Stderr, "[gasoline-bridge] WARNING: No response sent within 5 seconds\n")
 	}
+	close(responseSent) // Ensure channel is closed to unblock any pending sends
 
 	// CRITICAL: Final flush and give OS time to send buffered data to parent process
 	flushStdout()

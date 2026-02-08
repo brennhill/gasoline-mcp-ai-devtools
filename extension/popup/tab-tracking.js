@@ -111,6 +111,7 @@ export async function handleTrackPageClick() {
     chrome.storage.local.get(['trackedTabId'], async (result) => {
         if (result.trackedTabId) {
             // Untrack
+            const prevTabId = result.trackedTabId;
             chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl'], () => {
                 if (btn) {
                     btn.textContent = 'Track This Tab';
@@ -124,6 +125,15 @@ export async function handleTrackPageClick() {
                 const noTrackEl = document.getElementById('no-tracking-warning');
                 if (noTrackEl)
                     noTrackEl.style.display = 'block';
+                // Stop recording if active
+                chrome.runtime.sendMessage({ type: 'record_stop' }, () => {
+                    if (chrome.runtime.lastError) { /* no recording active — expected */ }
+                });
+                // Notify content script so favicon restores without reload
+                chrome.tabs.sendMessage(prevTabId, {
+                    type: 'trackingStateChanged',
+                    state: { isTracked: false, aiPilotEnabled: false },
+                }).catch(() => { });
                 console.log('[Gasoline] Stopped tracking');
             });
         }
@@ -163,9 +173,24 @@ export async function handleTrackPageClick() {
                         if (noTrackEl)
                             noTrackEl.style.display = 'none';
                         console.log('[Gasoline] Now tracking tab:', tab.id, tab.url);
-                        // Auto-reload so content script can inject capture hooks
+                        // Only reload if content script is not already injected
                         if (tab.id) {
-                            chrome.tabs.reload(tab.id);
+                            const tabId = tab.id;
+                            chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }, (response) => {
+                                if (chrome.runtime.lastError || !response?.status) {
+                                    // Content script not loaded — reload to inject it
+                                    console.log('[Gasoline] Content script not found, reloading tab', tabId);
+                                    chrome.tabs.reload(tabId);
+                                }
+                                else {
+                                    // Content script already running — notify it of tracking change
+                                    console.log('[Gasoline] Content script already loaded, skipping reload');
+                                    chrome.tabs.sendMessage(tabId, {
+                                        type: 'trackingStateChanged',
+                                        state: { isTracked: true, aiPilotEnabled: false },
+                                    });
+                                }
+                            });
                         }
                     });
                 }

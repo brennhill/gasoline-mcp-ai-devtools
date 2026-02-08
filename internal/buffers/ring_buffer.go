@@ -206,8 +206,10 @@ func (rb *RingBuffer[T]) FindPositionAtTime(t time.Time) int64 {
 		oldestPosition = 0
 	}
 
-	// Linear scan through entries to find first one at or after time t
-	// Start from oldest entry
+	// Linear scan to find first entry at or after time t
+	// Note: Entries are time-ordered, so binary search (O(log n)) would be more efficient
+	// than linear scan (O(n)). Current buffer sizes (500-1000) make this acceptable.
+	// Future optimization: implement binary search for larger buffers.
 	for i := 0; i < len(rb.entries); i++ {
 		idx := rb.positionToIndex(oldestPosition + int64(i))
 		if !rb.addedAt[idx].Before(t) {

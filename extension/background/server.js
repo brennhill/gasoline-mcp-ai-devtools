@@ -6,7 +6,7 @@ import { getExtensionVersion } from './version-check.js';
 /**
  * Get standard headers for API requests including version header
  */
-function getRequestHeaders(additionalHeaders = {}) {
+export function getRequestHeaders(additionalHeaders = {}) {
     return {
         'Content-Type': 'application/json',
         'X-Gasoline-Client': `gasoline-extension/${getExtensionVersion()}`,

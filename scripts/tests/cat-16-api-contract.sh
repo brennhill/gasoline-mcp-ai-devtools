@@ -23,7 +23,7 @@ run_test_16_1() {
     # Valid minimal /sync
     local response_valid
     response_valid=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"test","settings":{"pilot_enabled":false}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -31,7 +31,7 @@ run_test_16_1() {
     # Invalid: missing session_id
     local response_invalid
     response_invalid=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"settings":{"pilot_enabled":false}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -58,7 +58,7 @@ begin_test "16.2" "settings field has: pilot_enabled, tracking_enabled, capture_
 run_test_16_2() {
     local response
     response=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{
             "session_id":"contract-settings",
@@ -90,7 +90,7 @@ run_test_16_3() {
     # Valid header
     local response_valid
     response_valid=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"header-test","settings":{}}' \
         "http://localhost:${PORT}/sync" 2>&1)
@@ -125,7 +125,7 @@ run_test_16_4() {
     # Valid result
     local response_valid
     response_valid=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{
             "session_id":"cmd-result-valid",
@@ -141,7 +141,7 @@ run_test_16_4() {
     # Missing correlation_id
     local response_invalid
     response_invalid=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{
             "session_id":"cmd-result-invalid",
@@ -169,7 +169,7 @@ begin_test "16.5" "extension_logs: timestamp, level, message, source required" \
 run_test_16_5() {
     local response
     response=$(curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{
             "session_id":"ext-logs-test",

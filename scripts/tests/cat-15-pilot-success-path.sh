@@ -23,7 +23,7 @@ run_test_15_1() {
 
     # Simulate extension sync with pilot ON
     curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{
             "session_id":"pilot-success-nav",
@@ -57,7 +57,7 @@ begin_test "15.2" "execute_js success: script execution enabled" \
 run_test_15_2() {
     # Simulate extension with pilot ON
     curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"pilot-success-js","settings":{"pilot_enabled":true}}' \
         "http://localhost:${PORT}/sync" >/dev/null
@@ -85,7 +85,7 @@ begin_test "15.3" "highlight success: DOM interaction enabled" \
 
 run_test_15_3() {
     curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"pilot-success-highlight","settings":{"pilot_enabled":true}}' \
         "http://localhost:${PORT}/sync" >/dev/null
@@ -114,7 +114,7 @@ begin_test "15.4" "navigate fails (pilot OFF) then succeeds (pilot ON)" \
 run_test_15_4() {
     # Start with pilot OFF
     curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"pilot-transition","settings":{"pilot_enabled":false}}' \
         "http://localhost:${PORT}/sync" >/dev/null
@@ -129,7 +129,7 @@ run_test_15_4() {
 
     # Now turn pilot ON
     curl -s -X POST \
-        -H "X-Gasoline-Client: gasoline-extension/5.8.0" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -H "Content-Type: application/json" \
         -d '{"session_id":"pilot-transition","settings":{"pilot_enabled":true}}' \
         "http://localhost:${PORT}/sync" >/dev/null

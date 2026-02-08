@@ -22,6 +22,7 @@ import * as stateManager from './state-manager'
 import * as communication from './communication'
 import * as eventListeners from './event-listeners'
 import { DebugCategory } from './debug'
+import { getRequestHeaders } from './server'
 import {
   installMessageListener,
   saveStateSnapshot,
@@ -404,7 +405,7 @@ async function maybeAutoScreenshot(errorEntry: LogEntry, sender: ChromeMessageSe
 
 export async function handleClearLogs(): Promise<{ success: boolean; error?: string }> {
   try {
-    await fetch(`${serverUrl}/logs`, { method: 'DELETE' })
+    await fetch(`${serverUrl}/logs`, { method: 'DELETE', headers: getRequestHeaders() })
     connectionStatus.entries = 0
     connectionStatus.errorCount = 0
     communication.updateBadge(connectionStatus)
@@ -425,6 +426,7 @@ export function isConnectionCheckRunning(): boolean {
   return _connectionCheckRunning
 }
 
+// eslint-disable-next-line security-node/detect-unhandled-async-errors
 export async function checkConnectionAndUpdate(): Promise<void> {
   if (_connectionCheckRunning) {
     debugLog(DebugCategory.CONNECTION, 'Skipping connection check - already running')

@@ -765,7 +765,7 @@ func TestSaveSARIFToFile_MkdirAllFailure(t *testing.T) {
 	// (a file pretending to be a directory)
 	tmpDir := t.TempDir()
 	blockingFile := filepath.Join(tmpDir, "blocker")
-	if err := os.WriteFile(blockingFile, []byte("I am a file"), 0644); err != nil {
+	if err := os.WriteFile(blockingFile, []byte("I am a file"), 0600); err != nil {
 		t.Fatalf("Failed to create blocking file: %v", err)
 	}
 	// Try to create a file inside the blocking file (which is not a directory)

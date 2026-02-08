@@ -9,6 +9,7 @@ export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG, }
 // Re-export server communication functions
 // NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
 export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendNetworkWaterfallToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, postQueryResult, postAsyncCommandResult, postExtensionLogs, sendStatusPing, pollPendingQueries, } from './server.js';
+import { getRequestHeaders } from './server.js';
 /**
  * Truncate a single argument if too large
  */
@@ -85,7 +86,7 @@ export async function captureScreenshot(tabId, serverUrl, relatedErrorId, errorT
         recordScreenshotFn(tabId);
         const response = await fetch(`${serverUrl}/screenshots`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getRequestHeaders(),
             body: JSON.stringify({
                 dataUrl,
                 url: tab.url,

@@ -9,7 +9,43 @@ const TOAST_THEMES = {
     success: { bg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', shadow: 'rgba(34, 197, 94, 0.4)' },
     warning: { bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', shadow: 'rgba(245, 158, 11, 0.4)' },
     error: { bg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', shadow: 'rgba(239, 68, 68, 0.4)' },
+    audio: { bg: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', shadow: 'rgba(249, 115, 22, 0.5)' },
 };
+/** Add animation keyframes to document */
+function injectToastAnimationStyles() {
+    if (document.getElementById('gasoline-toast-animations'))
+        return;
+    const style = document.createElement('style');
+    style.id = 'gasoline-toast-animations';
+    style.textContent = `
+    @keyframes gasolineArrowBounce {
+      0%, 100% { transform: translateY(0) translateX(0); opacity: 1; }
+      50% { transform: translateY(-4px) translateX(4px); opacity: 0.7; }
+    }
+    @keyframes gasolineArrowBounceUp {
+      0%, 100% { transform: translateY(0); opacity: 1; }
+      50% { transform: translateY(-6px); opacity: 0.7; }
+    }
+    @keyframes gasolineToastPulse {
+      0%, 100% { box-shadow: 0 4px 20px var(--toast-shadow); }
+      50% { box-shadow: 0 8px 32px var(--toast-shadow-intense); }
+    }
+    .gasoline-toast-arrow {
+      display: inline-block;
+      margin-left: 8px;
+      animation: gasolineArrowBounce 1.5s ease-in-out infinite;
+    }
+    @media (max-width: 767px) {
+      .gasoline-toast-arrow {
+        animation: gasolineArrowBounceUp 1.5s ease-in-out infinite;
+      }
+    }
+    .gasoline-toast-pulse {
+      animation: gasolineToastPulse 2s ease-in-out infinite;
+    }
+  `;
+    document.head.appendChild(style);
+}
 /** Truncate text to maxLen characters with ellipsis */
 function truncateText(text, maxLen) {
     if (text.length <= maxLen)
@@ -19,15 +55,25 @@ function truncateText(text, maxLen) {
 /**
  * Show a brief visual toast overlay for AI actions.
  * Supports color-coded states and structured content with truncation.
+ * For audio-related toasts, adds animated arrow pointing to extension icon.
  */
 function showActionToast(text, detail, state = 'trying', durationMs = 3000) {
     // Remove existing toast
     const existing = document.getElementById('gasoline-action-toast');
     if (existing)
         existing.remove();
+    // Inject animation styles once
+    injectToastAnimationStyles();
     const theme = TOAST_THEMES[state] ?? TOAST_THEMES.trying;
+    const isAudioPrompt = state === 'audio' || (detail && detail.toLowerCase().includes('audio') && detail.toLowerCase().includes('click'));
+    // Detect screen size: small screens < 768px (mobile) vs larger
+    const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 768;
+    const arrowChar = isSmallScreen ? '↑' : '↗';
     const toast = document.createElement('div');
     toast.id = 'gasoline-action-toast';
+    if (isAudioPrompt) {
+        toast.className = 'gasoline-toast-pulse';
+    }
     // Build content: label + truncated detail
     const label = document.createElement('span');
     label.textContent = truncateText(text, 30);
@@ -43,28 +89,45 @@ function showActionToast(text, detail, state = 'trying', durationMs = 3000) {
         Object.assign(det.style, { fontWeight: '400', opacity: '0.9' });
         toast.appendChild(det);
     }
+    // Add animated arrow for audio prompts (↗ on large screens, ↑ on small screens)
+    if (isAudioPrompt) {
+        const arrow = document.createElement('span');
+        arrow.className = 'gasoline-toast-arrow';
+        arrow.textContent = arrowChar;
+        Object.assign(arrow.style, {
+            fontSize: '16px',
+            fontWeight: '700',
+            marginLeft: '12px',
+            display: 'inline-block',
+        });
+        toast.appendChild(arrow);
+    }
     Object.assign(toast.style, {
         position: 'fixed',
         top: '16px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        padding: '8px 20px',
+        right: isAudioPrompt && !isSmallScreen ? '16px' : 'auto',
+        left: isAudioPrompt && isSmallScreen ? '50%' : (isAudioPrompt ? 'auto' : '50%'),
+        transform: isAudioPrompt && isSmallScreen ? 'translateX(-50%)' : (isAudioPrompt ? 'none' : 'translateX(-50%)'),
+        padding: isAudioPrompt ? '12px 24px' : '8px 20px',
         background: theme.bg,
         color: '#fff',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        fontSize: '13px',
+        fontSize: isAudioPrompt ? '14px' : '13px',
+        fontWeight: isAudioPrompt ? '600' : '400',
         borderRadius: '8px',
         boxShadow: `0 4px 20px ${theme.shadow}`,
         zIndex: '2147483647',
         pointerEvents: 'none',
         opacity: '0',
         transition: 'opacity 0.2s ease-in',
-        maxWidth: '500px',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
+        maxWidth: isAudioPrompt ? '320px' : '500px',
+        whiteSpace: isAudioPrompt ? 'normal' : 'nowrap',
+        overflow: isAudioPrompt ? 'visible' : 'hidden',
         display: 'flex',
         alignItems: 'center',
         gap: '0',
+        '--toast-shadow': theme.shadow,
+        '--toast-shadow-intense': theme.shadow.replace('0.4)', '0.7)'),
     });
     const target = document.body || document.documentElement;
     if (!target)
@@ -139,6 +202,48 @@ function showSubtitle(text) {
     bar.style.opacity = '1';
 }
 /**
+ * Show or hide a recording watermark (Gasoline flame icon) in the bottom-right corner.
+ * The icon renders at 64x64px with 50% opacity, captured in the tab video.
+ */
+function toggleRecordingWatermark(visible) {
+    const ELEMENT_ID = 'gasoline-recording-watermark';
+    if (!visible) {
+        const existing = document.getElementById(ELEMENT_ID);
+        if (existing) {
+            existing.style.opacity = '0';
+            setTimeout(() => existing.remove(), 300);
+        }
+        return;
+    }
+    // Don't create a duplicate
+    if (document.getElementById(ELEMENT_ID))
+        return;
+    const container = document.createElement('div');
+    container.id = ELEMENT_ID;
+    Object.assign(container.style, {
+        position: 'fixed',
+        bottom: '16px',
+        right: '16px',
+        width: '64px',
+        height: '64px',
+        opacity: '0',
+        transition: 'opacity 0.3s ease-in',
+        zIndex: '2147483645',
+        pointerEvents: 'none',
+    });
+    const img = document.createElement('img');
+    img.src = chrome.runtime.getURL('icons/icon.svg');
+    Object.assign(img.style, { width: '100%', height: '100%', opacity: '0.5' });
+    container.appendChild(img);
+    const target = document.body || document.documentElement;
+    if (!target)
+        return;
+    target.appendChild(container);
+    // Trigger reflow then fade in
+    void container.offsetHeight;
+    container.style.opacity = '1';
+}
+/**
  * Initialize runtime message listener
  * Listens for messages from background (feature toggles and pilot commands)
  */
@@ -167,6 +272,12 @@ export function initRuntimeMessageListener() {
             const msg = message;
             if (msg.text)
                 showActionToast(msg.text, msg.detail, msg.state || 'trying', msg.duration_ms);
+            return false;
+        }
+        // Show/hide recording watermark overlay
+        if (message.type === 'GASOLINE_RECORDING_WATERMARK') {
+            const msg = message;
+            toggleRecordingWatermark(msg.visible ?? false);
             return false;
         }
         // Show subtitle overlay (gated by toggle)

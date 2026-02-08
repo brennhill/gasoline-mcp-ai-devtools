@@ -18,11 +18,25 @@ import (
 // ============================================================================
 
 const (
-	recordingStorageMax    = 1024 * 1024 * 1024 // 1GB max storage
-	recordingWarningLevel  = 800 * 1024 * 1024  // 800MB warning threshold (80%)
-	recordingBaseDir       = ".gasoline/recordings"
-	recordingMetadataFile  = "metadata.json"
+	recordingStorageMax   = 1024 * 1024 * 1024 // 1GB max storage
+	recordingWarningLevel = 800 * 1024 * 1024  // 800MB warning threshold (80%)
+	recordingBaseDir      = ".gasoline/recordings"
+	recordingMetadataFile = "metadata.json"
 )
+
+// ============================================================================
+// Storage Info Types
+// ============================================================================
+
+// StorageInfo provides information about recording storage usage.
+type StorageInfo struct {
+	UsedBytes      int64   `json:"used_bytes"`      // Current storage usage in bytes
+	MaxBytes       int64   `json:"max_bytes"`       // Maximum storage limit in bytes
+	WarningBytes   int64   `json:"warning_bytes"`   // Warning threshold in bytes
+	UsedPercent    float64 `json:"used_percent"`    // Storage usage as percentage
+	WarningLevel   bool    `json:"warning_level"`   // True if at or above warning threshold
+	RecordingCount int     `json:"recording_count"` // Number of recordings stored
+}
 
 // ============================================================================
 // Recording Lifecycle Methods
@@ -194,7 +208,7 @@ func (r *RecordingManager) persistRecordingToDisk(recording *Recording) error {
 
 	// Write file
 	metadataPath := filepath.Join(recordingDir, recordingMetadataFile)
-	err = os.WriteFile(metadataPath, data, 0644)
+	err = os.WriteFile(metadataPath, data, 0600)
 	if err != nil {
 		return fmt.Errorf("write_file_failed: %v", err)
 	}
@@ -312,4 +326,149 @@ func calculateRecordingSize(recording *Recording) int64 {
 	size := int64(len(recording.Name) + len(recording.StartURL) + len(recording.TestID) + 500)
 	size += int64(len(recording.Actions)) * 200
 	return size
+}
+
+// ============================================================================
+// Storage Management
+// ============================================================================
+
+// GetStorageInfo returns information about recording storage usage.
+func (r *RecordingManager) GetStorageInfo() (StorageInfo, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Recalculate storage from disk for accuracy
+	usedBytes, recordingCount, err := r.calculateStorageFromDisk()
+	if err != nil {
+		return StorageInfo{}, err
+	}
+
+	// Update in-memory tracking
+	r.recordingStorageUsed = usedBytes
+
+	usedPercent := float64(usedBytes) / float64(recordingStorageMax) * 100
+
+	return StorageInfo{
+		UsedBytes:      usedBytes,
+		MaxBytes:       recordingStorageMax,
+		WarningBytes:   recordingWarningLevel,
+		UsedPercent:    usedPercent,
+		WarningLevel:   usedBytes >= recordingWarningLevel,
+		RecordingCount: recordingCount,
+	}, nil
+}
+
+// DeleteRecording deletes a recording from disk and updates storage tracking.
+func (r *RecordingManager) DeleteRecording(recordingID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("cannot_find_home: %v", err)
+	}
+
+	recordingDir := filepath.Join(homeDir, recordingBaseDir, recordingID)
+
+	// Check if recording exists
+	if _, err := os.Stat(recordingDir); os.IsNotExist(err) {
+		return fmt.Errorf("recording_not_found: No recording with id: %s", recordingID)
+	}
+
+	// Get size before deletion
+	sizeBefore, err := r.getDirectorySize(recordingDir)
+	if err != nil {
+		return fmt.Errorf("size_calculation_failed: %v", err)
+	}
+
+	// Delete the recording directory
+	err = os.RemoveAll(recordingDir)
+	if err != nil {
+		return fmt.Errorf("delete_failed: %v", err)
+	}
+
+	// Update storage tracking
+	r.recordingStorageUsed -= sizeBefore
+	if r.recordingStorageUsed < 0 {
+		r.recordingStorageUsed = 0
+	}
+
+	// Remove from in-memory map if present
+	delete(r.recordings, recordingID)
+
+	return nil
+}
+
+// RecalculateStorageUsed recalculates storage usage from disk.
+// Useful for recovering from inconsistencies or on startup.
+func (r *RecordingManager) RecalculateStorageUsed() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	usedBytes, _, err := r.calculateStorageFromDisk()
+	if err != nil {
+		return err
+	}
+
+	r.recordingStorageUsed = usedBytes
+	return nil
+}
+
+// calculateStorageFromDisk calculates total storage usage by scanning disk.
+// Returns (bytes used, recording count, error).
+func (r *RecordingManager) calculateStorageFromDisk() (int64, int, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return 0, 0, fmt.Errorf("cannot_find_home: %v", err)
+	}
+
+	recordingsDir := filepath.Join(homeDir, recordingBaseDir)
+
+	// Check if directory exists
+	if _, err := os.Stat(recordingsDir); os.IsNotExist(err) {
+		return 0, 0, nil // No recordings yet
+	}
+
+	entries, err := os.ReadDir(recordingsDir)
+	if err != nil {
+		return 0, 0, fmt.Errorf("readdir_failed: %v", err)
+	}
+
+	var totalSize int64
+	recordingCount := 0
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		recordingDir := filepath.Join(recordingsDir, entry.Name())
+		size, err := r.getDirectorySize(recordingDir)
+		if err != nil {
+			// Skip broken recordings
+			continue
+		}
+
+		totalSize += size
+		recordingCount++
+	}
+
+	return totalSize, recordingCount, nil
+}
+
+// getDirectorySize calculates the total size of a directory recursively.
+func (r *RecordingManager) getDirectorySize(dirPath string) (int64, error) {
+	var size int64
+
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+
+	return size, err
 }

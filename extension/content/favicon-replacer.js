@@ -18,7 +18,10 @@ let flickerInterval = null;
  */
 export function initFaviconReplacer() {
     // Listen for tracking state updates from background
-    chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
+    chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
+        // Only accept messages from the extension itself (background script)
+        if (sender.id !== chrome.runtime.id)
+            return;
         if (message.type === 'trackingStateChanged') {
             const newState = message.state;
             updateFavicon(newState);
