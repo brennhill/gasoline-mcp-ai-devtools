@@ -430,7 +430,13 @@ func (s *SessionStore) Stats() (StoreStats, error) {
 			continue
 		}
 
-		nsDir := filepath.Join(s.projectDir, entry.Name())
+		// Sanitize entry name to prevent path traversal (reject ".." and absolute paths)
+		name := entry.Name()
+		if name == ".." || filepath.IsAbs(name) || strings.Contains(name, "..") {
+			continue
+		}
+
+		nsDir := filepath.Join(s.projectDir, name)
 		nsEntries, err := os.ReadDir(nsDir)
 		if err != nil {
 			continue
