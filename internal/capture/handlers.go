@@ -5,7 +5,9 @@ package capture
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -19,6 +21,7 @@ func (c *Capture) HandleNetworkBodies(w http.ResponseWriter, r *http.Request) {
 			Bodies []NetworkBody `json:"bodies"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			fmt.Fprintf(os.Stderr, "[gasoline] HandleNetworkBodies: Invalid JSON - %v\n", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
 			return
@@ -59,6 +62,7 @@ func (c *Capture) HandleNetworkWaterfall(w http.ResponseWriter, r *http.Request)
 func (c *Capture) handleNetworkWaterfallPOST(w http.ResponseWriter, r *http.Request) {
 	var payload NetworkWaterfallPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] handleNetworkWaterfallPOST: Invalid JSON - %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
 		return
@@ -118,7 +122,12 @@ func (c *Capture) HandlePendingQueries(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"queries": queries,
-		"count":   func() int { if q, ok := queries.([]PendingQueryResponse); ok { return len(q) }; return 0 }(),
+		"count": func() int {
+			if q, ok := queries.([]PendingQueryResponse); ok {
+				return len(q)
+			}
+			return 0
+		}(),
 	})
 }
 
@@ -142,6 +151,7 @@ func (c *Capture) HandlePilotStatus(w http.ResponseWriter, r *http.Request) {
 // Extension posts results after executing DOM queries.
 func (c *Capture) HandleDOMResult(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
+		fmt.Fprintf(os.Stderr, "[gasoline] HandleDOMResult: Method not allowed - %s\n", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -153,12 +163,14 @@ func (c *Capture) HandleDOMResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] HandleDOMResult: Invalid JSON - %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
 		return
 	}
 
 	if body.ID == "" {
+		fmt.Fprintf(os.Stderr, "[gasoline] HandleDOMResult: Missing query ID\n")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Missing query ID"})
 		return
@@ -176,6 +188,7 @@ func (c *Capture) HandleDOMResult(w http.ResponseWriter, r *http.Request) {
 // HandleA11yResult processes accessibility audit results from extension.
 func (c *Capture) HandleA11yResult(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
+		fmt.Fprintf(os.Stderr, "[gasoline] HandleA11yResult: Method not allowed - %s\n", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -187,6 +200,7 @@ func (c *Capture) HandleA11yResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] HandleA11yResult: Invalid JSON - %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
 		return
@@ -205,6 +219,7 @@ func (c *Capture) HandleA11yResult(w http.ResponseWriter, r *http.Request) {
 // HandleStateResult processes page state snapshots from extension.
 func (c *Capture) HandleStateResult(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
+		fmt.Fprintf(os.Stderr, "[gasoline] HandleStateResult: Method not allowed - %s\n", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -216,6 +231,7 @@ func (c *Capture) HandleStateResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] HandleStateResult: Invalid JSON - %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
 		return
@@ -235,6 +251,7 @@ func (c *Capture) HandleStateResult(w http.ResponseWriter, r *http.Request) {
 // Accepts both query_id (as "id") and correlation_id for async command tracking.
 func (c *Capture) HandleExecuteResult(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
+		fmt.Fprintf(os.Stderr, "[gasoline] HandleExecuteResult: Method not allowed - %s\n", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -249,6 +266,7 @@ func (c *Capture) HandleExecuteResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] HandleExecuteResult: Invalid JSON - %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
 		return
@@ -273,6 +291,7 @@ func (c *Capture) HandleExecuteResult(w http.ResponseWriter, r *http.Request) {
 // HandleHighlightResult processes element highlight results from extension.
 func (c *Capture) HandleHighlightResult(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
+		fmt.Fprintf(os.Stderr, "[gasoline] HandleHighlightResult: Method not allowed - %s\n", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -284,6 +303,7 @@ func (c *Capture) HandleHighlightResult(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] HandleHighlightResult: Invalid JSON - %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
 		return
@@ -309,6 +329,7 @@ func (c *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) 
 			Actions []EnhancedAction `json:"actions"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			fmt.Fprintf(os.Stderr, "[gasoline] HandleEnhancedActions: Invalid JSON - %v\n", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
 			return
@@ -325,6 +346,66 @@ func (c *Capture) HandleEnhancedActions(w http.ResponseWriter, r *http.Request) 
 		json.NewEncoder(w).Encode(map[string]any{
 			"actions": actions,
 			"count":   len(actions),
+		})
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// HandleRecordingStorage handles recording storage management.
+// GET: returns storage info
+// DELETE: deletes a recording (requires recording_id query param)
+// POST: recalculates storage usage
+func (c *Capture) HandleRecordingStorage(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		info, err := c.GetStorageInfo()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(info)
+	case "DELETE":
+		recordingID := r.URL.Query().Get("recording_id")
+		if recordingID == "" {
+			fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Missing recording_id query parameter\n")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Missing recording_id query parameter"})
+			return
+		}
+		err := c.DeleteRecording(recordingID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Failed to delete recording %s - %v\n", recordingID, err)
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"status":  "ok",
+			"deleted": recordingID,
+		})
+	case "POST":
+		err := c.RecalculateStorageUsed()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Failed to recalculate storage - %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		info, err := c.GetStorageInfo()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[gasoline] HandleRecordingStorage: Failed to get storage info - %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"status":  "ok",
+			"storage": info,
 		})
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
