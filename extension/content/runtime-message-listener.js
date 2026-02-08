@@ -22,6 +22,10 @@ function injectToastAnimationStyles() {
       0%, 100% { transform: translateY(0) translateX(0); opacity: 1; }
       50% { transform: translateY(-4px) translateX(4px); opacity: 0.7; }
     }
+    @keyframes gasolineArrowBounceUp {
+      0%, 100% { transform: translateY(0); opacity: 1; }
+      50% { transform: translateY(-6px); opacity: 0.7; }
+    }
     @keyframes gasolineToastPulse {
       0%, 100% { box-shadow: 0 4px 20px var(--toast-shadow); }
       50% { box-shadow: 0 8px 32px var(--toast-shadow-intense); }
@@ -30,6 +34,11 @@ function injectToastAnimationStyles() {
       display: inline-block;
       margin-left: 8px;
       animation: gasolineArrowBounce 1.5s ease-in-out infinite;
+    }
+    @media (max-width: 767px) {
+      .gasoline-toast-arrow {
+        animation: gasolineArrowBounceUp 1.5s ease-in-out infinite;
+      }
     }
     .gasoline-toast-pulse {
       animation: gasolineToastPulse 2s ease-in-out infinite;
@@ -57,6 +66,9 @@ function showActionToast(text, detail, state = 'trying', durationMs = 3000) {
     injectToastAnimationStyles();
     const theme = TOAST_THEMES[state] ?? TOAST_THEMES.trying;
     const isAudioPrompt = state === 'audio' || (detail && detail.toLowerCase().includes('audio') && detail.toLowerCase().includes('click'));
+    // Detect screen size: small screens < 768px (mobile) vs larger
+    const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 768;
+    const arrowChar = isSmallScreen ? '↑' : '↗';
     const toast = document.createElement('div');
     toast.id = 'gasoline-action-toast';
     if (isAudioPrompt) {
@@ -77,11 +89,11 @@ function showActionToast(text, detail, state = 'trying', durationMs = 3000) {
         Object.assign(det.style, { fontWeight: '400', opacity: '0.9' });
         toast.appendChild(det);
     }
-    // Add animated arrow for audio prompts pointing to extension icon (↗)
+    // Add animated arrow for audio prompts (↗ on large screens, ↑ on small screens)
     if (isAudioPrompt) {
         const arrow = document.createElement('span');
         arrow.className = 'gasoline-toast-arrow';
-        arrow.textContent = '↗';
+        arrow.textContent = arrowChar;
         Object.assign(arrow.style, {
             fontSize: '16px',
             fontWeight: '700',
@@ -93,9 +105,9 @@ function showActionToast(text, detail, state = 'trying', durationMs = 3000) {
     Object.assign(toast.style, {
         position: 'fixed',
         top: '16px',
-        right: '16px',
-        left: isAudioPrompt ? 'auto' : '50%',
-        transform: isAudioPrompt ? 'none' : 'translateX(-50%)',
+        right: isAudioPrompt && !isSmallScreen ? '16px' : 'auto',
+        left: isAudioPrompt && isSmallScreen ? '50%' : (isAudioPrompt ? 'auto' : '50%'),
+        transform: isAudioPrompt && isSmallScreen ? 'translateX(-50%)' : (isAudioPrompt ? 'none' : 'translateX(-50%)'),
         padding: isAudioPrompt ? '12px 24px' : '8px 20px',
         background: theme.bg,
         color: '#fff',
