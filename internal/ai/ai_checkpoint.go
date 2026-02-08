@@ -15,7 +15,7 @@ import (
 
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/server"
-	"github.com/dev-console/dev-console/internal/session"
+	gasTypes "github.com/dev-console/dev-console/internal/types"
 )
 
 // Type aliases for types from capture package
@@ -77,7 +77,7 @@ type DiffResponse struct {
 	Network           *NetworkDiff       `json:"network,omitempty"`
 	WebSocket         *WebSocketDiff     `json:"websocket,omitempty"`
 	Actions           *ActionsDiff       `json:"actions,omitempty"`
-	PerformanceAlerts []session.PerformanceAlert `json:"performance_alerts,omitempty"`
+	PerformanceAlerts []gasTypes.PerformanceAlert `json:"performance_alerts,omitempty"`
 }
 
 // ConsoleDiff contains deduplicated console entries since the checkpoint
@@ -166,7 +166,7 @@ type CheckpointManager struct {
 	server server.LogReader // Use interface instead of concrete *server.Server
 
 	// Push regression alerts
-	pendingAlerts []session.PerformanceAlert
+	pendingAlerts []gasTypes.PerformanceAlert
 	alertCounter  int64
 	alertDelivery int64 // monotonic counter for delivery tracking
 	capture       *capture.Capture

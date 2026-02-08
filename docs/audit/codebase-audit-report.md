@@ -495,6 +495,10 @@ if (!response.ok) {
   - Testing strategy
   - Migration checklist
   - Estimated effort (17.25 hours total)
+
+**Go Files:**
+- **types.go:** See [`types-go-refactor-plan.md`](types-go-refactor-plan.md) - 12 new files, 6.8 hours
+- **sessions.go:** See [`sessions-go-refactor-plan.md`](sessions-go-refactor-plan.md) - 11 new files, 4.6 hours
 - **types.go Split:** See [`types-go-refactor-plan.md`](types-go-refactor-plan.md) for detailed split strategy including:
   - 12 new files organized by domain/concern
   - Phase-by-phase refactoring approach

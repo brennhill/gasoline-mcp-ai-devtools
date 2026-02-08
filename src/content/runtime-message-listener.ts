@@ -173,7 +173,7 @@ function showSubtitle(text: string): void {
 
 /**
  * Show or hide a recording watermark (Gasoline flame icon) in the bottom-right corner.
- * The icon renders at 32x32px with 50% opacity, captured in the tab video.
+ * The icon renders at 64x64px with 50% opacity, captured in the tab video.
  */
 function toggleRecordingWatermark(visible: boolean): void {
   const ELEMENT_ID = 'gasoline-recording-watermark'
@@ -196,8 +196,8 @@ function toggleRecordingWatermark(visible: boolean): void {
     position: 'fixed',
     bottom: '16px',
     right: '16px',
-    width: '32px',
-    height: '32px',
+    width: '64px',
+    height: '64px',
     opacity: '0',
     transition: 'opacity 0.3s ease-in',
     zIndex: '2147483645',
