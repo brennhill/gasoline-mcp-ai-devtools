@@ -3390,7 +3390,17 @@ function restoreState(state, includeUrl = true) {
   });
   if (state.cookies) {
     state.cookies.split(";").forEach((c) => {
-      document.cookie = c.trim();
+      const trimmed = c.trim();
+      if (!trimmed)
+        return;
+      let securedCookie = trimmed;
+      if (window.location.protocol === "https:" && !securedCookie.toLowerCase().includes("secure")) {
+        securedCookie += "; Secure";
+      }
+      if (!securedCookie.toLowerCase().includes("samesite")) {
+        securedCookie += "; SameSite=Strict";
+      }
+      document.cookie = securedCookie;
     });
   }
   const restored = {
