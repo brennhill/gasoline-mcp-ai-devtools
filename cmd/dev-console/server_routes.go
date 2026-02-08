@@ -141,30 +141,32 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *c
 }
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
-func setupHTTPRoutes(server *Server, cap *capture.Capture) {
+func setupHTTPRoutes(server *Server, cap *capture.Capture) *http.ServeMux {
+	mux := http.NewServeMux()
+
 	// V4 routes
 	if cap != nil {
-		http.HandleFunc("/websocket-events", corsMiddleware(extensionOnly(cap.HandleWebSocketEvents)))
-		http.HandleFunc("/websocket-status", corsMiddleware(extensionOnly(cap.HandleWebSocketStatus)))
-		http.HandleFunc("/network-bodies", corsMiddleware(extensionOnly(cap.HandleNetworkBodies)))
-		http.HandleFunc("/network-waterfall", corsMiddleware(extensionOnly(cap.HandleNetworkWaterfall)))
-		http.HandleFunc("/extension-logs", corsMiddleware(extensionOnly(cap.HandleExtensionLogs)))
-		http.HandleFunc("/pending-queries", corsMiddleware(extensionOnly(cap.HandlePendingQueries)))
-		http.HandleFunc("/pilot-status", corsMiddleware(extensionOnly(cap.HandlePilotStatus)))
-		http.HandleFunc("/dom-result", corsMiddleware(extensionOnly(cap.HandleDOMResult)))
-		http.HandleFunc("/a11y-result", corsMiddleware(extensionOnly(cap.HandleA11yResult)))
-		http.HandleFunc("/state-result", corsMiddleware(extensionOnly(cap.HandleStateResult)))
-		http.HandleFunc("/execute-result", corsMiddleware(extensionOnly(cap.HandleExecuteResult)))
-		http.HandleFunc("/highlight-result", corsMiddleware(extensionOnly(cap.HandleHighlightResult)))
-		http.HandleFunc("/enhanced-actions", corsMiddleware(extensionOnly(cap.HandleEnhancedActions)))
-		http.HandleFunc("/performance-snapshots", corsMiddleware(extensionOnly(cap.HandlePerformanceSnapshots)))
-		http.HandleFunc("/api/extension-status", corsMiddleware(extensionOnly(cap.HandleExtensionStatus)))
+		mux.HandleFunc("/websocket-events", corsMiddleware(extensionOnly(cap.HandleWebSocketEvents)))
+		mux.HandleFunc("/websocket-status", corsMiddleware(extensionOnly(cap.HandleWebSocketStatus)))
+		mux.HandleFunc("/network-bodies", corsMiddleware(extensionOnly(cap.HandleNetworkBodies)))
+		mux.HandleFunc("/network-waterfall", corsMiddleware(extensionOnly(cap.HandleNetworkWaterfall)))
+		mux.HandleFunc("/extension-logs", corsMiddleware(extensionOnly(cap.HandleExtensionLogs)))
+		mux.HandleFunc("/pending-queries", corsMiddleware(extensionOnly(cap.HandlePendingQueries)))
+		mux.HandleFunc("/pilot-status", corsMiddleware(extensionOnly(cap.HandlePilotStatus)))
+		mux.HandleFunc("/dom-result", corsMiddleware(extensionOnly(cap.HandleDOMResult)))
+		mux.HandleFunc("/a11y-result", corsMiddleware(extensionOnly(cap.HandleA11yResult)))
+		mux.HandleFunc("/state-result", corsMiddleware(extensionOnly(cap.HandleStateResult)))
+		mux.HandleFunc("/execute-result", corsMiddleware(extensionOnly(cap.HandleExecuteResult)))
+		mux.HandleFunc("/highlight-result", corsMiddleware(extensionOnly(cap.HandleHighlightResult)))
+		mux.HandleFunc("/enhanced-actions", corsMiddleware(extensionOnly(cap.HandleEnhancedActions)))
+		mux.HandleFunc("/performance-snapshots", corsMiddleware(extensionOnly(cap.HandlePerformanceSnapshots)))
+		mux.HandleFunc("/api/extension-status", corsMiddleware(extensionOnly(cap.HandleExtensionStatus)))
 
 		// Unified sync endpoint (replaces multiple polling loops)
-		http.HandleFunc("/sync", corsMiddleware(extensionOnly(cap.HandleSync)))
+		mux.HandleFunc("/sync", corsMiddleware(extensionOnly(cap.HandleSync)))
 
 		// Multi-client management endpoints
-		http.HandleFunc("/clients", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/clients", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case "GET":
 				// List all registered clients
@@ -192,7 +194,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 		})))
 
 		// Client-specific endpoint with ID in path
-		http.HandleFunc("/clients/", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/clients/", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 			// Extract client ID from path: /clients/{id}
 			clientID := strings.TrimPrefix(r.URL.Path, "/clients/")
 			if clientID == "" {
@@ -219,32 +221,32 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 		})))
 
 		// Video recording save endpoint
-		http.HandleFunc("/recordings/save", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/recordings/save", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 			server.handleVideoRecordingSave(w, r, cap)
 		})))
 
 		// Recording storage management endpoint
-		http.HandleFunc("/recordings/storage", corsMiddleware(extensionOnly(cap.HandleRecordingStorage)))
+		mux.HandleFunc("/recordings/storage", corsMiddleware(extensionOnly(cap.HandleRecordingStorage)))
 
 		// Reveal recording in file manager (Finder/Explorer)
-		http.HandleFunc("/recordings/reveal", corsMiddleware(extensionOnly(handleRevealRecording)))
+		mux.HandleFunc("/recordings/reveal", corsMiddleware(extensionOnly(handleRevealRecording)))
 
 		// CI Infrastructure endpoints
-		http.HandleFunc("/snapshot", corsMiddleware(extensionOnly(handleSnapshot(server, cap))))
-		http.HandleFunc("/clear", corsMiddleware(extensionOnly(handleClear(server, cap))))
-		http.HandleFunc("/test-boundary", corsMiddleware(extensionOnly(handleTestBoundary(cap))))
+		mux.HandleFunc("/snapshot", corsMiddleware(extensionOnly(handleSnapshot(server, cap))))
+		mux.HandleFunc("/clear", corsMiddleware(extensionOnly(handleClear(server, cap))))
+		mux.HandleFunc("/test-boundary", corsMiddleware(extensionOnly(handleTestBoundary(cap))))
 	}
 
 	// OpenAPI specification endpoint
-	http.HandleFunc("/openapi.json", corsMiddleware(handleOpenAPI))
+	mux.HandleFunc("/openapi.json", corsMiddleware(handleOpenAPI))
 
 	// MCP over HTTP endpoint (for browser extension backward compatibility)
 	mcp := NewToolHandler(server, cap)
-	http.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
+	mux.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
 
 	// NOTE: /settings endpoint removed - use /sync for all extension communication
 
-	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 			return
@@ -287,7 +289,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 	}))
 
 	// Shutdown endpoint for graceful server stop
-	http.HandleFunc("/shutdown", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/shutdown", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 			return
@@ -323,7 +325,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 	})))
 
 	// Diagnostics endpoint for bug reports
-	http.HandleFunc("/diagnostics", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/diagnostics", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 			return
@@ -410,7 +412,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 		jsonResponse(w, http.StatusOK, resp)
 	}))
 
-	http.HandleFunc("/logs", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/logs", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
 			entries := server.getEntries()
@@ -463,11 +465,11 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 		}
 	})))
 
-	http.HandleFunc("/screenshots", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/screenshots", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleScreenshot(w, r, cap)
 	}))
 
-	http.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Not found"})
 			return
@@ -479,4 +481,6 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) {
 			"logs":    "/logs",
 		})
 	}))
+
+	return mux
 }

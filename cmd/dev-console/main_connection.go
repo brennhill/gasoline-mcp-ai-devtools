@@ -487,7 +487,7 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 	}})
 
 	// Register HTTP routes before starting the goroutine.
-	setupHTTPRoutes(server, cap)
+	mux := setupHTTPRoutes(server, cap)
 
 	// Create context for clean shutdown of background goroutines
 	ctx, cancel := context.WithCancel(context.Background())
@@ -495,6 +495,27 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 
 	// Start version checking loop (checks GitHub daily for new releases)
 	startVersionCheckLoop(ctx)
+
+	// Start screenshot rate limiter cleanup (removes entries older than 1 minute)
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				screenshotRateMu.Lock()
+				now := time.Now()
+				for clientID, lastUpload := range screenshotRateLimiter {
+					if now.Sub(lastUpload) > time.Minute {
+						delete(screenshotRateLimiter, clientID)
+					}
+				}
+				screenshotRateMu.Unlock()
+			}
+		}
+	}()
 
 	// Startup cleanup: Check PID file and kill stale process before binding
 	pidFile := pidFilePath(port)
@@ -559,7 +580,7 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 		ReadTimeout:  5 * time.Second,   // Localhost should be fast
 		WriteTimeout: 10 * time.Second,  // Localhost should be fast
 		IdleTimeout:  120 * time.Second, // Keep-alive for polling connections
-		Handler:      AuthMiddleware(apiKey)(http.DefaultServeMux),
+		Handler:      AuthMiddleware(apiKey)(mux),
 	}
 	go func() {
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
