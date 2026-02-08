@@ -3,7 +3,7 @@
 <img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline MCP - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-5.8.2-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
+[![Version](https://img.shields.io/badge/version-6.0--BETA-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
@@ -27,12 +27,12 @@
 
 <div align="center">
 
-## 📦 Upgrade Notice
+## 📦 Latest Release
 
-If you're on an older version, please upgrade to **v5.8.0** for early-patch WebSocket capture and improved stability:
+Current version: **v6.0-BETA** — Major recording and gesture improvements.
 
 ```bash
-npx gasoline-mcp@5.8.0
+npx gasoline-mcp@6.0-BETA
 ```
 
 </div>
@@ -99,7 +99,7 @@ Choose one option below based on your setup:
 **Verify setup:**
 ```bash
 curl http://localhost:7890/health
-# Should return: {"status":"ok","version":"5.8.0",...}
+# Should return: {"status":"ok","version":"6.0-BETA",...}
 ```
 
 **How it works:**
@@ -166,7 +166,11 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 See [latest benchmarks](docs/benchmarks/latest-benchmark.md) for current performance data.
 
+<<<<<<< HEAD
 Last benchmarked: 2026-02-06 on darwin/arm64 (v5.8.2)
+=======
+Last benchmarked: 2026-02-08 on darwin/arm64 (v6.0-BETA)
+>>>>>>> next
 
 ## Known Issues
 
