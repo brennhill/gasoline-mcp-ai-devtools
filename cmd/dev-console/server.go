@@ -180,7 +180,12 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 	cb := s.onEntries
 	s.mu.Unlock()
 
-	// File I/O outside lock
+	// File I/O outside lock — snapshot protects consistency
+	// Note: If clearEntries() is called between unlock and file I/O, the file may temporarily contain
+	// stale entries that were cleared from memory. This is acceptable because:
+	// 1. In-memory entries are always consistent (cleared immediately)
+	// 2. On rotation, the entire file is rewritten with fresh data
+	// 3. The window is very short (microseconds typically)
 	if rotated {
 		if err := s.saveEntriesCopy(entriesToSave); err != nil {
 			fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)

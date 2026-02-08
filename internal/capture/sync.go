@@ -141,6 +141,9 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		c.ext.trackingUpdated = now
 	}
 
+	// Read state for later use (captured inside lock for consistency)
+	pilotEnabled := c.ext.pilotEnabled
+
 	c.mu.Unlock()
 
 	// Emit extension connection lifecycle event (outside lock, non-blocking)
@@ -169,7 +172,6 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	// Update remaining state (single lock scope for logging, extension logs, and version)
 	c.mu.Lock()
 
-	pilotEnabled := c.ext.pilotEnabled
 	c.logPollingActivity(PollingLogEntry{
 		Timestamp:    now,
 		Endpoint:     "sync",
