@@ -118,16 +118,16 @@ export function restoreState(state, includeUrl = true) {
         cookies: (state.cookies || '').split(';').filter((c) => c.trim()).length,
         skipped,
     };
-    // Navigate if requested (with basic URL validation)
+    // Navigate if requested (with URL validation)
     if (includeUrl && state.url && state.url !== window.location.href) {
-        // Basic URL validation: must be http/https
         try {
             const url = new URL(state.url);
-            if (url.protocol === 'http:' || url.protocol === 'https:') {
+            // Security: only navigate within same origin to prevent open redirect
+            if ((url.protocol === 'http:' || url.protocol === 'https:') && url.origin === window.location.origin) {
                 window.location.href = state.url;
             }
             else {
-                console.warn('[gasoline] Skipped navigation to non-HTTP(S) URL:', state.url);
+                console.warn('[gasoline] Skipped navigation: URL must be same origin', state.url, 'current:', window.location.origin);
             }
         }
         catch (e) {
@@ -221,7 +221,7 @@ if (typeof window !== 'undefined') {
  */
 if (typeof window !== 'undefined') {
     window.addEventListener('message', (event) => {
-        if (event.source !== window)
+        if (event.source !== window || event.origin !== window.location.origin)
             return;
         if (event.data?.type === 'GASOLINE_HIGHLIGHT_REQUEST') {
             const { requestId, params } = event.data;

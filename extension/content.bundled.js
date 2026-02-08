@@ -228,7 +228,7 @@
   // extension/content/window-message-listener.js
   function initWindowMessageListener() {
     window.addEventListener("message", (event) => {
-      if (event.source !== window)
+      if (event.source !== window || event.origin !== window.location.origin)
         return;
       const { type: messageType, requestId, result, payload } = event.data || {};
       if (messageType === "GASOLINE_HIGHLIGHT_RESPONSE") {
