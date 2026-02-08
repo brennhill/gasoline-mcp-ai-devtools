@@ -36,7 +36,7 @@ func flushStdout() {
 
 // runBridgeMode bridges stdio (from MCP client) to HTTP (to persistent server)
 // Uses fast-start: responds to initialize/tools/list immediately while spawning daemon async.
-func runBridgeMode(port int) {
+func runBridgeMode(port int, logFile string, maxEntries int) {
 	serverURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 
 	// Track daemon state with proper failure handling
@@ -62,7 +62,14 @@ func runBridgeMode(port int) {
 				return
 			}
 
-			cmd := exec.Command(exe, "--daemon", "--port", fmt.Sprintf("%d", port))
+			args := []string{"--daemon", "--port", fmt.Sprintf("%d", port)}
+			if logFile != "" {
+				args = append(args, "--log-file", logFile)
+			}
+			if maxEntries > 0 {
+				args = append(args, "--max-entries", fmt.Sprintf("%d", maxEntries))
+			}
+			cmd := exec.Command(exe, args...)
 			cmd.Stdout = nil
 			cmd.Stderr = nil
 			cmd.Stdin = nil

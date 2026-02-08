@@ -279,7 +279,7 @@ func main() {
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		}})
 		fmt.Fprintf(os.Stderr, "[gasoline] Starting in bridge mode (stdio -> HTTP)\n")
-		runBridgeMode(*port)
+		runBridgeMode(*port, *logFile, *maxEntries)
 		return
 	}
 
@@ -461,7 +461,7 @@ func main() {
 	// stdin is piped -> MCP mode (HTTP + MCP protocol)
 	// Use bridge mode with fast-start: responds to initialize/tools/list immediately
 	// while spawning daemon in background. This gives MCP clients instant feedback.
-	runBridgeMode(*port)
+	runBridgeMode(*port, *logFile, *maxEntries)
 }
 
 // sendStartupError sends a JSON-RPC error response before exiting.
