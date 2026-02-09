@@ -4,11 +4,27 @@
 
 ## Quick Start
 
+### Prerequisites
+
+Install the `crx` Rust tool (recommended):
+
+```bash
+cargo install crx
+```
+
+Then build:
+
 ```bash
 make extension-crx  # Build the signed CRX file
 ```
 
 The CRX file will be created at `dist/gasoline-extension-v[VERSION].crx` with automatic extension ID computation.
+
+**Note:** The build script tries multiple methods in order:
+
+1. **crx tool** (Rust) - Recommended, most reliable
+2. **Chrome native** - If Chrome is installed
+3. **Manual CRX building** - Fallback if neither is available
 
 ## How It Works
 

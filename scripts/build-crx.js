@@ -30,7 +30,38 @@ async function buildCRX() {
       fs.mkdirSync(BUILD_DIR, { recursive: true });
     }
 
-    // Try to use Chrome's native pack-extension first (most reliable)
+    // Try to use crx (Rust tool) first - most reliable fallback
+    try {
+      console.log('🔧 Using crx (Rust tool) for packing...');
+      await exec(`crx pack "${path.resolve(EXTENSION_DIR)}" -o "${OUTPUT_CRX}" -k "${KEY_FILE}"`);
+      if (fs.existsSync(OUTPUT_CRX)) {
+        const data = fs.readFileSync(OUTPUT_CRX);
+        const headerLen = data.readUInt32LE(8);
+        const headerProto = data.slice(12, 12 + headerLen);
+        let offset = 1;
+        let length1 = 0;
+        let shift = 0;
+        while (offset < headerProto.length) {
+          const byte = headerProto[offset];
+          length1 |= (byte & 0x7f) << shift;
+          offset++;
+          if ((byte & 0x80) === 0) break;
+          shift += 7;
+        }
+        const signedHeaderData = headerProto.slice(offset, offset + length1);
+        const hash = crypto.createHash('sha256').update(signedHeaderData).digest();
+        const extensionId = toBase32(hash).slice(0, 32);
+
+        console.log(`\n✨ CRX file created: ${OUTPUT_CRX}`);
+        console.log(`📊 File size: ${(data.length / 1024).toFixed(1)} KB`);
+        console.log(`📦 Extension ID: ${extensionId}`);
+        return;
+      }
+    } catch (err) {
+      // crx not available, try Chrome native
+    }
+
+    // Try to use Chrome's native pack-extension second (most reliable when available)
     const chromeCommand = getChromeCommand();
     if (chromeCommand) {
       console.log('🔧 Using Chrome native packing...');
