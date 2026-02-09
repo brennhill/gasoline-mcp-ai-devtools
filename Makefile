@@ -19,10 +19,10 @@ PLATFORMS := \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
-	security-check pre-commit verify-all npm-binaries \
+	security-check pre-commit verify-all npm-binaries validate-semver \
 	$(PLATFORMS)
 
-all: clean build
+all: validate-semver clean build
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -98,6 +98,10 @@ verify-size:
 # Check file line limits (800 lines soft limit)
 check-file-length:
 	@bash scripts/check-file-length.sh
+
+# Validate strict semver (X.Y.Z format, no pre-release)
+validate-semver:
+	@bash scripts/validate-semver.sh
 
 build: $(PLATFORMS)
 
