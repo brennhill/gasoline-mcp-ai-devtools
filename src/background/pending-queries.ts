@@ -578,6 +578,22 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
       }
       return
     }
+
+    if (query.type === 'link_health') {
+      try {
+        const result = await chrome.tabs.sendMessage(tabId, {
+          type: 'LINK_HEALTH_QUERY',
+          params: query.params,
+        })
+        sendResult(syncClient, query.id, result)
+      } catch (err) {
+        sendResult(syncClient, query.id, {
+          error: 'link_health_failed',
+          message: (err as Error).message || 'Link health check failed',
+        })
+      }
+      return
+    }
   } catch (err) {
     debugLog(DebugCategory.CONNECTION, 'Error handling pending query', {
       type: query.type,

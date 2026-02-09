@@ -344,8 +344,9 @@ func TestIntegration_ToolsListMatchesImplementation(t *testing.T) {
 		t.Logf("  - %s", tool.Name)
 	}
 
-	// Verify the 4 expected tools are present
-	expectedTools := []string{"observe", "generate", "configure", "interact"}
+	// Verify the 5 expected tools are present
+	// Updated in Phase 0 to include new "analyze" tool for active analysis operations
+	expectedTools := []string{"observe", "analyze", "generate", "configure", "interact"}
 	for _, expected := range expectedTools {
 		found := false
 		for _, tool := range toolsResp.Result.Tools {
@@ -360,8 +361,8 @@ func TestIntegration_ToolsListMatchesImplementation(t *testing.T) {
 	}
 
 	// Verify no extra unexpected tools
-	if len(toolsResp.Result.Tools) != 4 {
-		t.Errorf("Expected exactly 4 tools, got %d", len(toolsResp.Result.Tools))
+	if len(toolsResp.Result.Tools) != 5 {
+		t.Errorf("Expected exactly 5 tools, got %d", len(toolsResp.Result.Tools))
 	}
 }
 

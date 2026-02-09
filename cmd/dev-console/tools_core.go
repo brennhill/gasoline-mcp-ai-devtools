@@ -258,6 +258,8 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 	switch name {
 	case "observe":
 		return h.toolObserve(req, args), true
+	case "analyze":
+		return h.toolAnalyze(req, args), true
 	case "generate":
 		return h.toolGenerate(req, args), true
 	case "configure":

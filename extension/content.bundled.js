@@ -496,6 +496,40 @@
     });
     return true;
   }
+  function handleLinkHealthQuery(params, sendResponse) {
+    let parsedParams = {};
+    if (typeof params === "string") {
+      try {
+        parsedParams = JSON.parse(params);
+      } catch {
+        parsedParams = {};
+      }
+    } else if (typeof params === "object") {
+      parsedParams = params;
+    }
+    const requestId = Date.now();
+    const deferred = createDeferredPromise();
+    const responseHandler = (event) => {
+      if (event.source !== window)
+        return;
+      if (event.data?.type === "GASOLINE_LINK_HEALTH_RESPONSE") {
+        window.removeEventListener("message", responseHandler);
+        deferred.resolve(event.data.result || { error: "No result from link health check" });
+      }
+    };
+    window.addEventListener("message", responseHandler);
+    window.postMessage({
+      type: "GASOLINE_LINK_HEALTH_QUERY",
+      requestId,
+      params: parsedParams
+    }, window.location.origin);
+    promiseRaceWithCleanup(deferred.promise, 3e4, { error: "Link health check timeout" }, () => {
+      window.removeEventListener("message", responseHandler);
+    }).then((result) => {
+      sendResponse(result);
+    });
+    return true;
+  }
 
   // extension/content/runtime-message-listener.js
   var TOAST_THEMES = {
@@ -780,6 +814,10 @@
       }
       if (message.type === "GET_NETWORK_WATERFALL") {
         return handleGetNetworkWaterfall(sendResponse);
+      }
+      if (message.type === "LINK_HEALTH_QUERY") {
+        const params = message.params || {};
+        return handleLinkHealthQuery(params, sendResponse);
       }
       return void 0;
     });

@@ -35,7 +35,7 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 	}
 
 	if params.Action == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: store, load, noise_rule, dismiss, clear, capture, record_event, query_dom, diff_sessions, validate_api, audit_log, health, streaming"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: store, load, noise_rule, clear, diff_sessions, audit_log, health, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff"))}
 	}
 
 	var resp JSONRPCResponse
@@ -48,12 +48,8 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 		resp = h.toolConfigureNoiseRule(req, args)
 	case "clear":
 		resp = h.toolConfigureClear(req, args)
-	case "query_dom":
-		resp = h.toolQueryDOM(req, args)
 	case "diff_sessions":
 		resp = h.toolDiffSessionsWrapper(req, args)
-	case "validate_api":
-		resp = h.toolValidateAPI(req, args)
 	case "audit_log":
 		resp = h.toolGetAuditLog(req, args)
 	case "health":

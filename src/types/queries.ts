@@ -25,6 +25,7 @@ export type QueryType =
   | 'screenshot'
   | 'record_start'
   | 'record_stop'
+  | 'link_health'
 
 /**
  * Pending query from server

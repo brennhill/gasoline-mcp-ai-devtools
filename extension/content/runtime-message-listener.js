@@ -2,7 +2,7 @@
  * @fileoverview Runtime Message Listener Module
  * Handles chrome.runtime messages from background script
  */
-import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, } from './message-handlers.js';
+import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, } from './message-handlers.js';
 /** Color themes for each toast state */
 const TOAST_THEMES = {
     trying: { bg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', shadow: 'rgba(59, 130, 246, 0.4)' },
@@ -339,6 +339,11 @@ export function initRuntimeMessageListener() {
         // Handle GET_NETWORK_WATERFALL from background (collect PerformanceResourceTiming data)
         if (message.type === 'GET_NETWORK_WATERFALL') {
             return handleGetNetworkWaterfall(sendResponse);
+        }
+        // Handle LINK_HEALTH_QUERY from background (check all links on the page)
+        if (message.type === 'LINK_HEALTH_QUERY') {
+            const params = message.params || {};
+            return handleLinkHealthQuery(params, sendResponse);
         }
         return undefined;
     });

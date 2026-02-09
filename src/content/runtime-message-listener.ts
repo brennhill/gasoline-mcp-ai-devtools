@@ -15,6 +15,7 @@ import {
   handleA11yQuery,
   handleDomQuery,
   handleGetNetworkWaterfall,
+  handleLinkHealthQuery,
 } from './message-handlers'
 
 /** Color themes for each toast state */
@@ -394,6 +395,12 @@ export function initRuntimeMessageListener(): void {
       // Handle GET_NETWORK_WATERFALL from background (collect PerformanceResourceTiming data)
       if (message.type === 'GET_NETWORK_WATERFALL') {
         return handleGetNetworkWaterfall(sendResponse)
+      }
+
+      // Handle LINK_HEALTH_QUERY from background (check all links on the page)
+      if (message.type === 'LINK_HEALTH_QUERY') {
+        const params = (message as any).params || {}
+        return handleLinkHealthQuery(params, sendResponse)
       }
 
       return undefined

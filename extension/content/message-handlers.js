@@ -261,4 +261,47 @@ export function handleGetNetworkWaterfall(sendResponse) {
     });
     return true;
 }
+/**
+ * Handle LINK_HEALTH_QUERY message
+ */
+export function handleLinkHealthQuery(params, sendResponse) {
+    // Parse params if it's a string (from JSON)
+    let parsedParams = {};
+    if (typeof params === 'string') {
+        try {
+            parsedParams = JSON.parse(params);
+        }
+        catch {
+            parsedParams = {};
+        }
+    }
+    else if (typeof params === 'object') {
+        parsedParams = params;
+    }
+    const requestId = Date.now();
+    const deferred = createDeferredPromise();
+    // Set up a one-time listener for the response
+    const responseHandler = (event) => {
+        if (event.source !== window)
+            return;
+        if (event.data?.type === 'GASOLINE_LINK_HEALTH_RESPONSE') {
+            window.removeEventListener('message', responseHandler);
+            deferred.resolve(event.data.result || { error: 'No result from link health check' });
+        }
+    };
+    window.addEventListener('message', responseHandler);
+    // Forward to inject.js via postMessage
+    window.postMessage({
+        type: 'GASOLINE_LINK_HEALTH_QUERY',
+        requestId,
+        params: parsedParams,
+    }, window.location.origin);
+    // Timeout fallback: respond with error after 30 seconds
+    promiseRaceWithCleanup(deferred.promise, 30000, { error: 'Link health check timeout' }, () => {
+        window.removeEventListener('message', responseHandler);
+    }).then((result) => {
+        sendResponse(result);
+    });
+    return true;
+}
 //# sourceMappingURL=message-handlers.js.map

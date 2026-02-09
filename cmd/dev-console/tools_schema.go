@@ -10,14 +10,14 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 	return []MCPTool{
 		{
 			Name:        "observe",
-			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, accessibility, timeline, error_clusters, error_bundles, screenshot, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity, min_level.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.\nNote: extension_logs are internal Gasoline extension debug logs for troubleshooting the extension itself — NOT browser console output. Use 'logs' for browser console output.\nNote: error_bundles returns pre-assembled debugging context per error (error + recent network + actions + logs in one call). Use window_seconds param to control context window (default 3s).",
+			Description: "Read already-captured browser state. Reads from buffers populated by the extension.\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, api, changes, timeline, error_bundles, screenshot, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, playback_results, log_diff_report.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity, min_level.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.\nNote: extension_logs are internal Gasoline extension debug logs for troubleshooting the extension itself — NOT browser console output. Use 'logs' for browser console output.\nNote: error_bundles returns pre-assembled debugging context per error (error + recent network + actions + logs in one call). Use window_seconds param to control context window (default 3s).",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"what": map[string]any{
 						"type":        "string",
 						"description": "What to observe or analyze",
-						"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "performance", "accessibility", "timeline", "error_clusters", "error_bundles", "screenshot", "history", "security_audit", "third_party_audit", "security_diff", "command_result", "pending_commands", "failed_commands"},
+						"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "api", "changes", "timeline", "error_bundles", "screenshot", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report"},
 					},
 					"limit": map[string]any{
 						"type":        "number",
@@ -141,6 +141,93 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"window_seconds": map[string]any{
 						"type":        "number",
 						"description": "Context window in seconds for error_bundles (default 3, max 10). How far back to look for related network/actions/logs.",
+					},
+				},
+				"required": []string{"what"},
+			},
+		},
+		{
+			Name:        "analyze",
+			Description: "Trigger active analysis operations: inspect DOM, validate APIs, audit accessibility, analyze performance, check security, identify errors, explore navigation history, and verify link health.\n\nModes: dom, api_validation, performance, accessibility, error_clusters, history, security_audit, third_party_audit, security_diff, link_health.\n\nThese tools actively inspect or audit the current page state. Most create pending queries that the extension executes asynchronously.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"what": map[string]any{
+						"type":        "string",
+						"description": "What to analyze",
+						"enum":        []string{"dom", "api_validation", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "security_diff", "link_health"},
+					},
+					"selector": map[string]any{
+						"type":        "string",
+						"description": "CSS selector to query or scope (applies to dom, accessibility)",
+					},
+					"scope": map[string]any{
+						"type":        "string",
+						"description": "CSS selector to scope audit (applies to accessibility)",
+					},
+					"tags": map[string]any{
+						"type":        "array",
+						"description": "WCAG tags to test (applies to accessibility)",
+						"items":       map[string]any{"type": "string"},
+					},
+					"force_refresh": map[string]any{
+						"type":        "boolean",
+						"description": "Bypass cache (applies to accessibility)",
+					},
+					"domain": map[string]any{
+						"type":        "string",
+						"description": "Domain to check (applies to link_health)",
+					},
+					"timeout_ms": map[string]any{
+						"type":        "number",
+						"description": "Timeout in milliseconds (applies to link_health)",
+					},
+					"max_workers": map[string]any{
+						"type":        "number",
+						"description": "Maximum concurrent workers (applies to link_health)",
+					},
+					"checks": map[string]any{
+						"type":        "array",
+						"description": "Which checks to run (applies to security_audit)",
+						"items": map[string]any{
+							"type": "string",
+							"enum": []string{"credentials", "pii", "headers", "cookies", "transport", "auth"},
+						},
+					},
+					"severity_min": map[string]any{
+						"type":        "string",
+						"description": "Minimum severity to report (applies to security_audit)",
+						"enum":        []string{"critical", "high", "medium", "low", "info"},
+					},
+					"first_party_origins": map[string]any{
+						"type":        "array",
+						"description": "Origins to consider first-party (applies to third_party_audit)",
+						"items":       map[string]any{"type": "string"},
+					},
+					"include_static": map[string]any{
+						"type":        "boolean",
+						"description": "Include static-only origins (applies to third_party_audit)",
+					},
+					"custom_lists": map[string]any{
+						"type":        "object",
+						"description": "Custom allowed/blocked/internal domain lists (applies to third_party_audit)",
+					},
+					"action": map[string]any{
+						"type":        "string",
+						"description": "Snapshot action: snapshot, compare, list (applies to security_diff)",
+						"enum":        []string{"snapshot", "compare", "list"},
+					},
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Snapshot name (applies to security_diff)",
+					},
+					"compare_from": map[string]any{
+						"type":        "string",
+						"description": "Baseline snapshot (applies to security_diff)",
+					},
+					"compare_to": map[string]any{
+						"type":        "string",
+						"description": "Target snapshot (applies to security_diff)",
 					},
 				},
 				"required": []string{"what"},

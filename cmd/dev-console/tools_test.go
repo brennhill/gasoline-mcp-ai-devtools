@@ -418,13 +418,15 @@ func TestToolsList(t *testing.T) {
 
 	tools := toolHandler.ToolsList()
 
-	if len(tools) != 4 {
-		t.Errorf("Expected 4 tools, got %d", len(tools))
+	if len(tools) != 5 {
+		t.Errorf("Expected 5 tools, got %d", len(tools))
 	}
 
 	// Check tool names
+	// Updated in Phase 0 to include new "analyze" tool for active analysis operations
 	expectedTools := map[string]bool{
 		"observe":   false,
+		"analyze":   false,
 		"generate":  false,
 		"configure": false,
 		"interact":  false,

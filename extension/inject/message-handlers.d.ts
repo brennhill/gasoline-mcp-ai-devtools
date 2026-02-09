@@ -4,6 +4,14 @@
  */
 import type { BrowserStateSnapshot, ExecuteJsResult } from '../types/index';
 /**
+ * Link health query request message from content script
+ */
+interface LinkHealthQueryRequestMessageData {
+    type: 'GASOLINE_LINK_HEALTH_QUERY';
+    requestId: number | string;
+    params?: Record<string, unknown>;
+}
+/**
  * Safe serialization for complex objects returned from executeJavaScript.
  */
 export declare function safeSerializeForExecute(value: unknown, depth?: number, seen?: WeakSet<object>): unknown;
@@ -12,7 +20,12 @@ export declare function safeSerializeForExecute(value: unknown, depth?: number, 
  */
 export declare function executeJavaScript(script: string, timeoutMs?: number): Promise<ExecuteJsResult>;
 /**
+ * Handle link health check request from content script
+ */
+export declare function handleLinkHealthQuery(data: LinkHealthQueryRequestMessageData): Promise<unknown>;
+/**
  * Install message listener for handling content script messages
  */
 export declare function installMessageListener(captureStateFn: () => BrowserStateSnapshot, restoreStateFn: (state: BrowserStateSnapshot, includeUrl: boolean) => unknown): void;
+export {};
 //# sourceMappingURL=message-handlers.d.ts.map

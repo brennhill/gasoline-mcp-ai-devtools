@@ -423,8 +423,8 @@ func TestReliability_Integration_FullMCPProtocol(t *testing.T) {
 				if !ok {
 					return fmt.Errorf("missing tools array")
 				}
-				if len(tools) != 4 {
-					return fmt.Errorf("expected 4 tools, got %d", len(tools))
+				if len(tools) != 5 {
+					return fmt.Errorf("expected 5 tools, got %d", len(tools))
 				}
 				return nil
 			},

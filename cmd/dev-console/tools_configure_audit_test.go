@@ -372,20 +372,7 @@ func TestConfigureAudit_InvalidJSON_ReturnsParseError(t *testing.T) {
 	}
 }
 
-// TestConfigureAudit_ValidateAPI_InvalidOperation verifies invalid operation returns error
-func TestConfigureAudit_ValidateAPI_InvalidOperation(t *testing.T) {
-	env := newConfigureTestEnv(t)
-
-	result, ok := env.callConfigure(t, `{"action":"validate_api","operation":"invalid_op"}`)
-	if !ok {
-		t.Fatal("validate_api with invalid operation should return result")
-	}
-
-	// ASSERTION: IsError is true for invalid operation
-	if !result.IsError {
-		t.Error("validate_api with invalid operation MUST return isError:true")
-	}
-}
+// TestConfigureAudit_ValidateAPI_InvalidOperation removed in Phase 0: moved to analyze({what:'api_validation'})
 
 // ============================================
 // Behavioral Tests: Empty State Handling
@@ -396,6 +383,7 @@ func TestConfigureAudit_EmptyState_ReturnsEmptyNotError(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
 	// These actions should return success even with no data
+	// Note: query_dom removed in Phase 0 (moved to analyze({what:'dom'}))
 	actions := []struct {
 		name string
 		args string
@@ -404,7 +392,6 @@ func TestConfigureAudit_EmptyState_ReturnsEmptyNotError(t *testing.T) {
 		{"health", `{"action":"health"}`},
 		{"noise_rule_list", `{"action":"noise_rule","noise_action":"list"}`},
 		{"audit_log_report", `{"action":"audit_log"}`},
-		{"query_dom", `{"action":"query_dom","selector":"body"}`},
 	}
 
 	for _, tc := range actions {

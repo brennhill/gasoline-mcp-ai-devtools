@@ -741,7 +741,7 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
-    assert.strictEqual(parsed.version, '5.8.2')
+    assert.strictEqual(parsed.version, '6.0.0')
     assert.ok(Array.isArray(parsed.entries))
   })
 

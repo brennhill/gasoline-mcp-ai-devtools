@@ -7,6 +7,7 @@ import type { BrowserStateSnapshot, StateAction, ExecuteJsResult, WebSocketCaptu
 
 import { createDeferredPromise, TimeoutError } from '../lib/timeout-utils'
 import { executeDOMQuery, runAxeAuditWithTimeout, type DOMQueryParams } from '../lib/dom-queries'
+import { checkLinkHealth } from '../lib/link-health'
 import {
   getNetworkWaterfall,
   setNetworkWaterfallEnabled,
@@ -112,6 +113,15 @@ interface GetWaterfallRequestMessageData {
 }
 
 /**
+ * Link health query request message from content script
+ */
+interface LinkHealthQueryRequestMessageData {
+  type: 'GASOLINE_LINK_HEALTH_QUERY'
+  requestId: number | string
+  params?: Record<string, unknown>
+}
+
+/**
  * Union of all page message data types
  */
 type PageMessageData =
@@ -122,6 +132,7 @@ type PageMessageData =
   | DomQueryRequestMessageData
   | HighlightRequestMessageData
   | GetWaterfallRequestMessageData
+  | LinkHealthQueryRequestMessageData
 
 /**
  * Safe serialization for complex objects returned from executeJavaScript.
@@ -293,6 +304,22 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
 }
 
 /**
+ * Handle link health check request from content script
+ */
+export async function handleLinkHealthQuery(data: LinkHealthQueryRequestMessageData): Promise<unknown> {
+  try {
+    const params = data.params || {}
+    const result = await checkLinkHealth(params)
+    return result
+  } catch (err) {
+    return {
+      error: 'link_health_error',
+      message: (err as Error).message || 'Failed to check link health',
+    }
+  }
+}
+
+/**
  * Install message listener for handling content script messages
  */
 export function installMessageListener(
@@ -360,6 +387,35 @@ export function installMessageListener(
     // Handle GASOLINE_GET_WATERFALL from content script
     if (event.data?.type === 'GASOLINE_GET_WATERFALL') {
       handleGetWaterfall(event.data as GetWaterfallRequestMessageData)
+    }
+
+    // Handle GASOLINE_LINK_HEALTH_QUERY from content script
+    if (event.data?.type === 'GASOLINE_LINK_HEALTH_QUERY') {
+      const data = event.data as LinkHealthQueryRequestMessageData
+      handleLinkHealthQuery(data)
+        .then((result) => {
+          window.postMessage(
+            {
+              type: 'GASOLINE_LINK_HEALTH_RESPONSE',
+              requestId: data.requestId,
+              result,
+            },
+            window.location.origin,
+          )
+        })
+        .catch((err: Error) => {
+          window.postMessage(
+            {
+              type: 'GASOLINE_LINK_HEALTH_RESPONSE',
+              requestId: data.requestId,
+              result: {
+                error: 'link_health_error',
+                message: err.message || 'Failed to check link health',
+              },
+            },
+            window.location.origin,
+          )
+        })
     }
   })
 }

@@ -245,7 +245,8 @@ func TestFastStart_ToolsListSchemaStability(t *testing.T) {
 	tools := handler.ToolsList()
 
 	// Expected tool names (must not change without intentional update)
-	expectedNames := []string{"observe", "generate", "configure", "interact"}
+	// Updated in Phase 0 to include new "analyze" tool for active analysis operations
+	expectedNames := []string{"observe", "analyze", "generate", "configure", "interact"}
 
 	if len(tools) != len(expectedNames) {
 		t.Errorf("Expected %d tools, got %d", len(expectedNames), len(tools))
