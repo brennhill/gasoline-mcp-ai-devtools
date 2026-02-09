@@ -7,8 +7,11 @@
 package ai
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -66,9 +69,17 @@ type NoiseProposal struct {
 // NoiseStatistics tracks filtering metrics
 type NoiseStatistics struct {
 	TotalFiltered int64          `json:"total_filtered"`
-	PerRule       map[string]int `json:"per_rule"`      
-	LastSignalAt  time.Time      `json:"last_signal_at,omitempty"` 
-	LastNoiseAt   time.Time      `json:"last_noise_at,omitempty"`  
+	PerRule       map[string]int `json:"per_rule"`
+	LastSignalAt  time.Time      `json:"last_signal_at,omitempty"`
+	LastNoiseAt   time.Time      `json:"last_noise_at,omitempty"`
+}
+
+// PersistedNoiseData is the JSON schema for persisted noise rules
+type PersistedNoiseData struct {
+	Version    int                `json:"version"`
+	NextUserID int                `json:"next_user_id"`
+	Rules      []NoiseRule        `json:"rules"`
+	Statistics NoiseStatistics    `json:"statistics,omitempty"`
 }
 
 // NoiseConfig manages noise filtering rules and state
@@ -92,6 +103,7 @@ type NoiseConfig struct {
 	statsMu       sync.Mutex // separate mutex for stats (written during reads)
 	stats         NoiseStatistics
 	userIDCounter int
+	store         *SessionStore // nil if no persistence
 }
 
 // NewNoiseConfig creates a new NoiseConfig with built-in rules
@@ -103,6 +115,27 @@ func NewNoiseConfig() *NoiseConfig {
 	}
 
 	nc.rules = builtinRules()
+	nc.recompile()
+	return nc
+}
+
+// NewNoiseConfigWithStore creates a new NoiseConfig with SessionStore persistence
+func NewNoiseConfigWithStore(store *SessionStore) *NoiseConfig {
+	nc := &NoiseConfig{
+		store: store,
+		stats: NoiseStatistics{
+			PerRule: make(map[string]int),
+		},
+	}
+
+	nc.rules = builtinRules()
+	nc.userIDCounter = 0
+
+	// Load persisted user rules if available
+	if store != nil {
+		nc.loadPersistedRules()
+	}
+
 	nc.recompile()
 	return nc
 }
@@ -214,6 +247,7 @@ func (nc *NoiseConfig) AddRules(rules []NoiseRule) error {
 		nc.rules = append(nc.rules, rules[i])
 	}
 	nc.recompile()
+	nc.persistRulesLocked()
 	return nil
 }
 
@@ -230,6 +264,7 @@ func (nc *NoiseConfig) RemoveRule(id string) error {
 		if nc.rules[i].ID == id {
 			nc.rules = append(nc.rules[:i], nc.rules[i+1:]...)
 			nc.recompile()
+			nc.persistRulesLocked()
 			return nil
 		}
 	}
@@ -242,10 +277,12 @@ func (nc *NoiseConfig) Reset() {
 	defer nc.mu.Unlock()
 
 	nc.rules = builtinRules()
+	nc.userIDCounter = 0
 	nc.recompile()
 	nc.stats = NoiseStatistics{
 		PerRule: make(map[string]int),
 	}
+	nc.persistRulesLocked()
 }
 
 // IsConsoleNoise checks if a console log entry matches any noise rule.
@@ -422,5 +459,144 @@ func (nc *NoiseConfig) DismissNoise(pattern string, category string, reason stri
 
 	nc.rules = append(nc.rules, rule)
 	nc.recompile()
+	nc.persistRulesLocked()
+}
+
+// loadPersistedRules loads user rules from SessionStore (called during init)
+func (nc *NoiseConfig) loadPersistedRules() {
+	if nc.store == nil {
+		return
+	}
+
+	data, err := nc.store.Load("noise", "rules")
+	if err != nil || data == nil {
+		return
+	}
+
+	var persisted PersistedNoiseData
+	if err := json.Unmarshal(data, &persisted); err != nil {
+		fmt.Fprintf(os.Stderr, "noise: corrupted persisted rules: %v\n", err)
+		return
+	}
+
+	if persisted.Version != 1 {
+		fmt.Fprintf(os.Stderr, "noise: unsupported persistence version: %d\n", persisted.Version)
+		return
+	}
+
+	// Validate and load user rules
+	validRules := []NoiseRule{}
+	for _, rule := range persisted.Rules {
+		// Skip any built-in rules in the file (corruption protection)
+		if strings.HasPrefix(rule.ID, "builtin_") {
+			continue
+		}
+
+		// Validate regex patterns
+		if rule.MatchSpec.MessageRegex != "" {
+			if _, err := regexp.Compile(rule.MatchSpec.MessageRegex); err != nil {
+				fmt.Fprintf(os.Stderr, "noise: skipping rule %s: invalid regex: %v\n", rule.ID, err)
+				continue
+			}
+		}
+		if rule.MatchSpec.SourceRegex != "" {
+			if _, err := regexp.Compile(rule.MatchSpec.SourceRegex); err != nil {
+				fmt.Fprintf(os.Stderr, "noise: skipping rule %s: invalid regex: %v\n", rule.ID, err)
+				continue
+			}
+		}
+		if rule.MatchSpec.URLRegex != "" {
+			if _, err := regexp.Compile(rule.MatchSpec.URLRegex); err != nil {
+				fmt.Fprintf(os.Stderr, "noise: skipping rule %s: invalid regex: %v\n", rule.ID, err)
+				continue
+			}
+		}
+
+		validRules = append(validRules, rule)
+	}
+
+	// Restore user ID counter and handle desync
+	nc.userIDCounter = persisted.NextUserID - 1
+	maxID := persisted.NextUserID - 1
+	for _, rule := range validRules {
+		// Extract numeric ID from user_N rules
+		if strings.HasPrefix(rule.ID, "user_") {
+			idStr := strings.TrimPrefix(rule.ID, "user_")
+			if id, err := strconv.Atoi(idStr); err == nil && id > maxID {
+				maxID = id
+			}
+		}
+	}
+	if maxID > nc.userIDCounter {
+		nc.userIDCounter = maxID
+	}
+
+	// Enforce max rules limit
+	maxUserRules := maxNoiseRules - len(nc.rules) // built-ins already in nc.rules
+	if len(validRules) > maxUserRules {
+		fmt.Fprintf(os.Stderr, "noise: truncating %d rules to fit max of %d\n", len(validRules), maxUserRules)
+		validRules = validRules[:maxUserRules]
+	}
+
+	// Append valid user rules
+	nc.rules = append(nc.rules, validRules...)
+
+	// Restore statistics
+	nc.statsMu.Lock()
+	if persisted.Statistics.PerRule != nil {
+		nc.stats.PerRule = persisted.Statistics.PerRule
+	}
+	nc.stats.TotalFiltered = persisted.Statistics.TotalFiltered
+	nc.stats.LastSignalAt = persisted.Statistics.LastSignalAt
+	nc.stats.LastNoiseAt = persisted.Statistics.LastNoiseAt
+	nc.statsMu.Unlock()
+}
+
+// persistRulesLocked saves user rules to SessionStore (assumes mu is held)
+func (nc *NoiseConfig) persistRulesLocked() {
+	if nc.store == nil {
+		return
+	}
+
+	// Filter to only user rules (exclude built-ins)
+	userRules := nc.filterUserRulesLocked()
+
+	// Build persisted data
+	nc.statsMu.Lock()
+	persisted := PersistedNoiseData{
+		Version:    1,
+		NextUserID: nc.userIDCounter + 1,
+		Rules:      userRules,
+		Statistics: NoiseStatistics{
+			TotalFiltered: nc.stats.TotalFiltered,
+			PerRule:       nc.stats.PerRule,
+			LastSignalAt:  nc.stats.LastSignalAt,
+			LastNoiseAt:   nc.stats.LastNoiseAt,
+		},
+	}
+	nc.statsMu.Unlock()
+
+	// Marshal and save
+	data, err := json.Marshal(persisted)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "noise: failed to marshal rules: %v\n", err)
+		return
+	}
+
+	if err := nc.store.Save("noise", "rules", data); err != nil {
+		fmt.Fprintf(os.Stderr, "noise: failed to persist rules: %v\n", err)
+		return
+	}
+}
+
+// filterUserRulesLocked extracts non-builtin rules (assumes mu is held)
+func (nc *NoiseConfig) filterUserRulesLocked() []NoiseRule {
+	var userRules []NoiseRule
+	for _, rule := range nc.rules {
+		if !strings.HasPrefix(rule.ID, "builtin_") {
+			userRules = append(userRules, rule)
+		}
+	}
+	return userRules
 }
 

@@ -11,11 +11,12 @@ export interface LinkHealthParams {
 export interface LinkCheckResult {
     readonly url: string;
     readonly status: number | null;
-    readonly code: 'ok' | 'redirect' | 'requires_auth' | 'broken' | 'timeout';
+    readonly code: 'ok' | 'redirect' | 'requires_auth' | 'broken' | 'timeout' | 'cors_blocked';
     readonly timeMs: number;
     readonly isExternal: boolean;
     readonly redirectTo?: string;
     readonly error?: string;
+    readonly needsServerVerification?: boolean;
 }
 export interface LinkHealthCheckResult {
     readonly summary: {
@@ -25,6 +26,8 @@ export interface LinkHealthCheckResult {
         readonly requiresAuth: number;
         readonly broken: number;
         readonly timeout: number;
+        readonly corsBlocked: number;
+        readonly needsServerVerification: number;
     };
     readonly results: LinkCheckResult[];
 }

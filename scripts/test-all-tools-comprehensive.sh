@@ -218,8 +218,17 @@ PIDS="$PIDS $!"
 ) &
 PIDS="$PIDS $!"
 
+# Group 17: Noise Rule Persistence (single script)
+PORT_GROUP17=7906  # cat-20-noise-persistence
+(
+    cd "$PROJECT_ROOT"
+    bash "$TESTS_DIR/cat-20-noise-persistence.sh" "$PORT_GROUP17" "$RESULTS_DIR/results-20.txt" \
+        > "$RESULTS_DIR/output-20.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
 # ── Wait for All Groups ──────────────────────────────────
-echo "Running 16 parallel groups..."
+echo "Running 17 parallel groups..."
 echo ""
 
 for pid in $PIDS; do
@@ -229,7 +238,7 @@ done
 # ── Collect and Display Results ───────────────────────────
 
 # Category display order and default names
-CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 18 19"
+CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 18 19 20"
 get_default_name() {
     case "$1" in
         01) echo "Protocol Compliance" ;;
@@ -250,6 +259,7 @@ get_default_name() {
         16) echo "API Contract" ;;
         18) echo "Recording & Audio" ;;
         19) echo "Link Health Analyzer" ;;
+        20) echo "Noise Persistence" ;;
         *)  echo "Unknown" ;;
     esac
 }

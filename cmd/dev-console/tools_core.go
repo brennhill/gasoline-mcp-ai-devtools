@@ -223,15 +223,19 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	handler.toolCallLimiter = NewToolCallLimiter(500, time.Minute)
 	handler.streamState = NewStreamState()
 
-	// Initialize noise filtering (concrete type, not interface - signatures differ)
-	handler.noiseConfig = ai.NewNoiseConfig()
-
 	// Initialize session store (use current working directory as project path)
 	cwd, err := os.Getwd()
 	if err == nil {
 		if store, err := ai.NewSessionStore(cwd); err == nil {
 			handler.sessionStoreImpl = store
 		}
+	}
+
+	// Initialize noise filtering with persistence support
+	if handler.sessionStoreImpl != nil {
+		handler.noiseConfig = ai.NewNoiseConfigWithStore(handler.sessionStoreImpl)
+	} else {
+		handler.noiseConfig = ai.NewNoiseConfig()
 	}
 
 	// Initialize security tools (concrete types - interface signatures differ)

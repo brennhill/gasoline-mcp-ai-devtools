@@ -2933,7 +2933,9 @@ async function checkLinkHealth(params) {
     redirect: 0,
     requiresAuth: 0,
     broken: 0,
-    timeout: 0
+    timeout: 0,
+    corsBlocked: 0,
+    needsServerVerification: 0
   };
   for (const result of results) {
     if (result.code === "ok")
@@ -2946,6 +2948,11 @@ async function checkLinkHealth(params) {
       summary.broken++;
     else if (result.code === "timeout")
       summary.timeout++;
+    else if (result.code === "cors_blocked") {
+      summary.corsBlocked++;
+      if (result.needsServerVerification)
+        summary.needsServerVerification++;
+    }
   }
   return { summary, results };
 }
@@ -2963,6 +2970,18 @@ async function checkLink(url, timeout_ms) {
       });
       clearTimeout(timeoutId);
       const timeMs = Math.round(performance.now() - startTime);
+      if (response.status === 0) {
+        return {
+          url,
+          status: null,
+          code: "cors_blocked",
+          timeMs,
+          isExternal,
+          error: "CORS policy blocked the request",
+          needsServerVerification: isExternal
+          // Only external links need server verification
+        };
+      }
       let code;
       if (response.status >= 200 && response.status < 300) {
         code = "ok";
