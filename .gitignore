@@ -56,4 +56,5 @@ docs/benchmarks/*.txt
 .github/instructions/codacy.instructions.md
 
 #Ignore marketing
-docs/mar
+docs/marketing
+docs/marketing-plan.md
