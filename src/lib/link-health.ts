@@ -13,11 +13,12 @@ export interface LinkHealthParams {
 export interface LinkCheckResult {
   readonly url: string
   readonly status: number | null
-  readonly code: 'ok' | 'redirect' | 'requires_auth' | 'broken' | 'timeout'
+  readonly code: 'ok' | 'redirect' | 'requires_auth' | 'broken' | 'timeout' | 'cors_blocked'
   readonly timeMs: number
   readonly isExternal: boolean
   readonly redirectTo?: string
   readonly error?: string
+  readonly needsServerVerification?: boolean
 }
 
 export interface LinkHealthCheckResult {
@@ -28,6 +29,8 @@ export interface LinkHealthCheckResult {
     readonly requiresAuth: number
     readonly broken: number
     readonly timeout: number
+    readonly corsBlocked: number
+    readonly needsServerVerification: number
   }
   readonly results: LinkCheckResult[]
 }
@@ -75,6 +78,8 @@ export async function checkLinkHealth(params: LinkHealthParams): Promise<LinkHea
     requiresAuth: 0,
     broken: 0,
     timeout: 0,
+    corsBlocked: 0,
+    needsServerVerification: 0,
   }
 
   for (const result of results) {
@@ -83,6 +88,10 @@ export async function checkLinkHealth(params: LinkHealthParams): Promise<LinkHea
     else if (result.code === 'requires_auth') summary.requiresAuth++
     else if (result.code === 'broken') summary.broken++
     else if (result.code === 'timeout') summary.timeout++
+    else if (result.code === 'cors_blocked') {
+      summary.corsBlocked++
+      if (result.needsServerVerification) summary.needsServerVerification++
+    }
   }
 
   return { summary, results }
@@ -108,6 +117,20 @@ async function checkLink(url: string, timeout_ms: number): Promise<LinkCheckResu
 
       clearTimeout(timeoutId)
       const timeMs = Math.round(performance.now() - startTime)
+
+      // Check if response is CORS-blocked (opaque response with status 0)
+      // CORS-blocked responses have status 0 and unreadable headers
+      if (response.status === 0) {
+        return {
+          url,
+          status: null,
+          code: 'cors_blocked',
+          timeMs,
+          isExternal,
+          error: 'CORS policy blocked the request',
+          needsServerVerification: isExternal, // Only external links need server verification
+        }
+      }
 
       // Categorize by status
       let code: LinkCheckResult['code']

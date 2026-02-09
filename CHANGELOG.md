@@ -13,10 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Link Health Analyzer** — New `analyze({what: 'link_health'})` tool to check all links on current page for issues
   - Concurrent checking (20 workers) for performance
-  - Categorizes links: ok (2xx), redirect (3xx), requires_auth (401/403), broken (4xx/5xx), timeout
+  - Categorizes links: ok (2xx), redirect (3xx), requires_auth (401/403), broken (4xx/5xx), timeout, **cors_blocked**
   - Browser-based validation using extension security context
+  - **CORS detection** — Explicitly flags CORS-blocked links (status 0) instead of false negatives
   - Async operation with correlation ID tracking
   - 19 comprehensive UAT tests covering edge cases and concurrency
+
+- **Link Validation Tool** — New `analyze({what: 'link_validation'})` tool for server-side verification
+  - Validates CORS-blocked links that browser extension cannot check
+  - Concurrent HTTP HEAD/GET requests (worker pool, max 100)
+  - Categorizes results: ok (2xx), redirect (3xx), requires_auth (401/403), broken (4xx/5xx)
+  - No external dependencies (native Go http package)
+  - Fallback for links flagged as `cors_blocked` by browser analyzer
 
 #### Architecture
 
