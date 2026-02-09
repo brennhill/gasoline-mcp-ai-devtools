@@ -30,41 +30,10 @@ async function buildCRX() {
       fs.mkdirSync(BUILD_DIR, { recursive: true });
     }
 
-    // Try to use crx (Rust tool) first - most reliable fallback
-    try {
-      console.log('🔧 Using crx (Rust tool) for packing...');
-      await exec(`crx pack "${path.resolve(EXTENSION_DIR)}" -o "${OUTPUT_CRX}" -k "${KEY_FILE}"`);
-      if (fs.existsSync(OUTPUT_CRX)) {
-        const data = fs.readFileSync(OUTPUT_CRX);
-        const headerLen = data.readUInt32LE(8);
-        const headerProto = data.slice(12, 12 + headerLen);
-        let offset = 1;
-        let length1 = 0;
-        let shift = 0;
-        while (offset < headerProto.length) {
-          const byte = headerProto[offset];
-          length1 |= (byte & 0x7f) << shift;
-          offset++;
-          if ((byte & 0x80) === 0) break;
-          shift += 7;
-        }
-        const signedHeaderData = headerProto.slice(offset, offset + length1);
-        const hash = crypto.createHash('sha256').update(signedHeaderData).digest();
-        const extensionId = toBase32(hash).slice(0, 32);
-
-        console.log(`\n✨ CRX file created: ${OUTPUT_CRX}`);
-        console.log(`📊 File size: ${(data.length / 1024).toFixed(1)} KB`);
-        console.log(`📦 Extension ID: ${extensionId}`);
-        return;
-      }
-    } catch (err) {
-      // crx not available, try Chrome native
-    }
-
-    // Try to use Chrome's native pack-extension second (most reliable when available)
+    // Try to use Chrome's native pack-extension FIRST (most reliable - Chrome's own implementation)
     const chromeCommand = getChromeCommand();
     if (chromeCommand) {
-      console.log('🔧 Using Chrome native packing...');
+      console.log('🔧 Using Chrome native packing (most reliable)...');
       try {
         await exec(`${chromeCommand} --pack-extension="${path.resolve(EXTENSION_DIR)}" --pack-extension-key="${KEY_FILE}"`);
         const nativeCrx = path.join(EXTENSION_DIR + '.crx');
@@ -96,8 +65,39 @@ async function buildCRX() {
           return;
         }
       } catch (err) {
-        console.log('⚠️  Chrome packing failed, falling back to manual method');
+        console.log('⚠️  Chrome native packing failed, trying crx tool...');
       }
+    }
+
+    // Try to use crx (Rust tool) as fallback
+    try {
+      console.log('🔧 Using crx (Rust tool) for packing...');
+      await exec(`crx pack "${path.resolve(EXTENSION_DIR)}" -o "${OUTPUT_CRX}" -k "${KEY_FILE}"`);
+      if (fs.existsSync(OUTPUT_CRX)) {
+        const data = fs.readFileSync(OUTPUT_CRX);
+        const headerLen = data.readUInt32LE(8);
+        const headerProto = data.slice(12, 12 + headerLen);
+        let offset = 1;
+        let length1 = 0;
+        let shift = 0;
+        while (offset < headerProto.length) {
+          const byte = headerProto[offset];
+          length1 |= (byte & 0x7f) << shift;
+          offset++;
+          if ((byte & 0x80) === 0) break;
+          shift += 7;
+        }
+        const signedHeaderData = headerProto.slice(offset, offset + length1);
+        const hash = crypto.createHash('sha256').update(signedHeaderData).digest();
+        const extensionId = toBase32(hash).slice(0, 32);
+
+        console.log(`\n✨ CRX file created: ${OUTPUT_CRX}`);
+        console.log(`📊 File size: ${(data.length / 1024).toFixed(1)} KB`);
+        console.log(`📦 Extension ID: ${extensionId}`);
+        return;
+      }
+    } catch (err) {
+      console.log('⚠️  crx tool failed, falling back to manual method');
     }
 
     console.log('📦 Creating extension zip...');
@@ -267,24 +267,32 @@ function encodeVarint(value) {
 }
 
 function getChromeCommand() {
-  // Try common Chrome/Chromium locations
+  // Try common Chrome/Chromium locations (macOS first, most common)
   const candidates = [
-    'chrome',                                              // Linux/macOS
-    'google-chrome',                                       // Linux
-    'google-chrome-stable',                              // Linux
-    'chromium',                                           // Linux
-    'chromium-browser',                                   // Linux
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', // macOS
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',           // macOS
+    '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser', // Brave (macOS)
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',           // Chromium (macOS)
+    'google-chrome',                                                 // Linux
+    'google-chrome-stable',                                          // Linux
+    'chromium',                                                      // Linux
+    'chromium-browser',                                              // Linux
+    'chrome',                                                        // Linux/generic
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',   // Windows
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe', // Windows 32-bit
   ];
 
   for (const cmd of candidates) {
     try {
-      const { execSync } = require('child_process');
-      execSync(`${cmd} --version 2>/dev/null`);
-      return cmd;
+      // For macOS paths with spaces, check if file exists directly
+      if (cmd.startsWith('/Applications')) {
+        if (fs.existsSync(cmd)) {
+          return cmd;
+        }
+      } else {
+        // For other paths, use execSync
+        execCallback(`"${cmd}" --version`, { stdio: 'pipe' });
+        return cmd;
+      }
     } catch (e) {
       // Not found, try next
     }
