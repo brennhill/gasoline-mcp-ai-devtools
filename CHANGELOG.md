@@ -5,6 +5,40 @@ All notable changes to Dev Console will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0] - 2026-02-09
+
+### Added
+
+#### Features
+
+- **Link Health Analyzer** — New `analyze({what: 'link_health'})` tool to check all links on current page for issues
+  - Concurrent checking (20 workers) for performance
+  - Categorizes links: ok (2xx), redirect (3xx), requires_auth (401/403), broken (4xx/5xx), timeout
+  - Browser-based validation using extension security context
+  - Async operation with correlation ID tracking
+  - 19 comprehensive UAT tests covering edge cases and concurrency
+
+#### Architecture
+
+- **New analyze() tool** — Unified interface for active analysis operations
+  - Migrated `dom`, `api_validation` from configure()
+  - Migrated `performance`, `accessibility`, `error_clusters`, `history`, `security_audit`, `third_party_audit`, `security_diff` from observe()
+  - Clean semantic separation: analyze (active work) vs observe (passive reading)
+
+### Changed
+
+- **Tool reorganization** — Clear taxonomy with 5 MCP tools:
+  - `observe()` — Passive data reading from buffers
+  - `analyze()` — Active analysis and inspection (NEW)
+  - `configure()` — Settings and session control
+  - `interact()` — Browser manipulation
+  - `generate()` — Artifact creation
+
+### Fixed
+
+- **MCP compliance** — isError field now always present in tool responses (spec requirement)
+- **Extension version format** — Updated to valid semver (6.0.0)
+
 ## [5.3.0] - 2026-01-31
 
 ### Added
