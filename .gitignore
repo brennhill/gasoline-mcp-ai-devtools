@@ -20,6 +20,8 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+.clinerules
+.editorconfig
 
 # E2E test artifacts
 tests/e2e/.tmp/
