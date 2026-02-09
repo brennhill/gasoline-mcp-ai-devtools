@@ -30,7 +30,7 @@
 
 ## 📦 Latest Release
 
-Current version: **v6.0-BETA** — Major recording and gesture improvements.
+Current version: **v6.0-BETA** — Browser automation, recording, and performance analysis for AI agents.
 
 ```bash
 npx gasoline-mcp@6.0-BETA
@@ -42,20 +42,54 @@ npx gasoline-mcp@6.0-BETA
 
 ## Quick Start
 
-**Step 1: Load the extension**
+**You need TWO things:**
 
+- **Browser extension** (captures browser telemetry)
+- **MCP server** (forwards data to your AI tool)
+
+---
+
+### Step 1: Install the Browser Extension
+
+**[📥 Download CRX for v6.0-BETA](https://cookwithgasoline.com/downloads/gasoline-extension-v6.0-BETA.crx)**
+
+Then:
+1. Open `chrome://extensions`
+2. Enable Developer mode (top right)
+3. Drag & drop the `.crx` file into the page
+
+**Alternative:** Load from source (for development)
 ```bash
-# Clone the repo
 git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
 cd gasoline
-
-# Load the extension in Chrome:
-#   - Open chrome://extensions
-#   - Enable Developer mode (top right)
-#   - Click "Load unpacked" and select the `extension/` folder
+# Open chrome://extensions → Load unpacked → select extension/ folder
 ```
 
-**Step 2: Configure MCP in your AI tool**
+### Step 2: Start the MCP Server
+
+Choose one option below based on your setup:
+
+#### Option A: NPM (recommended)
+
+```bash
+npx gasoline-mcp@6.0-BETA
+```
+
+#### Option B: PyPI
+
+```bash
+pip install gasoline-mcp
+gasoline-mcp
+```
+
+#### Option C: Local development
+
+```bash
+cd gasoline
+go run ./cmd/dev-console
+```
+
+### Step 3: Configure MCP in your AI tool
 
 Choose one option below based on your setup:
 
