@@ -75,7 +75,7 @@ func runConnectMode(port int, clientID string, cwd string) {
 	buf := make([]byte, maxScanTokenSize)
 	scanner.Buffer(buf, maxScanTokenSize)
 
-	mcpURL := serverURL + "/mcp"
+	mcpURL := serverURL + "/mcp" // #nosec G601 -- URL is hardcoded to localhost (127.0.0.1), not user-controlled
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -85,7 +85,7 @@ func runConnectMode(port int, clientID string, cwd string) {
 
 		// Forward request to server with client ID header
 		forwardCtx, forwardCancel := context.WithTimeout(context.Background(), 30*time.Second)
-		req, err := http.NewRequestWithContext(forwardCtx, "POST", mcpURL, strings.NewReader(line))
+		req, err := http.NewRequestWithContext(forwardCtx, "POST", mcpURL, strings.NewReader(line)) // #nosec G601 -- URL from localhost-only serverURL
 		if err != nil {
 			forwardCancel()
 			sendMCPError(nil, -32603, "Internal error: "+err.Error())

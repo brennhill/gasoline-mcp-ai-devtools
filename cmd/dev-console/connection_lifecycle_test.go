@@ -292,7 +292,7 @@ func TestMCPConnectionLifecycle_MassiveConcurrency(t *testing.T) {
 
 	// Start the first server and wait for it to be ready
 	t.Logf("Starting initial server on port %d...", port)
-	serverCmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	serverCmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- test-only code: binary is from buildTestBinary(t), port is from findFreePort(t)
 	serverStdin, err := serverCmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create server stdin: %v", err)
@@ -477,7 +477,7 @@ func TestMCPConnectionLifecycle_ColdStartRace(t *testing.T) {
 			defer wg.Done()
 
 			// Start client with piped stdin (MCP mode)
-			cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+			cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- test-only code: binary is from buildTestBinary(t), port is from findFreePort(t)
 			stdin, _ := cmd.StdinPipe()
 			stderr, _ := cmd.StderrPipe()
 

@@ -47,7 +47,7 @@ func TestServerPersistence_StaysAliveWithOpenStdin(t *testing.T) {
 	defer os.Remove(binary)
 
 	// Start server with stdin pipe (simulates FIFO)
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- test-only code: binary is from buildTestBinary(t), port is from findFreePort(t)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
