@@ -76,13 +76,6 @@ func (h *ToolHandler) toolGetReproductionScriptImpl(req JSONRPCRequest, args jso
 
 	// Get actions from capture buffer
 	allActions := h.capture.GetAllEnhancedActions()
-	if len(allActions) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrNoActionsCaptured,
-			"No user actions recorded in the session",
-			"Interact with the page first (click, type, navigate), then retry",
-		)}
-	}
 
 	// Apply last_n filter
 	actions := allActions

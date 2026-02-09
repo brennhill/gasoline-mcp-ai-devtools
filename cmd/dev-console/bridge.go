@@ -271,6 +271,20 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		}
 
 		// SLOW PATH: Check daemon status for tools/call and other methods
+
+		// Known valid MCP methods that require daemon (beyond fast-path)
+		knownMethods := map[string]bool{
+			"tools/call": true,
+		}
+
+		// If method is not recognized as valid, return error immediately
+		if !knownMethods[req.Method] && !strings.HasPrefix(req.Method, "tools/") && !strings.HasPrefix(req.Method, "resources/") {
+			sendBridgeError(req.ID, -32601, "Method not found: "+req.Method)
+			flushStdout()
+			signalResponseSent()
+			continue
+		}
+
 		state.mu.Lock()
 		isReady := state.ready
 		isFailed := state.failed
