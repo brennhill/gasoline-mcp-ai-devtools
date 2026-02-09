@@ -35,7 +35,7 @@ type MCPContentBlock struct {
 // MCPToolResult represents the result of an MCP tool call.
 type MCPToolResult struct {
 	Content []MCPContentBlock `json:"content"`
-	IsError bool              `json:"isError,omitempty"`
+	IsError bool              `json:"isError"`
 }
 
 // MCPInitializeResult represents the result of an MCP initialize request.
