@@ -1,819 +1,602 @@
-# File Upload via Go Server — Tech Spec
+# File Upload via Go Server — Tech Spec (Revised)
 
-**Feature:** Automated file upload capability for Gasoline extension, using the Go server's filesystem access to bypass browser sandbox restrictions.
+**Feature:** Multi-stage intelligent file upload with automatic escalation, using the Go server and OS-level automation to bypass browser sandbox restrictions.
 
-**Use Case:** Bulk video uploads to platforms without APIs (e.g., Rumble, YouTube, etc.)
+**Use Cases:**
+- Bulk video uploads (Rumble, YouTube, etc.)
+- Enterprise form submissions (CSRF-protected)
+- Large file uploads (>2GB) to any HTML form
+- Unattended automation (LLM-driven, OS-level interaction)
 
 ---
 
 ## Problem Statement
 
 Chrome extensions run in a sandboxed environment that prevents:
+
 - Reading arbitrary files from disk
 - Programmatically populating `<input type="file">` elements
 - Direct filesystem access from JavaScript
+- Simulating native OS file dialogs
 
-However, Gasoline has a Go server component running as a native process that **can** read files from disk. This spec defines how to leverage that capability.
+However, Gasoline has a Go server running as a native process with full filesystem and OS access. This spec defines how to leverage it with **intelligent escalation**: start with the least invasive approach (drag-drop), then escalate through form interception and finally OS-level automation.
 
 ---
 
-## Activation: Explicit User Opt-In
+## Security Model: Explicit Opt-In + LLM Trust
 
-This feature requires **explicit user consent via startup flag**. It is NOT enabled by default.
+File upload automation requires **explicit server-side flag** to enable:
 
-**Why:**
-- File upload automation is a workaround, not standard functionality
-- User should be fully aware they're enabling non-standard behavior
-- Prevents accidental activation
-- Easier to audit and disable
-
-**Startup:**
 ```bash
-gasoline-mcp --enable-upload-automation
-# or
-GASOLINE_UPLOAD_AUTOMATION=true gasoline-mcp
+gasoline-mcp --enable-upload-automation [--trust-llm-context]
 ```
 
-**Without this flag:**
-- Upload-related endpoints return 403 Forbidden
+**Flags:**
+- `--enable-upload-automation`: Enables all 4 escalation stages
+- `--trust-llm-context`: Auto-grant escalation if request has LLM session context (optional)
+
+**Without flags:**
+- Upload endpoints return 403 Forbidden
 - Extension UI does not show upload options
-- All upload functionality is disabled
+- All file upload functionality is disabled
 
-This ensures users must be deliberate about enabling workaround behavior.
-
----
-
-## Architecture
-
-### Current Gasoline Architecture
-```
-Browser Extension (sandboxed)
-  ↓ stdio/HTTP
-Go Server (native process, unrestricted filesystem access)
-```
-
-### Proposed Flow
-
-```
-1. User calls: interact(action: "upload", selector: "#Filedata", file_path: "/path/to/video.mp4")
-2. Extension sends file_path to Go server
-3. Go server reads file from disk → encodes to base64
-4. Go server sends file data back to extension
-5. Extension uses execute_js to:
-   a. Create File/Blob object from base64 data
-   b. Inject into file input element (via extension privileges)
-   c. Trigger change event
-   d. Optionally submit form
-```
+**Rationale:** File upload automation is powerful and invasive (especially Stage 4 OS automation). Users must explicitly opt in. LLM context detection (Claude Code, etc.) can optionally skip per-upload confirmation, since the LLM is already running with user awareness.
 
 ---
 
-## Implementation Details
+## Architecture: 4-Stage Intelligent Escalation
 
-### 1. New Tool Action: `interact(action: "upload", ...)`
+### System Design
+
+```
+Browser Extension (MV3 sandboxed)
+  ↓ HTTP/stdio
+Go Server (native process, full filesystem + OS access)
+  ├─ Stage 1: Drag-drop simulation (extension only)
+  ├─ Stage 2: File dialog interception (extension + Go monitoring)
+  ├─ Stage 3: Form interception (Go direct submission)
+  └─ Stage 4: OS automation (Go simulates native file picker)
+```
+
+### Escalation Flow (User Perspective)
+
+```
+User calls: interact(action: "upload", selector: "#Filedata", file_path: "/path/to/video.mp4")
+  ↓
+[5 second timeout for manual interaction]
+  ├─ User clicks file input → STAGE 2 (file dialog)
+  └─ User does nothing → STAGE 1 (drag-drop attempt)
+     ├─ Success → DONE ✅
+     └─ Fails → STAGE 2 (file dialog interception)
+        ├─ Success → DONE ✅
+        └─ Fails → STAGE 3 (form interception, Go POSTs directly)
+           ├─ Success → DONE ✅
+           └─ Fails → STAGE 4 (OS automation, Go simulates file picker)
+              ├─ Success → DONE ✅
+              └─ Fails (retried 3x) → Ask user or return error
+```
+
+---
+
+## API Design
+
+### Tool Signature: `interact(action: "upload", ...)`
 
 **Parameters:**
-- `selector` (required): CSS selector for file input element
-- `file_path` (required): Absolute path to file on user's disk
-- `submit` (optional, default: false): Whether to auto-submit form after upload
 
-**Example:**
+- `selector` (required): CSS selector for `<input type="file">` element, OR `{ apiEndpoint: "..." }` for direct API uploads
+- `file_path` (required): Absolute path to file on user's disk
+- `submit` (optional, default: false): Whether to auto-submit form after injection
+- `escalation_timeout_ms` (optional, default: 5000): Time to wait for manual interaction before auto-escalating
+
+**Example Usage:**
+
 ```typescript
+// HTML form upload
 await interact({
   action: "upload",
   selector: "#Filedata",
-  file_path: "/Users/brenn/Videos/my-video.mp4",
+  file_path: "/Users/brenn/Videos/video.mp4",
   submit: true
+});
+
+// API endpoint upload
+await interact({
+  action: "upload",
+  apiEndpoint: "https://api.example.com/upload",
+  file_path: "/Users/brenn/Videos/video.mp4"
 });
 ```
 
-**Response:**
+**Response (on success):**
+
 ```json
 {
   "success": true,
-  "file_size_bytes": 1024000000,
-  "file_name": "my-video.mp4",
-  "input_element": {
-    "id": "Filedata",
-    "type": "file",
-    "accept": "video/*"
-  }
+  "stage": 1,
+  "file_size_bytes": 1073741824,
+  "file_name": "video.mp4",
+  "duration_ms": 2345,
+  "status": "File injected and ready"
 }
 ```
 
-### 2. Go Server Implementation
+**Response (if escalation occurred):**
 
-**New endpoint:** `POST /api/file/read`
+```json
+{
+  "success": true,
+  "stage": 3,
+  "file_size_bytes": 1073741824,
+  "file_name": "video.mp4",
+  "duration_ms": 5600,
+  "status": "Form interception: POST submitted to platform",
+  "escalation_reason": "Drag-drop failed (platform rejected synthetic File)"
+}
+```
+
+**Error Response (all stages exhausted):**
+
+```json
+{
+  "success": false,
+  "error": "upload_failed_all_stages",
+  "last_stage": 4,
+  "last_error": "OS automation failed after 3 retries",
+  "suggestions": [
+    "Verify file path is correct",
+    "Check file permissions",
+    "Ensure user is logged into platform",
+    "Try manual upload"
+  ]
+}
+```
+
+### Stage-by-Stage Implementation
+
+#### Stage 1: Drag-Drop Simulation (Least Invasive)
+
+**How it works:**
+1. Extension loads file data from Go server (via `POST /api/file/read`)
+2. Decodes base64 → creates File/Blob object
+3. Simulates drag-drop event on target element
+4. Platform's JavaScript handler receives synthetic File object
+
+**Go Endpoint:** `POST /api/file/read`
 
 **Request:**
 ```json
 {
-  "file_path": "/Users/brenn/Videos/my-video.mp4"
+  "file_path": "/Users/brenn/Videos/video.mp4"
 }
 ```
 
-**Response:**
+**Response (streaming for large files):**
 ```json
 {
   "success": true,
-  "file_name": "my-video.mp4",
-  "file_size": 1024000000,
+  "file_name": "video.mp4",
+  "file_size": 1073741824,
   "mime_type": "video/mp4",
-  "data_base64": "AAAA...[base64 encoded file content]...AAAA"
+  "data_base64": "AAAA...[base64]...AAAA"
 }
 ```
 
-**Error Handling:**
-- File not found → `{"error": "file_not_found", "path": "..."}` (404)
-- Permission denied → `{"error": "permission_denied", "path": "..."}` (403)
-- File too large (>15GB) → `{"error": "file_too_large", "size": ...}` (413)
+**When it works:** YouTube, Vimeo, custom dropzone handlers
 
-### 3. Extension Implementation
+**When it fails:** Rumble (rejects synthetic Files), strict CORS
 
-**Flow in content script:**
-
-```typescript
-// 1. Read file from Go server
-const response = await fetch('http://localhost:9223/api/file/read', {
-  method: 'POST',
-  body: JSON.stringify({ file_path: '/path/to/video.mp4' })
-});
-const fileData = await response.json();
-
-// 2. Decode base64 to Blob
-const binaryString = atob(fileData.data_base64);
-const bytes = new Uint8Array(binaryString.length);
-for (let i = 0; i < binaryString.length; i++) {
-  bytes[i] = binaryString.charCodeAt(i);
-}
-const blob = new Blob([bytes], { type: fileData.mime_type });
-
-// 3. Create File object
-const file = new File([blob], fileData.file_name, { type: fileData.mime_type });
-
-// 4. Inject into file input
-const fileInput = document.querySelector('#Filedata');
-// Use extension's elevated privileges to create a FileList
-// This is where extension privileges come in—regular scripts can't do this
-```
-
-**Key Challenge:** Creating a `FileList` object and assigning it to `HTMLInputElement.files`
-
-**Solution Options:**
-
-#### Option A: Drag-Drop Simulation (Most Compatible)
-```typescript
-const dataTransfer = new DataTransfer();
-dataTransfer.items.add(file);
-
-const dropEvent = new DragEvent('drop', {
-  bubbles: true,
-  cancelable: true,
-  dataTransfer
-});
-
-fileInput.dispatchEvent(dropEvent);
-```
-
-**Pros:** Works in most upload handlers
-**Cons:** Requires that the upload handler listens to drop events
-
-#### Option B: Extension Content Script Privileges
-Use `chrome.scripting.executeScript()` with `world: "MAIN"` to run in page context with elevated privileges:
-
-```typescript
-chrome.scripting.executeScript({
-  target: { tabId },
-  function: injectFile,
-  args: [file, fileInputSelector]
-});
-
-function injectFile(file, selector) {
-  const input = document.querySelector(selector);
-  // In MAIN world, may have access to internal APIs
-  // But still blocked by browser security model
-}
-```
-
-**Pros:** Highest privilege level for extension
-**Cons:** Still subject to browser security restrictions on file inputs
-
-#### Option C: Direct API Submission (Platform-Specific)
-If the platform supports it, bypass the file input entirely:
-
-```typescript
-const formData = new FormData();
-formData.append('file', file);
-formData.append('title', 'My Video');
-
-const uploadResponse = await fetch('https://platform.com/api/upload', {
-  method: 'POST',
-  body: formData
-});
-```
-
-**Pros:** No sandbox issues
-**Cons:** Requires knowing the platform's API endpoint; may not work for Rumble
+**Timeout:** 5s before escalating to Stage 2
 
 ---
 
-## Rumble-Specific Implementation
+#### Stage 2: File Dialog Interception (Medium)
 
-### Discovery Results
+**How it works:**
+1. Extension hooks the file input's click handler
+2. User (or automation) clicks file input → browser native file dialog opens
+3. Go server monitors for dialog and injects file path
+4. Browser populates `<input type="file">` with user's file
 
-**File Input:** `#Filedata`
-- **Accept:** `video/mp4,video/x-m4v,video/*`
-- **Name:** `Filedata`
-- **Form Action:** `https://rumble.com/upload.php`
+**Go Endpoint:** `POST /api/file/dialog/inject`
 
-**Form Fields:**
-- `#title` — Video Title (required)
-- `#category_primary` — Primary Category
-- `#category_secondary` — Secondary Category
-- `#tags` — Tags (comma-separated, optional)
-- Various visibility/scheduling/monetization options
+**Request:**
+```json
+{
+  "file_path": "/Users/brenn/Videos/video.mp4",
+  "browser_pid": 12345
+}
+```
 
-**Upload Method:** Drag-drop supported ("or drag and drop the file here")
+**When it works:** Most platforms (requires actual file picker interaction)
 
-**Max File Size:** 15 GB (stated in UI)
+**When it fails:** Automated systems without user interaction
 
-### Workflow for Rumble Bulk Upload
-
-1. Read spreadsheet with columns: `file_path`, `title`, `description`, `tags`, `category`, ...
-2. For each row:
-   ```
-   a. interact(fill, selector="#title", text="From spreadsheet")
-   b. interact(fill, selector="#tags", text="tag1,tag2")
-   c. interact(upload, selector="#Filedata", file_path="/path/from/spreadsheet")
-   d. interact(click, selector="#submitForm")
-   e. wait for upload to complete
-   ```
+**Timeout:** 10s (waiting for user to click or Go to auto-simulate)
 
 ---
 
-## State Machine
+#### Stage 3: Form Interception (Most Invasive)
 
-### Upload States
+**How it works:**
+1. Extension captures form submission attempt
+2. Extracts: form action, fields, CSRF token, cookies
+3. Sends to Go server
+4. Go server reads file from disk and POSTs directly to platform
+5. No base64 encoding needed—streams file directly
+
+**Go Endpoint:** `POST /api/form/submit`
+
+**Request:**
+```json
+{
+  "form_action": "https://rumble.com/upload.php",
+  "method": "POST",
+  "fields": {
+    "title": "My Video",
+    "tags": "tag1,tag2",
+    "category_primary": "News"
+  },
+  "file_input_name": "Filedata",
+  "file_path": "/Users/brenn/Videos/video.mp4",
+  "csrf_token": "abc123xyz",
+  "cookies": "session=xyz;csrf=abc;..."
+}
+```
+
+**Go Implementation (pseudocode):**
+
+```go
+func handleFormSubmit(w http.ResponseWriter, r *http.Request) {
+  // 1. Read file directly from disk (no base64)
+  file, _ := os.Open(req.FilePath)
+  defer file.Close()
+
+  // 2. Build multipart form with file
+  body := &bytes.Buffer{}
+  writer := multipart.NewWriter(body)
+
+  // Add form fields
+  for k, v := range req.Fields {
+    writer.WriteField(k, v)
+  }
+
+  // Add file (streamed, no memory bloat)
+  fw, _ := writer.CreateFormFile(req.FileInputName, filepath.Base(req.FilePath))
+  io.Copy(fw, file) // Stream directly
+  writer.Close()
+
+  // 3. POST to platform with user's auth
+  httpReq, _ := http.NewRequest(req.Method, req.FormAction, body)
+  httpReq.Header.Set("Cookie", req.Cookies)
+  httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+
+  resp, _ := http.DefaultClient.Do(httpReq)
+  return resp.StatusCode < 400
+}
+```
+
+**Advantages:**
+- Works for ANY HTML form with CSRF protection
+- File streaming = zero memory overhead
+- Handles multi-GB files
+
+**When it works:** Rumble, YouTube, enterprise systems, any form-based upload
+
+---
+
+#### Stage 4: OS-Level Automation (Most Invasive)
+
+**How it works:**
+1. Go binary directly simulates OS file picker interaction
+2. Platform-specific: AppleScript (macOS), UIA (Windows), xdotool (Linux)
+3. Go finds the open file dialog, injects the file path, simulates "Open" button click
+4. Browser receives file from native dialog (highest fidelity)
+
+**macOS Implementation (AppleScript):**
+
+```bash
+osascript -e 'tell application "Google Chrome"
+  tell application "System Events"
+    keystroke "'$FILE_PATH'" using command down
+    keystroke return
+  end tell
+end tell'
+```
+
+**Windows Implementation (UIA + SendInput):**
+
+```go
+// Locate file dialog window
+dialog := findWindow("Open", "File")
+if dialog != nil {
+  // Type path and press Enter
+  sendKeys(filepath.ToShortName(filePath))
+  sendKey("Return")
+}
+```
+
+**Linux Implementation (xdotool):**
+
+```bash
+xdotool search --name "Open File" windowactivate key ctrl+l
+xdotool type "$FILE_PATH"
+xdotool key Return
+```
+
+**Advantages:**
+- Works with ANY file dialog (no platform detection needed)
+- Highest fidelity (browser sees real file dialog result)
+- Bypasses all CSRF/auth checks
+
+**Limitations:**
+- Requires OS-level permissions (accessibility, input simulation)
+- Platform-specific code (3 implementations)
+- Slowest (1-2s per upload due to OS interaction)
+
+**Retries:** 3 retries with 1s exponential backoff if dialog doesn't appear
+
+### Progress Tracking & Large File Strategy
+
+**Smart Progress Reporting** (based on file size):
+
+| File Size | Strategy | Overhead | Use Case |
+|-----------|----------|----------|----------|
+| < 100MB | Simple (result only) | ~2% | Fast uploads, quick feedback |
+| 100MB - 2GB | Periodic (10% chunks) | ~5% | Medium files, user confidence |
+| > 2GB | Detailed (byte-level + ETA) | ~8% | Large files, transparency |
+
+**Implementation:**
+
+For files > 2GB, Go server streams directly (no base64):
+- Reads file in 64MB chunks
+- POSTs chunks to platform (multipart range support)
+- Reports progress: `{ bytes_sent: 500MB, total: 4GB, percent: 12.5%, eta_seconds: 3600 }`
+
+For files < 100MB:
+- Load into memory → base64 encode → inject
+- Return only final success/error
+
+For files 100MB - 2GB:
+- Hybrid: load 100MB chunks → base64 → inject
+- Report progress every 10% or 100MB whichever is smaller
+
+**Progress Callback (MCP streaming):**
+
+```json
+{
+  "status": "uploading",
+  "bytes_sent": 536870912,
+  "total_bytes": 1073741824,
+  "percent": 50,
+  "duration_ms": 15000,
+  "eta_seconds": 15,
+  "speed_mbps": 35.8
+}
+```
+
+---
+
+## Platform Guidance
+
+### Rumble Upload Example
+
+**Platform-specific details:**
+- File input: `#Filedata`
+- Form action: `https://rumble.com/upload.php`
+- Method: POST multipart/form-data
+- Max file size: 15 GB
+- CSRF protection: Yes (auto-detected)
+- Auth required: Yes (session cookies)
+
+**Bulk upload workflow:**
+
+```typescript
+// Read CSV with columns: file_path, title, tags, category
+const videos = await readCSV('videos.csv');
+
+for (const video of videos) {
+  // Fill form fields
+  await interact({ action: 'fill', selector: '#title', text: video.title });
+  await interact({ action: 'fill', selector: '#tags', text: video.tags });
+
+  // Upload file (auto-escalates if needed)
+  const result = await interact({
+    action: 'upload',
+    selector: '#Filedata',
+    file_path: video.file_path
+  });
+
+  if (!result.success) {
+    console.log(`Failed to upload ${video.file_path}: ${result.error}`);
+    continue;
+  }
+
+  console.log(`Uploaded with Stage ${result.stage}`);
+
+  // Submit form
+  await interact({ action: 'click', selector: 'button[type=submit]' });
+
+  // Wait for redirect
+  await wait(5000);
+}
+```
+
+### Generic Platform Support
+
+This design is **platform-agnostic**. Works with:
+
+- **HTML form-based:** YouTube, Vimeo, Dailymotion, Rumble, custom CMS
+- **API endpoints:** Platforms with file upload endpoints
+- **Enterprise systems:** CSRF-protected, multi-field forms
+- **Any file type:** Videos, documents, images, archives
+
+Escalation strategy automatically detects the right approach per platform.
+
+---
+
+## Escalation State Machine
 
 ```
 IDLE
-  ↓ [user calls interact(action="upload")]
-READING_FILE
-  ↓ [Go server reads from disk]
-FILE_LOADED
-  ↓ [extension receives base64 data]
-INJECTING_FILE
-  ↓ [extension injects into DOM]
-READY_FOR_SUBMISSION
-  ↓ [user calls click(selector="#submitForm") or auto-submit]
-UPLOADING
-  ↓ [upload progress via network observer]
+  ↓ [User calls interact(action: "upload", ...)]
+
+WAITING_FOR_USER_INPUT
+  ├─ [User clicks file input within 5s timeout] → STAGE_2_FILE_DIALOG
+  └─ [5s elapsed, no user action] → STAGE_1_DRAGDROP
+
+STAGE_1_DRAGDROP
+  ├─ [Success: File injected] → COMPLETE ✅
+  ├─ [Failed: Platform rejected] → STAGE_2_FILE_DIALOG
+  └─ [Error: Exception] → STAGE_3_FORM_INTERCEPTION
+
+STAGE_2_FILE_DIALOG
+  ├─ [Success: File picker completed] → COMPLETE ✅
+  ├─ [Failed: Dialog not intercepted] → STAGE_3_FORM_INTERCEPTION
+  └─ [Error: No user interaction] → STAGE_3_FORM_INTERCEPTION
+
+STAGE_3_FORM_INTERCEPTION
+  ├─ [Success: POST accepted] → COMPLETE ✅
+  ├─ [Failed: CSRF mismatch/expired] → STAGE_4_OS_AUTOMATION
+  ├─ [Failed: User not logged in] → ERROR (ask user to login)
+  └─ [Error: Form not found] → STAGE_4_OS_AUTOMATION
+
+STAGE_4_OS_AUTOMATION
+  ├─ [Success: File dialog appeared, file injected] → COMPLETE ✅
+  ├─ [Retry 1: Dialog not found] → wait 1s, retry
+  ├─ [Retry 2: Dialog not found] → wait 2s, retry
+  ├─ [Retry 3: Dialog not found] → STAGE_4_FALLBACK
+  └─ [Error: OS permissions denied] → ERROR (user must grant access)
+
+STAGE_4_FALLBACK (manual upload)
+  ├─ [User manually uploads] → COMPLETE ✅
+  ├─ [Timeout 30s] → ERROR (all stages exhausted)
+  └─ [User cancels] → ERROR (upload cancelled)
+
 COMPLETE
-  ↓ [success or error]
-IDLE
+  ↓ [Return success + stage used + duration]
+
+ERROR
+  ↓ [Return error + stage reached + recovery suggestions]
 ```
+
+---
+
+## Error Escalation Rules
+
+### Auto-Retry
+- **Stage 1-3:** Auto-retry once before escalating
+- **Stage 4:** Retry 3 times with exponential backoff (1s, 2s, 4s)
+
+### User Interaction Required
+- **If user said "don't bother me" or "force it":** Skip confirmation, escalate automatically
+- **If user said nothing (default):** Ask before Stage 4 OS automation
+- **If LLM context + `--trust-llm-context` flag:** Auto-grant escalation (LLM has implicit permission)
+
+### Failure Terminal States
+1. **File not found/unreadable** → Return error immediately, don't escalate
+2. **User not logged into platform** → Ask user to login, retry Stage 3
+3. **OS permissions denied** → Return error, user must grant accessibility/input simulation permission
+4. **All stages exhausted + manual fallback timeout** → Return error with recovery suggestions
 
 ---
 
 ## Edge Cases & Recovery
 
-| Scenario | Root Cause | Recovery |
+| Scenario | Detection | Recovery |
 |----------|-----------|----------|
-| **File not found** | User provided invalid path | Return 404 error, suggest checking path |
-| **File too large (>15GB)** | Platform limit | Return 413 error, suggest splitting files |
-| **Permission denied** | File protected by OS | Return 403 error, suggest checking permissions |
-| **Extension privileges insufficient** | Browser sandbox blocks File API manipulation | Fall back to drag-drop simulation |
-| **Drag-drop doesn't work** | Platform doesn't support drop events | Document as limitation; suggest alternative approach |
-| **Network timeout during upload** | Large file, slow connection | Implement progress polling with configurable timeout |
-| **Form not found** | Selector mismatch or page changed | Return error with debugging info (page screenshot) |
-| **Multiple files selected accidentally** | Platform doesn't support multiple | Reject with error message |
-
----
-
-## Network Communication
-
-### File Read Request (Extension → Go Server)
-
-```
-POST /api/file/read HTTP/1.1
-Host: localhost:9223
-Content-Type: application/json
-
-{
-  "file_path": "/Users/brenn/Videos/rumble-upload.mp4"
-}
-```
-
-### File Read Response
-
-```
-HTTP/1.1 200 OK
-Content-Type: application/json
-Content-Length: [size]
-
-{
-  "success": true,
-  "file_name": "rumble-upload.mp4",
-  "file_size": 1073741824,
-  "mime_type": "video/mp4",
-  "data_base64": "AAAA...truncated for brevity..."
-}
-```
-
-### Error Responses
-
-```
-HTTP/1.1 404 Not Found
-{
-  "error": "file_not_found",
-  "file_path": "/Users/brenn/Videos/missing.mp4",
-  "message": "File does not exist"
-}
-
-HTTP/1.1 413 Payload Too Large
-{
-  "error": "file_too_large",
-  "file_size": 16000000000,
-  "max_size": 15000000000,
-  "message": "File exceeds 15GB platform limit"
-}
-```
-
----
-
-## Performance Considerations
-
-### Base64 Encoding Overhead
-- Base64 increases file size by ~33%
-- 1GB file → 1.33GB in memory
-- **Risk:** Memory exhaustion on large files
-
-**Mitigation:** Implement streaming for files >2GB
-
-### Race Conditions
-- If user clicks file input manually while Go server is still reading → conflict
-- **Mitigation:** Disable/hide file input during read operation
-
-### Concurrent Uploads
-- Multiple `interact(action="upload")` calls simultaneously
-- **Mitigation:** Queue file reads on Go server; one at a time
+| **File not found** | Stage 1: `ENOENT` error | Return 404, suggest checking path |
+| **File too large (>15GB)** | Stage 1: File size check | Return 413, suggest chunking or alternative |
+| **Permission denied on file** | Stage 1: `EACCES` error | Return 403, ask to check file permissions |
+| **Drag-drop rejected by platform** | Stage 1: Event silently ignored | Escalate to Stage 2 (expected behavior) |
+| **CSRF token expired/mismatch** | Stage 3: 403/422 response | Escalate to Stage 4 (token is stale) |
+| **User not logged in** | Stage 3: 401 response | Ask user to login, retry Stage 3 |
+| **File dialog doesn't appear** | Stage 4: Dialog not found after 3s | Retry with backoff, then give up |
+| **OS automation permission denied** | Stage 4: `permission_denied` error | Return error, user must grant permission |
+| **Form structure changed (fields moved)** | Stage 3: Form validation fails | Document limitation, suggest manual upload |
+| **Network timeout (large file)** | Go server: Connection timeout | Return error, user can retry with streaming |
+| **Session cookie expired mid-upload** | Stage 3: 401 during POST | Return error, user must re-login |
 
 ---
 
 ## Deployment & Testing
 
-### Go Server Changes
-1. Add `/api/file/read` endpoint
-2. Implement file validation (size, permissions)
-3. Add error handling for all edge cases
-4. Test with various file sizes and paths
+### Go Server Implementation (All Stages)
 
-### Extension Changes
-1. Extend `interact` tool with `upload` action
-2. Implement file injection logic (test both drag-drop and direct injection)
-3. Add progress tracking for large files
-4. Test with Rumble upload form (live)
+**New endpoints:**
+- `POST /api/file/read` — Stage 1: Load file into memory (base64 for small files)
+- `POST /api/file/dialog/inject` — Stage 2: Inject path into native file dialog
+- `POST /api/form/submit` — Stage 3: Extract form metadata and submit with file
+- `POST /api/os-automation/inject` — Stage 4: Simulate OS-level file picker interaction
+
+**Startup flags:**
+```bash
+gasoline-mcp --enable-upload-automation [--trust-llm-context]
+```
+
+**File size handling:**
+- < 100MB: Load entirely into memory, base64 encode
+- 100MB - 2GB: Load in 100MB chunks, stream to extension
+- > 2GB: Direct streaming from Go server to platform (no base64)
+
+### Extension Implementation
+
+**New `interact` action:**
+```typescript
+interface UploadRequest {
+  action: "upload"
+  selector?: string                 // CSS selector for file input
+  apiEndpoint?: string             // Alternative: direct API endpoint
+  file_path: string                // Absolute path to file
+  submit?: boolean                 // Auto-submit form (default: false)
+  escalation_timeout_ms?: number   // Time before auto-escalation (default: 5000)
+}
+```
+
+**State tracking:**
+- Track which stage was used
+- Log escalation reasons
+- Report progress for large files
+- Handle concurrent uploads (queue if needed)
 
 ### UAT Scenarios
-1. ✅ Small file (< 100MB) upload
-2. ✅ Large file (> 1GB) upload
-3. ✅ File not found (verify error handling)
-4. ✅ Permission denied (verify error handling)
-5. ✅ Concurrent uploads (verify queuing)
-6. ✅ Form field population + file upload (full workflow)
 
----
-
-## Browser Sandbox Constraints
-
-### What Works
-- ✅ Content script can read from Go server via HTTP
-- ✅ Extension has elevated privileges (can use more APIs)
-- ✅ Can dispatch events to DOM elements
-- ✅ Can create Blob/File objects from data
-
-### What's Blocked
-- ❌ Cannot directly set `HTMLInputElement.files` (read-only)
-- ❌ Cannot read arbitrary local files directly from extension
-- ❌ Cannot programmatically trigger native file picker
-- ❌ Cannot fake file inputs with synthetic drag-drop events
-- ❌ Platforms reject drag-drop with synthetic File objects (security)
-
-### Reality Check: Rumble Testing Results
-
-**Tested Drag-Drop on Rumble:** ❌ FAILED
-
-- Form uses custom JavaScript handler (not native form submission)
-- No Dropzone.js or Uppy detected
-- Synthetic drag-drop events silently ignored by Rumble's handler
-- **Root Cause:** Rumble only accepts files from real `<input type="file">` elements (browser security measure)
-
-### Base64 Encoding Limitations
-
-For multi-GB videos, base64 approach is **NOT VIABLE**:
-
-| File Size | Base64 Overhead | Memory Peak | Status |
-|-----------|-----------------|------------|--------|
-| 1 GB | +33% (1.33 GB) | 2.66 GB | Possible |
-| 4 GB | +33% (5.3 GB) | 10.6 GB | Problematic |
-| 10 GB | +33% (13.3 GB) | 26.6 GB | ❌ Crashes |
-
-Additional issues:
-- JavaScript string size limits (~2GB practical maximum)
-- CPU overhead of encoding/decoding
-- Network transmission inefficiency (5.3GB over stdio)
-- No streaming progress reporting
-
-### Workarounds Employed
-- Use Go server for filesystem access (outside sandbox) ✅
-- Use drag-drop simulation (browser allows, but platforms reject) ❌
-- Pass file data as Blob/File (works for small files only) ⚠️
-
----
-
-## Revised Approach: Intelligent Fallback Strategy
-
-Instead of choosing one method, Gasoline should **auto-detect and use the least invasive approach**:
-
-### Stage 1: Synthetic Drag-Drop (Least Invasive) ✅
-```
-Try: Synthetic drag-drop with File objects
-If works: Use it (no server overhead)
-If fails: Escalate to Stage 2
-```
-
-### Stage 2: File Dialog Interception (Medium)
-```
-Try: CDP file dialog auto-response
-If works: User clicks file input, CDP responds with path
-If fails: Escalate to Stage 3
-```
-
-### Stage 3: Form Submission Monitoring (Most Invasive)
-```
-Try: Intercept actual form submission, extract CSRF/cookies
-Replicate: POST from Go server with user's auth credentials
-If works: Fully automated
-If fails: Suggest hybrid approach
-```
-
----
-
-## Stage 3 Implementation: Form Interception
-
-### Auto-Detection Algorithm
-
-**1. Detect Form & Extract Fields**
-```javascript
-// In CDP-controlled browser
-const form = document.querySelector('form');
-const fields = {};
-
-// Get all form fields
-form.querySelectorAll('input, textarea, select').forEach(el => {
-  if (el.name) fields[el.name] = el.value;
-});
-
-// Detect CSRF token (try common names)
-const csrfNames = ['csrf_token', '_token', '__RequestVerificationToken', 'authenticity_token'];
-let csrfField = null;
-for (const name of csrfNames) {
-  if (fields[name]) {
-    csrfField = name;
-    break;
-  }
-}
-
-return {
-  action: form.action,
-  method: form.method,
-  enctype: form.enctype,
-  fields: fields,
-  csrf_field: csrfField,
-  csrf_value: fields[csrfField],
-  file_input_name: form.querySelector('input[type="file"]')?.name
-};
-```
-
-**2. Extract Session Cookies**
-```javascript
-// Get all cookies (accessible to page scripts)
-const cookies = document.cookie
-  .split(';')
-  .map(c => c.trim())
-  .join('; ');
-
-// Also check for auth tokens in sessionStorage/localStorage
-const authData = {
-  cookies: cookies,
-  sessionStorage: JSON.parse(JSON.stringify(sessionStorage)),
-  localStorage: JSON.parse(JSON.stringify(localStorage))
-};
-```
-
-**3. Monitor Actual Submission**
-```javascript
-// Hook the form to capture submission details
-const originalAction = form.action;
-form.onsubmit = async (e) => {
-  e.preventDefault();
-
-  const formData = new FormData(form);
-  const submission = {
-    action: form.action,
-    method: form.method,
-    enctype: form.enctype,
-    fields: Object.fromEntries(formData),
-    timestamp: Date.now(),
-    // Critical for replay
-    csrf_token: formData.get(csrfField),
-    cookies: document.cookie,
-    headers: {
-      'Referer': window.location.href,
-      'Origin': window.location.origin,
-      'User-Agent': navigator.userAgent
-    }
-  };
-
-  // Send to Go server for replay
-  await fetch('http://localhost:9223/api/upload-with-file', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(submission)
-  });
-};
-```
-
-### Go Server: Smart Form Replay
-
-```go
-type FormSubmission struct {
-  Action    string            `json:"action"`
-  Method    string            `json:"method"`
-  Enctype   string            `json:"enctype"`
-  Fields    map[string]string `json:"fields"`
-  CSRFToken string            `json:"csrf_token"`
-  Cookies   string            `json:"cookies"`
-  Headers   map[string]string `json:"headers"`
-}
-
-func uploadWithFormReplay(submission FormSubmission, filePath string) error {
-  // 1. Validate we have auth
-  if submission.Cookies == "" {
-    return fmt.Errorf("no session cookies; user must be logged in")
-  }
-
-  // 2. Build multipart form
-  body := &bytes.Buffer{}
-  writer := multipart.NewWriter(body)
-
-  // Add all form fields
-  for k, v := range submission.Fields {
-    if k != "Filedata" { // Skip the file input itself
-      writer.WriteField(k, v)
-    }
-  }
-
-  // Add the file
-  file, err := os.Open(filePath)
-  if err != nil {
-    return fmt.Errorf("file not found: %s", filePath)
-  }
-  defer file.Close()
-
-  fileWriter, _ := writer.CreateFormFile("Filedata", filepath.Base(filePath))
-  io.Copy(fileWriter, file)
-  writer.Close()
-
-  // 3. Build request with exact headers
-  req, _ := http.NewRequest(submission.Method, submission.Action, body)
-
-  // Set content type
-  req.Header.Set("Content-Type", writer.FormDataContentType())
-
-  // Set session cookies (critical!)
-  req.Header.Set("Cookie", submission.Cookies)
-
-  // Set security headers from original submission
-  for k, v := range submission.Headers {
-    req.Header.Set(k, v)
-  }
-
-  // 4. Execute upload
-  resp, err := http.DefaultClient.Do(req)
-  if err != nil {
-    return fmt.Errorf("upload failed: %w", err)
-  }
-  defer resp.Body.Close()
-
-  // 5. Check response
-  if resp.StatusCode >= 400 {
-    body, _ := io.ReadAll(resp.Body)
-    return fmt.Errorf("upload rejected (HTTP %d): %s", resp.StatusCode, string(body))
-  }
-
-  return nil
-}
-```
-
-### State Machine: Intelligent Escalation
-
-```
-IDLE
-  ↓ [User calls interact(action: "upload", ...)]
-STAGE_1_DRAGDROP
-  ├─ [Success] → COMPLETE ✅
-  └─ [Fails] → STAGE_2_FILE_DIALOG
-
-STAGE_2_FILE_DIALOG
-  ├─ [Success] → COMPLETE ✅
-  └─ [Fails] → STAGE_3_FORM_INTERCEPTION
-
-STAGE_3_FORM_INTERCEPTION
-  ├─ [No CSRF] → ERROR (require manual upload)
-  ├─ [No cookies] → ERROR (user must be logged in)
-  ├─ [Success] → COMPLETE ✅
-  └─ [CSRF mismatch] → ERROR (form structure changed)
-
-COMPLETE
-  ↓ [Return success + method used]
-```
-
-### Error Recovery
-
-| Scenario | Detection | Recovery |
-|----------|-----------|----------|
-| CSRF token changed | Token mismatch between stages | Re-extract token, retry |
-| Session expired | 401/403 response | Suggest user re-login |
-| Form structure changed | Missing expected fields | Document and suggest manual upload |
-| File too large | 413 response | Fall back to chunked upload |
-| Network timeout | Connection error | Retry with exponential backoff |
-
----
-
-## Platform-Agnostic Design
-
-This approach works for **any upload form** that:
-- ✅ Uses standard HTML forms
-- ✅ Has CSRF protection (auto-detected)
-- ✅ Requires user auth (cookies detected)
-- ✅ Accepts multipart/form-data POSTs
-
-Examples: YouTube, Vimeo, Dailymotion, custom platforms, etc.
-
----
-
-## Alternative: Explicit DevTools Permission Model
-
-**Security-First Approach:** Instead of hidden automation, require user to grant explicit DevTools access.
-
-### Setup Flow
-
-```
-1. User installs Gasoline extension
-2. Gasoline prompts: "Enable bulk upload mode?"
-3. User clicks "Grant DevTools Access"
-4. Browser shows: chrome://inspect → User grants Gasoline permission
-5. User provides Rumble login (or uses existing session)
-6. User provides spreadsheet CSV with: file_path, title, tags, etc.
-```
-
-### Workflow (With Explicit Permission)
-
-```
-Extension detects form submission:
-├─ User is logged into Rumble
-├─ User loads upload page
-├─ Gasoline injects capture hook:
-│  window.gasoline_uploadMode = true;
-│
-├─ User clicks "Start Bulk Upload" (explicit action)
-├─ Form submit is intercepted
-├─ Captured: action, method, fields, cookies, CSRF token
-│
-└─ Sent to Go server:
-   POST /api/upload-bulk
-   {
-     "videos": [
-       {"file_path": "/path/video1.mp4", "title": "Video 1", ...},
-       {"file_path": "/path/video2.mp4", "title": "Video 2", ...}
-     ],
-     "form_action": "https://rumble.com/upload.php",
-     "cookies": "session=xyz;...",
-     "csrf_token": "abc123"
-   }
-```
-
-### Go Server Handler
-
-```go
-// /api/upload-bulk
-func handleBulkUpload(ctx context.Context, req BulkUploadRequest) error {
-  for i, video := range req.Videos {
-    file, err := os.Open(video.FilePath)
-    if err != nil {
-      return fmt.Errorf("video %d: file not found: %w", i, err)
-    }
-    defer file.Close()
-
-    // Build multipart form
-    body := &bytes.Buffer{}
-    writer := multipart.NewWriter(body)
-
-    // Add form fields
-    for k, v := range req.FormFields {
-      writer.WriteField(k, v)
-    }
-
-    // Add metadata from spreadsheet
-    writer.WriteField("title", video.Title)
-    writer.WriteField("tags", video.Tags)
-    writer.WriteField("category_primary", video.Category)
-
-    // Add file
-    fw, _ := writer.CreateFormFile("Filedata", filepath.Base(video.FilePath))
-    io.Copy(fw, file)
-    writer.Close()
-
-    // POST with user's session
-    httpReq, _ := http.NewRequest("POST", req.FormAction, body)
-    httpReq.Header.Set("Cookie", req.Cookies)
-    httpReq.Header.Set("Referer", "https://rumble.com/upload.php")
-    httpReq.Header.Set("Content-Type", writer.FormDataContentType())
-
-    resp, err := http.DefaultClient.Do(httpReq)
-    if err != nil {
-      return fmt.Errorf("video %d: upload failed: %w", i, err)
-    }
-    resp.Body.Close()
-
-    if resp.StatusCode >= 400 {
-      return fmt.Errorf("video %d: rejected (HTTP %d)", i, resp.StatusCode)
-    }
-
-    // Wait between uploads to avoid rate limiting
-    time.Sleep(5 * time.Second)
-  }
-
-  return nil
-}
-```
-
-### Comparison: Hidden vs. Explicit
-
-| Aspect | Hidden Automation | Explicit Permission |
-|--------|-------------------|-------------------|
-| **User Experience** | "Magic happens" | Transparent, user-controlled |
-| **Security Posture** | Implicit trust | Explicit consent |
-| **Debugging** | Hard to troubleshoot | User can watch/verify |
-| **Compliance** | Harder to justify | Clear audit trail |
-| **Implementation** | CDP auto-responders | Simple hook + POST |
-| **Error Recovery** | Complex state machine | Direct feedback to user |
-| **Trust** | Feels sneaky | Feels deliberate |
-| **Code Complexity** | High (auto-detect stages) | Low (~200 lines) |
-
-### When to Use Each
-
-**Hidden Automation (Stage 1-3):**
-- Power users who want fully hands-off
-- Bulk uploads of 100+ files
-- Running on servers/scheduled jobs
-- Advanced use cases
-
-**Explicit Permission (DevTools):**
-- First-time users (clearer what's happening)
-- Security-conscious users (transparent process)
-- Troubleshooting (user can monitor)
-- Learning/testing uploads
-- Legal/compliance requirements
-
----
-
-### Implementation Advantages (Explicit Model)
-
-1. **No complex state machine** — Just capture → POST
-2. **Better errors** — User sees exactly what failed
-3. **Resume capability** — Stop/restart mid-batch
-4. **Audit trail** — Extension logged every step
-5. **Easier testing** — Manual testing mirrors automation
-6. **User confidence** — They control the process
-
----
-
-## Alternative Approaches NOT Pursued
-
-1. **File System Access API**
-   - Requires user to grant permission for each file (defeats automation)
-   - Not suitable for bulk uploads
-
-2. **Native Messaging (for desktop app)**
-   - Adds dependency on separate native app
-   - Adds complexity; existing Go server solves this
-
-3. **Platform-Specific APIs (YouTube Data API, etc.)**
-   - Each platform different; not generalizable
-   - Some platforms (Rumble) have no API
-   - This approach is platform-agnostic
+**Stage 1 (Drag-Drop):**
+1. ✅ Small file (50MB) to YouTube-style dropzone
+2. ✅ Medium file (500MB) to custom Dropzone.js handler
+3. ✅ Verify drag-drop event fired with correct File object
+
+**Stage 2 (File Dialog):**
+1. ✅ Simulate user clicking file input
+2. ✅ Verify file picker dialog opens
+3. ✅ Verify correct file injected via path
+
+**Stage 3 (Form Interception):**
+1. ✅ Rumble form: Extract fields + CSRF + cookies
+2. ✅ YouTube form: Detect auth requirements
+3. ✅ Enterprise form: Handle custom CSRF token names
+4. ✅ Large file (2GB): Stream without memory bloat
+5. ✅ Verify form submission successful
+
+**Stage 4 (OS Automation):**
+1. ✅ macOS: Simulate AppleScript file dialog injection
+2. ✅ Windows: Verify UIA finds file dialog
+3. ✅ Linux: Test xdotool integration
+4. ✅ Retry logic with exponential backoff
+
+**Error Cases:**
+1. ✅ File not found → Return 404, helpful error message
+2. ✅ Permission denied → Return 403, suggest checking file permissions
+3. ✅ CSRF token mismatch → Escalate to Stage 4
+4. ✅ Session expired → Ask user to re-login
+5. ✅ All stages fail → Return comprehensive error + recovery suggestions
+
+**Bulk Upload (Rumble Example):**
+1. ✅ Read CSV with 10 videos + metadata
+2. ✅ Fill form fields programmatically
+3. ✅ Upload each file with auto-escalation
+4. ✅ Wait between uploads to avoid rate limiting
+5. ✅ Report success/failure per video
 
 ---
 

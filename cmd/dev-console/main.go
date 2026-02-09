@@ -56,6 +56,10 @@ var (
 	// Screenshot rate limiting: prevent DoS by limiting uploads to 1/second per client
 	screenshotRateLimiter = make(map[string]time.Time) // clientID -> last upload time
 	screenshotRateMu      sync.Mutex
+
+	// Upload automation security flags (set by CLI flags, consumed by ToolHandler)
+	uploadAutomationFlag bool // --enable-upload-automation
+	trustLLMContextFlag  bool // --trust-llm-context
 )
 
 // findMCPConfig checks for MCP configuration files in common locations
@@ -208,9 +212,15 @@ func main() {
 	clientID := flag.String("client-id", "", "Override client ID (default: derived from CWD)")
 	bridgeMode := flag.Bool("bridge", false, "Run as stdio-to-HTTP bridge (spawns daemon if needed)")
 	daemonMode := flag.Bool("daemon", false, "Run as background server daemon (internal use)")
+	enableUploadAutomation := flag.Bool("enable-upload-automation", false, "Enable file upload automation (all 4 escalation stages)")
+	enableTrustLLMContext := flag.Bool("trust-llm-context", false, "Auto-grant escalation if request has LLM session context")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 
 	flag.Parse()
+
+	// Set package-level upload automation flags (consumed by ToolHandler)
+	uploadAutomationFlag = *enableUploadAutomation
+	trustLLMContextFlag = *enableTrustLLMContext
 
 	// Validate port is in valid range (prevents SSRF through invalid port values)
 	if *port < 1 || *port > 65535 {
@@ -496,6 +506,8 @@ Options:
   --connect              Connect to existing server (multi-client mode)
   --client-id <id>       Override client ID (default: derived from CWD)
   --check                Verify setup (check port availability, print status)
+  --enable-upload-automation  Enable file upload automation (all 4 stages)
+  --trust-llm-context    Auto-grant escalation for LLM-driven uploads
   --version              Show version
   --help                 Show this help message
 

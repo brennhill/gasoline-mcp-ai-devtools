@@ -187,6 +187,10 @@ type ToolHandler struct {
 	sessionStoreImpl      *ai.SessionStore
 	securityScannerImpl   *security.SecurityScanner
 	thirdPartyAuditorImpl *analysis.ThirdPartyAuditor
+
+	// Upload automation security flags (disabled by default)
+	uploadAutomationEnabled bool // --enable-upload-automation
+	trustLLMContext         bool // --trust-llm-context
 }
 
 // GetCapture returns the capture instance
@@ -233,6 +237,10 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	// Initialize security tools (concrete types - interface signatures differ)
 	handler.securityScannerImpl = security.NewSecurityScanner()
 	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()
+
+	// Initialize upload automation flags from package-level vars set by CLI
+	handler.uploadAutomationEnabled = uploadAutomationFlag
+	handler.trustLLMContext = trustLLMContextFlag
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.
 	// Use SetOnEntries for thread-safe assignment (avoids racing with addEntries).

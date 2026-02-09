@@ -243,6 +243,20 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) *http.ServeMux {
 		mux.HandleFunc("/test-boundary", corsMiddleware(extensionOnly(handleTestBoundary(cap))))
 	}
 
+	// Upload automation endpoints (require --enable-upload-automation flag)
+	mux.HandleFunc("/api/file/read", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		server.handleFileRead(w, r, uploadAutomationFlag)
+	}))
+	mux.HandleFunc("/api/file/dialog/inject", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		server.handleFileDialogInject(w, r, uploadAutomationFlag)
+	}))
+	mux.HandleFunc("/api/form/submit", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		server.handleFormSubmit(w, r, uploadAutomationFlag)
+	}))
+	mux.HandleFunc("/api/os-automation/inject", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		server.handleOSAutomation(w, r, uploadAutomationFlag)
+	}))
+
 	// OpenAPI specification endpoint
 	mux.HandleFunc("/openapi.json", corsMiddleware(handleOpenAPI))
 
