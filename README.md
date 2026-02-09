@@ -32,6 +32,8 @@
 
 Current version: **v6.0-BETA** — Browser automation, recording, and performance analysis for AI agents.
 
+**[📥 Download and install matching Chrome extension](https://cookwithgasoline.com/downloads/gasoline-extension-v6.0-BETA.crx)**
+
 ```bash
 npx gasoline-mcp@6.0-BETA
 ```
