@@ -3,7 +3,7 @@
 <img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline MCP - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-6.0--BETA-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
+[![Version](https://img.shields.io/badge/version-6.0.0-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
@@ -30,12 +30,12 @@
 
 ## 📦 Latest Release
 
-Current version: **v6.0-BETA** — Browser automation, recording, and performance analysis for AI agents.
+Current version: **v6.0.0** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
 
-**[📥 Download and install matching Chrome extension](https://cookwithgasoline.com/downloads/gasoline-extension-v6.0-BETA.crx)**
+**[📥 Download and install matching Chrome extension](https://cookwithgasoline.com/downloads/gasoline-extension-v6.0.0.crx)**
 
 ```bash
-npx gasoline-mcp@6.0-BETA
+npx gasoline-mcp@6.0.0
 ```
 
 </div>
@@ -53,7 +53,7 @@ npx gasoline-mcp@6.0-BETA
 
 ### Step 1: Install the Browser Extension
 
-**[📥 Download CRX for v6.0-BETA](https://cookwithgasoline.com/downloads/gasoline-extension-v6.0-BETA.crx)**
+**[📥 Download CRX for v6.0.0](https://cookwithgasoline.com/downloads/gasoline-extension-v6.0.0.crx)**
 
 Then:
 1. Open `chrome://extensions`
@@ -74,7 +74,7 @@ Choose one option below based on your setup:
 #### Option A: NPM (recommended)
 
 ```bash
-npx gasoline-mcp@6.0-BETA
+npx gasoline-mcp@6.0.0
 ```
 
 #### Option B: PyPI
@@ -136,7 +136,7 @@ Choose one option below based on your setup:
 **Verify setup:**
 ```bash
 curl http://localhost:7890/health
-# Should return: {"status":"ok","version":"6.0-BETA",...}
+# Should return: {"status":"ok","version":"6.0.0",...}
 ```
 
 **How it works:**
@@ -206,7 +206,7 @@ See [latest benchmarks](docs/benchmarks/latest-benchmark.md) for current perform
 <<<<<<< HEAD
 Last benchmarked: 2026-02-06 on darwin/arm64 (v6.0.0)
 =======
-Last benchmarked: 2026-02-08 on darwin/arm64 (v6.0-BETA)
+Last benchmarked: 2026-02-09 on darwin/arm64 (v6.0.0)
 >>>>>>> next
 
 ## Known Issues
