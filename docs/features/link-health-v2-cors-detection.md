@@ -76,7 +76,7 @@ const response = await analyze({
   what: 'link_validation',
   urls: [
     'https://github.com/anthropics/gasoline-mcp/blob/main/docs/architecture/diagrams/c2-containers.md',
-    'https://github.com/brennhill/gasoline/blob/main/docs/architecture/diagrams/c2-containers.md'
+    'https://github.com/brennhill/gasoline-mcp-ai-devtools/blob/main/docs/architecture/diagrams/c2-containers.md'
   ],
   timeout_ms: 15000,
   max_workers: 20
@@ -104,7 +104,7 @@ const response = await analyze({
       "error": ""
     },
     {
-      "url": "https://github.com/brennhill/gasoline/blob/main/docs/architecture/diagrams/c2-containers.md",
+      "url": "https://github.com/brennhill/gasoline-mcp-ai-devtools/blob/main/docs/architecture/diagrams/c2-containers.md",
       "status": 200,
       "code": "ok",
       "time_ms": 1005,
@@ -215,7 +215,7 @@ if (response.status === 0) {
 | URL | Status | Result |
 |-----|--------|--------|
 | github.com/anthropics/gasoline-mcp/... | 404 | ❌ Broken (wrong repo owner) |
-| github.com/brennhill/gasoline/... | 200 | ✅ Valid |
+| github.com/brennhill/gasoline-mcp-ai-devtools/... | 200 | ✅ Valid |
 
 **Conclusion:** Server verification confirmed the issue that browser couldn't detect. The anthropics link was a false positive in browser analysis—now properly flagged for verification.
 
