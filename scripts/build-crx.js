@@ -68,12 +68,16 @@ async function buildCRX() {
 
     console.log(`✅ Extension ID: ${extensionId}`);
 
-    // Read and sign the zip
+    // Read and sign the header (not the zip!)
     console.log('✍️  Signing extension...');
     const zipData = fs.readFileSync(TEMP_ZIP);
 
+    // Create the signed header data first
+    const signedHeaderData = createSignedHeader(publicKeyDer);
+
+    // Sign the signed header data (not the zip!)
     const signer = crypto.createSign('sha256');
-    signer.update(zipData);
+    signer.update(signedHeaderData);
     const signature = signer.sign(keyContent);
 
     // Build CRX3 file format
@@ -83,7 +87,7 @@ async function buildCRX() {
     version.writeUInt32LE(3); // CRX3
 
     // Create protobuf header (simplified)
-    const headerProto = createHeaderProto(publicKeyDer, signature);
+    const headerProto = createHeaderProto(publicKeyDer, signature, signedHeaderData);
     const headerLen = Buffer.alloc(4);
     headerLen.writeUInt32LE(headerProto.length);
 
@@ -117,12 +121,10 @@ async function buildCRX() {
   }
 }
 
-function createHeaderProto(publicKey, signature) {
+function createHeaderProto(publicKey, signature, signedHeaderData) {
   // Simplified protobuf encoding for CRXv3
   // Field 1: signed_header_data (bytes)
   // Field 2: signature (bytes)
-
-  const signedHeader = createSignedHeader(publicKey);
 
   let proto = Buffer.alloc(0);
 
@@ -130,8 +132,8 @@ function createHeaderProto(publicKey, signature) {
   proto = Buffer.concat([
     proto,
     encodeVarint(1 << 3 | 2), // field 1, wire type 2 (length-delimited)
-    encodeVarint(signedHeader.length),
-    signedHeader
+    encodeVarint(signedHeaderData.length),
+    signedHeaderData
   ]);
 
   // Encode field 2 (signature)
