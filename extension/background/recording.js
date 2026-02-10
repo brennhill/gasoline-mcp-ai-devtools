@@ -19,8 +19,10 @@ const LOG = '[Gasoline REC]';
 /** Listener to re-send watermark when recording tab navigates or content script re-injects. */
 let tabUpdateListener = null;
 // Clear stale recording state from previous session (e.g., browser crash during recording)
-console.log(LOG, 'Module loaded, clearing stale gasoline_recording from storage');
-chrome.storage.local.remove('gasoline_recording').catch(() => { });
+if (typeof chrome !== 'undefined' && chrome.storage?.local?.remove) {
+    console.log(LOG, 'Module loaded, clearing stale gasoline_recording from storage');
+    chrome.storage.local.remove('gasoline_recording').catch(() => { });
+}
 /** Returns whether a recording is currently active. */
 export function isRecording() {
     return recordingState.active;
@@ -411,6 +413,8 @@ export async function stopRecording(truncated = false) {
         };
     }
 }
+// Guard: all top-level event listeners require chrome runtime (not available in test contexts)
+if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
 /**
  * Listen for unsolicited messages from offscreen (auto-stop from memory guard or tab close).
  */
@@ -543,6 +547,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         .catch((err) => sendResponse({ error: err.message }));
     return true; // async response
 });
+} // end chrome runtime guard
 /** Wait for user to click extension icon (popup sends RECORDING_GESTURE_GRANTED). */
 function waitForRecordingGesture(timeoutMs) {
     return new Promise((resolve) => {

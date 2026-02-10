@@ -235,6 +235,8 @@ describe('Edge Cases: Concurrent Operations', () => {
     originalCrypto = globalThis.crypto
     globalThis.window = createMockWindow({ withWebSocket: true })
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
+    const { resetForTesting } = await import('../../extension/inject.js')
+    resetForTesting()
   })
 
   afterEach(() => {
@@ -276,8 +278,9 @@ describe('Edge Cases: Concurrent Operations', () => {
   })
 
   test('should handle rapid message bursts on single connection', async () => {
-    const { installWebSocketCapture, uninstallWebSocketCapture } = await import('../../extension/inject.js')
+    const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } = await import('../../extension/inject.js')
     installWebSocketCapture()
+    setWebSocketCaptureMode('all') // Disable sampling for burst test
 
     const ws = new globalThis.window.WebSocket('wss://example.com/ws')
     ws._emit('open', {})
@@ -343,6 +346,8 @@ describe('Edge Cases: Memory Pressure Scenarios', () => {
     originalCrypto = globalThis.crypto
     globalThis.window = createMockWindow({ withWebSocket: true })
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
+    const { resetForTesting } = await import('../../extension/inject.js')
+    resetForTesting()
   })
 
   afterEach(() => {

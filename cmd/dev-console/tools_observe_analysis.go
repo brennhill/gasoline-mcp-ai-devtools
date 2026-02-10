@@ -171,7 +171,7 @@ func (h *ToolHandler) toolGetWebVitals(req JSONRPCRequest, args json.RawMessage)
 		}
 
 		// Additional timing metrics
-		vitals["dom_content_loaded"] = latest.Timing.DomContentLoaded
+		vitals["domContentLoaded"] = latest.Timing.DomContentLoaded
 		vitals["load"] = latest.Timing.Load
 	}
 

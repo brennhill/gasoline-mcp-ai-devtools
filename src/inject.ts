@@ -100,6 +100,7 @@ export {
   setWebSocketCaptureEnabled,
   getWebSocketCaptureMode,
   uninstallWebSocketCapture,
+  resetForTesting,
   executeDOMQuery,
   getPageInfo,
   runAxeAudit,

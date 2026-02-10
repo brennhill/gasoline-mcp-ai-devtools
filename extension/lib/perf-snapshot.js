@@ -85,13 +85,13 @@ export function capturePerformanceSnapshot() {
     if (!nav)
         return null;
     const timing = {
-        dom_content_loaded: nav.domContentLoadedEventEnd,
+        domContentLoaded: nav.domContentLoadedEventEnd,
         load: nav.loadEventEnd,
-        first_contentful_paint: getFCP(),
-        largest_contentful_paint: getLCP(),
-        interaction_to_next_paint: getINP(),
-        time_to_first_byte: nav.responseStart - nav.requestStart,
-        dom_interactive: nav.domInteractive,
+        firstContentfulPaint: getFCP(),
+        largestContentfulPaint: getLCP(),
+        interactionToNextPaint: getINP(),
+        timeToFirstByte: nav.responseStart - nav.requestStart,
+        domInteractive: nav.domInteractive,
     };
     const network = aggregateResourceTiming();
     const longTasks = getLongTaskMetrics();

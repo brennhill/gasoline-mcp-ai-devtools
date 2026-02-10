@@ -32,13 +32,13 @@ interface LongTaskMetrics {
 }
 
 interface NetworkTiming {
-  dom_content_loaded: number
+  domContentLoaded: number
   load: number
-  first_contentful_paint: number | null
-  largest_contentful_paint: number | null
-  interaction_to_next_paint: number | null
-  time_to_first_byte: number
-  dom_interactive: number
+  firstContentfulPaint: number | null
+  largestContentfulPaint: number | null
+  interactionToNextPaint: number | null
+  timeToFirstByte: number
+  domInteractive: number
 }
 
 interface UserTimingEntry {
@@ -147,13 +147,13 @@ export function capturePerformanceSnapshot(): PerformanceSnapshotData | null {
   if (!nav) return null
 
   const timing: NetworkTiming = {
-    dom_content_loaded: nav.domContentLoadedEventEnd,
+    domContentLoaded: nav.domContentLoadedEventEnd,
     load: nav.loadEventEnd,
-    first_contentful_paint: getFCP(),
-    largest_contentful_paint: getLCP(),
-    interaction_to_next_paint: getINP(),
-    time_to_first_byte: nav.responseStart - nav.requestStart,
-    dom_interactive: nav.domInteractive,
+    firstContentfulPaint: getFCP(),
+    largestContentfulPaint: getLCP(),
+    interactionToNextPaint: getINP(),
+    timeToFirstByte: nav.responseStart - nav.requestStart,
+    domInteractive: nav.domInteractive,
   }
 
   const network = aggregateResourceTiming()

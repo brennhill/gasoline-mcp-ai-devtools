@@ -98,6 +98,7 @@ export {
   setWebSocketCaptureEnabled,
   getWebSocketCaptureMode,
   uninstallWebSocketCapture,
+  resetForTesting,
 } from '../lib/websocket'
 export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from '../lib/dom-queries'
 export {

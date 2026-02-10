@@ -435,6 +435,7 @@ export function installWebSocketCapture(): void {
   if (typeof window === 'undefined') return
   if (!window.WebSocket) return // No WebSocket support
   if (originalWebSocket) return // Already installed
+  webSocketCaptureEnabled = true // Ensure capture is enabled when installing
 
   // Check for early-patch: use the saved original, not the early-patch wrapper
   const earlyOriginal = window.__GASOLINE_ORIGINAL_WS__

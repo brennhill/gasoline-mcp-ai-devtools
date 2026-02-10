@@ -29,7 +29,7 @@ type MetricsTiming struct {
 	TTFB             float64  `json:"ttfb"`
 	FCP              *float64 `json:"fcp,omitempty"`
 	LCP              *float64 `json:"lcp,omitempty"`
-	DomContentLoaded float64  `json:"dom_content_loaded"`
+	DomContentLoaded float64  `json:"domContentLoaded"`
 	Load             float64  `json:"load"`
 }
 
@@ -137,7 +137,7 @@ func ComputePerfDiff(before, after PageLoadMetrics) PerfDiff {
 	}
 
 	// DomContentLoaded
-	addMetric("dom_content_loaded", before.Timing.DomContentLoaded, after.Timing.DomContentLoaded)
+	addMetric("domContentLoaded", before.Timing.DomContentLoaded, after.Timing.DomContentLoaded)
 
 	// Load
 	addMetric("load", before.Timing.Load, after.Timing.Load)
@@ -366,7 +366,7 @@ func lastPathSegment(url string) string {
 // unitForMetric returns the unit string for a given metric name.
 func unitForMetric(name string) string {
 	switch name {
-	case "ttfb", "fcp", "lcp", "dom_content_loaded", "load":
+	case "ttfb", "fcp", "lcp", "domContentLoaded", "load":
 		return "ms"
 	case "transfer_kb":
 		return "KB"
