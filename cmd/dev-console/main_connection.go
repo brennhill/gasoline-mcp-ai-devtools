@@ -809,3 +809,113 @@ func runStopMode(port int) {
 		fmt.Printf("Server may still be running, try: kill -9 $(lsof -ti :%d)\n", port)
 	}
 }
+
+// runForceCleanup kills ALL running gasoline daemons across all ports
+// Used during package install to ensure clean upgrade from older versions
+func runForceCleanup() {
+	fmt.Println("Force cleanup: Killing all running gasoline daemons...")
+
+	// Log the force cleanup to help diagnose version upgrade issues
+	home, _ := os.UserHomeDir()
+	logFile := filepath.Join(home, "gasoline-logs.jsonl")
+	cleanupEntry := map[string]any{
+		"type":       "lifecycle",
+		"event":      "force_cleanup_invoked",
+		"source":     "gasoline --force",
+		"caller_pid": os.Getpid(),
+		"timestamp":  time.Now().UTC().Format(time.RFC3339),
+	}
+	if data, err := json.Marshal(cleanupEntry); err == nil {
+		// #nosec G304 -- log file path from trusted home directory
+		if f, err := os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600); err == nil {
+			_, _ = f.Write(data)
+			_, _ = f.Write([]byte{'\n'})
+			_ = f.Close()
+		}
+	}
+
+	killed := 0
+	failedToKill := 0
+
+	// Step 1: Try to kill processes using /proc or lsof (Unix-like systems)
+	if runtime.GOOS != "windows" {
+		// Try lsof to find all gasoline processes on any port
+		cmd := exec.Command("lsof", "-c", "gasoline")
+		output, err := cmd.Output()
+		if err == nil {
+			lines := strings.Split(string(output), "\n")
+			for _, line := range lines {
+				fields := strings.Fields(line)
+				// PID is typically the 2nd field in lsof output
+				if len(fields) >= 2 {
+					pidStr := fields[1]
+					pid, err := strconv.Atoi(pidStr)
+					if err != nil || pid <= 0 {
+						continue
+					}
+					process, err := os.FindProcess(pid)
+					if err == nil {
+						// Try SIGTERM first
+						if err := process.Signal(syscall.SIGTERM); err == nil {
+							fmt.Printf("  Sent SIGTERM to PID %d\n", pid)
+							killed++
+							// Wait a moment before checking if it exited
+							time.Sleep(100 * time.Millisecond)
+							if !isProcessAlive(pid) {
+								continue
+							}
+						}
+						// If SIGTERM didn't work, use SIGKILL
+						if err := process.Kill(); err == nil {
+							fmt.Printf("  Sent SIGKILL to PID %d\n", pid)
+							killed++
+						} else {
+							failedToKill++
+						}
+					}
+				}
+			}
+		}
+
+		// Also try pkill as fallback
+		pkillCmd := exec.Command("pkill", "-f", "gasoline.*--daemon")
+		_ = pkillCmd.Run() // Best effort
+	} else {
+		// Windows: use taskkill
+		cmd := exec.Command("taskkill", "/IM", "gasoline.exe", "/F")
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			// taskkill output indicates processes terminated
+			lines := strings.Split(string(output), "\n")
+			for _, line := range lines {
+				if strings.Contains(line, "SUCCESS") || strings.Contains(line, "terminated") {
+					killed++
+				}
+			}
+		}
+	}
+
+	// Step 2: Clean up all PID files for ports in common range (7890-7910 + some extras)
+	ports := []int{7890, 7891, 7892, 7893, 7894, 7895, 7896, 7897, 7898, 7899}
+	for _, p := range ports {
+		pidFile := pidFilePath(p)
+		if pidFile != "" {
+			// Remove stale PID files
+			_ = os.Remove(pidFile)
+		}
+	}
+
+	// Summary
+	fmt.Println()
+	if killed > 0 {
+		fmt.Printf("✓ Successfully killed %d gasoline process(es)\n", killed)
+	}
+	if failedToKill > 0 {
+		fmt.Printf("⚠ Failed to kill %d process(es) (may have already exited)\n", failedToKill)
+	}
+	if killed == 0 && failedToKill == 0 {
+		fmt.Println("✓ No running gasoline processes found")
+	}
+	fmt.Println()
+	fmt.Println("Cleaned up PID files. Safe to proceed with installation.")
+}
