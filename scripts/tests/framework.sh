@@ -286,7 +286,15 @@ wait_for_health() {
         if curl -s "http://localhost:${PORT}/health" >/dev/null 2>&1; then
             return 0
         fi
-        sleep 0.1
+        # Exponential backoff: 10ms → 50ms → 100ms
+        # Typical startup is <100ms, so this is much faster than fixed 0.1s
+        if [ $i -lt 3 ]; then
+            sleep 0.01
+        elif [ $i -lt 10 ]; then
+            sleep 0.05
+        else
+            sleep 0.1
+        fi
     done
     return 1
 }

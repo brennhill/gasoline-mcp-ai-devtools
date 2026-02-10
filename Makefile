@@ -99,6 +99,14 @@ verify-size:
 check-file-length:
 	@bash scripts/check-file-length.sh
 
+# Validate strict semver (X.Y.Z format, no pre-release)
+validate-semver:
+	@bash scripts/validate-semver.sh
+
+# Validate optionalDependencies match package version
+validate-deps-versions:
+	@node npm/gasoline-mcp/lib/validate-versions.js
+
 build: $(PLATFORMS)
 
 darwin-amd64:
@@ -178,7 +186,7 @@ check: lint format typecheck check-invariants
 check-invariants:
 	@./scripts/check-sync-invariants.sh
 
-ci: check test test-js
+ci: check test test-js validate-deps-versions
 
 # --- Local CI (mirrors GitHub Actions) ---
 
@@ -267,7 +275,7 @@ verify-all: lint security-check test-cover test-js
 	@echo "All verification checks passed"
 
 # Quality gate for top 1% standards (comprehensive)
-quality-gate: check-file-length lint typecheck security-check test test-js
+quality-gate: check-file-length lint typecheck security-check test test-js validate-deps-versions
 	@echo ""
 	@echo "═══════════════════════════════════════════"
 	@echo "✅ QUALITY GATE PASSED - Top 1% Standards"
@@ -278,6 +286,7 @@ quality-gate: check-file-length lint typecheck security-check test test-js
 	@echo "  ✓ Security checks passed"
 	@echo "  ✓ All Go tests passed"
 	@echo "  ✓ All TypeScript tests passed"
+	@echo "  ✓ Version consistency verified"
 	@echo "═══════════════════════════════════════════"
 
 # Update all version references to match VERSION (single source of truth)

@@ -7,19 +7,19 @@
     "gasoline-mcp": "bin/gasoline-mcp"
   },
   "scripts": {
-    "preinstall": "node -e \"try{require('child_process').execSync('npm uninstall -g gasoline-mcp',{stdio:'ignore'})}catch(e){}\"",
-    "preuninstall": "node -e \"try{require('child_process').execSync('pkill -9 gasoline 2>/dev/null || true',{stdio:'ignore',shell:true})}catch(e){}\""
+    "preinstall": "node -e \"const cp = require('child_process'); try { cp.execSync('npm uninstall -g gasoline-mcp', {stdio:'ignore'}); } catch(e) {} try { const cmd = process.platform === 'win32' ? 'taskkill /F /IM gasoline.exe 2>nul || true' : 'pkill -9 gasoline 2>/dev/null || true'; cp.execSync(cmd, {stdio:'ignore', shell:true}); } catch(e) {}\"",
+    "preuninstall": "node -e \"const cp = require('child_process'); try { const cmd = process.platform === 'win32' ? 'taskkill /F /IM gasoline.exe 2>nul || true' : 'pkill -9 gasoline 2>/dev/null || true'; cp.execSync(cmd, {stdio:'ignore', shell:true}); } catch(e) {}\""
   },
   "files": [
     "bin",
     "lib"
   ],
   "optionalDependencies": {
-    "@brennhill/gasoline-darwin-arm64": "5.8.2",
-    "@brennhill/gasoline-darwin-x64": "5.8.2",
-    "@brennhill/gasoline-linux-arm64": "5.8.2",
-    "@brennhill/gasoline-linux-x64": "5.8.2",
-    "@brennhill/gasoline-win32-x64": "5.8.2"
+    "@brennhill/gasoline-darwin-arm64": "6.0.0",
+    "@brennhill/gasoline-darwin-x64": "6.0.0",
+    "@brennhill/gasoline-linux-arm64": "6.0.0",
+    "@brennhill/gasoline-linux-x64": "6.0.0",
+    "@brennhill/gasoline-win32-x64": "6.0.0"
   },
   "keywords": [
     "mcp",
