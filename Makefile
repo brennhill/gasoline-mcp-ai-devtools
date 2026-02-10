@@ -14,6 +14,7 @@ PLATFORMS := \
 	windows-amd64
 
 .PHONY: all clean build test test-js test-fast test-all test-race test-cover test-bench test-fuzz \
+	test-unit test-commit test-full kill-zombies \
 	dev run checksums verify-zero-deps verify-imports verify-size check-file-length \
 	lint lint-go lint-js format format-fix typecheck check ci \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
@@ -58,11 +59,42 @@ test:
 test-js:
 	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
 
-test-fast:
-	go vet ./cmd/dev-console/
-	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
+test-fast: test-unit
 
-test-all: test test-js
+test-all: test-commit
+
+# Tier 1: Unit tests only (~30s) - run constantly during development
+test-unit:
+	@echo "=== Unit Tests (Go -short + Extension JS in parallel) ==="
+	@GO_PASS=false JS_PASS=false; \
+	(CGO_ENABLED=0 go test -short -count=1 ./... && GO_PASS=true) & GO_PID=$$!; \
+	(node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 \
+		--test-reporter=dot tests/extension/*.test.js && JS_PASS=true) & JS_PID=$$!; \
+	GO_EXIT=0; JS_EXIT=0; \
+	wait $$GO_PID || GO_EXIT=$$?; \
+	wait $$JS_PID || JS_EXIT=$$?; \
+	if [ $$GO_EXIT -ne 0 ]; then echo "Go tests FAILED"; fi; \
+	if [ $$JS_EXIT -ne 0 ]; then echo "JS tests FAILED"; fi; \
+	if [ $$GO_EXIT -ne 0 ] || [ $$JS_EXIT -ne 0 ]; then exit 1; fi
+	@echo "=== Unit tests complete ==="
+
+# Tier 2: Pre-commit (~3min) - all Go + JS tests
+test-commit: kill-zombies
+	@echo "=== Pre-Commit Tests ==="
+	CGO_ENABLED=0 go test -v -count=1 ./...
+	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 \
+		--test-reporter=dot tests/extension/*.test.js
+	@echo "=== Pre-commit tests complete ==="
+
+# Tier 3: Full suite (~5-8min) - everything including regression + race
+test-full: kill-zombies test-commit
+	@echo "=== Full Test Suite ==="
+	./tests/regression/run-all.sh
+	@echo "=== Full suite complete ==="
+
+# Kill zombie test servers (preserves main server on port 7890)
+kill-zombies:
+	@./scripts/kill-test-servers.sh
 
 test-race:
 	go test -race -v ./...

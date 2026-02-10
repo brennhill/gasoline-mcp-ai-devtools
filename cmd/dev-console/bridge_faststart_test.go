@@ -16,6 +16,10 @@ import (
 // TestFastStart_InitializeRespondsImmediately verifies that initialize returns
 // within 100ms even when no daemon is running. This is critical for MCP client UX.
 func TestFastStart_InitializeRespondsImmediately(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skips server spawn in short mode")
+	}
+
 	// Build binary
 	binary := buildTestBinary(t)
 
@@ -122,6 +126,10 @@ func TestFastStart_InitializeRespondsImmediately(t *testing.T) {
 // TestFastStart_ToolsListRespondsImmediately verifies that tools/list returns
 // immediately with the full tool schema, without waiting for daemon.
 func TestFastStart_ToolsListRespondsImmediately(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skips server spawn in short mode")
+	}
+
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
 
@@ -290,6 +298,10 @@ func TestFastStart_ToolsListSchemaStability(t *testing.T) {
 // TestFastStart_OtherMethodsReturnQuickly verifies that ping, prompts/list, etc.
 // also respond immediately without daemon.
 func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skips server spawn in short mode")
+	}
+
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
 
@@ -375,6 +387,10 @@ func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
 // TestFastStart_ToolsCallReturnsRetryWhenBooting verifies that tools/call
 // returns a "retry" message instead of blocking when daemon isn't ready.
 func TestFastStart_ToolsCallReturnsRetryWhenBooting(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skips server spawn in short mode")
+	}
+
 	binary := buildTestBinary(t)
 	// Use a port that definitely has no server running
 	port := findFreePort(t)
@@ -471,6 +487,10 @@ func TestFastStart_ToolsCallReturnsRetryWhenBooting(t *testing.T) {
 // TestFastStart_VersionInResponse ensures the version in initialize response
 // matches the binary version.
 func TestFastStart_VersionInResponse(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skips server spawn in short mode")
+	}
+
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
 

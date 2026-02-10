@@ -69,6 +69,9 @@ func TestWaterfallOnDemand_FreshDataNoQuery(t *testing.T) {
 // TestWaterfallOnDemand_StaleDataCreatesQuery verifies that stale data (>1s old)
 // triggers a waterfall query to the extension.
 func TestWaterfallOnDemand_StaleDataCreatesQuery(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skips slow waterfall test in short mode")
+	}
 	t.Parallel()
 
 	server, err := NewServer("/tmp/test-waterfall-stale.jsonl", 1000)
@@ -213,6 +216,9 @@ func TestWaterfallOnDemand_EmptyBufferCreatesQuery(t *testing.T) {
 // TestWaterfallOnDemand_TimeoutHandling verifies graceful handling when
 // extension doesn't respond within timeout.
 func TestWaterfallOnDemand_TimeoutHandling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skips slow waterfall test in short mode")
+	}
 	t.Parallel()
 
 	server, err := NewServer("/tmp/test-waterfall-timeout.jsonl", 1000)
@@ -252,6 +258,9 @@ func TestWaterfallOnDemand_TimeoutHandling(t *testing.T) {
 // TestWaterfallOnDemand_ConcurrentRequests verifies that concurrent requests
 // don't cause data races or deadlocks.
 func TestWaterfallOnDemand_ConcurrentRequests(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skips slow waterfall test in short mode")
+	}
 	t.Parallel()
 
 	server, err := NewServer("/tmp/test-waterfall-concurrent.jsonl", 1000)
@@ -359,6 +368,9 @@ func TestWaterfallQueryType_ExistsInPendingQueries(t *testing.T) {
 
 // TestWaterfallStalenessThreshold verifies the 1-second staleness threshold.
 func TestWaterfallStalenessThreshold(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skips slow waterfall test in short mode")
+	}
 	t.Parallel()
 
 	server, err := NewServer("/tmp/test-waterfall-threshold.jsonl", 1000)

@@ -322,6 +322,10 @@ func TestObserveAudit_InvalidJSON_ReturnsParseError(t *testing.T) {
 // ============================================
 
 func TestObserveAudit_AllModes_NoPanic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skips 5s+ waterfall timeout in short mode")
+	}
+
 	env := newObserveTestEnv(t)
 
 	// Complete list from tools_observe.go
