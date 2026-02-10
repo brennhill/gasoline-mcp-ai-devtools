@@ -150,7 +150,7 @@ func TestCorrelationIDListCommands(t *testing.T) {
 
 	failed := capture.GetFailedCommands()
 	if len(failed) != 1 {
-		t.Errorf("Expected 1 failed command, got %d", len(failed))
+		t.Fatalf("Expected 1 failed command, got %d", len(failed))
 	}
 
 	// Verify failed command details

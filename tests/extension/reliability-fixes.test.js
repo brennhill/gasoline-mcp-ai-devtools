@@ -44,8 +44,18 @@ const mockChrome = {
   },
   storage: {
     local: {
-      get: mock.fn((keys, callback) => callback({ logLevel: 'error' })),
-      set: mock.fn((data, callback) => callback && callback()),
+      get: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback({ logLevel: 'error' })
+        else return Promise.resolve({ logLevel: 'error' })
+      }),
+      set: mock.fn((data, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
+      remove: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
     },
     sync: {
       get: mock.fn((keys, callback) => callback({})),

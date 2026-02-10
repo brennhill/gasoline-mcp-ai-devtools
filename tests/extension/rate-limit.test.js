@@ -19,9 +19,30 @@ globalThis.chrome = {
   },
   action: { setBadgeText: mock.fn(), setBadgeBackgroundColor: mock.fn() },
   storage: {
-    local: { get: mock.fn((k, cb) => cb({})), set: mock.fn() },
-    sync: { get: mock.fn((k, cb) => cb({})), set: mock.fn() },
-    session: { get: mock.fn((k, cb) => cb({})), set: mock.fn() },
+    local: {
+      get: mock.fn((k, cb) => cb({})),
+      set: mock.fn(),
+      remove: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
+    },
+    sync: {
+      get: mock.fn((k, cb) => cb({})),
+      set: mock.fn(),
+      remove: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
+    },
+    session: {
+      get: mock.fn((k, cb) => cb({})),
+      set: mock.fn(),
+      remove: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
+    },
     onChanged: { addListener: mock.fn() },
   },
   alarms: { create: mock.fn(), onAlarm: { addListener: mock.fn() } },
