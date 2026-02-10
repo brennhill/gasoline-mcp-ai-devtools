@@ -199,6 +199,11 @@ func main() {
 		}
 	}()
 
+	// CLI mode: if first arg is a tool name, enter CLI mode before flag.Parse()
+	if len(os.Args) >= 2 && IsCLIMode(os.Args[1:]) {
+		os.Exit(runCLIMode(os.Args[1:]))
+	}
+
 	// Parse flags
 	port := flag.Int("port", defaultPort, "Port to listen on")
 	logFile := flag.String("log-file", "", "Path to log file (default: ~/gasoline-logs.jsonl)")
@@ -530,6 +535,16 @@ Examples:
   gasoline --connect --port 7890        # Connect to existing server
   gasoline --check                      # Verify setup before running
   gasoline --port 8080 --max-entries 500
+
+CLI Mode (direct tool access):
+  gasoline observe errors --limit 50
+  gasoline observe logs --min-level warn
+  gasoline generate har --save-to out.har
+  gasoline configure health
+  gasoline interact click --selector "#btn"
+
+  CLI flags: --port, --format (human|json|csv), --timeout (ms)
+  Env vars: GASOLINE_PORT, GASOLINE_FORMAT
 
 MCP Configuration:
   Add to your Claude Code settings.json or project .mcp.json:
