@@ -46,9 +46,9 @@ def get_binary_path():
 
     # If we get here, the platform-specific package isn't installed
     raise RuntimeError(
-        f"Platform-specific package not found for {platform_name}.\n"
-        f"Install with: pip install gasoline-mcp[{platform_name}]\n"
-        f"Or for automatic detection: pip install gasoline-mcp && pip install gasoline-mcp[{platform_name}]"
+        f"Platform-specific binary not found for {platform_name}.\n"
+        f"Try reinstalling: pip install --force-reinstall gasoline-mcp\n"
+        f"Or install the binary directly: pip install gasoline-mcp-{platform_name}"
     )
 
 

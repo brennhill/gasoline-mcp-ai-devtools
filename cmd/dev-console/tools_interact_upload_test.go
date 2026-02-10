@@ -59,13 +59,21 @@ func TestUpload_EnabledWithFlag(t *testing.T) {
 		t.Fatal("upload with enabled flag should return result")
 	}
 
-	// Should NOT return the disabled error (may return pilot disabled, that's ok)
-	if result.IsError && len(result.Content) > 0 {
-		text := strings.ToLower(result.Content[0].Text)
-		if strings.Contains(text, "upload") && strings.Contains(text, "disabled") {
-			t.Error("upload should NOT be disabled when flag is set")
-		}
+	if result.IsError {
+		t.Fatalf("upload with enabled flag should succeed, got error: %s", result.Content[0].Text)
 	}
+
+	// Verify response has required fields
+	data := parseResponseJSON(t, result)
+	assertObjectShape(t, "upload enabled", data, []fieldSpec{
+		required("status", "string"),
+		required("correlation_id", "string"),
+		required("file_name", "string"),
+		required("file_size", "number"),
+		required("mime_type", "string"),
+		required("progress_tier", "string"),
+		required("message", "string"),
+	})
 }
 
 // ============================================

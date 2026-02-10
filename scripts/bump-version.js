@@ -146,10 +146,10 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
       new RegExp(`version = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'),
       `version = "${newVersion}"`
     );
-    // Dependencies in TOML
+    // Dependencies in TOML (PEP 440: ==6.0.3)
     updated = updated.replace(
-      new RegExp(`===${oldVersion.replace(/\./g, '\\.')}`, 'g'),
-      `===${newVersion}`
+      new RegExp(`==${oldVersion.replace(/\./g, '\\.')}`, 'g'),
+      `==${newVersion}`
     );
   } else if (filePath.endsWith('.md')) {
     // Markdown: version-6.0.1-green or just 6.0.1
