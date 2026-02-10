@@ -38,7 +38,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "5.8.2"
+var version = "6.0.1"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -56,6 +56,10 @@ var (
 	// Screenshot rate limiting: prevent DoS by limiting uploads to 1/second per client
 	screenshotRateLimiter = make(map[string]time.Time) // clientID -> last upload time
 	screenshotRateMu      sync.Mutex
+
+	// Upload automation security flags (set by CLI flags, consumed by ToolHandler)
+	uploadAutomationFlag bool // --enable-upload-automation
+	trustLLMContextFlag  bool // --trust-llm-context
 )
 
 // findMCPConfig checks for MCP configuration files in common locations
@@ -214,6 +218,10 @@ func main() {
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 
 	flag.Parse()
+
+	// Set package-level upload automation flags (consumed by ToolHandler)
+	uploadAutomationFlag = *enableUploadAutomation
+	trustLLMContextFlag = *enableTrustLLMContext
 
 	// Validate port is in valid range (prevents SSRF through invalid port values)
 	if *port < 1 || *port > 65535 {
