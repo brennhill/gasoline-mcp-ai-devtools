@@ -121,7 +121,7 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
       `const version = "${newVersion}"`
     );
   } else if (filePath.endsWith('.js')) {
-    // JavaScript: version: "6.0.1" or __version__ = "6.0.2"
+    // JavaScript: version: "6.0.1" or __version__ = "6.0.3"
     updated = updated.replace(
       new RegExp(`version:\\s*['""]${oldVersion.replace(/\./g, '\\.')}'`, 'g'),
       `version: '${newVersion}'`
@@ -135,7 +135,7 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
       `const VERSION = '${newVersion}'`
     );
   } else if (filePath.endsWith('.py')) {
-    // Python: __version__ = "6.0.2"
+    // Python: __version__ = "6.0.3"
     updated = updated.replace(
       new RegExp(`__version__ = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'),
       `__version__ = "${newVersion}"`

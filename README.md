@@ -204,7 +204,7 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 See [latest benchmarks](docs/benchmarks/latest-benchmark.md) for current performance data.
 
 <<<<<<< HEAD
-Last benchmarked: 2026-02-06 on darwin/arm64 (v6.0.2)
+Last benchmarked: 2026-02-06 on darwin/arm64 (v6.0.3)
 =======
 Last benchmarked: 2026-02-08 on darwin/arm64 (v6.0-BETA)
 >>>>>>> next

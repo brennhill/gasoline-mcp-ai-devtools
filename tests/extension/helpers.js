@@ -125,7 +125,7 @@ export function createMockChrome(overrides = {}) {
       onInstalled: {
         addListener: mock.fn(),
       },
-      getManifest: () => ({ version: '6.0.2' }),
+      getManifest: () => ({ version: '6.0.3' }),
       ...overrides.runtime,
     },
     action: {
