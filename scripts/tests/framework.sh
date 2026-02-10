@@ -127,7 +127,7 @@ send_mcp() {
     local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
     local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
 
-    echo "$request" | $TIMEOUT_CMD 15 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
+    echo "$request" | $TIMEOUT_CMD 8 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
     LAST_EXIT_CODE=$?
 
     # Get last non-empty line (the JSON-RPC response)
@@ -146,7 +146,7 @@ send_mcp_multi() {
     local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
     local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
 
-    echo "$requests" | $TIMEOUT_CMD 20 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
+    echo "$requests" | $TIMEOUT_CMD 12 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
     LAST_EXIT_CODE=$?
     LAST_STDOUT_FILE="$stdout_file"
     LAST_STDERR_FILE="$stderr_file"
@@ -249,9 +249,9 @@ check_http_status() {
     local extra_headers="${3:-}"
     local actual
     if [ -n "$extra_headers" ]; then
-        actual=$(curl -s -o /dev/null -w "%{http_code}" $extra_headers "$url" 2>/dev/null)
+        actual=$(curl -s --max-time 10 --connect-timeout 3 -o /dev/null -w "%{http_code}" $extra_headers "$url" 2>/dev/null)
     else
-        actual=$(curl -s -o /dev/null -w "%{http_code}" "$url" 2>/dev/null)
+        actual=$(curl -s --max-time 10 --connect-timeout 3 -o /dev/null -w "%{http_code}" "$url" 2>/dev/null)
     fi
     [ "$actual" = "$expected" ]
 }
@@ -259,13 +259,13 @@ check_http_status() {
 get_http_status() {
     local url="$1"
     shift
-    curl -s -o /dev/null -w "%{http_code}" "$@" "$url" 2>/dev/null
+    curl -s --max-time 10 --connect-timeout 3 -o /dev/null -w "%{http_code}" "$@" "$url" 2>/dev/null
 }
 
 get_http_body() {
     local url="$1"
     shift
-    curl -s "$@" "$url" 2>/dev/null
+    curl -s --max-time 10 --connect-timeout 3 "$@" "$url" 2>/dev/null
 }
 
 # ── Daemon Lifecycle ───────────────────────────────────────
@@ -283,7 +283,7 @@ kill_server() {
 wait_for_health() {
     local max_attempts="${1:-50}"
     for i in $(seq 1 "$max_attempts"); do
-        if curl -s "http://localhost:${PORT}/health" >/dev/null 2>&1; then
+        if curl -s --connect-timeout 3 "http://localhost:${PORT}/health" >/dev/null 2>&1; then
             return 0
         fi
         # Exponential backoff: 10ms → 50ms → 100ms
@@ -305,7 +305,7 @@ start_daemon() {
 }
 
 ensure_daemon() {
-    if ! curl -s "http://localhost:${PORT}/health" >/dev/null 2>&1; then
+    if ! curl -s --connect-timeout 3 "http://localhost:${PORT}/health" >/dev/null 2>&1; then
         start_daemon
     fi
 }
