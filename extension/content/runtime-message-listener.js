@@ -3,6 +3,7 @@
  * Handles chrome.runtime messages from background script
  */
 import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, } from './message-handlers.js';
+import { activateDrawMode, deactivateDrawMode, getAnnotations, getElementDetail, clearAnnotations, isDrawModeActive } from './draw-mode.js';
 /** Color themes for each toast state */
 const TOAST_THEMES = {
     trying: { bg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', shadow: 'rgba(59, 130, 246, 0.4)' },
@@ -344,6 +345,35 @@ export function initRuntimeMessageListener() {
         if (message.type === 'LINK_HEALTH_QUERY') {
             const params = message.params || {};
             return handleLinkHealthQuery(params, sendResponse);
+        }
+        // Draw Mode handlers
+        if (message.type === 'GASOLINE_DRAW_MODE_START') {
+            const result = activateDrawMode(message.started_by || 'llm', message.session_name || '');
+            sendResponse(result);
+            return false;
+        }
+        if (message.type === 'GASOLINE_DRAW_MODE_STOP') {
+            const result = deactivateDrawMode();
+            sendResponse(result);
+            return false;
+        }
+        if (message.type === 'GASOLINE_GET_ANNOTATIONS') {
+            sendResponse({
+                annotations: getAnnotations(),
+                draw_mode_active: isDrawModeActive(),
+                viewport: { width: window.innerWidth, height: window.innerHeight },
+            });
+            return false;
+        }
+        if (message.type === 'GASOLINE_GET_ANNOTATION_DETAIL') {
+            const detail = getElementDetail(message.correlation_id);
+            sendResponse(detail ? { found: true, detail } : { found: false });
+            return false;
+        }
+        if (message.type === 'GASOLINE_CLEAR_ANNOTATIONS') {
+            clearAnnotations();
+            sendResponse({ success: true });
+            return false;
         }
         return undefined;
     });

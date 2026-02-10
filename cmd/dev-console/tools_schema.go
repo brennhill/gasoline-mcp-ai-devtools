@@ -148,14 +148,14 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "analyze",
-			Description: "Trigger active analysis operations: inspect DOM, validate APIs, audit accessibility, analyze performance, check security, identify errors, explore navigation history, and verify link health.\n\nModes: dom, api_validation, performance, accessibility, error_clusters, history, security_audit, third_party_audit, security_diff, link_health.\n\nThese tools actively inspect or audit the current page state. Most create pending queries that the extension executes asynchronously.",
+			Description: "Trigger active analysis operations: inspect DOM, validate APIs, audit accessibility, analyze performance, check security, identify errors, explore navigation history, verify link health, and retrieve draw mode annotations.\n\nModes: dom, api_validation, performance, accessibility, error_clusters, history, security_audit, third_party_audit, security_diff, link_health, annotations, annotation_detail.\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.\n\nThese tools actively inspect or audit the current page state. Most create pending queries that the extension executes asynchronously.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"what": map[string]any{
 						"type":        "string",
 						"description": "What to analyze",
-						"enum":        []string{"dom", "api_validation", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "security_diff", "link_health"},
+						"enum":        []string{"dom", "api_validation", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "security_diff", "link_health", "annotations", "annotation_detail"},
 					},
 					"selector": map[string]any{
 						"type":        "string",
@@ -229,20 +229,32 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "string",
 						"description": "Target snapshot (applies to security_diff)",
 					},
+					"correlation_id": map[string]any{
+						"type":        "string",
+						"description": "Correlation ID for fetching annotation detail (applies to annotation_detail)",
+					},
+					"wait": map[string]any{
+						"type":        "boolean",
+						"description": "Block until the user finishes drawing annotations (applies to annotations). Default 5 min timeout, override with timeout_ms.",
+					},
+					"session": map[string]any{
+						"type":        "string",
+						"description": "Named session for multi-page annotation review (applies to annotations). Accumulates annotations across pages.",
+					},
 				},
 				"required": []string{"what"},
 			},
 		},
 		{
 			Name:        "generate",
-			Description: "CREATE ARTIFACTS. Generates production-ready outputs from captured data: test (Playwright tests), reproduction (bug scripts), pr_summary, csp, sarif, har, sri.",
+			Description: "CREATE ARTIFACTS. Generates production-ready outputs from captured data: test (Playwright tests), reproduction (bug scripts), pr_summary, csp, sarif, har, sri. Annotation formats: visual_test (Playwright from annotations), annotation_report (Markdown), annotation_issues (structured JSON).",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"format": map[string]any{
 						"type":        "string",
 						"description": "What to generate",
-						"enum":        []string{"reproduction", "test", "pr_summary", "sarif", "har", "csp", "sri"},
+						"enum":        []string{"reproduction", "test", "pr_summary", "sarif", "har", "csp", "sri", "visual_test", "annotation_report", "annotation_issues"},
 					},
 					"error_message": map[string]any{
 						"type":        "string",
@@ -335,6 +347,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "array",
 						"description": "Filter by specific origins (applies to sri)",
 						"items":       map[string]any{"type": "string"},
+					},
+					"session": map[string]any{
+						"type":        "string",
+						"description": "Named annotation session (applies to visual_test, annotation_report, annotation_issues)",
 					},
 				},
 				"required": []string{"format"},
@@ -493,7 +509,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "interact",
-			Description: "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, subtitle, save_state, load_state, list_states, delete_state. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. Subtitle: persistent narration text at bottom of viewport (like closed captions). Use action='subtitle' with text param, or add 'subtitle' param to any other action for composable narration. Performance: refresh and navigate automatically include perf_diff in the async result (before/after timing comparison with verdict, Web Vitals ratings, and summary). For DOM actions, set analyze=true to get perf_diff. Requires AI Web Pilot enabled.",
+			Description: "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, subtitle, save_state, load_state, list_states, delete_state, draw_mode_start. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. Draw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results. Subtitle: persistent narration text at bottom of viewport (like closed captions). Use action='subtitle' with text param, or add 'subtitle' param to any other action for composable narration. Performance: refresh and navigate automatically include perf_diff in the async result (before/after timing comparison with verdict, Web Vitals ratings, and summary). For DOM actions, set analyze=true to get perf_diff. Requires AI Web Pilot enabled.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -508,6 +524,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"set_attribute", "focus", "scroll_to", "wait_for", "key_press",
 							"list_interactive",
 							"record_start", "record_stop",
+							"draw_mode_start",
 						},
 					},
 					"selector": map[string]any{
@@ -591,6 +608,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"analyze": map[string]any{
 						"type":        "boolean",
 						"description": "Enable performance profiling for this action. When true, captures timing breakdown and perf_diff (before/after metrics) in the async result.",
+					},
+					"session": map[string]any{
+						"type":        "string",
+						"description": "Named session for multi-page annotation review (applies to draw_mode_start). Accumulates annotations across pages under a shared session name.",
 					},
 				},
 				"required": []string{"action"},

@@ -59,6 +59,8 @@ export async function initPopup() {
     }
     // Initialize recording UI
     setupRecordingUI();
+    // Initialize draw mode UI
+    setupDrawModeUI();
     // Check for pending audio recording that needs activeTab gesture.
     // When the user clicks the extension icon, activeTab is granted for the active tab.
     // The popup auto-sends RECORDING_GESTURE_GRANTED to unblock the service worker.
@@ -145,6 +147,70 @@ export async function initPopup() {
                 console.log('[Gasoline] Tracked tab URL updated in popup:', changes.trackedTabUrl.newValue);
             }
         }
+    });
+}
+/**
+ * Set up draw mode row: single clickable row toggles draw mode on the active tab.
+ */
+function setupDrawModeUI() {
+    const row = document.getElementById('draw-mode-row');
+    const label = document.getElementById('draw-mode-label');
+    const statusEl = document.getElementById('draw-mode-status');
+    if (!row || !label || !statusEl)
+        return;
+    let isActive = false;
+    function showActive() {
+        isActive = true;
+        row.classList.add('is-recording');
+        label.textContent = 'Stop Drawing';
+        statusEl.textContent = 'Active';
+        statusEl.style.color = '#e53935';
+    }
+    function showIdle() {
+        isActive = false;
+        row.classList.remove('is-recording');
+        label.textContent = 'Draw';
+        statusEl.textContent = '\u2318\u21E7D';
+        statusEl.style.color = '#666';
+    }
+    row.addEventListener('click', () => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const tab = tabs[0];
+            if (!tab?.id)
+                return;
+            if (isActive) {
+                chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_DRAW_MODE_STOP' }, () => {
+                    if (chrome.runtime.lastError) {
+                        console.error('[Gasoline] Draw mode stop error:', chrome.runtime.lastError.message);
+                    }
+                    showIdle();
+                });
+            }
+            else {
+                chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_DRAW_MODE_START', started_by: 'user' }, (resp) => {
+                    if (chrome.runtime.lastError) {
+                        console.error('[Gasoline] Draw mode start error:', chrome.runtime.lastError.message);
+                        return;
+                    }
+                    if (resp?.status === 'active' || resp?.status === 'already_active') {
+                        showActive();
+                    }
+                });
+            }
+        });
+    });
+    // Check if draw mode is already active on the current tab
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tab = tabs[0];
+        if (!tab?.id)
+            return;
+        chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_GET_ANNOTATIONS' }, (resp) => {
+            if (chrome.runtime.lastError)
+                return;
+            if (resp?.draw_mode_active) {
+                showActive();
+            }
+        });
     });
 }
 /**

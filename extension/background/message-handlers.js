@@ -164,6 +164,10 @@ function handleMessage(message, sender, sendResponse, deps) {
         case 'setServerUrl':
             handleSetServerUrl(message.url, sendResponse, deps);
             return false;
+        case 'DRAW_MODE_COMPLETED':
+            // Fire-and-forget: content script sends draw mode results
+            handleDrawModeCompletedAsync(message, sender, deps);
+            return false;
         default:
             // Unknown message type
             return false;
@@ -188,6 +192,37 @@ async function handleClearLogsAsync(sendResponse, deps) {
     catch (err) {
         console.error('[Gasoline] Failed to clear logs:', err);
         sendResponse({ error: err.message });
+    }
+}
+/**
+ * Handle draw mode completion from content script.
+ * Posts annotation data + screenshot to Go server.
+ */
+async function handleDrawModeCompletedAsync(message, sender, deps) {
+    const tabId = sender.tab?.id;
+    if (!tabId) return;
+    try {
+        const tab = await chrome.tabs.get(tabId);
+        const screenshotDataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+            format: 'png',
+        });
+        const serverUrl = deps.getServerUrl();
+        const response = await fetch(`${serverUrl}/draw-mode/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                screenshot_data_url: screenshotDataUrl,
+                annotations: message.annotations || [],
+                element_details: message.elementDetails || {},
+                page_url: message.page_url || '',
+                tab_id: tabId,
+            }),
+        });
+        if (!response.ok) {
+            console.error('[Gasoline] Draw mode POST failed:', response.status);
+        }
+    } catch (err) {
+        console.error('[Gasoline] Draw mode completion error:', err.message);
     }
 }
 function handleSetAiWebPilotEnabled(enabled, sendResponse, deps) {

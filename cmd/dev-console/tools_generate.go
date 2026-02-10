@@ -43,6 +43,12 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 		resp = h.handleGenerateTestHeal(req, args)
 	case "test_classify":
 		resp = h.handleGenerateTestClassify(req, args)
+	case "visual_test":
+		resp = h.toolGenerateVisualTest(req, args)
+	case "annotation_report":
+		resp = h.toolGenerateAnnotationReport(req, args)
+	case "annotation_issues":
+		resp = h.toolGenerateAnnotationIssues(req, args)
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+params.Format, "Use a valid format from the 'format' enum", withParam("format"))}
 	}

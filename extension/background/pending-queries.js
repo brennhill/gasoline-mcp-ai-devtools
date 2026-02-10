@@ -13,6 +13,7 @@ import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSn
 import { executeDOMAction } from './dom-primitives.js';
 import { canTakeScreenshot, recordScreenshot } from './state-manager.js';
 import { startRecording, stopRecording } from './recording.js';
+import { handleDrawModeQuery } from './draw-mode-handler.js';
 // Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
 const { debugLog, diagnosticLog } = index;
 // =============================================================================
@@ -69,6 +70,7 @@ const PRETTY_LABELS = {
     key_press: 'Key press',
     highlight: 'Highlight',
     subtitle: 'Subtitle',
+    draw_mode: 'Draw Mode',
 };
 /** Show a visual action toast on the tracked tab */
 function actionToast(tabId, action, detail, state = 'success', durationMs = 3000) {
@@ -543,6 +545,14 @@ export async function handlePendingQuery(query, syncClient) {
                     });
                 }
             }
+            return;
+        }
+        if (query.type === 'draw_mode') {
+            if (!index.__aiWebPilotEnabledCache) {
+                sendResult(syncClient, query.id, { error: 'ai_web_pilot_disabled', message: 'AI Web Pilot must be enabled for Draw Mode' });
+                return;
+            }
+            await handleDrawModeQuery(query, tabId, sendResult, sendAsyncResult, syncClient);
             return;
         }
         if (query.type === 'link_health') {

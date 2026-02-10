@@ -86,9 +86,10 @@ PORT_GROUP13=7902 # cat-15-pilot-success-path
 PORT_GROUP14=7903 # cat-16-api-contract
 PORT_GROUP15=7904 # cat-18-recording
 PORT_GROUP16=7905 # cat-19-link-health
+PORT_GROUP18=7907 # cat-23-draw-mode
 
 # Kill anything on our ports before starting
-for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15 $PORT_GROUP16; do
+for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15 $PORT_GROUP16 $PORT_GROUP18; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 0.5
@@ -237,8 +238,16 @@ PORT_GROUP17=7906  # cat-20-noise-persistence
 ) &
 PIDS="$PIDS $!"
 
+# Group 18: Draw Mode (single script)
+(
+    cd "$PROJECT_ROOT"
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-23-draw-mode.sh" "$PORT_GROUP18" "$RESULTS_DIR/results-23.txt" \
+        > "$RESULTS_DIR/output-23.txt" 2>&1
+) &
+PIDS="$PIDS $!"
+
 # ── Wait for All Groups ──────────────────────────────────
-echo "Running 17 parallel groups..."
+echo "Running 18 parallel groups..."
 echo ""
 
 # Master watchdog: kill all groups if UAT exceeds 5 minutes total
@@ -251,7 +260,7 @@ WATCHDOG_TIMEOUT=300
         kill "$pid" 2>/dev/null || true
     done
     # Also kill any daemons on our ports
-    for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15; do
+    for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15 $PORT_GROUP18; do
         lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
     done
 ) &
@@ -268,7 +277,7 @@ wait "$WATCHDOG_PID" 2>/dev/null || true
 # ── Collect and Display Results ───────────────────────────
 
 # Category display order and default names
-CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 18 19 20"
+CAT_IDS="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 18 19 20 23"
 get_default_name() {
     case "$1" in
         01) echo "Protocol Compliance" ;;
@@ -290,6 +299,7 @@ get_default_name() {
         18) echo "Recording & Audio" ;;
         19) echo "Link Health Analyzer" ;;
         20) echo "Noise Persistence" ;;
+        23) echo "Draw Mode" ;;
         *)  echo "Unknown" ;;
     esac
 }

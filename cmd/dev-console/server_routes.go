@@ -146,6 +146,101 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *c
 	jsonResponse(w, http.StatusOK, result)
 }
 
+// handleDrawModeComplete receives annotation data and screenshot from the extension
+// when the user finishes a draw mode session.
+func (s *Server) handleDrawModeComplete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+	var body struct {
+		ScreenshotDataURL string                    `json:"screenshot_data_url"`
+		Annotations       []json.RawMessage         `json:"annotations"`
+		ElementDetails    map[string]json.RawMessage `json:"element_details"`
+		PageURL           string                    `json:"page_url"`
+		TabID             int                       `json:"tab_id"`
+		SessionName       string                    `json:"session_name"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+		return
+	}
+
+	// Validate tab_id
+	if body.TabID <= 0 {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "tab_id is required and must be > 0"})
+		return
+	}
+
+	// Save screenshot if provided
+	var screenshotPath string
+	if body.ScreenshotDataURL != "" {
+		parts := strings.SplitN(body.ScreenshotDataURL, ",", 2)
+		if len(parts) == 2 {
+			imageData, err := base64.StdEncoding.DecodeString(parts[1])
+			if err == nil {
+				timestamp := time.Now().Format("20060102-150405")
+				filename := fmt.Sprintf("draw_%s_%s.png", sanitizeForFilename(timestamp), "annotated")
+				dir := os.TempDir()
+				screenshotPath = filepath.Join(dir, filename)
+				// #nosec G306 -- screenshots are intentionally world-readable
+				if err := os.WriteFile(screenshotPath, imageData, 0o644); err != nil {
+					screenshotPath = "" // Clear path if write failed
+				}
+			}
+		}
+	}
+
+	// Parse annotations
+	var parseWarnings []string
+	parsedAnnotations := make([]Annotation, 0, len(body.Annotations))
+	for i, rawAnn := range body.Annotations {
+		var ann Annotation
+		if err := json.Unmarshal(rawAnn, &ann); err != nil {
+			parseWarnings = append(parseWarnings, fmt.Sprintf("annotation[%d]: %v", i, err))
+		} else {
+			parsedAnnotations = append(parsedAnnotations, ann)
+		}
+	}
+
+	// Store session
+	session := &AnnotationSession{
+		Annotations:    parsedAnnotations,
+		ScreenshotPath: screenshotPath,
+		PageURL:        body.PageURL,
+		TabID:          body.TabID,
+		Timestamp:      time.Now().UnixMilli(),
+	}
+	globalAnnotationStore.StoreSession(body.TabID, session)
+
+	// Append to named session if session_name provided
+	if body.SessionName != "" {
+		globalAnnotationStore.AppendToNamedSession(body.SessionName, session)
+	}
+
+	// Store element details with TTL
+	for correlationID, rawDetail := range body.ElementDetails {
+		var detail AnnotationDetail
+		if err := json.Unmarshal(rawDetail, &detail); err == nil {
+			detail.CorrelationID = correlationID
+			globalAnnotationStore.StoreDetail(correlationID, detail)
+		}
+	}
+
+	result := map[string]any{
+		"status":           "stored",
+		"annotation_count": len(parsedAnnotations),
+		"screenshot":       screenshotPath,
+	}
+	if len(parseWarnings) > 0 {
+		result["warnings"] = parseWarnings
+	}
+	jsonResponse(w, http.StatusOK, result)
+}
+
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse)
 func setupHTTPRoutes(server *Server, cap *capture.Capture) *http.ServeMux {
 	mux := http.NewServeMux()
@@ -488,6 +583,10 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) *http.ServeMux {
 	mux.HandleFunc("/screenshots", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleScreenshot(w, r, cap)
 	}))
+
+	mux.HandleFunc("/draw-mode/complete", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		server.handleDrawModeComplete(w, r)
+	})))
 
 	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {

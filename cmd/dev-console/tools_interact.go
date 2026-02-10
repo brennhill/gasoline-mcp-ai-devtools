@@ -86,6 +86,8 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		resp = h.handleRecordStop(req, args)
 	case "upload":
 		resp = h.handleUpload(req, args)
+	case "draw_mode_start":
+		resp = h.handleDrawModeStart(req, args)
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
 	}

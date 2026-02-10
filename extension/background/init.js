@@ -8,6 +8,7 @@ import { setDebugMode, setServerUrl, setCurrentLogLevel, setScreenshotOnError, s
 import * as stateManager from './state-manager.js';
 import * as eventListeners from './event-listeners.js';
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js';
+import { installDrawModeCommandListener } from './draw-mode-handler.js';
 import * as communication from './communication.js';
 import * as storageUtils from './storage-utils.js';
 // =============================================================================
@@ -193,6 +194,7 @@ async function initializeExtensionAsync() {
             forwardToAllContentScripts: (msg) => eventListeners.forwardToAllContentScripts(msg, index.debugLog),
         };
         installMessageListener(deps);
+        installDrawModeCommandListener();
         // ============= STEP 8: Setup Chrome alarms =============
         eventListeners.setupChromeAlarms();
         eventListeners.installAlarmListener({

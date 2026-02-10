@@ -36,6 +36,10 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 	// New
 	"link_health":       func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolAnalyzeLinkHealth(req, args) },
 	"link_validation":   func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolValidateLinks(req, args) },
+
+	// Draw mode annotations
+	"annotations":       func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetAnnotations(req, args) },
+	"annotation_detail": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetAnnotationDetail(req, args) },
 }
 
 // getValidAnalyzeModes returns a sorted, comma-separated list of valid analyze modes.

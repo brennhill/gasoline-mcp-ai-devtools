@@ -188,6 +188,9 @@ type ToolHandler struct {
 	securityScannerImpl   *security.SecurityScanner
 	thirdPartyAuditorImpl *analysis.ThirdPartyAuditor
 
+	// Draw mode annotation store (in-memory, TTL-based)
+	annotationStore *AnnotationStore
+
 	// Upload automation security flags (disabled by default)
 	uploadAutomationEnabled bool // --enable-upload-automation
 	trustLLMContext         bool // --trust-llm-context
@@ -237,6 +240,9 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	} else {
 		handler.noiseConfig = ai.NewNoiseConfig()
 	}
+
+	// Use global annotation store for draw mode
+	handler.annotationStore = globalAnnotationStore
 
 	// Initialize security tools (concrete types - interface signatures differ)
 	handler.securityScannerImpl = security.NewSecurityScanner()
