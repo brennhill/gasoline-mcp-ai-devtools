@@ -84,12 +84,14 @@ test-commit: kill-zombies
 	CGO_ENABLED=0 go test -v -count=1 ./...
 	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 \
 		--test-reporter=dot tests/extension/*.test.js
+	@$(MAKE) kill-zombies
 	@echo "=== Pre-commit tests complete ==="
 
 # Tier 3: Full suite (~5-8min) - everything including regression + race
 test-full: kill-zombies test-commit
 	@echo "=== Full Test Suite ==="
 	./tests/regression/run-all.sh
+	@$(MAKE) kill-zombies
 	@echo "=== Full suite complete ==="
 
 # Kill zombie test servers (preserves main server on port 7890)
