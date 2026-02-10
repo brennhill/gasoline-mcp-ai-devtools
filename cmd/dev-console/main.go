@@ -208,6 +208,9 @@ func main() {
 	clientID := flag.String("client-id", "", "Override client ID (default: derived from CWD)")
 	bridgeMode := flag.Bool("bridge", false, "Run as stdio-to-HTTP bridge (spawns daemon if needed)")
 	daemonMode := flag.Bool("daemon", false, "Run as background server daemon (internal use)")
+	enableUploadAutomation := flag.Bool("enable-upload-automation", false, "Enable file upload automation (all 4 escalation stages)")
+	enableTrustLLMContext := flag.Bool("trust-llm-context", false, "Auto-grant escalation if request has LLM session context")
+	forceCleanup := flag.Bool("force", false, "Force kill all running gasoline daemons (used during install to ensure clean upgrade)")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 
 	flag.Parse()
@@ -225,6 +228,12 @@ func main() {
 
 	if *showHelp {
 		printHelp()
+		os.Exit(0)
+	}
+
+	// Force cleanup: kill all running gasoline daemons (used during package install)
+	if *forceCleanup {
+		runForceCleanup()
 		os.Exit(0)
 	}
 
@@ -492,6 +501,7 @@ Options:
   --log-file <path>      Path to log file (default: ~/gasoline-logs.jsonl)
   --max-entries <number> Max log entries before rotation (default: 1000)
   --stop                 Stop the running server on the specified port
+  --force                Force kill ALL running gasoline daemons (used during install)
   --api-key <key>        Require API key for HTTP requests (optional)
   --connect              Connect to existing server (multi-client mode)
   --client-id <id>       Override client ID (default: derived from CWD)
@@ -507,6 +517,7 @@ Examples:
   gasoline                              # Start server (daemon mode)
   gasoline --stop                       # Stop server on default port
   gasoline --stop --port 8080           # Stop server on specific port
+  gasoline --force                      # Force kill all daemons (for clean upgrade)
   gasoline --api-key s3cret             # Start with API key auth
   gasoline --connect --port 7890        # Connect to existing server
   gasoline --check                      # Verify setup before running
