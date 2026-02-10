@@ -121,8 +121,8 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *c
 			timestamp)
 	}
 
-	// Save to same directory as log file
-	dir := filepath.Dir(s.logFile)
+	// Save to system temp directory
+	dir := os.TempDir()
 	savePath := filepath.Join(dir, filename)
 
 	// #nosec G306 -- screenshots are intentionally world-readable
