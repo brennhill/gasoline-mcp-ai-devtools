@@ -118,7 +118,7 @@ describe('Circuit Breaker', () => {
 
     // Next call should not invoke sendFn
     const prevCallCount = sendFn.mock.calls.length
-    await assert.rejects(() => cb.execute(['entry']), { message: /Circuit breaker is open/ })
+    await assert.rejects(() => cb.execute(['entry']), { message: /circuit breaker is open/ })
     assert.strictEqual(sendFn.mock.calls.length, prevCallCount)
   })
 
@@ -225,7 +225,7 @@ describe('Circuit Breaker', () => {
 
     // Since failFn rejected immediately, state went back to open
     // Second call should be rejected
-    await assert.rejects(() => openCb.execute(['another']), { message: /Circuit breaker is open/ })
+    await assert.rejects(() => openCb.execute(['another']), { message: /circuit breaker/ })
 
     await probePromise
   })

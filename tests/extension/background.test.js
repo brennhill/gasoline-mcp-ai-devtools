@@ -19,7 +19,7 @@ const mockChrome = {
       addListener: mock.fn(),
     },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: '6.0.2' }),
   },
   action: {
     setBadgeText: mock.fn(),
@@ -29,14 +29,26 @@ const mockChrome = {
     local: {
       get: mock.fn((keys, callback) => callback({ logLevel: 'error' })),
       set: mock.fn((data, callback) => callback && callback()),
+      remove: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
     },
     sync: {
       get: mock.fn((keys, callback) => callback({})),
       set: mock.fn((data, callback) => callback && callback()),
+      remove: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
     },
     session: {
       get: mock.fn((keys, callback) => callback({})),
       set: mock.fn((data, callback) => callback && callback()),
+      remove: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
     },
     onChanged: {
       addListener: mock.fn(),
@@ -741,7 +753,7 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
-    assert.strictEqual(parsed.version, '6.0.1')
+    assert.strictEqual(parsed.version, '6.0.2')
     assert.ok(Array.isArray(parsed.entries))
   })
 

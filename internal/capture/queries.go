@@ -90,6 +90,7 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQu
 func (qd *QueryDispatcher) cleanExpiredQueries() {
 	now := time.Now()
 	remaining := qd.pendingQueries[:0]
+
 	for _, pq := range qd.pendingQueries {
 		if pq.expires.After(now) {
 			remaining = append(remaining, pq)
@@ -106,9 +107,13 @@ func (qd *QueryDispatcher) cleanExpiredQueries() {
 // Used by HandlePendingQueries HTTP handler.
 // Cleans expired queries before returning.
 func (qd *QueryDispatcher) GetPendingQueries() []queries.PendingQueryResponse {
+	// First ensure any expired queries are marked as failed
+	qd.cleanExpiredCommands()
+
 	qd.mu.Lock()
 	defer qd.mu.Unlock()
 
+	// Clean expired queries from pending queue
 	qd.cleanExpiredQueries()
 
 	result := make([]queries.PendingQueryResponse, 0, len(qd.pendingQueries))
@@ -121,9 +126,13 @@ func (qd *QueryDispatcher) GetPendingQueries() []queries.PendingQueryResponse {
 // GetPendingQueriesForClient returns pending queries for a specific client.
 // Used in multi-client mode.
 func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []queries.PendingQueryResponse {
+	// First ensure any expired queries are marked as failed
+	qd.cleanExpiredCommands()
+
 	qd.mu.Lock()
 	defer qd.mu.Unlock()
 
+	// Clean expired queries from pending queue
 	qd.cleanExpiredQueries()
 
 	result := make([]queries.PendingQueryResponse, 0)
@@ -411,6 +420,9 @@ func (qd *QueryDispatcher) ExpireCommand(correlationID string) {
 // GetCommandResult retrieves command status by correlation ID.
 // Returns (CommandResult, found). Used by toolObserveCommandResult.
 func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*queries.CommandResult, bool) {
+	// First ensure any expired queries are marked as failed
+	qd.cleanExpiredCommands()
+
 	qd.resultsMu.RLock()
 	defer qd.resultsMu.RUnlock()
 
@@ -429,9 +441,33 @@ func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*queries.Comm
 	return nil, false
 }
 
+// cleanExpiredCommands marks any pending commands with expired queries as expired.
+// Called by command getter methods to ensure consistency.
+// MUST NOT hold any locks when called (may acquire resultsMu).
+func (qd *QueryDispatcher) cleanExpiredCommands() {
+	qd.mu.Lock()
+	now := time.Now()
+	var expiredCorrelationIDs []string
+
+	for _, pq := range qd.pendingQueries {
+		if !pq.expires.After(now) && pq.query.CorrelationID != "" {
+			expiredCorrelationIDs = append(expiredCorrelationIDs, pq.query.CorrelationID)
+		}
+	}
+	qd.mu.Unlock()
+
+	// Mark expired commands
+	for _, correlationID := range expiredCorrelationIDs {
+		qd.ExpireCommand(correlationID)
+	}
+}
+
 // GetPendingCommands returns all commands with status "pending".
 // Used by toolObservePendingCommands.
 func (qd *QueryDispatcher) GetPendingCommands() []*queries.CommandResult {
+	// First ensure any expired queries are marked as failed
+	qd.cleanExpiredCommands()
+
 	qd.resultsMu.RLock()
 	defer qd.resultsMu.RUnlock()
 
@@ -447,6 +483,9 @@ func (qd *QueryDispatcher) GetPendingCommands() []*queries.CommandResult {
 // GetCompletedCommands returns all commands with status "complete".
 // Used by toolObservePendingCommands.
 func (qd *QueryDispatcher) GetCompletedCommands() []*queries.CommandResult {
+	// First ensure any expired queries are marked as failed
+	qd.cleanExpiredCommands()
+
 	qd.resultsMu.RLock()
 	defer qd.resultsMu.RUnlock()
 
@@ -462,6 +501,9 @@ func (qd *QueryDispatcher) GetCompletedCommands() []*queries.CommandResult {
 // GetFailedCommands returns recent failed/expired commands.
 // Used by toolObserveFailedCommands.
 func (qd *QueryDispatcher) GetFailedCommands() []*queries.CommandResult {
+	// First ensure any expired queries are marked as failed
+	qd.cleanExpiredCommands()
+
 	qd.resultsMu.RLock()
 	defer qd.resultsMu.RUnlock()
 

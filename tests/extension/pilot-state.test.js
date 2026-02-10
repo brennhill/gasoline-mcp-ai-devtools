@@ -21,14 +21,26 @@ const mockChrome = {
     sync: {
       get: mock.fn((keys, callback) => callback({})),
       set: mock.fn((data, callback) => callback && callback()),
+      remove: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
     },
     local: {
       get: mock.fn((key, callback) => callback({})),
       set: mock.fn((data, callback) => callback && callback()),
+      remove: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
     },
     session: {
       get: mock.fn((keys, callback) => callback({})),
       set: mock.fn((data, callback) => callback && callback()),
+      remove: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
     },
     onChanged: {
       addListener: mock.fn(),

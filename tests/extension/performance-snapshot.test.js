@@ -104,8 +104,8 @@ describe('Performance Snapshot Capture', () => {
     assert.ok('timestamp' in snapshot, 'missing: timestamp')
     assert.ok('timing' in snapshot, 'missing: timing')
     assert.ok('network' in snapshot, 'missing: network')
-    assert.ok('longTasks' in snapshot, 'missing: longTasks')
-    assert.ok('cumulativeLayoutShift' in snapshot, 'missing: cumulativeLayoutShift')
+    assert.ok('long_tasks' in snapshot, 'missing: long_tasks')
+    assert.ok('cumulative_layout_shift' in snapshot, 'missing: cumulative_layout_shift')
 
     // timing fields from spec
     assert.ok('domContentLoaded' in snapshot.timing, 'missing: timing.domContentLoaded')
@@ -116,16 +116,16 @@ describe('Performance Snapshot Capture', () => {
     assert.ok('domInteractive' in snapshot.timing, 'missing: timing.domInteractive')
 
     // network fields from spec
-    assert.ok('requestCount' in snapshot.network, 'missing: network.requestCount')
-    assert.ok('transferSize' in snapshot.network, 'missing: network.transferSize')
-    assert.ok('decodedSize' in snapshot.network, 'missing: network.decodedSize')
-    assert.ok('byType' in snapshot.network, 'missing: network.byType')
-    assert.ok('slowestRequests' in snapshot.network, 'missing: network.slowestRequests')
+    assert.ok('request_count' in snapshot.network, 'missing: network.request_count')
+    assert.ok('transfer_size' in snapshot.network, 'missing: network.transfer_size')
+    assert.ok('decoded_size' in snapshot.network, 'missing: network.decoded_size')
+    assert.ok('by_type' in snapshot.network, 'missing: network.by_type')
+    assert.ok('slowest_requests' in snapshot.network, 'missing: network.slowest_requests')
 
     // longTasks fields from spec
-    assert.ok('count' in snapshot.longTasks, 'missing: longTasks.count')
-    assert.ok('totalBlockingTime' in snapshot.longTasks, 'missing: longTasks.totalBlockingTime')
-    assert.ok('longest' in snapshot.longTasks, 'missing: longTasks.longest')
+    assert.ok('count' in snapshot.long_tasks, 'missing: long_tasks.count')
+    assert.ok('total_blocking_time' in snapshot.long_tasks, 'missing: long_tasks.total_blocking_time')
+    assert.ok('longest' in snapshot.long_tasks, 'missing: long_tasks.longest')
   })
 
   test('capturePerformanceSnapshot collects navigation timing', async () => {
@@ -166,15 +166,15 @@ describe('Performance Snapshot Capture', () => {
 
     const result = aggregateResourceTiming()
 
-    assert.strictEqual(result.requestCount, 4)
-    assert.strictEqual(result.byType.script.count, 1)
-    assert.strictEqual(result.byType.script.size, 50000)
-    assert.strictEqual(result.byType.style.count, 1)
-    assert.strictEqual(result.byType.style.size, 10000)
-    assert.strictEqual(result.byType.image.count, 1)
-    assert.strictEqual(result.byType.image.size, 80000)
-    assert.strictEqual(result.byType.fetch.count, 1)
-    assert.strictEqual(result.byType.fetch.size, 2000)
+    assert.strictEqual(result.request_count, 4)
+    assert.strictEqual(result.by_type.script.count, 1)
+    assert.strictEqual(result.by_type.script.size, 50000)
+    assert.strictEqual(result.by_type.style.count, 1)
+    assert.strictEqual(result.by_type.style.size, 10000)
+    assert.strictEqual(result.by_type.image.count, 1)
+    assert.strictEqual(result.by_type.image.size, 80000)
+    assert.strictEqual(result.by_type.fetch.count, 1)
+    assert.strictEqual(result.by_type.fetch.size, 2000)
   })
 
   test('aggregateResourceTiming calculates total sizes', async () => {
@@ -182,8 +182,8 @@ describe('Performance Snapshot Capture', () => {
 
     const result = aggregateResourceTiming()
 
-    assert.strictEqual(result.transferSize, 142000) // 50000 + 10000 + 80000 + 2000
-    assert.strictEqual(result.decodedSize, 205000) // 100000 + 20000 + 80000 + 5000
+    assert.strictEqual(result.transfer_size, 142000) // 50000 + 10000 + 80000 + 2000
+    assert.strictEqual(result.decoded_size, 205000) // 100000 + 20000 + 80000 + 5000
   })
 
   test('aggregateResourceTiming returns top 3 slowest requests', async () => {
@@ -191,12 +191,12 @@ describe('Performance Snapshot Capture', () => {
 
     const result = aggregateResourceTiming()
 
-    assert.strictEqual(result.slowestRequests.length, 3)
+    assert.strictEqual(result.slowest_requests.length, 3)
     // Should be sorted by duration descending
-    assert.ok(result.slowestRequests[0].duration >= result.slowestRequests[1].duration)
-    assert.ok(result.slowestRequests[1].duration >= result.slowestRequests[2].duration)
+    assert.ok(result.slowest_requests[0].duration >= result.slowest_requests[1].duration)
+    assert.ok(result.slowest_requests[1].duration >= result.slowest_requests[2].duration)
     // First should be the image (500ms)
-    assert.strictEqual(result.slowestRequests[0].duration, 500)
+    assert.strictEqual(result.slowest_requests[0].duration, 500)
   })
 
   test('aggregateResourceTiming truncates URLs to 80 chars', async () => {
@@ -211,7 +211,7 @@ describe('Performance Snapshot Capture', () => {
     const { aggregateResourceTiming } = await import('../../extension/inject.js')
     const result = aggregateResourceTiming()
 
-    assert.ok(result.slowestRequests[0].url.length <= 80)
+    assert.ok(result.slowest_requests[0].url.length <= 80)
   })
 
   test('mapInitiatorType maps known types correctly', async () => {
@@ -281,7 +281,7 @@ describe('Long Task Observer', () => {
 
     assert.strictEqual(metrics.count, 2)
     // TBT = sum of (duration - 50) for each: (120-50) + (80-50) = 70 + 30 = 100
-    assert.strictEqual(metrics.totalBlockingTime, 100)
+    assert.strictEqual(metrics.total_blocking_time, 100)
     assert.strictEqual(metrics.longest, 120)
 
     uninstallPerfObservers()
@@ -460,9 +460,9 @@ describe('Performance Snapshot Message', () => {
     const { payload } = globalThis.window.postMessage.mock.calls[0].arguments[0]
     assert.ok(payload.timing, 'Should have timing')
     assert.ok(payload.network, 'Should have network')
-    assert.ok(payload.longTasks, 'Should have longTasks')
+    assert.ok(payload.long_tasks, 'Should have long_tasks')
     assert.ok(payload.timestamp, 'Should have timestamp')
-    assert.ok('cumulativeLayoutShift' in payload, 'Should have cumulativeLayoutShift')
+    assert.ok('cumulative_layout_shift' in payload, 'Should have cumulative_layout_shift')
     assert.ok('firstContentfulPaint' in payload.timing, 'Should have timing.firstContentfulPaint')
     assert.ok('largestContentfulPaint' in payload.timing, 'Should have timing.largestContentfulPaint')
   })
