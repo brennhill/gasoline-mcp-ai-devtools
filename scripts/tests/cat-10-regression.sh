@@ -107,9 +107,23 @@ run_test_10_2() {
     local fail_modes=""
     local total=${#modes[@]}
 
+    # Use a tighter per-call send to prevent loop blow-up (23 modes x 8s = 184s worst case)
+    call_tool_fast() {
+        local tool_name="$1"
+        local arguments="${2:-\{\}}"
+        local request="{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/call\",\"params\":{\"name\":\"${tool_name}\",\"arguments\":${arguments}}}"
+        local stdout_file="$TEMP_DIR/fast_${MCP_ID}_stdout.txt"
+        local stderr_file="$TEMP_DIR/fast_${MCP_ID}_stderr.txt"
+        echo "$request" | $TIMEOUT_CMD 8 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
+        LAST_EXIT_CODE=$?
+        LAST_RESPONSE=$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1)
+        MCP_ID=$((MCP_ID + 1))
+        echo "$LAST_RESPONSE"
+    }
+
     for mode in "${modes[@]}"; do
         local resp
-        resp=$(call_tool "observe" "{\"what\":\"$mode\"}")
+        resp=$(call_tool_fast "observe" "{\"what\":\"$mode\"}")
 
         # Must be valid JSON-RPC (not a crash, not a timeout, not empty)
         if [ -z "$resp" ]; then

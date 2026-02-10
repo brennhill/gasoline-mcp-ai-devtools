@@ -11,6 +11,7 @@ OUTPUT_FILE="${2:-/dev/null}"
 
 init_framework "$PORT" "$OUTPUT_FILE"
 begin_category "13" "Pilot State Contract Tests" "3"
+ensure_daemon
 
 # ── 13.1 — Pilot-gated actions fail when pilot OFF (regression guard) ──
 begin_test "13.1" "navigate fails when pilot OFF (regression guard)" \

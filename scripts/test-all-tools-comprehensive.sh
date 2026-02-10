@@ -27,6 +27,16 @@ check_deps() {
 
 check_deps
 
+# ── Timeout Compatibility ─────────────────────────────────
+if command -v timeout >/dev/null 2>&1; then
+    TIMEOUT_CMD="timeout"
+elif command -v gtimeout >/dev/null 2>&1; then
+    TIMEOUT_CMD="gtimeout"
+else
+    echo "FATAL: 'timeout' not found. Install with: brew install coreutils" >&2
+    exit 1
+fi
+
 # ── Resolve Binary ────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -88,7 +98,7 @@ PIDS=""
 # Group 1: Protocol (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-01-protocol.sh" "$PORT_GROUP1" "$RESULTS_DIR/results-01.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-01-protocol.sh" "$PORT_GROUP1" "$RESULTS_DIR/results-01.txt" \
         > "$RESULTS_DIR/output-01.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -96,7 +106,7 @@ PIDS="$PIDS $!"
 # Group 2: Observe (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-02-observe.sh" "$PORT_GROUP2" "$RESULTS_DIR/results-02.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-02-observe.sh" "$PORT_GROUP2" "$RESULTS_DIR/results-02.txt" \
         > "$RESULTS_DIR/output-02.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -104,7 +114,7 @@ PIDS="$PIDS $!"
 # Group 3: Generate (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-03-generate.sh" "$PORT_GROUP3" "$RESULTS_DIR/results-03.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-03-generate.sh" "$PORT_GROUP3" "$RESULTS_DIR/results-03.txt" \
         > "$RESULTS_DIR/output-03.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -112,9 +122,9 @@ PIDS="$PIDS $!"
 # Group 4: Configure then Interact (sequential, same port)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-04-configure.sh" "$PORT_GROUP4" "$RESULTS_DIR/results-04.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-04-configure.sh" "$PORT_GROUP4" "$RESULTS_DIR/results-04.txt" \
         > "$RESULTS_DIR/output-04.txt" 2>&1
-    bash "$TESTS_DIR/cat-05-interact.sh" "$PORT_GROUP4" "$RESULTS_DIR/results-05.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-05-interact.sh" "$PORT_GROUP4" "$RESULTS_DIR/results-05.txt" \
         > "$RESULTS_DIR/output-05.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -122,7 +132,7 @@ PIDS="$PIDS $!"
 # Group 5: Concurrency (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-07-concurrency.sh" "$PORT_GROUP5" "$RESULTS_DIR/results-07.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-07-concurrency.sh" "$PORT_GROUP5" "$RESULTS_DIR/results-07.txt" \
         > "$RESULTS_DIR/output-07.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -130,9 +140,9 @@ PIDS="$PIDS $!"
 # Group 6: Security then HTTP (sequential, same port)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-08-security.sh" "$PORT_GROUP6" "$RESULTS_DIR/results-08.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-08-security.sh" "$PORT_GROUP6" "$RESULTS_DIR/results-08.txt" \
         > "$RESULTS_DIR/output-08.txt" 2>&1
-    bash "$TESTS_DIR/cat-09-http.sh" "$PORT_GROUP6" "$RESULTS_DIR/results-09.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-09-http.sh" "$PORT_GROUP6" "$RESULTS_DIR/results-09.txt" \
         > "$RESULTS_DIR/output-09.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -140,7 +150,7 @@ PIDS="$PIDS $!"
 # Group 7: Lifecycle (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-06-lifecycle.sh" "$PORT_GROUP7" "$RESULTS_DIR/results-06.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-06-lifecycle.sh" "$PORT_GROUP7" "$RESULTS_DIR/results-06.txt" \
         > "$RESULTS_DIR/output-06.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -148,7 +158,7 @@ PIDS="$PIDS $!"
 # Group 8: Regression (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-10-regression.sh" "$PORT_GROUP8" "$RESULTS_DIR/results-10.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-10-regression.sh" "$PORT_GROUP8" "$RESULTS_DIR/results-10.txt" \
         > "$RESULTS_DIR/output-10.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -156,7 +166,7 @@ PIDS="$PIDS $!"
 # Group 9: Data Pipeline (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-11-data-pipeline.sh" "$PORT_GROUP9" "$RESULTS_DIR/results-11.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-11-data-pipeline.sh" "$PORT_GROUP9" "$RESULTS_DIR/results-11.txt" \
         > "$RESULTS_DIR/output-11.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -164,7 +174,7 @@ PIDS="$PIDS $!"
 # Group 10: Rich Action Results (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-12-rich-actions.sh" "$PORT_GROUP10" "$RESULTS_DIR/results-12.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-12-rich-actions.sh" "$PORT_GROUP10" "$RESULTS_DIR/results-12.txt" \
         > "$RESULTS_DIR/output-12.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -172,7 +182,7 @@ PIDS="$PIDS $!"
 # Group 11: Pilot Contract Tests (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-13-pilot-contract.sh" "$PORT_GROUP11" "$RESULTS_DIR/results-13.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-13-pilot-contract.sh" "$PORT_GROUP11" "$RESULTS_DIR/results-13.txt" \
         > "$RESULTS_DIR/output-13.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -180,7 +190,7 @@ PIDS="$PIDS $!"
 # Group 12: Extension Startup (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-14-extension-startup.sh" "$PORT_GROUP12" "$RESULTS_DIR/results-14.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-14-extension-startup.sh" "$PORT_GROUP12" "$RESULTS_DIR/results-14.txt" \
         > "$RESULTS_DIR/output-14.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -188,7 +198,7 @@ PIDS="$PIDS $!"
 # Group 13: Pilot Success Path (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-15-pilot-success-path.sh" "$PORT_GROUP13" "$RESULTS_DIR/results-15.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-15-pilot-success-path.sh" "$PORT_GROUP13" "$RESULTS_DIR/results-15.txt" \
         > "$RESULTS_DIR/output-15.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -196,7 +206,7 @@ PIDS="$PIDS $!"
 # Group 14: API Contract (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-16-api-contract.sh" "$PORT_GROUP14" "$RESULTS_DIR/results-16.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-16-api-contract.sh" "$PORT_GROUP14" "$RESULTS_DIR/results-16.txt" \
         > "$RESULTS_DIR/output-16.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -204,7 +214,7 @@ PIDS="$PIDS $!"
 # Group 15: Recording & Audio (single script)
 (
     cd "$PROJECT_ROOT"
-    bash "$TESTS_DIR/cat-18-recording.sh" "$PORT_GROUP15" "$RESULTS_DIR/results-18.txt" \
+    $TIMEOUT_CMD 120 bash "$TESTS_DIR/cat-18-recording.sh" "$PORT_GROUP15" "$RESULTS_DIR/results-18.txt" \
         > "$RESULTS_DIR/output-18.txt" 2>&1
 ) &
 PIDS="$PIDS $!"
@@ -213,9 +223,29 @@ PIDS="$PIDS $!"
 echo "Running 15 parallel groups..."
 echo ""
 
+# Master watchdog: kill all groups if UAT exceeds 5 minutes total
+WATCHDOG_TIMEOUT=300
+(
+    sleep "$WATCHDOG_TIMEOUT"
+    echo ""
+    echo "WATCHDOG: UAT exceeded ${WATCHDOG_TIMEOUT}s master timeout. Killing all groups." >&2
+    for pid in $PIDS; do
+        kill "$pid" 2>/dev/null || true
+    done
+    # Also kill any daemons on our ports
+    for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15; do
+        lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
+    done
+) &
+WATCHDOG_PID=$!
+
 for pid in $PIDS; do
     wait "$pid" 2>/dev/null || true
 done
+
+# Cancel the watchdog — all groups finished in time
+kill "$WATCHDOG_PID" 2>/dev/null || true
+wait "$WATCHDOG_PID" 2>/dev/null || true
 
 # ── Collect and Display Results ───────────────────────────
 

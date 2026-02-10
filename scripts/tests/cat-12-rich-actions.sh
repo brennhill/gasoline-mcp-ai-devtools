@@ -93,7 +93,7 @@ begin_test "12.4" "perf_diff summary says 'unchanged' for delta=0 (not 'regresse
     "Saying 'regressed 0%' is misleading. delta=0 = unchanged."
 run_test_12_4() {
     local go_result
-    go_result=$(go test ./internal/performance/ -run "TestSummary_DeltaZeroSaysUnchanged" -count=1 2>&1)
+    go_result=$($TIMEOUT_CMD 30 go test ./internal/performance/ -run "TestSummary_DeltaZeroSaysUnchanged" -count=1 2>&1)
 
     if echo "$go_result" | grep -q "^ok"; then
         pass "delta=0 summary correctly says 'unchanged', not 'regressed'."
@@ -109,7 +109,7 @@ begin_test "12.5" "perf_diff rating field exists on Web Vitals metrics" \
     "Rating gives AI immediate Web Vitals assessment without threshold lookup."
 run_test_12_5() {
     local go_result
-    go_result=$(go test ./internal/performance/ -run "TestPerfDiff_LCP_Rating|TestPerfDiff_CLS_Rating" -count=1 2>&1)
+    go_result=$($TIMEOUT_CMD 30 go test ./internal/performance/ -run "TestPerfDiff_LCP_Rating|TestPerfDiff_CLS_Rating" -count=1 2>&1)
 
     if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
         pass "LCP and CLS metrics have correct rating values (good/needs_improvement/poor)."
@@ -125,7 +125,7 @@ begin_test "12.6" "perf_diff verdict enum: improved/regressed/mixed/unchanged" \
     "Invalid verdict breaks AI decision-making."
 run_test_12_6() {
     local go_result
-    go_result=$(go test ./internal/performance/ -run "TestPerfDiff_Verdict" -count=1 2>&1)
+    go_result=$($TIMEOUT_CMD 30 go test ./internal/performance/ -run "TestPerfDiff_Verdict" -count=1 2>&1)
 
     if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
         pass "All 4 verdict values (improved/regressed/mixed/unchanged) computed correctly."
@@ -141,7 +141,7 @@ begin_test "12.7" "perf_diff summary: <200 chars, no redundant signs" \
     "Redundant signs waste tokens. 'improved -57%' should be 'improved 57%'."
 run_test_12_7() {
     local go_result
-    go_result=$(go test ./internal/performance/ -run "TestSummary_NoRedundant|TestSummary_Under200|TestSummary_Regression" -count=1 2>&1)
+    go_result=$($TIMEOUT_CMD 30 go test ./internal/performance/ -run "TestSummary_NoRedundant|TestSummary_Under200|TestSummary_Regression" -count=1 2>&1)
 
     if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
         pass "Summary is concise (<200 chars), uses absolute percentages, no redundant signs."
@@ -157,7 +157,7 @@ begin_test "12.8" "snake_case JSON → PerformanceSnapshot with all Web Vitals" 
     "If JSON tags revert to camelCase, FCP/LCP/TTFB/INP/CLS all deserialize to zero."
 run_test_12_8() {
     local go_result
-    go_result=$(go test ./internal/performance/ -run "TestSnapshotJSON_AllWebVitalsDeserialize" -count=1 2>&1)
+    go_result=$($TIMEOUT_CMD 30 go test ./internal/performance/ -run "TestSnapshotJSON_AllWebVitalsDeserialize" -count=1 2>&1)
 
     if echo "$go_result" | grep -q "^ok"; then
         pass "snake_case JSON correctly populates all PerformanceSnapshot fields (FCP, LCP, TTFB, INP, CLS, DCL)."
@@ -173,7 +173,7 @@ begin_test "12.9" "FCP and TTFB ratings follow Web Vitals thresholds" \
     "Rating thresholds must match Web Vitals standards. Wrong thresholds mislead AI."
 run_test_12_9() {
     local go_result
-    go_result=$(go test ./internal/performance/ -run "TestPerfDiff_FCP_NeedsImprovement|TestPerfDiff_TTFB_Poor" -count=1 2>&1)
+    go_result=$($TIMEOUT_CMD 30 go test ./internal/performance/ -run "TestPerfDiff_FCP_NeedsImprovement|TestPerfDiff_TTFB_Poor" -count=1 2>&1)
 
     if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
         pass "FCP needs_improvement at 2500ms, TTFB poor at 2000ms — thresholds correct."
@@ -189,7 +189,7 @@ begin_test "12.10" "Full Web Vitals (FCP+LCP+TTFB+CLS) produce ratings through s
     "End-to-end pipeline must preserve all Web Vitals. A broken mapping means missing metrics in perf_diff."
 run_test_12_10() {
     local go_result
-    go_result=$(go test ./internal/performance/ -run "TestPerfDiff_FullWebVitals_AllRatings" -count=1 2>&1)
+    go_result=$($TIMEOUT_CMD 30 go test ./internal/performance/ -run "TestPerfDiff_FullWebVitals_AllRatings" -count=1 2>&1)
 
     if echo "$go_result" | grep -q "^ok"; then
         pass "Full pipeline: snapshot → PageLoadMetrics → perf_diff with FCP/LCP/TTFB/CLS ratings verified."
@@ -205,7 +205,7 @@ begin_test "12.11" "UserTiming marks/measures survive JSON round-trip" \
     "UserTiming is the newest snapshot field. Must survive serialization/deserialization."
 run_test_12_11() {
     local go_result
-    go_result=$(go test ./internal/performance/ -run "TestSnapshotJSON_UserTimingRoundTrip|TestSnapshotJSON_UserTimingOmitted" -count=1 2>&1)
+    go_result=$($TIMEOUT_CMD 30 go test ./internal/performance/ -run "TestSnapshotJSON_UserTimingRoundTrip|TestSnapshotJSON_UserTimingOmitted" -count=1 2>&1)
 
     if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
         pass "UserTiming marks/measures survive JSON round-trip. Omitted when absent."
@@ -221,7 +221,7 @@ begin_test "12.12" "dom_summary/analyze fields pass through command_result" \
     "Extension enriches click results with DOM changes. If passthrough is broken, AI loses mutation context."
 run_test_12_12() {
     local go_result
-    go_result=$(go test ./cmd/dev-console/ -run "TestRichAction_DomSummaryPassthrough|TestRichAction_PerfDiffWithFullWebVitals" -count=1 2>&1)
+    go_result=$($TIMEOUT_CMD 30 go test ./cmd/dev-console/ -run "TestRichAction_DomSummaryPassthrough|TestRichAction_PerfDiffWithFullWebVitals" -count=1 2>&1)
 
     if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
         pass "dom_summary, timing, analysis pass through. Full Web Vitals perf_diff with ratings verified."
