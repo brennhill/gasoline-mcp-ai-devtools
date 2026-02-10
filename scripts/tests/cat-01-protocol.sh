@@ -72,21 +72,21 @@ run_test_1_2() {
     # Count tools
     local tool_count
     tool_count=$(echo "$response" | jq -r '.result.tools | length' 2>/dev/null)
-    if [ "$tool_count" != "4" ]; then
-        fail "Expected exactly 4 tools, got $tool_count. Response: $(truncate "$response")"
+    if [ "$tool_count" != "5" ]; then
+        fail "Expected exactly 5 tools, got $tool_count. Response: $(truncate "$response")"
         return
     fi
 
     # Extract sorted tool names
     local tool_names
     tool_names=$(echo "$response" | jq -r '.result.tools[].name' 2>/dev/null | sort | tr '\n' ',' | sed 's/,$//')
-    local expected="configure,generate,interact,observe"
+    local expected="analyze,configure,generate,interact,observe"
     if [ "$tool_names" != "$expected" ]; then
         fail "Expected tools [$expected], got [$tool_names]. Response: $(truncate "$response")"
         return
     fi
 
-    pass "tools/list returned exactly 4 tools: $tool_names."
+    pass "tools/list returned exactly 5 tools: $tool_names."
 }
 run_test_1_2
 

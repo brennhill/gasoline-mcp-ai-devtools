@@ -13,6 +13,7 @@
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Suppress unhandledRejection errors from module cleanup after tests end
 process.on('unhandledRejection', (reason, _promise) => {
@@ -36,7 +37,7 @@ const mockChrome = {
       addListener: mock.fn(),
     },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION }),
   },
   action: {
     setBadgeText: mock.fn(),

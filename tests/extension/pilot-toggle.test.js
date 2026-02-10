@@ -34,6 +34,7 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 const mockChrome = {
@@ -42,7 +43,7 @@ const mockChrome = {
     onMessage: {
       addListener: mock.fn(),
     },
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION }),
   },
   storage: {
     sync: {

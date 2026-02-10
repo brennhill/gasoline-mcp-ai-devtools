@@ -57,14 +57,14 @@ run_test_7_1() {
         if [ -f "$resp_file" ]; then
             local last_line
             last_line=$(grep -v '^$' "$resp_file" 2>/dev/null | tail -1)
-            if echo "$last_line" | jq -e '.result.tools | length == 4' >/dev/null 2>&1; then
+            if echo "$last_line" | jq -e '.result.tools | length == 5' >/dev/null 2>&1; then
                 success=$((success + 1))
             fi
         fi
     done
 
     if [ "$success" -eq "$total" ]; then
-        pass "All $total concurrent clients received valid responses with 4 tools each."
+        pass "All $total concurrent clients received valid responses with 5 tools each."
     else
         fail "Only $success/$total concurrent clients received valid responses."
     fi
@@ -80,7 +80,7 @@ run_test_7_2() {
     local success=0
     # Exclude network_waterfall — it does on-demand extension queries that can timeout without extension.
     # It's tested separately in cat-02 and cat-11.
-    local modes=("page" "logs" "errors" "vitals" "actions" "tabs" "pilot" "performance" "timeline" "error_clusters")
+    local modes=("page" "logs" "errors" "vitals" "actions" "tabs" "pilot" "changes" "timeline" "api")
     local mode_count=${#modes[@]}
 
     for i in $(seq 1 $total); do

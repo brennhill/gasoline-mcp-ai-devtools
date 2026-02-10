@@ -8,6 +8,7 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 const mockChrome = {
@@ -19,7 +20,7 @@ const mockChrome = {
       addListener: mock.fn(),
     },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '6.0.3' }),
+    getManifest: () => ({ version: MANIFEST_VERSION }),
   },
   action: {
     setBadgeText: mock.fn(),
@@ -753,7 +754,7 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
-    assert.strictEqual(parsed.version, '6.0.3')
+    assert.strictEqual(parsed.version, MANIFEST_VERSION)
     assert.ok(Array.isArray(parsed.entries))
   })
 

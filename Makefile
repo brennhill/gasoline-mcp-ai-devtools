@@ -3,7 +3,7 @@
 VERSION := $(shell cat VERSION)
 BINARY_NAME := gasoline
 BUILD_DIR := dist
-LDFLAGS := -s -w -X main.version=$(VERSION)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/dev-console/dev-console/internal/export.version=$(VERSION)
 
 # Build targets
 PLATFORMS := \

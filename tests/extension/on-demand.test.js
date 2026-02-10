@@ -7,6 +7,7 @@
 
 import { test, describe, mock, beforeEach, afterEach, after } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 const createMockChrome = () => ({
@@ -14,7 +15,7 @@ const createMockChrome = () => ({
     onMessage: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
     getURL: mock.fn((path) => `chrome-extension://test-id/${path}`),
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION }),
   },
   tabs: {
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1, url: 'http://localhost:3000' }])),

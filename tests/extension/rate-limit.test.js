@@ -9,13 +9,14 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 globalThis.chrome = {
   runtime: {
     onMessage: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION }),
   },
   action: { setBadgeText: mock.fn(), setBadgeBackgroundColor: mock.fn() },
   storage: {

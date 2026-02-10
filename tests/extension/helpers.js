@@ -10,6 +10,10 @@
  */
 
 import { mock } from 'node:test'
+import { readFileSync } from 'node:fs'
+
+const manifest = JSON.parse(readFileSync(new URL('../../extension/manifest.json', import.meta.url), 'utf8'))
+export const MANIFEST_VERSION = manifest.version
 
 /**
  * Configurable mock window factory.
@@ -125,7 +129,7 @@ export function createMockChrome(overrides = {}) {
       onInstalled: {
         addListener: mock.fn(),
       },
-      getManifest: () => ({ version: '6.0.3' }),
+      getManifest: () => ({ version: MANIFEST_VERSION }),
       ...overrides.runtime,
     },
     action: {

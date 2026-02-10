@@ -14,9 +14,9 @@ import (
 	"strings"
 )
 
-// version is the Gasoline version used in generated exports.
-// This should be kept in sync with the main version in cmd/dev-console/main.go.
-const version = "5.5.0"
+// version is set at build time via -ldflags "-X ...internal/export.version=..."
+// Fallback used for `go run` (no ldflags).
+var version = "dev"
 
 // SARIF 2.1.0 specification constants
 const (

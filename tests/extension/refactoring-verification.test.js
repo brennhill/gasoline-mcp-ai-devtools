@@ -16,7 +16,7 @@
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
-import { createMockWindow } from './helpers.js'
+import { createMockWindow, MANIFEST_VERSION } from './helpers.js'
 
 // Setup global chrome mock before importing modules
 const mockChrome = {
@@ -24,7 +24,7 @@ const mockChrome = {
     onMessage: { addListener: mock.fn() },
     onInstalled: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '6.0.3' }),
+    getManifest: () => ({ version: MANIFEST_VERSION }),
   },
   action: {
     setBadgeText: mock.fn(),
