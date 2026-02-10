@@ -1,3 +1,3 @@
 """Platform-specific Gasoline binary for linux-x64."""
 
-__version__ = "5.8.2"
+__version__ = "6.0.1"
