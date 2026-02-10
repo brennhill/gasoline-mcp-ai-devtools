@@ -228,7 +228,7 @@ func validateSingleLink(url string, timeoutMS int) LinkValidationResult {
 
 	// HEAD request
 	req, _ := http.NewRequest("HEAD", url, nil)
-	req.Header.Set("User-Agent", "Gasoline/6.0.0 (+https://gasoline.dev)")
+	req.Header.Set("User-Agent", "Gasoline/6.0.3 (+https://gasoline.dev)")
 	resp, err = client.Do(req)
 
 	// If HEAD fails, try GET (some servers don't support HEAD)
@@ -237,7 +237,7 @@ func validateSingleLink(url string, timeoutMS int) LinkValidationResult {
 			resp.Body.Close()
 		}
 		req, _ = http.NewRequest("GET", url, nil)
-		req.Header.Set("User-Agent", "Gasoline/6.0.0 (+https://gasoline.dev)")
+		req.Header.Set("User-Agent", "Gasoline/6.0.3 (+https://gasoline.dev)")
 		resp, err = client.Do(req)
 	}
 
