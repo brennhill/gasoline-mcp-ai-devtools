@@ -77,7 +77,8 @@ function findGlobalBinary() {
 
   try {
     // Check if gasoline exists in PATH
-    const which = require('child_process').execSync(`which ${binaryName} 2>/dev/null || where ${binaryName} 2>nul`, {
+    const whichCmd = os.platform() === 'win32' ? `where ${binaryName}` : `which ${binaryName}`;
+    const which = require('child_process').execSync(whichCmd, {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe']
     }).trim();
