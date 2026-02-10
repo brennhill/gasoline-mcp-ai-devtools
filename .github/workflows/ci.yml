@@ -10,6 +10,11 @@ on:
   workflow_dispatch: # Manual trigger
 
 jobs:
+  # Version consistency check - BLOCKING
+  versions:
+    name: Version Consistency
+    uses: ./.github/workflows/validate-versions.yml
+
   go:
     name: Go Checks
     runs-on: ubuntu-latest

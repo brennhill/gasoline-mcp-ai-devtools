@@ -38,7 +38,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "6.0.0"
+var version = "6.0.3"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -514,8 +514,6 @@ Options:
   --connect              Connect to existing server (multi-client mode)
   --client-id <id>       Override client ID (default: derived from CWD)
   --check                Verify setup (check port availability, print status)
-  --enable-upload-automation  Enable file upload automation (all 4 stages)
-  --trust-llm-context    Auto-grant escalation for LLM-driven uploads
   --version              Show version
   --help                 Show this help message
 

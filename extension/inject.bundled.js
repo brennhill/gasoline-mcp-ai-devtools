@@ -2714,7 +2714,7 @@ function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: "6.0.0"
+    version: "6.0.3"
   };
 }
 function uninstallGasolineAPI() {
@@ -2904,141 +2904,6 @@ function createDeferredPromise() {
   return { promise, resolve, reject };
 }
 
-// extension/lib/link-health.js
-async function checkLinkHealth(params) {
-  const timeout_ms = params.timeout_ms || 15e3;
-  const max_workers = params.max_workers || 20;
-  const linkElements = document.querySelectorAll("a[href]");
-  const urls = /* @__PURE__ */ new Set();
-  for (const elem of linkElements) {
-    const href = elem.href;
-    if (href && !isIgnoredLink(href)) {
-      urls.add(href);
-    }
-  }
-  const uniqueLinks = Array.from(urls);
-  const results = [];
-  const chunks = chunkArray(uniqueLinks, max_workers);
-  for (const chunk of chunks) {
-    const batchResults = await Promise.allSettled(chunk.map((url) => checkLink(url, timeout_ms)));
-    for (const result of batchResults) {
-      if (result.status === "fulfilled" && result.value) {
-        results.push(result.value);
-      }
-    }
-  }
-  const summary = {
-    totalLinks: results.length,
-    ok: 0,
-    redirect: 0,
-    requiresAuth: 0,
-    broken: 0,
-    timeout: 0,
-    corsBlocked: 0,
-    needsServerVerification: 0
-  };
-  for (const result of results) {
-    if (result.code === "ok")
-      summary.ok++;
-    else if (result.code === "redirect")
-      summary.redirect++;
-    else if (result.code === "requires_auth")
-      summary.requiresAuth++;
-    else if (result.code === "broken")
-      summary.broken++;
-    else if (result.code === "timeout")
-      summary.timeout++;
-    else if (result.code === "cors_blocked") {
-      summary.corsBlocked++;
-      if (result.needsServerVerification)
-        summary.needsServerVerification++;
-    }
-  }
-  return { summary, results };
-}
-async function checkLink(url, timeout_ms) {
-  const startTime = performance.now();
-  const isExternal = new URL(url).origin !== window.location.origin;
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout_ms);
-    try {
-      const response = await fetch(url, {
-        method: "HEAD",
-        signal: controller.signal,
-        redirect: "follow"
-      });
-      clearTimeout(timeoutId);
-      const timeMs = Math.round(performance.now() - startTime);
-      if (response.status === 0) {
-        return {
-          url,
-          status: null,
-          code: "cors_blocked",
-          timeMs,
-          isExternal,
-          error: "CORS policy blocked the request",
-          needsServerVerification: isExternal
-          // Only external links need server verification
-        };
-      }
-      let code;
-      if (response.status >= 200 && response.status < 300) {
-        code = "ok";
-      } else if (response.status >= 300 && response.status < 400) {
-        code = "redirect";
-      } else if (response.status === 401 || response.status === 403) {
-        code = "requires_auth";
-      } else if (response.status >= 400) {
-        code = "broken";
-      } else {
-        code = "broken";
-      }
-      return {
-        url,
-        status: response.status,
-        code,
-        timeMs,
-        isExternal,
-        redirectTo: response.redirected ? response.url : void 0
-      };
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    const timeMs = Math.round(performance.now() - startTime);
-    const isTimeout = error.name === "AbortError";
-    return {
-      url,
-      status: null,
-      code: isTimeout ? "timeout" : "broken",
-      timeMs,
-      isExternal,
-      error: isTimeout ? "timeout" : error.message
-    };
-  }
-}
-function isIgnoredLink(href) {
-  if (href.startsWith("javascript:"))
-    return true;
-  if (href.startsWith("mailto:"))
-    return true;
-  if (href.startsWith("tel:"))
-    return true;
-  if (href.startsWith("#"))
-    return true;
-  if (href === "")
-    return true;
-  return false;
-}
-function chunkArray(arr, chunkSize) {
-  const chunks = [];
-  for (let i = 0; i < arr.length; i += chunkSize) {
-    chunks.push(arr.slice(i, i + chunkSize));
-  }
-  return chunks;
-}
-
 // extension/inject/message-handlers.js
 var VALID_SETTINGS = /* @__PURE__ */ new Set([
   "setNetworkWaterfallEnabled",
@@ -3178,18 +3043,6 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`
   });
   return deferred.promise;
 }
-async function handleLinkHealthQuery(data) {
-  try {
-    const params = data.params || {};
-    const result = await checkLinkHealth(params);
-    return result;
-  } catch (err) {
-    return {
-      error: "link_health_error",
-      message: err.message || "Failed to check link health"
-    };
-  }
-}
 function installMessageListener(captureStateFn, restoreStateFn) {
   if (typeof window === "undefined")
     return;
@@ -3235,25 +3088,6 @@ function installMessageListener(captureStateFn, restoreStateFn) {
     }
     if (event.data?.type === "GASOLINE_GET_WATERFALL") {
       handleGetWaterfall(event.data);
-    }
-    if (event.data?.type === "GASOLINE_LINK_HEALTH_QUERY") {
-      const data = event.data;
-      handleLinkHealthQuery(data).then((result) => {
-        window.postMessage({
-          type: "GASOLINE_LINK_HEALTH_RESPONSE",
-          requestId: data.requestId,
-          result
-        }, window.location.origin);
-      }).catch((err) => {
-        window.postMessage({
-          type: "GASOLINE_LINK_HEALTH_RESPONSE",
-          requestId: data.requestId,
-          result: {
-            error: "link_health_error",
-            message: err.message || "Failed to check link health"
-          }
-        }, window.location.origin);
-      });
     }
   });
 }

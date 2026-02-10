@@ -11,7 +11,7 @@ const fs = require('fs')
 const path = require('path')
 const { execSync, spawnSync, spawn } = require('child_process')
 
-const VERSION = '6.0.0'
+const VERSION = '6.0.3'
 const GITHUB_REPO = 'brennhill/gasoline-mcp-ai-devtools'
 const BINARY_NAME = 'gasoline'
 

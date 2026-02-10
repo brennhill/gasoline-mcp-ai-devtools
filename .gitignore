@@ -54,3 +54,7 @@ docs/benchmarks/*.txt
 
 #Ignore vscode AI rules
 .github/instructions/codacy.instructions.md
+
+#Ignore marketing
+docs/marketing
+docs/marketing-plan.md

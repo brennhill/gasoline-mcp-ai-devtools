@@ -18,6 +18,59 @@ import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 import { createMockWindow } from './helpers.js'
 
+// Setup global chrome mock before importing modules
+const mockChrome = {
+  runtime: {
+    onMessage: { addListener: mock.fn() },
+    onInstalled: { addListener: mock.fn() },
+    sendMessage: mock.fn(() => Promise.resolve()),
+    getManifest: () => ({ version: '6.0.3' }),
+  },
+  action: {
+    setBadgeText: mock.fn(),
+    setBadgeBackgroundColor: mock.fn(),
+  },
+  storage: {
+    local: {
+      get: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback({})
+        else return Promise.resolve({})
+      }),
+      set: mock.fn((data, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
+      remove: mock.fn((keys, callback) => {
+        if (typeof callback === 'function') callback()
+        else return Promise.resolve()
+      }),
+    },
+    sync: {
+      get: mock.fn((keys, callback) => callback && callback({})),
+      set: mock.fn((data, callback) => callback && callback()),
+    },
+    session: {
+      get: mock.fn((keys, callback) => callback && callback({})),
+      set: mock.fn((data, callback) => callback && callback()),
+    },
+    onChanged: { addListener: mock.fn() },
+  },
+  tabs: {
+    get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
+    query: mock.fn(() => Promise.resolve([{ id: 1, windowId: 1 }])),
+    onRemoved: { addListener: mock.fn() },
+    onUpdated: { addListener: mock.fn() },
+  },
+  webRequest: {
+    onBeforeRequest: { addListener: mock.fn() },
+  },
+  webNavigation: {
+    onCommitted: { addListener: mock.fn() },
+    onBeforeNavigate: { addListener: mock.fn() },
+  },
+}
+globalThis.chrome = mockChrome
+
 // ============================================
 // Test 1: Performance Capture After Refactoring
 // ============================================
