@@ -312,6 +312,8 @@ describe('Bug #5: Async Browser Action Await (regression test)', () => {
       })
     )
     bgModule = await import('../../extension/background.js')
+    // Enable pilot cache so browser_action paths don't short-circuit
+    bgModule._resetPilotCacheForTesting(true)
   })
 
   test('handlePendingQuery should await handleAsyncBrowserAction for browser_action queries', async () => {
@@ -323,26 +325,17 @@ describe('Bug #5: Async Browser Action Await (regression test)', () => {
       params: JSON.stringify({ action: 'refresh' }),
     }
 
-    let asyncResultPosted = false
+    // Use a mock sync client (code uses syncClient.queueCommandResult, not fetch)
+    const mockSyncClient = { queueCommandResult: mock.fn() }
 
-    globalThis.fetch = mock.fn((url) => {
-      if (url.includes('/execute-result')) {
-        asyncResultPosted = true
-      }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ queries: [] }),
-      })
-    })
-
-    await bgModule.handlePendingQuery(query, 'http://localhost:7890')
+    await bgModule.handlePendingQuery(query, mockSyncClient)
 
     // Wait for async operations
     await new Promise(resolve => setTimeout(resolve, 200))
 
-    // Result should have been posted
+    // Result should have been delivered via sync client
     assert.strictEqual(
-      asyncResultPosted,
+      mockSyncClient.queueCommandResult.mock.calls.length > 0,
       true,
       'Async browser action result was not posted - await may be missing'
     )
@@ -366,24 +359,18 @@ describe('Bug #5: Extension Stability Under Load', () => {
       })
     )
     bgModule = await import('../../extension/background.js')
+    // Enable pilot cache so execute/browser_action paths don't short-circuit
+    bgModule._resetPilotCacheForTesting(true)
   })
 
   test('should handle 5+ consecutive operations without timeout', async () => {
     // The bug manifested as timeouts after 5-6 operations
     // This test verifies the fix allows 5+ consecutive operations (proving the bug is fixed)
 
-    let successCount = 0
     let errorCount = 0
 
-    globalThis.fetch = mock.fn((url) => {
-      if (url.includes('/execute-result')) {
-        successCount++
-      }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ queries: [] }),
-      })
-    })
+    // Use a mock sync client (code uses syncClient.queueCommandResult, not fetch)
+    const mockSyncClient = { queueCommandResult: mock.fn() }
 
     // Run 5 consecutive operations (bug manifested after 5-6, this proves the fix works)
     const operationCount = 5
@@ -398,7 +385,7 @@ describe('Bug #5: Extension Stability Under Load', () => {
       }
 
       try {
-        await bgModule.handlePendingQuery(query, 'http://localhost:7890')
+        await bgModule.handlePendingQuery(query, mockSyncClient)
       } catch {
         errorCount++
       }
@@ -414,8 +401,8 @@ describe('Bug #5: Extension Stability Under Load', () => {
       `${errorCount} operations failed - extension may be timing out`
     )
 
-    // Success count should be close to operation count
-    // (some may complete via different paths)
+    // Results should have been delivered via sync client
+    const successCount = mockSyncClient.queueCommandResult.mock.calls.length
     assert.ok(
       successCount >= operationCount * 0.5,
       `Only ${successCount}/${operationCount} operations completed - possible timeout cascade`
@@ -478,11 +465,11 @@ describe('Bug #5: Error Handling Robustness', () => {
       })
     )
     bgModule = await import('../../extension/background.js')
+    // Enable pilot cache so execute paths don't short-circuit
+    bgModule._resetPilotCacheForTesting(true)
   })
 
   test('error in one operation should not affect subsequent operations', async () => {
-    let operationsCompleted = 0
-
     // Make tabs.sendMessage fail for the first query only
     let firstCall = true
     globalThis.chrome.tabs.sendMessage = mock.fn(() => {
@@ -493,15 +480,8 @@ describe('Bug #5: Error Handling Robustness', () => {
       return Promise.resolve({ success: true, result: 'ok' })
     })
 
-    globalThis.fetch = mock.fn((url) => {
-      if (url.includes('/execute-result')) {
-        operationsCompleted++
-      }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ queries: [] }),
-      })
-    })
+    // Use a mock sync client (code uses syncClient.queueCommandResult, not fetch)
+    const mockSyncClient = { queueCommandResult: mock.fn() }
 
     // Run operations - first will fail, rest should succeed
     for (let i = 0; i < 5; i++) {
@@ -512,12 +492,13 @@ describe('Bug #5: Error Handling Robustness', () => {
         params: JSON.stringify({ script: 'return 1' }),
       }
 
-      await bgModule.handlePendingQuery(query, 'http://localhost:7890')
+      await bgModule.handlePendingQuery(query, mockSyncClient)
     }
 
     await new Promise(resolve => setTimeout(resolve, 300))
 
-    // At least 4 operations should complete (the 4 after the first failure)
+    // All 5 operations should deliver results (including the failed one, which sends an error result)
+    const operationsCompleted = mockSyncClient.queueCommandResult.mock.calls.length
     assert.ok(
       operationsCompleted >= 4,
       `Only ${operationsCompleted}/5 operations completed - error cascaded`

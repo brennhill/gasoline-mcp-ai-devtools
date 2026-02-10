@@ -60,6 +60,7 @@ test-js:
 
 test-fast:
 	go vet ./cmd/dev-console/
+	CGO_ENABLED=0 go test -short ./...
 	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
 
 test-all: test test-js

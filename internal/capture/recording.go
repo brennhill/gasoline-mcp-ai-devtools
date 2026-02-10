@@ -64,9 +64,9 @@ func (r *RecordingManager) StartRecording(name string, pageURL string, sensitive
 			r.recordingStorageUsed, recordingStorageMax)
 	}
 
-	// Generate recording ID: name-YYYYMMDDTHHMMSSZ
+	// Generate recording ID: name-YYYYMMDDTHHMMSS-nnnnnnnnnZ (nanosecond precision prevents collisions)
 	now := time.Now()
-	timestamp := now.Format("20060102T150405Z")
+	timestamp := fmt.Sprintf("%s-%09dZ", now.Format("20060102T150405"), now.Nanosecond())
 	var recordingID string
 	if name != "" {
 		recordingID = fmt.Sprintf("%s-%s", name, timestamp)
