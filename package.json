@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/chrome": "^0.0.287",
+    "@types/chrome": "^0.1.36",
     "esbuild": "^0.27.2",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.1.8",
