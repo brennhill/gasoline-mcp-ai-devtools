@@ -32,8 +32,6 @@
 
 Current version: **v6.0.3** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
 
-**[📥 Download and install matching Chrome extension](https://cookwithgasoline.com/downloads/gasoline-extension-v6.0.3.crx)**
-
 ```bash
 npx gasoline-mcp@6.0.3
 ```
@@ -53,19 +51,14 @@ npx gasoline-mcp@6.0.3
 
 ### Step 1: Install the Browser Extension
 
-**[📥 Download CRX for v6.0.3](https://cookwithgasoline.com/downloads/gasoline-extension-v6.0.3.crx)**
-
-Then:
-1. Open `chrome://extensions`
-2. Enable Developer mode (top right)
-3. Drag & drop the `.crx` file into the page
-
-**Alternative:** Load from source (for development)
-```bash
-git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
-cd gasoline
-# Open chrome://extensions → Load unpacked → select extension/ folder
-```
+1. Download the latest release from [GitHub Releases](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases) and unzip it, or clone the repo:
+   ```bash
+   git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
+   ```
+2. Open `chrome://extensions`
+3. Enable **Developer mode** (top right)
+4. Click **Load unpacked**
+5. Select the `extension/` folder
 
 ### Step 2: Start the MCP Server
 
