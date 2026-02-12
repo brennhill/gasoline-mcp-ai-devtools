@@ -573,7 +573,7 @@ func TestPerfDiff_MetricUnit(t *testing.T) {
 		"lcp":                "ms",
 		"ttfb":               "ms",
 		"load":               "ms",
-		"domContentLoaded": "ms",
+		"dom_content_loaded": "ms",
 		"transfer_kb":        "KB",
 		"requests":           "count",
 	}
@@ -790,7 +790,7 @@ func TestMetricDiff_Round(t *testing.T) {
 // ============================================
 // The extension sends camelCase JSON. These tests verify that Go's
 // json.Unmarshal populates all fields correctly. If a JSON tag is
-// changed (e.g. from "firstContentfulPaint" to something else),
+// changed (e.g. from "first_contentful_paint" to something else),
 // these tests will fail.
 
 func TestSnapshotJSON_AllWebVitalsDeserialize(t *testing.T) {
@@ -801,13 +801,13 @@ func TestSnapshotJSON_AllWebVitalsDeserialize(t *testing.T) {
 		"url": "/dashboard",
 		"timestamp": "2024-01-01T00:00:00Z",
 		"timing": {
-			"domContentLoaded": 850,
+			"dom_content_loaded": 850,
 			"load": 1500,
-			"firstContentfulPaint": 920,
-			"largestContentfulPaint": 2400,
-			"interactionToNextPaint": 180,
-			"timeToFirstByte": 110,
-			"domInteractive": 700
+			"first_contentful_paint": 920,
+			"largest_contentful_paint": 2400,
+			"interaction_to_next_paint": 180,
+			"time_to_first_byte": 110,
+			"dom_interactive": 700
 		},
 		"network": {
 			"request_count": 42,
@@ -877,17 +877,17 @@ func TestSnapshotJSON_UserTimingRoundTrip(t *testing.T) {
 	jsonPayload := `{
 		"url": "/app",
 		"timestamp": "2024-01-01T00:00:00Z",
-		"timing": {"domContentLoaded": 500, "load": 1000, "timeToFirstByte": 80, "domInteractive": 400},
+		"timing": {"dom_content_loaded": 500, "load": 1000, "time_to_first_byte": 80, "dom_interactive": 400},
 		"network": {"request_count": 10, "transfer_size": 50000, "decoded_size": 100000},
 		"long_tasks": {"count": 0, "total_blocking_time": 0, "longest": 0},
 		"cumulative_layout_shift": 0.01,
 		"user_timing": {
 			"marks": [
-				{"name": "app-init", "startTime": 150},
-				{"name": "hydration-complete", "startTime": 800}
+				{"name": "app-init", "start_time": 150},
+				{"name": "hydration-complete", "start_time": 800}
 			],
 			"measures": [
-				{"name": "hydration", "startTime": 150, "duration": 650}
+				{"name": "hydration", "start_time": 150, "duration": 650}
 			]
 		}
 	}`
@@ -946,7 +946,7 @@ func TestSnapshotJSON_UserTimingOmittedWhenAbsent(t *testing.T) {
 	jsonPayload := `{
 		"url": "/simple",
 		"timestamp": "2024-01-01T00:00:00Z",
-		"timing": {"domContentLoaded": 500, "load": 1000, "timeToFirstByte": 80, "domInteractive": 400},
+		"timing": {"dom_content_loaded": 500, "load": 1000, "time_to_first_byte": 80, "dom_interactive": 400},
 		"network": {"request_count": 5, "transfer_size": 25000, "decoded_size": 50000},
 		"long_tasks": {"count": 0, "total_blocking_time": 0, "longest": 0}
 	}`

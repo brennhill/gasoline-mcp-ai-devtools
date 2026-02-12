@@ -1,5 +1,8 @@
 // upload_types.go — Types and constants for file upload feature.
 // Defines request/response types, escalation states, MIME detection, and progress tracking.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package main
 
 import (

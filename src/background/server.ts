@@ -124,7 +124,7 @@ export async function sendNetworkBodiesToServer(
  */
 export async function sendNetworkWaterfallToServer(
   serverUrl: string,
-  payload: { entries: WaterfallEntry[]; pageURL: string },
+  payload: { entries: WaterfallEntry[]; page_url: string },
   debugLogFn?: (category: string, message: string, data?: unknown) => void
 ): Promise<void> {
   if (debugLogFn) debugLogFn('connection', `Sending ${payload.entries.length} waterfall entries to server`)

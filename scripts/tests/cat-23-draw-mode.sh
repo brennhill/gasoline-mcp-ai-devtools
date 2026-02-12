@@ -178,7 +178,7 @@ run_test_23_7() {
     body=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension-uat" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -w "\n%{http_code}" \
         -d "$payload" \
         "http://localhost:${PORT}/draw-mode/complete" 2>/dev/null)
@@ -223,7 +223,7 @@ run_test_23_8() {
     status=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension-uat" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -o /dev/null -w "%{http_code}" \
         -d '{invalid json' \
         "http://localhost:${PORT}/draw-mode/complete" 2>/dev/null)
@@ -247,7 +247,7 @@ run_test_23_9() {
     body=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension-uat" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -w "\n%{http_code}" \
         -d "$payload" \
         "http://localhost:${PORT}/draw-mode/complete" 2>/dev/null)

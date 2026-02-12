@@ -1,5 +1,8 @@
 // tools_configure.go — MCP configure tool dispatcher and handlers.
 // Handles session settings: store, load, noise_rule, clear, streaming, recordings, etc.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package main
 
 import (
@@ -272,8 +275,8 @@ func (h *ToolHandler) noiseActionAdd(req JSONRPCRequest, args noiseRuleArgs) (an
 	}
 	return map[string]any{
 		"status":     "ok",
-		"rulesAdded": len(args.Rules),
-		"totalRules": len(h.noiseConfig.ListRules()),
+		"rules_added": len(args.Rules),
+		"total_rules": len(h.noiseConfig.ListRules()),
 	}, nil
 }
 
@@ -306,9 +309,9 @@ func (h *ToolHandler) noiseActionList() any {
 func (h *ToolHandler) noiseActionReset() any {
 	h.noiseConfig.Reset()
 	return map[string]any{
-		"status":     "ok",
-		"totalRules": len(h.noiseConfig.ListRules()),
-		"message":    "Reset to built-in rules only",
+		"status":      "ok",
+		"total_rules": len(h.noiseConfig.ListRules()),
+		"message":     "Reset to built-in rules only",
 	}
 }
 
@@ -326,7 +329,7 @@ func (h *ToolHandler) noiseActionAutoDetect() any {
 	proposals := h.noiseConfig.AutoDetect(consoleEntries, networkBodies, wsEvents)
 	return map[string]any{
 		"proposals":       proposals,
-		"totalRules":      len(h.noiseConfig.ListRules()),
+		"total_rules":     len(h.noiseConfig.ListRules()),
 		"proposals_count": len(proposals),
 		"message":         "High-confidence proposals (>= 0.9) were auto-applied",
 	}

@@ -2,6 +2,9 @@
 // PendingQuery, PendingQueryResponse, and CommandResult handle the async
 // query mechanism where MCP server sends queries to the browser extension
 // and waits for responses.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package queries
 
 import (

@@ -38,14 +38,14 @@ interface EnhancedActionRecord {
   timestamp: number
   url: string
   selectors?: SelectorStrategies
-  inputType?: string
+  input_type?: string
   value?: string
   key?: string
-  fromUrl?: string
-  toUrl?: string
-  selectedValue?: string
-  selectedText?: string
-  scrollY?: number
+  from_url?: string
+  to_url?: string
+  selected_value?: string
+  selected_text?: string
+  scroll_y?: number
 }
 
 // Script generation options
@@ -264,11 +264,11 @@ export function computeSelectors(element: Element | null): SelectorStrategies {
 interface RecordActionOptions {
   value?: string
   key?: string
-  fromUrl?: string
-  toUrl?: string
-  selectedValue?: string
-  selectedText?: string
-  scrollY?: number
+  from_url?: string
+  to_url?: string
+  selected_value?: string
+  selected_text?: string
+  scroll_y?: number
 }
 
 // PostMessage payload type
@@ -283,13 +283,13 @@ const ACTION_DATA_ENRICHERS: Record<string, ActionDataEnricher> = {
   input: (a, el, o) => {
     const typedEl = el as ElementWithProperties | null
     const inputType = typedEl && typedEl.getAttribute ? typedEl.getAttribute('type') : 'text'
-    a.inputType = inputType || 'text'
+    a.input_type = inputType || 'text'
     a.value = (inputType === 'password' || (el && isSensitiveInput(el))) ? '[redacted]' : (o.value || '')
   },
   keypress: (a, _el, o) => { a.key = o.key || '' },
-  navigate: (a, _el, o) => { a.fromUrl = o.fromUrl || ''; a.toUrl = o.toUrl || '' },
-  select: (a, _el, o) => { a.selectedValue = o.selectedValue || ''; a.selectedText = o.selectedText || '' },
-  scroll: (a, _el, o) => { a.scrollY = o.scrollY || 0 }
+  navigate: (a, _el, o) => { a.from_url = o.from_url || ''; a.to_url = o.to_url || '' },
+  select: (a, _el, o) => { a.selected_value = o.selected_value || ''; a.selected_text = o.selected_text || '' },
+  scroll: (a, _el, o) => { a.scroll_y = o.scroll_y || 0 }
 }
 
 /**
@@ -362,11 +362,11 @@ const ACTION_STEP_GENERATORS: Record<string, StepGenerator> = {
   keypress: (action) =>
     `  await page.keyboard.press('${escapeString(action.key || '')}');`,
   navigate: (action, _locator, baseUrl) =>
-    `  await page.waitForURL('${escapeString(rebaseUrl(action.toUrl || '', baseUrl))}');`,
+    `  await page.waitForURL('${escapeString(rebaseUrl(action.to_url || '', baseUrl))}');`,
   select: (action, locator) =>
-    locator ? `  await page.${locator}.selectOption('${escapeString(action.selectedValue || '')}');` : null,
+    locator ? `  await page.${locator}.selectOption('${escapeString(action.selected_value || '')}');` : null,
   scroll: (action) =>
-    `  // User scrolled to y=${action.scrollY || 0}`
+    `  // User scrolled to y=${action.scroll_y || 0}`
 }
 
 // #lizard forgives

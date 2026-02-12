@@ -143,7 +143,7 @@ export function handleScroll(event: Event): void {
     scrollY: Math.round(window.scrollY),
     target: target === document ? 'document' : getElementSelector(target as Element)
   })
-  recordEnhancedAction('scroll', null, { scrollY: Math.round(window.scrollY) })
+  recordEnhancedAction('scroll', null, { scroll_y: Math.round(window.scrollY) })
 }
 
 /**
@@ -166,7 +166,7 @@ export function handleChange(event: Event): void {
   const selectedValue = target.value || ''
   const selectedText = selectedOption ? selectedOption.text || '' : ''
 
-  recordEnhancedAction('select', target, { selectedValue, selectedText })
+  recordEnhancedAction('select', target, { selected_value: selectedValue, selected_text: selectedText })
 }
 
 /**
@@ -240,13 +240,13 @@ let originalReplaceState: typeof history.replaceState | null = null
 export function installNavigationCapture(): void {
   if (typeof window === 'undefined') return
 
-  // Track current URL for fromUrl
+  // Track current URL for from_url
   let lastUrl = window.location.href
 
   // Popstate handler (back/forward)
   navigationPopstateHandler = function (): void {
     const toUrl = window.location.href
-    recordEnhancedAction('navigate', null, { fromUrl: lastUrl, toUrl })
+    recordEnhancedAction('navigate', null, { from_url: lastUrl, to_url: toUrl })
     lastUrl = toUrl
   }
   window.addEventListener('popstate', navigationPopstateHandler)
@@ -263,7 +263,7 @@ export function installNavigationCapture(): void {
       const fromUrl = lastUrl
       originalPushState!.call(this, state, title, url)
       const toUrl = url || window.location.href
-      recordEnhancedAction('navigate', null, { fromUrl, toUrl: String(toUrl) })
+      recordEnhancedAction('navigate', null, { from_url: fromUrl, to_url: String(toUrl) })
       lastUrl = window.location.href
     }
   }
@@ -280,7 +280,7 @@ export function installNavigationCapture(): void {
       const fromUrl = lastUrl
       originalReplaceState!.call(this, state, title, url)
       const toUrl = url || window.location.href
-      recordEnhancedAction('navigate', null, { fromUrl, toUrl: String(toUrl) })
+      recordEnhancedAction('navigate', null, { from_url: fromUrl, to_url: String(toUrl) })
       lastUrl = window.location.href
     }
   }

@@ -1270,7 +1270,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     assert.ok(enhanced.length >= 1, 'Should have recorded enhanced action')
     const lastAction = enhanced[enhanced.length - 1]
     assert.strictEqual(lastAction.type, 'input')
-    assert.strictEqual(lastAction.inputType, 'email')
+    assert.strictEqual(lastAction.input_type, 'email')
 
     clearEnhancedActionBuffer()
   })
@@ -1330,7 +1330,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     const enhanced = getEnhancedActionBuffer()
     const scrollAction = enhanced.find((a) => a.type === 'scroll')
     assert.ok(scrollAction, 'handleScroll should record enhanced action')
-    assert.strictEqual(scrollAction.scrollY, 750)
+    assert.strictEqual(scrollAction.scroll_y, 750)
     assert.strictEqual(scrollAction.type, 'scroll')
 
     clearEnhancedActionBuffer()
@@ -1444,8 +1444,8 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     const enhanced = getEnhancedActionBuffer()
     const selectAction = enhanced.find((a) => a.type === 'select')
     assert.ok(selectAction, 'change handler on select should record enhanced action')
-    assert.strictEqual(selectAction.selectedValue, 'us')
-    assert.strictEqual(selectAction.selectedText, 'United States')
+    assert.strictEqual(selectAction.selected_value, 'us')
+    assert.strictEqual(selectAction.selected_text, 'United States')
 
     clearEnhancedActionBuffer()
   })
@@ -1623,7 +1623,7 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
     const postCalls = globalThis.window.postMessage.mock.calls
     const enhancedCall = postCalls.find((c) => c.arguments[0]?.type === 'GASOLINE_ENHANCED_ACTION')
     assert.ok(enhancedCall)
-    assert.strictEqual(enhancedCall.arguments[0].payload.inputType, 'email')
+    assert.strictEqual(enhancedCall.arguments[0].payload.input_type, 'email')
     assert.strictEqual(enhancedCall.arguments[0].payload.value, 'test@example.com')
 
     clearEnhancedActionBuffer()
@@ -1674,7 +1674,7 @@ describe('V5 Wiring: Navigation event recording', () => {
     const enhanced = getEnhancedActionBuffer()
     const navAction = enhanced.find((a) => a.type === 'navigate')
     assert.ok(navAction, 'Should have navigate action')
-    assert.ok(navAction.toUrl, 'Should have toUrl')
+    assert.ok(navAction.to_url, 'Should have to_url')
 
     uninstallNavigationCapture()
     clearEnhancedActionBuffer()
@@ -1696,7 +1696,7 @@ describe('V5 Wiring: Navigation event recording', () => {
     const enhanced = getEnhancedActionBuffer()
     const navAction = enhanced.find((a) => a.type === 'navigate')
     assert.ok(navAction, 'pushState should trigger navigate action')
-    assert.strictEqual(navAction.toUrl, '/dashboard')
+    assert.strictEqual(navAction.to_url, '/dashboard')
 
     uninstallNavigationCapture()
     clearEnhancedActionBuffer()
@@ -1716,13 +1716,13 @@ describe('V5 Wiring: Navigation event recording', () => {
     const enhanced = getEnhancedActionBuffer()
     const navAction = enhanced.find((a) => a.type === 'navigate')
     assert.ok(navAction, 'replaceState should trigger navigate action')
-    assert.strictEqual(navAction.toUrl, '/login')
+    assert.strictEqual(navAction.to_url, '/login')
 
     uninstallNavigationCapture()
     clearEnhancedActionBuffer()
   })
 
-  test('navigate action should include fromUrl', async () => {
+  test('navigate action should include from_url', async () => {
     const { installNavigationCapture, uninstallNavigationCapture, getEnhancedActionBuffer, clearEnhancedActionBuffer } =
       await import('../../extension/inject.js')
 
@@ -1737,7 +1737,7 @@ describe('V5 Wiring: Navigation event recording', () => {
     const enhanced = getEnhancedActionBuffer()
     const navAction = enhanced.find((a) => a.type === 'navigate')
     assert.ok(navAction)
-    assert.strictEqual(navAction.fromUrl, 'http://localhost:3000/home')
+    assert.strictEqual(navAction.from_url, 'http://localhost:3000/home')
 
     uninstallNavigationCapture()
     clearEnhancedActionBuffer()

@@ -6,6 +6,10 @@
 // - Error codes and StructuredError type
 // - Unknown parameter warning helpers
 // - ToolHandler struct definition and constructor
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
+// SPEC:MCP — Fields in this file use camelCase where required by the MCP protocol spec.
 package main
 
 import (
@@ -33,13 +37,13 @@ type MCPContentBlock struct {
 // MCPToolResult represents the result of an MCP tool call.
 type MCPToolResult struct {
 	Content []MCPContentBlock `json:"content"`
-	IsError bool              `json:"isError"`
+	IsError bool              `json:"isError"` // SPEC:MCP
 }
 
 // MCPInitializeResult represents the result of an MCP initialize request.
 type MCPInitializeResult struct {
-	ProtocolVersion string          `json:"protocolVersion"`
-	ServerInfo      MCPServerInfo   `json:"serverInfo"`
+	ProtocolVersion string          `json:"protocolVersion"` // SPEC:MCP
+	ServerInfo      MCPServerInfo   `json:"serverInfo"`      // SPEC:MCP
 	Capabilities    MCPCapabilities `json:"capabilities"`
 	Instructions    string          `json:"instructions,omitempty"`
 }
@@ -67,7 +71,7 @@ type MCPResource struct {
 	URI         string `json:"uri"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
-	MimeType    string `json:"mimeType,omitempty"`
+	MimeType    string `json:"mimeType,omitempty"` // SPEC:MCP
 }
 
 // MCPResourcesListResult represents the result of a resources/list request.
@@ -78,7 +82,7 @@ type MCPResourcesListResult struct {
 // MCPResourceContent represents the content of a resource.
 type MCPResourceContent struct {
 	URI      string `json:"uri"`
-	MimeType string `json:"mimeType,omitempty"`
+	MimeType string `json:"mimeType,omitempty"` // SPEC:MCP
 	Text     string `json:"text,omitempty"`
 }
 
@@ -94,7 +98,7 @@ type MCPToolsListResult struct {
 
 // MCPResourceTemplatesListResult represents the result of a resources/templates/list request.
 type MCPResourceTemplatesListResult struct {
-	ResourceTemplates []any `json:"resourceTemplates"`
+	ResourceTemplates []any `json:"resourceTemplates"` // SPEC:MCP
 }
 
 // ============================================

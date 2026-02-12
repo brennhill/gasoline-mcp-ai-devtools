@@ -258,7 +258,7 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 
 	// Parse client's requested protocol version (best-effort; missing/empty is fine)
 	var initParams struct {
-		ProtocolVersion string `json:"protocolVersion"`
+		ProtocolVersion string `json:"protocolVersion"` // SPEC:MCP
 	}
 	if len(req.Params) > 0 {
 		_ = json.Unmarshal(req.Params, &initParams)

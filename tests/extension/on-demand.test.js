@@ -241,10 +241,10 @@ describe('Pending Query Polling', () => {
 
     const postCall = mockFetch.mock.calls.find((c) => {
       const url = c.arguments[0]
-      return url.includes('/dom-result') || url.includes('/a11y-result')
+      return url.includes('/query-result')
     })
 
-    assert.ok(postCall, 'Expected POST to result endpoint')
+    assert.ok(postCall, 'Expected POST to /query-result endpoint')
     const body = JSON.parse(postCall.arguments[1].body)
     assert.strictEqual(body.id, 'query-123')
   })

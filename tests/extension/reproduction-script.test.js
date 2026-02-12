@@ -480,7 +480,7 @@ describe('Enhanced Action Recording', () => {
 
     assert.strictEqual(action.type, 'input')
     assert.strictEqual(action.value, 'user@test.com')
-    assert.strictEqual(action.inputType, 'email')
+    assert.strictEqual(action.input_type, 'email')
   })
 
   test('should redact password input values', async () => {
@@ -508,13 +508,13 @@ describe('Enhanced Action Recording', () => {
     const { recordEnhancedAction } = await import('../../extension/inject.js')
 
     const action = recordEnhancedAction('navigate', null, {
-      fromUrl: 'http://localhost:3000/login',
-      toUrl: 'http://localhost:3000/dashboard'
+      from_url: 'http://localhost:3000/login',
+      to_url: 'http://localhost:3000/dashboard'
     })
 
     assert.strictEqual(action.type, 'navigate')
-    assert.strictEqual(action.fromUrl, 'http://localhost:3000/login')
-    assert.strictEqual(action.toUrl, 'http://localhost:3000/dashboard')
+    assert.strictEqual(action.from_url, 'http://localhost:3000/login')
+    assert.strictEqual(action.to_url, 'http://localhost:3000/dashboard')
   })
 
   test('should record select changes', async () => {
@@ -523,13 +523,13 @@ describe('Enhanced Action Recording', () => {
     const el = createElement('select', { 'data-testid': 'country' })
 
     const action = recordEnhancedAction('select', el, {
-      selectedValue: 'us',
-      selectedText: 'United States'
+      selected_value: 'us',
+      selected_text: 'United States'
     })
 
     assert.strictEqual(action.type, 'select')
-    assert.strictEqual(action.selectedValue, 'us')
-    assert.strictEqual(action.selectedText, 'United States')
+    assert.strictEqual(action.selected_value, 'us')
+    assert.strictEqual(action.selected_text, 'United States')
   })
 
   test('should include current URL with each action', async () => {
@@ -730,7 +730,7 @@ describe('Playwright Script Generation', () => {
       {
         type: 'select',
         selectors: { testId: 'country' },
-        selectedValue: 'us',
+        selected_value: 'us',
         url: 'http://localhost:3000',
         timestamp: 1000
       }
@@ -748,8 +748,8 @@ describe('Playwright Script Generation', () => {
       { type: 'click', selectors: { testId: 'login-btn' }, url: 'http://localhost:3000/login', timestamp: 1000 },
       {
         type: 'navigate',
-        fromUrl: 'http://localhost:3000/login',
-        toUrl: 'http://localhost:3000/dashboard',
+        from_url: 'http://localhost:3000/login',
+        to_url: 'http://localhost:3000/dashboard',
         timestamp: 1500
       }
     ]
@@ -776,7 +776,7 @@ describe('Playwright Script Generation', () => {
   test('should add scroll as comment only', async () => {
     const { generatePlaywrightScript } = await import('../../extension/inject.js')
 
-    const actions = [{ type: 'scroll', scrollY: 500, url: 'http://localhost:3000', timestamp: 1000 }]
+    const actions = [{ type: 'scroll', scroll_y: 500, url: 'http://localhost:3000', timestamp: 1000 }]
 
     const script = generatePlaywrightScript(actions, {})
 
@@ -821,7 +821,7 @@ describe('Sensitive Data Handling', () => {
         type: 'input',
         selectors: { testId: 'password' },
         value: '[redacted]',
-        inputType: 'password',
+        input_type: 'password',
         url: 'http://localhost:3000',
         timestamp: 1000
       }
@@ -841,7 +841,7 @@ describe('Sensitive Data Handling', () => {
         type: 'input',
         selectors: { testId: 'password' },
         value: '[redacted]',
-        inputType: 'password',
+        input_type: 'password',
         url: 'http://localhost:3000',
         timestamp: 1000
       }

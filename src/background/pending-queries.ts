@@ -339,7 +339,7 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
 
         sendResult(syncClient, query.id, {
           entries: result?.entries || [],
-          pageURL: tab.url || '',
+          page_url: tab.url || '',
           count: result?.entries?.length || 0
         })
         debugLog(DebugCategory.CAPTURE, 'Posted waterfall result', { queryId: query.id })

@@ -4,6 +4,11 @@
 // other SARIF-consuming tools.
 // Design: Each axe-core violation becomes a SARIF result with rule metadata,
 // affected element locations, and remediation guidance.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
+// SPEC:SARIF — SARIF 2.1.0 fields use camelCase per OASIS specification.
+// SPEC:axe-core — axeViolation.HelpURL uses camelCase per axe-core library output.
 package export
 
 import (
@@ -50,16 +55,16 @@ type SARIFTool struct {
 type SARIFDriver struct {
 	Name           string      `json:"name"`
 	Version        string      `json:"version"`
-	InformationURI string      `json:"informationUri"` // camelCase: SARIF 2.1.0 spec standard
+	InformationURI string      `json:"informationUri"` // SPEC:SARIF
 	Rules          []SARIFRule `json:"rules"`
 }
 
 // SARIFRule describes a single analysis rule.
 type SARIFRule struct {
 	ID               string               `json:"id"`
-	ShortDescription SARIFMessage         `json:"shortDescription"` // camelCase: SARIF 2.1.0 spec standard
-	FullDescription  SARIFMessage         `json:"fullDescription"`  // camelCase: SARIF 2.1.0 spec standard
-	HelpURI          string               `json:"helpUri"`          // camelCase: SARIF 2.1.0 spec standard
+	ShortDescription SARIFMessage         `json:"shortDescription"` // SPEC:SARIF
+	FullDescription  SARIFMessage         `json:"fullDescription"`  // SPEC:SARIF
+	HelpURI          string               `json:"helpUri"`          // SPEC:SARIF
 	Properties       *SARIFRuleProperties `json:"properties,omitempty"`
 }
 
@@ -70,8 +75,8 @@ type SARIFRuleProperties struct {
 
 // SARIFResult represents a single analysis finding.
 type SARIFResult struct {
-	RuleID    string          `json:"ruleId"`    // camelCase: SARIF 2.1.0 spec standard
-	RuleIndex int             `json:"ruleIndex"` // camelCase: SARIF 2.1.0 spec standard
+	RuleID    string          `json:"ruleId"`    // SPEC:SARIF
+	RuleIndex int             `json:"ruleIndex"` // SPEC:SARIF
 	Level     string          `json:"level"`
 	Message   SARIFMessage    `json:"message"`
 	Locations []SARIFLocation `json:"locations"`
@@ -84,19 +89,19 @@ type SARIFMessage struct {
 
 // SARIFLocation represents a finding location.
 type SARIFLocation struct {
-	PhysicalLocation SARIFPhysicalLocation `json:"physicalLocation"` // camelCase: SARIF 2.1.0 spec standard
+	PhysicalLocation SARIFPhysicalLocation `json:"physicalLocation"` // SPEC:SARIF
 }
 
 // SARIFPhysicalLocation describes the physical location of a finding.
 type SARIFPhysicalLocation struct {
-	ArtifactLocation SARIFArtifactLocation `json:"artifactLocation"` // camelCase: SARIF 2.1.0 spec standard
+	ArtifactLocation SARIFArtifactLocation `json:"artifactLocation"` // SPEC:SARIF
 	Region           SARIFRegion           `json:"region"`
 }
 
 // SARIFArtifactLocation identifies the artifact (file, DOM element, etc.).
 type SARIFArtifactLocation struct {
 	URI       string `json:"uri"`
-	URIBaseID string `json:"uriBaseId,omitempty"` // camelCase: SARIF 2.1.0 spec standard
+	URIBaseID string `json:"uriBaseId,omitempty"` // SPEC:SARIF
 }
 
 // SARIFRegion describes a region within an artifact.
@@ -136,7 +141,7 @@ type axeViolation struct {
 	Impact      string    `json:"impact"`
 	Description string    `json:"description"`
 	Help        string    `json:"help"`
-	HelpURL     string    `json:"helpUrl"`
+	HelpURL     string    `json:"helpUrl"` // SPEC:axe-core
 	Tags        []string  `json:"tags"`
 	Nodes       []axeNode `json:"nodes"`
 }

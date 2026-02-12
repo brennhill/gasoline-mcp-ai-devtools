@@ -108,12 +108,12 @@ describe('Performance Snapshot Capture', () => {
     assert.ok('cumulative_layout_shift' in snapshot, 'missing: cumulative_layout_shift')
 
     // timing fields from spec
-    assert.ok('domContentLoaded' in snapshot.timing, 'missing: timing.domContentLoaded')
+    assert.ok('dom_content_loaded' in snapshot.timing, 'missing: timing.dom_content_loaded')
     assert.ok('load' in snapshot.timing, 'missing: timing.load')
-    assert.ok('firstContentfulPaint' in snapshot.timing, 'missing: timing.firstContentfulPaint')
-    assert.ok('largestContentfulPaint' in snapshot.timing, 'missing: timing.largestContentfulPaint')
-    assert.ok('timeToFirstByte' in snapshot.timing, 'missing: timing.timeToFirstByte')
-    assert.ok('domInteractive' in snapshot.timing, 'missing: timing.domInteractive')
+    assert.ok('first_contentful_paint' in snapshot.timing, 'missing: timing.first_contentful_paint')
+    assert.ok('largest_contentful_paint' in snapshot.timing, 'missing: timing.largest_contentful_paint')
+    assert.ok('time_to_first_byte' in snapshot.timing, 'missing: timing.time_to_first_byte')
+    assert.ok('dom_interactive' in snapshot.timing, 'missing: timing.dom_interactive')
 
     // network fields from spec
     assert.ok('request_count' in snapshot.network, 'missing: network.request_count')
@@ -135,10 +135,10 @@ describe('Performance Snapshot Capture', () => {
 
     assert.ok(snapshot, 'Snapshot should not be null')
     assert.strictEqual(snapshot.url, '/dashboard')
-    assert.strictEqual(snapshot.timing.domContentLoaded, 600)
+    assert.strictEqual(snapshot.timing.dom_content_loaded, 600)
     assert.strictEqual(snapshot.timing.load, 1200)
-    assert.strictEqual(snapshot.timing.timeToFirstByte, 80) // 180 - 100
-    assert.strictEqual(snapshot.timing.domInteractive, 500)
+    assert.strictEqual(snapshot.timing.time_to_first_byte, 80) // 180 - 100
+    assert.strictEqual(snapshot.timing.dom_interactive, 500)
   })
 
   test('capturePerformanceSnapshot returns null when no navigation entry', async () => {
@@ -465,8 +465,8 @@ describe('Performance Snapshot Message', () => {
     assert.ok(payload.long_tasks, 'Should have long_tasks')
     assert.ok(payload.timestamp, 'Should have timestamp')
     assert.ok('cumulative_layout_shift' in payload, 'Should have cumulative_layout_shift')
-    assert.ok('firstContentfulPaint' in payload.timing, 'Should have timing.firstContentfulPaint')
-    assert.ok('largestContentfulPaint' in payload.timing, 'Should have timing.largestContentfulPaint')
+    assert.ok('first_contentful_paint' in payload.timing, 'Should have timing.first_contentful_paint')
+    assert.ok('largest_contentful_paint' in payload.timing, 'Should have timing.largest_contentful_paint')
   })
 
   test('sendPerformanceSnapshot does nothing when no navigation entry', async () => {

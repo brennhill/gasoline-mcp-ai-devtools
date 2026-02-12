@@ -32,18 +32,18 @@ interface LongTaskMetrics {
 }
 
 interface NetworkTiming {
-  domContentLoaded: number
+  dom_content_loaded: number
   load: number
-  firstContentfulPaint: number | null
-  largestContentfulPaint: number | null
-  interactionToNextPaint: number | null
-  timeToFirstByte: number
-  domInteractive: number
+  first_contentful_paint: number | null
+  largest_contentful_paint: number | null
+  interaction_to_next_paint: number | null
+  time_to_first_byte: number
+  dom_interactive: number
 }
 
 interface UserTimingEntry {
   name: string
-  startTime: number
+  start_time: number
   duration?: number
 }
 
@@ -147,13 +147,13 @@ export function capturePerformanceSnapshot(): PerformanceSnapshotData | null {
   if (!nav) return null
 
   const timing: NetworkTiming = {
-    domContentLoaded: nav.domContentLoadedEventEnd,
+    dom_content_loaded: nav.domContentLoadedEventEnd,
     load: nav.loadEventEnd,
-    firstContentfulPaint: getFCP(),
-    largestContentfulPaint: getLCP(),
-    interactionToNextPaint: getINP(),
-    timeToFirstByte: nav.responseStart - nav.requestStart,
-    domInteractive: nav.domInteractive
+    first_contentful_paint: getFCP(),
+    largest_contentful_paint: getLCP(),
+    interaction_to_next_paint: getINP(),
+    time_to_first_byte: nav.responseStart - nav.requestStart,
+    dom_interactive: nav.domInteractive
   }
 
   const network = aggregateResourceTiming()
@@ -165,8 +165,8 @@ export function capturePerformanceSnapshot(): PerformanceSnapshotData | null {
   const userTiming =
     marks.length > 0 || measures.length > 0
       ? {
-          marks: marks.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime })),
-          measures: measures.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime, duration: m.duration }))
+          marks: marks.slice(-50).map((m) => ({ name: m.name, start_time: m.startTime })),
+          measures: measures.slice(-50).map((m) => ({ name: m.name, start_time: m.startTime, duration: m.duration }))
         }
       : undefined
 

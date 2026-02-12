@@ -41,7 +41,7 @@ export declare function sendNetworkBodiesToServer(serverUrl: string, bodies: Net
  */
 export declare function sendNetworkWaterfallToServer(serverUrl: string, payload: {
     entries: WaterfallEntry[];
-    pageURL: string;
+    page_url: string;
 }, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
 /**
  * Send enhanced actions to server

@@ -64,12 +64,12 @@ test:
 	$(MAKE) test-go-long
 
 test-js:
-	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
+	./scripts/test-js-sharded.sh
 
 test-fast:
 	go vet ./cmd/dev-console/
 	$(MAKE) test-go-quick
-	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
+	./scripts/test-js-sharded.sh
 
 test-all: test test-js
 
@@ -262,7 +262,7 @@ ci-js:
 	npm ci
 	npx eslint extension/ tests/extension/
 	npx tsc --noEmit
-	node --test --test-force-exit --test-timeout=20000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
+	JS_TEST_TIMEOUT=20000 ./scripts/test-js-sharded.sh
 
 ci-security:
 	@command -v gosec >/dev/null 2>&1 && gosec -exclude=G104,G114,G204,G301,G304,G306 ./cmd/dev-console/ || echo "gosec not installed (optional - GitHub Actions will verify)"

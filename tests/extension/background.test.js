@@ -946,7 +946,7 @@ describe('Enhanced Actions Server Communication', () => {
         url: 'http://localhost:3000',
         selectors: { id: 'email' },
         value: 'test@test.com',
-        inputType: 'email'
+        input_type: 'email'
       }
     ]
 

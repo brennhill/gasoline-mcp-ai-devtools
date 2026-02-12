@@ -30,7 +30,7 @@ seed_actions() {
             "type": "navigate",
             "timestamp": 1707000000000,
             "url": "about:blank",
-            "toUrl": "https://app.example.com/dashboard",
+            "to_url": "https://app.example.com/dashboard",
             "source": "human"
         },
         {
@@ -65,8 +65,8 @@ seed_actions() {
                 "role": {"role": "combobox", "name": "Format"},
                 "id": "format-select"
             },
-            "selectedValue": "csv",
-            "selectedText": "CSV",
+            "selected_value": "csv",
+            "selected_text": "CSV",
             "source": "human"
         },
         {

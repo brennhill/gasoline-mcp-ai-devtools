@@ -3,6 +3,9 @@
 // and error rates via the get_health MCP tool.
 // Design: Thread-safe counters using sync.RWMutex. Memory stats from runtime.
 // All metrics are computed on-demand when the tool is called.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package main
 
 import (

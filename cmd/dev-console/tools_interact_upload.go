@@ -1,6 +1,9 @@
 // tools_interact_upload.go — MCP interact upload action handler.
 // Implements the "upload" action for the interact tool with 4-stage escalation.
 // Requires --enable-upload-automation flag to be set on the server.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package main
 
 import (
@@ -16,7 +19,7 @@ import (
 // uploadParams holds the parsed and validated upload parameters.
 type uploadParams struct {
 	Selector            string `json:"selector"`
-	APIEndpoint         string `json:"apiEndpoint,omitempty"`
+	APIEndpoint         string `json:"api_endpoint,omitempty"`
 	FilePath            string `json:"file_path"`
 	Submit              bool   `json:"submit,omitempty"`
 	EscalationTimeoutMs int    `json:"escalation_timeout_ms,omitempty"`

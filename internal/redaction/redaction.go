@@ -22,7 +22,7 @@ type MCPContentBlock struct {
 // This is duplicated from cmd/dev-console/tools.go to avoid circular imports.
 type MCPToolResult struct {
 	Content []MCPContentBlock `json:"content"`
-	IsError bool              `json:"isError,omitempty"`
+	IsError bool              `json:"isError,omitempty"` // SPEC:MCP
 }
 
 // RedactionPattern represents a single redaction rule.

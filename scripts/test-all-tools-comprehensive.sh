@@ -65,6 +65,59 @@ echo "Tests dir:  $TESTS_DIR"
 echo "Results:    $RESULTS_DIR"
 echo ""
 
+# ── Pre-flight: Extension Connectivity ────────────────────
+# UAT MUST NOT pass without a browser extension connected.
+# Start a temporary daemon, check extension_connected, abort if false.
+PREFLIGHT_PORT=7889
+lsof -ti :"$PREFLIGHT_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+sleep 0.3
+
+echo "Pre-flight: checking extension connectivity..."
+(cd "$PROJECT_ROOT" && "$WRAPPER" --daemon --port "$PREFLIGHT_PORT" >/dev/null 2>&1) &
+PREFLIGHT_PID="$!"
+
+# Wait for health endpoint
+for _pf_i in $(seq 1 30); do
+    if curl -s --connect-timeout 1 "http://localhost:${PREFLIGHT_PORT}/health" >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.1
+done
+
+# Give extension 3 seconds to connect (it polls every ~1s)
+sleep 3
+
+PREFLIGHT_HEALTH=$(curl -s --max-time 5 "http://localhost:${PREFLIGHT_PORT}/health" 2>/dev/null)
+EXT_CONNECTED=$(echo "$PREFLIGHT_HEALTH" | jq -r '.capture.extension_connected // false' 2>/dev/null)
+EXT_LAST_SEEN=$(echo "$PREFLIGHT_HEALTH" | jq -r '.capture.extension_last_seen // "never"' 2>/dev/null)
+
+# Kill preflight daemon
+kill "$PREFLIGHT_PID" 2>/dev/null || true
+lsof -ti :"$PREFLIGHT_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+wait "$PREFLIGHT_PID" 2>/dev/null || true
+
+if [ "$EXT_CONNECTED" != "true" ]; then
+    echo ""
+    echo "############################################################"
+    echo "# FATAL: No browser extension connected"
+    echo "############################################################"
+    echo ""
+    echo "UAT requires a Chrome browser with the Gasoline extension"
+    echo "connected and tracking a tab."
+    echo ""
+    echo "  Extension last seen: $EXT_LAST_SEEN"
+    echo ""
+    echo "Steps:"
+    echo "  1. Open Chrome with the Gasoline extension installed"
+    echo "  2. Click the Gasoline icon → 'Track This Tab'"
+    echo "  3. Re-run this UAT script"
+    echo ""
+    exit 1
+fi
+
+echo "Pre-flight: extension connected (last seen: $EXT_LAST_SEEN)"
+echo ""
+
 # ── Port Assignments ──────────────────────────────────────
 # Each parallel group gets its own port so it can spin up an
 # independent daemon. This lets all groups run simultaneously
