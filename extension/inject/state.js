@@ -3,6 +3,16 @@
  * element highlighting for the AI Web Pilot.
  */
 import { sendPerformanceSnapshot } from '../lib/perf-snapshot.js';
+/** Read the page nonce set by the content script on the inject script element */
+let pageNonce = '';
+if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+    const nonceEl = document.querySelector('script[data-gasoline-nonce]');
+    if (nonceEl) {
+        pageNonce = nonceEl.getAttribute('data-gasoline-nonce') || '';
+    }
+}
+/** Patterns for sensitive storage keys whose values should be redacted */
+const SENSITIVE_KEY_PATTERNS = /token|secret|password|api.?key|auth|session.?id|csrf|jwt/i;
 let gasolineHighlighter = null;
 /**
  * Capture browser state (localStorage, sessionStorage, cookies).
@@ -14,13 +24,22 @@ export function captureState() {
         timestamp: Date.now(),
         localStorage: {},
         sessionStorage: {},
-        cookies: document.cookie,
+        cookies: document.cookie
+            .split(';')
+            .map((c) => {
+            const [name, ...rest] = c.split('=');
+            if (name && SENSITIVE_KEY_PATTERNS.test(name.trim())) {
+                return `${name}=[REDACTED]`;
+            }
+            return c;
+        })
+            .join(';')
     };
     const localStorageData = {};
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key) {
-            localStorageData[key] = localStorage.getItem(key) || '';
+            localStorageData[key] = SENSITIVE_KEY_PATTERNS.test(key) ? '[REDACTED]' : localStorage.getItem(key) || '';
         }
     }
     ;
@@ -29,7 +48,7 @@ export function captureState() {
     for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i);
         if (key) {
-            sessionStorageData[key] = sessionStorage.getItem(key) || '';
+            sessionStorageData[key] = SENSITIVE_KEY_PATTERNS.test(key) ? '[REDACTED]' : sessionStorage.getItem(key) || '';
         }
     }
     ;
@@ -57,110 +76,94 @@ function isValidStorageKey(key) {
  * Restore browser state from a snapshot.
  * Clears existing state before restoring.
  */
+const MAX_STORAGE_VALUE_SIZE = 10 * 1024 * 1024;
+// #lizard forgives
+function restoreStorageEntries(storage, entries, label) {
+    let skipped = 0;
+    for (const [key, value] of Object.entries(entries)) {
+        if (!isValidStorageKey(key)) {
+            skipped++;
+            console.warn(`[gasoline] Skipped ${label} key with invalid pattern:`, key); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
+            continue;
+        }
+        if (typeof value === 'string' && value.length > MAX_STORAGE_VALUE_SIZE) {
+            skipped++;
+            console.warn(`[gasoline] Skipped ${label} value exceeding 10MB:`, key); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
+            continue;
+        }
+        storage.setItem(key, value);
+    }
+    return skipped;
+}
+function clearAllCookies() {
+    const isSecure = window.location.protocol === 'https:';
+    document.cookie.split(';').forEach((c) => {
+        const name = (c.split('=')[0] || '').trim();
+        if (!name)
+            return;
+        let deleteCookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+        if (isSecure)
+            deleteCookie += '; Secure';
+        deleteCookie += '; SameSite=Strict';
+        document.cookie = deleteCookie;
+    });
+}
+function restoreCookies(cookieString) {
+    const isSecure = window.location.protocol === 'https:';
+    cookieString.split(';').forEach((c) => {
+        const trimmed = c.trim();
+        if (!trimmed)
+            return;
+        let securedCookie = trimmed;
+        if (isSecure && !securedCookie.toLowerCase().includes('secure'))
+            securedCookie += '; Secure';
+        if (!securedCookie.toLowerCase().includes('samesite'))
+            securedCookie += '; SameSite=Strict';
+        document.cookie = securedCookie;
+    });
+}
+function navigateSameOrigin(url) {
+    if (url === window.location.href)
+        return;
+    try {
+        const parsed = new URL(url);
+        if ((parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.origin === window.location.origin) {
+            window.location.href = url;
+        }
+        else {
+            console.warn('[gasoline] Skipped navigation: URL must be same origin', url, 'current:', window.location.origin);
+        }
+    }
+    catch (e) {
+        console.warn('[gasoline] Invalid URL for navigation:', url, e);
+    }
+}
+// #lizard forgives
 export function restoreState(state, includeUrl = true) {
-    // Validate state object
     if (!state || typeof state !== 'object') {
         return { success: false, error: 'Invalid state object' };
     }
-    // Clear existing
-    localStorage.clear();
-    sessionStorage.clear();
-    // Restore localStorage with validation
-    let skipped = 0;
-    for (const [key, value] of Object.entries(state.localStorage || {})) {
-        if (!isValidStorageKey(key)) {
-            skipped++;
-            console.warn('[gasoline] Skipped localStorage key with invalid pattern:', key);
-            continue;
-        }
-        // Limit value size (10MB max per item)
-        if (typeof value === 'string' && value.length > 10 * 1024 * 1024) {
-            skipped++;
-            console.warn('[gasoline] Skipped localStorage value exceeding 10MB:', key);
-            continue;
-        }
-        localStorage.setItem(key, value);
-    }
-    // Restore sessionStorage with validation
-    for (const [key, value] of Object.entries(state.sessionStorage || {})) {
-        if (!isValidStorageKey(key)) {
-            skipped++;
-            console.warn('[gasoline] Skipped sessionStorage key with invalid pattern:', key);
-            continue;
-        }
-        if (typeof value === 'string' && value.length > 10 * 1024 * 1024) {
-            skipped++;
-            console.warn('[gasoline] Skipped sessionStorage value exceeding 10MB:', key);
-            continue;
-        }
-        sessionStorage.setItem(key, value);
-    }
-    // Restore cookies (clear then set)
-    document.cookie.split(';').forEach((c) => {
-        const namePart = c.split('=')[0];
-        if (namePart) {
-            const name = namePart.trim();
-            if (name) {
-                // Delete cookie with security attributes for consistency
-                let deleteCookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-                if (window.location.protocol === 'https:') {
-                    deleteCookie += '; Secure';
-                }
-                deleteCookie += '; SameSite=Strict';
-                document.cookie = deleteCookie;
-            }
-        }
-    });
-    if (state.cookies) {
-        // Note: document.cookie API cannot set HttpOnly flag (browser limitation).
-        // Restored cookies lose HttpOnly protection but regain it on next server request.
-        state.cookies.split(';').forEach((c) => {
-            const trimmed = c.trim();
-            if (!trimmed)
-                return;
-            // Add security attributes: Secure (if HTTPS) and SameSite=Strict
-            let securedCookie = trimmed;
-            // Add Secure flag if page is HTTPS (already set on secure pages, add for safety)
-            if (window.location.protocol === 'https:' && !securedCookie.toLowerCase().includes('secure')) {
-                securedCookie += '; Secure';
-            }
-            // Add SameSite=Strict if not already present (CSRF protection)
-            if (!securedCookie.toLowerCase().includes('samesite')) {
-                securedCookie += '; SameSite=Strict';
-            }
-            document.cookie = securedCookie;
-        });
-    }
+    let skipped = restoreStorageEntries(localStorage, state.localStorage || {}, 'localStorage');
+    skipped += restoreStorageEntries(sessionStorage, state.sessionStorage || {}, 'sessionStorage');
+    clearAllCookies();
+    if (state.cookies)
+        restoreCookies(state.cookies);
     const restored = {
         localStorage: Object.keys(state.localStorage || {}).length - skipped,
         sessionStorage: Object.keys(state.sessionStorage || {}).length,
         cookies: (state.cookies || '').split(';').filter((c) => c.trim()).length,
-        skipped,
+        skipped
     };
-    // Navigate if requested (with URL validation)
-    if (includeUrl && state.url && state.url !== window.location.href) {
-        try {
-            const url = new URL(state.url);
-            // Security: only navigate within same origin to prevent open redirect
-            if ((url.protocol === 'http:' || url.protocol === 'https:') && url.origin === window.location.origin) {
-                window.location.href = state.url;
-            }
-            else {
-                console.warn('[gasoline] Skipped navigation: URL must be same origin', state.url, 'current:', window.location.origin);
-            }
-        }
-        catch (e) {
-            console.warn('[gasoline] Invalid URL for navigation:', state.url, e);
-        }
-    }
-    if (skipped > 0) {
+    if (includeUrl && state.url)
+        navigateSameOrigin(state.url);
+    if (skipped > 0)
         console.warn(`[gasoline] restoreState completed with ${skipped} skipped item(s)`);
-    }
     return { success: true, restored };
 }
 /**
- * Highlight a DOM element by injecting a red overlay div.
+ * Highlight a DOM element by injecting a blue glow overlay div.
  */
+// #lizard forgives
 export function highlightElement(selector, durationMs = 5000) {
     // Remove existing highlight
     if (gasolineHighlighter) {
@@ -181,12 +184,13 @@ export function highlightElement(selector, durationMs = 5000) {
         left: `${rect.left}px`,
         width: `${rect.width}px`,
         height: `${rect.height}px`,
-        border: '4px solid red',
+        border: '2px solid rgba(59, 130, 246, 0.7)',
         borderRadius: '4px',
-        backgroundColor: 'rgba(255, 0, 0, 0.1)',
+        backgroundColor: 'rgba(59, 130, 246, 0.08)',
+        boxShadow: '0 0 12px rgba(59, 130, 246, 0.5)',
         zIndex: '2147483647',
         pointerEvents: 'none',
-        boxSizing: 'border-box',
+        boxSizing: 'border-box'
     });
     const targetElement = document.body || document.documentElement;
     if (targetElement) {
@@ -205,12 +209,13 @@ export function highlightElement(selector, durationMs = 5000) {
     return {
         success: true,
         selector,
-        bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+        bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
     };
 }
 /**
  * Clear any existing highlight
  */
+// #lizard forgives
 export function clearHighlight() {
     if (gasolineHighlighter) {
         gasolineHighlighter.remove();
@@ -242,6 +247,8 @@ if (typeof window !== 'undefined') {
     window.addEventListener('message', (event) => {
         if (event.source !== window || event.origin !== window.location.origin)
             return;
+        if (pageNonce && event.data?._nonce !== pageNonce)
+            return;
         if (event.data?.type === 'GASOLINE_HIGHLIGHT_REQUEST') {
             const { requestId, params } = event.data;
             const { selector, duration_ms } = params || { selector: '' };
@@ -249,7 +256,7 @@ if (typeof window !== 'undefined') {
             window.postMessage({
                 type: 'GASOLINE_HIGHLIGHT_RESPONSE',
                 requestId,
-                result,
+                result
             }, window.location.origin);
         }
     });

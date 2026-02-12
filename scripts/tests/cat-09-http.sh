@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-09-http.sh — UAT tests for HTTP endpoints (4 tests).
 # NOTE: Test 9.4 (/shutdown) must be LAST as it kills the daemon.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"

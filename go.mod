@@ -1,3 +1,3 @@
 module github.com/dev-console/dev-console
 
-go 1.23
+go 1.24.13

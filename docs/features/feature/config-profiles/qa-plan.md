@@ -29,7 +29,7 @@ feature: config-profiles
 
 ### Security/Compliance Testing
 
-**Profile security review:**
+#### Profile security review:
 - [ ] Review paranoid profile ensures max security
 - [ ] Review restricted profile is production-safe
 - [ ] Test no profile can bypass core security (e.g., localhost binding)
@@ -38,7 +38,7 @@ feature: config-profiles
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Paranoid Profile (Max Security) (Happy Path)**
+### Scenario 1: Paranoid Profile (Max Security) (Happy Path)
 1. Setup:
    - Start server: `gasoline --profile=paranoid`
 2. Steps:
@@ -50,7 +50,7 @@ feature: config-profiles
 3. Expected Result: Max security settings applied
 4. Verification: No mutations possible, aggressive data cleanup
 
-**Scenario 2: Restricted Profile (Production-Safe)**
+### Scenario 2: Restricted Profile (Production-Safe)
 1. Setup:
    - Start: `gasoline --profile=restricted`
 2. Steps:
@@ -62,7 +62,7 @@ feature: config-profiles
 3. Expected Result: Safe interactions allowed, dangerous ones blocked
 4. Verification: Production-safe behavior
 
-**Scenario 3: Development Profile (Full Access)**
+### Scenario 3: Development Profile (Full Access)
 1. Setup:
    - Start: `gasoline --profile=development`
 2. Steps:
@@ -73,7 +73,7 @@ feature: config-profiles
 3. Expected Result: Full access, all features enabled
 4. Verification: Development-friendly config
 
-**Scenario 4: CLI Flag Override**
+### Scenario 4: CLI Flag Override
 1. Setup:
    - Start: `gasoline --profile=restricted --project-expiration-minutes=30`
 2. Steps:
@@ -82,7 +82,7 @@ feature: config-profiles
 3. Expected Result: CLI flag overrides profile setting
 4. Verification: Fine-tuning works
 
-**Scenario 5: Invalid Profile (Error Path)**
+### Scenario 5: Invalid Profile (Error Path)
 1. Setup:
    - Create bad.yaml: `read_only: "not_a_boolean"`
 2. Steps:

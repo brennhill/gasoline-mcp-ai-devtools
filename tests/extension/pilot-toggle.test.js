@@ -34,20 +34,21 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 const mockChrome = {
   runtime: {
     sendMessage: mock.fn(() => Promise.resolve()),
     onMessage: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION })
   },
   storage: {
     sync: {
       get: mock.fn((keys, callback) => callback({})),
-      set: mock.fn((data, callback) => callback && callback()),
+      set: mock.fn((data, callback) => callback && callback())
     },
     local: {
       get: mock.fn((keys, callback) => callback({})),
@@ -55,26 +56,26 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     session: {
       get: mock.fn((keys, callback) => callback({})),
-      set: mock.fn((data, callback) => callback && callback()),
+      set: mock.fn((data, callback) => callback && callback())
     },
     onChanged: {
-      addListener: mock.fn(),
-    },
+      addListener: mock.fn()
+    }
   },
   tabs: {
     query: mock.fn(() => Promise.resolve([{ id: 1, url: 'http://localhost:3000' }])),
     get: mock.fn((tabId) => Promise.resolve({ id: tabId, url: 'http://localhost:3000' })),
     sendMessage: mock.fn(() => Promise.resolve()),
-    onRemoved: { addListener: mock.fn() },
+    onRemoved: { addListener: mock.fn() }
   },
   alarms: {
     create: mock.fn(),
-    onAlarm: { addListener: mock.fn() },
-  },
+    onAlarm: { addListener: mock.fn() }
+  }
 }
 
 globalThis.chrome = mockChrome
@@ -93,7 +94,7 @@ const createMockDocument = () => {
     querySelector: mock.fn(),
     querySelectorAll: mock.fn(() => []),
     addEventListener: mock.fn(),
-    readyState: 'complete',
+    readyState: 'complete'
   }
 }
 
@@ -105,7 +106,7 @@ const createMockElement = (id) => ({
   classList: {
     add: mock.fn(),
     remove: mock.fn(),
-    toggle: mock.fn(),
+    toggle: mock.fn()
   },
   style: {},
   addEventListener: mock.fn(),
@@ -113,7 +114,7 @@ const createMockElement = (id) => ({
   getAttribute: mock.fn(),
   value: '',
   checked: false,
-  disabled: false,
+  disabled: false
 })
 
 let mockDocument
@@ -172,7 +173,7 @@ describe('AI Web Pilot Toggle Persistence (Message-Based)', () => {
 
     // Verify message was sent to background
     const messageCalls = mockChrome.runtime.sendMessage.mock.calls.filter(
-      (c) => c.arguments[0]?.type === 'setAiWebPilotEnabled' && c.arguments[0]?.enabled === true,
+      (c) => c.arguments[0]?.type === 'setAiWebPilotEnabled' && c.arguments[0]?.enabled === true
     )
     assert.ok(messageCalls.length > 0, 'Should send setAiWebPilotEnabled message to background')
 
@@ -187,7 +188,7 @@ describe('AI Web Pilot Toggle Persistence (Message-Based)', () => {
 
     // Verify message was sent
     const messageCalls = mockChrome.runtime.sendMessage.mock.calls.filter(
-      (c) => c.arguments[0]?.type === 'setAiWebPilotEnabled' && c.arguments[0]?.enabled === false,
+      (c) => c.arguments[0]?.type === 'setAiWebPilotEnabled' && c.arguments[0]?.enabled === false
     )
     assert.ok(messageCalls.length > 0, 'Should send setAiWebPilotEnabled message to background')
   })
@@ -425,30 +426,21 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
     await handleAiWebPilotToggle(true)
 
     const messageCalls = mockChrome.runtime.sendMessage.mock.calls.filter(
-      (c) => c.arguments[0]?.type === 'setAiWebPilotEnabled',
+      (c) => c.arguments[0]?.type === 'setAiWebPilotEnabled'
     )
 
     assert.ok(messageCalls.length > 0, 'Should send setAiWebPilotEnabled message')
-    assert.strictEqual(
-      messageCalls[0].arguments[0].enabled,
-      true,
-      'Message should include enabled=true',
-    )
+    assert.strictEqual(messageCalls[0].arguments[0].enabled, true, 'Message should include enabled=true')
   })
 
   test('background should receive setAiWebPilotEnabled message and update cache', async () => {
     mockChrome.runtime.onMessage.addListener.mock.mockImplementation((handler) => {
       // Simulate background receiving a message
-      handler(
-        { type: 'setAiWebPilotEnabled', enabled: true },
-        { id: 1 },
-        () => {},
-      )
+      handler({ type: 'setAiWebPilotEnabled', enabled: true }, { id: 1 }, () => {})
     })
 
-    const { _resetPilotCacheForTesting, isAiWebPilotEnabled: _isAiWebPilotEnabled } = await import(
-      '../../extension/background.js'
-    )
+    const { _resetPilotCacheForTesting, isAiWebPilotEnabled: _isAiWebPilotEnabled } =
+      await import('../../extension/background.js')
     _resetPilotCacheForTesting(false)
 
     // Trigger the message listener
@@ -472,15 +464,12 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
     await handleAiWebPilotToggle(true)
 
     // Look for pilotStatusChanged message
-    const _confirmationCalls = broadcastSpy.mock.calls.filter(
-      (c) => c.arguments[0]?.type === 'pilotStatusChanged',
-    )
+    const _confirmationCalls = broadcastSpy.mock.calls.filter((c) => c.arguments[0]?.type === 'pilotStatusChanged')
 
     // Note: This depends on implementation broadcasting within handleAiWebPilotToggle
     // or from background after receiving message
     assert.ok(true, 'Should broadcast status changes')
   })
-
 })
 
 describe('AI Web Pilot Service Worker Restart Race Condition (LAYER 2 BUG)', () => {

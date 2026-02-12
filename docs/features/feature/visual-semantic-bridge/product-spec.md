@@ -131,7 +131,7 @@ Result: AI agents see the page as humans see it—not as a flat HTML dump, but a
 
 **Scenario:** Mobile menu with "Close" button that's initially off-screen.
 
-**Without Visual-Semantic Bridge:**
+#### Without Visual-Semantic Bridge:
 ```
 AI observes DOM: <button class="close-btn">Close</button>
 AI thinks: "I see the Close button, I'll click it"
@@ -140,7 +140,7 @@ Result: Click does nothing (element is off-screen at left: -100%)
 AI fails after 5 retries
 ```
 
-**With Visual-Semantic Bridge:**
+#### With Visual-Semantic Bridge:
 ```
 AI observes DOM:
 {
@@ -164,7 +164,7 @@ Result: Success
 
 **Scenario:** Page with 10 blue buttons using Tailwind.
 
-**Without Visual-Semantic Bridge:**
+#### Without Visual-Semantic Bridge:
 ```
 HTML: <button class="px-4 py-2 bg-blue-500">Save</button>
       <button class="px-4 py-2 bg-blue-500">Submit</button>
@@ -177,7 +177,7 @@ Result: Clicks the Save button instead (first match)
 Test fails: "Oops, I saved something instead of submitting"
 ```
 
-**With Visual-Semantic Bridge:**
+#### With Visual-Semantic Bridge:
 ```
 AI observes DOM:
 [
@@ -205,7 +205,7 @@ Result: Clicks the Submit button correctly
 
 **Scenario:** User reports "the Save button doesn't work" but it's actually hidden by a modal overlay.
 
-**With Visual-Semantic Bridge:**
+#### With Visual-Semantic Bridge:
 ```
 Engineer opens Gasoline DevTools:
 - Hovers over Save button
@@ -216,17 +216,17 @@ Engineer opens Gasoline DevTools:
 
 ## Notes
 
-**Related specs:**
+### Related specs:
 - DOM Fingerprinting (v6.1) — Extends selector stability for self-healing tests
 - Smart DOM Pruning (v6.1) — Reduces context window by removing decorative noise
 - Deep Framework Intelligence (v6.1) — Shows React/Vue component tree alongside DOM
 
-**Dependencies:**
+### Dependencies:
 - Requires browser APIs: `getComputedStyle()`, `getBoundingClientRect()`, `elementFromPoint()`
 - React DevTools hooks (for React component mapping)
 - Vue DevTools hooks (for Vue component mapping)
 
-**Design decision rationale:**
+### Design decision rationale:
 - Using `data-gasoline-id` instead of modifying real IDs: doesn't pollute user's HTML, survives page reloads
 - Hit-test algorithm over z-index inspection alone: matches actual browser behavior (what matters to users)
 - Injecting semantic IDs at runtime: avoids build-time dependencies, works with any framework

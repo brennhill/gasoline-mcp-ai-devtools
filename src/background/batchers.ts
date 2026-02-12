@@ -15,7 +15,7 @@ export const RATE_LIMIT_CONFIG = {
   maxFailures: 5,
   resetTimeout: 30000,
   backoffSchedule: [100, 500, 2000] as readonly number[],
-  retryBudget: 3,
+  retryBudget: 3
 }
 
 /** Batcher instance */
@@ -59,7 +59,7 @@ export interface LogBatcherOptions {
  */
 export function createBatcherWithCircuitBreaker<T>(
   sendFn: (entries: T[]) => Promise<unknown>,
-  options: BatcherConfig = {},
+  options: BatcherConfig = {}
 ): BatcherWithCircuitBreaker<T> {
   const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS
   const maxBatchSize = options.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE
@@ -77,7 +77,7 @@ export function createBatcherWithCircuitBreaker<T>(
       maxFailures,
       resetTimeout,
       initialBackoff: 0,
-      maxBackoff: 0,
+      maxBackoff: 0
     })
 
   function getScheduledBackoff(failures: number): number {
@@ -92,10 +92,10 @@ export function createBatcherWithCircuitBreaker<T>(
       const stats = cb.getStats()
       return {
         ...stats,
-        currentBackoff: getScheduledBackoff(stats.consecutiveFailures),
+        currentBackoff: getScheduledBackoff(stats.consecutiveFailures)
       }
     },
-    reset: () => cb.reset(),
+    reset: () => cb.reset()
   }
 
   async function attemptSend(entries: T[]): Promise<unknown> {
@@ -106,7 +106,9 @@ export function createBatcherWithCircuitBreaker<T>(
     const state = cb.getState()
     if (state === 'open') {
       const stats = cb.getStats()
-      throw new Error(`Cannot send batch: circuit breaker is open after ${stats.consecutiveFailures} consecutive failures. Will retry automatically.`)
+      throw new Error(
+        `Cannot send batch: circuit breaker is open after ${stats.consecutiveFailures} consecutive failures. Will retry automatically.`
+      )
     }
 
     try {
@@ -122,60 +124,48 @@ export function createBatcherWithCircuitBreaker<T>(
   let pending: T[] = []
   let timeoutId: TimeoutId | null = null
 
+  function requeueEntries(entries: T[]): void {
+    pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER)
+  }
+
+  async function retryWithBackoff(entries: T[]): Promise<void> {
+    let retriesLeft = retryBudget - 1
+    while (retriesLeft > 0) {
+      retriesLeft--
+
+      const stats = cb.getStats()
+      const backoff = getScheduledBackoff(stats.consecutiveFailures)
+      if (backoff > 0) {
+        await new Promise<void>((r) => { setTimeout(r, backoff) })
+      }
+
+      try {
+        await attemptSend(entries)
+        localConnectionStatus.connected = true
+        return
+      } catch {
+        localConnectionStatus.connected = false
+        if (cb.getState() === 'open') { requeueEntries(entries); return }
+      }
+    }
+  }
+
   async function flushWithCircuitBreaker(): Promise<void> {
     if (pending.length === 0) return
 
     const entries = pending
     pending = []
 
-    if (timeoutId) {
-      clearTimeout(timeoutId)
-      timeoutId = null
-    }
-
-    const currentState = cb.getState()
-
-    if (currentState === 'open') {
-      pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER)
-      return
-    }
+    if (timeoutId) { clearTimeout(timeoutId); timeoutId = null }
+    if (cb.getState() === 'open') { requeueEntries(entries); return }
 
     try {
       await attemptSend(entries)
       localConnectionStatus.connected = true
     } catch {
       localConnectionStatus.connected = false
-
-      if (cb.getState() === 'open') {
-        pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER)
-        return
-      }
-
-      let retriesLeft = retryBudget - 1
-      while (retriesLeft > 0) {
-        retriesLeft--
-
-        const stats = cb.getStats()
-        const backoff = getScheduledBackoff(stats.consecutiveFailures)
-        if (backoff > 0) {
-          await new Promise<void>((r) => {
-            setTimeout(r, backoff)
-          })
-        }
-
-        try {
-          await attemptSend(entries)
-          localConnectionStatus.connected = true
-          return
-        } catch {
-          localConnectionStatus.connected = false
-
-          if (cb.getState() === 'open') {
-            pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER)
-            return
-          }
-        }
-      }
+      if (cb.getState() === 'open') { requeueEntries(entries); return }
+      await retryWithBackoff(entries)
     }
   }
 
@@ -212,13 +202,13 @@ export function createBatcherWithCircuitBreaker<T>(
 
     getPending(): T[] {
       return [...pending]
-    },
+    }
   }
 
   return {
     batcher,
     circuitBreaker: wrappedCircuitBreaker,
-    getConnectionStatus: () => ({ ...localConnectionStatus }),
+    getConnectionStatus: () => ({ ...localConnectionStatus })
   }
 }
 
@@ -289,6 +279,6 @@ export function createLogBatcher<T>(flushFn: (entries: T[]) => void, options: Lo
         clearTimeout(timeoutId)
         timeoutId = null
       }
-    },
+    }
   }
 }

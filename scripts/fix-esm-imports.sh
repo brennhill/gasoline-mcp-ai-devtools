@@ -1,6 +1,7 @@
 #!/bin/bash
 # Fix ES module imports by adding .js extensions
 # Required for Chrome MV3 service workers with type="module"
+set -euo pipefail
 
 echo "Fixing ESM imports in extension/..."
 

@@ -103,7 +103,7 @@ Baseline capture uses:
 
 The agent opens the preview URL and exercises the application. This is where Gasoline's interact tool and passive telemetry capture work together.
 
-**Step 3.1: Open the preview in a new tab.**
+#### Step 3.1: Open the preview in a new tab.
 
 ```
 interact({action: "new_tab", url: "https://preview-42.myapp.dev"})
@@ -111,11 +111,11 @@ interact({action: "new_tab", url: "https://preview-42.myapp.dev"})
 
 This isolates the preview exploration from the developer's browsing. The agent notes the returned tab_id and targets all subsequent interactions to this tab.
 
-**Step 3.2: Wait for page load.**
+#### Step 3.2: Wait for page load.
 
 The agent polls `observe({what: "page"})` until the page reports ready state, or until a timeout (default: 30 seconds).
 
-**Step 3.3: Explore the application.**
+#### Step 3.3: Explore the application.
 
 The agent performs a bounded set of interactions:
 - Click navigation links to visit key pages
@@ -132,7 +132,7 @@ While the agent interacts, Gasoline passively captures:
 - WebSocket events
 - Web Vitals (LCP, FID, CLS)
 
-**Step 3.4: Capture telemetry at exploration end.**
+#### Step 3.4: Capture telemetry at exploration end.
 
 ```
 configure({action: "diff_sessions", session_action: "capture", name: "preview-pr-42"})
@@ -142,21 +142,21 @@ configure({action: "diff_sessions", session_action: "capture", name: "preview-pr
 
 The agent compares the preview session against the baseline:
 
-**Session diff:**
+#### Session diff:
 ```
 configure({action: "diff_sessions", session_action: "compare", compare_a: "main-baseline", compare_b: "preview-pr-42"})
 ```
 
 This returns a structured diff showing new errors, changed network responses, performance deltas, and other differences.
 
-**Behavioral baseline comparison (if baseline feature is available):**
+#### Behavioral baseline comparison (if baseline feature is available):
 ```
 configure({action: "compare_baseline", name: "main-baseline"})
 ```
 
 This returns regression categorization: network regressions (status code changes), timing regressions (latency spikes), console regressions (new errors), and WebSocket regressions.
 
-**Incremental error checking:**
+#### Incremental error checking:
 
 The agent also reads telemetry directly to catch issues that diffing might miss:
 
@@ -171,14 +171,14 @@ observe({what: "security_audit"})
 
 The agent synthesizes findings into a report. Two output formats:
 
-**Human-readable PR comment (primary):**
+#### Human-readable PR comment (primary):
 ```
 generate({format: "pr_summary"})
 ```
 
 The existing `pr_summary` mode already produces markdown with error summaries, network issues, and performance data. For PR preview exploration, the agent augments this by prepending context about what was explored and what was compared.
 
-**Machine-readable SARIF (optional):**
+#### Machine-readable SARIF (optional):
 ```
 generate({format: "sarif"})
 ```
@@ -270,7 +270,7 @@ Many preview environments require authentication (basic auth, OAuth, API key). T
 
 **Bearer token in URL:** Some preview environments accept a token as a query parameter (e.g., `?token=abc`). The agent appends the token before navigating.
 
-**Security constraints:**
+#### Security constraints:
 - Auth tokens must never appear in Gasoline's telemetry buffers. Gasoline already strips Authorization headers from network captures. Cookie values set via `execute_js` are not captured in the log buffer (the script is captured, but not its side effects).
 - Auth tokens must never appear in the PR comment output. The agent must redact any token values from the exploration report.
 - The skill definition must document which secrets are required and how they are injected (environment variable, CI secret, etc.).

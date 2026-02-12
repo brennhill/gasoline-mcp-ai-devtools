@@ -2,8 +2,8 @@
 // Receives a tab media stream ID from the service worker, captures video/audio
 // via MediaRecorder, and POSTs the final blob to the Go server on stop.
 // Standalone: imports nothing from src/background/ to avoid circular deps.
-/** Maximum recording size in bytes before auto-stop (100MB). */
-const MAX_RECORDING_BYTES = 100 * 1024 * 1024;
+/** Maximum recording size in bytes before auto-stop (1GB). */
+const MAX_RECORDING_BYTES = 1024 * 1024 * 1024;
 const defaultState = {
     active: false,
     name: '',
@@ -16,7 +16,7 @@ const defaultState = {
     recorder: null,
     stream: null,
     chunks: [],
-    totalBytes: 0,
+    totalBytes: 0
 };
 let state = { ...defaultState };
 const LOG = '[Gasoline REC offscreen]';
@@ -24,15 +24,23 @@ const LOG = '[Gasoline REC offscreen]';
  * Start recording using a tab capture stream ID.
  * Called when the service worker sends OFFSCREEN_START_RECORDING.
  */
+// #lizard forgives
 async function handleStartRecording(msg) {
-    console.log(LOG, 'handleStartRecording', { name: msg.name, audioMode: msg.audioMode, fps: msg.fps, tabId: msg.tabId, streamId: msg.streamId?.substring(0, 20) + '...', currentlyActive: state.active });
+    console.log(LOG, 'handleStartRecording', {
+        name: msg.name,
+        audioMode: msg.audioMode,
+        fps: msg.fps,
+        tabId: msg.tabId,
+        streamId: msg.streamId?.substring(0, 20) + '...',
+        currentlyActive: state.active
+    });
     if (state.active) {
         console.warn(LOG, 'START BLOCKED: already recording');
         chrome.runtime.sendMessage({
             target: 'background',
             type: 'OFFSCREEN_RECORDING_STARTED',
             success: false,
-            error: 'RECORD_START: Already recording in offscreen document.',
+            error: 'RECORD_START: Already recording in offscreen document.'
         });
         return;
     }
@@ -55,30 +63,33 @@ async function handleStartRecording(msg) {
                     minHeight: 720,
                     maxWidth: 1920,
                     maxHeight: 1080,
-                    maxFrameRate: fps,
-                },
+                    maxFrameRate: fps
+                }
             },
             audio: hasTabAudio
                 ? {
                     // @ts-expect-error -- Chrome-specific mandatory constraints for tab audio
                     mandatory: {
                         chromeMediaSource: 'tab',
-                        chromeMediaSourceId: msg.streamId,
-                    },
+                        chromeMediaSourceId: msg.streamId
+                    }
                 }
-                : false,
+                : false
         };
         console.log(LOG, 'Calling getUserMedia for tab stream', { hasTabAudio, hasMicAudio });
         const tabStream = await navigator.mediaDevices.getUserMedia(tabConstraints);
         acquiredStreams.push(tabStream);
-        console.log(LOG, 'Got tab stream', { videoTracks: tabStream.getVideoTracks().length, audioTracks: tabStream.getAudioTracks().length });
+        console.log(LOG, 'Got tab stream', {
+            videoTracks: tabStream.getVideoTracks().length,
+            audioTracks: tabStream.getAudioTracks().length
+        });
         // Build the final stream: start with tab video
         let stream;
         if (hasMicAudio && hasTabAudio) {
             // Both: mix tab audio + mic audio via AudioContext
             // Tab audio is captured digitally so disable echo cancellation to avoid degrading mic quality
             const micStream = await navigator.mediaDevices.getUserMedia({
-                audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true },
+                audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true }
             });
             acquiredStreams.push(micStream);
             const audioCtx = new AudioContext();
@@ -92,7 +103,7 @@ async function handleStartRecording(msg) {
         else if (hasMicAudio) {
             // Mic only: no tab audio playing, keep default processing
             const micStream = await navigator.mediaDevices.getUserMedia({
-                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
             });
             acquiredStreams.push(micStream);
             stream = new MediaStream([...tabStream.getVideoTracks(), ...micStream.getAudioTracks()]);
@@ -106,7 +117,7 @@ async function handleStartRecording(msg) {
         const mimeType = hasAnyAudio ? 'video/webm;codecs=vp8,opus' : 'video/webm;codecs=vp8';
         const recorderOptions = {
             mimeType,
-            videoBitsPerSecond: bitrate,
+            videoBitsPerSecond: bitrate
         };
         if (hasAnyAudio) {
             recorderOptions.audioBitsPerSecond = 128_000; // 128kbps Opus for clear audio
@@ -151,13 +162,13 @@ async function handleStartRecording(msg) {
             recorder,
             stream,
             chunks,
-            totalBytes: 0,
+            totalBytes: 0
         };
         console.log(LOG, 'Recording STARTED, sending confirmation to background');
         chrome.runtime.sendMessage({
             target: 'background',
             type: 'OFFSCREEN_RECORDING_STARTED',
-            success: true,
+            success: true
         });
     }
     catch (err) {
@@ -172,7 +183,7 @@ async function handleStartRecording(msg) {
             target: 'background',
             type: 'OFFSCREEN_RECORDING_STARTED',
             success: false,
-            error: `RECORD_START: ${err.message || 'Failed to start recording in offscreen document.'}`,
+            error: `RECORD_START: ${err.message || 'Failed to start recording in offscreen document.'}`
         });
     }
 }
@@ -181,7 +192,14 @@ async function handleStartRecording(msg) {
  * @param truncated — true if auto-stopped due to memory guard or tab close
  */
 function handleStopRecording(truncated = false) {
-    console.log(LOG, 'handleStopRecording', { active: state.active, name: state.name, truncated, chunks: state.chunks.length, totalBytes: state.totalBytes, recorderState: state.recorder?.state });
+    console.log(LOG, 'handleStopRecording', {
+        active: state.active,
+        name: state.name,
+        truncated,
+        chunks: state.chunks.length,
+        totalBytes: state.totalBytes,
+        recorderState: state.recorder?.state
+    });
     if (!state.active) {
         console.warn(LOG, 'STOP: not active');
         chrome.runtime.sendMessage({
@@ -189,7 +207,7 @@ function handleStopRecording(truncated = false) {
             type: 'OFFSCREEN_RECORDING_STOPPED',
             status: 'error',
             name: '',
-            error: 'RECORD_STOP: No active recording in offscreen document.',
+            error: 'RECORD_STOP: No active recording in offscreen document.'
         });
         return;
     }
@@ -206,11 +224,12 @@ function handleStopRecording(truncated = false) {
             type: 'OFFSCREEN_RECORDING_STOPPED',
             status: 'error',
             name: '',
-            error: 'RECORD_STOP: Recorder already inactive.',
+            error: 'RECORD_STOP: Recorder already inactive.'
         });
         return;
     }
     console.log(LOG, 'Stopping recorder, waiting for onstop callback');
+    // #lizard forgives
     recorder.onstop = async () => {
         try {
             const blob = new Blob(chunks, { type: 'video/webm' });
@@ -221,9 +240,7 @@ function handleStopRecording(truncated = false) {
                 stream.getTracks().forEach((t) => t.stop());
             }
             // Build display name from the slug
-            const displayName = name
-                .replace(/--\d{4}-\d{2}-\d{2}-\d{4}(-\d+)?$/, '')
-                .replace(/-/g, ' ');
+            const displayName = name.replace(/--\d{4}-\d{2}-\d{2}-\d{4}(-\d+)?$/, '').replace(/-/g, ' ');
             // POST to Go server
             const hasAudio = state.audioMode === 'tab' || state.audioMode === 'both' || state.audioMode === 'mic';
             const format = hasAudio ? 'video/webm;codecs=vp8,opus' : 'video/webm;codecs=vp8';
@@ -242,13 +259,13 @@ function handleStopRecording(truncated = false) {
                 fps: state.fps,
                 has_audio: hasAudio,
                 audio_mode: state.audioMode || undefined,
-                truncated,
+                truncated
             }));
             console.log(LOG, 'POSTing to', `${serverUrl}/recordings/save`, { size: blob.size, hasAudio });
             const response = await fetch(`${serverUrl}/recordings/save`, {
                 method: 'POST',
                 headers: { 'X-Gasoline-Client': 'gasoline-extension-offscreen' },
-                body: formData,
+                body: formData
             });
             console.log(LOG, 'Server response:', response.status);
             state = { ...defaultState };
@@ -259,7 +276,7 @@ function handleStopRecording(truncated = false) {
                     type: 'OFFSCREEN_RECORDING_STOPPED',
                     status: 'error',
                     name,
-                    error: `RECORD_STOP: Server returned ${response.status}.`,
+                    error: `RECORD_STOP: Server returned ${response.status}.`
                 });
                 return;
             }
@@ -268,7 +285,9 @@ function handleStopRecording(truncated = false) {
                 const body = (await response.json());
                 savePath = body.path;
             }
-            catch { /* path is optional */ }
+            catch {
+                /* path is optional */
+            }
             console.log(LOG, 'Recording SAVED', { name, duration, size: blob.size, path: savePath });
             chrome.runtime.sendMessage({
                 target: 'background',
@@ -278,7 +297,7 @@ function handleStopRecording(truncated = false) {
                 duration_seconds: duration,
                 size_bytes: blob.size,
                 truncated: truncated || undefined,
-                path: savePath,
+                path: savePath
             });
         }
         catch (err) {
@@ -289,7 +308,7 @@ function handleStopRecording(truncated = false) {
                 type: 'OFFSCREEN_RECORDING_STOPPED',
                 status: 'error',
                 name,
-                error: `RECORD_STOP: ${err.message || 'Save failed.'}`,
+                error: `RECORD_STOP: ${err.message || 'Save failed.'}`
             });
         }
     };

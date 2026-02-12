@@ -51,7 +51,7 @@ Add tool allowlisting via configuration file. Define which tools (observe, gener
 
 ## Examples
 
-**Production profile (observation-only):**
+### Production profile (observation-only):
 ```yaml
 # allowlist-production.yaml
 allowed_tools:
@@ -61,7 +61,7 @@ allowed_tools:
   - configure.health       # Health checks
 ```
 
-**Staging profile (observe + safe interactions):**
+## Staging profile (observe + safe interactions):
 ```yaml
 # allowlist-staging.yaml
 allowed_tools:
@@ -74,14 +74,14 @@ allowed_tools:
   # Block: execute_js, fill_form, drag_drop
 ```
 
-**Development profile (full access):**
+## Development profile (full access):
 ```yaml
 # allowlist-development.yaml
 allowed_tools:
   - "*"    # All tools and actions
 ```
 
-**Query current allowlist:**
+## Query current allowlist:
 ```json
 observe({what: "server_config"})
 // Returns:
@@ -92,7 +92,7 @@ observe({what: "server_config"})
 }
 ```
 
-**Non-allowed tool call:**
+## Non-allowed tool call:
 ```json
 interact({action: "execute_js", code: "alert('test')"})
 // Returns:

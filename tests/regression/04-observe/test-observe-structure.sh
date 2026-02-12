@@ -131,4 +131,4 @@ run_test "Timeline has entries" test_timeline_has_entries || ((FAILED++))
 run_test "Error clusters has clusters" test_error_clusters_has_clusters || ((FAILED++))
 run_test "History has entries" test_history_has_entries || ((FAILED++))
 
-exit $FAILED
+exit "$FAILED"

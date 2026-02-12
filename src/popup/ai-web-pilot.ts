@@ -58,6 +58,6 @@ export async function handleAiWebPilotToggle(enabled: boolean): Promise<void> {
           toggle.checked = !enabled
         }
       }
-    },
+    }
   )
 }

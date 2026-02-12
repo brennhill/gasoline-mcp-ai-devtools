@@ -2,8 +2,10 @@
 # cat-03-generate.sh — Category 3: Generate Tool (9 tests).
 # Tests all generate formats plus negative cases.
 # Each format must return a valid response shape, even with no captured data.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
@@ -101,9 +103,10 @@ run_test_3_4() {
     fi
 
     # SARIF must have required top-level fields per spec
-    local has_version has_schema has_runs
+    local has_version _has_schema has_runs
     has_version=$(echo "$text" | grep -c '"version"' || true)
-    has_schema=$(echo "$text" | grep -c '"\$schema"\|"schema"' || true)
+    # shellcheck disable=SC2016 # $schema is a literal JSON field name, not a variable
+    _has_schema=$(echo "$text" | grep -c '"$schema"\|"schema"' || true)
     has_runs=$(echo "$text" | grep -c '"runs"' || true)
 
     if [ "$has_version" -gt 0 ] && [ "$has_runs" -gt 0 ]; then

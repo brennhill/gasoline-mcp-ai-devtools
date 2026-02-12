@@ -8,6 +8,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // =============================================================================
@@ -90,47 +93,39 @@ type SyncCommand struct {
 // Handler
 // =============================================================================
 
-// HandleSync processes the unified sync endpoint.
-// POST: Receives settings, logs, command results; returns pending commands.
-func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Method not allowed"})
-		return
-	}
+// syncConnectionState holds the state captured during the connection update lock scope.
+type syncConnectionState struct {
+	wasConnected    bool
+	isReconnect     bool
+	wasDisconnected bool
+	timeSinceLastPoll time.Duration
+	sessionID       string
+	pilotEnabled    bool
+}
 
-	var req SyncRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
-		return
-	}
-
-	now := time.Now()
-
-	// Get client ID for multi-client support
-	clientID := r.Header.Get("X-Gasoline-Client")
-
-	// Update connection state and settings (single lock scope)
+// updateSyncConnectionState updates connection state under lock and returns captured state.
+func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, now time.Time) syncConnectionState {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	// Detect extension connection state transitions
-	wasConnected := c.ext.lastExtensionConnected
-	timeSinceLastPoll := now.Sub(c.ext.lastPollAt)
-	isReconnect := !c.ext.lastPollAt.IsZero() && timeSinceLastPoll > 3*time.Second
+	s := syncConnectionState{
+		wasConnected:      c.ext.lastExtensionConnected,
+		timeSinceLastPoll: now.Sub(c.ext.lastPollAt),
+	}
+	s.isReconnect = !c.ext.lastPollAt.IsZero() && s.timeSinceLastPoll > 3*time.Second
+	s.wasDisconnected = !c.ext.lastSyncSeen.IsZero() && now.Sub(c.ext.lastSyncSeen) >= extensionDisconnectThreshold
 
-	// Update last poll time (for health endpoint extension_connected status)
 	c.ext.lastPollAt = now
 	c.ext.lastExtensionConnected = true
+	c.ext.lastSyncSeen = now
+	c.ext.lastSyncClientID = clientID
 
-	// Handle session ID (detect session changes)
 	if req.SessionID != "" && req.SessionID != c.ext.extensionSession {
 		c.ext.extensionSession = req.SessionID
 		c.ext.sessionChangedAt = now
 	}
-	sessionID := c.ext.extensionSession
+	s.sessionID = c.ext.extensionSession
 
-	// Store extension settings
 	if req.Settings != nil {
 		c.ext.pilotEnabled = req.Settings.PilotEnabled
 		c.ext.pilotUpdatedAt = now
@@ -140,37 +135,26 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		c.ext.trackedTabTitle = req.Settings.TrackedTabTitle
 		c.ext.trackingUpdated = now
 	}
+	s.pilotEnabled = c.ext.pilotEnabled
+	return s
+}
 
-	// Read state for later use (captured inside lock for consistency)
-	pilotEnabled := c.ext.pilotEnabled
-
-	c.mu.Unlock()
-
-	// Emit extension connection lifecycle event (outside lock, non-blocking)
-	if !wasConnected || isReconnect {
-		go c.emitLifecycleEvent("extension_connected", map[string]any{
-			"session_id":         sessionID,
-			"is_reconnect":       isReconnect,
-			"disconnect_seconds": timeSinceLastPoll.Seconds(),
-		})
-	}
-
-	// Process command results (these methods have their own locks)
-	for _, result := range req.CommandResults {
+// processSyncCommandResults processes command results from the extension.
+func (c *Capture) processSyncCommandResults(results []SyncCommandResult, clientID string) {
+	for _, result := range results {
 		if result.ID != "" {
 			c.SetQueryResultWithClient(result.ID, result.Result, clientID)
 		}
-		// Handle async commands (navigate, execute_js) that use correlation_id
 		if result.CorrelationID != "" {
 			c.CompleteCommand(result.CorrelationID, result.Result, result.Error)
 		}
 	}
+}
 
-	// Get all pending commands (single-client: no filtering needed)
-	pendingQueries := c.GetPendingQueries()
-
-	// Update remaining state (single lock scope for logging, extension logs, and version)
+// updateSyncLogs processes extension logs and version under lock.
+func (c *Capture) updateSyncLogs(req SyncRequest, now time.Time, pilotEnabled bool, queryCount int) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.logPollingActivity(PollingLogEntry{
 		Timestamp:    now,
@@ -178,15 +162,18 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		Method:       "POST",
 		SessionID:    req.SessionID,
 		PilotEnabled: &pilotEnabled,
-		QueryCount:   len(pendingQueries),
+		QueryCount:   queryCount,
 	})
 
 	for _, log := range req.ExtensionLogs {
 		if log.Timestamp.IsZero() {
 			log.Timestamp = now
 		}
+		log = c.redactExtensionLog(log)
 		c.elb.logs = append(c.elb.logs, log)
-		if len(c.elb.logs) > MaxExtensionLogs {
+		// Amortized eviction: only compact when buffer exceeds 1.5x capacity.
+		evictionThreshold := MaxExtensionLogs + MaxExtensionLogs/2
+		if len(c.elb.logs) > evictionThreshold {
 			kept := make([]ExtensionLog, MaxExtensionLogs)
 			copy(kept, c.elb.logs[len(c.elb.logs)-MaxExtensionLogs:])
 			c.elb.logs = kept
@@ -196,31 +183,87 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	if req.ExtensionVersion != "" {
 		c.ext.extensionVersion = req.ExtensionVersion
 	}
+}
 
-	c.mu.Unlock()
-
-	// Convert pending queries to sync commands
-	commands := make([]SyncCommand, len(pendingQueries))
-	for i, q := range pendingQueries {
-		paramsJSON, _ := json.Marshal(q.Params)
+// buildSyncCommands converts pending queries to sync commands.
+func buildSyncCommands(pending []queries.PendingQueryResponse) []SyncCommand {
+	commands := make([]SyncCommand, len(pending))
+	for i, q := range pending {
 		commands[i] = SyncCommand{
 			ID:            q.ID,
 			Type:          q.Type,
-			Params:        paramsJSON,
+			Params:        q.Params,
 			CorrelationID: q.CorrelationID,
 		}
 	}
+	return commands
+}
 
-	// Build response
+// HandleSync processes the unified sync endpoint.
+// POST: Receives settings, logs, command results; returns pending commands.
+func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
+	var req SyncRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+		return
+	}
+
+	now := time.Now()
+	clientID := r.Header.Get("X-Gasoline-Client")
+
+	state := c.updateSyncConnectionState(req, clientID, now)
+
+	if !state.wasConnected || state.isReconnect {
+		util.SafeGo(func() {
+			c.emitLifecycleEvent("extension_connected", map[string]any{
+				"session_id":         state.sessionID,
+				"is_reconnect":       state.isReconnect,
+				"disconnect_seconds": state.timeSinceLastPoll.Seconds(),
+			})
+		})
+	}
+
+	c.processSyncCommandResults(req.CommandResults, clientID)
+
+	if state.wasDisconnected {
+		c.qd.ExpireAllPendingQueries("extension_disconnected")
+		util.SafeGo(func() {
+			c.emitLifecycleEvent("extension_disconnected", map[string]any{
+				"session_id": state.sessionID,
+				"client_id":  clientID,
+			})
+		})
+	}
+
+	pendingQueries := c.GetPendingQueries()
+	c.updateSyncLogs(req, now, state.pilotEnabled, len(pendingQueries))
+
+	commands := buildSyncCommands(pendingQueries)
+
+	nextPollMs := 1000
+	if len(commands) > 0 {
+		nextPollMs = 200
+	}
+
 	resp := SyncResponse{
 		Ack:              true,
 		Commands:         commands,
-		NextPollMs:       1000, // Default 1 second, can be made dynamic later
+		NextPollMs:       nextPollMs,
 		ServerTime:       now.Format(time.RFC3339),
 		ServerVersion:    c.GetServerVersion(),
-		CaptureOverrides: map[string]string{}, // Empty for now, placeholder for AI capture control
+		CaptureOverrides: map[string]string{},
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }

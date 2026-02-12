@@ -48,7 +48,7 @@ func TestAPIContract_NetworkBodies_AcceptsPOST(t *testing.T) {
 	}
 }
 
-func TestAPIContract_NetworkBodies_AcceptsGET(t *testing.T) {
+func TestAPIContract_NetworkBodies_RejectsGET(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
@@ -57,8 +57,8 @@ func TestAPIContract_NetworkBodies_AcceptsGET(t *testing.T) {
 
 	c.HandleNetworkBodies(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("GET /network-bodies should return 200, got %d", w.Code)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("GET /network-bodies should return 405, got %d", w.Code)
 	}
 }
 
@@ -90,7 +90,7 @@ func TestAPIContract_EnhancedActions_AcceptsPOST(t *testing.T) {
 	}
 }
 
-func TestAPIContract_EnhancedActions_AcceptsGET(t *testing.T) {
+func TestAPIContract_EnhancedActions_RejectsGET(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
@@ -99,8 +99,8 @@ func TestAPIContract_EnhancedActions_AcceptsGET(t *testing.T) {
 
 	c.HandleEnhancedActions(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("GET /enhanced-actions should return 200, got %d", w.Code)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("GET /enhanced-actions should return 405, got %d", w.Code)
 	}
 }
 
@@ -132,7 +132,7 @@ func TestAPIContract_PerformanceSnapshots_AcceptsPOST(t *testing.T) {
 	}
 }
 
-func TestAPIContract_PerformanceSnapshots_AcceptsGET(t *testing.T) {
+func TestAPIContract_PerformanceSnapshots_RejectsGET(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
@@ -141,81 +141,41 @@ func TestAPIContract_PerformanceSnapshots_AcceptsGET(t *testing.T) {
 
 	c.HandlePerformanceSnapshots(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("GET /performance-snapshots should return 200, got %d", w.Code)
-	}
-}
-
-func TestAPIContract_ExtensionLogs_AcceptsPOST(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	payload := map[string]any{
-		"logs": []map[string]any{
-			{"level": "debug", "message": "test", "source": "background"},
-		},
-	}
-	body, _ := json.Marshal(payload)
-
-	req := httptest.NewRequest("POST", "/extension-logs", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	c.HandleExtensionLogs(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("POST /extension-logs should return 200, got %d", w.Code)
-	}
-}
-
-func TestAPIContract_ExtensionLogs_RejectsGET(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	req := httptest.NewRequest("GET", "/extension-logs", nil)
-	w := httptest.NewRecorder()
-
-	c.HandleExtensionLogs(w, req)
-
 	if w.Code != http.StatusMethodNotAllowed {
-		t.Errorf("GET /extension-logs should return 405, got %d", w.Code)
+		t.Errorf("GET /performance-snapshots should return 405, got %d", w.Code)
 	}
 }
 
-func TestAPIContract_ExtensionStatus_AcceptsPOST(t *testing.T) {
+func TestAPIContract_AddExtensionLogs(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
-	payload := map[string]any{
-		"type":             "status",
-		"tracking_enabled": true,
-		"tracked_tab_id":   123,
-		"tracked_tab_url":  "https://example.com",
-	}
-	body, _ := json.Marshal(payload)
+	c.AddExtensionLogs([]ExtensionLog{
+		{Level: "debug", Message: "test", Source: "background"},
+	})
 
-	req := httptest.NewRequest("POST", "/api/extension-status", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	c.HandleExtensionStatus(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("POST /api/extension-status should return 200, got %d", w.Code)
+	logs := c.GetExtensionLogs()
+	if len(logs) != 1 {
+		t.Errorf("AddExtensionLogs should store 1 log, got %d", len(logs))
 	}
 }
 
-func TestAPIContract_ExtensionStatus_AcceptsGET(t *testing.T) {
+func TestAPIContract_UpdateExtensionStatus(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
-	req := httptest.NewRequest("GET", "/api/extension-status", nil)
-	w := httptest.NewRecorder()
+	c.UpdateExtensionStatus(ExtensionStatus{
+		TrackingEnabled: true,
+		TrackedTabID:    123,
+		TrackedTabURL:   "https://example.com",
+	})
 
-	c.HandleExtensionStatus(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("GET /api/extension-status should return 200, got %d", w.Code)
+	enabled, tabID, _ := c.GetTrackingStatus()
+	if !enabled {
+		t.Errorf("UpdateExtensionStatus should set tracking_enabled=true")
+	}
+	if tabID != 123 {
+		t.Errorf("UpdateExtensionStatus should set tracked_tab_id=123, got %d", tabID)
 	}
 }
 
@@ -240,7 +200,7 @@ func TestAPIContract_NetworkWaterfall_AcceptsPOST(t *testing.T) {
 	}
 }
 
-func TestAPIContract_NetworkWaterfall_AcceptsGET(t *testing.T) {
+func TestAPIContract_NetworkWaterfall_RejectsGET(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
@@ -249,8 +209,8 @@ func TestAPIContract_NetworkWaterfall_AcceptsGET(t *testing.T) {
 
 	c.HandleNetworkWaterfall(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("GET /network-waterfall should return 200, got %d", w.Code)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("GET /network-waterfall should return 405, got %d", w.Code)
 	}
 }
 
@@ -276,7 +236,7 @@ func TestAPIContract_WebSocketEvents_AcceptsPOST(t *testing.T) {
 	}
 }
 
-func TestAPIContract_WebSocketEvents_AcceptsGET(t *testing.T) {
+func TestAPIContract_WebSocketEvents_RejectsGET(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
@@ -285,16 +245,16 @@ func TestAPIContract_WebSocketEvents_AcceptsGET(t *testing.T) {
 
 	c.HandleWebSocketEvents(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("GET /websocket-events should return 200, got %d", w.Code)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("GET /websocket-events should return 405, got %d", w.Code)
 	}
 }
 
 // ============================================
-// Contract: Query Result Endpoints (Extension → Server)
+// Contract: Unified Query Result Endpoint (Extension → Server)
 // ============================================
 
-func TestAPIContract_DOMResult_AcceptsPOST(t *testing.T) {
+func TestAPIContract_QueryResult_AcceptsPOST(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
@@ -304,158 +264,51 @@ func TestAPIContract_DOMResult_AcceptsPOST(t *testing.T) {
 	}
 	body, _ := json.Marshal(payload)
 
-	req := httptest.NewRequest("POST", "/dom-result", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/query-result", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	c.HandleDOMResult(w, req)
+	c.HandleQueryResult(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("POST /dom-result should return 200, got %d", w.Code)
+		t.Errorf("POST /query-result should return 200, got %d", w.Code)
 	}
 }
 
-func TestAPIContract_DOMResult_RejectsGET(t *testing.T) {
+func TestAPIContract_QueryResult_RejectsGET(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
-	req := httptest.NewRequest("GET", "/dom-result", nil)
+	req := httptest.NewRequest("GET", "/query-result", nil)
 	w := httptest.NewRecorder()
 
-	c.HandleDOMResult(w, req)
+	c.HandleQueryResult(w, req)
 
 	if w.Code != http.StatusMethodNotAllowed {
-		t.Errorf("GET /dom-result should return 405, got %d", w.Code)
+		t.Errorf("GET /query-result should return 405, got %d", w.Code)
 	}
 }
 
-func TestAPIContract_A11yResult_AcceptsPOST(t *testing.T) {
+func TestAPIContract_QueryResult_WithCorrelationID(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
 	payload := map[string]any{
-		"id":     "q-123",
-		"result": map[string]any{"violations": []any{}},
+		"id":             "q-123",
+		"correlation_id": "corr-456",
+		"status":         "complete",
+		"result":         map[string]any{"success": true},
 	}
 	body, _ := json.Marshal(payload)
 
-	req := httptest.NewRequest("POST", "/a11y-result", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/query-result", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	c.HandleA11yResult(w, req)
+	c.HandleQueryResult(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("POST /a11y-result should return 200, got %d", w.Code)
-	}
-}
-
-func TestAPIContract_ExecuteResult_AcceptsPOST(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	payload := map[string]any{
-		"id":     "q-123",
-		"result": map[string]any{"success": true},
-	}
-	body, _ := json.Marshal(payload)
-
-	req := httptest.NewRequest("POST", "/execute-result", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	c.HandleExecuteResult(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("POST /execute-result should return 200, got %d", w.Code)
-	}
-}
-
-func TestAPIContract_HighlightResult_AcceptsPOST(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	payload := map[string]any{
-		"id":     "q-123",
-		"result": map[string]any{"highlighted": 3},
-	}
-	body, _ := json.Marshal(payload)
-
-	req := httptest.NewRequest("POST", "/highlight-result", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	c.HandleHighlightResult(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("POST /highlight-result should return 200, got %d", w.Code)
-	}
-}
-
-func TestAPIContract_StateResult_AcceptsPOST(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	payload := map[string]any{
-		"id":     "q-123",
-		"result": map[string]any{"success": true},
-	}
-	body, _ := json.Marshal(payload)
-
-	req := httptest.NewRequest("POST", "/state-result", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	c.HandleStateResult(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("POST /state-result should return 200, got %d", w.Code)
-	}
-}
-
-// ============================================
-// Contract: GET-only Endpoints (Extension ← Server)
-// ============================================
-
-func TestAPIContract_PendingQueries_GETOnly(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	// GET should work
-	req := httptest.NewRequest("GET", "/pending-queries", nil)
-	w := httptest.NewRecorder()
-	c.HandlePendingQueries(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("GET /pending-queries should return 200, got %d", w.Code)
-	}
-
-	// POST should fail
-	req = httptest.NewRequest("POST", "/pending-queries", nil)
-	w = httptest.NewRecorder()
-	c.HandlePendingQueries(w, req)
-	if w.Code != http.StatusMethodNotAllowed {
-		t.Errorf("POST /pending-queries should return 405, got %d", w.Code)
-	}
-}
-
-func TestAPIContract_PilotStatus_GETOnly(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	// GET should work
-	req := httptest.NewRequest("GET", "/pilot-status", nil)
-	w := httptest.NewRecorder()
-	c.HandlePilotStatus(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("GET /pilot-status should return 200, got %d", w.Code)
-	}
-
-	// POST should fail
-	req = httptest.NewRequest("POST", "/pilot-status", nil)
-	w = httptest.NewRecorder()
-	c.HandlePilotStatus(w, req)
-	if w.Code != http.StatusMethodNotAllowed {
-		t.Errorf("POST /pilot-status should return 405, got %d", w.Code)
+		t.Errorf("POST /query-result with correlation_id should return 200, got %d", w.Code)
 	}
 }
 
@@ -463,7 +316,7 @@ func TestAPIContract_PilotStatus_GETOnly(t *testing.T) {
 // Contract: Data Flow Verification
 // ============================================
 
-func TestAPIContract_EnhancedActions_POSTThenGET(t *testing.T) {
+func TestAPIContract_EnhancedActions_POSTThenRead(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
@@ -484,21 +337,14 @@ func TestAPIContract_EnhancedActions_POSTThenGET(t *testing.T) {
 		t.Fatalf("POST failed with %d", w.Code)
 	}
 
-	// GET should return them
-	req = httptest.NewRequest("GET", "/enhanced-actions", nil)
-	w = httptest.NewRecorder()
-	c.HandleEnhancedActions(w, req)
-
-	var resp map[string]any
-	json.Unmarshal(w.Body.Bytes(), &resp)
-
-	count, ok := resp["count"].(float64)
-	if !ok || count != 2 {
-		t.Errorf("Expected 2 actions after POST, got %v", resp["count"])
+	// Read back via getter
+	actions := c.GetAllEnhancedActions()
+	if len(actions) != 2 {
+		t.Errorf("Expected 2 actions after POST, got %d", len(actions))
 	}
 }
 
-func TestAPIContract_PerformanceSnapshots_POSTThenGET(t *testing.T) {
+func TestAPIContract_PerformanceSnapshots_POSTThenRead(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
@@ -519,21 +365,14 @@ func TestAPIContract_PerformanceSnapshots_POSTThenGET(t *testing.T) {
 		t.Fatalf("POST failed with %d", w.Code)
 	}
 
-	// GET should return them
-	req = httptest.NewRequest("GET", "/performance-snapshots", nil)
-	w = httptest.NewRecorder()
-	c.HandlePerformanceSnapshots(w, req)
-
-	var resp map[string]any
-	json.Unmarshal(w.Body.Bytes(), &resp)
-
-	count, ok := resp["count"].(float64)
-	if !ok || count != 2 {
-		t.Errorf("Expected 2 snapshots after POST, got %v", resp["count"])
+	// Read back via getter
+	snapshots := c.GetPerformanceSnapshots()
+	if len(snapshots) != 2 {
+		t.Errorf("Expected 2 snapshots after POST, got %d", len(snapshots))
 	}
 }
 
-func TestAPIContract_NetworkBodies_POSTThenGET(t *testing.T) {
+func TestAPIContract_NetworkBodies_POSTThenRead(t *testing.T) {
 	t.Parallel()
 	c := NewCapture()
 
@@ -553,16 +392,9 @@ func TestAPIContract_NetworkBodies_POSTThenGET(t *testing.T) {
 		t.Fatalf("POST failed with %d", w.Code)
 	}
 
-	// GET should return them
-	req = httptest.NewRequest("GET", "/network-bodies", nil)
-	w = httptest.NewRecorder()
-	c.HandleNetworkBodies(w, req)
-
-	var resp map[string]any
-	json.Unmarshal(w.Body.Bytes(), &resp)
-
-	count, ok := resp["count"].(float64)
-	if !ok || count != 1 {
-		t.Errorf("Expected 1 body after POST, got %v", resp["count"])
+	// Read back via getter
+	bodies := c.GetNetworkBodies()
+	if len(bodies) != 1 {
+		t.Errorf("Expected 1 body after POST, got %d", len(bodies))
 	}
 }

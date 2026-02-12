@@ -10,6 +10,6 @@ export const DebugCategory = {
     LIFECYCLE: 'lifecycle',
     SETTINGS: 'settings',
     SOURCEMAP: 'sourcemap',
-    QUERY: 'query',
+    QUERY: 'query'
 };
 //# sourceMappingURL=debug.js.map

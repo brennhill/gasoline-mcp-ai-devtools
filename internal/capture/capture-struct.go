@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/performance"
+	"github.com/dev-console/dev-console/internal/redaction"
 )
 
 // Capture manages all buffered browser state: WebSocket events, network bodies,
@@ -16,7 +17,7 @@ import (
 // All fields are protected by mu (sync.RWMutex) unless noted otherwise.
 // Lock hierarchy: Capture.mu is position 3 (after ClientRegistry, ClientState).
 // Release locks before calling external callbacks. Use RLock() for read-only access.
-// Sub-struct locks: a11y, perf, session, mem use parent mu. Only schemaStore and cspGen have own mutexes.
+// Sub-struct locks: a11y, perf, session, mem use parent mu.
 //
 // Ring buffers (wsEvents, networkBodies, enhancedActions) maintain three parallel invariants:
 // 1. Parallel timestamp slices kept in perfect sync (wsAddedAt, networkAddedAt, actionAddedAt)
@@ -97,6 +98,9 @@ type Capture struct {
 
 	debug DebugLogger // Polling activity + HTTP debug circular buffers. Has own sync.Mutex — independent of Capture.mu.
 
+	// Redaction engine for scrubbing sensitive values from extension debug logs.
+	logRedactor *redaction.RedactionEngine
+
 	// Recording Management — delegates to RecordingManager sub-struct.
 	rec *RecordingManager // Recording lifecycle, playback, and log-diff. Has own sync.Mutex — independent of Capture.mu.
 
@@ -104,11 +108,9 @@ type Capture struct {
 	// Composed Sub-Structures
 	// ============================================
 
-	a11y        A11yCache        // Accessibility audit cache. Protected by parent mu (no separate lock). Accessed via getA11yCacheEntry/setA11yCacheEntry.
-	perf        PerformanceStore // Performance snapshots and baselines. Protected by parent mu (no separate lock).
-	session     SessionTracker   // Session-level performance aggregation. Protected by parent mu (no separate lock).
-	schemaStore SchemaStore      // API schema detection and tracking. HAS OWN LOCK (api_schema.go:199). Accessed by observer goroutines outside mu.
-	cspGen      CSPGenerator     // CSP policy generation. HAS OWN LOCK (csp.go:36). Accessed by observer goroutines outside mu.
+	a11y    A11yCache        // Accessibility audit cache. Protected by parent mu (no separate lock). Accessed via getA11yCacheEntry/setA11yCacheEntry.
+	perf    PerformanceStore // Performance snapshots and baselines. Protected by parent mu (no separate lock).
+	session SessionTracker   // Session-level performance aggregation. Protected by parent mu (no separate lock).
 
 	// ============================================
 	// Multi-Client Support
@@ -167,11 +169,13 @@ func NewCapture() *Capture {
 		},
 		debug: NewDebugLogger(),
 		rec:   NewRecordingManager(),
+
+		logRedactor: redaction.NewRedactionEngine(""),
 	}
 	c.qd = NewQueryDispatcher()
 	c.circuit = NewCircuitBreaker(c.emitLifecycleEvent)
 
-	// Note: schemaStore, clientRegistry, cspGen are initialized by capture.New() in capture package
+	// Note: clientRegistry is initialized by capture.New() in capture package
 	// to avoid circular import (those packages import capture for NetworkBody, WebSocketEvent, etc.)
 	return c
 }

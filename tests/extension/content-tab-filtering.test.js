@@ -28,7 +28,7 @@ describe('Content Script Tab Filtering', () => {
 
   // Simulate the content.js filtering logic
   function createContentScriptSimulator(trackedTabId, thisTabId) {
-    isTrackedTab = (thisTabId === trackedTabId)
+    isTrackedTab = thisTabId === trackedTabId
     currentTabId = thisTabId
     contextValid = true
     messagesSent = []
@@ -39,7 +39,7 @@ describe('Content Script Tab Filtering', () => {
       GASOLINE_WS: 'ws_event',
       GASOLINE_NETWORK_BODY: 'network_body',
       GASOLINE_ENHANCED_ACTION: 'enhanced_action',
-      GASOLINE_PERFORMANCE_SNAPSHOT: 'performance_snapshot',
+      GASOLINE_PERFORMANCE_SNAPSHOT: 'performance_snapshot'
     }
 
     function safeSendMessage(msg) {
@@ -49,13 +49,13 @@ describe('Content Script Tab Filtering', () => {
 
     // The message handler with tab filtering
     function handleMessage(event) {
-      if (event.source !== globalThis.window) return
+      if (event.source !== globalThis.window) return undefined
 
       const { type: messageType, payload } = event.data || {}
 
       // Tab isolation filter: drop messages from untracked tabs
       if (!isTrackedTab) {
-        return // Drop message
+        return undefined // Drop message
       }
 
       // Forward messages with tabId attached
@@ -63,10 +63,11 @@ describe('Content Script Tab Filtering', () => {
       if (mapped && payload && typeof payload === 'object') {
         safeSendMessage({ type: mapped, payload, tabId: currentTabId })
       }
+      return undefined
     }
 
     function updateTrackingStatus(newTrackedTabId) {
-      isTrackedTab = (currentTabId === newTrackedTabId)
+      isTrackedTab = currentTabId === newTrackedTabId
     }
 
     return { handleMessage, updateTrackingStatus, MESSAGE_MAP }
@@ -80,7 +81,7 @@ describe('Content Script Tab Filtering', () => {
     globalThis.window = {
       addEventListener: mock.fn(),
       postMessage: mock.fn(),
-      location: { origin: 'http://localhost:3000', href: 'http://localhost:3000/' },
+      location: { origin: 'http://localhost:3000', href: 'http://localhost:3000/' }
     }
   })
 
@@ -93,7 +94,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'should be dropped' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'should be dropped' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages from untracked tab should be dropped')
@@ -104,7 +105,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'should be forwarded' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'should be forwarded' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Messages from tracked tab should be forwarded')
@@ -119,7 +120,7 @@ describe('Content Script Tab Filtering', () => {
       { type: 'GASOLINE_WS', payload: { event: 'open', url: 'ws://localhost' } },
       { type: 'GASOLINE_NETWORK_BODY', payload: { url: '/api', method: 'GET', status: 200 } },
       { type: 'GASOLINE_ENHANCED_ACTION', payload: { type: 'click', url: '/page' } },
-      { type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: { lcp: 100 } },
+      { type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: { lcp: 100 } }
     ]
 
     for (const msg of messageTypes) {
@@ -137,7 +138,7 @@ describe('Content Script Tab Filtering', () => {
       { type: 'GASOLINE_WS', payload: { event: 'open', url: 'ws://localhost' } },
       { type: 'GASOLINE_NETWORK_BODY', payload: { url: '/api', method: 'GET', status: 200 } },
       { type: 'GASOLINE_ENHANCED_ACTION', payload: { type: 'click', url: '/page' } },
-      { type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: { lcp: 100 } },
+      { type: 'GASOLINE_PERFORMANCE_SNAPSHOT', payload: { lcp: 100 } }
     ]
 
     for (const msg of messageTypes) {
@@ -152,7 +153,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'no tracking' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'no tracking' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages should be dropped when no tab is tracked')
@@ -163,7 +164,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'no tracking' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'no tracking' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages should be dropped when trackedTabId is null')
@@ -178,7 +179,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'test' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'test' } }
     })
 
     assert.strictEqual(messagesSent.length, 1)
@@ -192,7 +193,7 @@ describe('Content Script Tab Filtering', () => {
     const messageTypes = [
       { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'test' } },
       { type: 'GASOLINE_NETWORK_BODY', payload: { url: '/api', method: 'GET', status: 200 } },
-      { type: 'GASOLINE_WS', payload: { event: 'open', url: 'ws://localhost' } },
+      { type: 'GASOLINE_WS', payload: { event: 'open', url: 'ws://localhost' } }
     ]
 
     for (const msg of messageTypes) {
@@ -213,7 +214,7 @@ describe('Content Script Tab Filtering', () => {
 
     sim.handleMessage({
       source: {}, // Not window
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'injected' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'injected' } }
     })
 
     assert.strictEqual(messagesSent.length, 0, 'Messages from non-window sources should be rejected')
@@ -232,7 +233,7 @@ describe('Content Script Tab Filtering', () => {
     // Now should forward messages
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'now tracked' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'now tracked' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Should forward after tracking status changes to this tab')
@@ -244,7 +245,7 @@ describe('Content Script Tab Filtering', () => {
     // Forward one message while tracked
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'info', message: 'tracked' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'info', message: 'tracked' } }
     })
     assert.strictEqual(messagesSent.length, 1)
 
@@ -254,7 +255,7 @@ describe('Content Script Tab Filtering', () => {
     // This message should be dropped
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'should drop' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'should drop' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Should stop forwarding when tracking switches away')
@@ -266,7 +267,7 @@ describe('Content Script Tab Filtering', () => {
     // Forward while tracked
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'info', message: 'tracked' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'info', message: 'tracked' } }
     })
     assert.strictEqual(messagesSent.length, 1)
 
@@ -276,7 +277,7 @@ describe('Content Script Tab Filtering', () => {
     // Should be dropped
     sim.handleMessage({
       source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'no tracking' } },
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'no tracking' } }
     })
 
     assert.strictEqual(messagesSent.length, 1, 'Should stop forwarding when tracking disabled')
@@ -291,14 +292,7 @@ describe('Internal URL Blocking', () => {
   // isInternalUrl function that will be implemented in popup.js
   function isInternalUrl(url) {
     if (!url) return true
-    const internalPrefixes = [
-      'chrome://',
-      'chrome-extension://',
-      'about:',
-      'edge://',
-      'brave://',
-      'devtools://',
-    ]
+    const internalPrefixes = ['chrome://', 'chrome-extension://', 'about:', 'edge://', 'brave://', 'devtools://']
     return internalPrefixes.some((prefix) => url.startsWith(prefix))
   }
 
@@ -364,16 +358,16 @@ describe('Browser Restart Tracking State', () => {
         onStartup: {
           addListener: mock.fn((cb) => {
             startupCallback = cb
-          }),
-        },
+          })
+        }
       },
       storage: {
         local: {
           remove: mock.fn(() => {
             return Promise.resolve()
-          }),
-        },
-      },
+          })
+        }
+      }
     }
 
     // Register the startup listener (as background.js would)
@@ -388,7 +382,7 @@ describe('Browser Restart Tracking State', () => {
     // Verify tracking state is cleared
     assert.ok(
       mockChromeWithStartup.storage.local.remove.mock.calls.length > 0,
-      'Should call storage.local.remove on browser startup',
+      'Should call storage.local.remove on browser startup'
     )
     const removedArg = mockChromeWithStartup.storage.local.remove.mock.calls[0].arguments[0]
     assert.ok(removedArg.includes('trackedTabId'), 'Should remove trackedTabId')
@@ -410,7 +404,7 @@ describe('Status Ping with Tracking State', () => {
       tracked_tab_id: storage.trackedTabId || null,
       tracked_tab_url: storage.trackedTabUrl || null,
       extension_connected: true,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     }
 
     assert.strictEqual(statusMessage.tracking_enabled, false)
@@ -429,7 +423,7 @@ describe('Status Ping with Tracking State', () => {
       tracked_tab_id: storage.trackedTabId || null,
       tracked_tab_url: storage.trackedTabUrl || null,
       extension_connected: true,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     }
 
     assert.strictEqual(statusMessage.tracking_enabled, true)
@@ -444,7 +438,7 @@ describe('Status Ping with Tracking State', () => {
       type: 'status',
       tracking_enabled: !!storage.trackedTabId,
       tracked_tab_id: storage.trackedTabId || null,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     }
 
     // Verify it's a valid ISO string
@@ -464,16 +458,16 @@ describe('Tracked Tab Closed', () => {
         get: mock.fn((tabId) => {
           // Simulate tab not found (closed)
           throw new Error('No tab with id: ' + tabId)
-        }),
+        })
       },
       storage: {
         local: {
           remove: mock.fn(() => {
             return Promise.resolve()
           }),
-          get: mock.fn(() => Promise.resolve({ trackedTabId: 123, trackedTabUrl: 'https://example.com' })),
-        },
-      },
+          get: mock.fn(() => Promise.resolve({ trackedTabId: 123, trackedTabUrl: 'https://example.com' }))
+        }
+      }
     }
 
     // Simulate what background.js does when trying to access a closed tab
@@ -489,7 +483,7 @@ describe('Tracked Tab Closed', () => {
 
     assert.ok(
       mockChromeForTabClose.storage.local.remove.mock.calls.length > 0,
-      'Should remove tracking when tab is closed',
+      'Should remove tracking when tab is closed'
     )
   })
 })
@@ -508,7 +502,7 @@ describe('Popup Track Button State', () => {
       style: {},
       disabled: false,
       title: '',
-      addEventListener: mock.fn(),
+      addEventListener: mock.fn()
     }
   }
 
@@ -522,7 +516,7 @@ describe('Popup Track Button State', () => {
         return elements[id]
       }),
       addEventListener: mock.fn(),
-      readyState: 'complete',
+      readyState: 'complete'
     }
     globalThis.document = mockDocument
   })
@@ -563,9 +557,8 @@ describe('Popup Track Button State', () => {
 
     // Simulate popup.js behavior on internal page
     const tabUrl = 'chrome://extensions'
-    const isInternal = tabUrl.startsWith('chrome://') ||
-      tabUrl.startsWith('chrome-extension://') ||
-      tabUrl.startsWith('about:')
+    const isInternal =
+      tabUrl.startsWith('chrome://') || tabUrl.startsWith('chrome-extension://') || tabUrl.startsWith('about:')
 
     if (isInternal) {
       btn.disabled = true
@@ -605,12 +598,12 @@ describe('Multi-Tab Isolation Scenario', () => {
 
     const MESSAGE_MAP = {
       GASOLINE_LOG: 'log',
-      GASOLINE_NETWORK_BODY: 'network_body',
+      GASOLINE_NETWORK_BODY: 'network_body'
     }
 
     // Simulate 3 tabs
     function processMessage(thisTabId, messageType, payload) {
-      const isTracked = (thisTabId === trackedTabId)
+      const isTracked = thisTabId === trackedTabId
       if (!isTracked) return // Dropped
 
       const mapped = MESSAGE_MAP[messageType]
@@ -650,7 +643,7 @@ describe('Multi-Tab Isolation Scenario', () => {
     let trackedTabId = 1
 
     function processMessage(thisTabId, messageType, payload) {
-      const isTracked = (thisTabId === trackedTabId)
+      const isTracked = thisTabId === trackedTabId
       if (!isTracked) return
 
       const mapped = MESSAGE_MAP[messageType]
@@ -698,12 +691,12 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
           return { tabId: expectedTabId }
         }
         return {}
-      },
+      }
     }
     const mockStorage = {
       local: {
-        get: async () => ({ trackedTabId: expectedTabId }),
-      },
+        get: async () => ({ trackedTabId: expectedTabId })
+      }
     }
 
     // Simulate the fixed updateTrackingStatus
@@ -712,7 +705,7 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
         const storage = await mockStorage.local.get(['trackedTabId'])
         const response = await mockChromeRuntime.sendMessage({ type: 'GET_TAB_ID' })
         currentTabId = response?.tabId
-        isTrackedTab = (currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId)
+        isTrackedTab = currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId
       } catch {
         isTrackedTab = false
       }
@@ -731,15 +724,15 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
     const mockChromeRuntime = {
       sendMessage: async (msg) => {
         if (msg.type === 'GET_TAB_ID') {
-          return { tabId: 99 }  // This tab
+          return { tabId: 99 } // This tab
         }
         return {}
-      },
+      }
     }
     const mockStorage = {
       local: {
-        get: async () => ({ trackedTabId: 42 }),  // Different tab tracked
-      },
+        get: async () => ({ trackedTabId: 42 }) // Different tab tracked
+      }
     }
 
     async function updateTrackingStatus() {
@@ -747,7 +740,7 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
         const storage = await mockStorage.local.get(['trackedTabId'])
         const response = await mockChromeRuntime.sendMessage({ type: 'GET_TAB_ID' })
         currentTabId = response?.tabId
-        isTrackedTab = (currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId)
+        isTrackedTab = currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId
       } catch {
         isTrackedTab = false
       }
@@ -760,18 +753,18 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
   })
 
   test('should set isTrackedTab=false when sendMessage fails', async () => {
-    let isTrackedTab = true  // Start as true to verify it gets set to false
+    let isTrackedTab = true // Start as true to verify it gets set to false
     let currentTabId = null
 
     const mockChromeRuntime = {
       sendMessage: async () => {
         throw new Error('Extension context invalidated')
-      },
+      }
     }
     const mockStorage = {
       local: {
-        get: async () => ({ trackedTabId: 42 }),
-      },
+        get: async () => ({ trackedTabId: 42 })
+      }
     }
 
     async function updateTrackingStatus() {
@@ -779,7 +772,7 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
         const storage = await mockStorage.local.get(['trackedTabId'])
         const response = await mockChromeRuntime.sendMessage({ type: 'GET_TAB_ID' })
         currentTabId = response?.tabId
-        isTrackedTab = (currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId)
+        isTrackedTab = currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId
       } catch {
         isTrackedTab = false
       }
@@ -795,12 +788,12 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
     let currentTabId = null
 
     const mockChromeRuntime = {
-      sendMessage: async () => ({})  // No tabId in response
+      sendMessage: async () => ({}) // No tabId in response
     }
     const mockStorage = {
       local: {
-        get: async () => ({ trackedTabId: 42 }),
-      },
+        get: async () => ({ trackedTabId: 42 })
+      }
     }
 
     async function updateTrackingStatus() {
@@ -808,7 +801,7 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
         const storage = await mockStorage.local.get(['trackedTabId'])
         const response = await mockChromeRuntime.sendMessage({ type: 'GET_TAB_ID' })
         currentTabId = response?.tabId
-        isTrackedTab = (currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId)
+        isTrackedTab = currentTabId !== null && currentTabId !== undefined && currentTabId === storage.trackedTabId
       } catch {
         isTrackedTab = false
       }
@@ -842,14 +835,14 @@ describe('Message Payload Integrity with Tab ID', () => {
       status: 200,
       contentType: 'application/json',
       responseBody: '{"users":[]}',
-      duration: 150,
+      duration: 150
     }
 
     // Simulate forwarding with tabId
     const forwarded = {
       type: 'network_body',
       payload: originalPayload,
-      tabId: tabId,
+      tabId: tabId
     }
 
     // Verify payload is preserved

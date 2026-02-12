@@ -30,7 +30,7 @@ The enriched DOM is then passed through a **Smart Pruning Filter** that removes 
 - `off_screen: boolean` — Falls outside viewport bounds
 - `covered_by: {selector, element_id, z_index}` — If hit-test reveals occlusion
 
-**Algorithm:**
+#### Algorithm:
 1. For each interactive element (buttons, inputs, links, focusable divs)
 2. Get computed styles via `getComputedStyle(element)`
 3. Check visibility flags (display, visibility, opacity, pointer-events)
@@ -38,7 +38,7 @@ The enriched DOM is then passed through a **Smart Pruning Filter** that removes 
 5. Test occlusion via hit-test: call `elementFromPoint(centerX, centerY)` and check if it returns the target element
 6. If hit-test returns a different element, that element is "covering"
 
-**Edge cases:**
+#### Edge cases:
 - Elements with `visibility: hidden` vs `display: none` (both treated as not visible)
 - Elements with `opacity: 0` (treated as not visible, but technically clickable)
 - Elements covered by fixed/sticky overlays (modal backdrops, floating menus)
@@ -48,14 +48,14 @@ The enriched DOM is then passed through a **Smart Pruning Filter** that removes 
 ### 2. Semantic Identifier Generator
 **Purpose:** Create unique, stable IDs for every interactive element at runtime.
 
-**Approach:**
+#### Approach:
 - Scan the DOM for interactive elements (role="button", `<button>`, `<a>`, `<input>`, focusable=true)
 - For each element, generate a semantic ID based on its role + content
 - Format: `data-gasoline-id="[type]-[hash]"` where:
   - `type` = element type (btn, link, input, checkbox, radio, etc.)
   - `hash` = 4-char alphanumeric hash of a stable identifier (text content, aria-label, aria-labelledby, name attribute)
 
-**Algorithm:**
+#### Algorithm:
 1. Identify element type from `role`, tag name, or semantic meaning
 2. Extract stable label from: text content, `aria-label`, `aria-labelledby`, `title`, `placeholder`, `name`, `id`
 3. Normalize label: lowercase, trim whitespace, remove punctuation
@@ -63,12 +63,12 @@ The enriched DOM is then passed through a **Smart Pruning Filter** that removes 
 5. Inject `data-gasoline-id` attribute into the element
 6. Store mapping in memory for later retrieval
 
-**Uniqueness guarantees:**
+#### Uniqueness guarantees:
 - If two elements have identical content, hash collision occurs; in this case, append a counter (-1, -2, etc.)
 - Deterministic: same page state produces same IDs (important for testing)
 - Stable across page reloads: based on semantic content, not DOM position
 
-**Durability:**
+#### Durability:
 - IDs are stored in a WeakMap keyed by DOM element reference
 - When element is removed from DOM, entry is automatically garbage collected
 - IDs are not persisted to localStorage (session-scoped only)
@@ -76,19 +76,19 @@ The enriched DOM is then passed through a **Smart Pruning Filter** that removes 
 ### 3. Component Mapper
 **Purpose:** Link DOM nodes back to source code when using modern frameworks.
 
-**Approach:**
+#### Approach:
 - **React:** Access React DevTools hook via `__REACT_DEVTOOLS_GLOBAL_HOOK__`
 - **Vue:** Access Vue DevTools hook via `__VUE__` and `__VUE_DEVTOOLS_GLOBAL_HOOK__`
 - **Other frameworks:** Fall back to nearest semantic element (id, class, role, label)
 
-**Algorithm:**
+#### Algorithm:
 1. Check if React/Vue DevTools hooks are available
 2. If React: walk the Fiber tree to find the component that rendered this DOM node
 3. If Vue: use `__VUE_COMPONENT__` property on instances to identify component
 4. Extract component name + relevant props (for display only; don't send prop values to context window for privacy)
 5. If no framework hooks available, use semantic fallback (nearest id, class selector, role)
 
-**Privacy consideration:**
+#### Privacy consideration:
 - Component names are safe to share (SPA structure is visible in source anyway)
 - Props may contain sensitive data; include names only, not values
 - Store only component name + file path, no user/business data
@@ -96,7 +96,7 @@ The enriched DOM is then passed through a **Smart Pruning Filter** that removes 
 ### 4. Smart DOM Pruning Filter
 **Purpose:** Remove non-interactive noise to fit DOM in <25% of context window.
 
-**Approach:**
+#### Approach:
 - Traverse DOM tree
 - Keep only elements that are:
   - Interactive (buttons, inputs, links, focusable, or labeled)
@@ -108,7 +108,7 @@ The enriched DOM is then passed through a **Smart Pruning Filter** that removes 
   - Script and style tags
   - Comments and empty nodes
 
-**Algorithm:**
+#### Algorithm:
 1. Build pruned DOM tree by filtering the full DOM
 2. For each node:
    - If interactive: keep with all metadata
@@ -118,7 +118,7 @@ The enriched DOM is then passed through a **Smart Pruning Filter** that removes 
 3. Collapse deep nesting: if a container only has one meaningful child, flatten one level
 4. Output pruned tree with all annotations (gasoline_id, visibility, bounding_box, etc.)
 
-**Size reduction targets:**
+#### Size reduction targets:
 - Typical unpruned DOM: 500+ lines of HTML
 - Pruned interactive DOM: 50-100 lines
 - Tokens saved: ~3-5x reduction in context window usage

@@ -100,12 +100,12 @@ feature: State Time-Travel
 
 ### Scenario 1: Page Reload Crash Recovery
 
-**Setup:**
+#### Setup:
 1. Create a simple form with email and password fields
 2. Form submit handler has bug: calls `form.submit()` instead of preventing default
 3. Submit goes to server (or dummy endpoint)
 
-**Steps:**
+#### Steps:
 1. [ ] Load page with Gasoline attached
 2. [ ] Enter email in form field
 3. [ ] Click Submit button
@@ -113,7 +113,7 @@ feature: State Time-Travel
 5. [ ] After reload, open Gasoline DevTools → History tab
 6. [ ] Call `observe({what: 'history'})`
 
-**Expected Result:**
+#### Expected Result:
 - Timeline shows events from before the reload:
   ```
   [0:00] Page load
@@ -126,25 +126,25 @@ feature: State Time-Travel
 - Events are not cleared by reload
 - AI can see: "User submitted form → page reloaded"
 
-**Verification:**
+#### Verification:
 - Buffer recovered correctly
 - Events ordered chronologically
 - No events lost due to reload
 
 ### Scenario 2: Transient Loading Spinner
 
-**Setup:**
+#### Setup:
 1. Create a page with a button that triggers a 3-second API call
 2. Show a spinner during the load
 3. Hide spinner when response arrives
 
-**Steps:**
+#### Steps:
 1. [ ] Load page
 2. [ ] Click the button
 3. [ ] Observe the spinner appear and disappear (3 seconds)
 4. [ ] Immediately after (before spinner is gone), call `observe({what: 'history'})`
 
-**Expected Result:**
+#### Expected Result:
 - Timeline includes:
   ```
   [0:01] Click button
@@ -156,25 +156,25 @@ feature: State Time-Travel
 - Spinner events recorded even though they were transient
 - Timeline shows exact duration spinner was visible (3 seconds)
 
-**Verification:**
+#### Verification:
 - Transient UI elements are not missed
 - Timing shows precisely when spinner appeared and disappeared
 - AI can diagnose: "Load takes 3 seconds; consider optimizing"
 
 ### Scenario 3: Causal Error Diagnosis
 
-**Setup:**
+#### Setup:
 1. Create a form that makes an API call when submitted
 2. API endpoint returns 401 if user not authenticated
 3. Error handler logs error and shows error modal
 
-**Steps:**
+#### Steps:
 1. [ ] Load page without authentication token
 2. [ ] Fill form and click Submit
 3. [ ] Wait for error modal to appear
 4. [ ] Call `observe({what: 'history'})`
 
-**Expected Result:**
+#### Expected Result:
 - Timeline shows causal chain:
   ```
   [0:02] Click Submit button
@@ -186,74 +186,74 @@ feature: State Time-Travel
 - Events are linked: response → error → DOM change
 - Result summary shows: "1 error, 1 network failure"
 
-**Verification:**
+#### Verification:
 - Causal chain is clear and correct
 - Root cause immediately obvious: 401 response
 
 ### Scenario 4: Multiple Concurrent Events
 
-**Setup:**
+#### Setup:
 1. Create a page with multiple buttons
 2. Each button triggers different async operations (network, DOM, setTimeout)
 
-**Steps:**
+#### Steps:
 1. [ ] Load page
 2. [ ] Rapidly click 5 different buttons (within 1 second)
 3. [ ] Wait for all operations to complete (5+ seconds total)
 4. [ ] Call `observe({what: 'history'})`
 
-**Expected Result:**
+#### Expected Result:
 - All 5 actions captured with separate timelines
 - Each action shows its own result summary
 - No events lost despite rapid clicking
 - Events ordered chronologically
 
-**Verification:**
+#### Verification:
 - Concurrent event handling works correctly
 - All events present in timeline
 - Order is preserved
 
 ### Scenario 5: Buffer Persistence Across Navigation
 
-**Setup:**
+#### Setup:
 1. Load a single-page app (React, Vue) with client-side routing
 
-**Steps:**
+#### Steps:
 1. [ ] Load page A
 2. [ ] Click on events (click, input, network)
 3. [ ] Navigate to page B (client-side router, no full reload)
 4. [ ] Perform more events on page B
 5. [ ] Call `observe({what: 'history'})`
 
-**Expected Result:**
+#### Expected Result:
 - Timeline includes events from both page A and page B
 - Events ordered chronologically across navigation
 - No "page reload" event (because it's client-side routing)
 - Buffer shows continuous timeline
 
-**Verification:**
+#### Verification:
 - Buffer survives client-side navigation
 - Events from multiple "pages" preserved
 
 ### Scenario 6: Real-World Debugging
 
-**Setup:**
+#### Setup:
 1. Use a real web app (e.g., Todoist, GitHub, or your own)
 2. Reproduce a bug (e.g., task doesn't save, button doesn't respond)
 
-**Steps:**
+#### Steps:
 1. [ ] Load page with Gasoline
 2. [ ] Perform actions that trigger the bug (click, input, etc.)
 3. [ ] Open Gasoline DevTools → History tab
 4. [ ] Review the timeline
 
-**Expected Result:**
+#### Expected Result:
 - Timeline shows exact sequence of what happened
 - Network requests and responses visible
 - Console errors (if any) linked to causal actions
 - Root cause of bug is apparent from timeline
 
-**Verification:**
+#### Verification:
 - Timeline matches actual user actions
 - No events missed
 - Bug root cause can be identified from timeline alone
@@ -262,7 +262,7 @@ feature: State Time-Travel
 
 ## Regression Testing
 
-**Existing features to verify don't break:**
+### Existing features to verify don't break:
 
 - [ ] `observe({what: 'page'})` still works (DOM observation unaffected)
 - [ ] `observe({what: 'network'})` still works (network capture unaffected)
@@ -272,7 +272,7 @@ feature: State Time-Travel
 - [ ] Page performance is not degraded by event capture
 - [ ] Memory usage is bounded (not growing unbounded)
 
-**Performance regression:**
+### Performance regression:
 
 - [ ] Page load time increase <50ms
 - [ ] 100 sequential actions complete without timeout

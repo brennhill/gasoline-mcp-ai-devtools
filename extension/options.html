@@ -252,6 +252,141 @@
         border-radius: 6px;
         padding: 12px;
       }
+
+      /* ── Light Mode ────────────────────────────────── */
+      @media (prefers-color-scheme: light) {
+        body {
+          background: #ffffff;
+          color: #1a1a1a;
+        }
+
+        .back-link {
+          color: #0969da;
+        }
+
+        .subtitle {
+          color: #555;
+        }
+
+        .section-title {
+          color: #555;
+        }
+
+        .section-description {
+          color: #555;
+        }
+
+        textarea {
+          background: #ffffff;
+          border-color: #d0d0d0;
+          color: #1a1a1a;
+        }
+
+        textarea:focus {
+          border-color: #0969da;
+        }
+
+        input[type='text'] {
+          background: #ffffff;
+          border-color: #d0d0d0;
+          color: #1a1a1a;
+        }
+
+        input[type='text']:focus {
+          border-color: #0969da;
+        }
+
+        .help-text {
+          color: #555;
+        }
+
+        .help-text code {
+          background: #f5f5f5;
+        }
+
+        button {
+          background: #1a7f37;
+          color: #ffffff;
+        }
+
+        button:hover {
+          background: #1a8c3e;
+        }
+
+        button:active {
+          background: #1a7f37;
+        }
+
+        .saved-message {
+          color: #1a7f37;
+        }
+
+        .toggle-row {
+          border-bottom-color: #e0e0e0;
+        }
+
+        .toggle-label {
+          color: #1a1a1a;
+        }
+
+        .toggle-description {
+          color: #555;
+        }
+
+        .toggle {
+          background: #d0d0d0;
+        }
+
+        .toggle.active {
+          background: #1a7f37;
+        }
+
+        .toggle::after {
+          background: #ffffff;
+        }
+
+        .toggle.active::after {
+          background: #ffffff;
+        }
+
+        .examples {
+          background: #f8f8f8;
+        }
+
+        .examples h4 {
+          color: #555;
+        }
+
+        .examples li span {
+          color: #555;
+        }
+
+        .feature-section {
+          background: #f8f8f8;
+        }
+
+        /* ── Inline-style overrides (need !important) ── */
+
+        /* Test connection button */
+        #test-connection-btn {
+          background: #f5f5f5 !important;
+          border-color: #d0d0d0 !important;
+          color: #1a1a1a !important;
+        }
+
+        /* Export and clear debug buttons */
+        #export-debug-btn {
+          background: #f5f5f5 !important;
+          border-color: #d0d0d0 !important;
+          color: #1a1a1a !important;
+        }
+
+        #clear-debug-btn {
+          background: #f5f5f5 !important;
+          border-color: #d0d0d0 !important;
+          color: #1a1a1a !important;
+        }
+      }
     </style>
   </head>
   <body>
@@ -332,8 +467,10 @@
 
         <div class="toggle-row">
           <div class="toggle-info">
-            <span class="toggle-label">Defer Heavy Interceptors</span>
-            <span class="toggle-description">Delays console/fetch/WS/error interception until after page load</span>
+            <span class="toggle-label">Optimize Page Load Speed</span>
+            <span class="toggle-description"
+              >Delays telemetry collection until page is interactive to reduce slowdown</span
+            >
           </div>
           <div id="deferral-toggle" class="toggle"></div>
         </div>

@@ -20,9 +20,9 @@ const createMockResponse = (options = {}) => ({
       ...this,
       text: () => Promise.resolve(options.body || '{}'),
       blob: () =>
-        Promise.resolve({ size: (options.body || '{}').length, type: options.contentType || 'application/json' }),
+        Promise.resolve({ size: (options.body || '{}').length, type: options.contentType || 'application/json' })
     }
-  },
+  }
 })
 
 // Minimal Headers polyfill for testing
@@ -114,7 +114,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     await wrappedFetch('/api/users', {
       method: 'POST',
       body: requestBody,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' }
     })
 
     await new Promise((r) => setTimeout(r, 10))
@@ -149,8 +149,8 @@ describe('Network Body Capture - Fetch Wrapper', () => {
       status: 200,
       headers: new Map([['content-type', 'application/json']]),
       clone: () => ({
-        text: () => new Promise((resolve) => setTimeout(() => resolve('slow'), 100)),
-      }),
+        text: () => new Promise((resolve) => setTimeout(() => resolve('slow'), 100))
+      })
     }
 
     const originalFetch = mock.fn(() => Promise.resolve(slowClone))
@@ -255,7 +255,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
       if (bodyEvent) {
         assert.ok(
           bodyEvent.arguments[0].payload.responseBody.includes('[Binary:'),
-          `Expected binary placeholder for ${type}, got: ${bodyEvent.arguments[0].payload.responseBody}`,
+          `Expected binary placeholder for ${type}, got: ${bodyEvent.arguments[0].payload.responseBody}`
         )
       }
     }
@@ -286,7 +286,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
       () =>
         new Promise((resolve) => {
           setTimeout(() => resolve(mockResponse), 20)
-        }),
+        })
     )
 
     const wrappedFetch = wrapFetchWithBodies(originalFetch)
@@ -308,7 +308,7 @@ describe('Header Sanitization', () => {
     const headers = {
       Authorization: 'Bearer secret-token-123',
       'Content-Type': 'application/json',
-      Accept: 'application/json',
+      Accept: 'application/json'
     }
 
     const sanitized = sanitizeHeaders(headers)
@@ -322,7 +322,7 @@ describe('Header Sanitization', () => {
 
     const headers = {
       Cookie: 'session=abc123; token=xyz',
-      'Content-Type': 'text/html',
+      'Content-Type': 'text/html'
     }
 
     const sanitized = sanitizeHeaders(headers)
@@ -334,7 +334,7 @@ describe('Header Sanitization', () => {
 
     const headers = {
       'Set-Cookie': 'session=abc123; Path=/',
-      'Content-Type': 'text/html',
+      'Content-Type': 'text/html'
     }
 
     const sanitized = sanitizeHeaders(headers)
@@ -346,7 +346,7 @@ describe('Header Sanitization', () => {
 
     const headers = {
       'X-API-Key': 'sk_live_abc123',
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json'
     }
 
     const sanitized = sanitizeHeaders(headers)
@@ -361,7 +361,7 @@ describe('Header Sanitization', () => {
       'X-Secret-Key': 'xyz789',
       'X-API-Secret': 'secret-value',
       'X-Password': 'hunter2',
-      'X-Custom-Header': 'safe-value',
+      'X-Custom-Header': 'safe-value'
     }
 
     const sanitized = sanitizeHeaders(headers)
@@ -379,7 +379,7 @@ describe('Header Sanitization', () => {
     const headers = {
       'x-auth-TOKEN': 'value',
       'X-SECRET-key': 'value',
-      authorization: 'Bearer xyz',
+      authorization: 'Bearer xyz'
     }
 
     const sanitized = sanitizeHeaders(headers)
@@ -401,7 +401,7 @@ describe('Header Sanitization', () => {
 
     const headers = new MockHeaders({
       authorization: 'Bearer token',
-      'content-type': 'application/json',
+      'content-type': 'application/json'
     })
 
     const sanitized = sanitizeHeaders(headers)
@@ -465,7 +465,7 @@ describe('Body Reading', () => {
 
     const response = {
       headers: new Map([['content-type', 'application/json']]),
-      text: () => Promise.resolve('{"id":1}'),
+      text: () => Promise.resolve('{"id":1}')
     }
 
     const body = await readResponseBody(response)
@@ -477,7 +477,7 @@ describe('Body Reading', () => {
 
     const response = {
       headers: new Map([['content-type', 'text/html']]),
-      text: () => Promise.resolve('<html></html>'),
+      text: () => Promise.resolve('<html></html>')
     }
 
     const body = await readResponseBody(response)
@@ -489,7 +489,7 @@ describe('Body Reading', () => {
 
     const response = {
       headers: new Map([['content-type', 'image/png']]),
-      blob: () => Promise.resolve({ size: 4096 }),
+      blob: () => Promise.resolve({ size: 4096 })
     }
 
     const body = await readResponseBody(response)
@@ -503,7 +503,7 @@ describe('Body Reading', () => {
 
     const response = {
       headers: new Map(),
-      text: () => Promise.resolve('raw data'),
+      text: () => Promise.resolve('raw data')
     }
 
     const body = await readResponseBody(response)
@@ -516,7 +516,7 @@ describe('Body Reading', () => {
 
     const response = {
       headers: new Map([['content-type', 'application/json']]),
-      text: () => new Promise((resolve) => setTimeout(() => resolve('{}'), 50)),
+      text: () => new Promise((resolve) => setTimeout(() => resolve('{}'), 50))
     }
 
     const body = await readResponseBodyWithTimeout(response, 5)

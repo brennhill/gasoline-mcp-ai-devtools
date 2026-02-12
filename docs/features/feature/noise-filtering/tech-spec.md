@@ -54,7 +54,7 @@ A noise rule has:
 
 The server ships with ~50 always-active rules organized by category. These represent universal browser noise that applies regardless of project. They cannot be removed.
 
-**Browser internals:**
+#### Browser internals:
 - Console messages from chrome-extension:// or moz-extension:// sources
 - Network requests to favicon.ico
 - Source map 404s (.map files returning 4xx)
@@ -66,7 +66,7 @@ The server ships with ~50 always-active rules organized by category. These repre
 - net::ERR_BLOCKED_BY_CLIENT (ad blockers)
 - "Indicate whether to send a cookie" SameSite warnings
 
-**Dev tooling:**
+#### Dev tooling:
 - Console messages starting with [HMR], [vite], [webpack], or [next]
 - Network requests to HMR/Vite/webpack hot-update URLs (__vite_ping, *.hot-update.json, sockjs-node, _next/webpack-hmr)
 - React DevTools download prompts
@@ -75,10 +75,10 @@ The server ships with ~50 always-active rules organized by category. These repre
 - Vue.js devtools connection messages
 - Svelte HMR messages
 
-**Analytics & tracking:**
+#### Analytics & tracking:
 - Network requests to: Google Analytics (google-analytics.com, analytics.google.com), Segment (api.segment.io, cdn.segment.com), Mixpanel (api.mixpanel.com), Hotjar (*.hotjar.com), Amplitude (api.amplitude.com), Plausible (plausible.io), PostHog (app.posthog.com), Datadog RUM (rum.browser-intake-*.datadoghq.com), Sentry (*.ingest.sentry.io), LogRocket, FullStory, Heap
 
-**Framework noise (activated by framework detection):**
+#### Framework noise (activated by framework detection):
 - React: "Warning: Each child in a list should have a unique key", strict mode double-render logs, "Cannot update a component while rendering a different component"
 - Next.js: "next-dev.js" internal messages, hydration mismatch warnings (info-level only, not errors), Fast Refresh messages
 - Vite: plugin resolution messages, dependency pre-bundling logs

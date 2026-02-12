@@ -16,7 +16,7 @@ test.describe('Circuit Breaker', () => {
     page,
     server,
     serverUrl,
-    serverPort,
+    serverPort
   }) => {
     // 1. Verify normal operation: capture a console error
     await page.goto(`file://${path.join(fixturesDir, 'test-page.html')}`)
@@ -56,10 +56,7 @@ test.describe('Circuit Breaker', () => {
     expect(serviceWorkers.length).toBeGreaterThan(0)
   })
 
-  test('extension should not flood a slow server', async ({
-    page,
-    serverUrl,
-  }) => {
+  test('extension should not flood a slow server', async ({ page, serverUrl }) => {
     await page.goto(`file://${path.join(fixturesDir, 'test-page.html')}`)
     await page.waitForTimeout(1000)
 
@@ -80,10 +77,7 @@ test.describe('Circuit Breaker', () => {
 })
 
 test.describe('Memory Enforcement', () => {
-  test('server should evict old WebSocket events when buffer is full', async ({
-    page,
-    serverUrl,
-  }) => {
+  test('server should evict old WebSocket events when buffer is full', async ({ page, serverUrl }) => {
     await page.goto(`file://${path.join(fixturesDir, 'test-page.html')}`)
 
     // Directly POST many large WebSocket events to the server
@@ -99,14 +93,14 @@ test.describe('Memory Enforcement', () => {
           url: 'wss://example.com/ws',
           direction: 'incoming',
           data: largeData,
-          size: 50000,
+          size: 50000
         })
       }
 
       const resp = await fetch(`${serverUrl}/websocket-events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ events }),
+        body: JSON.stringify({ events })
       })
 
       // Should accept or reject gracefully (200 or 503), never crash
@@ -125,10 +119,7 @@ test.describe('Memory Enforcement', () => {
     expect(eventsData.events.length).toBeGreaterThan(0)
   })
 
-  test('server should evict old network bodies when buffer is full', async ({
-    page,
-    serverUrl,
-  }) => {
+  test('server should evict old network bodies when buffer is full', async ({ page, serverUrl }) => {
     await page.goto(`file://${path.join(fixturesDir, 'test-page.html')}`)
 
     // POST many large network bodies
@@ -140,14 +131,14 @@ test.describe('Memory Enforcement', () => {
           url: `/api/test-${batch}-${i}`,
           method: 'GET',
           status: 200,
-          responseBody: largeBody,
+          responseBody: largeBody
         })
       }
 
       const resp = await fetch(`${serverUrl}/network-bodies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bodies }),
+        body: JSON.stringify({ bodies })
       })
 
       expect([200, 503]).toContain(resp.status)
@@ -158,10 +149,7 @@ test.describe('Memory Enforcement', () => {
     expect(healthResp.ok).toBe(true)
   })
 
-  test('server should reject events when memory hard limit is simulated', async ({
-    page,
-    serverUrl,
-  }) => {
+  test('server should reject events when memory hard limit is simulated', async ({ page, serverUrl }) => {
     await page.goto(`file://${path.join(fixturesDir, 'test-page.html')}`)
 
     // First, fill up the WS buffer near its limit
@@ -171,13 +159,15 @@ test.describe('Memory Enforcement', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          events: [{
-            timestamp: new Date().toISOString(),
-            event: 'message',
-            id: 'conn-1',
-            data: largeData,
-          }],
-        }),
+          events: [
+            {
+              timestamp: new Date().toISOString(),
+              event: 'message',
+              id: 'conn-1',
+              data: largeData
+            }
+          ]
+        })
       })
     }
 

@@ -13,19 +13,19 @@ const ANIMATION_INTERVAL_MS = 400
 const BADGE_TRACKING_ONLY = {
   text: '🔥',
   color: '#FF6B35', // Orange - tracking enabled, pilot disabled
-  title: 'Gasoline - TRACKING THIS TAB (viewing only)',
+  title: 'Gasoline - TRACKING THIS TAB (viewing only)'
 }
 
 const BADGE_PILOT_ACTIVE = {
   text: '⚡', // Lightning - both tracking and pilot enabled
   color: '#00D9FF', // Cyan/electric blue
-  title: 'Gasoline - AI WEB PILOT ACTIVE (can control)',
+  title: 'Gasoline - AI WEB PILOT ACTIVE (can control)'
 }
 
 const BADGE_OFF = {
   text: '',
   color: '',
-  title: 'Gasoline',
+  title: 'Gasoline'
 }
 
 /**
@@ -127,15 +127,15 @@ export async function updateTrackedTabIcon(isPilotEnabled) {
       updateIcon(
         {
           isTracking: true,
-          isPilotEnabled,
+          isPilotEnabled
         },
-        trackedTabId,
+        trackedTabId
       )
     } else {
       // No tab is being tracked
       updateIcon({
         isTracking: false,
-        isPilotEnabled: false,
+        isPilotEnabled: false
       })
     }
   } catch (err) {
@@ -158,9 +158,9 @@ export async function updateAllTabIcons(enabled) {
       updateIcon(
         {
           isTracking: true,
-          isPilotEnabled: enabled,
+          isPilotEnabled: enabled
         },
-        result.trackedTabId,
+        result.trackedTabId
       )
     } else {
       // Clear all tabs
@@ -170,9 +170,9 @@ export async function updateAllTabIcons(enabled) {
           updateIcon(
             {
               isTracking: false,
-              isPilotEnabled: false,
+              isPilotEnabled: false
             },
-            tab.id,
+            tab.id
           )
         }
       }
@@ -198,14 +198,14 @@ export async function initializeIconState(pilotEnabled) {
       updateIcon(
         {
           isTracking: true,
-          isPilotEnabled: pilotEnabled,
+          isPilotEnabled: pilotEnabled
         },
-        result.trackedTabId,
+        result.trackedTabId
       )
     } else {
       updateIcon({
         isTracking: false,
-        isPilotEnabled: false,
+        isPilotEnabled: false
       })
     }
   } catch (err) {
@@ -220,7 +220,7 @@ export function cleanup() {
   stopAnimation()
   updateIcon({
     isTracking: false,
-    isPilotEnabled: false,
+    isPilotEnabled: false
   })
 }
 

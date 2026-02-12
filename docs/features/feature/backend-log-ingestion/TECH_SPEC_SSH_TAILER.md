@@ -396,26 +396,26 @@ backend:
 
 ### Reconnect Strategy (v5.4)
 
-**Initial Backoff (Attempts 1-9):**
+#### Initial Backoff (Attempts 1-9):
 
 - Fixed 5 seconds between retries
 - Allows quick recovery from transient failures (network blip, brief server restart)
 
-**Circuit Breaker (Attempts 10+):**
+#### Circuit Breaker (Attempts 10+):
 
 - After 10 consecutive failures, enter circuit breaker mode
 - Use exponential backoff: 5s → 10s → 20s → 40s → ... → max 120s
 - Add jitter (±10%) to prevent thundering herd of multiple tailers
 - Reset backoff and failure counter on successful connection
 
-**Monitoring & Alerting:**
+#### Monitoring & Alerting:
 
 - After 10 consecutive failures: Log warning "Entering circuit breaker"
 - After 30 consecutive failures (~2.5 minutes): Log error "Manual intervention required"
 - Operator can check `/ingest/stats` endpoint to see tailer health
 - All retryable errors are tracked in `TailerStats` (last_error, last_error_time)
 
-**Resource Bounds:**
+#### Resource Bounds:
 
 - File descriptors: Each failed connection attempt closes fd immediately (no leak)
 - Goroutines: Single goroutine per tailer (fixed, no spawning)

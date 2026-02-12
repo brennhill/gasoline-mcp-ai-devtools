@@ -12,23 +12,23 @@ last-verified: 2026-01-31
 ## Test Scenarios
 
 ### Scenario 1: Single Service Streaming Logs at Normal Rate
-**Setup:**
+#### Setup:
 - Start one backend service (api-server) connected to Gasoline
 - Service configured to log at INFO level
 - ~100 logs per second
 
-**Steps:**
+#### Steps:
 1. Start Gasoline MCP server
 2. Connect backend service via gRPC
 3. Backend emits logs for 30 seconds
 4. Call `observe({what: 'backend-logs'})`
 
-**Expected Result:**
+#### Expected Result:
 - All logs appear in Gasoline within 100ms of emission
 - Logs are searchable by timestamp, service name, level
 - No logs are lost or duplicated
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Logs appear in real-time stream
 - [ ] Timestamp ordering is preserved
 - [ ] All 3000 logs are captured (100 logs/sec × 30s)
@@ -36,23 +36,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 2: High-Volume Log Ingestion (Burst)
-**Setup:**
+#### Setup:
 - Backend service sends 10K logs/sec for 5 seconds
 - Mix of INFO, WARN, ERROR levels
 
-**Steps:**
+#### Steps:
 1. Connected backend service
 2. Trigger bulk operation causing high logging (e.g., batch import)
 3. Observe memory usage and latency
 4. Query backend-logs for that 5-second window
 
-**Expected Result:**
+#### Expected Result:
 - All 50K logs are buffered without dropping
 - Ingestion latency stays <1ms per log
 - Memory usage doesn't exceed 50MB
 - No CPU spike >80%
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] 0% log loss under 10K/sec load
 - [ ] Ingestion latency remains <1ms
 - [ ] Memory footprint <50MB for 50K logs
@@ -61,24 +61,24 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 3: Connection Drop & Reconnection
-**Setup:**
+#### Setup:
 - Backend service connected and streaming logs
 - Network connection simulated to drop
 
-**Steps:**
+#### Steps:
 1. Backend streaming logs normally
 2. Kill network connection (simulated)
 3. Observe error handling in Gasoline
 4. Manually reconnect backend
 5. Verify queued logs are replayed
 
-**Expected Result:**
+#### Expected Result:
 - Gasoline detects connection loss
 - Backend queues logs locally (in-memory)
 - On reconnect, queued logs are replayed in order
 - No logs are lost
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Connection failure detected within 15s (heartbeat)
 - [ ] Backend queues logs during disconnection
 - [ ] Reconnection replays all queued logs
@@ -87,23 +87,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 4: Correlation ID Extraction & Tracing
-**Setup:**
+#### Setup:
 - Frontend user action triggers a request
 - Request ID: `req-12345` set in X-Request-ID header
 - Backend service logs with this request ID
 
-**Steps:**
+#### Steps:
 1. Trigger a user action in the browser (e.g., "Submit Form")
 2. Frontend XHR includes `X-Request-ID: req-12345`
 3. Backend receives request, logs with `request_id: req-12345`
 4. Query Gasoline for logs with `request_id: req-12345`
 
-**Expected Result:**
+#### Expected Result:
 - Backend logs are correlated with frontend action
 - Timeline shows unified view of request lifecycle
 - All backend logs for that request are grouped together
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Backend logs have request_id field populated
 - [ ] Query `observe({what: 'backend-logs', request_id: 'req-12345'})` returns all related logs
 - [ ] Request lifecycle is traceable from frontend to backend and back
@@ -111,23 +111,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 5: Multiple Services Streaming
-**Setup:**
+#### Setup:
 - 3 backend services: api-server, worker, cache
 - Each emits logs at different rates
 - Services have overlapping request processing
 
-**Steps:**
+#### Steps:
 1. Start all 3 services connected to Gasoline
 2. User action triggers requests across all services
 3. Query logs by service name
 4. Query logs for specific request ID across all services
 
-**Expected Result:**
+#### Expected Result:
 - Logs from all services are captured
 - Filtering by service returns only that service's logs
 - Filtering by request_id returns logs from all services involved
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Each service's logs are tagged correctly
 - [ ] Service-based filtering works accurately
 - [ ] Request tracing across services shows complete flow
@@ -135,24 +135,24 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 6: Memory Eviction Under Load
-**Setup:**
+#### Setup:
 - Gasoline configured with 500MB max memory
 - Long-running backend service continuously logging
 - 5000 logs/sec for 1 hour
 
-**Steps:**
+#### Steps:
 1. Run backend for 1 hour at 5K logs/sec
 2. Monitor memory usage in Gasoline
 3. Query for oldest logs (should be evicted)
 4. Query for recent logs (should still exist)
 
-**Expected Result:**
+#### Expected Result:
 - Memory stays within 500MB limit
 - Oldest logs are evicted when capacity reached
 - Recent logs remain available (within 1-hour TTL)
 - Eviction doesn't cause visible pauses
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Memory never exceeds 500MB
 - [ ] LRU eviction removes oldest logs first
 - [ ] Recent logs remain queryable
@@ -161,22 +161,22 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 7: Error Log Capture & Stack Traces
-**Setup:**
+#### Setup:
 - Backend service encounters an exception
 - Logs error with full stack trace
 
-**Steps:**
+#### Steps:
 1. Trigger error condition (e.g., division by zero)
 2. Backend logs ERROR level with stack trace
 3. Query Gasoline for ERROR logs
 4. Verify stack trace is preserved
 
-**Expected Result:**
+#### Expected Result:
 - Error logs are captured with full stack trace
 - Stack trace is readable in Gasoline UI
 - Error context (user_id, operation, etc.) is included
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] ERROR logs are captured with stack traces
 - [ ] Stack traces are not truncated
 - [ ] Additional fields (user_id, etc.) are preserved
@@ -185,23 +185,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 8: Graceful Shutdown
-**Setup:**
+#### Setup:
 - Backend service connected and actively logging
 - Gasoline is shut down
 
-**Steps:**
+#### Steps:
 1. Backend service running, streaming logs
 2. Initiate graceful shutdown of Gasoline
 3. Verify backend doesn't lose logs
 4. Restart Gasoline, verify recent logs persist (if applicable)
 
-**Expected Result:**
+#### Expected Result:
 - Graceful shutdown gives 30s drain time
 - All in-flight logs are written
 - Backend receives ACK for all logs
 - Backend doesn't retry already-acked logs
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Graceful shutdown takes ~30s
 - [ ] All logs are acknowledged before shutdown
 - [ ] Backend doesn't see ERRORs during shutdown
@@ -210,22 +210,22 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 9: Large Field Values & Special Characters
-**Setup:**
+#### Setup:
 - Backend logs with very large values (10MB JSON blob, binary data)
 - Special characters in message (unicode, newlines, quotes)
 
-**Steps:**
+#### Steps:
 1. Log entry with large fields (10MB)
 2. Log entry with special characters
 3. Query and verify fields are preserved
 4. Check for truncation or encoding issues
 
-**Expected Result:**
+#### Expected Result:
 - Large fields are handled without truncation (or gracefully truncated with warning)
 - Special characters are preserved
 - Logs remain queryable
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Fields up to 1MB are preserved in full
 - [ ] Larger fields are gracefully truncated with marker
 - [ ] No encoding corruption

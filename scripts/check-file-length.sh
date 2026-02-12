@@ -8,7 +8,7 @@
 #
 # Exit code: 0 if all files pass, 1 if violations found
 
-set -e
+set -euo pipefail
 
 MAX_LINES=800
 FOUND_VIOLATIONS=0

@@ -71,7 +71,7 @@ Causal diffing answers: "Why did performance change?" by comparing resource wate
 
 ## Examples
 
-**Example 1: New render-blocking script added**
+### Example 1: New render-blocking script added
 
 Request:
 ```json
@@ -115,7 +115,7 @@ Response:
 }
 ```
 
-**Example 2: API response slowed down**
+### Example 2: API response slowed down
 
 Response:
 ```json
@@ -147,7 +147,7 @@ Response:
 }
 ```
 
-**Example 3: Bundle size increased**
+### Example 3: Bundle size increased
 
 Response:
 ```json

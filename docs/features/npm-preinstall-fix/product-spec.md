@@ -58,7 +58,7 @@ Users report that after running `npm install -g gasoline-mcp`, the old version c
 }
 ```
 
-**Why this works:**
+### Why this works:
 - `preinstall` hook runs before package extraction
 - `execSync` blocks until uninstall completes
 - `{stdio:'ignore'}` suppresses all output

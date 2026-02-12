@@ -26,8 +26,8 @@ export default [
       'extension/content.bundled.js',
       'extension/inject.bundled.js',
       'extension/early-patch.bundled.js',
-      'extension/offscreen.bundled.js',
-    ],
+      'extension/offscreen.bundled.js'
+    ]
   },
 
   // Base recommended rules
@@ -45,11 +45,11 @@ export default [
         clients: 'readonly',
         registration: 'readonly',
         self: 'readonly',
-        __GASOLINE_VERSION__: 'readonly',
-      },
+        __GASOLINE_VERSION__: 'readonly'
+      }
     },
     plugins: {
-      security,
+      security
     },
     rules: {
       'no-var': 'error',
@@ -58,7 +58,7 @@ export default [
       'prefer-arrow-callback': 'error',
       'no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }
       ],
 
       // Security rules
@@ -80,8 +80,8 @@ export default [
       'no-constructor-return': 'error',
       'no-template-curly-in-string': 'warn',
       'no-loss-of-precision': 'error',
-      'require-atomic-updates': 'error',
-    },
+      'require-atomic-updates': 'error'
+    }
   },
 
   // Extension test files (run in Node.js)
@@ -93,11 +93,11 @@ export default [
       globals: {
         ...globals.node,
         globalThis: 'readonly',
-        document: 'readonly',
-      },
+        document: 'readonly'
+      }
     },
     plugins: {
-      security,
+      security
     },
     rules: {
       'no-var': 'error',
@@ -105,7 +105,7 @@ export default [
       eqeqeq: ['error', 'always', { null: 'ignore' }],
       'no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }
       ],
 
       // Relaxed security for tests
@@ -116,8 +116,8 @@ export default [
       // Best practices
       'no-eval': 'error',
       'no-implied-eval': 'error',
-      'no-new-func': 'error',
-    },
+      'no-new-func': 'error'
+    }
   },
 
   // CLI test files (CommonJS, run in Node.js)
@@ -127,15 +127,12 @@ export default [
       ecmaVersion: 2022,
       sourceType: 'commonjs',
       globals: {
-        ...globals.node,
-      },
+        ...globals.node
+      }
     },
     rules: {
-      'no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
-      ],
-    },
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }]
+    }
   },
 
   // Scripts (ESM, run in Node.js)
@@ -145,15 +142,12 @@ export default [
       ecmaVersion: 2022,
       sourceType: 'module',
       globals: {
-        ...globals.node,
-      },
+        ...globals.node
+      }
     },
     rules: {
-      'no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
-      ],
-    },
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }]
+    }
   },
 
   // Gasoline CI package (runs in browser)
@@ -163,18 +157,15 @@ export default [
       ecmaVersion: 2020,
       sourceType: 'script',
       globals: {
-        ...globals.browser,
-      },
+        ...globals.browser
+      }
     },
     rules: {
       'no-var': 'off', // Legacy code uses var
       'prefer-const': 'off',
       'prefer-arrow-callback': 'off',
-      'no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
-      ],
-    },
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }]
+    }
   },
 
   // Gasoline Playwright package (CommonJS, run in Node.js)
@@ -184,17 +175,14 @@ export default [
       ecmaVersion: 2022,
       sourceType: 'commonjs',
       globals: {
-        ...globals.node,
-      },
+        ...globals.node
+      }
     },
     rules: {
-      'no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
-      ],
-    },
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }]
+    }
   },
 
   // Prettier must be last to disable conflicting format rules
-  prettier,
+  prettier
 ]

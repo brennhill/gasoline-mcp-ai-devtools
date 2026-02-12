@@ -13,6 +13,7 @@ let webSocketCaptureMode = 'medium';
 /**
  * Get the byte size of a WebSocket message
  */
+// #lizard forgives
 export function getSize(data) {
     if (typeof data === 'string') {
         return _textEncoder ? _textEncoder.encode(data).length : data.length;
@@ -63,6 +64,7 @@ export function formatPayload(data) {
 /**
  * Truncate a WebSocket message to the size limit
  */
+// #lizard forgives
 export function truncateWsMessage(message) {
     if (typeof message === 'string' && message.length > WS_MAX_BODY_SIZE) {
         return { data: message.slice(0, WS_MAX_BODY_SIZE), truncated: true };
@@ -72,6 +74,7 @@ export function truncateWsMessage(message) {
 /**
  * Create a connection tracker for adaptive sampling and schema detection
  */
+// #lizard forgives
 export function createConnectionTracker(id, url) {
     const tracker = {
         id,
@@ -86,7 +89,7 @@ export function createConnectionTracker(id, url) {
         _schemaDetected: false,
         stats: {
             incoming: { count: 0, bytes: 0, lastPreview: null, lastAt: null },
-            outgoing: { count: 0, bytes: 0, lastPreview: null, lastAt: null },
+            outgoing: { count: 0, bytes: 0, lastPreview: null, lastAt: null }
         },
         /**
          * Record a message for stats and schema detection
@@ -143,7 +146,7 @@ export function createConnectionTracker(id, url) {
          *   shouldSample() which implements adaptive sampling: high-frequency connections
          *   (>200 msg/s) sample at 1-in-100; low-frequency (<2 msg/s) capture all messages.
          *   This ensures detailed visibility on slow links without bloating on high-volume.
-        */
+         */
         recordMessage(direction, data) {
             this.messageCount++;
             const size = data ? (typeof data === 'string' ? data.length : getSize(data)) : 0;
@@ -242,7 +245,7 @@ export function createConnectionTracker(id, url) {
             return {
                 rate: `${rate}/s`,
                 logged: `${targetRate}/${Math.round(rate)}`,
-                window: '5s',
+                window: '5s'
             };
         },
         /**
@@ -288,7 +291,7 @@ export function createConnectionTracker(id, url) {
             return {
                 detectedKeys: allKeys.size > 0 ? Array.from(allKeys).sort() : null,
                 consistent: this._schemaConsistent,
-                variants: variants.length > 1 ? variants : undefined,
+                variants: variants.length > 1 ? variants : undefined
             };
         },
         /**
@@ -310,7 +313,7 @@ export function createConnectionTracker(id, url) {
             catch {
                 return false;
             }
-        },
+        }
     };
     return tracker;
 }
@@ -326,6 +329,7 @@ export function installWebSocketCapture() {
         return; // No WebSocket support
     if (originalWebSocket)
         return; // Already installed
+    webSocketCaptureEnabled = true; // Ensure capture is enabled when installing
     // Check for early-patch: use the saved original, not the early-patch wrapper
     const earlyOriginal = window.__GASOLINE_ORIGINAL_WS__;
     originalWebSocket = earlyOriginal || window.WebSocket;
@@ -340,7 +344,7 @@ export function installWebSocketCapture() {
                 return;
             window.postMessage({
                 type: 'GASOLINE_WS',
-                payload: { type: 'websocket', event: 'open', id: connectionId, url: urlString, ts: new Date().toISOString() },
+                payload: { type: 'websocket', event: 'open', id: connectionId, url: urlString, ts: new Date().toISOString() }
             }, window.location.origin);
         });
         ws.addEventListener('close', (event) => {
@@ -355,8 +359,8 @@ export function installWebSocketCapture() {
                     url: urlString,
                     code: event.code,
                     reason: event.reason,
-                    ts: new Date().toISOString(),
-                },
+                    ts: new Date().toISOString()
+                }
             }, window.location.origin);
         });
         ws.addEventListener('error', () => {
@@ -369,8 +373,8 @@ export function installWebSocketCapture() {
                     event: 'error',
                     id: connectionId,
                     url: urlString,
-                    ts: new Date().toISOString(),
-                },
+                    ts: new Date().toISOString()
+                }
             }, window.location.origin);
         });
         ws.addEventListener('message', (event) => {
@@ -394,8 +398,8 @@ export function installWebSocketCapture() {
                     data: truncatedData,
                     size,
                     truncated: truncated || undefined,
-                    ts: new Date().toISOString(),
-                },
+                    ts: new Date().toISOString()
+                }
             }, window.location.origin);
         });
         // Wrap send() to capture outgoing messages
@@ -419,9 +423,9 @@ export function installWebSocketCapture() {
                         data: truncatedData,
                         size,
                         truncated: truncated || undefined,
-                        ts: new Date().toISOString(),
-                    },
-                }, '*');
+                        ts: new Date().toISOString()
+                    }
+                }, window.location.origin);
             }
             return originalSend(data);
         };
@@ -472,8 +476,8 @@ function adoptEarlyConnections() {
                     event: 'open',
                     id: connectionId,
                     url: urlString,
-                    ts: openEvent ? new Date(openEvent.ts).toISOString() : new Date().toISOString(),
-                },
+                    ts: openEvent ? new Date(openEvent.ts).toISOString() : new Date().toISOString()
+                }
             }, window.location.origin);
         }
         // Attach ongoing capture: close
@@ -489,8 +493,8 @@ function adoptEarlyConnections() {
                     url: urlString,
                     code: event.code,
                     reason: event.reason,
-                    ts: new Date().toISOString(),
-                },
+                    ts: new Date().toISOString()
+                }
             }, window.location.origin);
         });
         // Attach ongoing capture: error
@@ -499,7 +503,7 @@ function adoptEarlyConnections() {
                 return;
             window.postMessage({
                 type: 'GASOLINE_WS',
-                payload: { type: 'websocket', event: 'error', id: connectionId, url: urlString, ts: new Date().toISOString() },
+                payload: { type: 'websocket', event: 'error', id: connectionId, url: urlString, ts: new Date().toISOString() }
             }, window.location.origin);
         });
         // Attach ongoing capture: incoming messages
@@ -524,8 +528,8 @@ function adoptEarlyConnections() {
                     data: truncatedData,
                     size,
                     truncated: truncated || undefined,
-                    ts: new Date().toISOString(),
-                },
+                    ts: new Date().toISOString()
+                }
             }, window.location.origin);
         });
         // Wrap send() for outgoing capture
@@ -549,9 +553,9 @@ function adoptEarlyConnections() {
                         data: truncatedData,
                         size,
                         truncated: truncated || undefined,
-                        ts: new Date().toISOString(),
-                    },
-                }, '*');
+                        ts: new Date().toISOString()
+                    }
+                }, window.location.origin);
             }
             return originalSend(data);
         };

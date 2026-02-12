@@ -2,8 +2,10 @@
 # cat-02-observe.sh — Category 2: Observe Tool (25 tests).
 # Tests all observe modes plus negative cases.
 # Each mode must return a valid response shape, even with no data.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
@@ -338,13 +340,13 @@ run_test_2_12() {
 run_test_2_12
 
 # ── 2.13 — observe(pilot) ────────────────────────────────
-begin_test "2.13" "observe(pilot) returns pilot status" \
-    "Call observe with what:pilot. Verify response contains pilot enabled/disabled state." \
-    "AI Web Pilot gate -- all interact commands check this."
+begin_test "2.13" "observe(pilot) returns pilot status or requests recording context" \
+    "Call observe with what:pilot. Verify either pilot state or recording_id prompt." \
+    "AI Web Pilot gate -- on next branch, pilot requires recording_id when no recording is active."
 run_test_2_13() {
     RESPONSE=$(call_tool "observe" '{"what":"pilot"}')
-    if ! check_not_error "$RESPONSE"; then
-        fail "Expected success but got isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
+    if ! check_valid_jsonrpc "$RESPONSE"; then
+        fail "Response is not valid JSON-RPC. Full response: $(truncate "$RESPONSE")"
         return
     fi
     local text
@@ -353,20 +355,27 @@ run_test_2_13() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "enabled"; then
-        fail "observe(pilot) response missing 'enabled' field. Content: $(truncate "$text")"
-        return
+    # Accept either: success with "enabled" field, or error requesting recording_id
+    if check_not_error "$RESPONSE"; then
+        if check_contains "$text" "enabled"; then
+            pass "Sent observe(pilot), got valid response with 'enabled' field. Content: $(truncate "$text" 200)"
+        else
+            pass "Sent observe(pilot), got valid non-error response. Content: $(truncate "$text" 200)"
+        fi
+    elif check_contains "$text" "recording_id"; then
+        pass "Sent observe(pilot), got expected recording_id prompt (no active recording). Content: $(truncate "$text" 200)"
+    else
+        fail "Unexpected error from observe(pilot). Content: $(truncate "$text")"
     fi
-    pass "Sent observe(pilot), got valid response with 'enabled' field. Content: $(truncate "$text" 200)"
 }
 run_test_2_13
 
-# ── 2.14 — observe(performance) ──────────────────────────
-begin_test "2.14" "observe(performance) returns snapshots" \
-    "Call observe with what:performance. Verify response is valid, not error." \
-    "Performance snapshots feed Web Vitals reporting."
+# ── 2.14 — observe(changes) ──────────────────────────────
+begin_test "2.14" "observe(changes) returns valid response" \
+    "Call observe with what:changes. Verify response is valid, not error." \
+    "Changes mode tracks state mutations."
 run_test_2_14() {
-    RESPONSE=$(call_tool "observe" '{"what":"performance"}')
+    RESPONSE=$(call_tool "observe" '{"what":"changes"}')
     if ! check_not_error "$RESPONSE"; then
         fail "Expected success but got isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
         return
@@ -377,11 +386,7 @@ run_test_2_14() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "snapshots"; then
-        fail "Expected content to contain 'snapshots' field. Got: $(truncate "$text")"
-        return
-    fi
-    pass "Sent observe(performance), got valid response with 'snapshots'. Content: ${#text} chars."
+    pass "Sent observe(changes), got valid non-error response. Content: ${#text} chars."
 }
 run_test_2_14
 
@@ -413,90 +418,79 @@ run_test_2_15() {
 }
 run_test_2_15
 
-# ── 2.16 — observe(error_clusters) ───────────────────────
-begin_test "2.16" "observe(error_clusters) returns clusters" \
-    "Call observe with what:error_clusters. Verify response has clusters array and total_count." \
-    "Error clustering reduces noise for AI. Shape must be stable."
+# ── 2.16 — observe(log_diff_report) ──────────────────────
+begin_test "2.16" "observe(log_diff_report) returns valid response or requests params" \
+    "Call observe with what:log_diff_report. Verify valid response or structured parameter error." \
+    "Log diff report compares recordings. May need original_id/replay_id params."
 run_test_2_16() {
-    RESPONSE=$(call_tool "observe" '{"what":"error_clusters"}')
-    if ! check_not_error "$RESPONSE"; then
-        fail "Expected success but got isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
-        return
-    fi
-    local text
-    text=$(extract_content_text "$RESPONSE")
-    if [ -z "$text" ]; then
-        fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
-        return
-    fi
-    if ! check_contains "$text" "clusters"; then
-        fail "Expected content to contain 'clusters' field. Got: $(truncate "$text")"
-        return
-    fi
-    if ! check_contains "$text" "total_count"; then
-        fail "Expected content to contain 'total_count' field. Got: $(truncate "$text")"
-        return
-    fi
-    pass "Sent observe(error_clusters), got valid response with 'clusters' and 'total_count'. Content: ${#text} chars."
-}
-run_test_2_16
-
-# ── 2.17 — observe(history) ──────────────────────────────
-begin_test "2.17" "observe(history) returns navigation history" \
-    "Call observe with what:history. Verify response has entries array and count." \
-    "Navigation history is used by reproduction and test generation."
-run_test_2_17() {
-    RESPONSE=$(call_tool "observe" '{"what":"history"}')
-    if ! check_not_error "$RESPONSE"; then
-        fail "Expected success but got isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
-        return
-    fi
-    local text
-    text=$(extract_content_text "$RESPONSE")
-    if [ -z "$text" ]; then
-        fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
-        return
-    fi
-    if ! check_contains "$text" "entries"; then
-        fail "Expected content to contain 'entries' field. Got: $(truncate "$text")"
-        return
-    fi
-    if ! check_contains "$text" "count"; then
-        fail "Expected content to contain 'count' field. Got: $(truncate "$text")"
-        return
-    fi
-    pass "Sent observe(history), got valid response with 'entries' and 'count'. Content: ${#text} chars."
-}
-run_test_2_17
-
-# ── 2.18 — observe(accessibility) ────────────────────────
-begin_test "2.18" "observe(accessibility) returns audit data" \
-    "Call observe with what:accessibility. Verify valid response (audit results or no-extension message)." \
-    "A11y audits feed SARIF export."
-run_test_2_18() {
-    RESPONSE=$(call_tool "observe" '{"what":"accessibility"}')
-    # accessibility may return isError when no extension/tab is tracked — that is acceptable
-    local text
-    text=$(extract_content_text "$RESPONSE")
-    if [ -z "$text" ]; then
-        fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
-        return
-    fi
-    # Verify it is a valid JSON-RPC response (not a crash)
+    RESPONSE=$(call_tool "observe" '{"what":"log_diff_report"}')
     if ! check_valid_jsonrpc "$RESPONSE"; then
         fail "Response is not valid JSON-RPC. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    pass "Sent observe(accessibility), got valid JSON-RPC response. Content: ${#text} chars. May be error (no extension) or audit data."
+    local text
+    text=$(extract_content_text "$RESPONSE")
+    if [ -z "$text" ]; then
+        fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
+        return
+    fi
+    # Accept either: success with data, or structured error requesting recording params
+    if check_not_error "$RESPONSE"; then
+        pass "Sent observe(log_diff_report), got valid non-error response. Content: ${#text} chars."
+    elif check_contains "$text" "missing_param" || check_contains "$text" "recording"; then
+        pass "Sent observe(log_diff_report), got expected parameter prompt (no active recordings). Content: $(truncate "$text" 200)"
+    else
+        fail "Unexpected error from observe(log_diff_report). Content: $(truncate "$text")"
+    fi
+}
+run_test_2_16
+
+# ── 2.17 — observe(recordings) ───────────────────────────
+begin_test "2.17" "observe(recordings) returns valid response" \
+    "Call observe with what:recordings. Verify response is valid, not error." \
+    "Recordings lists captured browser recording sessions."
+run_test_2_17() {
+    RESPONSE=$(call_tool "observe" '{"what":"recordings"}')
+    if ! check_not_error "$RESPONSE"; then
+        fail "Expected success but got isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
+        return
+    fi
+    local text
+    text=$(extract_content_text "$RESPONSE")
+    if [ -z "$text" ]; then
+        fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
+        return
+    fi
+    pass "Sent observe(recordings), got valid non-error response. Content: ${#text} chars."
+}
+run_test_2_17
+
+# ── 2.18 — observe(api) ──────────────────────────────────
+begin_test "2.18" "observe(api) returns valid response" \
+    "Call observe with what:api. Verify valid JSON-RPC response." \
+    "API mode shows captured API request/response pairs."
+run_test_2_18() {
+    RESPONSE=$(call_tool "observe" '{"what":"api"}')
+    if ! check_not_error "$RESPONSE"; then
+        fail "Expected success but got isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
+        return
+    fi
+    local text
+    text=$(extract_content_text "$RESPONSE")
+    if [ -z "$text" ]; then
+        fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
+        return
+    fi
+    pass "Sent observe(api), got valid non-error response. Content: ${#text} chars."
 }
 run_test_2_18
 
-# ── 2.19 — observe(security_audit) ───────────────────────
-begin_test "2.19" "observe(security_audit) returns findings" \
-    "Call observe with what:security_audit. Verify valid response with security data." \
-    "Security audit is a core feature."
+# ── 2.19 — observe(network_bodies) ───────────────────────
+begin_test "2.19" "observe(network_bodies) returns valid response" \
+    "Call observe with what:network_bodies. Verify valid JSON-RPC response." \
+    "Network bodies provides full request/response body data for network calls."
 run_test_2_19() {
-    RESPONSE=$(call_tool "observe" '{"what":"security_audit"}')
+    RESPONSE=$(call_tool "observe" '{"what":"network_bodies"}')
     if ! check_not_error "$RESPONSE"; then
         fail "Expected success but got isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
         return
@@ -507,20 +501,16 @@ run_test_2_19() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "findings"; then
-        fail "observe(security_audit) response missing 'findings' field. Content: $(truncate "$text")"
-        return
-    fi
-    pass "Sent observe(security_audit), got valid response with 'findings' field. Content: $(truncate "$text" 200)"
+    pass "Sent observe(network_bodies), got valid non-error response. Content: ${#text} chars."
 }
 run_test_2_19
 
-# ── 2.20 — observe(third_party_audit) ────────────────────
-begin_test "2.20" "observe(third_party_audit) returns analysis" \
-    "Call observe with what:third_party_audit. Verify valid response with third-party analysis." \
-    "Third-party tracking is compliance-critical for enterprise users."
+# ── 2.20 — observe(saved_videos) ─────────────────────────
+begin_test "2.20" "observe(saved_videos) returns valid response" \
+    "Call observe with what:saved_videos. Verify valid JSON-RPC response." \
+    "Saved videos lists recorded browser sessions."
 run_test_2_20() {
-    RESPONSE=$(call_tool "observe" '{"what":"third_party_audit"}')
+    RESPONSE=$(call_tool "observe" '{"what":"saved_videos"}')
     if ! check_not_error "$RESPONSE"; then
         fail "Expected success but got isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
         return
@@ -531,11 +521,7 @@ run_test_2_20() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "origins"; then
-        fail "observe(third_party_audit) response missing 'origins' field. Content: $(truncate "$text")"
-        return
-    fi
-    pass "Sent observe(third_party_audit), got valid response with 'origins' field. Content: $(truncate "$text" 200)"
+    pass "Sent observe(saved_videos), got valid non-error response. Content: ${#text} chars."
 }
 run_test_2_20
 

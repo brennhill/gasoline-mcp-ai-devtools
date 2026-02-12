@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-18-recording-automation.sh — Recording UI Automation Tests (7 tests)
 # Tests element finding, waiting, error recovery during recording playback.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"

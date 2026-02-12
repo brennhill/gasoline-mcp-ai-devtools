@@ -86,4 +86,4 @@ done
 echo ""
 echo "Tested ${#OBSERVE_MODES[@]} observe modes"
 
-exit $FAILED
+exit "$FAILED"

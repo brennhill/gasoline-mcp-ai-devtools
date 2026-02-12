@@ -82,5 +82,9 @@ export declare function handleDomQuery(params: string | Record<string, unknown>,
 export declare function handleGetNetworkWaterfall(sendResponse: (result: {
     entries: WaterfallEntry[];
 }) => void): boolean;
+/**
+ * Handle LINK_HEALTH_QUERY message
+ */
+export declare function handleLinkHealthQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
 export {};
 //# sourceMappingURL=message-handlers.d.ts.map

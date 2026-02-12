@@ -60,7 +60,7 @@ function makeRequest(path, options = {}) {
       port: url.port,
       path: url.pathname,
       method: options.method || 'GET',
-      headers: options.headers || {},
+      headers: options.headers || {}
     }
 
     const req = http.request(reqOptions, (res) => {
@@ -71,7 +71,7 @@ function makeRequest(path, options = {}) {
         resolve({
           status: res.statusCode,
           headers: res.headers,
-          body: options.binary ? body : body.toString(),
+          body: options.binary ? body : body.toString()
         })
       })
     })
@@ -96,7 +96,7 @@ function createTestWindow() {
       if (data && data.type === 'GASOLINE_NETWORK_BODY') {
         capturedEvents.push(data.payload)
       }
-    },
+    }
   }
 }
 
@@ -145,11 +145,11 @@ function createMockResponse(httpRes) {
         blob: () =>
           Promise.resolve({
             size: Buffer.byteLength(httpRes.body),
-            type: headers.get('content-type') || '',
+            type: headers.get('content-type') || ''
           }),
-        headers: this.headers,
+        headers: this.headers
       }
-    },
+    }
   }
 }
 
@@ -311,7 +311,7 @@ describe('Network Body E2E Tests', async () => {
         'application/wasm',
         'application/octet-stream',
         'application/zip',
-        'application/pdf',
+        'application/pdf'
       ]
 
       for (const type of binaryTypes) {
@@ -333,7 +333,7 @@ describe('Network Body E2E Tests', async () => {
         'application/json',
         'application/xml',
         'text/css',
-        'text/javascript',
+        'text/javascript'
       ]
 
       for (const type of textTypes) {
@@ -354,7 +354,7 @@ describe('Network Body E2E Tests', async () => {
       const headers = {
         Authorization: 'Bearer secret-token-123',
         'Content-Type': 'application/json',
-        Accept: 'application/json',
+        Accept: 'application/json'
       }
 
       const sanitized = sanitizeHeaders(headers)
@@ -375,7 +375,7 @@ describe('Network Body E2E Tests', async () => {
       const headers = {
         Cookie: 'session=abc123; token=xyz',
         'Set-Cookie': 'session=new-value; Path=/',
-        'Content-Type': 'text/html',
+        'Content-Type': 'text/html'
       }
 
       const sanitized = sanitizeHeaders(headers)
@@ -397,7 +397,7 @@ describe('Network Body E2E Tests', async () => {
         'X-API-Key': 'sk_live_abc123',
         'X-Auth-Token': 'token-value',
         'X-Secret-Key': 'secret-value',
-        'X-Custom-Header': 'safe-value',
+        'X-Custom-Header': 'safe-value'
       }
 
       const sanitized = sanitizeHeaders(headers)
@@ -420,7 +420,7 @@ describe('Network Body E2E Tests', async () => {
         authorization: 'Bearer xyz',
         AUTHORIZATION: 'Bearer abc',
         'x-auth-TOKEN': 'value',
-        'X-PASSWORD': 'secret',
+        'X-PASSWORD': 'secret'
       }
 
       const sanitized = sanitizeHeaders(headers)
@@ -438,7 +438,7 @@ describe('Network Body E2E Tests', async () => {
 
       const headers = new MockHeaders({
         authorization: 'Bearer token',
-        'content-type': 'application/json',
+        'content-type': 'application/json'
       })
 
       const sanitized = sanitizeHeaders(headers)
@@ -472,7 +472,7 @@ describe('Network Body E2E Tests', async () => {
       const res = await makeRequest('/echo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: requestBody,
+        body: requestBody
       })
 
       assert.strictEqual(res.status, 200)
@@ -494,7 +494,7 @@ describe('Network Body E2E Tests', async () => {
       const httpRes = await makeRequest('/echo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: '{"test":"data"}',
+        body: '{"test":"data"}'
       })
 
       const mockFetch = async () => createMockResponse(httpRes)
@@ -502,7 +502,7 @@ describe('Network Body E2E Tests', async () => {
 
       await wrappedFetch('/echo', {
         method: 'POST',
-        body: '{"test":"data"}',
+        body: '{"test":"data"}'
       })
 
       // Wait for async body capture
@@ -601,7 +601,7 @@ describe('Network Body E2E Tests', async () => {
       // Create a slow response that takes longer than timeout
       const slowResponse = {
         headers: new MockHeaders({ 'content-type': 'application/json' }),
-        text: () => new Promise((resolve) => setTimeout(() => resolve('{"slow":true}'), 100)),
+        text: () => new Promise((resolve) => setTimeout(() => resolve('{"slow":true}'), 100))
       }
 
       // Use 10ms timeout (response takes 100ms)
@@ -621,7 +621,7 @@ describe('Network Body E2E Tests', async () => {
 
       const fastResponse = {
         headers: new MockHeaders({ 'content-type': 'application/json' }),
-        text: () => Promise.resolve('{"fast":true}'),
+        text: () => Promise.resolve('{"fast":true}')
       }
 
       // Use 100ms timeout (response is instant)
@@ -779,8 +779,8 @@ describe('Network Body E2E Tests', async () => {
         headers: new MockHeaders({ 'content-type': 'application/json' }),
         clone: () => ({
           text: () => new Promise((resolve) => setTimeout(() => resolve('{}'), 100)),
-          headers: new MockHeaders({ 'content-type': 'application/json' }),
-        }),
+          headers: new MockHeaders({ 'content-type': 'application/json' })
+        })
       }
 
       const mockFetch = async () => slowMockResponse

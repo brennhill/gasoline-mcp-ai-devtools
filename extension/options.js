@@ -50,6 +50,7 @@ export function loadOptions() {
  * Example: debugMode=true in storage enables logging immediately, AND background
  * updates its debugMode variable so new logs use the new setting.
  */
+// #lizard forgives
 export function saveOptions() {
     const serverUrlInput = document.getElementById('server-url-input');
     const serverUrl = serverUrlInput?.value.trim() || DEFAULT_SERVER_URL;

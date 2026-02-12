@@ -1,0 +1,129 @@
+// tools_configure_coverage_test.go — Coverage tests for configure sub-handlers.
+package main
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
+
+// ============================================
+// toolConfigureClear — 60% → 90%+
+// ============================================
+
+func TestToolConfigureClear_AllBuffers(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"all"}`)
+	if !ok {
+		t.Fatal("clear all should return result")
+	}
+	if result.IsError {
+		t.Fatalf("clear all should not error, got: %s", result.Content[0].Text)
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(strings.ToLower(text), "clear") {
+		t.Errorf("response should mention clear, got: %s", text)
+	}
+}
+
+func TestToolConfigureClear_DefaultsToAll(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	// No buffer param — should default to "all"
+	result, ok := env.callConfigure(t, `{"action":"clear"}`)
+	if !ok {
+		t.Fatal("clear (default) should return result")
+	}
+	if result.IsError {
+		t.Fatalf("clear default should not error, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolConfigureClear_Network(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"network"}`)
+	if !ok {
+		t.Fatal("clear network should return result")
+	}
+	if result.IsError {
+		t.Fatalf("clear network should not error, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolConfigureClear_WebSocket(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"websocket"}`)
+	if !ok {
+		t.Fatal("clear websocket should return result")
+	}
+	if result.IsError {
+		t.Fatalf("clear websocket should not error, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolConfigureClear_Actions(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"actions"}`)
+	if !ok {
+		t.Fatal("clear actions should return result")
+	}
+	if result.IsError {
+		t.Fatalf("clear actions should not error, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolConfigureClear_Logs(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"logs"}`)
+	if !ok {
+		t.Fatal("clear logs should return result")
+	}
+	if result.IsError {
+		t.Fatalf("clear logs should not error, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolConfigureClear_UnknownBuffer(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"invalid_buffer"}`)
+	if !ok {
+		t.Fatal("clear invalid should return result")
+	}
+	if !result.IsError {
+		t.Fatal("clear invalid buffer should return error")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "invalid_buffer") {
+		t.Errorf("error should mention invalid buffer name, got: %s", text)
+	}
+}
+
+func TestToolConfigureClear_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	args := json.RawMessage(`{bad json}`)
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := env.handler.toolConfigureClear(req, args)
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("invalid JSON should return error")
+	}
+}

@@ -2,7 +2,7 @@
 # UAT: Test on-demand waterfall fetching
 # This script verifies that observe(network_waterfall) fetches fresh data from extension
 
-set -e
+set -euo pipefail
 
 PORT=${GASOLINE_PORT:-47152}
 SERVER_URL="http://localhost:$PORT"

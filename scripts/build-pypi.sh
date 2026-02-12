@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build and prepare PyPI packages for publication
-set -e
+set -euo pipefail
 
 echo "=== Gasoline PyPI Build Script ==="
 echo ""

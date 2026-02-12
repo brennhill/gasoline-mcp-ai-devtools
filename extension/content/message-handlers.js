@@ -2,9 +2,14 @@
  * @fileoverview Message Handlers Module
  * Handles messages from background script
  */
-import { registerHighlightRequest, hasHighlightRequest, deleteHighlightRequest, registerExecuteRequest, registerA11yRequest, registerDomRequest, } from './request-tracking.js';
+import { registerHighlightRequest, hasHighlightRequest, deleteHighlightRequest, registerExecuteRequest, registerA11yRequest, registerDomRequest } from './request-tracking.js';
 import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils.js';
-import { isInjectScriptLoaded } from './script-injection.js';
+import { isInjectScriptLoaded, getPageNonce } from './script-injection.js';
+import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants.js';
+/** Send a nonce-authenticated message to inject.js (MAIN world) */
+function postToInject(data) {
+    window.postMessage({ ...data, _nonce: getPageNonce() }, window.location.origin);
+}
 // Feature toggle message types forwarded from background to inject.js
 export const TOGGLE_MESSAGES = new Set([
     'setNetworkWaterfallEnabled',
@@ -15,7 +20,7 @@ export const TOGGLE_MESSAGES = new Set([
     'setPerformanceSnapshotEnabled',
     'setDeferralEnabled',
     'setNetworkBodyCaptureEnabled',
-    'setServerUrl',
+    'setServerUrl'
 ]);
 /**
  * Security: Validate sender is from the extension background script
@@ -48,11 +53,11 @@ export function forwardHighlightMessage(message) {
     const requestId = registerHighlightRequest((result) => deferred.resolve(result));
     const deferred = createDeferredPromise();
     // Post message to page context (inject.js)
-    window.postMessage({
+    postToInject({
         type: 'GASOLINE_HIGHLIGHT_REQUEST',
         requestId,
-        params: message.params,
-    }, window.location.origin);
+        params: message.params
+    });
     // Timeout fallback + cleanup stale entries after 30 seconds
     return promiseRaceWithCleanup(deferred.promise, 30000, { success: false, error: 'timeout' }, () => {
         if (hasHighlightRequest(requestId)) {
@@ -79,14 +84,14 @@ export async function handleStateCommand(params) {
     };
     window.addEventListener('message', responseHandler);
     // Send command to inject.js (include state for restore action)
-    window.postMessage({
+    postToInject({
         type: 'GASOLINE_STATE_COMMAND',
         messageId,
         action,
         name,
         state,
-        include_url,
-    }, window.location.origin);
+        include_url
+    });
     // Timeout after 5 seconds with cleanup
     return promiseRaceWithCleanup(deferred.promise, 5000, { error: 'State command timeout' }, () => window.removeEventListener('message', responseHandler));
 }
@@ -114,7 +119,7 @@ export function handleToggleMessage(message) {
         payload.enabled = message.enabled;
     }
     // SECURITY: Use explicit targetOrigin (window.location.origin) not "*"
-    window.postMessage(payload, window.location.origin);
+    window.postMessage({ ...payload, _nonce: getPageNonce() }, window.location.origin);
 }
 /**
  * Execute JS in the MAIN world via inject script, with safety timeout.
@@ -129,14 +134,14 @@ function executeInMainWorld(params, sendResponse) {
     setTimeout(createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), {
         success: false,
         error: 'inject_not_responding',
-        message: `Inject script did not respond within ${safetyTimeoutMs}ms. The tab may not be tracked or the inject script failed to load.`,
+        message: `Inject script did not respond within ${safetyTimeoutMs}ms. The tab may not be tracked or the inject script failed to load.`
     }), safetyTimeoutMs);
-    window.postMessage({
+    postToInject({
         type: 'GASOLINE_EXECUTE_JS',
         requestId,
         script: params.script || '',
-        timeoutMs,
-    }, window.location.origin);
+        timeoutMs
+    });
 }
 /**
  * Handle GASOLINE_EXECUTE_JS message.
@@ -149,7 +154,7 @@ export function handleExecuteJs(params, sendResponse) {
         sendResponse({
             success: false,
             error: 'inject_not_loaded',
-            message: 'Inject script not loaded in page context. Tab may not be tracked.',
+            message: 'Inject script not loaded in page context. Tab may not be tracked.'
         });
         return true;
     }
@@ -192,16 +197,16 @@ export function handleA11yQuery(params, sendResponse) {
         parsedParams = params;
     }
     const requestId = registerA11yRequest(sendResponse);
-    // Timeout fallback: respond with error and cleanup after 30 seconds
+    // Timeout fallback: respond with error and cleanup after async command timeout
     setTimeout(createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), {
-        error: 'Accessibility audit timeout',
-    }), 30000);
+        error: 'Accessibility audit timeout'
+    }), ASYNC_COMMAND_TIMEOUT_MS);
     // Forward to inject.js via postMessage
-    window.postMessage({
+    postToInject({
         type: 'GASOLINE_A11Y_QUERY',
         requestId,
-        params: parsedParams,
-    }, window.location.origin);
+        params: parsedParams
+    });
     return true;
 }
 /**
@@ -222,14 +227,14 @@ export function handleDomQuery(params, sendResponse) {
         parsedParams = params;
     }
     const requestId = registerDomRequest(sendResponse);
-    // Timeout fallback: respond with error and cleanup after 30 seconds
-    setTimeout(createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), { error: 'DOM query timeout' }), 30000);
+    // Timeout fallback: respond with error and cleanup after async command timeout
+    setTimeout(createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), { error: 'DOM query timeout' }), ASYNC_COMMAND_TIMEOUT_MS);
     // Forward to inject.js via postMessage
-    window.postMessage({
+    postToInject({
         type: 'GASOLINE_DOM_QUERY',
         requestId,
-        params: parsedParams,
-    }, window.location.origin);
+        params: parsedParams
+    });
     return true;
 }
 /**
@@ -249,15 +254,62 @@ export function handleGetNetworkWaterfall(sendResponse) {
     };
     window.addEventListener('message', responseHandler);
     // Post message to page context
-    window.postMessage({
+    postToInject({
         type: 'GASOLINE_GET_WATERFALL',
-        requestId,
-    }, window.location.origin);
+        requestId
+    });
     // Timeout fallback: respond with empty array after 5 seconds
     promiseRaceWithCleanup(deferred.promise, 5000, { entries: [] }, () => {
         window.removeEventListener('message', responseHandler);
     }).then((result) => {
         sendResponse(result);
+    }, () => {
+        sendResponse({ entries: [] });
+    });
+    return true;
+}
+/**
+ * Handle LINK_HEALTH_QUERY message
+ */
+export function handleLinkHealthQuery(params, sendResponse) {
+    // Parse params if it's a string (from JSON)
+    let parsedParams = {};
+    if (typeof params === 'string') {
+        try {
+            parsedParams = JSON.parse(params);
+        }
+        catch {
+            parsedParams = {};
+        }
+    }
+    else if (typeof params === 'object') {
+        parsedParams = params;
+    }
+    const requestId = Date.now();
+    const deferred = createDeferredPromise();
+    // Set up a one-time listener for the response
+    const responseHandler = (event) => {
+        if (event.source !== window)
+            return;
+        if (event.data?.type === 'GASOLINE_LINK_HEALTH_RESPONSE') {
+            window.removeEventListener('message', responseHandler);
+            deferred.resolve(event.data.result || { error: 'No result from link health check' });
+        }
+    };
+    window.addEventListener('message', responseHandler);
+    // Forward to inject.js via postMessage
+    postToInject({
+        type: 'GASOLINE_LINK_HEALTH_QUERY',
+        requestId,
+        params: parsedParams
+    });
+    // Timeout fallback: respond with error after async command timeout window
+    promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: 'Link health check timeout' }, () => {
+        window.removeEventListener('message', responseHandler);
+    }).then((result) => {
+        sendResponse(result);
+    }, () => {
+        sendResponse({ error: 'Link health check failed' });
     });
     return true;
 }

@@ -2,7 +2,7 @@
 # Auto-generate FEATURE-NAVIGATION.md from actual folder structure
 # Run this after adding/removing features to keep navigation up-to-date
 
-set -e
+set -euo pipefail
 
 DOCS_DIR="/Users/brenn/dev/gasoline"
 FEATURES_DIR="${DOCS_DIR}/docs/features/feature"
@@ -100,11 +100,13 @@ list_feature_files() {
 }
 
 # Build feature tables by status
-echo "" >> "$TEMP_FILE"
-echo "### Shipped Features (Production)" >> "$TEMP_FILE"
-echo "" >> "$TEMP_FILE"
-echo "| Feature | Folder | Files | Purpose |" >> "$TEMP_FILE"
-echo "|---------|--------|-------|---------|" >> "$TEMP_FILE"
+{
+echo ""
+echo "### Shipped Features (Production)"
+echo ""
+echo "| Feature | Folder | Files | Purpose |"
+echo "|---------|--------|-------|---------|"
+} >> "$TEMP_FILE"
 
 shipped_count=0
 for feature_dir in $(find "$FEATURES_DIR" -maxdepth 1 -type d -name '[a-z]*' | sort); do
@@ -120,11 +122,13 @@ for feature_dir in $(find "$FEATURES_DIR" -maxdepth 1 -type d -name '[a-z]*' | s
   fi
 done
 
-echo "" >> "$TEMP_FILE"
-echo "### In-Progress Features" >> "$TEMP_FILE"
-echo "" >> "$TEMP_FILE"
-echo "| Feature | Folder | Files | Purpose |" >> "$TEMP_FILE"
-echo "|---------|--------|-------|---------|" >> "$TEMP_FILE"
+{
+echo ""
+echo "### In-Progress Features"
+echo ""
+echo "| Feature | Folder | Files | Purpose |"
+echo "|---------|--------|-------|---------|"
+} >> "$TEMP_FILE"
 
 progress_count=0
 for feature_dir in $(find "$FEATURES_DIR" -maxdepth 1 -type d -name '[a-z]*' | sort); do
@@ -140,11 +144,13 @@ for feature_dir in $(find "$FEATURES_DIR" -maxdepth 1 -type d -name '[a-z]*' | s
   fi
 done
 
-echo "" >> "$TEMP_FILE"
-echo "### Proposed Features" >> "$TEMP_FILE"
-echo "" >> "$TEMP_FILE"
-echo "| Feature | Folder | Files | Purpose |" >> "$TEMP_FILE"
-echo "|---------|--------|-------|---------|" >> "$TEMP_FILE"
+{
+echo ""
+echo "### Proposed Features"
+echo ""
+echo "| Feature | Folder | Files | Purpose |"
+echo "|---------|--------|-------|---------|"
+} >> "$TEMP_FILE"
 
 proposed_count=0
 for feature_dir in $(find "$FEATURES_DIR" -maxdepth 1 -type d -name '[a-z]*' | sort); do

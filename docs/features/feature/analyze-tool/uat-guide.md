@@ -10,7 +10,7 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Estimated Time:** 45-60 minutes
 
-**Required Setup:**
+### Required Setup:
 - Gasoline extension installed
 - Gasoline server running
 - Claude or MCP-compatible AI client
@@ -52,14 +52,14 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify AI can request and receive accessibility findings
 
-**Steps:**
+#### Steps:
 1. Navigate to a page with known accessibility issues
 2. Ask AI: "Check this page for accessibility issues"
 
-**Expected AI Actions:**
+#### Expected AI Actions:
 - AI calls `analyze({action: 'audit', scope: 'accessibility'})`
 
-**Verification:**
+#### Verification:
 - [ ] Response arrives within 15 seconds
 - [ ] Response includes `findings` array
 - [ ] Each finding has `severity`, `category`, `message`
@@ -73,14 +73,14 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify selector scoping works
 
-**Steps:**
+#### Steps:
 1. Navigate to a page with a form element
 2. Ask AI: "Check just the signup form for accessibility"
 
-**Expected AI Actions:**
+#### Expected AI Actions:
 - AI calls `analyze({action: 'audit', scope: 'accessibility', selector: 'form'})`
 
-**Verification:**
+#### Verification:
 - [ ] Response only includes issues within the form
 - [ ] Issues outside the form are NOT reported
 - [ ] Duration is faster than full-page audit
@@ -91,14 +91,14 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify security header checking works
 
-**Steps:**
+#### Steps:
 1. Navigate to a page without CSP (most dev servers)
 2. Ask AI: "Check this page for security issues"
 
-**Expected AI Actions:**
+#### Expected AI Actions:
 - AI calls `analyze({action: 'security'})`
 
-**Verification:**
+#### Verification:
 - [ ] Response includes `findings` for missing headers
 - [ ] CSP missing is flagged as high severity
 - [ ] Cookie audit included
@@ -109,12 +109,12 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify localStorage/sessionStorage audit
 
-**Steps:**
+#### Steps:
 1. Open DevTools on any page
 2. Add: `localStorage.setItem('auth_token', 'secret123')`
 3. Ask AI: "Check this page for security issues"
 
-**Verification:**
+#### Verification:
 - [ ] Response flags `auth_token` as sensitive key
 - [ ] Response does NOT include the value `secret123`
 - [ ] Guidance suggests using httpOnly cookies
@@ -125,14 +125,14 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify memory analysis works (Chrome only)
 
-**Steps:**
+#### Steps:
 1. Navigate to any page
 2. Ask AI: "Take a memory snapshot of this page"
 
-**Expected AI Actions:**
+#### Expected AI Actions:
 - AI calls `analyze({action: 'memory', scope: 'snapshot'})`
 
-**Verification:**
+#### Verification:
 - [ ] Response includes `heap_used_mb` and `heap_total_mb`
 - [ ] Response includes `dom_node_count`
 - [ ] Response includes `detached_nodes` count
@@ -144,17 +144,17 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify memory leak detection workflow
 
-**Steps:**
+#### Steps:
 1. Navigate to a SPA (e.g., React app)
 2. Ask AI: "Take a memory baseline"
 3. Perform actions that might leak memory (open/close modals, navigate routes)
 4. Ask AI: "Check for memory leaks"
 
-**Expected AI Actions:**
+#### Expected AI Actions:
 - First: `analyze({action: 'memory', scope: 'snapshot'})` (baseline)
 - Second: `analyze({action: 'memory', scope: 'compare'})`
 
-**Verification:**
+#### Verification:
 - [ ] Compare response shows `baseline` and `current` states
 - [ ] Delta values calculated (heap_growth_mb, heap_growth_pct)
 - [ ] Detached nodes delta shown
@@ -166,14 +166,14 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify regression baseline capture
 
-**Steps:**
+#### Steps:
 1. Navigate to your app's main page
 2. Ask AI: "Save a baseline of this page's state"
 
-**Expected AI Actions:**
+#### Expected AI Actions:
 - AI calls `analyze({action: 'regression', scope: 'baseline'})`
 
-**Verification:**
+#### Verification:
 - [ ] Response confirms baseline captured
 - [ ] Response includes timestamp and URL
 
@@ -183,14 +183,14 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify regression detection
 
-**Steps:**
+#### Steps:
 1. After HP-7, make a change to the page
 2. Ask AI: "Check for regressions against the baseline"
 
-**Expected AI Actions:**
+#### Expected AI Actions:
 - AI calls `analyze({action: 'regression', scope: 'compare'})`
 
-**Verification:**
+#### Verification:
 - [ ] Response compares accessibility, performance, security
 - [ ] New issues flagged as regressions
 - [ ] Performance deltas calculated
@@ -202,14 +202,14 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify cache bypass works
 
-**Steps:**
+#### Steps:
 1. Run an accessibility audit
 2. Within 10 seconds, ask AI: "Audit accessibility again, fresh"
 
-**Expected AI Actions:**
+#### Expected AI Actions:
 - AI calls `analyze({action: 'audit', scope: 'accessibility', force_refresh: true})`
 
-**Verification:**
+#### Verification:
 - [ ] New audit runs (check duration is > 1s)
 - [ ] `cached: false` in response
 
@@ -221,11 +221,11 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify correct error when pilot is OFF
 
-**Steps:**
+#### Steps:
 1. Turn OFF AI Web Pilot toggle in extension popup
 2. Ask AI to run any analysis
 
-**Verification:**
+#### Verification:
 - [ ] AI receives error: `ai_web_pilot_disabled`
 - [ ] AI explains the error to the user
 - [ ] Turn toggle back ON, analysis works
@@ -236,11 +236,11 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify timeout handling on very complex pages
 
-**Steps:**
+#### Steps:
 1. Navigate to an extremely complex page
 2. Request a full audit
 
-**Verification:**
+#### Verification:
 - [ ] If timeout occurs, response includes `status: partial` or error
 - [ ] Warning indicates timeout
 - [ ] Server does not hang
@@ -251,10 +251,10 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify invalid selector handling
 
-**Steps:**
+#### Steps:
 1. Ask AI: "Check accessibility of element with selector '[[[invalid'"
 
-**Verification:**
+#### Verification:
 - [ ] Error response with `error: invalid_selector`
 - [ ] No crash or hang
 
@@ -264,10 +264,10 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify empty results handling
 
-**Steps:**
+#### Steps:
 1. Ask AI: "Check accessibility of #nonexistent-element-xyz"
 
-**Verification:**
+#### Verification:
 - [ ] Audit completes successfully
 - [ ] Summary shows all zeros (no issues found)
 
@@ -277,10 +277,10 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify graceful degradation on non-Chrome browsers
 
-**Steps:**
+#### Steps:
 1. In Firefox (or simulate), request memory analysis
 
-**Verification:**
+#### Verification:
 - [ ] Error: `memory_api_unavailable`
 - [ ] Message explains browser limitation
 
@@ -290,11 +290,11 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify compare without baseline handling
 
-**Steps:**
+#### Steps:
 1. Clear any existing baselines
 2. Ask AI: "Check for regressions"
 
-**Verification:**
+#### Verification:
 - [ ] Error: `no_baseline`
 - [ ] AI suggests capturing a baseline first
 
@@ -304,11 +304,11 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify extension timeout handling
 
-**Steps:**
+#### Steps:
 1. Disable the extension via chrome://extensions
 2. Ask AI to run analysis
 
-**Verification:**
+#### Verification:
 - [ ] Error: `extension_timeout` (after ~10s)
 - [ ] Re-enable extension, analysis works
 
@@ -318,12 +318,12 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify CSP fallback behavior
 
-**Steps:**
+#### Steps:
 1. Navigate to a page with strict CSP
 2. Ensure DevTools is CLOSED
 3. Request accessibility audit
 
-**Verification:**
+#### Verification:
 - [ ] Either audit succeeds (via Tier 2 fallback)
 - [ ] Or clear error explaining CSP blocked
 
@@ -333,12 +333,12 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify error when Tier 2 cannot be used
 
-**Steps:**
+#### Steps:
 1. Navigate to page with strict CSP
 2. Open Chrome DevTools
 3. Request accessibility audit
 
-**Verification:**
+#### Verification:
 - [ ] Error: `axe_csp_blocked_devtools_open`
 - [ ] Message explains DevTools conflict
 
@@ -350,11 +350,11 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify handling of complex pages
 
-**Steps:**
+#### Steps:
 1. Navigate to a very heavy page (Amazon product page)
 2. Request accessibility audit
 
-**Verification:**
+#### Verification:
 - [ ] Audit completes (may take up to 15-30s)
 - [ ] No browser crash or hang
 - [ ] Main thread stays responsive
@@ -365,14 +365,14 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify handling of large storage
 
-**Steps:**
+#### Steps:
 1. Populate localStorage with 5MB of data:
    ```javascript
    localStorage.setItem('big', 'x'.repeat(5*1024*1024))
    ```
 2. Request security audit
 
-**Verification:**
+#### Verification:
 - [ ] Audit completes
 - [ ] Response includes localStorage key names only
 
@@ -382,11 +382,11 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify partial results on navigation
 
-**Steps:**
+#### Steps:
 1. Request a full audit (takes several seconds)
 2. Quickly navigate to another page before completion
 
-**Verification:**
+#### Verification:
 - [ ] Response indicates `status: partial`
 - [ ] Warning: `page_navigated`
 
@@ -396,11 +396,11 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify tab closure handling
 
-**Steps:**
+#### Steps:
 1. Request analysis
 2. Close the tab before completion
 
-**Verification:**
+#### Verification:
 - [ ] Error returned (not hang)
 - [ ] Server continues operating
 
@@ -410,10 +410,10 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify concurrent request handling
 
-**Steps:**
+#### Steps:
 1. Rapidly request 5 audits in quick succession
 
-**Verification:**
+#### Verification:
 - [ ] First audit completes
 - [ ] Subsequent audits either complete or queue
 - [ ] No memory leak (check extension memory)
@@ -424,11 +424,11 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify minimal page handling
 
-**Steps:**
+#### Steps:
 1. Navigate to about:blank
 2. Request accessibility audit
 
-**Verification:**
+#### Verification:
 - [ ] Audit completes quickly
 - [ ] Summary shows minimal/zero issues
 
@@ -438,12 +438,12 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify caching works correctly
 
-**Steps:**
+#### Steps:
 1. Request accessibility audit
 2. Note the duration
 3. Immediately request same audit again
 
-**Verification:**
+#### Verification:
 - [ ] Second request returns much faster (<100ms)
 - [ ] Results are identical
 
@@ -453,7 +453,7 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 ### PV-1: Audit Timing Benchmark
 
-**Test Matrix:**
+#### Test Matrix:
 
 | Page Type | Expected Time | Actual Time | Pass? |
 |-----------|---------------|-------------|-------|
@@ -465,13 +465,13 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 ### PV-2: Memory Footprint
 
-**Steps:**
+#### Steps:
 1. Open Chrome Task Manager (Shift+Esc)
 2. Note extension memory before any audit
 3. Run 10 audits
 4. Note extension memory after
 
-**Verification:**
+#### Verification:
 - [ ] Memory increase < 10MB
 - [ ] Memory stabilizes (doesn't keep growing)
 
@@ -479,12 +479,12 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 ### PV-3: Main Thread Blocking
 
-**Steps:**
+#### Steps:
 1. Open a page with animations or video
 2. Request a full audit
 3. Observe the page during analysis
 
-**Verification:**
+#### Verification:
 - [ ] Animations continue smoothly
 - [ ] Page scrolling remains responsive
 
@@ -496,7 +496,7 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify end-to-end fix workflow
 
-**Steps:**
+#### Steps:
 1. Navigate to page with accessibility issues
 2. Ask AI: "Find and fix accessibility issues on this page"
 3. Let AI:
@@ -505,7 +505,7 @@ This guide provides step-by-step instructions for human testers to verify the `a
    - Apply fixes via interact
    - Re-run analysis to confirm
 
-**Verification:**
+#### Verification:
 - [ ] AI runs initial analysis
 - [ ] AI identifies specific issues
 - [ ] AI applies fixes (if interact enabled)
@@ -518,11 +518,11 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify security improvement workflow
 
-**Steps:**
+#### Steps:
 1. Navigate to a page you control
 2. Ask AI: "Help me improve the security of this page"
 
-**Verification:**
+#### Verification:
 - [ ] AI provides actionable recommendations
 - [ ] Recommendations reference specific findings
 - [ ] AI can generate code/config for fixes
@@ -533,11 +533,11 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify memory debugging workflow
 
-**Steps:**
+#### Steps:
 1. Navigate to a SPA
 2. Ask AI: "Help me find if there are memory leaks"
 
-**Verification:**
+#### Verification:
 - [ ] AI takes meaningful baseline
 - [ ] AI interprets memory changes
 - [ ] AI identifies potential leak patterns
@@ -548,12 +548,12 @@ This guide provides step-by-step instructions for human testers to verify the `a
 
 **Objective:** Verify regression detection workflow
 
-**Steps:**
+#### Steps:
 1. On current production page, ask AI: "Capture baseline for regression testing"
 2. Deploy a change (or simulate)
 3. Ask AI: "Check for regressions"
 
-**Verification:**
+#### Verification:
 - [ ] Baseline captured with version/timestamp
 - [ ] Comparison identifies real changes
 - [ ] Verdict is accurate

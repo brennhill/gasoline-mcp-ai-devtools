@@ -2,7 +2,7 @@
 # Comprehensive verification script to ensure refactoring didn't break anything
 # Run this after major refactoring to verify 100% functionality
 
-set -e
+set -euo pipefail
 
 echo "════════════════════════════════════════════════════════════════"
 echo "🔍 COMPREHENSIVE REFACTORING VERIFICATION"

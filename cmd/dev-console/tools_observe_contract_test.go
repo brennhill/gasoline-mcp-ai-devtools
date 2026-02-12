@@ -237,19 +237,7 @@ func TestObserveContract_Tabs(t *testing.T) {
 	})
 }
 
-func TestObserveContract_Performance(t *testing.T) {
-	s := newScenario(t)
-
-	result, ok := s.callObserve(t, "performance")
-	if !ok {
-		t.Fatal("observe performance: no result")
-	}
-
-	assertResponseShape(t, "performance", result, []fieldSpec{
-		required("snapshots", "array"),
-		required("count", "number"),
-	})
-}
+// TestObserveContract_Performance removed in Phase 0: moved to analyze({what:'performance'})
 
 func TestObserveContract_Timeline(t *testing.T) {
 	s := newScenario(t)
@@ -266,20 +254,7 @@ func TestObserveContract_Timeline(t *testing.T) {
 	})
 }
 
-func TestObserveContract_ErrorClusters(t *testing.T) {
-	s := newScenario(t)
-	s.loadConsoleData(t)
-
-	result, ok := s.callObserve(t, "error_clusters")
-	if !ok {
-		t.Fatal("observe error_clusters: no result")
-	}
-
-	assertResponseShape(t, "error_clusters", result, []fieldSpec{
-		required("clusters", "array"),
-		required("total_count", "number"),
-	})
-}
+// TestObserveContract_ErrorClusters removed in Phase 0: moved to analyze({what:'error_clusters'})
 
 func TestObserveContract_ErrorBundles(t *testing.T) {
 	s := newScenario(t)
@@ -306,20 +281,7 @@ func TestObserveContract_ErrorBundles_EmptyArray(t *testing.T) {
 	assertArrayNotNull(t, "error_bundles (empty)", data, "bundles")
 }
 
-func TestObserveContract_History(t *testing.T) {
-	s := newScenario(t)
-	s.loadActionData(t)
-
-	result, ok := s.callObserve(t, "history")
-	if !ok {
-		t.Fatal("observe history: no result")
-	}
-
-	assertResponseShape(t, "history", result, []fieldSpec{
-		required("entries", "array"),
-		required("count", "number"),
-	})
-}
+// TestObserveContract_History removed in Phase 0: moved to analyze({what:'history'})
 
 // ============================================
 // Tier 2b: Pilot & Security Contracts
@@ -341,56 +303,15 @@ func TestObserveContract_Pilot(t *testing.T) {
 	})
 }
 
-func TestObserveContract_SecurityAudit(t *testing.T) {
-	s := newScenario(t)
+// TestObserveContract_SecurityAudit removed in Phase 0: moved to analyze({what:'security_audit'})
 
-	result, ok := s.callObserve(t, "security_audit")
-	if !ok {
-		t.Fatal("observe security_audit: no result")
-	}
-
-	data := parseResponseJSON(t, result)
-	assertObjectShape(t, "security_audit", data, []fieldSpec{
-		required("findings", "array"),
-		required("summary", "object"),
-		required("scanned_at", "string"),
-	})
-}
-
-func TestObserveContract_ThirdPartyAudit(t *testing.T) {
-	s := newScenario(t)
-
-	result, ok := s.callObserve(t, "third_party_audit")
-	if !ok {
-		t.Fatal("observe third_party_audit: no result")
-	}
-
-	data := parseResponseJSON(t, result)
-	assertObjectShape(t, "third_party_audit", data, []fieldSpec{
-		required("first_party_origin", "string"),
-		required("third_parties", "array"),
-		required("summary", "object"),
-		required("recommendations", "array"),
-	})
-}
+// TestObserveContract_ThirdPartyAudit removed in Phase 0: moved to analyze({what:'third_party_audit'})
 
 // ============================================
 // Tier 3: Security Diff, Async, Recording Contracts
 // ============================================
 
-func TestObserveContract_SecurityDiff(t *testing.T) {
-	s := newScenario(t)
-
-	result, ok := s.callObserve(t, "security_diff")
-	if !ok {
-		t.Fatal("observe security_diff: no result")
-	}
-
-	assertResponseShape(t, "security_diff", result, []fieldSpec{
-		required("status", "string"),
-		required("differences", "array"),
-	})
-}
+// TestObserveContract_SecurityDiff removed in Phase 0: moved to analyze({what:'security_diff'})
 
 func TestObserveContract_PendingCommands(t *testing.T) {
 	s := newScenario(t)
@@ -639,33 +560,5 @@ func TestObserveContract_Timeline_EmptyArray(t *testing.T) {
 	assertArrayNotNull(t, "timeline (empty)", data, "entries")
 }
 
-func TestObserveContract_History_EmptyArray(t *testing.T) {
-	s := newScenario(t)
-	result, ok := s.callObserve(t, "history")
-	if !ok {
-		t.Fatal("observe history: no result")
-	}
-	data := parseResponseJSON(t, result)
-	assertArrayNotNull(t, "history (empty)", data, "entries")
-}
-
-func TestObserveContract_SecurityAudit_EmptyArray(t *testing.T) {
-	s := newScenario(t)
-	result, ok := s.callObserve(t, "security_audit")
-	if !ok {
-		t.Fatal("observe security_audit: no result")
-	}
-	data := parseResponseJSON(t, result)
-	assertArrayNotNull(t, "security_audit (empty)", data, "findings")
-}
-
-func TestObserveContract_ThirdPartyAudit_EmptyArrays(t *testing.T) {
-	s := newScenario(t)
-	result, ok := s.callObserve(t, "third_party_audit")
-	if !ok {
-		t.Fatal("observe third_party_audit: no result")
-	}
-	data := parseResponseJSON(t, result)
-	assertArrayNotNull(t, "third_party_audit (empty)", data, "third_parties")
-	assertArrayNotNull(t, "third_party_audit (empty)", data, "recommendations")
-}
+// Empty array tests removed in Phase 0: History, SecurityAudit, ThirdPartyAudit
+// moved to analyze({what:'...'}) - empty array validation tests moved there

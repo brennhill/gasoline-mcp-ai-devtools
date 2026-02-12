@@ -45,7 +45,7 @@ export function updateVersionFromHealth(healthResponse, debugLogFn) {
                 extensionVersion,
                 currentVersion,
                 availableVersion: newAvailableVersion,
-                updateAvailable: isNewer,
+                updateAvailable: isNewer
             });
         }
     }
@@ -59,19 +59,19 @@ export function updateVersionBadge() {
         return;
     if (newVersionAvailable && availableVersion) {
         chrome.action.setBadgeText({
-            text: '⬆',
+            text: '⬆'
         });
         chrome.action.setBadgeBackgroundColor({
-            color: '#0969da', // Blue for info
+            color: '#0969da' // Blue for info
         });
         chrome.action.setTitle({
-            title: `Gasoline: New version available (${availableVersion})`,
+            title: `Gasoline: New version available (${availableVersion})`
         });
     }
     else {
         // Clear the version update indicator
         chrome.action.setTitle({
-            title: 'Gasoline',
+            title: 'Gasoline'
         });
     }
 }
@@ -83,7 +83,7 @@ export function getUpdateInfo() {
         available: newVersionAvailable,
         currentVersion: getExtensionVersion(),
         availableVersion: availableVersion,
-        downloadUrl: 'https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/latest',
+        downloadUrl: 'https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/latest'
     };
 }
 /**

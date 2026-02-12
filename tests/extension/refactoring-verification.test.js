@@ -16,7 +16,7 @@
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
-import { createMockWindow } from './helpers.js'
+import { createMockWindow, MANIFEST_VERSION } from './helpers.js'
 
 // Setup global chrome mock before importing modules
 const mockChrome = {
@@ -24,11 +24,11 @@ const mockChrome = {
     onMessage: { addListener: mock.fn() },
     onInstalled: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '6.0.3' }),
+    getManifest: () => ({ version: MANIFEST_VERSION })
   },
   action: {
     setBadgeText: mock.fn(),
-    setBadgeBackgroundColor: mock.fn(),
+    setBadgeBackgroundColor: mock.fn()
   },
   storage: {
     local: {
@@ -43,31 +43,31 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     sync: {
       get: mock.fn((keys, callback) => callback && callback({})),
-      set: mock.fn((data, callback) => callback && callback()),
+      set: mock.fn((data, callback) => callback && callback())
     },
     session: {
       get: mock.fn((keys, callback) => callback && callback({})),
-      set: mock.fn((data, callback) => callback && callback()),
+      set: mock.fn((data, callback) => callback && callback())
     },
-    onChanged: { addListener: mock.fn() },
+    onChanged: { addListener: mock.fn() }
   },
   tabs: {
     get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
     query: mock.fn(() => Promise.resolve([{ id: 1, windowId: 1 }])),
     onRemoved: { addListener: mock.fn() },
-    onUpdated: { addListener: mock.fn() },
+    onUpdated: { addListener: mock.fn() }
   },
   webRequest: {
-    onBeforeRequest: { addListener: mock.fn() },
+    onBeforeRequest: { addListener: mock.fn() }
   },
   webNavigation: {
     onCommitted: { addListener: mock.fn() },
-    onBeforeNavigate: { addListener: mock.fn() },
-  },
+    onBeforeNavigate: { addListener: mock.fn() }
+  }
 }
 globalThis.chrome = mockChrome
 
@@ -90,17 +90,13 @@ describe('Performance Capture After Refactoring', () => {
       measure: mock.fn(),
       getEntriesByType: (type) => {
         if (type === 'mark') {
-          return [
-            { name: 'test-mark', entryType: 'mark', startTime: 100, duration: 0 },
-          ]
+          return [{ name: 'test-mark', entryType: 'mark', startTime: 100, duration: 0 }]
         }
         if (type === 'measure') {
-          return [
-            { name: 'test-measure', entryType: 'measure', startTime: 100, duration: 50 },
-          ]
+          return [{ name: 'test-measure', entryType: 'measure', startTime: 100, duration: 50 }]
         }
         return []
-      },
+      }
     }
 
     // Replace global performance object (used by extension/lib/performance.js)
@@ -111,7 +107,7 @@ describe('Performance Capture After Refactoring', () => {
       location: { href: 'http://localhost:3000/test' },
       postMessage: mock.fn(),
       addEventListener: mock.fn(),
-      performance: mockPerformance,
+      performance: mockPerformance
     }
   })
 
@@ -181,9 +177,9 @@ describe('Network Body Capture After Refactoring', () => {
         ...this,
         text: () => Promise.resolve(options.body || '{}'),
         blob: () =>
-          Promise.resolve({ size: (options.body || '{}').length, type: options.contentType || 'application/json' }),
+          Promise.resolve({ size: (options.body || '{}').length, type: options.contentType || 'application/json' })
       }
-    },
+    }
   })
 
   class MockHeaders {
@@ -222,7 +218,7 @@ describe('Network Body Capture After Refactoring', () => {
     const wrappedFetch = wrapFetchWithBodies(originalFetch)
     await wrappedFetch('/api/users', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Alice' }),
+      body: JSON.stringify({ name: 'Alice' })
     })
 
     await new Promise((r) => setTimeout(r, 10))
@@ -351,7 +347,7 @@ describe('Full Pipeline Integration After Refactoring', () => {
       now: () => Date.now(),
       getEntriesByType: () => [],
       mark: mock.fn(),
-      measure: mock.fn(),
+      measure: mock.fn()
     }
 
     globalThis.performance = mockPerformance
@@ -359,7 +355,7 @@ describe('Full Pipeline Integration After Refactoring', () => {
       location: { href: 'http://localhost:3000/test' },
       postMessage: mock.fn(),
       addEventListener: mock.fn(),
-      performance: mockPerformance,
+      performance: mockPerformance
     }
 
     try {
@@ -384,12 +380,11 @@ describe('Full Pipeline Integration After Refactoring', () => {
         level: 'info',
         type: 'console',
         args: [serialized],
-        url: 'http://localhost:3000',
+        url: 'http://localhost:3000'
       })
       assert.ok(formatted, 'Formatting should work')
       assert.ok('level' in formatted, 'Formatted entry should have level')
       assert.ok('ts' in formatted, 'Formatted entry should have ts (timestamp)')
-
     } finally {
       globalThis.window = originalWindow
       globalThis.performance = originalPerformance

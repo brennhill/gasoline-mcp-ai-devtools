@@ -10,6 +10,41 @@ import { isInternalUrl } from './ui-utils'
  * Shows current tracking status and handles track/untrack.
  * Disables the button on internal Chrome pages where tracking is impossible.
  */
+function showInternalPageState(btn: HTMLButtonElement, info: HTMLElement | null): void {
+  btn.disabled = true
+  btn.textContent = 'Cannot Track Internal Pages'
+  btn.title = 'Chrome blocks extensions on internal pages like chrome:// and about:'
+  Object.assign(btn.style, { opacity: '0.5', background: '#252525', color: '#888', borderColor: '#333' })
+  if (info) { info.style.display = 'block'; info.textContent = 'Internal browser pages cannot be tracked' }
+}
+
+function showTrackingState(
+  btn: HTMLButtonElement, info: HTMLElement | null, urlEl: HTMLElement | null,
+  trackedTabUrl: string | undefined, trackedTabId: number | undefined
+): void {
+  btn.textContent = 'Stop Tracking'
+  Object.assign(btn.style, { background: '#f85149', color: 'white', borderColor: '#f85149', fontSize: '14px', fontWeight: '500', padding: '10px 16px', borderWidth: '1px' })
+  const heroDesc = document.getElementById('track-hero-desc')
+  if (heroDesc) heroDesc.style.display = 'none'
+  if (info) info.style.display = 'block'
+  if (urlEl && trackedTabUrl) {
+    urlEl.textContent = trackedTabUrl
+    Object.assign(urlEl.style, { cursor: 'pointer', textDecoration: 'underline' })
+    urlEl.title = 'Click to switch to this tab'
+    urlEl.addEventListener('click', () => handleUrlClick(trackedTabId))
+  }
+}
+
+function showIdleState(btn: HTMLButtonElement, info: HTMLElement | null): void {
+  btn.textContent = 'Track This Tab'
+  Object.assign(btn.style, { background: '#1a3a5c', color: '#58a6ff', borderColor: '#58a6ff', fontSize: '16px', fontWeight: '600', padding: '14px 16px', borderWidth: '2px' })
+  const heroDesc = document.getElementById('track-hero-desc')
+  if (heroDesc) heroDesc.style.display = ''
+  if (info) info.style.display = 'block'
+  const noTrackEl = document.getElementById('no-tracking-warning')
+  if (noTrackEl) noTrackEl.style.display = 'block'
+}
+
 export async function initTrackPageButton(): Promise<void> {
   const btn = document.getElementById('track-page-btn') as HTMLButtonElement | null
   const info = document.getElementById('tracked-page-info')
@@ -20,66 +55,25 @@ export async function initTrackPageButton(): Promise<void> {
     chrome.storage.local.get(
       ['trackedTabId', 'trackedTabUrl'],
       async (result: { trackedTabId?: number; trackedTabUrl?: string }) => {
-        // Check if current tab is an internal page
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
-          const currentTab = tabs && tabs[0]
-          const currentUrl = currentTab?.url
+          const currentUrl = tabs?.[0]?.url
 
           if (isInternalUrl(currentUrl)) {
-            // Disable button on internal pages
-            btn.disabled = true
-            btn.textContent = 'Cannot Track Internal Pages'
-            btn.title = 'Chrome blocks extensions on internal pages like chrome:// and about:'
-            btn.style.opacity = '0.5'
-            btn.style.background = '#252525'
-            btn.style.color = '#888'
-            btn.style.borderColor = '#333'
-            if (info) {
-              info.style.display = 'block'
-              info.textContent = 'Internal browser pages cannot be tracked'
-            }
+            showInternalPageState(btn, info)
             resolve()
             return
           }
 
-          // Update UI based on whether we're tracking a tab
           if (result.trackedTabId) {
-            // Show tracking info
-            btn.textContent = 'Stop Tracking'
-            btn.style.background = '#f85149'
-            btn.style.color = 'white'
-            btn.style.borderColor = '#f85149'
-            if (info) info.style.display = 'block'
-            if (urlEl && result.trackedTabUrl) {
-              urlEl.textContent = result.trackedTabUrl
-              // Make URL clickable - switch to tracked tab on click
-              urlEl.style.cursor = 'pointer'
-              urlEl.style.textDecoration = 'underline'
-              urlEl.title = 'Click to switch to this tab'
-              urlEl.addEventListener('click', () => handleUrlClick(result.trackedTabId))
-            }
+            showTrackingState(btn, info, urlEl, result.trackedTabUrl, result.trackedTabId)
           } else {
-            // Show track button - renamed from "Track This Page" to "Track This Tab"
-            btn.textContent = 'Track This Tab'
-            btn.style.background = '#252525'
-            btn.style.color = '#58a6ff'
-            btn.style.borderColor = '#58a6ff'
-            if (info) {
-              info.style.display = 'block'
-            }
-            // Show "no tracking" status
-            const noTrackEl = document.getElementById('no-tracking-warning')
-            if (noTrackEl) {
-              noTrackEl.style.display = 'block'
-            }
+            showIdleState(btn, info)
           }
 
-          // Set up click handler
           btn.addEventListener('click', handleTrackPageClick)
-
           resolve()
         })
-      },
+      }
     )
   })
 }
@@ -111,40 +105,55 @@ export async function handleUrlClick(tabId: number | undefined): Promise<void> {
  * Toggles tracking on/off for the current tab.
  * Blocks tracking on internal Chrome pages.
  */
+// #lizard forgives
 export async function handleTrackPageClick(): Promise<void> {
   const btn = document.getElementById('track-page-btn') as HTMLButtonElement | null
   const info = document.getElementById('tracked-page-info')
   const urlEl = document.getElementById('tracked-url')
 
   // Check if we're currently tracking
+  // #lizard forgives
   chrome.storage.local.get(['trackedTabId'], async (result: { trackedTabId?: number }) => {
     if (result.trackedTabId) {
       // Untrack
       const prevTabId = result.trackedTabId
       chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl'], () => {
+        const heroDesc = document.getElementById('track-hero-desc')
         if (btn) {
           btn.textContent = 'Track This Tab'
-          btn.style.background = '#252525'
+          btn.style.background = '#1a3a5c'
           btn.style.color = '#58a6ff'
           btn.style.borderColor = '#58a6ff'
+          btn.style.fontSize = '16px'
+          btn.style.fontWeight = '600'
+          btn.style.padding = '14px 16px'
+          btn.style.borderWidth = '2px'
         }
+        if (heroDesc) heroDesc.style.display = ''
         if (info) info.style.display = 'none'
         // Show "no tracking" warning
         const noTrackEl = document.getElementById('no-tracking-warning')
         if (noTrackEl) noTrackEl.style.display = 'block'
         // Stop recording if active
         chrome.runtime.sendMessage({ type: 'record_stop' }, () => {
-          if (chrome.runtime.lastError) { /* no recording active — expected */ }
+          if (chrome.runtime.lastError) {
+            /* no recording active — expected */
+          }
         })
         // Notify content script so favicon restores without reload
-        chrome.tabs.sendMessage(prevTabId, {
-          type: 'trackingStateChanged',
-          state: { isTracked: false, aiPilotEnabled: false },
-        }).catch(() => { /* tab may be closed */ })
+        chrome.tabs
+          .sendMessage(prevTabId, {
+            type: 'trackingStateChanged',
+            state: { isTracked: false, aiPilotEnabled: false }
+          })
+          .catch(() => {
+            /* tab may be closed */
+          })
         console.log('[Gasoline] Stopped tracking')
       })
     } else {
       // Track current tab
+      // #lizard forgives
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
         if (tabs[0]) {
           const tab = tabs[0]
@@ -159,45 +168,54 @@ export async function handleTrackPageClick(): Promise<void> {
             return
           }
 
-          chrome.storage.local.set({ trackedTabId: tab.id, trackedTabUrl: tab.url, trackedTabTitle: tab.title || '' }, () => {
-            if (btn) {
-              btn.textContent = 'Stop Tracking'
-              btn.style.background = '#f85149'
-              btn.style.color = 'white'
-              btn.style.borderColor = '#f85149'
+          chrome.storage.local.set(
+            { trackedTabId: tab.id, trackedTabUrl: tab.url, trackedTabTitle: tab.title || '' },
+            () => {
+              const heroDesc = document.getElementById('track-hero-desc')
+              if (btn) {
+                btn.textContent = 'Stop Tracking'
+                btn.style.background = '#f85149'
+                btn.style.color = 'white'
+                btn.style.borderColor = '#f85149'
+                btn.style.fontSize = '14px'
+                btn.style.fontWeight = '500'
+                btn.style.padding = '10px 16px'
+                btn.style.borderWidth = '1px'
+              }
+              if (heroDesc) heroDesc.style.display = 'none'
+              if (info) info.style.display = 'block'
+              if (urlEl) {
+                urlEl.textContent = tab.url || ''
+                // Make URL clickable
+                urlEl.style.cursor = 'pointer'
+                urlEl.style.textDecoration = 'underline'
+                urlEl.title = 'Click to switch to this tab'
+                urlEl.addEventListener('click', () => handleUrlClick(tab.id))
+              }
+              // Hide "no tracking" warning
+              const noTrackEl = document.getElementById('no-tracking-warning')
+              if (noTrackEl) noTrackEl.style.display = 'none'
+              console.log('[Gasoline] Now tracking tab:', tab.id, tab.url)
+              // Only reload if content script is not already injected
+              if (tab.id) {
+                const tabId = tab.id
+                chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }, (response) => {
+                  if (chrome.runtime.lastError || !response?.status) {
+                    // Content script not loaded — reload to inject it
+                    console.log('[Gasoline] Content script not found, reloading tab', tabId)
+                    chrome.tabs.reload(tabId)
+                  } else {
+                    // Content script already running — notify it of tracking change
+                    console.log('[Gasoline] Content script already loaded, skipping reload')
+                    chrome.tabs.sendMessage(tabId, {
+                      type: 'trackingStateChanged',
+                      state: { isTracked: true, aiPilotEnabled: false }
+                    })
+                  }
+                })
+              }
             }
-            if (info) info.style.display = 'block'
-            if (urlEl) {
-              urlEl.textContent = tab.url || ''
-              // Make URL clickable
-              urlEl.style.cursor = 'pointer'
-              urlEl.style.textDecoration = 'underline'
-              urlEl.title = 'Click to switch to this tab'
-              urlEl.addEventListener('click', () => handleUrlClick(tab.id))
-            }
-            // Hide "no tracking" warning
-            const noTrackEl = document.getElementById('no-tracking-warning')
-            if (noTrackEl) noTrackEl.style.display = 'none'
-            console.log('[Gasoline] Now tracking tab:', tab.id, tab.url)
-            // Only reload if content script is not already injected
-            if (tab.id) {
-              const tabId = tab.id
-              chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }, (response) => {
-                if (chrome.runtime.lastError || !response?.status) {
-                  // Content script not loaded — reload to inject it
-                  console.log('[Gasoline] Content script not found, reloading tab', tabId)
-                  chrome.tabs.reload(tabId)
-                } else {
-                  // Content script already running — notify it of tracking change
-                  console.log('[Gasoline] Content script already loaded, skipping reload')
-                  chrome.tabs.sendMessage(tabId, {
-                    type: 'trackingStateChanged',
-                    state: { isTracked: true, aiPilotEnabled: false },
-                  })
-                }
-              })
-            }
-          })
+          )
         }
       })
     }

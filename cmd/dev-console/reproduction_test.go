@@ -477,6 +477,103 @@ func TestReproduction_DefaultFormat(t *testing.T) {
 	}
 }
 
+// ============================================
+// playwrightStep — 56% → 100%
+// ============================================
+
+func TestPlaywrightStep_Navigate(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("navigate", 1000, map[string]any{"toURL": "https://example.com/page"})
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "await page.goto('https://example.com/page');" {
+		t.Errorf("playwrightStep(navigate) = %q", got)
+	}
+}
+
+func TestPlaywrightStep_NavigateNoURL(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("navigate", 1000, map[string]any{})
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "" {
+		t.Errorf("playwrightStep(navigate no URL) = %q, want empty", got)
+	}
+}
+
+func TestPlaywrightStep_NavigateWithBaseURL(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("navigate", 1000, map[string]any{"toURL": "https://prod.example.com/dashboard"})
+	got := playwrightStep(action, ReproductionParams{BaseURL: "http://localhost:3000"})
+	if !strings.Contains(got, "localhost:3000/dashboard") {
+		t.Errorf("playwrightStep(navigate+baseURL) = %q, want rewritten URL", got)
+	}
+}
+
+func TestPlaywrightStep_ClickNoSelector(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("click", 1000, map[string]any{})
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "// click - no selector available" {
+		t.Errorf("playwrightStep(click no sel) = %q", got)
+	}
+}
+
+func TestPlaywrightStep_InputNoSelector(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("input", 1000, map[string]any{"value": "test"})
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "// input - no selector available" {
+		t.Errorf("playwrightStep(input no sel) = %q", got)
+	}
+}
+
+func TestPlaywrightStep_InputRedacted(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("input", 1000, map[string]any{
+		"selectors": map[string]any{"id": "pw"},
+		"value":     "[redacted]",
+	})
+	got := playwrightStep(action, ReproductionParams{})
+	if !strings.Contains(got, "[user-provided]") {
+		t.Errorf("playwrightStep(input redacted) = %q, want [user-provided]", got)
+	}
+}
+
+func TestPlaywrightStep_SelectNoSelector(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("select", 1000, map[string]any{"selectedValue": "opt1"})
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "// select - no selector available" {
+		t.Errorf("playwrightStep(select no sel) = %q", got)
+	}
+}
+
+func TestPlaywrightStep_Keypress(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("keypress", 1000, map[string]any{"key": "Enter"})
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "await page.keyboard.press('Enter');" {
+		t.Errorf("playwrightStep(keypress) = %q", got)
+	}
+}
+
+func TestPlaywrightStep_Scroll(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("scroll", 1000, map[string]any{"scrollY": 300})
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "// Scroll to y=300" {
+		t.Errorf("playwrightStep(scroll) = %q", got)
+	}
+}
+
+func TestPlaywrightStep_UnknownType(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("unknown_type", 1000, map[string]any{})
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "" {
+		t.Errorf("playwrightStep(unknown) = %q, want empty", got)
+	}
+}
+
 func TestReproduction_NavigateNoURL(t *testing.T) {
 	t.Parallel()
 	actions := []capture.EnhancedAction{

@@ -4,7 +4,7 @@
  * Uses async/await for cleaner control flow (replaces callback nesting).
  */
 import * as index from './index.js';
-import { setDebugMode, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback, resetSyncClientConnection, } from './index.js';
+import { setDebugMode, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback, resetSyncClientConnection, markInitComplete } from './index.js';
 import * as stateManager from './state-manager.js';
 import * as eventListeners from './event-listeners.js';
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js';
@@ -127,16 +127,35 @@ async function initializeExtensionAsync() {
             },
             onTrackedTabChanged: (newTabId, oldTabId) => {
                 index.sendStatusPingWrapper();
-                // Reset connection when tracking is enabled to allow immediate reconnection
                 if (newTabId !== null) {
                     resetSyncClientConnection();
                     console.log('[Gasoline] Sync client reset due to tracking enabled');
                 }
-                // Broadcast to tracked tab for favicon flicker (pass old tab to notify it to stop flicker)
+                else if (oldTabId !== null) {
+                    // Tracking was lost — notify user on active tab
+                    console.log('[Gasoline] Tracking lost for tab', oldTabId);
+                    chrome.tabs
+                        .query({ active: true, currentWindow: true })
+                        .then((tabs) => {
+                        if (tabs[0]?.id) {
+                            chrome.tabs
+                                .sendMessage(tabs[0].id, {
+                                type: 'GASOLINE_ACTION_TOAST',
+                                text: 'Tab tracking lost',
+                                detail: 'Re-enable in Gasoline popup',
+                                state: 'warning',
+                                duration_ms: 5000
+                            })
+                                .catch(() => { });
+                        }
+                    })
+                        .catch(() => { });
+                }
                 broadcastTrackingState(oldTabId).catch((err) => console.error('[Gasoline] Error broadcasting tracking state:', err));
-            },
+            }
         });
         // ============= STEP 7: Install message handler =============
+        // #lizard forgives
         const deps = {
             getServerUrl: () => index.serverUrl,
             getConnectionStatus: () => index.connectionStatus,
@@ -190,7 +209,7 @@ async function initializeExtensionAsync() {
             exportDebugLog: index.exportDebugLog,
             clearDebugLog: index.clearDebugLog,
             saveSetting: eventListeners.saveSetting,
-            forwardToAllContentScripts: (msg) => eventListeners.forwardToAllContentScripts(msg, index.debugLog),
+            forwardToAllContentScripts: (msg) => eventListeners.forwardToAllContentScripts(msg, index.debugLog)
         };
         installMessageListener(deps);
         // ============= STEP 8: Setup Chrome alarms =============
@@ -206,7 +225,7 @@ async function initializeExtensionAsync() {
             onMemoryCheck: () => {
                 index.debugLog(index.DebugCategory.LIFECYCLE, 'Memory check alarm fired');
             },
-            onErrorGroupCleanup: () => stateManager.cleanupStaleErrorGroups(index.debugLog),
+            onErrorGroupCleanup: () => stateManager.cleanupStaleErrorGroups(index.debugLog)
         });
         // ============= STEP 9: Install tab removed listener =============
         eventListeners.installTabRemovedListener((tabId) => {
@@ -225,12 +244,13 @@ async function initializeExtensionAsync() {
             setPilotInitCallback(index.checkConnectionAndUpdate);
         }
         // ============= INITIALIZATION COMPLETE =============
+        markInitComplete();
         index.debugLog(index.DebugCategory.LIFECYCLE, 'Extension initialized', {
             serverUrl: index.serverUrl,
             logLevel: index.currentLogLevel,
             screenshotOnError: index.screenshotOnError,
             sourceMapEnabled: stateManager.isSourceMapEnabled(),
-            debugMode: index.debugMode,
+            debugMode: index.debugMode
         });
     }
     catch (error) {

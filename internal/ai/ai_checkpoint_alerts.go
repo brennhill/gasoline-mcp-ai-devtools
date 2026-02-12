@@ -88,94 +88,97 @@ func (cm *CheckpointManager) DetectAndStoreAlerts(snapshot performance.Performan
 func (cm *CheckpointManager) detectPushRegressions(snapshot performance.PerformanceSnapshot, baseline performance.PerformanceBaseline) map[string]gasTypes.AlertMetricDelta {
 	metrics := make(map[string]gasTypes.AlertMetricDelta)
 
-	// Load time: >20% regression
-	if baseline.Timing.Load > 0 {
-		delta := snapshot.Timing.Load - baseline.Timing.Load
-		pct := delta / baseline.Timing.Load * 100
-		if pct > loadRegressionPct {
-			metrics["load"] = gasTypes.AlertMetricDelta{
-				Baseline: baseline.Timing.Load,
-				Current:  snapshot.Timing.Load,
-				DeltaMs:  delta,
-				DeltaPct: pct,
-			}
-		}
+	// Percentage-based timing regressions (load, FCP, LCP, TTFB)
+	timingChecks := cm.buildTimingChecks(snapshot, baseline)
+	for _, check := range timingChecks {
+		checkPctRegression(metrics, check.name, check.current, check.baseline, check.threshold)
 	}
 
-	// FCP: >20% regression
-	if snapshot.Timing.FirstContentfulPaint != nil && baseline.Timing.FirstContentfulPaint != nil && *baseline.Timing.FirstContentfulPaint > 0 {
-		delta := *snapshot.Timing.FirstContentfulPaint - *baseline.Timing.FirstContentfulPaint
-		pct := delta / *baseline.Timing.FirstContentfulPaint * 100
-		if pct > fcpRegressionPct {
-			metrics["fcp"] = gasTypes.AlertMetricDelta{
-				Baseline: *baseline.Timing.FirstContentfulPaint,
-				Current:  *snapshot.Timing.FirstContentfulPaint,
-				DeltaMs:  delta,
-				DeltaPct: pct,
-			}
-		}
-	}
+	// CLS: absolute increase threshold
+	cm.checkCLSRegression(metrics, snapshot, baseline)
 
-	// LCP: >20% regression
-	if snapshot.Timing.LargestContentfulPaint != nil && baseline.Timing.LargestContentfulPaint != nil && *baseline.Timing.LargestContentfulPaint > 0 {
-		delta := *snapshot.Timing.LargestContentfulPaint - *baseline.Timing.LargestContentfulPaint
-		pct := delta / *baseline.Timing.LargestContentfulPaint * 100
-		if pct > lcpRegressionPct {
-			metrics["lcp"] = gasTypes.AlertMetricDelta{
-				Baseline: *baseline.Timing.LargestContentfulPaint,
-				Current:  *snapshot.Timing.LargestContentfulPaint,
-				DeltaMs:  delta,
-				DeltaPct: pct,
-			}
-		}
-	}
-
-	// TTFB: >50% regression (more tolerance for network variance)
-	if baseline.Timing.TimeToFirstByte > 0 {
-		delta := snapshot.Timing.TimeToFirstByte - baseline.Timing.TimeToFirstByte
-		pct := delta / baseline.Timing.TimeToFirstByte * 100
-		if pct > ttfbRegressionPct {
-			metrics["ttfb"] = gasTypes.AlertMetricDelta{
-				Baseline: baseline.Timing.TimeToFirstByte,
-				Current:  snapshot.Timing.TimeToFirstByte,
-				DeltaMs:  delta,
-				DeltaPct: pct,
-			}
-		}
-	}
-
-	// CLS: >0.1 absolute increase
-	if snapshot.CLS != nil && baseline.CLS != nil {
-		delta := *snapshot.CLS - *baseline.CLS
-		if delta > clsRegressionAbs {
-			pct := 0.0
-			if *baseline.CLS > 0 {
-				pct = delta / *baseline.CLS * 100
-			}
-			metrics["cls"] = gasTypes.AlertMetricDelta{
-				Baseline: *baseline.CLS,
-				Current:  *snapshot.CLS,
-				DeltaMs:  delta, // for CLS this is the absolute delta, not ms
-				DeltaPct: pct,
-			}
-		}
-	}
-
-	// Total transfer size: >25% increase
-	if baseline.Network.TransferSize > 0 {
-		delta := float64(snapshot.Network.TransferSize - baseline.Network.TransferSize)
-		pct := delta / float64(baseline.Network.TransferSize) * 100
-		if pct > transferRegressionPct {
-			metrics["transfer_bytes"] = gasTypes.AlertMetricDelta{
-				Baseline: float64(baseline.Network.TransferSize),
-				Current:  float64(snapshot.Network.TransferSize),
-				DeltaMs:  delta, // for transfer this is the byte delta
-				DeltaPct: pct,
-			}
-		}
-	}
+	// Transfer size: percentage-based
+	cm.checkTransferRegression(metrics, snapshot, baseline)
 
 	return metrics
+}
+
+// timingCheck holds the parameters for a single timing regression check.
+type timingCheck struct {
+	name      string
+	current   float64
+	baseline  float64
+	threshold float64
+}
+
+// buildTimingChecks returns the list of timing metrics to evaluate.
+func (cm *CheckpointManager) buildTimingChecks(snapshot performance.PerformanceSnapshot, baseline performance.PerformanceBaseline) []timingCheck {
+	checks := []timingCheck{
+		{"load", snapshot.Timing.Load, baseline.Timing.Load, loadRegressionPct},
+		{"ttfb", snapshot.Timing.TimeToFirstByte, baseline.Timing.TimeToFirstByte, ttfbRegressionPct},
+	}
+	if snapshot.Timing.FirstContentfulPaint != nil && baseline.Timing.FirstContentfulPaint != nil {
+		checks = append(checks, timingCheck{"fcp", *snapshot.Timing.FirstContentfulPaint, *baseline.Timing.FirstContentfulPaint, fcpRegressionPct})
+	}
+	if snapshot.Timing.LargestContentfulPaint != nil && baseline.Timing.LargestContentfulPaint != nil {
+		checks = append(checks, timingCheck{"lcp", *snapshot.Timing.LargestContentfulPaint, *baseline.Timing.LargestContentfulPaint, lcpRegressionPct})
+	}
+	return checks
+}
+
+// checkPctRegression adds a metric delta if current exceeds baseline by more than threshold percent.
+func checkPctRegression(metrics map[string]gasTypes.AlertMetricDelta, name string, current, baseline, threshold float64) {
+	if baseline <= 0 {
+		return
+	}
+	delta := current - baseline
+	pct := delta / baseline * 100
+	if pct > threshold {
+		metrics[name] = gasTypes.AlertMetricDelta{
+			Baseline: baseline,
+			Current:  current,
+			DeltaMs:  delta,
+			DeltaPct: pct,
+		}
+	}
+}
+
+// checkCLSRegression checks for CLS absolute increase (>0.1).
+func (cm *CheckpointManager) checkCLSRegression(metrics map[string]gasTypes.AlertMetricDelta, snapshot performance.PerformanceSnapshot, baseline performance.PerformanceBaseline) {
+	if snapshot.CLS == nil || baseline.CLS == nil {
+		return
+	}
+	delta := *snapshot.CLS - *baseline.CLS
+	if delta <= clsRegressionAbs {
+		return
+	}
+	pct := 0.0
+	if *baseline.CLS > 0 {
+		pct = delta / *baseline.CLS * 100
+	}
+	metrics["cls"] = gasTypes.AlertMetricDelta{
+		Baseline: *baseline.CLS,
+		Current:  *snapshot.CLS,
+		DeltaMs:  delta, // for CLS this is the absolute delta, not ms
+		DeltaPct: pct,
+	}
+}
+
+// checkTransferRegression checks for total transfer size increase (>25%).
+func (cm *CheckpointManager) checkTransferRegression(metrics map[string]gasTypes.AlertMetricDelta, snapshot performance.PerformanceSnapshot, baseline performance.PerformanceBaseline) {
+	if baseline.Network.TransferSize <= 0 {
+		return
+	}
+	delta := float64(snapshot.Network.TransferSize - baseline.Network.TransferSize)
+	pct := delta / float64(baseline.Network.TransferSize) * 100
+	if pct > transferRegressionPct {
+		metrics["transfer_bytes"] = gasTypes.AlertMetricDelta{
+			Baseline: float64(baseline.Network.TransferSize),
+			Current:  float64(snapshot.Network.TransferSize),
+			DeltaMs:  delta, // for transfer this is the byte delta
+			DeltaPct: pct,
+		}
+	}
 }
 
 // resolveAlertsForURL removes any pending alerts for the given URL

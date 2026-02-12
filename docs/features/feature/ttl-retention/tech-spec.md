@@ -191,7 +191,7 @@ Extends the existing `configure` tool with a new `ttl` action.
 
 #### Examples
 
-**Get current TTL settings:**
+##### Get current TTL settings:
 ```json
 {
   "action": "ttl",
@@ -199,7 +199,7 @@ Extends the existing `configure` tool with a new `ttl` action.
 }
 ```
 
-**Set global TTL:**
+##### Set global TTL:
 ```json
 {
   "action": "ttl",
@@ -210,7 +210,7 @@ Extends the existing `configure` tool with a new `ttl` action.
 }
 ```
 
-**Set per-buffer TTL:**
+##### Set per-buffer TTL:
 ```json
 {
   "action": "ttl",
@@ -223,7 +223,7 @@ Extends the existing `configure` tool with a new `ttl` action.
 }
 ```
 
-**Reset to defaults (unlimited):**
+##### Reset to defaults (unlimited):
 ```json
 {
   "action": "ttl",

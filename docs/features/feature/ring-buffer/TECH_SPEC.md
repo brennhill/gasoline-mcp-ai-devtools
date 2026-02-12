@@ -91,7 +91,7 @@ interface RingBuffer<T> {
 }
 ```
 
-**Operations:**
+#### Operations:
 - `push(event)`: Add event, O(1)
 - `pop()`: Remove oldest, O(1)
 - `query(filters)`: All events matching filters, O(n) where n = size
@@ -557,17 +557,17 @@ Total:                    ~200MB
 
 ## Concurrency & Thread Safety
 
-**Design:**
+### Design:
 - Sync.RWMutex for lock-free reads (multiple Query calls)
 - Exclusive lock only during Push/Pop
 - TTL cleanup is non-blocking (happens during Push, every 5 seconds)
 
-**Lock Contention:**
+### Lock Contention:
 - High read concurrency: Multiple LLM queries can run in parallel
 - Low write contention: Browser/backend streams rarely conflict
 - No deadlocks: Single lock per buffer, no inter-buffer locking
 
-**Testing:**
+### Testing:
 - [ ] Concurrent push/query stress test (1000 threads)
 - [ ] Concurrent snapshot during active pushing
 - [ ] No data loss under contention
@@ -625,7 +625,7 @@ diff = Compare(baseline, current)
 
 ## Testing Strategy
 
-**Unit Tests:**
+### Unit Tests:
 - [ ] Push and pop correctness
 - [ ] Circular wraparound at capacity
 - [ ] TTL cleanup removes expired events
@@ -633,19 +633,19 @@ diff = Compare(baseline, current)
 - [ ] Snapshot completeness
 - [ ] Memory safety (no buffer overflow)
 
-**Concurrency Tests:**
+### Concurrency Tests:
 - [ ] 1000 concurrent pushes, no data loss
 - [ ] Query during active push
 - [ ] Snapshot during push
 - [ ] No deadlocks
 
-**Performance Tests:**
+### Performance Tests:
 - [ ] Push latency <0.1ms
 - [ ] Query on full buffer <50ms
 - [ ] Memory footprint <200MB
 - [ ] Cleanup doesn't block pushes
 
-**Integration Tests:**
+### Integration Tests:
 - [ ] Browser events flow to buffer
 - [ ] Backend events flow to buffer
 - [ ] Events retrievable via HTTP API
@@ -655,20 +655,20 @@ diff = Compare(baseline, current)
 
 ## Rollout Plan
 
-**Sprint 1 (v6.0):**
+### Sprint 1 (v6.0):
 - Implement RingBuffer
 - Implement BufferManager
 - Integrate with browser extension (push events)
 - HTTP API for testing
 - Performance benchmarks
 
-**Sprint 2 (v6.0):**
+### Sprint 2 (v6.0):
 - Integrate with backend log streaming (A2)
 - Checkpoint system (B1)
 - Query service uses buffers
 - Performance tuning
 
-**Future (v6.1+):**
+### Future (v6.1+):
 - Distributed ring buffers across processes
 - Persistent snapshots (optional SSD cache)
 - Compression for long-term storage

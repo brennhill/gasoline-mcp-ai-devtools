@@ -582,7 +582,7 @@ func TestLogFileWritten(t *testing.T) {
 		{"ts": "2024-01-22T10:00:00Z", "level": "error", "msg": "test"},
 	})
 
-	content, err := os.ReadFile(logFile)
+	content, err := os.ReadFile(logFile) // #nosec G304 -- test file // nosemgrep: go_filesystem_rule-fileread -- test helper reads fixture/output file
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
 	}
@@ -1828,7 +1828,7 @@ func assertGolden(t *testing.T, name string, got []byte) {
 		return
 	}
 
-	expected, err := os.ReadFile(path)
+	expected, err := os.ReadFile(path) // #nosec G304 -- test file // nosemgrep: go_filesystem_rule-fileread -- test helper reads fixture/output file
 	if err != nil {
 		t.Fatalf("Golden file %s not found. Run with UPDATE_GOLDEN=1 to create it.", path)
 	}

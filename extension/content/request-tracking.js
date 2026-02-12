@@ -69,7 +69,7 @@ export function getPendingRequestStats() {
         highlight: pendingHighlightRequests.size,
         execute: pendingExecuteRequests.size,
         a11y: pendingA11yRequests.size,
-        dom: pendingDomRequests.size,
+        dom: pendingDomRequests.size
     };
 }
 /**

@@ -15,7 +15,7 @@ import type {
   ConnectionStatus,
   ChromeMessageSender,
   PendingQuery,
-  WaterfallEntry,
+  WaterfallEntry
 } from '../types'
 
 import * as stateManager from './state-manager'
@@ -29,11 +29,11 @@ import {
   loadStateSnapshot,
   listStateSnapshots,
   deleteStateSnapshot,
-  type MessageHandlerDependencies,
+  type MessageHandlerDependencies
 } from './message-handlers'
 import {
   handlePendingQuery as handlePendingQueryImpl,
-  handlePilotCommand as handlePilotCommandImpl,
+  handlePilotCommand as handlePilotCommandImpl
 } from './pending-queries'
 import { createSyncClient, type SyncClient, type SyncCommand, type SyncSettings } from './sync-client'
 import { updateVersionFromHealth } from './version-check'
@@ -80,7 +80,7 @@ export let connectionStatus: MutableConnectionStatus = {
   entries: 0,
   maxEntries: 1000,
   errorCount: 0,
-  logFile: '',
+  logFile: ''
 }
 
 /** Log level filter */
@@ -100,6 +100,18 @@ export let _connectionCheckRunning = false
 export let __aiWebPilotEnabledCache = false
 export let __aiWebPilotCacheInitialized = false
 export let __pilotInitCallback: (() => void) | null = null
+
+/** Init-ready gate: resolves when initialization completes so early commands wait for cache */
+let _initResolve: (() => void) | null = null
+export const initReady: Promise<void> = new Promise((resolve) => {
+  _initResolve = resolve
+})
+export function markInitComplete(): void {
+  if (_initResolve) {
+    _initResolve()
+    _initResolve = null
+  }
+}
 
 /** Extension log queue for server posting */
 export const extensionLogQueue: Array<{
@@ -166,7 +178,7 @@ export function debugLog(category: string, message: string, data: unknown = null
     ts: timestamp,
     category: category as import('../types').DebugCategory,
     message,
-    ...(data !== null ? { data } : {}),
+    ...(data !== null ? { data } : {})
   }
 
   stateManager.addDebugLogEntry(entry)
@@ -178,7 +190,7 @@ export function debugLog(category: string, message: string, data: unknown = null
       message,
       source: 'background',
       category,
-      ...(data !== null ? { data } : {}),
+      ...(data !== null ? { data } : {})
     })
     // Cap queue size to prevent memory leak if server is unreachable
     const MAX_EXTENSION_LOGS = 2000
@@ -190,9 +202,9 @@ export function debugLog(category: string, message: string, data: unknown = null
   if (debugMode) {
     const prefix = `[Gasoline:${category}]`
     if (data !== null) {
-      console.log(prefix, message, data)
+      console.log(prefix, message, data) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal error message, not user-controlled
     } else {
-      console.log(prefix, message)
+      console.log(prefix, message) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal error message, not user-controlled
     }
   }
 }
@@ -224,12 +236,12 @@ export function exportDebugLog(): string {
       settings: {
         logLevel: currentLogLevel,
         screenshotOnError,
-        sourceMapEnabled: stateManager.isSourceMapEnabled(),
+        sourceMapEnabled: stateManager.isSourceMapEnabled()
       },
-      entries: stateManager.getDebugLog(),
+      entries: stateManager.getDebugLog()
     },
     null,
-    2,
+    2
   )
 }
 
@@ -251,8 +263,8 @@ export const sharedServerCircuitBreaker = communication.createCircuitBreaker(
     maxFailures: communication.RATE_LIMIT_CONFIG.maxFailures,
     resetTimeout: communication.RATE_LIMIT_CONFIG.resetTimeout,
     initialBackoff: 0,
-    maxBackoff: 0,
-  },
+    maxBackoff: 0
+  }
 )
 
 // =============================================================================
@@ -261,7 +273,7 @@ export const sharedServerCircuitBreaker = communication.createCircuitBreaker(
 
 function withConnectionStatus<T>(
   sendFn: (entries: T[]) => Promise<unknown>,
-  onSuccess?: (entries: T[], result: unknown) => void,
+  onSuccess?: (entries: T[], result: unknown) => void
 ): (entries: T[]) => Promise<unknown> {
   return async (entries: T[]) => {
     try {
@@ -288,33 +300,33 @@ export const logBatcherWithCB = communication.createBatcherWithCircuitBreaker<Lo
       const typedResult = result as { entries?: number }
       connectionStatus.entries = typedResult.entries || connectionStatus.entries + entries.length
       connectionStatus.errorCount += entries.filter((e) => e.level === 'error').length
-    },
+    }
   ),
-  { sharedCircuitBreaker: sharedServerCircuitBreaker },
+  { sharedCircuitBreaker: sharedServerCircuitBreaker }
 )
 export const logBatcher = logBatcherWithCB.batcher
 
 export const wsBatcherWithCB = communication.createBatcherWithCircuitBreaker<WebSocketEvent>(
   withConnectionStatus((events) => communication.sendWSEventsToServer(serverUrl, events, debugLog)),
-  { debounceMs: 200, maxBatchSize: 100, sharedCircuitBreaker: sharedServerCircuitBreaker },
+  { debounceMs: 200, maxBatchSize: 100, sharedCircuitBreaker: sharedServerCircuitBreaker }
 )
 export const wsBatcher = wsBatcherWithCB.batcher
 
 export const enhancedActionBatcherWithCB = communication.createBatcherWithCircuitBreaker<EnhancedAction>(
   withConnectionStatus((actions) => communication.sendEnhancedActionsToServer(serverUrl, actions, debugLog)),
-  { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker: sharedServerCircuitBreaker },
+  { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker: sharedServerCircuitBreaker }
 )
 export const enhancedActionBatcher = enhancedActionBatcherWithCB.batcher
 
 export const networkBodyBatcherWithCB = communication.createBatcherWithCircuitBreaker<NetworkBodyPayload>(
   withConnectionStatus((bodies) => communication.sendNetworkBodiesToServer(serverUrl, bodies, debugLog)),
-  { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker: sharedServerCircuitBreaker },
+  { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker: sharedServerCircuitBreaker }
 )
 export const networkBodyBatcher = networkBodyBatcherWithCB.batcher
 
 export const perfBatcherWithCB = communication.createBatcherWithCircuitBreaker<PerformanceSnapshot>(
   withConnectionStatus((snapshots) => communication.sendPerformanceSnapshotsToServer(serverUrl, snapshots, debugLog)),
-  { debounceMs: 500, maxBatchSize: 10, sharedCircuitBreaker: sharedServerCircuitBreaker },
+  { debounceMs: 500, maxBatchSize: 10, sharedCircuitBreaker: sharedServerCircuitBreaker }
 )
 export const perfBatcher = perfBatcherWithCB.batcher
 
@@ -322,11 +334,35 @@ export const perfBatcher = perfBatcherWithCB.batcher
 // LOG HANDLING
 // =============================================================================
 
+async function tryResolveSourceMap(entry: LogEntry): Promise<LogEntry> {
+  if (!stateManager.isSourceMapEnabled()) return entry
+  if (!(entry as { stack?: string }).stack) return entry
+
+  try {
+    const resolvedStack = await stateManager.resolveStackTrace((entry as { stack: string }).stack, debugLog)
+    const existingEnrichments = (entry as { _enrichments?: readonly string[] })._enrichments
+    const enrichments: string[] = existingEnrichments ? [...existingEnrichments] : []
+    if (!enrichments.includes('sourceMap')) {
+      enrichments.push('sourceMap')
+    }
+    debugLog(DebugCategory.CAPTURE, 'Stack trace resolved via source map')
+    return {
+      ...entry,
+      stack: resolvedStack,
+      _sourceMapResolved: true,
+      _enrichments: enrichments
+    } as LogEntry
+  } catch (err) {
+    debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: (err as Error).message })
+    return entry
+  }
+}
+
 export async function handleLogMessage(payload: LogEntry, sender: ChromeMessageSender, tabId?: number): Promise<void> {
   if (!communication.shouldCaptureLog(payload.level, currentLogLevel, (payload as { type?: string }).type)) {
     debugLog(
       DebugCategory.CAPTURE,
-      `Log filtered out: level=${payload.level}, type=${(payload as { type?: string }).type}`,
+      `Log filtered out: level=${payload.level}, type=${(payload as { type?: string }).type}` // nosemgrep: missing-template-string-indicator
     )
     return
   }
@@ -338,37 +374,21 @@ export async function handleLogMessage(payload: LogEntry, sender: ChromeMessageS
     entry = { ...entry, tabId: resolvedTabId } as LogEntry
   }
 
+  // nosemgrep: missing-template-string-indicator
   debugLog(DebugCategory.CAPTURE, `Log received: type=${(entry as { type?: string }).type}, level=${entry.level}`, {
     url: (entry as { url?: string }).url,
-    enrichments: (entry as { _enrichments?: string[] })._enrichments,
+    enrichments: (entry as { _enrichments?: string[] })._enrichments
   })
 
-  if (stateManager.isSourceMapEnabled() && (entry as { stack?: string }).stack) {
-    try {
-      const resolvedStack = await stateManager.resolveStackTrace((entry as { stack: string }).stack, debugLog)
-      const existingEnrichments = (entry as { _enrichments?: readonly string[] })._enrichments
-      const enrichments: string[] = existingEnrichments ? [...existingEnrichments] : []
-      if (!enrichments.includes('sourceMap')) {
-        enrichments.push('sourceMap')
-      }
-      entry = {
-        ...entry,
-        stack: resolvedStack,
-        _sourceMapResolved: true,
-        _enrichments: enrichments,
-      } as LogEntry
-      debugLog(DebugCategory.CAPTURE, 'Stack trace resolved via source map')
-    } catch (err) {
-      debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: (err as Error).message })
-    }
-  }
+  entry = await tryResolveSourceMap(entry)
 
   const { shouldSend, entry: processedEntry } = stateManager.processErrorGroup(entry)
 
   if (shouldSend && processedEntry) {
     logBatcher.add(processedEntry)
+    // nosemgrep: missing-template-string-indicator
     debugLog(DebugCategory.CAPTURE, `Log queued for server: type=${(processedEntry as { type?: string }).type}`, {
-      aggregatedCount: (processedEntry as { _aggregatedCount?: number })._aggregatedCount,
+      aggregatedCount: (processedEntry as { _aggregatedCount?: number })._aggregatedCount
     })
 
     maybeAutoScreenshot(processedEntry, sender)
@@ -395,7 +415,7 @@ async function maybeAutoScreenshot(errorEntry: LogEntry, sender: ChromeMessageSe
     entryType || null,
     stateManager.canTakeScreenshot,
     stateManager.recordScreenshot,
-    debugLog,
+    debugLog
   )
 
   if (result.success && result.entry) {
@@ -426,6 +446,47 @@ export function isConnectionCheckRunning(): boolean {
   return _connectionCheckRunning
 }
 
+// #lizard forgives
+function updateVersionFromHealthSafe(health: { version?: string; availableVersion?: string }): void {
+  try {
+    updateVersionFromHealth({ version: health.version, availableVersion: health.availableVersion }, debugLog)
+  } catch (err) {
+    debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: (err as Error).message })
+  }
+}
+
+function applyHealthLogs(health: { logs?: { logFile?: string; logFileSize?: number; entries?: number; maxEntries?: number } }): void {
+  if (!health.logs) return
+  connectionStatus.logFile = health.logs.logFile || connectionStatus.logFile
+  connectionStatus.logFileSize = health.logs.logFileSize
+  connectionStatus.entries = health.logs.entries ?? connectionStatus.entries
+  connectionStatus.maxEntries = health.logs.maxEntries ?? connectionStatus.maxEntries
+}
+
+function applyVersionMismatchCheck(health: { connected: boolean; version?: string }): void {
+  if (!health.connected || !health.version || typeof chrome === 'undefined') return
+  const extVersion = chrome.runtime.getManifest().version
+  connectionStatus.serverVersion = health.version
+  connectionStatus.extensionVersion = extVersion
+  connectionStatus.versionMismatch = health.version.split('.')[0] !== extVersion.split('.')[0]
+}
+
+function logConnectionChange(wasConnected: boolean, health: { connected: boolean; error?: string; version?: string }): void {
+  if (wasConnected === health.connected) return
+  debugLog(DebugCategory.CONNECTION, health.connected ? 'Connected to server' : 'Disconnected from server', {
+    entries: connectionStatus.entries,
+    error: health.error || null,
+    serverVersion: health.version || null
+  })
+}
+
+function broadcastStatusUpdate(): void {
+  if (typeof chrome === 'undefined' || !chrome.runtime) return
+  chrome.runtime
+    .sendMessage({ type: 'statusUpdate', status: { ...connectionStatus, aiControlled } })
+    .catch((err) => console.error('[Gasoline] Error sending status update:', err))
+}
+
 // eslint-disable-next-line security-node/detect-unhandled-async-errors
 export async function checkConnectionAndUpdate(): Promise<void> {
   if (_connectionCheckRunning) {
@@ -436,67 +497,22 @@ export async function checkConnectionAndUpdate(): Promise<void> {
 
   try {
     const health = await communication.checkServerHealth(serverUrl)
-
-    // Update version information from health response
-    if (health.connected) {
-      try {
-        updateVersionFromHealth(
-          {
-            version: health.version,
-            availableVersion: health.availableVersion,
-          },
-          debugLog,
-        )
-      } catch (err) {
-        debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: (err as Error).message })
-      }
-    }
-
     const wasConnected = connectionStatus.connected
-    connectionStatus = {
-      ...connectionStatus,
-      ...health,
-      connected: health.connected,
+
+    if (health.connected) {
+      updateVersionFromHealthSafe(health)
     }
 
-    if (health.logs) {
-      connectionStatus.logFile = health.logs.logFile || connectionStatus.logFile
-      connectionStatus.logFileSize = health.logs.logFileSize
-      connectionStatus.entries = health.logs.entries ?? connectionStatus.entries
-      connectionStatus.maxEntries = health.logs.maxEntries ?? connectionStatus.maxEntries
-    }
-
-    if (health.connected && health.version && typeof chrome !== 'undefined') {
-      const extVersion = chrome.runtime.getManifest().version
-      const serverMajor = health.version.split('.')[0]
-      const extMajor = extVersion.split('.')[0]
-      connectionStatus.serverVersion = health.version
-      connectionStatus.extensionVersion = extVersion
-      connectionStatus.versionMismatch = serverMajor !== extMajor
-    }
+    connectionStatus = { ...connectionStatus, ...health, connected: health.connected }
+    applyHealthLogs(health)
+    applyVersionMismatchCheck(health)
 
     communication.updateBadge(connectionStatus)
-
-    if (wasConnected !== health.connected) {
-      debugLog(DebugCategory.CONNECTION, health.connected ? 'Connected to server' : 'Disconnected from server', {
-        entries: connectionStatus.entries,
-        error: health.error || null,
-        serverVersion: health.version || null,
-      })
-    }
+    logConnectionChange(wasConnected, health)
 
     // Always start sync client - it handles failures gracefully with 1s retry
-    // Don't gate on health check - sync client IS the connection mechanism
     startSyncClient()
-
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime
-        .sendMessage({
-          type: 'statusUpdate',
-          status: { ...connectionStatus, aiControlled },
-        })
-        .catch((err) => console.error('[Gasoline] Error sending status update:', err))
-    }
+    broadcastStatusUpdate()
   } finally {
     _connectionCheckRunning = false
   }
@@ -528,7 +544,7 @@ export async function sendStatusPingWrapper(): Promise<void> {
     tracked_tab_url: trackingInfo.trackedTabUrl,
     message: trackingInfo.trackedTabId ? 'tracking enabled' : 'no tab tracking enabled',
     extension_connected: true,
-    timestamp: new Date().toISOString(),
+    timestamp: new Date().toISOString()
   }
 
   await communication.sendStatusPing(serverUrl, statusMessage, diagnosticLog)
@@ -562,6 +578,7 @@ function startSyncClient(): void {
     EXTENSION_SESSION_ID,
     {
       // Handle commands from server
+      // #lizard forgives
       onCommand: async (command: SyncCommand) => {
         debugLog(DebugCategory.CONNECTION, 'Processing sync command', { type: command.type, id: command.id })
         if (stateManager.isQueryProcessing(command.id)) {
@@ -574,7 +591,7 @@ function startSyncClient(): void {
         } catch (err) {
           debugLog(DebugCategory.CONNECTION, 'Error processing sync command', {
             type: command.type,
-            error: (err as Error).message,
+            error: (err as Error).message
           })
         } finally {
           stateManager.removeProcessingQuery(command.id)
@@ -592,7 +609,7 @@ function startSyncClient(): void {
           chrome.runtime
             .sendMessage({
               type: 'statusUpdate',
-              status: { ...connectionStatus, aiControlled },
+              status: { ...connectionStatus, aiControlled }
             })
             .catch(() => {
               /* popup may not be open */
@@ -618,7 +635,7 @@ function startSyncClient(): void {
             .sendMessage({
               type: 'versionMismatch',
               extensionVersion,
-              serverVersion,
+              serverVersion
             })
             .catch(() => {
               /* popup may not be open */
@@ -638,7 +655,7 @@ function startSyncClient(): void {
           capture_logs: true,
           capture_network: true,
           capture_websocket: true,
-          capture_actions: true,
+          capture_actions: true
         }
       },
 
@@ -650,7 +667,7 @@ function startSyncClient(): void {
           message: log.message,
           source: log.source,
           category: log.category,
-          data: log.data,
+          data: log.data
         }))
       },
 
@@ -662,9 +679,9 @@ function startSyncClient(): void {
       // Debug logging
       debugLog: (category: string, message: string, data?: unknown) => {
         debugLog(DebugCategory.CONNECTION, `[Sync] ${message}`, data)
-      },
+      }
     },
-    getExtensionVersion(),
+    getExtensionVersion()
   )
 
   syncClient.start()

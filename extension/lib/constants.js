@@ -14,7 +14,7 @@ export const SENSITIVE_HEADERS = [
     'x-auth-token',
     'x-api-key',
     'x-csrf-token',
-    'proxy-authorization',
+    'proxy-authorization'
 ];
 // User action replay settings
 export const MAX_ACTION_BUFFER_SIZE = 20; // Max number of recent actions to keep
@@ -44,7 +44,8 @@ export const DOM_QUERY_MAX_TEXT = 500;
 export const DOM_QUERY_MAX_DEPTH = 5;
 export const DOM_QUERY_MAX_HTML = 200;
 export const A11Y_MAX_NODES_PER_VIOLATION = 10;
-export const A11Y_AUDIT_TIMEOUT_MS = 30000;
+export const ASYNC_COMMAND_TIMEOUT_MS = 60000;
+export const A11Y_AUDIT_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
 // Memory pressure settings
 export const MEMORY_SOFT_LIMIT_MB = 20;
 export const MEMORY_HARD_LIMIT_MB = 50;
@@ -75,7 +76,7 @@ export const ACTIONABLE_KEYS = new Set([
     'ArrowLeft',
     'ArrowRight',
     'Backspace',
-    'Delete',
+    'Delete'
 ]);
 // Performance snapshot settings
 export const MAX_LONG_TASKS = 50;

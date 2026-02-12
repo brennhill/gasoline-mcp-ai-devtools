@@ -142,22 +142,13 @@ func (s *scenario) loadActionData(t *testing.T) {
 // loadExtensionLogs populates capture with extension debug logs.
 func (s *scenario) loadExtensionLogs(t *testing.T) {
 	t.Helper()
-	logPayload := struct {
-		Logs []capture.ExtensionLog `json:"logs"`
-	}{
-		Logs: []capture.ExtensionLog{
-			{
-				Level: "debug", Message: "Connection established",
-				Source: "background", Category: "CONNECTION",
-				Timestamp: time.Now(),
-			},
+	s.capture.AddExtensionLogs([]capture.ExtensionLog{
+		{
+			Level: "debug", Message: "Connection established",
+			Source: "background", Category: "CONNECTION",
+			Timestamp: time.Now(),
 		},
-	}
-	body, _ := json.Marshal(logPayload)
-	req := httptest.NewRequest("POST", "/extension-logs", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	s.capture.HandleExtensionLogs(w, req)
+	})
 }
 
 // loadTrackingState simulates extension sync with a tracked tab.

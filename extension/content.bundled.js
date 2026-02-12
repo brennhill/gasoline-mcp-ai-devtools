@@ -34,6 +34,10 @@
 
   // extension/content/script-injection.js
   var injected = false;
+  var pageNonce = crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, "0"), "");
+  function getPageNonce() {
+    return pageNonce;
+  }
   function isInjectScriptLoaded() {
     return injected;
   }
@@ -53,9 +57,14 @@
         if (value === void 0)
           continue;
         if (setting.isMode) {
-          window.postMessage({ type: "GASOLINE_SETTING", setting: setting.messageType, mode: value }, window.location.origin);
+          window.postMessage({
+            type: "GASOLINE_SETTING",
+            setting: setting.messageType,
+            mode: value,
+            _nonce: pageNonce
+          }, window.location.origin);
         } else {
-          window.postMessage({ type: "GASOLINE_SETTING", setting: setting.messageType, enabled: value }, window.location.origin);
+          window.postMessage({ type: "GASOLINE_SETTING", setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
         }
       }
     });
@@ -70,6 +79,7 @@
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("inject.bundled.js");
     script.type = "module";
+    script.dataset.gasolineNonce = pageNonce;
     script.onload = () => {
       script.remove();
       injected = true;
@@ -226,38 +236,25 @@
   }
 
   // extension/content/window-message-listener.js
+  var RESPONSE_HANDLERS = {
+    GASOLINE_HIGHLIGHT_RESPONSE: (id, result) => resolveHighlightRequest(id, result),
+    GASOLINE_EXECUTE_JS_RESULT: (id, result) => resolveExecuteRequest(id, result),
+    GASOLINE_A11Y_QUERY_RESPONSE: (id, result) => resolveA11yRequest(id, result),
+    GASOLINE_DOM_QUERY_RESPONSE: (id, result) => resolveDomRequest(id, result)
+  };
   function initWindowMessageListener() {
     window.addEventListener("message", (event) => {
       if (event.source !== window || event.origin !== window.location.origin)
         return;
       const { type: messageType, requestId, result, payload } = event.data || {};
-      if (messageType === "GASOLINE_HIGHLIGHT_RESPONSE") {
-        if (requestId !== void 0) {
-          resolveHighlightRequest(requestId, result);
-        }
+      const responseHandler = messageType ? RESPONSE_HANDLERS[messageType] : void 0;
+      if (responseHandler) {
+        if (requestId !== void 0)
+          responseHandler(requestId, result);
         return;
       }
-      if (messageType === "GASOLINE_EXECUTE_JS_RESULT") {
-        if (requestId !== void 0) {
-          resolveExecuteRequest(requestId, result);
-        }
+      if (!getIsTrackedTab())
         return;
-      }
-      if (messageType === "GASOLINE_A11Y_QUERY_RESPONSE") {
-        if (requestId !== void 0) {
-          resolveA11yRequest(requestId, result);
-        }
-        return;
-      }
-      if (messageType === "GASOLINE_DOM_QUERY_RESPONSE") {
-        if (requestId !== void 0) {
-          resolveDomRequest(requestId, result);
-        }
-        return;
-      }
-      if (!getIsTrackedTab()) {
-        return;
-      }
       if (messageType && messageType in MESSAGE_MAP && payload && typeof payload === "object") {
         const mappedType = MESSAGE_MAP[messageType];
         if (mappedType) {
@@ -310,7 +307,13 @@
     }
   }
 
+  // extension/lib/constants.js
+  var ASYNC_COMMAND_TIMEOUT_MS = 6e4;
+
   // extension/content/message-handlers.js
+  function postToInject(data) {
+    window.postMessage({ ...data, _nonce: getPageNonce() }, window.location.origin);
+  }
   var TOGGLE_MESSAGES = /* @__PURE__ */ new Set([
     "setNetworkWaterfallEnabled",
     "setPerformanceMarksEnabled",
@@ -339,11 +342,11 @@
   function forwardHighlightMessage(message) {
     const requestId = registerHighlightRequest((result) => deferred.resolve(result));
     const deferred = createDeferredPromise();
-    window.postMessage({
+    postToInject({
       type: "GASOLINE_HIGHLIGHT_REQUEST",
       requestId,
       params: message.params
-    }, window.location.origin);
+    });
     return promiseRaceWithCleanup(deferred.promise, 3e4, { success: false, error: "timeout" }, () => {
       if (hasHighlightRequest(requestId)) {
         deleteHighlightRequest(requestId);
@@ -363,14 +366,14 @@
       }
     };
     window.addEventListener("message", responseHandler);
-    window.postMessage({
+    postToInject({
       type: "GASOLINE_STATE_COMMAND",
       messageId,
       action,
       name,
       state,
       include_url
-    }, window.location.origin);
+    });
     return promiseRaceWithCleanup(deferred.promise, 5e3, { error: "State command timeout" }, () => window.removeEventListener("message", responseHandler));
   }
   function handlePing(sendResponse) {
@@ -388,7 +391,7 @@
     } else {
       payload.enabled = message.enabled;
     }
-    window.postMessage(payload, window.location.origin);
+    window.postMessage({ ...payload, _nonce: getPageNonce() }, window.location.origin);
   }
   function executeInMainWorld(params, sendResponse) {
     const timeoutMs = params.timeout_ms || 5e3;
@@ -399,12 +402,12 @@
       error: "inject_not_responding",
       message: `Inject script did not respond within ${safetyTimeoutMs}ms. The tab may not be tracked or the inject script failed to load.`
     }), safetyTimeoutMs);
-    window.postMessage({
+    postToInject({
       type: "GASOLINE_EXECUTE_JS",
       requestId,
       script: params.script || "",
       timeoutMs
-    }, window.location.origin);
+    });
   }
   function handleExecuteJs(params, sendResponse) {
     if (!isInjectScriptLoaded()) {
@@ -445,12 +448,12 @@
     const requestId = registerA11yRequest(sendResponse);
     setTimeout(createRequestTimeoutCleanup(requestId, /* @__PURE__ */ new Map([[requestId, sendResponse]]), {
       error: "Accessibility audit timeout"
-    }), 3e4);
-    window.postMessage({
+    }), ASYNC_COMMAND_TIMEOUT_MS);
+    postToInject({
       type: "GASOLINE_A11Y_QUERY",
       requestId,
       params: parsedParams
-    }, window.location.origin);
+    });
     return true;
   }
   function handleDomQuery(params, sendResponse) {
@@ -465,12 +468,12 @@
       parsedParams = params;
     }
     const requestId = registerDomRequest(sendResponse);
-    setTimeout(createRequestTimeoutCleanup(requestId, /* @__PURE__ */ new Map([[requestId, sendResponse]]), { error: "DOM query timeout" }), 3e4);
-    window.postMessage({
+    setTimeout(createRequestTimeoutCleanup(requestId, /* @__PURE__ */ new Map([[requestId, sendResponse]]), { error: "DOM query timeout" }), ASYNC_COMMAND_TIMEOUT_MS);
+    postToInject({
       type: "GASOLINE_DOM_QUERY",
       requestId,
       params: parsedParams
-    }, window.location.origin);
+    });
     return true;
   }
   function handleGetNetworkWaterfall(sendResponse) {
@@ -485,14 +488,52 @@
       }
     };
     window.addEventListener("message", responseHandler);
-    window.postMessage({
+    postToInject({
       type: "GASOLINE_GET_WATERFALL",
       requestId
-    }, window.location.origin);
+    });
     promiseRaceWithCleanup(deferred.promise, 5e3, { entries: [] }, () => {
       window.removeEventListener("message", responseHandler);
     }).then((result) => {
       sendResponse(result);
+    }, () => {
+      sendResponse({ entries: [] });
+    });
+    return true;
+  }
+  function handleLinkHealthQuery(params, sendResponse) {
+    let parsedParams = {};
+    if (typeof params === "string") {
+      try {
+        parsedParams = JSON.parse(params);
+      } catch {
+        parsedParams = {};
+      }
+    } else if (typeof params === "object") {
+      parsedParams = params;
+    }
+    const requestId = Date.now();
+    const deferred = createDeferredPromise();
+    const responseHandler = (event) => {
+      if (event.source !== window)
+        return;
+      if (event.data?.type === "GASOLINE_LINK_HEALTH_RESPONSE") {
+        window.removeEventListener("message", responseHandler);
+        deferred.resolve(event.data.result || { error: "No result from link health check" });
+      }
+    };
+    window.addEventListener("message", responseHandler);
+    postToInject({
+      type: "GASOLINE_LINK_HEALTH_QUERY",
+      requestId,
+      params: parsedParams
+    });
+    promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: "Link health check timeout" }, () => {
+      window.removeEventListener("message", responseHandler);
+    }).then((result) => {
+      sendResponse(result);
+    }, () => {
+      sendResponse({ error: "Link health check failed" });
     });
     return true;
   }
@@ -505,38 +546,34 @@
     error: { bg: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", shadow: "rgba(239, 68, 68, 0.4)" },
     audio: { bg: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)", shadow: "rgba(249, 115, 22, 0.5)" }
   };
+  var TOAST_ANIMATION_CSS = [
+    "@keyframes gasolineArrowBounce {",
+    "  0%, 100% { transform: translateY(0) translateX(0); opacity: 1; }",
+    "  50% { transform: translateY(-4px) translateX(4px); opacity: 0.7; }",
+    "}",
+    "@keyframes gasolineArrowBounceUp {",
+    "  0%, 100% { transform: translateY(0); opacity: 1; }",
+    "  50% { transform: translateY(-6px); opacity: 0.7; }",
+    "}",
+    "@keyframes gasolineToastPulse {",
+    "  0%, 100% { box-shadow: 0 4px 20px var(--toast-shadow); }",
+    "  50% { box-shadow: 0 8px 32px var(--toast-shadow-intense); }",
+    "}",
+    ".gasoline-toast-arrow {",
+    "  display: inline-block; margin-left: 8px;",
+    "  animation: gasolineArrowBounce 1.5s ease-in-out infinite;",
+    "}",
+    "@media (max-width: 767px) {",
+    "  .gasoline-toast-arrow { animation: gasolineArrowBounceUp 1.5s ease-in-out infinite; }",
+    "}",
+    ".gasoline-toast-pulse { animation: gasolineToastPulse 2s ease-in-out infinite; }"
+  ].join("\n");
   function injectToastAnimationStyles() {
     if (document.getElementById("gasoline-toast-animations"))
       return;
     const style = document.createElement("style");
     style.id = "gasoline-toast-animations";
-    style.textContent = `
-    @keyframes gasolineArrowBounce {
-      0%, 100% { transform: translateY(0) translateX(0); opacity: 1; }
-      50% { transform: translateY(-4px) translateX(4px); opacity: 0.7; }
-    }
-    @keyframes gasolineArrowBounceUp {
-      0%, 100% { transform: translateY(0); opacity: 1; }
-      50% { transform: translateY(-6px); opacity: 0.7; }
-    }
-    @keyframes gasolineToastPulse {
-      0%, 100% { box-shadow: 0 4px 20px var(--toast-shadow); }
-      50% { box-shadow: 0 8px 32px var(--toast-shadow-intense); }
-    }
-    .gasoline-toast-arrow {
-      display: inline-block;
-      margin-left: 8px;
-      animation: gasolineArrowBounce 1.5s ease-in-out infinite;
-    }
-    @media (max-width: 767px) {
-      .gasoline-toast-arrow {
-        animation: gasolineArrowBounceUp 1.5s ease-in-out infinite;
-      }
-    }
-    .gasoline-toast-pulse {
-      animation: gasolineToastPulse 2s ease-in-out infinite;
-    }
-  `;
+    style.textContent = TOAST_ANIMATION_CSS;
     document.head.appendChild(style);
   }
   function truncateText(text, maxLen) {
@@ -625,14 +662,29 @@
   }
   var actionToastsEnabled = true;
   var subtitlesEnabled = true;
+  var subtitleEscapeHandler = null;
+  function fadeOutAndRemove(elementId, delayMs) {
+    const el = document.getElementById(elementId);
+    if (!el)
+      return;
+    el.style.opacity = "0";
+    setTimeout(() => el.remove(), delayMs);
+  }
+  function detachEscapeListener() {
+    if (!subtitleEscapeHandler)
+      return;
+    document.removeEventListener("keydown", subtitleEscapeHandler);
+    subtitleEscapeHandler = null;
+  }
+  function clearSubtitle() {
+    fadeOutAndRemove("gasoline-subtitle", 200);
+    detachEscapeListener();
+  }
   function showSubtitle(text) {
     const ELEMENT_ID = "gasoline-subtitle";
+    const CLOSE_BTN_ID = "gasoline-subtitle-close";
     if (!text) {
-      const existing = document.getElementById(ELEMENT_ID);
-      if (existing) {
-        existing.style.opacity = "0";
-        setTimeout(() => existing.remove(), 200);
-      }
+      clearSubtitle();
       return;
     }
     let bar = document.getElementById(ELEMENT_ID);
@@ -655,7 +707,7 @@
         textAlign: "center",
         borderRadius: "4px",
         zIndex: "2147483646",
-        pointerEvents: "none",
+        pointerEvents: "auto",
         opacity: "0",
         transition: "opacity 0.2s ease-in",
         maxHeight: "4.2em",
@@ -664,12 +716,64 @@
         textOverflow: "ellipsis",
         boxSizing: "border-box"
       });
+      const closeBtn2 = document.createElement("button");
+      closeBtn2.id = CLOSE_BTN_ID;
+      closeBtn2.textContent = "\xD7";
+      Object.assign(closeBtn2.style, {
+        position: "absolute",
+        top: "-6px",
+        right: "-6px",
+        width: "16px",
+        height: "16px",
+        padding: "0",
+        margin: "0",
+        border: "none",
+        borderRadius: "50%",
+        background: "rgba(255, 255, 255, 0.25)",
+        color: "#fff",
+        fontSize: "12px",
+        lineHeight: "16px",
+        textAlign: "center",
+        cursor: "pointer",
+        pointerEvents: "auto",
+        opacity: "0",
+        transition: "opacity 0.15s ease-in",
+        fontFamily: "sans-serif"
+      });
+      closeBtn2.addEventListener("click", (e) => {
+        e.stopPropagation();
+        clearSubtitle();
+      });
+      bar.appendChild(closeBtn2);
+      bar.addEventListener("mouseenter", () => {
+        const btn = document.getElementById(CLOSE_BTN_ID);
+        if (btn)
+          btn.style.opacity = "1";
+      });
+      bar.addEventListener("mouseleave", () => {
+        const btn = document.getElementById(CLOSE_BTN_ID);
+        if (btn)
+          btn.style.opacity = "0";
+      });
       const target = document.body || document.documentElement;
       if (!target)
         return;
       target.appendChild(bar);
     }
+    const closeBtn = document.getElementById(CLOSE_BTN_ID);
     bar.textContent = text;
+    if (closeBtn) {
+      bar.appendChild(closeBtn);
+    }
+    if (subtitleEscapeHandler) {
+      document.removeEventListener("keydown", subtitleEscapeHandler);
+    }
+    subtitleEscapeHandler = (e) => {
+      if (e.key === "Escape") {
+        clearSubtitle();
+      }
+    };
+    document.addEventListener("keydown", subtitleEscapeHandler);
     void bar.offsetHeight;
     bar.style.opacity = "1";
   }
@@ -716,71 +820,68 @@
       if (result.subtitlesEnabled !== void 0)
         subtitlesEnabled = result.subtitlesEnabled;
     });
+    const syncHandlers = {
+      GASOLINE_PING: () => {
+      },
+      GASOLINE_ACTION_TOAST: (msg) => {
+        if (!actionToastsEnabled)
+          return false;
+        const m = msg;
+        if (m.text)
+          showActionToast(m.text, m.detail, m.state || "trying", m.duration_ms);
+        return false;
+      },
+      GASOLINE_RECORDING_WATERMARK: (msg) => {
+        toggleRecordingWatermark(msg.visible ?? false);
+        return false;
+      },
+      GASOLINE_SUBTITLE: (msg) => {
+        if (!subtitlesEnabled)
+          return false;
+        showSubtitle(msg.text ?? "");
+        return false;
+      },
+      setActionToastsEnabled: (msg) => {
+        actionToastsEnabled = msg.enabled;
+        return false;
+      },
+      setSubtitlesEnabled: (msg) => {
+        subtitlesEnabled = msg.enabled;
+        return false;
+      }
+    };
+    const delegatedHandlers = {
+      GASOLINE_HIGHLIGHT: (msg, sr) => {
+        forwardHighlightMessage(msg).then((r) => sr(r)).catch((e) => sr({ success: false, error: e.message }));
+        return true;
+      },
+      GASOLINE_MANAGE_STATE: (msg, sr) => {
+        handleStateCommand(msg.params).then((r) => sr(r)).catch((e) => sr({ error: e.message }));
+        return true;
+      },
+      GASOLINE_EXECUTE_JS: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
+      GASOLINE_EXECUTE_QUERY: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
+      A11Y_QUERY: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
+      DOM_QUERY: (msg, sr) => handleDomQuery(msg.params || {}, sr),
+      GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
+      LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery(msg.params || {}, sr)
+    };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isValidBackgroundSender(sender)) {
         console.warn("[Gasoline] Rejected message from untrusted sender:", sender.id);
         return false;
       }
-      if (message.type === "GASOLINE_PING") {
+      if (message.type === "GASOLINE_PING")
         return handlePing(sendResponse);
-      }
-      if (message.type === "GASOLINE_ACTION_TOAST") {
-        if (!actionToastsEnabled)
-          return false;
-        const msg = message;
-        if (msg.text)
-          showActionToast(msg.text, msg.detail, msg.state || "trying", msg.duration_ms);
-        return false;
-      }
-      if (message.type === "GASOLINE_RECORDING_WATERMARK") {
-        const msg = message;
-        toggleRecordingWatermark(msg.visible ?? false);
-        return false;
-      }
-      if (message.type === "GASOLINE_SUBTITLE") {
-        if (!subtitlesEnabled)
-          return false;
-        const msg = message;
-        showSubtitle(msg.text ?? "");
-        return false;
-      }
-      if (message.type === "setActionToastsEnabled") {
-        actionToastsEnabled = message.enabled;
-        return false;
-      }
-      if (message.type === "setSubtitlesEnabled") {
-        subtitlesEnabled = message.enabled;
+      const syncHandler = syncHandlers[message.type];
+      if (syncHandler) {
+        syncHandler(message);
         return false;
       }
       handleToggleMessage(message);
-      if (message.type === "GASOLINE_HIGHLIGHT") {
-        forwardHighlightMessage(message).then((result) => {
-          sendResponse(result);
-        }).catch((err) => {
-          sendResponse({ success: false, error: err.message });
-        });
-        return true;
-      }
-      if (message.type === "GASOLINE_MANAGE_STATE") {
-        handleStateCommand(message.params).then((result) => sendResponse(result)).catch((err) => sendResponse({ error: err.message }));
-        return true;
-      }
-      if (message.type === "GASOLINE_EXECUTE_JS") {
-        const params = message.params || {};
-        return handleExecuteJs(params, sendResponse);
-      }
-      if (message.type === "GASOLINE_EXECUTE_QUERY") {
-        return handleExecuteQuery(message.params || {}, sendResponse);
-      }
-      if (message.type === "A11Y_QUERY") {
-        return handleA11yQuery(message.params || {}, sendResponse);
-      }
-      if (message.type === "DOM_QUERY") {
-        return handleDomQuery(message.params || {}, sendResponse);
-      }
-      if (message.type === "GET_NETWORK_WATERFALL") {
-        return handleGetNetworkWaterfall(sendResponse);
-      }
+      const delegated = delegatedHandlers[message.type];
+      if (delegated)
+        return delegated(message, sendResponse);
       return void 0;
     });
   }

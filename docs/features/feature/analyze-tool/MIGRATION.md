@@ -9,12 +9,12 @@ type: migration
 
 This migration expands Gasoline from 4 MCP tools to 5, adding the `analyze` tool for structured analysis and auditing capabilities.
 
-**Before:**
+### Before:
 ```
 observe | generate | configure | interact
 ```
 
-**After:**
+### After:
 ```
 observe | generate | configure | interact | analyze
 ```
@@ -34,7 +34,7 @@ However, cramming analysis capabilities into `observe` would violate principle #
 
 ### Phase 1: Documentation Updates
 
-**Files to update:**
+#### Files to update:
 
 1. **`.claude/docs/architecture.md`**
    - Change "4-Tool Maximum" to "5-Tool Maximum"
@@ -53,7 +53,7 @@ However, cramming analysis capabilities into `observe` would violate principle #
 
 ### Phase 2: Server Implementation
 
-**Files to create/modify:**
+#### Files to create/modify:
 
 1. **`cmd/dev-console/analyze.go`** (new)
    - Tool registration
@@ -72,7 +72,7 @@ However, cramming analysis capabilities into `observe` would violate principle #
 
 ### Phase 3: Extension Implementation
 
-**Files to create/modify:**
+#### Files to create/modify:
 
 1. **`extension/lib/analyze.js`** (new)
    - Analysis dispatcher

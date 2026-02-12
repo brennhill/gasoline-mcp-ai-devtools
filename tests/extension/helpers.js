@@ -10,6 +10,10 @@
  */
 
 import { mock } from 'node:test'
+import { readFileSync } from 'node:fs'
+
+const manifest = JSON.parse(readFileSync(new URL('../../extension/manifest.json', import.meta.url), 'utf8'))
+export const MANIFEST_VERSION = manifest.version
 
 /**
  * Configurable mock window factory.
@@ -36,8 +40,8 @@ export function createMockWindow(options = {}) {
       pathname: options.pathname || '/',
       hostname: options.hostname || 'localhost',
       href,
-      origin: url.origin,
-    },
+      origin: url.origin
+    }
   }
 
   if (options.withOnerror) {
@@ -89,7 +93,7 @@ export function createMockWindow(options = {}) {
  */
 export function createMockCrypto() {
   return {
-    randomUUID: mock.fn(() => 'test-uuid-' + Math.random().toString(36).slice(2)),
+    randomUUID: mock.fn(() => 'test-uuid-' + Math.random().toString(36).slice(2))
   }
 }
 
@@ -104,7 +108,7 @@ export function createMockConsole() {
     warn: mock.fn(),
     error: mock.fn(),
     info: mock.fn(),
-    debug: mock.fn(),
+    debug: mock.fn()
   }
 }
 
@@ -120,17 +124,17 @@ export function createMockChrome(overrides = {}) {
       getURL: mock.fn((path) => `chrome-extension://abc123/${path}`),
       sendMessage: mock.fn(() => Promise.resolve()),
       onMessage: {
-        addListener: mock.fn(),
+        addListener: mock.fn()
       },
       onInstalled: {
-        addListener: mock.fn(),
+        addListener: mock.fn()
       },
-      getManifest: () => ({ version: '6.0.3' }),
-      ...overrides.runtime,
+      getManifest: () => ({ version: MANIFEST_VERSION }),
+      ...overrides.runtime
     },
     action: {
       setBadgeText: mock.fn(),
-      setBadgeBackgroundColor: mock.fn(),
+      setBadgeBackgroundColor: mock.fn()
     },
     storage: {
       local: {
@@ -145,27 +149,27 @@ export function createMockChrome(overrides = {}) {
         remove: mock.fn((keys, callback) => {
           if (typeof callback === 'function') callback()
           else return Promise.resolve()
-        }),
+        })
       },
       sync: {
         get: mock.fn((keys, callback) => callback && callback({})),
-        set: mock.fn((data, callback) => callback && callback()),
+        set: mock.fn((data, callback) => callback && callback())
       },
       session: {
         get: mock.fn((keys, callback) => callback && callback({})),
-        set: mock.fn((data, callback) => callback && callback()),
+        set: mock.fn((data, callback) => callback && callback())
       },
       onChanged: {
-        addListener: mock.fn(),
-      },
+        addListener: mock.fn()
+      }
     },
     tabs: {
       get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
       query: mock.fn(() => Promise.resolve([{ id: 1, windowId: 1 }])),
       onRemoved: { addListener: mock.fn() },
-      onUpdated: { addListener: mock.fn() },
+      onUpdated: { addListener: mock.fn() }
     },
-    ...overrides,
+    ...overrides
   }
 }
 
@@ -184,6 +188,8 @@ export function createMockDocument(overrides = {}) {
   return {
     addEventListener: mock.fn(),
     removeEventListener: mock.fn(),
-    ...overrides,
+    querySelector: mock.fn(() => null),
+    querySelectorAll: mock.fn(() => []),
+    ...overrides
   }
 }

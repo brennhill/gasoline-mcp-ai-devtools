@@ -1,202 +1,119 @@
 // @ts-nocheck
-/**
- * @fileoverview content.test.js — Tests for content script message bridge.
- * Verifies that window.postMessage events (GASOLINE_LOG, GASOLINE_WS,
- * GASOLINE_NETWORK_BODY, GASOLINE_ENHANCED_ACTION, GASOLINE_PERF_SNAPSHOT)
- * are correctly forwarded to chrome.runtime.sendMessage with proper payloads.
- */
-
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
 import { createMockChrome } from './helpers.js'
 
-describe('Content Script: GASOLINE_NETWORK_BODY forwarding', () => {
+import { initTabTracking } from '../../extension/content/tab-tracking.js'
+import { initWindowMessageListener } from '../../extension/content/window-message-listener.js'
+import { registerDomRequest } from '../../extension/content/request-tracking.js'
+import { MESSAGE_MAP } from '../../extension/content/message-forwarding.js'
+
+describe('Content Window Message Bridge', () => {
   let messageHandler
-  let mockChrome
+  let runtimeSendMessage
 
   beforeEach(() => {
-    mockChrome = createMockChrome()
-    globalThis.chrome = mockChrome
+    messageHandler = undefined
 
-    // Capture the message handler that content.js registers
-    const handlers = []
+    runtimeSendMessage = mock.fn((msg) => {
+      if (msg?.type === 'GET_TAB_ID') return Promise.resolve({ tabId: 42 })
+      return Promise.resolve()
+    })
+
+    globalThis.chrome = createMockChrome()
+    globalThis.chrome.runtime.sendMessage = runtimeSendMessage
+    globalThis.chrome.storage.local.get = mock.fn(() => Promise.resolve({ trackedTabId: 42 }))
+
     globalThis.window = {
+      location: { origin: 'http://localhost:3000' },
       addEventListener: mock.fn((type, handler) => {
-        if (type === 'message') handlers.push(handler)
+        if (type === 'message') messageHandler = handler
       }),
-      postMessage: mock.fn(),
+      removeEventListener: mock.fn(),
+      postMessage: mock.fn()
     }
+
     globalThis.document = {
-      createElement: mock.fn(() => ({
-        remove: mock.fn(),
-        set onload(fn) {
-          fn()
-        },
-      })),
+      addEventListener: mock.fn(),
+      removeEventListener: mock.fn(),
+      readyState: 'complete',
       head: { appendChild: mock.fn() },
       documentElement: { appendChild: mock.fn() },
-      readyState: 'complete',
-      addEventListener: mock.fn(),
+      createElement: mock.fn(() => ({ remove: mock.fn() })),
+      querySelector: mock.fn(() => null),
+      querySelectorAll: mock.fn(() => [])
     }
+  })
 
-    // Re-import content.js to register handlers
-    // We'll simulate the handler behavior directly
-    messageHandler = (event) => {
-      if (event.source !== globalThis.window) return
-      if (event.data?.type === 'GASOLINE_LOG') {
-        mockChrome.runtime.sendMessage({
-          type: 'log',
-          payload: event.data.payload,
-        })
-      } else if (event.data?.type === 'GASOLINE_WS') {
-        mockChrome.runtime.sendMessage({
-          type: 'ws_event',
-          payload: event.data.payload,
-        })
-      } else if (event.data?.type === 'GASOLINE_NETWORK_BODY') {
-        mockChrome.runtime.sendMessage({
-          type: 'network_body',
-          payload: event.data.payload,
-        })
-      } else if (event.data?.type === 'GASOLINE_ENHANCED_ACTION') {
-        mockChrome.runtime.sendMessage({
-          type: 'enhanced_action',
-          payload: event.data.payload,
-        })
+  test('MESSAGE_MAP contains expected forwarding contracts', () => {
+    assert.strictEqual(MESSAGE_MAP.GASOLINE_LOG, 'log')
+    assert.strictEqual(MESSAGE_MAP.GASOLINE_WS, 'ws_event')
+    assert.strictEqual(MESSAGE_MAP.GASOLINE_NETWORK_BODY, 'network_body')
+    assert.strictEqual(MESSAGE_MAP.GASOLINE_ENHANCED_ACTION, 'enhanced_action')
+    assert.strictEqual(MESSAGE_MAP.GASOLINE_PERFORMANCE_SNAPSHOT, 'performance_snapshot')
+  })
+
+  test('forwards GASOLINE_NETWORK_BODY from tracked tab through runtime.sendMessage', async () => {
+    await initTabTracking()
+    initWindowMessageListener()
+
+    assert.ok(messageHandler, 'message listener should be installed')
+
+    const payload = { url: 'https://api.example.com/users', status: 200 }
+    messageHandler({
+      source: globalThis.window,
+      origin: globalThis.window.location.origin,
+      data: { type: 'GASOLINE_NETWORK_BODY', payload }
+    })
+
+    const forwarded = runtimeSendMessage.mock.calls
+      .map((c) => c.arguments[0])
+      .find((msg) => msg?.type === 'network_body')
+
+    assert.ok(forwarded, 'expected forwarded network_body message')
+    assert.deepStrictEqual(forwarded.payload, payload)
+    assert.strictEqual(forwarded.tabId, 42)
+  })
+
+  test('drops captured events when tab is not tracked', async () => {
+    globalThis.chrome.storage.local.get = mock.fn(() => Promise.resolve({ trackedTabId: 999 }))
+
+    await initTabTracking()
+    initWindowMessageListener()
+
+    messageHandler({
+      source: globalThis.window,
+      origin: globalThis.window.location.origin,
+      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'boom' } }
+    })
+
+    const forwardedCount = runtimeSendMessage.mock.calls
+      .map((c) => c.arguments[0])
+      .filter((msg) => msg?.type === 'log').length
+
+    assert.strictEqual(forwardedCount, 0)
+  })
+
+  test('resolves real pending DOM request on GASOLINE_DOM_QUERY_RESPONSE', async () => {
+    await initTabTracking()
+    initWindowMessageListener()
+
+    const expected = { matchCount: 1, matches: [{ tag: 'button' }] }
+    let resolved
+    const requestId = registerDomRequest((result) => {
+      resolved = result
+    })
+
+    messageHandler({
+      source: globalThis.window,
+      origin: globalThis.window.location.origin,
+      data: {
+        type: 'GASOLINE_DOM_QUERY_RESPONSE',
+        requestId,
+        result: expected
       }
-    }
-  })
-
-  test('should forward GASOLINE_NETWORK_BODY messages to background', () => {
-    const payload = {
-      url: 'http://localhost:3000/api/users',
-      method: 'GET',
-      status: 200,
-      contentType: 'application/json',
-      requestBody: null,
-      responseBody: '{"users":[]}',
-      duration: 150,
-    }
-
-    messageHandler({
-      source: globalThis.window,
-      data: { type: 'GASOLINE_NETWORK_BODY', payload },
     })
 
-    assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 1)
-    const sentMessage = mockChrome.runtime.sendMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(sentMessage.type, 'network_body')
-    assert.deepStrictEqual(sentMessage.payload, payload)
-  })
-
-  test('should forward with correct payload fields', () => {
-    const payload = {
-      url: 'http://localhost:3000/api/submit',
-      method: 'POST',
-      status: 400,
-      contentType: 'application/json',
-      requestBody: '{"email":"test@test.com"}',
-      responseBody: '{"error":"invalid"}',
-      duration: 200,
-    }
-
-    messageHandler({
-      source: globalThis.window,
-      data: { type: 'GASOLINE_NETWORK_BODY', payload },
-    })
-
-    const sentMessage = mockChrome.runtime.sendMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(sentMessage.payload.url, 'http://localhost:3000/api/submit')
-    assert.strictEqual(sentMessage.payload.method, 'POST')
-    assert.strictEqual(sentMessage.payload.status, 400)
-    assert.strictEqual(sentMessage.payload.requestBody, '{"email":"test@test.com"}')
-  })
-
-  test('should not forward messages from other sources', () => {
-    messageHandler({
-      source: {}, // Not window
-      data: { type: 'GASOLINE_NETWORK_BODY', payload: {} },
-    })
-
-    assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 0)
-  })
-
-  test('should still forward GASOLINE_LOG messages', () => {
-    messageHandler({
-      source: globalThis.window,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'test' } },
-    })
-
-    assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 1)
-    const sentMessage = mockChrome.runtime.sendMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(sentMessage.type, 'log')
-  })
-
-  test('should still forward GASOLINE_WS messages', () => {
-    messageHandler({
-      source: globalThis.window,
-      data: { type: 'GASOLINE_WS', payload: { event: 'open', url: 'ws://localhost' } },
-    })
-
-    assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 1)
-    const sentMessage = mockChrome.runtime.sendMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(sentMessage.type, 'ws_event')
-  })
-
-  test('should forward GASOLINE_ENHANCED_ACTION messages to background', () => {
-    const payload = {
-      type: 'click',
-      timestamp: 1705312200000,
-      url: 'http://localhost:3000/login',
-      selectors: { testId: 'login-btn', cssPath: 'button#login' },
-    }
-
-    messageHandler({
-      source: globalThis.window,
-      data: { type: 'GASOLINE_ENHANCED_ACTION', payload },
-    })
-
-    assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 1)
-    const sentMessage = mockChrome.runtime.sendMessage.mock.calls[0].arguments[0]
-    assert.strictEqual(sentMessage.type, 'enhanced_action')
-    assert.deepStrictEqual(sentMessage.payload, payload)
-  })
-
-  test('should forward GASOLINE_ENHANCED_ACTION with all action types', () => {
-    const actions = [
-      { type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: { id: 'btn' } },
-      {
-        type: 'input',
-        timestamp: 1001,
-        url: 'http://localhost:3000',
-        selectors: { id: 'input' },
-        value: 'hello',
-        inputType: 'text',
-      },
-      { type: 'keypress', timestamp: 1002, url: 'http://localhost:3000', selectors: { id: 'input' }, key: 'Enter' },
-      {
-        type: 'select',
-        timestamp: 1003,
-        url: 'http://localhost:3000',
-        selectors: { id: 'dropdown' },
-        selectedValue: 'us',
-        selectedText: 'United States',
-      },
-      { type: 'scroll', timestamp: 1004, url: 'http://localhost:3000', scrollY: 500 },
-      { type: 'navigate', timestamp: 1005, url: 'http://localhost:3000', fromUrl: '/home', toUrl: '/about' },
-    ]
-
-    for (const payload of actions) {
-      mockChrome.runtime.sendMessage.mock.resetCalls()
-      messageHandler({
-        source: globalThis.window,
-        data: { type: 'GASOLINE_ENHANCED_ACTION', payload },
-      })
-
-      assert.strictEqual(mockChrome.runtime.sendMessage.mock.calls.length, 1, `Should forward ${payload.type} action`)
-      const sentMessage = mockChrome.runtime.sendMessage.mock.calls[0].arguments[0]
-      assert.strictEqual(sentMessage.type, 'enhanced_action')
-      assert.strictEqual(sentMessage.payload.type, payload.type)
-    }
+    assert.deepStrictEqual(resolved, expected)
   })
 })

@@ -173,13 +173,13 @@ Agents should follow consistent naming so humans (and future sessions) can under
 - `after_{action}` — after completing a phase, to mark it as a known-good point
 - `baseline_{feature}` — when a feature is confirmed working, for future regression comparison
 
-**Naming rules:**
+### Naming rules:
 - Lowercase, underscores for spaces
 - Max 50 characters
 - Descriptive enough that a human reading the checkpoint list can reconstruct the session timeline
 - No timestamps in names (the checkpoint already stores its creation time)
 
-**Example session timeline:**
+### Example session timeline:
 ```
 session_start          → clean
 before_auth_refactor   → clean

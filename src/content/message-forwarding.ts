@@ -11,7 +11,7 @@ export const MESSAGE_MAP: Record<string, string> = {
   GASOLINE_WS: 'ws_event',
   GASOLINE_NETWORK_BODY: 'network_body',
   GASOLINE_ENHANCED_ACTION: 'enhanced_action',
-  GASOLINE_PERFORMANCE_SNAPSHOT: 'performance_snapshot',
+  GASOLINE_PERFORMANCE_SNAPSHOT: 'performance_snapshot'
 } as const
 
 // Track whether the extension context is still valid
@@ -31,7 +31,7 @@ export function safeSendMessage(msg: BackgroundMessageFromContent): void {
       console.warn(
         '[Gasoline] Please refresh this page. The Gasoline extension was reloaded ' +
           'and this page still has the old content script. A page refresh will ' +
-          'reconnect capture automatically.',
+          'reconnect capture automatically.'
       )
     }
   }

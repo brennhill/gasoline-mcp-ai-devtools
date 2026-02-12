@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=invalid-name
 """
 Lint documentation for broken links and metadata issues.
 Checks:
@@ -9,27 +10,32 @@ Checks:
 5. No orphaned markdown files
 """
 
-import os
 import re
 from pathlib import Path
 from datetime import datetime, timedelta
+import sys
 
 DOCS_DIR = Path("/Users/brenn/dev/gasoline/docs")
 CODE_DIR = Path("/Users/brenn/dev/gasoline")
 
 class DocumentLinter:
+    """Lint markdown documentation files for common issues."""
+
     def __init__(self):
         self.errors = []
         self.warnings = []
         self.info = []
 
     def error(self, msg):
+        """Record an error message."""
         self.errors.append(f"❌ {msg}")
 
     def warning(self, msg):
+        """Record a warning message."""
         self.warnings.append(f"⚠️  {msg}")
 
     def info_msg(self, msg):
+        """Record an informational message."""
         self.info.append(f"ℹ️  {msg}")
 
     def check_markdown_links(self, file_path, content):
@@ -38,7 +44,7 @@ class DocumentLinter:
         pattern = r'\[([^\]]+)\]\(([^)]+)\)'
         matches = re.findall(pattern, content)
 
-        for text, link in matches:
+        for _text, link in matches:
             # Skip external links
             if link.startswith("http://") or link.startswith("https://"):
                 continue
@@ -71,11 +77,15 @@ class DocumentLinter:
                 self.error(f"{file_path.relative_to(DOCS_DIR)}: code file not found: {file_ref}")
             else:
                 try:
-                    with open(code_file, 'r') as f:
-                        content = f.read()
-                        if f"func {func_ref}(" not in content:
-                            self.warning(f"{file_path.relative_to(DOCS_DIR)}: function not found: {func_ref} in {file_ref}")
-                except:
+                    with open(code_file, 'r', encoding='utf-8') as f:
+                        code_content = f.read()
+                        if f"func {func_ref}(" not in code_content:
+                            rel = file_path.relative_to(DOCS_DIR)
+                            self.warning(
+                                f"{rel}: function not found:"
+                                f" {func_ref} in {file_ref}"
+                            )
+                except (OSError, UnicodeDecodeError):
                     pass
 
     def check_frontmatter(self, file_path, content):
@@ -100,63 +110,63 @@ class DocumentLinter:
                     date_str = match.group(1)
                     doc_date = datetime.strptime(date_str, "%Y-%m-%d")
                     if datetime.now() - doc_date > timedelta(days=30):
-                        self.warning(f"{file_path.relative_to(DOCS_DIR)}: last-verified is stale ({date_str})")
+                        rel = file_path.relative_to(DOCS_DIR)
+                        self.warning(
+                            f"{rel}: last-verified is stale"
+                            f" ({date_str})"
+                        )
             else:
                 self.warning(f"{file_path.relative_to(DOCS_DIR)}: missing 'last-verified' field")
 
-        except Exception as e:
+        except (ValueError, IndexError) as e:
             self.warning(f"{file_path.relative_to(DOCS_DIR)}: frontmatter parse error: {str(e)}")
 
     def lint_file(self, file_path):
         """Lint a single markdown file"""
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
             self.check_frontmatter(file_path, content)
             self.check_markdown_links(file_path, content)
             self.check_code_references(file_path, content)
 
-        except Exception as e:
+        except (OSError, UnicodeDecodeError) as e:
             self.error(f"{file_path}: read error: {str(e)}")
+
+    def _print_section(self, label, items):
+        """Print a capped section of lint results (max 20 shown)."""
+        if not items:
+            return
+        print(f"{label} ({len(items)}):")
+        for item in items[:20]:
+            print(f"  {item}")
+        if len(items) > 20:
+            print(f"  ... and {len(items) - 20} more {label.lower()}")
+        print()
 
     def lint_all(self):
         """Lint all markdown files in docs"""
         md_files = list(DOCS_DIR.rglob("*.md"))
-
-        print(f"🔍 Linting {len(md_files)} markdown files...\n")
+        print(f"Linting {len(md_files)} markdown files...\n")
 
         for md_file in md_files:
             self.lint_file(md_file)
 
-        # Print results
         print("\n" + "=" * 70)
         print("LINT RESULTS")
         print("=" * 70 + "\n")
 
-        if self.errors:
-            print(f"ERRORS ({len(self.errors)}):")
-            for e in self.errors[:20]:  # Limit output
-                print(f"  {e}")
-            if len(self.errors) > 20:
-                print(f"  ... and {len(self.errors) - 20} more errors")
-            print()
-
-        if self.warnings:
-            print(f"WARNINGS ({len(self.warnings)}):")
-            for w in self.warnings[:20]:
-                print(f"  {w}")
-            if len(self.warnings) > 20:
-                print(f"  ... and {len(self.warnings) - 20} more warnings")
-            print()
+        self._print_section("ERRORS", self.errors)
+        self._print_section("WARNINGS", self.warnings)
 
         print("\n" + "=" * 70)
-        print(f"📊 Summary: {len(self.errors)} errors, {len(self.warnings)} warnings")
+        print(f"Summary: {len(self.errors)} errors, {len(self.warnings)} warnings")
         print("=" * 70)
 
         return len(self.errors) == 0
 
 if __name__ == "__main__":
     linter = DocumentLinter()
-    success = linter.lint_all()
-    exit(0 if success else 1)
+    passed = linter.lint_all()
+    sys.exit(0 if passed else 1)

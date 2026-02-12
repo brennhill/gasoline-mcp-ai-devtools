@@ -19,8 +19,8 @@ export async function mcpCall(serverUrl, method, params = {}) {
       jsonrpc: '2.0',
       id: Date.now(),
       method,
-      params,
-    }),
+      params
+    })
   })
   return response.json()
 }

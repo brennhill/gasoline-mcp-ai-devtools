@@ -10,8 +10,8 @@ import * as communication from './communication.js';
 import * as eventListeners from './event-listeners.js';
 import { DebugCategory } from './debug.js';
 import { getRequestHeaders } from './server.js';
-import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot, } from './message-handlers.js';
-import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl, } from './pending-queries.js';
+import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js';
+import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl } from './pending-queries.js';
 import { createSyncClient } from './sync-client.js';
 import { updateVersionFromHealth } from './version-check.js';
 // =============================================================================
@@ -35,7 +35,7 @@ export let connectionStatus = {
     entries: 0,
     maxEntries: 1000,
     errorCount: 0,
-    logFile: '',
+    logFile: ''
 };
 /** Log level filter */
 export let currentLogLevel = 'all';
@@ -50,6 +50,17 @@ export let _connectionCheckRunning = false;
 export let __aiWebPilotEnabledCache = false;
 export let __aiWebPilotCacheInitialized = false;
 export let __pilotInitCallback = null;
+/** Init-ready gate: resolves when initialization completes so early commands wait for cache */
+let _initResolve = null;
+export const initReady = new Promise((resolve) => {
+    _initResolve = resolve;
+});
+export function markInitComplete() {
+    if (_initResolve) {
+        _initResolve();
+        _initResolve = null;
+    }
+}
 /** Extension log queue for server posting */
 export const extensionLogQueue = [];
 // =============================================================================
@@ -97,7 +108,7 @@ export function debugLog(category, message, data = null) {
         ts: timestamp,
         category: category,
         message,
-        ...(data !== null ? { data } : {}),
+        ...(data !== null ? { data } : {})
     };
     stateManager.addDebugLogEntry(entry);
     if (connectionStatus.connected) {
@@ -107,7 +118,7 @@ export function debugLog(category, message, data = null) {
             message,
             source: 'background',
             category,
-            ...(data !== null ? { data } : {}),
+            ...(data !== null ? { data } : {})
         });
         // Cap queue size to prevent memory leak if server is unreachable
         const MAX_EXTENSION_LOGS = 2000;
@@ -118,10 +129,10 @@ export function debugLog(category, message, data = null) {
     if (debugMode) {
         const prefix = `[Gasoline:${category}]`;
         if (data !== null) {
-            console.log(prefix, message, data);
+            console.log(prefix, message, data); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal error message, not user-controlled
         }
         else {
-            console.log(prefix, message);
+            console.log(prefix, message); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal error message, not user-controlled
         }
     }
 }
@@ -149,9 +160,9 @@ export function exportDebugLog() {
         settings: {
             logLevel: currentLogLevel,
             screenshotOnError,
-            sourceMapEnabled: stateManager.isSourceMapEnabled(),
+            sourceMapEnabled: stateManager.isSourceMapEnabled()
         },
-        entries: stateManager.getDebugLog(),
+        entries: stateManager.getDebugLog()
     }, null, 2);
 }
 /**
@@ -168,7 +179,7 @@ export const sharedServerCircuitBreaker = communication.createCircuitBreaker(() 
     maxFailures: communication.RATE_LIMIT_CONFIG.maxFailures,
     resetTimeout: communication.RATE_LIMIT_CONFIG.resetTimeout,
     initialBackoff: 0,
-    maxBackoff: 0,
+    maxBackoff: 0
 });
 // =============================================================================
 // BATCHERS
@@ -210,9 +221,35 @@ export const perfBatcher = perfBatcherWithCB.batcher;
 // =============================================================================
 // LOG HANDLING
 // =============================================================================
+async function tryResolveSourceMap(entry) {
+    if (!stateManager.isSourceMapEnabled())
+        return entry;
+    if (!entry.stack)
+        return entry;
+    try {
+        const resolvedStack = await stateManager.resolveStackTrace(entry.stack, debugLog);
+        const existingEnrichments = entry._enrichments;
+        const enrichments = existingEnrichments ? [...existingEnrichments] : [];
+        if (!enrichments.includes('sourceMap')) {
+            enrichments.push('sourceMap');
+        }
+        debugLog(DebugCategory.CAPTURE, 'Stack trace resolved via source map');
+        return {
+            ...entry,
+            stack: resolvedStack,
+            _sourceMapResolved: true,
+            _enrichments: enrichments
+        };
+    }
+    catch (err) {
+        debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: err.message });
+        return entry;
+    }
+}
 export async function handleLogMessage(payload, sender, tabId) {
     if (!communication.shouldCaptureLog(payload.level, currentLogLevel, payload.type)) {
-        debugLog(DebugCategory.CAPTURE, `Log filtered out: level=${payload.level}, type=${payload.type}`);
+        debugLog(DebugCategory.CAPTURE, `Log filtered out: level=${payload.level}, type=${payload.type}` // nosemgrep: missing-template-string-indicator
+        );
         return;
     }
     let entry = communication.formatLogEntry(payload);
@@ -220,35 +257,18 @@ export async function handleLogMessage(payload, sender, tabId) {
     if (resolvedTabId !== null && resolvedTabId !== undefined) {
         entry = { ...entry, tabId: resolvedTabId };
     }
+    // nosemgrep: missing-template-string-indicator
     debugLog(DebugCategory.CAPTURE, `Log received: type=${entry.type}, level=${entry.level}`, {
         url: entry.url,
-        enrichments: entry._enrichments,
+        enrichments: entry._enrichments
     });
-    if (stateManager.isSourceMapEnabled() && entry.stack) {
-        try {
-            const resolvedStack = await stateManager.resolveStackTrace(entry.stack, debugLog);
-            const existingEnrichments = entry._enrichments;
-            const enrichments = existingEnrichments ? [...existingEnrichments] : [];
-            if (!enrichments.includes('sourceMap')) {
-                enrichments.push('sourceMap');
-            }
-            entry = {
-                ...entry,
-                stack: resolvedStack,
-                _sourceMapResolved: true,
-                _enrichments: enrichments,
-            };
-            debugLog(DebugCategory.CAPTURE, 'Stack trace resolved via source map');
-        }
-        catch (err) {
-            debugLog(DebugCategory.ERROR, 'Source map resolution failed', { error: err.message });
-        }
-    }
+    entry = await tryResolveSourceMap(entry);
     const { shouldSend, entry: processedEntry } = stateManager.processErrorGroup(entry);
     if (shouldSend && processedEntry) {
         logBatcher.add(processedEntry);
+        // nosemgrep: missing-template-string-indicator
         debugLog(DebugCategory.CAPTURE, `Log queued for server: type=${processedEntry.type}`, {
-            aggregatedCount: processedEntry._aggregatedCount,
+            aggregatedCount: processedEntry._aggregatedCount
         });
         maybeAutoScreenshot(processedEntry, sender);
     }
@@ -294,6 +314,47 @@ export async function handleClearLogs() {
 export function isConnectionCheckRunning() {
     return _connectionCheckRunning;
 }
+// #lizard forgives
+function updateVersionFromHealthSafe(health) {
+    try {
+        updateVersionFromHealth({ version: health.version, availableVersion: health.availableVersion }, debugLog);
+    }
+    catch (err) {
+        debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: err.message });
+    }
+}
+function applyHealthLogs(health) {
+    if (!health.logs)
+        return;
+    connectionStatus.logFile = health.logs.logFile || connectionStatus.logFile;
+    connectionStatus.logFileSize = health.logs.logFileSize;
+    connectionStatus.entries = health.logs.entries ?? connectionStatus.entries;
+    connectionStatus.maxEntries = health.logs.maxEntries ?? connectionStatus.maxEntries;
+}
+function applyVersionMismatchCheck(health) {
+    if (!health.connected || !health.version || typeof chrome === 'undefined')
+        return;
+    const extVersion = chrome.runtime.getManifest().version;
+    connectionStatus.serverVersion = health.version;
+    connectionStatus.extensionVersion = extVersion;
+    connectionStatus.versionMismatch = health.version.split('.')[0] !== extVersion.split('.')[0];
+}
+function logConnectionChange(wasConnected, health) {
+    if (wasConnected === health.connected)
+        return;
+    debugLog(DebugCategory.CONNECTION, health.connected ? 'Connected to server' : 'Disconnected from server', {
+        entries: connectionStatus.entries,
+        error: health.error || null,
+        serverVersion: health.version || null
+    });
+}
+function broadcastStatusUpdate() {
+    if (typeof chrome === 'undefined' || !chrome.runtime)
+        return;
+    chrome.runtime
+        .sendMessage({ type: 'statusUpdate', status: { ...connectionStatus, aiControlled } })
+        .catch((err) => console.error('[Gasoline] Error sending status update:', err));
+}
 // eslint-disable-next-line security-node/detect-unhandled-async-errors
 export async function checkConnectionAndUpdate() {
     if (_connectionCheckRunning) {
@@ -303,57 +364,18 @@ export async function checkConnectionAndUpdate() {
     _connectionCheckRunning = true;
     try {
         const health = await communication.checkServerHealth(serverUrl);
-        // Update version information from health response
-        if (health.connected) {
-            try {
-                updateVersionFromHealth({
-                    version: health.version,
-                    availableVersion: health.availableVersion,
-                }, debugLog);
-            }
-            catch (err) {
-                debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: err.message });
-            }
-        }
         const wasConnected = connectionStatus.connected;
-        connectionStatus = {
-            ...connectionStatus,
-            ...health,
-            connected: health.connected,
-        };
-        if (health.logs) {
-            connectionStatus.logFile = health.logs.logFile || connectionStatus.logFile;
-            connectionStatus.logFileSize = health.logs.logFileSize;
-            connectionStatus.entries = health.logs.entries ?? connectionStatus.entries;
-            connectionStatus.maxEntries = health.logs.maxEntries ?? connectionStatus.maxEntries;
+        if (health.connected) {
+            updateVersionFromHealthSafe(health);
         }
-        if (health.connected && health.version && typeof chrome !== 'undefined') {
-            const extVersion = chrome.runtime.getManifest().version;
-            const serverMajor = health.version.split('.')[0];
-            const extMajor = extVersion.split('.')[0];
-            connectionStatus.serverVersion = health.version;
-            connectionStatus.extensionVersion = extVersion;
-            connectionStatus.versionMismatch = serverMajor !== extMajor;
-        }
+        connectionStatus = { ...connectionStatus, ...health, connected: health.connected };
+        applyHealthLogs(health);
+        applyVersionMismatchCheck(health);
         communication.updateBadge(connectionStatus);
-        if (wasConnected !== health.connected) {
-            debugLog(DebugCategory.CONNECTION, health.connected ? 'Connected to server' : 'Disconnected from server', {
-                entries: connectionStatus.entries,
-                error: health.error || null,
-                serverVersion: health.version || null,
-            });
-        }
+        logConnectionChange(wasConnected, health);
         // Always start sync client - it handles failures gracefully with 1s retry
-        // Don't gate on health check - sync client IS the connection mechanism
         startSyncClient();
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-            chrome.runtime
-                .sendMessage({
-                type: 'statusUpdate',
-                status: { ...connectionStatus, aiControlled },
-            })
-                .catch((err) => console.error('[Gasoline] Error sending status update:', err));
-        }
+        broadcastStatusUpdate();
     }
     finally {
         _connectionCheckRunning = false;
@@ -381,7 +403,7 @@ export async function sendStatusPingWrapper() {
         tracked_tab_url: trackingInfo.trackedTabUrl,
         message: trackingInfo.trackedTabId ? 'tracking enabled' : 'no tab tracking enabled',
         extension_connected: true,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
     };
     await communication.sendStatusPing(serverUrl, statusMessage, diagnosticLog);
 }
@@ -407,6 +429,7 @@ function startSyncClient() {
     }
     syncClient = createSyncClient(serverUrl, EXTENSION_SESSION_ID, {
         // Handle commands from server
+        // #lizard forgives
         onCommand: async (command) => {
             debugLog(DebugCategory.CONNECTION, 'Processing sync command', { type: command.type, id: command.id });
             if (stateManager.isQueryProcessing(command.id)) {
@@ -420,7 +443,7 @@ function startSyncClient() {
             catch (err) {
                 debugLog(DebugCategory.CONNECTION, 'Error processing sync command', {
                     type: command.type,
-                    error: err.message,
+                    error: err.message
                 });
             }
             finally {
@@ -437,7 +460,7 @@ function startSyncClient() {
                 chrome.runtime
                     .sendMessage({
                     type: 'statusUpdate',
-                    status: { ...connectionStatus, aiControlled },
+                    status: { ...connectionStatus, aiControlled }
                 })
                     .catch(() => {
                     /* popup may not be open */
@@ -461,7 +484,7 @@ function startSyncClient() {
                     .sendMessage({
                     type: 'versionMismatch',
                     extensionVersion,
-                    serverVersion,
+                    serverVersion
                 })
                     .catch(() => {
                     /* popup may not be open */
@@ -480,7 +503,7 @@ function startSyncClient() {
                 capture_logs: true,
                 capture_network: true,
                 capture_websocket: true,
-                capture_actions: true,
+                capture_actions: true
             };
         },
         // Get pending extension logs
@@ -491,7 +514,7 @@ function startSyncClient() {
                 message: log.message,
                 source: log.source,
                 category: log.category,
-                data: log.data,
+                data: log.data
             }));
         },
         // Clear extension logs after sending
@@ -501,7 +524,7 @@ function startSyncClient() {
         // Debug logging
         debugLog: (category, message, data) => {
             debugLog(DebugCategory.CONNECTION, `[Sync] ${message}`, data);
-        },
+        }
     }, getExtensionVersion());
     syncClient.start();
     debugLog(DebugCategory.CONNECTION, 'Sync client started');

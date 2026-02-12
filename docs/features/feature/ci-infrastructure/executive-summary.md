@@ -22,13 +22,13 @@ tier: v6.0 Wave 1 (Core Thesis)
 
 ### **Primary Users: Engineering Teams**
 
-**Engineering Manager or DevOps Lead**
+#### Engineering Manager or DevOps Lead
 - **Problem:** "Our engineers spend 30% of time debugging CI failures, not shipping features"
 - **When they use it:** When a test fails in CI pipeline (GitHub Actions, GitLab CI, CircleCI)
 - **What they see:** Automatic GitHub comment appears: "Root cause: API timeout. Fix applied. Verified passing."
 - **Value:** Reclaim 30% of engineering time; faster releases
 
-**Example workflow:**
+#### Example workflow:
 ```
 Engineer pushes code
   ↓
@@ -51,7 +51,7 @@ Engineer reviews comment, merges if satisfied
 
 ### **Secondary Users: AI Coding Agent Companies**
 
-**Anthropic, Cursor, GitHub Copilot, etc.**
+#### Anthropic, Cursor, GitHub Copilot, etc.
 - **Problem:** "Our AI agents work great locally but can't repair tests in CI"
 - **When they use it:** When proposing fixes to test failures
 - **What they see:** Integration with Gasoline means fixes are verified before suggesting
@@ -61,7 +61,7 @@ Engineer reviews comment, merges if satisfied
 
 ### **Tertiary Users: Enterprise Compliance Teams**
 
-**CISO, Compliance Officer, Audit Team**
+#### CISO, Compliance Officer, Audit Team
 - **Problem:** "We want AI to modify code, but need proof it works before merge"
 - **When they use it:** When reviewing AI-proposed code changes in PRs
 - **What they see:** Full audit trail (failure → snapshot → fix → re-run proof)
@@ -281,17 +281,17 @@ const result = await gasoline.async(() => {
 
 **What it does:** Generates industry-standard formats for GitHub/GitLab to parse
 
-**HAR (HTTP Archive):**
+#### HAR (HTTP Archive):
 - All network calls + responses
 - Performance metrics
 - Can view in browser DevTools
 
-**SARIF (Static Analysis Results):**
+#### SARIF (Static Analysis Results):
 - Code violations + exact line numbers
 - GitHub shows inline PR comments
 - Compliance audit trail
 
-**Screenshots:**
+#### Screenshots:
 - Visual state at failure moment
 - Attached to GitHub/GitLab artifacts
 - Engineers see what AI saw
@@ -302,7 +302,7 @@ const result = await gasoline.async(() => {
 
 ### **Scenario: "Tests Pass Locally, Fail in CI"**
 
-**The Problem:**
+#### The Problem:
 ```
 Local machine:
   ✅ npm test passes (PostgreSQL 12, node 18)
@@ -316,7 +316,7 @@ CI container:
 Today: Engineer must debug in CI environment (120+ minutes)
 ```
 
-**With CI Infrastructure:**
+#### With CI Infrastructure:
 
 ```
 Step 1: Snapshot captured
@@ -384,7 +384,7 @@ TOTAL TIME: 7 minutes
 | Wasted time/day | 900 min (15h) | 100 min (1.7h) | **13.3 hours/day** |
 | Annual waste | 3,750 hours ($750k) | 417 hours ($83k) | **$667k saved/year** |
 
-**For 100-person team:**
+#### For 100-person team:
 - **Reclaim 30% of engineering capacity** (engineers stop debugging, start shipping)
 - **Faster releases** (red builds green in minutes, not hours)
 - **Reduced context-switching** (engineers notified of fix, not blocked waiting)
@@ -440,23 +440,23 @@ Developer workflow:
 
 ### What Makes This Different
 
-**GitHub Actions (native):**
+#### GitHub Actions (native):
 - Just logs error text
 - No root cause
 - No repair capability
 
-**Playwright Trace Viewer (native):**
+#### Playwright Trace Viewer (native):
 - Records full trace (good)
 - Requires manual inspection (tedious)
 - No autonomous diagnosis
 - No repair capability
 
-**Manual Debugging (current reality):**
+#### Manual Debugging (current reality):
 - Engineer reproduces locally
 - Takes 30-45 minutes
 - Ties up engineer
 
-**Gasoline CI Infrastructure (new):**
+#### Gasoline CI Infrastructure (new):
 - ✅ Captures full browser state automatically
 - ✅ AI diagnoses autonomously
 - ✅ AI repairs + verifies automatically

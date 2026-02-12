@@ -59,4 +59,4 @@ run_test "Health has version" test_health_has_version || ((FAILED++))
 run_test "Health has status" test_health_has_status || ((FAILED++))
 run_test "Health status is ok" test_health_status_ok || ((FAILED++))
 
-exit $FAILED
+exit "$FAILED"

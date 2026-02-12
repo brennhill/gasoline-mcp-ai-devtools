@@ -3,8 +3,8 @@
  * from modular subcomponents: circuit-breaker.ts, batchers.ts, and server.ts
  */
 export { createCircuitBreaker, type CircuitBreakerOptions, type CircuitBreaker } from './circuit-breaker';
-export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG, type Batcher, type BatcherWithCircuitBreaker, type BatcherConfig, type LogBatcherOptions, } from './batchers';
-export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendNetworkWaterfallToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, postQueryResult, postAsyncCommandResult, postExtensionLogs, sendStatusPing, pollPendingQueries, type ServerHealthResponse, } from './server';
+export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG, type Batcher, type BatcherWithCircuitBreaker, type BatcherConfig, type LogBatcherOptions } from './batchers';
+export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendNetworkWaterfallToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, postQueryResult, postAsyncCommandResult, postExtensionLogs, sendStatusPing, pollPendingQueries, type ServerHealthResponse } from './server';
 import type { LogEntry } from '../types';
 /**
  * Format a log entry with timestamp and truncation

@@ -37,12 +37,12 @@ Extend Gasoline's `generate` tool with three new modes for the complete validati
 
 Generate Playwright/Vitest tests from captured Gasoline context.
 
-**Actions:**
+##### Actions:
 - `test_from_context.error` — Generate test that reproduces a captured error
 - `test_from_context.interaction` — Generate test from recorded user interaction
 - `test_from_context.regression` — Generate regression test from analyze baseline
 
-**Request:**
+##### Request:
 ```json
 {
   "type": "test_from_context",
@@ -53,7 +53,7 @@ Generate Playwright/Vitest tests from captured Gasoline context.
 }
 ```
 
-**Response:**
+##### Response:
 ```json
 {
   "status": "success",
@@ -77,12 +77,12 @@ Generate Playwright/Vitest tests from captured Gasoline context.
 }
 ```
 
-**Supported Frameworks:**
+##### Supported Frameworks:
 - `playwright` (default) — Full browser testing
 - `vitest` — Unit/integration tests
 - `jest` — Unit tests
 
-**Context Sources:**
+##### Context Sources:
 - Error context from `observe` (console errors, network failures)
 - Interaction recordings from `interact` (user actions)
 - Regression baselines from `analyze` (before/after states)
@@ -91,12 +91,12 @@ Generate Playwright/Vitest tests from captured Gasoline context.
 
 Auto-repair broken selectors in existing tests.
 
-**Actions:**
+##### Actions:
 - `test_heal.analyze` — Identify broken selectors in test file
 - `test_heal.repair` — Generate fixed selectors using current DOM
 - `test_heal.batch` — Heal all broken tests in directory
 
-**Request:**
+##### Request:
 ```json
 {
   "type": "test_heal",
@@ -106,7 +106,7 @@ Auto-repair broken selectors in existing tests.
 }
 ```
 
-**Response:**
+##### Response:
 ```json
 {
   "status": "success",
@@ -131,14 +131,14 @@ Auto-repair broken selectors in existing tests.
 }
 ```
 
-**Healing Strategies (priority order):**
+##### Healing Strategies (priority order):
 1. `testid_match` — Look for data-testid/data-test attributes
 2. `aria_match` — Match by aria-label, role
 3. `text_match` — Match by visible text content
 4. `attribute_match` — Match by other stable attributes (name, action, href)
 5. `structural_match` — Match by DOM position (least reliable)
 
-**Confidence Thresholds:**
+##### Confidence Thresholds:
 - `>= 0.9` — Auto-apply fix
 - `0.7-0.9` — Suggest fix, require confirmation
 - `< 0.7` — Report as unhealed, manual review required
@@ -147,11 +147,11 @@ Auto-repair broken selectors in existing tests.
 
 Classify test failures to reduce noise and prioritize real bugs.
 
-**Actions:**
+##### Actions:
 - `test_classify.failure` — Classify a specific test failure
 - `test_classify.batch` — Classify all failures in test run
 
-**Request:**
+##### Request:
 ```json
 {
   "type": "test_classify",
@@ -165,7 +165,7 @@ Classify test failures to reduce noise and prioritize real bugs.
 }
 ```
 
-**Response:**
+##### Response:
 ```json
 {
   "status": "success",
@@ -190,7 +190,7 @@ Classify test failures to reduce noise and prioritize real bugs.
 }
 ```
 
-**Classification Categories:**
+##### Classification Categories:
 - `real_bug` — Actual application bug (highest priority)
 - `selector_broken` — DOM changed, selector outdated
 - `timing_flaky` — Race condition, needs wait/retry

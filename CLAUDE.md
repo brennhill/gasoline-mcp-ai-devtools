@@ -1,17 +1,72 @@
-# Gasoline MCP
+# Gasoline MCP — Core Rules
 
 Browser extension + MCP server for real-time browser telemetry.
 **Stack:** Go (zero deps) | Chrome Extension (MV3) | MCP (JSON-RPC 2.0)
 
-## Core Rules (Mandatory)
+---
+
+## 🔴 Mandatory Rules
 
 1. **TDD** — Write tests first, then implementation
 2. **No `any`** — TypeScript strict mode, no implicit any
 3. **Zero Deps** — No production dependencies in Go or extension
 4. **Compile TS** — Run `make compile-ts` after ANY src/ change
-5. **4 Tools Only** — observe, generate, configure, interact
+5. **5 Tools** — observe, generate, configure, interact, analyze
 6. **Performance** — WebSocket < 0.1ms, HTTP < 0.5ms
 7. **Privacy** — All data stays local, no external transmission
+
+## Git Workflow
+
+- Branch from `next`, PR to `next`
+- Never push directly to `main`
+- Squash commits before merge
+
+---
+
+## 📚 Reference Sections
+
+For detailed guidance on specific topics, see the sections below.
+
+### Quick Commands
+
+**See [CLAUDE.md#commands](#commands) for:**
+
+- `make compile-ts`, `make test`, `make ci-local`
+- TypeScript check & linting
+
+### Testing & UAT
+
+**See [CLAUDE.md#testing](#testing) for:**
+
+- Primary UAT script: `scripts/test-all-tools-comprehensive.sh`
+- UAT rules and test coverage areas
+
+### Code Standards
+
+**See [CLAUDE.md#code-standards](#code-standards) for:**
+
+- JSON API field naming (snake_case vs camelCase)
+- TypeScript restrictions (dynamic imports, bundling, fetch handling)
+- Go standards (append-only I/O, eviction, file headers)
+- Max 800 LOC per file
+
+### Feature Development
+
+**See [CLAUDE.md#feature-development](#feature-development) for:**
+
+- Workflow: product spec → tech spec → review → QA → implementation
+- Tech spec template (sequence diagrams, edge cases, state machines, network communication)
+- Reference implementation example
+
+### File Locations
+
+**See [CLAUDE.md#finding-things](#finding-things) for:**
+
+- Feature specs: `docs/features/<name>/`
+- Architecture: `.claude/refs/architecture.md`
+- Known issues: `docs/core/known-issues.md`
+
+---
 
 ## Commands
 
@@ -59,13 +114,22 @@ Tests: cold start, tool calls, concurrent clients, stdout purity, persistence, g
 
 **File size:** Max 800 LOC. Refactor if larger.
 
-## Feature Workflow
+## Feature Development
+
+### Feature Workflow
 
 ```text
-product-spec.md → tech-spec.md → Review → qa-plan.md → Implementation
+product-spec.md → tech-spec.md → test-plan.md → Review → Implementation
 ```
 
 Don't skip gates. Tests before code.
+
+**Critical Gates:**
+
+- After product-spec.md and tech-spec.md, create `{feature}-test-plan.md` that describes:
+  - **Product Tests** — High-level test scenarios proving the feature works across all edge cases (negative and positive) or state machine transitions
+  - **Technical Tests** — How tests will be implemented (unit, integration, UAT, automation, manual steps)
+  - **Test Status** — Links to generated test files after implementation begins
 
 ### Tech Spec Requirements
 
@@ -97,17 +161,37 @@ Every tech spec must include:
 
 **Example:** See [`docs/features/mcp-persistent-server/architecture.md`](docs/features/mcp-persistent-server/architecture.md) for reference implementation with 3 sequence diagrams and 14 edge cases.
 
+### Test Plan Requirements
+
+After product-spec.md and tech-spec.md are approved, create `{feature}-test-plan.md`:
+
+1. **Product Tests** — What must be verified to prove the feature works
+   - Test scenarios covering all valid states
+   - Negative test cases for each edge case
+   - Concurrent/race condition scenarios
+   - Failure and recovery paths
+   - Format: plain language, executable checklists
+
+2. **Technical Tests** — Implementation details of how testing will happen
+   - Unit test coverage areas
+   - Integration/UAT test scenarios
+   - Manual testing steps (if applicable)
+   - Automation tools and frameworks
+   - Pass/fail criteria for each test
+
+3. **Test Status** — Living document updated as tests are generated
+   - Links to unit test files (e.g., `test/features/feature-name.test.ts`)
+   - Links to UAT/integration test files
+   - Links to automation scripts
+   - Pass/fail status before merge
+
 ## Finding Things
 
-| Need           | Location                              |
-| -------------- | ------------------------------------- |
-| Feature specs  | `docs/features/<name>/`               |
-| Architecture   | `.claude/refs/architecture.md`        |
-| Known issues   | `docs/core/known-issues.md`           |
-| All features   | `docs/features/feature-navigation.md` |
-
-## Git
-
-- Branch from `next`, PR to `next`
-- Never push directly to `main`
-- Squash commits before merge
+| Need                  | Location                                         |
+| --------------------- | ------------------------------------------------ |
+| Feature specs         | `docs/features/<name>/`                          |
+| Test plans            | `docs/features/<name>/{name}-test-plan.md`       |
+| Test plan template    | `docs/features/_template/template-test-plan.md`  |
+| Architecture          | `.claude/refs/architecture.md`                   |
+| Known issues          | `docs/core/known-issues.md`                      |
+| All features          | `docs/features/feature-navigation.md`            |

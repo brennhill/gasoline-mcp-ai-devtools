@@ -68,7 +68,7 @@ The output is designed for LLM consumption: flat issue arrays with consistent sc
 }
 ```
 
-**Parameters:**
+#### Parameters:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -264,7 +264,7 @@ The output is designed for LLM consumption: flat issue arrays with consistent sc
 }
 ```
 
-**Response fields:**
+#### Response fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -283,7 +283,7 @@ The output is designed for LLM consumption: flat issue arrays with consistent sc
 | `seo_audit.structured_data` | object | JSON-LD / schema.org validation |
 | `seo_audit.technical` | object | Viewport, lang, hreflang, and mobile-readiness checks |
 
-**Issue object schema (consistent across all dimensions):**
+#### Issue object schema (consistent across all dimensions):
 
 | Field | Type | Description |
 |-------|------|-------------|

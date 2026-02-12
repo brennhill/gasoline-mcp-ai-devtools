@@ -35,9 +35,6 @@ interface ScriptOptions {
     baseUrl?: string;
     lastNActions?: number;
 }
-/**
- * Get the implicit ARIA role for an element
- */
 export declare function getImplicitRole(element: Element | null): string | null;
 /**
  * Detect if a CSS class name is dynamically generated (CSS-in-JS)

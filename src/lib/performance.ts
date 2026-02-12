@@ -22,7 +22,7 @@ let performanceCaptureActive = false
  * Get performance marks
  */
 export function getPerformanceMarks(
-  options: { since?: number } = {},
+  options: { since?: number } = {}
 ): Array<Omit<PerformanceMark, 'entryType'> & { detail?: unknown | null }> {
   if (typeof performance === 'undefined' || !performance) return []
 
@@ -45,7 +45,7 @@ export function getPerformanceMarks(
     return marks.map((m) => ({
       name: m.name,
       startTime: m.startTime,
-      detail: (m as PerformanceEntry & { detail?: unknown }).detail || null,
+      detail: (m as PerformanceEntry & { detail?: unknown }).detail || null
     }))
   } catch {
     return []
@@ -80,7 +80,7 @@ export function getPerformanceMeasures(options: { since?: number } = {}): Array<
       duration: m.duration,
       ...((m as PerformanceEntry & { detail?: unknown }).detail !== undefined
         ? { detail: (m as PerformanceEntry & { detail?: unknown }).detail }
-        : {}),
+        : {})
     }))
   } catch {
     return []
@@ -120,12 +120,12 @@ export function installPerformanceCapture(): void {
   // Store originals
   originalPerformanceMark = performance.mark.bind(performance) as (
     name: string,
-    options?: PerformanceMarkOptions,
+    options?: PerformanceMarkOptions
   ) => PerformanceMark
   originalPerformanceMeasure = performance.measure.bind(performance) as (
     name: string,
     startMark?: string,
-    endMark?: string,
+    endMark?: string
   ) => PerformanceMeasure
 
   // Wrap performance.mark
@@ -140,7 +140,7 @@ export function installPerformanceCapture(): void {
       startTime: result.startTime || performance.now(),
       entryType: 'mark',
       detail: options?.detail || undefined,
-      capturedAt: new Date().toISOString(),
+      capturedAt: new Date().toISOString()
     })
 
     // Limit captured marks
@@ -165,7 +165,7 @@ export function installPerformanceCapture(): void {
       startTime: result.startTime || 0,
       duration: result.duration || 0,
       entryType: 'measure',
-      capturedAt: new Date().toISOString(),
+      capturedAt: new Date().toISOString()
     })
 
     // Limit captured measures
@@ -194,7 +194,7 @@ export function installPerformanceCapture(): void {
                 startTime: entry.startTime,
                 entryType: 'mark',
                 detail: (entry as PerformanceEntry & { detail?: unknown }).detail || undefined,
-                capturedAt: new Date().toISOString(),
+                capturedAt: new Date().toISOString()
               })
             }
           } else if (entry.entryType === 'measure') {
@@ -204,7 +204,7 @@ export function installPerformanceCapture(): void {
                 startTime: entry.startTime,
                 duration: entry.duration,
                 entryType: 'measure',
-                capturedAt: new Date().toISOString(),
+                capturedAt: new Date().toISOString()
               })
             }
           }
@@ -236,7 +236,7 @@ export function uninstallPerformanceCapture(): void {
     Object.defineProperty(performance, 'measure', {
       value: originalPerformanceMeasure,
       writable: true,
-      configurable: true,
+      configurable: true
     })
     originalPerformanceMeasure = null
   }
@@ -297,7 +297,7 @@ export async function getPerformanceSnapshotForError(errorEntry: { ts?: string }
             type: nav.type,
             startTime: nav.startTime,
             domContentLoadedEventEnd: nav.domContentLoadedEventEnd,
-            loadEventEnd: nav.loadEventEnd,
+            loadEventEnd: nav.loadEventEnd
           }
         }
       }
@@ -313,7 +313,7 @@ export async function getPerformanceSnapshotForError(errorEntry: { ts?: string }
     _errorTs: errorEntry.ts,
     marks,
     measures,
-    navigation,
+    navigation
   }
 }
 

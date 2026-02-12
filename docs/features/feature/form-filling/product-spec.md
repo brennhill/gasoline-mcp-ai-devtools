@@ -51,7 +51,7 @@ Add `fill_form` action to the `interact` tool. Agent provides field selectors an
 
 ## Examples
 
-**Simple login form:**
+### Simple login form:
 ```json
 {
   "action": "fill_form",
@@ -62,7 +62,7 @@ Add `fill_form` action to the `interact` tool. Agent provides field selectors an
 }
 ```
 
-**Complex multi-field form:**
+### Complex multi-field form:
 ```json
 {
   "action": "fill_form",
@@ -77,7 +77,7 @@ Add `fill_form` action to the `interact` tool. Agent provides field selectors an
 }
 ```
 
-**Response with validation errors:**
+### Response with validation errors:
 ```json
 {
   "status": "partial",
@@ -93,5 +93,5 @@ Add `fill_form` action to the `interact` tool. Agent provides field selectors an
 ## Notes
 
 - Integrates with existing `interact` tool async command architecture
-- Uses same 2s decision point + 10s total timeout as other interact actions
+- Uses same 60s timeout window as other async interact actions
 - Field filling order matters for forms with conditional logic (fill in document order)

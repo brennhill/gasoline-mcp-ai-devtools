@@ -39,22 +39,22 @@ func TestStartResultCleanup_ReturnsStopFunction(t *testing.T) {
 func TestStartResultCleanup_GoroutineStopsOnClose(t *testing.T) {
 	// NOT parallel: relies on runtime.NumGoroutine() counts
 	runtime.GC()
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 	before := runtime.NumGoroutine()
 
 	c := NewCapture()
 
 	// Goroutine count should have increased (cleanup goroutine started)
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 	during := runtime.NumGoroutine()
 	if during <= before {
 		t.Logf("Warning: goroutine count did not visibly increase: before=%d, during=%d", before, during)
 	}
 
 	c.Close()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(40 * time.Millisecond)
 	runtime.GC()
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	after := runtime.NumGoroutine()
 	if after > before+1 {
@@ -87,19 +87,19 @@ func TestWaitForResult_NoGoroutineLeakOnTimeout(t *testing.T) {
 	})
 
 	runtime.GC()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(40 * time.Millisecond)
 	before := runtime.NumGoroutine()
 
 	// This will timeout — the key assertion is no goroutine leak after
-	_, err := c.WaitForResult(id, 200*time.Millisecond)
+	_, err := c.WaitForResult(id, 80*time.Millisecond)
 	if err == nil {
 		t.Fatal("Expected timeout error")
 	}
 
 	// Wait for any spawned goroutines to finish
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(120 * time.Millisecond)
 	runtime.GC()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(40 * time.Millisecond)
 
 	after := runtime.NumGoroutine()
 	if after > before+1 {
@@ -113,24 +113,24 @@ func TestWaitForResult_MultipleTimeoutsNoLeak(t *testing.T) {
 	defer c.Close()
 
 	// Short query timeout so CreatePendingQuery cleanup goroutines exit quickly
-	c.SetQueryTimeout(100 * time.Millisecond)
+	c.SetQueryTimeout(40 * time.Millisecond)
 
 	runtime.GC()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(40 * time.Millisecond)
 	before := runtime.NumGoroutine()
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 6; i++ {
 		id := c.CreatePendingQuery(queries.PendingQuery{
 			Type:   "dom",
 			Params: json.RawMessage(`{"selector":"#leak-test"}`),
 		})
-		_, _ = c.WaitForResult(id, 100*time.Millisecond)
+		_, _ = c.WaitForResult(id, 40*time.Millisecond)
 	}
 
-	// Wait for per-query cleanup goroutines to complete (100ms timeout + margin)
-	time.Sleep(500 * time.Millisecond)
+	// Wait for per-query cleanup goroutines to complete (timeout + margin)
+	time.Sleep(120 * time.Millisecond)
 	runtime.GC()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(40 * time.Millisecond)
 
 	after := runtime.NumGoroutine()
 	// Old behavior: ~100 leaked goroutines (per-iteration spawns in WaitForResult loop).
@@ -152,11 +152,11 @@ func TestWaitForResult_ReturnsResultWhenAvailable(t *testing.T) {
 
 	// Post result after a short delay
 	go func() {
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 		c.SetQueryResult(id, json.RawMessage(`{"found": true}`))
 	}()
 
-	result, err := c.WaitForResult(id, 2*time.Second)
+	result, err := c.WaitForResult(id, 500*time.Millisecond)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

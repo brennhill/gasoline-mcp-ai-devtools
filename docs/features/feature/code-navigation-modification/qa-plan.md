@@ -14,23 +14,23 @@ last-verified: 2026-01-31
 ### Scenario 1: Search for Function by Name
 **Objective:** Verify code_search finds functions by pattern
 
-**Setup:**
+#### Setup:
 - Test project with multiple components
 - PaymentForm.tsx contains: `const handleSubmit()`, `const handlePayment()`
 - Payment.ts contains: `async function processPayment()`
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "code_search", pattern: "handlePayment|processPayment"})`
 2. Verify results include all 3 functions with correct file paths
 3. Verify relevance scores (exact match > partial match)
 4. Verify line numbers correct
 
-**Expected Result:**
+#### Expected Result:
 - Search returns 3 matches: PaymentForm.tsx (2 matches), Payment.ts (1 match)
 - Line numbers point to actual function definitions
 - Relevance score ranks exact matches higher
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] All matching functions found
 - [ ] No false positives
 - [ ] Results sorted by relevance
@@ -41,21 +41,21 @@ last-verified: 2026-01-31
 ### Scenario 2: Search with Language Filter
 **Objective:** Verify language filtering works correctly
 
-**Setup:**
+#### Setup:
 - Project contains mixed files: *.ts, *.tsx, *.py, *.go
 - All contain pattern "async" or "timeout"
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "code_search", pattern: "timeout", language: "typescript"})`
 2. Verify only .ts and .tsx files returned
 3. Call with `language: "python"`, verify only .py files returned
 4. Call with no language filter, verify all languages returned
 
-**Expected Result:**
+#### Expected Result:
 - Language filter strictly enforced
 - No cross-language false positives
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Filter applied correctly per language
 - [ ] No files from other languages in results
 
@@ -64,22 +64,22 @@ last-verified: 2026-01-31
 ### Scenario 3: Read File with Line Range
 **Objective:** Verify code_read returns correct subset of lines
 
-**Setup:**
+#### Setup:
 - PaymentForm.tsx has 150 lines total
 - Target: read lines 40-70
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "code_read", file_path: "src/components/PaymentForm.tsx", lines: [40, 70]})`
 2. Verify returned content contains exactly 31 lines (40-70 inclusive)
 3. Verify line numbers annotated correctly
 4. Verify content accurate
 
-**Expected Result:**
+#### Expected Result:
 - Returned lines are exactly 40-70
 - Line numbers match source
 - No truncation or extra lines
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Line range respected
 - [ ] Content accurate
 - [ ] Line numbers correct
@@ -90,19 +90,19 @@ last-verified: 2026-01-31
 ### Scenario 4: Read Entire File
 **Objective:** Verify code_read without line range returns full file
 
-**Setup:**
+#### Setup:
 - Target file: src/utils/helpers.ts with 75 lines
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "code_read", file_path: "src/utils/helpers.ts"})`
 2. Verify all 75 lines returned
 3. Verify first and last lines correct
 
-**Expected Result:**
+#### Expected Result:
 - Full file contents returned
 - All lines present and correct
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Complete file returned
 - [ ] No truncation
 - [ ] Correct git_status reported
@@ -112,11 +112,11 @@ last-verified: 2026-01-31
 ### Scenario 5: Replace Lines in File
 **Objective:** Verify code_modify replace operation
 
-**Setup:**
+#### Setup:
 - PaymentForm.tsx contains handleSubmit function with race condition (missing dependency array)
 - Target: lines 45-50
 
-**Steps:**
+#### Steps:
 1. Read original: `interact({action: "code_read", file_path: "src/components/PaymentForm.tsx", lines: [45, 50]})`
 2. Record original content
 3. Call `interact({action: "code_modify", operation: "replace", line_range: [45, 50], new_content: "...fixed code..."})`
@@ -125,13 +125,13 @@ last-verified: 2026-01-31
 6. Call `git diff` to confirm changes staged
 7. Read file again: verify new content present
 
-**Expected Result:**
+#### Expected Result:
 - Lines 45-50 replaced with new content
 - Changes staged to git
 - Diff shows exact changes
 - Original content accessible via git history
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Exact lines replaced
 - [ ] Indentation preserved or corrected
 - [ ] git add executed
@@ -142,22 +142,22 @@ last-verified: 2026-01-31
 ### Scenario 6: Insert Code After Line
 **Objective:** Verify insert_after operation
 
-**Setup:**
+#### Setup:
 - Target file needs debugging statement added
 - Insert after line 35
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "code_modify", operation: "insert_after", line: 35, new_content: "console.debug('...');"})`
 2. Verify response shows new lines added
 3. Read file: verify debug statement at line 36
 4. Verify indentation matches surrounding code
 
-**Expected Result:**
+#### Expected Result:
 - Debug statement inserted at correct location
 - Indentation correct
 - File now has one more line
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Inserted at correct line
 - [ ] Indentation matched
 - [ ] No syntax errors introduced
@@ -167,22 +167,22 @@ last-verified: 2026-01-31
 ### Scenario 7: Delete Lines
 **Objective:** Verify delete operation
 
-**Setup:**
+#### Setup:
 - File has unused import statements (lines 3-5)
 - Target: delete these lines
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "code_modify", operation: "delete", line_range: [3, 5]})`
 2. Verify response shows lines deleted
 3. Read file: verify old imports gone
 4. Verify file structure intact (no orphaned braces)
 
-**Expected Result:**
+#### Expected Result:
 - Lines deleted correctly
 - File structure valid
 - Indentation correct
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Correct lines deleted
 - [ ] No syntax errors
 - [ ] File structure valid
@@ -192,23 +192,23 @@ last-verified: 2026-01-31
 ### Scenario 8: Auto-Test After Modification
 **Objective:** Verify auto_test flag runs tests after change
 
-**Setup:**
+#### Setup:
 - PaymentForm.test.ts exists and passes initially
 - Modification made to PaymentForm.tsx
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "code_modify", operation: "replace", ..., auto_test: true})`
 2. Response should include test_results
 3. Verify tests ran: passed, failed, duration_ms present
 4. If modification broke tests: verify failure shown
 5. If modification fixed tests: verify newly passing tests shown
 
-**Expected Result:**
+#### Expected Result:
 - Tests run immediately after modification
 - Results included in response
 - Developer can see impact of change
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Tests executed
 - [ ] Results captured
 - [ ] Pass/fail counts accurate
@@ -219,11 +219,11 @@ last-verified: 2026-01-31
 ### Scenario 9: Run Tests Independently
 **Objective:** Verify run_tests command executes and captures results
 
-**Setup:**
+#### Setup:
 - Test file: src/components/PaymentForm.test.ts
 - Tests currently pass (baseline)
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "run_tests", test_file: "src/components/PaymentForm.test.ts"})`
 2. Verify command executed: "npm test -- PaymentForm.test.ts"
 3. Verify results captured: tests_passed, tests_failed, duration_ms
@@ -231,13 +231,13 @@ last-verified: 2026-01-31
 5. Modify source file to break a test
 6. Run tests again: verify failure captured
 
-**Expected Result:**
+#### Expected Result:
 - Test command executed correctly
 - Results parsed accurately
 - Pass/fail counts match actual
 - Output captured for debugging
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Tests executed
 - [ ] Results parsed correctly
 - [ ] Failures captured with assertion details
@@ -248,23 +248,23 @@ last-verified: 2026-01-31
 ### Scenario 10: Rollback Single Modification
 **Objective:** Verify code_rollback reverts a change
 
-**Setup:**
+#### Setup:
 - Modification made: mod-20260131-101523-001
 - File staged with changes
 
-**Steps:**
+#### Steps:
 1. Record current file content
 2. Call `interact({action: "code_rollback", modification_id: "mod-20260131-101523-001"})`
 3. Verify response: status: "rolled_back"
 4. Read file: verify original content restored
 5. Check git status: changes should be unstaged/reverted
 
-**Expected Result:**
+#### Expected Result:
 - File reverted to pre-modification state
 - Git working tree clean
 - Original content accessible
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] File reverted exactly
 - [ ] No partial reverts
 - [ ] Git status updated
@@ -274,23 +274,23 @@ last-verified: 2026-01-31
 ### Scenario 11: Modification Log with Correlation ID
 **Objective:** Verify modifications recorded with correlation_id
 
-**Setup:**
+#### Setup:
 - Modification made with correlation_id: "bug-payment-timeout-001"
 - Multiple files modified
 
-**Steps:**
+#### Steps:
 1. Perform modifications: code_modify x3 with same correlation_id
 2. Call `observe({what: "modification_log", correlation_id: "bug-payment-timeout-001"})`
 3. Verify all 3 modifications returned
 4. Verify each has correct correlation_id
 5. Verify timestamps in chronological order
 
-**Expected Result:**
+#### Expected Result:
 - All modifications linked to correlation_id
 - Full audit trail of changes for bug fix
 - Can trace bug → observations → code changes → tests
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] All modifications recorded
 - [ ] Correlation ID correctly indexed
 - [ ] Timestamps accurate
@@ -301,21 +301,21 @@ last-verified: 2026-01-31
 ### Scenario 12: Security: Path Traversal Prevention
 **Objective:** Verify path traversal attacks blocked
 
-**Setup:**
+#### Setup:
 - Attacker attempts to access files outside repo
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "code_read", file_path: "../../../etc/passwd"})`
 2. Verify error returned: "Path outside repository root"
 3. Call `interact({action: "code_read", file_path: "/etc/passwd"})`
 4. Verify error: "Absolute paths not allowed"
 5. Call with legitimate path: works fine
 
-**Expected Result:**
+#### Expected Result:
 - Malicious paths rejected
 - Legitimate paths work
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Path traversal attempts blocked
 - [ ] Error messages clear
 - [ ] No side effects
@@ -325,20 +325,20 @@ last-verified: 2026-01-31
 ### Scenario 13: Search Performance with Large Codebase
 **Objective:** Verify search performance on large project (50K files)
 
-**Setup:**
+#### Setup:
 - Simulate large project or use real project with many files
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "code_search", pattern: "handlePayment"})`
 2. Record search time
 3. Verify completes in <100ms
 4. Verify result count reasonable
 
-**Expected Result:**
+#### Expected Result:
 - Search fast even on large codebase
 - Results limited to prevent overwhelming output
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Search <100ms
 - [ ] Results limited intelligently
 - [ ] No timeout
@@ -348,22 +348,22 @@ last-verified: 2026-01-31
 ### Scenario 14: Git Staging & Diff Generation
 **Objective:** Verify changes properly staged and diff generated
 
-**Setup:**
+#### Setup:
 - Modification made to file
 
-**Steps:**
+#### Steps:
 1. Call code_modify with modification
 2. Verify response includes git_diff
 3. Verify git_staged: true
 4. Run `git status`: file should appear as staged
 5. Run `git diff --staged`: output should match response diff
 
-**Expected Result:**
+#### Expected Result:
 - Changes staged to git
 - Diff format standard (unified diff)
 - Developer can review with normal git tools
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Changes staged
 - [ ] Diff generation accurate
 - [ ] Git tools show changes
@@ -373,22 +373,22 @@ last-verified: 2026-01-31
 ### Scenario 15: Indentation Preservation
 **Objective:** Verify code modifications preserve or correctly adjust indentation
 
-**Setup:**
+#### Setup:
 - File uses 2-space indentation
 - Modification spans multiple indentation levels
 
-**Steps:**
+#### Steps:
 1. Read target lines: verify indentation
 2. Perform modification that changes indentation level
 3. Read modified lines: verify indentation correct
 4. Run tests: verify no syntax errors from indentation issues
 
-**Expected Result:**
+#### Expected Result:
 - Indentation preserved when not changing nesting level
 - Indentation adjusted when adding/removing nesting
 - No mixed tabs/spaces
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Indentation correct
 - [ ] No syntax errors
 - [ ] Code still runs

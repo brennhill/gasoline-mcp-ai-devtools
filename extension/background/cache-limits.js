@@ -83,7 +83,7 @@ export function canTakeScreenshot(tabId) {
         return {
             allowed: false,
             reason: 'rate_limit',
-            nextAllowedIn: SCREENSHOT_RATE_LIMIT_MS - (now - lastTimestamp),
+            nextAllowedIn: SCREENSHOT_RATE_LIMIT_MS - (now - lastTimestamp)
         };
     }
     return { allowed: true };
@@ -145,7 +145,7 @@ export function checkMemoryPressure(buffers) {
             level: 'hard',
             action: 'disable_network_capture',
             estimatedMemory,
-            alreadyApplied,
+            alreadyApplied
         };
     }
     if (estimatedMemory >= MEMORY_SOFT_LIMIT) {
@@ -159,7 +159,7 @@ export function checkMemoryPressure(buffers) {
             level: 'soft',
             action: 'reduce_capacities',
             estimatedMemory,
-            alreadyApplied,
+            alreadyApplied
         };
     }
     memoryPressureLevel = 'normal';
@@ -169,7 +169,7 @@ export function checkMemoryPressure(buffers) {
         level: 'normal',
         action: 'none',
         estimatedMemory,
-        alreadyApplied: false,
+        alreadyApplied: false
     };
 }
 /**
@@ -180,7 +180,7 @@ export function getMemoryPressureState() {
         memoryPressureLevel,
         lastMemoryCheck,
         networkBodyCaptureDisabled,
-        reducedCapacities,
+        reducedCapacities
     };
 }
 /**

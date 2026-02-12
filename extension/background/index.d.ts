@@ -42,6 +42,8 @@ export declare let _connectionCheckRunning: boolean;
 export declare let __aiWebPilotEnabledCache: boolean;
 export declare let __aiWebPilotCacheInitialized: boolean;
 export declare let __pilotInitCallback: (() => void) | null;
+export declare const initReady: Promise<void>;
+export declare function markInitComplete(): void;
 /** Extension log queue for server posting */
 export declare const extensionLogQueue: Array<{
     timestamp: string;

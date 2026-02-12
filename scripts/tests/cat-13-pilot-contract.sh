@@ -2,8 +2,10 @@
 # cat-13-pilot-contract.sh — Contract tests for AI Web Pilot state
 # Verifies the regression where pilot state cache wasn't initialized properly
 # These tests WOULD HAVE CAUGHT the pilot_disabled bug
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 PORT="${1:-7900}"

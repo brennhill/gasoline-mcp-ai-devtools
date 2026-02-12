@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-22-advanced.sh — Advanced Scenarios & Integration Tests (5 tests)
 # Tests complex workflows, feature interactions, edge cases.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"

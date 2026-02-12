@@ -28,6 +28,7 @@ function isValidMessageSender(sender) {
  * Install the main message listener
  * All messages are validated for sender origin to ensure they come from trusted extension contexts
  */
+// #lizard forgives
 export function installMessageListener(deps) {
     if (typeof chrome === 'undefined' || !chrome.runtime)
         return;
@@ -98,7 +99,7 @@ function handleMessage(message, sender, sendResponse, deps) {
                 debugMode: deps.getDebugMode(),
                 contextWarning: deps.getContextWarning(),
                 circuitBreakerState: deps.getCircuitBreakerState(),
-                memoryPressure: deps.getMemoryPressureState(),
+                memoryPressure: deps.getMemoryPressureState()
             });
             return false;
         case 'clearLogs':
@@ -164,6 +165,14 @@ function handleMessage(message, sender, sendResponse, deps) {
         case 'setServerUrl':
             handleSetServerUrl(message.url, sendResponse, deps);
             return false;
+        case 'GASOLINE_CAPTURE_SCREENSHOT':
+            // Content script requests screenshot capture (while draw mode overlay is still visible)
+            handleDrawModeCaptureScreenshot(sender, sendResponse);
+            return true;
+        case 'DRAW_MODE_COMPLETED':
+            // Fire-and-forget: content script sends draw mode results
+            handleDrawModeCompletedAsync(message, sender, deps);
+            return false;
         default:
             // Unknown message type
             return false;
@@ -180,6 +189,7 @@ async function handleLogMessageAsync(message, sender, deps) {
         console.error('[Gasoline] Failed to handle log message:', err);
     }
 }
+// #lizard forgives
 async function handleClearLogsAsync(sendResponse, deps) {
     try {
         const result = await deps.handleClearLogs();
@@ -214,8 +224,8 @@ async function handleGetTrackingState(sendResponse, deps, senderTabId) {
         sendResponse({
             state: {
                 isTracked: senderTabId !== undefined && senderTabId === trackedTabId,
-                aiPilotEnabled: aiPilotEnabled,
-            },
+                aiPilotEnabled: aiPilotEnabled
+            }
         });
     }
     catch (err) {
@@ -241,8 +251,8 @@ export async function broadcastTrackingState(untrackedTabId) {
                 type: 'trackingStateChanged',
                 state: {
                     isTracked: true,
-                    aiPilotEnabled: aiPilotEnabled,
-                },
+                    aiPilotEnabled: aiPilotEnabled
+                }
             })
                 .catch(() => {
                 // Tab might not have content script loaded yet, ignore
@@ -255,8 +265,8 @@ export async function broadcastTrackingState(untrackedTabId) {
                 type: 'trackingStateChanged',
                 state: {
                     isTracked: false,
-                    aiPilotEnabled: false,
-                },
+                    aiPilotEnabled: false
+                }
             })
                 .catch(() => {
                 // Tab might not have content script loaded, ignore
@@ -272,7 +282,7 @@ function handleGetDiagnosticState(sendResponse, deps) {
         sendResponse({
             cache: deps.getAiWebPilotEnabled(),
             storage: undefined,
-            timestamp: new Date().toISOString(),
+            timestamp: new Date().toISOString()
         });
         return;
     }
@@ -280,7 +290,7 @@ function handleGetDiagnosticState(sendResponse, deps) {
         sendResponse({
             cache: deps.getAiWebPilotEnabled(),
             storage: result.aiWebPilotEnabled,
-            timestamp: new Date().toISOString(),
+            timestamp: new Date().toISOString()
         });
     });
 }
@@ -307,6 +317,59 @@ function handleForwardedSetting(message, sendResponse, deps) {
     deps.forwardToAllContentScripts(message);
     sendResponse({ success: true });
 }
+/**
+ * Handle GASOLINE_CAPTURE_SCREENSHOT from content script.
+ * Captures visible tab while draw mode overlay is still visible (annotations in screenshot).
+ */
+async function handleDrawModeCaptureScreenshot(sender, sendResponse) {
+    const tabId = sender.tab?.id;
+    if (!tabId) {
+        sendResponse({ dataUrl: '' });
+        return;
+    }
+    try {
+        const tab = await chrome.tabs.get(tabId);
+        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+        sendResponse({ dataUrl });
+    }
+    catch (err) {
+        console.error('[Gasoline] Draw mode screenshot capture failed:', err.message);
+        sendResponse({ dataUrl: '' });
+    }
+}
+/**
+ * Handle draw mode completion from content script.
+ * Uses screenshot already captured by content script (before overlay removal).
+ */
+async function handleDrawModeCompletedAsync(message, sender, deps) {
+    const tabId = sender.tab?.id;
+    if (!tabId)
+        return;
+    try {
+        const serverUrl = deps.getServerUrl();
+        const body = {
+            screenshot_data_url: message.screenshot_data_url || '',
+            annotations: message.annotations || [],
+            element_details: message.elementDetails || {},
+            page_url: message.page_url || '',
+            tab_id: tabId
+        };
+        if (message.session_name) {
+            body.session_name = message.session_name;
+        }
+        const response = await fetch(`${serverUrl}/draw-mode/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (!response.ok) {
+            console.error('[Gasoline] Draw mode POST failed:', response.status);
+        }
+    }
+    catch (err) {
+        console.error('[Gasoline] Draw mode completion error:', err.message);
+    }
+}
 function handleSetServerUrl(url, sendResponse, deps) {
     deps.setServerUrl(url || 'http://localhost:7890');
     deps.saveSetting('serverUrl', deps.getServerUrl());
@@ -328,17 +391,17 @@ export async function saveStateSnapshot(name, state) {
     return new Promise((resolve) => {
         chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
             const snapshots = result[SNAPSHOT_KEY] || {};
-            const sizeBytes = JSON.stringify(state).length;
+            const sizeBytes = JSON.stringify(state).length; // nosemgrep: no-stringify-keys
             snapshots[name] = {
                 ...state,
                 name,
-                size_bytes: sizeBytes,
+                size_bytes: sizeBytes
             };
             chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
                 resolve({
                     success: true,
                     snapshot_name: name,
-                    size_bytes: sizeBytes,
+                    size_bytes: sizeBytes
                 });
             });
         });
@@ -366,7 +429,7 @@ export async function listStateSnapshots() {
                 name: s.name,
                 url: s.url,
                 timestamp: s.timestamp,
-                size_bytes: s.size_bytes,
+                size_bytes: s.size_bytes
             }));
             resolve(list);
         });

@@ -8,7 +8,7 @@ export const MESSAGE_MAP = {
     GASOLINE_WS: 'ws_event',
     GASOLINE_NETWORK_BODY: 'network_body',
     GASOLINE_ENHANCED_ACTION: 'enhanced_action',
-    GASOLINE_PERFORMANCE_SNAPSHOT: 'performance_snapshot',
+    GASOLINE_PERFORMANCE_SNAPSHOT: 'performance_snapshot'
 };
 // Track whether the extension context is still valid
 let contextValid = true;

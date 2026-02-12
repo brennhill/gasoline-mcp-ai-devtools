@@ -16,6 +16,7 @@ let flickerInterval = null;
  * Initialize favicon replacement.
  * Listens for tracking state changes and updates favicon accordingly.
  */
+// #lizard forgives
 export function initFaviconReplacer() {
     // Listen for tracking state updates from background
     chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
@@ -119,7 +120,7 @@ function startFlicker() {
         'icon-flicker-5-large.svg', // 112% - yellow/white (PEAK - hottest) + large bright ring
         'icon-flicker-6-medium.svg', // 105% - yellow + medium yellow ring (shrinking)
         'icon-flicker-7-smallmed.svg', // 96% - orange-yellow + medium ring
-        'icon-flicker-8-small.svg', // 92% - orange + small orange ring (back to small)
+        'icon-flicker-8-small.svg' // 92% - orange + small orange ring (back to small)
     ];
     let currentFrameIndex = 0;
     // Use setInterval instead of requestAnimationFrame so animation continues

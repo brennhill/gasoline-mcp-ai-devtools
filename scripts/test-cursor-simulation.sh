@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Simulates exactly what Cursor does during connection
 # to reproduce the RED connection issue
@@ -14,7 +14,7 @@ echo "========================================"
 echo ""
 
 # Kill any existing server
-lsof -ti :$PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
+lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
 sleep 1
 
 echo "Step 1: Cursor spawns gasoline-mcp"
@@ -33,14 +33,14 @@ OUTPUT_FILE="$TEMP_DIR/cursor_output.txt"
   sleep 0.5
   echo '{"jsonrpc":"2.0","id":4,"method":"prompts/list","params":{}}'
   sleep 2
-) | $WRAPPER --port $PORT > "$OUTPUT_FILE" 2>&1 &
+) | "$WRAPPER" --port "$PORT" > "$OUTPUT_FILE" 2>&1 &
 
 CURSOR_PID=$!
 sleep 5
 
 # Kill the simulated cursor
-kill $CURSOR_PID 2>/dev/null || true
-wait $CURSOR_PID 2>/dev/null || true
+kill "$CURSOR_PID" 2>/dev/null || true
+wait "$CURSOR_PID" 2>/dev/null || true
 
 echo ""
 echo "Step 2: Analyze responses"
@@ -53,11 +53,11 @@ echo "JSON-RPC messages received: $MSG_COUNT"
 # Show all responses
 echo ""
 echo "=== All Responses ==="
-cat "$OUTPUT_FILE" | grep '{"jsonrpc' | jq -c '{id, has_result: (.result != null), has_error: (.error != null)}' 2>&1 || cat "$OUTPUT_FILE"
+grep '{"jsonrpc' < "$OUTPUT_FILE" | jq -c '{id, has_result: (.result != null), has_error: (.error != null)}' 2>&1 || jq -c . < "$OUTPUT_FILE"
 echo ""
 
 # Check for parse errors
-PARSE_ERRORS=$(grep -i "parse error\|unexpected\|invalid" "$OUTPUT_FILE" 2>/dev/null | wc -l | tr -d ' ')
+PARSE_ERRORS=$(grep -ci "parse error\|unexpected\|invalid" "$OUTPUT_FILE" 2>/dev/null || echo "0")
 if [ "$PARSE_ERRORS" -gt 0 ]; then
     echo "⚠️  Found $PARSE_ERRORS potential issues:"
     grep -i "parse error\|unexpected\|invalid" "$OUTPUT_FILE" | head -5
@@ -68,7 +68,7 @@ fi
 echo ""
 
 # Check stderr silence
-STDERR_LINES=$(grep '^\[gasoline' "$OUTPUT_FILE" 2>/dev/null | wc -l | tr -d ' ')
+STDERR_LINES=$(grep -c '^\[gasoline' "$OUTPUT_FILE" 2>/dev/null || echo "0")
 echo "Stderr lines: $STDERR_LINES"
 if [ "$STDERR_LINES" -eq 0 ]; then
     echo "✅ Stdio silence maintained"
@@ -80,11 +80,11 @@ fi
 echo ""
 
 # Check if server is still running
-if lsof -ti :$PORT >/dev/null 2>&1; then
+if lsof -ti :"$PORT" >/dev/null 2>&1; then
     echo "✅ Server still running on port $PORT"
 
     # Check health
-    HEALTH=$(curl -s http://localhost:$PORT/health 2>/dev/null || echo "{}")
+    HEALTH=$(curl -s "http://localhost:$PORT/health" 2>/dev/null || echo "{}")
     VERSION=$(echo "$HEALTH" | jq -r '.version' 2>/dev/null || echo "unknown")
     echo "   Version: $VERSION"
 else
@@ -94,7 +94,7 @@ fi
 echo ""
 
 # Cleanup
-lsof -ti :$PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
+lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
 rm -rf "$TEMP_DIR"
 
 echo "========================================"

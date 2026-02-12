@@ -51,7 +51,7 @@ feature: query-dom-not-implemented
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Basic Query Works**
+### Scenario 1: Basic Query Works
 1. Setup:
    - Start Gasoline server: `./dist/gasoline`
    - Load Chrome with extension
@@ -82,7 +82,7 @@ feature: query-dom-not-implemented
    - [ ] matches array has real element data
    - [ ] url and pageTitle are populated
 
-**Scenario 2: Universal Selector Returns Results**
+### Scenario 2: Universal Selector Returns Results
 1. Setup: Same as Scenario 1
 2. Steps:
    - [ ] Call MCP tool: `generate({action: "query_dom", selector: "*"})`
@@ -94,7 +94,7 @@ feature: query-dom-not-implemented
    - [ ] url and pageTitle populated
 4. Verification: This proves the feature is actually working, not returning fake empty results
 
-**Scenario 3: No Tracked Tab Error**
+### Scenario 3: No Tracked Tab Error
 1. Setup:
    - Start Gasoline server
    - DO NOT track any tab
@@ -104,7 +104,7 @@ feature: query-dom-not-implemented
 3. Expected Result: Error response with clear message
 4. Verification: Error says "No tab is currently tracked" (not "not_implemented")
 
-**Scenario 4: Invalid Selector Handling**
+### Scenario 4: Invalid Selector Handling
 1. Setup: Same as Scenario 1 (tracked tab)
 2. Steps:
    - [ ] Call MCP tool: `generate({action: "query_dom", selector: "[invalid::syntax"})`
@@ -112,7 +112,7 @@ feature: query-dom-not-implemented
 3. Expected Result: Error response with CSS selector syntax error
 4. Verification: Error is about selector syntax, not implementation
 
-**Scenario 5: Complex Selector Works**
+### Scenario 5: Complex Selector Works
 1. Setup: Navigate to a page with multiple element types (e.g., GitHub.com)
 2. Steps:
    - [ ] Call MCP tool: `generate({action: "query_dom", selector: "button, a[href]"})`
@@ -122,7 +122,7 @@ feature: query-dom-not-implemented
    - [ ] matches array contains both button and anchor elements
    - [ ] Each element has correct tag name
 
-**Scenario 6: Empty Results Are Genuine**
+### Scenario 6: Empty Results Are Genuine
 1. Setup: Navigate to https://example.com
 2. Steps:
    - [ ] Call MCP tool: `generate({action: "query_dom", selector: ".nonexistent-class"})`
@@ -164,20 +164,20 @@ feature: query-dom-not-implemented
 
 ## Performance/Load Testing
 
-**Query execution time:**
+### Query execution time:
 - [ ] Simple selector (single element): < 50ms
 - [ ] Complex selector (50 elements): < 200ms
 - [ ] Universal selector (capped at 50): < 500ms
 
-**Message passing overhead:**
+### Message passing overhead:
 - [ ] Background → Content → Inject: < 10ms total
 
-**No memory leaks:**
+### No memory leaks:
 - [ ] Run 100 consecutive queries
 - [ ] Check extension memory usage (should not grow unbounded)
 - [ ] Verify no message listeners accumulate
 
-**Timeout handling:**
+### Timeout handling:
 - [ ] Freeze page (via DevTools), send query
 - [ ] Verify timeout error returned after 5 seconds
 - [ ] Verify subsequent queries still work (no permanent hang)

@@ -48,9 +48,9 @@ Add configuration profiles as named bundles of settings. Profiles are YAML files
 
 ## Examples
 
-**Pre-defined profiles:**
+### Pre-defined profiles:
 
-**Paranoid profile (max security):**
+### Paranoid profile (max security):
 ```yaml
 # profiles/paranoid.yaml
 read_only: true
@@ -62,7 +62,7 @@ websocket_capture: false
 retention_hours: 1
 ```
 
-**Restricted profile (production-safe):**
+## Restricted profile (production-safe):
 ```yaml
 # profiles/restricted.yaml
 read_only: false
@@ -73,7 +73,7 @@ network_body_capture: false
 retention_hours: 24
 ```
 
-**Short-lived profile (ephemeral):**
+## Short-lived profile (ephemeral):
 ```yaml
 # profiles/short-lived.yaml
 project_expiration_minutes: 10
@@ -81,7 +81,7 @@ retention_hours: 1
 clear_on_disconnect: true
 ```
 
-**Development profile (full access):**
+## Development profile (full access):
 ```yaml
 # profiles/development.yaml
 read_only: false
@@ -91,20 +91,20 @@ websocket_capture: true
 retention_hours: 168  # 1 week
 ```
 
-**Load profile:**
+## Load profile:
 ```bash
 gasoline --profile=restricted
 # or
 GASOLINE_PROFILE=restricted gasoline
 ```
 
-**Override profile setting:**
+## Override profile setting:
 ```bash
 # Load restricted profile but override expiration
 gasoline --profile=restricted --project-expiration-minutes=30
 ```
 
-**Query active profile:**
+## Query active profile:
 ```json
 observe({what: "server_config"})
 // Returns:

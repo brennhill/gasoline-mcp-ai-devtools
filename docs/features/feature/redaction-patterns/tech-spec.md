@@ -213,7 +213,7 @@ type RedactionStats struct {
 
 Adds one or more custom redaction patterns. Each pattern is validated (regex compiles, no PCRE-only features) before being added.
 
-**Request:**
+##### Request:
 ```json
 {
   "action": "add",
@@ -234,7 +234,7 @@ Adds one or more custom redaction patterns. Each pattern is validated (regex com
 }
 ```
 
-**Response:**
+##### Response:
 ```json
 {
   "action": "added",
@@ -251,7 +251,7 @@ Adds one or more custom redaction patterns. Each pattern is validated (regex com
 
 Updates an existing pattern by ID. Partial updates are supported; omitted fields retain their current values.
 
-**Request:**
+##### Request:
 ```json
 {
   "action": "update",
@@ -269,7 +269,7 @@ Updates an existing pattern by ID. Partial updates are supported; omitted fields
 
 Removes a custom pattern by ID. Built-in patterns cannot be removed (returns error).
 
-**Request:**
+##### Request:
 ```json
 {
   "action": "remove",
@@ -277,7 +277,7 @@ Removes a custom pattern by ID. Built-in patterns cannot be removed (returns err
 }
 ```
 
-**Response:**
+##### Response:
 ```json
 {
   "action": "removed",
@@ -286,7 +286,7 @@ Removes a custom pattern by ID. Built-in patterns cannot be removed (returns err
 }
 ```
 
-**Error (built-in):**
+##### Error (built-in):
 ```json
 {
   "action": "remove",
@@ -298,7 +298,7 @@ Removes a custom pattern by ID. Built-in patterns cannot be removed (returns err
 
 Enables or disables a pattern without deleting it. Works for both built-in and custom patterns.
 
-**Request:**
+##### Request:
 ```json
 {
   "action": "disable",
@@ -310,7 +310,7 @@ Enables or disables a pattern without deleting it. Works for both built-in and c
 
 Returns all configured patterns with statistics.
 
-**Response:**
+##### Response:
 ```json
 {
   "action": "listed",
@@ -355,7 +355,7 @@ Returns all configured patterns with statistics.
 
 Tests patterns against sample text without performing actual redaction. Returns which patterns would match and what the output would look like.
 
-**Request:**
+##### Request:
 ```json
 {
   "action": "test",
@@ -364,7 +364,7 @@ Tests patterns against sample text without performing actual redaction. Returns 
 }
 ```
 
-**Response:**
+##### Response:
 ```json
 {
   "action": "tested",
@@ -393,7 +393,7 @@ Tests patterns against sample text without performing actual redaction. Returns 
 
 Removes all user-defined patterns, reverting to built-ins only.
 
-**Response:**
+##### Response:
 ```json
 {
   "action": "cleared",

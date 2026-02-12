@@ -16,6 +16,10 @@ type ExtensionState struct {
 	lastExtensionConnected bool      // Previous connection state for transition detection.
 	extensionVersion       string    // Last reported extension version from sync request.
 
+	// Disconnect detection (P0-1 hardening)
+	lastSyncSeen     time.Time // When last /sync request was received. Zero = never synced.
+	lastSyncClientID string    // Client ID from most recent /sync request.
+
 	// AI Web Pilot
 	pilotEnabled   bool      // Pilot toggle from POST /settings or sync. Check before dispatching actions.
 	pilotUpdatedAt time.Time // When pilotEnabled was last updated. Staleness threshold: 10s.
@@ -56,15 +60,51 @@ func (c *Capture) IsPilotEnabled() bool {
 	return c.ext.pilotEnabled
 }
 
+// IsExtensionConnected returns true if the extension has synced within the
+// disconnect threshold (10s). Returns false if never synced or stale.
+func (c *Capture) IsExtensionConnected() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return !c.ext.lastSyncSeen.IsZero() && time.Since(c.ext.lastSyncSeen) < extensionDisconnectThreshold
+}
+
+// GetExtensionStatus returns a snapshot of extension connection state.
+// Fields: connected (bool), last_seen (RFC3339 string), client_id (string).
+func (c *Capture) GetExtensionStatus() map[string]any {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	connected := !c.ext.lastSyncSeen.IsZero() && time.Since(c.ext.lastSyncSeen) < extensionDisconnectThreshold
+
+	lastSeen := ""
+	if !c.ext.lastSyncSeen.IsZero() {
+		lastSeen = c.ext.lastSyncSeen.Format(time.RFC3339)
+	}
+
+	return map[string]any{
+		"connected": connected,
+		"last_seen": lastSeen,
+		"client_id": c.ext.lastSyncClientID,
+	}
+}
+
 // GetPilotStatus returns pilot status information.
 // extension_connected is true only if the extension polled within the last 5 seconds.
+// extension_last_seen is the RFC3339 timestamp of the last /sync, empty if never synced.
 func (c *Capture) GetPilotStatus() any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
+	lastSeen := ""
+	if !c.ext.lastSyncSeen.IsZero() {
+		lastSeen = c.ext.lastSyncSeen.Format(time.RFC3339)
+	}
+
 	return map[string]any{
-		"enabled":             c.ext.pilotEnabled,
-		"source":              "extension_poll",
-		"extension_connected": !c.ext.lastPollAt.IsZero() && time.Since(c.ext.lastPollAt) < 5*time.Second,
+		"enabled":              c.ext.pilotEnabled,
+		"source":               "extension_poll",
+		"extension_connected":  !c.ext.lastPollAt.IsZero() && time.Since(c.ext.lastPollAt) < 5*time.Second,
+		"extension_last_seen":  lastSeen,
 	}
 }
 
@@ -73,6 +113,50 @@ func (c *Capture) GetExtensionVersion() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.ext.extensionVersion
+}
+
+// GetVersionMismatch checks whether extension and server versions differ in major.minor.
+// Returns the extension version, server version, and whether a mismatch exists.
+// A mismatch is detected only when the extension has reported a version (non-empty)
+// and the major.minor portions differ from the server version.
+func (c *Capture) GetVersionMismatch() (extensionVersion string, serverVersion string, hasMismatch bool) {
+	c.mu.RLock()
+	extVer := c.ext.extensionVersion
+	srvVer := c.serverVersion
+	c.mu.RUnlock()
+
+	if extVer == "" || srvVer == "" {
+		return extVer, srvVer, false
+	}
+
+	extMajorMinor := majorMinor(extVer)
+	srvMajorMinor := majorMinor(srvVer)
+	if extMajorMinor == "" || srvMajorMinor == "" {
+		return extVer, srvVer, false
+	}
+
+	return extVer, srvVer, extMajorMinor != srvMajorMinor
+}
+
+// majorMinor extracts "X.Y" from a semver string "X.Y.Z".
+// Returns empty string if the version is not in a recognized format.
+func majorMinor(v string) string {
+	firstDot := -1
+	for i := 0; i < len(v); i++ {
+		if v[i] == '.' {
+			if firstDot == -1 {
+				firstDot = i
+			} else {
+				// Found second dot — return up to (but not including) it
+				return v[:i]
+			}
+		}
+	}
+	// No second dot found — not a valid semver with patch
+	if firstDot != -1 {
+		return v // "X.Y" format, return as-is
+	}
+	return ""
 }
 
 // GetActiveTestIDs returns the list of currently active test IDs.

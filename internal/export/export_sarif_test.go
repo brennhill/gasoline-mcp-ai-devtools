@@ -520,7 +520,7 @@ func TestExportSARIF_SaveToFile(t *testing.T) {
 	}
 
 	// Verify the file was written
-	data, err := os.ReadFile(savePath)
+	data, err := os.ReadFile(savePath) // nosemgrep: go_filesystem_rule-fileread
 	if err != nil {
 		t.Fatalf("Failed to read saved file: %v", err)
 	}
@@ -735,7 +735,7 @@ func TestSaveSARIFToFile_ValidAbsPath(t *testing.T) {
 	}
 
 	// Verify the file was written
-	data, err := os.ReadFile(savePath)
+	data, err := os.ReadFile(savePath) // nosemgrep: go_filesystem_rule-fileread -- test helper reads fixture/output file
 	if err != nil {
 		t.Fatalf("Failed to read saved SARIF file: %v", err)
 	}
@@ -918,7 +918,7 @@ func TestExportSARIF_SaveToTempDir(t *testing.T) {
 	}
 
 	// Verify the file was written
-	data, err := os.ReadFile(outPath)
+	data, err := os.ReadFile(outPath) // nosemgrep: go_filesystem_rule-fileread -- test helper reads fixture/output file
 	if err != nil {
 		t.Fatalf("Failed to read saved SARIF file: %v", err)
 	}

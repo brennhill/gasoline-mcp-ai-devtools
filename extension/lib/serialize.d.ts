@@ -15,8 +15,5 @@ export declare function safeSerialize(value: unknown, depth?: number, seen?: Wea
  * Get element selector for identification
  */
 export declare function getElementSelector(element: Element | null): string;
-/**
- * Check if an input contains sensitive data
- */
 export declare function isSensitiveInput(element: Element | null): boolean;
 //# sourceMappingURL=serialize.d.ts.map

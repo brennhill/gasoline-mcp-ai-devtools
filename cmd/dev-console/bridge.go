@@ -16,7 +16,46 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	statecfg "github.com/dev-console/dev-console/internal/state"
+	"github.com/dev-console/dev-console/internal/util"
 )
+
+// toolCallTimeout returns the per-request timeout based on the MCP tool name.
+// Fast tools (observe, generate, configure, resources/read) get 10s; slow tools
+// (analyze, interact) that round-trip to the extension get 35s.
+func toolCallTimeout(req JSONRPCRequest) time.Duration {
+	const (
+		fast = 10 * time.Second
+		slow = 35 * time.Second
+	)
+
+	if req.Method == "resources/read" {
+		return fast
+	}
+	if req.Method != "tools/call" {
+		return fast // non-tool calls (ping, list, etc.)
+	}
+
+	// Extract tool name from params.name without full unmarshal
+	var params struct {
+		Name string `json:"name"`
+	}
+	if json.Unmarshal(req.Params, &params) != nil {
+		return fast
+	}
+
+	switch params.Name {
+	case "analyze", "interact":
+		return slow
+	default:
+		return fast
+	}
+}
+
+// mcpStdoutMu serializes all writes to stdout so concurrent bridgeForwardRequest
+// goroutines cannot interleave JSON-RPC responses.
+var mcpStdoutMu sync.Mutex
 
 // daemonState tracks the state of daemon startup for fast-start mode
 type daemonState struct {
@@ -40,15 +79,17 @@ func sendJSONResponse(resp any, id any) {
 	respJSON, err := json.Marshal(resp)
 	if err != nil {
 		sendBridgeError(id, -32603, "Failed to serialize response: "+err.Error())
-		flushStdout()
 		return
 	}
+	mcpStdoutMu.Lock()
 	fmt.Println(string(respJSON))
 	flushStdout()
+	mcpStdoutMu.Unlock()
 }
 
 // runBridgeMode bridges stdio (from MCP client) to HTTP (to persistent server)
 // Uses fast-start: responds to initialize/tools/list immediately while spawning daemon async.
+// #lizard forgives
 func runBridgeMode(port int, logFile string, maxEntries int) {
 	serverURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 
@@ -64,7 +105,7 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 		close(state.readyCh)
 	} else {
 		// Spawn daemon in background (don't block on it)
-		go func() {
+		util.SafeGo(func() {
 			exe, err := os.Executable()
 			if err != nil {
 				state.mu.Lock()
@@ -76,13 +117,16 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 			}
 
 			args := []string{"--daemon", "--port", fmt.Sprintf("%d", port)}
+			if stateDir := os.Getenv(statecfg.StateDirEnv); stateDir != "" {
+				args = append(args, "--state-dir", stateDir)
+			}
 			if logFile != "" {
 				args = append(args, "--log-file", logFile)
 			}
 			if maxEntries > 0 {
 				args = append(args, "--max-entries", fmt.Sprintf("%d", maxEntries))
 			}
-			cmd := exec.Command(exe, args...)
+			cmd := exec.Command(exe, args...) // #nosec G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- CLI bridge mode launches user-specified editor
 			cmd.Stdout = nil
 			cmd.Stderr = nil
 			cmd.Stdin = nil
@@ -108,7 +152,7 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 				state.mu.Unlock()
 				close(state.failedCh)
 			}
-		}()
+		})
 	}
 
 	// Bridge stdio <-> HTTP with fast-start support
@@ -119,11 +163,11 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 // This catches zombie servers that accept TCP connections but don't respond to HTTP.
 func isServerRunning(port int) bool {
 	client := &http.Client{Timeout: 500 * time.Millisecond}
-	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port))
+	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port)) // #nosec G704 -- localhost-only health probe
 	if err != nil {
 		return false
 	}
-	defer func() { _ = resp.Body.Close() }() //nolint:errcheck -- best-effort cleanup
+	defer func() { _ = resp.Body.Close() }() //nolint:errcheck // best-effort cleanup
 	return resp.StatusCode == http.StatusOK
 }
 
@@ -132,20 +176,103 @@ func waitForServer(port int, timeout time.Duration) bool {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		if isServerRunning(port) {
-			// Additional check: try to hit the health endpoint
-			resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port))
-			if err == nil && resp.StatusCode == 200 {
-				_ = resp.Body.Close() //nolint:errcheck -- best-effort cleanup
-				return true
-			}
+			return true
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 	return false
 }
 
+// fastPathResponses maps MCP methods to their static JSON result bodies.
+// Methods in this map are handled without waiting for the daemon.
+var fastPathResponses = map[string]string{
+	"ping":                     `{}`,
+	"prompts/list":             `{"prompts":[]}`,
+	"resources/list":           `{"resources":[{"uri":"gasoline://guide","name":"Gasoline Usage Guide","description":"How to use Gasoline MCP tools for browser debugging","mimeType":"text/markdown"}]}`,
+	"resources/templates/list": `{"resourceTemplates":[]}`,
+}
+
+// sendFastResponse marshals and sends a JSON-RPC response for the fast path.
+func sendFastResponse(id any, result json.RawMessage) {
+	resp := JSONRPCResponse{JSONRPC: "2.0", ID: id, Result: result}
+	// Error impossible: simple struct with no circular refs or unsupported types
+	respJSON, _ := json.Marshal(resp)
+	mcpStdoutMu.Lock()
+	fmt.Println(string(respJSON))
+	flushStdout()
+	mcpStdoutMu.Unlock()
+}
+
+// handleFastPath handles MCP methods that don't require the daemon.
+// Returns true if the method was handled.
+func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
+	switch req.Method {
+	case "initialize":
+		result := map[string]any{
+			"protocolVersion": "2024-11-05",
+			"serverInfo":      map[string]any{"name": "gasoline", "version": version},
+			"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
+			"instructions":    serverInstructions,
+		}
+		// Error impossible: map contains only primitive types and nested maps
+		resultJSON, _ := json.Marshal(result)
+		sendFastResponse(req.ID, resultJSON)
+		return true
+
+	case "initialized":
+		if req.ID != nil {
+			sendFastResponse(req.ID, json.RawMessage(`{}`))
+		}
+		return true
+
+	case "tools/list":
+		result := map[string]any{"tools": toolsList}
+		// Error impossible: map contains only serializable tool definitions
+		resultJSON, _ := json.Marshal(result)
+		sendFastResponse(req.ID, resultJSON)
+		return true
+	}
+
+	if staticResult, ok := fastPathResponses[req.Method]; ok {
+		sendFastResponse(req.ID, json.RawMessage(staticResult))
+		return true
+	}
+
+	return false
+}
+
+// checkDaemonStatus returns an error string if the daemon is not ready, or "" if ready.
+func checkDaemonStatus(state *daemonState, req JSONRPCRequest, port int) string {
+	// Validate method requires daemon
+	if req.Method != "tools/call" && !strings.HasPrefix(req.Method, "tools/") && !strings.HasPrefix(req.Method, "resources/") {
+		return "method_not_found"
+	}
+
+	state.mu.Lock()
+	isReady := state.ready
+	isFailed := state.failed
+	failErr := state.err
+	state.mu.Unlock()
+
+	if isFailed {
+		suggestion := fmt.Sprintf("Server failed to start: %s. ", failErr)
+		if strings.Contains(failErr, "port") || strings.Contains(failErr, "bind") || strings.Contains(failErr, "address") {
+			suggestion += fmt.Sprintf("Port may be in use. Try: npx gasoline-mcp --port %d", port+1)
+		} else {
+			suggestion += "Try: npx gasoline-mcp --doctor"
+		}
+		return suggestion
+	}
+
+	if !isReady {
+		return "starting"
+	}
+	return ""
+}
+
 // bridgeStdioToHTTPFast forwards JSON-RPC with fast-start: responds to initialize/tools/list
 // immediately while daemon starts in background. Only blocks on tools/call.
+// #lizard forgives
 func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -153,21 +280,15 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	buf := make([]byte, maxScanTokenSize)
 	scanner.Buffer(buf, maxScanTokenSize)
 
-	client := &http.Client{
-		Timeout: 5 * time.Second, // Default timeout for fast localhost operations
-		// A11y audits use per-request timeout (30s) via context
-	}
+	client := &http.Client{} // per-request timeouts via context
 
 	var wg sync.WaitGroup
 	responseSent := make(chan bool, 1)
 	var responseOnce sync.Once
 	signalResponseSent := func() {
-		responseOnce.Do(func() {
-			responseSent <- true
-		})
+		responseOnce.Do(func() { responseSent <- true })
 	}
 
-	// Get static tools list for fast response (ToolsList doesn't use receiver fields)
 	toolsHandler := &ToolHandler{}
 	toolsList := toolsHandler.ToolsList()
 
@@ -179,197 +300,119 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 
 		var req JSONRPCRequest
 		if err := json.Unmarshal(line, &req); err != nil {
-			var partial map[string]any
-			var extractedID any = "error"
-			if json.Unmarshal(line, &partial) == nil {
-				if id, ok := partial["id"]; ok && id != nil {
-					extractedID = id
-				}
-			}
-			errResp := JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      extractedID,
-				Error:   &JSONRPCError{Code: -32700, Message: "Parse error: " + err.Error()},
-			}
-			respJSON, _ := json.Marshal(errResp)
-			fmt.Println(string(respJSON))
-			flushStdout()
+			sendBridgeParseError(line, err)
 			signalResponseSent()
 			continue
 		}
 
 		// FAST PATH: Handle initialize and tools/list directly (no daemon needed)
-		switch req.Method {
-		case "initialize":
-			// Respond immediately with capabilities
-			result := map[string]any{
-				"protocolVersion": "2024-11-05",
-				"serverInfo":      map[string]any{"name": "gasoline", "version": version},
-				"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
-			}
-			resultJSON, _ := json.Marshal(result)
-			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
-			respJSON, _ := json.Marshal(resp)
-			fmt.Println(string(respJSON))
-			flushStdout()
-			signalResponseSent()
-			continue
-
-		case "initialized":
-			// Notification - no response needed, but some clients send with ID
-			if req.ID != nil {
-				resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{}`)}
-				respJSON, _ := json.Marshal(resp)
-				fmt.Println(string(respJSON))
-				flushStdout()
-				signalResponseSent()
-			}
-			continue
-
-		case "tools/list":
-			// Respond immediately with static tools schema
-			result := map[string]any{"tools": toolsList}
-			resultJSON, _ := json.Marshal(result)
-			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
-			respJSON, _ := json.Marshal(resp)
-			fmt.Println(string(respJSON))
-			flushStdout()
-			signalResponseSent()
-			continue
-
-		case "ping":
-			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{}`)}
-			respJSON, _ := json.Marshal(resp)
-			fmt.Println(string(respJSON))
-			flushStdout()
-			signalResponseSent()
-			continue
-
-		case "prompts/list":
-			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"prompts":[]}`)}
-			respJSON, _ := json.Marshal(resp)
-			fmt.Println(string(respJSON))
-			flushStdout()
-			signalResponseSent()
-			continue
-
-		case "resources/list":
-			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"resources":[{"uri":"gasoline://guide","name":"Gasoline Usage Guide","description":"How to use Gasoline MCP tools for browser debugging","mimeType":"text/markdown"}]}`)}
-			respJSON, _ := json.Marshal(resp)
-			fmt.Println(string(respJSON))
-			flushStdout()
-			signalResponseSent()
-			continue
-
-		case "resources/templates/list":
-			resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(`{"resourceTemplates":[]}`)}
-			respJSON, _ := json.Marshal(resp)
-			fmt.Println(string(respJSON))
-			flushStdout()
+		if handleFastPath(req, toolsList) {
 			signalResponseSent()
 			continue
 		}
 
 		// SLOW PATH: Check daemon status for tools/call and other methods
-		state.mu.Lock()
-		isReady := state.ready
-		isFailed := state.failed
-		failErr := state.err
-		state.mu.Unlock()
-
-		if isFailed {
-			// Daemon failed to start - return tool error with details and suggestions
-			suggestion := fmt.Sprintf("Server failed to start: %s. ", failErr)
-			if strings.Contains(failErr, "port") || strings.Contains(failErr, "bind") || strings.Contains(failErr, "address") {
-				suggestion += fmt.Sprintf("Port may be in use. Try: npx gasoline-mcp --port %d", port+1)
-			} else {
-				suggestion += "Try: npx gasoline-mcp --doctor"
-			}
-			sendToolError(req.ID, suggestion)
-			flushStdout()
-			signalResponseSent()
+		if status := checkDaemonStatus(state, req, port); status != "" {
+			handleDaemonNotReady(req, status, signalResponseSent)
 			continue
 		}
 
-		if !isReady {
-			// Server is still starting - tell LLM to retry
-			sendToolError(req.ID, "Server is starting up. Please retry this tool call in 2 seconds.")
-			flushStdout()
-			signalResponseSent()
-			continue
-		}
-
-		// Forward to HTTP server
+		// Forward to HTTP server concurrently
+		timeout := toolCallTimeout(req)
+		reqCopy, lineCopy := req, append([]byte(nil), line...)
 		wg.Add(1)
-		httpReq, err := http.NewRequest("POST", endpoint, bytes.NewReader(line))
-		if err != nil {
-			sendBridgeError(req.ID, -32603, "Bridge error: "+err.Error())
-			flushStdout()
-			signalResponseSent()
-			wg.Done()
-			continue
-		}
-		httpReq.Header.Set("Content-Type", "application/json")
-
-		// A11y audits can take up to 30 seconds, use per-request timeout
-		// All other requests use the default 5-second client timeout
-		if req.Method == "tools/call" && req.Params != nil {
-			var params map[string]any
-			if err := json.Unmarshal(req.Params, &params); err == nil {
-				if toolName, ok := params["name"].(string); ok && toolName == "observe" {
-					var observeArgs map[string]any
-					if argsRaw, ok := params["arguments"].(map[string]any); ok {
-						observeArgs = argsRaw
-					}
-					// Check if this is an accessibility audit request
-					if modeVal, ok := observeArgs["what"].(string); ok && modeVal == "accessibility" {
-						// Use extended timeout for a11y audits
-						ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
-						httpReq = httpReq.WithContext(ctx)
-						defer cancel()
-					}
-				}
-			}
-		}
-
-		resp, err := client.Do(httpReq)
-		if err != nil {
-			sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
-			flushStdout()
-			signalResponseSent()
-			wg.Done()
-			continue
-		}
-
-		body, err := io.ReadAll(io.LimitReader(resp.Body, maxPostBodySize))
-		_ = resp.Body.Close() //nolint:errcheck -- best-effort cleanup
-		if err != nil {
-			sendBridgeError(req.ID, -32603, "Failed to read response: "+err.Error())
-			flushStdout()
-			signalResponseSent()
-			wg.Done()
-			continue
-		}
-
-		if resp.StatusCode == 204 {
-			wg.Done()
-			continue
-		}
-
-		if resp.StatusCode != 200 {
-			sendBridgeError(req.ID, -32603, fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body)))
-			flushStdout()
-			signalResponseSent()
-			wg.Done()
-			continue
-		}
-
-		fmt.Print(string(body))
-		flushStdout()
-		signalResponseSent()
-		wg.Done()
+		util.SafeGo(func() {
+			defer wg.Done()
+			bridgeForwardRequest(client, endpoint, reqCopy, lineCopy, timeout, signalResponseSent)
+		})
 	}
 
+	bridgeShutdown(&wg, scanner, responseSent)
+}
+
+// handleDaemonNotReady sends appropriate error responses when the daemon is not available.
+func handleDaemonNotReady(req JSONRPCRequest, status string, signal func()) {
+	switch status {
+	case "method_not_found":
+		sendBridgeError(req.ID, -32601, "Method not found: "+req.Method)
+	case "starting":
+		sendToolError(req.ID, "Server is starting up. Please retry this tool call in 2 seconds.")
+	default:
+		sendToolError(req.ID, status)
+	}
+	signal()
+}
+
+// bridgeForwardRequest forwards a JSON-RPC request to the HTTP server and writes the response.
+// #lizard forgives
+func bridgeForwardRequest(client *http.Client, endpoint string, req JSONRPCRequest, line []byte, timeout time.Duration, signal func()) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(line)) // #nosec G704 -- endpoint is localhost-only serverURL/mcp from runBridgeMode // nosemgrep: go_injection_rule-ssrf -- localhost-only bridge forwarding to own server
+	if err != nil {
+		sendBridgeError(req.ID, -32603, "Bridge error: "+err.Error())
+		signal()
+		return
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(httpReq) // #nosec G704 -- endpoint is localhost-only serverURL/mcp from runBridgeMode
+	if err != nil {
+		sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
+		signal()
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxPostBodySize))
+	_ = resp.Body.Close() //nolint:errcheck // best-effort cleanup
+	if err != nil {
+		sendBridgeError(req.ID, -32603, "Failed to read response: "+err.Error())
+		signal()
+		return
+	}
+
+	if resp.StatusCode == 204 {
+		signal()
+		return
+	}
+
+	if resp.StatusCode != 200 {
+		sendBridgeError(req.ID, -32603, fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body)))
+		signal()
+		return
+	}
+
+	mcpStdoutMu.Lock()
+	fmt.Print(string(body))
+	flushStdout()
+	mcpStdoutMu.Unlock()
+	signal()
+}
+
+// sendBridgeParseError sends a JSON-RPC parse error, extracting the ID from malformed JSON if possible.
+func sendBridgeParseError(line []byte, err error) {
+	var partial map[string]any
+	var extractedID any = "error"
+	if json.Unmarshal(line, &partial) == nil {
+		if id, ok := partial["id"]; ok && id != nil {
+			extractedID = id
+		}
+	}
+	errResp := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      extractedID,
+		Error:   &JSONRPCError{Code: -32700, Message: "Parse error: " + err.Error()},
+	}
+	// Error impossible: simple struct with no circular refs or unsupported types
+	respJSON, _ := json.Marshal(errResp)
+	mcpStdoutMu.Lock()
+	fmt.Println(string(respJSON))
+	flushStdout()
+	mcpStdoutMu.Unlock()
+}
+
+// bridgeShutdown waits for in-flight requests and performs clean shutdown.
+func bridgeShutdown(wg *sync.WaitGroup, scanner *bufio.Scanner, responseSent chan bool) {
 	wg.Wait()
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline-bridge] ERROR: stdin scanner error: %v\n", err)
@@ -379,7 +422,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	case <-responseSent:
 	case <-time.After(5 * time.Second):
 	}
-	close(responseSent) // Ensure channel is closed to unblock any pending sends
+	close(responseSent)
 
 	flushStdout()
 	time.Sleep(100 * time.Millisecond)
@@ -389,27 +432,17 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 func bridgeStdioToHTTP(endpoint string) {
 	scanner := bufio.NewScanner(os.Stdin)
 
-	// Increase buffer size for large messages (screenshots, etc.)
 	const maxScanTokenSize = 10 * 1024 * 1024 // 10MB
 	buf := make([]byte, maxScanTokenSize)
 	scanner.Buffer(buf, maxScanTokenSize)
 
-	client := &http.Client{
-		Timeout: 5 * time.Second, // Default timeout for fast localhost operations
-		// A11y audits use per-request timeout (30s) via context
-	}
+	client := &http.Client{} // per-request timeouts via context
 
-	// Track in-flight HTTP requests to ensure all responses sent before exit
 	var wg sync.WaitGroup
-
-	// Exit gate: Prevent process exit until at least one response has been sent
-	// This ensures the parent process receives the response before we exit
 	responseSent := make(chan bool, 1)
 	var responseOnce sync.Once
 	signalResponseSent := func() {
-		responseOnce.Do(func() {
-			responseSent <- true
-		})
+		responseOnce.Do(func() { responseSent <- true })
 	}
 
 	for scanner.Scan() {
@@ -418,138 +451,23 @@ func bridgeStdioToHTTP(endpoint string) {
 			continue
 		}
 
-		// Validate it's JSON-RPC before forwarding
 		var req JSONRPCRequest
 		if err := json.Unmarshal(line, &req); err != nil {
-			// Try to extract ID from malformed JSON for better error response
-			var partial map[string]any
-			var extractedID any = "error"  // Fallback ID for parse errors (never null - Cursor rejects it)
-			if json.Unmarshal(line, &partial) == nil {
-				if id, ok := partial["id"]; ok && id != nil {
-					extractedID = id  // Use whatever ID was in the request
-				}
-			}
-
-			// Send parse error with extracted or fallback ID
-			errResp := JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      extractedID,
-				Error: &JSONRPCError{
-					Code:    -32700,
-					Message: "Parse error: " + err.Error(),
-				},
-			}
-			respJSON, _ := json.Marshal(errResp)
-			fmt.Println(string(respJSON))
-			flushStdout()
+			sendBridgeParseError(line, err)
 			signalResponseSent()
 			continue
 		}
 
-		// Process request in current goroutine to maintain order
+		timeout := toolCallTimeout(req)
+		reqCopy, lineCopy := req, append([]byte(nil), line...)
 		wg.Add(1)
-
-		// Forward to HTTP server
-		httpReq, err := http.NewRequest("POST", endpoint, bytes.NewReader(line))
-		if err != nil {
-			sendBridgeError(req.ID, -32603, "Bridge error: "+err.Error())
-			flushStdout()
-			signalResponseSent()
-			wg.Done()
-			continue
-		}
-
-		httpReq.Header.Set("Content-Type", "application/json")
-
-		// A11y audits can take up to 30 seconds, use per-request timeout
-		// All other requests use the default 5-second client timeout
-		if req.Method == "tools/call" && req.Params != nil {
-			var params map[string]any
-			if err := json.Unmarshal(req.Params, &params); err == nil {
-				if toolName, ok := params["name"].(string); ok && toolName == "observe" {
-					var observeArgs map[string]any
-					if argsRaw, ok := params["arguments"].(map[string]any); ok {
-						observeArgs = argsRaw
-					}
-					// Check if this is an accessibility audit request
-					if modeVal, ok := observeArgs["what"].(string); ok && modeVal == "accessibility" {
-						// Use extended timeout for a11y audits
-						ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
-						httpReq = httpReq.WithContext(ctx)
-						defer cancel()
-					}
-				}
-			}
-		}
-
-		resp, err := client.Do(httpReq)
-		if err != nil {
-			sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
-			flushStdout()
-			signalResponseSent()
-			wg.Done()
-			continue
-		}
-
-		// Read response (limit size to prevent memory exhaustion)
-		body, err := io.ReadAll(io.LimitReader(resp.Body, maxPostBodySize))
-		_ = resp.Body.Close() //nolint:errcheck -- best-effort cleanup
-
-		if err != nil {
-			sendBridgeError(req.ID, -32603, "Failed to read response: "+err.Error())
-			flushStdout()
-			signalResponseSent()
-			wg.Done()
-			continue
-		}
-
-		// Handle 204 No Content (notification response - no output needed)
-		if resp.StatusCode == 204 {
-			// Notification was processed, no response to forward
-			// Don't signal responseSent - notifications don't count as responses
-			wg.Done()
-			continue
-		}
-
-		if resp.StatusCode != 200 {
-			sendBridgeError(req.ID, -32603, fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body)))
-			flushStdout()
-			signalResponseSent()
-			wg.Done()
-			continue
-		}
-
-		// Forward response to stdout
-		// Use Print not Println - HTTP response already has trailing newline from json.Encoder.Encode()
-		fmt.Print(string(body))
-		flushStdout()  // Flush immediately
-		signalResponseSent()  // Signal that response was sent
-		wg.Done()
+		util.SafeGo(func() {
+			defer wg.Done()
+			bridgeForwardRequest(client, endpoint, reqCopy, lineCopy, timeout, signalResponseSent)
+		})
 	}
 
-	// CRITICAL: Wait for all in-flight requests to complete before exiting
-	wg.Wait()
-
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline-bridge] ERROR: stdin scanner error: %v\n", err)
-	}
-
-	// EXIT GATE: Wait for at least one response to be sent before allowing exit
-	// This prevents the process from exiting before the parent reads stdout
-	select {
-	case <-responseSent:
-		// At least one response was sent and flushed - safe to exit
-	case <-time.After(5 * time.Second):
-		// Timeout fallback - exit anyway to avoid hanging forever
-		fmt.Fprintf(os.Stderr, "[gasoline-bridge] WARNING: No response sent within 5 seconds\n")
-	}
-	close(responseSent) // Ensure channel is closed to unblock any pending sends
-
-	// CRITICAL: Final flush and give OS time to send buffered data to parent process
-	flushStdout()
-	time.Sleep(100 * time.Millisecond)  // Allow OS to flush pipe to parent
-
-	// Quiet mode: Bridge shutdown is silent (normal operation, not an error)
+	bridgeShutdown(&wg, scanner, responseSent)
 }
 
 // sendBridgeError sends a JSON-RPC error response to stdout
@@ -562,8 +480,12 @@ func sendBridgeError(id any, code int, message string) {
 			Message: message,
 		},
 	}
+	// Error impossible: simple struct with no circular refs or unsupported types
 	respJSON, _ := json.Marshal(errResp)
+	mcpStdoutMu.Lock()
 	fmt.Println(string(respJSON))
+	flushStdout()
+	mcpStdoutMu.Unlock()
 }
 
 // sendToolError sends a tool result with isError: true (soft error, not protocol error)
@@ -575,12 +497,17 @@ func sendToolError(id any, message string) {
 		},
 		"isError": true,
 	}
+	// Error impossible: map contains only primitive types and nested maps
 	resultJSON, _ := json.Marshal(result)
 	resp := JSONRPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,
 		Result:  resultJSON,
 	}
+	// Error impossible: simple struct with no circular refs or unsupported types
 	respJSON, _ := json.Marshal(resp)
+	mcpStdoutMu.Lock()
 	fmt.Println(string(respJSON))
+	flushStdout()
+	mcpStdoutMu.Unlock()
 }

@@ -2,8 +2,10 @@
 # cat-06-lifecycle.sh — Server lifecycle tests.
 # Tests cold start, persistence across disconnects, graceful shutdown,
 # health endpoint, and version consistency.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
@@ -44,10 +46,8 @@ run_test_6_1() {
     # Check it's not a protocol-level error (tool errors with isError are acceptable)
     local has_result
     has_result=$(echo "$response" | jq -e '.result' 2>/dev/null)
-    local has_error
-    has_error=$(echo "$response" | jq -e '.error' 2>/dev/null)
 
-    if [ $? -eq 0 ] && [ -z "$has_result" ]; then
+    if echo "$response" | jq -e '.error' >/dev/null 2>&1 && [ -z "$has_result" ]; then
         local err_code
         err_code=$(echo "$response" | jq -r '.error.code // empty' 2>/dev/null)
         fail "Got protocol error on cold start: code=$err_code. Response: $(truncate "$response")"
@@ -125,7 +125,7 @@ run_test_6_3() {
 
     # Run --stop
     local stop_output
-    stop_output=$($WRAPPER --stop --port "$PORT" 2>&1)
+    stop_output=$("$WRAPPER" --stop --port "$PORT" 2>&1)
     local stop_exit=$?
 
     if [ $stop_exit -ne 0 ]; then
@@ -234,7 +234,7 @@ run_test_6_5() {
 
     # Source 3: --version flag
     local cli_version
-    cli_version=$($WRAPPER --version 2>/dev/null | awk '{print $NF}' | sed 's/^v//' | tr -d '[:space:]')
+    cli_version=$("$WRAPPER" --version 2>/dev/null | awk '{print $NF}' | sed 's/^v//' | tr -d '[:space:]')
 
     if [ -z "$cli_version" ]; then
         fail "Could not get version from --version flag."

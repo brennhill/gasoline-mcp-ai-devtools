@@ -89,7 +89,7 @@ func ApplyPagination(data interface{}, params PaginationParams) PaginationResult
 }
 ```
 
-**Implementation:**
+#### Implementation:
 
 ```go
 func ApplyPagination(data interface{}, params PaginationParams) PaginationResult {
@@ -159,7 +159,7 @@ Apply pagination to 6 modes: `network_waterfall`, `network_bodies`, `logs`, `web
 
 **File:** `cmd/dev-console/network.go`
 
-**Before:**
+##### Before:
 ```go
 func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
@@ -179,7 +179,7 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 }
 ```
 
-**After:**
+##### After:
 ```go
 func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
@@ -521,12 +521,12 @@ observe({what: "network_waterfall", limit: 50})
 
 ## Success Metrics
 
-**Pre-Release:**
+### Pre-Release:
 - All unit tests pass
 - Integration tests pass
 - Manual UAT completes successfully
 
-**Post-Release:**
+### Post-Release:
 - Token limit errors decrease to <5% of previous rate
 - AI successfully analyzes pages with 200+ requests
 - No bug reports related to pagination
@@ -560,7 +560,7 @@ observe({what: "network_waterfall", limit: 50})
 **Effort Estimate:** 2-4 hours
 **Target:** v5.3
 
-**Next Steps:**
+### Next Steps:
 1. Implement `pagination.go` helper
 2. Write unit tests (TDD)
 3. Update all 6 observe modes

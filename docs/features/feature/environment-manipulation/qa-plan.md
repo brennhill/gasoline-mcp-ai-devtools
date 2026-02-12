@@ -14,25 +14,25 @@ last-verified: 2026-01-31
 ### Scenario 1: Discover Services & Config Files
 **Objective:** Verify service discovery finds running services and their configs
 
-**Setup:**
+#### Setup:
 - Frontend service running (Node.js): npm run dev (PID 12345)
 - Backend service running (Python): python -m flask run (PID 12346)
 - .env file in frontend directory
 - .env.local file in backend directory
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "environment_inspect", service: "all"})`
 2. Verify both services discovered
 3. Verify PIDs correct
 4. Verify config files listed for each service
 5. Verify service types detected (node, python)
 
-**Expected Result:**
+#### Expected Result:
 - Both services in response
 - Config files list accurate
 - PIDs match running processes
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Services discovered <100ms
 - [ ] All running services found
 - [ ] Config file paths correct
@@ -43,13 +43,13 @@ last-verified: 2026-01-31
 ### Scenario 2: Inspect Environment Variables (with Secret Redaction)
 **Objective:** Verify environment inspection and secret redaction
 
-**Setup:**
+#### Setup:
 - Frontend service with variables:
   - API_ENDPOINT=<http://localhost:3001>
   - API_KEY=sk_test_12345abc (secret)
   - DEBUG=false
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "environment_inspect", service: "frontend"})`
 2. Verify API_ENDPOINT returned as plaintext
 3. Verify API_KEY redacted: ***redacted***
@@ -57,13 +57,13 @@ last-verified: 2026-01-31
 5. Verify DEBUG returned as plaintext
 6. Verify all three variables present
 
-**Expected Result:**
+#### Expected Result:
 - Non-secrets visible
 - Secrets redacted but marked as set
 - Complete variable list returned
 - No plaintext secrets in output
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Secret redaction works
 - [ ] is_set flag accurate
 - [ ] Non-secrets not affected
@@ -74,11 +74,11 @@ last-verified: 2026-01-31
 ### Scenario 3: Modify Single Environment Variable
 **Objective:** Verify single environment variable can be modified
 
-**Setup:**
+#### Setup:
 - Frontend running with API_ENDPOINT=<http://localhost:3001>
 - No modifications yet
 
-**Steps:**
+#### Steps:
 1. Create BEFORE snapshot
 2. Call `interact({action: "environment_modify", service: "frontend", changes: {API_ENDPOINT: "http://localhost:9999"}, restart_service: true})`
 3. Verify response shows change
@@ -86,13 +86,13 @@ last-verified: 2026-01-31
 5. Verify frontend still running (health check)
 6. Read updated .env file: verify change persisted
 
-**Expected Result:**
+#### Expected Result:
 - Change applied successfully
 - Service restarted with new value
 - Restart completed in <5s
 - New value takes effect
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Variable modified
 - [ ] Service restarted
 - [ ] New value active
@@ -103,26 +103,26 @@ last-verified: 2026-01-31
 ### Scenario 4: Modify Multiple Variables at Once
 **Objective:** Verify multiple variables can be changed together
 
-**Setup:**
+#### Setup:
 - Backend service with:
   - LOG_LEVEL=info
   - DATABASE_POOL_SIZE=10
   - TIMEOUT_MS=5000
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "environment_modify", service: "backend", changes: {LOG_LEVEL: "debug", TIMEOUT_MS: "1000"}})`
 2. Verify both changes applied
 3. Verify service restarted
 4. Verify both new values active
 5. Verify unchanged variable (DATABASE_POOL_SIZE) unaffected
 
-**Expected Result:**
+#### Expected Result:
 - Multiple changes applied atomically
 - Service restarted once
 - All new values active
 - No side effects on other variables
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] All changes applied
 - [ ] Single restart (not one per change)
 - [ ] Only target variables changed
@@ -133,7 +133,7 @@ last-verified: 2026-01-31
 ### Scenario 5: Read .env Config File
 **Objective:** Verify .env file can be read and parsed
 
-**Setup:**
+#### Setup:
 - Frontend .env file with standard format:
 ```
 API_ENDPOINT=http://localhost:3001
@@ -143,20 +143,20 @@ DEBUG=false
 FEATURE_FLAGS=new_checkout:true,beta:false
 ```
 
-**Steps:**
+## Steps:
 1. Call `interact({action: "config_read", service: "frontend", file: ".env"})`
 2. Verify all lines returned
 3. Verify line numbers correct
 4. Verify comments included
 5. Verify multi-value entries preserved
 
-**Expected Result:**
+## Expected Result:
 - Full file content returned
 - Line numbers accurate
 - Comments preserved
 - Complex values (flags) not corrupted
 
-**Acceptance Criteria:**
+## Acceptance Criteria:
 - [ ] Complete file read
 - [ ] Line numbers correct
 - [ ] Comments preserved
@@ -167,11 +167,11 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 ### Scenario 6: Write .env Config File with Backup
 **Objective:** Verify .env can be written with backup created
 
-**Setup:**
+#### Setup:
 - Original .env exists with 3 variables
 - Want to change 1 variable
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "config_write", service: "frontend", file: ".env", content: "API_ENDPOINT=http://localhost:9999\nAPI_KEY=sk_test_12345\nDEBUG=true"})`
 2. Verify response: lines_changed: 2
 3. Verify response: backup_created
@@ -180,13 +180,13 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 6. Verify .env has new content
 7. Verify git_staged: true
 
-**Expected Result:**
+#### Expected Result:
 - Changes written successfully
 - Backup created automatically
 - Original recoverable
 - Changes staged to git
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] File written correctly
 - [ ] Backup created
 - [ ] Backup contains original
@@ -198,10 +198,10 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 ### Scenario 7: Environment Snapshot & Restore
 **Objective:** Verify environment snapshots can be created and restored
 
-**Setup:**
+#### Setup:
 - Environment in known state (from Scenario 3+4 changes)
 
-**Steps:**
+#### Steps:
 1. Create snapshot: `configure({action: "snapshot", operation: "create", service: "frontend", name: "test_snapshot"})`
 2. Verify response: snapshot_id returned
 3. Modify environment significantly
@@ -211,13 +211,13 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 7. Verify service restarted
 8. Verify API_ENDPOINT back to original value
 
-**Expected Result:**
+#### Expected Result:
 - Snapshot created successfully
 - Can restore to exact previous state
 - Service restarted with original values
 - Full environment restoration
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Snapshot creation successful
 - [ ] Snapshot restored completely
 - [ ] All variables restored
@@ -228,10 +228,10 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 ### Scenario 8: Error Handling: Invalid API Endpoint
 **Objective:** Verify error handling when service becomes unreachable
 
-**Setup:**
+#### Setup:
 - Frontend running normally
 
-**Steps:**
+#### Steps:
 1. Create BEFORE snapshot
 2. Modify to invalid API endpoint: `interact({action: "environment_modify", service: "frontend", changes: {API_ENDPOINT: "http://localhost:9999"}, restart_service: true})`
 3. Frontend service restarts but can't connect to backend
@@ -241,13 +241,13 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 7. Restore BEFORE snapshot
 8. Verify connectivity restored
 
-**Expected Result:**
+#### Expected Result:
 - Environment change applied
 - Frontend reflects error state
 - Rollback available
 - Rollback successful
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Error state observable
 - [ ] Rollback offered
 - [ ] Rollback successful
@@ -258,10 +258,10 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 ### Scenario 9: Service Restart with Health Check
 **Objective:** Verify service restart and health verification
 
-**Setup:**
+#### Setup:
 - Frontend service with health endpoint: GET /health → {status: "ok"}
 
-**Steps:**
+#### Steps:
 1. Record original PID
 2. Modify environment with restart_service: true
 3. Verify restart detected (PID changed)
@@ -270,13 +270,13 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 6. Verify response confirms service healthy
 7. Verify restart_status.status: "restarted"
 
-**Expected Result:**
+#### Expected Result:
 - Service restarts
 - PID changes
 - Health check confirms ready
 - Response shows success
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] PID changes
 - [ ] Health check passes
 - [ ] Restart completes in <5s
@@ -287,10 +287,10 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 ### Scenario 10: Audit Log Captures All Changes
 **Objective:** Verify all environment changes are audited
 
-**Setup:**
+#### Setup:
 - Perform multiple environment modifications with same correlation_id
 
-**Steps:**
+#### Steps:
 1. Modify API_ENDPOINT with correlation_id: "env-audit-test"
 2. Modify DEBUG with same correlation_id
 3. Call `observe({what: "environment_audit", correlation_id: "env-audit-test"})`
@@ -299,13 +299,13 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 6. Verify before/after values (redacted for secrets)
 7. Verify restart_required flag
 
-**Expected Result:**
+#### Expected Result:
 - All changes logged
 - Chronological order
 - Before/after captured
 - Secrets redacted in log
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] All changes audited
 - [ ] Chronological order
 - [ ] Secrets redacted
@@ -316,12 +316,12 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 ### Scenario 11: Multiple Services Different Configs
 **Objective:** Verify modifications work across multiple services
 
-**Setup:**
+#### Setup:
 - Frontend and Backend running
 - Frontend has .env
 - Backend has config.json
 
-**Steps:**
+#### Steps:
 1. Modify frontend .env: API_ENDPOINT
 2. Modify backend config.json: DATABASE_URL
 3. Verify both services restart
@@ -329,13 +329,13 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 5. Call inspect: frontend + backend
 6. Verify all changes visible
 
-**Expected Result:**
+#### Expected Result:
 - Both services modified independently
 - Each restarts correctly
 - Changes isolated per service
 - No cross-service side effects
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Multi-service modification works
 - [ ] Services restart independently
 - [ ] Changes isolated
@@ -346,26 +346,26 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 ### Scenario 12: Secret Redaction in All Outputs
 **Objective:** Verify secrets never appear in plaintext
 
-**Setup:**
+#### Setup:
 - Environment with multiple secrets:
   - API_KEY=sk_test_12345
   - GITHUB_TOKEN=ghp_abcdef123456
   - DB_PASSWORD=super_secret_password
 
-**Steps:**
+#### Steps:
 1. Call environment_inspect: verify redacted
 2. Modify a secret
 3. Check git diff: verify redacted
 4. Call observe audit_log: verify redacted
 5. Check log files: verify no plaintext
 
-**Expected Result:**
+#### Expected Result:
 - All outputs show ***redacted***
 - But is_set: true indicates variable exists
 - No plaintext secrets anywhere
 - Audit trail secure
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] No plaintext secrets in responses
 - [ ] No plaintext in git diffs
 - [ ] No plaintext in logs
@@ -376,11 +376,11 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 ### Scenario 13: Permanent vs Session Changes
 **Objective:** Verify permanent changes persist across restarts
 
-**Setup:**
+#### Setup:
 - Frontend running
 - Want to test both session and permanent changes
 
-**Steps:**
+#### Steps:
 1. Call modify with permanent: false, changes: {API_ENDPOINT: "..."}
 2. Restart entire development environment
 3. Verify change did NOT persist (temp change only)
@@ -389,12 +389,12 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 6. Restart development environment
 7. Verify change persisted (permanent)
 
-**Expected Result:**
+#### Expected Result:
 - Session changes don't persist
 - Permanent changes written to file
 - Permanent changes survive restart
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Session changes ephemeral
 - [ ] Permanent changes written
 - [ ] Permanent changes survive restart
@@ -404,7 +404,7 @@ FEATURE_FLAGS=new_checkout:true,beta:false
 ### Scenario 14: Config File Format Preservation
 **Objective:** Verify formatting and comments preserved during edits
 
-**Setup:**
+#### Setup:
 - Original .env with formatting:
 ```
 # API Configuration
@@ -418,7 +418,7 @@ DEBUG=false
 FEATURES=new_checkout:true,beta:false
 ```
 
-**Steps:**
+## Steps:
 1. Read file: verify formatting
 2. Modify single value: API_ENDPOINT
 3. Write file: verify only that value changed
@@ -426,13 +426,13 @@ FEATURES=new_checkout:true,beta:false
 5. Verify blank lines preserved
 6. Verify section structure intact
 
-**Expected Result:**
+## Expected Result:
 - Formatting preserved
 - Comments preserved
 - Only target value changed
 - File structure intact
 
-**Acceptance Criteria:**
+## Acceptance Criteria:
 - [ ] Comments preserved
 - [ ] Formatting intact
 - [ ] Only target changed

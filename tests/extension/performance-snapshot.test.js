@@ -33,8 +33,8 @@ const createMockPerformance = () => ({
           loadEventEnd: 1200,
           responseStart: 180,
           requestStart: 100,
-          domInteractive: 500,
-        },
+          domInteractive: 500
+        }
       ]
     }
     if (type === 'resource') {
@@ -44,33 +44,33 @@ const createMockPerformance = () => ({
           transferSize: 50000,
           decodedBodySize: 100000,
           duration: 300,
-          name: 'http://localhost/app.js',
+          name: 'http://localhost/app.js'
         },
         {
           initiatorType: 'css',
           transferSize: 10000,
           decodedBodySize: 20000,
           duration: 100,
-          name: 'http://localhost/style.css',
+          name: 'http://localhost/style.css'
         },
         {
           initiatorType: 'img',
           transferSize: 80000,
           decodedBodySize: 80000,
           duration: 500,
-          name: 'http://localhost/hero.png',
+          name: 'http://localhost/hero.png'
         },
         {
           initiatorType: 'fetch',
           transferSize: 2000,
           decodedBodySize: 5000,
           duration: 200,
-          name: 'http://localhost/api/data',
-        },
+          name: 'http://localhost/api/data'
+        }
       ]
     }
     return []
-  }),
+  })
 })
 
 let originalWindow, originalPerformance, originalPerformanceObserver
@@ -83,7 +83,7 @@ describe('Performance Snapshot Capture', () => {
     MockPerformanceObserver.instances = []
     globalThis.window = createMockWindow({
       href: 'http://localhost:3000/dashboard',
-      pathname: '/dashboard',
+      pathname: '/dashboard'
     })
     globalThis.performance = createMockPerformance()
     globalThis.PerformanceObserver = MockPerformanceObserver
@@ -237,7 +237,7 @@ describe('Long Task Observer', () => {
     MockPerformanceObserver.instances = []
     globalThis.window = createMockWindow({
       href: 'http://localhost:3000/dashboard',
-      pathname: '/dashboard',
+      pathname: '/dashboard'
     })
     globalThis.performance = createMockPerformance()
     globalThis.PerformanceObserver = MockPerformanceObserver
@@ -261,7 +261,8 @@ describe('Long Task Observer', () => {
   })
 
   test('getLongTaskMetrics returns accumulated long tasks', async () => {
-    const { installPerfObservers, getLongTaskMetrics, uninstallPerfObservers } = await import('../../extension/inject.js')
+    const { installPerfObservers, getLongTaskMetrics, uninstallPerfObservers } =
+      await import('../../extension/inject.js')
 
     installPerfObservers()
 
@@ -273,8 +274,8 @@ describe('Long Task Observer', () => {
     longTaskObserver.callback({
       getEntries: () => [
         { duration: 120, startTime: 500 },
-        { duration: 80, startTime: 700 },
-      ],
+        { duration: 80, startTime: 700 }
+      ]
     })
 
     const metrics = getLongTaskMetrics()
@@ -288,7 +289,8 @@ describe('Long Task Observer', () => {
   })
 
   test('getLongTaskMetrics caps at 50 entries', async () => {
-    const { installPerfObservers, getLongTaskMetrics, uninstallPerfObservers } = await import('../../extension/inject.js')
+    const { installPerfObservers, getLongTaskMetrics, uninstallPerfObservers } =
+      await import('../../extension/inject.js')
 
     installPerfObservers()
 
@@ -297,7 +299,7 @@ describe('Long Task Observer', () => {
     // Add 60 entries
     const entries = Array.from({ length: 60 }, (_, i) => ({
       duration: 60 + i,
-      startTime: i * 100,
+      startTime: i * 100
     }))
     longTaskObserver.callback({ getEntries: () => entries })
 
@@ -316,7 +318,7 @@ describe('Web Vitals Observers', () => {
     MockPerformanceObserver.instances = []
     globalThis.window = createMockWindow({
       href: 'http://localhost:3000/dashboard',
-      pathname: '/dashboard',
+      pathname: '/dashboard'
     })
     globalThis.performance = createMockPerformance()
     globalThis.PerformanceObserver = MockPerformanceObserver
@@ -348,8 +350,8 @@ describe('Web Vitals Observers', () => {
     paintObserver.callback({
       getEntries: () => [
         { name: 'first-paint', startTime: 100 },
-        { name: 'first-contentful-paint', startTime: 250 },
-      ],
+        { name: 'first-contentful-paint', startTime: 250 }
+      ]
     })
 
     assert.strictEqual(getFCP(), 250)
@@ -363,15 +365,15 @@ describe('Web Vitals Observers', () => {
     installPerfObservers()
 
     const lcpObserver = MockPerformanceObserver.instances.find((obs) =>
-      obs.observedTypes.includes('largest-contentful-paint'),
+      obs.observedTypes.includes('largest-contentful-paint')
     )
     assert.ok(lcpObserver, 'Should have created an LCP observer')
 
     lcpObserver.callback({
       getEntries: () => [
         { startTime: 500 },
-        { startTime: 800 }, // Last one wins
-      ],
+        { startTime: 800 } // Last one wins
+      ]
     })
 
     assert.strictEqual(getLCP(), 800)
@@ -391,8 +393,8 @@ describe('Web Vitals Observers', () => {
       getEntries: () => [
         { value: 0.05, hadRecentInput: false },
         { value: 0.03, hadRecentInput: false },
-        { value: 0.1, hadRecentInput: true }, // Should be ignored
-      ],
+        { value: 0.1, hadRecentInput: true } // Should be ignored
+      ]
     })
 
     // 0.05 + 0.03 = 0.08 (the 0.1 is ignored because hadRecentInput)
@@ -410,7 +412,7 @@ describe('Web Vitals Observers', () => {
     const clsObserver = MockPerformanceObserver.instances.find((obs) => obs.observedTypes.includes('layout-shift'))
 
     clsObserver.callback({
-      getEntries: () => [{ value: 0.5, hadRecentInput: true }],
+      getEntries: () => [{ value: 0.5, hadRecentInput: true }]
     })
 
     assert.strictEqual(getCLS(), 0)
@@ -427,7 +429,7 @@ describe('Performance Snapshot Message', () => {
     MockPerformanceObserver.instances = []
     globalThis.window = createMockWindow({
       href: 'http://localhost:3000/dashboard',
-      pathname: '/dashboard',
+      pathname: '/dashboard'
     })
     globalThis.performance = createMockPerformance()
     globalThis.PerformanceObserver = MockPerformanceObserver
@@ -485,7 +487,7 @@ describe('Performance Snapshot Toggle', () => {
     MockPerformanceObserver.instances = []
     globalThis.window = createMockWindow({
       href: 'http://localhost:3000/dashboard',
-      pathname: '/dashboard',
+      pathname: '/dashboard'
     })
     globalThis.performance = createMockPerformance()
     globalThis.PerformanceObserver = MockPerformanceObserver

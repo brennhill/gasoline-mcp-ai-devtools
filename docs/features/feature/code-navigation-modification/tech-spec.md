@@ -279,7 +279,7 @@ observe({
 
 ## Code References
 
-**New files to create:**
+### New files to create:
 - `cmd/server/code/searcher.go` — File search engine
 - `cmd/server/code/reader.go` — File reader
 - `cmd/server/code/editor.go` — Code editor with line-based edits
@@ -287,7 +287,7 @@ observe({
 - `cmd/server/code/tests.go` — Test runner
 - `cmd/server/code/logger.go` — Modification logger
 
-**Existing files to modify:**
+### Existing files to modify:
 - `cmd/server/mcp/server.go` — Add code_* action handlers
 - `cmd/server/mcp/observe.go` — Add modification_log mode
 

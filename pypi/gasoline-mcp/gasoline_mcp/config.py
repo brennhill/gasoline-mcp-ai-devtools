@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Configuration file utilities for Gasoline MCP CLI."""
 
 import json
@@ -30,7 +31,11 @@ class InvalidJSONError(GasolineError):
             msg += f" at line {line_number}"
         if error_message:
             msg += f"\n   {error_message}"
-        recovery = f"Fix options:\n   1. Manually edit: code {path}\n   2. Restore from backup and try --install again\n   3. Run: gasoline-mcp --doctor (for more info)"
+        recovery = (
+            f"Fix options:\n   1. Manually edit: code {path}"
+            "\n   2. Restore from backup and try --install again"
+            "\n   3. Run: gasoline-mcp --doctor (for more info)"
+        )
         super().__init__(msg, recovery)
         self.name = "InvalidJSONError"
 
@@ -40,7 +45,10 @@ class FileSizeError(GasolineError):
 
     def __init__(self, path, size):
         msg = f"File {path} is too large ({size} bytes, max 1MB)"
-        recovery = "The config file is too large. Please reduce its size or delete it and reinstall."
+        recovery = (
+            "The config file is too large."
+            " Please reduce its size or delete it and reinstall."
+        )
         super().__init__(msg, recovery)
         self.name = "FileSizeError"
 
@@ -70,11 +78,11 @@ def get_tool_name_from_path(path):
     """Map config file path to tool name."""
     if ".claude" in path:
         return "Claude Desktop"
-    elif ".vscode" in path:
+    if ".vscode" in path:
         return "VSCode"
-    elif ".cursor" in path:
+    if ".cursor" in path:
         return "Cursor"
-    elif ".codeium" in path:
+    if ".codeium" in path:
         return "Codeium"
     return "Unknown"
 
@@ -112,8 +120,8 @@ def read_config_file(path):
         }
 
     except json.JSONDecodeError as e:
-        raise InvalidJSONError(path, None, str(e))
-    except Exception as e:
+        raise InvalidJSONError(path, None, str(e)) from e
+    except OSError as e:
         return {
             "valid": False,
             "data": None,
@@ -153,8 +161,8 @@ def write_config_file(path, data, dry_run=False):
 
         return {"success": True, "path": path}
 
-    except Exception as e:
-        raise GasolineError(f"Failed to write {path}: {e}")
+    except OSError as e:
+        raise GasolineError(f"Failed to write {path}: {e}") from e
 
 
 def validate_mcp_config(data):
@@ -189,7 +197,7 @@ def merge_gasoline_config(existing, gasoline_entry, env_vars):
     Returns:
         dict: Merged config
     """
-    import copy
+    import copy  # pylint: disable=import-outside-toplevel
 
     merged = copy.deepcopy(existing)
 

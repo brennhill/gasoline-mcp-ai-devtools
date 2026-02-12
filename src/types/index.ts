@@ -136,7 +136,7 @@ export type {
   StorageChange,
   StorageAreaName,
   ChromeSessionStorage,
-  ChromeStorageWithSession,
+  ChromeStorageWithSession
 } from './messages'
 
 // Re-export all utility types
@@ -202,7 +202,7 @@ export type {
 
   // Buffer types
   BufferState,
-  MemoryEstimate,
+  MemoryEstimate
 } from './utils'
 
 // Re-export type guards from utils

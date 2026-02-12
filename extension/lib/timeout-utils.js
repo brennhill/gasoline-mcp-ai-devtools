@@ -62,7 +62,7 @@ export async function withTimeout(promise, timeoutMs, fallback) {
                     reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
                 }
             }, timeoutMs);
-        }),
+        })
     ]).catch((err) => {
         if (err instanceof TimeoutError && err.fallback !== undefined) {
             return err.fallback;
@@ -106,7 +106,7 @@ export async function promiseWithTimeout(promise, timeoutMs) {
             setTimeout(() => {
                 reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
             }, timeoutMs);
-        }),
+        })
     ]);
 }
 /**
@@ -193,7 +193,7 @@ export async function promiseRaceWithCleanup(promise, timeoutMs, timeoutFallback
                         reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
                     }
                 }, timeoutMs);
-            }),
+            })
         ]);
     }
     catch (err) {
@@ -310,11 +310,9 @@ export function makeCancellable(promise, operationName) {
         promise: wrappedPromise,
         cancel: () => {
             cancelled = true;
-            const msg = operationName
-                ? `Operation cancelled: ${operationName}`
-                : 'cancelled';
+            const msg = operationName ? `Operation cancelled: ${operationName}` : 'cancelled';
             rejectFn(new Error(msg));
-        },
+        }
     };
 }
 /**

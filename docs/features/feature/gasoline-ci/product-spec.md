@@ -259,7 +259,7 @@ Response:
 
 A single self-contained JavaScript file (`gasoline-ci.js`) that runs in any browser page context. It is the CI equivalent of `inject.js` + `content.js` + `background.js` combined into one file with a direct HTTP transport instead of the Chrome extension message-passing chain.
 
-**What it captures:**
+#### What it captures:
 - Console output (log, warn, error, info, debug) with serialized arguments
 - Uncaught exceptions (window.onerror) with stack traces
 - Unhandled promise rejections with reason serialization
@@ -267,20 +267,20 @@ A single self-contained JavaScript file (`gasoline-ci.js`) that runs in any brow
 - WebSocket lifecycle events (connecting, open, message, close, error) with message content
 - Lifecycle signals (initialization log entry with capture version and test ID)
 
-**What it does NOT capture (compared to Chrome extension):**
+#### What it does NOT capture (compared to Chrome extension):
 - DOM structure and accessibility tree (requires extension APIs or Playwright's built-in methods)
 - Resource timing waterfall (available via Performance API but not currently extracted)
 - User actions (clicks, inputs) -- the extension's action tracking uses content script injection
 - Web Vitals (LCP, CLS, INP) -- requires PerformanceObserver setup not yet in the CI script
 
-**Transport:**
+#### Transport:
 - Batches entries by type (logs, WebSocket, network bodies)
 - Flushes every 100ms or on page unload (`beforeunload` event)
 - Maximum 50 entries per flush, maximum 1000 buffered per type
 - Uses `navigator.sendBeacon` for reliability (falls back to `fetch` with `keepalive: true`)
 - Silently swallows all transport errors -- never interferes with the application under test
 
-**Distribution:**
+#### Distribution:
 - npm package: `@anthropic/gasoline-ci`
 - Single file, zero dependencies
 - Compatible with `page.addInitScript({ path })` (Playwright) and `page.evaluateOnNewDocument(fs.readFileSync(...))` (Puppeteer)
@@ -303,12 +303,12 @@ A Playwright test fixture that automates the full lifecycle:
 2. **During test:** The `gasoline` fixture object exposes `getSnapshot(since?)`, `clear()`, and `markTest(id, action)` for manual use within tests.
 3. **Teardown:** If the test failed and `gasolineAttachOnFailure` is true, captures a snapshot and attaches it to the Playwright report as both JSON and a human-readable text summary. Posts `end` to `/test-boundary`. Calls `/clear`.
 
-**Configuration options:**
+#### Configuration options:
 - `gasolinePort` (default: 7890) -- Server port
 - `gasolineAutoStart` (default: true) -- Reserved for future auto-start capability
 - `gasolineAttachOnFailure` (default: true) -- Whether to grab and attach snapshots on test failure
 
-**Distribution:**
+#### Distribution:
 - npm package: `@anthropic/gasoline-playwright`
 - Peer dependency: `@playwright/test >= 1.40.0`
 - Dependency: `@anthropic/gasoline-ci`

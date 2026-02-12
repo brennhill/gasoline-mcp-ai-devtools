@@ -3,223 +3,207 @@
  * Tests config file utilities: read, write, validate, merge, parse
  */
 
-const test = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const config = require('../../npm/gasoline-mcp/lib/config');
-const { InvalidJSONError, FileSizeError, ConfigValidationError: _ConfigValidationError } = require('../../npm/gasoline-mcp/lib/errors');
+const test = require('node:test')
+const assert = require('node:assert')
+const fs = require('fs')
+const path = require('path')
+const os = require('os')
+const config = require('../../npm/gasoline-mcp/lib/config')
+const {
+  InvalidJSONError,
+  FileSizeError,
+  ConfigValidationError: _ConfigValidationError
+} = require('../../npm/gasoline-mcp/lib/errors')
 
-const testDir = path.join(os.tmpdir(), 'gasoline-cli-test');
+const testDir = path.join(os.tmpdir(), 'gasoline-cli-test')
 
 function setupTestDir() {
   if (!fs.existsSync(testDir)) {
-    fs.mkdirSync(testDir, { recursive: true });
+    fs.mkdirSync(testDir, { recursive: true })
   }
 }
 
 function cleanupTestDir() {
   if (fs.existsSync(testDir)) {
-    fs.rmSync(testDir, { recursive: true, force: true });
+    fs.rmSync(testDir, { recursive: true, force: true })
   }
 }
 
 test('config.getConfigCandidates returns 4 paths', () => {
-  const candidates = config.getConfigCandidates();
-  assert.strictEqual(candidates.length, 4, 'Should return 4 config paths');
-  assert.ok(candidates[0].includes('.claude'), 'First candidate should be Claude Desktop');
-  assert.ok(candidates[1].includes('.vscode'), 'Second should be VSCode');
-  assert.ok(candidates[2].includes('.cursor'), 'Third should be Cursor');
-  assert.ok(candidates[3].includes('.codeium'), 'Fourth should be Codeium');
-});
+  const candidates = config.getConfigCandidates()
+  assert.strictEqual(candidates.length, 4, 'Should return 4 config paths')
+  assert.ok(candidates[0].includes('.claude'), 'First candidate should be Claude Desktop')
+  assert.ok(candidates[1].includes('.vscode'), 'Second should be VSCode')
+  assert.ok(candidates[2].includes('.cursor'), 'Third should be Cursor')
+  assert.ok(candidates[3].includes('.codeium'), 'Fourth should be Codeium')
+})
 
 test('config.getToolNameFromPath identifies tool by path', () => {
-  assert.strictEqual(config.getToolNameFromPath('/home/user/.claude/claude.mcp.json'), 'Claude Desktop');
-  assert.strictEqual(config.getToolNameFromPath('/home/user/.vscode/claude.mcp.json'), 'VSCode');
-  assert.strictEqual(config.getToolNameFromPath('/home/user/.cursor/mcp.json'), 'Cursor');
-  assert.strictEqual(config.getToolNameFromPath('/home/user/.codeium/mcp.json'), 'Codeium');
-  assert.strictEqual(config.getToolNameFromPath('/home/user/.unknown/mcp.json'), 'Unknown');
-});
+  assert.strictEqual(config.getToolNameFromPath('/home/user/.claude/claude.mcp.json'), 'Claude Desktop')
+  assert.strictEqual(config.getToolNameFromPath('/home/user/.vscode/claude.mcp.json'), 'VSCode')
+  assert.strictEqual(config.getToolNameFromPath('/home/user/.cursor/mcp.json'), 'Cursor')
+  assert.strictEqual(config.getToolNameFromPath('/home/user/.codeium/mcp.json'), 'Codeium')
+  assert.strictEqual(config.getToolNameFromPath('/home/user/.unknown/mcp.json'), 'Unknown')
+})
 
 test('config.readConfigFile reads and parses valid JSON', () => {
-  setupTestDir();
-  const testFile = path.join(testDir, 'valid-config.json');
+  setupTestDir()
+  const testFile = path.join(testDir, 'valid-config.json')
   const testData = {
     mcpServers: {
-      gasoline: { command: 'gasoline-mcp', args: [] },
-    },
-  };
-  fs.writeFileSync(testFile, JSON.stringify(testData));
+      gasoline: { command: 'gasoline-mcp', args: [] }
+    }
+  }
+  fs.writeFileSync(testFile, JSON.stringify(testData))
 
-  const result = config.readConfigFile(testFile);
-  assert.strictEqual(result.valid, true, 'Should be valid');
-  assert.deepStrictEqual(result.data, testData, 'Data should match');
-  assert.strictEqual(result.error, null, 'No error should be present');
-  assert.ok(result.stats, 'Stats should be present');
+  const result = config.readConfigFile(testFile)
+  assert.strictEqual(result.valid, true, 'Should be valid')
+  assert.deepStrictEqual(result.data, testData, 'Data should match')
+  assert.strictEqual(result.error, null, 'No error should be present')
+  assert.ok(result.stats, 'Stats should be present')
 
-  cleanupTestDir();
-});
+  cleanupTestDir()
+})
 
 test('config.readConfigFile returns error for non-existent file', () => {
-  const result = config.readConfigFile('/nonexistent/file.json');
-  assert.strictEqual(result.valid, false, 'Should be invalid');
-  assert.strictEqual(result.data, null, 'Data should be null');
-  assert.ok(result.error, 'Error should be present');
-});
+  const result = config.readConfigFile('/nonexistent/file.json')
+  assert.strictEqual(result.valid, false, 'Should be invalid')
+  assert.strictEqual(result.data, null, 'Data should be null')
+  assert.ok(result.error, 'Error should be present')
+})
 
 test('config.readConfigFile throws InvalidJSONError for malformed JSON', () => {
-  setupTestDir();
-  const testFile = path.join(testDir, 'bad-json.json');
-  fs.writeFileSync(testFile, '{ invalid json }');
+  setupTestDir()
+  const testFile = path.join(testDir, 'bad-json.json')
+  fs.writeFileSync(testFile, '{ invalid json }')
 
-  assert.throws(
-    () => config.readConfigFile(testFile),
-    InvalidJSONError,
-    'Should throw InvalidJSONError'
-  );
+  assert.throws(() => config.readConfigFile(testFile), InvalidJSONError, 'Should throw InvalidJSONError')
 
-  cleanupTestDir();
-});
+  cleanupTestDir()
+})
 
 test('config.readConfigFile throws FileSizeError for oversized file', () => {
-  setupTestDir();
-  const testFile = path.join(testDir, 'large-file.json');
+  setupTestDir()
+  const testFile = path.join(testDir, 'large-file.json')
   // Create file larger than 1MB
-  const largeData = JSON.stringify({ data: 'x'.repeat(2 * 1024 * 1024) });
-  fs.writeFileSync(testFile, largeData);
+  const largeData = JSON.stringify({ data: 'x'.repeat(2 * 1024 * 1024) })
+  fs.writeFileSync(testFile, largeData)
 
-  assert.throws(
-    () => config.readConfigFile(testFile),
-    FileSizeError,
-    'Should throw FileSizeError for large files'
-  );
+  assert.throws(() => config.readConfigFile(testFile), FileSizeError, 'Should throw FileSizeError for large files')
 
-  cleanupTestDir();
-});
+  cleanupTestDir()
+})
 
 test('config.writeConfigFile writes file atomically', () => {
-  setupTestDir();
-  const testFile = path.join(testDir, 'atomic-write.json');
+  setupTestDir()
+  const testFile = path.join(testDir, 'atomic-write.json')
   const testData = {
     mcpServers: {
-      gasoline: { command: 'gasoline-mcp', args: [] },
-    },
-  };
+      gasoline: { command: 'gasoline-mcp', args: [] }
+    }
+  }
 
-  const result = config.writeConfigFile(testFile, testData, false);
-  assert.strictEqual(result.success, true, 'Write should succeed');
-  assert.strictEqual(result.path, testFile, 'Path should be returned');
-  assert.ok(fs.existsSync(testFile), 'File should be created');
+  const result = config.writeConfigFile(testFile, testData, false)
+  assert.strictEqual(result.success, true, 'Write should succeed')
+  assert.strictEqual(result.path, testFile, 'Path should be returned')
+  assert.ok(fs.existsSync(testFile), 'File should be created')
 
   // Verify file contents
-  const contents = JSON.parse(fs.readFileSync(testFile, 'utf8'));
-  assert.deepStrictEqual(contents, testData, 'File contents should match');
+  const contents = JSON.parse(fs.readFileSync(testFile, 'utf8'))
+  assert.deepStrictEqual(contents, testData, 'File contents should match')
 
-  cleanupTestDir();
-});
+  cleanupTestDir()
+})
 
 test('config.writeConfigFile with dryRun=true does not write', () => {
-  setupTestDir();
-  const testFile = path.join(testDir, 'dry-run.json');
+  setupTestDir()
+  const testFile = path.join(testDir, 'dry-run.json')
   const testData = {
     mcpServers: {
-      gasoline: { command: 'gasoline-mcp', args: [] },
-    },
-  };
+      gasoline: { command: 'gasoline-mcp', args: [] }
+    }
+  }
 
-  const result = config.writeConfigFile(testFile, testData, true);
-  assert.strictEqual(result.success, true, 'Dry-run should succeed');
-  assert.strictEqual(!fs.existsSync(testFile), true, 'File should not be created');
+  const result = config.writeConfigFile(testFile, testData, true)
+  assert.strictEqual(result.success, true, 'Dry-run should succeed')
+  assert.strictEqual(!fs.existsSync(testFile), true, 'File should not be created')
 
-  cleanupTestDir();
-});
+  cleanupTestDir()
+})
 
 test('config.validateMCPConfig accepts valid config', () => {
   const validConfig = {
     mcpServers: {
-      gasoline: { command: 'gasoline-mcp' },
-    },
-  };
+      gasoline: { command: 'gasoline-mcp' }
+    }
+  }
 
-  const errors = config.validateMCPConfig(validConfig);
-  assert.strictEqual(errors.length, 0, 'Valid config should have no errors');
-});
+  const errors = config.validateMCPConfig(validConfig)
+  assert.strictEqual(errors.length, 0, 'Valid config should have no errors')
+})
 
 test('config.validateMCPConfig rejects config without mcpServers', () => {
-  const invalidConfig = { otherKey: 'value' };
-  const errors = config.validateMCPConfig(invalidConfig);
-  assert.ok(errors.length > 0, 'Should have errors');
-  assert.ok(errors[0].includes('mcpServers'), 'Error should mention mcpServers');
-});
+  const invalidConfig = { otherKey: 'value' }
+  const errors = config.validateMCPConfig(invalidConfig)
+  assert.ok(errors.length > 0, 'Should have errors')
+  assert.ok(errors[0].includes('mcpServers'), 'Error should mention mcpServers')
+})
 
 test('config.validateMCPConfig rejects non-object mcpServers', () => {
-  const invalidConfig = { mcpServers: ['array', 'not', 'object'] };
-  const errors = config.validateMCPConfig(invalidConfig);
-  assert.ok(errors.length > 0, 'Should have errors');
-  assert.ok(errors[0].includes('object'), 'Error should mention object');
-});
+  const invalidConfig = { mcpServers: ['array', 'not', 'object'] }
+  const errors = config.validateMCPConfig(invalidConfig)
+  assert.ok(errors.length > 0, 'Should have errors')
+  assert.ok(errors[0].includes('object'), 'Error should mention object')
+})
 
 test('config.mergeGassolineConfig preserves existing entries', () => {
   const existing = {
     mcpServers: {
-      other: { command: 'other-tool' },
-    },
-  };
+      other: { command: 'other-tool' }
+    }
+  }
 
-  const gasoline = { command: 'gasoline-mcp', args: [] };
-  const merged = config.mergeGassolineConfig(existing, gasoline, {});
+  const gasoline = { command: 'gasoline-mcp', args: [] }
+  const merged = config.mergeGassolineConfig(existing, gasoline, {})
 
-  assert.ok(merged.mcpServers.gasoline, 'gasoline entry should be added');
-  assert.ok(merged.mcpServers.other, 'other entry should be preserved');
-  assert.strictEqual(merged.mcpServers.other.command, 'other-tool', 'other entry unchanged');
-});
+  assert.ok(merged.mcpServers.gasoline, 'gasoline entry should be added')
+  assert.ok(merged.mcpServers.other, 'other entry should be preserved')
+  assert.strictEqual(merged.mcpServers.other.command, 'other-tool', 'other entry unchanged')
+})
 
 test('config.mergeGassolineConfig adds env vars', () => {
-  const existing = { mcpServers: {} };
-  const gasoline = { command: 'gasoline-mcp', args: [] };
-  const envVars = { DEBUG: '1', API_KEY: 'secret' };
+  const existing = { mcpServers: {} }
+  const gasoline = { command: 'gasoline-mcp', args: [] }
+  const envVars = { DEBUG: '1', API_KEY: 'secret' }
 
-  const merged = config.mergeGassolineConfig(existing, gasoline, envVars);
-  assert.deepStrictEqual(merged.mcpServers.gasoline.env, envVars, 'Env vars should be added');
-});
+  const merged = config.mergeGassolineConfig(existing, gasoline, envVars)
+  assert.deepStrictEqual(merged.mcpServers.gasoline.env, envVars, 'Env vars should be added')
+})
 
 test('config.mergeGassolineConfig without env vars does not add empty env object', () => {
-  const existing = { mcpServers: {} };
-  const gasoline = { command: 'gasoline-mcp', args: [] };
+  const existing = { mcpServers: {} }
+  const gasoline = { command: 'gasoline-mcp', args: [] }
 
-  const merged = config.mergeGassolineConfig(existing, gasoline, {});
-  assert.strictEqual(merged.mcpServers.gasoline.env, undefined, 'Empty env should not be added');
-});
+  const merged = config.mergeGassolineConfig(existing, gasoline, {})
+  assert.strictEqual(merged.mcpServers.gasoline.env, undefined, 'Empty env should not be added')
+})
 
 test('config.parseEnvVar parses valid KEY=VALUE', () => {
-  const result = config.parseEnvVar('DEBUG=1');
-  assert.strictEqual(result.key, 'DEBUG', 'Key should be extracted');
-  assert.strictEqual(result.value, '1', 'Value should be extracted');
-});
+  const result = config.parseEnvVar('DEBUG=1')
+  assert.strictEqual(result.key, 'DEBUG', 'Key should be extracted')
+  assert.strictEqual(result.value, '1', 'Value should be extracted')
+})
 
 test('config.parseEnvVar parses complex values', () => {
-  const result = config.parseEnvVar('API_URL=http://localhost:7890');
-  assert.strictEqual(result.key, 'API_URL', 'Key should be extracted');
-  assert.strictEqual(result.value, 'http://localhost:7890', 'Complex value should be extracted');
-});
+  const result = config.parseEnvVar('API_URL=http://localhost:7890')
+  assert.strictEqual(result.key, 'API_URL', 'Key should be extracted')
+  assert.strictEqual(result.value, 'http://localhost:7890', 'Complex value should be extracted')
+})
 
 test('config.parseEnvVar rejects invalid format', () => {
-  assert.throws(
-    () => config.parseEnvVar('INVALID'),
-    /InvalidEnvFormatError/,
-    'Should throw for missing equals'
-  );
+  assert.throws(() => config.parseEnvVar('INVALID'), /InvalidEnvFormatError/, 'Should throw for missing equals')
 
-  assert.throws(
-    () => config.parseEnvVar('=value'),
-    /InvalidEnvFormatError/,
-    'Should throw for missing key'
-  );
+  assert.throws(() => config.parseEnvVar('=value'), /InvalidEnvFormatError/, 'Should throw for missing key')
 
-  assert.throws(
-    () => config.parseEnvVar('KEY='),
-    /InvalidEnvFormatError/,
-    'Should throw for missing value'
-  );
-});
+  assert.throws(() => config.parseEnvVar('KEY='), /InvalidEnvFormatError/, 'Should throw for missing value')
+})

@@ -42,7 +42,7 @@ feature: dialog-handling
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Alert Dialog (Happy Path)**
+### Scenario 1: Alert Dialog (Happy Path)
 1. Setup:
    - Open test page with button that triggers `alert("Test alert")`
    - Enable AI Web Pilot toggle
@@ -55,7 +55,7 @@ feature: dialog-handling
 3. Expected Result: Alert is captured and dismissed programmatically
 4. Verification: No alert visible in browser after handling
 
-**Scenario 2: Confirm Dialog (Accept)**
+### Scenario 2: Confirm Dialog (Accept)
 1. Setup:
    - Test page with confirm dialog: `if (confirm("Delete?")) { deleteItem(); }`
 2. Steps:
@@ -66,7 +66,7 @@ feature: dialog-handling
 3. Expected Result: Confirm accepted, deletion proceeds
 4. Verification: Network shows DELETE request
 
-**Scenario 3: Confirm Dialog (Dismiss)**
+### Scenario 3: Confirm Dialog (Dismiss)
 1. Setup:
    - Same test page with confirm dialog
 2. Steps:
@@ -76,7 +76,7 @@ feature: dialog-handling
 3. Expected Result: Confirm dismissed, no deletion
 4. Verification: No DELETE request in network
 
-**Scenario 4: Prompt Dialog with Input**
+### Scenario 4: Prompt Dialog with Input
 1. Setup:
    - Test page: `var name = prompt("Enter name:", "Guest"); console.log("Name: " + name);`
 2. Steps:
@@ -87,7 +87,7 @@ feature: dialog-handling
 3. Expected Result: Prompt accepted with custom input
 4. Verification: Console log via observe({what: "logs"}) shows correct name
 
-**Scenario 5: Beforeunload Dialog**
+### Scenario 5: Beforeunload Dialog
 1. Setup:
    - Test page with: `window.addEventListener('beforeunload', (e) => { e.preventDefault(); e.returnValue = ''; });`
 2. Steps:

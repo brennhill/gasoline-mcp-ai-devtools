@@ -34,7 +34,7 @@ export function getPerformanceMarks(options = {}) {
         return marks.map((m) => ({
             name: m.name,
             startTime: m.startTime,
-            detail: m.detail || null,
+            detail: m.detail || null
         }));
     }
     catch {
@@ -65,7 +65,7 @@ export function getPerformanceMeasures(options = {}) {
             duration: m.duration,
             ...(m.detail !== undefined
                 ? { detail: m.detail }
-                : {}),
+                : {})
         }));
     }
     catch {
@@ -112,7 +112,7 @@ export function installPerformanceCapture() {
             startTime: result.startTime || performance.now(),
             entryType: 'mark',
             detail: options?.detail || undefined,
-            capturedAt: new Date().toISOString(),
+            capturedAt: new Date().toISOString()
         });
         // Limit captured marks
         if (capturedMarks.length > MAX_PERFORMANCE_ENTRIES) {
@@ -133,7 +133,7 @@ export function installPerformanceCapture() {
             startTime: result.startTime || 0,
             duration: result.duration || 0,
             entryType: 'measure',
-            capturedAt: new Date().toISOString(),
+            capturedAt: new Date().toISOString()
         });
         // Limit captured measures
         if (capturedMeasures.length > MAX_PERFORMANCE_ENTRIES) {
@@ -158,7 +158,7 @@ export function installPerformanceCapture() {
                                 startTime: entry.startTime,
                                 entryType: 'mark',
                                 detail: entry.detail || undefined,
-                                capturedAt: new Date().toISOString(),
+                                capturedAt: new Date().toISOString()
                             });
                         }
                     }
@@ -169,7 +169,7 @@ export function installPerformanceCapture() {
                                 startTime: entry.startTime,
                                 duration: entry.duration,
                                 entryType: 'measure',
-                                capturedAt: new Date().toISOString(),
+                                capturedAt: new Date().toISOString()
                             });
                         }
                     }
@@ -200,7 +200,7 @@ export function uninstallPerformanceCapture() {
         Object.defineProperty(performance, 'measure', {
             value: originalPerformanceMeasure,
             writable: true,
-            configurable: true,
+            configurable: true
         });
         originalPerformanceMeasure = null;
     }
@@ -240,7 +240,7 @@ export async function getPerformanceSnapshotForError(errorEntry) {
                         type: nav.type,
                         startTime: nav.startTime,
                         domContentLoadedEventEnd: nav.domContentLoadedEventEnd,
-                        loadEventEnd: nav.loadEventEnd,
+                        loadEventEnd: nav.loadEventEnd
                     };
                 }
             }
@@ -256,7 +256,7 @@ export async function getPerformanceSnapshotForError(errorEntry) {
         _errorTs: errorEntry.ts,
         marks,
         measures,
-        navigation,
+        navigation
     };
 }
 /**

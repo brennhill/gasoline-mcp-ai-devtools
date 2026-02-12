@@ -42,7 +42,7 @@ feature: missing-tab-id
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Basic tabId Inclusion**
+### Scenario 1: Basic tabId Inclusion
 1. Setup:
    - Start Gasoline server: `./dist/gasoline`
    - Load Chrome with extension
@@ -68,7 +68,7 @@ feature: missing-tab-id
    - [ ] tabId field is present
    - [ ] tabId value matches Tab A's ID
 
-**Scenario 2: Multiple Tabs with Different tabIds**
+### Scenario 2: Multiple Tabs with Different tabIds
 1. Setup:
    - Open Tab A (id: 101) with <https://example.com>
    - Open Tab B (id: 102) with <https://other.com>
@@ -101,7 +101,7 @@ feature: missing-tab-id
    - [ ] tabIds match actual Chrome tab IDs
    - [ ] Metadata shows which tab is tracked
 
-**Scenario 3: Filter by Specific tabId**
+### Scenario 3: Filter by Specific tabId
 1. Setup: Same as Scenario 2 (2 tabs with errors)
 2. Steps:
    - [ ] Call MCP tool: `observe({what: "errors", tabId: 102})`
@@ -127,7 +127,7 @@ feature: missing-tab-id
    - [ ] Only Tab B's error returned
    - [ ] Metadata shows filter was applied
 
-**Scenario 4: Network Requests with tabId**
+### Scenario 4: Network Requests with tabId
 1. Setup: Open 2 tabs, each makes API requests
 2. Steps:
    - [ ] Tab A: fetch('<https://api.example.com/data>')
@@ -155,7 +155,7 @@ feature: missing-tab-id
    ```
 4. Verification: Network requests have correct tabIds
 
-**Scenario 5: Filter by tabId with No Matches**
+### Scenario 5: Filter by tabId with No Matches
 1. Setup: Only Tab A (id: 101) has errors
 2. Steps:
    - [ ] Call MCP tool: `observe({what: "errors", tabId: 999})`
@@ -173,7 +173,7 @@ feature: missing-tab-id
    ```
 4. Verification: Empty result with clear explanation
 
-**Scenario 6: WebSocket Events with tabId**
+### Scenario 6: WebSocket Events with tabId
 1. Setup: Open tab with WebSocket connection
 2. Steps:
    - [ ] Page opens WebSocket: `new WebSocket("ws://localhost:3000")`
@@ -194,7 +194,7 @@ feature: missing-tab-id
    ```
 4. Verification: WebSocket events include tabId
 
-**Scenario 7: Currently Tracked Tab in Metadata**
+### Scenario 7: Currently Tracked Tab in Metadata
 1. Setup: Track Tab A (id: 101)
 2. Steps:
    - [ ] Call MCP tool: `observe({what: "page"})`
@@ -234,16 +234,16 @@ feature: missing-tab-id
 
 ## Performance/Load Testing
 
-**tabId inclusion overhead:**
+### tabId inclusion overhead:
 - [ ] observe() response time with tabId: < 5ms overhead vs without
 - [ ] Response size increase: ~10 bytes per entry (acceptable)
 
-**Filtering overhead:**
+### Filtering overhead:
 - [ ] Filter by tabId on 1000 entries: < 10ms
 - [ ] Filter by tabId on 100 entries: < 2ms
 - [ ] No indexing needed (linear scan acceptable for ring buffer size)
 
-**Multi-tab scenario:**
+### Multi-tab scenario:
 - [ ] 5 tabs, each with 100 log entries
 - [ ] observe({what: "logs"}) returns 500 entries with tabIds: < 300ms
 - [ ] observe({what: "logs", tabId: 103}) returns 100 entries: < 150ms
@@ -252,7 +252,7 @@ feature: missing-tab-id
 
 ## Schema Validation
 
-**Response schema:**
+### Response schema:
 - [ ] tabId field is integer type (not string)
 - [ ] tabId field is optional/nullable (backward compatibility)
 - [ ] tabId appears in all observe modes:
@@ -265,7 +265,7 @@ feature: missing-tab-id
 - [ ] Metadata includes currently_tracked_tab (integer)
 - [ ] Filter metadata includes: filtered_by_tab, total_entries_all_tabs, returned_entries
 
-**Input schema:**
+### Input schema:
 - [ ] observe tool accepts optional tabId parameter (integer)
 - [ ] Invalid tabId type handled gracefully (error message)
 - [ ] Missing tabId (no filter) works correctly
@@ -274,14 +274,14 @@ feature: missing-tab-id
 
 ## Documentation Verification
 
-**User documentation:**
+### User documentation:
 - [ ] tabId field documented in observe response schema
 - [ ] tabId filter parameter documented in observe input schema
 - [ ] Examples showing tabId usage added to tool descriptions
 - [ ] Caveat documented: tabId is not stable across browser restarts
 - [ ] Caveat documented: tabId only available for telemetry captured after fix
 
-**Developer documentation:**
+### Developer documentation:
 - [ ] Extension must send tabId with all events (documented)
 - [ ] Server stores tabId in all ring buffers (documented)
 - [ ] Filter logic documented (server-side, linear scan)

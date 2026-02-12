@@ -253,7 +253,6 @@ func (s *SchemaStore) Observe(body capture.NetworkBody) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Parse URL to get path and query params
 	parsedURL, err := url.Parse(body.URL)
 	if err != nil {
 		return
@@ -267,60 +266,60 @@ func (s *SchemaStore) Observe(body capture.NetworkBody) {
 	pattern := parameterizePath(path)
 	key := body.Method + " " + pattern
 
-	// Check endpoint cap
-	if _, exists := s.accumulators[key]; !exists {
-		if len(s.accumulators) >= maxSchemaEndpoints {
-			return
-		}
+	if _, exists := s.accumulators[key]; !exists && len(s.accumulators) >= maxSchemaEndpoints {
+		return
 	}
 
 	acc := s.getOrCreateAccumulator(key, body.Method, pattern)
+	s.recordBasicObservation(acc, path, body, parsedURL)
+	s.recordBodyObservations(acc, body)
+}
+
+// recordBasicObservation updates counters, paths, query params, and latency.
+func (s *SchemaStore) recordBasicObservation(acc *endpointAccumulator, path string, body capture.NetworkBody, parsedURL *url.URL) {
 	acc.observationCount++
 	acc.totalObservations++
 	acc.lastSeen = time.Now()
 	acc.lastPath = path
 
-	// Track actual paths (up to max)
 	if len(acc.actualPaths) < maxActualPaths {
 		acc.actualPaths = append(acc.actualPaths, path)
 	}
-
-	// Track query parameters
 	s.observeQueryParams(acc, parsedURL.Query())
 
-	// Track latency
 	if body.Duration > 0 && len(acc.latencies) < maxLatencySamples {
 		acc.latencies = append(acc.latencies, float64(body.Duration))
 	}
-
-	// Track error count
 	if body.Status >= 400 {
 		acc.errorCount++
 	}
+}
 
-	// Parse request body for shape inference (JSON only)
+// recordBodyObservations handles request/response body shape inference and status tracking.
+func (s *SchemaStore) recordBodyObservations(acc *endpointAccumulator, body capture.NetworkBody) {
 	if body.RequestBody != "" && isJSONContentType(body.ContentType) {
 		s.observeRequestBody(acc, body.RequestBody)
 	}
 
-	// Parse response body for shape inference (JSON only)
 	if body.ResponseBody != "" && isJSONContentType(body.ContentType) {
 		s.observeResponseBody(acc, body.Status, body.ResponseBody, body.ContentType)
-	} else if body.Status > 0 {
-		// Still track the status code even if no body to parse
-		if acc.responseShapes == nil {
-			acc.responseShapes = make(map[int]*responseAccumulator)
-		}
-		if _, exists := acc.responseShapes[body.Status]; !exists {
-			if len(acc.responseShapes) < maxResponseShapes {
-				acc.responseShapes[body.Status] = &responseAccumulator{
-					count:  1,
-					fields: make(map[string]*fieldAccumulator),
-				}
-			}
-		} else {
-			acc.responseShapes[body.Status].count++
-		}
+		return
+	}
+	s.recordStatusOnly(acc, body.Status)
+}
+
+// recordStatusOnly tracks a status code without body parsing.
+func (s *SchemaStore) recordStatusOnly(acc *endpointAccumulator, status int) {
+	if status <= 0 {
+		return
+	}
+	if acc.responseShapes == nil {
+		acc.responseShapes = make(map[int]*responseAccumulator)
+	}
+	if ra, exists := acc.responseShapes[status]; exists {
+		ra.count++
+	} else if len(acc.responseShapes) < maxResponseShapes {
+		acc.responseShapes[status] = &responseAccumulator{count: 1, fields: make(map[string]*fieldAccumulator)}
 	}
 }
 
@@ -329,47 +328,65 @@ func (s *SchemaStore) ObserveWebSocket(event capture.WebSocketEvent) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	wsURL := event.URL
-	if wsURL == "" {
+	if event.URL == "" {
 		return
 	}
 
-	if len(s.wsSchemas) >= maxWSSchemaConns {
-		if _, exists := s.wsSchemas[wsURL]; !exists {
-			return
-		}
-	}
-
-	ws, exists := s.wsSchemas[wsURL]
-	if !exists {
-		ws = &wsAccumulator{
-			url:          wsURL,
-			messageTypes: make(map[string]bool),
-		}
-		s.wsSchemas[wsURL] = ws
+	ws := s.getOrCreateWSAccumulator(event.URL)
+	if ws == nil {
+		return
 	}
 
 	ws.totalMessages++
-	switch event.Direction {
+	recordWSDirection(ws, event.Direction)
+	collectWSMessageTypes(ws, event.Data)
+}
+
+// getOrCreateWSAccumulator returns the wsAccumulator for the given URL,
+// creating one if needed. Returns nil when at capacity for a new URL.
+func (s *SchemaStore) getOrCreateWSAccumulator(wsURL string) *wsAccumulator {
+	ws, exists := s.wsSchemas[wsURL]
+	if exists {
+		return ws
+	}
+	if len(s.wsSchemas) >= maxWSSchemaConns {
+		return nil
+	}
+	ws = &wsAccumulator{
+		url:          wsURL,
+		messageTypes: make(map[string]bool),
+	}
+	s.wsSchemas[wsURL] = ws
+	return ws
+}
+
+// recordWSDirection increments the directional message counter.
+func recordWSDirection(ws *wsAccumulator, direction string) {
+	switch direction {
 	case "incoming":
 		ws.incomingCount++
 	case "outgoing":
 		ws.outgoingCount++
 	}
+}
 
-	// Try to detect "type" or "action" field in JSON messages
-	if event.Data != "" {
-		var msg map[string]any
-		if json.Unmarshal([]byte(event.Data), &msg) == nil {
-			if typeVal, ok := msg["type"]; ok {
-				if typeStr, ok := typeVal.(string); ok && len(ws.messageTypes) < maxWSMessageTypes {
-					ws.messageTypes[typeStr] = true
-				}
-			}
-			if actionVal, ok := msg["action"]; ok {
-				if actionStr, ok := actionVal.(string); ok && len(ws.messageTypes) < maxWSMessageTypes {
-					ws.messageTypes[actionStr] = true
-				}
+// wsTypeKeys lists the JSON fields inspected for message-type classification.
+var wsTypeKeys = []string{"type", "action"}
+
+// collectWSMessageTypes parses JSON data and records any "type" or "action"
+// string values as message types.
+func collectWSMessageTypes(ws *wsAccumulator, data string) {
+	if data == "" {
+		return
+	}
+	var msg map[string]any
+	if json.Unmarshal([]byte(data), &msg) != nil {
+		return
+	}
+	for _, key := range wsTypeKeys {
+		if val, ok := msg[key]; ok {
+			if str, ok := val.(string); ok && len(ws.messageTypes) < maxWSMessageTypes {
+				ws.messageTypes[str] = true
 			}
 		}
 	}
@@ -394,41 +411,45 @@ func (s *SchemaStore) getOrCreateAccumulator(key, method, pattern string) *endpo
 
 func (s *SchemaStore) observeQueryParams(acc *endpointAccumulator, params url.Values) {
 	for name, values := range params {
-		pa, exists := acc.queryParams[name]
-		if !exists {
-			pa = &paramAccumulator{
-				values:     make([]string, 0),
-				allNumeric: true,
-				allBoolean: true,
-			}
-			acc.queryParams[name] = pa
-		}
+		pa := s.getOrCreateParam(acc, name)
 		pa.count++
-
 		for _, v := range values {
-			// Track unique values up to max
-			if len(pa.values) < maxQueryParamValues {
-				found := false
-				for _, existing := range pa.values {
-					if existing == v {
-						found = true
-						break
-					}
-				}
-				if !found {
-					pa.values = append(pa.values, v)
-				}
-			}
-
-			// Type inference
-			if !numericPattern.MatchString(v) {
-				pa.allNumeric = false
-			}
-			if v != "true" && v != "false" {
-				pa.allBoolean = false
-			}
+			trackParamValue(pa, v)
 		}
 	}
+}
+
+// getOrCreateParam returns the paramAccumulator for a query parameter, creating it if needed.
+func (s *SchemaStore) getOrCreateParam(acc *endpointAccumulator, name string) *paramAccumulator {
+	pa, exists := acc.queryParams[name]
+	if !exists {
+		pa = &paramAccumulator{values: make([]string, 0), allNumeric: true, allBoolean: true}
+		acc.queryParams[name] = pa
+	}
+	return pa
+}
+
+// trackParamValue records a query parameter value and updates type inference flags.
+func trackParamValue(pa *paramAccumulator, v string) {
+	if len(pa.values) < maxQueryParamValues && !containsStr(pa.values, v) {
+		pa.values = append(pa.values, v)
+	}
+	if !numericPattern.MatchString(v) {
+		pa.allNumeric = false
+	}
+	if v != "true" && v != "false" {
+		pa.allBoolean = false
+	}
+}
+
+// containsStr returns true if slice contains the string.
+func containsStr(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *SchemaStore) observeRequestBody(acc *endpointAccumulator, body string) {

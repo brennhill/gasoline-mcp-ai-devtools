@@ -3,9 +3,6 @@
  * Monkey-patches window.onerror and listens for unhandledrejection events,
  * enriching errors with AI context before posting via bridge.
  */
-/**
- * Install exception capture
- */
 export declare function installExceptionCapture(): void;
 /**
  * Uninstall exception capture

@@ -39,6 +39,15 @@
     "page": "options.html",
     "open_in_tab": true
   },
+  "commands": {
+    "toggle_draw_mode": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+D",
+        "mac": "Command+Shift+D"
+      },
+      "description": "Toggle Draw Mode"
+    }
+  },
   "web_accessible_resources": [
     {
       "resources": [

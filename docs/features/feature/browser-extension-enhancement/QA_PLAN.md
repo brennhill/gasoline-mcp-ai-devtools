@@ -36,7 +36,7 @@ last-updated: 2026-01-31
 
 ### 1. Action Timing
 
-**Test 1.1: Basic Click Timing**
+#### Test 1.1: Basic Click Timing
 ```
 Given: Button with click handler that sets timeout 100ms
 When: User clicks button
@@ -45,7 +45,7 @@ Then:
   - total_latency_ms ≈ 100ms ± 10ms
 ```
 
-**Test 1.2: Network Request Timing**
+#### Test 1.2: Network Request Timing
 ```
 Given: Form submit that posts to /api/checkout (simulated 300ms latency)
 When: User submits form
@@ -55,7 +55,7 @@ Then:
   - total_latency_ms ≈ 300ms ± 20ms
 ```
 
-**Test 1.3: Multiple Network Requests**
+#### Test 1.3: Multiple Network Requests
 ```
 Given: Action triggers 3 parallel API calls (100ms, 200ms, 300ms)
 When: Action completes
@@ -64,7 +64,7 @@ Then:
   - All requests tracked in metadata
 ```
 
-**Test 1.4: Timeout on Slow Action**
+#### Test 1.4: Timeout on Slow Action
 ```
 Given: Action that never completes (infinite loop)
 When: 1 second passes
@@ -75,7 +75,7 @@ Then:
 
 ### 2. DOM Snapshots
 
-**Test 2.1: Before/After Snapshot**
+#### Test 2.1: Before/After Snapshot
 ```
 Given: Button that appends text to div
 When: User clicks button
@@ -85,7 +85,7 @@ Then:
   - diff shows "text_changed"
 ```
 
-**Test 2.2: HTML Compression**
+#### Test 2.2: HTML Compression
 ```
 Given: Large HTML with whitespace and comments
 When: Snapshot captured
@@ -95,7 +95,7 @@ Then:
   - Result < 5KB
 ```
 
-**Test 2.3: Element Count Tracking**
+#### Test 2.3: Element Count Tracking
 ```
 Given: Action adds 5 elements to DOM
 When: Snapshot captured
@@ -105,7 +105,7 @@ Then:
   - diff shows "added" change
 ```
 
-**Test 2.4: Checksum Consistency**
+#### Test 2.4: Checksum Consistency
 ```
 Given: Same HTML snapshot twice
 When: Checksums computed
@@ -116,7 +116,7 @@ Then:
 
 ### 3. Accessibility Context
 
-**Test 3.1: ARIA Label Capture**
+#### Test 3.1: ARIA Label Capture
 ```
 Given: Button with aria-label="Add to cart"
 When: Element captured
@@ -124,7 +124,7 @@ Then:
   - accessibility.aria_label = "Add to cart"
 ```
 
-**Test 3.2: Role Detection**
+#### Test 3.2: Role Detection
 ```
 Given: Custom element with role="button"
 When: Element captured
@@ -132,7 +132,7 @@ Then:
   - accessibility.element_role = "button"
 ```
 
-**Test 3.3: Violation Detection - Missing Alt Text**
+#### Test 3.3: Violation Detection - Missing Alt Text
 ```
 Given: Image without alt attribute
 When: Element captured
@@ -141,7 +141,7 @@ Then:
   - severity = "critical"
 ```
 
-**Test 3.4: Violation Detection - No Label**
+#### Test 3.4: Violation Detection - No Label
 ```
 Given: Input field without label or aria-label
 When: Element captured
@@ -150,7 +150,7 @@ Then:
   - severity = "major"
 ```
 
-**Test 3.5: Contrast Ratio**
+#### Test 3.5: Contrast Ratio
 ```
 Given: Text with low contrast (2:1)
 When: Element captured
@@ -162,7 +162,7 @@ Then:
 
 ### 4. Smart Selector Generation
 
-**Test 4.1: data-testid Priority**
+#### Test 4.1: data-testid Priority
 ```
 Given: Button with data-testid="add-to-cart"
 When: Selector generated
@@ -171,7 +171,7 @@ Then:
   - confidence_pct ≥ 90
 ```
 
-**Test 4.2: Fallback to Class**
+#### Test 4.2: Fallback to Class
 ```
 Given: Button without testid, with class="btn-primary"
 When: Selector generated
@@ -181,7 +181,7 @@ Then:
   - confidence_pct ≥ 70
 ```
 
-**Test 4.3: Text-Based Fallback**
+#### Test 4.3: Text-Based Fallback
 ```
 Given: Link with text "Sign out"
 When: Selector generated
@@ -190,7 +190,7 @@ Then:
   - confidence_pct ≥ 60
 ```
 
-**Test 4.4: Selector Validation**
+#### Test 4.4: Selector Validation
 ```
 Given: Generated selector for specific element
 When: Selector tested against live DOM
@@ -199,7 +199,7 @@ Then:
   - Matched element is the original element
 ```
 
-**Test 4.5: Selector Stability**
+#### Test 4.5: Selector Stability
 ```
 Given: Selector with high confidence (data-testid)
 When: CSS classes change
@@ -214,7 +214,7 @@ Then:
 
 ### 1. Full Action Cycle
 
-**Test: Click Button → Complete Action**
+#### Test: Click Button → Complete Action
 ```
 Given: ShopBroken product page
 When: User clicks "Add to Cart" button
@@ -227,7 +227,7 @@ Then:
   - Event emitted to MCP bridge
 ```
 
-**Test: Type → Submit → Network**
+#### Test: Type → Submit → Network
 ```
 Given: Login form with email + password fields
 When: User types email, types password, clicks submit
@@ -241,7 +241,7 @@ Then:
 
 ### 2. Concurrent Actions
 
-**Test: Multiple Buttons Clicked Rapidly**
+#### Test: Multiple Buttons Clicked Rapidly
 ```
 Given: Toolbar with 5 buttons
 When: User clicks each button in rapid succession (100ms apart)
@@ -254,7 +254,7 @@ Then:
 
 ### 3. Performance Under Load
 
-**Test: 100 Actions in 1 Second**
+#### Test: 100 Actions in 1 Second
 ```
 Given: Auto-generate 100 clicks in 1 second
 When: Monitor extension overhead
@@ -267,7 +267,7 @@ Then:
 
 ### 4. Event Flow to MCP Bridge
 
-**Test: Events Reach Query API**
+#### Test: Events Reach Query API
 ```
 Given: Action captured by extension
 When: Query /buffers/timeline?limit=1
@@ -284,7 +284,7 @@ Then:
 
 ### Memory Footprint
 
-**Test: Memory Overhead**
+#### Test: Memory Overhead
 ```
 Tool: Chrome DevTools Memory Profiler
 Given: Fresh extension load
@@ -297,7 +297,7 @@ Then:
 
 ### Timing Accuracy
 
-**Test: Timing Within Budget**
+#### Test: Timing Within Budget
 ```
 Tool: performance.now() on live DOM
 Given: Known delay actions (100ms, 500ms, 1000ms)
@@ -310,7 +310,7 @@ Then:
 
 ### DOM Snapshot Performance
 
-**Test: Snapshot Creation Speed**
+#### Test: Snapshot Creation Speed
 ```
 Given: Large DOM (10K elements)
 When: Snapshot captured after action
@@ -322,7 +322,7 @@ Then:
 
 ### Selector Generation Performance
 
-**Test: Selector Generation Speed**
+#### Test: Selector Generation Speed
 ```
 Given: Various element types
 When: Selector generated
@@ -381,7 +381,7 @@ Then:
 
 ### WCAG Compliance
 
-**Test: Extension UI Accessible**
+#### Test: Extension UI Accessible
 ```
 Tool: Axe accessibility scanner
 Given: Extension popup open

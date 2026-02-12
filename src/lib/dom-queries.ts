@@ -10,7 +10,7 @@ import {
   DOM_QUERY_MAX_DEPTH,
   DOM_QUERY_MAX_HTML,
   A11Y_MAX_NODES_PER_VIOLATION,
-  A11Y_AUDIT_TIMEOUT_MS,
+  A11Y_AUDIT_TIMEOUT_MS
 } from './constants.js'
 
 // DOM query parameters
@@ -168,8 +168,71 @@ export async function executeDOMQuery(params: DOMQueryParams): Promise<DOMQueryR
     title: document.title,
     matchCount,
     returnedCount: matches.length,
-    matches,
+    matches
   }
+}
+
+/**
+ * Collect all attributes from an element into a plain object.
+ */
+function collectAttributes(el: Element): Record<string, string> | undefined {
+  if (!el.attributes || el.attributes.length === 0) return undefined
+  const attrs: Record<string, string> = {}
+  for (const attr of el.attributes) {
+    attrs[attr.name] = attr.value
+  }
+  return attrs
+}
+
+/**
+ * Get the bounding box of an element, or undefined if unavailable.
+ */
+function collectBoundingBox(el: Element): BoundingBox | undefined {
+  if (!el.getBoundingClientRect) return undefined
+  const rect = el.getBoundingClientRect()
+  return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+}
+
+/**
+ * Get computed styles for an element, either specific properties or defaults.
+ */
+function collectStyles(
+  el: Element,
+  includeStyles: boolean | undefined,
+  styleProps: string[] | undefined
+): Record<string, string> | undefined {
+  if (!includeStyles || typeof window.getComputedStyle !== 'function') return undefined
+  const computed = window.getComputedStyle(el)
+  if (styleProps && styleProps.length > 0) {
+    const styles: Record<string, string> = {}
+    for (const prop of styleProps) {
+      styles[prop] = computed.getPropertyValue(prop)
+    }
+    return styles
+  }
+  return { display: computed.display, color: computed.color, position: computed.position }
+}
+
+/**
+ * Serialize child elements recursively up to maxDepth.
+ */
+// #lizard forgives
+function collectChildren(
+  el: Element,
+  includeChildren: boolean | undefined,
+  maxDepth: number,
+  currentDepth: number
+): DOMElementEntry[] | undefined {
+  if (!includeChildren || currentDepth >= maxDepth || !el.children || el.children.length === 0) return undefined
+  const children: DOMElementEntry[] = []
+  const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS)
+  for (let i = 0; i < maxChildren; i++) {
+    const child = el.children[i]
+    if (child) {
+      children.push(serializeDOMElement(child, false, undefined, true, maxDepth, currentDepth + 1))
+    }
+  }
+  return children
 }
 
 /**
@@ -181,53 +244,19 @@ function serializeDOMElement(
   styleProps: string[] | undefined,
   includeChildren: boolean | undefined,
   maxDepth: number,
-  currentDepth: number,
+  currentDepth: number
 ): DOMElementEntry {
   const entry: DOMElementEntry = {
     tag: el.tagName ? el.tagName.toLowerCase() : '',
     text: (el.textContent || '').slice(0, DOM_QUERY_MAX_TEXT),
     visible:
-      (el as HTMLElement).offsetParent !== null || (el.getBoundingClientRect && el.getBoundingClientRect().width > 0),
+      (el as HTMLElement).offsetParent !== null || (el.getBoundingClientRect && el.getBoundingClientRect().width > 0)
   }
 
-  // Attributes
-  if (el.attributes && el.attributes.length > 0) {
-    entry.attributes = {}
-    for (const attr of el.attributes) {
-      entry.attributes[attr.name] = attr.value
-    }
-  }
-
-  // Bounding box
-  if (el.getBoundingClientRect) {
-    const rect = el.getBoundingClientRect()
-    entry.boundingBox = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
-  }
-
-  // Computed styles
-  if (includeStyles && typeof window.getComputedStyle === 'function') {
-    const computed = window.getComputedStyle(el)
-    entry.styles = {}
-    if (styleProps && styleProps.length > 0) {
-      for (const prop of styleProps) {
-        entry.styles[prop] = computed.getPropertyValue(prop)
-      }
-    } else {
-      entry.styles = { display: computed.display, color: computed.color, position: computed.position }
-    }
-  }
-
-  // Children (capped to avoid unbounded serialization)
-  if (includeChildren && currentDepth < maxDepth && el.children && el.children.length > 0) {
-    entry.children = []
-    const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS)
-    for (let i = 0; i < maxChildren; i++) {
-      const child = el.children[i]
-      if (child) {
-        entry.children.push(serializeDOMElement(child, false, undefined, true, maxDepth, currentDepth + 1))
-      }
-    }
-  }
+  entry.attributes = collectAttributes(el)
+  entry.boundingBox = collectBoundingBox(el)
+  entry.styles = collectStyles(el, includeStyles, styleProps)
+  entry.children = collectChildren(el, includeChildren, maxDepth, currentDepth)
 
   return entry
 }
@@ -254,7 +283,7 @@ export async function getPageInfo(): Promise<PageInfoResult> {
     forms.push({
       id: form.id || undefined,
       action: form.action || undefined,
-      fields,
+      fields
     })
   }
 
@@ -268,7 +297,7 @@ export async function getPageInfo(): Promise<PageInfoResult> {
     links: document.querySelectorAll('a').length,
     images: document.querySelectorAll('img').length,
     interactiveElements: document.querySelectorAll('button,input,select,textarea,a[href]').length,
-    forms,
+    forms
   }
 }
 
@@ -298,7 +327,11 @@ function loadAxeCore(): Promise<void> {
     // Timeout after 5 seconds
     setTimeout(() => {
       clearInterval(checkInterval)
-      reject(new Error('Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit.'))
+      reject(
+        new Error(
+          'Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit.'
+        )
+      )
     }, 5000)
   })
 }
@@ -331,7 +364,7 @@ export async function runAxeAudit(params: AxeAuditParams): Promise<FormattedAxeR
  */
 export async function runAxeAuditWithTimeout(
   params: AxeAuditParams,
-  timeoutMs: number = A11Y_AUDIT_TIMEOUT_MS,
+  timeoutMs: number = A11Y_AUDIT_TIMEOUT_MS
 ): Promise<FormattedAxeResults> {
   return Promise.race([
     runAxeAudit(params),
@@ -341,11 +374,11 @@ export async function runAxeAuditWithTimeout(
           resolve({
             violations: [],
             summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-            error: 'Accessibility audit timeout',
+            error: 'Accessibility audit timeout'
           }),
-        timeoutMs,
+        timeoutMs
       )
-    }),
+    })
   ])
 }
 
@@ -359,7 +392,7 @@ export function formatAxeResults(axeResult: AxeResults): FormattedAxeResults {
       impact: v.impact,
       description: v.description,
       helpUrl: v.helpUrl,
-      nodes: [],
+      nodes: []
     }
 
     // Extract WCAG tags
@@ -373,7 +406,7 @@ export function formatAxeResults(axeResult: AxeResults): FormattedAxeResults {
       return {
         selector: selector || '',
         html: (node.html || '').slice(0, DOM_QUERY_MAX_HTML),
-        ...(node.failureSummary ? { failureSummary: node.failureSummary } : {}),
+        ...(node.failureSummary ? { failureSummary: node.failureSummary } : {})
       }
     })
 
@@ -390,7 +423,7 @@ export function formatAxeResults(axeResult: AxeResults): FormattedAxeResults {
       violations: (axeResult.violations || []).length,
       passes: (axeResult.passes || []).length,
       incomplete: (axeResult.incomplete || []).length,
-      inapplicable: (axeResult.inapplicable || []).length,
-    },
+      inapplicable: (axeResult.inapplicable || []).length
+    }
   }
 }

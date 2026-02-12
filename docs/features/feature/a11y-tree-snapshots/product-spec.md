@@ -29,7 +29,7 @@ Neither provides what an AI agent needs most: a concise, semantic overview of th
 
 Add `observe {what: "a11y_tree"}` -- a new mode that traverses the page's accessibility tree (via the DOM's `TreeWalker` with ARIA role/label extraction) and returns a compact, indented text representation. Each interactive element is assigned a stable UID that persists across snapshots of the same page, enabling the AI to reference elements in subsequent `interact` calls (e.g., `interact {action: "execute_js", uid: 42}`).
 
-**Key design decisions:**
+### Key design decisions:
 
 - **Manual traversal, not `chrome.automation`**: The `chrome.automation` API is only available to extensions with the `automation` permission and does not work in content scripts. Instead, we use a `TreeWalker` with ARIA attribute extraction (`role`, `aria-label`, `aria-expanded`, etc.) which runs in inject.js alongside existing DOM query code. This is the same approach used by Playwright's accessibility tree implementation.
 
@@ -96,7 +96,7 @@ Add `observe {what: "a11y_tree"}` -- a new mode that traverses the page's access
 }
 ```
 
-**Tree text format:**
+#### Tree text format:
 
 ```
 role "name" [uid=N] attr=value

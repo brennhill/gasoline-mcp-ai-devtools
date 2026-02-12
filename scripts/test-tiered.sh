@@ -4,7 +4,7 @@
 # Tier 2 (5min):   Extended coverage, edge cases
 # Tier 3 (15min):  Full suite with stress, concurrency
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEST_DIR="$SCRIPT_DIR/tests"
@@ -76,9 +76,9 @@ TIER3_TESTS=(
 
 echo "🚀 Starting Tier 1, Tier 2, and Tier 3 in parallel..."
 echo ""
-echo "Tier 1: $(echo ${TIER1_TESTS[@]} | wc -w) tests (expected ~1 min)"
-echo "Tier 2: $(echo ${TIER2_TESTS[@]} | wc -w) tests (expected ~5 min)"
-echo "Tier 3: $(echo ${TIER3_TESTS[@]} | wc -w) tests (expected ~15 min)"
+echo "Tier 1: $(echo "${TIER1_TESTS[@]}" | wc -w) tests (expected ~1 min)"
+echo "Tier 2: $(echo "${TIER2_TESTS[@]}" | wc -w) tests (expected ~5 min)"
+echo "Tier 3: $(echo "${TIER3_TESTS[@]}" | wc -w) tests (expected ~15 min)"
 echo ""
 
 TIER1_START=$(date +%s)

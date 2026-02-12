@@ -19,27 +19,19 @@ export const ERROR_GROUP_MAX_AGE_MS = 3600000;
 // =============================================================================
 /** Error grouping state */
 const errorGroups = new Map();
-// =============================================================================
-// ERROR GROUPING
-// =============================================================================
-/**
- * Create a signature for an error to identify duplicates
- */
-export function createErrorSignature(entry) {
-    const parts = [];
-    parts.push(entry.type || 'unknown');
-    parts.push(entry.level || 'error');
-    if (entry.type === 'exception') {
+const SIGNATURE_EXTRACTORS = {
+    exception: (entry) => {
         const exEntry = entry;
-        parts.push(exEntry.message || '');
+        const parts = [exEntry.message || ''];
         if (exEntry.stack) {
             const firstFrame = exEntry.stack.split('\n')[1] || '';
             parts.push(firstFrame.trim());
         }
-    }
-    else if (entry.type === 'network') {
+        return parts;
+    },
+    network: (entry) => {
         const netEntry = entry;
-        parts.push(netEntry.method || 'GET');
+        const parts = [netEntry.method || 'GET'];
         try {
             const url = new URL(netEntry.url || '', 'http://localhost');
             parts.push(url.pathname);
@@ -48,63 +40,71 @@ export function createErrorSignature(entry) {
             parts.push(netEntry.url || '');
         }
         parts.push(String(netEntry.status || 0));
-    }
-    else if (entry.type === 'console') {
+        return parts;
+    },
+    console: (entry) => {
         const consEntry = entry;
         if (consEntry.args && consEntry.args.length > 0) {
             const firstArg = consEntry.args[0];
-            parts.push(typeof firstArg === 'string' ? firstArg.slice(0, 200) : JSON.stringify(firstArg).slice(0, 200));
+            return [typeof firstArg === 'string' ? firstArg.slice(0, 200) : JSON.stringify(firstArg).slice(0, 200)];
         }
+        return [];
     }
+};
+export function createErrorSignature(entry) {
+    const entryType = entry.type || 'unknown';
+    const parts = [entryType, entry.level || 'error'];
+    const extractor = SIGNATURE_EXTRACTORS[entryType];
+    if (extractor)
+        parts.push(...extractor(entry));
     return parts.join('|');
 }
 /**
  * Process an error through the grouping system
  */
+function handleExistingGroup(group, entry, now) {
+    if (now - group.lastSeen < ERROR_DEDUP_WINDOW_MS) {
+        group.count++;
+        group.lastSeen = now;
+        return { shouldSend: false };
+    }
+    const countToReport = group.count;
+    group.count = 1;
+    group.lastSeen = now;
+    group.firstSeen = now;
+    if (countToReport > 1) {
+        return {
+            shouldSend: true,
+            entry: { ...entry, _previousOccurrences: countToReport - 1 }
+        };
+    }
+    return { shouldSend: true, entry };
+}
+function evictOldestGroup() {
+    if (errorGroups.size < MAX_TRACKED_ERRORS)
+        return;
+    let oldestSig = null;
+    let oldestTime = Infinity;
+    for (const [sig, group] of errorGroups) {
+        if (group.lastSeen < oldestTime) {
+            oldestTime = group.lastSeen;
+            oldestSig = sig;
+        }
+    }
+    if (oldestSig)
+        errorGroups.delete(oldestSig);
+}
 export function processErrorGroup(entry) {
     if (entry.level !== 'error' && entry.level !== 'warn') {
         return { shouldSend: true, entry };
     }
     const signature = createErrorSignature(entry);
     const now = Date.now();
-    if (errorGroups.has(signature)) {
-        const group = errorGroups.get(signature);
-        if (now - group.lastSeen < ERROR_DEDUP_WINDOW_MS) {
-            group.count++;
-            group.lastSeen = now;
-            return { shouldSend: false };
-        }
-        const countToReport = group.count;
-        group.count = 1;
-        group.lastSeen = now;
-        group.firstSeen = now;
-        if (countToReport > 1) {
-            return {
-                shouldSend: true,
-                entry: { ...entry, _previousOccurrences: countToReport - 1 },
-            };
-        }
-        return { shouldSend: true, entry };
-    }
-    if (errorGroups.size >= MAX_TRACKED_ERRORS) {
-        let oldestSig = null;
-        let oldestTime = Infinity;
-        for (const [sig, group] of errorGroups) {
-            if (group.lastSeen < oldestTime) {
-                oldestTime = group.lastSeen;
-                oldestSig = sig;
-            }
-        }
-        if (oldestSig) {
-            errorGroups.delete(oldestSig);
-        }
-    }
-    errorGroups.set(signature, {
-        entry,
-        count: 1,
-        firstSeen: now,
-        lastSeen: now,
-    });
+    const existing = errorGroups.get(signature);
+    if (existing)
+        return handleExistingGroup(existing, entry, now);
+    evictOldestGroup();
+    errorGroups.set(signature, { entry, count: 1, firstSeen: now, lastSeen: now });
     return { shouldSend: true, entry };
 }
 /**
@@ -124,7 +124,7 @@ export function cleanupStaleErrorGroups(debugLogFn) {
             if (debugLogFn) {
                 debugLogFn('error', 'Cleaned up stale error group', {
                     signature: signature.slice(0, 50) + '...',
-                    age: Math.round((now - group.lastSeen) / 60000) + ' min',
+                    age: Math.round((now - group.lastSeen) / 60000) + ' min'
                 });
             }
         }
@@ -143,7 +143,7 @@ export function flushErrorGroups() {
                 ...group.entry,
                 _aggregatedCount: group.count,
                 _firstSeen: new Date(group.firstSeen).toISOString(),
-                _lastSeen: new Date(group.lastSeen).toISOString(),
+                _lastSeen: new Date(group.lastSeen).toISOString()
             };
             processedEntry.ts = new Date().toISOString();
             entriesToSend.push(processedEntry);

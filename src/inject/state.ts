@@ -6,6 +6,18 @@
 import type { BrowserStateSnapshot } from '../types/index'
 import { sendPerformanceSnapshot } from '../lib/perf-snapshot'
 
+/** Read the page nonce set by the content script on the inject script element */
+let pageNonce = ''
+if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+  const nonceEl = document.querySelector('script[data-gasoline-nonce]')
+  if (nonceEl) {
+    pageNonce = nonceEl.getAttribute('data-gasoline-nonce') || ''
+  }
+}
+
+/** Patterns for sensitive storage keys whose values should be redacted */
+const SENSITIVE_KEY_PATTERNS = /token|secret|password|api.?key|auth|session.?id|csrf|jwt/i
+
 let gasolineHighlighter: HTMLDivElement | null = null
 
 /**
@@ -47,14 +59,23 @@ export function captureState(): BrowserStateSnapshot {
     timestamp: Date.now(),
     localStorage: {},
     sessionStorage: {},
-    cookies: document.cookie,
+    cookies: document.cookie
+      .split(';')
+      .map((c) => {
+        const [name, ...rest] = c.split('=')
+        if (name && SENSITIVE_KEY_PATTERNS.test(name.trim())) {
+          return `${name}=[REDACTED]`
+        }
+        return c
+      })
+      .join(';')
   }
 
   const localStorageData: Record<string, string> = {}
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)
     if (key) {
-      localStorageData[key] = localStorage.getItem(key) || ''
+      localStorageData[key] = SENSITIVE_KEY_PATTERNS.test(key) ? '[REDACTED]' : localStorage.getItem(key) || ''
     }
   }
   ;(state as { localStorage: Record<string, string> }).localStorage = localStorageData
@@ -63,7 +84,7 @@ export function captureState(): BrowserStateSnapshot {
   for (let i = 0; i < sessionStorage.length; i++) {
     const key = sessionStorage.key(i)
     if (key) {
-      sessionStorageData[key] = sessionStorage.getItem(key) || ''
+      sessionStorageData[key] = SENSITIVE_KEY_PATTERNS.test(key) ? '[REDACTED]' : sessionStorage.getItem(key) || ''
     }
   }
   ;(state as { sessionStorage: Record<string, string> }).sessionStorage = sessionStorageData
@@ -92,121 +113,94 @@ function isValidStorageKey(key: string): boolean {
  * Restore browser state from a snapshot.
  * Clears existing state before restoring.
  */
+const MAX_STORAGE_VALUE_SIZE = 10 * 1024 * 1024
+
+// #lizard forgives
+function restoreStorageEntries(storage: Storage, entries: Record<string, string>, label: string): number {
+  let skipped = 0
+  for (const [key, value] of Object.entries(entries)) {
+    if (!isValidStorageKey(key)) {
+      skipped++
+      console.warn(`[gasoline] Skipped ${label} key with invalid pattern:`, key) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
+      continue
+    }
+    if (typeof value === 'string' && value.length > MAX_STORAGE_VALUE_SIZE) {
+      skipped++
+      console.warn(`[gasoline] Skipped ${label} value exceeding 10MB:`, key) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
+      continue
+    }
+    storage.setItem(key, value)
+  }
+  return skipped
+}
+
+function clearAllCookies(): void {
+  const isSecure = window.location.protocol === 'https:'
+  document.cookie.split(';').forEach((c) => {
+    const name = (c.split('=')[0] || '').trim()
+    if (!name) return
+    let deleteCookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+    if (isSecure) deleteCookie += '; Secure'
+    deleteCookie += '; SameSite=Strict'
+    document.cookie = deleteCookie
+  })
+}
+
+function restoreCookies(cookieString: string): void {
+  const isSecure = window.location.protocol === 'https:'
+  cookieString.split(';').forEach((c) => {
+    const trimmed = c.trim()
+    if (!trimmed) return
+    let securedCookie = trimmed
+    if (isSecure && !securedCookie.toLowerCase().includes('secure')) securedCookie += '; Secure'
+    if (!securedCookie.toLowerCase().includes('samesite')) securedCookie += '; SameSite=Strict'
+    document.cookie = securedCookie
+  })
+}
+
+function navigateSameOrigin(url: string): void {
+  if (url === window.location.href) return
+  try {
+    const parsed = new URL(url)
+    if ((parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.origin === window.location.origin) {
+      window.location.href = url
+    } else {
+      console.warn('[gasoline] Skipped navigation: URL must be same origin', url, 'current:', window.location.origin)
+    }
+  } catch (e) {
+    console.warn('[gasoline] Invalid URL for navigation:', url, e)
+  }
+}
+
+// #lizard forgives
 export function restoreState(state: BrowserStateSnapshot, includeUrl: boolean = true): RestoreStateResult {
-  // Validate state object
   if (!state || typeof state !== 'object') {
     return { success: false, error: 'Invalid state object' }
   }
 
-  // Clear existing
-  localStorage.clear()
-  sessionStorage.clear()
+  let skipped = restoreStorageEntries(localStorage, state.localStorage || {}, 'localStorage')
+  skipped += restoreStorageEntries(sessionStorage, state.sessionStorage || {}, 'sessionStorage')
 
-  // Restore localStorage with validation
-  let skipped = 0
-  for (const [key, value] of Object.entries(state.localStorage || {})) {
-    if (!isValidStorageKey(key)) {
-      skipped++
-      console.warn('[gasoline] Skipped localStorage key with invalid pattern:', key)
-      continue
-    }
-    // Limit value size (10MB max per item)
-    if (typeof value === 'string' && value.length > 10 * 1024 * 1024) {
-      skipped++
-      console.warn('[gasoline] Skipped localStorage value exceeding 10MB:', key)
-      continue
-    }
-    localStorage.setItem(key, value)
-  }
-
-  // Restore sessionStorage with validation
-  for (const [key, value] of Object.entries(state.sessionStorage || {})) {
-    if (!isValidStorageKey(key)) {
-      skipped++
-      console.warn('[gasoline] Skipped sessionStorage key with invalid pattern:', key)
-      continue
-    }
-    if (typeof value === 'string' && value.length > 10 * 1024 * 1024) {
-      skipped++
-      console.warn('[gasoline] Skipped sessionStorage value exceeding 10MB:', key)
-      continue
-    }
-    sessionStorage.setItem(key, value)
-  }
-
-  // Restore cookies (clear then set)
-  document.cookie.split(';').forEach((c) => {
-    const namePart = c.split('=')[0]
-    if (namePart) {
-      const name = namePart.trim()
-      if (name) {
-        // Delete cookie with security attributes for consistency
-        let deleteCookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
-        if (window.location.protocol === 'https:') {
-          deleteCookie += '; Secure'
-        }
-        deleteCookie += '; SameSite=Strict'
-        document.cookie = deleteCookie
-      }
-    }
-  })
-
-  if (state.cookies) {
-    // Note: document.cookie API cannot set HttpOnly flag (browser limitation).
-    // Restored cookies lose HttpOnly protection but regain it on next server request.
-    state.cookies.split(';').forEach((c) => {
-      const trimmed = c.trim()
-      if (!trimmed) return
-
-      // Add security attributes: Secure (if HTTPS) and SameSite=Strict
-      let securedCookie = trimmed
-
-      // Add Secure flag if page is HTTPS (already set on secure pages, add for safety)
-      if (window.location.protocol === 'https:' && !securedCookie.toLowerCase().includes('secure')) {
-        securedCookie += '; Secure'
-      }
-
-      // Add SameSite=Strict if not already present (CSRF protection)
-      if (!securedCookie.toLowerCase().includes('samesite')) {
-        securedCookie += '; SameSite=Strict'
-      }
-
-      document.cookie = securedCookie
-    })
-  }
+  clearAllCookies()
+  if (state.cookies) restoreCookies(state.cookies)
 
   const restored: RestoredCounts = {
     localStorage: Object.keys(state.localStorage || {}).length - skipped,
     sessionStorage: Object.keys(state.sessionStorage || {}).length,
     cookies: (state.cookies || '').split(';').filter((c) => c.trim()).length,
-    skipped,
+    skipped
   }
 
-  // Navigate if requested (with URL validation)
-  if (includeUrl && state.url && state.url !== window.location.href) {
-    try {
-      const url = new URL(state.url)
-      // Security: only navigate within same origin to prevent open redirect
-      if ((url.protocol === 'http:' || url.protocol === 'https:') && url.origin === window.location.origin) {
-        window.location.href = state.url
-      } else {
-        console.warn('[gasoline] Skipped navigation: URL must be same origin', state.url, 'current:', window.location.origin)
-      }
-    } catch (e) {
-      console.warn('[gasoline] Invalid URL for navigation:', state.url, e)
-    }
-  }
-
-  if (skipped > 0) {
-    console.warn(`[gasoline] restoreState completed with ${skipped} skipped item(s)`)
-  }
+  if (includeUrl && state.url) navigateSameOrigin(state.url)
+  if (skipped > 0) console.warn(`[gasoline] restoreState completed with ${skipped} skipped item(s)`)
 
   return { success: true, restored }
 }
 
 /**
- * Highlight a DOM element by injecting a red overlay div.
+ * Highlight a DOM element by injecting a blue glow overlay div.
  */
+// #lizard forgives
 export function highlightElement(selector: string, durationMs: number = 5000): HighlightResult | undefined {
   // Remove existing highlight
   if (gasolineHighlighter) {
@@ -230,12 +224,13 @@ export function highlightElement(selector: string, durationMs: number = 5000): H
     left: `${rect.left}px`,
     width: `${rect.width}px`,
     height: `${rect.height}px`,
-    border: '4px solid red',
+    border: '2px solid rgba(59, 130, 246, 0.7)',
     borderRadius: '4px',
-    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    boxShadow: '0 0 12px rgba(59, 130, 246, 0.5)',
     zIndex: '2147483647',
     pointerEvents: 'none',
-    boxSizing: 'border-box',
+    boxSizing: 'border-box'
   })
 
   const targetElement = document.body || document.documentElement
@@ -256,13 +251,14 @@ export function highlightElement(selector: string, durationMs: number = 5000): H
   return {
     success: true,
     selector,
-    bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+    bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
   }
 }
 
 /**
  * Clear any existing highlight
  */
+// #lizard forgives
 export function clearHighlight(): void {
   if (gasolineHighlighter) {
     gasolineHighlighter.remove()
@@ -289,7 +285,7 @@ if (typeof window !== 'undefined') {
         }
       }
     },
-    { passive: true },
+    { passive: true }
   )
 }
 
@@ -299,6 +295,7 @@ if (typeof window !== 'undefined') {
 if (typeof window !== 'undefined') {
   window.addEventListener('message', (event: MessageEvent) => {
     if (event.source !== window || event.origin !== window.location.origin) return
+    if (pageNonce && (event.data as Record<string, unknown>)?._nonce !== pageNonce) return
     if (event.data?.type === 'GASOLINE_HIGHLIGHT_REQUEST') {
       const { requestId, params } = event.data
       const { selector, duration_ms } = params || { selector: '' }
@@ -307,9 +304,9 @@ if (typeof window !== 'undefined') {
         {
           type: 'GASOLINE_HIGHLIGHT_RESPONSE',
           requestId,
-          result,
+          result
         },
-        window.location.origin,
+        window.location.origin
       )
     }
   })

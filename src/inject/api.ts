@@ -12,21 +12,21 @@ import type {
   SelectorStrategies,
   WaterfallEntry,
   PerformanceMark,
-  PerformanceMeasure,
+  PerformanceMeasure
 } from '../types/index'
 
 import {
   setContextAnnotation,
   removeContextAnnotation,
   clearContextAnnotations,
-  getContextAnnotations,
+  getContextAnnotations
 } from '../lib/context'
 import {
   computeSelectors,
   recordEnhancedAction,
   getEnhancedActionBuffer,
   clearEnhancedActionBuffer,
-  generatePlaywrightScript,
+  generatePlaywrightScript
 } from '../lib/reproduction'
 import { getActionBuffer, clearActionBuffer, setActionCaptureEnabled } from '../lib/actions'
 import { getNetworkWaterfall, setNetworkWaterfallEnabled } from '../lib/network'
@@ -68,9 +68,42 @@ declare global {
   }
 }
 
+function setWithNativeSetter<T extends HTMLElement>(
+  element: T,
+  proto: { prototype: T },
+  prop: string,
+  val: string | boolean
+): void {
+  const setter = Object.getOwnPropertyDescriptor(proto.prototype, prop)?.set
+  if (setter) setter.call(element, val)
+  else (element as unknown as Record<string, string | boolean>)[prop] = val
+}
+
+/** Use native property setter to set value on form elements, bypassing framework interception */
+function setNativeValue(element: Element, value: string | boolean): boolean {
+  if (element instanceof HTMLInputElement) {
+    if (element.type === 'checkbox' || element.type === 'radio') {
+      setWithNativeSetter(element, HTMLInputElement, 'checked', Boolean(value))
+    } else {
+      setWithNativeSetter(element, HTMLInputElement, 'value', String(value))
+    }
+    return true
+  }
+  if (element instanceof HTMLTextAreaElement) {
+    setWithNativeSetter(element, HTMLTextAreaElement, 'value', String(value))
+    return true
+  }
+  if (element instanceof HTMLSelectElement) {
+    setWithNativeSetter(element, HTMLSelectElement, 'value', String(value))
+    return true
+  }
+  return false
+}
+
 /**
  * Install the window.__gasoline API for developers to interact with Gasoline
  */
+// #lizard forgives
 export function installGasolineAPI(): void {
   if (typeof window === 'undefined') return
 
@@ -215,7 +248,7 @@ export function installGasolineAPI(): void {
     recordAction(
       type: 'click' | 'input' | 'keypress' | 'navigate' | 'select' | 'scroll',
       element: Element,
-      opts?: Record<string, unknown>,
+      opts?: Record<string, unknown>
     ): void {
       recordEnhancedAction(type, element, opts)
     },
@@ -281,71 +314,15 @@ export function installGasolineAPI(): void {
       }
 
       try {
-        // Handle different input types
-        if (element instanceof HTMLInputElement) {
-          if (element.type === 'checkbox' || element.type === 'radio') {
-            // For checkbox/radio, use checked property
-            const nativeInputCheckedSetter = Object.getOwnPropertyDescriptor(
-              window.HTMLInputElement.prototype,
-              'checked',
-            )?.set
-            if (nativeInputCheckedSetter) {
-              nativeInputCheckedSetter.call(element, Boolean(value))
-            } else {
-              element.checked = Boolean(value)
-            }
-          } else {
-            // For text/email/password/etc, use value property
-            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-              window.HTMLInputElement.prototype,
-              'value',
-            )?.set
-            if (nativeInputValueSetter) {
-              nativeInputValueSetter.call(element, String(value))
-            } else {
-              element.value = String(value)
-            }
-          }
-        } else if (element instanceof HTMLTextAreaElement) {
-          const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLTextAreaElement.prototype,
-            'value',
-          )?.set
-          if (nativeTextAreaValueSetter) {
-            nativeTextAreaValueSetter.call(element, String(value))
-          } else {
-            element.value = String(value)
-          }
-        } else if (element instanceof HTMLSelectElement) {
-          const nativeSelectValueSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLSelectElement.prototype,
-            'value',
-          )?.set
-          if (nativeSelectValueSetter) {
-            nativeSelectValueSetter.call(element, String(value))
-          } else {
-            element.value = String(value)
-          }
-        } else {
+        if (!setNativeValue(element, value)) {
           console.error('[Gasoline] Element is not a form input:', selector)
           return false
         }
 
         // Dispatch events that React/Vue/Svelte listen for
-        // These events bubble up and trigger framework change handlers
-
-        // Input event (React 16+, Vue 3, Svelte)
-        const inputEvent = new Event('input', { bubbles: true })
-        element.dispatchEvent(inputEvent)
-
-        // Change event (older React, Vue 2)
-        const changeEvent = new Event('change', { bubbles: true })
-        element.dispatchEvent(changeEvent)
-
-        // Blur event (some frameworks validate on blur)
-        const blurEvent = new Event('blur', { bubbles: true })
-        element.dispatchEvent(blurEvent)
-
+        element.dispatchEvent(new Event('input', { bubbles: true }))
+        element.dispatchEvent(new Event('change', { bubbles: true }))
+        element.dispatchEvent(new Event('blur', { bubbles: true }))
         return true
       } catch (err) {
         console.error('[Gasoline] Failed to set input value:', err)
@@ -356,7 +333,7 @@ export function installGasolineAPI(): void {
     /**
      * Version of the Gasoline API
      */
-    version: __GASOLINE_VERSION__,
+    version: __GASOLINE_VERSION__
   }
 }
 

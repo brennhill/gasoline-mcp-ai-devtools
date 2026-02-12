@@ -56,7 +56,7 @@ export interface CircuitBreaker {
  */
 export function createCircuitBreaker(
   sendFn: (args: unknown) => Promise<unknown>,
-  options: CircuitBreakerOptions = {},
+  options: CircuitBreakerOptions = {}
 ): CircuitBreaker {
   const maxFailures = options.maxFailures ?? 5
   const resetTimeout = options.resetTimeout ?? 30000
@@ -107,13 +107,14 @@ export function createCircuitBreaker(
     return state
   }
 
+  // #lizard forgives
   function getStats(): CircuitBreakerStats {
     return {
       state: getState(),
       consecutiveFailures,
       totalFailures,
       totalSuccesses,
-      currentBackoff,
+      currentBackoff
     }
   }
 
@@ -122,7 +123,7 @@ export function createCircuitBreaker(
       ...getStats(),
       lastFailureTime,
       lastResetReason,
-      transitionHistory: [...transitionHistory],
+      transitionHistory: [...transitionHistory]
     }
   }
 
@@ -172,7 +173,9 @@ export function createCircuitBreaker(
     const currentState = getState()
 
     if (currentState === 'open') {
-      throw new Error(`Server connection blocked: circuit breaker is open after ${consecutiveFailures} failures. Retrying in ${currentBackoff}ms.`)
+      throw new Error(
+        `Server connection blocked: circuit breaker is open after ${consecutiveFailures} failures. Retrying in ${currentBackoff}ms.`
+      )
     }
 
     if (currentState === 'half-open') {

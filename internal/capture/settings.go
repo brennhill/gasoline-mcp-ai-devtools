@@ -1,29 +1,17 @@
-// @fileoverview Settings management with disk persistence
-// Implements the plugin-server communications protocol documented in
-// docs/plugin-server-communications.md
-
+// settings.go — Settings disk persistence for fast daemon restart.
 package capture
 
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/dev-console/dev-console/internal/state"
 )
 
-// SettingsPayload is the POST /settings request body
-type SettingsPayload struct {
-	SessionID string                 `json:"session_id"`
-	Settings  map[string]any `json:"settings"`
-}
-
-// PersistedSettings is the disk format for ~/.gasoline-settings.json
+// PersistedSettings is the disk format for extension-settings.json.
 type PersistedSettings struct {
 	AIWebPilotEnabled *bool     `json:"ai_web_pilot_enabled,omitempty"`
 	Timestamp         time.Time `json:"timestamp"`
@@ -32,27 +20,53 @@ type PersistedSettings struct {
 
 // getSettingsPath returns the path to the settings cache file
 func getSettingsPath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".gasoline-settings.json"), nil
+	return state.SettingsFile()
 }
 
-// LoadSettingsFromDisk loads cached settings from ~/.gasoline-settings.json
-func (c *Capture) LoadSettingsFromDisk() {
+func getLegacySettingsPath() (string, error) {
+	return state.LegacySettingsFile()
+}
+
+// readSettingsData reads settings from the primary path, falling back to legacy.
+func readSettingsData() ([]byte, error) {
 	path, err := getSettingsPath()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Could not determine settings path: %v\n", err)
-		return
+		return nil, fmt.Errorf("could not determine settings path: %w", err)
 	}
 
-	// #nosec G304 -- path is constructed from os.UserHomeDir() + fixed filename, not user input
+	// #nosec G304 -- path is resolved from trusted runtime state directory, not user input
 	data, err := os.ReadFile(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "[gasoline] Could not read settings file: %v\n", err)
+	if err == nil {
+		return data, nil
+	}
+	if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("could not read settings file: %w", err)
+	}
+
+	// Compatibility fallback for older locations.
+	legacyPath, legacyErr := getLegacySettingsPath()
+	if legacyErr != nil {
+		return nil, nil // no legacy path available, not an error
+	}
+	// #nosec G304 -- legacy path is deterministic, not user input
+	legacyData, readErr := os.ReadFile(legacyPath)
+	if readErr != nil {
+		if !os.IsNotExist(readErr) {
+			return nil, fmt.Errorf("could not read legacy settings file: %w", readErr)
 		}
+		return nil, nil
+	}
+	return legacyData, nil
+}
+
+// LoadSettingsFromDisk loads cached settings from runtime state storage.
+func (c *Capture) LoadSettingsFromDisk() {
+	data, err := readSettingsData()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] %v\n", err)
+		return
+	}
+	if data == nil {
 		return
 	}
 
@@ -65,22 +79,16 @@ func (c *Capture) LoadSettingsFromDisk() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Only apply settings if they're recent (to avoid using stale data from dead extension)
-	// 5-second threshold matches the connection staleness check in checkPilotReady()
-	age := time.Since(settings.Timestamp)
-	if age > 5*time.Second {
-		// Quiet mode: Stale settings info goes to log file only
+	if time.Since(settings.Timestamp) > 5*time.Second {
 		return
 	}
-
 	if settings.AIWebPilotEnabled != nil {
 		c.ext.pilotEnabled = *settings.AIWebPilotEnabled
 		c.ext.pilotUpdatedAt = settings.Timestamp
-		// Quiet mode: Settings load info goes to log file only
 	}
 }
 
-// SaveSettingsToDisk persists current settings to ~/.gasoline-settings.json
+// SaveSettingsToDisk persists current settings to runtime state storage.
 func (c *Capture) SaveSettingsToDisk() error {
 	path, err := getSettingsPath()
 	if err != nil {
@@ -88,8 +96,10 @@ func (c *Capture) SaveSettingsToDisk() error {
 	}
 
 	c.mu.RLock()
+	// Copy bool by value — &c.ext.pilotEnabled would escape the lock scope
+	pilotEnabled := c.ext.pilotEnabled
 	settings := PersistedSettings{
-		AIWebPilotEnabled: &c.ext.pilotEnabled,
+		AIWebPilotEnabled: &pilotEnabled,
 		Timestamp:         c.ext.pilotUpdatedAt,
 		SessionID:         c.ext.extensionSession,
 	}
@@ -102,153 +112,13 @@ func (c *Capture) SaveSettingsToDisk() error {
 
 	// Write atomically via temp file
 	// #nosec G306 -- settings file is owner-only readable (0600) for privacy
+	// #nosec G301 -- runtime state directory should be user-readable for diagnostics
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
 	tmpPath := path + ".tmp"
 	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
 		return err
 	}
 	return os.Rename(tmpPath, path)
-}
-
-// HandleSettings handles POST /settings from the extension
-func (c *Capture) HandleSettings(w http.ResponseWriter, r *http.Request) {
-	startTime := time.Now()
-	sessionID := r.Header.Get("X-Gasoline-Session")
-	clientID := r.Header.Get("X-Gasoline-Client")
-
-	// Collect all headers for debug logging (redact auth)
-	headers := make(map[string]string)
-	for name, values := range r.Header {
-		if strings.Contains(strings.ToLower(name), "auth") || strings.Contains(strings.ToLower(name), "token") {
-			headers[name] = "[REDACTED]"
-		} else if len(values) > 0 {
-			headers[name] = values[0]
-		}
-	}
-
-	if r.Method != "POST" {
-		// Allow GET for backward compatibility (returns empty for now)
-		if r.Method == "GET" {
-			util.JSONResponse(w, http.StatusOK, map[string]any{})
-			return
-		}
-		util.JSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
-	body, err := io.ReadAll(io.LimitReader(r.Body, 1024*10)) // 10KB limit
-	if err != nil {
-		duration := time.Since(startTime)
-		debugEntry := HTTPDebugEntry{
-			Timestamp:      startTime,
-			Endpoint:       "/settings",
-			Method:         "POST",
-			SessionID:      sessionID,
-			ClientID:       clientID,
-			Headers:        headers,
-			ResponseStatus: http.StatusBadRequest,
-			DurationMs:     duration.Milliseconds(),
-			Error:          fmt.Sprintf("Could not read body: %v", err),
-		}
-		c.mu.Lock()
-		c.logHTTPDebugEntry(debugEntry)
-		c.mu.Unlock()
-		PrintHTTPDebug(debugEntry)
-		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Could not read body"})
-		return
-	}
-
-	requestPreview := string(body)
-	if len(requestPreview) > 1000 {
-		requestPreview = requestPreview[:1000] + "..."
-	}
-
-	var payload SettingsPayload
-	if err := json.Unmarshal(body, &payload); err != nil {
-		duration := time.Since(startTime)
-		debugEntry := HTTPDebugEntry{
-			Timestamp:      startTime,
-			Endpoint:       "/settings",
-			Method:         "POST",
-			SessionID:      sessionID,
-			ClientID:       clientID,
-			Headers:        headers,
-			RequestBody:    requestPreview,
-			ResponseStatus: http.StatusBadRequest,
-			DurationMs:     duration.Milliseconds(),
-			Error:          fmt.Sprintf("Invalid JSON: %v", err),
-		}
-		c.mu.Lock()
-		c.logHTTPDebugEntry(debugEntry)
-		c.mu.Unlock()
-		PrintHTTPDebug(debugEntry)
-		util.JSONResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
-		return
-	}
-
-	now := time.Now()
-	c.mu.Lock()
-
-	// Merge settings: only update fields that are present in the payload
-	// This allows the extension to send partial updates (only initialized values)
-	var pilotEnabledPtr *bool
-	if aiPilot, ok := payload.Settings["aiWebPilotEnabled"].(bool); ok {
-		c.ext.pilotEnabled = aiPilot
-		c.ext.pilotUpdatedAt = now
-		pilotEnabledPtr = &aiPilot
-	}
-
-	// Track session if provided
-	if payload.SessionID != "" && payload.SessionID != c.ext.extensionSession {
-		if c.ext.extensionSession != "" {
-			fmt.Fprintf(os.Stderr, "[gasoline] Settings: session changed %s -> %s\n", c.ext.extensionSession, payload.SessionID)
-		}
-		c.ext.extensionSession = payload.SessionID
-		c.ext.sessionChangedAt = now
-	}
-
-	// Log settings POST to circular buffer
-	c.logPollingActivity(PollingLogEntry{
-		Timestamp:    now,
-		Endpoint:     "settings",
-		Method:       "POST",
-		SessionID:    payload.SessionID,
-		PilotEnabled: pilotEnabledPtr,
-	})
-
-	responseData := map[string]any{
-		"status":    "ok",
-		"timestamp": now.Format(time.RFC3339),
-	}
-	responseJSON, _ := json.Marshal(responseData)
-	responsePreview := string(responseJSON)
-
-	// Log HTTP debug entry
-	duration := time.Since(startTime)
-	debugEntry := HTTPDebugEntry{
-		Timestamp:      startTime,
-		Endpoint:       "/settings",
-		Method:         "POST",
-		SessionID:      payload.SessionID,
-		ClientID:       clientID,
-		Headers:        headers,
-		RequestBody:    requestPreview,
-		ResponseStatus: http.StatusOK,
-		ResponseBody:   responsePreview,
-		DurationMs:     duration.Milliseconds(),
-	}
-	c.logHTTPDebugEntry(debugEntry)
-
-	c.mu.Unlock()
-
-	// Print debug log after unlocking to avoid deadlock
-	PrintHTTPDebug(debugEntry)
-
-	// Persist to disk (async, don't block response)
-	go func() {
-		if err := c.SaveSettingsToDisk(); err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Failed to save settings to disk: %v\n", err)
-		}
-	}()
-
-	util.JSONResponse(w, http.StatusOK, responseData)
 }

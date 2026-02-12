@@ -9,7 +9,7 @@ export {
   getContextAnnotations,
   setContextAnnotation,
   removeContextAnnotation,
-  clearContextAnnotations,
+  clearContextAnnotations
 } from '../lib/context'
 export {
   getImplicitRole,
@@ -19,7 +19,7 @@ export {
   recordEnhancedAction,
   getEnhancedActionBuffer,
   clearEnhancedActionBuffer,
-  generatePlaywrightScript,
+  generatePlaywrightScript
 } from '../lib/reproduction'
 export {
   recordAction,
@@ -34,7 +34,7 @@ export {
   uninstallActionCapture,
   setActionCaptureEnabled,
   installNavigationCapture,
-  uninstallNavigationCapture,
+  uninstallNavigationCapture
 } from '../lib/actions'
 export {
   parseResourceTiming,
@@ -55,7 +55,7 @@ export {
   truncateResponseBody,
   readResponseBody,
   readResponseBodyWithTimeout,
-  wrapFetchWithBodies,
+  wrapFetchWithBodies
 } from '../lib/network'
 export {
   getPerformanceMarks,
@@ -67,7 +67,7 @@ export {
   isPerformanceCaptureActive,
   getPerformanceSnapshotForError,
   setPerformanceMarksEnabled,
-  isPerformanceMarksEnabled,
+  isPerformanceMarksEnabled
 } from '../lib/performance'
 export { postLog } from '../lib/bridge'
 export { installConsoleCapture, uninstallConsoleCapture } from '../lib/console'
@@ -85,7 +85,7 @@ export {
   setAiContextStateSnapshot,
   setSourceMapCache,
   getSourceMapCache,
-  getSourceMapCacheSize,
+  getSourceMapCacheSize
 } from '../lib/ai-context'
 export { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions'
 export {
@@ -98,6 +98,7 @@ export {
   setWebSocketCaptureEnabled,
   getWebSocketCaptureMode,
   uninstallWebSocketCapture,
+  resetForTesting
 } from '../lib/websocket'
 export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from '../lib/dom-queries'
 export {
@@ -113,7 +114,7 @@ export {
   getINP,
   sendPerformanceSnapshot,
   isPerformanceSnapshotEnabled,
-  setPerformanceSnapshotEnabled,
+  setPerformanceSnapshotEnabled
 } from '../lib/perf-snapshot'
 
 // Re-export constants that tests import from inject.js
@@ -135,7 +136,7 @@ export {
   setDeferralEnabled,
   shouldDeferIntercepts,
   checkMemoryPressure,
-  type DeferralState,
+  type DeferralState
 } from './observers'
 
 // Export message handlers module
@@ -149,7 +150,7 @@ export {
   clearHighlight,
   type RestoreStateResult,
   type RestoredCounts,
-  type HighlightResult,
+  type HighlightResult
 } from './state'
 
 import { installGasolineAPI } from './api'
@@ -161,7 +162,11 @@ import { sendPerformanceSnapshot } from '../lib/perf-snapshot'
 /**
  * Auto-install when loaded in browser
  */
-if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof (globalThis as Record<string, unknown>).process === 'undefined') {
+if (
+  typeof window !== 'undefined' &&
+  typeof document !== 'undefined' &&
+  typeof (globalThis as Record<string, unknown>).process === 'undefined'
+) {
   // Install Phase 1 (lightweight API + observers)
   installPhase1()
 

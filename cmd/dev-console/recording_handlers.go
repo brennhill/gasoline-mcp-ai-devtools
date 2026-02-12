@@ -6,7 +6,40 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
+
+// buildPlaybackResult constructs the JSON-RPC response for a completed playback.
+func (h *ToolHandler) buildPlaybackResult(req JSONRPCRequest, recordingID string, session *capture.PlaybackSession) JSONRPCResponse {
+	status := "ok"
+	if session.ActionsFailed > 0 {
+		status = "partial"
+	}
+	total := session.ActionsExecuted + session.ActionsFailed
+	responseData := map[string]any{
+		"status":            status,
+		"recording_id":      recordingID,
+		"actions_executed":  session.ActionsExecuted,
+		"actions_failed":    session.ActionsFailed,
+		"actions_total":     total,
+		"duration_ms":       time.Since(session.StartedAt).Milliseconds(),
+		"results_count":     len(session.Results),
+		"selector_failures": session.SelectorFailures,
+	}
+	message := fmt.Sprintf("Playback complete: %d/%d actions executed", session.ActionsExecuted, total)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(message, responseData)}
+}
+
+// appendServerLog adds a single log entry to the server's in-memory log buffer.
+func (h *ToolHandler) appendServerLog(entry LogEntry) {
+	h.server.mu.Lock()
+	h.server.entries = append(h.server.entries, entry)
+	if len(h.server.entries) > h.server.maxEntries {
+		h.server.entries = h.server.entries[1:]
+	}
+	h.server.mu.Unlock()
+}
 
 // ============================================================================
 // Recording Control Handlers
@@ -40,24 +73,14 @@ func (h *ToolHandler) toolConfigureRecordingStart(req JSONRPCRequest, args json.
 		)}
 	}
 
-	// Emit log marker
-	now := time.Now()
-	logEntry := LogEntry{
-		"timestamp": now.Format(time.RFC3339Nano),
-		"level":     "info",
-		"message":   fmt.Sprintf("[RECORDING_START] Recording started: %s", recordingID),
-		"category":  "RECORDING",
+	h.appendServerLog(LogEntry{
+		"timestamp":    time.Now().Format(time.RFC3339Nano),
+		"level":        "info",
+		"message":      fmt.Sprintf("[RECORDING_START] Recording started: %s", recordingID),
+		"category":     "RECORDING",
 		"recording_id": recordingID,
-		"url":        params.URL,
-	}
-
-	// Add to server log entries
-	h.MCPHandler.server.mu.Lock()
-	h.MCPHandler.server.entries = append(h.MCPHandler.server.entries, logEntry)
-	if len(h.MCPHandler.server.entries) > h.MCPHandler.server.maxEntries {
-		h.MCPHandler.server.entries = h.MCPHandler.server.entries[1:]
-	}
-	h.MCPHandler.server.mu.Unlock()
+		"url":          params.URL,
+	})
 
 	responseData := map[string]any{
 		"status":       "ok",
@@ -95,32 +118,22 @@ func (h *ToolHandler) toolConfigureRecordingStop(req JSONRPCRequest, args json.R
 		)}
 	}
 
-	// Emit log marker
-	now := time.Now()
-	logEntry := LogEntry{
-		"timestamp": now.Format(time.RFC3339Nano),
-		"level":     "info",
-		"message":   fmt.Sprintf("[RECORDING_STOP] Recording stopped: %s (%d actions, %dms)", params.RecordingID, actionCount, duration),
-		"category":  "RECORDING",
+	h.appendServerLog(LogEntry{
+		"timestamp":    time.Now().Format(time.RFC3339Nano),
+		"level":        "info",
+		"message":      fmt.Sprintf("[RECORDING_STOP] Recording stopped: %s (%d actions, %dms)", params.RecordingID, actionCount, duration),
+		"category":     "RECORDING",
 		"recording_id": params.RecordingID,
 		"action_count": actionCount,
 		"duration_ms":  duration,
-	}
-
-	// Add to server log entries
-	h.MCPHandler.server.mu.Lock()
-	h.MCPHandler.server.entries = append(h.MCPHandler.server.entries, logEntry)
-	if len(h.MCPHandler.server.entries) > h.MCPHandler.server.maxEntries {
-		h.MCPHandler.server.entries = h.MCPHandler.server.entries[1:]
-	}
-	h.MCPHandler.server.mu.Unlock()
+	})
 
 	responseData := map[string]any{
-		"status":        "ok",
-		"recording_id":  params.RecordingID,
-		"action_count":  actionCount,
-		"duration_ms":   duration,
-		"message":       fmt.Sprintf("Recording stopped: %d actions captured in %dms", actionCount, duration),
+		"status":       "ok",
+		"recording_id": params.RecordingID,
+		"action_count": actionCount,
+		"duration_ms":  duration,
+		"message":      fmt.Sprintf("Recording stopped: %d actions captured in %dms", actionCount, duration),
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording stopped", responseData)}
@@ -233,45 +246,18 @@ func (h *ToolHandler) toolConfigurePlayback(req JSONRPCRequest, args json.RawMes
 		)}
 	}
 
-	// Build response
-	status := "ok"
-	if session.ActionsFailed > 0 {
-		status = "partial"
-	}
-
-	// Emit log marker
-	now := time.Now()
-	logEntry := LogEntry{
-		"timestamp": now.Format(time.RFC3339Nano),
-		"level":     "info",
-		"message":   fmt.Sprintf("[PLAYBACK_COMPLETE] Recording replayed: %d/%d actions succeeded", session.ActionsExecuted, session.ActionsExecuted+session.ActionsFailed),
-		"category":  "PLAYBACK",
-		"recording_id": params.RecordingID,
+	total := session.ActionsExecuted + session.ActionsFailed
+	h.appendServerLog(LogEntry{
+		"timestamp":        time.Now().Format(time.RFC3339Nano),
+		"level":            "info",
+		"message":          fmt.Sprintf("[PLAYBACK_COMPLETE] Recording replayed: %d/%d actions succeeded", session.ActionsExecuted, total),
+		"category":         "PLAYBACK",
+		"recording_id":     params.RecordingID,
 		"actions_executed": session.ActionsExecuted,
 		"actions_failed":   session.ActionsFailed,
-	}
+	})
 
-	// Add to server log entries
-	h.MCPHandler.server.mu.Lock()
-	h.MCPHandler.server.entries = append(h.MCPHandler.server.entries, logEntry)
-	if len(h.MCPHandler.server.entries) > h.MCPHandler.server.maxEntries {
-		h.MCPHandler.server.entries = h.MCPHandler.server.entries[1:]
-	}
-	h.MCPHandler.server.mu.Unlock()
-
-	responseData := map[string]any{
-		"status":            status,
-		"recording_id":      params.RecordingID,
-		"actions_executed":  session.ActionsExecuted,
-		"actions_failed":    session.ActionsFailed,
-		"actions_total":     session.ActionsExecuted + session.ActionsFailed,
-		"duration_ms":       time.Since(session.StartedAt).Milliseconds(),
-		"results_count":     len(session.Results),
-		"selector_failures": session.SelectorFailures,
-	}
-
-	message := fmt.Sprintf("Playback complete: %d/%d actions executed", session.ActionsExecuted, session.ActionsExecuted+session.ActionsFailed)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(message, responseData)}
+	return h.buildPlaybackResult(req, params.RecordingID, session)
 }
 
 // toolGetPlaybackResults handles observe(what: "playback_results", recording_id: "...")
@@ -329,35 +315,25 @@ func (h *ToolHandler) toolConfigureLogDiff(req JSONRPCRequest, args json.RawMess
 		)}
 	}
 
-	// Emit log marker
-	now := time.Now()
-	logEntry := LogEntry{
-		"timestamp": now.Format(time.RFC3339Nano),
-		"level":     "info",
-		"message":   fmt.Sprintf("[LOG_DIFF] Comparison complete: %s", result.Summary),
-		"category":  "LOG_DIFF",
+	h.appendServerLog(LogEntry{
+		"timestamp":   time.Now().Format(time.RFC3339Nano),
+		"level":       "info",
+		"message":     fmt.Sprintf("[LOG_DIFF] Comparison complete: %s", result.Summary),
+		"category":    "LOG_DIFF",
 		"original_id": params.OriginalID,
 		"replay_id":   params.ReplayID,
 		"status":      result.Status,
-	}
-
-	// Add to server log entries
-	h.MCPHandler.server.mu.Lock()
-	h.MCPHandler.server.entries = append(h.MCPHandler.server.entries, logEntry)
-	if len(h.MCPHandler.server.entries) > h.MCPHandler.server.maxEntries {
-		h.MCPHandler.server.entries = h.MCPHandler.server.entries[1:]
-	}
-	h.MCPHandler.server.mu.Unlock()
+	})
 
 	responseData := map[string]any{
-		"status":          result.Status,
-		"summary":         result.Summary,
-		"original_id":     params.OriginalID,
-		"replay_id":       params.ReplayID,
-		"new_errors":      len(result.NewErrors),
-		"missing_events":  len(result.MissingEvents),
-		"changed_values":  len(result.ChangedValues),
-		"action_stats":    result.ActionStats,
+		"status":         result.Status,
+		"summary":        result.Summary,
+		"original_id":    params.OriginalID,
+		"replay_id":      params.ReplayID,
+		"new_errors":     len(result.NewErrors),
+		"missing_events": len(result.MissingEvents),
+		"changed_values": len(result.ChangedValues),
+		"action_stats":   result.ActionStats,
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(result.Summary, responseData)}

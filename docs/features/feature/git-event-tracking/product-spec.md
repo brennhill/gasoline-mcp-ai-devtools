@@ -108,13 +108,13 @@ type GitMergeEvent struct {
 ## Examples
 
 ### Example 1: Developer Commits Code, Test Fails
-**Git operation:**
+#### Git operation:
 ```bash
 $ git add src/utils/payment.js
 $ git commit -m "Fix payment timeout handling"
 ```
 
-**Gasoline events:**
+#### Gasoline events:
 ```
 [10:15:23.100] git:commit
   - hash: a7f8e3d
@@ -134,12 +134,12 @@ $ git commit -m "Fix payment timeout handling"
 **Developer insight:** "Oh, the test failed right after my commit. The timeout logic still isn't right. Let me check what else I modified."
 
 ### Example 2: Branch Switch Invalidates Test
-**Git operation:**
+#### Git operation:
 ```bash
 $ git checkout main
 ```
 
-**Gasoline event:**
+#### Gasoline event:
 ```
 [10:16:00.100] git:checkout
   - from_branch: "feature/payment-timeout"
@@ -156,13 +156,13 @@ $ git checkout main
 **Developer insight:** "Interesting, the same test passes on main but fails on my feature branch. Let me compare commits."
 
 ### Example 3: Rebase Conflicts
-**Git operation:**
+#### Git operation:
 ```bash
 $ git rebase main
 # Conflicts detected
 ```
 
-**Gasoline event:**
+## Gasoline event:
 ```
 [10:20:00.100] git:rebase:start
   - base_branch: "main"

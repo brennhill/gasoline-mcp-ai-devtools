@@ -31,7 +31,7 @@ feature: dynamic-exposure
 
 ### Security/Compliance Testing
 
-**Audit tests:**
+#### Audit tests:
 - [ ] Test all flag changes logged
 - [ ] Test CLI override logged
 
@@ -39,7 +39,7 @@ feature: dynamic-exposure
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Disabled Feature (Error Path)**
+### Scenario 1: Disabled Feature (Error Path)
 1. Setup:
    - Create features.yaml: `{generate_har: false}`
    - Start: `gasoline --feature-flags=features.yaml`
@@ -51,7 +51,7 @@ feature: dynamic-exposure
 3. Expected Result: Disabled feature fails, others work
 4. Verification: Clear error message with flag name
 
-**Scenario 2: Hot-Reload (Happy Path)**
+### Scenario 2: Hot-Reload (Happy Path)
 1. Setup:
    - Start with generate_har: false
 2. Steps:
@@ -63,7 +63,7 @@ feature: dynamic-exposure
 3. Expected Result: Feature enabled without restart
 4. Verification: Hot-reload works, no downtime
 
-**Scenario 3: Emergency Disable via CLI**
+### Scenario 3: Emergency Disable via CLI
 1. Setup:
    - Features.yaml has interact_execute_js: true
    - Start: `gasoline --feature-flags=features.yaml --disable-feature=interact_execute_js`
@@ -76,7 +76,7 @@ feature: dynamic-exposure
 3. Expected Result: CLI override cannot be bypassed by config
 4. Verification: Emergency disable effective
 
-**Scenario 4: Default Enabled (Backwards Compatibility)**
+### Scenario 4: Default Enabled (Backwards Compatibility)
 1. Setup:
    - No feature flags config (or empty file)
    - Start: `gasoline`
@@ -86,7 +86,7 @@ feature: dynamic-exposure
 3. Expected Result: All features enabled by default
 4. Verification: Backwards compatible
 
-**Scenario 5: Invalid Config (Error Handling)**
+### Scenario 5: Invalid Config (Error Handling)
 1. Setup:
    - Create bad features.yaml: malformed YAML
    - Start: `gasoline --feature-flags=bad.yaml`

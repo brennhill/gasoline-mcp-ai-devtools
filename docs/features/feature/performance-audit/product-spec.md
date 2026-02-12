@@ -70,7 +70,7 @@ This differs from existing tools in three ways:
 }
 ```
 
-**Parameters:**
+#### Parameters:
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
@@ -318,7 +318,7 @@ When the AI calls `generate({format: "performance_audit"})`:
 1. **Retrieve snapshot**: Get the latest (or URL-specific) performance snapshot from the ring buffer.
 2. **Retrieve waterfall**: Get network waterfall entries for the same page URL.
 3. **Dispatch DOM queries**: Send async DOM queries to the extension for DOM size, image analysis, and head element analysis.
-4. **Wait for results**: Poll for DOM query results (uses existing 2s decision point / 10s total timeout).
+4. **Wait for results**: Poll for DOM query results (uses existing async command timeout window).
 5. **Analyze categories**: Run each requested category's analysis function against the collected data.
 6. **Score and rank**: Compute per-category scores and rank findings by estimated impact.
 7. **Generate response**: Assemble the structured JSON response with findings, recommendations, and top opportunities.

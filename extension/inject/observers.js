@@ -4,11 +4,11 @@
  */
 import { installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js';
 import { installPerfObservers } from '../lib/perf-snapshot.js';
-import { installWebSocketCapture, uninstallWebSocketCapture, } from '../lib/websocket.js';
-import { wrapFetchWithBodies, } from '../lib/network.js';
+import { installWebSocketCapture, uninstallWebSocketCapture } from '../lib/websocket.js';
+import { wrapFetchWithBodies } from '../lib/network.js';
 import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js';
 import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js';
-import { installActionCapture, uninstallActionCapture, installNavigationCapture, uninstallNavigationCapture, } from '../lib/actions.js';
+import { installActionCapture, uninstallActionCapture, installNavigationCapture, uninstallNavigationCapture } from '../lib/actions.js';
 import { postLog } from '../lib/bridge.js';
 import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js';
 // Store original fetch for restoration
@@ -21,7 +21,9 @@ let phase2Timestamp = 0;
 /**
  * Wrap fetch to capture network errors
  */
+// #lizard forgives
 export function wrapFetch(originalFetchFn) {
+    // #lizard forgives
     return async function (input, init) {
         const startTime = Date.now();
         const url = typeof input === 'string' ? input : input.url;
@@ -63,7 +65,7 @@ export function wrapFetch(originalFetchFn) {
                     statusText: response.statusText,
                     duration,
                     response: responseBody,
-                    ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}),
+                    ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {})
                 };
                 postLog(logPayload);
             }
@@ -90,7 +92,7 @@ export function wrapFetch(originalFetchFn) {
                 url,
                 error: error.message,
                 duration,
-                ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}),
+                ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {})
             };
             postLog(logPayload);
             throw error;
@@ -229,7 +231,7 @@ export function getDeferralState() {
         deferralEnabled,
         phase2Installed,
         injectionTimestamp,
-        phase2Timestamp,
+        phase2Timestamp
     };
 }
 /**

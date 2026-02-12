@@ -13,7 +13,7 @@ import {
   RESPONSE_BODY_MAX,
   BODY_READ_TIMEOUT_MS,
   SENSITIVE_HEADER_PATTERNS,
-  BINARY_CONTENT_TYPES,
+  BINARY_CONTENT_TYPES
 } from './constants.js'
 
 // =============================================================================
@@ -86,6 +86,9 @@ let requestIdCounter = 0
 // Network body capture state
 let networkBodyCaptureEnabled = true // Default: capture request/response bodies
 
+/** URL patterns for auth endpoints whose response bodies should be redacted */
+const SENSITIVE_URL_PATTERNS = /\/(auth|login|signin|signup|token|oauth|session|api[_-]?key|password|register)\b/i
+
 // =============================================================================
 // NETWORK WATERFALL
 // =============================================================================
@@ -101,7 +104,7 @@ export function parseResourceTiming(timing: PerformanceResourceTiming): Waterfal
     connect: Math.max(0, timing.connectEnd - timing.connectStart),
     tls: timing.secureConnectionStart > 0 ? Math.max(0, timing.connectEnd - timing.secureConnectionStart) : 0,
     ttfb: Math.max(0, timing.responseStart - timing.requestStart),
-    download: Math.max(0, timing.responseEnd - timing.responseStart),
+    download: Math.max(0, timing.responseEnd - timing.responseStart)
   }
 
   const result: WaterfallEntry = {
@@ -112,7 +115,7 @@ export function parseResourceTiming(timing: PerformanceResourceTiming): Waterfal
     phases,
     transferSize: timing.transferSize || 0,
     encodedBodySize: timing.encodedBodySize || 0,
-    decodedBodySize: timing.decodedBodySize || 0,
+    decodedBodySize: timing.decodedBodySize || 0
   }
 
   // Detect cache hit
@@ -170,7 +173,7 @@ export function trackPendingRequest(request: RequestInfo): string {
   const id = `req_${++requestIdCounter}`
   pendingRequests.set(id, {
     ...request,
-    id,
+    id
   })
   return id
 }
@@ -235,7 +238,7 @@ export async function getNetworkWaterfallForError(errorEntry: ErrorEntry): Promi
     ts: new Date().toISOString(),
     _errorTs: errorEntry.ts,
     entries,
-    pending,
+    pending
   }
 }
 
@@ -312,8 +315,9 @@ export function shouldCaptureUrl(url: string): boolean {
  * @param headers - Headers to sanitize
  * @returns Sanitized headers object
  */
+// #lizard forgives
 export function sanitizeHeaders(
-  headers: HeadersInit | Headers | Record<string, string> | null,
+  headers: HeadersInit | Headers | Record<string, string> | null
 ): Record<string, string> {
   if (!headers) return {}
 
@@ -390,13 +394,13 @@ export async function readResponseBody(response: Response): Promise<string> {
  */
 export async function readResponseBodyWithTimeout(
   response: Response,
-  timeoutMs: number = BODY_READ_TIMEOUT_MS,
+  timeoutMs: number = BODY_READ_TIMEOUT_MS
 ): Promise<string> {
   return Promise.race([
     readResponseBody(response),
     new Promise<string>((resolve) => {
       setTimeout(() => resolve('[Skipped: body read timeout]'), timeoutMs)
-    }),
+    })
   ])
 }
 
@@ -423,81 +427,71 @@ type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Respo
  * @param fetchFn - The original fetch function
  * @returns Wrapped fetch that captures bodies
  */
+function extractFetchInfo(input: RequestInfo | URL, init?: RequestInit): { url: string; method: string; requestBody: BodyInit | null | undefined } {
+  let url = ''
+  let method = 'GET'
+  if (typeof input === 'string') {
+    url = input
+  } else if (input && (input as unknown as Request).url) {
+    url = (input as unknown as Request).url
+    method = (input as unknown as Request).method || 'GET'
+  }
+  if (init) { method = init.method || method }
+  return { url, method, requestBody: init?.body || null }
+}
+
+async function readCapturedBody(url: string, cloned: Response | null, contentType: string): Promise<string> {
+  if (SENSITIVE_URL_PATTERNS.test(url)) return '[REDACTED: auth endpoint]'
+  if (!cloned) return ''
+  if (BINARY_CONTENT_TYPES.test(contentType)) {
+    const blob = await cloned.blob()
+    return `[Binary: ${blob.size} bytes, ${contentType}]`
+  }
+  return readResponseBodyWithTimeout(cloned)
+}
+
+function postNetworkBody(
+  win: Window, url: string, method: string, response: Response,
+  contentType: string, requestBody: BodyInit | null | undefined, duration: number,
+  truncResp: string, truncReq: string | null
+): void {
+  const message: NetworkBodyPostMessage = {
+    type: 'GASOLINE_NETWORK_BODY',
+    payload: {
+      url, method, status: response.status, contentType,
+      requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
+      responseBody: truncResp,
+      duration
+    }
+  }
+  win.postMessage(message, window.location.origin)
+}
+
 export function wrapFetchWithBodies(fetchFn: FetchLike): FetchLike {
   return async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const { url, method, requestBody } = extractFetchInfo(input, init)
+    if (!shouldCaptureUrl(url)) return fetchFn(input, init)
+
     const startTime = Date.now()
-
-    // Extract URL and method
-    let url = ''
-    let method = 'GET'
-    let requestBody: BodyInit | null | undefined = null
-
-    if (typeof input === 'string') {
-      url = input
-    } else if (input && (input as unknown as Request).url) {
-      url = (input as unknown as Request).url
-      method = (input as unknown as Request).method || 'GET'
-    }
-
-    if (init) {
-      method = init.method || method
-      requestBody = init.body || null
-    }
-
-    // Skip gasoline server requests
-    if (!shouldCaptureUrl(url)) {
-      return fetchFn(input, init)
-    }
-
-    // Call original fetch
     const response = await fetchFn(input, init)
     const duration = Date.now() - startTime
-
-    // Capture body asynchronously (don't block return)
     const contentType = response.headers?.get?.('content-type') || ''
     const cloned = response.clone ? response.clone() : null
-    // Capture window reference now so deferred callback posts to correct target
     const win = typeof window !== 'undefined' ? window : null
 
     Promise.resolve()
       .then(async () => {
         try {
-          let responseBody = ''
-          if (cloned) {
-            if (BINARY_CONTENT_TYPES.test(contentType)) {
-              const blob = await cloned.blob()
-              responseBody = `[Binary: ${blob.size} bytes, ${contentType}]`
-            } else {
-              responseBody = await readResponseBodyWithTimeout(cloned)
-            }
-          }
-
+          const responseBody = await readCapturedBody(url, cloned, contentType)
           const { body: truncResp } = truncateResponseBody(responseBody)
-          const { body: truncReq } = truncateRequestBody(typeof requestBody === 'string' ? requestBody : null)
-
+          const rawReq = SENSITIVE_URL_PATTERNS.test(url) ? '[REDACTED: auth endpoint]' : (typeof requestBody === 'string' ? requestBody : null)
+          const { body: truncReq } = truncateRequestBody(rawReq)
           if (win && networkBodyCaptureEnabled) {
-            const message: NetworkBodyPostMessage = {
-              type: 'GASOLINE_NETWORK_BODY',
-              payload: {
-                url,
-                method,
-                status: response.status,
-                contentType,
-                requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
-                responseBody: truncResp || responseBody,
-                duration,
-              },
-            }
-            win.postMessage(message, window.location.origin)
+            postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp || responseBody, truncReq)
           }
-        } catch {
-          // Body capture failure should not affect user code
-        }
+        } catch { /* Body capture failure should not affect user code */ }
       })
-      .catch((err: Error) => {
-        // Log but don't throw - body capture is best-effort
-        console.debug('[Gasoline] Network body capture error:', err)
-      })
+      .catch((err: Error) => { console.debug('[Gasoline] Network body capture error:', err) })
 
     return response
   }

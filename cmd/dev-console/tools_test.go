@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
 )
@@ -418,13 +419,15 @@ func TestToolsList(t *testing.T) {
 
 	tools := toolHandler.ToolsList()
 
-	if len(tools) != 4 {
-		t.Errorf("Expected 4 tools, got %d", len(tools))
+	if len(tools) != 5 {
+		t.Errorf("Expected 5 tools, got %d", len(tools))
 	}
 
 	// Check tool names
+	// Updated in Phase 0 to include new "analyze" tool for active analysis operations
 	expectedTools := map[string]bool{
 		"observe":   false,
+		"analyze":   false,
 		"generate":  false,
 		"configure": false,
 		"interact":  false,
@@ -546,7 +549,7 @@ func TestMcpStructuredError(t *testing.T) {
 // ============================================
 
 func TestToolCallLimiter_Allow(t *testing.T) {
-	limiter := NewToolCallLimiter(3, 1000) // 3 calls per second
+	limiter := NewToolCallLimiter(3, time.Second) // 3 calls per second
 
 	// First 3 calls should be allowed
 	for i := 0; i < 3; i++ {

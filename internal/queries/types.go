@@ -50,7 +50,7 @@ const (
 	DefaultQueryTimeout = 2 * time.Second
 
 	// AsyncCommandTimeout is the timeout for async commands (execute_js, browser actions).
-	// Longer timeout allows extension to pick up commands even with network jitter.
-	// These commands return immediately with correlation_id, so longer timeout doesn't block MCP.
-	AsyncCommandTimeout = 30 * time.Second
+	// Commands are queued and polled by the extension, then completed asynchronously.
+	// This timeout must be >= extension execution timeout to avoid premature expiration.
+	AsyncCommandTimeout = 60 * time.Second
 )

@@ -11,51 +11,51 @@ import assert from 'node:assert'
 const mockChrome = {
   runtime: {
     onMessage: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
     onInstalled: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.5.0' }),
+    getManifest: () => ({ version: '5.5.0' })
   },
   action: {
     setBadgeText: mock.fn(),
-    setBadgeBackgroundColor: mock.fn(),
+    setBadgeBackgroundColor: mock.fn()
   },
   storage: {
     local: {
       get: mock.fn((keys, callback) => callback({ logLevel: 'error' })),
-      set: mock.fn((data, callback) => callback && callback()),
+      set: mock.fn((data, callback) => callback && callback())
     },
     sync: {
       get: mock.fn((keys, callback) => callback({})),
-      set: mock.fn((data, callback) => callback && callback()),
+      set: mock.fn((data, callback) => callback && callback())
     },
     session: {
       get: mock.fn((keys, callback) => callback({})),
-      set: mock.fn((data, callback) => callback && callback()),
+      set: mock.fn((data, callback) => callback && callback())
     },
     onChanged: {
-      addListener: mock.fn(),
-    },
+      addListener: mock.fn()
+    }
   },
   alarms: {
     create: mock.fn(),
     onAlarm: {
-      addListener: mock.fn(),
-    },
+      addListener: mock.fn()
+    }
   },
   tabs: {
     get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
     captureVisibleTab: mock.fn(() =>
-      Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS'),
+      Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS')
     ),
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1 }])),
     onRemoved: {
-      addListener: mock.fn(),
-    },
-  },
+      addListener: mock.fn()
+    }
+  }
 }
 
 globalThis.chrome = mockChrome

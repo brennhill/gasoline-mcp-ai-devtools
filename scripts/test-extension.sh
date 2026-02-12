@@ -2,7 +2,7 @@
 # Test Gasoline extension connection and MCP tools
 # Run this script directly in your terminal (not through Claude Code)
 
-set -e
+set -euo pipefail
 
 cd "$(dirname "$0")/.."
 

@@ -12,6 +12,44 @@ import (
 	"github.com/dev-console/dev-console/internal/queries"
 )
 
+// interactHandler is the function signature for interact action handlers.
+type interactHandler func(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
+
+// interactDispatch returns the dispatch map for interact actions.
+// Initialized once via sync.Once; safe for concurrent use.
+func (h *ToolHandler) interactDispatch() map[string]interactHandler {
+	h.interactOnce.Do(func() {
+		h.interactHandlers = map[string]interactHandler{
+			"highlight":        h.handlePilotHighlight,
+			"save_state":       h.handlePilotManageStateSave,
+			"load_state":       h.handlePilotManageStateLoad,
+			"list_states":      h.handlePilotManageStateList,
+			"delete_state":     h.handlePilotManageStateDelete,
+			"execute_js":       h.handlePilotExecuteJS,
+			"navigate":         h.handleBrowserActionNavigate,
+			"refresh":          h.handleBrowserActionRefresh,
+			"back":             h.handleBrowserActionBack,
+			"forward":          h.handleBrowserActionForward,
+			"new_tab":          h.handleBrowserActionNewTab,
+			"subtitle":         h.handleSubtitle,
+			"list_interactive":  h.handleListInteractive,
+			"record_start":     h.handleRecordStart,
+			"record_stop":      h.handleRecordStop,
+			"upload":           h.handleUpload,
+			"draw_mode_start":  h.handleDrawModeStart,
+		}
+	})
+	return h.interactHandlers
+}
+
+// domPrimitiveActions is the set of actions routed to handleDOMPrimitive.
+var domPrimitiveActions = map[string]bool{
+	"click": true, "type": true, "select": true, "check": true,
+	"get_text": true, "get_value": true, "get_attribute": true,
+	"set_attribute": true, "focus": true, "scroll_to": true,
+	"wait_for": true, "key_press": true,
+}
+
 // recordAIAction records an AI-driven action to the enhanced actions buffer.
 // This allows distinguishing AI actions from human actions in observe(actions).
 func (h *ToolHandler) recordAIAction(actionType string, url string, details map[string]any) {
@@ -40,7 +78,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 
 	if params.Action == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: highlight, subtitle, execute_js, navigate, refresh, back, forward, new_tab, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive, save_state, load_state, list_states, delete_state, record_start, record_stop"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: highlight, subtitle, execute_js, navigate, refresh, back, forward, new_tab, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive, save_state, load_state, list_states, delete_state, record_start, record_stop, upload"))}
 	}
 
 	// Extract optional subtitle param (composable: works on any action)
@@ -49,57 +87,39 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 	lenientUnmarshal(args, &composableSubtitle)
 
-	var resp JSONRPCResponse
-	switch params.Action {
-	case "highlight":
-		resp = h.handlePilotHighlight(req, args)
-	case "save_state":
-		resp = h.handlePilotManageStateSave(req, args)
-	case "load_state":
-		resp = h.handlePilotManageStateLoad(req, args)
-	case "list_states":
-		resp = h.handlePilotManageStateList(req, args)
-	case "delete_state":
-		resp = h.handlePilotManageStateDelete(req, args)
-	case "execute_js":
-		resp = h.handlePilotExecuteJS(req, args)
-	case "navigate":
-		resp = h.handleBrowserActionNavigate(req, args)
-	case "refresh":
-		resp = h.handleBrowserActionRefresh(req, args)
-	case "back":
-		resp = h.handleBrowserActionBack(req, args)
-	case "forward":
-		resp = h.handleBrowserActionForward(req, args)
-	case "new_tab":
-		resp = h.handleBrowserActionNewTab(req, args)
-	case "subtitle":
-		resp = h.handleSubtitle(req, args)
-	case "click", "type", "select", "check", "get_text", "get_value",
-		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for", "key_press":
-		resp = h.handleDOMPrimitive(req, args, params.Action)
-	case "list_interactive":
-		resp = h.handleListInteractive(req, args)
-	case "record_start":
-		resp = h.handleRecordStart(req, args)
-	case "record_stop":
-		resp = h.handleRecordStop(req, args)
-	default:
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"))}
-	}
+	resp := h.dispatchInteractAction(req, args, params.Action)
 
-	// If a composable subtitle was provided on a non-subtitle action, queue it
-	if composableSubtitle.Subtitle != nil && params.Action != "subtitle" {
-		subtitleArgs, _ := json.Marshal(map[string]string{"text": *composableSubtitle.Subtitle})
-		subtitleQuery := queries.PendingQuery{
-			Type:          "subtitle",
-			Params:        subtitleArgs,
-			CorrelationID: fmt.Sprintf("subtitle_%d_%d", time.Now().UnixNano(), randomInt63()),
-		}
-		h.capture.CreatePendingQueryWithTimeout(subtitleQuery, queries.AsyncCommandTimeout, req.ClientID)
+	// If a composable subtitle was provided on a non-subtitle action, queue it.
+	// Only queue if the primary action didn't fail (avoid subtitle on error).
+	if composableSubtitle.Subtitle != nil && params.Action != "subtitle" && resp.Error == nil {
+		h.queueComposableSubtitle(req, *composableSubtitle.Subtitle)
 	}
 
 	return resp
+}
+
+// dispatchInteractAction routes an action to the correct handler using
+// the dispatch map for named actions and the DOM primitive set for DOM actions.
+func (h *ToolHandler) dispatchInteractAction(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
+	if handler, ok := h.interactDispatch()[action]; ok {
+		return handler(req, args)
+	}
+	if domPrimitiveActions[action] {
+		return h.handleDOMPrimitive(req, args, action)
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'action' enum", withParam("action"))}
+}
+
+// queueComposableSubtitle queues a subtitle command as a side effect of another action.
+func (h *ToolHandler) queueComposableSubtitle(req JSONRPCRequest, text string) {
+	// Error impossible: map contains only string values
+	subtitleArgs, _ := json.Marshal(map[string]string{"text": text})
+	subtitleQuery := queries.PendingQuery{
+		Type:          "subtitle",
+		Params:        subtitleArgs,
+		CorrelationID: fmt.Sprintf("subtitle_%d_%d", time.Now().UnixNano(), randomInt63()),
+	}
+	h.capture.CreatePendingQueryWithTimeout(subtitleQuery, queries.AsyncCommandTimeout, req.ClientID)
 }
 
 // ============================================
@@ -121,7 +141,7 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	}
 
 	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
 	// Queue highlight command for extension
@@ -211,15 +231,13 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter", withParam("snapshot_name"))}
 	}
 
-	// Ensure session store is initialized
 	if h.sessionStoreImpl == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	// Load state data
 	data, err := h.sessionStoreImpl.Load(stateNamespace, params.SnapshotName)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+params.SnapshotName, "Use list_states to see available states")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+params.SnapshotName, "Use interact with action='list_states' to see available snapshots", h.diagnosticHint())}
 	}
 
 	var stateData map[string]any
@@ -227,26 +245,10 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to parse state data", "Internal error — state may be corrupted")}
 	}
 
-	// If include_url is true and pilot is enabled, navigate to the saved URL
 	if params.IncludeURL {
-		if savedURL, ok := stateData["url"].(string); ok && savedURL != "" {
-			if h.capture.IsPilotEnabled() {
-				// Queue navigation command
-				correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
-				navArgs, _ := json.Marshal(map[string]any{"action": "navigate", "url": savedURL})
-				query := queries.PendingQuery{
-					Type:          "browser_action",
-					Params:        navArgs,
-					CorrelationID: correlationID,
-				}
-				h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
-				stateData["navigation_queued"] = true
-				stateData["correlation_id"] = correlationID
-			}
-		}
+		h.queueStateNavigation(req, stateData)
 	}
 
-	// Record AI action
 	h.recordAIAction("load_state", "", map[string]any{"snapshot_name": params.SnapshotName})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State loaded", map[string]any{
@@ -256,46 +258,64 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 	})}
 }
 
+// queueStateNavigation queues a navigation to the saved URL if pilot is enabled
+// and the state contains a non-empty URL. Mutates stateData to add tracking fields.
+func (h *ToolHandler) queueStateNavigation(req JSONRPCRequest, stateData map[string]any) {
+	savedURL, ok := stateData["url"].(string)
+	if !ok || savedURL == "" || !h.capture.IsPilotEnabled() {
+		return
+	}
+	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
+	// Error impossible: map contains only string values
+	navArgs, _ := json.Marshal(map[string]any{"action": "navigate", "url": savedURL})
+	query := queries.PendingQuery{
+		Type:          "browser_action",
+		Params:        navArgs,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	stateData["navigation_queued"] = true
+	stateData["correlation_id"] = correlationID
+}
+
 func (h *ToolHandler) handlePilotManageStateList(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Ensure session store is initialized
 	if h.sessionStoreImpl == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	// List all saved states
 	keys, err := h.sessionStoreImpl.List(stateNamespace)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to list states: "+err.Error(), "Internal error — do not retry")}
 	}
 
-	// Build state list with metadata
 	states := make([]map[string]any, 0, len(keys))
 	for _, key := range keys {
-		stateEntry := map[string]any{
-			"name": key,
-		}
-		// Try to load and extract metadata
-		if data, err := h.sessionStoreImpl.Load(stateNamespace, key); err == nil {
-			var stateData map[string]any
-			if json.Unmarshal(data, &stateData) == nil {
-				if url, ok := stateData["url"].(string); ok {
-					stateEntry["url"] = url
-				}
-				if title, ok := stateData["title"].(string); ok {
-					stateEntry["title"] = title
-				}
-				if savedAt, ok := stateData["saved_at"].(string); ok {
-					stateEntry["saved_at"] = savedAt
-				}
-			}
-		}
-		states = append(states, stateEntry)
+		states = append(states, h.buildStateEntry(key))
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("States listed", map[string]any{
 		"states": states,
 		"count":  len(states),
 	})}
+}
+
+// buildStateEntry loads metadata for a single saved state key and returns an entry map.
+func (h *ToolHandler) buildStateEntry(key string) map[string]any {
+	entry := map[string]any{"name": key}
+	data, err := h.sessionStoreImpl.Load(stateNamespace, key)
+	if err != nil {
+		return entry
+	}
+	var stateData map[string]any
+	if json.Unmarshal(data, &stateData) != nil {
+		return entry
+	}
+	for _, field := range []string{"url", "title", "saved_at"} {
+		if v, ok := stateData[field].(string); ok {
+			entry[field] = v
+		}
+	}
+	return entry
 }
 
 func (h *ToolHandler) handlePilotManageStateDelete(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -317,7 +337,7 @@ func (h *ToolHandler) handlePilotManageStateDelete(req JSONRPCRequest, args json
 
 	// Delete the state
 	if err := h.sessionStoreImpl.Delete(stateNamespace, params.SnapshotName); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+params.SnapshotName, "Use list_states to see available states")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+params.SnapshotName, "Use interact with action='list_states' to see available snapshots", h.diagnosticHint())}
 	}
 
 	// Record AI action
@@ -329,8 +349,12 @@ func (h *ToolHandler) handlePilotManageStateDelete(req JSONRPCRequest, args json
 	})}
 }
 
+// validWorldValues is the set of accepted values for the execute_js 'world' parameter.
+var validWorldValues = map[string]bool{
+	"auto": true, "main": true, "isolated": true,
+}
+
 func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Parse parameters
 	var params struct {
 		Script    string `json:"script"`
 		TimeoutMs int    `json:"timeout_ms,omitempty"`
@@ -345,23 +369,19 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'script' is missing", "Add the 'script' parameter and call again", withParam("script"))}
 	}
 
-	// Validate world parameter: auto (default), main, isolated
 	if params.World == "" {
 		params.World = "auto"
 	}
-	if params.World != "auto" && params.World != "main" && params.World != "isolated" {
+	if !validWorldValues[params.World] {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'world' value: "+params.World, "Use 'auto' (default, tries main then isolated), 'main' (page JS access), or 'isolated' (bypasses CSP, DOM only)", withParam("world"))}
 	}
 
-	// Check if pilot is enabled
 	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", withHint("Click the extension icon and toggle 'AI Web Pilot' on"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
-	// Generate correlation ID for async tracking
 	correlationID := fmt.Sprintf("exec_%d_%d", time.Now().UnixNano(), randomInt63())
 
-	// Queue command for extension to pick up (use long timeout for async commands)
 	query := queries.PendingQuery{
 		Type:          "execute",
 		Params:        args,
@@ -370,14 +390,8 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	// Record AI action (truncate script preview)
-	scriptPreview := params.Script
-	if len(scriptPreview) > 100 {
-		scriptPreview = scriptPreview[:100] + "..."
-	}
-	h.recordAIAction("execute_js", "", map[string]any{"script_preview": scriptPreview})
+	h.recordAIAction("execute_js", "", map[string]any{"script_preview": truncateToLen(params.Script, 100)})
 
-	// Return immediately with "queued" status
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Command queued", map[string]any{
 		"status":         "queued",
 		"correlation_id": correlationID,
@@ -385,8 +399,15 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 	})}
 }
 
+// truncatePreview returns s unchanged if shorter than maxLen, otherwise truncates with "...".
+func truncateToLen(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
+}
+
 func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Parse parameters
 	var params struct {
 		URL   string `json:"url"`
 		TabID int    `json:"tab_id,omitempty"`
@@ -399,15 +420,12 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'url' is missing", "Add the 'url' parameter and call again", withParam("url"))}
 	}
 
-	// Check if pilot is enabled
 	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
-	// Generate correlation ID
 	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
 
-	// Queue command
 	query := queries.PendingQuery{
 		Type:          "browser_action",
 		Params:        args,
@@ -416,7 +434,6 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	// Record AI action
 	h.recordAIAction("navigate", params.URL, map[string]any{"target_url": params.URL})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Navigate queued", map[string]any{
@@ -427,7 +444,6 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 }
 
 func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Parse parameters
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
@@ -436,18 +452,12 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 	}
 
 	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
 	correlationID := fmt.Sprintf("refresh_%d_%d", time.Now().UnixNano(), randomInt63())
 
-	// Stash current perf snapshot as "before" for perf_diff computation
-	_, _, trackedURL := h.capture.GetTrackingStatus()
-	if u, err := url.Parse(trackedURL); err == nil && u.Path != "" {
-		if snap, ok := h.capture.GetPerformanceSnapshotByURL(u.Path); ok {
-			h.capture.StoreBeforeSnapshot(correlationID, snap)
-		}
-	}
+	h.stashPerfSnapshot(correlationID)
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -457,7 +467,6 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	// Record AI action
 	h.recordAIAction("refresh", "", nil)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Refresh queued", map[string]any{
@@ -467,9 +476,22 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 	})}
 }
 
+// stashPerfSnapshot saves the current performance snapshot as a "before" baseline
+// for perf_diff computation, keyed by correlation ID.
+func (h *ToolHandler) stashPerfSnapshot(correlationID string) {
+	_, _, trackedURL := h.capture.GetTrackingStatus()
+	u, err := url.Parse(trackedURL)
+	if err != nil || u.Path == "" {
+		return
+	}
+	if snap, ok := h.capture.GetPerformanceSnapshotByURL(u.Path); ok {
+		h.capture.StoreBeforeSnapshot(correlationID, snap)
+	}
+}
+
 func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
 	correlationID := fmt.Sprintf("back_%d_%d", time.Now().UnixNano(), randomInt63())
@@ -481,7 +503,6 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	// Record AI action
 	h.recordAIAction("back", "", nil)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Back queued", map[string]any{
@@ -492,7 +513,7 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 
 func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
 	correlationID := fmt.Sprintf("forward_%d_%d", time.Now().UnixNano(), randomInt63())
@@ -504,7 +525,6 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	// Record AI action
 	h.recordAIAction("forward", "", nil)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Forward queued", map[string]any{
@@ -514,7 +534,6 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 }
 
 func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Parse parameters
 	var params struct {
 		URL string `json:"url"`
 	}
@@ -523,7 +542,7 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 	}
 
 	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
 	correlationID := fmt.Sprintf("newtab_%d_%d", time.Now().UnixNano(), randomInt63())
@@ -535,7 +554,6 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	// Record AI action
 	h.recordAIAction("new_tab", params.URL, map[string]any{"target_url": params.URL})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("New tab queued", map[string]any{
@@ -549,6 +567,18 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 // These use chrome.scripting.executeScript with func parameter
 // to bypass CSP restrictions on pages like Gmail.
 // ============================================
+
+// domActionRequiredParams maps DOM actions to their required parameter name and error guidance.
+var domActionRequiredParams = map[string]struct {
+	field   string
+	message string
+	retry   string
+}{
+	"type":          {"text", "Required parameter 'text' is missing for type action", "Add the 'text' parameter with the text to type"},
+	"select":        {"value", "Required parameter 'value' is missing for select action", "Add the 'value' parameter with the option value to select"},
+	"get_attribute": {"name", "Required parameter 'name' is missing for get_attribute action", "Add the 'name' parameter with the attribute name"},
+	"set_attribute": {"name", "Required parameter 'name' is missing for set_attribute action", "Add the 'name' parameter with the attribute name"},
+}
 
 func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
 	var params struct {
@@ -565,29 +595,16 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	// All DOM primitives require selector
 	if params.Selector == "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing", "Add the 'selector' parameter. Supports CSS selectors or semantic: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close", withParam("selector"))}
 	}
 
-	// Action-specific required param validation
-	switch action {
-	case "type":
-		if params.Text == "" {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'text' is missing for type action", "Add the 'text' parameter with the text to type", withParam("text"))}
-		}
-	case "select":
-		if params.Value == "" {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'value' is missing for select action", "Add the 'value' parameter with the option value to select", withParam("value"))}
-		}
-	case "get_attribute", "set_attribute":
-		if params.Name == "" {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'name' is missing for "+action+" action", "Add the 'name' parameter with the attribute name", withParam("name"))}
-		}
+	if errResp, failed := validateDOMActionParams(req, action, params.Text, params.Value, params.Name); failed {
+		return errResp
 	}
 
 	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
 	correlationID := fmt.Sprintf("dom_%s_%d_%d", action, time.Now().UnixNano(), randomInt63())
@@ -607,6 +624,28 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		"correlation_id": correlationID,
 		"message":        "DOM action queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to check status.",
 	})}
+}
+
+// validateDOMActionParams checks action-specific required parameters.
+// Returns (response, true) if validation failed, or (zero, false) if valid.
+func validateDOMActionParams(req JSONRPCRequest, action, text, value, name string) (JSONRPCResponse, bool) {
+	rule, ok := domActionRequiredParams[action]
+	if !ok {
+		return JSONRPCResponse{}, false
+	}
+	var paramValue string
+	switch rule.field {
+	case "text":
+		paramValue = text
+	case "value":
+		paramValue = value
+	case "name":
+		paramValue = name
+	}
+	if paramValue == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, rule.message, rule.retry, withParam(rule.field))}, true
+	}
+	return JSONRPCResponse{}, false
 }
 
 func (h *ToolHandler) handleSubtitle(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -652,7 +691,7 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 	}
 
 	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
 	correlationID := fmt.Sprintf("dom_list_%d_%d", time.Now().UnixNano(), randomInt63())

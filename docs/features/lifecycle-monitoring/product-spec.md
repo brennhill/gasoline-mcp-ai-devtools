@@ -26,7 +26,7 @@ When debugging production issues, operators need to understand:
 1. **Startup Events**
    - Log: `startup` with version, PID, port, go_version, os, arch, timestamp
    - Log: `loading_settings` when restoring pilot/tracking state
-   - Log: `mcp_sse_ready` when MCP transport ready
+   - Log: `mcp_transport_ready` when MCP transport ready
    - Log: `pid_file_error` if PID file creation fails (non-fatal)
 
 2. **Shutdown Events**
@@ -80,7 +80,7 @@ All lifecycle events share common structure:
 | `circuit_closed` | previous_reason, open_duration_secs, memory_bytes, rate |
 | `extension_connected` | session_id, is_reconnect, disconnect_seconds |
 | `loading_settings` | (no additional fields) |
-| `mcp_sse_ready` | (no additional fields) |
+| `mcp_transport_ready` | (no additional fields) |
 | `pid_file_error` | error |
 
 ## Edge Cases

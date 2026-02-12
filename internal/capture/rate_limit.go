@@ -58,6 +58,6 @@ func (c *Capture) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	health := c.GetHealthStatus()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	//nolint:errcheck -- HTTP response encoding errors are logged by client
+	//nolint:errcheck // HTTP response encoding errors are logged by client
 	_ = json.NewEncoder(w).Encode(health)
 }

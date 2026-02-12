@@ -12,7 +12,7 @@ version: 5.2.0
 
 When users call `observe()` to retrieve browser telemetry, the response does not include a `tabId` field, making it impossible to filter or correlate data by browser tab. The extension's content script attaches `tabId` to captured events, but the server doesn't forward it in MCP responses.
 
-**Current User Experience:**
+### Current User Experience:
 1. User has multiple tabs open with Gasoline extension
 2. User calls `observe({what: "errors"})` to get console errors
 3. Response contains errors from all tabs, but no `tabId` field
@@ -26,7 +26,7 @@ When users call `observe()` to retrieve browser telemetry, the response does not
 
 Modify the server's MCP response handlers to include `tabId` in all telemetry entries. This applies to all observe modes (errors, logs, network_waterfall, network_bodies, websocket_events, etc.) and relevant generate outputs.
 
-**Fixed User Experience:**
+### Fixed User Experience:
 1. User has multiple tabs open
 2. User calls `observe({what: "errors"})`
 3. Response includes `tabId` for each error entry
@@ -64,14 +64,14 @@ Modify the server's MCP response handlers to include `tabId` in all telemetry en
 
 ## User Workflow
 
-**Before Fix:**
+### Before Fix:
 1. User opens 3 tabs: Tab A (id: 101), Tab B (id: 102), Tab C (id: 103)
 2. Each tab generates errors
 3. User calls `observe({what: "errors"})`
 4. Receives errors from all tabs mixed together
 5. Cannot identify which error is from which tab
 
-**After Fix:**
+### After Fix:
 1. User opens 3 tabs: Tab A (id: 101), Tab B (id: 102), Tab C (id: 103)
 2. Each tab generates errors
 3. User calls `observe({what: "errors"})`
@@ -83,7 +83,7 @@ Modify the server's MCP response handlers to include `tabId` in all telemetry en
 
 ### Example 1: Errors with tabId
 
-**Request:**
+#### Request:
 ```json
 {
   "tool": "observe",
@@ -93,7 +93,7 @@ Modify the server's MCP response handlers to include `tabId` in all telemetry en
 }
 ```
 
-**Before Fix Response:**
+#### Before Fix Response:
 ```json
 {
   "entries": [
@@ -113,7 +113,7 @@ Modify the server's MCP response handlers to include `tabId` in all telemetry en
 }
 ```
 
-**After Fix Response:**
+#### After Fix Response:
 ```json
 {
   "entries": [
@@ -140,7 +140,7 @@ Modify the server's MCP response handlers to include `tabId` in all telemetry en
 
 ### Example 2: Filter by tabId
 
-**Request:**
+#### Request:
 ```json
 {
   "tool": "observe",
@@ -151,7 +151,7 @@ Modify the server's MCP response handlers to include `tabId` in all telemetry en
 }
 ```
 
-**Response:**
+#### Response:
 ```json
 {
   "entries": [
@@ -173,7 +173,7 @@ Modify the server's MCP response handlers to include `tabId` in all telemetry en
 
 ### Example 3: Currently Tracked Tab Metadata
 
-**Request:**
+#### Request:
 ```json
 {
   "tool": "observe",
@@ -183,7 +183,7 @@ Modify the server's MCP response handlers to include `tabId` in all telemetry en
 }
 ```
 
-**Response:**
+#### Response:
 ```json
 {
   "url": "https://example.com",

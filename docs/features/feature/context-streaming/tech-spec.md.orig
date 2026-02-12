@@ -11,12 +11,12 @@ status: proposed
 
 Context Streaming transforms Gasoline from a pull-based system (AI polls for data) to a push-based system (server pushes events as they occur). This reduces latency and enables real-time AI responses to browser events.
 
-**Current model (pull-based):**
+### Current model (pull-based):
 ```
 Event occurs → Captured → Stored in ring buffer → AI polls observe() → Retrieves data (2-10s latency)
 ```
 
-**New model (push-based):**
+### New model (push-based):
 ```
 Event occurs → Captured → Server pushes notification to AI → AI receives immediately (< 100ms latency)
 ```
@@ -29,13 +29,13 @@ The push mechanism uses MCP notifications (JSON-RPC 2.0 `notifications/message` 
 
 **Purpose:** Enable/disable streaming, subscribe to event types, set filters.
 
-**Inputs:**
+#### Inputs:
 - action: "streaming"
 - enabled (boolean) — Turn streaming on/off
 - subscribe (array of event types) — Which events to stream
 - filters (object) — Criteria for what to stream (severity, URLs, patterns)
 
-**Event types:**
+#### Event types:
 - `error` — Console errors and exceptions
 - `network_failure` — 4xx/5xx HTTP responses
 - `network_slow` — Requests exceeding performance budget
@@ -45,13 +45,13 @@ The push mechanism uses MCP notifications (JSON-RPC 2.0 `notifications/message` 
 - `accessibility_violation` — a11y audit failures (if running)
 - `all` — All event types (use with caution, high volume)
 
-**Filters:**
+#### Filters:
 - severity (enum: critical, high, medium, low) — Minimum severity for errors
 - url_pattern (regex) — Only stream events matching URL pattern
 - exclude_pattern (regex) — Exclude events matching pattern (noise filtering)
 - rate_limit (integer) — Max events per second (prevent flood)
 
-**Example request:**
+#### Example request:
 ```json
 {
   "tool": "configure",
@@ -74,7 +74,7 @@ The push mechanism uses MCP notifications (JSON-RPC 2.0 `notifications/message` 
 
 **Direction:** Server → Client (one-way, no response expected)
 
-**Format:**
+#### Format:
 ```json
 {
   "jsonrpc": "2.0",
@@ -95,7 +95,7 @@ The push mechanism uses MCP notifications (JSON-RPC 2.0 `notifications/message` 
 }
 ```
 
-**MCP notifications:**
+#### MCP notifications:
 - Sent over stdio (same channel as requests/responses)
 - No response required (fire-and-forget)
 - Order not guaranteed (TCP guarantees delivery but not processing order)
@@ -105,7 +105,7 @@ The push mechanism uses MCP notifications (JSON-RPC 2.0 `notifications/message` 
 
 **Purpose:** Monitor ring buffers, detect new events, send notifications to subscribed clients.
 
-**Architecture:**
+#### Architecture:
 - Background goroutine runs on server startup (when streaming enabled)
 - Watches ring buffer writes (triggered on POST /logs, /network-bodies, etc.)
 - For each new entry, checks if it matches any client subscriptions
@@ -113,12 +113,12 @@ The push mechanism uses MCP notifications (JSON-RPC 2.0 `notifications/message` 
 - Applies filters (severity, URL pattern, rate limits) before sending
 - Maintains per-client subscription state (what they subscribed to, filters)
 
-**Concurrency:**
+#### Concurrency:
 - Uses sync.RWMutex for subscription state
 - Event dispatch is async (doesn't block ring buffer writes)
 - If notification send fails (client disconnected), unsubscribe automatically
 
-**Rate limiting:**
+#### Rate limiting:
 - Tracks events per second per client
 - If rate limit exceeded, queue events or drop (configurable)
 - Sends "rate_limit_exceeded" notification when throttling occurs
@@ -127,7 +127,7 @@ The push mechanism uses MCP notifications (JSON-RPC 2.0 `notifications/message` 
 
 **Purpose:** Determine if an event matches a client's subscription and filters.
 
-**Matching logic:**
+#### Matching logic:
 1. Check event_type against client's subscribe array
 2. If subscribed, check severity threshold (error severity >= client min severity)
 3. If severity passes, check URL pattern (regex match against event.url)
@@ -136,7 +136,7 @@ The push mechanism uses MCP notifications (JSON-RPC 2.0 `notifications/message` 
 6. Check rate limit (events sent to this client in last second)
 7. If under rate limit, dispatch notification; else queue or drop
 
-**Performance:**
+#### Performance:
 - Event matching is O(N) where N = number of subscribed clients (typically 1 in single-user mode)
 - Regex evaluation cached (compiled patterns stored per client)
 - Target < 1ms per event matching
@@ -145,14 +145,14 @@ The push mechanism uses MCP notifications (JSON-RPC 2.0 `notifications/message` 
 
 **Purpose:** Track which clients are subscribed, their filters, and connection state.
 
-**State stored per client:**
+#### State stored per client:
 - client_id (derived from stdio connection or session token)
 - subscriptions (array of event types)
 - filters (severity, URL patterns, rate limit)
 - last_notification_sent (timestamp for rate limiting)
 - event_count_this_second (counter for rate limiting)
 
-**Lifecycle:**
+#### Lifecycle:
 - Client subscribes: configure({action: "streaming", enabled: true}) → Server creates subscription state
 - Client unsubscribes: configure({action: "streaming", enabled: false}) → Server removes subscription state
 - Client disconnects: Server detects broken pipe → removes subscription state

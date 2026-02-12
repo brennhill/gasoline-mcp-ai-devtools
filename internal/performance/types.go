@@ -34,13 +34,13 @@ type UserTimingEntry struct {
 
 // PerformanceTiming holds navigation timing metrics
 type PerformanceTiming struct {
-	DomContentLoaded       float64  `json:"dom_content_loaded"`              // snake_case (from browser PerformanceTiming)
-	Load                   float64  `json:"load"`                          // snake_case (from browser PerformanceTiming)
-	FirstContentfulPaint   *float64 `json:"first_contentful_paint"`          // snake_case (from browser PerformancePaintTiming)
-	LargestContentfulPaint *float64 `json:"largest_contentful_paint"`        // snake_case (from browser LargestContentfulPaint)
-	InteractionToNextPaint *float64 `json:"interaction_to_next_paint,omitempty"` // snake_case (from browser EventTiming)
-	TimeToFirstByte        float64  `json:"time_to_first_byte"`               // snake_case (from browser PerformanceTiming)
-	DomInteractive         float64  `json:"dom_interactive"`                // snake_case (from browser PerformanceTiming)
+	DomContentLoaded       float64  `json:"domContentLoaded"`              // camelCase (from browser PerformanceTiming)
+	Load                   float64  `json:"load"`                          // camelCase (from browser PerformanceTiming)
+	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`          // camelCase (from browser PerformancePaintTiming)
+	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`        // camelCase (from browser LargestContentfulPaint)
+	InteractionToNextPaint *float64 `json:"interactionToNextPaint,omitempty"` // camelCase (from browser EventTiming)
+	TimeToFirstByte        float64  `json:"timeToFirstByte"`               // camelCase (from browser PerformanceTiming)
+	DomInteractive         float64  `json:"domInteractive"`                // camelCase (from browser PerformanceTiming)
 }
 
 // NetworkSummary holds aggregated network resource metrics
@@ -86,12 +86,12 @@ type PerformanceBaseline struct {
 
 // BaselineTiming holds averaged timing metrics
 type BaselineTiming struct {
-	DomContentLoaded       float64  `json:"dom_content_loaded"`              // snake_case (from browser PerformanceTiming)
-	Load                   float64  `json:"load"`                          // snake_case (from browser PerformanceTiming)
-	FirstContentfulPaint   *float64 `json:"first_contentful_paint"`          // snake_case (from browser PerformancePaintTiming)
-	LargestContentfulPaint *float64 `json:"largest_contentful_paint"`        // snake_case (from browser LargestContentfulPaint)
-	TimeToFirstByte        float64  `json:"time_to_first_byte"`               // snake_case (from browser PerformanceTiming)
-	DomInteractive         float64  `json:"dom_interactive"`                // snake_case (from browser PerformanceTiming)
+	DomContentLoaded       float64  `json:"domContentLoaded"`              // camelCase (from browser PerformanceTiming)
+	Load                   float64  `json:"load"`                          // camelCase (from browser PerformanceTiming)
+	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`          // camelCase (from browser PerformancePaintTiming)
+	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`        // camelCase (from browser LargestContentfulPaint)
+	TimeToFirstByte        float64  `json:"timeToFirstByte"`               // camelCase (from browser PerformanceTiming)
+	DomInteractive         float64  `json:"domInteractive"`                // camelCase (from browser PerformanceTiming)
 }
 
 // BaselineNetwork holds averaged network metrics

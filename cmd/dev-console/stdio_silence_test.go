@@ -49,7 +49,7 @@ func TestStdioSilence_NormalConnection(t *testing.T) {
 	}
 
 	// Spawn server like MCP client would
-	cmd := exec.Command(binary, "--port", strconv.Itoa(port))
+	cmd := startServerCmd(binary, "--port", strconv.Itoa(port))
 
 	// Capture stdout and stderr separately
 	var stdout, stderr bytes.Buffer
@@ -158,7 +158,7 @@ func TestStdioSilence_NormalConnection(t *testing.T) {
 
 	if nonEmptyLines > 0 {
 		t.Errorf("INVARIANT VIOLATION: Expected 0 stderr lines during normal operation, got %d", nonEmptyLines)
-		t.Errorf("All logs should go to ~/gasoline-wrapper.log or ~/gasoline-logs.jsonl")
+		t.Errorf("All logs should go to runtime state logs or wrapper logs, not stderr")
 	}
 
 	t.Logf("✅ Stdio silence invariant verified: 0 stderr lines, stdout is JSON-RPC only")
@@ -186,7 +186,7 @@ func TestStdioSilence_MultiClientSpawn(t *testing.T) {
 			t.Fatalf("Failed to get binary path: %v", err)
 		}
 
-		cmd := exec.Command(binary, "--port", strconv.Itoa(port))
+		cmd := startServerCmd(binary, "--port", strconv.Itoa(port))
 
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
@@ -266,7 +266,7 @@ func TestStdioSilence_ConnectionRetry(t *testing.T) {
 	}
 
 	// Start server
-	serverCmd := exec.Command(binary, "--port", strconv.Itoa(port))
+	serverCmd := startServerCmd(binary, "--port", strconv.Itoa(port))
 	serverStdin, _ := serverCmd.StdinPipe()
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -280,7 +280,7 @@ func TestStdioSilence_ConnectionRetry(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Now start a client - it will need to retry connection
-	clientCmd := exec.Command(binary, "--port", strconv.Itoa(port))
+	clientCmd := startServerCmd(binary, "--port", strconv.Itoa(port))
 
 	var stderr bytes.Buffer
 	clientCmd.Stderr = &stderr
@@ -340,6 +340,7 @@ func TestStdioSilence_ConnectionRetry(t *testing.T) {
 
 // Helper to kill server on port
 func killServerOnPort(t *testing.T, port int) {
+	t.Helper()
 	cmd := exec.Command("lsof", "-ti", strconv.Itoa(port))
 	if output, err := cmd.Output(); err == nil {
 		pids := strings.TrimSpace(string(output))

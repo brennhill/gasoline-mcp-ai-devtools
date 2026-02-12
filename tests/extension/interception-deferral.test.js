@@ -25,13 +25,13 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
       warn: mock.fn(),
       error: mock.fn(),
       info: mock.fn(),
-      debug: mock.fn(),
+      debug: mock.fn()
     }
     globalThis.performance = {
       now: mock.fn(() => 42.5),
       mark: mock.fn((name) => ({ name, startTime: 42.5, duration: 0 })),
       measure: mock.fn((name) => ({ name, startTime: 42.5, duration: 0 })),
-      getEntriesByType: mock.fn(() => []),
+      getEntriesByType: mock.fn(() => [])
     }
     globalThis.PerformanceObserver = class MockPerfObserver {
       constructor(cb) {
@@ -50,20 +50,24 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
     delete globalThis.PerformanceObserver
   })
 
-  test('Phase 1 should install window.__gasoline API', { skip: 'installGasolineAPI has double-install guard — module state persists across tests' }, async () => {
-    const { installPhase1 } = await import('../../extension/inject.js')
+  test(
+    'Phase 1 should install window.__gasoline API',
+    { skip: 'installGasolineAPI has double-install guard — module state persists across tests' },
+    async () => {
+      const { installPhase1 } = await import('../../extension/inject.js')
 
-    // Ensure clean state
-    delete globalThis.window.__gasoline
+      // Ensure clean state
+      delete globalThis.window.__gasoline
 
-    installPhase1()
+      installPhase1()
 
-    assert.ok(globalThis.window.__gasoline, 'Phase 1 should install __gasoline API')
-    assert.ok(globalThis.window.__gasoline.version, 'API should have version')
+      assert.ok(globalThis.window.__gasoline, 'Phase 1 should install __gasoline API')
+      assert.ok(globalThis.window.__gasoline.version, 'API should have version')
 
-    // Cleanup
-    delete globalThis.window.__gasoline
-  })
+      // Cleanup
+      delete globalThis.window.__gasoline
+    }
+  )
 
   test('Phase 1 should record injection timestamp', async () => {
     const { installPhase1, getDeferralState } = await import('../../extension/inject.js')
@@ -123,28 +127,32 @@ describe('Interception Deferral: Phase 1 (Immediate)', () => {
     delete globalThis.window.__gasoline
   })
 
-  test('Phase 1 should install PerformanceObservers (FCP, LCP, CLS)', { skip: 'installPerfObservers has double-install guard — module state persists across tests' }, async () => {
-    const { installPhase1 } = await import('../../extension/inject.js')
+  test(
+    'Phase 1 should install PerformanceObservers (FCP, LCP, CLS)',
+    { skip: 'installPerfObservers has double-install guard — module state persists across tests' },
+    async () => {
+      const { installPhase1 } = await import('../../extension/inject.js')
 
-    let observerCount = 0
-    globalThis.PerformanceObserver = class MockPerfObserver {
-      constructor(cb) {
-        this.cb = cb
+      let observerCount = 0
+      globalThis.PerformanceObserver = class MockPerfObserver {
+        constructor(cb) {
+          this.cb = cb
+        }
+        observe() {
+          observerCount++
+        }
+        disconnect() {}
       }
-      observe() {
-        observerCount++
-      }
-      disconnect() {}
+
+      installPhase1()
+
+      // installPerfObservers creates observers for longtask, paint, LCP, CLS
+      assert.ok(observerCount >= 3, `Expected at least 3 PerformanceObservers, got ${observerCount}`)
+
+      // Cleanup
+      delete globalThis.window.__gasoline
     }
-
-    installPhase1()
-
-    // installPerfObservers creates observers for longtask, paint, LCP, CLS
-    assert.ok(observerCount >= 3, `Expected at least 3 PerformanceObservers, got ${observerCount}`)
-
-    // Cleanup
-    delete globalThis.window.__gasoline
-  })
+  )
 
   test('Phase 1 should set phase2Installed to false', async () => {
     const { installPhase1, getDeferralState } = await import('../../extension/inject.js')
@@ -171,13 +179,13 @@ describe('Interception Deferral: Phase 2 (Deferred)', () => {
       warn: mock.fn(),
       error: mock.fn(),
       info: mock.fn(),
-      debug: mock.fn(),
+      debug: mock.fn()
     }
     globalThis.performance = {
       now: mock.fn(() => 150.0),
       mark: mock.fn((name) => ({ name, startTime: 150.0, duration: 0 })),
       measure: mock.fn((name) => ({ name, startTime: 150.0, duration: 0 })),
-      getEntriesByType: mock.fn(() => []),
+      getEntriesByType: mock.fn(() => [])
     }
     globalThis.PerformanceObserver = class MockPerfObserver {
       constructor(cb) {
@@ -261,13 +269,13 @@ describe('Interception Deferral: Deferral Logic', () => {
       warn: mock.fn(),
       error: mock.fn(),
       info: mock.fn(),
-      debug: mock.fn(),
+      debug: mock.fn()
     }
     globalThis.performance = {
       now: mock.fn(() => 10.0),
       mark: mock.fn((name) => ({ name, startTime: 10.0, duration: 0 })),
       measure: mock.fn((name) => ({ name, startTime: 10.0, duration: 0 })),
-      getEntriesByType: mock.fn(() => []),
+      getEntriesByType: mock.fn(() => [])
     }
     globalThis.PerformanceObserver = class MockPerfObserver {
       constructor(cb) {
@@ -300,7 +308,7 @@ describe('Interception Deferral: Deferral Logic', () => {
     assert.strictEqual(
       getDeferralState().phase2Installed,
       false,
-      'Phase 2 should not install immediately when deferral is enabled',
+      'Phase 2 should not install immediately when deferral is enabled'
     )
 
     // Find the load event listener that was registered
@@ -334,7 +342,7 @@ describe('Interception Deferral: Deferral Logic', () => {
     assert.strictEqual(
       getDeferralState().phase2Installed,
       true,
-      'Phase 2 should install immediately when deferral is disabled',
+      'Phase 2 should install immediately when deferral is disabled'
     )
 
     uninstall()
@@ -356,7 +364,7 @@ describe('Interception Deferral: Deferral Logic', () => {
     assert.strictEqual(
       getDeferralState().phase2Installed,
       false,
-      'Phase 2 should wait 100ms even when readyState=complete',
+      'Phase 2 should wait 100ms even when readyState=complete'
     )
 
     // Wait for the 100ms setTimeout
@@ -365,7 +373,7 @@ describe('Interception Deferral: Deferral Logic', () => {
     assert.strictEqual(
       getDeferralState().phase2Installed,
       true,
-      'Phase 2 should install 100ms after detecting readyState=complete',
+      'Phase 2 should install 100ms after detecting readyState=complete'
     )
 
     uninstall()
@@ -428,7 +436,7 @@ describe('Interception Deferral: Deferral Logic', () => {
 
     // postMessage should not have been called with a GASOLINE_LOG for this
     const gasolineLogs = globalThis.window.postMessage.mock.calls.filter(
-      (call) => call.arguments[0]?.type === 'GASOLINE_LOG',
+      (call) => call.arguments[0]?.type === 'GASOLINE_LOG'
     )
     assert.strictEqual(gasolineLogs.length, 0, 'Console logs before Phase 2 should not be captured')
 
@@ -473,13 +481,13 @@ describe('Interception Deferral: State Management', () => {
       warn: mock.fn(),
       error: mock.fn(),
       info: mock.fn(),
-      debug: mock.fn(),
+      debug: mock.fn()
     }
     globalThis.performance = {
       now: mock.fn(() => 50.0),
       mark: mock.fn((name) => ({ name, startTime: 50.0, duration: 0 })),
       measure: mock.fn((name) => ({ name, startTime: 50.0, duration: 0 })),
-      getEntriesByType: mock.fn(() => []),
+      getEntriesByType: mock.fn(() => [])
     }
     globalThis.PerformanceObserver = class MockPerfObserver {
       constructor(cb) {
@@ -555,13 +563,13 @@ describe('Interception Deferral: GASOLINE_SETTING integration', () => {
       warn: mock.fn(),
       error: mock.fn(),
       info: mock.fn(),
-      debug: mock.fn(),
+      debug: mock.fn()
     }
     globalThis.performance = {
       now: mock.fn(() => 5.0),
       mark: mock.fn((name) => ({ name, startTime: 5.0, duration: 0 })),
       measure: mock.fn((name) => ({ name, startTime: 5.0, duration: 0 })),
-      getEntriesByType: mock.fn(() => []),
+      getEntriesByType: mock.fn(() => [])
     }
     globalThis.PerformanceObserver = class MockPerfObserver {
       constructor(cb) {

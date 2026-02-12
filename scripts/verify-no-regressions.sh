@@ -1,7 +1,7 @@
 #!/bin/bash
 # verify-no-regressions.sh — Comprehensive regression testing for Gasoline
 # Tests: Go binary + Browser extension + MCP bridge + End-to-end flow
-set -e
+set -euo pipefail
 
 echo "🔬 Gasoline Regression Testing Suite"
 echo "======================================"
@@ -48,7 +48,7 @@ GASOLINE_PID=$!
 sleep 2
 
 # Check if process is still running
-if kill -0 $GASOLINE_PID 2>/dev/null; then
+if kill -0 "$GASOLINE_PID" 2>/dev/null; then
     echo "   ✅ Binary started successfully (PID: $GASOLINE_PID)"
 
     # Try to hit health endpoint
@@ -60,8 +60,8 @@ if kill -0 $GASOLINE_PID 2>/dev/null; then
     fi
 
     # Kill test process
-    kill $GASOLINE_PID 2>/dev/null || true
-    wait $GASOLINE_PID 2>/dev/null || true
+    kill "$GASOLINE_PID" 2>/dev/null || true
+    wait "$GASOLINE_PID" 2>/dev/null || true
 else
     echo "   ❌ Binary crashed on startup"
     echo "   Startup log:"
@@ -146,8 +146,8 @@ for endpoint in "${ENDPOINTS[@]}"; do
 done
 
 # Kill server
-kill $SERVER_PID 2>/dev/null || true
-wait $SERVER_PID 2>/dev/null || true
+kill "$SERVER_PID" 2>/dev/null || true
+wait "$SERVER_PID" 2>/dev/null || true
 
 # ============================================
 # 7. Bridge Binary Test
@@ -249,8 +249,8 @@ else
 fi
 
 # Kill server
-kill $API_SERVER_PID 2>/dev/null || true
-wait $API_SERVER_PID 2>/dev/null || true
+kill "$API_SERVER_PID" 2>/dev/null || true
+wait "$API_SERVER_PID" 2>/dev/null || true
 
 # ============================================
 # 11. Memory Leak Check (Basic)
@@ -264,13 +264,13 @@ echo "1️⃣1️⃣ Testing for obvious memory leaks..."
 LEAK_TEST_PID=$!
 
 sleep 1
-INITIAL_MEM=$(ps -o rss= -p $LEAK_TEST_PID 2>/dev/null || echo "0")
+INITIAL_MEM=$(ps -o rss= -p "$LEAK_TEST_PID" 2>/dev/null || echo "0")
 
 sleep 2
-FINAL_MEM=$(ps -o rss= -p $LEAK_TEST_PID 2>/dev/null || echo "0")
+FINAL_MEM=$(ps -o rss= -p "$LEAK_TEST_PID" 2>/dev/null || echo "0")
 
-kill $LEAK_TEST_PID 2>/dev/null || true
-wait $LEAK_TEST_PID 2>/dev/null || true
+kill "$LEAK_TEST_PID" 2>/dev/null || true
+wait "$LEAK_TEST_PID" 2>/dev/null || true
 
 MEM_GROWTH=$((FINAL_MEM - INITIAL_MEM))
 if [ "$MEM_GROWTH" -gt 50000 ]; then
@@ -304,7 +304,7 @@ echo "📊 Regression Test Summary"
 echo "======================================"
 echo ""
 
-if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
+if [ "$ERRORS" -eq 0 ] && [ "$WARNINGS" -eq 0 ]; then
     echo "✅ ALL TESTS PASSED"
     echo ""
     echo "No regressions detected in:"
@@ -319,7 +319,7 @@ if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
     echo ""
     echo "Safe to deploy! 🚀"
     exit 0
-elif [ $ERRORS -eq 0 ]; then
+elif [ "$ERRORS" -eq 0 ]; then
     echo "⚠️  PASSED WITH WARNINGS"
     echo ""
     echo "Warnings: $WARNINGS"

@@ -374,7 +374,7 @@ test.describe('v5: AI Context Enrichment', () => {
     if (enriched._aiContext.componentAncestry) {
       expect(enriched._aiContext.componentAncestry.framework).toBe('react')
       expect(enriched._aiContext.componentAncestry.components.length).toBeGreaterThan(0)
-      const names = enriched._aiContext.componentAncestry.components.map(c => c.name)
+      const names = enriched._aiContext.componentAncestry.components.map((c) => c.name)
       expect(names).toContain('LoginButton')
     }
   })
@@ -432,7 +432,7 @@ test.describe('v5: Full Integration Flow', () => {
     expect(script).toContain('[user-provided]') // Password redacted
     expect(script).toContain("getByTestId('login-btn')")
     expect(script).toContain('.click()')
-    expect(script).toContain("Cannot read properties of undefined")
+    expect(script).toContain('Cannot read properties of undefined')
   })
 
   test('should use lastNActions to limit script steps', async ({ page }) => {

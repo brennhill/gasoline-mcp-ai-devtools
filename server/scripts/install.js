@@ -9,15 +9,16 @@ const https = require('https')
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
-const { execSync, spawnSync, spawn } = require('child_process')
+const { spawnSync, spawn } = require('child_process')
 
-const VERSION = '6.0.3'
+const VERSION = require('../package.json').version
 const GITHUB_REPO = 'brennhill/gasoline-mcp-ai-devtools'
 const BINARY_NAME = 'gasoline'
 
 /**
  * Kill all running gasoline processes to ensure clean upgrade
  */
+// #lizard forgives
 function cleanupOldProcesses() {
   if (process.platform === 'win32') {
     // Windows: Find and kill gasoline processes
@@ -44,7 +45,7 @@ function cleanupOldProcesses() {
     // Unix: Find and kill gasoline processes by name
     try {
       // Method 1: pkill by name (most reliable)
-      const pkillResult = spawnSync('pkill', ['-f', 'gasoline'], {
+      spawnSync('pkill', ['-f', 'gasoline'], {
         encoding: 'utf8'
       })
 
@@ -68,6 +69,7 @@ function cleanupOldProcesses() {
       // Ignore errors - processes might not exist
     }
   }
+  return
 }
 
 /**
@@ -75,7 +77,7 @@ function cleanupOldProcesses() {
  */
 function verifyVersion(binaryPath) {
   try {
-    const result = spawnSync(binaryPath, ['--version'], {
+    const result = spawnSync(binaryPath, ['--version'], { // nosemgrep: detect-child-process
       encoding: 'utf8',
       timeout: 5000
     })
@@ -104,7 +106,7 @@ function autoStartServer(binaryPath, port = 7890) {
     console.log(`Starting gasoline server on port ${port}...`)
 
     // Check if port is already in use
-    const testServer = http.createServer()
+    const testServer = http.createServer() // nosemgrep: problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server -- localhost-only health check, no sensitive data
     testServer.once('error', (err) => {
       if (err.code === 'EADDRINUSE') {
         console.log(`Port ${port} already in use - server may already be running`)
@@ -120,7 +122,7 @@ function autoStartServer(binaryPath, port = 7890) {
         // Port is free, start the server
         try {
           // Spawn detached process that survives npm exit
-          const child = spawn(binaryPath, ['--port', String(port)], {
+          const child = spawn(binaryPath, ['--port', String(port)], { // nosemgrep: detect-child-process
             detached: true,
             stdio: ['pipe', 'ignore', 'ignore'], // pipe stdin to keep it open
             windowsHide: true
@@ -134,7 +136,7 @@ function autoStartServer(binaryPath, port = 7890) {
           const maxAttempts = 30 // 3 seconds
           const checkHealth = () => {
             attempts++
-            const req = http.request({
+            const req = http.request({ // nosemgrep: problem-based-packs.insecure-transport.js-node.http-request.http-request, problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server -- localhost-only binary download during install
               hostname: '127.0.0.1',
               port: port,
               path: '/health',
@@ -194,11 +196,14 @@ function getBinaryName() {
     arm64: 'arm64',
   }
 
+  // eslint-disable-next-line security/detect-object-injection -- bracket access on platform config object
   const p = platformMap[platform]
+  // eslint-disable-next-line security/detect-object-injection -- bracket access on platform config object
   const a = archMap[arch]
 
   if (!p || !a) {
     console.error(`Unsupported platform: ${platform}-${arch}`)
+    // eslint-disable-next-line n/no-process-exit -- installer exits with error status on platform detection failure
     process.exit(1)
   }
 
@@ -209,6 +214,7 @@ function getBinaryName() {
 // Download file from URL
 function download(url, dest) {
   return new Promise((resolve, reject) => {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
     const file = fs.createWriteStream(dest)
 
     const request = (url) => {
@@ -232,7 +238,8 @@ function download(url, dest) {
           })
         })
         .on('error', (err) => {
-          fs.unlink(dest, () => {})
+          // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
+          fs.unlink(dest, () => { /* noop — best-effort cleanup */ })
           reject(err)
         })
     }
@@ -271,6 +278,7 @@ async function main() {
 
     // Look for local build
     const localBinary = path.join(__dirname, '..', '..', 'dist', binaryName)
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
     if (fs.existsSync(localBinary)) {
       console.log('Using local binary from dist/')
       fs.copyFileSync(localBinary, binaryPath)
@@ -296,12 +304,14 @@ async function main() {
       console.error('')
       console.error('For help: https://github.com/brennhill/gasoline-mcp-ai-devtools#quick-start')
       console.error('')
+      // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status
       process.exit(1)
     }
   }
 
   // Make binary executable (Unix only)
   if (process.platform !== 'win32') {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
     fs.chmodSync(binaryPath, 0o755)
   }
 
@@ -312,6 +322,7 @@ async function main() {
       : `#!/bin/sh\nexec "$(dirname "$0")/${binaryName}" "$@"`
 
   const shimExt = process.platform === 'win32' ? '.cmd' : ''
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
   fs.writeFileSync(shimPath + shimExt, shimContent)
 
   if (process.platform !== 'win32') {
@@ -325,6 +336,7 @@ async function main() {
   await autoStartServer(binaryPath)
 
   console.log('gasoline installed successfully!')
+  return
 }
 
 main().catch((err) => {
