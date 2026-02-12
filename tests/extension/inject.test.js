@@ -147,8 +147,8 @@ describe('Network Capture', () => {
       status: 401,
       statusText: 'Unauthorized',
       clone: () => ({
-        text: () => Promise.resolve(JSON.stringify({ error: 'Invalid credentials' })),
-      }),
+        text: () => Promise.resolve(JSON.stringify({ error: 'Invalid credentials' }))
+      })
     }
 
     const originalFetch = mock.fn(() => Promise.resolve(mockResponse))
@@ -157,7 +157,7 @@ describe('Network Capture', () => {
     const _startTime = Date.now()
     await wrappedFetch('http://localhost:8789/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'test@test.com' }),
+      body: JSON.stringify({ email: 'test@test.com' })
     })
 
     // Should have posted network error
@@ -178,7 +178,7 @@ describe('Network Capture', () => {
 
     const mockResponse = {
       ok: true,
-      status: 200,
+      status: 200
     }
 
     const originalFetch = mock.fn(() => Promise.resolve(mockResponse))
@@ -198,8 +198,8 @@ describe('Network Capture', () => {
       status: 500,
       statusText: 'Internal Server Error',
       clone: () => ({
-        text: () => Promise.resolve('Server error'),
-      }),
+        text: () => Promise.resolve('Server error')
+      })
     }
 
     const originalFetch = mock.fn(() => Promise.resolve(mockResponse))
@@ -237,8 +237,8 @@ describe('Network Capture', () => {
       status: 401,
       statusText: 'Unauthorized',
       clone: () => ({
-        text: () => Promise.resolve('{}'),
-      }),
+        text: () => Promise.resolve('{}')
+      })
     }
 
     const originalFetch = mock.fn(() => Promise.resolve(mockResponse))
@@ -247,8 +247,8 @@ describe('Network Capture', () => {
     await wrappedFetch('http://localhost:8789/api/data', {
       headers: {
         Authorization: 'Bearer secret-token',
-        'Content-Type': 'application/json',
-      },
+        'Content-Type': 'application/json'
+      }
     })
 
     const [message] = globalThis.window.postMessage.mock.calls[0].arguments
@@ -267,8 +267,8 @@ describe('Network Capture', () => {
       status: 400,
       statusText: 'Bad Request',
       clone: () => ({
-        text: () => Promise.resolve(largeBody),
-      }),
+        text: () => Promise.resolve(largeBody)
+      })
     }
 
     const originalFetch = mock.fn(() => Promise.resolve(mockResponse))
@@ -329,7 +329,7 @@ describe('Exception Capture', () => {
     // Simulate rejection event
     const handler = rejectionHandler.arguments[1]
     handler({
-      reason: new Error('Promise rejection'),
+      reason: new Error('Promise rejection')
     })
 
     // Wait for async enrichment
@@ -451,7 +451,7 @@ describe('Safe Serialization', () => {
       nodeType: 1,
       tagName: 'DIV',
       id: 'test',
-      className: 'foo bar',
+      className: 'foo bar'
     }
 
     const result = safeSerialize(element)
@@ -650,7 +650,8 @@ describe('Gasoline API', () => {
   })
 
   test('__gasoline.annotate should work', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI, clearContextAnnotations } = await import('../../extension/inject.js')
+    const { installGasolineAPI, uninstallGasolineAPI, clearContextAnnotations } =
+      await import('../../extension/inject.js')
 
     clearContextAnnotations()
     installGasolineAPI()
@@ -704,7 +705,7 @@ describe('Gasoline API', () => {
       recordAction,
       getActionBuffer,
       clearActionBuffer,
-      setActionCaptureEnabled,
+      setActionCaptureEnabled
     } = await import('../../extension/inject.js')
 
     clearActionBuffer()
@@ -812,7 +813,7 @@ describe('User Action Replay', () => {
       tagName: 'BUTTON',
       id: 'submit-btn',
       className: '',
-      getAttribute: () => null,
+      getAttribute: () => null
     }
 
     const selector = getElementSelector(element)
@@ -827,7 +828,7 @@ describe('User Action Replay', () => {
       tagName: 'DIV',
       id: '',
       className: 'card primary large',
-      getAttribute: () => null,
+      getAttribute: () => null
     }
 
     const selector = getElementSelector(element)
@@ -843,7 +844,7 @@ describe('User Action Replay', () => {
       tagName: 'INPUT',
       id: '',
       className: '',
-      getAttribute: (attr) => (attr === 'data-testid' ? 'email-input' : null),
+      getAttribute: (attr) => (attr === 'data-testid' ? 'email-input' : null)
     }
 
     const selector = getElementSelector(element)
@@ -858,7 +859,7 @@ describe('User Action Replay', () => {
       tagName: 'DIV',
       id: 'a'.repeat(50),
       className: 'b'.repeat(50),
-      getAttribute: () => null,
+      getAttribute: () => null
     }
 
     const selector = getElementSelector(element)
@@ -912,10 +913,10 @@ describe('User Action Replay', () => {
         id: 'submit',
         className: 'btn primary',
         textContent: 'Submit Form',
-        getAttribute: () => null,
+        getAttribute: () => null
       },
       clientX: 100,
-      clientY: 200,
+      clientY: 200
     }
 
     handleClick(mockEvent)
@@ -947,8 +948,8 @@ describe('User Action Replay', () => {
         value: 'test@example.com',
         name: 'email',
         autocomplete: 'email',
-        getAttribute: () => null,
-      },
+        getAttribute: () => null
+      }
     }
 
     handleInput(mockEvent)
@@ -978,8 +979,8 @@ describe('User Action Replay', () => {
         value: 'super-secret-password',
         name: 'password',
         autocomplete: '',
-        getAttribute: () => null,
-      },
+        getAttribute: () => null
+      }
     }
 
     handleInput(mockEvent)
@@ -1070,7 +1071,7 @@ describe('User Action Replay', () => {
     globalThis.window.scrollY = 500
 
     const mockEvent = {
-      target: globalThis.document,
+      target: globalThis.document
     }
 
     handleScroll(mockEvent)
@@ -1217,13 +1218,13 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
       hasAttribute: (name) => name === 'data-testid',
       parentElement: null,
       children: [],
-      childNodes: [],
+      childNodes: []
     }
 
     const mockEvent = {
       target: mockElement,
       clientX: 100,
-      clientY: 200,
+      clientY: 200
     }
 
     handleClick(mockEvent)
@@ -1258,7 +1259,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
       hasAttribute: (name) => name === 'type',
       parentElement: null,
       children: [],
-      childNodes: [],
+      childNodes: []
     }
 
     const mockEvent = { target: mockElement }
@@ -1295,7 +1296,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
       hasAttribute: (name) => name === 'type',
       parentElement: null,
       children: [],
-      childNodes: [],
+      childNodes: []
     }
 
     handleInput({ target: mockElement })
@@ -1321,7 +1322,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     globalThis.window.scrollY = 750
 
     const mockEvent = {
-      target: globalThis.document,
+      target: globalThis.document
     }
 
     handleScroll(mockEvent)
@@ -1351,12 +1352,12 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
       hasAttribute: () => false,
       parentElement: null,
       children: [],
-      childNodes: [],
+      childNodes: []
     }
 
     const mockEvent = {
       target: mockElement,
-      key: 'Enter',
+      key: 'Enter'
     }
 
     handleKeydown(mockEvent)
@@ -1386,7 +1387,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
       hasAttribute: () => false,
       parentElement: null,
       children: [],
-      childNodes: [],
+      childNodes: []
     }
 
     // Regular character keys should NOT be recorded
@@ -1398,7 +1399,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     assert.strictEqual(
       enhanced.filter((a) => a.type === 'keypress').length,
       0,
-      'Regular character keys should not be recorded',
+      'Regular character keys should not be recorded'
     )
 
     // Actionable keys SHOULD be recorded
@@ -1433,9 +1434,9 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
       childNodes: [],
       options: [
         { value: 'uk', text: 'United Kingdom', selected: false },
-        { value: 'us', text: 'United States', selected: true },
+        { value: 'us', text: 'United States', selected: true }
       ],
-      selectedIndex: 1,
+      selectedIndex: 1
     }
 
     handleChange({ target: mockElement })
@@ -1467,7 +1468,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
       hasAttribute: () => false,
       parentElement: null,
       children: [],
-      childNodes: [],
+      childNodes: []
     }
 
     handleChange({ target: mockElement })
@@ -1476,7 +1477,7 @@ describe('V5 Wiring: Enhanced action recording in handlers', () => {
     assert.strictEqual(
       enhanced.filter((a) => a.type === 'select').length,
       0,
-      'change handler should not record for non-select elements',
+      'change handler should not record for non-select elements'
     )
 
     clearEnhancedActionBuffer()
@@ -1534,7 +1535,7 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
       hasAttribute: (name) => name === 'data-testid',
       parentElement: null,
       children: [],
-      childNodes: [],
+      childNodes: []
     }
 
     recordEnhancedAction('click', mockElement)
@@ -1577,7 +1578,7 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
       hasAttribute: (name) => name === 'data-testid',
       parentElement: null,
       children: [],
-      childNodes: [],
+      childNodes: []
     }
 
     recordEnhancedAction('click', mockElement)
@@ -1614,7 +1615,7 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
       hasAttribute: () => false,
       parentElement: null,
       children: [],
-      childNodes: [],
+      childNodes: []
     }
 
     recordEnhancedAction('input', mockElement, { value: 'test@example.com' })
@@ -1642,9 +1643,9 @@ describe('V5 Wiring: Navigation event recording', () => {
       overrides: {
         history: {
           pushState: mock.fn(),
-          replaceState: mock.fn(),
-        },
-      },
+          replaceState: mock.fn()
+        }
+      }
     })
     globalThis.document = createMockDocument()
   })

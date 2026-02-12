@@ -158,7 +158,22 @@ export interface StatusUpdateMessage {
 /**
  * Union of all background-bound messages
  */
-export type BackgroundMessage = GetTabIdMessage | WsEventMessage | EnhancedActionMessage | NetworkBodyMessage | PerformanceSnapshotMessage | LogMessage | GetStatusMessage | ClearLogsMessage | SetLogLevelMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | GetAiWebPilotEnabledMessage | GetTrackingStateMessage | GetDiagnosticStateMessage | CaptureScreenshotMessage | GetDebugLogMessage | ClearDebugLogMessage | SetServerUrlMessage;
+export type BackgroundMessage = GetTabIdMessage | WsEventMessage | EnhancedActionMessage | NetworkBodyMessage | PerformanceSnapshotMessage | LogMessage | GetStatusMessage | ClearLogsMessage | SetLogLevelMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | GetAiWebPilotEnabledMessage | GetTrackingStateMessage | GetDiagnosticStateMessage | CaptureScreenshotMessage | GetDebugLogMessage | ClearDebugLogMessage | SetServerUrlMessage | DrawModeCaptureScreenshotMessage | DrawModeCompletedMessage;
+/**
+ * Draw mode: content script requests screenshot capture
+ */
+export interface DrawModeCaptureScreenshotMessage {
+    readonly type: 'GASOLINE_CAPTURE_SCREENSHOT';
+}
+/**
+ * Draw mode: content script sends completed annotation results
+ */
+export interface DrawModeCompletedMessage {
+    readonly type: 'DRAW_MODE_COMPLETED';
+    readonly annotations?: readonly unknown[];
+    readonly screenshot?: string;
+    readonly sessionId?: string;
+}
 /**
  * Ping message to check if content script is loaded
  */
@@ -236,6 +251,13 @@ export interface GetNetworkWaterfallMessage {
     readonly type: 'GET_NETWORK_WATERFALL';
 }
 /**
+ * Link health check message
+ */
+export interface LinkHealthMessage {
+    readonly type: 'LINK_HEALTH_QUERY';
+    readonly params?: string | Record<string, unknown>;
+}
+/**
  * State management message
  */
 export interface ManageStateMessage {
@@ -275,15 +297,15 @@ export interface RecordingWatermarkMessage {
 /**
  * Union of all content-script-bound messages
  */
-export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
+export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | LinkHealthMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
 /**
  * Page to content script messages (postMessage types)
  */
-export type PageMessageType = 'GASOLINE_LOG' | 'GASOLINE_WS' | 'GASOLINE_NETWORK_BODY' | 'GASOLINE_ENHANCED_ACTION' | 'GASOLINE_PERFORMANCE_SNAPSHOT' | 'GASOLINE_HIGHLIGHT_RESPONSE' | 'GASOLINE_EXECUTE_JS_RESULT' | 'GASOLINE_A11Y_QUERY_RESPONSE' | 'GASOLINE_DOM_QUERY_RESPONSE' | 'GASOLINE_STATE_RESPONSE' | 'GASOLINE_WATERFALL_RESPONSE';
+export type PageMessageType = 'GASOLINE_LOG' | 'GASOLINE_WS' | 'GASOLINE_NETWORK_BODY' | 'GASOLINE_ENHANCED_ACTION' | 'GASOLINE_PERFORMANCE_SNAPSHOT' | 'GASOLINE_HIGHLIGHT_RESPONSE' | 'GASOLINE_EXECUTE_JS_RESULT' | 'GASOLINE_A11Y_QUERY_RESPONSE' | 'GASOLINE_DOM_QUERY_RESPONSE' | 'GASOLINE_STATE_RESPONSE' | 'GASOLINE_WATERFALL_RESPONSE' | 'GASOLINE_LINK_HEALTH_RESPONSE';
 /**
  * Content to page messages (postMessage types)
  */
-export type ContentToPageMessageType = 'GASOLINE_SETTING' | 'GASOLINE_HIGHLIGHT_REQUEST' | 'GASOLINE_EXECUTE_JS' | 'GASOLINE_A11Y_QUERY' | 'GASOLINE_DOM_QUERY' | 'GASOLINE_STATE_COMMAND' | 'GASOLINE_GET_WATERFALL';
+export type ContentToPageMessageType = 'GASOLINE_SETTING' | 'GASOLINE_HIGHLIGHT_REQUEST' | 'GASOLINE_EXECUTE_JS' | 'GASOLINE_A11Y_QUERY' | 'GASOLINE_DOM_QUERY' | 'GASOLINE_STATE_COMMAND' | 'GASOLINE_GET_WATERFALL' | 'GASOLINE_LINK_HEALTH_QUERY';
 /**
  * Start recording message (SW → offscreen)
  */

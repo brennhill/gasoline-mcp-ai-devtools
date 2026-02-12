@@ -1,47 +1,45 @@
 // tools_schema.go — MCP tool schema definitions.
-// Contains the ToolsList() function that returns all MCP tool definitions with their schemas.
+// Descriptions are kept minimal to reduce token usage — detailed docs live in server
+// instructions and the gasoline://guide resource.
 package main
 
 // toolsList returns all MCP tool definitions.
-// Note: _meta field removed to comply with strict MCP spec (fixes Cursor schema errors).
+// #lizard forgives
 func (h *ToolHandler) ToolsList() []MCPTool {
-	// Data counts no longer included in tool definitions (not in MCP spec)
-	// Available via configure tool's get_health action instead
 	return []MCPTool{
 		{
 			Name:        "observe",
-			Description: "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, accessibility, timeline, error_clusters, error_bundles, screenshot, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity, min_level.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.\nNote: extension_logs are internal Gasoline extension debug logs for troubleshooting the extension itself — NOT browser console output. Use 'logs' for browser console output.\nNote: error_bundles returns pre-assembled debugging context per error (error + recent network + actions + logs in one call). Use window_seconds param to control context window (default 3s).",
+			Description: "Read captured browser state from extension buffers.\n\nnetwork_bodies captures fetch() only; use network_waterfall for all requests. extension_logs = internal debug logs (use logs for console). error_bundles = pre-assembled debug context per error.\n\nPagination: pass after_cursor/before_cursor/since_cursor from response metadata. restart_on_eviction=true if cursor expired.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"what": map[string]any{
-						"type":        "string",
-						"description": "What to observe or analyze",
-						"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "performance", "accessibility", "timeline", "error_clusters", "error_bundles", "screenshot", "history", "security_audit", "third_party_audit", "security_diff", "command_result", "pending_commands", "failed_commands"},
+						"type": "string",
+						"enum": []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "timeline", "error_bundles", "screenshot", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "log_diff_report"},
 					},
 					"limit": map[string]any{
 						"type":        "number",
-						"description": "Maximum entries to return (applies to logs, network_waterfall, network_bodies, websocket_events, actions, audit_log)",
+						"description": "Max entries to return",
 					},
 					"after_cursor": map[string]any{
 						"type":        "string",
-						"description": "Return entries older than this cursor (backward pagination). Cursor format: 'timestamp:sequence' from previous response.",
+						"description": "Backward pagination cursor from response metadata",
 					},
 					"before_cursor": map[string]any{
 						"type":        "string",
-						"description": "Return entries newer than this cursor (forward pagination).",
+						"description": "Forward pagination cursor",
 					},
 					"since_cursor": map[string]any{
 						"type":        "string",
-						"description": "Return ALL entries newer than this cursor (inclusive, no limit).",
+						"description": "Return all entries newer than cursor (no limit)",
 					},
 					"restart_on_eviction": map[string]any{
 						"type":        "boolean",
-						"description": "If cursor expired (buffer overflow), automatically restart from oldest available entry.",
+						"description": "Auto-restart if cursor expired",
 					},
 					"min_level": map[string]any{
 						"type":        "string",
-						"description": "Minimum log level to return (applies to logs). Levels: debug < log < info < warn < error",
+						"description": "Min log level (logs)",
 						"enum":        []string{"debug", "log", "info", "warn", "error"},
 					},
 					"url": map[string]any{
@@ -50,50 +48,97 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"method": map[string]any{
 						"type":        "string",
-						"description": "Filter by HTTP method (applies to network_bodies)",
+						"description": "HTTP method filter",
 					},
 					"status_min": map[string]any{
 						"type":        "number",
-						"description": "Minimum status code (applies to network_bodies)",
+						"description": "Min HTTP status code",
 					},
 					"status_max": map[string]any{
 						"type":        "number",
-						"description": "Maximum status code (applies to network_bodies)",
+						"description": "Max HTTP status code",
 					},
 					"connection_id": map[string]any{
 						"type":        "string",
-						"description": "Filter by WebSocket connection ID",
+						"description": "WebSocket connection ID filter",
 					},
 					"direction": map[string]any{
-						"type":        "string",
-						"description": "Filter by direction",
-						"enum":        []string{"incoming", "outgoing"},
+						"type": "string",
+						"enum": []string{"incoming", "outgoing"},
 					},
 					"last_n": map[string]any{
 						"type":        "number",
-						"description": "Return only the last N items",
+						"description": "Return last N items only",
+					},
+					"include": map[string]any{
+						"type":        "array",
+						"description": "Categories to include (timeline)",
+						"items":       map[string]any{"type": "string"},
+					},
+					"correlation_id": map[string]any{
+						"type":        "string",
+						"description": "Async command correlation ID",
+					},
+					"window_seconds": map[string]any{
+						"type":        "number",
+						"description": "error_bundles lookback seconds (default 3, max 10)",
+					},
+				},
+				"required": []string{"what"},
+			},
+		},
+		{
+			Name:        "analyze",
+			Description: "Trigger active analysis. Creates async queries the extension executes.\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"what": map[string]any{
+						"type": "string",
+						"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "annotations", "annotation_detail"},
+					},
+					"selector": map[string]any{
+						"type":        "string",
+						"description": "CSS selector (dom, accessibility)",
+					},
+					"operation": map[string]any{
+						"type":        "string",
+						"description": "API validation operation",
+						"enum":        []string{"analyze", "report", "clear"},
+					},
+					"ignore_endpoints": map[string]any{
+						"type":        "array",
+						"description": "URL substrings to exclude (api_validation)",
+						"items":       map[string]any{"type": "string"},
 					},
 					"scope": map[string]any{
 						"type":        "string",
-						"description": "CSS selector to scope audit (applies to accessibility)",
+						"description": "CSS selector scope (accessibility)",
 					},
 					"tags": map[string]any{
 						"type":        "array",
-						"description": "WCAG tags to test (applies to accessibility)",
+						"description": "WCAG tags (accessibility)",
 						"items":       map[string]any{"type": "string"},
 					},
 					"force_refresh": map[string]any{
 						"type":        "boolean",
-						"description": "Bypass cache (applies to accessibility)",
+						"description": "Bypass cache (accessibility)",
 					},
-					"include": map[string]any{
-						"type":        "array",
-						"description": "Categories to include (applies to timeline)",
-						"items":       map[string]any{"type": "string"},
+					"domain": map[string]any{
+						"type":        "string",
+						"description": "Domain to check (link_health)",
+					},
+					"timeout_ms": map[string]any{
+						"type":        "number",
+						"description": "Timeout ms (link_health, annotations). For annotations with wait=true: default 300000 (5 min), max 600000 (10 min).",
+					},
+					"max_workers": map[string]any{
+						"type":        "number",
+						"description": "Max concurrent workers (link_health)",
 					},
 					"checks": map[string]any{
 						"type":        "array",
-						"description": "Which checks to run (applies to security_audit)",
+						"description": "Checks to run (security_audit)",
 						"items": map[string]any{
 							"type": "string",
 							"enum": []string{"credentials", "pii", "headers", "cookies", "transport", "auth"},
@@ -101,46 +146,50 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"severity_min": map[string]any{
 						"type":        "string",
-						"description": "Minimum severity to report (applies to security_audit)",
+						"description": "Min severity (security_audit)",
 						"enum":        []string{"critical", "high", "medium", "low", "info"},
 					},
 					"first_party_origins": map[string]any{
 						"type":        "array",
-						"description": "Origins to consider first-party (applies to third_party_audit)",
+						"description": "First-party origins (third_party_audit)",
 						"items":       map[string]any{"type": "string"},
 					},
 					"include_static": map[string]any{
 						"type":        "boolean",
-						"description": "Include static-only origins (applies to third_party_audit)",
+						"description": "Include static-only origins (third_party_audit)",
 					},
 					"custom_lists": map[string]any{
 						"type":        "object",
-						"description": "Custom allowed/blocked/internal domain lists (applies to third_party_audit)",
+						"description": "Custom domain allow/block lists (third_party_audit)",
 					},
 					"action": map[string]any{
 						"type":        "string",
-						"description": "Snapshot action: snapshot, compare, list (applies to security_diff)",
+						"description": "security_diff sub-action",
 						"enum":        []string{"snapshot", "compare", "list"},
 					},
 					"name": map[string]any{
 						"type":        "string",
-						"description": "Snapshot name (applies to security_diff)",
+						"description": "Snapshot name (security_diff)",
 					},
 					"compare_from": map[string]any{
 						"type":        "string",
-						"description": "Baseline snapshot (applies to security_diff)",
+						"description": "Baseline snapshot (security_diff)",
 					},
 					"compare_to": map[string]any{
 						"type":        "string",
-						"description": "Target snapshot (applies to security_diff)",
+						"description": "Target snapshot (security_diff)",
 					},
 					"correlation_id": map[string]any{
 						"type":        "string",
-						"description": "Correlation ID for async command tracking (applies to command_result)",
+						"description": "Correlation ID for fetching annotation detail (applies to annotation_detail)",
 					},
-					"window_seconds": map[string]any{
-						"type":        "number",
-						"description": "Context window in seconds for error_bundles (default 3, max 10). How far back to look for related network/actions/logs.",
+					"wait": map[string]any{
+						"type":        "boolean",
+						"description": "Block until the user finishes drawing annotations (applies to annotations). Default 5 min timeout, override with timeout_ms.",
+					},
+					"session": map[string]any{
+						"type":        "string",
+						"description": "Named session for multi-page annotation review (applies to annotations). Accumulates annotations across pages.",
 					},
 				},
 				"required": []string{"what"},
@@ -148,106 +197,108 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "generate",
-			Description: "CREATE ARTIFACTS. Generates production-ready outputs from captured data: test (Playwright tests), reproduction (bug scripts), pr_summary, csp, sarif, har, sri.",
+			Description: "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (accessibility report). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"format": map[string]any{
-						"type":        "string",
-						"description": "What to generate",
-						"enum":        []string{"reproduction", "test", "pr_summary", "sarif", "har", "csp", "sri"},
+						"type": "string",
+						"enum": []string{"reproduction", "csp", "sarif", "visual_test", "annotation_report", "annotation_issues", "test_from_context", "test_heal", "test_classify"},
 					},
 					"error_message": map[string]any{
 						"type":        "string",
-						"description": "Error message for context (applies to reproduction)",
+						"description": "Error context (reproduction)",
 					},
 					"last_n": map[string]any{
 						"type":        "number",
-						"description": "Use only the last N actions (applies to reproduction)",
+						"description": "Use last N actions (reproduction)",
 					},
 					"base_url": map[string]any{
 						"type":        "string",
-						"description": "Replace origin in URLs (applies to reproduction, test)",
+						"description": "Replace origin in URLs",
 					},
 					"include_screenshots": map[string]any{
 						"type":        "boolean",
-						"description": "Insert page.screenshot() calls (applies to reproduction)",
+						"description": "Add screenshot calls (reproduction)",
 					},
 					"generate_fixtures": map[string]any{
 						"type":        "boolean",
-						"description": "Generate fixtures from captured network data (applies to reproduction)",
+						"description": "Generate network fixtures (reproduction)",
 					},
 					"visual_assertions": map[string]any{
 						"type":        "boolean",
-						"description": "Add toHaveScreenshot() assertions (applies to reproduction)",
+						"description": "Add visual assertions (reproduction)",
 					},
 					"test_name": map[string]any{
 						"type":        "string",
-						"description": "Name for the generated test (applies to test)",
+						"description": "Test name (test, visual_test)",
 					},
 					"assert_network": map[string]any{
 						"type":        "boolean",
-						"description": "Include network response assertions (applies to test)",
+						"description": "Assert network responses (test)",
 					},
 					"assert_no_errors": map[string]any{
 						"type":        "boolean",
-						"description": "Assert no console errors occurred (applies to test)",
+						"description": "Assert no console errors (test)",
 					},
 					"assert_response_shape": map[string]any{
 						"type":        "boolean",
-						"description": "Assert response body shape matches (applies to test)",
+						"description": "Assert response shape (test)",
 					},
 					"scope": map[string]any{
 						"type":        "string",
-						"description": "CSS selector to scope (applies to sarif)",
+						"description": "CSS selector scope (sarif)",
 					},
 					"include_passes": map[string]any{
 						"type":        "boolean",
-						"description": "Include passing rules (applies to sarif)",
+						"description": "Include passing rules (sarif)",
 					},
 					"save_to": map[string]any{
 						"type":        "string",
-						"description": "File path to save output (applies to sarif, har)",
+						"description": "File path to save output",
 					},
 					"url": map[string]any{
 						"type":        "string",
-						"description": "Filter by URL substring (applies to har)",
+						"description": "URL filter (har)",
 					},
 					"method": map[string]any{
 						"type":        "string",
-						"description": "Filter by HTTP method (applies to har)",
+						"description": "HTTP method filter (har)",
 					},
 					"status_min": map[string]any{
 						"type":        "number",
-						"description": "Minimum status code (applies to har)",
+						"description": "Min status code (har)",
 					},
 					"status_max": map[string]any{
 						"type":        "number",
-						"description": "Maximum status code (applies to har)",
+						"description": "Max status code (har)",
 					},
 					"mode": map[string]any{
-						"type":        "string",
-						"description": "CSP strictness mode (applies to csp)",
-						"enum":        []string{"strict", "moderate", "report_only"},
+						"type": "string",
+						"enum": []string{"strict", "moderate", "report_only"},
 					},
 					"include_report_uri": map[string]any{
 						"type":        "boolean",
-						"description": "Include report-uri directive (applies to csp)",
+						"description": "Include report-uri (csp)",
 					},
 					"exclude_origins": map[string]any{
 						"type":        "array",
-						"description": "Origins to exclude from CSP (applies to csp)",
+						"description": "Origins to exclude (csp)",
 						"items":       map[string]any{"type": "string"},
 					},
 					"resource_types": map[string]any{
 						"type":        "array",
-						"description": "Filter by resource type: 'script', 'stylesheet' (applies to sri)",
+						"description": "Resource types: script, stylesheet (sri)",
 						"items":       map[string]any{"type": "string"},
 					},
 					"origins": map[string]any{
 						"type":        "array",
-						"description": "Filter by specific origins (applies to sri)",
+						"description": "Filter origins (sri)",
 						"items":       map[string]any{"type": "string"},
+					},
+					"session": map[string]any{
+						"type":        "string",
+						"description": "Named annotation session (applies to visual_test, annotation_report, annotation_issues)",
 					},
 				},
 				"required": []string{"format"},
@@ -255,23 +306,21 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "configure",
-			Description: "CUSTOMIZE THE SESSION. Actions: noise_rule, store, load, diff_sessions, validate_api, audit_log, streaming, query_dom, clear, health, test_boundary_start, test_boundary_end.",
+			Description: "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states).",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"action": map[string]any{
-						"type":        "string",
-						"description": "Configuration action to perform",
-						"enum":        []string{"store", "load", "noise_rule", "clear", "query_dom", "diff_sessions", "validate_api", "audit_log", "health", "streaming", "test_boundary_start", "test_boundary_end"},
+						"type": "string",
+						"enum": []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff"},
 					},
 					"store_action": map[string]any{
-						"type":        "string",
-						"description": "Store sub-action: save, load, list, delete, stats",
-						"enum":        []string{"save", "load", "list", "delete", "stats"},
+						"type": "string",
+						"enum": []string{"save", "load", "list", "delete", "stats"},
 					},
 					"namespace": map[string]any{
 						"type":        "string",
-						"description": "Logical grouping for store",
+						"description": "Store grouping",
 					},
 					"key": map[string]any{
 						"type":        "string",
@@ -282,9 +331,8 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"description": "JSON data to persist",
 					},
 					"noise_action": map[string]any{
-						"type":        "string",
-						"description": "Noise sub-action: add, remove, list, reset, auto_detect",
-						"enum":        []string{"add", "remove", "list", "reset", "auto_detect"},
+						"type": "string",
+						"enum": []string{"add", "remove", "list", "reset", "auto_detect"},
 					},
 					"rules": map[string]any{
 						"type":        "array",
@@ -293,38 +341,31 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"rule_id": map[string]any{
 						"type":        "string",
-						"description": "ID of rule to remove",
+						"description": "Rule ID to remove",
 					},
 					"pattern": map[string]any{
 						"type":        "string",
-						"description": "Regex pattern to match",
+						"description": "Regex pattern",
 					},
 					"category": map[string]any{
-						"type":        "string",
-						"description": "Buffer category",
-						"enum":        []string{"console", "network", "websocket"},
+						"type": "string",
+						"enum": []string{"console", "network", "websocket"},
 					},
 					"reason": map[string]any{
 						"type":        "string",
 						"description": "Why this is noise",
 					},
 					"buffer": map[string]any{
-						"type":        "string",
-						"description": "Which buffer to clear",
-						"enum":        []string{"network", "websocket", "actions", "logs", "all"},
-					},
-					"selector": map[string]any{
-						"type":        "string",
-						"description": "CSS selector to query (applies to query_dom)",
+						"type": "string",
+						"enum": []string{"network", "websocket", "actions", "logs", "all"},
 					},
 					"tab_id": map[string]any{
 						"type":        "number",
 						"description": "Target tab ID",
 					},
 					"session_action": map[string]any{
-						"type":        "string",
-						"description": "Session sub-action: capture, compare, list, delete",
-						"enum":        []string{"capture", "compare", "list", "delete"},
+						"type": "string",
+						"enum": []string{"capture", "compare", "list", "delete"},
 					},
 					"name": map[string]any{
 						"type":        "string",
@@ -332,46 +373,31 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"compare_a": map[string]any{
 						"type":        "string",
-						"description": "First snapshot for comparison",
+						"description": "First snapshot to compare",
 					},
 					"compare_b": map[string]any{
 						"type":        "string",
-						"description": "Second snapshot for comparison",
-					},
-					"operation": map[string]any{
-						"type":        "string",
-						"description": "API validation operation: analyze, report, clear",
-						"enum":        []string{"analyze", "report", "clear"},
-					},
-					"url": map[string]any{
-						"type":        "string",
-						"description": "Filter by URL substring",
-					},
-					"ignore_endpoints": map[string]any{
-						"type":        "array",
-						"description": "URL substrings to exclude",
-						"items":       map[string]any{"type": "string"},
+						"description": "Second snapshot to compare",
 					},
 					"session_id": map[string]any{
 						"type":        "string",
-						"description": "Filter by MCP session ID (applies to audit_log)",
+						"description": "Filter by session ID",
 					},
 					"tool_name": map[string]any{
 						"type":        "string",
-						"description": "Filter by tool name (applies to audit_log)",
+						"description": "Filter by tool name",
 					},
 					"since": map[string]any{
 						"type":        "string",
-						"description": "Only entries after this ISO 8601 timestamp (applies to audit_log)",
+						"description": "Entries after ISO 8601 timestamp",
 					},
 					"limit": map[string]any{
 						"type":        "number",
-						"description": "Maximum entries to return (applies to audit_log)",
+						"description": "Max entries to return",
 					},
 					"streaming_action": map[string]any{
-						"type":        "string",
-						"description": "Streaming sub-action: enable, disable, status",
-						"enum":        []string{"enable", "disable", "status"},
+						"type": "string",
+						"enum": []string{"enable", "disable", "status"},
 					},
 					"events": map[string]any{
 						"type": "array",
@@ -385,20 +411,19 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "integer",
 						"minimum":     1,
 						"maximum":     60,
-						"description": "Minimum seconds between notifications",
+						"description": "Min seconds between notifications",
 					},
 					"severity_min": map[string]any{
-						"type":        "string",
-						"enum":        []string{"info", "warning", "error"},
-						"description": "Minimum severity to stream",
+						"type": "string",
+						"enum": []string{"info", "warning", "error"},
 					},
 					"test_id": map[string]any{
 						"type":        "string",
-						"description": "Test ID for boundary marker",
+						"description": "Test boundary ID",
 					},
 					"label": map[string]any{
 						"type":        "string",
-						"description": "Human-readable label for test boundary",
+						"description": "Test boundary label",
 					},
 				},
 				"required": []string{"action"},
@@ -406,13 +431,12 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "interact",
-			Description: "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, subtitle, save_state, load_state, list_states, delete_state. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. Subtitle: persistent narration text at bottom of viewport (like closed captions). Use action='subtitle' with text param, or add 'subtitle' param to any other action for composable narration. Performance: refresh and navigate automatically include perf_diff in the async result (before/after timing comparison with verdict, Web Vitals ratings, and summary). For DOM actions, set analyze=true to get perf_diff. Requires AI Web Pilot enabled.",
+			Description: "Browser actions. Requires AI Web Pilot.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"action": map[string]any{
-						"type":        "string",
-						"description": "Browser interaction to perform",
+						"type": "string",
 						"enum": []string{
 							"highlight", "subtitle", "save_state", "load_state", "list_states", "delete_state",
 							"execute_js", "navigate", "refresh", "back", "forward", "new_tab",
@@ -421,15 +445,16 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"set_attribute", "focus", "scroll_to", "wait_for", "key_press",
 							"list_interactive",
 							"record_start", "record_stop",
+							"upload", "draw_mode_start",
 						},
 					},
 					"selector": map[string]any{
 						"type":        "string",
-						"description": "CSS selector or semantic selector for element (applies to highlight, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press). Semantic: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close.",
+						"description": "CSS or semantic selector for target element",
 					},
 					"duration_ms": map[string]any{
 						"type":        "number",
-						"description": "Highlight duration in ms, default 5000",
+						"description": "Highlight duration ms (default 5000)",
 					},
 					"snapshot_name": map[string]any{
 						"type":        "string",
@@ -437,73 +462,77 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"include_url": map[string]any{
 						"type":        "boolean",
-						"description": "Include URL when restoring state",
+						"description": "Restore URL with state",
 					},
 					"script": map[string]any{
 						"type":        "string",
-						"description": "JavaScript code to execute (applies to execute_js)",
+						"description": "JS code (execute_js)",
 					},
 					"timeout_ms": map[string]any{
 						"type":        "number",
-						"description": "Execution timeout in ms, default 5000 (applies to execute_js, wait_for)",
+						"description": "Timeout ms (default 5000)",
 					},
 					"text": map[string]any{
 						"type":        "string",
-						"description": "Text to type into the element (applies to type). Key name for key_press: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space. Subtitle text (applies to subtitle action, required). Empty string clears.",
+						"description": "Text for type/subtitle. key_press keys: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space.",
 					},
 					"subtitle": map[string]any{
 						"type":        "string",
-						"description": "Optional narration text displayed at bottom of viewport. Can be added to ANY action for composable narration in a single tool call. Empty string clears.",
+						"description": "Narration text, composable with any action. Empty clears.",
 					},
 					"value": map[string]any{
 						"type":        "string",
-						"description": "Value to set (applies to select, set_attribute)",
+						"description": "Value for select/set_attribute",
 					},
 					"clear": map[string]any{
 						"type":        "boolean",
-						"description": "Clear existing value before typing (applies to type)",
+						"description": "Clear before typing",
 					},
 					"checked": map[string]any{
 						"type":        "boolean",
-						"description": "Whether to check or uncheck (applies to check, default: true)",
+						"description": "Check/uncheck (default true)",
 					},
 					"name": map[string]any{
 						"type":        "string",
-						"description": "Attribute name (applies to get_attribute, set_attribute). Recording name (applies to record_start).",
+						"description": "Attribute or recording name",
 					},
 					"audio": map[string]any{
 						"type":        "string",
-						"description": "Audio capture mode (applies to record_start): 'tab' (capture tab audio), 'mic' (microphone), 'both', or omit for video-only. Audio modes require the user to click the Gasoline icon to grant permission.",
+						"description": "Recording audio: tab, mic, both. Omit for video-only.",
 						"enum":        []string{"tab", "mic", "both"},
 					},
 					"fps": map[string]any{
 						"type":        "number",
-						"description": "Framerate for recording (applies to record_start). Range: 5-60, default 15.",
+						"description": "Recording FPS (5-60, default 15)",
 					},
 					"world": map[string]any{
 						"type":        "string",
-						"description": "Execution world: 'auto' (default, tries main then isolated on CSP error), 'main' (access page JS globals), or 'isolated' (bypasses page CSP, DOM access only). Use 'isolated' for sites with Trusted Types CSP like Gmail.",
+						"description": "JS world: auto (default), main (page globals), isolated (bypass CSP).",
 						"enum":        []string{"auto", "main", "isolated"},
 					},
 					"url": map[string]any{
 						"type":        "string",
-						"description": "URL to navigate to (required for navigate, new_tab)",
+						"description": "URL (navigate, new_tab)",
 					},
 					"tab_id": map[string]any{
 						"type":        "number",
-						"description": "Target tab ID. Omit for active tab.",
+						"description": "Tab ID (default: active)",
 					},
 					"reason": map[string]any{
 						"type":        "string",
-						"description": "Why this action is being performed (shown in visual toast). Example: 'Opening compose to send test email'.",
+						"description": "Action reason (shown as toast)",
 					},
 					"correlation_id": map[string]any{
 						"type":        "string",
-						"description": "Optional ID to link this action to a specific error or investigation.",
+						"description": "Link to error/investigation",
 					},
 					"analyze": map[string]any{
 						"type":        "boolean",
-						"description": "Enable performance profiling for this action. When true, captures timing breakdown and perf_diff (before/after metrics) in the async result.",
+						"description": "Enable perf profiling (captures perf_diff)",
+					},
+					"session": map[string]any{
+						"type":        "string",
+						"description": "Named session for multi-page annotation review (applies to draw_mode_start). Accumulates annotations across pages under a shared session name.",
 					},
 				},
 				"required": []string{"action"},

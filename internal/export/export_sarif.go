@@ -14,9 +14,9 @@ import (
 	"strings"
 )
 
-// version is the Gasoline version used in generated exports.
-// This should be kept in sync with the main version in cmd/dev-console/main.go.
-const version = "5.5.0"
+// version is set at build time via -ldflags "-X ...internal/export.version=..."
+// Fallback used for `go run` (no ldflags).
+var version = "dev"
 
 // SARIF 2.1.0 specification constants
 const (
@@ -151,6 +151,28 @@ type axeNode struct {
 // Conversion Functions
 // ============================================
 
+// convertViolationsToResults converts axe violations to SARIF results.
+func convertViolationsToResults(run *SARIFRun, ruleIndices map[string]int, violations []axeViolation) {
+	for i := range violations {
+		v := violations[i]
+		ruleIdx := ensureRule(run, ruleIndices, v)
+		for _, node := range v.Nodes {
+			run.Results = append(run.Results, nodeToResult(v, node, ruleIdx, axeImpactToLevel(node.Impact)))
+		}
+	}
+}
+
+// convertPassesToResults converts axe passes to SARIF results with "none" level.
+func convertPassesToResults(run *SARIFRun, ruleIndices map[string]int, passes []axeViolation) {
+	for i := range passes {
+		p := passes[i]
+		ruleIdx := ensureRule(run, ruleIndices, p)
+		for _, node := range p.Nodes {
+			run.Results = append(run.Results, nodeToResult(p, node, ruleIdx, "none"))
+		}
+	}
+}
+
 // ExportSARIF converts an axe-core accessibility result to SARIF 2.1.0 format.
 // If opts.SaveTo is set, it also writes the SARIF JSON to the specified file.
 func ExportSARIF(a11yResultJSON json.RawMessage, opts SARIFExportOptions) (*SARIFLog, error) {
@@ -176,39 +198,18 @@ func ExportSARIF(a11yResultJSON json.RawMessage, opts SARIFExportOptions) (*SARI
 	}
 
 	run := &log.Runs[0]
-
-	// Track rule indices for deduplication
 	ruleIndices := make(map[string]int)
 
-	// Convert violations
-	for i := range axe.Violations {
-		v := axe.Violations[i]
-		ruleIdx := ensureRule(run, ruleIndices, v)
-		for _, node := range v.Nodes {
-			result := nodeToResult(v, node, ruleIdx, axeImpactToLevel(node.Impact))
-			run.Results = append(run.Results, result)
-		}
-	}
-
-	// Convert passes if requested
+	convertViolationsToResults(run, ruleIndices, axe.Violations)
 	if opts.IncludePasses {
-		for i := range axe.Passes {
-			p := axe.Passes[i]
-			ruleIdx := ensureRule(run, ruleIndices, p)
-			for _, node := range p.Nodes {
-				result := nodeToResult(p, node, ruleIdx, "none")
-				run.Results = append(run.Results, result)
-			}
-		}
+		convertPassesToResults(run, ruleIndices, axe.Passes)
 	}
 
-	// Save to file if requested
 	if opts.SaveTo != "" {
 		if err := saveSARIFToFile(log, opts.SaveTo); err != nil {
 			return nil, err
 		}
 	}
-
 	return log, nil
 }
 
@@ -303,49 +304,40 @@ func resolveExistingPath(path string) string {
 	return filepath.Join(resolveExistingPath(parent), filepath.Base(path))
 }
 
+// isPathUnderResolvedDir checks if resolvedPath is under an allowed directory.
+func isPathUnderResolvedDir(resolvedPath, dir string) bool {
+	resolved, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return false
+	}
+	return strings.HasPrefix(resolvedPath, resolved+string(os.PathSeparator))
+}
+
+// validateSARIFSavePath checks that the path is under an allowed directory.
+func validateSARIFSavePath(absPath, resolvedPath string) error {
+	if isPathUnderResolvedDir(resolvedPath, os.TempDir()) {
+		return nil
+	}
+	if cwd, err := os.Getwd(); err == nil && isPathUnderResolvedDir(resolvedPath, cwd) {
+		return nil
+	}
+	return fmt.Errorf("save_to path must be under the current working directory or temp directory: %s", absPath)
+}
+
 // saveSARIFToFile writes the SARIF log to the specified path with security checks.
 func saveSARIFToFile(log *SARIFLog, path string) error {
-	// Resolve to absolute path
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("failed to resolve path: %w", err)
 	}
 
-	// Security: resolve symlinks to prevent symlink-based path traversal.
-	// We resolve the target path and the allowed base directories, then compare
-	// the resolved paths to ensure the target stays within allowed boundaries.
 	resolvedPath := resolveExistingPath(absPath)
-
-	allowed := false
-
-	// Check temp directory (resolved to handle symlinks in temp path itself)
-	tmpDir := os.TempDir()
-	if resolvedTmp, err := filepath.EvalSymlinks(tmpDir); err == nil {
-		if strings.HasPrefix(resolvedPath, resolvedTmp+string(os.PathSeparator)) {
-			allowed = true
-		}
+	if err := validateSARIFSavePath(absPath, resolvedPath); err != nil {
+		return err
 	}
 
-	// Check current working directory
-	if !allowed {
-		cwd, err := os.Getwd()
-		if err == nil {
-			if resolvedCwd, err := filepath.EvalSymlinks(cwd); err == nil {
-				if strings.HasPrefix(resolvedPath, resolvedCwd+string(os.PathSeparator)) {
-					allowed = true
-				}
-			}
-		}
-	}
-
-	if !allowed {
-		return fmt.Errorf("save_to path must be under the current working directory or temp directory: %s", absPath)
-	}
-
-	// Ensure parent directory exists
-	dir := filepath.Dir(absPath)
 	// #nosec G301 -- 0755 for export directory is appropriate
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
@@ -358,6 +350,5 @@ func saveSARIFToFile(log *SARIFLog, path string) error {
 	if err := os.WriteFile(absPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write SARIF file: %w", err)
 	}
-
 	return nil
 }

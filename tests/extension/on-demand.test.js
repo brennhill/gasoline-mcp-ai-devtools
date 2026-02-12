@@ -7,6 +7,7 @@
 
 import { test, describe, mock, beforeEach, afterEach, after } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 const createMockChrome = () => ({
@@ -14,15 +15,15 @@ const createMockChrome = () => ({
     onMessage: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
     getURL: mock.fn((path) => `chrome-extension://test-id/${path}`),
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION })
   },
   tabs: {
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1, url: 'http://localhost:3000' }])),
     get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
-    sendMessage: mock.fn((_tabId, _message) => Promise.resolve()),
+    sendMessage: mock.fn((_tabId, _message) => Promise.resolve())
   },
   scripting: {
-    executeScript: mock.fn(() => Promise.resolve([{ result: {} }])),
+    executeScript: mock.fn(() => Promise.resolve([{ result: {} }]))
   },
   storage: {
     local: {
@@ -31,7 +32,7 @@ const createMockChrome = () => ({
           serverUrl: 'http://localhost:7890',
           captureWebSockets: true,
           captureNetworkBodies: false,
-          trackedTabId: 1,
+          trackedTabId: 1
         }
         if (callback) callback(data)
         return Promise.resolve(data)
@@ -43,7 +44,7 @@ const createMockChrome = () => ({
       remove: mock.fn((keys, callback) => {
         if (callback) callback()
         return Promise.resolve()
-      }),
+      })
     },
     sync: {
       get: mock.fn((keys, callback) => {
@@ -53,7 +54,7 @@ const createMockChrome = () => ({
       set: mock.fn((data, callback) => {
         if (callback) callback()
         return Promise.resolve()
-      }),
+      })
     },
     session: {
       get: mock.fn((keys, callback) => {
@@ -63,12 +64,12 @@ const createMockChrome = () => ({
       set: mock.fn((data, callback) => {
         if (callback) callback()
         return Promise.resolve()
-      }),
+      })
     },
     onChanged: {
-      addListener: mock.fn(),
-    },
-  },
+      addListener: mock.fn()
+    }
+  }
 })
 
 const createMockDocument = () => ({
@@ -78,18 +79,18 @@ const createMockDocument = () => ({
   readyState: 'complete',
   documentElement: {
     scrollHeight: 2400,
-    scrollWidth: 1440,
+    scrollWidth: 1440
   },
   head: {
-    appendChild: mock.fn(),
+    appendChild: mock.fn()
   },
   createElement: mock.fn((tag) => ({
     tagName: tag.toUpperCase(),
     onload: null,
     onerror: null,
     src: '',
-    setAttribute: mock.fn(),
-  })),
+    setAttribute: mock.fn()
+  }))
 })
 
 const createMockWindow = () => ({
@@ -100,7 +101,7 @@ const createMockWindow = () => ({
   innerHeight: 900,
   scrollX: 0,
   scrollY: 320,
-  axe: null,
+  axe: null
 })
 
 // Set a baseline chrome mock so background.js async activity doesn't crash
@@ -134,10 +135,12 @@ after(() => {
 // Suppress unhandledRejection errors from background module initialization
 process.on('unhandledRejection', (reason, _promise) => {
   // Suppress initialization errors from background.js module loading
-  if ((reason instanceof ReferenceError) &&
-      (reason.message?.includes('_connectionCheckRunning') ||
-       reason.message?.includes('DebugCategory') ||
-       reason.message?.includes('Cannot access'))) {
+  if (
+    reason instanceof ReferenceError &&
+    (reason.message?.includes('_connectionCheckRunning') ||
+      reason.message?.includes('DebugCategory') ||
+      reason.message?.includes('Cannot access'))
+  ) {
     // Expected during test - background.js tries to access globals before init
     return
   }
@@ -155,7 +158,7 @@ describe('Pending Query Polling', () => {
   afterEach(async () => {
     globalThis.chrome = originalChrome
     // Wait for any pending async operations to settle
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await new Promise((resolve) => setTimeout(resolve, 1))
   })
 
   test('should poll server for pending queries', async () => {
@@ -164,8 +167,8 @@ describe('Pending Query Polling', () => {
     const mockFetch = mock.fn(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ queries: [] }),
-      }),
+        json: () => Promise.resolve({ queries: [] })
+      })
     )
 
     globalThis.fetch = mockFetch
@@ -176,34 +179,38 @@ describe('Pending Query Polling', () => {
     assert.ok(mockFetch.mock.calls[0].arguments[0].includes('/pending-queries'))
   })
 
-  test('should execute DOM query when pending query found', { skip: 'pollPendingQueries returns queries, does not call tabs.sendMessage' }, async () => {
-    const { pollPendingQueries } = await import('../../extension/background.js')
+  test(
+    'should execute DOM query when pending query found',
+    { skip: 'pollPendingQueries returns queries, does not call tabs.sendMessage' },
+    async () => {
+      const { pollPendingQueries } = await import('../../extension/background.js')
 
-    const query = {
-      id: 'query-123',
-      type: 'dom',
-      params: { selector: '.user-list' },
-    }
-
-    const mockFetch = mock.fn((url) => {
-      if (url.includes('/pending-queries')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ queries: [query] }),
-        })
+      const query = {
+        id: 'query-123',
+        type: 'dom',
+        params: { selector: '.user-list' }
       }
-      // POST result back
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
-    })
 
-    globalThis.fetch = mockFetch
+      const mockFetch = mock.fn((url) => {
+        if (url.includes('/pending-queries')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ queries: [query] })
+          })
+        }
+        // POST result back
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      })
 
-    await pollPendingQueries('http://localhost:7890')
+      globalThis.fetch = mockFetch
 
-    // Should have sent message to content script
-    const tabCalls = globalThis.chrome.tabs.sendMessage.mock.calls
-    assert.ok(tabCalls.length > 0, 'Expected message sent to tab')
-  })
+      await pollPendingQueries('http://localhost:7890')
+
+      // Should have sent message to content script
+      const tabCalls = globalThis.chrome.tabs.sendMessage.mock.calls
+      assert.ok(tabCalls.length > 0, 'Expected message sent to tab')
+    }
+  )
 
   test('should execute a11y query when pending query found', async () => {
     const { handlePendingQuery } = await import('../../extension/background.js')
@@ -211,7 +218,7 @@ describe('Pending Query Polling', () => {
     const query = {
       id: 'query-456',
       type: 'a11y',
-      params: { scope: '#main', tags: ['wcag2a'] },
+      params: { scope: '#main', tags: ['wcag2a'] }
     }
 
     await handlePendingQuery(query, 'http://localhost:7890')
@@ -254,43 +261,47 @@ describe('Pending Query Polling', () => {
     })
   })
 
-  test('should poll at 1-second intervals', { skip: 'startQueryPolling/stopQueryPolling not yet implemented' }, async () => {
-    const { startQueryPolling, stopQueryPolling } = await import('../../extension/background.js')
+  test(
+    'should poll at 1-second intervals',
+    { skip: 'startQueryPolling/stopQueryPolling not yet implemented' },
+    async () => {
+      const { startQueryPolling, stopQueryPolling } = await import('../../extension/background.js')
 
-    const mockFetch = mock.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ queries: [] }),
-      }),
-    )
-    globalThis.fetch = mockFetch
+      const mockFetch = mock.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ queries: [] })
+        })
+      )
+      globalThis.fetch = mockFetch
 
-    // Mock setInterval to capture callback and call it synchronously
-    let intervalCallback
-    const originalSetInterval = globalThis.setInterval
-    const originalClearInterval = globalThis.clearInterval
-    globalThis.setInterval = (cb, _ms) => {
-      intervalCallback = cb
-      return 999
+      // Mock setInterval to capture callback and call it synchronously
+      let intervalCallback
+      const originalSetInterval = globalThis.setInterval
+      const originalClearInterval = globalThis.clearInterval
+      globalThis.setInterval = (cb, _ms) => {
+        intervalCallback = cb
+        return 999
+      }
+      globalThis.clearInterval = mock.fn()
+
+      startQueryPolling('http://localhost:7890')
+
+      // Invoke the polling callback multiple times to simulate interval ticks
+      await intervalCallback()
+      await intervalCallback()
+      await intervalCallback()
+
+      stopQueryPolling()
+
+      // Restore originals
+      globalThis.setInterval = originalSetInterval
+      globalThis.clearInterval = originalClearInterval
+
+      // Should have polled at least 2 times
+      assert.ok(mockFetch.mock.calls.length >= 2, `Expected >= 2 polls, got ${mockFetch.mock.calls.length}`)
     }
-    globalThis.clearInterval = mock.fn()
-
-    startQueryPolling('http://localhost:7890')
-
-    // Invoke the polling callback multiple times to simulate interval ticks
-    await intervalCallback()
-    await intervalCallback()
-    await intervalCallback()
-
-    stopQueryPolling()
-
-    // Restore originals
-    globalThis.setInterval = originalSetInterval
-    globalThis.clearInterval = originalClearInterval
-
-    // Should have polled at least 2 times
-    assert.ok(mockFetch.mock.calls.length >= 2, `Expected >= 2 polls, got ${mockFetch.mock.calls.length}`)
-  })
+  )
 })
 
 describe('DOM Query Execution', () => {
@@ -317,8 +328,8 @@ describe('DOM Query Execution', () => {
         attributes: [],
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 100, height: 30 }),
         children: [],
-        offsetParent: {},
-      },
+        offsetParent: {}
+      }
     ])
 
     const result = await executeDOMQuery({ selector: 'h1' })
@@ -337,7 +348,7 @@ describe('DOM Query Execution', () => {
         textContent: '',
         attributes: [
           { name: 'class', value: 'user-card active' },
-          { name: 'data-id', value: '42' },
+          { name: 'data-id', value: '42' }
         ],
         getAttribute: (name) => {
           if (name === 'class') return 'user-card active'
@@ -346,8 +357,8 @@ describe('DOM Query Execution', () => {
         },
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 300, height: 100 }),
         children: [],
-        offsetParent: {},
-      },
+        offsetParent: {}
+      }
     ])
 
     const result = await executeDOMQuery({ selector: '.user-card' })
@@ -367,8 +378,8 @@ describe('DOM Query Execution', () => {
         getAttribute: () => null,
         getBoundingClientRect: () => ({ x: 20, y: 140, width: 300, height: 48 }),
         children: [],
-        offsetParent: {},
-      },
+        offsetParent: {}
+      }
     ])
 
     const result = await executeDOMQuery({ selector: 'div' })
@@ -387,7 +398,7 @@ describe('DOM Query Execution', () => {
         getAttribute: () => null,
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 100, height: 50 }),
         children: [],
-        offsetParent: {}, // non-null means visible
+        offsetParent: {} // non-null means visible
       },
       {
         tagName: 'DIV',
@@ -396,8 +407,8 @@ describe('DOM Query Execution', () => {
         getAttribute: () => null,
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 0, height: 0 }),
         children: [],
-        offsetParent: null, // null means hidden
-      },
+        offsetParent: null // null means hidden
+      }
     ])
 
     const result = await executeDOMQuery({ selector: 'div' })
@@ -412,7 +423,7 @@ describe('DOM Query Execution', () => {
     globalThis.window.getComputedStyle = mock.fn(() => ({
       display: 'flex',
       color: 'rgb(0, 0, 0)',
-      position: 'relative',
+      position: 'relative'
     }))
 
     globalThis.document.querySelectorAll = mock.fn(() => [
@@ -423,8 +434,8 @@ describe('DOM Query Execution', () => {
         getAttribute: () => null,
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 100, height: 50 }),
         children: [],
-        offsetParent: {},
-      },
+        offsetParent: {}
+      }
     ])
 
     const result = await executeDOMQuery({ selector: 'div', include_styles: true })
@@ -441,11 +452,11 @@ describe('DOM Query Execution', () => {
       color: 'rgb(0, 0, 0)',
       position: 'relative',
       margin: '10px',
-      padding: '5px',
+      padding: '5px'
     }
     globalThis.window.getComputedStyle = mock.fn(() => ({
       ...styles,
-      getPropertyValue: (prop) => styles[prop] || '',
+      getPropertyValue: (prop) => styles[prop] || ''
     }))
 
     globalThis.document.querySelectorAll = mock.fn(() => [
@@ -456,14 +467,14 @@ describe('DOM Query Execution', () => {
         getAttribute: () => null,
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 100, height: 50 }),
         children: [],
-        offsetParent: {},
-      },
+        offsetParent: {}
+      }
     ])
 
     const result = await executeDOMQuery({
       selector: 'div',
       include_styles: true,
-      properties: ['display', 'color'],
+      properties: ['display', 'color']
     })
 
     assert.strictEqual(Object.keys(result.matches[0].styles).length, 2)
@@ -479,7 +490,7 @@ describe('DOM Query Execution', () => {
       textContent: 'child text',
       attributes: [{ name: 'class', value: 'name' }],
       getAttribute: (name) => (name === 'class' ? 'name' : null),
-      children: [],
+      children: []
     }
 
     globalThis.document.querySelectorAll = mock.fn(() => [
@@ -490,8 +501,8 @@ describe('DOM Query Execution', () => {
         getAttribute: () => null,
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 300, height: 48 }),
         children: [childElement],
-        offsetParent: {},
-      },
+        offsetParent: {}
+      }
     ])
 
     const result = await executeDOMQuery({ selector: 'li', include_children: true })
@@ -511,15 +522,15 @@ describe('DOM Query Execution', () => {
       textContent: `depth-${depth}`,
       attributes: [],
       getAttribute: () => null,
-      children: depth > 0 ? [makeNested(depth - 1)] : [],
+      children: depth > 0 ? [makeNested(depth - 1)] : []
     })
 
     globalThis.document.querySelectorAll = mock.fn(() => [
       {
         ...makeNested(10),
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 100, height: 100 }),
-        offsetParent: {},
-      },
+        offsetParent: {}
+      }
     ])
 
     const result = await executeDOMQuery({ selector: 'div', include_children: true, max_depth: 3 })
@@ -543,15 +554,15 @@ describe('DOM Query Execution', () => {
       textContent: `depth-${depth}`,
       attributes: [],
       getAttribute: () => null,
-      children: depth > 0 ? [makeNested(depth - 1)] : [],
+      children: depth > 0 ? [makeNested(depth - 1)] : []
     })
 
     globalThis.document.querySelectorAll = mock.fn(() => [
       {
         ...makeNested(10),
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 100, height: 100 }),
-        offsetParent: {},
-      },
+        offsetParent: {}
+      }
     ])
 
     const result = await executeDOMQuery({ selector: 'div', include_children: true, max_depth: 20 })
@@ -576,7 +587,7 @@ describe('DOM Query Execution', () => {
       getAttribute: () => null,
       getBoundingClientRect: () => ({ x: 0, y: i * 20, width: 200, height: 20 }),
       children: [],
-      offsetParent: {},
+      offsetParent: {}
     }))
 
     globalThis.document.querySelectorAll = mock.fn(() => elements)
@@ -599,8 +610,8 @@ describe('DOM Query Execution', () => {
         getAttribute: () => null,
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 300, height: 100 }),
         children: [],
-        offsetParent: {},
-      },
+        offsetParent: {}
+      }
     ])
 
     const result = await executeDOMQuery({ selector: 'p' })
@@ -682,9 +693,9 @@ describe('Page Info', () => {
             action: '/api/login',
             querySelectorAll: () => [
               { name: 'email', tagName: 'INPUT' },
-              { name: 'password', tagName: 'INPUT' },
-            ],
-          },
+              { name: 'password', tagName: 'INPUT' }
+            ]
+          }
         ]
       }
       return []
@@ -743,9 +754,9 @@ describe('Accessibility Audit Execution', () => {
             violations: [],
             passes: [],
             incomplete: [],
-            inapplicable: [],
-          }),
-        ),
+            inapplicable: []
+          })
+        )
       }
     }, 50)
 
@@ -764,9 +775,9 @@ describe('Accessibility Audit Execution', () => {
           violations: [],
           passes: [],
           incomplete: [],
-          inapplicable: [],
-        }),
-      ),
+          inapplicable: []
+        })
+      )
     }
 
     await runAxeAudit({})
@@ -785,9 +796,9 @@ describe('Accessibility Audit Execution', () => {
           violations: [],
           passes: [],
           incomplete: [],
-          inapplicable: [],
-        }),
-      ),
+          inapplicable: []
+        })
+      )
     }
 
     await runAxeAudit({ scope: '#main-content' })
@@ -805,9 +816,9 @@ describe('Accessibility Audit Execution', () => {
           violations: [],
           passes: [],
           incomplete: [],
-          inapplicable: [],
-        }),
-      ),
+          inapplicable: []
+        })
+      )
     }
 
     await runAxeAudit({ tags: ['wcag2a', 'wcag2aa'] })
@@ -825,9 +836,9 @@ describe('Accessibility Audit Execution', () => {
           violations: [],
           passes: [{ id: 'button-name' }],
           incomplete: [],
-          inapplicable: [],
-        }),
-      ),
+          inapplicable: []
+        })
+      )
     }
 
     await runAxeAudit({ include_passes: true })
@@ -851,14 +862,14 @@ describe('Accessibility Audit Execution', () => {
             {
               target: ['#signup-form > label:nth-child(2)'],
               html: '<label class="form-label subtle">Email address</label>',
-              failureSummary: 'Element has insufficient color contrast of 2.8:1',
-            },
-          ],
-        },
+              failureSummary: 'Element has insufficient color contrast of 2.8:1'
+            }
+          ]
+        }
       ],
       passes: [],
       incomplete: [],
-      inapplicable: [],
+      inapplicable: []
     }
 
     const formatted = formatAxeResults(axeResult)
@@ -875,7 +886,7 @@ describe('Accessibility Audit Execution', () => {
     const nodes = Array.from({ length: 20 }, (_, i) => ({
       target: [`#node-${i}`],
       html: `<div id="node-${i}">Node ${i}</div>`,
-      failureSummary: 'Failure',
+      failureSummary: 'Failure'
     }))
 
     const axeResult = {
@@ -886,12 +897,12 @@ describe('Accessibility Audit Execution', () => {
           description: 'Test',
           helpUrl: 'http://test.com',
           tags: [],
-          nodes,
-        },
+          nodes
+        }
       ],
       passes: [],
       incomplete: [],
-      inapplicable: [],
+      inapplicable: []
     }
 
     const formatted = formatAxeResults(axeResult)
@@ -912,12 +923,12 @@ describe('Accessibility Audit Execution', () => {
           description: 'Test',
           helpUrl: 'http://test.com',
           tags: [],
-          nodes: [{ target: ['div'], html: longHtml, failureSummary: 'Failure' }],
-        },
+          nodes: [{ target: ['div'], html: longHtml, failureSummary: 'Failure' }]
+        }
       ],
       passes: [],
       incomplete: [],
-      inapplicable: [],
+      inapplicable: []
     }
 
     const formatted = formatAxeResults(axeResult)
@@ -931,11 +942,11 @@ describe('Accessibility Audit Execution', () => {
     const axeResult = {
       violations: [
         { id: 'v1', nodes: [] },
-        { id: 'v2', nodes: [] },
+        { id: 'v2', nodes: [] }
       ],
       passes: Array(52).fill({ id: 'p', nodes: [] }),
       incomplete: [{ id: 'i1', nodes: [] }],
-      inapplicable: Array(31).fill({ id: 'ia', nodes: [] }),
+      inapplicable: Array(31).fill({ id: 'ia', nodes: [] })
     }
 
     const formatted = formatAxeResults(axeResult)
@@ -950,7 +961,7 @@ describe('Accessibility Audit Execution', () => {
     const { runAxeAuditWithTimeout } = await import('../../extension/inject.js')
 
     globalThis.window.axe = {
-      run: mock.fn(() => new Promise(() => {})), // Never resolves
+      run: mock.fn(() => new Promise(() => {})) // Never resolves
     }
 
     const result = await runAxeAuditWithTimeout({}, 50) // 50ms timeout for testing
@@ -970,12 +981,12 @@ describe('Accessibility Audit Execution', () => {
           description: 'Test',
           helpUrl: 'http://test.com',
           tags: ['wcag2aa', 'cat.color', 'wcag143'],
-          nodes: [],
-        },
+          nodes: []
+        }
       ],
       passes: [],
       incomplete: [],
-      inapplicable: [],
+      inapplicable: []
     }
 
     const formatted = formatAxeResults(axeResult)
@@ -1030,7 +1041,7 @@ describe('Memory Pressure Detection', () => {
     const state = {
       wsBufferCapacity: 500,
       networkBufferCapacity: 100,
-      memoryUsageMB: 25, // Above 20MB soft limit
+      memoryUsageMB: 25 // Above 20MB soft limit
     }
 
     const result = checkMemoryPressure(state)
@@ -1046,7 +1057,7 @@ describe('Memory Pressure Detection', () => {
       wsBufferCapacity: 500,
       networkBufferCapacity: 100,
       networkBodiesEnabled: true,
-      memoryUsageMB: 55, // Above 50MB hard limit
+      memoryUsageMB: 55 // Above 50MB hard limit
     }
 
     const result = checkMemoryPressure(state)
@@ -1061,7 +1072,7 @@ describe('Memory Pressure Detection', () => {
       wsBufferCapacity: 500,
       networkBufferCapacity: 100,
       networkBodiesEnabled: true,
-      memoryUsageMB: 15, // Under 20MB soft limit
+      memoryUsageMB: 15 // Under 20MB soft limit
     }
 
     const result = checkMemoryPressure(state)

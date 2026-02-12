@@ -1,6 +1,6 @@
 #!/bin/bash
 # Validate that all version numbers in the project match
-set -e
+set -euo pipefail
 
 VERSION=$(grep "^VERSION :=" Makefile | awk '{print $3}')
 
@@ -12,7 +12,8 @@ ERRORS=0
 check_version() {
     local file=$1
     local pattern=$2
-    local found_version=$(grep -E "$pattern" "$file" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "NOT_FOUND")
+    local found_version
+    found_version=$(grep -E "$pattern" "$file" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "NOT_FOUND")
 
     if [ "$found_version" != "$VERSION" ]; then
         echo "❌ $file: Expected $VERSION, found $found_version"

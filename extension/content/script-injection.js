@@ -4,6 +4,14 @@
  */
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false;
+/** Per-page-load nonce for authenticating postMessages to inject.js */
+const pageNonce = crypto
+    .getRandomValues(new Uint8Array(16))
+    .reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+/** Get the page nonce for authenticating postMessages to inject.js */
+export function getPageNonce() {
+    return pageNonce;
+}
 /** Check if inject script has been loaded into the page context */
 export function isInjectScriptLoaded() {
     return injected;
@@ -15,7 +23,7 @@ const SYNC_SETTINGS = [
     { storageKey: 'networkWaterfallEnabled', messageType: 'setNetworkWaterfallEnabled' },
     { storageKey: 'performanceMarksEnabled', messageType: 'setPerformanceMarksEnabled' },
     { storageKey: 'actionReplayEnabled', messageType: 'setActionReplayEnabled' },
-    { storageKey: 'networkBodyCaptureEnabled', messageType: 'setNetworkBodyCaptureEnabled' },
+    { storageKey: 'networkBodyCaptureEnabled', messageType: 'setNetworkBodyCaptureEnabled' }
 ];
 /**
  * Sync stored settings to the inject script after it loads.
@@ -29,10 +37,15 @@ function syncStoredSettings() {
             if (value === undefined)
                 continue; // Use default if not set
             if (setting.isMode) {
-                window.postMessage({ type: 'GASOLINE_SETTING', setting: setting.messageType, mode: value }, window.location.origin);
+                window.postMessage({
+                    type: 'GASOLINE_SETTING',
+                    setting: setting.messageType,
+                    mode: value,
+                    _nonce: pageNonce
+                }, window.location.origin);
             }
             else {
-                window.postMessage({ type: 'GASOLINE_SETTING', setting: setting.messageType, enabled: value }, window.location.origin);
+                window.postMessage({ type: 'GASOLINE_SETTING', setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
             }
         }
     });
@@ -54,6 +67,7 @@ export function injectScript() {
     const script = document.createElement('script');
     script.src = chrome.runtime.getURL('inject.bundled.js');
     script.type = 'module';
+    script.dataset.gasolineNonce = pageNonce;
     script.onload = () => {
         script.remove();
         injected = true;

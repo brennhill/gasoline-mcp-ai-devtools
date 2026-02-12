@@ -3,199 +3,195 @@
  * Tests diagnostic functions: testBinary, runDiagnostics
  */
 
-const test = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const doctor = require('../../npm/gasoline-mcp/lib/doctor');
-const config = require('../../npm/gasoline-mcp/lib/config');
+const test = require('node:test')
+const assert = require('node:assert')
+const fs = require('fs')
+const path = require('path')
+const os = require('os')
+const doctor = require('../../npm/gasoline-mcp/lib/doctor')
+const config = require('../../npm/gasoline-mcp/lib/config')
 
 test('doctor.testBinary returns object with expected structure', () => {
-  const result = doctor.testBinary();
+  const result = doctor.testBinary()
 
-  assert.ok(typeof result === 'object', 'Should return object');
-  assert.ok(typeof result.ok === 'boolean', 'Should have ok boolean');
+  assert.ok(typeof result === 'object', 'Should return object')
+  assert.ok(typeof result.ok === 'boolean', 'Should have ok boolean')
 
   if (result.ok) {
-    assert.ok(result.path, 'Should have path when ok=true');
-    assert.ok(result.version, 'Should have version when ok=true');
+    assert.ok(result.path, 'Should have path when ok=true')
+    assert.ok(result.version, 'Should have version when ok=true')
   } else {
-    assert.ok(result.error, 'Should have error when ok=false');
+    assert.ok(result.error, 'Should have error when ok=false')
   }
-});
+})
 
 test('doctor.testBinary handles unsupported platform gracefully', () => {
   // This test just verifies the function doesn't crash
   // The actual result depends on the platform
-  const result = doctor.testBinary();
-  assert.ok(result, 'Should return result');
-});
+  const result = doctor.testBinary()
+  assert.ok(result, 'Should return result')
+})
 
 test('doctor.runDiagnostics returns complete report structure', () => {
-  const report = doctor.runDiagnostics(false);
+  const report = doctor.runDiagnostics(false)
 
-  assert.ok(report.tools, 'Should have tools array');
-  assert.ok(Array.isArray(report.tools), 'tools should be array');
-  assert.ok(report.binary, 'Should have binary result');
-  assert.ok(report.summary, 'Should have summary string');
+  assert.ok(report.tools, 'Should have tools array')
+  assert.ok(Array.isArray(report.tools), 'tools should be array')
+  assert.ok(report.binary, 'Should have binary result')
+  assert.ok(report.summary, 'Should have summary string')
 
   // Should have exactly 4 tools
-  assert.strictEqual(report.tools.length, 4, 'Should check all 4 tools');
-});
+  assert.strictEqual(report.tools.length, 4, 'Should check all 4 tools')
+})
 
 test('doctor.runDiagnostics tools have correct structure', () => {
-  const report = doctor.runDiagnostics(false);
+  const report = doctor.runDiagnostics(false)
 
   for (const tool of report.tools) {
-    assert.ok(tool.name, 'Tool should have name');
-    assert.ok(tool.path, 'Tool should have path');
-    assert.ok(typeof tool.status === 'string', 'Tool should have status');
-    assert.ok(Array.isArray(tool.issues), 'Tool should have issues array');
-    assert.ok(Array.isArray(tool.suggestions), 'Tool should have suggestions array');
+    assert.ok(tool.name, 'Tool should have name')
+    assert.ok(tool.path, 'Tool should have path')
+    assert.ok(typeof tool.status === 'string', 'Tool should have status')
+    assert.ok(Array.isArray(tool.issues), 'Tool should have issues array')
+    assert.ok(Array.isArray(tool.suggestions), 'Tool should have suggestions array')
 
     // Status should be one of the valid values
-    assert.ok(['ok', 'error', 'info'].includes(tool.status), 'Status should be valid');
+    assert.ok(['ok', 'error', 'info'].includes(tool.status), 'Status should be valid')
   }
-});
+})
 
 test('doctor.runDiagnostics identifies tool names correctly', () => {
-  const report = doctor.runDiagnostics(false);
-  const names = report.tools.map(t => t.name);
+  const report = doctor.runDiagnostics(false)
+  const names = report.tools.map((t) => t.name)
 
-  assert.ok(names.includes('Claude Desktop'), 'Should identify Claude Desktop');
-  assert.ok(names.includes('VSCode'), 'Should identify VSCode');
-  assert.ok(names.includes('Cursor'), 'Should identify Cursor');
-  assert.ok(names.includes('Codeium'), 'Should identify Codeium');
-});
+  assert.ok(names.includes('Claude Desktop'), 'Should identify Claude Desktop')
+  assert.ok(names.includes('VSCode'), 'Should identify VSCode')
+  assert.ok(names.includes('Cursor'), 'Should identify Cursor')
+  assert.ok(names.includes('Codeium'), 'Should identify Codeium')
+})
 
 test('doctor.runDiagnostics with verbose=true does not crash', () => {
   // Verbose mode should produce debug output but not crash
-  const report = doctor.runDiagnostics(true);
+  const report = doctor.runDiagnostics(true)
 
-  assert.ok(report.tools, 'Should still return valid report with verbose=true');
-});
+  assert.ok(report.tools, 'Should still return valid report with verbose=true')
+})
 
 test('doctor.runDiagnostics provides suggestions for unconfigured tools', () => {
-  const report = doctor.runDiagnostics(false);
+  const report = doctor.runDiagnostics(false)
 
   // At least some tools should have status and issues
-  const hasIssues = report.tools.some(t => t.issues.length > 0);
+  const hasIssues = report.tools.some((t) => t.issues.length > 0)
   if (hasIssues) {
     // Any tool with issues should have suggestions
-    const toolsWithIssues = report.tools.filter(t => t.issues.length > 0);
+    const toolsWithIssues = report.tools.filter((t) => t.issues.length > 0)
     for (const tool of toolsWithIssues) {
-      assert.ok(tool.suggestions.length > 0, `Tool ${tool.name} with issues should have suggestions`);
+      assert.ok(tool.suggestions.length > 0, `Tool ${tool.name} with issues should have suggestions`)
     }
   }
-});
+})
 
 test('doctor.runDiagnostics binary result has correct structure', () => {
-  const report = doctor.runDiagnostics(false);
-  const binary = report.binary;
+  const report = doctor.runDiagnostics(false)
+  const binary = report.binary
 
-  assert.ok(typeof binary.ok === 'boolean', 'Binary should have ok boolean');
+  assert.ok(typeof binary.ok === 'boolean', 'Binary should have ok boolean')
 
   if (binary.ok) {
-    assert.ok(binary.path, 'Binary should have path when ok=true');
-    assert.ok(binary.version !== undefined, 'Binary should have version when ok=true');
+    assert.ok(binary.path, 'Binary should have path when ok=true')
+    assert.ok(binary.version !== undefined, 'Binary should have version when ok=true')
   } else {
-    assert.ok(binary.error, 'Binary should have error when ok=false');
+    assert.ok(binary.error, 'Binary should have error when ok=false')
   }
-});
+})
 
 test('doctor.runDiagnostics summary mentions count information', () => {
-  const report = doctor.runDiagnostics(false);
+  const report = doctor.runDiagnostics(false)
 
-  assert.ok(typeof report.summary === 'string', 'Summary should be string');
-  assert.ok(report.summary.length > 0, 'Summary should not be empty');
+  assert.ok(typeof report.summary === 'string', 'Summary should be string')
+  assert.ok(report.summary.length > 0, 'Summary should not be empty')
   // Summary should mention counts
-  assert.ok(report.summary.includes('Summary') || report.summary.includes('tool'), 'Summary should describe tools');
-});
+  assert.ok(report.summary.includes('Summary') || report.summary.includes('tool'), 'Summary should describe tools')
+})
 
 test('doctor.runDiagnostics identifies existing valid configs', () => {
   // Create a temporary valid config
-  const testDir = path.join(os.tmpdir(), 'doctor-test');
+  const testDir = path.join(os.tmpdir(), 'doctor-test')
   if (!fs.existsSync(testDir)) {
-    fs.mkdirSync(testDir, { recursive: true });
+    fs.mkdirSync(testDir, { recursive: true })
   }
 
   try {
-    const testPath = path.join(testDir, 'claude.mcp.json');
+    const testPath = path.join(testDir, 'claude.mcp.json')
     const validConfig = {
       mcpServers: {
-        gasoline: { command: 'gasoline-mcp' },
-      },
-    };
-    fs.writeFileSync(testPath, JSON.stringify(validConfig));
+        gasoline: { command: 'gasoline-mcp' }
+      }
+    }
+    fs.writeFileSync(testPath, JSON.stringify(validConfig))
 
     // Note: runDiagnostics checks specific hardcoded paths, not our test path
     // So this test mainly verifies the diagnostic logic works with valid configs
-    const report = doctor.runDiagnostics(false);
+    const report = doctor.runDiagnostics(false)
 
-    assert.ok(report.tools.length > 0, 'Should return tools even if not configured');
+    assert.ok(report.tools.length > 0, 'Should return tools even if not configured')
   } finally {
     // Cleanup
     if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
+      fs.rmSync(testDir, { recursive: true, force: true })
     }
   }
-});
+})
 
 test('doctor.runDiagnostics handles invalid JSON gracefully', () => {
   // The diagnostic should handle invalid configs without crashing
-  const report = doctor.runDiagnostics(false);
+  const report = doctor.runDiagnostics(false)
 
   // Should always return a complete report
-  assert.ok(report.tools, 'Should return tools');
-  assert.ok(report.binary, 'Should return binary info');
-  assert.ok(report.summary, 'Should return summary');
-});
+  assert.ok(report.tools, 'Should return tools')
+  assert.ok(report.binary, 'Should return binary info')
+  assert.ok(report.summary, 'Should return summary')
+})
 
 test('doctor tool statuses are consistent with structure', () => {
-  const report = doctor.runDiagnostics(false);
+  const report = doctor.runDiagnostics(false)
 
   for (const tool of report.tools) {
     // If status is 'ok', should have no issues
     if (tool.status === 'ok') {
-      assert.strictEqual(tool.issues.length, 0, `OK tool ${tool.name} should have no issues`);
+      assert.strictEqual(tool.issues.length, 0, `OK tool ${tool.name} should have no issues`)
     }
 
     // If status is 'error', should have issues
     if (tool.status === 'error') {
-      assert.ok(tool.issues.length > 0, `Error tool ${tool.name} should have issues`);
+      assert.ok(tool.issues.length > 0, `Error tool ${tool.name} should have issues`)
     }
 
     // If status is 'info', could have issues (not configured)
     // This is OK
   }
-});
+})
 
 test('doctor.runDiagnostics does not modify config files', () => {
-  const candidates = config.getConfigCandidates();
+  const candidates = config.getConfigCandidates()
 
   // Get checksums of existing files
-  const checksums = {};
+  const checksums = {}
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
-      const content = fs.readFileSync(candidate, 'utf8');
-      checksums[candidate] = JSON.stringify(JSON.parse(content)); // Normalize JSON
+      const content = fs.readFileSync(candidate, 'utf8')
+      checksums[candidate] = JSON.stringify(JSON.parse(content)) // Normalize JSON
     }
   }
 
   // Run diagnostics
-  doctor.runDiagnostics(false);
+  doctor.runDiagnostics(false)
 
   // Verify files haven't changed
   for (const candidate in checksums) {
     if (fs.existsSync(candidate)) {
-      const content = fs.readFileSync(candidate, 'utf8');
-      const newChecksum = JSON.stringify(JSON.parse(content));
-      assert.strictEqual(
-        newChecksum,
-        checksums[candidate],
-        `Config ${candidate} should not be modified by diagnostics`
-      );
+      const content = fs.readFileSync(candidate, 'utf8')
+      const newChecksum = JSON.stringify(JSON.parse(content))
+      assert.strictEqual(newChecksum, checksums[candidate], `Config ${candidate} should not be modified by diagnostics`)
     }
   }
-});
+})

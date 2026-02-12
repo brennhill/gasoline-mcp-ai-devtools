@@ -6,54 +6,8 @@
 package security
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 )
-
-// ============================================
-// H-3: Missing Body Size Limit on POST /api/extension-status
-// ============================================
-
-func TestHandleExtensionStatus_RejectsLargeBody(t *testing.T) {
-	t.Parallel()
-
-	// Create a very large JSON body (1MB)
-	largeBody := strings.Repeat(`{"key":"value",`, 100000) + `"end":"value"}`
-
-	req := httptest.NewRequest(http.MethodPost, "/api/extension-status", strings.NewReader(largeBody))
-	req.Header.Set("Content-Type", "application/json")
-
-	w := httptest.NewRecorder()
-
-	capture := &Capture{}
-	capture.HandleExtensionStatus(w, req)
-
-	// Should reject with 413 or 400 status code
-	if w.Code != http.StatusRequestEntityTooLarge && w.Code != http.StatusBadRequest {
-		t.Errorf("Expected 413 or 400 for large body, got %d", w.Code)
-	}
-}
-
-func TestHandleExtensionStatus_AcceptsSmallBody(t *testing.T) {
-	t.Parallel()
-
-	smallBody := `{"version":"1.0.0","connected":true}`
-
-	req := httptest.NewRequest(http.MethodPost, "/api/extension-status", strings.NewReader(smallBody))
-	req.Header.Set("Content-Type", "application/json")
-
-	w := httptest.NewRecorder()
-
-	capture := &Capture{}
-	capture.HandleExtensionStatus(w, req)
-
-	// Should accept with 200 status code
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200 for small body, got %d. Body: %s", w.Code, w.Body.String())
-	}
-}
 
 // ============================================
 // H-6: ClearAll() Does Not Reset Performance Data

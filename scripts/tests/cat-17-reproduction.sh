@@ -3,8 +3,10 @@
 # Tests the full reproduction script lifecycle:
 # seed actions → export (gasoline + playwright) → write to file → parse → replay.
 # Proves both export formats and recreation pipeline work end-to-end.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
@@ -275,28 +277,31 @@ run_test_17_5() {
 
         if echo "$line" | grep -q "Navigate to:"; then
             local url
-            url=$(echo "$line" | sed 's/.*Navigate to: //')
+            url="${line##*Navigate to: }"
             resp=$(call_tool "interact" "{\"action\":\"navigate\",\"url\":\"${url}\"}")
 
         elif echo "$line" | grep -q "Click:"; then
-            # Extract text between first pair of quotes
+            # Extract text between first pair of quotes (capture group requires sed)
             local sel_text
+            # shellcheck disable=SC2001 # capture group extraction requires sed
             sel_text=$(echo "$line" | sed 's/.*Click: "\([^"]*\)".*/\1/')
             resp=$(call_tool "interact" "{\"action\":\"click\",\"selector\":\"text=${sel_text}\"}")
 
         elif echo "$line" | grep -q "^[0-9]*\. Type"; then
             local val
+            # shellcheck disable=SC2001 # capture group extraction requires sed
             val=$(echo "$line" | sed 's/.*Type "\([^"]*\)".*/\1/')
             resp=$(call_tool "interact" "{\"action\":\"type\",\"selector\":\"body\",\"text\":\"${val}\"}")
 
         elif echo "$line" | grep -q "Select "; then
             local val
+            # shellcheck disable=SC2001 # capture group extraction requires sed
             val=$(echo "$line" | sed 's/.*Select "\([^"]*\)".*/\1/')
             resp=$(call_tool "interact" "{\"action\":\"select\",\"selector\":\"body\",\"value\":\"${val}\"}")
 
         elif echo "$line" | grep -q "Press:"; then
             local key
-            key=$(echo "$line" | sed 's/.*Press: //')
+            key="${line##*Press: }"
             resp=$(call_tool "interact" "{\"action\":\"key_press\",\"text\":\"${key}\"}")
         fi
 

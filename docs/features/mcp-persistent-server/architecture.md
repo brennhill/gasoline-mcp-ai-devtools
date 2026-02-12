@@ -116,7 +116,7 @@ sequenceDiagram
 
 ### 1. Wrapper Changes (bin/gasoline-mcp)
 
-**Before:**
+#### Before:
 
 ```javascript
 // Kill any existing server before starting
@@ -124,7 +124,7 @@ killExistingServers(port);
 execFileSync(binary, args);
 ```
 
-**After:**
+#### After:
 
 ```javascript
 // Let Go binary handle connection logic
@@ -175,11 +175,15 @@ if *daemonMode {
 
 ## Process Lifecycle
 
+### Runtime State Files
+
+Persistent server runtime files are stored in Gasoline's runtime state directory, not home-root files. See [`docs/core/runtime-state-directory.md`](../../core/runtime-state-directory.md) for defaults, overrides, and full layout.
+
 ### Server Startup
 
 1. First MCP client spawns server with `--daemon` flag
 2. Server process detached from parent (survives client exit)
-3. Server writes PID to `~/.gasoline-7890.pid`
+3. Server writes PID to `run/gasoline-7890.pid` under the runtime state directory
 4. Server binds HTTP port 7890
 5. Server runs until explicitly stopped
 
@@ -199,7 +203,7 @@ if *daemonMode {
 gasoline --stop --port 7890
 
 # Or manually
-kill $(cat ~/.gasoline-7890.pid)
+kill $(cat <state-dir>/run/gasoline-7890.pid)
 ```
 
 ## Performance Benefits
@@ -266,7 +270,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as MCP Client
-    participant PIDFile as ~/.gasoline-7890.pid
+    participant PIDFile as <state-dir>/run/gasoline-7890.pid
     participant Process as Process 12345
 
     Client->>PIDFile: Read PID (12345)
@@ -398,7 +402,7 @@ sequenceDiagram
 
 ### 9. Disk Full (Log File Write Fails)
 
-**Scenario:** `~/gasoline-logs.jsonl` write fails due to disk full.
+**Scenario:** runtime log file write fails due to disk full.
 
 ```mermaid
 sequenceDiagram
@@ -445,7 +449,7 @@ sequenceDiagram
 sequenceDiagram
     participant S1 as Server 1
     participant S2 as Server 2
-    participant PIDFile as ~/.gasoline-7890.pid
+    participant PIDFile as <state-dir>/run/gasoline-7890.pid
 
     S1->>PIDFile: Write PID (12345)
     S2->>PIDFile: Write PID (12346)
@@ -464,7 +468,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Server as HTTP Server
-    participant Logs as gasoline-logs.jsonl
+    participant Logs as <state-dir>/logs/gasoline.jsonl
 
     Server->>Logs: {"event":"startup", "pid":12345}
     Note over Server: Server running...
@@ -531,10 +535,10 @@ curl http://localhost:7890/health
 ps aux | grep gasoline
 
 # Check PID file
-cat ~/.gasoline-7890.pid
+cat <state-dir>/run/gasoline-7890.pid
 ```
 
-Logs stored at `~/gasoline-logs.jsonl`:
+Logs stored at `<state-dir>/logs/gasoline.jsonl`:
 
 ```json
 {"type":"lifecycle","event":"startup","version":"5.7.0","pid":12345}

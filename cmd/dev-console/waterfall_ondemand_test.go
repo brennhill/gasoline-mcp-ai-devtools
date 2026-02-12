@@ -400,7 +400,6 @@ func TestWaterfallStalenessThreshold(t *testing.T) {
 		}
 	}()
 
-	pendingBefore = len(cap.GetPendingQueries())
 	_ = th.toolGetNetworkWaterfall(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	t.Log("✅ 1-second staleness threshold verified")

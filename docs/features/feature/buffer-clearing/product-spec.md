@@ -26,7 +26,7 @@ last-verified: 2026-01-31
 - Stale data confusion (old requests mixed with new)
 - Token limit issues (buffers grow too large to return)
 
-**Current behavior:**
+#### Current behavior:
 ```javascript
 configure({action: "clear"})
 ```
@@ -78,7 +78,7 @@ configure({action: "clear"}) // Same as buffer: "logs"
 | `"logs"` | console logs + extension_logs | Start fresh debugging |
 | `"all"` | Everything | Complete reset without reload |
 
-**Do NOT clear:**
+#### Do NOT clear:
 - Page state (DOM, vitals) - Read-only snapshots
 - Tracking status - Managed by extension
 - Server config - Persistent settings
@@ -177,7 +177,7 @@ configure({action: "clear", buffer: "network"})
 }
 ```
 
-**For `buffer: "all"`:**
+### For `buffer: "all"`:
 ```json
 {
   "cleared": "all",
@@ -382,11 +382,11 @@ configure({action: "clear", buffer: "network"}) // New feature
 
 ## Metrics for Success
 
-**Primary:**
+### Primary:
 - Buffer clearing used in >25% of debugging sessions
 - Reduced token usage from stale data
 
-**Secondary:**
+### Secondary:
 - Fewer "refresh page" workarounds
 - Clearer AI debugging sessions (less context pollution)
 
@@ -420,7 +420,7 @@ configure({action: "clear", buffer: "network"}) // New feature
 **Effort:** 1-2 hours
 **Target:** v5.3
 
-**Next Steps:**
+### Next Steps:
 1. Create tech-spec.md with implementation details
 2. Write tests first (TDD)
 3. Implement buffer clearing methods

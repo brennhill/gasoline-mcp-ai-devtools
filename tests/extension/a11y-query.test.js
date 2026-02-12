@@ -14,7 +14,7 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
-import { createMockChrome } from './helpers.js'
+import { createMockChrome, MANIFEST_VERSION } from './helpers.js'
 
 // =============================================================================
 // Content Script: A11Y_QUERY forwarding to inject.js
@@ -36,7 +36,7 @@ describe('Content Script: A11Y_QUERY message handling', () => {
       }),
       removeEventListener: mock.fn(),
       postMessage: mock.fn(),
-      location: { origin: 'http://localhost:3000' },
+      location: { origin: 'http://localhost:3000' }
     }
 
     // Capture the chrome.runtime.onMessage listener
@@ -60,9 +60,9 @@ describe('Content Script: A11Y_QUERY message handling', () => {
       {
         type: 'GASOLINE_A11Y_QUERY',
         requestId,
-        params,
+        params
       },
-      globalThis.window.location.origin,
+      globalThis.window.location.origin
     )
 
     // Verify postMessage was called with correct type and params
@@ -90,9 +90,9 @@ describe('Content Script: A11Y_QUERY message handling', () => {
       {
         type: 'GASOLINE_A11Y_QUERY',
         requestId: Date.now(),
-        params: parsedParams,
+        params: parsedParams
       },
-      globalThis.window.location.origin,
+      globalThis.window.location.origin
     )
 
     const [postedMessage] = globalThis.window.postMessage.mock.calls[0].arguments
@@ -116,9 +116,9 @@ describe('Content Script: A11Y_QUERY message handling', () => {
       {
         type: 'GASOLINE_A11Y_QUERY',
         requestId: Date.now(),
-        params: parsedParams,
+        params: parsedParams
       },
-      globalThis.window.location.origin,
+      globalThis.window.location.origin
     )
 
     const [postedMessage] = globalThis.window.postMessage.mock.calls[0].arguments
@@ -152,8 +152,8 @@ describe('Content Script: A11Y_QUERY message handling', () => {
     const auditResult = {
       summary: { violations: 2, passes: 10, incomplete: 1 },
       violations: [
-        { id: 'color-contrast', impact: 'serious', description: 'Elements must have sufficient color contrast' },
-      ],
+        { id: 'color-contrast', impact: 'serious', description: 'Elements must have sufficient color contrast' }
+      ]
     }
 
     // Set up response handler (as content.js does)
@@ -171,8 +171,8 @@ describe('Content Script: A11Y_QUERY message handling', () => {
       data: {
         type: 'GASOLINE_A11Y_QUERY_RESPONSE',
         requestId,
-        result: auditResult,
-      },
+        result: auditResult
+      }
     })
 
     assert.strictEqual(sendResponse.mock.calls.length, 1)
@@ -198,8 +198,8 @@ describe('Content Script: A11Y_QUERY message handling', () => {
       data: {
         type: 'GASOLINE_A11Y_QUERY_RESPONSE',
         requestId,
-        result: { violations: [] },
-      },
+        result: { violations: [] }
+      }
     })
 
     assert.strictEqual(sendResponse.mock.calls.length, 0)
@@ -222,8 +222,8 @@ describe('Content Script: A11Y_QUERY message handling', () => {
       data: {
         type: 'GASOLINE_A11Y_QUERY_RESPONSE',
         requestId: 99999, // Wrong ID
-        result: { violations: [] },
-      },
+        result: { violations: [] }
+      }
     })
 
     assert.strictEqual(sendResponse.mock.calls.length, 0)
@@ -259,9 +259,9 @@ describe('Content Script: A11Y_QUERY message handling', () => {
       {
         type: 'GASOLINE_A11Y_QUERY',
         requestId: Date.now(),
-        params: resolvedParams,
+        params: resolvedParams
       },
-      globalThis.window.location.origin,
+      globalThis.window.location.origin
     )
 
     const [postedMessage] = globalThis.window.postMessage.mock.calls[0].arguments
@@ -283,8 +283,8 @@ describe('Inject Script: GASOLINE_A11Y_QUERY message handling', () => {
       removeEventListener: mock.fn(),
       location: {
         origin: 'http://localhost:3000',
-        href: 'http://localhost:3000/test',
-      },
+        href: 'http://localhost:3000/test'
+      }
     }
   })
 
@@ -294,7 +294,7 @@ describe('Inject Script: GASOLINE_A11Y_QUERY message handling', () => {
 
     const auditResult = {
       summary: { violations: 1, passes: 5, incomplete: 0 },
-      violations: [{ id: 'image-alt', impact: 'critical', description: 'Images must have alt text' }],
+      violations: [{ id: 'image-alt', impact: 'critical', description: 'Images must have alt text' }]
     }
 
     // Simulate the inject.js handler behavior
@@ -307,18 +307,18 @@ describe('Inject Script: GASOLINE_A11Y_QUERY message handling', () => {
         {
           type: 'GASOLINE_A11Y_QUERY_RESPONSE',
           requestId,
-          result,
+          result
         },
-        globalThis.window.location.origin,
+        globalThis.window.location.origin
       )
     } catch (err) {
       globalThis.window.postMessage(
         {
           type: 'GASOLINE_A11Y_QUERY_RESPONSE',
           requestId,
-          result: { error: err.message },
+          result: { error: err.message }
         },
-        globalThis.window.location.origin,
+        globalThis.window.location.origin
       )
     }
 
@@ -347,18 +347,18 @@ describe('Inject Script: GASOLINE_A11Y_QUERY message handling', () => {
         {
           type: 'GASOLINE_A11Y_QUERY_RESPONSE',
           requestId,
-          result: {},
+          result: {}
         },
-        globalThis.window.location.origin,
+        globalThis.window.location.origin
       )
     } catch (err) {
       globalThis.window.postMessage(
         {
           type: 'GASOLINE_A11Y_QUERY_RESPONSE',
           requestId,
-          result: { error: err.message || 'Accessibility audit failed' },
+          result: { error: err.message || 'Accessibility audit failed' }
         },
-        globalThis.window.location.origin,
+        globalThis.window.location.origin
       )
     }
 
@@ -381,9 +381,9 @@ describe('Inject Script: GASOLINE_A11Y_QUERY message handling', () => {
       {
         type: 'GASOLINE_A11Y_QUERY_RESPONSE',
         requestId,
-        result,
+        result
       },
-      globalThis.window.location.origin,
+      globalThis.window.location.origin
     )
 
     const [response] = globalThis.window.postMessage.mock.calls[0].arguments
@@ -418,11 +418,11 @@ describe('Background Script: A11Y query dispatch', () => {
         onMessage: { addListener: mock.fn() },
         onInstalled: { addListener: mock.fn() },
         sendMessage: mock.fn(() => Promise.resolve()),
-        getManifest: () => ({ version: '5.8.0' }),
+        getManifest: () => ({ version: MANIFEST_VERSION })
       },
       action: {
         setBadgeText: mock.fn(),
-        setBadgeBackgroundColor: mock.fn(),
+        setBadgeBackgroundColor: mock.fn()
       },
       storage: {
         local: {
@@ -431,7 +431,7 @@ describe('Background Script: A11Y query dispatch', () => {
           remove: mock.fn((keys, callback) => {
             if (typeof callback === 'function') callback()
             else return Promise.resolve()
-          }),
+          })
         },
         sync: {
           get: mock.fn((keys, callback) => callback({})),
@@ -439,7 +439,7 @@ describe('Background Script: A11Y query dispatch', () => {
           remove: mock.fn((keys, callback) => {
             if (typeof callback === 'function') callback()
             else return Promise.resolve()
-          }),
+          })
         },
         session: {
           get: mock.fn((keys, callback) => callback({})),
@@ -447,34 +447,34 @@ describe('Background Script: A11Y query dispatch', () => {
           remove: mock.fn((keys, callback) => {
             if (typeof callback === 'function') callback()
             else return Promise.resolve()
-          }),
+          })
         },
-        onChanged: { addListener: mock.fn() },
+        onChanged: { addListener: mock.fn() }
       },
       alarms: {
         create: mock.fn(),
-        onAlarm: { addListener: mock.fn() },
+        onAlarm: { addListener: mock.fn() }
       },
       tabs: {
         get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
         sendMessage: mock.fn(() =>
           Promise.resolve({
             summary: { violations: 2 },
-            violations: [{ id: 'color-contrast', impact: 'serious' }],
-          }),
+            violations: [{ id: 'color-contrast', impact: 'serious' }]
+          })
         ),
         query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1 }])),
         captureVisibleTab: mock.fn(() => Promise.resolve('data:image/jpeg;base64,abc')),
-        onRemoved: { addListener: mock.fn() },
-      },
+        onRemoved: { addListener: mock.fn() }
+      }
     }
     globalThis.chrome = mockChrome
 
     mockFetch = mock.fn(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ status: 'ok' }),
-      }),
+        json: () => Promise.resolve({ status: 'ok' })
+      })
     )
     globalThis.fetch = mockFetch
   })
@@ -486,7 +486,7 @@ describe('Background Script: A11Y query dispatch', () => {
     // Simulate what background.js does for a11y queries
     const result = await mockChrome.tabs.sendMessage(tabId, {
       type: 'A11Y_QUERY',
-      params,
+      params
     })
 
     assert.strictEqual(mockChrome.tabs.sendMessage.mock.calls.length, 1)
@@ -509,7 +509,7 @@ describe('Background Script: A11Y query dispatch', () => {
     const queryId = 'test-query-123'
     const result = {
       summary: { violations: 1, passes: 10 },
-      violations: [{ id: 'image-alt', impact: 'critical' }],
+      violations: [{ id: 'image-alt', impact: 'critical' }]
     }
 
     await postQueryResult('http://localhost:7890', queryId, 'a11y', result)
@@ -540,7 +540,7 @@ describe('Background Script: A11Y query dispatch', () => {
     } catch (err) {
       errorResult = {
         error: 'a11y_audit_failed',
-        message: err.message || 'Failed to execute accessibility audit',
+        message: err.message || 'Failed to execute accessibility audit'
       }
     }
 
@@ -562,8 +562,8 @@ describe('A11Y Query: End-to-end message chain', () => {
       summary: { violations: 3, passes: 15, incomplete: 2, inapplicable: 5 },
       violations: [
         { id: 'color-contrast', impact: 'serious', nodes: 2 },
-        { id: 'image-alt', impact: 'critical', nodes: 1 },
-      ],
+        { id: 'image-alt', impact: 'critical', nodes: 1 }
+      ]
     }
 
     // Step 1: background.js sends A11Y_QUERY to content.js
@@ -583,7 +583,7 @@ describe('A11Y Query: End-to-end message chain', () => {
     // Execute the chain
     const result = await mockTabsSendMessage(1, {
       type: 'A11Y_QUERY',
-      params,
+      params
     })
 
     // Step 5: background.js receives result and would post to server
@@ -604,7 +604,7 @@ describe('A11Y Query: End-to-end message chain', () => {
     } catch (err) {
       errorResult = {
         error: 'a11y_audit_failed',
-        message: err.message,
+        message: err.message
       }
     }
 
@@ -618,13 +618,13 @@ describe('A11Y Query: End-to-end message chain', () => {
       Promise.resolve({
         summary: { violations: 0, passes: 20, incomplete: 0, inapplicable: 10 },
         violations: [],
-        incomplete: [],
-      }),
+        incomplete: []
+      })
     )
 
     const result = await mockTabsSendMessage(1, {
       type: 'A11Y_QUERY',
-      params: {},
+      params: {}
     })
 
     assert.strictEqual(result.summary.violations, 0)

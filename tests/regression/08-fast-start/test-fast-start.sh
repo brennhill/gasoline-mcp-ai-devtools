@@ -19,7 +19,7 @@ fail() { echo -e "${RED}[FAIL]${NC} $1"; exit 1; }
 info() { echo -e "${YELLOW}[INFO]${NC} $1"; }
 
 cleanup() {
-    pkill -9 -f "gasoline.*$PORT" 2>/dev/null || true
+    pkill -9 -f "gasoline.*${PORT}" 2>/dev/null || true
     rm -f "$PID_FILE"
     sleep 0.3
 }
@@ -29,19 +29,21 @@ cleanup() {
 mcp_request() {
     local timeout_sec=$1
     local request=$2
-    local tmp_out=$(mktemp)
+    local tmp_out
+    tmp_out="$(mktemp)"
     local max_iterations=$((timeout_sec * 10))  # 0.1s per iteration
 
-    (echo "$request"; sleep $timeout_sec) | "$BINARY" --port "$PORT" > "$tmp_out" 2>/dev/null &
+    (echo "$request"; sleep "$timeout_sec") | "$BINARY" --port "$PORT" > "$tmp_out" 2>/dev/null &
     local pid=$!
 
     # Wait for response (don't wait for process to finish - just check output)
     local count=0
-    while [ $count -lt $max_iterations ]; do
+    while [ "$count" -lt "$max_iterations" ]; do
         if [ -s "$tmp_out" ]; then
             # Got response - read it and kill process
-            local result=$(cat "$tmp_out")
-            kill $pid 2>/dev/null || true
+            local result
+            result="$(cat "$tmp_out")"
+            kill "$pid" 2>/dev/null || true
             # Don't wait - let it die in background
             rm -f "$tmp_out"
             echo "$result"
@@ -51,7 +53,7 @@ mcp_request() {
         count=$((count + 1))
     done
 
-    kill $pid 2>/dev/null || true
+    kill "$pid" 2>/dev/null || true
     cat "$tmp_out"
     rm -f "$tmp_out"
     return 1
@@ -85,7 +87,7 @@ if ! echo "$RESULT" | jq -e '.result.protocolVersion' > /dev/null 2>&1; then
   fail "Test 1: Response missing protocolVersion"
 fi
 
-if [ $DURATION -gt 1000 ]; then
+if [ "$DURATION" -gt 1000 ]; then
   fail "Test 1: Response took ${DURATION}ms (> 1000ms)"
 fi
 
@@ -122,11 +124,11 @@ if ! echo "$TOOLS" | grep -q "observe"; then
   fail "Test 2: Missing 'observe' tool"
 fi
 
-if [ $DURATION -gt 1000 ]; then
+if [ "$DURATION" -gt 1000 ]; then
   fail "Test 2: Response took ${DURATION}ms (> 1000ms)"
 fi
 
-pass "Test 2: tools/list in ${DURATION}ms (tools: $(echo $TOOLS | tr ' ' ','))"
+pass "Test 2: tools/list in ${DURATION}ms (tools: $(echo "$TOOLS" | tr ' ' ','))"
 
 cleanup
 
@@ -173,7 +175,7 @@ if ! echo "$RESULT" | jq -e '.result' > /dev/null 2>&1; then
   fail "Test 4: Ping response has no result"
 fi
 
-if [ $DURATION -gt 1000 ]; then
+if [ "$DURATION" -gt 1000 ]; then
   fail "Test 4: Response took ${DURATION}ms (> 1000ms)"
 fi
 
@@ -196,7 +198,7 @@ if ! echo "$RESULT" | jq -e '.result.prompts' > /dev/null 2>&1; then
   fail "Test 5: prompts/list missing prompts array"
 fi
 
-if [ $DURATION -gt 1000 ]; then
+if [ "$DURATION" -gt 1000 ]; then
   fail "Test 5: Response took ${DURATION}ms (> 1000ms)"
 fi
 
@@ -219,7 +221,7 @@ if ! echo "$RESULT" | jq -e '.result.resources' > /dev/null 2>&1; then
   fail "Test 6: resources/list missing resources array"
 fi
 
-if [ $DURATION -gt 1000 ]; then
+if [ "$DURATION" -gt 1000 ]; then
   fail "Test 6: Response took ${DURATION}ms (> 1000ms)"
 fi
 
@@ -242,7 +244,7 @@ if ! echo "$RESULT" | jq -e '.result.resourceTemplates' > /dev/null 2>&1; then
   fail "Test 7: resources/templates/list missing resourceTemplates array"
 fi
 
-if [ $DURATION -gt 1000 ]; then
+if [ "$DURATION" -gt 1000 ]; then
   fail "Test 7: Response took ${DURATION}ms (> 1000ms)"
 fi
 

@@ -3,7 +3,7 @@
  * Provides structured DOM querying, page info extraction, and
  * accessibility auditing via axe-core.
  */
-import { DOM_QUERY_MAX_ELEMENTS, DOM_QUERY_MAX_TEXT, DOM_QUERY_MAX_DEPTH, DOM_QUERY_MAX_HTML, A11Y_MAX_NODES_PER_VIOLATION, A11Y_AUDIT_TIMEOUT_MS, } from './constants.js';
+import { DOM_QUERY_MAX_ELEMENTS, DOM_QUERY_MAX_TEXT, DOM_QUERY_MAX_DEPTH, DOM_QUERY_MAX_HTML, A11Y_MAX_NODES_PER_VIOLATION, A11Y_AUDIT_TIMEOUT_MS } from './constants.js';
 /**
  * Execute a DOM query and return structured results
  */
@@ -25,8 +25,62 @@ export async function executeDOMQuery(params) {
         title: document.title,
         matchCount,
         returnedCount: matches.length,
-        matches,
+        matches
     };
+}
+/**
+ * Collect all attributes from an element into a plain object.
+ */
+function collectAttributes(el) {
+    if (!el.attributes || el.attributes.length === 0)
+        return undefined;
+    const attrs = {};
+    for (const attr of el.attributes) {
+        attrs[attr.name] = attr.value;
+    }
+    return attrs;
+}
+/**
+ * Get the bounding box of an element, or undefined if unavailable.
+ */
+function collectBoundingBox(el) {
+    if (!el.getBoundingClientRect)
+        return undefined;
+    const rect = el.getBoundingClientRect();
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+}
+/**
+ * Get computed styles for an element, either specific properties or defaults.
+ */
+function collectStyles(el, includeStyles, styleProps) {
+    if (!includeStyles || typeof window.getComputedStyle !== 'function')
+        return undefined;
+    const computed = window.getComputedStyle(el);
+    if (styleProps && styleProps.length > 0) {
+        const styles = {};
+        for (const prop of styleProps) {
+            styles[prop] = computed.getPropertyValue(prop);
+        }
+        return styles;
+    }
+    return { display: computed.display, color: computed.color, position: computed.position };
+}
+/**
+ * Serialize child elements recursively up to maxDepth.
+ */
+// #lizard forgives
+function collectChildren(el, includeChildren, maxDepth, currentDepth) {
+    if (!includeChildren || currentDepth >= maxDepth || !el.children || el.children.length === 0)
+        return undefined;
+    const children = [];
+    const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS);
+    for (let i = 0; i < maxChildren; i++) {
+        const child = el.children[i];
+        if (child) {
+            children.push(serializeDOMElement(child, false, undefined, true, maxDepth, currentDepth + 1));
+        }
+    }
+    return children;
 }
 /**
  * Serialize a DOM element to a plain object
@@ -35,44 +89,12 @@ function serializeDOMElement(el, includeStyles, styleProps, includeChildren, max
     const entry = {
         tag: el.tagName ? el.tagName.toLowerCase() : '',
         text: (el.textContent || '').slice(0, DOM_QUERY_MAX_TEXT),
-        visible: el.offsetParent !== null || (el.getBoundingClientRect && el.getBoundingClientRect().width > 0),
+        visible: el.offsetParent !== null || (el.getBoundingClientRect && el.getBoundingClientRect().width > 0)
     };
-    // Attributes
-    if (el.attributes && el.attributes.length > 0) {
-        entry.attributes = {};
-        for (const attr of el.attributes) {
-            entry.attributes[attr.name] = attr.value;
-        }
-    }
-    // Bounding box
-    if (el.getBoundingClientRect) {
-        const rect = el.getBoundingClientRect();
-        entry.boundingBox = { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-    }
-    // Computed styles
-    if (includeStyles && typeof window.getComputedStyle === 'function') {
-        const computed = window.getComputedStyle(el);
-        entry.styles = {};
-        if (styleProps && styleProps.length > 0) {
-            for (const prop of styleProps) {
-                entry.styles[prop] = computed.getPropertyValue(prop);
-            }
-        }
-        else {
-            entry.styles = { display: computed.display, color: computed.color, position: computed.position };
-        }
-    }
-    // Children (capped to avoid unbounded serialization)
-    if (includeChildren && currentDepth < maxDepth && el.children && el.children.length > 0) {
-        entry.children = [];
-        const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS);
-        for (let i = 0; i < maxChildren; i++) {
-            const child = el.children[i];
-            if (child) {
-                entry.children.push(serializeDOMElement(child, false, undefined, true, maxDepth, currentDepth + 1));
-            }
-        }
-    }
+    entry.attributes = collectAttributes(el);
+    entry.boundingBox = collectBoundingBox(el);
+    entry.styles = collectStyles(el, includeStyles, styleProps);
+    entry.children = collectChildren(el, includeChildren, maxDepth, currentDepth);
     return entry;
 }
 /**
@@ -97,7 +119,7 @@ export async function getPageInfo() {
         forms.push({
             id: form.id || undefined,
             action: form.action || undefined,
-            fields,
+            fields
         });
     }
     return {
@@ -110,7 +132,7 @@ export async function getPageInfo() {
         links: document.querySelectorAll('a').length,
         images: document.querySelectorAll('img').length,
         interactiveElements: document.querySelectorAll('button,input,select,textarea,a[href]').length,
-        forms,
+        forms
     };
 }
 /**
@@ -170,9 +192,9 @@ export async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIME
             setTimeout(() => resolve({
                 violations: [],
                 summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-                error: 'Accessibility audit timeout',
+                error: 'Accessibility audit timeout'
             }), timeoutMs);
-        }),
+        })
     ]);
 }
 /**
@@ -185,7 +207,7 @@ export function formatAxeResults(axeResult) {
             impact: v.impact,
             description: v.description,
             helpUrl: v.helpUrl,
-            nodes: [],
+            nodes: []
         };
         // Extract WCAG tags
         if (v.tags) {
@@ -197,7 +219,7 @@ export function formatAxeResults(axeResult) {
             return {
                 selector: selector || '',
                 html: (node.html || '').slice(0, DOM_QUERY_MAX_HTML),
-                ...(node.failureSummary ? { failureSummary: node.failureSummary } : {}),
+                ...(node.failureSummary ? { failureSummary: node.failureSummary } : {})
             };
         });
         if (v.nodes && v.nodes.length > A11Y_MAX_NODES_PER_VIOLATION) {
@@ -211,8 +233,8 @@ export function formatAxeResults(axeResult) {
             violations: (axeResult.violations || []).length,
             passes: (axeResult.passes || []).length,
             incomplete: (axeResult.incomplete || []).length,
-            inapplicable: (axeResult.inapplicable || []).length,
-        },
+            inapplicable: (axeResult.inapplicable || []).length
+        }
     };
 }
 //# sourceMappingURL=dom-queries.js.map

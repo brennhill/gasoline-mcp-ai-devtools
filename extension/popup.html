@@ -254,6 +254,7 @@
         font-size: 13px;
         color: #e0e0e0;
         display: block;
+        cursor: pointer;
       }
 
       .toggle-desc {
@@ -353,7 +354,9 @@
         height: 10px;
         border-radius: 50%;
         background: #555;
-        transition: background 0.2s, box-shadow 0.2s;
+        transition:
+          background 0.2s,
+          box-shadow 0.2s;
       }
 
       /* Idle state — dim grey, lights up on hover */
@@ -403,8 +406,13 @@
       }
 
       @keyframes record-pulse {
-        0%, 100% { box-shadow: 0 0 8px 2px rgba(229, 57, 53, 0.6); }
-        50% { box-shadow: 0 0 14px 4px rgba(229, 57, 53, 0.9); }
+        0%,
+        100% {
+          box-shadow: 0 0 8px 2px rgba(229, 57, 53, 0.6);
+        }
+        50% {
+          box-shadow: 0 0 14px 4px rgba(229, 57, 53, 0.9);
+        }
       }
 
       /* Collapsible Advanced Capture */
@@ -436,6 +444,389 @@
       details.advanced-capture[open] summary::before {
         transform: rotate(90deg);
       }
+
+      /* ── Accessibility: Focus indicators ──────────── */
+      button:focus-visible,
+      a:focus-visible,
+      select:focus-visible,
+      input:focus-visible,
+      .toggle-slider:focus-visible,
+      details summary:focus-visible {
+        outline: 2px solid #58a6ff;
+        outline-offset: 2px;
+      }
+
+      /* Allow focus-visible on the slider when the hidden input is focused */
+      .toggle-switch input:focus-visible + .toggle-slider {
+        outline: 2px solid #58a6ff;
+        outline-offset: 2px;
+      }
+
+      /* ── Light Mode ────────────────────────────────── */
+      @media (prefers-color-scheme: light) {
+        body {
+          background: #ffffff;
+          color: #1a1a1a;
+        }
+
+        .status-row {
+          background: #f5f5f5;
+        }
+
+        .status-label {
+          color: #555;
+        }
+
+        #status::before {
+          background: #999;
+        }
+
+        #status.connected::before {
+          background: #1a7f37;
+        }
+
+        #status.disconnected::before {
+          background: #cf222e;
+        }
+
+        #status.disconnected::after {
+          color: #cf222e;
+          background: rgba(207, 34, 46, 0.12);
+        }
+
+        .section-title {
+          color: #555;
+        }
+
+        select {
+          background: #ffffff;
+          border-color: #d0d0d0;
+          color: #1a1a1a;
+        }
+
+        select:hover {
+          border-color: #999;
+        }
+
+        select:focus {
+          border-color: #0969da;
+        }
+
+        button {
+          background: #f5f5f5;
+          border-color: #d0d0d0;
+          color: #1a1a1a;
+        }
+
+        button:hover {
+          background: #e8e8e8;
+          border-color: #999;
+        }
+
+        button:active {
+          background: #f5f5f5;
+        }
+
+        button.danger {
+          color: #cf222e;
+          border-color: #cf222e;
+          background: #ffffff;
+        }
+
+        button.danger:hover {
+          background: rgba(207, 34, 46, 0.08);
+        }
+
+        .info-row {
+          border-bottom-color: #e0e0e0;
+        }
+
+        .info-label {
+          color: #555;
+        }
+
+        .info-value {
+          color: #1a1a1a;
+        }
+
+        #error-message {
+          color: #cf222e;
+          background: rgba(207, 34, 46, 0.08);
+        }
+
+        .links {
+          border-top-color: #e0e0e0;
+        }
+
+        .links a {
+          color: #0969da;
+        }
+
+        .badge {
+          background: #cf222e;
+          color: #ffffff;
+        }
+
+        .toggle-row {
+          border-bottom-color: #e0e0e0;
+        }
+
+        .toggle-label {
+          color: #1a1a1a;
+        }
+
+        .toggle-desc {
+          color: #555;
+        }
+
+        .toggle-slider {
+          background: #d0d0d0;
+        }
+
+        .toggle-slider::before {
+          background: #ffffff;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+          background: #1a7f37;
+        }
+
+        .toggle-switch input:checked + .toggle-slider::before {
+          background: #ffffff;
+        }
+
+        .feature-section {
+          background: #f8f8f8;
+        }
+
+        .health-error {
+          background: rgba(207, 34, 46, 0.08);
+          color: #cf222e;
+        }
+
+        .health-warning {
+          background: rgba(154, 103, 0, 0.08);
+          color: #9a6700;
+        }
+
+        #tracked-url:hover {
+          color: #0969da !important;
+        }
+
+        .record-icon {
+          border-color: #999;
+        }
+
+        .record-icon-dot {
+          background: #999;
+        }
+
+        .record-row:hover .record-icon {
+          border-color: #555;
+        }
+
+        .record-row:hover .record-icon-dot {
+          background: #a52a2a;
+        }
+
+        .record-row.is-recording .record-icon {
+          border-color: #d1242f;
+        }
+
+        .record-row.is-recording .record-icon-dot {
+          background: #d1242f;
+        }
+
+        .record-label {
+          color: #555;
+        }
+
+        .record-row:hover .record-label {
+          color: #1a1a1a;
+        }
+
+        .record-row.is-recording .record-label {
+          color: #d1242f;
+        }
+
+        .record-status {
+          color: #555;
+        }
+
+        details.advanced-capture summary {
+          color: #555;
+        }
+
+        /* ── Inline-style overrides (need !important) ── */
+
+        /* Focus indicators */
+        button:focus-visible,
+        a:focus-visible,
+        select:focus-visible,
+        input:focus-visible,
+        .toggle-slider:focus-visible,
+        details summary:focus-visible {
+          outline-color: #0969da;
+        }
+
+        .toggle-switch input:focus-visible + .toggle-slider {
+          outline-color: #0969da;
+        }
+
+        /* Track This Tab hero button */
+        #track-page-btn {
+          background: #dbeafe !important;
+          color: #0969da !important;
+          border-color: #0969da !important;
+        }
+
+        /* Track hero description */
+        #track-hero-desc {
+          color: #555 !important;
+        }
+
+        /* No-tracking warning */
+        #no-tracking-warning {
+          background: rgba(207, 34, 46, 0.08) !important;
+          border-color: rgba(207, 34, 46, 0.3) !important;
+          color: #cf222e !important;
+        }
+
+        /* Tracked page info box */
+        #tracked-page-info {
+          background: rgba(9, 105, 218, 0.08) !important;
+          border-color: #0969da !important;
+        }
+
+        #tracked-page-info > div:first-child {
+          color: #0969da !important;
+        }
+
+        #tracked-url {
+          color: #555 !important;
+        }
+
+        /* Troubleshooting panel */
+        #troubleshooting > div {
+          background: rgba(207, 34, 46, 0.06) !important;
+          border-color: #cf222e !important;
+        }
+
+        #troubleshooting p[style*='color: #f85149'] {
+          color: #cf222e !important;
+        }
+
+        #troubleshooting p[style*='color: #ccc'] {
+          color: #1a1a1a !important;
+        }
+
+        #troubleshooting code[style*='background: #333'] {
+          background: #f0f0f0 !important;
+          color: #0969da !important;
+        }
+
+        #troubleshooting p[style*='color: #888'] {
+          color: #555 !important;
+        }
+
+        #troubleshooting code[style*='color: #aaa'] {
+          background: #f0f0f0 !important;
+          color: #555 !important;
+        }
+
+        #troubleshooting p[style*='border-top'] {
+          border-top-color: #e0e0e0 !important;
+        }
+
+        #troubleshooting a[style*='color: #58a6ff'] {
+          color: #0969da !important;
+        }
+
+        #troubleshooting span[style*='color: #444'] {
+          color: #d0d0d0 !important;
+        }
+
+        /* Version mismatch banner */
+        #version-mismatch {
+          background: rgba(154, 103, 0, 0.08) !important;
+          border-color: #9a6700 !important;
+          color: #9a6700 !important;
+        }
+
+        #version-mismatch .version-detail {
+          color: #555 !important;
+        }
+
+        #version-mismatch p[style*='color: #888'] {
+          color: #555 !important;
+        }
+
+        /* Context warning banner */
+        #context-warning {
+          background: rgba(154, 103, 0, 0.08) !important;
+          border-color: #9a6700 !important;
+          color: #9a6700 !important;
+        }
+
+        #context-warning-text {
+          color: #555 !important;
+        }
+
+        /* AI Web Pilot warning text */
+        .toggle-desc[style*='color: #d29922'] {
+          color: #9a6700 !important;
+        }
+
+        /* Draw mode keyboard shortcut */
+        #draw-mode-status {
+          color: #555 !important;
+        }
+
+        /* Record options border & audio select */
+        #record-options {
+          border-top-color: #e0e0e0 !important;
+        }
+
+        #record-audio-mode {
+          background: #ffffff !important;
+          border-color: #d0d0d0 !important;
+          color: #555 !important;
+        }
+
+        /* Record save confirmation */
+        #record-save-info {
+          background: rgba(26, 127, 55, 0.08) !important;
+          color: #1a7f37 !important;
+        }
+
+        /* WebSocket mode container & select */
+        #ws-mode-container {
+          background: #f5f5f5 !important;
+        }
+
+        #ws-mode {
+          background: #ffffff !important;
+          border-color: #d0d0d0 !important;
+          color: #1a1a1a !important;
+        }
+
+        /* Warning text overrides */
+        #ws-messages-warning {
+          color: #9a6700 !important;
+        }
+
+        #waterfall-warning {
+          color: #555 !important;
+        }
+
+        #perfmarks-warning {
+          color: #555 !important;
+        }
+
+        #screenshot-warning {
+          color: #9a6700 !important;
+        }
+      }
     </style>
   </head>
   <body>
@@ -451,13 +842,25 @@
 
     <div class="section" style="margin-top: 12px">
       <div class="section-title">Tab Tracking</div>
-      <button
-        id="track-page-btn"
-        style="background: #252525; color: #58a6ff; border-color: #58a6ff"
-        title="Start capturing telemetry from this browser tab only"
-      >
-        Track This Tab
-      </button>
+      <div id="track-hero" style="text-align: center; padding: 12px 0">
+        <button
+          id="track-page-btn"
+          style="
+            background: #1a3a5c;
+            color: #58a6ff;
+            border: 2px solid #58a6ff;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 14px 16px;
+          "
+          title="Start capturing telemetry from this browser tab only"
+        >
+          Track This Tab
+        </button>
+        <p id="track-hero-desc" style="margin-top: 8px; font-size: 12px; color: #888; line-height: 1.5">
+          Click to start monitoring this tab's console, network, and errors
+        </p>
+      </div>
       <div
         id="no-tracking-warning"
         style="
@@ -566,7 +969,7 @@
     </div>
 
     <div class="status-row">
-      <span class="status-label">Errors</span>
+      <span class="status-label">Log Errors Seen</span>
       <span id="error-count" class="status-value badge">0</span>
     </div>
 
@@ -605,13 +1008,26 @@
       <div class="feature-section">
         <div class="toggle-row">
           <div class="toggle-info">
-            <span class="toggle-label">Enable AI Control</span>
+            <label for="aiWebPilotEnabled" class="toggle-label">Enable AI Control</label>
             <span class="toggle-desc" style="color: #d29922">Can take a few seconds to reflect on the server</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="aiWebPilotEnabled" checked />
             <span class="toggle-slider"></span>
           </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Draw Mode</div>
+      <div class="feature-section">
+        <div id="draw-mode-row" class="record-row">
+          <div class="record-icon" id="draw-mode-icon">
+            <div class="record-icon-dot" id="draw-mode-dot"></div>
+          </div>
+          <span id="draw-mode-label" class="record-label">Draw</span>
+          <span id="draw-mode-status" class="record-status" style="font-size: 11px; color: #666">&#8984;&#8679;D</span>
         </div>
       </div>
     </div>
@@ -627,154 +1043,178 @@
           <span id="recording-status" class="record-status"></span>
         </div>
         <div id="record-options" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #333">
-          <select id="record-audio-mode" style="width: 100%; padding: 6px 10px; font-size: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #aaa; cursor: pointer">
+          <select
+            id="record-audio-mode"
+            style="
+              width: 100%;
+              padding: 6px 10px;
+              font-size: 12px;
+              background: #1a1a1a;
+              border: 1px solid #333;
+              border-radius: 4px;
+              color: #aaa;
+              cursor: pointer;
+            "
+          >
             <option value="">Video only</option>
             <option value="tab">Video + Tab audio</option>
             <option value="mic">Video + Microphone</option>
             <option value="both">Video + Tab + Mic</option>
           </select>
         </div>
-        <div id="record-save-info" style="display: none; margin-top: 8px; padding: 6px 10px; background: rgba(63, 185, 80, 0.1); border-radius: 4px; font-size: 11px; color: #3fb950; word-break: break-all"></div>
+        <div
+          id="record-save-info"
+          style="
+            display: none;
+            margin-top: 8px;
+            padding: 6px 10px;
+            background: rgba(63, 185, 80, 0.1);
+            border-radius: 4px;
+            font-size: 11px;
+            color: #3fb950;
+            word-break: break-all;
+          "
+        ></div>
       </div>
     </div>
 
     <div class="section">
       <details class="advanced-capture">
-      <summary>Advanced Capture</summary>
-      <div class="feature-section">
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label">WebSocket Capture</span>
-            <span class="toggle-desc">Monitor WebSocket connections</span>
+        <summary>Advanced Capture</summary>
+        <div class="feature-section">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <label for="toggle-websocket" class="toggle-label">WebSocket Capture</label>
+              <span class="toggle-desc">Monitor WebSocket connections</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-websocket" checked />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="toggle-websocket" checked />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div
-          id="ws-mode-container"
-          style="display: none; margin-top: 8px; padding: 8px 12px; background: #1a1a1a; border-radius: 4px"
-        >
-          <select
-            id="ws-mode"
-            style="
-              width: 100%;
-              padding: 6px 10px;
-              font-size: 13px;
-              background: #333;
-              border: 1px solid #444;
-              border-radius: 4px;
-              color: #e0e0e0;
-            "
+          <div
+            id="ws-mode-container"
+            style="display: none; margin-top: 8px; padding: 8px 12px; background: #1a1a1a; border-radius: 4px"
           >
-            <option value="low">Low sampling (~2 msg/s)</option>
-            <option value="medium" selected>Medium sampling (~5 msg/s)</option>
-            <option value="high">High sampling (~10 msg/s)</option>
-            <option value="all">All messages</option>
-          </select>
-          <span class="toggle-desc" id="ws-messages-warning" style="color: #d29922; display: none; margin-top: 6px"
-            >Capturing all messages may produce significant data on high-traffic connections.</span
-          >
-        </div>
-
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label">Network Waterfall</span>
-            <span class="toggle-desc">Include request timing data</span>
-            <span class="toggle-desc" id="waterfall-warning" style="color: #888; display: none"
-              >Adds ~50KB of timing data per error. May consume significant AI context.</span
+            <select
+              id="ws-mode"
+              style="
+                width: 100%;
+                padding: 6px 10px;
+                font-size: 13px;
+                background: #333;
+                border: 1px solid #444;
+                border-radius: 4px;
+                color: #e0e0e0;
+              "
+            >
+              <option value="low">Low sampling (~2 msg/s)</option>
+              <option value="medium" selected>Medium sampling (~5 msg/s)</option>
+              <option value="high">High sampling (~10 msg/s)</option>
+              <option value="all">All messages</option>
+            </select>
+            <span class="toggle-desc" id="ws-messages-warning" style="color: #d29922; display: none; margin-top: 6px"
+              >Capturing all messages may produce significant data on high-traffic connections.</span
             >
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="toggle-network-waterfall" checked />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
 
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label">Network Bodies</span>
-            <span class="toggle-desc">Capture request/response bodies for API debugging</span>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <label for="toggle-network-waterfall" class="toggle-label">Network Waterfall</label>
+              <span class="toggle-desc">Include request timing data</span>
+              <span class="toggle-desc" id="waterfall-warning" style="color: #888; display: none"
+                >Adds ~50KB of timing data per error. May consume significant AI context.</span
+              >
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-network-waterfall" checked />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="toggle-network-body-capture" checked />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
 
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label">Performance Marks</span>
-            <span class="toggle-desc">Capture performance.mark() calls</span>
-            <span class="toggle-desc" id="perfmarks-warning" style="color: #888; display: none"
-              >Adds timing data to log entries. Useful for performance debugging.</span
-            >
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <label for="toggle-network-body-capture" class="toggle-label">Network Bodies</label>
+              <span class="toggle-desc">Capture request/response bodies for API debugging</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-network-body-capture" checked />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="toggle-performance-marks" checked />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
 
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label">User Actions</span>
-            <span class="toggle-desc">Record clicks and inputs to reproduce errors</span>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <label for="toggle-performance-marks" class="toggle-label">Performance Marks</label>
+              <span class="toggle-desc">Capture performance.mark() calls</span>
+              <span class="toggle-desc" id="perfmarks-warning" style="color: #888; display: none"
+                >Adds timing data to log entries. Useful for performance debugging.</span
+              >
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-performance-marks" checked />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="toggle-action-replay" checked />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
 
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label">Screenshot on Error</span>
-            <span class="toggle-desc">Auto-capture page screenshot</span>
-            <span class="toggle-desc" id="screenshot-warning" style="color: #d29922; display: none"
-              >Screenshots are saved as JPEG files on disk. High-resolution displays will produce large files.</span
-            >
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <label for="toggle-action-replay" class="toggle-label">User Actions</label>
+              <span class="toggle-desc">Record clicks and inputs to reproduce errors</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-action-replay" checked />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="toggle-screenshot" checked />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
 
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label">Source Maps</span>
-            <span class="toggle-desc">Resolve minified stack traces to original source</span>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <label for="toggle-screenshot" class="toggle-label">Screenshot on Error</label>
+              <span class="toggle-desc">Auto-capture page screenshot</span>
+              <span class="toggle-desc" id="screenshot-warning" style="color: #d29922; display: none"
+                >Screenshots are saved as JPEG files on disk. High-resolution displays will produce large files.</span
+              >
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-screenshot" checked />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="toggle-source-maps" checked />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
 
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label">Action Toasts</span>
-            <span class="toggle-desc">Show brief visual feedback for AI actions</span>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <label for="toggle-source-maps" class="toggle-label">Source Maps</label>
+              <span class="toggle-desc">Resolve minified stack traces to original source</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-source-maps" checked />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="toggle-action-toasts" checked />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
 
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label">Subtitles</span>
-            <span class="toggle-desc">Show AI narration text at bottom of viewport</span>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <label for="toggle-action-toasts" class="toggle-label">Action Toasts</label>
+              <span class="toggle-desc">Show brief visual feedback for AI actions</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-action-toasts" checked />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="toggle-subtitles" checked />
-            <span class="toggle-slider"></span>
-          </label>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <label for="toggle-subtitles" class="toggle-label">Subtitles</label>
+              <span class="toggle-desc">Show AI narration text at bottom of viewport</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-subtitles" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
-      </div>
       </details>
     </div>
 
@@ -801,6 +1241,9 @@
     <div class="links">
       <a href="#" id="open-log-file">Open Log File</a>
       <a href="options.html" id="options-link">Options</a>
+      <a href="https://github.com/brennhill/gasoline-mcp-ai-devtools#quick-start" target="_blank" id="help-link"
+        >Help</a
+      >
     </div>
 
     <script src="popup.js" type="module"></script>

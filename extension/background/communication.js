@@ -5,10 +5,10 @@
 // Re-export circuit breaker functions
 export { createCircuitBreaker } from './circuit-breaker.js';
 // Re-export batcher functions and types
-export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG, } from './batchers.js';
+export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG } from './batchers.js';
 // Re-export server communication functions
 // NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
-export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendNetworkWaterfallToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, postQueryResult, postAsyncCommandResult, postExtensionLogs, sendStatusPing, pollPendingQueries, } from './server.js';
+export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendNetworkWaterfallToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, postQueryResult, postAsyncCommandResult, postExtensionLogs, sendStatusPing, pollPendingQueries } from './server.js';
 import { getRequestHeaders } from './server.js';
 /**
  * Truncate a single argument if too large
@@ -68,31 +68,30 @@ export async function captureScreenshot(tabId, serverUrl, relatedErrorId, errorT
         if (debugLogFn) {
             debugLogFn('capture', `Screenshot rate limited: ${rateCheck.reason}`, {
                 tabId,
-                nextAllowedIn: rateCheck.nextAllowedIn,
+                nextAllowedIn: rateCheck.nextAllowedIn
             });
         }
         return {
             success: false,
             error: `Rate limited: ${rateCheck.reason}`,
-            nextAllowedIn: rateCheck.nextAllowedIn,
+            nextAllowedIn: rateCheck.nextAllowedIn
         };
     }
     try {
         const tab = await chrome.tabs.get(tabId);
         const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
             format: 'jpeg',
-            quality: 80,
+            quality: 80
         });
         recordScreenshotFn(tabId);
         const response = await fetch(`${serverUrl}/screenshots`, {
             method: 'POST',
             headers: getRequestHeaders(),
             body: JSON.stringify({
-                dataUrl,
+                data_url: dataUrl,
                 url: tab.url,
-                errorId: relatedErrorId || '',
-                errorType: errorType || '',
-            }),
+                correlation_id: relatedErrorId || ''
+            })
         });
         if (!response.ok) {
             throw new Error(`Failed to upload screenshot: server returned HTTP ${response.status} ${response.statusText}`);
@@ -106,12 +105,12 @@ export async function captureScreenshot(tabId, serverUrl, relatedErrorId, errorT
             _enrichments: ['screenshot'],
             screenshotFile: result.filename,
             trigger: relatedErrorId ? 'error' : 'manual',
-            ...(relatedErrorId ? { relatedErrorId } : {}),
+            ...(relatedErrorId ? { relatedErrorId } : {})
         };
         if (debugLogFn) {
             debugLogFn('capture', `Screenshot saved: ${result.filename}`, {
                 trigger: relatedErrorId ? 'error' : 'manual',
-                relatedErrorId,
+                relatedErrorId
             });
         }
         return { success: true, entry: screenshotEntry };

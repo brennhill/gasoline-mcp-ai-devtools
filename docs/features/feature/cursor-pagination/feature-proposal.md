@@ -19,7 +19,7 @@ last-verified: 2026-01-31
 
 ## The Problem
 
-**Offset-based pagination breaks for append-only buffers.**
+### Offset-based pagination breaks for append-only buffers.
 
 ### Real-World Failure Scenario
 
@@ -38,13 +38,13 @@ observe({what: "logs", offset: 100, limit: 100})
 // AI wastes time re-analyzing duplicate data
 ```
 
-**Why This Happens:**
+#### Why This Happens:
 - Logs/WebSocket events are **prepended** (newest first)
 - New data arrives constantly during debugging
 - Offsets shift with each insertion
 - AI gets stuck in infinite loop analyzing same data
 
-**Affected Buffers:**
+#### Affected Buffers:
 - ✅ **Logs** - High risk (constant appending)
 - ✅ **WebSocket events** - High risk (constant appending)
 - ⚠️ **Actions** - Medium risk (less frequent)
@@ -91,7 +91,7 @@ observe({what: "logs", after_cursor: "2026-01-30T10:14:50.123Z", limit: 100})
 }
 ```
 
-**Key Difference:**
+#### Key Difference:
 - **Offset:** "Give me items at positions 100-200" (shifts with new data) ❌
 - **Cursor:** "Give me items BEFORE timestamp 2026-01-30T10:14:50" (stable) ✅
 - **LLM Awareness:** "I see logs from 10:15:23 to 10:14:50, need older logs" 🧠
@@ -104,12 +104,12 @@ observe({what: "logs", after_cursor: "2026-01-30T10:14:50.123Z", limit: 100})
 
 **Format:** `"timestamp:sequence"` → `"2026-01-30T10:15:23.456Z:1234"`
 
-**Rationale:**
+#### Rationale:
 - **Timestamp first** - LLM knows temporal position ("logs from 10:15:23")
 - **Sequence as tiebreaker** - Handles batched logs with identical timestamps
 - **Stable** - Even if 100 logs arrive at exact same millisecond
 
-**Why composite vs pure timestamp:**
+#### Why composite vs pure timestamp:
 Logs arrive in batches from browser extension, causing timestamp collisions:
 ```javascript
 // Same millisecond batch from browser
@@ -133,7 +133,7 @@ Pure timestamp cursor would skip B and C (data loss). Composite cursor prevents 
 
 **Solution:** Normalize to RFC3339 strings **at response serialization time** (in tools.go).
 
-**Example conversion:**
+#### Example conversion:
 ```go
 // Actions: int64 → RFC3339
 timestamp := time.UnixMilli(action.Timestamp).Format(time.RFC3339)
@@ -151,13 +151,13 @@ timestamp := entry.Timestamp
 
 **Decision:** Use extended read lock during cursor operations (Option B).
 
-**Rationale:**
+#### Rationale:
 - **No write concurrency** - Gasoline server is single-threaded for buffer writes
 - **Simple** - No snapshot copy overhead, no algorithm changes
 - **Negligible cost** - 1ms block time for 1000 entries, misses <0.1 logs at 100 logs/sec
 - **Guarantees consistency** - No index shifts during iteration
 
-**Algorithm:**
+#### Algorithm:
 ```go
 func GetLogsAfterCursor(afterCursor string, limit int) ([]LogEntry, string, error) {
     server.mu.RLock()
@@ -185,7 +185,7 @@ func GetLogsAfterCursor(afterCursor string, limit int) ([]LogEntry, string, erro
 
 ### Schema Changes
 
-**Add cursor parameters to observe tool:**
+#### Add cursor parameters to observe tool:
 
 ```go
 "after_cursor": map[string]interface{}{
@@ -202,11 +202,11 @@ func GetLogsAfterCursor(afterCursor string, limit int) ([]LogEntry, string, erro
 },
 ```
 
-**Keep offset/limit for backward compatibility.**
+#### Keep offset/limit for backward compatibility.
 
 ### Response Format
 
-**Add cursor to all paginated responses:**
+#### Add cursor to all paginated responses:
 
 ```json
 {
@@ -229,7 +229,7 @@ func GetLogsAfterCursor(afterCursor string, limit int) ([]LogEntry, string, erro
 
 ### Query Logic
 
-**Pseudo-code for timestamp-based cursor retrieval:**
+#### Pseudo-code for timestamp-based cursor retrieval:
 
 ```go
 func GetLogsAfterCursor(afterCursor string, limit int) ([]LogEntry, string, error) {
@@ -314,7 +314,7 @@ observe({what: "logs", after_cursor: "2026-01-30T10:14:50.123Z", limit: 50})
 
 ### Solution: Hybrid Error + Retry Mechanism
 
-**When cursor is expired, return error with buffer state:**
+#### When cursor is expired, return error with buffer state:
 
 ```javascript
 {
@@ -335,7 +335,7 @@ observe({what: "logs", after_cursor: "2026-01-30T10:14:50.123Z", limit: 50})
 }
 ```
 
-**LLM can retry with auto-recovery parameter:**
+#### LLM can retry with auto-recovery parameter:
 
 ```javascript
 // Retry with automatic recovery
@@ -402,7 +402,7 @@ func GetLogsAfterCursor(afterCursor string, restartOnEviction bool) ([]LogEntry,
 
 ### LLM Decision Tree
 
-**When cursor expires, LLM should:**
+#### When cursor expires, LLM should:
 
 1. **Detect runaway logging** - Check `insertion_rate_per_sec` in error
    - If >100/sec → "Buffer overflow! Investigating infinite loop..."
@@ -447,7 +447,7 @@ stack depth limit or fixing the error."
 
 ### Logs (High-Priority Use Case)
 
-**Backward Pagination (Analyzing Historical Logs):**
+#### Backward Pagination (Analyzing Historical Logs):
 
 ```javascript
 // First request: Get most recent 50 logs
@@ -486,7 +486,7 @@ observe({what: "logs", after_cursor: "2026-01-30T10:14:50.123Z", limit: 50})
 }
 ```
 
-**Forward Pagination (Monitoring New Logs):**
+#### Forward Pagination (Monitoring New Logs):
 
 ```javascript
 // LLM has analyzed logs up to 10:15:23
@@ -509,7 +509,7 @@ observe({what: "logs", before_cursor: "2026-01-30T10:15:23.456Z", limit: 50})
 // LLM can say: "New error appeared at 10:16:05 - investigating..."
 ```
 
-**Convenience Method (All New Logs):**
+#### Convenience Method (All New Logs):
 
 ```javascript
 // "Show me everything that happened since 10:15:23"
@@ -600,7 +600,7 @@ observe({what: "logs", after_cursor: 12450, limit: 50})
 | **Duplicates** | ❌ Possible | ✅ Never |
 | **Backward Compat** | ✅ Yes | ✅ Yes (additive) |
 
-**Decision:**
+### Decision:
 - **network_waterfall:** Offset-based (finite page loads, low insertion rate)
 - **logs, websocket_events:** Cursor-based (high insertion rate)
 - **actions, network_bodies:** Either (depends on usage pattern)
@@ -613,7 +613,7 @@ observe({what: "logs", after_cursor: 12450, limit: 50})
 
 **Goal:** Every paginated response includes cursor field
 
-**Files:**
+#### Files:
 - `cmd/dev-console/tools.go` - Add cursor to response metadata
 - Calculate cursor = last entry's ID
 
@@ -623,12 +623,12 @@ observe({what: "logs", after_cursor: 12450, limit: 50})
 
 **Goal:** Accept after_cursor in observe() calls
 
-**Files:**
+#### Files:
 - `cmd/dev-console/tools.go` - Parse after_cursor parameter
 - `cmd/dev-console/main.go` (GetLogs) - Implement cursor-based retrieval
 - `cmd/dev-console/websocket.go` (GetWSEvents) - Implement cursor-based retrieval
 
-**Logic:**
+#### Logic:
 ```go
 if params.AfterCursor > 0 {
     // Cursor-based pagination
@@ -641,7 +641,7 @@ if params.AfterCursor > 0 {
 
 ### Phase 3: Update Tool Description (30 min)
 
-**Add to observe tool description:**
+#### Add to observe tool description:
 ```
 Pagination modes:
 - Offset-based (offset/limit): Best for static data like network_waterfall
@@ -652,7 +652,7 @@ Use cursor-based for logs and WebSocket events to avoid duplicate results when n
 
 ### Phase 4: Testing (1 hour)
 
-**Unit tests:**
+#### Unit tests:
 ```go
 func TestCursorPaginationStableWithNewInserts(t *testing.T) {
     // Add 100 logs
@@ -688,7 +688,7 @@ func TestCursorPaginationStableWithNewInserts(t *testing.T) {
 
 ### Unit Tests
 
-**Test: Cursor stability with concurrent inserts**
+#### Test: Cursor stability with concurrent inserts
 ```go
 func TestCursorStabilityWithInserts(t *testing.T) {
     server := setupTestServer(t)
@@ -797,7 +797,7 @@ observe({what: "logs", after_cursor: <cursor>, limit: 50})
 
 ### For AI Agents
 
-**Before (v5.3 - prone to duplicates):**
+#### Before (v5.3 - prone to duplicates):
 ```javascript
 // Page 1
 observe({what: "logs", offset: 0, limit: 100})
@@ -806,7 +806,7 @@ observe({what: "logs", offset: 0, limit: 100})
 observe({what: "logs", offset: 100, limit: 100})
 ```
 
-**After (v5.4 - stable with temporal awareness):**
+#### After (v5.4 - stable with temporal awareness):
 ```javascript
 // Page 1
 const page1 = await observe({what: "logs", limit: 100})
@@ -834,7 +834,7 @@ const newLogs = await observe({what: "logs", before_cursor: page1.newest_timesta
 
 ### For Developers
 
-**Choosing the right method:**
+#### Choosing the right method:
 - **Static data** (network_waterfall): Use `offset`/`limit`
 - **Live data** (logs, websocket_events): Use `after_cursor`/`limit`
 
@@ -877,7 +877,7 @@ const newLogs = await observe({what: "logs", before_cursor: page1.newest_timesta
 **Effort:** 5-6 hours
 **Target:** v5.4 (immediately after v5.3)
 
-**Next Steps:**
+### Next Steps:
 1. Ship v5.3 with offset-based pagination (acceptable for network_waterfall)
 2. Implement cursor-based pagination in v5.4
 3. Update documentation to recommend cursors for live data
@@ -891,13 +891,13 @@ const newLogs = await observe({what: "logs", before_cursor: page1.newest_timesta
 
 **The Fix:** Cursor-based pagination using stable monotonic IDs.
 
-**Impact:**
+### Impact:
 - ✅ No duplicate results during log analysis
 - ✅ Reliable WebSocket event streaming
 - ✅ Better AI debugging experience
 - ✅ Backward compatible (offset/limit still work)
 
-**Timeline:**
+### Timeline:
 - v5.3: Ship offset-based (good enough for network_waterfall)
 - v5.4: Add cursor-based (required for logs/websocket)
 - Total delay: <1 week to implement cursors

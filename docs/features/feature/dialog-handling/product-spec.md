@@ -51,7 +51,7 @@ Add `handle_dialog` action to the `interact` tool. Extension automatically detec
 
 ## Examples
 
-**Alert dialog:**
+### Alert dialog:
 ```json
 // Observe detects dialog
 {
@@ -67,7 +67,7 @@ Add `handle_dialog` action to the `interact` tool. Extension automatically detec
 }
 ```
 
-**Confirm dialog:**
+### Confirm dialog:
 ```json
 // Observe detects
 {
@@ -83,7 +83,7 @@ Add `handle_dialog` action to the `interact` tool. Extension automatically detec
 }
 ```
 
-**Prompt dialog:**
+### Prompt dialog:
 ```json
 // Observe detects
 {

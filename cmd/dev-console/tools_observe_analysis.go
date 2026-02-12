@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
@@ -13,112 +14,91 @@ import (
 )
 
 func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Parse optional parameters
 	var params struct {
 		Limit     int    `json:"limit"`
-		URLFilter string `json:"url_filter"` // filter by URL substring
+		URLFilter string `json:"url"`
 	}
 	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
-		params.Limit = 100 // default limit
+		params.Limit = 100
 	}
 
-	// Check if buffer data is stale and fetch fresh if needed
-	allEntries := h.capture.GetNetworkWaterfallEntries()
-	needsFresh := true
+	allEntries := h.refreshWaterfallIfStale()
+
+	entries := filterWaterfallEntries(allEntries, params.URLFilter, params.Limit)
+
+	var newestTS time.Time
 	if len(allEntries) > 0 {
-		// Check most recent entry timestamp - consider stale if older than 1 second
-		mostRecent := allEntries[len(allEntries)-1].Timestamp
-		if time.Since(mostRecent) < 1*time.Second {
-			needsFresh = false
-		}
+		newestTS = allEntries[len(allEntries)-1].Timestamp
 	}
 
-	// Fetch fresh data from extension on demand
-	if needsFresh {
-		queryID := h.capture.CreatePendingQueryWithTimeout(
-			queries.PendingQuery{
-				Type:   "waterfall",
-				Params: json.RawMessage(`{}`),
-			},
-			5*time.Second,
-			"",
-		)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Network waterfall", map[string]any{
+		"entries":  entries,
+		"count":    len(entries),
+		"metadata": buildResponseMetadata(h.capture, newestTS),
+	})}
+}
 
-		// Wait for extension to respond with fresh data
-		result, err := h.capture.WaitForResult(queryID, 5*time.Second)
-		if err == nil && result != nil {
-			// Parse result and add to buffer
-			var waterfallResult struct {
-				Entries []capture.NetworkWaterfallEntry `json:"entries"`
-				PageURL string                          `json:"pageURL"`
-			}
-			if err := json.Unmarshal(result, &waterfallResult); err == nil {
-				if len(waterfallResult.Entries) > 0 {
-					h.capture.AddNetworkWaterfallEntries(waterfallResult.Entries, waterfallResult.PageURL)
-					// Re-fetch from buffer to get properly timestamped entries
-					allEntries = h.capture.GetNetworkWaterfallEntries()
-				}
-			}
-		}
+func (h *ToolHandler) refreshWaterfallIfStale() []capture.NetworkWaterfallEntry {
+	allEntries := h.capture.GetNetworkWaterfallEntries()
+	if len(allEntries) > 0 && time.Since(allEntries[len(allEntries)-1].Timestamp) < 1*time.Second {
+		return allEntries
 	}
 
-	// Filter and limit (newest first)
+	queryID := h.capture.CreatePendingQueryWithTimeout(
+		queries.PendingQuery{
+			Type:   "waterfall",
+			Params: json.RawMessage(`{}`),
+		},
+		5*time.Second,
+		"",
+	)
+
+	result, err := h.capture.WaitForResult(queryID, 5*time.Second)
+	if err != nil || result == nil {
+		return allEntries
+	}
+
+	var waterfallResult struct {
+		Entries []capture.NetworkWaterfallEntry `json:"entries"`
+		PageURL string                          `json:"pageURL"`
+	}
+	if err := json.Unmarshal(result, &waterfallResult); err == nil && len(waterfallResult.Entries) > 0 {
+		h.capture.AddNetworkWaterfallEntries(waterfallResult.Entries, waterfallResult.PageURL)
+		return h.capture.GetNetworkWaterfallEntries()
+	}
+	return allEntries
+}
+
+func filterWaterfallEntries(allEntries []capture.NetworkWaterfallEntry, urlFilter string, limit int) []map[string]any {
 	entries := make([]map[string]any, 0)
-	for i := len(allEntries) - 1; i >= 0 && len(entries) < params.Limit; i-- {
+	for i := len(allEntries) - 1; i >= 0 && len(entries) < limit; i-- {
 		entry := allEntries[i]
-
-		// Filter by URL if specified
-		if params.URLFilter != "" {
-			if entry.URL == "" || !containsIgnoreCase(entry.URL, params.URLFilter) {
-				continue
-			}
+		if urlFilter != "" && (entry.URL == "" || !containsIgnoreCase(entry.URL, urlFilter)) {
+			continue
 		}
-
-		entries = append(entries, map[string]any{
-			"url":               entry.URL,
-			"initiator_type":    entry.InitiatorType,
-			"duration_ms":       entry.Duration,
-			"start_time":        entry.StartTime,
-			"transfer_size":     entry.TransferSize,
-			"decoded_body_size": entry.DecodedBodySize,
-			"encoded_body_size": entry.EncodedBodySize,
-			"timestamp":         entry.Timestamp,
-			"page_url":          entry.PageURL,
-		})
+		entries = append(entries, waterfallEntryToMap(entry))
 	}
+	return entries
+}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Network waterfall", map[string]any{"entries": entries, "count": len(entries)})}
+func waterfallEntryToMap(entry capture.NetworkWaterfallEntry) map[string]any {
+	return map[string]any{
+		"url":               entry.URL,
+		"initiator_type":    entry.InitiatorType,
+		"duration_ms":       entry.Duration,
+		"start_time":        entry.StartTime,
+		"transfer_size":     entry.TransferSize,
+		"decoded_body_size": entry.DecodedBodySize,
+		"encoded_body_size": entry.EncodedBodySize,
+		"timestamp":         entry.Timestamp,
+		"page_url":          entry.PageURL,
+	}
 }
 
 // containsIgnoreCase checks if s contains substr (case-insensitive)
 func containsIgnoreCase(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > 0 && len(substr) > 0 && findIgnoreCase(s, substr) >= 0))
-}
-
-func findIgnoreCase(s, substr string) int {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		match := true
-		for j := 0; j < len(substr); j++ {
-			sc := s[i+j]
-			pc := substr[j]
-			if sc >= 'A' && sc <= 'Z' {
-				sc += 'a' - 'A'
-			}
-			if pc >= 'A' && pc <= 'Z' {
-				pc += 'a' - 'A'
-			}
-			if sc != pc {
-				match = false
-				break
-			}
-		}
-		if match {
-			return i
-		}
-	}
-	return -1
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
 
 func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -127,7 +107,9 @@ func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) 
 		ConnectionID string `json:"connection_id"`
 	}
 	if len(args) > 0 {
-		json.Unmarshal(args, &arguments)
+		if err := json.Unmarshal(args, &arguments); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid arguments JSON: "+err.Error(), "Fix JSON syntax and call again")}
+		}
 	}
 
 	filter := capture.WebSocketStatusFilter{
@@ -137,87 +119,90 @@ func (h *ToolHandler) toolGetWSStatus(req JSONRPCRequest, args json.RawMessage) 
 	status := h.capture.GetWebSocketStatus(filter)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("WebSocket status", map[string]any{
-		"connections":    status.Connections,
-		"closed":         status.Closed,
-		"active_count":   len(status.Connections),
-		"closed_count":   len(status.Closed),
+		"connections":  status.Connections,
+		"closed":       status.Closed,
+		"active_count": len(status.Connections),
+		"closed_count": len(status.Closed),
+		"metadata":     buildResponseMetadata(h.capture, time.Now()),
 	})}
 }
 
 func (h *ToolHandler) toolGetWebVitals(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	snapshots := h.capture.GetPerformanceSnapshots()
+	vitals := buildVitalsMap(snapshots)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Web vitals", map[string]any{
+		"metrics":  vitals,
+		"metadata": buildResponseMetadata(h.capture, time.Now()),
+	})}
+}
 
-	// Extract Core Web Vitals from most recent snapshot
+func buildVitalsMap(snapshots []capture.PerformanceSnapshot) map[string]any {
+	if len(snapshots) == 0 {
+		return map[string]any{"has_data": false}
+	}
+	latest := snapshots[len(snapshots)-1]
 	vitals := map[string]any{
-		"has_data": false,
+		"has_data":         true,
+		"url":              latest.URL,
+		"timestamp":        latest.Timestamp,
+		"domContentLoaded": latest.Timing.DomContentLoaded,
+		"load":             latest.Timing.Load,
 	}
-
-	if len(snapshots) > 0 {
-		// Use the most recent snapshot
-		latest := snapshots[len(snapshots)-1]
-		vitals["has_data"] = true
-		vitals["url"] = latest.URL
-		vitals["timestamp"] = latest.Timestamp
-
-		// Core Web Vitals
-		if latest.Timing.LargestContentfulPaint != nil {
-			vitals["lcp"] = *latest.Timing.LargestContentfulPaint
-		}
-		if latest.Timing.FirstContentfulPaint != nil {
-			vitals["fcp"] = *latest.Timing.FirstContentfulPaint
-		}
-		if latest.CLS != nil {
-			vitals["cls"] = *latest.CLS
-		}
-
-		// Additional timing metrics
-		vitals["dom_content_loaded"] = latest.Timing.DomContentLoaded
-		vitals["load"] = latest.Timing.Load
+	if latest.Timing.LargestContentfulPaint != nil {
+		vitals["lcp"] = *latest.Timing.LargestContentfulPaint
 	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Web vitals", map[string]any{"metrics": vitals})}
+	if latest.Timing.FirstContentfulPaint != nil {
+		vitals["fcp"] = *latest.Timing.FirstContentfulPaint
+	}
+	if latest.CLS != nil {
+		vitals["cls"] = *latest.CLS
+	}
+	return vitals
 }
 
 func (h *ToolHandler) toolGetPageInfo(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Get current tracked tab URL and title from extension sync state
-	_, _, trackedURL := h.capture.GetTrackingStatus()
+	enabled, tabID, trackedURL := h.capture.GetTrackingStatus()
 	trackedTitle := h.capture.GetTrackedTabTitle()
 
-	var pageURL, pageTitle string
+	pageURL := h.resolvePageURL(trackedURL)
+	pageTitle := h.resolvePageTitle(trackedTitle)
 
-	// Primary source: tracked tab info from extension
+	result := map[string]any{
+		"url":      pageURL,
+		"title":    pageTitle,
+		"tracked":  enabled,
+		"metadata": buildResponseMetadata(h.capture, time.Now()),
+	}
+	if tabID > 0 {
+		result["tab_id"] = tabID
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Page info", result)}
+}
+
+func (h *ToolHandler) resolvePageURL(trackedURL string) string {
 	if trackedURL != "" {
-		pageURL = trackedURL
+		return trackedURL
 	}
+	waterfallEntries := h.capture.GetNetworkWaterfallEntries()
+	if len(waterfallEntries) > 0 {
+		return waterfallEntries[len(waterfallEntries)-1].PageURL
+	}
+	return ""
+}
+
+func (h *ToolHandler) resolvePageTitle(trackedTitle string) string {
 	if trackedTitle != "" {
-		pageTitle = trackedTitle
+		return trackedTitle
 	}
-
-	// Fallback for URL: try network waterfall entries
-	if pageURL == "" {
-		waterfallEntries := h.capture.GetNetworkWaterfallEntries()
-		if len(waterfallEntries) > 0 {
-			pageURL = waterfallEntries[len(waterfallEntries)-1].PageURL
+	h.server.mu.RLock()
+	defer h.server.mu.RUnlock()
+	for i := len(h.server.entries) - 1; i >= 0; i-- {
+		if title, ok := h.server.entries[i]["title"].(string); ok && title != "" {
+			return title
 		}
 	}
-
-	// Fallback for title: try recent log entries
-	if pageTitle == "" {
-		h.server.mu.RLock()
-		for i := len(h.server.entries) - 1; i >= 0; i-- {
-			entry := h.server.entries[i]
-			if title, ok := entry["title"].(string); ok && title != "" {
-				pageTitle = title
-				break
-			}
-		}
-		h.server.mu.RUnlock()
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Page info", map[string]any{
-		"url":   pageURL,
-		"title": pageTitle,
-	})}
+	return ""
 }
 
 func (h *ToolHandler) toolGetTabs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -226,88 +211,87 @@ func (h *ToolHandler) toolGetTabs(req JSONRPCRequest, args json.RawMessage) JSON
 	tabs := []any{}
 	if enabled && tabID > 0 {
 		tabs = append(tabs, map[string]any{
-			"id":       tabID,
-			"url":      tabURL,
-			"tracked":  true,
-			"active":   true,
+			"id":      tabID,
+			"url":     tabURL,
+			"tracked": true,
+			"active":  true,
 		})
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Tabs", map[string]any{
 		"tabs":            tabs,
 		"tracking_active": enabled,
+		"metadata":        buildResponseMetadata(h.capture, time.Now()),
 	})}
 }
 
 func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Parse optional parameters
 	var params struct {
-		Scope        string   `json:"scope"`         // CSS selector to scope audit
-		Tags         []string `json:"tags"`          // WCAG tags to test
-		ForceRefresh bool     `json:"force_refresh"` // Bypass cache
+		Scope        string   `json:"scope"`
+		Tags         []string `json:"tags"`
+		ForceRefresh bool     `json:"force_refresh"`
 	}
 	lenientUnmarshal(args, &params)
 
-	// Check if extension is connected (tab is being tracked)
 	enabled, _, _ := h.capture.GetTrackingStatus()
 	if !enabled {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "No tab being tracked", "Ensure the Gasoline extension is connected and a tab is being tracked")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "No tab is being tracked. Open the Gasoline extension popup and click 'Track This Tab' on the page you want to monitor. Check observe with what='pilot' for extension status.", "", h.diagnosticHint())}
 	}
 
-	// Create a11y query with parameters
-	queryParams := map[string]any{}
-	if params.Scope != "" {
-		queryParams["scope"] = params.Scope
-	}
-	if len(params.Tags) > 0 {
-		queryParams["tags"] = params.Tags
-	}
-
-	paramsJSON, _ := json.Marshal(queryParams)
-
-	// Create pending query for a11y audit
-	queryID := h.capture.CreatePendingQueryWithTimeout(
-		queries.PendingQuery{
-			Type:   "a11y",
-			Params: paramsJSON,
-		},
-		30*time.Second, // A11y audits can take time
-		"",
-	)
-
-	// Wait for extension to respond
-	result, err := h.capture.WaitForResult(queryID, 30*time.Second)
+	result, err := h.executeA11yQuery(params.Scope, params.Tags)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExtTimeout, "A11y audit timeout: "+err.Error(), "Ensure the extension is connected and the page has loaded")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExtTimeout, "A11y audit timeout: "+err.Error(), "Ensure the extension is connected and the page has loaded. Try refreshing the page, then retry.", h.diagnosticHint())}
 	}
 
-	// Parse and return the result
 	var auditResult map[string]any
 	if err := json.Unmarshal(result, &auditResult); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Failed to parse a11y result: "+err.Error(), "Check extension logs for errors")}
 	}
 
-	// Add summary if not present
-	if _, ok := auditResult["summary"]; !ok {
-		violations, _ := auditResult["violations"].([]any)
-		passes, _ := auditResult["passes"].([]any)
-		auditResult["summary"] = map[string]any{
-			"violation_count": len(violations),
-			"pass_count":      len(passes),
-		}
-	}
-
+	ensureA11ySummary(auditResult)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("A11y audit", auditResult)}
 }
 
+func (h *ToolHandler) executeA11yQuery(scope string, tags []string) (json.RawMessage, error) {
+	queryParams := map[string]any{}
+	if scope != "" {
+		queryParams["scope"] = scope
+	}
+	if len(tags) > 0 {
+		queryParams["tags"] = tags
+	}
+	// Error impossible: map contains only primitive types and string slices from input
+	paramsJSON, _ := json.Marshal(queryParams)
+
+	queryID := h.capture.CreatePendingQueryWithTimeout(
+		queries.PendingQuery{
+			Type:   "a11y",
+			Params: paramsJSON,
+		},
+		30*time.Second,
+		"",
+	)
+	return h.capture.WaitForResult(queryID, 30*time.Second)
+}
+
+func ensureA11ySummary(auditResult map[string]any) {
+	if _, ok := auditResult["summary"]; ok {
+		return
+	}
+	violations, _ := auditResult["violations"].([]any)
+	passes, _ := auditResult["passes"].([]any)
+	auditResult["summary"] = map[string]any{
+		"violation_count": len(violations),
+		"pass_count":      len(passes),
+	}
+}
+
 func (h *ToolHandler) toolGetScreenshot(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Check if extension is connected (tab is being tracked)
 	enabled, _, _ := h.capture.GetTrackingStatus()
 	if !enabled {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "No tab being tracked", "Ensure the Gasoline extension is connected and a tab is being tracked")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "No tab is being tracked. Open the Gasoline extension popup and click 'Track This Tab' on the page you want to monitor. Check observe with what='pilot' for extension status.", "", h.diagnosticHint())}
 	}
 
-	// Create pending query for screenshot capture
 	queryID := h.capture.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:   "screenshot",
@@ -317,139 +301,70 @@ func (h *ToolHandler) toolGetScreenshot(req JSONRPCRequest, args json.RawMessage
 		"",
 	)
 
-	// Wait for extension to capture and save screenshot
 	result, err := h.capture.WaitForResult(queryID, 15*time.Second)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExtTimeout, "Screenshot capture timeout: "+err.Error(), "Ensure the extension is connected and the page has loaded")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExtTimeout, "Screenshot capture timeout: "+err.Error(), "Ensure the extension is connected and the page has loaded. Try refreshing the page, then retry.", h.diagnosticHint())}
 	}
 
-	// Parse and return the result
 	var screenshotResult map[string]any
 	if err := json.Unmarshal(result, &screenshotResult); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Failed to parse screenshot result: "+err.Error(), "Check extension logs for errors")}
 	}
 
-	// Check for error from extension
 	if errMsg, ok := screenshotResult["error"].(string); ok {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExtTimeout, "Screenshot capture failed: "+errMsg, "Check that the tab is visible and accessible")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExtError, "Screenshot capture failed: "+errMsg, "Check that the tab is visible and accessible. The extension reported an error.", h.diagnosticHint())}
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Screenshot captured", screenshotResult)}
 }
 
+type timelineEntry struct {
+	Timestamp string `json:"timestamp"`
+	Type      string `json:"type"`
+	Summary   string `json:"summary"`
+	Data      any    `json:"data,omitempty"`
+}
+
+type timelineIncludes struct {
+	actions bool
+	errors  bool
+	network bool
+	ws      bool
+}
+
+func parseTimelineIncludes(include []string) timelineIncludes {
+	if len(include) == 0 {
+		return timelineIncludes{actions: true, errors: true, network: true, ws: true}
+	}
+	var inc timelineIncludes
+	for _, v := range include {
+		switch v {
+		case "actions":
+			inc.actions = true
+		case "errors":
+			inc.errors = true
+		case "network":
+			inc.network = true
+		case "websocket":
+			inc.ws = true
+		}
+	}
+	return inc
+}
+
 func (h *ToolHandler) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Limit   int      `json:"limit"`
-		Include []string `json:"include"` // "actions", "errors", "network", "websocket"
+		Include []string `json:"include"`
 	}
 	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
 		params.Limit = 50
 	}
 
-	// If no include specified, include all
-	includeActions := len(params.Include) == 0
-	includeErrors := len(params.Include) == 0
-	includeNetwork := len(params.Include) == 0
-	includeWS := len(params.Include) == 0
-	for _, inc := range params.Include {
-		switch inc {
-		case "actions":
-			includeActions = true
-		case "errors":
-			includeErrors = true
-		case "network":
-			includeNetwork = true
-		case "websocket":
-			includeWS = true
-		}
-	}
+	inc := parseTimelineIncludes(params.Include)
+	entries := h.collectTimelineEntries(inc)
 
-	type timelineEntry struct {
-		Timestamp string `json:"timestamp"`
-		Type      string `json:"type"`
-		Summary   string `json:"summary"`
-		Data      any    `json:"data,omitempty"`
-	}
-
-	entries := make([]timelineEntry, 0)
-
-	// Add actions
-	if includeActions {
-		actions := h.capture.GetAllEnhancedActions()
-		for _, a := range actions {
-			// Timestamp is unix milliseconds
-			ts := time.UnixMilli(a.Timestamp).Format(time.RFC3339Nano)
-			// Get selector from Selectors map - prefer css
-			selector := ""
-			if css, ok := a.Selectors["css"].(string); ok {
-				selector = css
-			}
-			entries = append(entries, timelineEntry{
-				Timestamp: ts,
-				Type:      "action",
-				Summary:   a.Type + " on " + selector,
-			})
-		}
-	}
-
-	// Add errors from logs
-	if includeErrors {
-		h.server.mu.RLock()
-		for _, entry := range h.server.entries {
-			level, _ := entry["level"].(string)
-			if level == "error" {
-				ts, _ := entry["timestamp"].(string)
-				msg, _ := entry["message"].(string)
-				if len(msg) > 80 {
-					msg = msg[:80] + "..."
-				}
-				entries = append(entries, timelineEntry{
-					Timestamp: ts,
-					Type:      "error",
-					Summary:   msg,
-				})
-			}
-		}
-		h.server.mu.RUnlock()
-	}
-
-	// Add network events
-	if includeNetwork {
-		networkEntries := h.capture.GetNetworkWaterfallEntries()
-		for _, n := range networkEntries {
-			// Use server-side Timestamp if available, otherwise derive from StartTime
-			var ts string
-			if !n.Timestamp.IsZero() {
-				ts = n.Timestamp.Format(time.RFC3339Nano)
-			} else {
-				ts = time.Now().Add(-time.Duration(n.StartTime) * time.Millisecond).Format(time.RFC3339Nano)
-			}
-			entries = append(entries, timelineEntry{
-				Timestamp: ts,
-				Type:      "network",
-				Summary:   n.InitiatorType + " " + n.URL,
-			})
-		}
-	}
-
-	// Add websocket events
-	if includeWS {
-		wsEvents := h.capture.GetAllWebSocketEvents()
-		for _, ws := range wsEvents {
-			summary := ws.Event
-			if ws.Direction != "" {
-				summary += " (" + ws.Direction + ")"
-			}
-			entries = append(entries, timelineEntry{
-				Timestamp: ws.Timestamp, // Already a string
-				Type:      "websocket",
-				Summary:   summary,
-			})
-		}
-	}
-
-	// Sort by timestamp (newest first) — RFC3339 format is lexicographically sortable
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Timestamp > entries[j].Timestamp
 	})
@@ -459,42 +374,141 @@ func (h *ToolHandler) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMe
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Timeline", map[string]any{
-		"entries": entries,
-		"count":   len(entries),
+		"entries":  entries,
+		"count":    len(entries),
+		"metadata": buildResponseMetadata(h.capture, time.Now()),
 	})}
 }
 
-func (h *ToolHandler) toolAnalyzeErrors(req JSONRPCRequest) JSONRPCResponse {
-	// Cluster errors from browser logs by similar error messages
+func (h *ToolHandler) collectTimelineEntries(inc timelineIncludes) []timelineEntry {
+	entries := make([]timelineEntry, 0)
+	if inc.actions {
+		entries = append(entries, h.collectTimelineActions()...)
+	}
+	if inc.errors {
+		entries = append(entries, h.collectTimelineErrors()...)
+	}
+	if inc.network {
+		entries = append(entries, collectTimelineNetwork(h.capture.GetNetworkWaterfallEntries())...)
+	}
+	if inc.ws {
+		entries = append(entries, collectTimelineWebSocket(h.capture.GetAllWebSocketEvents())...)
+	}
+	return entries
+}
+
+func (h *ToolHandler) collectTimelineActions() []timelineEntry {
+	actions := h.capture.GetAllEnhancedActions()
+	entries := make([]timelineEntry, 0, len(actions))
+	for _, a := range actions {
+		ts := time.UnixMilli(a.Timestamp).Format(time.RFC3339Nano)
+		selector := ""
+		if css, ok := a.Selectors["css"].(string); ok {
+			selector = css
+		}
+		entries = append(entries, timelineEntry{
+			Timestamp: ts,
+			Type:      "action",
+			Summary:   a.Type + " on " + selector,
+		})
+	}
+	return entries
+}
+
+func (h *ToolHandler) collectTimelineErrors() []timelineEntry {
 	h.server.mu.RLock()
 	defer h.server.mu.RUnlock()
 
-	// Build clusters: message prefix -> occurrences
-	type errorCluster struct {
-		message    string
-		level      string
-		count      int
-		firstSeen  string
-		lastSeen   string
-		urls       map[string]bool
-		stackTrace string
-	}
-	clusters := make(map[string]*errorCluster)
-
+	entries := make([]timelineEntry, 0)
 	for _, entry := range h.server.entries {
-		// Only process error-level logs
 		level, _ := entry["level"].(string)
 		if level != "error" {
 			continue
 		}
+		ts, _ := entry["timestamp"].(string)
+		msg, _ := entry["message"].(string)
+		if len(msg) > 80 {
+			msg = msg[:80] + "..."
+		}
+		entries = append(entries, timelineEntry{
+			Timestamp: ts,
+			Type:      "error",
+			Summary:   msg,
+		})
+	}
+	return entries
+}
 
+func collectTimelineNetwork(networkEntries []capture.NetworkWaterfallEntry) []timelineEntry {
+	entries := make([]timelineEntry, 0, len(networkEntries))
+	for _, n := range networkEntries {
+		var ts string
+		if !n.Timestamp.IsZero() {
+			ts = n.Timestamp.Format(time.RFC3339Nano)
+		} else {
+			ts = time.Now().Add(-time.Duration(n.StartTime) * time.Millisecond).Format(time.RFC3339Nano)
+		}
+		entries = append(entries, timelineEntry{
+			Timestamp: ts,
+			Type:      "network",
+			Summary:   n.InitiatorType + " " + n.URL,
+		})
+	}
+	return entries
+}
+
+func collectTimelineWebSocket(wsEvents []capture.WebSocketEvent) []timelineEntry {
+	entries := make([]timelineEntry, 0, len(wsEvents))
+	for _, ws := range wsEvents {
+		summary := ws.Event
+		if ws.Direction != "" {
+			summary += " (" + ws.Direction + ")"
+		}
+		entries = append(entries, timelineEntry{
+			Timestamp: ws.Timestamp,
+			Type:      "websocket",
+			Summary:   summary,
+		})
+	}
+	return entries
+}
+
+type errorCluster struct {
+	message    string
+	level      string
+	count      int
+	firstSeen  string
+	lastSeen   string
+	urls       map[string]bool
+	stackTrace string
+}
+
+func (h *ToolHandler) toolAnalyzeErrors(req JSONRPCRequest) JSONRPCResponse {
+	h.server.mu.RLock()
+	clusters := buildErrorClusters(h.server.entries)
+	h.server.mu.RUnlock()
+
+	result := clustersToResponse(clusters)
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Error clusters", map[string]any{
+		"clusters":    result,
+		"total_count": len(result),
+		"metadata":    buildResponseMetadata(h.capture, time.Now()),
+	})}
+}
+
+func buildErrorClusters(entries []LogEntry) map[string]*errorCluster {
+	clusters := make(map[string]*errorCluster)
+	for _, entry := range entries {
+		level, _ := entry["level"].(string)
+		if level != "error" {
+			continue
+		}
 		msg, _ := entry["message"].(string)
 		if msg == "" {
 			continue
 		}
 
-		// Normalize message by removing line numbers and dynamic content for clustering
-		// Take first 100 chars as cluster key
 		clusterKey := msg
 		if len(clusterKey) > 100 {
 			clusterKey = clusterKey[:100]
@@ -504,30 +518,36 @@ func (h *ToolHandler) toolAnalyzeErrors(req JSONRPCRequest) JSONRPCResponse {
 		url, _ := entry["url"].(string)
 		stack, _ := entry["stackTrace"].(string)
 
-		if cluster, exists := clusters[clusterKey]; exists {
-			cluster.count++
-			cluster.lastSeen = timestamp
-			if url != "" {
-				cluster.urls[url] = true
-			}
-		} else {
-			urls := make(map[string]bool)
-			if url != "" {
-				urls[url] = true
-			}
-			clusters[clusterKey] = &errorCluster{
-				message:    msg,
-				level:      level,
-				count:      1,
-				firstSeen:  timestamp,
-				lastSeen:   timestamp,
-				urls:       urls,
-				stackTrace: stack,
-			}
-		}
+		addToCluster(clusters, clusterKey, msg, level, timestamp, url, stack)
 	}
+	return clusters
+}
 
-	// Convert to response format
+func addToCluster(clusters map[string]*errorCluster, key, msg, level, timestamp, url, stack string) {
+	if cluster, exists := clusters[key]; exists {
+		cluster.count++
+		cluster.lastSeen = timestamp
+		if url != "" {
+			cluster.urls[url] = true
+		}
+		return
+	}
+	urls := make(map[string]bool)
+	if url != "" {
+		urls[url] = true
+	}
+	clusters[key] = &errorCluster{
+		message:    msg,
+		level:      level,
+		count:      1,
+		firstSeen:  timestamp,
+		lastSeen:   timestamp,
+		urls:       urls,
+		stackTrace: stack,
+	}
+}
+
+func clustersToResponse(clusters map[string]*errorCluster) []map[string]any {
 	result := make([]map[string]any, 0, len(clusters))
 	for _, c := range clusters {
 		urlList := make([]string, 0, len(c.urls))
@@ -543,55 +563,42 @@ func (h *ToolHandler) toolAnalyzeErrors(req JSONRPCRequest) JSONRPCResponse {
 			"stack_trace": c.stackTrace,
 		})
 	}
+	return result
+}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Error clusters", map[string]any{
-		"clusters":    result,
-		"total_count": len(result),
-	})}
+type historyEntry struct {
+	Timestamp string `json:"timestamp"`
+	FromURL   string `json:"from_url,omitempty"`
+	ToURL     string `json:"to_url"`
+	Type      string `json:"type"`
 }
 
 func (h *ToolHandler) toolAnalyzeHistory(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Track navigation history from actions (navigate events and URL changes)
 	actions := h.capture.GetAllEnhancedActions()
+	entries := buildHistoryEntries(actions)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("History", map[string]any{
+		"entries":  entries,
+		"count":    len(entries),
+		"metadata": buildResponseMetadata(h.capture, time.Now()),
+	})}
+}
 
-	type historyEntry struct {
-		Timestamp string `json:"timestamp"`
-		FromURL   string `json:"from_url,omitempty"`
-		ToURL     string `json:"to_url"`
-		Type      string `json:"type"` // "navigate", "click", etc.
-	}
-
+func buildHistoryEntries(actions []capture.EnhancedAction) []historyEntry {
 	entries := make([]historyEntry, 0)
 	seenURLs := make(map[string]bool)
 
 	for _, a := range actions {
-		// Track navigation events
-		if a.Type == "navigate" && a.ToURL != "" {
-			if !seenURLs[a.ToURL] {
-				entries = append(entries, historyEntry{
-					Timestamp: time.UnixMilli(a.Timestamp).Format(time.RFC3339),
-					FromURL:   a.FromURL,
-					ToURL:     a.ToURL,
-					Type:      "navigate",
-				})
-				seenURLs[a.ToURL] = true
-			}
+		ts := time.UnixMilli(a.Timestamp).Format(time.RFC3339)
+		if a.Type == "navigate" && a.ToURL != "" && !seenURLs[a.ToURL] {
+			entries = append(entries, historyEntry{Timestamp: ts, FromURL: a.FromURL, ToURL: a.ToURL, Type: "navigate"})
+			seenURLs[a.ToURL] = true
 		}
-		// Also track when URL changes appear in regular actions
 		if a.URL != "" && !seenURLs[a.URL] {
-			entries = append(entries, historyEntry{
-				Timestamp: time.UnixMilli(a.Timestamp).Format(time.RFC3339),
-				ToURL:     a.URL,
-				Type:      "page_visit",
-			})
+			entries = append(entries, historyEntry{Timestamp: ts, ToURL: a.URL, Type: "page_visit"})
 			seenURLs[a.URL] = true
 		}
 	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("History", map[string]any{
-		"entries": entries,
-		"count":   len(entries),
-	})}
+	return entries
 }
 
 // ============================================
@@ -611,40 +618,64 @@ func (h *ToolHandler) toolObserveCommandResult(req JSONRPCRequest, args json.Raw
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'correlation_id' is missing", "Add the 'correlation_id' parameter and call again", withParam("correlation_id"))}
 	}
 
-	// Query command status by correlation ID
 	cmd, found := h.capture.GetCommandResult(params.CorrelationID)
 	if !found {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Command not found: "+params.CorrelationID, "The command may have already completed and been cleaned up (60s TTL), or the correlation_id is invalid")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Command not found: "+params.CorrelationID, "The command may have already completed and been cleaned up (60s TTL), or the correlation_id is invalid. Use observe with what='pending_commands' to see active commands.", h.diagnosticHint())}
 	}
 
+	return h.formatCommandResult(req, *cmd, params.CorrelationID)
+}
+
+func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.CommandResult, corrID string) JSONRPCResponse {
 	responseData := map[string]any{
 		"correlation_id": cmd.CorrelationID,
 		"status":         cmd.Status,
 		"created_at":     cmd.CreatedAt.Format(time.RFC3339),
 	}
 
-	if cmd.Status == "complete" {
-		responseData["result"] = cmd.Result
-		responseData["completed_at"] = cmd.CompletedAt.Format(time.RFC3339)
-		responseData["timing_ms"] = cmd.CompletedAt.Sub(cmd.CreatedAt).Milliseconds()
-		if cmd.Error != "" {
-			responseData["error"] = cmd.Error
-		}
+	switch cmd.Status {
+	case "complete":
+		return h.formatCompleteCommand(req, cmd, corrID, responseData)
+	case "expired":
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrExtTimeout,
+			fmt.Sprintf("Command %s expired before the extension could execute it. Error: %s", corrID, cmd.Error),
+			"The browser extension may be disconnected or the page is not active. Check observe with what='pilot' to verify extension status, then retry the command.",
+			h.diagnosticHint(),
+		)}
+	case "timeout":
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrExtTimeout,
+			fmt.Sprintf("Command %s timed out waiting for the extension to respond. Error: %s", corrID, cmd.Error),
+			"The command took too long. The page may be unresponsive or the action is stuck. Try refreshing the page with interact action='refresh', then retry.",
+			h.diagnosticHint(),
+		)}
+	default:
+		summary := fmt.Sprintf("Command %s: %s", corrID, cmd.Status)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+	}
+}
 
-		// Enrich with perf_diff if a before-snapshot was stashed (refresh/navigate)
-		if beforeSnap, ok := h.capture.GetAndDeleteBeforeSnapshot(params.CorrelationID); ok {
-			if afterSnap, ok := h.capture.GetPerformanceSnapshotByURL(beforeSnap.URL); ok {
-				before := performance.SnapshotToPageLoadMetrics(beforeSnap)
-				after := performance.SnapshotToPageLoadMetrics(afterSnap)
-				diff := performance.ComputePerfDiff(before, after)
-				responseData["perf_diff"] = diff
-			}
+func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.CommandResult, corrID string, responseData map[string]any) JSONRPCResponse {
+	responseData["result"] = cmd.Result
+	responseData["completed_at"] = cmd.CompletedAt.Format(time.RFC3339)
+	responseData["timing_ms"] = cmd.CompletedAt.Sub(cmd.CreatedAt).Milliseconds()
+
+	if beforeSnap, ok := h.capture.GetAndDeleteBeforeSnapshot(corrID); ok {
+		if afterSnap, ok := h.capture.GetPerformanceSnapshotByURL(beforeSnap.URL); ok {
+			before := performance.SnapshotToPageLoadMetrics(beforeSnap)
+			after := performance.SnapshotToPageLoadMetrics(afterSnap)
+			responseData["perf_diff"] = performance.ComputePerfDiff(before, after)
 		}
-	} else if cmd.Status == "expired" || cmd.Status == "timeout" {
-		responseData["error"] = cmd.Error
 	}
 
-	summary := fmt.Sprintf("Command %s: %s", params.CorrelationID, cmd.Status)
+	if cmd.Error != "" {
+		responseData["error"] = cmd.Error
+		summary := fmt.Sprintf("FAILED — Command %s completed with error: %s", corrID, cmd.Error)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+	}
+
+	summary := fmt.Sprintf("Command %s: complete", corrID)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
 }
 

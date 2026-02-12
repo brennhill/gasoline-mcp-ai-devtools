@@ -2,6 +2,7 @@
 # framework.sh — Shared test harness for Gasoline MCP UAT.
 # Sourced by each category file. Provides assertion helpers,
 # MCP request sending, daemon lifecycle, and structured output.
+set -eo pipefail
 
 # ── Timeout Compatibility ──────────────────────────────────
 # macOS doesn't ship with `timeout`. Use gtimeout from coreutils if available.
@@ -32,8 +33,8 @@ START_TIME=""
 init_framework() {
     PORT="${1:-7890}"
     RESULTS_FILE="${2:-/dev/null}"
-    TEMP_DIR=$(mktemp -d)
-    START_TIME=$(date +%s)
+    TEMP_DIR="$(mktemp -d)"
+    START_TIME="$(date +%s)"
 
     # Resolve binary: local build > PATH
     if [ -x "./gasoline-mcp" ]; then
@@ -50,8 +51,10 @@ init_framework() {
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local project_root="$script_dir/../.."
     if [ -f "$project_root/VERSION" ]; then
-        VERSION=$(cat "$project_root/VERSION" | tr -d '[:space:]')
+        # shellcheck disable=SC2034 # VERSION used by sourcing scripts
+        VERSION="$(tr -d '[:space:]' < "$project_root/VERSION")"
     else
+        # shellcheck disable=SC2034 # VERSION used by sourcing scripts
         VERSION="unknown"
     fi
 
@@ -92,7 +95,7 @@ begin_test() {
 # ── Pass/Fail ──────────────────────────────────────────────
 pass() {
     local description="$1"
-    PASS_COUNT=$((PASS_COUNT + 1))
+    PASS_COUNT="$((PASS_COUNT + 1))"
     {
         echo "  PASS: ${description}"
         echo ""
@@ -101,7 +104,7 @@ pass() {
 
 fail() {
     local description="$1"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
+    FAIL_COUNT="$((FAIL_COUNT + 1))"
     {
         echo "  FAIL: ${description}"
         echo ""
@@ -110,7 +113,7 @@ fail() {
 
 skip() {
     local description="$1"
-    SKIP_COUNT=$((SKIP_COUNT + 1))
+    SKIP_COUNT="$((SKIP_COUNT + 1))"
     {
         echo "  SKIP: ${description}"
         echo ""
@@ -127,15 +130,18 @@ send_mcp() {
     local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
     local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
 
-    echo "$request" | $TIMEOUT_CMD 8 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
-    LAST_EXIT_CODE=$?
+    echo "$request" | "$TIMEOUT_CMD" 8 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file"
+    # shellcheck disable=SC2034 # LAST_EXIT_CODE used by sourcing scripts
+    LAST_EXIT_CODE="$?"
 
     # Get last non-empty line (the JSON-RPC response)
-    LAST_RESPONSE=$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1)
+    LAST_RESPONSE="$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1)"
+    # shellcheck disable=SC2034 # LAST_STDOUT_FILE used by sourcing scripts
     LAST_STDOUT_FILE="$stdout_file"
+    # shellcheck disable=SC2034 # LAST_STDERR_FILE used by sourcing scripts
     LAST_STDERR_FILE="$stderr_file"
 
-    MCP_ID=$((MCP_ID + 1))
+    MCP_ID="$((MCP_ID + 1))"
     echo "$LAST_RESPONSE"
 }
 
@@ -146,12 +152,15 @@ send_mcp_multi() {
     local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
     local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
 
-    echo "$requests" | $TIMEOUT_CMD 12 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
-    LAST_EXIT_CODE=$?
+    echo "$requests" | "$TIMEOUT_CMD" 12 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file"
+    # shellcheck disable=SC2034 # LAST_EXIT_CODE used by sourcing scripts
+    LAST_EXIT_CODE="$?"
+    # shellcheck disable=SC2034 # LAST_STDOUT_FILE used by sourcing scripts
     LAST_STDOUT_FILE="$stdout_file"
+    # shellcheck disable=SC2034 # LAST_STDERR_FILE used by sourcing scripts
     LAST_STDERR_FILE="$stderr_file"
 
-    MCP_ID=$((MCP_ID + 1))
+    MCP_ID="$((MCP_ID + 1))"
     grep -v '^$' "$stdout_file" 2>/dev/null
 }
 
@@ -190,14 +199,14 @@ truncate() {
 check_not_error() {
     local response="$1"
     local is_error
-    is_error=$(echo "$response" | jq -r '.result.isError // false' 2>/dev/null)
+    is_error="$(echo "$response" | jq -r '.result.isError // false' 2>/dev/null)"
     [ "$is_error" != "true" ]
 }
 
 check_is_error() {
     local response="$1"
     local is_error
-    is_error=$(echo "$response" | jq -r '.result.isError // false' 2>/dev/null)
+    is_error="$(echo "$response" | jq -r '.result.isError // false' 2>/dev/null)"
     [ "$is_error" = "true" ]
 }
 
@@ -206,7 +215,7 @@ check_json_field() {
     local jq_path="$2"
     local expected="$3"
     local actual
-    actual=$(echo "$json" | jq -r "$jq_path" 2>/dev/null)
+    actual="$(echo "$json" | jq -r "$jq_path" 2>/dev/null)"
     [ "$actual" = "$expected" ]
 }
 
@@ -214,8 +223,11 @@ check_json_has() {
     local json="$1"
     local jq_path="$2"
     local value
-    value=$(echo "$json" | jq -e "$jq_path" 2>/dev/null)
-    [ $? -eq 0 ] && [ "$value" != "null" ]
+    if value="$(echo "$json" | jq -e "$jq_path" 2>/dev/null)"; then
+        [ "$value" != "null" ]
+    else
+        return 1
+    fi
 }
 
 check_contains() {
@@ -228,7 +240,7 @@ check_protocol_error() {
     local response="$1"
     local expected_code="$2"
     local code
-    code=$(echo "$response" | jq -r '.error.code // empty' 2>/dev/null)
+    code="$(echo "$response" | jq -r '.error.code // empty' 2>/dev/null)"
     [ "$code" = "$expected_code" ]
 }
 
@@ -249,9 +261,9 @@ check_http_status() {
     local extra_headers="${3:-}"
     local actual
     if [ -n "$extra_headers" ]; then
-        actual=$(curl -s --max-time 10 --connect-timeout 3 -o /dev/null -w "%{http_code}" $extra_headers "$url" 2>/dev/null)
+        actual="$(curl -s --max-time 10 --connect-timeout 3 -o /dev/null -w "%{http_code}" "$extra_headers" "$url" 2>/dev/null)"
     else
-        actual=$(curl -s --max-time 10 --connect-timeout 3 -o /dev/null -w "%{http_code}" "$url" 2>/dev/null)
+        actual="$(curl -s --max-time 10 --connect-timeout 3 -o /dev/null -w "%{http_code}" "$url" 2>/dev/null)"
     fi
     [ "$actual" = "$expected" ]
 }
@@ -288,9 +300,9 @@ wait_for_health() {
         fi
         # Exponential backoff: 10ms → 50ms → 100ms
         # Typical startup is <100ms, so this is much faster than fixed 0.1s
-        if [ $i -lt 3 ]; then
+        if [ "$i" -lt 3 ]; then
             sleep 0.01
-        elif [ $i -lt 10 ]; then
+        elif [ "$i" -lt 10 ]; then
             sleep 0.05
         else
             sleep 0.1
@@ -300,7 +312,12 @@ wait_for_health() {
 }
 
 start_daemon() {
-    $WRAPPER --daemon --port "$PORT" >/dev/null 2>&1 &
+    "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 &
+    wait_for_health 50
+}
+
+start_daemon_with_flags() {
+    "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 &
     wait_for_health 50
 }
 
@@ -316,7 +333,7 @@ finish_category() {
     kill_server
 
     # Clean up temp
-    local elapsed=$(( $(date +%s) - START_TIME ))
+    local elapsed="$(( "$(date +%s)" - START_TIME ))"
 
     # Write structured results for the runner
     if [ "$RESULTS_FILE" != "/dev/null" ]; then

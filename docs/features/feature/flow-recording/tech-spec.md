@@ -10,7 +10,7 @@ version: v6.0
 
 Flow Recording & Playback enables developers to regression test by recording a user flow once, replaying it after fixing a bug, and automatically comparing logs to detect what changed.
 
-**Core MVP Components:**
+### Core MVP Components:
 1. **Extension Recording** (TypeScript/JS) — Capture user interactions + browser state
 2. **Server Storage** (Go) — Store recordings + logs with test boundary tagging
 3. **Playback Engine** (Go + Extension) — Replay actions with self-healing selectors
@@ -198,7 +198,7 @@ type ValueDiff struct {
 
 ### Recording Actions
 
-**Start Recording:**
+#### Start Recording:
 ```javascript
 configure({
   action: 'recording_start',
@@ -210,7 +210,7 @@ configure({
 
 Response: `{status: "ok", recording_id: "shopping-checkout-20260130T..."}`
 
-**Stop Recording:**
+#### Stop Recording:
 ```javascript
 configure({
   action: 'recording_stop',
@@ -222,7 +222,7 @@ Response: `{status: "ok", action_count: 8, duration_ms: 45000}`
 
 ### Recording Queries
 
-**List Recordings:**
+#### List Recordings:
 ```javascript
 observe({
   what: 'recordings',
@@ -245,7 +245,7 @@ Response:
 }
 ```
 
-**Get Recording Actions:**
+#### Get Recording Actions:
 ```javascript
 observe({
   what: 'recording_actions',
@@ -257,7 +257,7 @@ Response: `{recording_id: "...", actions: [...]}`
 
 ### Playback
 
-**Execute Playback (Recorded Flow):**
+#### Execute Playback (Recorded Flow):
 ```javascript
 interact({
   action: 'playback',
@@ -268,7 +268,7 @@ interact({
 })
 ```
 
-**Execute Playback (LLM-Generated Variation):**
+#### Execute Playback (LLM-Generated Variation):
 ```javascript
 interact({
   action: 'playback',
@@ -306,7 +306,7 @@ Response:
 
 ### Test Generation (LLM-Generated Variations)
 
-**LLM Can Generate Action Variations:**
+#### LLM Can Generate Action Variations:
 
 Playback accepts both recorded AND LLM-generated action sequences. LLM can synthesize variations by modifying the action array JSON:
 
@@ -329,26 +329,26 @@ interact({
 })
 ```
 
-**Use Cases:**
+#### Use Cases:
 - Different inputs: Try coupon "SUMMER2026" instead of "WELCOME20"
 - Different selectors: If selector moved, test with new coordinates
 - Different flows: Remove intermediate steps, add new ones
 - Different user states: Simulate logged-in vs guest checkout
 
-**Implementation:**
+#### Implementation:
 - Playback function accepts either `recording: string` (ID) OR `actions: array` (custom)
 - Response identical: `{status: "ok", actions_executed, errors, duration}`
 - Logs tagged same way (test_boundary_id captures all events)
 - LLM can generate, playback, and compare results
 
-**MVP Scope:**
+#### MVP Scope:
 - [x] Playback accepts custom action arrays
 - [x] No special "test generation" feature needed (LLM generates JSON directly)
 - [x] Variations logged and compared like recorded flows
 
 ### Log Diffing & Regression Detection
 
-**Compare Logs:**
+#### Compare Logs:
 ```javascript
 // LLM reads both sets of logs via test boundaries
 observe({what: 'logs', test_boundary: 'original-checkout'})
@@ -367,25 +367,25 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 **Files:** `extension/background/recording.js` (new), modify `extension/inject/recording.ts` (new)
 
-**Server-Side Storage (`extension/background/recording.js`):**
+#### Server-Side Storage (`extension/background/recording.js`):
 - Manage recording lifecycle (start/stop)
 - Buffer actions in memory
 - Persist recording to server via POST /query
 - Metadata management (name, timestamp, duration)
 - Size target: ~150 LOC
 
-**Page-Side Capture (`extension/inject/recording.ts`):**
+#### Page-Side Capture (`extension/inject/recording.ts`):
 - **REUSE existing infrastructure:** inject.js already has `installActionCapture`, `recordEnhancedAction`, `handleClick`, `handleInput`, `handleKeydown`
 - Extend existing action capture to include recording-specific metadata (selector, x/y, screenshot_path)
 - Send actions to background via postMessage (existing pattern)
 - Size target: ~150 LOC (mostly integration with existing capture)
 
-**Screenshot Capture:**
+#### Screenshot Capture:
 - Reuse existing screenshot functionality (used by error detection)
 - Capture on: page load, selector failure, error
 - Store locally at `~/.gasoline/recordings/{recording_id}/screenshots/`
 
-**Why Minimal New Code:**
+#### Why Minimal New Code:
 - Extension already captures click/input/keydown/navigation via `inject/action-capture.ts`
 - We extend that to add recording metadata (selector, x/y, screenshots)
 - Existing infrastructure: message passing, storage, screenshot, selector extraction
@@ -395,7 +395,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 **File:** `cmd/dev-console/recording.go` (new)
 
-**Responsibilities:**
+#### Responsibilities:
 - In-memory recording buffer (ring, max 100 recordings)
 - Persist recordings to disk (~/.gasoline/recordings/)
 - Query recordings by ID/name
@@ -404,7 +404,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 **Size Target:** ~200 LOC
 
-**Data:**
+#### Data:
 - `Recording` struct with actions array
 - `RecordingBuffer` with ring buffer + mutex
 - File I/O for metadata.json
@@ -413,7 +413,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 **File:** `cmd/dev-console/playback.go` (new)
 
-**Responsibilities:**
+#### Responsibilities:
 - Load recording by ID
 - Execute actions in sequence (fast-forward)
 - Find elements using self-healing strategy (R4)
@@ -423,7 +423,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 **Size Target:** ~250 LOC
 
-**Algorithm:**
+#### Algorithm:
 ```
 1. Load recording
 2. For each action:
@@ -437,7 +437,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 4. Return {actions_executed, errors, duration}
 ```
 
-**Network Idle Definition (Fast-Forward Playback):**
+#### Network Idle Definition (Fast-Forward Playback):
 - "Network idle" = 0 active HTTP/XHR requests
 - Polling interval: check every 100ms (non-blocking)
 - Hard timeout: 5 seconds
@@ -452,7 +452,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 **Solution:** WebSocket streaming for real-time event propagation.
 
-**Architecture:**
+#### Architecture:
 ```
 Extension                    Server
 ─────────────────           ──────────
@@ -471,7 +471,7 @@ Buffer overflow?           → Server: drop oldest, log warning to extension
 Connection drop?           → Fall back to polling (graceful degradation)
 ```
 
-**Implementation Details:**
+#### Implementation Details:
 - Server: WebSocket upgrade handler (ws package for Go)
 - Server: Broadcast buffer with ring (max 10,000 events)
 - Server: Drop oldest on overflow, log warning
@@ -482,13 +482,13 @@ Connection drop?           → Fall back to polling (graceful degradation)
 
 **Size Target:** ~300 LOC total (150 Go, 150 TypeScript)
 
-**Testing:**
+#### Testing:
 - Test normal WS flow (events received in real-time)
 - Test buffer overflow (oldest events dropped)
 - Test connection drop + polling fallback
 - Test reconnection after network outage
 
-**Success Criteria:**
+#### Success Criteria:
 - Recording timestamps accurate to < 10ms
 - No gaps in event stream during recording
 - Graceful fallback to polling if WS unavailable
@@ -498,7 +498,7 @@ Connection drop?           → Fall back to polling (graceful degradation)
 
 **File:** `cmd/dev-console/playback.go` (in Playback section)
 
-**Strategy (Priority Order):**
+#### Strategy (Priority Order):
 1. Try data-testid match: `querySelector('[data-testid=X]')`
 2. Try CSS selector: `querySelector(original_selector)`
 3. Search nearby: Look for element near old x/y coordinates
@@ -511,7 +511,7 @@ Connection drop?           → Fall back to polling (graceful degradation)
 
 **File:** `cmd/dev-console/log-diff.go` (new)
 
-**Responsibilities:**
+#### Responsibilities:
 - Query logs from both test boundaries
 - Compare error counts
 - Detect new errors (in replay, not in original)
@@ -521,7 +521,7 @@ Connection drop?           → Fall back to polling (graceful degradation)
 
 **Size Target:** ~150 LOC
 
-**Algorithm:**
+#### Algorithm:
 ```
 1. Fetch logs from test_boundary A (original)
 2. Fetch logs from test_boundary B (replay)
@@ -553,7 +553,7 @@ Already implemented in prior work:
 
 ## Screenshots & Artifacts
 
-**Naming Convention:**
+### Naming Convention:
 ```
 ~/.gasoline/recordings/{recording-id}/screenshots/
 ├── {date}-{recording-id}-{action-index}-{issue-type}.jpg
@@ -562,7 +562,7 @@ Already implemented in prior work:
 ├── 20260130-shopping-checkout-005-error.jpg
 ```
 
-**Issue Types:**
+### Issue Types:
 - `page-load` — after navigation, page fully loaded
 - `moved-selector` — element selector failed, had to use fallback
 - `error` — error/timeout occurred, visual evidence
@@ -589,12 +589,12 @@ Already implemented in prior work:
 
 ### Recording Errors
 
-**Screenshot Compression:**
+#### Screenshot Compression:
 - Target: JPEG 85% compression, typically 50-200KB per screenshot
 - If > 500KB: Log debug note, keep screenshot (500KB is acceptable)
 - Rationale: Typical page screenshots are well under 500KB; if exceeds, it's informational but not a blocker
 
-**Storage Quota Enforcement (1GB Hard Limit):**
+#### Storage Quota Enforcement (1GB Hard Limit):
 - At 80% capacity (800MB): Log warning to user: "Recording storage at 80%. Consider deleting old recordings."
 - At 100% capacity (1GB): `recording_start` returns error: "Recording storage at capacity (1GB). Delete old recordings to continue."
 - User must manually delete old recordings: `rm ~/.gasoline/recordings/{recording_id}`
@@ -619,7 +619,7 @@ func (c *Capture) RecordingStart(name, url string) error {
 }
 ```
 
-**Selector Fragility:**
+#### Selector Fragility:
 - Selector unstable (moved 3+ times) → log warning, take screenshot with issue type `moved-selector`
 - Recommend to LLM: "Add data-testid=X to improve test stability"
 
@@ -635,11 +635,11 @@ func (c *Capture) RecordingStart(name, url string) error {
 
 ## Security & Privacy
 
-**Recording Data:**
+### Recording Data:
 - Stored locally at `~/.gasoline/recordings/` only
 - Not transmitted to cloud
 
-**Sensitive Data Toggle (Credential Recording):**
+### Sensitive Data Toggle (Credential Recording):
 
 When `sensitive_data_enabled=false` (default - SAFE):
 - All typed text in recordings recorded as `[redacted]` in JSON
@@ -663,7 +663,7 @@ Implementation in extension:
 4. Mark metadata.json with sensitive_data_enabled=true
 ```
 
-**Selector Recommendations:**
+### Selector Recommendations:
 - Log fragile selectors (moved 3+ times)
 - Suggest using `data-testid` instead
 - Help LLM improve test robustness
@@ -672,7 +672,7 @@ Implementation in extension:
 
 ## Test Boundary Integration
 
-**Orthogonal Concerns (But Coordinated):**
+### Orthogonal Concerns (But Coordinated):
 
 1. **Recording** captures action metadata (click, type, navigate, selector, x/y, screenshot)
    - Stored to disk at `~/.gasoline/recordings/{recording_id}/metadata.json`
@@ -691,7 +691,7 @@ Implementation in extension:
    - Later: replay invokes `test_id: 'replay-checkout'` → captures new logs under that boundary
    - Compare: fetch logs for 'original-checkout' vs 'replay-checkout'
 
-**Example Flow:**
+### Example Flow:
 ```javascript
 // Option A: Record + playback within test boundaries (typical)
 configure({action: 'test_boundary_start', test_id: 'original-checkout'})
@@ -807,14 +807,14 @@ configure({action: 'test_boundary_end', test_id: 'replay-1'})
 
 **Zero External Dependencies** (production runtime)
 
-**Existing Gasoline Infrastructure Used:**
+### Existing Gasoline Infrastructure Used:
 - Test boundaries (activeTestIDs, TestIDs tagging)
 - Ring buffers (logs, network, WebSocket, actions)
 - MCP tools (observe, interact, configure)
 - Extension message passing
 - Screenshot functionality
 
-**New MCP Extensions:**
+### New MCP Extensions:
 - `configure` action: `recording_start`, `recording_stop`
 - `interact` action: `playback`
 - `observe` what: `recordings`, `recording_actions`

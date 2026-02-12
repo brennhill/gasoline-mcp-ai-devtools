@@ -48,7 +48,7 @@ feature: network-bodies-empty
 - [ ] Cookie header shows [REDACTED] in captured headers
 - [ ] Response body containing "Bearer token" captured as-is (body redaction not yet implemented, but documented)
 
-**Privacy tests:**
+#### Privacy tests:
 - [ ] Body capture defaults to OFF (opt-in for privacy)
 - [ ] Clear message when capture disabled: "Network body capture is disabled..."
 - [ ] Documentation warns that bodies may contain PII
@@ -57,7 +57,7 @@ feature: network-bodies-empty
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Enable Body Capture and Verify Data**
+### Scenario 1: Enable Body Capture and Verify Data
 1. Setup:
    - Start Gasoline server: `./dist/gasoline`
    - Load Chrome with extension
@@ -86,7 +86,7 @@ feature: network-bodies-empty
    - [ ] responseBody contains actual JSON data
    - [ ] url and method populated correctly
 
-**Scenario 2: Body Capture Disabled (Default)**
+### Scenario 2: Body Capture Disabled (Default)
 1. Setup:
    - Start Gasoline server
    - Load Chrome with extension
@@ -105,7 +105,7 @@ feature: network-bodies-empty
    ```
 4. Verification: Empty array with clear instruction on how to enable
 
-**Scenario 3: Large Body Truncation**
+### Scenario 3: Large Body Truncation
 1. Setup: Enable body capture, navigate to endpoint with large response (> 5KB)
 2. Steps:
    - [ ] Make request to large data endpoint
@@ -117,7 +117,7 @@ feature: network-bodies-empty
    - [ ] Body content is valid (not corrupted mid-character)
 4. Verification: Large bodies don't cause memory issues
 
-**Scenario 4: Binary Response Skipped**
+### Scenario 4: Binary Response Skipped
 1. Setup: Enable body capture, navigate to page with images
 2. Steps:
    - [ ] Page loads image: <https://example.com/image.png>   - [ ] Call MCP tool: `observe({what: "network_bodies"})`
@@ -126,7 +126,7 @@ feature: network-bodies-empty
    - [ ] No entry for image.png in bodies (or entry with body: null and note: "binary content skipped")
 4. Verification: Binary content not captured (saves memory, avoids garbage)
 
-**Scenario 5: Error Response Body Captured**
+### Scenario 5: Error Response Body Captured
 1. Setup: Enable body capture, make request to non-existent endpoint
 2. Steps:
    - [ ] Trigger 404 error: fetch('/nonexistent')
@@ -137,7 +137,7 @@ feature: network-bodies-empty
    - [ ] responseBody contains error message: {"error": "Not found"}
 4. Verification: Error responses captured (helpful for debugging)
 
-**Scenario 6: Multiple Requests Captured**
+### Scenario 6: Multiple Requests Captured
 1. Setup: Enable body capture, navigate to page with many API calls
 2. Steps:
    - [ ] Navigate to complex SPA (e.g., GitHub.com)
@@ -150,7 +150,7 @@ feature: network-bodies-empty
    - [ ] Bodies are from most recent requests (ring buffer)
 4. Verification: Ring buffer captures multiple requests
 
-**Scenario 7: Sensitive Headers Redacted**
+### Scenario 7: Sensitive Headers Redacted
 1. Setup: Enable body capture, make authenticated request
 2. Steps:
    - [ ] Trigger fetch with Authorization header
@@ -186,22 +186,22 @@ feature: network-bodies-empty
 
 ## Performance/Load Testing
 
-**Body capture overhead:**
+### Body capture overhead:
 - [ ] fetch() with body capture: < 10ms overhead vs without
 - [ ] XMLHttpRequest with body capture: < 10ms overhead vs without
 - [ ] Body cloning time: < 5ms per response
 
-**Ring buffer operations:**
+### Ring buffer operations:
 - [ ] Store 100 bodies: < 100ms total
 - [ ] Retrieve 100 bodies via observe: < 200ms
 - [ ] Eviction of oldest entry: < 1ms
 
-**Memory usage:**
+### Memory usage:
 - [ ] 100 bodies (average 2KB each): ~200KB memory
 - [ ] Ring buffer max size: 8MB enforced
 - [ ] No unbounded growth after 500 requests
 
-**High-volume test:**
+### High-volume test:
 - [ ] Page with 100 concurrent requests
 - [ ] All bodies captured without loss
 - [ ] No application slowdown
@@ -211,20 +211,20 @@ feature: network-bodies-empty
 
 ## Configuration Testing
 
-**Body capture toggle:**
+### Body capture toggle:
 - [ ] Default state is OFF (privacy-first)
 - [ ] Enable via `configure({action: "network_body_capture", enabled: true})`
 - [ ] Disable via `configure({action: "network_body_capture", enabled: false})`
 - [ ] Toggle state persists across page navigations
 - [ ] Toggle state resets on extension reload (session-only)
 
-**Server endpoint:**
+### Server endpoint:
 - [ ] /network-bodies POST endpoint exists
 - [ ] Accepts JSON payload with url, method, status, headers, body
 - [ ] Returns 200 OK on successful storage
 - [ ] Handles missing fields gracefully
 
-**Ring buffer limits:**
+### Ring buffer limits:
 - [ ] Maximum 100 entries enforced
 - [ ] Maximum 8MB total memory enforced
 - [ ] Oldest entries evicted when limits reached

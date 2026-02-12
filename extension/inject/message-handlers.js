@@ -4,12 +4,21 @@
  */
 import { createDeferredPromise } from '../lib/timeout-utils.js';
 import { executeDOMQuery, runAxeAuditWithTimeout } from '../lib/dom-queries.js';
-import { getNetworkWaterfall, setNetworkWaterfallEnabled, setNetworkBodyCaptureEnabled, setServerUrl, } from '../lib/network.js';
+import { checkLinkHealth } from '../lib/link-health.js';
+import { getNetworkWaterfall, setNetworkWaterfallEnabled, setNetworkBodyCaptureEnabled, setServerUrl } from '../lib/network.js';
 import { setPerformanceMarksEnabled, installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js';
 import { setActionCaptureEnabled } from '../lib/actions.js';
-import { setWebSocketCaptureEnabled, setWebSocketCaptureMode, installWebSocketCapture, uninstallWebSocketCapture, } from '../lib/websocket.js';
+import { setWebSocketCaptureEnabled, setWebSocketCaptureMode, installWebSocketCapture, uninstallWebSocketCapture } from '../lib/websocket.js';
 import { setPerformanceSnapshotEnabled } from '../lib/perf-snapshot.js';
 import { setDeferralEnabled } from './observers.js';
+/** Read the page nonce set by the content script on the inject script element */
+let pageNonce = '';
+if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+    const nonceEl = document.querySelector('script[data-gasoline-nonce]');
+    if (nonceEl) {
+        pageNonce = nonceEl.getAttribute('data-gasoline-nonce') || '';
+    }
+}
 /**
  * Valid setting names from content script
  */
@@ -22,67 +31,58 @@ const VALID_SETTINGS = new Set([
     'setPerformanceSnapshotEnabled',
     'setDeferralEnabled',
     'setNetworkBodyCaptureEnabled',
-    'setServerUrl',
+    'setServerUrl'
 ]);
 const VALID_STATE_ACTIONS = new Set(['capture', 'restore']);
 /**
  * Safe serialization for complex objects returned from executeJavaScript.
  */
+// #lizard forgives
+function serializeObject(obj, depth, seen) {
+    if (seen.has(obj))
+        return '[Circular]';
+    seen.add(obj);
+    if (Array.isArray(obj))
+        return obj.slice(0, 100).map((v) => safeSerializeForExecute(v, depth + 1, seen));
+    if (obj instanceof Error)
+        return { error: obj.message, stack: obj.stack };
+    if (obj instanceof Date)
+        return obj.toISOString();
+    if (obj instanceof RegExp)
+        return obj.toString();
+    if (typeof Node !== 'undefined' && obj instanceof Node) {
+        const node = obj;
+        return `[${node.nodeName}${node.id ? '#' + node.id : ''}]`;
+    }
+    const result = {};
+    const keys = Object.keys(obj).slice(0, 50);
+    for (const key of keys) {
+        try {
+            result[key] = safeSerializeForExecute(obj[key], depth + 1, seen);
+        }
+        catch {
+            result[key] = '[unserializable]';
+        }
+    }
+    if (Object.keys(obj).length > 50) {
+        result['...'] = `[${Object.keys(obj).length - 50} more keys]`;
+    }
+    return result;
+}
 export function safeSerializeForExecute(value, depth = 0, seen = new WeakSet()) {
     if (depth > 10)
         return '[max depth exceeded]';
-    if (value === null)
-        return null;
-    if (value === undefined)
-        return undefined;
-    const type = typeof value;
-    if (type === 'string' || type === 'number' || type === 'boolean') {
+    if (value === null || value === undefined)
         return value;
-    }
-    if (type === 'function') {
+    const type = typeof value;
+    if (type === 'string' || type === 'number' || type === 'boolean')
+        return value;
+    if (type === 'function')
         return `[Function: ${value.name || 'anonymous'}]`;
-    }
-    if (type === 'symbol') {
+    if (type === 'symbol')
         return value.toString();
-    }
-    if (type === 'object') {
-        const obj = value;
-        if (seen.has(obj))
-            return '[Circular]';
-        seen.add(obj);
-        if (Array.isArray(obj)) {
-            return obj.slice(0, 100).map((v) => safeSerializeForExecute(v, depth + 1, seen));
-        }
-        if (obj instanceof Error) {
-            return { error: obj.message, stack: obj.stack };
-        }
-        if (obj instanceof Date) {
-            return obj.toISOString();
-        }
-        if (obj instanceof RegExp) {
-            return obj.toString();
-        }
-        // DOM nodes
-        if (typeof Node !== 'undefined' && obj instanceof Node) {
-            const node = obj;
-            return `[${node.nodeName}${node.id ? '#' + node.id : ''}]`;
-        }
-        // Plain objects
-        const result = {};
-        const keys = Object.keys(obj).slice(0, 50);
-        for (const key of keys) {
-            try {
-                result[key] = safeSerializeForExecute(obj[key], depth + 1, seen);
-            }
-            catch {
-                result[key] = '[unserializable]';
-            }
-        }
-        if (Object.keys(obj).length > 50) {
-            result['...'] = `[${Object.keys(obj).length - 50} more keys]`;
-        }
-        return result;
-    }
+    if (type === 'object')
+        return serializeObject(value, depth, seen);
     return String(value);
 }
 /**
@@ -90,6 +90,7 @@ export function safeSerializeForExecute(value, depth = 0, seen = new WeakSet()) 
  */
 export function executeJavaScript(script, timeoutMs = 5000) {
     const deferred = createDeferredPromise();
+    // #lizard forgives
     const executeWithTimeoutProtection = async () => {
         const timeoutHandle = setTimeout(() => {
             deferred.resolve({
@@ -101,7 +102,7 @@ export function executeJavaScript(script, timeoutMs = 5000) {
 2. Break the task into smaller pieces (< 2s execution time works best)
 3. Verify the script logic - test with simpler operations first
 
-Tip: Run small test scripts to isolate the issue, then build up complexity.`,
+Tip: Run small test scripts to isolate the issue, then build up complexity.`
             });
         }, timeoutMs);
         try {
@@ -111,11 +112,11 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
             let fn;
             try {
                 // eslint-disable-next-line no-new-func
-                fn = new Function(`"use strict"; return (${cleanScript});`);
+                fn = new Function(`"use strict"; return (${cleanScript});`); // nosemgrep: javascript.lang.security.eval.rule-eval-with-expression -- Function() constructor for controlled sandbox execution
             }
             catch {
                 // eslint-disable-next-line no-new-func
-                fn = new Function(`"use strict"; ${cleanScript}`);
+                fn = new Function(`"use strict"; ${cleanScript}`); // nosemgrep: javascript.lang.security.eval.rule-eval-with-expression -- Function() constructor for controlled sandbox execution
             }
             const result = fn();
             // Handle promises
@@ -132,7 +133,7 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
                         success: false,
                         error: 'promise_rejected',
                         message: err.message,
-                        stack: err.stack,
+                        stack: err.stack
                     });
                 });
             }
@@ -153,7 +154,7 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
                     error: 'csp_blocked',
                     message: 'This page has a Content Security Policy that blocks script execution in the MAIN world. ' +
                         'Use world: "isolated" to bypass CSP (DOM access only, no page JS globals). ' +
-                        'With world: "auto" (default), this fallback happens automatically.',
+                        'With world: "auto" (default), this fallback happens automatically.'
                 });
             }
             else {
@@ -161,7 +162,7 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
                     success: false,
                     error: 'execution_error',
                     message: error.message,
-                    stack: error.stack,
+                    stack: error.stack
                 });
             }
         }
@@ -171,116 +172,114 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
         deferred.resolve({
             success: false,
             error: 'execution_error',
-            message: 'Unexpected error during script execution',
+            message: 'Unexpected error during script execution'
         });
     });
     return deferred.promise;
 }
 /**
+ * Handle link health check request from content script
+ */
+export async function handleLinkHealthQuery(data) {
+    try {
+        const params = data.params || {};
+        const result = await checkLinkHealth(params);
+        return result;
+    }
+    catch (err) {
+        return {
+            error: 'link_health_error',
+            message: err.message || 'Failed to check link health'
+        };
+    }
+}
+/**
  * Install message listener for handling content script messages
  */
+function isValidSettingPayload(data) {
+    if (!VALID_SETTINGS.has(data.setting)) {
+        console.warn('[Gasoline] Invalid setting:', data.setting);
+        return false;
+    }
+    if (data.setting === 'setWebSocketCaptureMode')
+        return typeof data.mode === 'string';
+    if (data.setting === 'setServerUrl')
+        return typeof data.url === 'string';
+    // Boolean settings
+    if (typeof data.enabled !== 'boolean') {
+        console.warn('[Gasoline] Invalid enabled value type');
+        return false;
+    }
+    return true;
+}
+function handleLinkHealthMessage(data) {
+    handleLinkHealthQuery(data)
+        .then((result) => {
+        window.postMessage({ type: 'GASOLINE_LINK_HEALTH_RESPONSE', requestId: data.requestId, result }, window.location.origin);
+    })
+        .catch((err) => {
+        window.postMessage({
+            type: 'GASOLINE_LINK_HEALTH_RESPONSE', requestId: data.requestId,
+            result: { error: 'link_health_error', message: err.message || 'Failed to check link health' }
+        }, window.location.origin);
+    });
+}
 export function installMessageListener(captureStateFn, restoreStateFn) {
     if (typeof window === 'undefined')
         return;
+    const messageHandlers = {
+        GASOLINE_SETTING: (data) => {
+            const settingData = data;
+            if (isValidSettingPayload(settingData))
+                handleSetting(settingData);
+        },
+        GASOLINE_STATE_COMMAND: (data) => handleStateCommand(data, captureStateFn, restoreStateFn),
+        GASOLINE_EXECUTE_JS: (data) => handleExecuteJs(data),
+        GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data),
+        GASOLINE_DOM_QUERY: (data) => handleDomQuery(data),
+        GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data),
+        GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data)
+    };
     window.addEventListener('message', (event) => {
-        // Only accept messages from this window with correct origin
         if (event.source !== window || event.origin !== window.location.origin)
             return;
-        // Handle settings messages from content script
-        if (event.data?.type === 'GASOLINE_SETTING') {
-            const data = event.data;
-            // Validate setting name
-            if (!VALID_SETTINGS.has(data.setting)) {
-                console.warn('[Gasoline] Invalid setting:', data.setting);
-                return;
-            }
-            // Validate parameter types based on setting
-            if (data.setting === 'setWebSocketCaptureMode') {
-                if (typeof data.mode !== 'string') {
-                    console.warn('[Gasoline] Invalid mode type for setWebSocketCaptureMode');
-                    return;
-                }
-            }
-            else if (data.setting === 'setServerUrl') {
-                if (typeof data.url !== 'string') {
-                    console.warn('[Gasoline] Invalid url type for setServerUrl');
-                    return;
-                }
-            }
-            else {
-                // Boolean settings
-                if (typeof data.enabled !== 'boolean') {
-                    console.warn('[Gasoline] Invalid enabled value type');
-                    return;
-                }
-            }
-            handleSetting(data);
-        }
-        // Handle state management commands from content script
-        if (event.data?.type === 'GASOLINE_STATE_COMMAND') {
-            const data = event.data;
-            handleStateCommand(data, captureStateFn, restoreStateFn);
-        }
-        // Handle GASOLINE_EXECUTE_JS from content script
-        if (event.data?.type === 'GASOLINE_EXECUTE_JS') {
-            handleExecuteJs(event.data);
-        }
-        // Handle GASOLINE_A11Y_QUERY from content script
-        if (event.data?.type === 'GASOLINE_A11Y_QUERY') {
-            handleA11yQuery(event.data);
-        }
-        // Handle GASOLINE_DOM_QUERY from content script
-        if (event.data?.type === 'GASOLINE_DOM_QUERY') {
-            handleDomQuery(event.data);
-        }
-        // Handle GASOLINE_GET_WATERFALL from content script
-        if (event.data?.type === 'GASOLINE_GET_WATERFALL') {
-            handleGetWaterfall(event.data);
-        }
+        if (pageNonce && event.data?._nonce !== pageNonce)
+            return;
+        const msgType = event.data?.type;
+        if (!msgType)
+            return;
+        const handler = messageHandlers[msgType]; // nosemgrep: unsafe-dynamic-method
+        if (handler)
+            handler(event.data);
     });
 }
+const SETTING_HANDLERS = {
+    setNetworkWaterfallEnabled: (data) => setNetworkWaterfallEnabled(data.enabled),
+    setPerformanceMarksEnabled: (data) => {
+        setPerformanceMarksEnabled(data.enabled);
+        if (data.enabled)
+            installPerformanceCapture();
+        else
+            uninstallPerformanceCapture();
+    },
+    setActionReplayEnabled: (data) => setActionCaptureEnabled(data.enabled),
+    setWebSocketCaptureEnabled: (data) => {
+        setWebSocketCaptureEnabled(data.enabled);
+        if (data.enabled)
+            installWebSocketCapture();
+        else
+            uninstallWebSocketCapture();
+    },
+    setWebSocketCaptureMode: (data) => setWebSocketCaptureMode((data.mode || 'medium')),
+    setPerformanceSnapshotEnabled: (data) => setPerformanceSnapshotEnabled(data.enabled),
+    setDeferralEnabled: (data) => setDeferralEnabled(data.enabled),
+    setNetworkBodyCaptureEnabled: (data) => setNetworkBodyCaptureEnabled(data.enabled),
+    setServerUrl: (data) => setServerUrl(data.url)
+};
 function handleSetting(data) {
-    switch (data.setting) {
-        case 'setNetworkWaterfallEnabled':
-            setNetworkWaterfallEnabled(data.enabled);
-            break;
-        case 'setPerformanceMarksEnabled':
-            setPerformanceMarksEnabled(data.enabled);
-            if (data.enabled) {
-                installPerformanceCapture();
-            }
-            else {
-                uninstallPerformanceCapture();
-            }
-            break;
-        case 'setActionReplayEnabled':
-            setActionCaptureEnabled(data.enabled);
-            break;
-        case 'setWebSocketCaptureEnabled':
-            setWebSocketCaptureEnabled(data.enabled);
-            if (data.enabled) {
-                installWebSocketCapture();
-            }
-            else {
-                uninstallWebSocketCapture();
-            }
-            break;
-        case 'setWebSocketCaptureMode':
-            setWebSocketCaptureMode((data.mode || 'medium'));
-            break;
-        case 'setPerformanceSnapshotEnabled':
-            setPerformanceSnapshotEnabled(data.enabled);
-            break;
-        case 'setDeferralEnabled':
-            setDeferralEnabled(data.enabled);
-            break;
-        case 'setNetworkBodyCaptureEnabled':
-            setNetworkBodyCaptureEnabled(data.enabled);
-            break;
-        case 'setServerUrl':
-            setServerUrl(data.url);
-            break;
-    }
+    const handler = SETTING_HANDLERS[data.setting];
+    if (handler)
+        handler(data);
 }
 function handleStateCommand(data, captureStateFn, restoreStateFn) {
     const { messageId, action, state } = data;
@@ -290,7 +289,7 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
         window.postMessage({
             type: 'GASOLINE_STATE_RESPONSE',
             messageId,
-            result: { error: `Invalid action: ${action}` },
+            result: { error: `Invalid action: ${action}` }
         }, window.location.origin);
         return;
     }
@@ -300,7 +299,7 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
         window.postMessage({
             type: 'GASOLINE_STATE_RESPONSE',
             messageId,
-            result: { error: 'Invalid state object' },
+            result: { error: 'Invalid state object' }
         }, window.location.origin);
         return;
     }
@@ -324,7 +323,7 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
     window.postMessage({
         type: 'GASOLINE_STATE_RESPONSE',
         messageId,
-        result,
+        result
     }, window.location.origin);
 }
 function handleExecuteJs(data) {
@@ -335,7 +334,7 @@ function handleExecuteJs(data) {
         window.postMessage({
             type: 'GASOLINE_EXECUTE_JS_RESULT',
             requestId,
-            result: { success: false, error: 'invalid_script', message: 'Script must be a string' },
+            result: { success: false, error: 'invalid_script', message: 'Script must be a string' }
         }, window.location.origin);
         return;
     }
@@ -348,7 +347,7 @@ function handleExecuteJs(data) {
         window.postMessage({
             type: 'GASOLINE_EXECUTE_JS_RESULT',
             requestId,
-            result,
+            result
         }, window.location.origin);
     })
         .catch((err) => {
@@ -356,7 +355,7 @@ function handleExecuteJs(data) {
         window.postMessage({
             type: 'GASOLINE_EXECUTE_JS_RESULT',
             requestId,
-            result: { success: false, error: 'execution_failed', message: err.message },
+            result: { success: false, error: 'execution_failed', message: err.message }
         }, window.location.origin);
     });
 }
@@ -367,8 +366,8 @@ function handleA11yQuery(data) {
             type: 'GASOLINE_A11Y_QUERY_RESPONSE',
             requestId,
             result: {
-                error: 'runAxeAuditWithTimeout not available - try reloading the extension',
-            },
+                error: 'runAxeAuditWithTimeout not available - try reloading the extension'
+            }
         }, window.location.origin);
         return;
     }
@@ -378,7 +377,7 @@ function handleA11yQuery(data) {
             window.postMessage({
                 type: 'GASOLINE_A11Y_QUERY_RESPONSE',
                 requestId,
-                result,
+                result
             }, window.location.origin);
         })
             .catch((err) => {
@@ -386,7 +385,7 @@ function handleA11yQuery(data) {
             window.postMessage({
                 type: 'GASOLINE_A11Y_QUERY_RESPONSE',
                 requestId,
-                result: { error: err.message || 'Accessibility audit failed' },
+                result: { error: err.message || 'Accessibility audit failed' }
             }, window.location.origin);
         });
     }
@@ -395,7 +394,7 @@ function handleA11yQuery(data) {
         window.postMessage({
             type: 'GASOLINE_A11Y_QUERY_RESPONSE',
             requestId,
-            result: { error: err.message || 'Failed to run accessibility audit' },
+            result: { error: err.message || 'Failed to run accessibility audit' }
         }, window.location.origin);
     }
 }
@@ -406,8 +405,8 @@ function handleDomQuery(data) {
             type: 'GASOLINE_DOM_QUERY_RESPONSE',
             requestId,
             result: {
-                error: 'executeDOMQuery not available - try reloading the extension',
-            },
+                error: 'executeDOMQuery not available - try reloading the extension'
+            }
         }, window.location.origin);
         return;
     }
@@ -417,7 +416,7 @@ function handleDomQuery(data) {
             window.postMessage({
                 type: 'GASOLINE_DOM_QUERY_RESPONSE',
                 requestId,
-                result,
+                result
             }, window.location.origin);
         })
             .catch((err) => {
@@ -425,7 +424,7 @@ function handleDomQuery(data) {
             window.postMessage({
                 type: 'GASOLINE_DOM_QUERY_RESPONSE',
                 requestId,
-                result: { error: err.message || 'DOM query failed' },
+                result: { error: err.message || 'DOM query failed' }
             }, window.location.origin);
         });
     }
@@ -434,7 +433,7 @@ function handleDomQuery(data) {
         window.postMessage({
             type: 'GASOLINE_DOM_QUERY_RESPONSE',
             requestId,
-            result: { error: err.message || 'Failed to run DOM query' },
+            result: { error: err.message || 'Failed to run DOM query' }
         }, window.location.origin);
     }
 }
@@ -451,13 +450,13 @@ function handleGetWaterfall(data) {
             duration: e.duration,
             transfer_size: e.transferSize,
             encoded_body_size: e.encodedBodySize,
-            decoded_body_size: e.decodedBodySize,
+            decoded_body_size: e.decodedBodySize
         }));
         window.postMessage({
             type: 'GASOLINE_WATERFALL_RESPONSE',
             requestId,
             entries: snakeEntries,
-            pageURL: window.location.href,
+            pageURL: window.location.href
         }, window.location.origin);
     }
     catch (err) {
@@ -465,7 +464,7 @@ function handleGetWaterfall(data) {
         window.postMessage({
             type: 'GASOLINE_WATERFALL_RESPONSE',
             requestId,
-            entries: [],
+            entries: []
         }, window.location.origin);
     }
 }

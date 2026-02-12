@@ -219,6 +219,25 @@ export type BackgroundMessage =
   | GetDebugLogMessage
   | ClearDebugLogMessage
   | SetServerUrlMessage
+  | DrawModeCaptureScreenshotMessage
+  | DrawModeCompletedMessage
+
+/**
+ * Draw mode: content script requests screenshot capture
+ */
+export interface DrawModeCaptureScreenshotMessage {
+  readonly type: 'GASOLINE_CAPTURE_SCREENSHOT'
+}
+
+/**
+ * Draw mode: content script sends completed annotation results
+ */
+export interface DrawModeCompletedMessage {
+  readonly type: 'DRAW_MODE_COMPLETED'
+  readonly annotations?: readonly unknown[]
+  readonly screenshot?: string
+  readonly sessionId?: string
+}
 
 // =============================================================================
 // CONTENT SCRIPT MESSAGE TYPES (background to content)
@@ -314,6 +333,14 @@ export interface GetNetworkWaterfallMessage {
 }
 
 /**
+ * Link health check message
+ */
+export interface LinkHealthMessage {
+  readonly type: 'LINK_HEALTH_QUERY'
+  readonly params?: string | Record<string, unknown>
+}
+
+/**
  * State management message
  */
 export interface ManageStateMessage {
@@ -365,6 +392,7 @@ export type ContentMessage =
   | DomQueryMessage
   | A11yQueryMessage
   | GetNetworkWaterfallMessage
+  | LinkHealthMessage
   | ManageStateMessage
   | ActionToastMessage
   | SubtitleMessage
@@ -392,6 +420,7 @@ export type PageMessageType =
   | 'GASOLINE_DOM_QUERY_RESPONSE'
   | 'GASOLINE_STATE_RESPONSE'
   | 'GASOLINE_WATERFALL_RESPONSE'
+  | 'GASOLINE_LINK_HEALTH_RESPONSE'
 
 /**
  * Content to page messages (postMessage types)
@@ -404,6 +433,7 @@ export type ContentToPageMessageType =
   | 'GASOLINE_DOM_QUERY'
   | 'GASOLINE_STATE_COMMAND'
   | 'GASOLINE_GET_WATERFALL'
+  | 'GASOLINE_LINK_HEALTH_QUERY'
 
 // =============================================================================
 // OFFSCREEN DOCUMENT MESSAGE TYPES (service worker ↔ offscreen)

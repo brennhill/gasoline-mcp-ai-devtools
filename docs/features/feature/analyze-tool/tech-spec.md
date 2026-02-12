@@ -65,7 +65,7 @@ Parameters:
 | `regression.baseline` | 5-15s | Async (correlation_id) | 20s |
 | `regression.compare` | 5-15s | Async (correlation_id) | 20s |
 
-**Async pattern (long operations):**
+#### Async pattern (long operations):
 1. AI calls `analyze({action: 'audit', scope: 'accessibility'})`
 2. Server creates pending query with correlation_id, returns immediately
 3. Extension polls `/pending-queries`, picks up analyze request
@@ -73,7 +73,7 @@ Parameters:
 5. Extension POSTs result to `/analyze-result`
 6. AI polls `observe({what: 'analyze_result', correlation_id: '...'})` or receives via streaming
 
-**Blocking pattern (quick operations):**
+#### Blocking pattern (quick operations):
 1. AI calls `analyze({action: 'memory', scope: 'snapshot'})`
 2. Server creates pending query, waits for result (WaitForResult)
 3. Extension polls, executes, POSTs result
@@ -139,7 +139,7 @@ export async function analyze(request) {
                     └───────────────────────────────────────────┘
 ```
 
-**Implementation (`extension/lib/analyze-audit.js`):**
+#### Implementation (`extension/lib/analyze-audit.js`):
 
 ```javascript
 const AXE_STATE = {
@@ -178,11 +178,11 @@ async function ensureAxeLoaded() {
 
 **[CRITICAL RESOLUTION E1-1]** Two-tier injection approach:
 
-**Tier 1: Content script injection (default)**
+#### Tier 1: Content script injection (default)
 - Inject axe.min.js via `chrome.scripting.executeScript`
 - Works for most pages without strict CSP
 
-**Tier 2: Isolated world via chrome.debugger (fallback)**
+#### Tier 2: Isolated world via chrome.debugger (fallback)
 - If Tier 1 fails with CSP error, attach debugger and run in isolated context
 - Requires user to have DevTools closed (debugger limitation)
 
@@ -224,7 +224,7 @@ async function executeAxeViaDebugger(selector, tabId) {
 }
 ```
 
-**Manifest permissions required:**
+#### Manifest permissions required:
 ```json
 {
   "permissions": ["debugger"]
@@ -235,17 +235,17 @@ async function executeAxeViaDebugger(selector, tabId) {
 
 **[CRITICAL RESOLUTION P1-2]** Lighthouse deferred to Phase 2.
 
-**Rationale:**
+#### Rationale:
 - chrome.debugger blocks DevTools (poor UX during active development)
 - Full Lighthouse takes 20-40s (too slow for interactive use)
 - Alternative: Use existing `observe({what: 'vitals'})` for Core Web Vitals
 
-**Phase 1 performance audit uses:**
+#### Phase 1 performance audit uses:
 - `observe({what: 'vitals'})` — LCP, FID, CLS from Performance Observer
 - `observe({what: 'performance'})` — Navigation timing, resource timing
 - Custom analysis layer in `analyze-audit.js` that interprets these metrics
 
-**Phase 2 (future):**
+#### Phase 2 (future):
 - Lighthouse integration via service worker context
 - Runs in background, doesn't block DevTools
 - Returns comprehensive report
@@ -480,17 +480,17 @@ All analyze responses follow this structure (aligned with mcpJSONResponse):
 
 **[CRITICAL RESOLUTION S1-1]** Uses existing AI Web Pilot toggle.
 
-**Rationale:**
+### Rationale:
 - Consistency: All extension-controlled features use same toggle
 - Simplicity: One toggle for users to understand
 - Security: analyze runs code in page context (axe-core), similar trust level to interact
 
-**Implementation:**
+### Implementation:
 - Check `ai_web_pilot_enabled` before any analyze operation
 - Return `{ error: "ai_web_pilot_disabled" }` if OFF
 - Same error handling as interact tool
 
-**Redaction rules (reusing existing patterns from redaction.go):**
+### Redaction rules (reusing existing patterns from redaction.go):
 - Cookie values: `session_id=[REDACTED]`
 - Storage values: Never returned, only keys
 - Authorization headers: Stripped entirely

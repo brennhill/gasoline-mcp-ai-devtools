@@ -6,8 +6,6 @@
 // - Error codes and StructuredError type
 // - Unknown parameter warning helpers
 // - ToolHandler struct definition and constructor
-//
-// nolint:filelength - Core file kept together for cohesion; refactored from 2400-line tools.go
 package main
 
 import (
@@ -35,7 +33,7 @@ type MCPContentBlock struct {
 // MCPToolResult represents the result of an MCP tool call.
 type MCPToolResult struct {
 	Content []MCPContentBlock `json:"content"`
-	IsError bool              `json:"isError,omitempty"`
+	IsError bool              `json:"isError"`
 }
 
 // MCPInitializeResult represents the result of an MCP initialize request.
@@ -43,6 +41,7 @@ type MCPInitializeResult struct {
 	ProtocolVersion string          `json:"protocolVersion"`
 	ServerInfo      MCPServerInfo   `json:"serverInfo"`
 	Capabilities    MCPCapabilities `json:"capabilities"`
+	Instructions    string          `json:"instructions,omitempty"`
 }
 
 // MCPServerInfo identifies the MCP server.
@@ -160,10 +159,8 @@ type ToolHandler struct {
 	*MCPHandler
 	capture *capture.Capture
 
-	// Fields that remain as any (not yet abstracted or local types)
-	captureOverrides any // *capture.CaptureOverrides - internal to capture package
-	auditLogger      any // *audit.AuditLogger - TODO: add to interfaces
-	healthMetrics    any // *ServerHealthMetrics - local type
+	// Health metrics for MCP get_health tool
+	healthMetrics *HealthMetrics
 
 	// Redaction engine for scrubbing sensitive data from tool responses
 	redactionEngine *RedactionEngine
@@ -187,6 +184,17 @@ type ToolHandler struct {
 	sessionStoreImpl      *ai.SessionStore
 	securityScannerImpl   *security.SecurityScanner
 	thirdPartyAuditorImpl *analysis.ThirdPartyAuditor
+
+	// Draw mode annotation store (in-memory, TTL-based)
+	annotationStore *AnnotationStore
+
+	// Upload automation security flags (disabled by default)
+	uploadAutomationEnabled bool            // --enable-upload-automation
+	uploadSecurity          *UploadSecurity // folder-scoped permissions + denylist
+
+	// Cached interact dispatch map (initialized once via sync.Once)
+	interactOnce     sync.Once
+	interactHandlers map[string]interactHandler
 }
 
 // GetCapture returns the capture instance
@@ -219,9 +227,6 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	handler.toolCallLimiter = NewToolCallLimiter(500, time.Minute)
 	handler.streamState = NewStreamState()
 
-	// Initialize noise filtering (concrete type, not interface - signatures differ)
-	handler.noiseConfig = ai.NewNoiseConfig()
-
 	// Initialize session store (use current working directory as project path)
 	cwd, err := os.Getwd()
 	if err == nil {
@@ -230,9 +235,23 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 		}
 	}
 
+	// Initialize noise filtering with persistence support
+	if handler.sessionStoreImpl != nil {
+		handler.noiseConfig = ai.NewNoiseConfigWithStore(handler.sessionStoreImpl)
+	} else {
+		handler.noiseConfig = ai.NewNoiseConfig()
+	}
+
+	// Use global annotation store for draw mode
+	handler.annotationStore = globalAnnotationStore
+
 	// Initialize security tools (concrete types - interface signatures differ)
 	handler.securityScannerImpl = security.NewSecurityScanner()
 	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()
+
+	// Initialize upload automation flags from package-level vars set by CLI
+	handler.uploadAutomationEnabled = uploadAutomationFlag
+	handler.uploadSecurity = uploadSecurityConfig
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.
 	// Use SetOnEntries for thread-safe assignment (avoids racing with addEntries).
@@ -250,6 +269,8 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 	switch name {
 	case "observe":
 		return h.toolObserve(req, args), true
+	case "analyze":
+		return h.toolAnalyze(req, args), true
 	case "generate":
 		return h.toolGenerate(req, args), true
 	case "configure":

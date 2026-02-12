@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-21-stress.sh — System Stress & Concurrency Tests (5 tests)
 # Tests high load, concurrent operations, resource exhaustion scenarios.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"

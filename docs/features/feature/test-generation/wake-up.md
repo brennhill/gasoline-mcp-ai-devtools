@@ -41,13 +41,13 @@ date: 2026-01-29
 **On paper:** ✅ Feature parity + 4 unique advantages
 **In practice:** ❓ Not validated yet
 
-**What works (proven by unit tests):**
+#### What works (proven by unit tests):
 - Request parsing ✅
 - Logic correctness ✅
 - Error handling ✅
 - Security validation ✅
 
-**What's not proven:**
+#### What's not proven:
 - Generated tests actually reproduce bugs ❌
 - Healed selectors work in real browsers ❌
 - Classification is accurate ❌
@@ -62,7 +62,7 @@ date: 2026-01-29
 
 **Location:** `~/dev/gasoline-demos`
 **What it is:** ShopBroken — e-commerce site with 34 intentional bugs
-**Key bugs:**
+#### Key bugs:
 - Phase 1: Products API 404, WebSocket connection errors
 - Phase 3: Chat messages not parsed, field mismatches
 - Phase 4: Checkout failures, rate limiting
@@ -74,7 +74,7 @@ date: 2026-01-29
 
 **Time required:** ~2 hours total
 
-**4 Phases:**
+#### 4 Phases:
 1. **WebSocket test generation** (30 min) — Tests Gasoline's unique advantage
 2. **WebSocket interaction test** (15 min) — More WebSocket validation
 3. **Selector healing** (30 min) — Create broken test, heal it, verify it works
@@ -90,13 +90,13 @@ date: 2026-01-29
 
 ### Why This Matters
 
-**TestSprite cannot:**
+#### TestSprite cannot:
 - ❌ Capture WebSocket frames
 - ❌ Monitor bidirectional message flow
 - ❌ Detect WebSocket timing issues
 - ❌ Generate tests for WebSocket behavior
 
-**Gasoline can:**
+#### Gasoline can:
 - ✅ Capture every WebSocket frame in real-time
 - ✅ Monitor connection lifecycle
 - ✅ Generate tests with frame-level assertions
@@ -199,7 +199,7 @@ go test -short ./cmd/dev-console/
 **Documentation:** ✅ Comprehensive
 **Validation:** ⏳ Ready to execute
 
-**Your question answered:**
+### Your question answered:
 
 We have feature parity with TestSprite **on paper**, with 4 unique advantages (WebSocket, real-time, privacy, cost).
 
@@ -246,7 +246,7 @@ To **prove it in practice**, run the validation guide.
 
 ## My Recommendation
 
-**Run Phase 1 of validation right now (30 min).**
+### Run Phase 1 of validation right now (30 min).
 
 If WebSocket test generation works, you have proof of:
 1. Feature works in practice
@@ -266,4 +266,4 @@ That's enough to claim victory on this feature.
 
 ---
 
-**Sleep well. Wake up to a complete test generation feature ready to validate. 🚀**
+### Sleep well. Wake up to a complete test generation feature ready to validate. 🚀

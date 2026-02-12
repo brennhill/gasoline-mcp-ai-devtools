@@ -5,9 +5,9 @@
 #   - Gasoline MCP server running
 #   - Chrome with Gasoline extension connected
 
-set -e
+set -euo pipefail
 
-MCP_SERVER="http://localhost:8080"  # Adjust if needed
+_MCP_SERVER="http://localhost:8080"  # reserved for future use
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESULTS_DIR="$SCRIPT_DIR/../validation-results"
 mkdir -p "$RESULTS_DIR"
@@ -21,7 +21,7 @@ echo "3. Use generate to create tests from captured context"
 echo "4. Validate the generated test quality"
 echo ""
 echo "Press Enter to start, or Ctrl+C to cancel..."
-read
+read -r
 
 # Function to send JSON-RPC request to MCP server via stdin
 function mcp_call() {
@@ -85,8 +85,7 @@ if grep -q "test\|spec\|playwright" "$RESULTS_DIR/05-generate-from-error.json"; 
     echo "✓ Test generated from error!"
 
     # Extract test content and save to file
-    cat "$RESULTS_DIR/05-generate-from-error.json" | \
-        grep -o '"content":"[^"]*"' | \
+    grep -o '"content":"[^"]*"' < "$RESULTS_DIR/05-generate-from-error.json" | \
         sed 's/"content":"//;s/"$//' | \
         sed 's/\\n/\n/g' > "$RESULTS_DIR/generated-error-test.spec.ts"
 
@@ -105,8 +104,7 @@ if grep -q "test\|spec\|playwright" "$RESULTS_DIR/06-generate-from-interaction.j
     echo "✓ Test generated from interaction!"
 
     # Extract test content
-    cat "$RESULTS_DIR/06-generate-from-interaction.json" | \
-        grep -o '"content":"[^"]*"' | \
+    grep -o '"content":"[^"]*"' < "$RESULTS_DIR/06-generate-from-interaction.json" | \
         sed 's/"content":"//;s/"$//' | \
         sed 's/\\n/\n/g' > "$RESULTS_DIR/generated-interaction-test.spec.ts"
 
@@ -185,6 +183,7 @@ echo ""
 echo "Results saved to: $RESULTS_DIR"
 echo ""
 echo "Files created:"
+# shellcheck disable=SC2012 # ls used for human-readable display
 ls -lh "$RESULTS_DIR" | tail -n +2
 echo ""
 echo "Next steps:"

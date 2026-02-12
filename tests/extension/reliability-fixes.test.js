@@ -13,13 +13,16 @@
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Suppress unhandledRejection errors from module cleanup after tests end
 process.on('unhandledRejection', (reason, _promise) => {
   // Suppress initialization-related errors from module import cleanup
-  if (reason?.message?.includes('_connectionCheckRunning') ||
-      reason?.message?.includes('Cannot access') ||
-      reason?.message?.includes('before initialization')) {
+  if (
+    reason?.message?.includes('_connectionCheckRunning') ||
+    reason?.message?.includes('Cannot access') ||
+    reason?.message?.includes('before initialization')
+  ) {
     return // Expected during test cleanup
   }
   // Re-throw other unhandled rejections
@@ -30,17 +33,17 @@ process.on('unhandledRejection', (reason, _promise) => {
 const mockChrome = {
   runtime: {
     onMessage: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
     onInstalled: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION })
   },
   action: {
     setBadgeText: mock.fn(),
-    setBadgeBackgroundColor: mock.fn(),
+    setBadgeBackgroundColor: mock.fn()
   },
   storage: {
     local: {
@@ -55,36 +58,36 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     sync: {
       get: mock.fn((keys, callback) => callback({})),
-      set: mock.fn((data, callback) => callback && callback()),
+      set: mock.fn((data, callback) => callback && callback())
     },
     session: {
       get: mock.fn((keys, callback) => callback({})),
-      set: mock.fn((data, callback) => callback && callback()),
+      set: mock.fn((data, callback) => callback && callback())
     },
     onChanged: {
-      addListener: mock.fn(),
-    },
+      addListener: mock.fn()
+    }
   },
   alarms: {
     create: mock.fn(),
     onAlarm: {
-      addListener: mock.fn(),
-    },
+      addListener: mock.fn()
+    }
   },
   tabs: {
     get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
     captureVisibleTab: mock.fn(() =>
-      Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS'),
+      Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS')
     ),
     query: mock.fn(() => Promise.resolve([{ id: 1, windowId: 1 }])),
     onRemoved: {
-      addListener: mock.fn(),
-    },
-  },
+      addListener: mock.fn()
+    }
+  }
 }
 
 // Set global chrome mock
@@ -94,7 +97,7 @@ globalThis.chrome = mockChrome
 globalThis.fetch = mock.fn(() =>
   Promise.resolve({
     ok: true,
-    json: () => Promise.resolve({ queries: [] }),
+    json: () => Promise.resolve({ queries: [] })
   })
 )
 
@@ -235,7 +238,9 @@ describe('Issue 3: Race condition in timeout cleanup', () => {
 
     const pendingRequests = new Map()
     let callbackCount = 0
-    const callback = () => { callbackCount++ }
+    const callback = () => {
+      callbackCount++
+    }
 
     pendingRequests.set(1, callback)
 
@@ -309,16 +314,8 @@ describe('Issue 4: sourceMapCache LRU eviction', () => {
   })
 
   test('should export setSourceMapCacheEntry and getSourceMapCacheEntry', () => {
-    assert.strictEqual(
-      typeof bgModule.setSourceMapCacheEntry,
-      'function',
-      'setSourceMapCacheEntry should be exported'
-    )
-    assert.strictEqual(
-      typeof bgModule.getSourceMapCacheEntry,
-      'function',
-      'getSourceMapCacheEntry should be exported'
-    )
+    assert.strictEqual(typeof bgModule.setSourceMapCacheEntry, 'function', 'setSourceMapCacheEntry should be exported')
+    assert.strictEqual(typeof bgModule.getSourceMapCacheEntry, 'function', 'getSourceMapCacheEntry should be exported')
   })
 
   test('should evict oldest entry when cache exceeds 50 entries', () => {
@@ -362,7 +359,11 @@ describe('Issue 4: sourceMapCache LRU eviction', () => {
 
       // Fill cache to capacity
       for (let i = 0; i < 49; i++) {
-        bgModule.setSourceMapCacheEntry(`http://example.com/fill${i}.js`, { mappings: [], sources: [`fill${i}.ts`], names: [] })
+        bgModule.setSourceMapCacheEntry(`http://example.com/fill${i}.js`, {
+          mappings: [],
+          sources: [`fill${i}.ts`],
+          names: []
+        })
       }
 
       // 'b' should be evicted (it was least recently used), 'a' should still exist
@@ -384,66 +385,70 @@ describe('Issue 5: setInterval stacking prevention', () => {
     bgModule = await import('../../extension/background.js')
   })
 
-  test('startQueryPolling should clear existing interval before starting new one', { skip: 'polling control functions not yet implemented' }, () => {
-    // The existing implementation already does this with stopQueryPolling() first
-    // Verify the pattern exists
-    assert.strictEqual(
-      typeof bgModule.startQueryPolling,
-      'function',
-      'startQueryPolling should be exported'
-    )
-    assert.strictEqual(
-      typeof bgModule.stopQueryPolling,
-      'function',
-      'stopQueryPolling should be exported'
-    )
-  })
+  test(
+    'startQueryPolling should clear existing interval before starting new one',
+    { skip: 'polling control functions not yet implemented' },
+    () => {
+      // The existing implementation already does this with stopQueryPolling() first
+      // Verify the pattern exists
+      assert.strictEqual(typeof bgModule.startQueryPolling, 'function', 'startQueryPolling should be exported')
+      assert.strictEqual(typeof bgModule.stopQueryPolling, 'function', 'stopQueryPolling should be exported')
+    }
+  )
 
-  test('startSettingsHeartbeat should clear existing interval before starting new one', { skip: 'polling control functions not yet implemented' }, () => {
-    assert.strictEqual(
-      typeof bgModule.startSettingsHeartbeat,
-      'function',
-      'startSettingsHeartbeat should be exported'
-    )
-    assert.strictEqual(
-      typeof bgModule.stopSettingsHeartbeat,
-      'function',
-      'stopSettingsHeartbeat should be exported'
-    )
-  })
+  test(
+    'startSettingsHeartbeat should clear existing interval before starting new one',
+    { skip: 'polling control functions not yet implemented' },
+    () => {
+      assert.strictEqual(
+        typeof bgModule.startSettingsHeartbeat,
+        'function',
+        'startSettingsHeartbeat should be exported'
+      )
+      assert.strictEqual(typeof bgModule.stopSettingsHeartbeat, 'function', 'stopSettingsHeartbeat should be exported')
+    }
+  )
 
-  test('checkConnectionAndUpdate should have mutex to prevent concurrent executions', { skip: 'isConnectionCheckRunning not yet exported' }, () => {
-    // The fix should add a flag to prevent multiple simultaneous executions
-    assert.strictEqual(
-      typeof bgModule.isConnectionCheckRunning,
-      'function',
-      'isConnectionCheckRunning should be exported to check mutex state'
-    )
-  })
+  test(
+    'checkConnectionAndUpdate should have mutex to prevent concurrent executions',
+    { skip: 'isConnectionCheckRunning not yet exported' },
+    () => {
+      // The fix should add a flag to prevent multiple simultaneous executions
+      assert.strictEqual(
+        typeof bgModule.isConnectionCheckRunning,
+        'function',
+        'isConnectionCheckRunning should be exported to check mutex state'
+      )
+    }
+  )
 
-  test('should not start duplicate intervals on rapid reconnects', { skip: 'polling control functions not yet implemented' }, async () => {
-    // Track interval creations
-    let intervalCount = 0
-    const originalSetInterval = globalThis.setInterval
-    globalThis.setInterval = mock.fn((...args) => {
-      intervalCount++
-      return originalSetInterval(...args)
-    })
+  test(
+    'should not start duplicate intervals on rapid reconnects',
+    { skip: 'polling control functions not yet implemented' },
+    async () => {
+      // Track interval creations
+      let intervalCount = 0
+      const originalSetInterval = globalThis.setInterval
+      globalThis.setInterval = mock.fn((...args) => {
+        intervalCount++
+        return originalSetInterval(...args)
+      })
 
-    // Simulate rapid reconnects - each should clear previous interval
-    bgModule.startQueryPolling('http://localhost:7890')
-    bgModule.startQueryPolling('http://localhost:7890')
-    bgModule.startQueryPolling('http://localhost:7890')
+      // Simulate rapid reconnects - each should clear previous interval
+      bgModule.startQueryPolling('http://localhost:7890')
+      bgModule.startQueryPolling('http://localhost:7890')
+      bgModule.startQueryPolling('http://localhost:7890')
 
-    // Clean up
-    bgModule.stopQueryPolling()
+      // Clean up
+      bgModule.stopQueryPolling()
 
-    globalThis.setInterval = originalSetInterval
+      globalThis.setInterval = originalSetInterval
 
-    // Even with 3 calls, only 3 intervals should be created (each call clears previous)
-    // The key is that old intervals are stopped, not that we don't create new ones
-    assert.ok(intervalCount >= 1, 'At least one interval should be created')
-  })
+      // Even with 3 calls, only 3 intervals should be created (each call clears previous)
+      // The key is that old intervals are stopped, not that we don't create new ones
+      assert.ok(intervalCount >= 1, 'At least one interval should be created')
+    }
+  )
 })
 
 // =============================================================================
@@ -476,7 +481,7 @@ describe('Issue 6: errorGroups periodic cleanup', () => {
         type: 'exception',
         level: 'error',
         message: 'Old error for cleanup test',
-        ts: new Date().toISOString(),
+        ts: new Date().toISOString()
       }
       bgModule.processErrorGroup(entry)
 
@@ -500,7 +505,7 @@ describe('Issue 6: errorGroups periodic cleanup', () => {
         type: 'exception',
         level: 'error',
         message: 'Recent error should remain',
-        ts: new Date().toISOString(),
+        ts: new Date().toISOString()
       }
       bgModule.processErrorGroup(entry)
 
@@ -516,11 +521,7 @@ describe('Issue 6: errorGroups periodic cleanup', () => {
 
   test('ERROR_GROUP_MAX_AGE_MS should be 1 hour (3600000ms)', () => {
     if (bgModule.ERROR_GROUP_MAX_AGE_MS) {
-      assert.strictEqual(
-        bgModule.ERROR_GROUP_MAX_AGE_MS,
-        3600000,
-        'Max age should be 1 hour (3600000ms)'
-      )
+      assert.strictEqual(bgModule.ERROR_GROUP_MAX_AGE_MS, 3600000, 'Max age should be 1 hour (3600000ms)')
     }
   })
 })
@@ -536,7 +537,7 @@ describe('Integration: Memory and reliability safeguards', () => {
     // All Maps that could grow unbounded should have limits
     const _boundedMaps = [
       'sourceMapCache', // Issue 4: 50 entries max
-      'errorGroups',    // Issue 6: 1 hour TTL + 100 max
+      'errorGroups' // Issue 6: 1 hour TTL + 100 max
     ]
 
     // Verify at least some bounds exist

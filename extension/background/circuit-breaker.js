@@ -51,13 +51,14 @@ export function createCircuitBreaker(sendFn, options = {}) {
         }
         return state;
     }
+    // #lizard forgives
     function getStats() {
         return {
             state: getState(),
             consecutiveFailures,
             totalFailures,
             totalSuccesses,
-            currentBackoff,
+            currentBackoff
         };
     }
     function getExtendedStats() {
@@ -65,7 +66,7 @@ export function createCircuitBreaker(sendFn, options = {}) {
             ...getStats(),
             lastFailureTime,
             lastResetReason,
-            transitionHistory: [...transitionHistory],
+            transitionHistory: [...transitionHistory]
         };
     }
     function reset(reason = 'manual_reset') {

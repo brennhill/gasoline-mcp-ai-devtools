@@ -11,7 +11,7 @@ export const RATE_LIMIT_CONFIG = {
     maxFailures: 5,
     resetTimeout: 30000,
     backoffSchedule: [100, 500, 2000],
-    retryBudget: 3,
+    retryBudget: 3
 };
 /**
  * Creates a batcher wired with circuit breaker logic for rate limiting.
@@ -30,7 +30,7 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
             maxFailures,
             resetTimeout,
             initialBackoff: 0,
-            maxBackoff: 0,
+            maxBackoff: 0
         });
     function getScheduledBackoff(failures) {
         if (failures <= 0)
@@ -44,10 +44,10 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
             const stats = cb.getStats();
             return {
                 ...stats,
-                currentBackoff: getScheduledBackoff(stats.consecutiveFailures),
+                currentBackoff: getScheduledBackoff(stats.consecutiveFailures)
             };
         },
-        reset: () => cb.reset(),
+        reset: () => cb.reset()
     };
     async function attemptSend(entries) {
         if (!isSharedCB) {
@@ -70,6 +70,32 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
     }
     let pending = [];
     let timeoutId = null;
+    function requeueEntries(entries) {
+        pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER);
+    }
+    async function retryWithBackoff(entries) {
+        let retriesLeft = retryBudget - 1;
+        while (retriesLeft > 0) {
+            retriesLeft--;
+            const stats = cb.getStats();
+            const backoff = getScheduledBackoff(stats.consecutiveFailures);
+            if (backoff > 0) {
+                await new Promise((r) => { setTimeout(r, backoff); });
+            }
+            try {
+                await attemptSend(entries);
+                localConnectionStatus.connected = true;
+                return;
+            }
+            catch {
+                localConnectionStatus.connected = false;
+                if (cb.getState() === 'open') {
+                    requeueEntries(entries);
+                    return;
+                }
+            }
+        }
+    }
     async function flushWithCircuitBreaker() {
         if (pending.length === 0)
             return;
@@ -79,9 +105,8 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
             clearTimeout(timeoutId);
             timeoutId = null;
         }
-        const currentState = cb.getState();
-        if (currentState === 'open') {
-            pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER);
+        if (cb.getState() === 'open') {
+            requeueEntries(entries);
             return;
         }
         try {
@@ -91,32 +116,10 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
         catch {
             localConnectionStatus.connected = false;
             if (cb.getState() === 'open') {
-                pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER);
+                requeueEntries(entries);
                 return;
             }
-            let retriesLeft = retryBudget - 1;
-            while (retriesLeft > 0) {
-                retriesLeft--;
-                const stats = cb.getStats();
-                const backoff = getScheduledBackoff(stats.consecutiveFailures);
-                if (backoff > 0) {
-                    await new Promise((r) => {
-                        setTimeout(r, backoff);
-                    });
-                }
-                try {
-                    await attemptSend(entries);
-                    localConnectionStatus.connected = true;
-                    return;
-                }
-                catch {
-                    localConnectionStatus.connected = false;
-                    if (cb.getState() === 'open') {
-                        pending = entries.concat(pending).slice(0, MAX_PENDING_BUFFER);
-                        return;
-                    }
-                }
-            }
+            await retryWithBackoff(entries);
         }
     }
     const scheduleFlush = () => {
@@ -151,12 +154,12 @@ export function createBatcherWithCircuitBreaker(sendFn, options = {}) {
         },
         getPending() {
             return [...pending];
-        },
+        }
     };
     return {
         batcher,
         circuitBreaker: wrappedCircuitBreaker,
-        getConnectionStatus: () => ({ ...localConnectionStatus }),
+        getConnectionStatus: () => ({ ...localConnectionStatus })
     };
 }
 /**
@@ -218,7 +221,7 @@ export function createLogBatcher(flushFn, options = {}) {
                 clearTimeout(timeoutId);
                 timeoutId = null;
             }
-        },
+        }
     };
 }
 //# sourceMappingURL=batchers.js.map

@@ -39,7 +39,7 @@ export const ALARM_NAMES = {
     RECONNECT: 'reconnect',
     ERROR_GROUP_FLUSH: 'errorGroupFlush',
     MEMORY_CHECK: 'memoryCheck',
-    ERROR_GROUP_CLEANUP: 'errorGroupCleanup',
+    ERROR_GROUP_CLEANUP: 'errorGroupCleanup'
 };
 // =============================================================================
 // CHROME ALARMS
@@ -138,24 +138,13 @@ export function handleTrackedTabUrlChange(updatedTabId, newUrl, logFn) {
 export function handleTrackedTabClosed(closedTabId, logFn) {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
-    // Check both session and local storage for backward compatibility
-    const checkStorageArea = (area) => {
-        chrome.storage[area].get(['trackedTabId'], (result) => {
-            if (result.trackedTabId === closedTabId) {
-                if (logFn)
-                    logFn('[Gasoline] Tracked tab closed (id:', closedTabId);
-                chrome.storage[area].remove(['trackedTabId', 'trackedTabUrl']);
-            }
-        });
-    };
-    // Check local storage (legacy)
-    checkStorageArea('local');
-    // Check session storage (modern, Chrome 102+)
-    // Type-safe check: cast to Record to access potential session property
-    const storageWithSession = chrome.storage;
-    if (storageWithSession.session) {
-        checkStorageArea('session');
-    }
+    chrome.storage.local.get(['trackedTabId'], (result) => {
+        if (result.trackedTabId === closedTabId) {
+            if (logFn)
+                logFn('[Gasoline] Tracked tab closed (id:', closedTabId);
+            chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle']);
+        }
+    });
 }
 // =============================================================================
 // STORAGE LISTENERS
@@ -188,10 +177,27 @@ export function installStorageChangeListener(handlers) {
 export function installStartupListener(logFn) {
     if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.onStartup)
         return;
-    chrome.runtime.onStartup.addListener(() => {
-        if (logFn)
-            logFn('[Gasoline] Browser restarted - clearing tracking state');
-        chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl']);
+    chrome.runtime.onStartup.addListener(async () => {
+        try {
+            const result = await chrome.storage.local.get(['trackedTabId']);
+            const trackedTabId = result.trackedTabId;
+            if (trackedTabId) {
+                try {
+                    await chrome.tabs.get(trackedTabId);
+                    if (logFn)
+                        logFn('[Gasoline] Browser restarted - tracked tab still exists, keeping tracking');
+                }
+                catch {
+                    if (logFn)
+                        logFn('[Gasoline] Browser restarted - tracked tab gone, clearing tracking state');
+                    chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle']);
+                }
+            }
+        }
+        catch {
+            // Safety fallback: clear if we can't check
+            chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle']);
+        }
     });
 }
 // =============================================================================
@@ -206,7 +212,7 @@ export async function pingContentScript(tabId, timeoutMs = 500) {
             chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
             new Promise((_, reject) => {
                 setTimeout(() => reject(new Error(`Content script ping timeout after ${timeoutMs}ms on tab ${tabId}`)), timeoutMs);
-            }),
+            })
         ]));
         return response?.status === 'alive';
     }
@@ -249,7 +255,7 @@ export function forwardToAllContentScripts(message, debugLogFn) {
                         if (debugLogFn) {
                             debugLogFn('error', 'Unexpected error forwarding setting to tab', {
                                 tabId: tab.id,
-                                error: err.message,
+                                error: err.message
                             });
                         }
                     }
@@ -333,7 +339,7 @@ export function getTrackedTabInfo(callback) {
         callback({
             trackedTabId: result.trackedTabId || null,
             trackedTabUrl: result.trackedTabUrl || null,
-            trackedTabTitle: result.trackedTabTitle || null,
+            trackedTabTitle: result.trackedTabTitle || null
         });
     });
 }
@@ -366,7 +372,7 @@ export function getAllConfigSettings(callback) {
         'actionReplayEnabled',
         'screenshotOnError',
         'sourceMapEnabled',
-        'networkBodyCaptureEnabled',
+        'networkBodyCaptureEnabled'
     ], (result) => {
         callback(result);
     });

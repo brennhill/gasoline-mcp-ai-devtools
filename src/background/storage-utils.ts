@@ -119,7 +119,7 @@ export function setLocalValue(key: string, value: unknown, callback?: () => void
   }
   chrome.storage.local.set({ [key]: value }, () => {
     if (chrome.runtime.lastError) {
-      console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message)
+      console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal storage key, not user-controlled
     }
     if (callback) callback()
   })
@@ -135,7 +135,7 @@ export function getLocalValue(key: string, callback: (value: unknown) => void): 
   }
   chrome.storage.local.get([key], (result: Record<string, unknown>) => {
     if (chrome.runtime.lastError) {
-      console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message)
+      console.warn(`[Gasoline] Storage error for key ${key}:`, chrome.runtime.lastError.message) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal storage key, not user-controlled
       callback(undefined)
       return
     }
@@ -219,7 +219,7 @@ export function getStorageDiagnostics(): {
   return {
     sessionStorageAvailable: isSessionStorageAvailable(),
     localStorageAvailable: typeof chrome !== 'undefined' && !!chrome.storage?.local,
-    browserVersion: navigator.userAgent,
+    browserVersion: navigator.userAgent
   }
 }
 

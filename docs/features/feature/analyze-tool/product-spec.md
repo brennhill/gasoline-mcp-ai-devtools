@@ -37,14 +37,14 @@ AI chooses the right approach for each task, or uses both.
 
 Run comprehensive audits using industry-standard tools.
 
-**Actions:**
+##### Actions:
 - `audit.accessibility` — WCAG compliance via axe-core
 - `audit.performance` — Lighthouse performance analysis
 - `audit.seo` — SEO best practices
 - `audit.best_practices` — General web best practices
 - `audit.full` — All of the above
 
-**Request:**
+##### Request:
 ```json
 {
   "action": "audit",
@@ -54,7 +54,7 @@ Run comprehensive audits using industry-standard tools.
 }
 ```
 
-**Response:**
+##### Response:
 ```json
 {
   "status": "success",
@@ -83,12 +83,12 @@ Run comprehensive audits using industry-standard tools.
 
 Detect memory issues in the running application.
 
-**Actions:**
+##### Actions:
 - `memory.snapshot` — Capture heap snapshot
 - `memory.leaks` — Detect growing allocations and detached DOM nodes
 - `memory.compare` — Compare two snapshots to find growth
 
-**Response includes:**
+##### Response includes:
 - Heap size and growth rate
 - Detached DOM node count
 - Top memory consumers (by constructor)
@@ -98,12 +98,12 @@ Detect memory issues in the running application.
 
 Analyze rendering performance for React/Vue/Svelte applications.
 
-**Actions:**
+##### Actions:
 - `render.profile` — Capture render timing for components
 - `render.wasted` — Identify unnecessary re-renders
 - `render.tree` — Component tree with render counts
 
-**Response includes:**
+##### Response includes:
 - Components ranked by render time
 - Unnecessary re-renders (props unchanged)
 - Suggested memoization opportunities
@@ -112,12 +112,12 @@ Analyze rendering performance for React/Vue/Svelte applications.
 
 Analyze JavaScript bundle composition.
 
-**Actions:**
+##### Actions:
 - `bundle.size` — Total and per-chunk sizes
 - `bundle.duplicates` — Duplicate dependencies
 - `bundle.unused` — Unused exports (tree-shaking opportunities)
 
-**Response includes:**
+##### Response includes:
 - Bundle size breakdown
 - Duplicate packages
 - Large dependencies
@@ -127,13 +127,13 @@ Analyze JavaScript bundle composition.
 
 Check for common security issues.
 
-**Actions:**
+##### Actions:
 - `security.headers` — Validate security headers (CSP, HSTS, X-Frame-Options)
 - `security.cookies` — Check cookie flags (HttpOnly, Secure, SameSite)
 - `security.storage` — Audit localStorage/sessionStorage for sensitive data
 - `security.deps` — Check for known vulnerabilities in dependencies
 
-**Response includes:**
+##### Response includes:
 - Missing/misconfigured security headers
 - Insecure cookie settings
 - Potentially sensitive data in storage
@@ -143,12 +143,12 @@ Check for common security issues.
 
 Compare before/after states to detect regressions.
 
-**Actions:**
+##### Actions:
 - `regression.baseline` — Capture current state as baseline
 - `regression.compare` — Compare current state against baseline
 - `regression.clear` — Clear stored baseline
 
-**Response includes:**
+##### Response includes:
 - Performance delta (LCP, FID, CLS changes)
 - New accessibility violations
 - Bundle size changes

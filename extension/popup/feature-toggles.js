@@ -10,25 +10,25 @@ export const FEATURE_TOGGLES = [
         id: 'toggle-websocket',
         storageKey: 'webSocketCaptureEnabled',
         messageType: 'setWebSocketCaptureEnabled',
-        default: true,
+        default: true
     },
     {
         id: 'toggle-network-waterfall',
         storageKey: 'networkWaterfallEnabled',
         messageType: 'setNetworkWaterfallEnabled',
-        default: true,
+        default: true
     },
     {
         id: 'toggle-performance-marks',
         storageKey: 'performanceMarksEnabled',
         messageType: 'setPerformanceMarksEnabled',
-        default: true,
+        default: true
     },
     {
         id: 'toggle-action-replay',
         storageKey: 'actionReplayEnabled',
         messageType: 'setActionReplayEnabled',
-        default: true,
+        default: true
     },
     { id: 'toggle-screenshot', storageKey: 'screenshotOnError', messageType: 'setScreenshotOnError', default: true },
     { id: 'toggle-source-maps', storageKey: 'sourceMapEnabled', messageType: 'setSourceMapEnabled', default: true },
@@ -36,20 +36,20 @@ export const FEATURE_TOGGLES = [
         id: 'toggle-network-body-capture',
         storageKey: 'networkBodyCaptureEnabled',
         messageType: 'setNetworkBodyCaptureEnabled',
-        default: true,
+        default: true
     },
     {
         id: 'toggle-action-toasts',
         storageKey: 'actionToastsEnabled',
         messageType: 'setActionToastsEnabled',
-        default: true,
+        default: true
     },
     {
         id: 'toggle-subtitles',
         storageKey: 'subtitlesEnabled',
         messageType: 'setSubtitlesEnabled',
-        default: true,
-    },
+        default: true
+    }
 ];
 /**
  * Handle feature toggle change
@@ -62,7 +62,7 @@ export function handleFeatureToggle(storageKey, messageType, enabled) {
     // Background will handle the write after updating its internal state
     chrome.runtime.sendMessage({ type: messageType, enabled }, (response) => {
         if (chrome.runtime.lastError) {
-            console.error(`[Gasoline] Message error for ${messageType}:`, chrome.runtime.lastError.message);
+            console.error(`[Gasoline] Message error for ${messageType}:`, chrome.runtime.lastError.message); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal feature flag name, not user-controlled
         }
         else if (response?.success) {
             console.log(`[Gasoline] ${messageType} acknowledged by background`);

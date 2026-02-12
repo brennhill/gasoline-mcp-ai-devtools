@@ -48,23 +48,23 @@ Next request: generate({type: "har"}):
 
 ## Implementation Strategy
 
-**Feature flag naming convention:**
+### Feature flag naming convention:
 - Format: {tool}_{action} (e.g., "interact_execute_js", "generate_har")
 - Underscore-separated, lowercase
 - Map to tool and action names in code
 
-**Registry implementation:**
+### Registry implementation:
 - Map[string]bool with sync.RWMutex
 - IsEnabled(flag string) bool: RLock, lookup, return (default true if not found)
 - SetFlag(flag string, enabled bool): WLock, set, WUnlock
 - LoadFromYAML(path string): parse YAML, bulk update registry
 
-**File watching:**
+### File watching:
 - Use fsnotify (or similar) to watch config file
 - On change event: debounce (wait 1s for write completion), reload YAML
 - If reload fails: log error, keep existing flags (don't crash)
 
-**Feature gate pattern:**
+### Feature gate pattern:
 ```
 In each tool handler:
 if !featureFlags.IsEnabled("tool_action") {
@@ -73,12 +73,12 @@ if !featureFlags.IsEnabled("tool_action") {
 // Proceed with execution
 ```
 
-**CLI override:**
+### CLI override:
 - --disable-feature=execute_js flag parses into list
 - After loading config, force-set these flags to false
 - CLI overrides take precedence (cannot be hot-reloaded)
 
-**Error response format:**
+### Error response format:
 ```json
 {
   "error": "feature_disabled",

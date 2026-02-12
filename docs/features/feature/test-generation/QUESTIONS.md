@@ -13,7 +13,7 @@ last-verified: 2026-01-31
 ### Q1: Error ID Format
 The TECH_SPEC mentions `error_id` parameter but doesn't specify how errors are identified in the system. Currently, console errors don't have unique IDs.
 
-**Options:**
+#### Options:
 1. Generate IDs when errors are captured (e.g., `err_<timestamp>_<hash>`)
 2. Use timestamp + message hash as implicit ID
 3. Reference errors by index (most recent = 0)
@@ -46,7 +46,7 @@ TECH_SPEC specifies:
 ### Q4: Test File Parsing
 For selector healing, we need to parse test files to find selectors.
 
-**Options:**
+#### Options:
 1. Simple regex-based parsing (fast, may miss edge cases)
 2. AST parsing with a TypeScript/JavaScript parser (accurate, requires dependency)
 

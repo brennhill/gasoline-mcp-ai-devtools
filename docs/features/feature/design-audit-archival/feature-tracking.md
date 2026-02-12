@@ -84,7 +84,7 @@ Screenshot archival and queryable design system compliance tool that allows LLMs
   - Metadata injection
   - Payload size limits
 
-**Total: 2200+ LOC (tests), 1200+ LOC (implementation)**
+#### Total: 2200+ LOC (tests), 1200+ LOC (implementation)
 
 ---
 
@@ -147,7 +147,7 @@ Screenshot archival and queryable design system compliance tool that allows LLMs
 - Can ship in parallel with v6.5 (token efficiency) and other Tier 4 features
 - Non-blocking for critical path (v6.0-6.2 thesis)
 
-**Marketing Value:**
+### Marketing Value:
 - "Design regression testing with AI: auto-audit design system compliance across responsive variants"
 - "Screenshot archives queryable by component, viewport, date — build design regression test suites automatically"
 

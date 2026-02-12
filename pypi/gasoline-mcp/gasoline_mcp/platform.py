@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Platform detection and binary execution for Gasoline MCP."""
 
 import sys
@@ -14,17 +15,14 @@ def get_platform():
     if os_name == "darwin":
         if machine == "arm64":
             return "darwin-arm64"
-        else:
-            return "darwin-x64"
-    elif os_name.startswith("linux"):
+        return "darwin-x64"
+    if os_name.startswith("linux"):
         if "aarch64" in machine or "arm64" in machine:
             return "linux-arm64"
-        else:
-            return "linux-x64"
-    elif os_name == "win32":
+        return "linux-x64"
+    if os_name == "win32":
         return "win32-x64"
-    else:
-        raise RuntimeError(f"Unsupported platform: {os_name} {machine}")
+    raise RuntimeError(f"Unsupported platform: {os_name} {machine}")
 
 
 def get_binary_path():
@@ -33,7 +31,7 @@ def get_binary_path():
     package_name = f"gasoline_mcp_{platform_name.replace('-', '_')}"
 
     try:
-        import importlib.util
+        import importlib.util  # pylint: disable=import-outside-toplevel
         spec = importlib.util.find_spec(package_name)
         if spec and spec.origin:
             binary_name = "gasoline.exe" if sys.platform == "win32" else "gasoline"
@@ -46,9 +44,9 @@ def get_binary_path():
 
     # If we get here, the platform-specific package isn't installed
     raise RuntimeError(
-        f"Platform-specific package not found for {platform_name}.\n"
-        f"Install with: pip install gasoline-mcp[{platform_name}]\n"
-        f"Or for automatic detection: pip install gasoline-mcp && pip install gasoline-mcp[{platform_name}]"
+        f"Platform-specific binary not found for {platform_name}.\n"
+        f"Try reinstalling: pip install --force-reinstall gasoline-mcp\n"
+        f"Or install the binary directly: pip install gasoline-mcp-{platform_name}"
     )
 
 
@@ -88,8 +86,8 @@ Examples:
 
 def show_config():
     """Show configuration information."""
-    from . import install, output
-    import json
+    from . import install  # pylint: disable=import-outside-toplevel
+    import json  # pylint: disable=import-outside-toplevel
 
     cfg = install.generate_default_config()
 
@@ -112,16 +110,10 @@ def show_config():
     sys.exit(0)
 
 
-def run_install(args):
-    """Run install command."""
-    from . import install, output, config, errors
+def _parse_env_args(args):
+    """Parse --env KEY=VALUE arguments from args list."""
+    from . import config, errors, output as out  # pylint: disable=import-outside-toplevel
 
-    # Parse options
-    dry_run = "--dry-run" in args
-    for_all = "--for-all" in args
-    verbose = "--verbose" in args
-
-    # Parse env vars
     env_vars = {}
     for i, arg in enumerate(args):
         if arg == "--env" and i + 1 < len(args):
@@ -129,69 +121,86 @@ def run_install(args):
                 parsed = config.parse_env_var(args[i + 1])
                 env_vars[parsed["key"]] = parsed["value"]
             except errors.GasolineError as e:
-                print(output.error(e.message, e.recovery))
+                print(out.error(e.message, e.recovery))
                 sys.exit(1)
+    return env_vars
+
+
+def _print_install_success(result, dry_run):
+    """Print successful install result and exit."""
+    from . import output  # pylint: disable=import-outside-toplevel
+
+    if dry_run:
+        print("ℹ️  Dry run: No files will be written\n")
+    print(output.install_result({
+        "updated": result["updated"],
+        "total": result["total"],
+        "errors": result["errors"],
+        "notFound": [],
+    }))
+    if not dry_run:
+        print("✨ Gasoline MCP is ready to use!")
+    sys.exit(0)
+
+
+def _print_install_failure(result):
+    """Print install failure details and exit."""
+    from . import output  # pylint: disable=import-outside-toplevel
+
+    print(output.error("Installation failed"))
+    for err in result["errors"]:
+        print(f"  {err['name']}: {err['message']}")
+        if err.get("recovery"):
+            print(f"  Recovery: {err['recovery']}")
+    sys.exit(1)
+
+
+def run_install(args):
+    """Run install command."""
+    from . import install  # pylint: disable=import-outside-toplevel
 
     options = {
-        "dryRun": dry_run,
-        "forAll": for_all,
-        "envVars": env_vars,
-        "verbose": verbose,
+        "dryRun": "--dry-run" in args,
+        "forAll": "--for-all" in args,
+        "envVars": _parse_env_args(args),
+        "verbose": "--verbose" in args,
     }
 
     try:
         result = install.execute_install(options)
-
         if result["success"]:
-            if dry_run:
-                print("ℹ️  Dry run: No files will be written\n")
-            print(output.install_result({
-                "updated": result["updated"],
-                "total": result["total"],
-                "errors": result["errors"],
-                "notFound": [],
-            }))
-            if not dry_run:
-                print("✨ Gasoline MCP is ready to use!")
-            sys.exit(0)
+            _print_install_success(result, options["dryRun"])
         else:
-            print(output.error("Installation failed"))
-            for err in result["errors"]:
-                print(f"  {err['name']}: {err['message']}")
-                if err.get("recovery"):
-                    print(f"  Recovery: {err['recovery']}")
-            sys.exit(1)
-    except Exception as e:
-        error_msg = str(e)
+            _print_install_failure(result)
+    except (OSError, ValueError) as e:
         if hasattr(e, "format"):
             print(e.format())
         else:
-            print(f"Error: {error_msg}")
+            print(f"Error: {e}")
         sys.exit(1)
 
 
 def run_doctor(args):
     """Run doctor command."""
-    from . import doctor, output
+    from . import doctor, output  # pylint: disable=import-outside-toplevel
 
     verbose = "--verbose" in args
 
     try:
-        report = doctor.run_diagnostics(verbose)
+        report = doctor.run_diagnostics(verbose, get_binary_path=get_binary_path)
         print(output.diagnostic_report(report))
         sys.exit(0)
-    except Exception as e:
-        error_msg = str(e)
+    except (OSError, RuntimeError) as e:
         if hasattr(e, "format"):
             print(e.format())
         else:
-            print(f"Error: {error_msg}")
+            print(f"Error: {e}")
         sys.exit(1)
 
 
 def run_uninstall(args):
     """Run uninstall command."""
-    from . import uninstall, output
+    from . import uninstall, output  # pylint: disable=import-outside-toplevel
 
     dry_run = "--dry-run" in args
     verbose = "--verbose" in args
@@ -207,69 +216,67 @@ def run_uninstall(args):
 
         print(output.uninstall_result(result))
         sys.exit(0)
-    except Exception as e:
-        error_msg = str(e)
+    except (OSError, ValueError) as e:
         if hasattr(e, "format"):
             print(e.format())
         else:
-            print(f"Error: {error_msg}")
+            print(f"Error: {e}")
         sys.exit(1)
+
+
+def _cleanup_windows():
+    """Kill gasoline processes on Windows. Returns list of killed PIDs."""
+    import re  # pylint: disable=import-outside-toplevel
+
+    killed = []
+    result = subprocess.run(
+        ["tasklist", "/FI", "IMAGENAME eq gasoline*", "/FO", "CSV"],
+        capture_output=True, text=True, check=False,
+    )
+    if not result.stdout:
+        return killed
+
+    for line in result.stdout.split('\n')[1:]:
+        match = re.match(r'"gasoline[^"]*","(\d+)"', line)
+        if not match:
+            continue
+        pid = match.group(1)
+        subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True, check=False)
+        killed.append(pid)
+    return killed
+
+
+def _kill_pids_on_port(port):
+    """Kill processes listening on a given port. Returns list of killed PIDs."""
+    killed = []
+    result = subprocess.run(
+        ["lsof", "-ti", f":{port}"],
+        capture_output=True, text=True, check=False,
+    )
+    for pid in (result.stdout or "").strip().split('\n'):
+        if pid:
+            subprocess.run(["kill", "-9", pid], capture_output=True, check=False)
+            killed.append(pid)
+    return killed
+
+
+def _cleanup_unix():
+    """Kill gasoline processes on Unix. Returns list of killed PIDs."""
+    subprocess.run(["pkill", "-f", "gasoline"], capture_output=True, check=False)
+    killed = []
+    for port in ["7890", "17890"]:
+        killed.extend(_kill_pids_on_port(port))
+    return killed
 
 
 def cleanup_old_processes():
     """Kill all running gasoline processes to ensure clean upgrade."""
-    killed = []
-
     try:
         if sys.platform == "win32":
-            # Windows: Find and kill gasoline processes by name
-            result = subprocess.run(
-                ["tasklist", "/FI", "IMAGENAME eq gasoline*", "/FO", "CSV"],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            if result.stdout:
-                import re
-                for line in result.stdout.split('\n')[1:]:  # Skip header
-                    match = re.match(r'"gasoline[^"]*","(\d+)"', line)
-                    if match:
-                        pid = match.group(1)
-                        subprocess.run(
-                            ["taskkill", "/F", "/PID", pid],
-                            capture_output=True,
-                            check=False
-                        )
-                        killed.append(pid)
-        else:
-            # Unix: Kill by name using pkill
-            subprocess.run(
-                ["pkill", "-f", "gasoline"],
-                capture_output=True,
-                check=False
-            )
-
-            # Also check common ports (7890, 17890)
-            for port in ["7890", "17890"]:
-                result = subprocess.run(
-                    ["lsof", "-ti", f":{port}"],
-                    capture_output=True,
-                    text=True,
-                    check=False
-                )
-                if result.stdout and result.stdout.strip():
-                    for pid in result.stdout.strip().split('\n'):
-                        if pid:
-                            subprocess.run(
-                                ["kill", "-9", pid],
-                                capture_output=True,
-                                check=False
-                            )
-                            killed.append(pid)
-    except Exception:
-        pass  # Ignore errors - processes might not exist
-
-    return killed
+            return _cleanup_windows()
+        return _cleanup_unix()
+    except (OSError, subprocess.SubprocessError):
+        return []
 
 
 def verify_version(binary_path, expected_version):
@@ -287,57 +294,51 @@ def verify_version(binary_path, expected_version):
             if expected_version in version:
                 print(f"✓ Verified gasoline version: {version}")
                 return True
-            else:
-                print(f"Warning: Expected version {expected_version}, got: {version}")
-    except Exception as e:
+            print(f"Warning: Expected version {expected_version}, got: {version}")
+    except (OSError, subprocess.SubprocessError) as e:
         print(f"Could not verify version: {e}")
     return False
 
 
-def run():
-    """Run the Gasoline MCP CLI or binary."""
-    from . import output, __version__
+def _dispatch_cli_command(args):
+    """Dispatch CLI subcommands. Returns True if a command was handled."""
+    commands = {
+        "--config": show_config,
+        "-c": show_config,
+        "--install": lambda: run_install(args),
+        "-i": lambda: run_install(args),
+        "--doctor": lambda: run_doctor(args),
+        "--uninstall": lambda: run_uninstall(args),
+        "--help": show_help,
+        "-h": show_help,
+    }
+    for flag, handler in commands.items():
+        if flag in args:
+            handler()
+            return True
+    return False
 
-    args = sys.argv[1:]
 
-    # Config command
-    if "--config" in args or "-c" in args:
-        show_config()
-
-    # Install command
-    if "--install" in args or "-i" in args:
-        run_install(args)
-
-    # Doctor command
-    if "--doctor" in args:
-        run_doctor(args)
-
-    # Uninstall command
-    if "--uninstall" in args:
-        run_uninstall(args)
-
-    # Help command
-    if "--help" in args or "-h" in args:
-        show_help()
-
-    # No config command, run the binary
-
-    # Clean up ALL existing gasoline processes before starting
-    # This ensures pip/pipx always uses the newly installed version
+def _run_binary(args):
+    """Execute the gasoline binary, passing through all arguments."""
     cleanup_old_processes()
-
     binary = get_binary_path()
 
-    # Make sure binary is executable
     if not os.access(binary, os.X_OK):
-        os.chmod(binary, 0o755)
+        os.chmod(binary, 0o755)  # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
 
-    # Execute the binary, passing through all arguments
     try:
-        result = subprocess.run([binary] + args)
+        result = subprocess.run([binary] + args, check=False)
         sys.exit(result.returncode)
     except KeyboardInterrupt:
-        sys.exit(130)  # Standard exit code for SIGINT
-    except Exception as e:
+        sys.exit(130)
+    except (OSError, subprocess.SubprocessError) as e:
         print(f"Error running Gasoline: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+def run():
+    """Run the Gasoline MCP CLI or binary."""
+    args = sys.argv[1:]
+    if not _dispatch_cli_command(args):
+        _run_binary(args)

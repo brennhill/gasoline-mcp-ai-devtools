@@ -14,46 +14,58 @@ import (
 // Schema Building
 // ============================================
 
+// schemaAccum holds intermediate totals during schema building.
+type schemaAccum struct {
+	totalObservations int
+	totalErrors       int
+	totalLatency      float64
+	latencyCount      int
+}
+
 // BuildSchema converts all accumulators into a structured API schema
 func (s *SchemaStore) BuildSchema(filter SchemaFilter) APISchema {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var endpoints []EndpointSchema
+	endpoints, acc := s.collectEndpoints(filter)
 
-	totalObservations := 0
-	totalErrors := 0
-	totalLatency := 0.0
-	latencyCount := 0
-
-	for _, acc := range s.accumulators {
-		// Apply min observations filter
-		if filter.MinObservations > 0 && acc.observationCount < filter.MinObservations {
-			continue
-		}
-
-		// Apply URL filter
-		if filter.URLFilter != "" && !strings.Contains(acc.pathPattern, filter.URLFilter) {
-			continue
-		}
-
-		ep := s.buildEndpoint(acc)
-		endpoints = append(endpoints, ep)
-
-		totalObservations += acc.observationCount
-		totalErrors += acc.errorCount
-		for _, l := range acc.latencies {
-			totalLatency += l
-			latencyCount++
-		}
-	}
-
-	// Sort by observation count (most-used first)
 	sort.Slice(endpoints, func(i, j int) bool {
 		return endpoints[i].ObservationCount > endpoints[j].ObservationCount
 	})
 
-	// Build coverage
+	return APISchema{
+		Endpoints:   endpoints,
+		WebSockets:  s.buildWSSchemas(),
+		AuthPattern: s.detectAuthPattern(),
+		Coverage:    buildCoverageStats(endpoints, acc),
+	}
+}
+
+// collectEndpoints builds endpoint schemas from accumulators that pass the filter.
+func (s *SchemaStore) collectEndpoints(filter SchemaFilter) ([]EndpointSchema, schemaAccum) {
+	var endpoints []EndpointSchema
+	var acc schemaAccum
+
+	for _, a := range s.accumulators {
+		if filter.MinObservations > 0 && a.observationCount < filter.MinObservations {
+			continue
+		}
+		if filter.URLFilter != "" && !strings.Contains(a.pathPattern, filter.URLFilter) {
+			continue
+		}
+		endpoints = append(endpoints, s.buildEndpoint(a))
+		acc.totalObservations += a.observationCount
+		acc.totalErrors += a.errorCount
+		for _, l := range a.latencies {
+			acc.totalLatency += l
+			acc.latencyCount++
+		}
+	}
+	return endpoints, acc
+}
+
+// buildCoverageStats computes coverage statistics from endpoints and accumulated totals.
+func buildCoverageStats(endpoints []EndpointSchema, acc schemaAccum) CoverageStats {
 	coverage := CoverageStats{
 		TotalEndpoints: len(endpoints),
 		Methods:        make(map[string]int),
@@ -61,14 +73,17 @@ func (s *SchemaStore) BuildSchema(filter SchemaFilter) APISchema {
 	for i := range endpoints {
 		coverage.Methods[endpoints[i].Method]++
 	}
-	if totalObservations > 0 {
-		coverage.ErrorRate = float64(totalErrors) / float64(totalObservations) * 100.0
+	if acc.totalObservations > 0 {
+		coverage.ErrorRate = float64(acc.totalErrors) / float64(acc.totalObservations) * 100.0
 	}
-	if latencyCount > 0 {
-		coverage.AvgResponseMs = totalLatency / float64(latencyCount)
+	if acc.latencyCount > 0 {
+		coverage.AvgResponseMs = acc.totalLatency / float64(acc.latencyCount)
 	}
+	return coverage
+}
 
-	// Build WebSocket schemas
+// buildWSSchemas converts internal WebSocket accumulators to output schemas.
+func (s *SchemaStore) buildWSSchemas() []WSSchema {
 	wsSchemas := make([]WSSchema, 0, len(s.wsSchemas))
 	for _, ws := range s.wsSchemas {
 		wsSchema := WSSchema{
@@ -83,16 +98,7 @@ func (s *SchemaStore) BuildSchema(filter SchemaFilter) APISchema {
 		sort.Strings(wsSchema.MessageTypes)
 		wsSchemas = append(wsSchemas, wsSchema)
 	}
-
-	// Detect auth pattern
-	authPattern := s.detectAuthPattern()
-
-	return APISchema{
-		Endpoints:   endpoints,
-		WebSockets:  wsSchemas,
-		AuthPattern: authPattern,
-		Coverage:    coverage,
-	}
+	return wsSchemas
 }
 
 func (s *SchemaStore) buildEndpoint(acc *endpointAccumulator) EndpointSchema {
@@ -270,41 +276,44 @@ func (s *SchemaStore) detectAuthPattern() *AuthPattern {
 	hasAuthEndpoint := false
 	has401 := false
 	var publicPaths []string
-	totalRequests := 0
+
+	authKeywords := []string{"/auth", "/login", "/token"}
+	publicKeywords := []string{"/health", "/public"}
 
 	for _, acc := range s.accumulators {
-		totalRequests += acc.observationCount
 		lowerPattern := strings.ToLower(acc.pathPattern)
-
-		if strings.Contains(lowerPattern, "/auth") ||
-			strings.Contains(lowerPattern, "/login") ||
-			strings.Contains(lowerPattern, "/token") {
+		if containsAny(lowerPattern, authKeywords) {
 			hasAuthEndpoint = true
 			publicPaths = append(publicPaths, acc.pathPattern)
 		}
-
-		if strings.Contains(lowerPattern, "/health") ||
-			strings.Contains(lowerPattern, "/public") {
+		if containsAny(lowerPattern, publicKeywords) {
 			publicPaths = append(publicPaths, acc.pathPattern)
 		}
-
-		for status := range acc.responseShapes {
-			if status == 401 {
-				has401 = true
-			}
+		if !has401 {
+			has401 = hasStatusCode(acc.responseShapes, 401)
 		}
 	}
 
 	if !hasAuthEndpoint && !has401 {
 		return nil
 	}
+	return &AuthPattern{Type: "bearer", Header: "Authorization", AuthRate: 100.0, PublicPaths: publicPaths}
+}
 
-	return &AuthPattern{
-		Type:        "bearer",
-		Header:      "Authorization",
-		AuthRate:    100.0, // We can't see headers, assume authenticated
-		PublicPaths: publicPaths,
+// containsAny returns true if s contains any of the substrings.
+func containsAny(s string, substrings []string) bool {
+	for _, sub := range substrings {
+		if strings.Contains(s, sub) {
+			return true
+		}
 	}
+	return false
+}
+
+// hasStatusCode checks if a response shapes map contains the given status code.
+func hasStatusCode(shapes map[int]*responseAccumulator, code int) bool {
+	_, ok := shapes[code]
+	return ok
 }
 
 // ============================================
@@ -316,97 +325,97 @@ func (s *SchemaStore) BuildOpenAPIStub(filter SchemaFilter) string {
 	schema := s.BuildSchema(filter)
 
 	var b strings.Builder
-	b.WriteString("openapi: \"3.0.0\"\n")
-	b.WriteString("info:\n")
-	b.WriteString("  title: \"Inferred API\"\n")
-	b.WriteString("  version: \"1.0.0\"\n")
-	b.WriteString("  description: \"Auto-inferred from observed network traffic\"\n")
-	b.WriteString("paths:\n")
+	b.WriteString("openapi: \"3.0.0\"\ninfo:\n  title: \"Inferred API\"\n  version: \"1.0.0\"\n  description: \"Auto-inferred from observed network traffic\"\npaths:\n")
 
-	// Group endpoints by path pattern
-	pathMethods := make(map[string][]EndpointSchema)
-	for i := range schema.Endpoints {
-		ep := &schema.Endpoints[i]
-		pathMethods[ep.PathPattern] = append(pathMethods[ep.PathPattern], *ep)
-	}
-
-	// Sort paths for deterministic output
-	paths := make([]string, 0, len(pathMethods))
-	for p := range pathMethods {
-		paths = append(paths, p)
-	}
-	sort.Strings(paths)
+	pathMethods := groupEndpointsByPath(schema.Endpoints)
+	paths := sortedKeys(pathMethods)
 
 	for _, path := range paths {
 		b.WriteString("  " + path + ":\n")
 		methods := pathMethods[path]
-		sort.Slice(methods, func(i, j int) bool {
-			return methods[i].Method < methods[j].Method
-		})
+		sort.Slice(methods, func(i, j int) bool { return methods[i].Method < methods[j].Method })
 		for i := range methods {
-			ep := &methods[i]
-			method := strings.ToLower(ep.Method)
-			b.WriteString("    " + method + ":\n")
-			b.WriteString("      summary: \"" + ep.Method + " " + ep.PathPattern + "\"\n")
-			b.WriteString("      responses:\n")
+			writeEndpointYAML(&b, &methods[i])
+		}
+	}
+	return b.String()
+}
 
-			if len(ep.ResponseShapes) > 0 {
-				for status, shape := range ep.ResponseShapes {
-					b.WriteString("        \"" + intToString(status) + "\":\n")
-					b.WriteString("          description: \"Response\"\n")
-					if len(shape.Fields) > 0 {
-						b.WriteString("          content:\n")
-						b.WriteString("            application/json:\n")
-						b.WriteString("              schema:\n")
-						b.WriteString("                type: object\n")
-						b.WriteString("                properties:\n")
-						for fieldName, fs := range shape.Fields {
-							b.WriteString("                  " + fieldName + ":\n")
-							b.WriteString("                    type: " + mapToOpenAPIType(fs.Type) + "\n")
-						}
-					}
-				}
-			} else {
-				b.WriteString("        \"200\":\n")
-				b.WriteString("          description: \"OK\"\n")
-			}
+// groupEndpointsByPath groups endpoints by their path pattern.
+func groupEndpointsByPath(endpoints []EndpointSchema) map[string][]EndpointSchema {
+	pathMethods := make(map[string][]EndpointSchema)
+	for i := range endpoints {
+		ep := &endpoints[i]
+		pathMethods[ep.PathPattern] = append(pathMethods[ep.PathPattern], *ep)
+	}
+	return pathMethods
+}
 
-			if ep.RequestShape != nil && len(ep.RequestShape.Fields) > 0 {
-				b.WriteString("      requestBody:\n")
-				b.WriteString("        content:\n")
-				b.WriteString("          application/json:\n")
-				b.WriteString("            schema:\n")
-				b.WriteString("              type: object\n")
-				b.WriteString("              properties:\n")
-				for fieldName, fs := range ep.RequestShape.Fields {
-					b.WriteString("                " + fieldName + ":\n")
-					b.WriteString("                  type: " + mapToOpenAPIType(fs.Type) + "\n")
-				}
-			}
+// sortedKeys returns sorted keys from a map.
+func sortedKeys(m map[string][]EndpointSchema) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
 
-			if len(ep.PathParams) > 0 || len(ep.QueryParams) > 0 {
-				b.WriteString("      parameters:\n")
-				for _, pp := range ep.PathParams {
-					b.WriteString("        - name: " + pp.Name + "\n")
-					b.WriteString("          in: path\n")
-					b.WriteString("          required: true\n")
-					b.WriteString("          schema:\n")
-					b.WriteString("            type: " + mapToOpenAPIType(pp.Type) + "\n")
-				}
-				for _, qp := range ep.QueryParams {
-					b.WriteString("        - name: " + qp.Name + "\n")
-					b.WriteString("          in: query\n")
-					if qp.Required {
-						b.WriteString("          required: true\n")
-					}
-					b.WriteString("          schema:\n")
-					b.WriteString("            type: " + mapToOpenAPIType(qp.Type) + "\n")
-				}
+// writeEndpointYAML writes a single endpoint's YAML to the builder.
+func writeEndpointYAML(b *strings.Builder, ep *EndpointSchema) {
+	method := strings.ToLower(ep.Method)
+	b.WriteString("    " + method + ":\n")
+	b.WriteString("      summary: \"" + ep.Method + " " + ep.PathPattern + "\"\n")
+	b.WriteString("      responses:\n")
+	writeResponseShapes(b, ep)
+	writeRequestBody(b, ep)
+	writeParameters(b, ep)
+}
+
+// writeResponseShapes writes response shape YAML for an endpoint.
+func writeResponseShapes(b *strings.Builder, ep *EndpointSchema) {
+	if len(ep.ResponseShapes) == 0 {
+		b.WriteString("        \"200\":\n          description: \"OK\"\n")
+		return
+	}
+	for status, shape := range ep.ResponseShapes {
+		b.WriteString("        \"" + intToString(status) + "\":\n          description: \"Response\"\n")
+		if len(shape.Fields) > 0 {
+			b.WriteString("          content:\n            application/json:\n              schema:\n                type: object\n                properties:\n")
+			for fieldName, fs := range shape.Fields {
+				b.WriteString("                  " + fieldName + ":\n                    type: " + mapToOpenAPIType(fs.Type) + "\n")
 			}
 		}
 	}
+}
 
-	return b.String()
+// writeRequestBody writes request body YAML if the endpoint has one.
+func writeRequestBody(b *strings.Builder, ep *EndpointSchema) {
+	if ep.RequestShape == nil || len(ep.RequestShape.Fields) == 0 {
+		return
+	}
+	b.WriteString("      requestBody:\n        content:\n          application/json:\n            schema:\n              type: object\n              properties:\n")
+	for fieldName, fs := range ep.RequestShape.Fields {
+		b.WriteString("                " + fieldName + ":\n                  type: " + mapToOpenAPIType(fs.Type) + "\n")
+	}
+}
+
+// writeParameters writes path and query parameter YAML.
+func writeParameters(b *strings.Builder, ep *EndpointSchema) {
+	if len(ep.PathParams) == 0 && len(ep.QueryParams) == 0 {
+		return
+	}
+	b.WriteString("      parameters:\n")
+	for _, pp := range ep.PathParams {
+		b.WriteString("        - name: " + pp.Name + "\n          in: path\n          required: true\n          schema:\n            type: " + mapToOpenAPIType(pp.Type) + "\n")
+	}
+	for _, qp := range ep.QueryParams {
+		b.WriteString("        - name: " + qp.Name + "\n          in: query\n")
+		if qp.Required {
+			b.WriteString("          required: true\n")
+		}
+		b.WriteString("          schema:\n            type: " + mapToOpenAPIType(qp.Type) + "\n")
+	}
 }
 
 func mapToOpenAPIType(t string) string {

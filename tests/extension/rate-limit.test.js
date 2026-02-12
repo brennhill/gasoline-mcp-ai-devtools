@@ -9,13 +9,14 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 globalThis.chrome = {
   runtime: {
     onMessage: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION })
   },
   action: { setBadgeText: mock.fn(), setBadgeBackgroundColor: mock.fn() },
   storage: {
@@ -25,7 +26,7 @@ globalThis.chrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     sync: {
       get: mock.fn((k, cb) => cb({})),
@@ -33,7 +34,7 @@ globalThis.chrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     session: {
       get: mock.fn((k, cb) => cb({})),
@@ -41,16 +42,16 @@ globalThis.chrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
-    onChanged: { addListener: mock.fn() },
+    onChanged: { addListener: mock.fn() }
   },
   alarms: { create: mock.fn(), onAlarm: { addListener: mock.fn() } },
   tabs: {
     get: mock.fn(),
     query: mock.fn(),
-    onRemoved: { addListener: mock.fn() },
-  },
+    onRemoved: { addListener: mock.fn() }
+  }
 }
 
 // Mock fetch globally
@@ -72,7 +73,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
     const { batcher, circuitBreaker } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
       maxBatchSize: 50,
-      retryBudget: 1, // No retries - test backoff progression across batches
+      retryBudget: 1 // No retries - test backoff progression across batches
     })
 
     // First batch - will fail with 429
@@ -94,7 +95,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
     const { batcher, circuitBreaker } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
       maxBatchSize: 50,
-      retryBudget: 1, // No retries - test backoff progression across batches
+      retryBudget: 1 // No retries - test backoff progression across batches
     })
 
     // First failure
@@ -119,7 +120,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
     const { batcher, circuitBreaker } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
       maxBatchSize: 50,
-      retryBudget: 1, // No retries - test backoff progression across batches
+      retryBudget: 1 // No retries - test backoff progression across batches
     })
 
     // Three consecutive failures
@@ -142,7 +143,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
     const { batcher, circuitBreaker } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
       maxBatchSize: 50,
-      retryBudget: 1, // No retries - test circuit opening on 5th failure
+      retryBudget: 1 // No retries - test circuit opening on 5th failure
     })
 
     // Five consecutive failures
@@ -168,7 +169,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
     const { batcher, circuitBreaker } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
       maxBatchSize: 50,
-      retryBudget: 1, // No retries - test backoff reset on success
+      retryBudget: 1 // No retries - test backoff reset on success
     })
 
     // Two failures
@@ -194,7 +195,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
     const { batcher, circuitBreaker } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
       maxBatchSize: 50,
-      retryBudget: 1,
+      retryBudget: 1
     })
 
     // Open the circuit (5 failures)
@@ -225,7 +226,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
       debounceMs: 1,
       maxBatchSize: 50,
       retryBudget: 1,
-      resetTimeout: 50, // Short timeout for testing
+      resetTimeout: 50 // Short timeout for testing
     })
 
     // Open the circuit
@@ -260,7 +261,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
       debounceMs: 1,
       maxBatchSize: 50,
       retryBudget: 1,
-      resetTimeout: 50,
+      resetTimeout: 50
     })
 
     // Open the circuit
@@ -290,7 +291,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
       debounceMs: 1,
       maxBatchSize: 50,
       retryBudget: 1,
-      resetTimeout: 50,
+      resetTimeout: 50
     })
 
     // Open the circuit
@@ -317,7 +318,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
     const { batcher, circuitBreaker } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
       maxBatchSize: 50,
-      retryBudget: 1,
+      retryBudget: 1
     })
 
     // Open circuit
@@ -347,7 +348,7 @@ describe('Rate Limit: Batcher Circuit Breaker Wiring', () => {
       debounceMs: 1,
       maxBatchSize: 50,
       retryBudget: 3,
-      maxFailures: 10, // High so circuit doesn't open during this test
+      maxFailures: 10 // High so circuit doesn't open during this test
     })
 
     // Add a batch and flush - should retry up to 3 times then abandon
@@ -380,21 +381,21 @@ describe('Rate Limit: Shared Circuit Breaker', () => {
     // Create a shared circuit breaker
     const sharedCB = createCircuitBreaker(() => Promise.reject(new Error('fail')), {
       maxFailures: 5,
-      resetTimeout: 30000,
+      resetTimeout: 30000
     })
 
     const batcher1 = createBatcherWithCircuitBreaker(sendFn1, {
       debounceMs: 1,
       maxBatchSize: 50,
       retryBudget: 1,
-      sharedCircuitBreaker: sharedCB,
+      sharedCircuitBreaker: sharedCB
     })
 
     const batcher2 = createBatcherWithCircuitBreaker(sendFn2, {
       debounceMs: 1,
       maxBatchSize: 50,
       retryBudget: 1,
-      sharedCircuitBreaker: sharedCB,
+      sharedCircuitBreaker: sharedCB
     })
 
     // Failures from batcher1 affect batcher2's circuit state
@@ -434,7 +435,7 @@ describe('Rate Limit: Connection Status Updates', () => {
 
     const { batcher, getConnectionStatus } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
-      maxBatchSize: 50,
+      maxBatchSize: 50
     })
 
     batcher.add({ type: 'log', message: 'test' })
@@ -448,7 +449,7 @@ describe('Rate Limit: Connection Status Updates', () => {
 
     const { batcher, getConnectionStatus } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
-      maxBatchSize: 50,
+      maxBatchSize: 50
     })
 
     batcher.add({ type: 'log', message: 'test' })
@@ -467,7 +468,7 @@ describe('Rate Limit: Network Errors (non-429)', () => {
     const { batcher, circuitBreaker } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
       maxBatchSize: 50,
-      retryBudget: 1,
+      retryBudget: 1
     })
 
     batcher.add({ type: 'log', message: 'test1' })
@@ -487,7 +488,7 @@ describe('Rate Limit: Network Errors (non-429)', () => {
       debounceMs: 1,
       maxBatchSize: 50,
       retryBudget: 1,
-      maxFailures: 10,
+      maxFailures: 10
     })
 
     for (let i = 0; i < 3; i++) {
@@ -508,7 +509,7 @@ describe('Rate Limit: Network Errors (non-429)', () => {
     const { batcher, circuitBreaker } = createBatcherWithCircuitBreaker(sendFn, {
       debounceMs: 1,
       maxBatchSize: 50,
-      retryBudget: 1,
+      retryBudget: 1
     })
 
     for (let i = 0; i < 5; i++) {
@@ -528,7 +529,7 @@ describe('Rate Limit: Backoff Schedule Mapping', () => {
       debounceMs: 1,
       maxBatchSize: 50,
       retryBudget: 1, // No retries - test backoff progression
-      maxFailures: 10, // Prevent circuit from opening
+      maxFailures: 10 // Prevent circuit from opening
     })
 
     // After 1st failure: backoff should be 100ms

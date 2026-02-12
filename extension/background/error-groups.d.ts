@@ -26,13 +26,7 @@ export type ProcessedLogEntry = LogEntry & {
     _firstSeen?: string;
     _lastSeen?: string;
 };
-/**
- * Create a signature for an error to identify duplicates
- */
 export declare function createErrorSignature(entry: LogEntry): string;
-/**
- * Process an error through the grouping system
- */
 export declare function processErrorGroup(entry: LogEntry): ProcessErrorGroupResult;
 /**
  * Get current state of error groups (for testing)

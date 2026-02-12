@@ -43,7 +43,7 @@ function createElement(tag, attrs = {}, opts = {}) {
       return attrs[name] || null
     },
     hasAttribute: (name) => name in attrs,
-    querySelectorAll: mock.fn(() => []),
+    querySelectorAll: mock.fn(() => [])
   }
   el.classList = Array.from(new Set((attrs.class || '').split(' ').filter(Boolean)))
   el.classList.from = el.classList
@@ -164,9 +164,9 @@ describe('Selector Computation', () => {
         'data-testid': 'login',
         'aria-label': 'Log in',
         id: 'login-btn',
-        class: 'btn primary',
+        class: 'btn primary'
       },
-      { textContent: 'Log In' },
+      { textContent: 'Log In' }
     )
 
     const selectors = computeSelectors(el)
@@ -438,7 +438,7 @@ describe('Enhanced Action Recording', () => {
     globalThis.window = {
       postMessage: mock.fn(),
       addEventListener: mock.fn(),
-      location: { href: 'http://localhost:3000/app' },
+      location: { href: 'http://localhost:3000/app' }
     }
   })
 
@@ -453,9 +453,9 @@ describe('Enhanced Action Recording', () => {
       'button',
       {
         'data-testid': 'submit',
-        'aria-label': 'Submit form',
+        'aria-label': 'Submit form'
       },
-      { textContent: 'Submit' },
+      { textContent: 'Submit' }
     )
 
     const action = recordEnhancedAction('click', el)
@@ -473,7 +473,7 @@ describe('Enhanced Action Recording', () => {
 
     const el = createElement('input', {
       type: 'email',
-      'data-testid': 'email-input',
+      'data-testid': 'email-input'
     })
 
     const action = recordEnhancedAction('input', el, { value: 'user@test.com' })
@@ -509,7 +509,7 @@ describe('Enhanced Action Recording', () => {
 
     const action = recordEnhancedAction('navigate', null, {
       fromUrl: 'http://localhost:3000/login',
-      toUrl: 'http://localhost:3000/dashboard',
+      toUrl: 'http://localhost:3000/dashboard'
     })
 
     assert.strictEqual(action.type, 'navigate')
@@ -524,7 +524,7 @@ describe('Enhanced Action Recording', () => {
 
     const action = recordEnhancedAction('select', el, {
       selectedValue: 'us',
-      selectedText: 'United States',
+      selectedText: 'United States'
     })
 
     assert.strictEqual(action.type, 'select')
@@ -580,7 +580,7 @@ describe('Playwright Script Generation', () => {
     const { generatePlaywrightScript } = await import('../../extension/inject.js')
 
     const actions = [
-      { type: 'click', selectors: { testId: 'login-btn' }, url: 'http://localhost:3000/login', timestamp: 1000 },
+      { type: 'click', selectors: { testId: 'login-btn' }, url: 'http://localhost:3000/login', timestamp: 1000 }
     ]
 
     const script = generatePlaywrightScript(actions, { errorMessage: 'Test error' })
@@ -599,8 +599,8 @@ describe('Playwright Script Generation', () => {
         type: 'click',
         selectors: { testId: 'submit', cssPath: 'button.btn' },
         url: 'http://localhost:3000',
-        timestamp: 1000,
-      },
+        timestamp: 1000
+      }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -617,8 +617,8 @@ describe('Playwright Script Generation', () => {
         type: 'click',
         selectors: { role: { role: 'button', name: 'Submit' }, cssPath: 'button' },
         url: 'http://localhost:3000',
-        timestamp: 1000,
-      },
+        timestamp: 1000
+      }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -635,8 +635,8 @@ describe('Playwright Script Generation', () => {
         selectors: { ariaLabel: 'Email address' },
         value: 'test@test.com',
         url: 'http://localhost:3000',
-        timestamp: 1000,
-      },
+        timestamp: 1000
+      }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -662,8 +662,8 @@ describe('Playwright Script Generation', () => {
         type: 'click',
         selectors: { id: 'main-nav', cssPath: 'nav#main-nav' },
         url: 'http://localhost:3000',
-        timestamp: 1000,
-      },
+        timestamp: 1000
+      }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -675,7 +675,7 @@ describe('Playwright Script Generation', () => {
     const { generatePlaywrightScript } = await import('../../extension/inject.js')
 
     const actions = [
-      { type: 'click', selectors: { cssPath: 'form > button.submit' }, url: 'http://localhost:3000', timestamp: 1000 },
+      { type: 'click', selectors: { cssPath: 'form > button.submit' }, url: 'http://localhost:3000', timestamp: 1000 }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -697,7 +697,7 @@ describe('Playwright Script Generation', () => {
     const { generatePlaywrightScript } = await import('../../extension/inject.js')
 
     const actions = [
-      { type: 'input', selectors: { testId: 'name' }, value: 'Alice', url: 'http://localhost:3000', timestamp: 1000 },
+      { type: 'input', selectors: { testId: 'name' }, value: 'Alice', url: 'http://localhost:3000', timestamp: 1000 }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -714,8 +714,8 @@ describe('Playwright Script Generation', () => {
         selectors: { testId: 'search' },
         key: 'Enter',
         url: 'http://localhost:3000',
-        timestamp: 1000,
-      },
+        timestamp: 1000
+      }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -732,8 +732,8 @@ describe('Playwright Script Generation', () => {
         selectors: { testId: 'country' },
         selectedValue: 'us',
         url: 'http://localhost:3000',
-        timestamp: 1000,
-      },
+        timestamp: 1000
+      }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -750,8 +750,8 @@ describe('Playwright Script Generation', () => {
         type: 'navigate',
         fromUrl: 'http://localhost:3000/login',
         toUrl: 'http://localhost:3000/dashboard',
-        timestamp: 1500,
-      },
+        timestamp: 1500
+      }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -765,7 +765,7 @@ describe('Playwright Script Generation', () => {
 
     const actions = [
       { type: 'click', selectors: { testId: 'btn1' }, url: 'http://localhost:3000', timestamp: 1000 },
-      { type: 'click', selectors: { testId: 'btn2' }, url: 'http://localhost:3000', timestamp: 5000 }, // 4s gap
+      { type: 'click', selectors: { testId: 'btn2' }, url: 'http://localhost:3000', timestamp: 5000 } // 4s gap
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -790,7 +790,7 @@ describe('Playwright Script Generation', () => {
     const actions = [{ type: 'click', selectors: { testId: 'btn' }, url: 'http://localhost:3000', timestamp: 1000 }]
 
     const script = generatePlaywrightScript(actions, {
-      errorMessage: "Cannot read properties of undefined (reading 'user')",
+      errorMessage: "Cannot read properties of undefined (reading 'user')"
     })
 
     assert.ok(script.includes('Cannot read properties of undefined'))
@@ -800,7 +800,7 @@ describe('Playwright Script Generation', () => {
     const { generatePlaywrightScript } = await import('../../extension/inject.js')
 
     const actions = [
-      { type: 'click', selectors: { testId: 'btn' }, url: 'http://localhost:3000/page', timestamp: 1000 },
+      { type: 'click', selectors: { testId: 'btn' }, url: 'http://localhost:3000/page', timestamp: 1000 }
     ]
 
     const script = generatePlaywrightScript(actions, { baseUrl: 'http://localhost:4000' })
@@ -823,8 +823,8 @@ describe('Sensitive Data Handling', () => {
         value: '[redacted]',
         inputType: 'password',
         url: 'http://localhost:3000',
-        timestamp: 1000,
-      },
+        timestamp: 1000
+      }
     ]
 
     const result = generatePlaywrightScript(actions, {})
@@ -843,8 +843,8 @@ describe('Sensitive Data Handling', () => {
         value: '[redacted]',
         inputType: 'password',
         url: 'http://localhost:3000',
-        timestamp: 1000,
-      },
+        timestamp: 1000
+      }
     ]
 
     const result = generatePlaywrightScript(actions, {})
@@ -852,7 +852,7 @@ describe('Sensitive Data Handling', () => {
     // Should have a warning about redacted values in comments or metadata
     assert.ok(
       result.includes('redacted') || result.includes('user-provided') || result.includes('password'),
-      'Expected warning about sensitive field',
+      'Expected warning about sensitive field'
     )
   })
 })
@@ -874,7 +874,7 @@ describe('Script Generation Edge Cases', () => {
     const { generatePlaywrightScript } = await import('../../extension/inject.js')
 
     const actions = [
-      { type: 'click', selectors: { testId: 'only-btn' }, url: 'http://localhost:3000', timestamp: 1000 },
+      { type: 'click', selectors: { testId: 'only-btn' }, url: 'http://localhost:3000', timestamp: 1000 }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -903,7 +903,7 @@ describe('Script Generation Edge Cases', () => {
       { type: 'click', selectors: { testId: 'btn2' }, url: 'http://localhost:3000', timestamp: 2000 },
       { type: 'click', selectors: { testId: 'btn3' }, url: 'http://localhost:3000', timestamp: 3000 },
       { type: 'click', selectors: { testId: 'btn4' }, url: 'http://localhost:3000', timestamp: 4000 },
-      { type: 'click', selectors: { testId: 'btn5' }, url: 'http://localhost:3000', timestamp: 5000 },
+      { type: 'click', selectors: { testId: 'btn5' }, url: 'http://localhost:3000', timestamp: 5000 }
     ]
 
     const script = generatePlaywrightScript(actions, { lastNActions: 2 })
@@ -934,7 +934,7 @@ describe('Script Generation Edge Cases', () => {
       selectors: { testId: `field-${i}` },
       value: 'x'.repeat(200),
       url: 'http://localhost:3000',
-      timestamp: i * 100,
+      timestamp: i * 100
     }))
 
     const script = generatePlaywrightScript(actions, {})
@@ -959,11 +959,11 @@ describe('Selector Priority Order', () => {
           ariaLabel: 'Click me',
           text: 'Click',
           id: 'btn-1',
-          cssPath: 'button.btn',
+          cssPath: 'button.btn'
         },
         url: 'http://localhost:3000',
-        timestamp: 1000,
-      },
+        timestamp: 1000
+      }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -980,11 +980,11 @@ describe('Selector Priority Order', () => {
         selectors: {
           role: { role: 'button', name: 'Save' },
           ariaLabel: 'Save changes',
-          cssPath: 'button.save',
+          cssPath: 'button.save'
         },
         url: 'http://localhost:3000',
-        timestamp: 1000,
-      },
+        timestamp: 1000
+      }
     ]
 
     const script = generatePlaywrightScript(actions, {})
@@ -1000,12 +1000,12 @@ describe('Selector Priority Order', () => {
         type: 'input',
         selectors: {
           ariaLabel: 'Search',
-          cssPath: 'input.search',
+          cssPath: 'input.search'
         },
         value: 'query',
         url: 'http://localhost:3000',
-        timestamp: 1000,
-      },
+        timestamp: 1000
+      }
     ]
 
     const script = generatePlaywrightScript(actions, {})

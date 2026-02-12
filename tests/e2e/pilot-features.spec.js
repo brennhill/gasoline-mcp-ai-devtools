@@ -87,12 +87,7 @@ async function disableAiWebPilot(context, extensionId) {
 // =============================================================================
 
 test.describe('AI Web Pilot: Safety Gate', () => {
-  test('highlight returns error when toggle is disabled', async ({
-    page,
-    serverUrl,
-    context,
-    extensionId,
-  }) => {
+  test('highlight returns error when toggle is disabled', async ({ page, serverUrl, context, extensionId }) => {
     // Ensure toggle is disabled
     await disableAiWebPilot(context, extensionId)
 
@@ -101,18 +96,13 @@ test.describe('AI Web Pilot: Safety Gate', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'highlight',
-      selector: '#highlight-target',
+      selector: '#highlight-target'
     })
 
     expect(result.text).toContain('pilot_disabled')
   })
 
-  test('execute_js returns error when toggle is disabled', async ({
-    page,
-    serverUrl,
-    context,
-    extensionId,
-  }) => {
+  test('execute_js returns error when toggle is disabled', async ({ page, serverUrl, context, extensionId }) => {
     await disableAiWebPilot(context, extensionId)
 
     await page.goto(`file://${path.join(fixturesDir, 'pilot-test-page.html')}`)
@@ -120,7 +110,7 @@ test.describe('AI Web Pilot: Safety Gate', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'return 1 + 1',
+      script: 'return 1 + 1'
     })
 
     expect(result.text).toContain('pilot_disabled')
@@ -142,7 +132,7 @@ test.describe('AI Web Pilot: highlight', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'highlight',
-      selector: '#highlight-target',
+      selector: '#highlight-target'
     })
 
     // Check the highlighter overlay was created
@@ -159,7 +149,7 @@ test.describe('AI Web Pilot: highlight', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'highlight',
-      selector: '[data-testid="highlight-box"]',
+      selector: '[data-testid="highlight-box"]'
     })
 
     const highlighter = await page.$('#gasoline-highlighter')
@@ -172,7 +162,7 @@ test.describe('AI Web Pilot: highlight', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'highlight',
-      selector: '#non-existent-element',
+      selector: '#non-existent-element'
     })
 
     expect(result.text).toContain('element_not_found')
@@ -184,7 +174,7 @@ test.describe('AI Web Pilot: highlight', () => {
 
     await mcpToolCall(serverUrl, 'interact', {
       action: 'highlight',
-      selector: '#highlight-target',
+      selector: '#highlight-target'
     })
 
     const styles = await page.evaluate(() => {
@@ -195,7 +185,7 @@ test.describe('AI Web Pilot: highlight', () => {
         position: computed.position,
         border: computed.border,
         zIndex: computed.zIndex,
-        pointerEvents: computed.pointerEvents,
+        pointerEvents: computed.pointerEvents
       }
     })
 
@@ -213,7 +203,7 @@ test.describe('AI Web Pilot: highlight', () => {
     // First highlight
     await mcpToolCall(serverUrl, 'interact', {
       action: 'highlight',
-      selector: '#highlight-target',
+      selector: '#highlight-target'
     })
 
     const firstBounds = await page.evaluate(() => {
@@ -224,7 +214,7 @@ test.describe('AI Web Pilot: highlight', () => {
     // Second highlight on different element
     await mcpToolCall(serverUrl, 'interact', {
       action: 'highlight',
-      selector: '#nested-target',
+      selector: '#nested-target'
     })
 
     const secondBounds = await page.evaluate(() => {
@@ -245,7 +235,7 @@ test.describe('AI Web Pilot: highlight', () => {
     await mcpToolCall(serverUrl, 'interact', {
       action: 'highlight',
       selector: '#highlight-target',
-      duration_ms: 1500,
+      duration_ms: 1500
     })
 
     // Should exist immediately
@@ -277,14 +267,14 @@ test.describe('AI Web Pilot: state management', () => {
     // Save a snapshot
     const saveResult = await mcpToolCall(serverUrl, 'interact', {
       action: 'save_state',
-      snapshot_name: 'test-snapshot-1',
+      snapshot_name: 'test-snapshot-1'
     })
 
     expect(saveResult.data?.success || saveResult.text).toBeTruthy()
 
     // List snapshots
     const listResult = await mcpToolCall(serverUrl, 'interact', {
-      action: 'list_states',
+      action: 'list_states'
     })
 
     expect(listResult.data?.snapshots || listResult.text).toBeTruthy()
@@ -304,7 +294,7 @@ test.describe('AI Web Pilot: state management', () => {
     // Save snapshot
     await mcpToolCall(serverUrl, 'interact', {
       action: 'save_state',
-      snapshot_name: 'restore-test',
+      snapshot_name: 'restore-test'
     })
 
     // Modify state
@@ -317,7 +307,7 @@ test.describe('AI Web Pilot: state management', () => {
     // Restore snapshot
     const restoreResult = await mcpToolCall(serverUrl, 'interact', {
       action: 'load_state',
-      snapshot_name: 'restore-test',
+      snapshot_name: 'restore-test'
     })
 
     expect(restoreResult.data?.success || restoreResult.text).toBeTruthy()
@@ -330,20 +320,20 @@ test.describe('AI Web Pilot: state management', () => {
     // Save a snapshot
     await mcpToolCall(serverUrl, 'interact', {
       action: 'save_state',
-      snapshot_name: 'delete-test',
+      snapshot_name: 'delete-test'
     })
 
     // Delete it
     const deleteResult = await mcpToolCall(serverUrl, 'interact', {
       action: 'delete_state',
-      snapshot_name: 'delete-test',
+      snapshot_name: 'delete-test'
     })
 
     expect(deleteResult.data?.success || deleteResult.text).toBeTruthy()
 
     // Verify it's gone
     const listResult = await mcpToolCall(serverUrl, 'interact', {
-      action: 'list_states',
+      action: 'list_states'
     })
 
     if (listResult.data?.snapshots) {
@@ -368,7 +358,7 @@ test.describe('AI Web Pilot: execute_js', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'return 2 + 2',
+      script: 'return 2 + 2'
     })
 
     expect(result.data?.result).toBe(4)
@@ -382,7 +372,7 @@ test.describe('AI Web Pilot: execute_js', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'return document.getElementById("state-input").value',
+      script: 'return document.getElementById("state-input").value'
     })
 
     expect(result.data?.result).toBe('test-value-123')
@@ -397,7 +387,7 @@ test.describe('AI Web Pilot: execute_js', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'return window.__testValue',
+      script: 'return window.__testValue'
     })
 
     expect(result.data?.result).toContain('global-test-value-')
@@ -409,7 +399,7 @@ test.describe('AI Web Pilot: execute_js', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'return { name: "test", values: [1, 2, 3] }',
+      script: 'return { name: "test", values: [1, 2, 3] }'
     })
 
     expect(result.data?.result).toEqual({ name: 'test', values: [1, 2, 3] })
@@ -421,7 +411,7 @@ test.describe('AI Web Pilot: execute_js', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'return Array.from(document.querySelectorAll(".action-button")).map(el => el.id)',
+      script: 'return Array.from(document.querySelectorAll(".action-button")).map(el => el.id)'
     })
 
     expect(Array.isArray(result.data?.result)).toBe(true)
@@ -434,7 +424,7 @@ test.describe('AI Web Pilot: execute_js', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'return {{{invalid syntax', // triple braces intentional for invalid syntax test
+      script: 'return {{{invalid syntax' // triple braces intentional for invalid syntax test
     })
 
     expect(result.data?.error || result.text).toBeTruthy()
@@ -447,7 +437,7 @@ test.describe('AI Web Pilot: execute_js', () => {
     // Use the exposed test counter
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'window.__testCounter.set(42); return window.__testCounter.get()',
+      script: 'window.__testCounter.set(42); return window.__testCounter.get()'
     })
 
     expect(result.data?.result).toBe(42)
@@ -463,7 +453,7 @@ test.describe('AI Web Pilot: execute_js', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'console.log("test")', // No return
+      script: 'console.log("test")' // No return
     })
 
     // Should succeed without error
@@ -476,7 +466,7 @@ test.describe('AI Web Pilot: execute_js', () => {
 
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'return null',
+      script: 'return null'
     })
 
     expect(result.data?.result).toBeNull()
@@ -499,13 +489,13 @@ test.describe('AI Web Pilot: Integration', () => {
     // Highlight an element
     await mcpToolCall(serverUrl, 'interact', {
       action: 'highlight',
-      selector: '#state-input',
+      selector: '#state-input'
     })
 
     // Execute JS to read its value
     const result = await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'return document.getElementById("state-input").value',
+      script: 'return document.getElementById("state-input").value'
     })
 
     expect(result.data?.result).toBe('initial value')
@@ -518,13 +508,13 @@ test.describe('AI Web Pilot: Integration', () => {
     // Save initial state
     await mcpToolCall(serverUrl, 'interact', {
       action: 'save_state',
-      snapshot_name: 'workflow-test',
+      snapshot_name: 'workflow-test'
     })
 
     // Use execute_js to modify state
     await mcpToolCall(serverUrl, 'interact', {
       action: 'execute_js',
-      script: 'document.getElementById("state-input").value = "modified by AI"',
+      script: 'document.getElementById("state-input").value = "modified by AI"'
     })
 
     // Verify modification
@@ -534,7 +524,7 @@ test.describe('AI Web Pilot: Integration', () => {
     // Restore
     await mcpToolCall(serverUrl, 'interact', {
       action: 'load_state',
-      snapshot_name: 'workflow-test',
+      snapshot_name: 'workflow-test'
     })
   })
 })

@@ -71,7 +71,7 @@ DOM fingerprinting enables self-healing tests: when a test's selector breaks, th
 
 ## Examples
 
-**Example 1: Button with ARIA label**
+### Example 1: Button with ARIA label
 
 Request:
 ```json
@@ -121,7 +121,7 @@ Response:
 }
 ```
 
-**Example 2: Input with data-testid**
+### Example 2: Input with data-testid
 
 Request:
 ```json
@@ -171,7 +171,7 @@ Response:
 }
 ```
 
-**Example 3: Fuzzy match by text**
+### Example 3: Fuzzy match by text
 
 Request:
 ```json

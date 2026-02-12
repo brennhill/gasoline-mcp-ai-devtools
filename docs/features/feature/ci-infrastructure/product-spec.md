@@ -49,7 +49,7 @@ Chrome has DevTools Protocol (CDP), but Gasoline solves a different problem. Her
 | **Correlation** | Manual reading of logs | Automatic (failure → network call → code location) |
 | **Semantic queries** | "CDP.Network.getAll()" | `observe({what: 'network_bodies', url: '/api/checkout', status_min: 400})` |
 
-**Concrete Example:**
+### Concrete Example:
 
 With CDP alone:
 ```javascript
@@ -74,7 +74,7 @@ With Gasoline:
 // → Fast, precise, automated
 ```
 
-**Why not just use Chrome CDP via MCP?**
+### Why not just use Chrome CDP via MCP?
 
 Chrome DevTools Protocol *can* be exposed via MCP, but Gasoline solves the operational problems:
 
@@ -304,7 +304,7 @@ Result: Compliance team approves "AI-verified" fixes
 
 ### Example 1: Selector Timeout
 
-**Test Code:**
+#### Test Code:
 ```javascript
 test('checkout', async ({ page }) => {
   await page.goto('/checkout');
@@ -316,17 +316,17 @@ test('checkout', async ({ page }) => {
 // Timeout: selector not found in 5 seconds
 ```
 
-**Snapshot Shows:**
+#### Snapshot Shows:
 - DOM: Loading spinner visible, form inputs disabled
 - Network: POST /api/order pending (not completed)
 - Logs: "Processing payment..." (stuck)
 
-**AI Diagnosis:**
+#### AI Diagnosis:
 "API call to /api/order is slow (15+ seconds). Test timeout is 5 seconds. Either:
 1. Increase test timeout to 20 seconds, OR
 2. Mock slow endpoint to return immediately"
 
-**AI Fix:**
+#### AI Fix:
 ```javascript
 // Mock the slow endpoint
 await gasoline.configure({
@@ -345,34 +345,34 @@ await page.click('[data-testid="submit"]', { timeout: 20000 });
 
 ### Example 2: Schema Mismatch (Local ≠ CI)
 
-**Local Database (working):**
+#### Local Database (working):
 ```
 PostgreSQL 12:
   users table: (id, name, email, ...)
   No "user_metadata" column
 ```
 
-**CI Database (failing):**
+#### CI Database (failing):
 ```
 PostgreSQL 14:
   users table: (id, name, email, ...)
   user_info table: (user_id, metadata, ...)  ← NEW structure
 ```
 
-**Test Fails in CI:**
+#### Test Fails in CI:
 ```
 Error: "Column 'user_metadata' does not exist in users"
 ```
 
-**Snapshot Shows:**
+#### Snapshot Shows:
 - Error: Database error (column not found)
 - Network: SELECT query failed
 - Logs: "User query failed"
 
-**AI Diagnosis:**
+#### AI Diagnosis:
 "Schema mismatch detected. Test expects old PG12 schema, but CI has PG14. Column 'user_metadata' moved to separate 'user_info' table."
 
-**AI Fix:**
+#### AI Fix:
 ```javascript
 // Update mock to reflect PG14 schema
 const mockUser = {

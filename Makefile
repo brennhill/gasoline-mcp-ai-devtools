@@ -3,7 +3,7 @@
 VERSION := $(shell cat VERSION)
 BINARY_NAME := gasoline
 BUILD_DIR := dist
-LDFLAGS := -s -w -X main.version=$(VERSION)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/dev-console/dev-console/internal/export.version=$(VERSION)
 
 # Build targets
 PLATFORMS := \
@@ -13,16 +13,24 @@ PLATFORMS := \
 	linux-arm64 \
 	windows-amd64
 
-.PHONY: all clean build test test-js test-fast test-all test-race test-cover test-bench test-fuzz \
+.PHONY: all clean build test test-js test-fast test-all test-go-quick test-go-long test-go-sharded test-race test-cover test-cover-integration test-cover-all test-bench test-fuzz \
 	dev run checksums verify-zero-deps verify-imports verify-size check-file-length \
 	lint lint-go lint-js format format-fix typecheck check ci \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
-	security-check pre-commit verify-all npm-binaries \
+	security-check pre-commit verify-all npm-binaries validate-semver \
 	$(PLATFORMS)
 
-all: clean build
+GO_TEST_SHARDS ?= 4
+GO_TEST_COUNT ?= 1
+GO_TEST_PARALLEL ?= 16
+GO_TEST_P ?= 8
+GO_TEST_STATE_DIR ?= /tmp/gasoline-state-test
+GO_TEST_TOOLCHAIN ?= auto
+GO_TEST_CACHE_DIR ?= /tmp/go-build-cache
+
+all: validate-semver clean build
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -53,16 +61,28 @@ compile-ts:
 	@echo "✅ TypeScript compilation successful"
 
 test:
-	CGO_ENABLED=0 go test -v ./...
+	$(MAKE) test-go-long
 
 test-js:
 	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
 
 test-fast:
 	go vet ./cmd/dev-console/
+	$(MAKE) test-go-quick
 	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
 
 test-all: test test-js
+
+test-go-quick:
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -short -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) ./scripts/test-go-sharded.sh --package ./cmd/dev-console --short -- -parallel $(GO_TEST_PARALLEL)
+
+test-go-long:
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) ./scripts/test-go-sharded.sh --package ./cmd/dev-console -- -parallel $(GO_TEST_PARALLEL)
+
+test-go-sharded:
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) ./scripts/test-go-sharded.sh --package ./cmd/dev-console -- -parallel $(GO_TEST_PARALLEL)
 
 test-race:
 	go test -race -v ./...
@@ -71,6 +91,20 @@ test-cover:
 	go test -coverprofile=coverage.out ./...
 	@go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//' | \
 		awk '{if ($$1 < 89) {print "FAIL: Coverage " $$1 "% is below 89% threshold"; exit 1} else {print "OK: Coverage " $$1 "%"}}'
+
+test-cover-integration:
+	@mkdir -p coverage/integration
+	GOCOVERDIR=coverage/integration go test -cover -timeout 120s ./cmd/dev-console/ -count=1
+	@go tool covdata percent -i=coverage/integration
+
+test-cover-all:
+	@mkdir -p coverage/unit coverage/integration coverage/merged
+	GOCOVERDIR=coverage/unit go test -cover ./internal/...
+	GOCOVERDIR=coverage/integration go test -cover -timeout 120s ./cmd/dev-console/ -count=1
+	go tool covdata merge -i=coverage/unit,coverage/integration -o=coverage/merged
+	go tool covdata textfmt -i=coverage/merged -o=coverage/coverage.txt
+	@go tool cover -func=coverage/coverage.txt | grep total
+	@echo "HTML report: go tool cover -html=coverage/coverage.txt"
 
 test-bench:
 	go test -bench=. -benchmem -count=3 ./cmd/dev-console/...
@@ -164,7 +198,10 @@ lint: lint-go lint-js
 
 lint-go:
 	go vet ./cmd/dev-console/
-	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run ./cmd/dev-console/ || echo "golangci-lint not installed (optional)"
+	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run ./cmd/dev-console/... ./internal/... || echo "golangci-lint not installed (optional)"
+
+lint-hardening:
+	@./scripts/lint-hardening.sh
 
 lint-js:
 	npx eslint extension/ tests/extension/
@@ -275,7 +312,7 @@ verify-all: lint security-check test-cover test-js
 	@echo "All verification checks passed"
 
 # Quality gate for top 1% standards (comprehensive)
-quality-gate: check-file-length lint typecheck security-check test test-js validate-deps-versions
+quality-gate: check-file-length lint lint-hardening typecheck security-check test test-js validate-deps-versions
 	@echo ""
 	@echo "═══════════════════════════════════════════"
 	@echo "✅ QUALITY GATE PASSED - Top 1% Standards"
@@ -373,11 +410,11 @@ context-size:
 
 pypi-binaries: build
 	@echo "Copying binaries to PyPI platform packages..."
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 pypi/gasoline-mcp-darwin-arm64/gasoline_mcp_darwin_arm64/
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 pypi/gasoline-mcp-darwin-x64/gasoline_mcp_darwin_x64/
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/gasoline-mcp-linux-arm64/gasoline_mcp_linux_arm64/
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/gasoline-mcp-linux-x64/gasoline_mcp_linux_x64/
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-mcp-win32-x64/gasoline_mcp_win32_x64/
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 pypi/gasoline-mcp-darwin-arm64/gasoline_mcp_darwin_arm64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 pypi/gasoline-mcp-darwin-x64/gasoline_mcp_darwin_x64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/gasoline-mcp-linux-arm64/gasoline_mcp_linux_arm64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/gasoline-mcp-linux-x64/gasoline_mcp_linux_x64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-mcp-win32-x64/gasoline_mcp_win32_x64/gasoline.exe
 	@echo "Binaries copied successfully"
 
 pypi-build: pypi-binaries

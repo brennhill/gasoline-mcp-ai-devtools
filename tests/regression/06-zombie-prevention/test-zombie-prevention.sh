@@ -19,7 +19,7 @@ info() { echo -e "${YELLOW}[INFO]${NC} $1"; }
 # Cleanup function
 cleanup() {
   pkill -9 -f "gasoline.*$TEST_PORT" 2>/dev/null || true
-  rm -f ~/.gasoline-$TEST_PORT.pid
+  rm -f "$HOME/.gasoline-$TEST_PORT.pid"
 }
 
 # Ensure clean state
@@ -126,7 +126,7 @@ START_TIME=$(date +%s)
 ) | "$BINARY" --port "$TEST_PORT" >/tmp/mcp-spawn.log 2>&1 &
 MCP_PID=$!
 sleep 4
-kill $MCP_PID 2>/dev/null || true
+kill "$MCP_PID" 2>/dev/null || true
 END_TIME=$(date +%s)
 ELAPSED=$((END_TIME - START_TIME))
 

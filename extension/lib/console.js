@@ -21,7 +21,7 @@ export function installConsoleCapture() {
             postLog({
                 level: method,
                 type: 'console',
-                args: args.map((arg) => safeSerialize(arg)),
+                args: args.map((arg) => safeSerialize(arg))
             });
             // Call original
             // eslint-disable-next-line security/detect-object-injection -- method from known-safe local array of console methods

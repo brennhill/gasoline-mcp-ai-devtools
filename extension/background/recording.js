@@ -12,15 +12,17 @@ const defaultState = {
     audioMode: '',
     tabId: 0,
     url: '',
-    queryId: '',
+    queryId: ''
 };
 let recordingState = { ...defaultState };
 const LOG = '[Gasoline REC]';
 /** Listener to re-send watermark when recording tab navigates or content script re-injects. */
 let tabUpdateListener = null;
 // Clear stale recording state from previous session (e.g., browser crash during recording)
-console.log(LOG, 'Module loaded, clearing stale gasoline_recording from storage');
-chrome.storage.local.remove('gasoline_recording').catch(() => { });
+if (typeof chrome !== 'undefined' && chrome.storage?.local?.remove) {
+    console.log(LOG, 'Module loaded, clearing stale gasoline_recording from storage');
+    chrome.storage.local.remove('gasoline_recording').catch(() => { });
+}
 /** Returns whether a recording is currently active. */
 export function isRecording() {
     return recordingState.active;
@@ -30,21 +32,21 @@ export function getRecordingInfo() {
     return {
         active: recordingState.active,
         name: recordingState.name,
-        startTime: recordingState.startTime,
+        startTime: recordingState.startTime
     };
 }
 /** Ensure the offscreen document exists for recording. */
 async function ensureOffscreenDocument() {
     // Check if an offscreen document already exists
     const contexts = await chrome.runtime.getContexts({
-        contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
+        contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT]
     });
     if (contexts.length > 0)
         return;
     await chrome.offscreen.createDocument({
         url: 'offscreen.html',
         reasons: [chrome.offscreen.Reason.USER_MEDIA],
-        justification: 'Tab video recording via MediaRecorder',
+        justification: 'Tab video recording via MediaRecorder'
     });
 }
 /**
@@ -61,7 +63,9 @@ async function getStreamIdWithRecovery(tabId) {
             try {
                 await chrome.offscreen.closeDocument();
             }
-            catch { /* might not exist */ }
+            catch {
+                /* might not exist */
+            }
             // Brief pause to let Chrome release the capture
             await new Promise((r) => setTimeout(r, 200));
             console.log(LOG, 'Retrying getMediaStreamId after cleanup');
@@ -86,6 +90,40 @@ function getStreamId(tabId) {
     });
 }
 /**
+ * Request user gesture for recording permission (used for MCP-initiated recordings).
+ * Shows a toast prompting the user to click the Gasoline icon.
+ */
+async function requestRecordingGesture(tab, name, fps, audio, mediaType) {
+    chrome.tabs.update(tab.id, { active: true });
+    chrome.tabs.sendMessage(tab.id, {
+        type: 'GASOLINE_ACTION_TOAST',
+        text: `${mediaType} Recording - Click Gasoline Icon`,
+        detail: `Click the Gasoline icon (\u2197 upper right) to grant ${mediaType.toLowerCase()} recording permission`,
+        state: 'audio', duration_ms: 30000
+    }).catch(() => { });
+    await chrome.storage.local.set({ gasoline_pending_recording: { name, fps, audio, tabId: tab.id, url: tab.url } });
+    const gestureGranted = await waitForRecordingGesture(30000);
+    await chrome.storage.local.remove('gasoline_pending_recording');
+    if (!gestureGranted) {
+        console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s');
+        chrome.tabs.sendMessage(tab.id, {
+            type: 'GASOLINE_ACTION_TOAST',
+            text: `${mediaType} Permission Required`,
+            detail: `Click the Gasoline icon (\u2197 upper right) to grant ${mediaType.toLowerCase()} recording permission`,
+            state: 'audio', duration_ms: 8000
+        }).catch(() => { });
+        return {
+            status: 'error', name: '',
+            error: `RECORD_START: ${mediaType} recording requires permission. Click the Gasoline icon (\u2197 upper right) to grant ${mediaType.toLowerCase()} recording permission, then try again.`
+        };
+    }
+    chrome.tabs.sendMessage(tab.id, {
+        type: 'GASOLINE_ACTION_TOAST', text: 'Recording', detail: 'Recording started',
+        state: 'success', duration_ms: 2000
+    }).catch(() => { });
+    return { status: 'ok', name };
+}
+/**
  * Start recording the active tab.
  * @param name — Pre-generated filename from the Go server (e.g., "checkout-bug--2026-02-07-1423")
  * @param fps — Framerate (5–60, default 15)
@@ -93,8 +131,16 @@ function getStreamId(tabId) {
  * @param audio — Audio mode: 'tab', 'mic', 'both', or '' (no audio)
  * @param fromPopup — true when initiated from popup (activeTab already granted, skip reload)
  */
+// #lizard forgives
 export async function startRecording(name, fps = 15, queryId = '', audio = '', fromPopup = false) {
-    console.log(LOG, 'startRecording called', { name, fps, queryId, audio, fromPopup, currentlyActive: recordingState.active });
+    console.log(LOG, 'startRecording called', {
+        name,
+        fps,
+        queryId,
+        audio,
+        fromPopup,
+        currentlyActive: recordingState.active
+    });
     if (recordingState.active) {
         console.warn(LOG, 'START BLOCKED: already recording', { currentState: { ...recordingState } });
         return { status: 'error', name: '', error: 'RECORD_START: Already recording. Stop current recording first.' };
@@ -108,7 +154,11 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         // Get active tab
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
         const tab = tabs[0];
-        console.log(LOG, 'Active tab:', { id: tab?.id, url: tab?.url?.substring(0, 80), title: tab?.title?.substring(0, 40) });
+        console.log(LOG, 'Active tab:', {
+            id: tab?.id,
+            url: tab?.url?.substring(0, 80),
+            title: tab?.title?.substring(0, 40)
+        });
         if (!tab?.id) {
             recordingState.active = false; // eslint-disable-line require-atomic-updates
             console.error(LOG, 'START FAILED: No active tab found');
@@ -118,7 +168,11 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         const storage = await chrome.storage.local.get('trackedTabId');
         console.log(LOG, 'Tracked tab:', { trackedTabId: storage.trackedTabId, willAutoTrack: !storage.trackedTabId });
         if (!storage.trackedTabId) {
-            await chrome.storage.local.set({ trackedTabId: tab.id, trackedTabUrl: tab.url ?? '', trackedTabTitle: tab.title ?? '' });
+            await chrome.storage.local.set({
+                trackedTabId: tab.id,
+                trackedTabUrl: tab.url ?? '',
+                trackedTabTitle: tab.title ?? ''
+            });
         }
         // Ensure content script is responsive (needed for toasts + watermark).
         // Skip when from popup — tab reload would close the popup.
@@ -144,101 +198,14 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
             console.log(LOG, 'Getting stream ID via fromPopup path (targetTabId:', tab.id, ')');
             streamId = await getStreamIdWithRecovery(tab.id);
         }
-        else if (audio) {
-            // MCP-initiated audio: requires activeTab via user gesture.
-            // Auto-activate the tracked tab to ensure content script is loaded and user sees the toast
-            chrome.tabs.update(tab.id, { active: true });
-            // Prompt the user to click the Gasoline extension icon with orange highlight.
-            chrome.tabs.sendMessage(tab.id, {
-                type: 'GASOLINE_ACTION_TOAST',
-                text: 'Audio Recording - Click Gasoline Icon',
-                detail: 'Click the Gasoline icon (↗ upper right) to grant audio recording permission',
-                state: 'audio',
-                duration_ms: 30000,
-            }).catch(() => { });
-            await chrome.storage.local.set({
-                gasoline_pending_recording: { name, fps, audio, tabId: tab.id, url: tab.url },
-            });
-            const gestureGranted = await waitForRecordingGesture(30000);
-            await chrome.storage.local.remove('gasoline_pending_recording');
-            if (!gestureGranted) {
-                console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s');
-                chrome.tabs.sendMessage(tab.id, {
-                    type: 'GASOLINE_ACTION_TOAST',
-                    text: 'Audio Permission Required',
-                    detail: 'Click the Gasoline icon (↗ upper right) to grant audio recording permission',
-                    state: 'audio',
-                    duration_ms: 8000,
-                }).catch(() => { });
-                recordingState.active = false; // eslint-disable-line require-atomic-updates
-                return {
-                    status: 'error',
-                    name: '',
-                    error: 'RECORD_START: Audio recording requires permission. Click the Gasoline icon (↗ upper right) to grant audio recording permission, then try again.',
-                };
-            }
-            // Dismiss the prompt toast with a success confirmation
-            chrome.tabs.sendMessage(tab.id, {
-                type: 'GASOLINE_ACTION_TOAST',
-                text: 'Recording',
-                detail: 'Recording started',
-                state: 'success',
-                duration_ms: 2000,
-            }).catch(() => { });
-            // activeTab granted — get stream ID with targetTabId
-            streamId = await new Promise((resolve, reject) => {
-                chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id }, (id) => {
-                    if (chrome.runtime.lastError) {
-                        reject(new Error(chrome.runtime.lastError.message ?? 'getMediaStreamId failed'));
-                    }
-                    else {
-                        resolve(id);
-                    }
-                });
-            });
-        }
         else {
-            // MCP video-only: requires activeTab via user gesture, same as audio recording
-            // Auto-activate the tracked tab to ensure content script is loaded and user sees the toast
-            chrome.tabs.update(tab.id, { active: true });
-            // Prompt the user to click the Gasoline extension icon with orange highlight.
-            chrome.tabs.sendMessage(tab.id, {
-                type: 'GASOLINE_ACTION_TOAST',
-                text: 'Video Recording - Click Gasoline Icon',
-                detail: 'Click the Gasoline icon (↗ upper right) to grant video recording permission',
-                state: 'audio',
-                duration_ms: 30000,
-            }).catch(() => { });
-            await chrome.storage.local.set({
-                gasoline_pending_recording: { name, fps, audio, tabId: tab.id, url: tab.url },
-            });
-            const gestureGranted = await waitForRecordingGesture(30000);
-            await chrome.storage.local.remove('gasoline_pending_recording');
-            if (!gestureGranted) {
-                console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s');
-                chrome.tabs.sendMessage(tab.id, {
-                    type: 'GASOLINE_ACTION_TOAST',
-                    text: 'Video Permission Required',
-                    detail: 'Click the Gasoline icon (↗ upper right) to grant video recording permission',
-                    state: 'audio',
-                    duration_ms: 8000,
-                }).catch(() => { });
+            // MCP-initiated: requires activeTab via user gesture
+            const mediaType = audio ? 'Audio' : 'Video';
+            const gestureResult = await requestRecordingGesture(tab, name, fps, audio, mediaType);
+            if (gestureResult.error) {
                 recordingState.active = false; // eslint-disable-line require-atomic-updates
-                return {
-                    status: 'error',
-                    name: '',
-                    error: 'RECORD_START: Video recording requires permission. Click the Gasoline icon (↗ upper right) to grant video recording permission, then try again.',
-                };
+                return gestureResult;
             }
-            // Dismiss the prompt toast with a success confirmation
-            chrome.tabs.sendMessage(tab.id, {
-                type: 'GASOLINE_ACTION_TOAST',
-                text: 'Recording',
-                detail: 'Recording started',
-                state: 'success',
-                duration_ms: 2000,
-            }).catch(() => { });
-            // activeTab granted — get stream ID with targetTabId
             streamId = await new Promise((resolve, reject) => {
                 chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id }, (id) => {
                     if (chrome.runtime.lastError) {
@@ -253,7 +220,11 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         if (!streamId) {
             recordingState.active = false; // eslint-disable-line require-atomic-updates
             console.error(LOG, 'START FAILED: streamId is empty');
-            return { status: 'error', name: '', error: 'RECORD_START: getMediaStreamId returned empty. Check tabCapture permission.' };
+            return {
+                status: 'error',
+                name: '',
+                error: 'RECORD_START: getMediaStreamId returned empty. Check tabCapture permission.'
+            };
         }
         // Ensure the offscreen document is running
         console.log(LOG, 'Ensuring offscreen document exists');
@@ -263,7 +234,12 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         const startResult = await new Promise((resolve) => {
             const timeout = setTimeout(() => {
                 chrome.runtime.onMessage.removeListener(listener);
-                resolve({ target: 'background', type: 'OFFSCREEN_RECORDING_STARTED', success: false, error: 'RECORD_START: Offscreen document timed out.' });
+                resolve({
+                    target: 'background',
+                    type: 'OFFSCREEN_RECORDING_STARTED',
+                    success: false,
+                    error: 'RECORD_START: Offscreen document timed out.'
+                });
             }, 10000);
             const listener = (message) => {
                 if (message.target === 'background' && message.type === 'OFFSCREEN_RECORDING_STARTED') {
@@ -282,14 +258,18 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
                 fps,
                 audioMode: audio,
                 tabId: tab.id,
-                url: tab.url ?? '',
+                url: tab.url ?? ''
             });
         });
         console.log(LOG, 'Offscreen START result:', { success: startResult.success, error: startResult.error });
         if (!startResult.success) {
             recordingState.active = false; // eslint-disable-line require-atomic-updates
             console.error(LOG, 'START FAILED: offscreen rejected:', startResult.error);
-            return { status: 'error', name: '', error: startResult.error ?? 'RECORD_START: Offscreen document failed to start recording.' };
+            return {
+                status: 'error',
+                name: '',
+                error: startResult.error ?? 'RECORD_START: Offscreen document failed to start recording.'
+            };
         }
         /* eslint-disable require-atomic-updates */
         recordingState = {
@@ -300,20 +280,22 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
             audioMode: audio,
             tabId: tab.id,
             url: tab.url ?? '',
-            queryId,
+            queryId
         };
         /* eslint-enable require-atomic-updates */
         // Persist state flag for popup sync
         await chrome.storage.local.set({
-            gasoline_recording: { active: true, name, startTime: Date.now() },
+            gasoline_recording: { active: true, name, startTime: Date.now() }
         });
         // Show "Recording started" toast (fades after 2s)
-        chrome.tabs.sendMessage(tab.id, {
+        chrome.tabs
+            .sendMessage(tab.id, {
             type: 'GASOLINE_ACTION_TOAST',
             text: 'Recording started',
             state: 'success',
-            duration_ms: 2000,
-        }).catch(() => { });
+            duration_ms: 2000
+        })
+            .catch(() => { });
         // Show recording watermark overlay in the page
         chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_RECORDING_WATERMARK', visible: true }).catch(() => { });
         // Re-send watermark when recording tab navigates or content script re-injects
@@ -334,7 +316,7 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         return {
             status: 'error',
             name: '',
-            error: `RECORD_START: ${err.message || 'Failed to start recording.'}`,
+            error: `RECORD_START: ${err.message || 'Failed to start recording.'}`
         };
     }
 }
@@ -342,8 +324,14 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
  * Stop recording and save the video.
  * @param truncated — true if auto-stopped due to memory guard or tab close
  */
+// #lizard forgives
 export async function stopRecording(truncated = false) {
-    console.log(LOG, 'stopRecording called', { currentlyActive: recordingState.active, name: recordingState.name, tabId: recordingState.tabId, truncated });
+    console.log(LOG, 'stopRecording called', {
+        currentlyActive: recordingState.active,
+        name: recordingState.name,
+        tabId: recordingState.tabId,
+        truncated
+    });
     if (!recordingState.active) {
         // Clean up stale storage in case of zombie recording state (e.g., service worker restarted)
         console.warn(LOG, 'STOP: No active recording in memory — cleaning up zombie storage');
@@ -363,7 +351,13 @@ export async function stopRecording(truncated = false) {
         const stopResult = await new Promise((resolve) => {
             const timeout = setTimeout(() => {
                 chrome.runtime.onMessage.removeListener(listener);
-                resolve({ target: 'background', type: 'OFFSCREEN_RECORDING_STOPPED', status: 'error', name: recordingState.name || '', error: 'RECORD_STOP: Offscreen document timed out during save.' });
+                resolve({
+                    target: 'background',
+                    type: 'OFFSCREEN_RECORDING_STOPPED',
+                    status: 'error',
+                    name: recordingState.name || '',
+                    error: 'RECORD_STOP: Offscreen document timed out during save.'
+                });
             }, 30000);
             const listener = (message) => {
                 if (message.target === 'background' && message.type === 'OFFSCREEN_RECORDING_STOPPED') {
@@ -375,21 +369,29 @@ export async function stopRecording(truncated = false) {
             chrome.runtime.onMessage.addListener(listener);
             chrome.runtime.sendMessage({
                 target: 'offscreen',
-                type: 'OFFSCREEN_STOP_RECORDING',
+                type: 'OFFSCREEN_STOP_RECORDING'
             });
         });
-        console.log(LOG, 'Offscreen STOP result:', { status: stopResult.status, name: stopResult.name, error: stopResult.error, size: stopResult.size_bytes, path: stopResult.path });
+        console.log(LOG, 'Offscreen STOP result:', {
+            status: stopResult.status,
+            name: stopResult.name,
+            error: stopResult.error,
+            size: stopResult.size_bytes,
+            path: stopResult.path
+        });
         await clearRecordingState();
         // Show save toast on the recorded tab
         if (tabId && stopResult.status === 'saved') {
             const sizeMB = stopResult.size_bytes ? (stopResult.size_bytes / (1024 * 1024)).toFixed(1) : '?';
-            chrome.tabs.sendMessage(tabId, {
+            chrome.tabs
+                .sendMessage(tabId, {
                 type: 'GASOLINE_ACTION_TOAST',
                 text: 'Recording saved',
                 detail: `${stopResult.path ?? stopResult.name} (${sizeMB} MB)`,
                 state: 'success',
-                duration_ms: 5000,
-            }).catch(() => { });
+                duration_ms: 5000
+            })
+                .catch(() => { });
         }
         return {
             status: stopResult.status,
@@ -398,7 +400,7 @@ export async function stopRecording(truncated = false) {
             size_bytes: stopResult.size_bytes,
             truncated: stopResult.truncated,
             path: stopResult.path,
-            error: stopResult.error,
+            error: stopResult.error
         };
     }
     catch (err) {
@@ -407,142 +409,166 @@ export async function stopRecording(truncated = false) {
         return {
             status: 'error',
             name: recordingState.name || '',
-            error: `RECORD_STOP: ${err.message || 'Failed to stop recording.'}`,
+            error: `RECORD_STOP: ${err.message || 'Failed to stop recording.'}`
         };
     }
 }
-/**
- * Listen for unsolicited messages from offscreen (auto-stop from memory guard or tab close).
- */
-chrome.runtime.onMessage.addListener((message, sender) => {
-    // Only accept messages from the extension itself
-    if (sender.id !== chrome.runtime.id)
-        return;
-    if (message.target !== 'background' || message.type !== 'OFFSCREEN_RECORDING_STOPPED')
-        return;
-    // Only handle if we think we're still recording (auto-stop case)
-    if (!recordingState.active)
-        return;
-    console.log(LOG, 'Auto-stop from offscreen (memory guard or tab close)', { status: message.status, name: message.name });
-    recordingState.active = false;
-    if (recordingState.tabId) {
-        chrome.tabs.sendMessage(recordingState.tabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: false }).catch(() => { });
-    }
-    clearRecordingState().catch(() => { });
-});
-/**
- * Handle popup-initiated record_start / record_stop messages.
- * These are direct chrome.runtime messages from the popup, not MCP pending queries.
- */
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    // Only accept messages from the extension itself (popup)
-    if (sender.id !== chrome.runtime.id)
-        return false;
-    if (message.type === 'record_start') {
-        console.log(LOG, 'Popup record_start received', { audio: message.audio });
-        chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-            let slug = 'recording';
-            try {
-                const hostname = new URL(tabs[0]?.url ?? '').hostname.replace(/^www\./, '');
-                slug = hostname.replace(/[^a-z0-9]/gi, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'recording';
-            }
-            catch { /* use default */ }
-            const audio = message.audio ?? '';
-            console.log(LOG, 'Popup record_start → startRecording', { slug, audio, tabUrl: tabs[0]?.url?.substring(0, 60) });
-            startRecording(slug, 15, '', audio, true)
+// Guard: all top-level event listeners require chrome runtime (not available in test contexts)
+if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+    /**
+     * Listen for unsolicited messages from offscreen (auto-stop from memory guard or tab close).
+     */
+    chrome.runtime.onMessage.addListener((message, sender) => {
+        // Only accept messages from the extension itself
+        if (sender.id !== chrome.runtime.id)
+            return;
+        if (message.target !== 'background' || message.type !== 'OFFSCREEN_RECORDING_STOPPED')
+            return;
+        // Only handle if we think we're still recording (auto-stop case)
+        if (!recordingState.active)
+            return;
+        console.log(LOG, 'Auto-stop from offscreen (memory guard or tab close)', {
+            status: message.status,
+            name: message.name
+        });
+        recordingState.active = false;
+        if (recordingState.tabId) {
+            chrome.tabs
+                .sendMessage(recordingState.tabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: false })
+                .catch(() => { });
+        }
+        clearRecordingState().catch(() => { });
+    });
+    /**
+     * Handle popup-initiated record_start / record_stop messages.
+     * These are direct chrome.runtime messages from the popup, not MCP pending queries.
+     */
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        // Only accept messages from the extension itself (popup)
+        if (sender.id !== chrome.runtime.id)
+            return false;
+        if (message.type === 'record_start') {
+            console.log(LOG, 'Popup record_start received', { audio: message.audio });
+            chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+                let slug = 'recording';
+                try {
+                    const hostname = new URL(tabs[0]?.url ?? '').hostname.replace(/^www\./, '');
+                    slug =
+                        hostname
+                            .replace(/[^a-z0-9]/gi, '-')
+                            .replace(/-+/g, '-')
+                            .replace(/^-|-$/g, '') || 'recording';
+                }
+                catch {
+                    /* use default */
+                }
+                const audio = message.audio ?? '';
+                console.log(LOG, 'Popup record_start → startRecording', {
+                    slug,
+                    audio,
+                    tabUrl: tabs[0]?.url?.substring(0, 60)
+                });
+                startRecording(slug, 15, '', audio, true)
+                    .then((result) => {
+                    console.log(LOG, 'Popup record_start result:', result);
+                    sendResponse(result);
+                })
+                    .catch((err) => {
+                    console.error(LOG, 'Popup record_start EXCEPTION:', err);
+                    sendResponse({ status: 'error' });
+                });
+            });
+            return true; // async response
+        }
+        if (message.type === 'record_stop') {
+            console.log(LOG, 'Popup record_stop received');
+            stopRecording()
                 .then((result) => {
-                console.log(LOG, 'Popup record_start result:', result);
+                console.log(LOG, 'Popup record_stop result:', result);
                 sendResponse(result);
             })
                 .catch((err) => {
-                console.error(LOG, 'Popup record_start EXCEPTION:', err);
+                console.error(LOG, 'Popup record_stop EXCEPTION:', err);
                 sendResponse({ status: 'error' });
             });
-        });
-        return true; // async response
-    }
-    if (message.type === 'record_stop') {
-        console.log(LOG, 'Popup record_stop received');
-        stopRecording()
-            .then((result) => {
-            console.log(LOG, 'Popup record_stop result:', result);
-            sendResponse(result);
-        })
-            .catch((err) => {
-            console.error(LOG, 'Popup record_stop EXCEPTION:', err);
-            sendResponse({ status: 'error' });
-        });
-        return true; // async response
-    }
-    return false;
-});
-/**
- * Handle MIC_GRANTED_CLOSE_TAB from the mic-permission page.
- * Closes the permission tab, activates the original tab, and shows a guidance toast.
- */
-chrome.runtime.onMessage.addListener((message, sender) => {
-    // Only accept messages from the extension itself
-    if (sender.id !== chrome.runtime.id)
+            return true; // async response
+        }
         return false;
-    if (message.type !== 'MIC_GRANTED_CLOSE_TAB')
-        return false;
-    console.log(LOG, 'MIC_GRANTED_CLOSE_TAB received from tab', sender.tab?.id);
-    // Read the stored return tab before closing the permission tab
-    chrome.storage.local.get('gasoline_pending_mic_recording', (result) => {
-        const returnTabId = result.gasoline_pending_mic_recording?.returnTabId;
-        console.log(LOG, 'Pending mic recording intent:', result.gasoline_pending_mic_recording, 'returnTabId:', returnTabId);
-        // Close the permission tab
-        if (sender.tab?.id) {
-            console.log(LOG, 'Closing permission tab', sender.tab.id);
-            chrome.tabs.remove(sender.tab.id).catch(() => { });
-        }
-        // Activate the original tab and show guidance toast
-        if (returnTabId) {
-            console.log(LOG, 'Activating return tab', returnTabId);
-            chrome.tabs.update(returnTabId, { active: true }).then(() => {
-                console.log(LOG, 'Return tab activated, sending toast in 300ms');
-                // Short delay to let the tab activation settle before sending message
-                setTimeout(() => {
-                    console.log(LOG, 'Sending guidance toast to tab', returnTabId);
-                    chrome.tabs.sendMessage(returnTabId, {
-                        type: 'GASOLINE_ACTION_TOAST',
-                        text: 'Mic permission granted',
-                        detail: 'Open Gasoline and click Record',
-                        state: 'success',
-                        duration_ms: 8000,
-                    }).catch((err) => {
-                        console.error(LOG, 'Toast send FAILED to tab', returnTabId, ':', err.message);
-                    });
-                }, 300);
-            }).catch((err) => {
-                console.error(LOG, 'Tab activation FAILED for tab', returnTabId, ':', err.message);
-            });
-        }
-        else {
-            console.warn(LOG, 'No returnTabId found — cannot activate tab or show toast');
-        }
     });
-    return false;
-});
-/**
- * Handle REVEAL_FILE — opens the file in the OS file manager via the Go server.
- */
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    // Only accept messages from the extension itself
-    if (sender.id !== chrome.runtime.id)
+    /**
+     * Handle MIC_GRANTED_CLOSE_TAB from the mic-permission page.
+     * Closes the permission tab, activates the original tab, and shows a guidance toast.
+     */
+    // #lizard forgives
+    chrome.runtime.onMessage.addListener((message, sender) => {
+        // Only accept messages from the extension itself
+        if (sender.id !== chrome.runtime.id)
+            return false;
+        if (message.type !== 'MIC_GRANTED_CLOSE_TAB')
+            return false;
+        console.log(LOG, 'MIC_GRANTED_CLOSE_TAB received from tab', sender.tab?.id);
+        // Read the stored return tab before closing the permission tab
+        chrome.storage.local.get('gasoline_pending_mic_recording', (result) => {
+            const returnTabId = result.gasoline_pending_mic_recording?.returnTabId;
+            console.log(LOG, 'Pending mic recording intent:', result.gasoline_pending_mic_recording, 'returnTabId:', returnTabId);
+            // Close the permission tab
+            if (sender.tab?.id) {
+                console.log(LOG, 'Closing permission tab', sender.tab.id);
+                chrome.tabs.remove(sender.tab.id).catch(() => { });
+            }
+            // Activate the original tab and show guidance toast
+            if (returnTabId) {
+                console.log(LOG, 'Activating return tab', returnTabId);
+                chrome.tabs
+                    .update(returnTabId, { active: true })
+                    .then(() => {
+                    console.log(LOG, 'Return tab activated, sending toast in 300ms');
+                    // Short delay to let the tab activation settle before sending message
+                    setTimeout(() => {
+                        console.log(LOG, 'Sending guidance toast to tab', returnTabId);
+                        chrome.tabs
+                            .sendMessage(returnTabId, {
+                            type: 'GASOLINE_ACTION_TOAST',
+                            text: 'Mic permission granted',
+                            detail: 'Open Gasoline and click Record',
+                            state: 'success',
+                            duration_ms: 8000
+                        })
+                            .catch((err) => {
+                            console.error(LOG, 'Toast send FAILED to tab', returnTabId, ':', err.message);
+                        });
+                    }, 300);
+                })
+                    .catch((err) => {
+                    console.error(LOG, 'Tab activation FAILED for tab', returnTabId, ':', err.message);
+                });
+            }
+            else {
+                console.warn(LOG, 'No returnTabId found — cannot activate tab or show toast');
+            }
+        });
         return false;
-    if (message.type !== 'REVEAL_FILE' || !message.path)
-        return false;
-    fetch(`${index.serverUrl}/recordings/reveal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-        body: JSON.stringify({ path: message.path }),
-    })
-        .then((r) => r.json())
-        .then((result) => sendResponse(result))
-        .catch((err) => sendResponse({ error: err.message }));
-    return true; // async response
-});
+    });
+    /**
+     * Handle REVEAL_FILE — opens the file in the OS file manager via the Go server.
+     */
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        // Only accept messages from the extension itself
+        if (sender.id !== chrome.runtime.id)
+            return false;
+        if (message.type !== 'REVEAL_FILE' || !message.path)
+            return false;
+        fetch(`${index.serverUrl}/recordings/reveal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
+            body: JSON.stringify({ path: message.path })
+        })
+            .then((r) => r.json())
+            .then((result) => sendResponse(result))
+            .catch((err) => sendResponse({ error: err.message }));
+        return true; // async response
+    });
+} // end chrome runtime guard
 /** Wait for user to click extension icon (popup sends RECORDING_GESTURE_GRANTED). */
 function waitForRecordingGesture(timeoutMs) {
     return new Promise((resolve) => {

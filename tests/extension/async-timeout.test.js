@@ -12,8 +12,9 @@
  * immediately, triggering cleanup while the operation is still running.
  */
 
-import { test, describe, mock, beforeEach, afterEach, after } from 'node:test'
+import { test, describe, mock, beforeEach, after } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 const createMockChrome = () => ({
@@ -21,11 +22,11 @@ const createMockChrome = () => ({
     onMessage: { addListener: mock.fn() },
     onInstalled: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION })
   },
   action: {
     setBadgeText: mock.fn(),
-    setBadgeBackgroundColor: mock.fn(),
+    setBadgeBackgroundColor: mock.fn()
   },
   tabs: {
     query: mock.fn((query, callback) => {
@@ -34,18 +35,14 @@ const createMockChrome = () => ({
       }
       return Promise.resolve([{ id: 1, windowId: 1, url: 'http://localhost:3000' }])
     }),
-    sendMessage: mock.fn((_tabId, _message) =>
-      Promise.resolve({ success: true, result: 'test-result' })
-    ),
-    get: mock.fn((tabId) =>
-      Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })
-    ),
+    sendMessage: mock.fn((_tabId, _message) => Promise.resolve({ success: true, result: 'test-result' })),
+    get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
     goBack: mock.fn(() => Promise.resolve()),
     goForward: mock.fn(() => Promise.resolve()),
     reload: mock.fn(() => Promise.resolve()),
     update: mock.fn(() => Promise.resolve()),
     create: mock.fn(() => Promise.resolve({ id: 2 })),
-    onRemoved: { addListener: mock.fn() },
+    onRemoved: { addListener: mock.fn() }
   },
   storage: {
     local: {
@@ -53,7 +50,7 @@ const createMockChrome = () => ({
         const data = {
           serverUrl: 'http://localhost:7890',
           aiWebPilotEnabled: true,
-          trackedTabId: 1,
+          trackedTabId: 1
         }
         if (callback) callback(data)
         return Promise.resolve(data)
@@ -65,7 +62,7 @@ const createMockChrome = () => ({
       remove: mock.fn((keys, callback) => {
         if (callback) callback()
         return Promise.resolve()
-      }),
+      })
     },
     sync: {
       get: mock.fn((keys, callback) => {
@@ -75,7 +72,7 @@ const createMockChrome = () => ({
       set: mock.fn((data, callback) => {
         if (callback) callback()
         return Promise.resolve()
-      }),
+      })
     },
     session: {
       get: mock.fn((keys, callback) => {
@@ -85,14 +82,14 @@ const createMockChrome = () => ({
       set: mock.fn((data, callback) => {
         if (callback) callback()
         return Promise.resolve()
-      }),
+      })
     },
-    onChanged: { addListener: mock.fn() },
+    onChanged: { addListener: mock.fn() }
   },
   alarms: {
     create: mock.fn(),
-    onAlarm: { addListener: mock.fn() },
-  },
+    onAlarm: { addListener: mock.fn() }
+  }
 })
 
 // Set global chrome mock
@@ -124,8 +121,7 @@ after(() => {
 // Suppress unhandledRejection errors from background module initialization
 process.on('unhandledRejection', (reason, _promise) => {
   // Suppress initialization errors from background.js module loading
-  if (reason?.message?.includes('_connectionCheckRunning') ||
-      reason?.message?.includes('Cannot access')) {
+  if (reason?.message?.includes('_connectionCheckRunning') || reason?.message?.includes('Cannot access')) {
     // Expected during test - background.js tries to access globals before init
     return
   }
@@ -139,154 +135,100 @@ process.on('unhandledRejection', (reason, _promise) => {
 
 describe('Bug #5: Async Execute Command Await', () => {
   let bgModule
-  let fetchCalls = []
 
   beforeEach(async () => {
     mock.reset()
-    fetchCalls = []
     globalThis.chrome = createMockChrome()
-
-    // Mock fetch to track all calls
-    globalThis.fetch = mock.fn((url, opts) => {
-      fetchCalls.push({ url, opts, time: Date.now() })
-      return Promise.resolve({
+    globalThis.fetch = mock.fn(() =>
+      Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ queries: [] }),
+        json: () => Promise.resolve({ queries: [] })
       })
-    })
+    )
 
     bgModule = await import('../../extension/background.js')
-  })
-
-  afterEach(() => {
-    fetchCalls = []
+    bgModule.markInitComplete()
+    bgModule._resetPilotCacheForTesting(true)
   })
 
   test('handlePendingQuery should await handleAsyncExecuteCommand for correlation_id queries', async () => {
-    // This test verifies that when a query with correlation_id is processed,
-    // the handlePendingQuery function properly awaits the async handler.
-    // Without await, the function returns immediately, causing:
-    // 1. Premature cleanup of _processingQueries
-    // 2. The same query being picked up again on the next poll
-    // 3. Duplicate processing and eventual timeouts
-
     const query = {
       id: 'query-123',
       type: 'execute',
       correlation_id: 'corr-456',
-      params: JSON.stringify({ script: 'return 1+1' }),
+      params: JSON.stringify({ script: 'return 1+1' })
     }
 
-    // Track when handlePendingQuery completes vs when async result is posted
-    let _handlePendingQueryCompleted = false
-    let _asyncResultPosted = false
-
-    // Override fetch to detect when async result is posted
-    globalThis.fetch = mock.fn((url, _opts) => {
-      if (url.includes('/execute-result')) {
-        _asyncResultPosted = true
+    let resolveExecute
+    globalThis.chrome.tabs.sendMessage = mock.fn((_tabId, message) => {
+      if (message?.type === 'GASOLINE_EXECUTE_QUERY') {
+        return new Promise((resolve) => {
+          resolveExecute = resolve
+        })
       }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ queries: [] }),
-      })
+      return Promise.resolve({ success: true, result: 'ok' })
     })
 
-    // Call handlePendingQuery
-    const promise = bgModule.handlePendingQuery(query, 'http://localhost:7890')
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+    let handlePendingQueryCompleted = false
+    const promise = bgModule.handlePendingQuery(query, mockSyncClient).then(() => {
+      handlePendingQueryCompleted = true
+    })
 
-    // If properly awaited, the promise should not resolve until async handler completes
-    // We wait for the promise to resolve
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    assert.strictEqual(handlePendingQueryCompleted, false)
+    assert.strictEqual(mockSyncClient.queueCommandResult.mock.calls.length, 0)
+
+    resolveExecute({ success: true, result: 2 })
     await promise
-    _handlePendingQueryCompleted = true
 
-    // Wait a bit for any async operations
-    await new Promise(resolve => setTimeout(resolve, 100))
-
-    // The key assertion: if handleAsyncExecuteCommand is awaited properly,
-    // handlePendingQuery should complete AFTER the async result is posted
-    // (or at least not return immediately before the operation starts)
-
-    // Note: This test documents the expected behavior.
-    // Without the await fix, _handlePendingQueryCompleted would be true
-    // before any meaningful work starts.
+    assert.strictEqual(mockSyncClient.queueCommandResult.mock.calls.length, 1)
+    const queuedResult = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queuedResult.correlation_id, query.correlation_id)
+    assert.strictEqual(queuedResult.status, 'complete')
+    assert.strictEqual(queuedResult.result.success, true)
   })
 
-  test('consecutive execute queries should not cause duplicate processing', async () => {
-    // Simulate multiple consecutive queries with correlation_id
-    // Each should be processed exactly once
-
-    const processedQueries = new Set()
-    let duplicateDetected = false
-
-    // Track which queries are processed
-    globalThis.fetch = mock.fn((url, opts) => {
-      if (url.includes('/execute-result') && opts?.body) {
-        const body = JSON.parse(opts.body)
-        if (processedQueries.has(body.correlation_id)) {
-          duplicateDetected = true
-        }
-        processedQueries.add(body.correlation_id)
-      }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ queries: [] }),
-      })
-    })
-
-    // Process 10 consecutive queries
+  test('consecutive execute queries should queue one result per correlation_id', async () => {
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+    const operationCount = 6
     const queries = []
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < operationCount; i++) {
       queries.push({
         id: `query-${i}`,
         type: 'execute',
         correlation_id: `corr-${i}`,
-        params: JSON.stringify({ script: `return ${i}` }),
+        params: JSON.stringify({ script: `return ${i}` })
       })
     }
 
-    // Process all queries sequentially
     for (const query of queries) {
-      await bgModule.handlePendingQuery(query, 'http://localhost:7890')
+      await bgModule.handlePendingQuery(query, mockSyncClient)
     }
 
-    // Wait for async operations to complete
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    // No duplicates should be detected
-    assert.strictEqual(
-      duplicateDetected,
-      false,
-      'Duplicate query processing detected - missing await causes queries to be processed multiple times'
+    assert.strictEqual(mockSyncClient.queueCommandResult.mock.calls.length, operationCount)
+    const seenCorrelationIds = new Set(
+      mockSyncClient.queueCommandResult.mock.calls.map((call) => call.arguments[0].correlation_id)
     )
+    assert.strictEqual(seenCorrelationIds.size, operationCount)
   })
 
   test('processing queries set should be cleaned up after async completion', async () => {
-    // Verify that _processingQueries is properly cleaned up AFTER async operation completes
-    // Not immediately when handlePendingQuery returns
-
     const query = {
       id: 'cleanup-test-123',
       type: 'execute',
       correlation_id: 'cleanup-corr-456',
-      params: JSON.stringify({ script: 'return "cleanup test"' }),
+      params: JSON.stringify({ script: 'return "cleanup test"' })
     }
+    const mockSyncClient = { queueCommandResult: mock.fn() }
 
-    // Get initial state
     const initialState = bgModule.getProcessingQueriesState()
     const initialSize = initialState.size
 
-    // Process the query
-    await bgModule.handlePendingQuery(query, 'http://localhost:7890')
+    await bgModule.handlePendingQuery(query, mockSyncClient)
 
-    // Wait for async operations
-    await new Promise(resolve => setTimeout(resolve, 200))
-
-    // Query should be cleaned up (not still in the set)
     const finalState = bgModule.getProcessingQueriesState()
-
-    // The size should not grow unboundedly
-    // With proper await, cleanup happens after completion
+    assert.strictEqual(finalState.has(query.id), false)
     assert.ok(
       finalState.size <= initialSize + 1,
       `Processing queries set grew unexpectedly: ${finalState.size} > ${initialSize + 1}`
@@ -307,10 +249,13 @@ describe('Bug #5: Async Browser Action Await (regression test)', () => {
     globalThis.fetch = mock.fn(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ queries: [] }),
+        json: () => Promise.resolve({ queries: [] })
       })
     )
     bgModule = await import('../../extension/background.js')
+    bgModule.markInitComplete()
+    // Enable pilot cache so browser_action paths don't short-circuit
+    bgModule._resetPilotCacheForTesting(true)
   })
 
   test('handlePendingQuery should await handleAsyncBrowserAction for browser_action queries', async () => {
@@ -319,29 +264,17 @@ describe('Bug #5: Async Browser Action Await (regression test)', () => {
       id: 'browser-action-123',
       type: 'browser_action',
       correlation_id: 'browser-corr-456',
-      params: JSON.stringify({ action: 'refresh' }),
+      params: JSON.stringify({ action: 'back' })
     }
 
-    let asyncResultPosted = false
+    // Use a mock sync client (code uses syncClient.queueCommandResult, not fetch)
+    const mockSyncClient = { queueCommandResult: mock.fn() }
 
-    globalThis.fetch = mock.fn((url) => {
-      if (url.includes('/execute-result')) {
-        asyncResultPosted = true
-      }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ queries: [] }),
-      })
-    })
+    await bgModule.handlePendingQuery(query, mockSyncClient)
 
-    await bgModule.handlePendingQuery(query, 'http://localhost:7890')
-
-    // Wait for async operations
-    await new Promise(resolve => setTimeout(resolve, 200))
-
-    // Result should have been posted
+    // Result should have been delivered via sync client
     assert.strictEqual(
-      asyncResultPosted,
+      mockSyncClient.queueCommandResult.mock.calls.length > 0,
       true,
       'Async browser action result was not posted - await may be missing'
     )
@@ -361,28 +294,23 @@ describe('Bug #5: Extension Stability Under Load', () => {
     globalThis.fetch = mock.fn(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ queries: [] }),
+        json: () => Promise.resolve({ queries: [] })
       })
     )
     bgModule = await import('../../extension/background.js')
+    bgModule.markInitComplete()
+    // Enable pilot cache so execute/browser_action paths don't short-circuit
+    bgModule._resetPilotCacheForTesting(true)
   })
 
   test('should handle 5+ consecutive operations without timeout', async () => {
     // The bug manifested as timeouts after 5-6 operations
     // This test verifies the fix allows 5+ consecutive operations (proving the bug is fixed)
 
-    let successCount = 0
     let errorCount = 0
 
-    globalThis.fetch = mock.fn((url) => {
-      if (url.includes('/execute-result')) {
-        successCount++
-      }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ queries: [] }),
-      })
-    })
+    // Use a mock sync client (code uses syncClient.queueCommandResult, not fetch)
+    const mockSyncClient = { queueCommandResult: mock.fn() }
 
     // Run 5 consecutive operations (bug manifested after 5-6, this proves the fix works)
     const operationCount = 5
@@ -391,30 +319,21 @@ describe('Bug #5: Extension Stability Under Load', () => {
         id: `load-test-${i}`,
         type: i % 2 === 0 ? 'execute' : 'browser_action',
         correlation_id: `load-corr-${i}`,
-        params: JSON.stringify(
-          i % 2 === 0 ? { script: `return ${i}` } : { action: 'refresh' }
-        ),
+        params: JSON.stringify(i % 2 === 0 ? { script: `return ${i}` } : { action: 'back' })
       }
 
       try {
-        await bgModule.handlePendingQuery(query, 'http://localhost:7890')
+        await bgModule.handlePendingQuery(query, mockSyncClient)
       } catch {
         errorCount++
       }
     }
 
-    // Wait for all async operations
-    await new Promise(resolve => setTimeout(resolve, 500))
-
     // Should have processed most operations without error
-    assert.strictEqual(
-      errorCount,
-      0,
-      `${errorCount} operations failed - extension may be timing out`
-    )
+    assert.strictEqual(errorCount, 0, `${errorCount} operations failed - extension may be timing out`)
 
-    // Success count should be close to operation count
-    // (some may complete via different paths)
+    // Results should have been delivered via sync client
+    const successCount = mockSyncClient.queueCommandResult.mock.calls.length
     assert.ok(
       successCount >= operationCount * 0.5,
       `Only ${successCount}/${operationCount} operations completed - possible timeout cascade`
@@ -426,6 +345,8 @@ describe('Bug #5: Extension Stability Under Load', () => {
     // This test verifies bounded memory usage
 
     const initialHeap = process.memoryUsage().heapUsed
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+    const pending = []
 
     // Run 30 rapid operations
     for (let i = 0; i < 30; i++) {
@@ -433,15 +354,14 @@ describe('Bug #5: Extension Stability Under Load', () => {
         id: `memory-test-${i}`,
         type: 'execute',
         correlation_id: `memory-corr-${i}`,
-        params: JSON.stringify({ script: `return ${i}` }),
+        params: JSON.stringify({ script: `return ${i}` })
       }
 
       // Don't await - simulate rapid fire
-      bgModule.handlePendingQuery(query, 'http://localhost:7890')
+      pending.push(bgModule.handlePendingQuery(query, mockSyncClient))
     }
 
-    // Wait for operations to complete
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await Promise.allSettled(pending)
 
     // Force garbage collection if available
     if (global.gc) {
@@ -473,15 +393,16 @@ describe('Bug #5: Error Handling Robustness', () => {
     globalThis.fetch = mock.fn(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ queries: [] }),
+        json: () => Promise.resolve({ queries: [] })
       })
     )
     bgModule = await import('../../extension/background.js')
+    bgModule.markInitComplete()
+    // Enable pilot cache so execute paths don't short-circuit
+    bgModule._resetPilotCacheForTesting(true)
   })
 
   test('error in one operation should not affect subsequent operations', async () => {
-    let operationsCompleted = 0
-
     // Make tabs.sendMessage fail for the first query only
     let firstCall = true
     globalThis.chrome.tabs.sendMessage = mock.fn(() => {
@@ -492,15 +413,8 @@ describe('Bug #5: Error Handling Robustness', () => {
       return Promise.resolve({ success: true, result: 'ok' })
     })
 
-    globalThis.fetch = mock.fn((url) => {
-      if (url.includes('/execute-result')) {
-        operationsCompleted++
-      }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ queries: [] }),
-      })
-    })
+    // Use a mock sync client (code uses syncClient.queueCommandResult, not fetch)
+    const mockSyncClient = { queueCommandResult: mock.fn() }
 
     // Run operations - first will fail, rest should succeed
     for (let i = 0; i < 5; i++) {
@@ -508,19 +422,14 @@ describe('Bug #5: Error Handling Robustness', () => {
         id: `error-test-${i}`,
         type: 'execute',
         correlation_id: `error-corr-${i}`,
-        params: JSON.stringify({ script: 'return 1' }),
+        params: JSON.stringify({ script: 'return 1' })
       }
 
-      await bgModule.handlePendingQuery(query, 'http://localhost:7890')
+      await bgModule.handlePendingQuery(query, mockSyncClient)
     }
 
-    await new Promise(resolve => setTimeout(resolve, 300))
-
-    // At least 4 operations should complete (the 4 after the first failure)
-    assert.ok(
-      operationsCompleted >= 4,
-      `Only ${operationsCompleted}/5 operations completed - error cascaded`
-    )
+    // All 5 operations should deliver results (including the failed one, which sends an error result)
+    const operationsCompleted = mockSyncClient.queueCommandResult.mock.calls.length
+    assert.ok(operationsCompleted >= 4, `Only ${operationsCompleted}/5 operations completed - error cascaded`)
   })
-
 })

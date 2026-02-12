@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-19-link-crawling.sh — Link Health Domain Crawling Tests (6 tests)
 # Tests recursive link crawling, CORS boundaries, domain traversal.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"

@@ -396,57 +396,53 @@ func (vm *VerificationManager) Status(sessionID string) (*StatusResult, error) {
 // Snapshot Capture
 // ============================================
 
-// captureSnapshot captures current state from the reader
-func (vm *VerificationManager) captureSnapshot(urlFilter string) *SessionSnapshot {
-	errors := vm.reader.GetConsoleErrors()
-	network := vm.reader.GetNetworkRequests()
-	perf := vm.reader.GetPerformance()
-	pageURL := vm.reader.GetCurrentPageURL()
-
-	// Convert console errors
-	verifyErrors := make([]VerifyError, 0, len(errors))
+// convertConsoleErrors converts snapshot errors to verification errors.
+func convertConsoleErrors(errors []SnapshotError) []VerifyError {
+	result := make([]VerifyError, 0, len(errors))
 	for _, e := range errors {
-		verifyErrors = append(verifyErrors, VerifyError{
+		result = append(result, VerifyError{
 			Message:    e.Message,
 			Normalized: normalizeVerifyErrorMessage(e.Message),
 			Count:      e.Count,
 		})
 	}
+	return truncateSlice(result, maxBaselineErrors)
+}
 
-	// Convert and filter network requests
-	networkErrors := make([]VerifyNetworkEntry, 0)
+// convertNetworkRequests converts and filters network requests, returning all requests and error-only requests.
+func convertNetworkRequests(network []SnapshotNetworkRequest, urlFilter string) ([]VerifyNetworkEntry, []VerifyNetworkEntry) {
 	allNetwork := make([]VerifyNetworkEntry, 0, len(network))
+	networkErrors := make([]VerifyNetworkEntry, 0)
 	for _, req := range network {
-		// Apply URL filter
 		if urlFilter != "" && !strings.Contains(req.URL, urlFilter) {
 			continue
 		}
 		entry := VerifyNetworkEntry{
-			Method:   req.Method,
-			URL:      req.URL,
-			Path:     capture.ExtractURLPath(req.URL),
-			Status:   req.Status,
-			Duration: req.Duration,
+			Method: req.Method, URL: req.URL,
+			Path: capture.ExtractURLPath(req.URL), Status: req.Status, Duration: req.Duration,
 		}
 		allNetwork = append(allNetwork, entry)
-		// Track errors separately (4xx/5xx)
 		if req.Status >= 400 {
 			networkErrors = append(networkErrors, entry)
 		}
 	}
+	return truncateSlice(allNetwork, maxBaselineNetworkEntries),
+		truncateSlice(networkErrors, maxBaselineNetworkEntries)
+}
 
-	// Apply limits
-	if len(verifyErrors) > maxBaselineErrors {
-		verifyErrors = verifyErrors[:maxBaselineErrors]
+// truncateSlice returns the first maxLen elements of a slice, or the full slice if shorter.
+func truncateSlice[T any](s []T, maxLen int) []T {
+	if len(s) > maxLen {
+		return s[:maxLen]
 	}
-	if len(networkErrors) > maxBaselineNetworkEntries {
-		networkErrors = networkErrors[:maxBaselineNetworkEntries]
-	}
-	if len(allNetwork) > maxBaselineNetworkEntries {
-		allNetwork = allNetwork[:maxBaselineNetworkEntries]
-	}
+	return s
+}
 
-	// Deep copy performance
+// captureSnapshot captures current state from the reader
+func (vm *VerificationManager) captureSnapshot(urlFilter string) *SessionSnapshot {
+	perf := vm.reader.GetPerformance()
+	allNetwork, networkErrors := convertNetworkRequests(vm.reader.GetNetworkRequests(), urlFilter)
+
 	var perfCopy *performance.PerformanceSnapshot
 	if perf != nil {
 		p := *perf
@@ -455,10 +451,10 @@ func (vm *VerificationManager) captureSnapshot(urlFilter string) *SessionSnapsho
 
 	return &SessionSnapshot{
 		CapturedAt:         time.Now(),
-		ConsoleErrors:      verifyErrors,
+		ConsoleErrors:      convertConsoleErrors(vm.reader.GetConsoleErrors()),
 		NetworkErrors:      networkErrors,
 		AllNetworkRequests: allNetwork,
-		PageURL:            pageURL,
+		PageURL:            vm.reader.GetCurrentPageURL(),
 		Performance:        perfCopy,
 	}
 }

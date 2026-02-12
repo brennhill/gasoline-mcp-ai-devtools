@@ -32,7 +32,8 @@ var DOM_QUERY_MAX_TEXT = 500;
 var DOM_QUERY_MAX_DEPTH = 5;
 var DOM_QUERY_MAX_HTML = 200;
 var A11Y_MAX_NODES_PER_VIOLATION = 10;
-var A11Y_AUDIT_TIMEOUT_MS = 3e4;
+var ASYNC_COMMAND_TIMEOUT_MS = 6e4;
+var A11Y_AUDIT_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
 var MEMORY_SOFT_LIMIT_MB = 20;
 var MEMORY_HARD_LIMIT_MB = 50;
 var AI_CONTEXT_SNIPPET_LINES = 5;
@@ -66,69 +67,58 @@ var MAX_SLOWEST_REQUESTS = 3;
 var MAX_URL_LENGTH = 80;
 
 // extension/lib/serialize.js
+function serializePrimitive(value, type) {
+  if (type === "string") {
+    const s = value;
+    return s.length > MAX_STRING_LENGTH ? s.slice(0, MAX_STRING_LENGTH) + "... [truncated]" : s;
+  }
+  if (type === "number")
+    return value;
+  if (type === "boolean")
+    return value;
+  if (type === "function")
+    return `[Function: ${value.name || "anonymous"}]`;
+  return void 0;
+}
+function serializeDOMNode(value) {
+  const tag = value.tagName ? value.tagName.toLowerCase() : "node";
+  const id = value.id ? `#${value.id}` : "";
+  const cn = value.className;
+  const className = typeof cn === "string" && cn ? `.${cn.split(" ").join(".")}` : "";
+  return `[${tag}${id}${className}]`;
+}
+function serializeObject(value, depth, seen) {
+  if (seen.has(value))
+    return "[Circular]";
+  seen.add(value);
+  if (value.nodeType)
+    return serializeDOMNode(value);
+  if (Array.isArray(value))
+    return value.slice(0, 100).map((item) => safeSerialize(item, depth + 1, seen));
+  const result = {};
+  for (const key of Object.keys(value).slice(0, 50)) {
+    try {
+      result[key] = safeSerialize(value[key], depth + 1, seen);
+    } catch {
+      result[key] = "[Unserializable]";
+    }
+  }
+  return result;
+}
 function safeSerialize(value, depth = 0, seen = /* @__PURE__ */ new WeakSet()) {
-  if (value === null)
-    return null;
-  if (value === void 0)
+  if (value === null || value === void 0)
     return null;
   const type = typeof value;
-  if (type === "string") {
-    const strValue = value;
-    if (strValue.length > MAX_STRING_LENGTH) {
-      return strValue.slice(0, MAX_STRING_LENGTH) + "... [truncated]";
-    }
-    return strValue;
-  }
-  if (type === "number") {
-    return value;
-  }
-  if (type === "boolean") {
-    return value;
-  }
-  if (type === "function") {
-    const fn = value;
-    return `[Function: ${fn.name || "anonymous"}]`;
-  }
+  const primitive = serializePrimitive(value, type);
+  if (primitive !== void 0)
+    return primitive;
   if (value instanceof Error) {
-    return {
-      name: value.name,
-      message: value.message,
-      stack: value.stack || null
-    };
+    return { name: value.name, message: value.message, stack: value.stack || null };
   }
-  if (depth >= MAX_DEPTH) {
+  if (depth >= MAX_DEPTH)
     return "[Max depth exceeded]";
-  }
-  if (type === "object") {
-    const objValue = value;
-    if (seen.has(objValue)) {
-      return "[Circular]";
-    }
-    seen.add(objValue);
-    const domLike = value;
-    if (domLike.nodeType) {
-      const tag = domLike.tagName ? domLike.tagName.toLowerCase() : "node";
-      const id = domLike.id ? `#${domLike.id}` : "";
-      const classNameValue = domLike.className;
-      let className = "";
-      if (typeof classNameValue === "string" && classNameValue) {
-        className = `.${classNameValue.split(" ").join(".")}`;
-      }
-      return `[${tag}${id}${className}]`;
-    }
-    if (Array.isArray(value)) {
-      return value.slice(0, 100).map((item) => safeSerialize(item, depth + 1, seen));
-    }
-    const result = {};
-    for (const key of Object.keys(objValue).slice(0, 50)) {
-      try {
-        result[key] = safeSerialize(objValue[key], depth + 1, seen);
-      } catch {
-        result[key] = "[Unserializable]";
-      }
-    }
-    return result;
-  }
+  if (type === "object")
+    return serializeObject(value, depth, seen);
   return String(value);
 }
 function getElementSelector(element) {
@@ -145,6 +135,11 @@ function getElementSelector(element) {
   const testIdStr = testId ? `[data-testid="${testId}"]` : "";
   return `${tag}${id}${classes}${testIdStr}`.slice(0, 100);
 }
+var SENSITIVE_AUTOCOMPLETE_PATTERNS = ["password", "cc-", "credit-card"];
+var SENSITIVE_NAME_PATTERNS = ["password", "passwd", "secret", "token", "credit", "card", "cvv", "cvc", "ssn"];
+function matchesAny(value, patterns) {
+  return patterns.some((p) => value.includes(p));
+}
 function isSensitiveInput(element) {
   if (!element)
     return false;
@@ -152,13 +147,7 @@ function isSensitiveInput(element) {
   const type = (inputElement.type || "").toLowerCase();
   const autocomplete = (inputElement.autocomplete || "").toLowerCase();
   const name = (inputElement.name || "").toLowerCase();
-  if (SENSITIVE_INPUT_TYPES.includes(type))
-    return true;
-  if (autocomplete.includes("password") || autocomplete.includes("cc-") || autocomplete.includes("credit-card"))
-    return true;
-  if (name.includes("password") || name.includes("passwd") || name.includes("secret") || name.includes("token") || name.includes("credit") || name.includes("card") || name.includes("cvv") || name.includes("cvc") || name.includes("ssn"))
-    return true;
-  return false;
+  return SENSITIVE_INPUT_TYPES.includes(type) || matchesAny(autocomplete, SENSITIVE_AUTOCOMPLETE_PATTERNS) || matchesAny(name, SENSITIVE_NAME_PATTERNS);
 }
 
 // extension/lib/context.js
@@ -204,55 +193,40 @@ function clearContextAnnotations() {
 
 // extension/lib/reproduction.js
 var enhancedActionBuffer = [];
+var TAG_TO_ROLE = {
+  button: "button",
+  textarea: "textbox",
+  select: "combobox",
+  nav: "navigation",
+  main: "main",
+  header: "banner",
+  footer: "contentinfo"
+};
+var INPUT_TYPE_TO_ROLE = {
+  text: "textbox",
+  email: "textbox",
+  password: "textbox",
+  tel: "textbox",
+  url: "textbox",
+  checkbox: "checkbox",
+  radio: "radio",
+  search: "searchbox",
+  number: "spinbutton",
+  range: "slider"
+};
 function getImplicitRole(element) {
   if (!element || !element.tagName)
     return null;
   const tag = element.tagName.toLowerCase();
   const el = element;
-  const type = el.getAttribute ? el.getAttribute("type") : null;
-  switch (tag) {
-    case "button":
-      return "button";
-    case "a":
-      return el.getAttribute && el.getAttribute("href") !== null ? "link" : null;
-    case "textarea":
-      return "textbox";
-    case "select":
-      return "combobox";
-    case "nav":
-      return "navigation";
-    case "main":
-      return "main";
-    case "header":
-      return "banner";
-    case "footer":
-      return "contentinfo";
-    case "input": {
-      const inputType = type || "text";
-      switch (inputType) {
-        case "text":
-        case "email":
-        case "password":
-        case "tel":
-        case "url":
-          return "textbox";
-        case "checkbox":
-          return "checkbox";
-        case "radio":
-          return "radio";
-        case "search":
-          return "searchbox";
-        case "number":
-          return "spinbutton";
-        case "range":
-          return "slider";
-        default:
-          return "textbox";
-      }
-    }
-    default:
-      return null;
+  if (tag === "a") {
+    return el.getAttribute && el.getAttribute("href") !== null ? "link" : null;
   }
+  if (tag === "input") {
+    const type = el.getAttribute ? el.getAttribute("type") : null;
+    return INPUT_TYPE_TO_ROLE[type || "text"] ?? "textbox";
+  }
+  return TAG_TO_ROLE[tag] ?? null;
 }
 function isDynamicClass(className) {
   if (!className)
@@ -304,20 +278,37 @@ function computeSelectors(element) {
   }
   if (element.id)
     selectors.id = element.id;
-  if (element.tagName && CLICKABLE_TAGS.has(element.tagName.toUpperCase())) {
+  const isClickable = element.tagName && CLICKABLE_TAGS.has(element.tagName.toUpperCase()) || el.getAttribute && el.getAttribute("role") === "button";
+  if (isClickable) {
     const text = (el.textContent || el.innerText || "").trim();
-    if (text && text.length > 0) {
+    if (text)
       selectors.text = text.slice(0, SELECTOR_TEXT_MAX_LENGTH);
-    }
-  } else if (el.getAttribute && el.getAttribute("role") === "button") {
-    const text = (el.textContent || el.innerText || "").trim();
-    if (text && text.length > 0) {
-      selectors.text = text.slice(0, SELECTOR_TEXT_MAX_LENGTH);
-    }
   }
   selectors.cssPath = computeCssPath(element);
   return selectors;
 }
+var ACTION_DATA_ENRICHERS = {
+  input: (a, el, o) => {
+    const typedEl = el;
+    const inputType = typedEl && typedEl.getAttribute ? typedEl.getAttribute("type") : "text";
+    a.inputType = inputType || "text";
+    a.value = inputType === "password" || el && isSensitiveInput(el) ? "[redacted]" : o.value || "";
+  },
+  keypress: (a, _el, o) => {
+    a.key = o.key || "";
+  },
+  navigate: (a, _el, o) => {
+    a.fromUrl = o.fromUrl || "";
+    a.toUrl = o.toUrl || "";
+  },
+  select: (a, _el, o) => {
+    a.selectedValue = o.selectedValue || "";
+    a.selectedText = o.selectedText || "";
+  },
+  scroll: (a, _el, o) => {
+    a.scrollY = o.scrollY || 0;
+  }
+};
 function recordEnhancedAction(type, element, opts = {}) {
   const action = {
     type,
@@ -327,33 +318,9 @@ function recordEnhancedAction(type, element, opts = {}) {
   if (element) {
     action.selectors = computeSelectors(element);
   }
-  switch (type) {
-    case "input": {
-      const el = element;
-      const inputType = el && el.getAttribute ? el.getAttribute("type") : "text";
-      action.inputType = inputType || "text";
-      if (inputType === "password" || element && isSensitiveInput(element)) {
-        action.value = "[redacted]";
-      } else {
-        action.value = opts.value || "";
-      }
-      break;
-    }
-    case "keypress":
-      action.key = opts.key || "";
-      break;
-    case "navigate":
-      action.fromUrl = opts.fromUrl || "";
-      action.toUrl = opts.toUrl || "";
-      break;
-    case "select":
-      action.selectedValue = opts.selectedValue || "";
-      action.selectedText = opts.selectedText || "";
-      break;
-    case "scroll":
-      action.scrollY = opts.scrollY || 0;
-      break;
-  }
+  const enricher = ACTION_DATA_ENRICHERS[type];
+  if (enricher)
+    enricher(action, element, opts);
   enhancedActionBuffer.push(action);
   if (enhancedActionBuffer.length > ENHANCED_ACTION_BUFFER_SIZE) {
     enhancedActionBuffer.shift();
@@ -368,6 +335,33 @@ function getEnhancedActionBuffer() {
 }
 function clearEnhancedActionBuffer() {
   enhancedActionBuffer = [];
+}
+function rebaseUrl(url, baseUrl) {
+  if (!baseUrl || !url)
+    return url;
+  try {
+    return baseUrl + new URL(url).pathname;
+  } catch {
+    return url;
+  }
+}
+var ACTION_STEP_GENERATORS = {
+  click: (_action, locator) => locator ? `  await page.${locator}.click();` : `  // click action - no selector available`,
+  input: (action, locator) => {
+    if (!locator)
+      return null;
+    const value = action.value === "[redacted]" ? "[user-provided]" : action.value || "";
+    return `  await page.${locator}.fill('${escapeString(value)}');`;
+  },
+  keypress: (action) => `  await page.keyboard.press('${escapeString(action.key || "")}');`,
+  navigate: (action, _locator, baseUrl) => `  await page.waitForURL('${escapeString(rebaseUrl(action.toUrl || "", baseUrl))}');`,
+  select: (action, locator) => locator ? `  await page.${locator}.selectOption('${escapeString(action.selectedValue || "")}');` : null,
+  scroll: (action) => `  // User scrolled to y=${action.scrollY || 0}`
+};
+function actionToPlaywrightStep(action, baseUrl) {
+  const locator = getPlaywrightLocator(action.selectors || { cssPath: "" });
+  const generator = ACTION_STEP_GENERATORS[action.type];
+  return generator ? generator(action, locator, baseUrl) : null;
 }
 function generatePlaywrightScript(actions, opts = {}) {
   const { errorMessage, baseUrl, lastNActions } = opts;
@@ -399,46 +393,9 @@ function generatePlaywrightScript(actions, opts = {}) {
       steps.push(`  // [${gap}s pause]`);
     }
     prevTimestamp = action.timestamp;
-    const locator = getPlaywrightLocator(action.selectors || { cssPath: "" });
-    switch (action.type) {
-      case "click":
-        if (locator) {
-          steps.push(`  await page.${locator}.click();`);
-        } else {
-          steps.push(`  // click action - no selector available`);
-        }
-        break;
-      case "input": {
-        const value = action.value === "[redacted]" ? "[user-provided]" : action.value || "";
-        if (locator) {
-          steps.push(`  await page.${locator}.fill('${escapeString(value)}');`);
-        }
-        break;
-      }
-      case "keypress":
-        steps.push(`  await page.keyboard.press('${escapeString(action.key || "")}');`);
-        break;
-      case "navigate": {
-        let toUrl = action.toUrl || "";
-        if (baseUrl && toUrl) {
-          try {
-            const parsed = new URL(toUrl);
-            toUrl = baseUrl + parsed.pathname;
-          } catch {
-          }
-        }
-        steps.push(`  await page.waitForURL('${escapeString(toUrl)}');`);
-        break;
-      }
-      case "select":
-        if (locator) {
-          steps.push(`  await page.${locator}.selectOption('${escapeString(action.selectedValue || "")}');`);
-        }
-        break;
-      case "scroll":
-        steps.push(`  // User scrolled to y=${action.scrollY || 0}`);
-        break;
-    }
+    const step = actionToPlaywrightStep(action, baseUrl);
+    if (step)
+      steps.push(step);
   }
   let script = `import { test, expect } from '@playwright/test';
 
@@ -466,27 +423,20 @@ function generatePlaywrightScript(actions, opts = {}) {
   return script;
 }
 function getPlaywrightLocator(selectors) {
-  if (selectors.testId) {
+  if (selectors.testId)
     return `getByTestId('${escapeString(selectors.testId)}')`;
-  }
   if (selectors.role && selectors.role.role) {
-    if (selectors.role.name) {
-      return `getByRole('${escapeString(selectors.role.role)}', { name: '${escapeString(selectors.role.name)}' })`;
-    }
-    return `getByRole('${escapeString(selectors.role.role)}')`;
+    const escaped = escapeString(selectors.role.role);
+    return selectors.role.name ? `getByRole('${escaped}', { name: '${escapeString(selectors.role.name)}' })` : `getByRole('${escaped}')`;
   }
-  if (selectors.ariaLabel) {
+  if (selectors.ariaLabel)
     return `getByLabel('${escapeString(selectors.ariaLabel)}')`;
-  }
-  if (selectors.text) {
+  if (selectors.text)
     return `getByText('${escapeString(selectors.text)}')`;
-  }
-  if (selectors.id) {
+  if (selectors.id)
     return `locator('#${escapeString(selectors.id)}')`;
-  }
-  if (selectors.cssPath) {
+  if (selectors.cssPath)
     return `locator('${escapeString(selectors.cssPath)}')`;
-  }
   return null;
 }
 function escapeString(str) {
@@ -687,6 +637,7 @@ var networkWaterfallEnabled = false;
 var pendingRequests = /* @__PURE__ */ new Map();
 var requestIdCounter = 0;
 var networkBodyCaptureEnabled = true;
+var SENSITIVE_URL_PATTERNS = /\/(auth|login|signin|signup|token|oauth|session|api[_-]?key|password|register)\b/i;
 function parseResourceTiming(timing) {
   const phases = {
     dns: Math.max(0, timing.domainLookupEnd - timing.domainLookupStart),
@@ -853,25 +804,52 @@ async function readResponseBodyWithTimeout(response, timeoutMs = BODY_READ_TIMEO
     })
   ]);
 }
+function extractFetchInfo(input, init) {
+  let url = "";
+  let method = "GET";
+  if (typeof input === "string") {
+    url = input;
+  } else if (input && input.url) {
+    url = input.url;
+    method = input.method || "GET";
+  }
+  if (init) {
+    method = init.method || method;
+  }
+  return { url, method, requestBody: init?.body || null };
+}
+async function readCapturedBody(url, cloned, contentType) {
+  if (SENSITIVE_URL_PATTERNS.test(url))
+    return "[REDACTED: auth endpoint]";
+  if (!cloned)
+    return "";
+  if (BINARY_CONTENT_TYPES.test(contentType)) {
+    const blob = await cloned.blob();
+    return `[Binary: ${blob.size} bytes, ${contentType}]`;
+  }
+  return readResponseBodyWithTimeout(cloned);
+}
+function postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp, truncReq) {
+  const message = {
+    type: "GASOLINE_NETWORK_BODY",
+    payload: {
+      url,
+      method,
+      status: response.status,
+      contentType,
+      requestBody: truncReq || (typeof requestBody === "string" ? requestBody : void 0),
+      responseBody: truncResp,
+      duration
+    }
+  };
+  win.postMessage(message, window.location.origin);
+}
 function wrapFetchWithBodies(fetchFn) {
   return async function(input, init) {
-    const startTime = Date.now();
-    let url = "";
-    let method = "GET";
-    let requestBody = null;
-    if (typeof input === "string") {
-      url = input;
-    } else if (input && input.url) {
-      url = input.url;
-      method = input.method || "GET";
-    }
-    if (init) {
-      method = init.method || method;
-      requestBody = init.body || null;
-    }
-    if (!shouldCaptureUrl(url)) {
+    const { url, method, requestBody } = extractFetchInfo(input, init);
+    if (!shouldCaptureUrl(url))
       return fetchFn(input, init);
-    }
+    const startTime = Date.now();
     const response = await fetchFn(input, init);
     const duration = Date.now() - startTime;
     const contentType = response.headers?.get?.("content-type") || "";
@@ -879,31 +857,12 @@ function wrapFetchWithBodies(fetchFn) {
     const win = typeof window !== "undefined" ? window : null;
     Promise.resolve().then(async () => {
       try {
-        let responseBody = "";
-        if (cloned) {
-          if (BINARY_CONTENT_TYPES.test(contentType)) {
-            const blob = await cloned.blob();
-            responseBody = `[Binary: ${blob.size} bytes, ${contentType}]`;
-          } else {
-            responseBody = await readResponseBodyWithTimeout(cloned);
-          }
-        }
+        const responseBody = await readCapturedBody(url, cloned, contentType);
         const { body: truncResp } = truncateResponseBody(responseBody);
-        const { body: truncReq } = truncateRequestBody(typeof requestBody === "string" ? requestBody : null);
+        const rawReq = SENSITIVE_URL_PATTERNS.test(url) ? "[REDACTED: auth endpoint]" : typeof requestBody === "string" ? requestBody : null;
+        const { body: truncReq } = truncateRequestBody(rawReq);
         if (win && networkBodyCaptureEnabled) {
-          const message = {
-            type: "GASOLINE_NETWORK_BODY",
-            payload: {
-              url,
-              method,
-              status: response.status,
-              contentType,
-              requestBody: truncReq || (typeof requestBody === "string" ? requestBody : void 0),
-              responseBody: truncResp || responseBody,
-              duration
-            }
-          };
-          win.postMessage(message, window.location.origin);
+          postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp || responseBody, truncReq);
         }
       } catch {
       }
@@ -981,13 +940,13 @@ function capturePerformanceSnapshot() {
   if (!nav)
     return null;
   const timing = {
-    dom_content_loaded: nav.domContentLoadedEventEnd,
+    domContentLoaded: nav.domContentLoadedEventEnd,
     load: nav.loadEventEnd,
-    first_contentful_paint: getFCP(),
-    largest_contentful_paint: getLCP(),
-    interaction_to_next_paint: getINP(),
-    time_to_first_byte: nav.responseStart - nav.requestStart,
-    dom_interactive: nav.domInteractive
+    firstContentfulPaint: getFCP(),
+    largestContentfulPaint: getLCP(),
+    interactionToNextPaint: getINP(),
+    timeToFirstByte: nav.responseStart - nav.requestStart,
+    domInteractive: nav.domInteractive
   };
   const network = aggregateResourceTiming();
   const longTasks = getLongTaskMetrics();
@@ -1402,46 +1361,43 @@ function uninstallConsoleCapture() {
 var aiContextEnabled = true;
 var aiContextStateSnapshotEnabled = false;
 var aiSourceMapCache = /* @__PURE__ */ new Map();
+var CHROME_FRAME_RE = /^at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?$/;
+var FIREFOX_FRAME_RE = /^(.+?)@(.+?):(\d+):(\d+)$/;
+function parseChromeFrame(line) {
+  const m = line.match(CHROME_FRAME_RE);
+  if (!m)
+    return null;
+  const filename = m[2];
+  if (!filename || filename.includes("<anonymous>"))
+    return null;
+  if (!m[3] || !m[4])
+    return null;
+  return { functionName: m[1] || null, filename, lineno: parseInt(m[3], 10), colno: parseInt(m[4], 10) };
+}
+function parseFirefoxFrame(line) {
+  const m = line.match(FIREFOX_FRAME_RE);
+  if (!m)
+    return null;
+  const filename = m[2];
+  if (!filename || filename.includes("<anonymous>"))
+    return null;
+  if (!m[3] || !m[4])
+    return null;
+  return { functionName: m[1] || null, filename, lineno: parseInt(m[3], 10), colno: parseInt(m[4], 10) };
+}
+var FRAME_PARSERS = [parseChromeFrame, parseFirefoxFrame];
 function parseStackFrames(stack) {
   if (!stack)
     return [];
   const frames = [];
-  const lines = stack.split("\n");
-  for (const line of lines) {
+  for (const line of stack.split("\n")) {
     const trimmed = line.trim();
-    const chromeMatch = trimmed.match(/^at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?$/);
-    if (chromeMatch) {
-      const filename = chromeMatch[2];
-      if (!filename || filename.includes("<anonymous>"))
-        continue;
-      const lineStr = chromeMatch[3];
-      const colStr = chromeMatch[4];
-      if (!lineStr || !colStr)
-        continue;
-      frames.push({
-        functionName: chromeMatch[1] || null,
-        filename,
-        lineno: parseInt(lineStr, 10),
-        colno: parseInt(colStr, 10)
-      });
-      continue;
-    }
-    const firefoxMatch = trimmed.match(/^(.+?)@(.+?):(\d+):(\d+)$/);
-    if (firefoxMatch) {
-      const filename = firefoxMatch[2];
-      if (!filename || filename.includes("<anonymous>"))
-        continue;
-      const lineStr = firefoxMatch[3];
-      const colStr = firefoxMatch[4];
-      if (!lineStr || !colStr)
-        continue;
-      frames.push({
-        functionName: firefoxMatch[1] || null,
-        filename,
-        lineno: parseInt(lineStr, 10),
-        colno: parseInt(colStr, 10)
-      });
-      continue;
+    for (const parser of FRAME_PARSERS) {
+      const frame = parser(trimmed);
+      if (frame) {
+        frames.push(frame);
+        break;
+      }
     }
   }
   return frames;
@@ -1550,6 +1506,39 @@ function getReactComponentAncestry(fiber) {
   }
   return ancestry.reverse();
 }
+function classifyValueType(value) {
+  if (Array.isArray(value))
+    return "array";
+  if (value === null)
+    return "null";
+  return typeof value;
+}
+var RELEVANT_STATE_KEYS = ["error", "loading", "status", "failed"];
+function buildRelevantSlice(state, errorWords) {
+  const relevantSlice = {};
+  let sliceCount = 0;
+  for (const [key, value] of Object.entries(state)) {
+    if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE)
+      break;
+    if (typeof value !== "object" || value === null || Array.isArray(value))
+      continue;
+    for (const [subKey, subValue] of Object.entries(value)) {
+      if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE)
+        break;
+      const isRelevantKey = RELEVANT_STATE_KEYS.some((k) => subKey.toLowerCase().includes(k));
+      const isKeywordMatch = errorWords.some((w) => key.toLowerCase().includes(w));
+      if (!isRelevantKey && !isKeywordMatch)
+        continue;
+      let val = subValue;
+      if (typeof val === "string" && val.length > AI_CONTEXT_MAX_VALUE_LENGTH) {
+        val = val.slice(0, AI_CONTEXT_MAX_VALUE_LENGTH);
+      }
+      relevantSlice[`${key}.${subKey}`] = val;
+      sliceCount++;
+    }
+  }
+  return relevantSlice;
+}
 function captureStateSnapshot(errorMessage) {
   if (typeof window === "undefined")
     return null;
@@ -1562,42 +1551,11 @@ function captureStateSnapshot(errorMessage) {
       return null;
     const keys = {};
     for (const [key, value] of Object.entries(state)) {
-      if (Array.isArray(value)) {
-        keys[key] = { type: "array" };
-      } else if (value === null) {
-        keys[key] = { type: "null" };
-      } else {
-        keys[key] = { type: typeof value };
-      }
+      keys[key] = { type: classifyValueType(value) };
     }
-    const relevantSlice = {};
-    let sliceCount = 0;
     const errorWords = (errorMessage || "").toLowerCase().split(/\W+/).filter((w) => w.length > 2);
-    for (const [key, value] of Object.entries(state)) {
-      if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE)
-        break;
-      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-        for (const [subKey, subValue] of Object.entries(value)) {
-          if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE)
-            break;
-          const isRelevantKey = ["error", "loading", "status", "failed"].some((k) => subKey.toLowerCase().includes(k));
-          const isKeywordMatch = errorWords.some((w) => key.toLowerCase().includes(w));
-          if (isRelevantKey || isKeywordMatch) {
-            let val = subValue;
-            if (typeof val === "string" && val.length > AI_CONTEXT_MAX_VALUE_LENGTH) {
-              val = val.slice(0, AI_CONTEXT_MAX_VALUE_LENGTH);
-            }
-            relevantSlice[`${key}.${subKey}`] = val;
-            sliceCount++;
-          }
-        }
-      }
-    }
-    return {
-      source: "redux",
-      keys,
-      relevantSlice
-    };
+    const relevantSlice = buildRelevantSlice(state, errorWords);
+    return { source: "redux", keys, relevantSlice };
   } catch {
     return null;
   }
@@ -1622,65 +1580,68 @@ function generateAiSummary(data) {
   }
   return parts.join(" ");
 }
+async function buildAiContext(error) {
+  const result = {};
+  const frames = parseStackFrames(error.stack);
+  if (frames.length === 0)
+    return { summary: error.message || "Unknown error" };
+  const topFrame = frames[0];
+  if (topFrame) {
+    const cached = getSourceMapCache(topFrame.filename);
+    if (cached) {
+      const snippets = await extractSourceSnippets(frames, { [topFrame.filename]: cached });
+      if (snippets.length > 0)
+        result.sourceSnippets = snippets;
+    }
+  }
+  result.componentAncestry = extractComponentAncestry() || void 0;
+  if (aiContextStateSnapshotEnabled) {
+    const snapshot = captureStateSnapshot(error.message || "");
+    if (snapshot)
+      result.stateSnapshot = snapshot;
+  }
+  result.summary = generateAiSummary({
+    errorType: error.message?.split(":")[0] || "Error",
+    message: error.message || "",
+    file: topFrame?.filename || null,
+    line: topFrame?.lineno || null,
+    componentAncestry: result.componentAncestry || null,
+    stateSnapshot: result.stateSnapshot || null
+  });
+  return result;
+}
+function extractComponentAncestry() {
+  if (typeof document === "undefined" || !document.activeElement)
+    return null;
+  const framework = detectFramework(document.activeElement);
+  if (!framework || framework.framework !== "react" || !framework.key)
+    return null;
+  const fiber = document.activeElement[framework.key];
+  const components = getReactComponentAncestry(fiber);
+  if (!components || components.length === 0)
+    return null;
+  return { framework: "react", components };
+}
+function applyAiContext(enriched, context) {
+  enriched._aiContext = context;
+  if (!enriched._enrichments)
+    enriched._enrichments = [];
+  enriched._enrichments.push("aiContext");
+}
 async function enrichErrorWithAiContext(error) {
   if (!aiContextEnabled)
     return error;
   const enriched = { ...error };
   try {
     const context = await Promise.race([
-      (async () => {
-        const result = {};
-        const frames = parseStackFrames(error.stack);
-        if (frames.length === 0) {
-          return { summary: error.message || "Unknown error" };
-        }
-        const topFrame = frames[0];
-        if (topFrame) {
-          const cached = getSourceMapCache(topFrame.filename);
-          if (cached) {
-            const snippets = await extractSourceSnippets(frames, { [topFrame.filename]: cached });
-            if (snippets.length > 0)
-              result.sourceSnippets = snippets;
-          }
-        }
-        if (typeof document !== "undefined" && document.activeElement) {
-          const framework = detectFramework(document.activeElement);
-          if (framework && framework.framework === "react" && framework.key) {
-            const fiber = document.activeElement[framework.key];
-            const components = getReactComponentAncestry(fiber);
-            if (components && components.length > 0) {
-              result.componentAncestry = { framework: "react", components };
-            }
-          }
-        }
-        if (aiContextStateSnapshotEnabled) {
-          const snapshot = captureStateSnapshot(error.message || "");
-          if (snapshot)
-            result.stateSnapshot = snapshot;
-        }
-        result.summary = generateAiSummary({
-          errorType: error.message?.split(":")[0] || "Error",
-          message: error.message || "",
-          file: topFrame?.filename || null,
-          line: topFrame?.lineno || null,
-          componentAncestry: result.componentAncestry || null,
-          stateSnapshot: result.stateSnapshot || null
-        });
-        return result;
-      })(),
+      buildAiContext(error),
       new Promise((resolve) => {
         setTimeout(() => resolve({ summary: `${error.message || "Error"}` }), AI_CONTEXT_PIPELINE_TIMEOUT_MS);
       })
     ]);
-    enriched._aiContext = context;
-    if (!enriched._enrichments)
-      enriched._enrichments = [];
-    enriched._enrichments.push("aiContext");
+    applyAiContext(enriched, context);
   } catch {
-    enriched._aiContext = { summary: error.message || "Unknown error" };
-    if (!enriched._enrichments)
-      enriched._enrichments = [];
-    enriched._enrichments.push("aiContext");
+    applyAiContext(enriched, { summary: error.message || "Unknown error" });
   }
   return enriched;
 }
@@ -1710,6 +1671,30 @@ function getSourceMapCacheSize() {
 // extension/lib/exceptions.js
 var originalOnerror = null;
 var unhandledrejectionHandler = null;
+function enrichAndPost(entry) {
+  void (async () => {
+    try {
+      const enriched = await enrichErrorWithAiContext(entry);
+      postLog(enriched);
+    } catch {
+      postLog(entry);
+    }
+  })().catch((err) => {
+    console.error("[Gasoline] Exception enrichment error:", err);
+    try {
+      postLog(entry);
+    } catch (postErr) {
+      console.error("[Gasoline] Failed to log entry:", postErr);
+    }
+  });
+}
+function extractRejectionInfo(reason) {
+  if (reason instanceof Error)
+    return { message: reason.message, stack: reason.stack || "" };
+  if (typeof reason === "string")
+    return { message: reason, stack: "" };
+  return { message: String(reason), stack: "" };
+}
 function installExceptionCapture() {
   originalOnerror = window.onerror;
   window.onerror = function(message, filename, lineno, colno, error) {
@@ -1724,58 +1709,18 @@ function installExceptionCapture() {
       colno: colno || 0,
       stack: error?.stack || ""
     };
-    void (async () => {
-      try {
-        const enriched = await enrichErrorWithAiContext(entry);
-        postLog(enriched);
-      } catch {
-        postLog(entry);
-      }
-    })().catch((err) => {
-      console.error("[Gasoline] Exception enrichment error:", err);
-      try {
-        postLog(entry);
-      } catch (postErr) {
-        console.error("[Gasoline] Failed to log entry:", postErr);
-      }
-    });
-    if (originalOnerror) {
+    enrichAndPost(entry);
+    if (originalOnerror)
       return originalOnerror(message, filename, lineno, colno, error);
-    }
     return false;
   };
   unhandledrejectionHandler = function(event) {
-    const error = event.reason;
-    let message = "";
-    let stack = "";
-    if (error instanceof Error) {
-      message = error.message;
-      stack = error.stack || "";
-    } else if (typeof error === "string") {
-      message = error;
-    } else {
-      message = String(error);
-    }
-    const entry = {
+    const { message, stack } = extractRejectionInfo(event.reason);
+    enrichAndPost({
       level: "error",
       type: "exception",
       message: `Unhandled Promise Rejection: ${message}`,
       stack
-    };
-    void (async () => {
-      try {
-        const enriched = await enrichErrorWithAiContext(entry);
-        postLog(enriched);
-      } catch {
-        postLog(entry);
-      }
-    })().catch((err) => {
-      console.error("[Gasoline] Exception enrichment error:", err);
-      try {
-        postLog(entry);
-      } catch (postErr) {
-        console.error("[Gasoline] Failed to log entry:", postErr);
-      }
     });
   };
   window.addEventListener("unhandledrejection", unhandledrejectionHandler);
@@ -1913,7 +1858,7 @@ function createConnectionTracker(id, url) {
      *   shouldSample() which implements adaptive sampling: high-frequency connections
      *   (>200 msg/s) sample at 1-in-100; low-frequency (<2 msg/s) capture all messages.
      *   This ensures detailed visibility on slow links without bloating on high-volume.
-    */
+     */
     recordMessage(direction, data) {
       this.messageCount++;
       const size = data ? typeof data === "string" ? data.length : getSize(data) : 0;
@@ -2070,6 +2015,7 @@ function installWebSocketCapture() {
     return;
   if (originalWebSocket)
     return;
+  webSocketCaptureEnabled = true;
   const earlyOriginal = window.__GASOLINE_ORIGINAL_WS__;
   originalWebSocket = earlyOriginal || window.WebSocket;
   const OriginalWS = originalWebSocket;
@@ -2163,7 +2109,7 @@ function installWebSocketCapture() {
             truncated: truncated || void 0,
             ts: (/* @__PURE__ */ new Date()).toISOString()
           }
-        }, "*");
+        }, window.location.origin);
       }
       return originalSend(data);
     };
@@ -2278,7 +2224,7 @@ function adoptEarlyConnections() {
             truncated: truncated || void 0,
             ts: (/* @__PURE__ */ new Date()).toISOString()
           }
-        }, "*");
+        }, window.location.origin);
       }
       return originalSend(data);
     };
@@ -2306,6 +2252,16 @@ function uninstallWebSocketCapture() {
     originalWebSocket = null;
   }
 }
+function resetForTesting() {
+  uninstallWebSocketCapture();
+  webSocketCaptureEnabled = false;
+  webSocketCaptureMode = "medium";
+  originalWebSocket = null;
+  if (typeof window !== "undefined") {
+    delete window.__GASOLINE_ORIGINAL_WS__;
+    delete window.__GASOLINE_EARLY_WS__;
+  }
+}
 
 // extension/lib/dom-queries.js
 async function executeDOMQuery(params) {
@@ -2329,43 +2285,57 @@ async function executeDOMQuery(params) {
     matches
   };
 }
+function collectAttributes(el) {
+  if (!el.attributes || el.attributes.length === 0)
+    return void 0;
+  const attrs = {};
+  for (const attr of el.attributes) {
+    attrs[attr.name] = attr.value;
+  }
+  return attrs;
+}
+function collectBoundingBox(el) {
+  if (!el.getBoundingClientRect)
+    return void 0;
+  const rect = el.getBoundingClientRect();
+  return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+}
+function collectStyles(el, includeStyles, styleProps) {
+  if (!includeStyles || typeof window.getComputedStyle !== "function")
+    return void 0;
+  const computed = window.getComputedStyle(el);
+  if (styleProps && styleProps.length > 0) {
+    const styles = {};
+    for (const prop of styleProps) {
+      styles[prop] = computed.getPropertyValue(prop);
+    }
+    return styles;
+  }
+  return { display: computed.display, color: computed.color, position: computed.position };
+}
+function collectChildren(el, includeChildren, maxDepth, currentDepth) {
+  if (!includeChildren || currentDepth >= maxDepth || !el.children || el.children.length === 0)
+    return void 0;
+  const children = [];
+  const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS);
+  for (let i = 0; i < maxChildren; i++) {
+    const child = el.children[i];
+    if (child) {
+      children.push(serializeDOMElement(child, false, void 0, true, maxDepth, currentDepth + 1));
+    }
+  }
+  return children;
+}
 function serializeDOMElement(el, includeStyles, styleProps, includeChildren, maxDepth, currentDepth) {
   const entry = {
     tag: el.tagName ? el.tagName.toLowerCase() : "",
     text: (el.textContent || "").slice(0, DOM_QUERY_MAX_TEXT),
     visible: el.offsetParent !== null || el.getBoundingClientRect && el.getBoundingClientRect().width > 0
   };
-  if (el.attributes && el.attributes.length > 0) {
-    entry.attributes = {};
-    for (const attr of el.attributes) {
-      entry.attributes[attr.name] = attr.value;
-    }
-  }
-  if (el.getBoundingClientRect) {
-    const rect = el.getBoundingClientRect();
-    entry.boundingBox = { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-  }
-  if (includeStyles && typeof window.getComputedStyle === "function") {
-    const computed = window.getComputedStyle(el);
-    entry.styles = {};
-    if (styleProps && styleProps.length > 0) {
-      for (const prop of styleProps) {
-        entry.styles[prop] = computed.getPropertyValue(prop);
-      }
-    } else {
-      entry.styles = { display: computed.display, color: computed.color, position: computed.position };
-    }
-  }
-  if (includeChildren && currentDepth < maxDepth && el.children && el.children.length > 0) {
-    entry.children = [];
-    const maxChildren = Math.min(el.children.length, DOM_QUERY_MAX_ELEMENTS);
-    for (let i = 0; i < maxChildren; i++) {
-      const child = el.children[i];
-      if (child) {
-        entry.children.push(serializeDOMElement(child, false, void 0, true, maxDepth, currentDepth + 1));
-      }
-    }
-  }
+  entry.attributes = collectAttributes(el);
+  entry.boundingBox = collectBoundingBox(el);
+  entry.styles = collectStyles(el, includeStyles, styleProps);
+  entry.children = collectChildren(el, includeChildren, maxDepth, currentDepth);
   return entry;
 }
 async function getPageInfo() {
@@ -2485,6 +2455,32 @@ function formatAxeResults(axeResult) {
 }
 
 // extension/inject/api.js
+function setWithNativeSetter(element, proto, prop, val) {
+  const setter = Object.getOwnPropertyDescriptor(proto.prototype, prop)?.set;
+  if (setter)
+    setter.call(element, val);
+  else
+    element[prop] = val;
+}
+function setNativeValue(element, value) {
+  if (element instanceof HTMLInputElement) {
+    if (element.type === "checkbox" || element.type === "radio") {
+      setWithNativeSetter(element, HTMLInputElement, "checked", Boolean(value));
+    } else {
+      setWithNativeSetter(element, HTMLInputElement, "value", String(value));
+    }
+    return true;
+  }
+  if (element instanceof HTMLTextAreaElement) {
+    setWithNativeSetter(element, HTMLTextAreaElement, "value", String(value));
+    return true;
+  }
+  if (element instanceof HTMLSelectElement) {
+    setWithNativeSetter(element, HTMLSelectElement, "value", String(value));
+    return true;
+  }
+  return false;
+}
 function installGasolineAPI() {
   if (typeof window === "undefined")
     return;
@@ -2665,46 +2661,13 @@ function installGasolineAPI() {
         return false;
       }
       try {
-        if (element instanceof HTMLInputElement) {
-          if (element.type === "checkbox" || element.type === "radio") {
-            const nativeInputCheckedSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "checked")?.set;
-            if (nativeInputCheckedSetter) {
-              nativeInputCheckedSetter.call(element, Boolean(value));
-            } else {
-              element.checked = Boolean(value);
-            }
-          } else {
-            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-            if (nativeInputValueSetter) {
-              nativeInputValueSetter.call(element, String(value));
-            } else {
-              element.value = String(value);
-            }
-          }
-        } else if (element instanceof HTMLTextAreaElement) {
-          const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
-          if (nativeTextAreaValueSetter) {
-            nativeTextAreaValueSetter.call(element, String(value));
-          } else {
-            element.value = String(value);
-          }
-        } else if (element instanceof HTMLSelectElement) {
-          const nativeSelectValueSetter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")?.set;
-          if (nativeSelectValueSetter) {
-            nativeSelectValueSetter.call(element, String(value));
-          } else {
-            element.value = String(value);
-          }
-        } else {
+        if (!setNativeValue(element, value)) {
           console.error("[Gasoline] Element is not a form input:", selector);
           return false;
         }
-        const inputEvent = new Event("input", { bubbles: true });
-        element.dispatchEvent(inputEvent);
-        const changeEvent = new Event("change", { bubbles: true });
-        element.dispatchEvent(changeEvent);
-        const blurEvent = new Event("blur", { bubbles: true });
-        element.dispatchEvent(blurEvent);
+        element.dispatchEvent(new Event("input", { bubbles: true }));
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+        element.dispatchEvent(new Event("blur", { bubbles: true }));
         return true;
       } catch (err) {
         console.error("[Gasoline] Failed to set input value:", err);
@@ -2904,7 +2867,142 @@ function createDeferredPromise() {
   return { promise, resolve, reject };
 }
 
+// extension/lib/link-health.js
+function extractUniqueLinks() {
+  const linkElements = document.querySelectorAll("a[href]");
+  const urls = /* @__PURE__ */ new Set();
+  for (const elem of linkElements) {
+    const href = elem.href;
+    if (href && !isIgnoredLink(href))
+      urls.add(href);
+  }
+  return Array.from(urls);
+}
+function aggregateResults(results) {
+  const summary = { totalLinks: results.length, ok: 0, redirect: 0, requiresAuth: 0, broken: 0, timeout: 0, corsBlocked: 0, needsServerVerification: 0 };
+  const codeToField = {
+    ok: "ok",
+    redirect: "redirect",
+    requires_auth: "requiresAuth",
+    broken: "broken",
+    timeout: "timeout",
+    cors_blocked: "corsBlocked"
+  };
+  for (const result of results) {
+    const field = codeToField[result.code];
+    if (field)
+      summary[field]++;
+    if (result.code === "cors_blocked" && result.needsServerVerification)
+      summary.needsServerVerification++;
+  }
+  return summary;
+}
+async function checkLinkHealth(params) {
+  const timeout_ms = params.timeout_ms || 15e3;
+  const max_workers = params.max_workers || 20;
+  const uniqueLinks = extractUniqueLinks();
+  const results = [];
+  const chunks = chunkArray(uniqueLinks, max_workers);
+  for (const chunk of chunks) {
+    const batchResults = await Promise.allSettled(chunk.map((url) => checkLink(url, timeout_ms)));
+    for (const result of batchResults) {
+      if (result.status === "fulfilled" && result.value)
+        results.push(result.value);
+    }
+  }
+  return { summary: aggregateResults(results), results };
+}
+async function checkLink(url, timeout_ms) {
+  const startTime = performance.now();
+  const isExternal = new URL(url).origin !== window.location.origin;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout_ms);
+    try {
+      const response = await fetch(url, {
+        method: "HEAD",
+        signal: controller.signal,
+        redirect: "follow"
+      });
+      clearTimeout(timeoutId);
+      const timeMs = Math.round(performance.now() - startTime);
+      if (response.status === 0) {
+        return {
+          url,
+          status: null,
+          code: "cors_blocked",
+          timeMs,
+          isExternal,
+          error: "CORS policy blocked the request",
+          needsServerVerification: isExternal
+          // Only external links need server verification
+        };
+      }
+      let code;
+      if (response.status >= 200 && response.status < 300) {
+        code = "ok";
+      } else if (response.status >= 300 && response.status < 400) {
+        code = "redirect";
+      } else if (response.status === 401 || response.status === 403) {
+        code = "requires_auth";
+      } else if (response.status >= 400) {
+        code = "broken";
+      } else {
+        code = "broken";
+      }
+      return {
+        url,
+        status: response.status,
+        code,
+        timeMs,
+        isExternal,
+        redirectTo: response.redirected ? response.url : void 0
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (error) {
+    const timeMs = Math.round(performance.now() - startTime);
+    const isTimeout = error.name === "AbortError";
+    return {
+      url,
+      status: null,
+      code: isTimeout ? "timeout" : "broken",
+      timeMs,
+      isExternal,
+      error: isTimeout ? "timeout" : error.message
+    };
+  }
+}
+function isIgnoredLink(href) {
+  if (href.startsWith("javascript:"))
+    return true;
+  if (href.startsWith("mailto:"))
+    return true;
+  if (href.startsWith("tel:"))
+    return true;
+  if (href.startsWith("#"))
+    return true;
+  if (href === "")
+    return true;
+  return false;
+}
+function chunkArray(arr, chunkSize) {
+  const chunks = [];
+  for (let i = 0; i < arr.length; i += chunkSize) {
+    chunks.push(arr.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
 // extension/inject/message-handlers.js
+var pageNonce = "";
+if (typeof document !== "undefined" && typeof document.querySelector === "function") {
+  const nonceEl = document.querySelector("script[data-gasoline-nonce]");
+  if (nonceEl) {
+    pageNonce = nonceEl.getAttribute("data-gasoline-nonce") || "";
+  }
+}
 var VALID_SETTINGS = /* @__PURE__ */ new Set([
   "setNetworkWaterfallEnabled",
   "setPerformanceMarksEnabled",
@@ -2917,58 +3015,50 @@ var VALID_SETTINGS = /* @__PURE__ */ new Set([
   "setServerUrl"
 ]);
 var VALID_STATE_ACTIONS = /* @__PURE__ */ new Set(["capture", "restore"]);
+function serializeObject2(obj, depth, seen) {
+  if (seen.has(obj))
+    return "[Circular]";
+  seen.add(obj);
+  if (Array.isArray(obj))
+    return obj.slice(0, 100).map((v) => safeSerializeForExecute(v, depth + 1, seen));
+  if (obj instanceof Error)
+    return { error: obj.message, stack: obj.stack };
+  if (obj instanceof Date)
+    return obj.toISOString();
+  if (obj instanceof RegExp)
+    return obj.toString();
+  if (typeof Node !== "undefined" && obj instanceof Node) {
+    const node = obj;
+    return `[${node.nodeName}${node.id ? "#" + node.id : ""}]`;
+  }
+  const result = {};
+  const keys = Object.keys(obj).slice(0, 50);
+  for (const key of keys) {
+    try {
+      result[key] = safeSerializeForExecute(obj[key], depth + 1, seen);
+    } catch {
+      result[key] = "[unserializable]";
+    }
+  }
+  if (Object.keys(obj).length > 50) {
+    result["..."] = `[${Object.keys(obj).length - 50} more keys]`;
+  }
+  return result;
+}
 function safeSerializeForExecute(value, depth = 0, seen = /* @__PURE__ */ new WeakSet()) {
   if (depth > 10)
     return "[max depth exceeded]";
-  if (value === null)
-    return null;
-  if (value === void 0)
-    return void 0;
-  const type = typeof value;
-  if (type === "string" || type === "number" || type === "boolean") {
+  if (value === null || value === void 0)
     return value;
-  }
-  if (type === "function") {
+  const type = typeof value;
+  if (type === "string" || type === "number" || type === "boolean")
+    return value;
+  if (type === "function")
     return `[Function: ${value.name || "anonymous"}]`;
-  }
-  if (type === "symbol") {
+  if (type === "symbol")
     return value.toString();
-  }
-  if (type === "object") {
-    const obj = value;
-    if (seen.has(obj))
-      return "[Circular]";
-    seen.add(obj);
-    if (Array.isArray(obj)) {
-      return obj.slice(0, 100).map((v) => safeSerializeForExecute(v, depth + 1, seen));
-    }
-    if (obj instanceof Error) {
-      return { error: obj.message, stack: obj.stack };
-    }
-    if (obj instanceof Date) {
-      return obj.toISOString();
-    }
-    if (obj instanceof RegExp) {
-      return obj.toString();
-    }
-    if (typeof Node !== "undefined" && obj instanceof Node) {
-      const node = obj;
-      return `[${node.nodeName}${node.id ? "#" + node.id : ""}]`;
-    }
-    const result = {};
-    const keys = Object.keys(obj).slice(0, 50);
-    for (const key of keys) {
-      try {
-        result[key] = safeSerializeForExecute(obj[key], depth + 1, seen);
-      } catch {
-        result[key] = "[unserializable]";
-      }
-    }
-    if (Object.keys(obj).length > 50) {
-      result["..."] = `[${Object.keys(obj).length - 50} more keys]`;
-    }
-    return result;
-  }
+  if (type === "object")
+    return serializeObject2(value, depth, seen);
   return String(value);
 }
 function executeJavaScript(script, timeoutMs = 5e3) {
@@ -3043,94 +3133,100 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`
   });
   return deferred.promise;
 }
+async function handleLinkHealthQuery(data) {
+  try {
+    const params = data.params || {};
+    const result = await checkLinkHealth(params);
+    return result;
+  } catch (err) {
+    return {
+      error: "link_health_error",
+      message: err.message || "Failed to check link health"
+    };
+  }
+}
+function isValidSettingPayload(data) {
+  if (!VALID_SETTINGS.has(data.setting)) {
+    console.warn("[Gasoline] Invalid setting:", data.setting);
+    return false;
+  }
+  if (data.setting === "setWebSocketCaptureMode")
+    return typeof data.mode === "string";
+  if (data.setting === "setServerUrl")
+    return typeof data.url === "string";
+  if (typeof data.enabled !== "boolean") {
+    console.warn("[Gasoline] Invalid enabled value type");
+    return false;
+  }
+  return true;
+}
+function handleLinkHealthMessage(data) {
+  handleLinkHealthQuery(data).then((result) => {
+    window.postMessage({ type: "GASOLINE_LINK_HEALTH_RESPONSE", requestId: data.requestId, result }, window.location.origin);
+  }).catch((err) => {
+    window.postMessage({
+      type: "GASOLINE_LINK_HEALTH_RESPONSE",
+      requestId: data.requestId,
+      result: { error: "link_health_error", message: err.message || "Failed to check link health" }
+    }, window.location.origin);
+  });
+}
 function installMessageListener(captureStateFn, restoreStateFn) {
   if (typeof window === "undefined")
     return;
+  const messageHandlers = {
+    GASOLINE_SETTING: (data) => {
+      const settingData = data;
+      if (isValidSettingPayload(settingData))
+        handleSetting(settingData);
+    },
+    GASOLINE_STATE_COMMAND: (data) => handleStateCommand(data, captureStateFn, restoreStateFn),
+    GASOLINE_EXECUTE_JS: (data) => handleExecuteJs(data),
+    GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data),
+    GASOLINE_DOM_QUERY: (data) => handleDomQuery(data),
+    GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data),
+    GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data)
+  };
   window.addEventListener("message", (event) => {
     if (event.source !== window || event.origin !== window.location.origin)
       return;
-    if (event.data?.type === "GASOLINE_SETTING") {
-      const data = event.data;
-      if (!VALID_SETTINGS.has(data.setting)) {
-        console.warn("[Gasoline] Invalid setting:", data.setting);
-        return;
-      }
-      if (data.setting === "setWebSocketCaptureMode") {
-        if (typeof data.mode !== "string") {
-          console.warn("[Gasoline] Invalid mode type for setWebSocketCaptureMode");
-          return;
-        }
-      } else if (data.setting === "setServerUrl") {
-        if (typeof data.url !== "string") {
-          console.warn("[Gasoline] Invalid url type for setServerUrl");
-          return;
-        }
-      } else {
-        if (typeof data.enabled !== "boolean") {
-          console.warn("[Gasoline] Invalid enabled value type");
-          return;
-        }
-      }
-      handleSetting(data);
-    }
-    if (event.data?.type === "GASOLINE_STATE_COMMAND") {
-      const data = event.data;
-      handleStateCommand(data, captureStateFn, restoreStateFn);
-    }
-    if (event.data?.type === "GASOLINE_EXECUTE_JS") {
-      handleExecuteJs(event.data);
-    }
-    if (event.data?.type === "GASOLINE_A11Y_QUERY") {
-      handleA11yQuery(event.data);
-    }
-    if (event.data?.type === "GASOLINE_DOM_QUERY") {
-      handleDomQuery(event.data);
-    }
-    if (event.data?.type === "GASOLINE_GET_WATERFALL") {
-      handleGetWaterfall(event.data);
-    }
+    if (pageNonce && event.data?._nonce !== pageNonce)
+      return;
+    const msgType = event.data?.type;
+    if (!msgType)
+      return;
+    const handler = messageHandlers[msgType];
+    if (handler)
+      handler(event.data);
   });
 }
+var SETTING_HANDLERS = {
+  setNetworkWaterfallEnabled: (data) => setNetworkWaterfallEnabled(data.enabled),
+  setPerformanceMarksEnabled: (data) => {
+    setPerformanceMarksEnabled(data.enabled);
+    if (data.enabled)
+      installPerformanceCapture();
+    else
+      uninstallPerformanceCapture();
+  },
+  setActionReplayEnabled: (data) => setActionCaptureEnabled(data.enabled),
+  setWebSocketCaptureEnabled: (data) => {
+    setWebSocketCaptureEnabled(data.enabled);
+    if (data.enabled)
+      installWebSocketCapture();
+    else
+      uninstallWebSocketCapture();
+  },
+  setWebSocketCaptureMode: (data) => setWebSocketCaptureMode(data.mode || "medium"),
+  setPerformanceSnapshotEnabled: (data) => setPerformanceSnapshotEnabled(data.enabled),
+  setDeferralEnabled: (data) => setDeferralEnabled(data.enabled),
+  setNetworkBodyCaptureEnabled: (data) => setNetworkBodyCaptureEnabled(data.enabled),
+  setServerUrl: (data) => setServerUrl(data.url)
+};
 function handleSetting(data) {
-  switch (data.setting) {
-    case "setNetworkWaterfallEnabled":
-      setNetworkWaterfallEnabled(data.enabled);
-      break;
-    case "setPerformanceMarksEnabled":
-      setPerformanceMarksEnabled(data.enabled);
-      if (data.enabled) {
-        installPerformanceCapture();
-      } else {
-        uninstallPerformanceCapture();
-      }
-      break;
-    case "setActionReplayEnabled":
-      setActionCaptureEnabled(data.enabled);
-      break;
-    case "setWebSocketCaptureEnabled":
-      setWebSocketCaptureEnabled(data.enabled);
-      if (data.enabled) {
-        installWebSocketCapture();
-      } else {
-        uninstallWebSocketCapture();
-      }
-      break;
-    case "setWebSocketCaptureMode":
-      setWebSocketCaptureMode(data.mode || "medium");
-      break;
-    case "setPerformanceSnapshotEnabled":
-      setPerformanceSnapshotEnabled(data.enabled);
-      break;
-    case "setDeferralEnabled":
-      setDeferralEnabled(data.enabled);
-      break;
-    case "setNetworkBodyCaptureEnabled":
-      setNetworkBodyCaptureEnabled(data.enabled);
-      break;
-    case "setServerUrl":
-      setServerUrl(data.url);
-      break;
-  }
+  const handler = SETTING_HANDLERS[data.setting];
+  if (handler)
+    handler(data);
 }
 function handleStateCommand(data, captureStateFn, restoreStateFn) {
   const { messageId, action, state } = data;
@@ -3304,6 +3400,14 @@ function handleGetWaterfall(data) {
 }
 
 // extension/inject/state.js
+var pageNonce2 = "";
+if (typeof document !== "undefined" && typeof document.querySelector === "function") {
+  const nonceEl = document.querySelector("script[data-gasoline-nonce]");
+  if (nonceEl) {
+    pageNonce2 = nonceEl.getAttribute("data-gasoline-nonce") || "";
+  }
+}
+var SENSITIVE_KEY_PATTERNS = /token|secret|password|api.?key|auth|session.?id|csrf|jwt/i;
 var gasolineHighlighter = null;
 function captureState() {
   const state = {
@@ -3311,13 +3415,19 @@ function captureState() {
     timestamp: Date.now(),
     localStorage: {},
     sessionStorage: {},
-    cookies: document.cookie
+    cookies: document.cookie.split(";").map((c) => {
+      const [name, ...rest] = c.split("=");
+      if (name && SENSITIVE_KEY_PATTERNS.test(name.trim())) {
+        return `${name}=[REDACTED]`;
+      }
+      return c;
+    }).join(";")
   };
   const localStorageData = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key) {
-      localStorageData[key] = localStorage.getItem(key) || "";
+      localStorageData[key] = SENSITIVE_KEY_PATTERNS.test(key) ? "[REDACTED]" : localStorage.getItem(key) || "";
     }
   }
   ;
@@ -3326,7 +3436,7 @@ function captureState() {
   for (let i = 0; i < sessionStorage.length; i++) {
     const key = sessionStorage.key(i);
     if (key) {
-      sessionStorageData[key] = sessionStorage.getItem(key) || "";
+      sessionStorageData[key] = SENSITIVE_KEY_PATTERNS.test(key) ? "[REDACTED]" : sessionStorage.getItem(key) || "";
     }
   }
   ;
@@ -3346,89 +3456,84 @@ function isValidStorageKey(key) {
   }
   return true;
 }
+var MAX_STORAGE_VALUE_SIZE = 10 * 1024 * 1024;
+function restoreStorageEntries(storage, entries, label) {
+  let skipped = 0;
+  for (const [key, value] of Object.entries(entries)) {
+    if (!isValidStorageKey(key)) {
+      skipped++;
+      console.warn(`[gasoline] Skipped ${label} key with invalid pattern:`, key);
+      continue;
+    }
+    if (typeof value === "string" && value.length > MAX_STORAGE_VALUE_SIZE) {
+      skipped++;
+      console.warn(`[gasoline] Skipped ${label} value exceeding 10MB:`, key);
+      continue;
+    }
+    storage.setItem(key, value);
+  }
+  return skipped;
+}
+function clearAllCookies() {
+  const isSecure = window.location.protocol === "https:";
+  document.cookie.split(";").forEach((c) => {
+    const name = (c.split("=")[0] || "").trim();
+    if (!name)
+      return;
+    let deleteCookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+    if (isSecure)
+      deleteCookie += "; Secure";
+    deleteCookie += "; SameSite=Strict";
+    document.cookie = deleteCookie;
+  });
+}
+function restoreCookies(cookieString) {
+  const isSecure = window.location.protocol === "https:";
+  cookieString.split(";").forEach((c) => {
+    const trimmed = c.trim();
+    if (!trimmed)
+      return;
+    let securedCookie = trimmed;
+    if (isSecure && !securedCookie.toLowerCase().includes("secure"))
+      securedCookie += "; Secure";
+    if (!securedCookie.toLowerCase().includes("samesite"))
+      securedCookie += "; SameSite=Strict";
+    document.cookie = securedCookie;
+  });
+}
+function navigateSameOrigin(url) {
+  if (url === window.location.href)
+    return;
+  try {
+    const parsed = new URL(url);
+    if ((parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.origin === window.location.origin) {
+      window.location.href = url;
+    } else {
+      console.warn("[gasoline] Skipped navigation: URL must be same origin", url, "current:", window.location.origin);
+    }
+  } catch (e) {
+    console.warn("[gasoline] Invalid URL for navigation:", url, e);
+  }
+}
 function restoreState(state, includeUrl = true) {
   if (!state || typeof state !== "object") {
     return { success: false, error: "Invalid state object" };
   }
-  localStorage.clear();
-  sessionStorage.clear();
-  let skipped = 0;
-  for (const [key, value] of Object.entries(state.localStorage || {})) {
-    if (!isValidStorageKey(key)) {
-      skipped++;
-      console.warn("[gasoline] Skipped localStorage key with invalid pattern:", key);
-      continue;
-    }
-    if (typeof value === "string" && value.length > 10 * 1024 * 1024) {
-      skipped++;
-      console.warn("[gasoline] Skipped localStorage value exceeding 10MB:", key);
-      continue;
-    }
-    localStorage.setItem(key, value);
-  }
-  for (const [key, value] of Object.entries(state.sessionStorage || {})) {
-    if (!isValidStorageKey(key)) {
-      skipped++;
-      console.warn("[gasoline] Skipped sessionStorage key with invalid pattern:", key);
-      continue;
-    }
-    if (typeof value === "string" && value.length > 10 * 1024 * 1024) {
-      skipped++;
-      console.warn("[gasoline] Skipped sessionStorage value exceeding 10MB:", key);
-      continue;
-    }
-    sessionStorage.setItem(key, value);
-  }
-  document.cookie.split(";").forEach((c) => {
-    const namePart = c.split("=")[0];
-    if (namePart) {
-      const name = namePart.trim();
-      if (name) {
-        let deleteCookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-        if (window.location.protocol === "https:") {
-          deleteCookie += "; Secure";
-        }
-        deleteCookie += "; SameSite=Strict";
-        document.cookie = deleteCookie;
-      }
-    }
-  });
-  if (state.cookies) {
-    state.cookies.split(";").forEach((c) => {
-      const trimmed = c.trim();
-      if (!trimmed)
-        return;
-      let securedCookie = trimmed;
-      if (window.location.protocol === "https:" && !securedCookie.toLowerCase().includes("secure")) {
-        securedCookie += "; Secure";
-      }
-      if (!securedCookie.toLowerCase().includes("samesite")) {
-        securedCookie += "; SameSite=Strict";
-      }
-      document.cookie = securedCookie;
-    });
-  }
+  let skipped = restoreStorageEntries(localStorage, state.localStorage || {}, "localStorage");
+  skipped += restoreStorageEntries(sessionStorage, state.sessionStorage || {}, "sessionStorage");
+  clearAllCookies();
+  if (state.cookies)
+    restoreCookies(state.cookies);
   const restored = {
     localStorage: Object.keys(state.localStorage || {}).length - skipped,
     sessionStorage: Object.keys(state.sessionStorage || {}).length,
     cookies: (state.cookies || "").split(";").filter((c) => c.trim()).length,
     skipped
   };
-  if (includeUrl && state.url && state.url !== window.location.href) {
-    try {
-      const url = new URL(state.url);
-      if ((url.protocol === "http:" || url.protocol === "https:") && url.origin === window.location.origin) {
-        window.location.href = state.url;
-      } else {
-        console.warn("[gasoline] Skipped navigation: URL must be same origin", state.url, "current:", window.location.origin);
-      }
-    } catch (e) {
-      console.warn("[gasoline] Invalid URL for navigation:", state.url, e);
-    }
-  }
-  if (skipped > 0) {
+  if (includeUrl && state.url)
+    navigateSameOrigin(state.url);
+  if (skipped > 0)
     console.warn(`[gasoline] restoreState completed with ${skipped} skipped item(s)`);
-  }
   return { success: true, restored };
 }
 function highlightElement(selector, durationMs = 5e3) {
@@ -3450,9 +3555,10 @@ function highlightElement(selector, durationMs = 5e3) {
     left: `${rect.left}px`,
     width: `${rect.width}px`,
     height: `${rect.height}px`,
-    border: "4px solid red",
+    border: "2px solid rgba(59, 130, 246, 0.7)",
     borderRadius: "4px",
-    backgroundColor: "rgba(255, 0, 0, 0.1)",
+    backgroundColor: "rgba(59, 130, 246, 0.08)",
+    boxShadow: "0 0 12px rgba(59, 130, 246, 0.5)",
     zIndex: "2147483647",
     pointerEvents: "none",
     boxSizing: "border-box"
@@ -3500,6 +3606,8 @@ if (typeof window !== "undefined") {
 if (typeof window !== "undefined") {
   window.addEventListener("message", (event) => {
     if (event.source !== window || event.origin !== window.location.origin)
+      return;
+    if (pageNonce2 && event.data?._nonce !== pageNonce2)
       return;
     if (event.data?.type === "GASOLINE_HIGHLIGHT_REQUEST") {
       const { requestId, params } = event.data;
@@ -3614,6 +3722,7 @@ export {
   recordAction,
   recordEnhancedAction,
   removeContextAnnotation,
+  resetForTesting,
   restoreState,
   runAxeAudit,
   runAxeAuditWithTimeout,

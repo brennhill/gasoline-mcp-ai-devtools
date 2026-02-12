@@ -430,12 +430,12 @@ func LoadConfig(path string) ([]LogSourceConfig, error) {
 
 #### Pattern 1: Size-Based Rotation (Atomic Rename)
 
-**How it works:**
+##### How it works:
 - Logger writes to `app.log`
 - When file reaches size limit: rename `app.log` → `app.log.1`
 - Logger creates new `app.log` file (new inode)
 
-**Detection:**
+##### Detection:
 - Inode changes between polls (most reliable)
 - Fallback: Size decreased from last known position
 
@@ -453,13 +453,13 @@ Tailer detects:
 
 #### Pattern 2: Copytruncate (In-Place Truncation)
 
-**How it works:**
+##### How it works:
 
 - Logger writes to `app.log` (inode 12345)
 - When file reaches limit: system copies file to `app.log.1`
 - Then truncates `app.log` to 0 bytes (SAME inode)
 
-**Detection:**
+##### Detection:
 
 - Inode is UNCHANGED (new inode NOT created)
 - Size decreased → indicates truncation
@@ -475,7 +475,7 @@ Tailer detects:
 - Seek to 0 and continue reading from new logs
 ```
 
-**Special handling for copytruncate:**
+##### Special handling for copytruncate:
 
 ```go
 func (t *LocalFileTailer) poll() error {
@@ -510,18 +510,18 @@ func (t *LocalFileTailer) poll() error {
 
 #### Pattern 3: Delayed Compression (Gzip Rotation)
 
-**How it works:**
+##### How it works:
 
 - Logger writes to `app.log`
 - System rotates: renames `app.log` → `app.log.1`
 - Later: `app.log.1` → `app.log.1.gz` (compressed, renamed)
 
-**Detection:**
+##### Detection:
 
 - Inode changes, can't reopen old file
 - File renamed with `.gz` extension (skip, can't read directly)
 
-**Handling:**
+##### Handling:
 
 - Read all lines from `app.log.1` before it gets compressed
 - Once compressed, skip `.gz` files
@@ -529,13 +529,13 @@ func (t *LocalFileTailer) poll() error {
 
 #### Pattern 4: Logrotate with Postrotate
 
-**How it works:**
+##### How it works:
 
 - Logrotate runs: renames `app.log` → `app.log-20260131` or `app.log.1`
 - Creates new empty `app.log`
 - Sends SIGHUP to logger (or logger detects new file via inode)
 
-**Detection:**
+##### Detection:
 
 - Inode change is the primary signal
 - Size decrease is secondary
@@ -722,14 +722,14 @@ The log parser tries exactly 3 patterns in this order. If none match, falls back
 
 **Condition:** Line starts with `{` and contains valid JSON
 
-**Extracted Fields:**
+##### Extracted Fields:
 - `timestamp` — Any of: `timestamp`, `ts`, `time`, `date`
 - `level` — Any of: `level`, `severity`, `lvl`
 - `message` — Any of: `message`, `msg`, `text`
 - `trace_id` — Any of: `trace_id`, `request_id`, `correlation_id`, `req_id`, `traceID`
 - Other fields preserved in `metadata`
 
-**Example:**
+##### Example:
 ```json
 {
   "timestamp": "2024-01-01T12:00:00Z",
@@ -739,7 +739,7 @@ The log parser tries exactly 3 patterns in this order. If none match, falls back
 }
 ```
 
-**Extracted Result:**
+##### Extracted Result:
 ```json
 {
   "timestamp": 1704067200000,
@@ -755,13 +755,13 @@ The log parser tries exactly 3 patterns in this order. If none match, falls back
 
 **Regex:** `^\[(.*?)\]\s+(\w+)\s+(?:\[(.*?)\])?\s*(.*)$`
 
-**Groups:**
+##### Groups:
 - Group 1: Timestamp (any format)
 - Group 2: Level (single word: DEBUG, INFO, WARN, ERROR, FATAL, etc.)
 - Group 3: Optional metadata/trace-id in brackets
 - Group 4: Message (rest of line)
 
-**Examples:**
+##### Examples:
 ```
 [2024-01-01T12:00:00Z] INFO [req:abc123] User logged in
   → timestamp=1704067200000, level=info, trace_id=abc123, message="User logged in"
@@ -773,7 +773,7 @@ The log parser tries exactly 3 patterns in this order. If none match, falls back
   → timestamp=1704067200000, level=error, trace_id=<none>, message="Failed to connect to database"
 ```
 
-**Trace ID Extraction (from Group 3 and Message):**
+##### Trace ID Extraction (from Group 3 and Message):
 
 Pre-compiled regex patterns tried in order (matches first successful):
 
@@ -801,7 +801,7 @@ Pre-compiled regex patterns tried in order (matches first successful):
    - `x-request-id\s*:\s*([a-zA-Z0-9\-]+)` — Matches: `X-Request-ID: xyz`
    - `baggage.*trace[_]?id[=:]([a-zA-Z0-9\-]+)` — Matches OpenTelemetry baggage
 
-**Extraction Behavior:**
+##### Extraction Behavior:
 
 - First pattern match found = correlation_id extracted
 - If multiple patterns match same line: Use first match in regex order
@@ -811,13 +811,13 @@ Pre-compiled regex patterns tried in order (matches first successful):
 
 **Condition:** No structured format detected
 
-**Behavior:**
+##### Behavior:
 - Timestamp: Current time
 - Level: "info" for stdout, "error" for stderr
 - Message: Entire line as-is
 - Trace ID: Extract regex patterns from message (same as Pattern 2)
 
-**Example:**
+##### Example:
 ```
 User session timeout after 30 minutes
   → timestamp=<now>, level=info, message="User session timeout after 30 minutes"
@@ -825,7 +825,7 @@ User session timeout after 30 minutes
 
 ### Test Cases (v5.4)
 
-**Unit Tests (10 required):**
+#### Unit Tests (10 required):
 
 1. **JSON: Valid with all fields**
    ```json
@@ -898,12 +898,12 @@ User session timeout after 30 minutes
 
 ### Implementation Notes
 
-**DO:**
+#### DO:
 - Pre-compile all regex patterns at startup
 - Reuse regex objects (don't recompile per line)
 - Store only extracted fields (discard original line)
 
-**DON'T:**
+#### DON'T:
 - Use `strings.Split()` for bracket extraction (brittle)
 - Allocate new regex per line
 - Store full line in event (save ~1KB per line)

@@ -54,7 +54,7 @@ Add scraping capabilities to the `interact` tool as a guided workflow feature. A
 
 ## Examples
 
-**Scrape authenticated dashboard table:**
+### Scrape authenticated dashboard table:
 ```json
 // Navigate to dashboard
 interact({action: "navigate", url: "https://app.example.com/dashboard"})
@@ -72,7 +72,7 @@ interact({action: "execute_js", code: `
 `})
 ```
 
-**Handle pagination:**
+### Handle pagination:
 ```json
 // Scrape page 1, then loop
 let allData = [];
@@ -89,7 +89,7 @@ for (let page = 1; page <= 10; page++) {
 }
 ```
 
-**Export scraped data:**
+### Export scraped data:
 ```json
 generate({type: "json_export", data: allData, filename: "scraped_data.json"})
 ```

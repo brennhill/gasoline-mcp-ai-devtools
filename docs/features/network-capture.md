@@ -87,7 +87,7 @@ observe({what: "network_waterfall", limit: 50})
 
 ### What It Provides
 
-**Full request and response content:**
+#### Full request and response content:
 - Request: URL, method, headers, body (up to 100KB)
 - Response: status, headers, body (up to 100KB)
 - Timing: duration in milliseconds
@@ -170,7 +170,7 @@ observe({what: "network_bodies"})
 // Returns: [array of fetch() calls made by the app]
 ```
 
-**Examples of sites that use fetch():**
+#### Examples of sites that use fetch():
 - GitHub (loads comments, issues via API)
 - Twitter/X (infinite scroll, timeline updates)
 - Gmail (message loading)
@@ -249,20 +249,20 @@ These would require Chrome Extension API changes or violate Web Store policies:
 
 ## FAQ
 
-**Q: Why don't I see any network_bodies data?**
+### Q: Why don't I see any network_bodies data?
 A: You're likely testing on a page that doesn't use `fetch()`. Try a modern SPA or run `fetch()` from DevTools console.
 
-**Q: Can I capture XHR requests?**
+### Q: Can I capture XHR requests?
 A: Not yet. XHR capture is planned for v5.3+.
 
-**Q: Can I capture browser navigation?**
+### Q: Can I capture browser navigation?
 A: No, browser navigation cannot be intercepted from page context. Use `network_waterfall` for navigation metadata.
 
-**Q: Why not use webRequest API?**
+### Q: Why not use webRequest API?
 A: It requires scary permissions, violates Chrome policies, and is deprecated in Manifest V3.
 
-**Q: What's the body size limit?**
+### Q: What's the body size limit?
 A: 100KB for both request and response bodies. Larger bodies are truncated.
 
-**Q: How do I see ALL network traffic?**
+### Q: How do I see ALL network traffic?
 A: Use `observe({what: "network_waterfall"})` for metadata on all requests, or Chrome DevTools Network tab for full details.

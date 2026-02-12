@@ -14,7 +14,7 @@ export {
   type Batcher,
   type BatcherWithCircuitBreaker,
   type BatcherConfig,
-  type LogBatcherOptions,
+  type LogBatcherOptions
 } from './batchers'
 
 // Re-export server communication functions
@@ -33,7 +33,7 @@ export {
   postExtensionLogs,
   sendStatusPing,
   pollPendingQueries,
-  type ServerHealthResponse,
+  type ServerHealthResponse
 } from './server'
 
 // Import for logging formatting functions (still in this file for now)
@@ -105,7 +105,7 @@ export async function captureScreenshot(
   errorType: string | null,
   canTakeScreenshotFn: (tabId: number) => { allowed: boolean; reason?: string; nextAllowedIn?: number | null },
   recordScreenshotFn: (tabId: number) => void,
-  debugLogFn?: (category: string, message: string, data?: unknown) => void,
+  debugLogFn?: (category: string, message: string, data?: unknown) => void
 ): Promise<{
   success: boolean
   entry?: LogEntry
@@ -117,13 +117,13 @@ export async function captureScreenshot(
     if (debugLogFn) {
       debugLogFn('capture', `Screenshot rate limited: ${rateCheck.reason}`, {
         tabId,
-        nextAllowedIn: rateCheck.nextAllowedIn,
+        nextAllowedIn: rateCheck.nextAllowedIn
       })
     }
     return {
       success: false,
       error: `Rate limited: ${rateCheck.reason}`,
-      nextAllowedIn: rateCheck.nextAllowedIn,
+      nextAllowedIn: rateCheck.nextAllowedIn
     }
   }
 
@@ -132,7 +132,7 @@ export async function captureScreenshot(
 
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
       format: 'jpeg',
-      quality: 80,
+      quality: 80
     })
 
     recordScreenshotFn(tabId)
@@ -144,8 +144,8 @@ export async function captureScreenshot(
         dataUrl,
         url: tab.url,
         errorId: relatedErrorId || '',
-        errorType: errorType || '',
-      }),
+        errorType: errorType || ''
+      })
     })
 
     if (!response.ok) {
@@ -162,13 +162,13 @@ export async function captureScreenshot(
       _enrichments: ['screenshot'],
       screenshotFile: result.filename,
       trigger: relatedErrorId ? 'error' : 'manual',
-      ...(relatedErrorId ? { relatedErrorId } : {}),
+      ...(relatedErrorId ? { relatedErrorId } : {})
     } as LogEntry
 
     if (debugLogFn) {
       debugLogFn('capture', `Screenshot saved: ${result.filename}`, {
         trigger: relatedErrorId ? 'error' : 'manual',
-        relatedErrorId,
+        relatedErrorId
       })
     }
 

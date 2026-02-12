@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-16-api-contract.sh — Extension-Server API Contract Validation
 # Verifies server and extension use matching APIs
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 PORT="${1:-7903}"

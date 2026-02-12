@@ -7,6 +7,7 @@ const DEFAULT_MAX_ENTRIES = 1000;
 /**
  * Update the connection status display
  */
+// #lizard forgives
 export function updateConnectionStatus(status) {
     const statusEl = document.getElementById('status');
     const entriesEl = document.getElementById('entries-count');
@@ -90,12 +91,12 @@ export function updateConnectionStatus(status) {
         else if (cbState === 'open') {
             cbEl.style.display = '';
             cbEl.classList.add('health-error');
-            cbEl.textContent = 'Server: open (paused)';
+            cbEl.textContent = 'Server: paused (recovering from errors)';
         }
         else if (cbState === 'half-open') {
             cbEl.style.display = '';
             cbEl.classList.add('health-warning');
-            cbEl.textContent = 'Server: half-open (probing)';
+            cbEl.textContent = 'Server: recovering';
         }
         // Memory pressure indicator
         mpEl.classList.remove('health-error', 'health-warning');
@@ -106,12 +107,12 @@ export function updateConnectionStatus(status) {
         else if (mpState === 'soft') {
             mpEl.style.display = '';
             mpEl.classList.add('health-warning');
-            mpEl.textContent = 'Memory: elevated (reduced capacities)';
+            mpEl.textContent = 'Memory: elevated (some features limited)';
         }
         else if (mpState === 'hard') {
             mpEl.style.display = '';
             mpEl.classList.add('health-error');
-            mpEl.textContent = 'Memory: critical (bodies disabled)';
+            mpEl.textContent = 'Memory: critical (network capture disabled)';
         }
         // Show/hide entire section
         const cbVisible = status.connected && cbState !== 'closed';

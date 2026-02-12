@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/dev-console/dev-console/internal/queries"
@@ -142,6 +143,58 @@ func TestHandleSync_WithExtensionLogs(t *testing.T) {
 	}
 }
 
+func TestHandleSync_WithExtensionLogs_RedactsSensitiveData(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	const (
+		bearer = "Bearer tokenValue1234567890abcdef"
+		awsKey = "AKIA1234567890ABCDEF"
+	)
+
+	req := SyncRequest{
+		SessionID: "test_session",
+		ExtensionLogs: []ExtensionLog{
+			{
+				Level:    "debug",
+				Message:  "sync saw " + bearer,
+				Source:   "background",
+				Category: "AUTH",
+				Data:     json.RawMessage(`{"aws":"` + awsKey + `","header":"` + bearer + `"}`),
+			},
+		},
+	}
+
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	httpReq.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	cap.HandleSync(w, httpReq)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	logs := cap.GetExtensionLogs()
+	if len(logs) != 1 {
+		t.Fatalf("Expected 1 log, got %d", len(logs))
+	}
+
+	entry := logs[0]
+	if strings.Contains(entry.Message, bearer) {
+		t.Fatalf("Message should be redacted, got %q", entry.Message)
+	}
+	if !strings.Contains(entry.Message, "[REDACTED:bearer-token]") {
+		t.Fatalf("Expected bearer token marker in message, got %q", entry.Message)
+	}
+
+	dataText := string(entry.Data)
+	if strings.Contains(dataText, bearer) || strings.Contains(dataText, awsKey) {
+		t.Fatalf("Expected redacted data, got %s", dataText)
+	}
+}
+
 func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 	t.Parallel()
 	cap := NewCapture()
@@ -170,6 +223,119 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 
 	if newPollAt.IsZero() {
 		t.Error("Expected lastPollAt to be set after sync")
+	}
+}
+
+// ============================================
+// Adaptive Polling Interval Tests
+// ============================================
+
+func TestHandleSync_AdaptivePoll_FastWhenPendingCommands(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	// Create a pending query so there are commands waiting
+	cap.CreatePendingQuery(queries.PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":"body"}`),
+	})
+
+	// Sync should return fast poll interval (200ms) since commands are pending
+	req := SyncRequest{SessionID: "test_session"}
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	cap.HandleSync(w, httpReq)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	var resp SyncResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if len(resp.Commands) == 0 {
+		t.Fatal("Expected at least one command in response")
+	}
+	if resp.NextPollMs != 200 {
+		t.Errorf("Expected NextPollMs to be 200 when commands pending, got %d", resp.NextPollMs)
+	}
+}
+
+func TestHandleSync_AdaptivePoll_SlowWhenNoCommands(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	// No pending queries — should get default 1000ms interval
+	req := SyncRequest{SessionID: "test_session"}
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	cap.HandleSync(w, httpReq)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	var resp SyncResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if len(resp.Commands) != 0 {
+		t.Errorf("Expected no commands, got %d", len(resp.Commands))
+	}
+	if resp.NextPollMs != 1000 {
+		t.Errorf("Expected NextPollMs to be 1000 when idle, got %d", resp.NextPollMs)
+	}
+}
+
+func TestHandleSync_AdaptivePoll_RevertsAfterResultDelivered(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	// Create a pending query
+	queryID := cap.CreatePendingQuery(queries.PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":"body"}`),
+	})
+
+	// First sync: should be fast (200ms) — commands pending
+	req1 := SyncRequest{SessionID: "test_session"}
+	body1, _ := json.Marshal(req1)
+	httpReq1 := httptest.NewRequest("POST", "/sync", bytes.NewReader(body1))
+	w1 := httptest.NewRecorder()
+	cap.HandleSync(w1, httpReq1)
+
+	var resp1 SyncResponse
+	json.NewDecoder(w1.Body).Decode(&resp1)
+	if resp1.NextPollMs != 200 {
+		t.Errorf("First sync: expected NextPollMs 200, got %d", resp1.NextPollMs)
+	}
+
+	// Extension delivers result via second sync
+	resultBytes, _ := json.Marshal(map[string]string{"html": "<body>test</body>"})
+	req2 := SyncRequest{
+		SessionID: "test_session",
+		CommandResults: []SyncCommandResult{
+			{ID: queryID, Status: "complete", Result: resultBytes},
+		},
+	}
+	body2, _ := json.Marshal(req2)
+	httpReq2 := httptest.NewRequest("POST", "/sync", bytes.NewReader(body2))
+	w2 := httptest.NewRecorder()
+	cap.HandleSync(w2, httpReq2)
+
+	var resp2 SyncResponse
+	json.NewDecoder(w2.Body).Decode(&resp2)
+
+	// After result delivered, no more pending commands — should revert to 1000ms
+	if resp2.NextPollMs != 1000 {
+		t.Errorf("Second sync (after result): expected NextPollMs 1000, got %d", resp2.NextPollMs)
 	}
 }
 
@@ -286,4 +452,3 @@ func TestHandleSync_WaterfallResultDelivery(t *testing.T) {
 		t.Errorf("Expected 1 entry in result, got: %v", storedResult)
 	}
 }
-

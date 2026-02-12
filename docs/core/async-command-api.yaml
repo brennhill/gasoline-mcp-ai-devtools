@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Gasoline Async Command API
-  version: 6.0.0
+  version: 6.0.3
   description: |
     HTTP API for async command execution between MCP server and browser extension.
 
@@ -49,15 +49,15 @@ info:
 
     ## Timeout Architecture
 
-    - **HTTP Server**: 2s ReadTimeout, 2s WriteTimeout (fail fast)
-    - **Extension Execution**: 2s decision point, 10s total timeout
+    - **HTTP Server**: 5s ReadTimeout, 10s WriteTimeout
+    - **Extension Execution**: 60s total timeout
     - **MCP Polling**: Client polls every 2s until status changes from "pending"
 
     ## Status States
 
     - `pending`: Command queued, extension hasn't completed execution
     - `complete`: Command finished successfully or with error
-    - `timeout`: Extension exceeded 10s execution limit
+    - `timeout`: Extension exceeded 60s execution limit
 
     ## Key Endpoints
 
@@ -170,9 +170,9 @@ paths:
                 value:
                   correlation_id: "corr-1706123456-abc123"
                   status: "timeout"
-                  error: "JavaScript execution exceeded 10s"
+                  error: "JavaScript execution exceeded 60s"
               pending:
-                summary: Still executing (2s checkpoint)
+                summary: Still queued or executing
                 value:
                   correlation_id: "corr-1706123456-abc123"
                   status: "pending"
@@ -444,7 +444,7 @@ components:
           type: string
           description: |
             Async command correlation ID. If present, extension must use
-            async execution pattern (2s/10s timeouts) and post result
+            async execution pattern (60s timeout) and post result
             to /execute-result with this correlation_id.
           example: "corr-1706123456-abc123"
         tab_id:
@@ -474,9 +474,9 @@ components:
             - timeout
           description: |
             Execution status:
-            - `pending`: Still executing (posted at 2s checkpoint)
+            - `pending`: Still queued or executing
             - `complete`: Finished (success or error)
-            - `timeout`: Exceeded 10s execution limit
+            - `timeout`: Exceeded 60s execution limit
           example: "complete"
         result:
           type: object

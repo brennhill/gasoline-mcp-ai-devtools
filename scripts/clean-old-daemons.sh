@@ -3,14 +3,14 @@
 # Usage: ./scripts/clean-old-daemons.sh
 # Or: gasoline --force
 
-set -e
+set -euo pipefail
 
 echo "🧹 Gasoline Daemon Cleanup"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
 KILLED=0
-FAILED=0
+_FAILED=0  # reserved for future error reporting
 
 # Function to kill a process safely
 kill_process() {

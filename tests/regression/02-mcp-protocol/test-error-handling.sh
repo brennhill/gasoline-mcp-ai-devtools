@@ -92,4 +92,4 @@ run_test "Error has jsonrpc field" test_error_has_jsonrpc || ((FAILED++))
 run_test "Error id matches request" test_error_has_id || ((FAILED++))
 run_test "Invalid observe mode returns error" test_invalid_observe_mode || ((FAILED++))
 
-exit $FAILED
+exit "$FAILED"

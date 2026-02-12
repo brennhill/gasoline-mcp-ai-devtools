@@ -1,6 +1,6 @@
 # Generate Test: Turn Browser Sessions into Regression Tests
 
-**Your AI assistant watched you use the app. Now it writes the test.**
+## Your AI assistant watched you use the app. Now it writes the test.
 
 ---
 

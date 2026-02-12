@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -41,13 +39,13 @@ func TestIntegration_ServerStartupUnder1Second(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+
 
 	// Measure startup time
 	startTime := time.Now()
 
 	// Start server
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -100,10 +98,10 @@ func TestIntegration_AllMCPToolsReturnValidResponses(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+
 
 	// Start server
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -171,13 +169,13 @@ func TestIntegration_AllMCPToolsReturnValidResponses(t *testing.T) {
 		{"generate csp", `{"jsonrpc":"2.0","id":45,"method":"tools/call","params":{"name":"generate","arguments":{"format":"csp"}}}`},
 		{"generate sri", `{"jsonrpc":"2.0","id":46,"method":"tools/call","params":{"name":"generate","arguments":{"format":"sri"}}}`},
 
-		// configure tool - all 15 actions
+		// configure tool - sample of 14 actions
 		{"configure health", `{"jsonrpc":"2.0","id":50,"method":"tools/call","params":{"name":"configure","arguments":{"action":"health"}}}`},
 		{"configure store list", `{"jsonrpc":"2.0","id":51,"method":"tools/call","params":{"name":"configure","arguments":{"action":"store","store_action":"list"}}}`},
 		{"configure store stats", `{"jsonrpc":"2.0","id":52,"method":"tools/call","params":{"name":"configure","arguments":{"action":"store","store_action":"stats"}}}`},
 		{"configure noise_rule list", `{"jsonrpc":"2.0","id":53,"method":"tools/call","params":{"name":"configure","arguments":{"action":"noise_rule","noise_action":"list"}}}`},
 		{"configure diff_sessions list", `{"jsonrpc":"2.0","id":54,"method":"tools/call","params":{"name":"configure","arguments":{"action":"diff_sessions","session_action":"list"}}}`},
-		{"configure validate_api report", `{"jsonrpc":"2.0","id":55,"method":"tools/call","params":{"name":"configure","arguments":{"action":"validate_api","operation":"report"}}}`},
+		{"analyze api_validation report", `{"jsonrpc":"2.0","id":55,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"api_validation","operation":"report"}}}`},
 		{"configure audit_log", `{"jsonrpc":"2.0","id":56,"method":"tools/call","params":{"name":"configure","arguments":{"action":"audit_log"}}}`},
 		{"configure streaming status", `{"jsonrpc":"2.0","id":57,"method":"tools/call","params":{"name":"configure","arguments":{"action":"streaming","streaming_action":"status"}}}`},
 
@@ -295,10 +293,10 @@ func TestIntegration_ToolsListMatchesImplementation(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+
 
 	// Start server
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -344,8 +342,9 @@ func TestIntegration_ToolsListMatchesImplementation(t *testing.T) {
 		t.Logf("  - %s", tool.Name)
 	}
 
-	// Verify the 4 expected tools are present
-	expectedTools := []string{"observe", "generate", "configure", "interact"}
+	// Verify the 5 expected tools are present
+	// Updated in Phase 0 to include new "analyze" tool for active analysis operations
+	expectedTools := []string{"observe", "analyze", "generate", "configure", "interact"}
 	for _, expected := range expectedTools {
 		found := false
 		for _, tool := range toolsResp.Result.Tools {
@@ -360,8 +359,8 @@ func TestIntegration_ToolsListMatchesImplementation(t *testing.T) {
 	}
 
 	// Verify no extra unexpected tools
-	if len(toolsResp.Result.Tools) != 4 {
-		t.Errorf("Expected exactly 4 tools, got %d", len(toolsResp.Result.Tools))
+	if len(toolsResp.Result.Tools) != 5 {
+		t.Errorf("Expected exactly 5 tools, got %d", len(toolsResp.Result.Tools))
 	}
 }
 

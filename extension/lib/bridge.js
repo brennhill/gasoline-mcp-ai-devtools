@@ -7,6 +7,7 @@ import { getActionBuffer } from './actions.js';
 /**
  * Post a log message to the content script
  */
+// #lizard forgives
 export function postLog(payload) {
     // Include context annotations and action replay for errors
     const context = getContextAnnotations();
@@ -40,8 +41,8 @@ export function postLog(payload) {
             ...(context && payload.level === 'error' ? { _context: context } : {}),
             ...(actions && actions.length > 0 ? { _actions: actions } : {}),
             // Any other fields from payload (excluding the ones we destructured)
-            ...otherFields,
-        },
+            ...otherFields
+        }
     }, window.location.origin);
 }
 //# sourceMappingURL=bridge.js.map

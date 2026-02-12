@@ -50,10 +50,10 @@ const mockWindow = {
     now: () => performance.now(),
     getEntriesByType: () => [],
     mark: mock.fn(),
-    measure: mock.fn(),
+    measure: mock.fn()
   },
   PerformanceObserver: undefined,
-  fetch: mock.fn(() => Promise.resolve({ ok: true, json: () => ({}) })),
+  fetch: mock.fn(() => Promise.resolve({ ok: true, json: () => ({}) }))
 }
 
 const mockDocument = {
@@ -65,16 +65,18 @@ const mockDocument = {
     attributes: [],
     textContent: '',
     getAttribute: () => null,
-    parentElement: null,
+    parentElement: null
   },
   createElement: () => ({
     tagName: 'DIV',
     children: [],
     attributes: [],
     textContent: '',
-    getAttribute: () => null,
+    getAttribute: () => null
   }),
   addEventListener: mock.fn(),
+  querySelector: mock.fn(() => null),
+  querySelectorAll: mock.fn(() => [])
 }
 
 const mockConsole = {
@@ -82,7 +84,7 @@ const mockConsole = {
   warn: mock.fn(),
   error: mock.fn(),
   info: mock.fn(),
-  debug: mock.fn(),
+  debug: mock.fn()
 }
 
 // Set up global mocks BEFORE any imports
@@ -98,7 +100,7 @@ describe('Performance Benchmarks', () => {
       const simpleObject = {
         message: 'Test error',
         code: 'ERR_001',
-        timestamp: Date.now(),
+        timestamp: Date.now()
       }
 
       const avgTime = measureTime(() => safeSerialize(simpleObject))
@@ -116,15 +118,15 @@ describe('Performance Benchmarks', () => {
             level3: {
               level4: {
                 value: 'deep',
-                array: [1, 2, 3, 4, 5],
-              },
-            },
-          },
+                array: [1, 2, 3, 4, 5]
+              }
+            }
+          }
         },
         metadata: {
           timestamp: Date.now(),
-          source: 'test',
-        },
+          source: 'test'
+        }
       }
 
       const avgTime = measureTime(() => safeSerialize(nestedObject))
@@ -139,7 +141,7 @@ describe('Performance Benchmarks', () => {
       const largeArray = Array.from({ length: 100 }, (_, i) => ({
         id: i,
         name: `Item ${i}`,
-        value: Math.random(),
+        value: Math.random()
       }))
 
       const avgTime = measureTime(() => safeSerialize(largeArray), 100)
@@ -185,7 +187,7 @@ describe('Performance Benchmarks', () => {
         stack: `TypeError: Cannot read property "x" of undefined
     at handleClick (app.js:42:15)
     at HTMLButtonElement.onclick (index.html:10:1)`,
-        url: 'http://localhost:3000/app',
+        url: 'http://localhost:3000/app'
       }
 
       const avgTime = measureTime(() => createErrorSignature(errorEntry))
@@ -202,7 +204,7 @@ describe('Performance Benchmarks', () => {
         level: 'error',
         method: 'POST',
         url: 'http://localhost:8789/api/users',
-        status: 500,
+        status: 500
       }
 
       const avgTime = measureTime(() => createErrorSignature(networkEntry))
@@ -220,7 +222,7 @@ describe('Performance Benchmarks', () => {
         level: 'error',
         type: 'console',
         args: ['Error:', { code: 'ERR_001', details: 'Something went wrong' }],
-        url: 'http://localhost:3000/app',
+        url: 'http://localhost:3000/app'
       }
 
       const avgTime = measureTime(() => formatLogEntry(rawEntry))
@@ -236,7 +238,7 @@ describe('Performance Benchmarks', () => {
         level: 'error',
         type: 'console',
         args: Array.from({ length: 50 }, (_, i) => ({ key: i, value: `item-${i}` })),
-        url: 'http://localhost:3000/app',
+        url: 'http://localhost:3000/app'
       }
 
       const avgTime = measureTime(() => formatLogEntry(rawEntry), 100)
@@ -256,7 +258,7 @@ describe('Performance Benchmarks', () => {
         message: 'Test error',
         stack: 'Error: Test\n    at test.js:1:1',
         url: 'http://localhost:3000',
-        ts: new Date().toISOString(),
+        ts: new Date().toISOString()
       }
 
       // Include signature computation time
@@ -288,7 +290,7 @@ describe('Performance Benchmarks', () => {
         transferSize: 5000,
         encodedBodySize: 4500,
         decodedBodySize: 10000,
-        initiatorType: 'fetch',
+        initiatorType: 'fetch'
       }
 
       const avgTime = measureTime(() => parseResourceTiming(mockTiming))
@@ -316,7 +318,7 @@ describe('Performance Benchmarks', () => {
         transferSize: 1000,
         encodedBodySize: 900,
         decodedBodySize: 1000,
-        initiatorType: 'fetch',
+        initiatorType: 'fetch'
       }))
 
       globalThis.window.performance.getEntriesByType = () => mockEntries
@@ -343,8 +345,8 @@ describe('Performance Benchmarks', () => {
           getAttribute: (name) => (name === 'data-testid' ? 'submit' : null),
           textContent: 'Submit',
           type: 'button',
-          name: '',
-        },
+          name: ''
+        }
       }
 
       const avgTime = measureTime(() => recordAction(mockEvent))
@@ -367,8 +369,8 @@ describe('Performance Benchmarks', () => {
           getAttribute: () => null,
           textContent: 'Click',
           type: 'button',
-          name: '',
-        },
+          name: ''
+        }
       }
 
       // Record 50 actions (should maintain 20)
@@ -400,7 +402,7 @@ describe('Performance Benchmarks', () => {
     at handleClick (app.js:42:15)
     at HTMLButtonElement.onclick (index.html:10:1)`,
         args: [{ code: 'ERR_001', context: { user: 'test' } }],
-        url: 'http://localhost:3000/app',
+        url: 'http://localhost:3000/app'
       }
 
       const avgTime = measureTime(() => {
@@ -438,7 +440,7 @@ describe('Performance Benchmarks', () => {
             message: `Error ${batch}-${i}`,
             stack: `Error: ${batch}-${i}\n    at test.js:${i}:1`,
             url: 'http://localhost:3000',
-            ts: new Date().toISOString(),
+            ts: new Date().toISOString()
           }
           createErrorSignature(entry)
           processErrorGroup(entry)

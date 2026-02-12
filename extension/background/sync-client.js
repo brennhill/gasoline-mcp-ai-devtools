@@ -29,7 +29,7 @@ export class SyncClient {
             connected: false,
             lastSyncAt: 0,
             consecutiveFailures: 0,
-            lastCommandAck: null,
+            lastCommandAck: null
         };
     }
     /** Get current sync state */
@@ -115,7 +115,7 @@ export class SyncClient {
             const request = {
                 session_id: this.sessionId,
                 extension_version: this.extensionVersion || undefined,
-                settings,
+                settings
             };
             // Include logs if any
             if (logs.length > 0) {
@@ -137,10 +137,10 @@ export class SyncClient {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Gasoline-Client': `gasoline-extension/${this.extensionVersion}`,
-                    'X-Gasoline-Extension-Version': this.extensionVersion,
+                    'X-Gasoline-Extension-Version': this.extensionVersion
                 },
                 body: JSON.stringify(request),
-                signal: controller.signal,
+                signal: controller.signal
             });
             clearTimeout(timeoutId);
             if (!response.ok) {
@@ -152,7 +152,7 @@ export class SyncClient {
                 commands: data.commands?.length || 0,
                 resultsSent: request.command_results?.length || 0,
                 logsSent: request.extension_logs?.length || 0,
-                nextPollMs: data.next_poll_ms,
+                nextPollMs: data.next_poll_ms
             });
             // Success - update state
             this.onSuccess();
@@ -171,9 +171,13 @@ export class SyncClient {
             this.pendingResults = [];
             // Process commands
             if (data.commands && data.commands.length > 0) {
-                this.log('Received commands', { count: data.commands.length, ids: data.commands.map(c => c.id) });
+                this.log('Received commands', { count: data.commands.length, ids: data.commands.map((c) => c.id) });
                 for (const command of data.commands) {
-                    this.log('Dispatching command', { id: command.id, type: command.type, correlation_id: command.correlation_id });
+                    this.log('Dispatching command', {
+                        id: command.id,
+                        type: command.type,
+                        correlation_id: command.correlation_id
+                    });
                     try {
                         await this.callbacks.onCommand(command);
                         // Track ack only after successful execution
@@ -233,7 +237,7 @@ export class SyncClient {
             this.callbacks.debugLog('sync', message, data);
         }
         else {
-            console.log(`[SyncClient] ${message}`, data || '');
+            console.log(`[SyncClient] ${message}`, data || ''); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal sync state, not user-controlled
         }
     }
 }

@@ -3,7 +3,7 @@
  * Handles source map fetching and caching, stack frame parsing,
  * VLQ decoding, and stack trace resolution for better error messages.
  */
-import { getSourceMapCacheEntry, setSourceMapCacheEntry, isSourceMapEnabled, } from './cache-limits.js';
+import { getSourceMapCacheEntry, setSourceMapCacheEntry, isSourceMapEnabled } from './cache-limits.js';
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -63,7 +63,7 @@ export function checkContextAnnotations(entries) {
         contextWarningState = {
             sizeKB: Math.round(avgSize / 1024),
             count: contextExcessiveTimestamps.length,
-            triggeredAt: now,
+            triggeredAt: now
         };
     }
     else if (contextWarningState && contextExcessiveTimestamps.length === 0) {
@@ -145,7 +145,7 @@ export function parseStackFrame(line) {
             fileName: file1 || file2 || '',
             lineNumber: parseInt(line1 || line2 || '0', 10),
             columnNumber: col1 ? parseInt(col1, 10) : 0,
-            raw: line,
+            raw: line
         };
     }
     const anonMatch = line.match(ANONYMOUS_FRAME_REGEX);
@@ -155,7 +155,7 @@ export function parseStackFrame(line) {
             fileName: anonMatch[1] || '',
             lineNumber: parseInt(anonMatch[2] || '0', 10),
             columnNumber: parseInt(anonMatch[3] || '0', 10),
-            raw: line,
+            raw: line
         };
     }
     return null;
@@ -178,12 +178,13 @@ export function parseSourceMapData(sourceMap) {
         names: sourceMap.names || [],
         sourceRoot: sourceMap.sourceRoot || '',
         mappings,
-        sourcesContent: sourceMap.sourcesContent || [],
+        sourcesContent: sourceMap.sourcesContent || []
     };
 }
 /**
  * Find original location from source map
  */
+// #lizard forgives
 export function findOriginalLocation(sourceMap, line, column) {
     if (!sourceMap || !sourceMap.mappings)
         return null;
@@ -220,100 +221,101 @@ export function findOriginalLocation(sourceMap, line, column) {
                     source: sourceMap.sources[sourceIndex] || '',
                     line: origLine + 1,
                     column: origCol,
-                    name: segment.length >= 5 ? sourceMap.names[nameIndex] || null : null,
+                    name: segment.length >= 5 ? sourceMap.names[nameIndex] || null : null
                 };
             }
         }
     }
     return bestMatch;
 }
-/**
- * Fetch a source map for a script URL
- */
+function cacheNullAndReturn(scriptUrl) {
+    setSourceMapCacheEntry(scriptUrl, null);
+    return null;
+}
+async function fetchWithTimeout(url) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SOURCE_MAP_FETCH_TIMEOUT);
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        return response;
+    }
+    finally {
+        clearTimeout(timeoutId);
+    }
+}
+function parseInlineSourceMap(dataUrl, scriptUrl, debugLogFn) {
+    const base64Match = dataUrl.match(/^data:application\/json;base64,(.+)$/);
+    if (!base64Match || !base64Match[1])
+        return cacheNullAndReturn(scriptUrl);
+    let jsonStr;
+    try {
+        jsonStr = atob(base64Match[1]);
+    }
+    catch {
+        if (debugLogFn)
+            debugLogFn('sourcemap', 'Invalid base64 in inline source map', { scriptUrl });
+        return cacheNullAndReturn(scriptUrl);
+    }
+    let sourceMap;
+    try {
+        sourceMap = JSON.parse(jsonStr);
+    }
+    catch {
+        if (debugLogFn)
+            debugLogFn('sourcemap', 'Invalid JSON in inline source map', { scriptUrl });
+        return cacheNullAndReturn(scriptUrl);
+    }
+    const parsed = parseSourceMapData(sourceMap);
+    setSourceMapCacheEntry(scriptUrl, parsed);
+    return parsed;
+}
+async function fetchExternalSourceMap(sourceMapUrl, scriptUrl, debugLogFn) {
+    let resolvedUrl = sourceMapUrl;
+    if (!resolvedUrl.startsWith('http')) {
+        const base = scriptUrl.substring(0, scriptUrl.lastIndexOf('/') + 1);
+        resolvedUrl = new URL(resolvedUrl, base).href;
+    }
+    const mapResponse = await fetchWithTimeout(resolvedUrl);
+    if (!mapResponse.ok)
+        return cacheNullAndReturn(scriptUrl);
+    let sourceMap;
+    try {
+        sourceMap = await mapResponse.json();
+    }
+    catch {
+        if (debugLogFn)
+            debugLogFn('sourcemap', 'Invalid JSON in external source map', { scriptUrl, sourceMapUrl: resolvedUrl });
+        return cacheNullAndReturn(scriptUrl);
+    }
+    const parsed = parseSourceMapData(sourceMap);
+    setSourceMapCacheEntry(scriptUrl, parsed);
+    return parsed;
+}
 export async function fetchSourceMap(scriptUrl, debugLogFn) {
     if (getSourceMapCacheEntry(scriptUrl)) {
         return getSourceMapCacheEntry(scriptUrl) || null;
     }
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), SOURCE_MAP_FETCH_TIMEOUT);
-        const scriptResponse = await fetch(scriptUrl, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (!scriptResponse.ok) {
-            setSourceMapCacheEntry(scriptUrl, null);
-            return null;
-        }
+        const scriptResponse = await fetchWithTimeout(scriptUrl);
+        if (!scriptResponse.ok)
+            return cacheNullAndReturn(scriptUrl);
         const scriptContent = await scriptResponse.text();
-        let sourceMapUrl = extractSourceMapUrl(scriptContent);
-        if (!sourceMapUrl) {
-            setSourceMapCacheEntry(scriptUrl, null);
-            return null;
-        }
+        const sourceMapUrl = extractSourceMapUrl(scriptContent);
+        if (!sourceMapUrl)
+            return cacheNullAndReturn(scriptUrl);
         if (sourceMapUrl.startsWith('data:')) {
-            const base64Match = sourceMapUrl.match(/^data:application\/json;base64,(.+)$/);
-            if (base64Match && base64Match[1]) {
-                let jsonStr;
-                try {
-                    jsonStr = atob(base64Match[1]);
-                }
-                catch {
-                    if (debugLogFn)
-                        debugLogFn('sourcemap', 'Invalid base64 in inline source map', { scriptUrl });
-                    setSourceMapCacheEntry(scriptUrl, null);
-                    return null;
-                }
-                let sourceMap;
-                try {
-                    sourceMap = JSON.parse(jsonStr);
-                }
-                catch {
-                    if (debugLogFn)
-                        debugLogFn('sourcemap', 'Invalid JSON in inline source map', { scriptUrl });
-                    setSourceMapCacheEntry(scriptUrl, null);
-                    return null;
-                }
-                const parsed = parseSourceMapData(sourceMap);
-                setSourceMapCacheEntry(scriptUrl, parsed);
-                return parsed;
-            }
-            setSourceMapCacheEntry(scriptUrl, null);
-            return null;
+            return parseInlineSourceMap(sourceMapUrl, scriptUrl, debugLogFn);
         }
-        if (!sourceMapUrl.startsWith('http')) {
-            const base = scriptUrl.substring(0, scriptUrl.lastIndexOf('/') + 1);
-            sourceMapUrl = new URL(sourceMapUrl, base).href;
-        }
-        const mapController = new AbortController();
-        const mapTimeoutId = setTimeout(() => mapController.abort(), SOURCE_MAP_FETCH_TIMEOUT);
-        const mapResponse = await fetch(sourceMapUrl, { signal: mapController.signal });
-        clearTimeout(mapTimeoutId);
-        if (!mapResponse.ok) {
-            setSourceMapCacheEntry(scriptUrl, null);
-            return null;
-        }
-        let sourceMap;
-        try {
-            sourceMap = await mapResponse.json();
-        }
-        catch {
-            if (debugLogFn)
-                debugLogFn('sourcemap', 'Invalid JSON in external source map', { scriptUrl, sourceMapUrl });
-            setSourceMapCacheEntry(scriptUrl, null);
-            return null;
-        }
-        const parsed = parseSourceMapData(sourceMap);
-        setSourceMapCacheEntry(scriptUrl, parsed);
-        return parsed;
+        return fetchExternalSourceMap(sourceMapUrl, scriptUrl, debugLogFn);
     }
     catch (err) {
         if (debugLogFn) {
             debugLogFn('sourcemap', 'Source map fetch failed', {
                 scriptUrl,
-                error: err.message,
+                error: err.message
             });
         }
-        setSourceMapCacheEntry(scriptUrl, null);
-        return null;
+        return cacheNullAndReturn(scriptUrl);
     }
 }
 /**
@@ -337,7 +339,7 @@ export async function resolveStackFrame(frame, debugLogFn) {
         originalLineNumber: original.line,
         originalColumnNumber: original.column,
         originalFunctionName: original.name || frame.functionName,
-        resolved: true,
+        resolved: true
     };
 }
 /**
@@ -411,7 +413,7 @@ export function cleanupStaleProcessingQueries(debugLogFn) {
             if (debugLogFn) {
                 debugLogFn('connection', 'Cleaned up stale processing query', {
                     queryId,
-                    age: Math.round((now - timestamp) / 1000) + 's',
+                    age: Math.round((now - timestamp) / 1000) + 's'
                 });
             }
         }

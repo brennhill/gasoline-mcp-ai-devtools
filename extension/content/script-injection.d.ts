@@ -2,6 +2,8 @@
  * @fileoverview Script Injection Module
  * Injects capture script into the page context and syncs stored settings
  */
+/** Get the page nonce for authenticating postMessages to inject.js */
+export declare function getPageNonce(): string;
 /** Check if inject script has been loaded into the page context */
 export declare function isInjectScriptLoaded(): boolean;
 /**

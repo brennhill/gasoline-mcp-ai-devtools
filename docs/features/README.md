@@ -104,7 +104,7 @@ incomplete: true  # Optional, marks placeholder docs
 ---
 ```
 
-**What this enables:**
+#### What this enables:
 - Find all HIGH priority docs: grep `ai-priority: high`
 - Find related docs: check `relates-to` field
 - Verify freshness: check `last-verified` date
@@ -219,7 +219,7 @@ Feature is no longer supported or scheduled for removal.
 
 ## Codebase Truth
 
-**The codebase is the ground truth.**
+### The codebase is the ground truth.
 
 If documentation contradicts code:
 1. Assume code is current (docs may be stale)
@@ -231,18 +231,18 @@ If documentation contradicts code:
 
 ## Related Documents
 
-**For humans:**
+### For humans:
 - `FEATURE-index.md` — Status table with brief descriptions
 
-**For architects:**
+### For architects:
 - `.claude/refs/architecture.md` — System design and 5-tool constraint
 - `docs/adrs/adrs.md` — Architecture decision record index
 
-**For developers:**
+### For developers:
 - `.claude/docs/testing.md` — TDD workflow
 - `.claude/docs/spec-review.md` — Spec review process
 
-**For releases:**
+### For releases:
 - `docs/core/release.md` — Release process and quality gates
 - `docs/core/known-issues.md` — Current blockers
 
@@ -252,14 +252,14 @@ If documentation contradicts code:
 
 ### When Searching Docs
 
-**Search strategy:**
+#### Search strategy:
 1. Always start with FEATURE-index.md (quick status lookup)
 2. If status is `shipped`, read PRODUCT_SPEC + TECH_SPEC + QA_PLAN
 3. If status is `proposed`, read PRODUCT_SPEC + placeholder specs
 4. If status is `in-progress`, check `incomplete: true` flag
 5. Always check `relates-to` field for context
 
-**Cursor navigation:**
+#### Cursor navigation:
 ```javascript
 // All shipped features and their tech specs:
 grep -r "status: shipped" docs/features/feature/*/

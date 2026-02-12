@@ -4,8 +4,6 @@
 package capture
 
 import (
-	"encoding/json"
-	"net/http"
 	"time"
 )
 
@@ -18,54 +16,30 @@ import (
 // This enables AI debugging of extension-internal behavior that isn't
 // visible through page-level console capture.
 
-// HandleExtensionLogs processes log entries from extension contexts
-func (c *Capture) HandleExtensionLogs(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var payload struct {
-		Logs []ExtensionLog `json:"logs"`
-	}
-
-	// Parse JSON payload
-	r.Body = http.MaxBytesReader(w, r.Body, maxExtensionPostBody)
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-
+// AddExtensionLogs ingests extension log entries into the ring buffer.
+// Thread-safe: acquires write lock.
+func (c *Capture) AddExtensionLogs(logs []ExtensionLog) {
 	now := time.Now()
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Process each log entry
-	for _, log := range payload.Logs {
-		// Set server-side timestamp if not provided
+	for _, log := range logs {
 		if log.Timestamp.IsZero() {
 			log.Timestamp = now
 		}
-
-		// Append to ring buffer with capacity enforcement
+		log = c.redactExtensionLog(log)
 		c.elb.logs = append(c.elb.logs, log)
 
-		// Evict oldest entries if over capacity.
-		// Allocate new slice to release old backing array for GC.
-		if len(c.elb.logs) > MaxExtensionLogs {
+		// Amortized eviction: only compact when buffer exceeds 1.5x capacity.
+		// Reduces allocation+copy from every sync to ~once every MaxExtensionLogs/2 syncs.
+		evictionThreshold := MaxExtensionLogs + MaxExtensionLogs/2
+		if len(c.elb.logs) > evictionThreshold {
 			kept := make([]ExtensionLog, MaxExtensionLogs)
 			copy(kept, c.elb.logs[len(c.elb.logs)-MaxExtensionLogs:])
 			c.elb.logs = kept
 		}
 	}
-
-	w.WriteHeader(http.StatusOK)
-	//nolint:errcheck -- HTTP response encoding errors are logged by client; no recovery possible
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"status":      "ok",
-		"logs_stored": len(payload.Logs),
-	})
 }
 
 // GetExtensionLogs returns all extension log entries.

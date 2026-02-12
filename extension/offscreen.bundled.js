@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // extension/offscreen/recording-worker.js
-  var MAX_RECORDING_BYTES = 100 * 1024 * 1024;
+  var MAX_RECORDING_BYTES = 1024 * 1024 * 1024;
   var defaultState = {
     active: false,
     name: "",
@@ -19,7 +19,14 @@
   var state = { ...defaultState };
   var LOG = "[Gasoline REC offscreen]";
   async function handleStartRecording(msg) {
-    console.log(LOG, "handleStartRecording", { name: msg.name, audioMode: msg.audioMode, fps: msg.fps, tabId: msg.tabId, streamId: msg.streamId?.substring(0, 20) + "...", currentlyActive: state.active });
+    console.log(LOG, "handleStartRecording", {
+      name: msg.name,
+      audioMode: msg.audioMode,
+      fps: msg.fps,
+      tabId: msg.tabId,
+      streamId: msg.streamId?.substring(0, 20) + "...",
+      currentlyActive: state.active
+    });
     if (state.active) {
       console.warn(LOG, "START BLOCKED: already recording");
       chrome.runtime.sendMessage({
@@ -61,7 +68,10 @@
       console.log(LOG, "Calling getUserMedia for tab stream", { hasTabAudio, hasMicAudio });
       const tabStream = await navigator.mediaDevices.getUserMedia(tabConstraints);
       acquiredStreams.push(tabStream);
-      console.log(LOG, "Got tab stream", { videoTracks: tabStream.getVideoTracks().length, audioTracks: tabStream.getAudioTracks().length });
+      console.log(LOG, "Got tab stream", {
+        videoTracks: tabStream.getVideoTracks().length,
+        audioTracks: tabStream.getAudioTracks().length
+      });
       let stream;
       if (hasMicAudio && hasTabAudio) {
         const micStream = await navigator.mediaDevices.getUserMedia({
@@ -155,7 +165,14 @@
     }
   }
   function handleStopRecording(truncated = false) {
-    console.log(LOG, "handleStopRecording", { active: state.active, name: state.name, truncated, chunks: state.chunks.length, totalBytes: state.totalBytes, recorderState: state.recorder?.state });
+    console.log(LOG, "handleStopRecording", {
+      active: state.active,
+      name: state.name,
+      truncated,
+      chunks: state.chunks.length,
+      totalBytes: state.totalBytes,
+      recorderState: state.recorder?.state
+    });
     if (!state.active) {
       console.warn(LOG, "STOP: not active");
       chrome.runtime.sendMessage({

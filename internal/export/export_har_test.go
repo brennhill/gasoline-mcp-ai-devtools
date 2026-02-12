@@ -456,7 +456,7 @@ func TestExportHARToFile(t *testing.T) {
 		}
 
 		// Verify file was actually written and is valid JSON
-		data, err := os.ReadFile(tmpFile)
+		data, err := os.ReadFile(tmpFile) // nosemgrep: go_filesystem_rule-fileread -- test helper reads fixture/output file
 		if err != nil {
 			t.Fatalf("failed to read file: %v", err)
 		}

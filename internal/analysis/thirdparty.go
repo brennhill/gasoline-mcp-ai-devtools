@@ -100,7 +100,7 @@ type ThirdPartySummary struct {
 // knownCDNs is a hardcoded set of known CDN hostnames.
 var knownCDNs = map[string]bool{
 	"cdn.jsdelivr.net":           true,
-	"cdnjs.cloudflare.com":      true,
+	"cdnjs.cloudflare.com":       true,
 	"unpkg.com":                  true,
 	"fonts.googleapis.com":       true,
 	"fonts.gstatic.com":          true,
@@ -138,65 +138,85 @@ func NewThirdPartyAuditor() *ThirdPartyAuditor {
 	return &ThirdPartyAuditor{}
 }
 
+// originData groups network bodies and URLs for a single origin.
+type originData struct {
+	bodies []capture.NetworkBody
+	urls   []string
+}
+
 // Audit analyzes network bodies to identify and classify third-party origins.
 func (a *ThirdPartyAuditor) Audit(bodies []capture.NetworkBody, pageURLs []string, params ThirdPartyParams) ThirdPartyResult {
-	// Load custom lists from file if specified
-	customLists := params.CustomLists
-	if params.CustomListsFile != "" && customLists == nil {
-		if loaded := loadCustomListsFile(params.CustomListsFile); loaded != nil {
-			customLists = loaded
-		}
-	}
+	customLists := resolveCustomLists(params)
+	firstPartyOrigins := buildFirstPartySet(params, pageURLs, customLists)
 
-	// Determine first-party origins
-	firstPartyOrigins := make(map[string]bool)
-	if len(params.FirstPartyOrigins) > 0 {
-		for _, o := range params.FirstPartyOrigins {
-			firstPartyOrigins[o] = true
-		}
-	} else {
-		for _, pageURL := range pageURLs {
-			origin := extractOrigin(pageURL)
-			if origin != "" {
-				firstPartyOrigins[origin] = true
-			}
-		}
-	}
+	originMap := groupByThirdPartyOrigin(bodies, firstPartyOrigins)
+	entries := buildAllEntries(originMap, customLists)
+	entries = filterAndSort(entries, params.IncludeStatic)
 
-	// Treat internal domains as first-party
-	if customLists != nil {
-		for _, internal := range customLists.Internal {
-			origin := internal
-			// If it looks like a bare hostname, add scheme
-			if !strings.Contains(origin, "://") {
-				origin = "https://" + origin
-			}
-			parsed := extractOrigin(origin)
-			if parsed != "" {
-				firstPartyOrigins[parsed] = true
-			}
-		}
-	}
-
-	// Record the primary first-party origin for result
 	primaryFirstParty := ""
 	if len(pageURLs) > 0 {
 		primaryFirstParty = extractOrigin(pageURLs[0])
 	}
 
-	// Group bodies by origin
-	type originData struct {
-		bodies []capture.NetworkBody
-		urls   []string
+	return ThirdPartyResult{
+		FirstPartyOrigin: primaryFirstParty,
+		ThirdParties:     entries,
+		Summary:          buildThirdPartySummary(entries),
+		Recommendations:  buildRecommendations(entries),
 	}
-	originMap := make(map[string]*originData)
+}
 
+// resolveCustomLists loads custom lists from file if needed.
+func resolveCustomLists(params ThirdPartyParams) *CustomLists {
+	if params.CustomLists != nil {
+		return params.CustomLists
+	}
+	if params.CustomListsFile != "" {
+		return loadCustomListsFile(params.CustomListsFile)
+	}
+	return nil
+}
+
+// buildFirstPartySet determines first-party origins from params and page URLs.
+func buildFirstPartySet(params ThirdPartyParams, pageURLs []string, customLists *CustomLists) map[string]bool {
+	firstParty := make(map[string]bool)
+	if len(params.FirstPartyOrigins) > 0 {
+		for _, o := range params.FirstPartyOrigins {
+			firstParty[o] = true
+		}
+	} else {
+		for _, pageURL := range pageURLs {
+			if origin := extractOrigin(pageURL); origin != "" {
+				firstParty[origin] = true
+			}
+		}
+	}
+	addInternalDomains(firstParty, customLists)
+	return firstParty
+}
+
+// addInternalDomains treats custom internal domains as first-party.
+func addInternalDomains(firstParty map[string]bool, customLists *CustomLists) {
+	if customLists == nil {
+		return
+	}
+	for _, internal := range customLists.Internal {
+		origin := internal
+		if !strings.Contains(origin, "://") {
+			origin = "https://" + origin
+		}
+		if parsed := extractOrigin(origin); parsed != "" {
+			firstParty[parsed] = true
+		}
+	}
+}
+
+// groupByThirdPartyOrigin groups bodies by third-party origin (excluding first-party).
+func groupByThirdPartyOrigin(bodies []capture.NetworkBody, firstParty map[string]bool) map[string]*originData {
+	originMap := make(map[string]*originData)
 	for _, body := range bodies {
 		origin := extractOrigin(body.URL)
-		if origin == "" {
-			continue
-		}
-		if firstPartyOrigins[origin] {
+		if origin == "" || firstParty[origin] {
 			continue
 		}
 		if _, ok := originMap[origin]; !ok {
@@ -205,16 +225,21 @@ func (a *ThirdPartyAuditor) Audit(bodies []capture.NetworkBody, pageURLs []strin
 		originMap[origin].bodies = append(originMap[origin].bodies, body)
 		originMap[origin].urls = append(originMap[origin].urls, body.URL)
 	}
+	return originMap
+}
 
-	// Build entries for each third-party origin
-	entries := make([]ThirdPartyEntry, 0)
+// buildAllEntries creates ThirdPartyEntry structs for each origin.
+func buildAllEntries(originMap map[string]*originData, customLists *CustomLists) []ThirdPartyEntry {
+	entries := make([]ThirdPartyEntry, 0, len(originMap))
 	for origin, data := range originMap {
-		entry := buildThirdPartyEntry(origin, data.bodies, data.urls, customLists)
-		entries = append(entries, entry)
+		entries = append(entries, buildThirdPartyEntry(origin, data.bodies, data.urls, customLists))
 	}
+	return entries
+}
 
-	// Filter by include_static
-	if params.IncludeStatic != nil && !*params.IncludeStatic {
+// filterAndSort optionally removes static-only entries and sorts by risk level.
+func filterAndSort(entries []ThirdPartyEntry, includeStatic *bool) []ThirdPartyEntry {
+	if includeStatic != nil && !*includeStatic {
 		var filtered []ThirdPartyEntry
 		for _, entry := range entries {
 			if entry.RiskLevel != "low" {
@@ -223,24 +248,10 @@ func (a *ThirdPartyAuditor) Audit(bodies []capture.NetworkBody, pageURLs []strin
 		}
 		entries = filtered
 	}
-
-	// Sort entries by risk level (critical first)
 	sort.Slice(entries, func(i, j int) bool {
 		return riskOrder(entries[i].RiskLevel) < riskOrder(entries[j].RiskLevel)
 	})
-
-	// Build summary
-	summary := buildThirdPartySummary(entries)
-
-	// Build recommendations
-	recommendations := buildRecommendations(entries)
-
-	return ThirdPartyResult{
-		FirstPartyOrigin: primaryFirstParty,
-		ThirdParties:     entries,
-		Summary:          summary,
-		Recommendations:  recommendations,
-	}
+	return entries
 }
 
 // buildThirdPartyEntry creates a ThirdPartyEntry for a single origin.
@@ -250,10 +261,29 @@ func buildThirdPartyEntry(origin string, bodies []capture.NetworkBody, urls []st
 		RequestCount: len(bodies),
 	}
 
-	// Count resources by type
+	countResources(&entry, bodies)
+	collectOutboundData(&entry, bodies)
+	classifyRiskLevel(&entry)
+
+	hostname := extractHostname(origin)
+	entry.Reputation = classifyReputation(hostname, customLists)
+	if entry.Reputation.Classification == "enterprise_blocked" {
+		entry.RiskLevel = "critical"
+		entry.RiskReason = "domain is on enterprise blocked list"
+	}
+
+	urlLimit := 10
+	if len(urls) < urlLimit {
+		urlLimit = len(urls)
+	}
+	entry.URLs = urls[:urlLimit]
+	return entry
+}
+
+// countResources counts resource types and detects cookie-setting from response headers.
+func countResources(entry *ThirdPartyEntry, bodies []capture.NetworkBody) {
 	for _, body := range bodies {
-		resType := contentTypeToResourceType(body.ContentType)
-		switch resType {
+		switch contentTypeToResourceType(body.ContentType) {
 		case "script":
 			entry.Resources.Scripts++
 		case "style":
@@ -265,56 +295,61 @@ func buildThirdPartyEntry(origin string, bodies []capture.NetworkBody, urls []st
 		default:
 			entry.Resources.Other++
 		}
-
-		// Check for Set-Cookie header
-		if body.ResponseHeaders != nil {
-			for key := range body.ResponseHeaders {
-				if strings.EqualFold(key, "set-cookie") {
-					entry.SetsCookies = true
-					break
-				}
-			}
+		if !entry.SetsCookies && hasSetCookieHeader(body.ResponseHeaders) {
+			entry.SetsCookies = true
 		}
 	}
+}
 
-	// Check for outbound data (POST/PUT/PATCH)
-	var outboundMethods []string
-	var outboundContentTypes []string
-	var allPIIFields []string
+// hasSetCookieHeader checks if response headers contain a Set-Cookie header.
+func hasSetCookieHeader(headers map[string]string) bool {
+	if headers == nil {
+		return false
+	}
+	for key := range headers {
+		if strings.EqualFold(key, "set-cookie") {
+			return true
+		}
+	}
+	return false
+}
+
+// collectOutboundData detects outbound data methods, content types, and PII.
+func collectOutboundData(entry *ThirdPartyEntry, bodies []capture.NetworkBody) {
 	methodSet := make(map[string]bool)
 	ctSet := make(map[string]bool)
+	var outboundMethods, outboundContentTypes, allPIIFields []string
 
 	for _, body := range bodies {
 		method := strings.ToUpper(body.Method)
-		if method == "POST" || method == "PUT" || method == "PATCH" {
-			entry.DataOutbound = true
-			if !methodSet[method] {
-				outboundMethods = append(outboundMethods, method)
-				methodSet[method] = true
-			}
-			if body.ContentType != "" && !ctSet[body.ContentType] {
-				outboundContentTypes = append(outboundContentTypes, body.ContentType)
-				ctSet[body.ContentType] = true
-			}
-			// Scan for PII in request body
-			if body.RequestBody != "" {
-				piiFields := detectPIIFields(body.RequestBody)
-				for _, f := range piiFields {
-					allPIIFields = appendUnique(allPIIFields, f)
-				}
+		if method != "POST" && method != "PUT" && method != "PATCH" {
+			continue
+		}
+		entry.DataOutbound = true
+		if !methodSet[method] {
+			outboundMethods = append(outboundMethods, method)
+			methodSet[method] = true
+		}
+		if body.ContentType != "" && !ctSet[body.ContentType] {
+			outboundContentTypes = append(outboundContentTypes, body.ContentType)
+			ctSet[body.ContentType] = true
+		}
+		if body.RequestBody != "" {
+			for _, f := range detectPIIFields(body.RequestBody) {
+				allPIIFields = appendUnique(allPIIFields, f)
 			}
 		}
 	}
 
 	if entry.DataOutbound {
 		entry.OutboundDetails = &OutboundDetails{
-			Methods:      outboundMethods,
-			ContentTypes: outboundContentTypes,
-			PIIFields:    allPIIFields,
+			Methods: outboundMethods, ContentTypes: outboundContentTypes, PIIFields: allPIIFields,
 		}
 	}
+}
 
-	// Determine risk level
+// classifyRiskLevel determines the risk level and reason based on resources and data flow.
+func classifyRiskLevel(entry *ThirdPartyEntry) {
 	hasScripts := entry.Resources.Scripts > 0
 	hasOutbound := entry.DataOutbound
 	hasCookies := entry.SetsCookies
@@ -326,94 +361,70 @@ func buildThirdPartyEntry(origin string, bodies []capture.NetworkBody, urls []st
 	case hasScripts:
 		entry.RiskLevel = "high"
 		entry.RiskReason = "loads executable scripts (can execute code in page context)"
-	case hasOutbound || hasCookies:
+	case hasOutbound && hasCookies:
 		entry.RiskLevel = "medium"
-		if hasOutbound && hasCookies {
-			entry.RiskReason = "receives outbound data and sets cookies"
-		} else if hasOutbound {
-			entry.RiskReason = "receives outbound data"
-		} else {
-			entry.RiskReason = "sets cookies for tracking"
-		}
+		entry.RiskReason = "receives outbound data and sets cookies"
+	case hasOutbound:
+		entry.RiskLevel = "medium"
+		entry.RiskReason = "receives outbound data"
+	case hasCookies:
+		entry.RiskLevel = "medium"
+		entry.RiskReason = "sets cookies for tracking"
 	default:
 		entry.RiskLevel = "low"
 		entry.RiskReason = "static assets only (images, fonts, styles)"
 	}
-
-	// Apply reputation heuristics
-	hostname := extractHostname(origin)
-	entry.Reputation = classifyReputation(hostname, customLists)
-
-	// Override risk for blocked domains
-	if entry.Reputation.Classification == "enterprise_blocked" {
-		entry.RiskLevel = "critical"
-		entry.RiskReason = "domain is on enterprise blocked list"
-	}
-
-	// Collect up to 10 URLs
-	urlLimit := 10
-	if len(urls) < urlLimit {
-		urlLimit = len(urls)
-	}
-	entry.URLs = urls[:urlLimit]
-
-	return entry
 }
 
 // classifyReputation determines the reputation classification for a hostname.
 func classifyReputation(hostname string, customLists *CustomLists) DomainReputation {
-	rep := DomainReputation{
-		Classification: "unknown",
-	}
-
-	// Check custom lists first
-	if customLists != nil {
-		for _, allowed := range customLists.Allowed {
-			if hostname == allowed || strings.HasSuffix(hostname, "."+allowed) {
-				rep.Classification = "enterprise_allowed"
-				rep.Source = "custom_list"
-				return rep
-			}
-		}
-		for _, blocked := range customLists.Blocked {
-			if hostname == blocked || strings.HasSuffix(hostname, "."+blocked) {
-				rep.Classification = "enterprise_blocked"
-				rep.Source = "custom_list"
-				return rep
-			}
-		}
-	}
-
-	// Check known CDNs
-	if knownCDNs[hostname] {
-		rep.Classification = "known_cdn"
-		rep.Source = "bundled_list"
+	if rep, ok := checkCustomLists(hostname, customLists); ok {
 		return rep
 	}
-
-	// Check abuse TLD
-	var flags []string
-	tld := extractTLD(hostname)
-	if abuseTLDs[tld] {
-		flags = append(flags, "abuse_tld")
+	if knownCDNs[hostname] {
+		return DomainReputation{Classification: "known_cdn", Source: "bundled_list"}
 	}
+	return checkSuspicionHeuristics(hostname)
+}
 
-	// Check DGA
-	subdomain := extractSubdomain(hostname)
-	if subdomain != "" && len(subdomain) > 8 {
-		entropy := shannonEntropy(subdomain)
-		if entropy > 3.5 {
-			flags = append(flags, "possible_dga")
+// checkCustomLists checks if hostname matches enterprise allowed/blocked lists.
+func checkCustomLists(hostname string, customLists *CustomLists) (DomainReputation, bool) {
+	if customLists == nil {
+		return DomainReputation{}, false
+	}
+	if matchesDomainList(hostname, customLists.Allowed) {
+		return DomainReputation{Classification: "enterprise_allowed", Source: "custom_list"}, true
+	}
+	if matchesDomainList(hostname, customLists.Blocked) {
+		return DomainReputation{Classification: "enterprise_blocked", Source: "custom_list"}, true
+	}
+	return DomainReputation{}, false
+}
+
+// matchesDomainList returns true if hostname matches any domain in the list.
+func matchesDomainList(hostname string, domains []string) bool {
+	for _, d := range domains {
+		if hostname == d || strings.HasSuffix(hostname, "."+d) {
+			return true
 		}
 	}
+	return false
+}
 
-	if len(flags) >= 1 {
-		rep.Classification = "suspicious"
-		rep.SuspicionFlags = flags
-		rep.Source = "heuristic"
+// checkSuspicionHeuristics applies abuse-TLD and DGA heuristics.
+func checkSuspicionHeuristics(hostname string) DomainReputation {
+	var flags []string
+	if abuseTLDs[extractTLD(hostname)] {
+		flags = append(flags, "abuse_tld")
 	}
-
-	return rep
+	subdomain := extractSubdomain(hostname)
+	if subdomain != "" && len(subdomain) > 8 && shannonEntropy(subdomain) > 3.5 {
+		flags = append(flags, "possible_dga")
+	}
+	if len(flags) > 0 {
+		return DomainReputation{Classification: "suspicious", SuspicionFlags: flags, Source: "heuristic"}
+	}
+	return DomainReputation{Classification: "unknown"}
 }
 
 // shannonEntropy computes Shannon entropy in bits per character.
@@ -494,58 +505,64 @@ func buildThirdPartySummary(entries []ThirdPartyEntry) ThirdPartySummary {
 
 // buildRecommendations generates actionable recommendation strings.
 func buildRecommendations(entries []ThirdPartyEntry) []string {
-	recs := make([]string, 0)
+	var recs []string
+	recs = append(recs, suspiciousScriptRecs(entries)...)
+	recs = append(recs, dataReceiverRecs(entries)...)
+	recs = append(recs, piiOutboundRecs(entries)...)
+	recs = append(recs, cookieSetterRecs(entries)...)
+	return recs
+}
 
-	// Check for suspicious origins with scripts
+// suspiciousScriptRecs returns recommendations for suspicious origins loading scripts.
+func suspiciousScriptRecs(entries []ThirdPartyEntry) []string {
+	var recs []string
 	for _, e := range entries {
 		if e.Reputation.Classification == "suspicious" && e.Resources.Scripts > 0 {
-			recs = append(recs, fmt.Sprintf(
-				"CRITICAL: %s loads scripts AND is flagged suspicious — investigate immediately",
-				e.Origin,
-			))
+			recs = append(recs, fmt.Sprintf("CRITICAL: %s loads scripts AND is flagged suspicious — investigate immediately", e.Origin))
 		}
 	}
+	return recs
+}
 
-	// Count origins receiving data
-	dataReceivers := 0
-	for _, e := range entries {
-		if e.DataOutbound {
-			dataReceivers++
-		}
+// dataReceiverRecs returns a recommendation if any origins receive outbound data.
+func dataReceiverRecs(entries []ThirdPartyEntry) []string {
+	count := countEntries(entries, func(e ThirdPartyEntry) bool { return e.DataOutbound })
+	if count == 0 {
+		return nil
 	}
-	if dataReceivers > 0 {
-		recs = append(recs, fmt.Sprintf(
-			"%d origin(s) receive user data — verify these are intentional",
-			dataReceivers,
-		))
-	}
+	return []string{fmt.Sprintf("%d origin(s) receive user data — verify these are intentional", count)}
+}
 
-	// Check for PII in outbound data
+// piiOutboundRecs returns recommendations for origins receiving PII data.
+func piiOutboundRecs(entries []ThirdPartyEntry) []string {
+	var recs []string
 	for _, e := range entries {
 		if e.OutboundDetails != nil && len(e.OutboundDetails.PIIFields) > 0 {
-			recs = append(recs, fmt.Sprintf(
-				"%s receives PII fields (%s) — ensure privacy policy covers this",
-				e.Origin,
-				strings.Join(e.OutboundDetails.PIIFields, ", "),
-			))
+			recs = append(recs, fmt.Sprintf("%s receives PII fields (%s) — ensure privacy policy covers this",
+				e.Origin, strings.Join(e.OutboundDetails.PIIFields, ", ")))
 		}
 	}
-
-	// Check for cookie-setting third parties
-	cookieSetters := 0
-	for _, e := range entries {
-		if e.SetsCookies {
-			cookieSetters++
-		}
-	}
-	if cookieSetters > 0 {
-		recs = append(recs, fmt.Sprintf(
-			"%d third-party origin(s) set cookies — review for GDPR/CCPA compliance",
-			cookieSetters,
-		))
-	}
-
 	return recs
+}
+
+// cookieSetterRecs returns a recommendation if third parties set cookies.
+func cookieSetterRecs(entries []ThirdPartyEntry) []string {
+	count := countEntries(entries, func(e ThirdPartyEntry) bool { return e.SetsCookies })
+	if count == 0 {
+		return nil
+	}
+	return []string{fmt.Sprintf("%d third-party origin(s) set cookies — review for GDPR/CCPA compliance", count)}
+}
+
+// countEntries counts entries matching a predicate.
+func countEntries(entries []ThirdPartyEntry, pred func(ThirdPartyEntry) bool) int {
+	n := 0
+	for _, e := range entries {
+		if pred(e) {
+			n++
+		}
+	}
+	return n
 }
 
 // riskOrder returns a sort order for risk levels (lower = more severe).

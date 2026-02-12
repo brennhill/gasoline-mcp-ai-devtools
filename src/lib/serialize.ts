@@ -28,89 +28,55 @@ interface DOMElementLike {
   textContent?: string | null
 }
 
+function serializePrimitive(value: unknown, type: string): JsonValue | undefined {
+  if (type === 'string') {
+    const s = value as string
+    return s.length > MAX_STRING_LENGTH ? s.slice(0, MAX_STRING_LENGTH) + '... [truncated]' : s
+  }
+  if (type === 'number') return value as number
+  if (type === 'boolean') return value as boolean
+  if (type === 'function') return `[Function: ${(value as { name?: string }).name || 'anonymous'}]` // nosemgrep: missing-template-string-indicator
+  return undefined
+}
+
+function serializeDOMNode(value: DOMElementLike): string {
+  const tag = value.tagName ? value.tagName.toLowerCase() : 'node'
+  const id = value.id ? `#${value.id}` : ''
+  const cn = value.className
+  const className = typeof cn === 'string' && cn ? `.${cn.split(' ').join('.')}` : ''
+  return `[${tag}${id}${className}]`
+}
+
+function serializeObject(value: object, depth: number, seen: WeakSet<object>): JsonValue {
+  if (seen.has(value)) return '[Circular]'
+  seen.add(value)
+
+  if ((value as DOMElementLike).nodeType) return serializeDOMNode(value as DOMElementLike)
+  if (Array.isArray(value)) return value.slice(0, 100).map((item) => safeSerialize(item, depth + 1, seen))
+
+  const result: Record<string, JsonValue> = {}
+  for (const key of Object.keys(value).slice(0, 50)) {
+    try { result[key] = safeSerialize((value as Record<string, unknown>)[key], depth + 1, seen) }
+    catch { result[key] = '[Unserializable]' }
+  }
+  return result
+}
+
 /**
  * Safely serialize a value, handling circular references and special types
  */
 export function safeSerialize(value: unknown, depth = 0, seen = new WeakSet<object>()): JsonValue {
-  // Handle null/undefined
-  if (value === null) return null
-  if (value === undefined) return null
+  if (value === null || value === undefined) return null
 
-  // Handle primitives
   const type = typeof value
-  if (type === 'string') {
-    const strValue = value as string
-    if (strValue.length > MAX_STRING_LENGTH) {
-      return strValue.slice(0, MAX_STRING_LENGTH) + '... [truncated]'
-    }
-    return strValue
-  }
-  if (type === 'number') {
-    return value as number
-  }
-  if (type === 'boolean') {
-    return value as boolean
-  }
+  const primitive = serializePrimitive(value, type)
+  if (primitive !== undefined) return primitive
 
-  // Handle functions
-  if (type === 'function') {
-    const fn = value as { name?: string }
-    return `[Function: ${fn.name || 'anonymous'}]`
-  }
-
-  // Handle Error objects specially
   if (value instanceof Error) {
-    return {
-      name: value.name,
-      message: value.message,
-      stack: value.stack || null,
-    }
+    return { name: value.name, message: value.message, stack: value.stack || null }
   }
-
-  // Depth limit
-  if (depth >= MAX_DEPTH) {
-    return '[Max depth exceeded]'
-  }
-
-  // Handle objects
-  if (type === 'object') {
-    const objValue = value as object
-
-    // Circular reference check
-    if (seen.has(objValue)) {
-      return '[Circular]'
-    }
-    seen.add(objValue)
-
-    // Handle DOM elements
-    const domLike = value as DOMElementLike
-    if (domLike.nodeType) {
-      const tag = domLike.tagName ? domLike.tagName.toLowerCase() : 'node'
-      const id = domLike.id ? `#${domLike.id}` : ''
-      const classNameValue = domLike.className
-      let className = ''
-      if (typeof classNameValue === 'string' && classNameValue) {
-        className = `.${classNameValue.split(' ').join('.')}`
-      }
-      return `[${tag}${id}${className}]`
-    }
-
-    // Handle arrays (cap at 100 elements to prevent OOM)
-    if (Array.isArray(value)) {
-      return value.slice(0, 100).map((item) => safeSerialize(item, depth + 1, seen))
-    }
-
-    // Handle plain objects (cap at 50 keys to prevent OOM)
-    const result: Record<string, JsonValue> = {}
-    for (const key of Object.keys(objValue).slice(0, 50)) {
-      try {
-        result[key] = safeSerialize((objValue as Record<string, unknown>)[key], depth + 1, seen)
-      } catch {
-        result[key] = '[Unserializable]'
-      }
-    }
-    return result
-  }
+  if (depth >= MAX_DEPTH) return '[Max depth exceeded]'
+  if (type === 'object') return serializeObject(value as object, depth, seen)
 
   return String(value)
 }
@@ -140,6 +106,13 @@ export function getElementSelector(element: Element | null): string {
 /**
  * Check if an input contains sensitive data
  */
+const SENSITIVE_AUTOCOMPLETE_PATTERNS = ['password', 'cc-', 'credit-card']
+const SENSITIVE_NAME_PATTERNS = ['password', 'passwd', 'secret', 'token', 'credit', 'card', 'cvv', 'cvc', 'ssn']
+
+function matchesAny(value: string, patterns: string[]): boolean {
+  return patterns.some((p) => value.includes(p))
+}
+
 export function isSensitiveInput(element: Element | null): boolean {
   if (!element) return false
 
@@ -148,26 +121,7 @@ export function isSensitiveInput(element: Element | null): boolean {
   const autocomplete = (inputElement.autocomplete || '').toLowerCase()
   const name = (inputElement.name || '').toLowerCase()
 
-  // Check type attribute
-  if (SENSITIVE_INPUT_TYPES.includes(type)) return true
-
-  // Check autocomplete attribute
-  if (autocomplete.includes('password') || autocomplete.includes('cc-') || autocomplete.includes('credit-card'))
-    return true
-
-  // Check name attribute for common patterns
-  if (
-    name.includes('password') ||
-    name.includes('passwd') ||
-    name.includes('secret') ||
-    name.includes('token') ||
-    name.includes('credit') ||
-    name.includes('card') ||
-    name.includes('cvv') ||
-    name.includes('cvc') ||
-    name.includes('ssn')
-  )
-    return true
-
-  return false
+  return SENSITIVE_INPUT_TYPES.includes(type) ||
+    matchesAny(autocomplete, SENSITIVE_AUTOCOMPLETE_PATTERNS) ||
+    matchesAny(name, SENSITIVE_NAME_PATTERNS)
 }

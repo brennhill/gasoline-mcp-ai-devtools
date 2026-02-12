@@ -10,14 +10,14 @@
 // =================================
 //
 // Three Signals (each independently verifiable):
-//   1. Message Similarity: Normalized messages match (UUIDs/URLs/timestamps replaced)
-//   2. Stack Frame Similarity: 2+ shared application-level frames (framework frames excluded)
-//   3. Temporal Proximity: Errors within 2 seconds of each other
+//  1. Message Similarity: Normalized messages match (UUIDs/URLs/timestamps replaced)
+//  2. Stack Frame Similarity: 2+ shared application-level frames (framework frames excluded)
+//  3. Temporal Proximity: Errors within 2 seconds of each other
 //
 // Clustering Rules (in AddError):
-//   1. If existing cluster matches 2+ signals: add to cluster
-//   2. If error hasn't matched any cluster: create new cluster with next similar error
-//   3. When new cluster formed: compare signals with that error only (not all existing clusters)
+//  1. If existing cluster matches 2+ signals: add to cluster
+//  2. If error hasn't matched any cluster: create new cluster with next similar error
+//  3. When new cluster formed: compare signals with that error only (not all existing clusters)
 //
 // Why Framework Frames Excluded:
 //   - Framework frames are identical across different user errors (e.g., React render, Vue update)
@@ -199,31 +199,31 @@ type ErrorInstance struct {
 
 // ErrorCluster groups related errors by root cause.
 type ErrorCluster struct {
-	ID               string
-	Representative   ErrorInstance
-	NormalizedMsg    string
-	CommonFrames     []StackFrame
-	RootCause        string
-	Instances        []ErrorInstance
-	InstanceCount    int
-	FirstSeen        time.Time
-	LastSeen         time.Time
-	AffectedFiles    []string
-	Severity         string
-	alertedAt3       bool // track if we already alerted for this cluster
+	ID             string
+	Representative ErrorInstance
+	NormalizedMsg  string
+	CommonFrames   []StackFrame
+	RootCause      string
+	Instances      []ErrorInstance
+	InstanceCount  int
+	FirstSeen      time.Time
+	LastSeen       time.Time
+	AffectedFiles  []string
+	Severity       string
+	alertedAt3     bool // track if we already alerted for this cluster
 }
 
 // --- Cluster Manager ---
 
 // ClusterManager manages error clustering with session-scoped lifecycle.
 type ClusterManager struct {
-	mu              sync.RWMutex
-	clusters        []*ErrorCluster
-	unclustered     []ErrorInstance
-	nextID          int
-	expiryDuration  time.Duration
-	pendingAlert    *Alert
-	totalErrors     int
+	mu             sync.RWMutex
+	clusters       []*ErrorCluster
+	unclustered    []ErrorInstance
+	nextID         int
+	expiryDuration time.Duration
+	pendingAlert   *Alert
+	totalErrors    int
 }
 
 // NewClusterManager creates an empty cluster manager.
@@ -239,15 +239,15 @@ func NewClusterManager() *ClusterManager {
 // Main entry point for error clustering. Not thread-safe; caller must synchronize.
 //
 // Algorithm Flow:
-//   1. Parse error: extract stack frames, normalize message
-//   2. Filter app frames (exclude framework code)
-//   3. For each existing cluster (linear search):
-//      a. Count signals (message + frames + temporal)
-//      b. If 2+ signals match: add to this cluster, return
-//   4. If not matched to existing cluster:
-//      a. Wait for 2nd similar error before clustering (prevents single-error clusters)
-//      b. When 2nd error arrives: create new cluster
-//   5. Enforce caps: stop clustering if 50 clusters exist
+//  1. Parse error: extract stack frames, normalize message
+//  2. Filter app frames (exclude framework code)
+//  3. For each existing cluster (linear search):
+//     a. Count signals (message + frames + temporal)
+//     b. If 2+ signals match: add to this cluster, return
+//  4. If not matched to existing cluster:
+//     a. Wait for 2nd similar error before clustering (prevents single-error clusters)
+//     b. When 2nd error arrives: create new cluster
+//  5. Enforce caps: stop clustering if 50 clusters exist
 //
 // Parameters:
 //   - err: The console error to cluster (timestamp, message, stack required)
@@ -265,42 +265,65 @@ func (cm *ClusterManager) AddError(err ErrorInstance) {
 
 	cm.totalErrors++
 
-	// Parse the error's stack
 	frames := parseStack(err.Stack)
 	appFr := appFrames(frames)
 	normMsg := normalizeErrorMessage(err.Message)
 
-	// Try to match against existing clusters
+	if cm.tryMatchExistingCluster(err, appFr, normMsg) {
+		return
+	}
+	if cm.tryFormNewCluster(err, appFr, normMsg) {
+		return
+	}
+	cm.addUnclustered(err)
+}
+
+// tryMatchExistingCluster attempts to add the error to an existing cluster.
+func (cm *ClusterManager) tryMatchExistingCluster(err ErrorInstance, appFr []StackFrame, normMsg string) bool {
 	for _, cluster := range cm.clusters {
 		if cm.matchesCluster(cluster, err, appFr, normMsg) {
 			cm.addToCluster(cluster, err)
-			return
+			return true
 		}
 	}
+	return false
+}
 
-	// Try to match against unclustered errors
+// tryFormNewCluster attempts to form a new cluster from an unclustered error.
+func (cm *ClusterManager) tryFormNewCluster(err ErrorInstance, appFr []StackFrame, normMsg string) bool {
 	for i, unc := range cm.unclustered {
 		signals := cm.countSignals(unc, err, appFr, normMsg)
-		if signals >= 2 || (signals >= 1 && unc.Stack == "" && err.Stack == "") {
-			// Form a new cluster
-			cluster := cm.createCluster(unc, err, normMsg)
-			cm.clusters = append(cm.clusters, cluster)
-			// Remove from unclustered — allocate new slice to avoid GC pinning
-			newUnclustered := make([]ErrorInstance, len(cm.unclustered)-1)
-			copy(newUnclustered, cm.unclustered[:i])
-			copy(newUnclustered[i:], cm.unclustered[i+1:])
-			cm.unclustered = newUnclustered
-			// Enforce cluster cap
-			if len(cm.clusters) > 50 {
-				newClusters := make([]*ErrorCluster, len(cm.clusters)-1)
-				copy(newClusters, cm.clusters[1:])
-				cm.clusters = newClusters
-			}
-			return
+		if signals < 2 && (signals < 1 || unc.Stack != "" || err.Stack != "") {
+			continue
 		}
+		cluster := cm.createCluster(unc, err, normMsg)
+		cm.clusters = append(cm.clusters, cluster)
+		cm.removeUnclustered(i)
+		cm.enforceClusterCap()
+		return true
 	}
+	return false
+}
 
-	// No match — add to unclustered (capped at 100, FIFO eviction)
+// removeUnclustered removes an entry by index from the unclustered slice.
+func (cm *ClusterManager) removeUnclustered(i int) {
+	newUnclustered := make([]ErrorInstance, len(cm.unclustered)-1)
+	copy(newUnclustered, cm.unclustered[:i])
+	copy(newUnclustered[i:], cm.unclustered[i+1:])
+	cm.unclustered = newUnclustered
+}
+
+// enforceClusterCap removes the oldest cluster if the cap is exceeded.
+func (cm *ClusterManager) enforceClusterCap() {
+	if len(cm.clusters) > 50 {
+		newClusters := make([]*ErrorCluster, len(cm.clusters)-1)
+		copy(newClusters, cm.clusters[1:])
+		cm.clusters = newClusters
+	}
+}
+
+// addUnclustered adds an error to the unclustered list with FIFO eviction.
+func (cm *ClusterManager) addUnclustered(err ErrorInstance) {
 	cm.unclustered = append(cm.unclustered, err)
 	if len(cm.unclustered) > 100 {
 		newUnclustered := make([]ErrorInstance, 100)
@@ -311,32 +334,26 @@ func (cm *ClusterManager) AddError(err ErrorInstance) {
 
 // matchesCluster checks if an error matches an existing cluster.
 func (cm *ClusterManager) matchesCluster(cluster *ErrorCluster, err ErrorInstance, appFr []StackFrame, normMsg string) bool {
-	signals := 0
+	// For errors without stacks, message match alone is sufficient
+	if err.Stack == "" && len(cluster.Instances) > 0 && cluster.Instances[0].Stack == "" && cluster.NormalizedMsg == normMsg {
+		return true
+	}
+	return cm.clusterSignalCount(cluster, err, appFr, normMsg) >= 2
+}
 
-	// Signal 1: Message similarity
+// clusterSignalCount counts how many of the 3 signals match between an error and a cluster.
+func (cm *ClusterManager) clusterSignalCount(cluster *ErrorCluster, err ErrorInstance, appFr []StackFrame, normMsg string) int {
+	signals := 0
 	if cluster.NormalizedMsg == normMsg {
 		signals++
 	}
-
-	// Signal 2: Stack frame similarity (2+ shared app frames)
-	if len(appFr) > 0 && len(cluster.CommonFrames) > 0 {
-		shared := countSharedFrames(appFr, cluster.CommonFrames)
-		if shared >= 1 {
-			signals++
-		}
+	if len(appFr) > 0 && len(cluster.CommonFrames) > 0 && countSharedFrames(appFr, cluster.CommonFrames) >= 1 {
+		signals++
 	}
-
-	// Signal 3: Temporal proximity (within 2 seconds of last cluster error)
 	if !cluster.LastSeen.IsZero() && err.Timestamp.Sub(cluster.LastSeen) < 2*time.Second {
 		signals++
 	}
-
-	// For errors without stacks, message match alone is sufficient
-	if err.Stack == "" && cluster.Instances[0].Stack == "" && cluster.NormalizedMsg == normMsg {
-		return true
-	}
-
-	return signals >= 2
+	return signals
 }
 
 // countSignals counts how many signals match between two errors.
@@ -344,9 +361,9 @@ func (cm *ClusterManager) matchesCluster(cluster *ErrorCluster, err ErrorInstanc
 // Returns count of matched signals (0-3).
 //
 // Three Signals Evaluated:
-//   1. Message Signal: normalized messages identical
-//   2. Frames Signal: 2+ shared application-level frames (countSharedFrames)
-//   3. Temporal Signal: time between errors < 2 seconds (temporal proximity)
+//  1. Message Signal: normalized messages identical
+//  2. Frames Signal: 2+ shared application-level frames (countSharedFrames)
+//  3. Temporal Signal: time between errors < 2 seconds (temporal proximity)
 //
 // Decision Rule (caller's responsibility):
 //   - 2+ signals matching → likely same root cause
@@ -410,11 +427,11 @@ func countSharedFrames(a, b []StackFrame) int {
 // Analyzes both errors to determine root cause and scope.
 //
 // Cluster Initialization:
-//   1. Find common stack frames between first & second error
-//   2. Infer root cause from common frames + normalized message
-//   3. Collect affected files from both error stacks
-//   4. Initialize cluster with both errors in instances
-//   5. Set creation time and lastSeen for cleanup/timeout tracking
+//  1. Find common stack frames between first & second error
+//  2. Infer root cause from common frames + normalized message
+//  3. Collect affected files from both error stacks
+//  4. Initialize cluster with both errors in instances
+//  5. Set creation time and lastSeen for cleanup/timeout tracking
 //
 // Root Cause Inference (inferRootCause):
 //   - Takes common frames + message as signals
@@ -595,11 +612,11 @@ func (cm *ClusterManager) DrainAlert() *Alert {
 //   - Purpose: prevent accumulation of clusters from transient bugs
 //
 // Cleanup Behavior:
-//   1. Iterate through clusters (linear scan)
-//   2. For each cluster: if now - cluster.lastSeen > 5 minutes:
-//      a. Keep track of removed cluster IDs
-//      b. Delete cluster from map
-//   3. Log cleanup stats (optional, for operator visibility)
+//  1. Iterate through clusters (linear scan)
+//  2. For each cluster: if now - cluster.lastSeen > 5 minutes:
+//     a. Keep track of removed cluster IDs
+//     b. Delete cluster from map
+//  3. Log cleanup stats (optional, for operator visibility)
 //
 // Safety Considerations:
 //   - Not thread-safe; caller must synchronize (hold ClusterManager.mu)
@@ -627,22 +644,22 @@ func (cm *ClusterManager) Cleanup() {
 
 // ClusterAnalysisResponse is the response for analyze(target: "errors").
 type ClusterAnalysisResponse struct {
-	Clusters         []ClusterSummary `json:"clusters"`
-	UnclusteredErrors int             `json:"unclustered_errors"`
-	TotalErrors      int              `json:"total_errors"`
-	Summary          string           `json:"summary"`
+	Clusters          []ClusterSummary `json:"clusters"`
+	UnclusteredErrors int              `json:"unclustered_errors"`
+	TotalErrors       int              `json:"total_errors"`
+	Summary           string           `json:"summary"`
 }
 
 // ClusterSummary is a single cluster in the analysis response.
 type ClusterSummary struct {
-	ID               string          `json:"id"`
-	RepresentativeMsg string         `json:"representative_error"`
-	RootCause        string          `json:"root_cause"`
-	InstanceCount    int             `json:"instance_count"`
-	FirstSeen        string          `json:"first_seen"`
-	LastSeen         string          `json:"last_seen"`
-	AffectedFiles    []string        `json:"affected_components"`
-	Severity         string          `json:"severity"`
+	ID                string   `json:"id"`
+	RepresentativeMsg string   `json:"representative_error"`
+	RootCause         string   `json:"root_cause"`
+	InstanceCount     int      `json:"instance_count"`
+	FirstSeen         string   `json:"first_seen"`
+	LastSeen          string   `json:"last_seen"`
+	AffectedFiles     []string `json:"affected_components"`
+	Severity          string   `json:"severity"`
 }
 
 // GetAnalysisResponse builds the response for analyze(target: "errors").
@@ -653,14 +670,14 @@ func (cm *ClusterManager) GetAnalysisResponse() ClusterAnalysisResponse {
 	clusters := make([]ClusterSummary, 0, len(cm.clusters))
 	for _, c := range cm.clusters {
 		clusters = append(clusters, ClusterSummary{
-			ID:               c.ID,
+			ID:                c.ID,
 			RepresentativeMsg: c.Representative.Message,
-			RootCause:        c.RootCause,
-			InstanceCount:    c.InstanceCount,
-			FirstSeen:        c.FirstSeen.UTC().Format(time.RFC3339),
-			LastSeen:         c.LastSeen.UTC().Format(time.RFC3339),
-			AffectedFiles:    append([]string(nil), c.AffectedFiles...),
-			Severity:         c.Severity,
+			RootCause:         c.RootCause,
+			InstanceCount:     c.InstanceCount,
+			FirstSeen:         c.FirstSeen.UTC().Format(time.RFC3339),
+			LastSeen:          c.LastSeen.UTC().Format(time.RFC3339),
+			AffectedFiles:     append([]string(nil), c.AffectedFiles...),
+			Severity:          c.Severity,
 		})
 	}
 
@@ -673,9 +690,9 @@ func (cm *ClusterManager) GetAnalysisResponse() ClusterAnalysisResponse {
 	}
 
 	return ClusterAnalysisResponse{
-		Clusters:         clusters,
+		Clusters:          clusters,
 		UnclusteredErrors: len(cm.unclustered),
-		TotalErrors:      cm.totalErrors,
-		Summary:          summary,
+		TotalErrors:       cm.totalErrors,
+		Summary:           summary,
 	}
 }

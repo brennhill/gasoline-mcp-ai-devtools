@@ -39,13 +39,9 @@ export interface RestoreStateResult {
  * Returns a snapshot that can be restored later.
  */
 export declare function captureState(): BrowserStateSnapshot;
-/**
- * Restore browser state from a snapshot.
- * Clears existing state before restoring.
- */
 export declare function restoreState(state: BrowserStateSnapshot, includeUrl?: boolean): RestoreStateResult;
 /**
- * Highlight a DOM element by injecting a red overlay div.
+ * Highlight a DOM element by injecting a blue glow overlay div.
  */
 export declare function highlightElement(selector: string, durationMs?: number): HighlightResult | undefined;
 /**

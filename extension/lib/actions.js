@@ -24,7 +24,7 @@ export function recordAction(action) {
         return;
     actionBuffer.push({
         ts: new Date().toISOString(),
-        ...action,
+        ...action
     });
     // Keep buffer size limited
     if (actionBuffer.length > MAX_ACTION_BUFFER_SIZE) {
@@ -54,7 +54,7 @@ export function handleClick(event) {
         type: 'click',
         target: getElementSelector(target),
         x: event.clientX,
-        y: event.clientY,
+        y: event.clientY
     };
     // Include button text if available (truncated)
     const text = target.textContent || target.innerText || '';
@@ -74,7 +74,7 @@ export function handleInput(event) {
     const action = {
         type: 'input',
         target: getElementSelector(target),
-        inputType: target.type || 'text',
+        inputType: target.type || 'text'
     };
     // Only include value for non-sensitive fields
     if (!isSensitiveInput(target)) {
@@ -102,7 +102,7 @@ export function handleScroll(event) {
         type: 'scroll',
         scrollX: Math.round(window.scrollX),
         scrollY: Math.round(window.scrollY),
-        target: target === document ? 'document' : getElementSelector(target),
+        target: target === document ? 'document' : getElementSelector(target)
     });
     recordEnhancedAction('scroll', null, { scrollY: Math.round(window.scrollY) });
 }

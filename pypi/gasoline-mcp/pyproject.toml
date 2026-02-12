@@ -41,12 +41,13 @@ Issues = "https://github.com/brennhill/gasoline-mcp-ai-devtools/issues"
 [project.scripts]
 gasoline-mcp = "gasoline_mcp.__main__:main"
 
-[project.optional-dependencies]
-darwin-arm64 = ["gasoline-mcp-darwin-arm64==6.0.1"]
-darwin-x64 = ["gasoline-mcp-darwin-x64==6.0.1"]
-linux-arm64 = ["gasoline-mcp-linux-arm64==6.0.1"]
-linux-x64 = ["gasoline-mcp-linux-x64==6.0.1"]
-win32-x64 = ["gasoline-mcp-win32-x64==6.0.1"]
+dependencies = [
+    "gasoline-mcp-darwin-arm64==6.0.3; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "gasoline-mcp-darwin-x64==6.0.3; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "gasoline-mcp-linux-arm64==6.0.3; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "gasoline-mcp-linux-x64==6.0.3; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "gasoline-mcp-win32-x64==6.0.3; sys_platform == 'win32'",
+]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

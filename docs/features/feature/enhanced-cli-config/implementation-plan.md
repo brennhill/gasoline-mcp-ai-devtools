@@ -33,7 +33,7 @@ last-verified: 2026-01-31
 | **Phase 11** | Feature Parity Verification | 1.5 hours | TODO |
 | **Total** | | **24 hours** | |
 
-**Notes:**
+### Notes:
 - Phases 0-8: NPM wrapper (full implementation + testing)
 - Phases 9-11: Python wrapper (port + parity verification)
 - Both wrappers must produce identical output and behavior

@@ -76,7 +76,7 @@ export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fal
           reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`))
         }
       }, timeoutMs)
-    }),
+    })
   ]).catch((err) => {
     if (err instanceof TimeoutError && err.fallback !== undefined) {
       return err.fallback as T
@@ -91,7 +91,7 @@ export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fal
 export class TimeoutError extends Error {
   constructor(
     message: string,
-    public fallback?: unknown,
+    public fallback?: unknown
   ) {
     super(message)
     this.name = 'TimeoutError'
@@ -123,7 +123,7 @@ export async function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: numb
       setTimeout(() => {
         reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`))
       }, timeoutMs)
-    }),
+    })
   ])
 }
 
@@ -170,7 +170,7 @@ export async function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: numb
 export async function messageWithTimeout<T>(
   sender: () => Promise<T>,
   timeoutMs: number,
-  cleanup?: () => void,
+  cleanup?: () => void
 ): Promise<T> {
   const timeoutHandle = setTimeout(() => {
     cleanup?.()
@@ -206,7 +206,7 @@ export async function promiseRaceWithCleanup<T>(
   promise: Promise<T>,
   timeoutMs: number,
   timeoutFallback: T | undefined,
-  cleanup?: () => void,
+  cleanup?: () => void
 ): Promise<T> {
   try {
     return await Promise.race([
@@ -220,7 +220,7 @@ export async function promiseRaceWithCleanup<T>(
             reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`))
           }
         }, timeoutMs)
-      }),
+      })
     ])
   } catch (err) {
     if (err instanceof TimeoutError && err.fallback !== undefined) {
@@ -287,7 +287,7 @@ export function delay(delayMs: number): Promise<void> {
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxAttempts: number = 3,
-  initialDelayMs: number = 100,
+  initialDelayMs: number = 100
 ): Promise<T> {
   let lastError: unknown
 
@@ -324,7 +324,10 @@ export async function retryWithBackoff<T>(
  *   }
  * }
  */
-export function makeCancellable<T>(promise: Promise<T>, operationName?: string): {
+export function makeCancellable<T>(
+  promise: Promise<T>,
+  operationName?: string
+): {
   promise: Promise<T>
   cancel: () => void
 } {
@@ -350,11 +353,9 @@ export function makeCancellable<T>(promise: Promise<T>, operationName?: string):
     promise: wrappedPromise,
     cancel: () => {
       cancelled = true
-      const msg = operationName
-        ? `Operation cancelled: ${operationName}`
-        : 'cancelled'
+      const msg = operationName ? `Operation cancelled: ${operationName}` : 'cancelled'
       rejectFn(new Error(msg))
-    },
+    }
   }
 }
 
@@ -373,7 +374,7 @@ export function makeCancellable<T>(promise: Promise<T>, operationName?: string):
 export async function waitFor(
   condition: () => boolean,
   timeoutMs: number,
-  pollIntervalMs: number = 100,
+  pollIntervalMs: number = 100
 ): Promise<void> {
   const startTime = Date.now()
 
@@ -443,7 +444,7 @@ export async function executeWithTimeoutAndCleanup<T>(
   callback: () => Promise<T>,
   timeoutMs: number,
   fallback?: T,
-  cleanup?: () => void,
+  cleanup?: () => void
 ): Promise<T> {
   let timeoutHandle: ReturnType<typeof setTimeout> | null = null
 

@@ -84,58 +84,58 @@ func NewSecurityScanner() *SecurityScanner {
 // Main Scan Entry Point
 // ============================================
 
+// defaultSecurityChecks is the full list of checks when none are specified.
+var defaultSecurityChecks = []string{"credentials", "pii", "headers", "cookies", "transport", "auth", "network"}
+
+// runSecurityChecks dispatches each enabled check and collects findings.
+func (s *SecurityScanner) runSecurityChecks(checkSet map[string]bool, bodies []capture.NetworkBody, input SecurityScanInput) []SecurityFinding {
+	type checkEntry struct {
+		name string
+		fn   func() []SecurityFinding
+	}
+	checks := []checkEntry{
+		{"credentials", func() []SecurityFinding { return s.checkCredentials(bodies, input.ConsoleEntries) }},
+		{"pii", func() []SecurityFinding { return s.checkPII(bodies, input.PageURLs) }},
+		{"headers", func() []SecurityFinding { return s.checkSecurityHeaders(bodies) }},
+		{"cookies", func() []SecurityFinding { return s.checkCookies(bodies) }},
+		{"transport", func() []SecurityFinding { return s.checkTransport(bodies, input.PageURLs) }},
+		{"auth", func() []SecurityFinding { return s.checkAuthPatterns(bodies) }},
+		{"network", func() []SecurityFinding { return s.checkNetworkSecurity(input.WaterfallEntries, input.PageURLs) }},
+	}
+
+	var findings []SecurityFinding
+	for _, c := range checks {
+		if checkSet[c.name] {
+			findings = append(findings, c.fn()...)
+		}
+	}
+	return findings
+}
+
 // Scan analyzes the input data and returns security findings.
 func (s *SecurityScanner) Scan(input SecurityScanInput) SecurityScanResult {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	findings := make([]SecurityFinding, 0)
 	checks := input.Checks
 	if len(checks) == 0 {
-		checks = []string{"credentials", "pii", "headers", "cookies", "transport", "auth", "network"}
+		checks = defaultSecurityChecks
 	}
-
 	checkSet := make(map[string]bool)
 	for _, c := range checks {
 		checkSet[c] = true
 	}
 
-	// Filter network bodies by URL if specified
 	bodies := filterBodiesByURL(input.NetworkBodies, input.URLFilter)
+	findings := s.runSecurityChecks(checkSet, bodies, input)
 
-	if checkSet["credentials"] {
-		findings = append(findings, s.checkCredentials(bodies, input.ConsoleEntries)...)
-	}
-	if checkSet["pii"] {
-		findings = append(findings, s.checkPII(bodies, input.PageURLs)...)
-	}
-	if checkSet["headers"] {
-		findings = append(findings, s.checkSecurityHeaders(bodies)...)
-	}
-	if checkSet["cookies"] {
-		findings = append(findings, s.checkCookies(bodies)...)
-	}
-	if checkSet["transport"] {
-		findings = append(findings, s.checkTransport(bodies, input.PageURLs)...)
-	}
-	if checkSet["auth"] {
-		findings = append(findings, s.checkAuthPatterns(bodies)...)
-	}
-	if checkSet["network"] {
-		findings = append(findings, s.checkNetworkSecurity(input.WaterfallEntries, input.PageURLs)...)
-	}
-
-	// Apply severity filter
 	if input.SeverityMin != "" {
 		findings = filterBySeverity(findings, input.SeverityMin)
 	}
 
-	// Build summary
-	summary := buildSummary(findings, bodies)
-
 	return SecurityScanResult{
 		Findings:  findings,
-		Summary:   summary,
+		Summary:   buildSummary(findings, bodies),
 		ScannedAt: time.Now(),
 	}
 }
@@ -267,194 +267,146 @@ func (s *SecurityScanner) checkCredentials(bodies []capture.NetworkBody, entries
 	return findings
 }
 
-func (s *SecurityScanner) scanURLForCredentials(body capture.NetworkBody) []SecurityFinding {
+// scanURLForAPIKeys checks for API keys in URL query parameters.
+func (s *SecurityScanner) scanURLForAPIKeys(url string) []SecurityFinding {
 	var findings []SecurityFinding
-
-	// Check for API keys / secrets in URL query params
-	if matches := apiKeyURLPattern.FindAllStringSubmatch(body.URL, 10); len(matches) > 0 {
-		for _, m := range matches {
-			if len(m) >= 3 {
-				paramName := m[1]
-				paramValue := m[2]
-				if isTestKey(paramValue) {
-					continue
-				}
-				findings = append(findings, SecurityFinding{
-					Check:       "credentials",
-					Severity:    "critical",
-					Title:       fmt.Sprintf("API key exposed in URL query parameter '%s'", paramName),
-					Description: fmt.Sprintf("GET request includes secret in query parameter '%s'. Query parameters are logged in server access logs, browser history, and may be cached by proxies.", paramName),
-					Location:    body.URL,
-					Evidence:    redactSecret(paramValue),
-					Remediation: "Move API key to Authorization header or request body. Never include secrets in URLs.",
-				})
-			}
+	matches := apiKeyURLPattern.FindAllStringSubmatch(url, 10)
+	for _, m := range matches {
+		if len(m) < 3 || isTestKey(m[2]) {
+			continue
 		}
-	}
-
-	// Check for generic secrets in URL
-	if matches := genericSecretURL.FindAllStringSubmatch(body.URL, 10); len(matches) > 0 {
-		for _, m := range matches {
-			if len(m) >= 3 {
-				paramValue := m[2]
-				if isTestKey(paramValue) {
-					continue
-				}
-				// Avoid duplicate with apiKeyURLPattern
-				if apiKeyURLPattern.MatchString(body.URL) {
-					continue
-				}
-				findings = append(findings, SecurityFinding{
-					Check:       "credentials",
-					Severity:    "critical",
-					Title:       "Secret value exposed in URL query parameter",
-					Description: "Request URL contains a secret-named parameter with a long value.",
-					Location:    body.URL,
-					Evidence:    redactSecret(paramValue),
-					Remediation: "Move secrets to Authorization header or request body.",
-				})
-			}
-		}
-	}
-
-	// Check for JWT in URL
-	if jwtPattern.MatchString(body.URL) {
-		match := jwtPattern.FindString(body.URL)
 		findings = append(findings, SecurityFinding{
 			Check:       "credentials",
 			Severity:    "critical",
-			Title:       "JWT token exposed in URL",
-			Description: "A JWT token was found in the request URL. URLs are logged in browser history, server logs, and may leak via Referer headers.",
-			Location:    body.URL,
-			Evidence:    redactSecret(match),
-			Remediation: "Pass JWT tokens in the Authorization header, not in URLs.",
+			Title:       fmt.Sprintf("API key exposed in URL query parameter '%s'", m[1]),
+			Description: fmt.Sprintf("GET request includes secret in query parameter '%s'. Query parameters are logged in server access logs, browser history, and may be cached by proxies.", m[1]),
+			Location:    url,
+			Evidence:    redactSecret(m[2]),
+			Remediation: "Move API key to Authorization header or request body. Never include secrets in URLs.",
 		})
 	}
-
-	// Check for AWS keys in URL
-	if awsKeyPattern.MatchString(body.URL) {
-		match := awsKeyPattern.FindString(body.URL)
-		findings = append(findings, SecurityFinding{
-			Check:       "credentials",
-			Severity:    "critical",
-			Title:       "AWS access key exposed in URL",
-			Description: "An AWS access key ID was found in the request URL.",
-			Location:    body.URL,
-			Evidence:    redactSecret(match),
-			Remediation: "Use IAM roles or environment variables for AWS credentials. Never embed in URLs.",
-		})
-	}
-
 	return findings
 }
 
-func (s *SecurityScanner) scanBodyForCredentials(bodyContent, sourceURL, location string) []SecurityFinding {
-	var findings []SecurityFinding
-	if bodyContent == "" {
-		return findings
+// scanURLForGenericSecrets checks for generic secret parameters in URL.
+func (s *SecurityScanner) scanURLForGenericSecrets(url string) []SecurityFinding {
+	if apiKeyURLPattern.MatchString(url) {
+		return nil // avoid duplicating apiKey findings
 	}
+	var findings []SecurityFinding
+	matches := genericSecretURL.FindAllStringSubmatch(url, 10)
+	for _, m := range matches {
+		if len(m) < 3 || isTestKey(m[2]) {
+			continue
+		}
+		findings = append(findings, SecurityFinding{
+			Check:       "credentials",
+			Severity:    "critical",
+			Title:       "Secret value exposed in URL query parameter",
+			Description: "Request URL contains a secret-named parameter with a long value.",
+			Location:    url,
+			Evidence:    redactSecret(m[2]),
+			Remediation: "Move secrets to Authorization header or request body.",
+		})
+	}
+	return findings
+}
 
-	// Limit scan depth
+func (s *SecurityScanner) scanURLForCredentials(body capture.NetworkBody) []SecurityFinding {
+	var findings []SecurityFinding
+	findings = append(findings, s.scanURLForAPIKeys(body.URL)...)
+	findings = append(findings, s.scanURLForGenericSecrets(body.URL)...)
+
+	if jwtPattern.MatchString(body.URL) {
+		findings = append(findings, SecurityFinding{
+			Check: "credentials", Severity: "critical",
+			Title:       "JWT token exposed in URL",
+			Description: "A JWT token was found in the request URL. URLs are logged in browser history, server logs, and may leak via Referer headers.",
+			Location:    body.URL, Evidence: redactSecret(jwtPattern.FindString(body.URL)),
+			Remediation: "Pass JWT tokens in the Authorization header, not in URLs.",
+		})
+	}
+	if awsKeyPattern.MatchString(body.URL) {
+		findings = append(findings, SecurityFinding{
+			Check: "credentials", Severity: "critical",
+			Title:       "AWS access key exposed in URL",
+			Description: "An AWS access key ID was found in the request URL.",
+			Location:    body.URL, Evidence: redactSecret(awsKeyPattern.FindString(body.URL)),
+			Remediation: "Use IAM roles or environment variables for AWS credentials. Never embed in URLs.",
+		})
+	}
+	return findings
+}
+
+// credentialPatternCheck defines a single credential pattern to scan for in body content.
+type credentialPatternCheck struct {
+	pattern     *regexp.Regexp
+	severity    string
+	titleFmt    string
+	descFmt     string
+	remediation string
+	evidence    string // if non-empty, use this instead of redacted match
+	skipTestKey bool
+}
+
+// bodyCredentialChecks returns the ordered list of credential patterns to scan.
+func bodyCredentialChecks() []credentialPatternCheck {
+	return []credentialPatternCheck{
+		{awsKeyPattern, "critical", "AWS access key in %s", "An AWS access key ID pattern was detected in the %s.", "Remove AWS credentials from API responses. Use short-lived STS tokens if needed.", "", true},
+		{githubTokenPattern, "critical", "GitHub token in %s", "A GitHub personal access token was detected in the %s.", "Remove GitHub tokens from client-visible responses. Use short-lived tokens.", "", true},
+		{stripeKeyPattern, "critical", "Stripe secret key in %s", "A Stripe secret key was detected in the %s. This key can be used to make charges.", "Never expose Stripe secret keys to the client. Use publishable keys (pk_*) for client-side operations.", "", true},
+		{privateKeyPattern, "critical", "Private key material in %s", "Private key material was detected in the %s. This is a critical exposure.", "Never transmit private keys in API responses. Use key management services.", "-----BEGIN ... PRIVATE KEY-----", false},
+		{jwtPattern, "medium", "JWT token in %s", "A JWT token was detected in the %s. Verify this is an intentional auth token delivery.", "Ensure JWT tokens are only delivered via secure, intended channels (e.g., httpOnly cookies).", "", false},
+	}
+}
+
+func (s *SecurityScanner) scanBodyForCredentials(bodyContent, sourceURL, location string) []SecurityFinding {
+	if bodyContent == "" {
+		return nil
+	}
 	scanContent := bodyContent
 	if len(scanContent) > 10240 {
 		scanContent = scanContent[:10240]
 	}
 
-	// AWS access key
-	if awsKeyPattern.MatchString(scanContent) {
-		match := awsKeyPattern.FindString(scanContent)
-		if !isTestKey(match) {
-			findings = append(findings, SecurityFinding{
-				Check:       "credentials",
-				Severity:    "critical",
-				Title:       "AWS access key in " + location,
-				Description: "An AWS access key ID pattern was detected in the " + location + ".",
-				Location:    sourceURL,
-				Evidence:    redactSecret(match),
-				Remediation: "Remove AWS credentials from API responses. Use short-lived STS tokens if needed.",
-			})
+	var findings []SecurityFinding
+	for _, check := range bodyCredentialChecks() {
+		if !check.pattern.MatchString(scanContent) {
+			continue
 		}
-	}
-
-	// GitHub token
-	if githubTokenPattern.MatchString(scanContent) {
-		match := githubTokenPattern.FindString(scanContent)
-		if !isTestKey(match) {
-			findings = append(findings, SecurityFinding{
-				Check:       "credentials",
-				Severity:    "critical",
-				Title:       "GitHub token in " + location,
-				Description: "A GitHub personal access token was detected in the " + location + ".",
-				Location:    sourceURL,
-				Evidence:    redactSecret(match),
-				Remediation: "Remove GitHub tokens from client-visible responses. Use short-lived tokens.",
-			})
+		match := check.pattern.FindString(scanContent)
+		if check.skipTestKey && isTestKey(match) {
+			continue
 		}
-	}
-
-	// Stripe secret key
-	if stripeKeyPattern.MatchString(scanContent) {
-		match := stripeKeyPattern.FindString(scanContent)
-		if !isTestKey(match) {
-			findings = append(findings, SecurityFinding{
-				Check:       "credentials",
-				Severity:    "critical",
-				Title:       "Stripe secret key in " + location,
-				Description: "A Stripe secret key was detected in the " + location + ". This key can be used to make charges.",
-				Location:    sourceURL,
-				Evidence:    redactSecret(match),
-				Remediation: "Never expose Stripe secret keys to the client. Use publishable keys (pk_*) for client-side operations.",
-			})
+		evidence := check.evidence
+		if evidence == "" {
+			evidence = redactSecret(match)
 		}
-	}
-
-	// Private key material
-	if privateKeyPattern.MatchString(scanContent) {
 		findings = append(findings, SecurityFinding{
 			Check:       "credentials",
-			Severity:    "critical",
-			Title:       "Private key material in " + location,
-			Description: "Private key material was detected in the " + location + ". This is a critical exposure.",
+			Severity:    check.severity,
+			Title:       fmt.Sprintf(check.titleFmt, location),
+			Description: fmt.Sprintf(check.descFmt, location),
 			Location:    sourceURL,
-			Evidence:    "-----BEGIN ... PRIVATE KEY-----",
-			Remediation: "Never transmit private keys in API responses. Use key management services.",
+			Evidence:    evidence,
+			Remediation: check.remediation,
 		})
 	}
 
-	// JWT in body (warning level — may be intentional for auth flows)
-	if jwtPattern.MatchString(scanContent) {
-		match := jwtPattern.FindString(scanContent)
+	// API key in JSON body (multi-match pattern)
+	for _, m := range apiKeyBodyPattern.FindAllStringSubmatch(scanContent, 5) {
+		if len(m) < 3 || isTestKey(m[2]) {
+			continue
+		}
 		findings = append(findings, SecurityFinding{
 			Check:       "credentials",
-			Severity:    "medium",
-			Title:       "JWT token in " + location,
-			Description: "A JWT token was detected in the " + location + ". Verify this is an intentional auth token delivery.",
+			Severity:    "warning",
+			Title:       fmt.Sprintf("API key '%s' in %s", m[1], location),
+			Description: fmt.Sprintf("An API key field '%s' was found in the %s.", m[1], location),
 			Location:    sourceURL,
-			Evidence:    redactSecret(match),
-			Remediation: "Ensure JWT tokens are only delivered via secure, intended channels (e.g., httpOnly cookies).",
+			Evidence:    redactSecret(m[2]),
+			Remediation: "Verify this key is meant to be client-visible. Use server-side proxy for secret keys.",
 		})
-	}
-
-	// API key in JSON body
-	if matches := apiKeyBodyPattern.FindAllStringSubmatch(scanContent, 5); len(matches) > 0 {
-		for _, m := range matches {
-			if len(m) >= 3 {
-				keyName := m[1]
-				keyValue := m[2]
-				if isTestKey(keyValue) {
-					continue
-				}
-				findings = append(findings, SecurityFinding{
-					Check:       "credentials",
-					Severity:    "warning",
-					Title:       fmt.Sprintf("API key '%s' in %s", keyName, location),
-					Description: fmt.Sprintf("An API key field '%s' was found in the %s.", keyName, location),
-					Location:    sourceURL,
-					Evidence:    redactSecret(keyValue),
-					Remediation: "Verify this key is meant to be client-visible. Use server-side proxy for secret keys.",
-				})
-			}
-		}
 	}
 
 	return findings

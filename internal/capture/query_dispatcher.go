@@ -116,6 +116,25 @@ func (c *Capture) GetPendingQueriesForClient(clientID string) []queries.PendingQ
 	return c.qd.GetPendingQueriesForClient(clientID)
 }
 
+// GetPendingQueriesDisconnectAware returns pending queries with disconnect detection.
+// If the extension has not synced within extensionDisconnectThreshold (10s) and has
+// synced at least once, all pending queries are expired with "extension_disconnected".
+// This prevents queries from hanging indefinitely when the extension crashes or disconnects.
+func (c *Capture) GetPendingQueriesDisconnectAware() []queries.PendingQueryResponse {
+	c.mu.RLock()
+	neverSynced := c.ext.lastSyncSeen.IsZero()
+	disconnected := !neverSynced && time.Since(c.ext.lastSyncSeen) >= extensionDisconnectThreshold
+	c.mu.RUnlock()
+
+	// If extension was previously connected but is now stale, expire all pending queries
+	if disconnected {
+		c.qd.ExpireAllPendingQueries("extension_disconnected")
+		return nil
+	}
+
+	return c.qd.GetPendingQueries()
+}
+
 // SetQueryResult delegates to QueryDispatcher.
 func (c *Capture) SetQueryResult(id string, result json.RawMessage) {
 	c.qd.SetQueryResult(id, result)

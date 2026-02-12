@@ -98,4 +98,4 @@ FAILED=0
 run_test "Cold start within 2 seconds" test_cold_start_timing || ((FAILED++))
 run_test "MCP works immediately after health" test_immediate_mcp_after_health || ((FAILED++))
 
-exit $FAILED
+exit "$FAILED"

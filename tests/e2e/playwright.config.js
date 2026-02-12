@@ -14,9 +14,9 @@ export default defineConfig({
   use: {
     // Chrome extension testing uses persistent context with --headless=new
     // (new Chrome headless mode supports extensions). Configured in helpers/extension.js
-    viewport: { width: 1280, height: 720 },
+    viewport: { width: 1280, height: 720 }
   },
   // Global setup: build the server binary before tests
   globalSetup: path.join(__dirname, 'helpers', 'global-setup.js'),
-  globalTeardown: path.join(__dirname, 'helpers', 'global-teardown.js'),
+  globalTeardown: path.join(__dirname, 'helpers', 'global-teardown.js')
 })

@@ -70,10 +70,8 @@ export declare function parseSourceMapData(sourceMap: {
  * Find original location from source map
  */
 export declare function findOriginalLocation(sourceMap: ParsedSourceMap, line: number, column: number): OriginalLocation | null;
-/**
- * Fetch a source map for a script URL
- */
-export declare function fetchSourceMap(scriptUrl: string, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<ParsedSourceMap | null>;
+type DebugLogFn = (category: string, message: string, data?: unknown) => void;
+export declare function fetchSourceMap(scriptUrl: string, debugLogFn?: DebugLogFn): Promise<ParsedSourceMap | null>;
 /**
  * Resolve a single stack frame to original location
  */

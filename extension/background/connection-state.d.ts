@@ -111,6 +111,8 @@ export declare class ConnectionStateMachine {
      * Process an event and transition to new state
      */
     transition(event: ConnectionEvent): ConnectionState;
+    /** Transition table: each handler mutates the state draft */
+    private static readonly transitions;
     /**
      * Compute the next state based on current state and event
      */

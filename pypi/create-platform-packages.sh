@@ -1,8 +1,8 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 PLATFORMS=("darwin-arm64" "darwin-x64" "linux-arm64" "linux-x64" "win32-x64")
-VERSION="5.1.0"
+VERSION="6.0.3"
 
 for platform in "${PLATFORMS[@]}"; do
     pkg_name="gasoline-mcp-${platform}"

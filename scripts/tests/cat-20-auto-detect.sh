@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-20-auto-detect.sh — Noise Filtering Auto-Detect & Framework Tests (8 tests)
 # Tests confidence scoring, framework detection, auto-detection thresholds.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"

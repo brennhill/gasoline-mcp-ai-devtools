@@ -372,20 +372,7 @@ func TestConfigureAudit_InvalidJSON_ReturnsParseError(t *testing.T) {
 	}
 }
 
-// TestConfigureAudit_ValidateAPI_InvalidOperation verifies invalid operation returns error
-func TestConfigureAudit_ValidateAPI_InvalidOperation(t *testing.T) {
-	env := newConfigureTestEnv(t)
-
-	result, ok := env.callConfigure(t, `{"action":"validate_api","operation":"invalid_op"}`)
-	if !ok {
-		t.Fatal("validate_api with invalid operation should return result")
-	}
-
-	// ASSERTION: IsError is true for invalid operation
-	if !result.IsError {
-		t.Error("validate_api with invalid operation MUST return isError:true")
-	}
-}
+// TestConfigureAudit_ValidateAPI_InvalidOperation removed in Phase 0: moved to analyze({what:'api_validation'})
 
 // ============================================
 // Behavioral Tests: Empty State Handling
@@ -396,6 +383,7 @@ func TestConfigureAudit_EmptyState_ReturnsEmptyNotError(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
 	// These actions should return success even with no data
+	// Note: query_dom removed in Phase 0 (moved to analyze({what:'dom'}))
 	actions := []struct {
 		name string
 		args string
@@ -404,7 +392,6 @@ func TestConfigureAudit_EmptyState_ReturnsEmptyNotError(t *testing.T) {
 		{"health", `{"action":"health"}`},
 		{"noise_rule_list", `{"action":"noise_rule","noise_action":"list"}`},
 		{"audit_log_report", `{"action":"audit_log"}`},
-		{"query_dom", `{"action":"query_dom","selector":"body"}`},
 	}
 
 	for _, tc := range actions {
@@ -469,13 +456,8 @@ func TestConfigureAudit_AllActions(t *testing.T) {
 		{"store", `{"action":"store","key":"test_key","value":"test_value"}`},
 		{"load", `{"action":"load","key":"test_key"}`},
 		{"noise_rule", `{"action":"noise_rule","operation":"list"}`},
-		{"dismiss", `{"action":"dismiss","pattern":"test_pattern"}`},
 		{"clear", `{"action":"clear"}`},
-		{"capture", `{"action":"capture"}`},
-		{"record_event", `{"action":"record_event","event_type":"click","data":{"x":100,"y":200}}`},
-		{"query_dom", `{"action":"query_dom","selector":"body"}`},
 		{"diff_sessions", `{"action":"diff_sessions"}`},
-		{"validate_api", `{"action":"validate_api"}`},
 		{"audit_log", `{"action":"audit_log","operation":"report"}`},
 		{"health", `{"action":"health"}`},
 		{"streaming", `{"action":"streaming"}`},
@@ -612,12 +594,13 @@ func TestConfigureAudit_InvalidJSON(t *testing.T) {
 
 // TestConfigureAudit_ActionCount documents coverage
 func TestConfigureAudit_ActionCount(t *testing.T) {
-	t.Log("Configure audit covers 19 actions with:")
+	t.Log("Configure audit covers 14 actions with:")
 	t.Log("  - 5 data flow tests (verify actions return expected data)")
 	t.Log("  - 5 parameter validation tests (verify missing params return errors)")
 	t.Log("  - 4 error handling tests (verify structured errors)")
 	t.Log("  - 5 empty state tests (verify empty returns success, not error)")
-	t.Log("  - 19 safety net tests (verify all actions don't panic)")
+	t.Log("  - 14 safety net tests (verify all actions don't panic)")
 	t.Log("  - 5 noise_rule sub-operation tests")
 	t.Log("  - 3 audit_log sub-operation tests")
+	t.Log("  Note: query_dom and validate_api moved to analyze tool")
 }

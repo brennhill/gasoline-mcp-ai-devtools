@@ -15,7 +15,7 @@ import type {
   WebSocketEvent,
   EnhancedAction,
   NetworkBodyPayload,
-  PerformanceSnapshot,
+  PerformanceSnapshot
 } from '../types'
 
 // =============================================================================
@@ -57,7 +57,7 @@ export interface MessageHandlerDependencies {
   handleClearLogs: () => Promise<{ success: boolean; error?: string }>
   captureScreenshot: (
     tabId: number,
-    relatedErrorId: string | null,
+    relatedErrorId: string | null
   ) => Promise<{
     success: boolean
     entry?: LogEntry
@@ -110,6 +110,7 @@ function isValidMessageSender(sender: ChromeMessageSender & { id?: string }): bo
  * Install the main message listener
  * All messages are validated for sender origin to ensure they come from trusted extension contexts
  */
+// #lizard forgives
 export function installMessageListener(deps: MessageHandlerDependencies): void {
   if (typeof chrome === 'undefined' || !chrome.runtime) return
 
@@ -121,7 +122,7 @@ export function installMessageListener(deps: MessageHandlerDependencies): void {
         return false
       }
       return handleMessage(message, sender as ChromeMessageSender, sendResponse, deps)
-    },
+    }
   )
 }
 
@@ -151,7 +152,7 @@ function handleMessage(
   message: BackgroundMessage,
   sender: ChromeMessageSender,
   sendResponse: SendResponse,
-  deps: MessageHandlerDependencies,
+  deps: MessageHandlerDependencies
 ): boolean {
   const messageType = message.type
 
@@ -196,7 +197,7 @@ function handleMessage(
         debugMode: deps.getDebugMode(),
         contextWarning: deps.getContextWarning(),
         circuitBreakerState: deps.getCircuitBreakerState(),
-        memoryPressure: deps.getMemoryPressureState(),
+        memoryPressure: deps.getMemoryPressureState()
       })
       return false
 
@@ -277,6 +278,16 @@ function handleMessage(
       handleSetServerUrl(message.url, sendResponse, deps)
       return false
 
+    case 'GASOLINE_CAPTURE_SCREENSHOT':
+      // Content script requests screenshot capture (while draw mode overlay is still visible)
+      handleDrawModeCaptureScreenshot(sender, sendResponse)
+      return true
+
+    case 'DRAW_MODE_COMPLETED':
+      // Fire-and-forget: content script sends draw mode results
+      handleDrawModeCompletedAsync(message as unknown as Record<string, unknown>, sender, deps)
+      return false
+
     default:
       // Unknown message type
       return false
@@ -290,7 +301,7 @@ function handleMessage(
 async function handleLogMessageAsync(
   message: { type: 'log'; payload: LogEntry; tabId?: number },
   sender: ChromeMessageSender,
-  deps: MessageHandlerDependencies,
+  deps: MessageHandlerDependencies
 ): Promise<void> {
   try {
     await deps.handleLogMessage(message.payload, sender, message.tabId)
@@ -299,6 +310,7 @@ async function handleLogMessageAsync(
   }
 }
 
+// #lizard forgives
 async function handleClearLogsAsync(sendResponse: SendResponse, deps: MessageHandlerDependencies): Promise<void> {
   try {
     const result = await deps.handleClearLogs()
@@ -312,7 +324,7 @@ async function handleClearLogsAsync(sendResponse: SendResponse, deps: MessageHan
 function handleSetAiWebPilotEnabled(
   enabled: boolean,
   sendResponse: SendResponse,
-  deps: MessageHandlerDependencies,
+  deps: MessageHandlerDependencies
 ): void {
   const newValue = enabled === true
   console.log(`[Gasoline] AI Web Pilot toggle: -> ${newValue}`)
@@ -332,7 +344,11 @@ function handleSetAiWebPilotEnabled(
  * Returns current tracking and AI Pilot state for favicon replacer.
  * Uses sender's tab ID (not active tab query) to correctly identify the requesting tab.
  */
-async function handleGetTrackingState(sendResponse: SendResponse, deps: MessageHandlerDependencies, senderTabId?: number): Promise<void> {
+async function handleGetTrackingState(
+  sendResponse: SendResponse,
+  deps: MessageHandlerDependencies,
+  senderTabId?: number
+): Promise<void> {
   try {
     const result = await chrome.storage.local.get(['trackedTabId'])
     const trackedTabId = result.trackedTabId as number | undefined
@@ -341,8 +357,8 @@ async function handleGetTrackingState(sendResponse: SendResponse, deps: MessageH
     sendResponse({
       state: {
         isTracked: senderTabId !== undefined && senderTabId === trackedTabId,
-        aiPilotEnabled: aiPilotEnabled,
-      },
+        aiPilotEnabled: aiPilotEnabled
+      }
     })
   } catch (err) {
     console.error('[Gasoline] Failed to get tracking state:', err)
@@ -369,8 +385,8 @@ export async function broadcastTrackingState(untrackedTabId?: number | null): Pr
           type: 'trackingStateChanged',
           state: {
             isTracked: true,
-            aiPilotEnabled: aiPilotEnabled,
-          },
+            aiPilotEnabled: aiPilotEnabled
+          }
         })
         .catch(() => {
           // Tab might not have content script loaded yet, ignore
@@ -384,8 +400,8 @@ export async function broadcastTrackingState(untrackedTabId?: number | null): Pr
           type: 'trackingStateChanged',
           state: {
             isTracked: false,
-            aiPilotEnabled: false,
-          },
+            aiPilotEnabled: false
+          }
         })
         .catch(() => {
           // Tab might not have content script loaded, ignore
@@ -401,7 +417,7 @@ function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandl
     sendResponse({
       cache: deps.getAiWebPilotEnabled(),
       storage: undefined,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     })
     return
   }
@@ -410,7 +426,7 @@ function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandl
     sendResponse({
       cache: deps.getAiWebPilotEnabled(),
       storage: result.aiWebPilotEnabled,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     })
   })
 }
@@ -437,11 +453,67 @@ function handleCaptureScreenshot(sendResponse: SendResponse, deps: MessageHandle
 function handleForwardedSetting(
   message: { type: string; enabled?: boolean; mode?: string },
   sendResponse: SendResponse,
-  deps: MessageHandlerDependencies,
+  deps: MessageHandlerDependencies
 ): void {
   deps.debugLog('settings', `Setting ${message.type}: ${message.enabled ?? message.mode}`)
   deps.forwardToAllContentScripts(message as { type: string; [key: string]: unknown })
   sendResponse({ success: true })
+}
+
+/**
+ * Handle GASOLINE_CAPTURE_SCREENSHOT from content script.
+ * Captures visible tab while draw mode overlay is still visible (annotations in screenshot).
+ */
+async function handleDrawModeCaptureScreenshot(sender: ChromeMessageSender, sendResponse: SendResponse): Promise<void> {
+  const tabId = sender.tab?.id
+  if (!tabId) {
+    sendResponse({ dataUrl: '' })
+    return
+  }
+  try {
+    const tab = await chrome.tabs.get(tabId)
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' })
+    sendResponse({ dataUrl })
+  } catch (err) {
+    console.error('[Gasoline] Draw mode screenshot capture failed:', (err as Error).message)
+    sendResponse({ dataUrl: '' })
+  }
+}
+
+/**
+ * Handle draw mode completion from content script.
+ * Uses screenshot already captured by content script (before overlay removal).
+ */
+async function handleDrawModeCompletedAsync(
+  message: Record<string, unknown>,
+  sender: ChromeMessageSender,
+  deps: MessageHandlerDependencies
+): Promise<void> {
+  const tabId = sender.tab?.id
+  if (!tabId) return
+  try {
+    const serverUrl = deps.getServerUrl()
+    const body: Record<string, unknown> = {
+      screenshot_data_url: (message.screenshot_data_url as string) || '',
+      annotations: (message.annotations as unknown[]) || [],
+      element_details: (message.elementDetails as Record<string, unknown>) || {},
+      page_url: (message.page_url as string) || '',
+      tab_id: tabId
+    }
+    if (message.session_name) {
+      body.session_name = message.session_name
+    }
+    const response = await fetch(`${serverUrl}/draw-mode/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    if (!response.ok) {
+      console.error('[Gasoline] Draw mode POST failed:', response.status)
+    }
+  } catch (err) {
+    console.error('[Gasoline] Draw mode completion error:', (err as Error).message)
+  }
 }
 
 function handleSetServerUrl(url: string, sendResponse: SendResponse, deps: MessageHandlerDependencies): void {
@@ -478,22 +550,22 @@ interface StateSnapshotStorage {
  */
 export async function saveStateSnapshot(
   name: string,
-  state: BrowserStateSnapshot,
+  state: BrowserStateSnapshot
 ): Promise<{ success: boolean; snapshot_name: string; size_bytes: number }> {
   return new Promise((resolve) => {
     chrome.storage.local.get(SNAPSHOT_KEY, (result: { [key: string]: StateSnapshotStorage }) => {
       const snapshots: StateSnapshotStorage = result[SNAPSHOT_KEY] || {}
-      const sizeBytes = JSON.stringify(state).length
+      const sizeBytes = JSON.stringify(state).length // nosemgrep: no-stringify-keys
       snapshots[name] = {
         ...state,
         name,
-        size_bytes: sizeBytes,
+        size_bytes: sizeBytes
       }
       chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
         resolve({
           success: true,
           snapshot_name: name,
-          size_bytes: sizeBytes,
+          size_bytes: sizeBytes
         })
       })
     })
@@ -525,7 +597,7 @@ export async function listStateSnapshots(): Promise<
         name: s.name,
         url: s.url,
         timestamp: s.timestamp,
-        size_bytes: s.size_bytes,
+        size_bytes: s.size_bytes
       }))
       resolve(list)
     })

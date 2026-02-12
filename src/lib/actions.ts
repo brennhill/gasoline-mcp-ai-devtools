@@ -54,7 +54,7 @@ export function recordAction(action: Omit<ActionRecord, 'ts'>): void {
 
   actionBuffer.push({
     ts: new Date().toISOString(),
-    ...action,
+    ...action
   })
 
   // Keep buffer size limited
@@ -88,7 +88,7 @@ export function handleClick(event: MouseEvent): void {
     type: 'click',
     target: getElementSelector(target),
     x: event.clientX,
-    y: event.clientY,
+    y: event.clientY
   }
 
   // Include button text if available (truncated)
@@ -111,7 +111,7 @@ export function handleInput(event: Event): void {
   const action: Omit<ActionRecord, 'ts'> = {
     type: 'input',
     target: getElementSelector(target),
-    inputType: target.type || 'text',
+    inputType: target.type || 'text'
   }
 
   // Only include value for non-sensitive fields
@@ -141,7 +141,7 @@ export function handleScroll(event: Event): void {
     type: 'scroll',
     scrollX: Math.round(window.scrollX),
     scrollY: Math.round(window.scrollY),
-    target: target === document ? 'document' : getElementSelector(target as Element),
+    target: target === document ? 'document' : getElementSelector(target as Element)
   })
   recordEnhancedAction('scroll', null, { scrollY: Math.round(window.scrollY) })
 }
@@ -258,7 +258,7 @@ export function installNavigationCapture(): void {
       this: History,
       state: unknown,
       title: string,
-      url?: string | URL | null,
+      url?: string | URL | null
     ): void {
       const fromUrl = lastUrl
       originalPushState!.call(this, state, title, url)
@@ -275,7 +275,7 @@ export function installNavigationCapture(): void {
       this: History,
       state: unknown,
       title: string,
-      url?: string | URL | null,
+      url?: string | URL | null
     ): void {
       const fromUrl = lastUrl
       originalReplaceState!.call(this, state, title, url)

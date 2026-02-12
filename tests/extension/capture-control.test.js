@@ -23,7 +23,7 @@ describe('pollCaptureSettings', () => {
       lastFetchUrl = url
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ connected: true, capture_overrides: {} }),
+        json: () => Promise.resolve({ connected: true, capture_overrides: {} })
       })
     })
 
@@ -40,9 +40,9 @@ describe('pollCaptureSettings', () => {
         json: () =>
           Promise.resolve({
             connected: true,
-            capture_overrides: { ws_mode: 'medium', log_level: 'all' },
-          }),
-      }),
+            capture_overrides: { ws_mode: 'medium', log_level: 'all' }
+          })
+      })
     )
 
     const { pollCaptureSettings } = await loadModule()
@@ -55,8 +55,8 @@ describe('pollCaptureSettings', () => {
     fetchMock.mock.mockImplementation(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ connected: true, capture_overrides: {} }),
-      }),
+        json: () => Promise.resolve({ connected: true, capture_overrides: {} })
+      })
     )
 
     const { pollCaptureSettings } = await loadModule()
@@ -78,8 +78,8 @@ describe('pollCaptureSettings', () => {
     fetchMock.mock.mockImplementation(() =>
       Promise.resolve({
         ok: false,
-        status: 404,
-      }),
+        status: 404
+      })
     )
 
     const { pollCaptureSettings } = await loadModule()
@@ -127,7 +127,7 @@ describe('applyCaptureOverrides', () => {
     applyCaptureOverrides({
       log_level: 'warn',
       ws_mode: 'off',
-      network_bodies: 'false',
+      network_bodies: 'false'
     })
 
     const state = getCaptureState()

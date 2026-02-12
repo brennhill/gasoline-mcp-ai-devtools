@@ -153,11 +153,6 @@ export declare function resetForTesting(): void;
  * Type alias for fetch-like functions (avoids overload complexity)
  */
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-/**
- * Wrap a fetch function to capture request/response bodies
- * @param fetchFn - The original fetch function
- * @returns Wrapped fetch that captures bodies
- */
 export declare function wrapFetchWithBodies(fetchFn: FetchLike): FetchLike;
 export {};
 //# sourceMappingURL=network.d.ts.map

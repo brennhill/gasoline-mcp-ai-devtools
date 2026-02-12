@@ -8,22 +8,23 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 const mockChrome = {
   runtime: {
     onMessage: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
     onInstalled: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '6.0.3' }),
+    getManifest: () => ({ version: MANIFEST_VERSION })
   },
   action: {
     setBadgeText: mock.fn(),
-    setBadgeBackgroundColor: mock.fn(),
+    setBadgeBackgroundColor: mock.fn()
   },
   storage: {
     local: {
@@ -32,7 +33,7 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     sync: {
       get: mock.fn((keys, callback) => callback({})),
@@ -40,7 +41,7 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     session: {
       get: mock.fn((keys, callback) => callback({})),
@@ -48,28 +49,28 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     onChanged: {
-      addListener: mock.fn(),
-    },
+      addListener: mock.fn()
+    }
   },
   alarms: {
     create: mock.fn(),
     onAlarm: {
-      addListener: mock.fn(),
-    },
+      addListener: mock.fn()
+    }
   },
   tabs: {
     get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
     captureVisibleTab: mock.fn(() =>
-      Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS'),
+      Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS')
     ),
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1 }])),
     onRemoved: {
-      addListener: mock.fn(),
-    },
-  },
+      addListener: mock.fn()
+    }
+  }
 }
 
 // Set global chrome mock
@@ -93,7 +94,7 @@ import {
   measureContextSize,
   checkContextAnnotations,
   getContextWarning,
-  resetContextWarning,
+  resetContextWarning
 } from '../../extension/background.js'
 
 describe('Log Batcher', () => {
@@ -177,14 +178,14 @@ describe('sendLogsToServer', () => {
     const mockFetch = mock.fn(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ entries: 2 }),
-      }),
+        json: () => Promise.resolve({ entries: 2 })
+      })
     )
     globalThis.fetch = mockFetch
 
     const entries = [
       { ts: '2024-01-22T10:00:00Z', level: 'error', msg: 'test1' },
-      { ts: '2024-01-22T10:00:01Z', level: 'warn', msg: 'test2' },
+      { ts: '2024-01-22T10:00:01Z', level: 'warn', msg: 'test2' }
     ]
 
     const result = await sendLogsToServer('http://localhost:7890', entries)
@@ -205,12 +206,12 @@ describe('sendLogsToServer', () => {
       Promise.resolve({
         ok: false,
         status: 500,
-        statusText: 'Internal Server Error',
-      }),
+        statusText: 'Internal Server Error'
+      })
     )
 
     await assert.rejects(() => sendLogsToServer('http://localhost:7890', [{ msg: 'test' }]), {
-      message: /Server error: 500/,
+      message: /Server error: 500/
     })
   })
 
@@ -218,7 +219,7 @@ describe('sendLogsToServer', () => {
     globalThis.fetch = mock.fn(() => Promise.reject(new Error('Network error')))
 
     await assert.rejects(() => sendLogsToServer('http://localhost:7890', [{ msg: 'test' }]), {
-      message: /Network error/,
+      message: /Network error/
     })
   })
 })
@@ -236,9 +237,9 @@ describe('checkServerHealth', () => {
           Promise.resolve({
             status: 'ok',
             entries: 42,
-            maxEntries: 1000,
-          }),
-      }),
+            maxEntries: 1000
+          })
+      })
     )
 
     const health = await checkServerHealth()
@@ -261,8 +262,8 @@ describe('checkServerHealth', () => {
     globalThis.fetch = mock.fn(() =>
       Promise.resolve({
         ok: false,
-        status: 500,
-      }),
+        status: 500
+      })
     )
 
     const health = await checkServerHealth()
@@ -339,7 +340,7 @@ describe('formatLogEntry', () => {
     const entry = formatLogEntry({
       level: 'log',
       type: 'console',
-      args: [largeString],
+      args: [largeString]
     })
 
     // Args should be truncated
@@ -354,7 +355,7 @@ describe('formatLogEntry', () => {
     const entry = formatLogEntry({
       level: 'log',
       type: 'console',
-      args: [obj],
+      args: [obj]
     })
 
     // Should not throw, should have placeholder
@@ -367,7 +368,7 @@ describe('formatLogEntry', () => {
     const entry = formatLogEntry({
       level: 'error',
       msg: 'test',
-      url: 'http://localhost:3000/page',
+      url: 'http://localhost:3000/page'
     })
 
     assert.strictEqual(entry.url, 'http://localhost:3000/page')
@@ -377,7 +378,7 @@ describe('formatLogEntry', () => {
     const entry = formatLogEntry({
       level: 'error',
       msg: 'test',
-      tabId: 42,
+      tabId: 42
     })
 
     assert.strictEqual(entry.tabId, 42)
@@ -386,7 +387,7 @@ describe('formatLogEntry', () => {
   test('should work without tabId (backward compat)', () => {
     const entry = formatLogEntry({
       level: 'error',
-      msg: 'test',
+      msg: 'test'
     })
 
     assert.strictEqual(entry.tabId, undefined)
@@ -435,7 +436,7 @@ describe('createErrorSignature', () => {
       type: 'exception',
       level: 'error',
       message: 'Cannot read property x',
-      stack: 'Error: Cannot read property x\n    at foo.js:10:5',
+      stack: 'Error: Cannot read property x\n    at foo.js:10:5'
     }
 
     const sig1 = createErrorSignature(entry)
@@ -452,13 +453,13 @@ describe('createErrorSignature', () => {
       type: 'exception',
       level: 'error',
       message: 'Error A',
-      stack: 'Error: Error A\n    at file1.js:10',
+      stack: 'Error: Error A\n    at file1.js:10'
     }
     const entry2 = {
       type: 'exception',
       level: 'error',
       message: 'Error B',
-      stack: 'Error: Error B\n    at file2.js:20',
+      stack: 'Error: Error B\n    at file2.js:20'
     }
 
     const sig1 = createErrorSignature(entry1)
@@ -473,7 +474,7 @@ describe('createErrorSignature', () => {
       level: 'error',
       method: 'POST',
       url: 'http://localhost:3000/api/users?id=123',
-      status: 401,
+      status: 401
     }
 
     const sig = createErrorSignature(entry)
@@ -488,7 +489,7 @@ describe('createErrorSignature', () => {
     const entry = {
       type: 'console',
       level: 'error',
-      args: ['User authentication failed'],
+      args: ['User authentication failed']
     }
 
     const sig = createErrorSignature(entry)
@@ -510,7 +511,7 @@ describe('processErrorGroup', () => {
       type: 'exception',
       level: 'error',
       message: 'Test error',
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     const result = processErrorGroup(entry)
@@ -524,7 +525,7 @@ describe('processErrorGroup', () => {
       type: 'exception',
       level: 'error',
       message: 'Duplicate error test',
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     // First occurrence
@@ -541,7 +542,7 @@ describe('processErrorGroup', () => {
       type: 'console',
       level: 'log',
       args: ['Info message'],
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     const result1 = processErrorGroup(entry)
@@ -556,7 +557,7 @@ describe('processErrorGroup', () => {
       type: 'console',
       level: 'warn',
       args: ['Warning message'],
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     const result1 = processErrorGroup(entry)
@@ -579,7 +580,7 @@ describe('flushErrorGroups', () => {
       type: 'exception',
       level: 'error',
       message: 'Single error',
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     processErrorGroup(entry)
@@ -594,7 +595,7 @@ describe('flushErrorGroups', () => {
       type: 'exception',
       level: 'error',
       message: 'Repeated error for flush',
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     // Create duplicates
@@ -753,7 +754,7 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
-    assert.strictEqual(parsed.version, '6.0.2')
+    assert.strictEqual(parsed.version, MANIFEST_VERSION)
     assert.ok(Array.isArray(parsed.entries))
   })
 
@@ -796,8 +797,8 @@ describe('Context Annotation Monitoring', () => {
         level: 'error',
         _context: {
           user: { id: 123, name: 'test' },
-          page: { route: '/checkout' },
-        },
+          page: { route: '/checkout' }
+        }
       }
       const size = measureContextSize(entry)
       assert.ok(size > 0)
@@ -814,8 +815,8 @@ describe('Context Annotation Monitoring', () => {
           key3: largeValue,
           key4: largeValue,
           key5: largeValue,
-          key6: largeValue, // 6 × 4000 = ~24KB, over threshold
-        },
+          key6: largeValue // 6 × 4000 = ~24KB, over threshold
+        }
       }
       const size = measureContextSize(entry)
       assert.ok(size > 20 * 1024, `Expected > 20KB, got ${size}`)
@@ -826,7 +827,7 @@ describe('Context Annotation Monitoring', () => {
     test('should not warn for entries with small context', () => {
       const entries = [
         { level: 'error', _context: { user: { id: 1 } } },
-        { level: 'error', _context: { page: '/home' } },
+        { level: 'error', _context: { page: '/home' } }
       ]
       checkContextAnnotations(entries)
       assert.strictEqual(getContextWarning(), null)
@@ -835,7 +836,7 @@ describe('Context Annotation Monitoring', () => {
     test('should not warn for entries without context', () => {
       const entries = [
         { level: 'error', args: ['test'] },
-        { level: 'warn', msg: 'hello' },
+        { level: 'warn', msg: 'hello' }
       ]
       checkContextAnnotations(entries)
       assert.strictEqual(getContextWarning(), null)
@@ -895,7 +896,7 @@ describe('Context Annotation Monitoring', () => {
         checkContextAnnotations([
           { level: 'error', _context: { small: 'val' } },
           { level: 'error', _context: largeContext },
-          { level: 'warn', msg: 'no context' },
+          { level: 'warn', msg: 'no context' }
         ])
       }
 
@@ -931,8 +932,8 @@ describe('Enhanced Actions Server Communication', () => {
     globalThis.fetch = mock.fn(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ received: 1 }),
-      }),
+        json: () => Promise.resolve({ received: 1 })
+      })
     )
   })
 
@@ -945,8 +946,8 @@ describe('Enhanced Actions Server Communication', () => {
         url: 'http://localhost:3000',
         selectors: { id: 'email' },
         value: 'test@test.com',
-        inputType: 'email',
-      },
+        inputType: 'email'
+      }
     ]
 
     await sendEnhancedActionsToServer('http://localhost:7890', actions)
@@ -971,7 +972,7 @@ describe('Enhanced Actions Server Communication', () => {
 
     await assert.rejects(
       () => sendEnhancedActionsToServer('http://localhost:7890', actions),
-      (err) => err.message.includes('500'),
+      (err) => err.message.includes('500')
     )
   })
 
@@ -985,7 +986,7 @@ describe('Enhanced Actions Server Communication', () => {
       timestamp: 1001,
       url: 'http://localhost:3000',
       selectors: { id: 'input' },
-      value: 'hi',
+      value: 'hi'
     }
 
     batcher.add(action1)
@@ -1039,7 +1040,7 @@ describe('GET_TAB_ID Message Handler', () => {
 
   test('should respond with undefined tabId when sender has no tab', () => {
     const sendResponse = mock.fn()
-    const sender = {}  // No tab (e.g., from popup or other extension page)
+    const sender = {} // No tab (e.g., from popup or other extension page)
     const message = { type: 'GET_TAB_ID' }
 
     if (message.type === 'GET_TAB_ID') {
@@ -1074,7 +1075,7 @@ describe('Performance Snapshot Batching (W6)', () => {
     assert.strictEqual(
       typeof bgModule.sendPerformanceSnapshotToServer,
       'undefined',
-      'sendPerformanceSnapshotToServer should be removed; performance snapshots now use perfBatcher',
+      'sendPerformanceSnapshotToServer should be removed; performance snapshots now use perfBatcher'
     )
   })
 
@@ -1084,7 +1085,7 @@ describe('Performance Snapshot Batching (W6)', () => {
     assert.strictEqual(
       typeof commModule.sendPerformanceSnapshotsToServer,
       'function',
-      'sendPerformanceSnapshotsToServer (plural, batch) should be exported from communication.js',
+      'sendPerformanceSnapshotsToServer (plural, batch) should be exported from communication.js'
     )
   })
 })

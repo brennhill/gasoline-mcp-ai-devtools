@@ -37,15 +37,15 @@ The baseline includes console error fingerprints, network endpoint status codes 
 ### Phase 3: Exploration
 The agent opens the preview URL in a new isolated tab and exercises the application:
 
-**Step 3.1: Open preview in new tab**
+#### Step 3.1: Open preview in new tab
 ```
 interact({action: "new_tab", url: "https://preview-42.myapp.dev"})
 ```
 
-**Step 3.2: Wait for page load**
+#### Step 3.2: Wait for page load
 Poll `observe({what: "page"})` until ready state is reached or timeout (30 seconds).
 
-**Step 3.3: Exercise the application**
+#### Step 3.3: Exercise the application
 The agent performs a bounded set of interactions using `interact({action: "execute_js"})`:
 - Click navigation links
 - Fill and submit forms
@@ -55,7 +55,7 @@ The agent performs a bounded set of interactions using `interact({action: "execu
 
 Gasoline passively captures telemetry during this phase (console logs, network requests, WebSocket events, Web Vitals).
 
-**Step 3.4: Capture session snapshot**
+#### Step 3.4: Capture session snapshot
 ```
 configure({action: "diff_sessions", session_action: "capture", name: "preview-pr-42"})
 ```
@@ -188,29 +188,29 @@ The trade-off: no new server overhead, but the workflow requires agent reasoning
 
 ## Risks & Mitigations
 
-**Risk 1: Preview URL validation bypass**
+### Risk 1: Preview URL validation bypass
 - **Description**: Agent navigates to a malicious URL disguised as a preview (e.g., `javascript:`, `file://`, or internal network address).
 - **Mitigation**: Agent-side workflow validates URL scheme (HTTPS only), domain pattern (matches configured allowlist like `*.vercel.app`, `*.netlify.app`, or custom domain), and excludes private network addresses (10.x.x.x, 192.168.x.x, 127.0.0.x except Gasoline localhost).
 
-**Risk 2: Unbounded exploration**
+### Risk 2: Unbounded exploration
 - **Description**: Agent explores infinitely, visiting hundreds of pages and consuming excessive time/tokens.
 - **Mitigation**: Workflow enforces explicit bounds: max 20 pages visited, max 10 actions per page, max 100 total actions, 15-minute wall-clock timeout, max navigation depth of 3 clicks. Partial exploration is acceptable — agent stops at bound and reports what it found.
 
-**Risk 3: Auth token leakage**
+### Risk 3: Auth token leakage
 - **Description**: Preview environments requiring authentication expose tokens in URL params or cookies, which leak into telemetry.
 - **Mitigation**: Gasoline strips Authorization headers and redacts sensitive cookies from network captures (existing privacy layer). Agent-side workflow must redact any token values from the exploration report before posting to PR.
 
-**Risk 4: Extension disconnects mid-workflow**
+### Risk 4: Extension disconnects mid-workflow
 - **Description**: Network interruption or browser crash disconnects the extension during exploration.
 - **Mitigation**: Agent checks extension connectivity via `observe({what: "page"})` before starting. If disconnection occurs mid-exploration, tool calls timeout. Agent captures partial results and reports what was found before disconnection.
 
-**Risk 5: False positives from stale baseline**
+### Risk 5: False positives from stale baseline
 - **Description**: Baseline is 7 days old, application evolved legitimately, agent reports new features as "regressions."
 - **Mitigation**: Agent warns when baseline age exceeds 24 hours (configurable threshold). Developer can choose to recapture baseline or proceed with awareness of staleness. Agent should note baseline age in the report.
 
 ## Dependencies
 
-**Depends on:**
+### Depends on:
 - `interact` tool: `navigate`, `new_tab`, `execute_js`, `refresh` actions (shipped)
 - `observe` tool: `errors`, `network_waterfall`, `performance`, `accessibility`, `page` modes (shipped)
 - `configure` tool: `diff_sessions`, `store`/`load` actions (shipped)
@@ -219,7 +219,7 @@ The trade-off: no new server overhead, but the workflow requires agent reasoning
 - Single-tab tracking isolation (shipped in v6): ensures per-tab telemetry scoping
 - AI Web Pilot toggle (shipped): human opt-in required for `execute_js`
 
-**Depended on by:**
+### Depended on by:
 - Agentic CI/CD (proposed): PR preview exploration is one of the four agentic workflows
 - Deployment Watchdog (proposed): shares the baseline comparison pattern
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 # validate-architecture.sh — Enforce async queue-and-poll architecture
 # Run in CI to catch architecture violations before merge
-set -e
+set -euo pipefail
 
 echo "🏗️  Validating Gasoline architecture..."
 echo ""
@@ -167,7 +167,7 @@ else
     echo "   ❌ Integration tests FAILED"
     echo ""
     echo "   Test output:"
-    cat /tmp/gasoline-integration-test.log | tail -30
+    tail -30 /tmp/gasoline-integration-test.log
     ERRORS=$((ERRORS + 1))
 fi
 

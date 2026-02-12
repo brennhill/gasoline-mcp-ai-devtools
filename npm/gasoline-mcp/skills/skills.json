@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "id": "debug",
+      "version": 1,
+      "description": "Root-cause web failures using Gasoline observability evidence."
+    },
+    {
+      "id": "performance",
+      "version": 1,
+      "description": "Measure and compare performance regressions with repeatable scenarios."
+    },
+    {
+      "id": "demo",
+      "version": 1,
+      "description": "Build and run reliable demo scripts with evidence capture."
+    },
+    {
+      "id": "automate",
+      "version": 1,
+      "description": "Execute browser automation with robust selectors and bounded recovery."
+    },
+    {
+      "id": "reliability",
+      "version": 1,
+      "description": "Validate end-to-end reliability across LLM, MCP, server, and extension."
+    },
+    {
+      "id": "security-redaction",
+      "version": 1,
+      "description": "Audit redaction coverage across logs, diagnostics, and debug output."
+    },
+    {
+      "id": "test-coverage",
+      "version": 1,
+      "description": "Increase test coverage in high-risk and low-coverage areas."
+    },
+    {
+      "id": "release-readiness",
+      "version": 1,
+      "description": "Run release gates and produce a clear go or no-go decision."
+    },
+    {
+      "id": "config-doctor",
+      "version": 1,
+      "description": "Diagnose and repair Gasoline MCP configuration issues."
+    }
+  ]
+}
+

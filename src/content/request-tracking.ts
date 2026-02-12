@@ -83,7 +83,7 @@ export function getPendingRequestStats(): PendingRequestStats {
     highlight: pendingHighlightRequests.size,
     execute: pendingExecuteRequests.size,
     a11y: pendingA11yRequests.size,
-    dom: pendingDomRequests.size,
+    dom: pendingDomRequests.size
   }
 }
 
@@ -243,7 +243,7 @@ export function initRequestTracking(): void {
   // Using 'pagehide' (modern, fires on both close and navigation) + 'beforeunload' (legacy fallback)
   window.addEventListener('pagehide', clearPendingRequests)
   window.addEventListener('beforeunload', clearPendingRequests)
-  
+
   // Start periodic cleanup timer (Issue #2 fix)
   // Provides fallback when pagehide/beforeunload don't fire (e.g., page crash)
   cleanupTimer = setInterval(performPeriodicCleanup, CLEANUP_INTERVAL_MS)

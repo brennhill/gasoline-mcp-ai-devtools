@@ -110,7 +110,7 @@ describe('WebSocket Interception', () => {
 
     const calls = globalThis.window.postMessage.mock.calls
     const closeMsg = calls.find(
-      (c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'close',
+      (c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'close'
     )
     assert.ok(closeMsg, 'Expected ws:close event')
     const payload = closeMsg.arguments[0].payload
@@ -139,7 +139,7 @@ describe('WebSocket Interception', () => {
 
     const calls = globalThis.window.postMessage.mock.calls
     const msgEvent = calls.find(
-      (c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'message',
+      (c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'message'
     )
     assert.ok(msgEvent, 'Expected ws:message event')
     const payload = msgEvent.arguments[0].payload
@@ -643,7 +643,7 @@ describe('Binary Message Handling', () => {
     const blob = {
       size: 1024,
       type: 'application/octet-stream',
-      arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024)),
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024))
     }
 
     const formatted = formatPayload(blob)

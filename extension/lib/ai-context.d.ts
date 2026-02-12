@@ -113,12 +113,6 @@ declare global {
         __REDUX_STORE__?: ReduxStore;
     }
 }
-/**
- * Parse stack trace into structured frames
- * Supports Chrome and Firefox formats
- * @param stack - The stack trace string
- * @returns Array of frame objects { functionName, filename, lineno, colno }
- */
 export declare function parseStackFrames(stack: string | undefined): InternalStackFrame[];
 /**
  * Parse an inline base64 source map data URL
@@ -157,9 +151,15 @@ export declare function detectFramework(element: FrameworkElement | null | undef
  */
 export declare function getReactComponentAncestry(fiber: ReactFiber | null | undefined): ReactComponentEntry[] | null;
 /**
- * Capture application state snapshot from known store patterns
- * @param errorMessage - The error message for keyword matching
- * @returns State snapshot or null
+ * Capture application state snapshot from known store patterns.
+ *
+ * STATE RELEVANCE MATCHING STRATEGY:
+ * 1. Extract error keywords from the error message (words > 2 chars).
+ * 2. Build a "relevant slice" by matching nested state keys against common error state
+ *    keys ('error', 'loading', 'status', 'failed') and error message keywords.
+ * 3. Caps at AI_CONTEXT_MAX_RELEVANT_SLICE entries; values truncated at MAX_VALUE_LENGTH.
+ *
+ * NOTE: Only supports Redux. Other state management would need additional window.__* patterns.
  */
 export declare function captureStateSnapshot(errorMessage: string): StateSnapshotResult | null;
 /**
@@ -175,11 +175,6 @@ interface ErrorEntryForEnrichment {
     stack?: string;
     message?: string;
 }
-/**
- * Full error enrichment pipeline
- * @param error - The error entry to enrich
- * @returns The enriched error entry
- */
 export declare function enrichErrorWithAiContext(error: ErrorEntryForEnrichment): Promise<EnrichedErrorEntry>;
 /**
  * Enable or disable AI context enrichment

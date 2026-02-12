@@ -36,19 +36,19 @@ Page calls alert("message")
 
 ## Implementation Strategy
 
-**Dialog interception approach:**
+### Dialog interception approach:
 1. Override native dialog functions in inject.js:
    - Save original functions (window._originalAlert = window.alert)
    - Replace with capture wrapper (window.alert = function(msg) { captureDialog('alert', msg); return _originalAlert(msg); })
 2. For confirm/prompt, return agent's response instead of showing native dialog
 3. For beforeunload, prevent default and handle programmatically
 
-**Buffer management:**
+### Buffer management:
 - Store dialogs in ring buffer (max 50, evict oldest)
 - Each dialog has: id, type, message, default_value (for prompt), timestamp, status (pending/handled)
 - When agent handles dialog, mark status as "handled"
 
-**Response handling:**
+### Response handling:
 - Accept: for alert (dismiss), confirm (true), prompt (with text input)
 - Dismiss: for confirm (false), prompt (null)
 
