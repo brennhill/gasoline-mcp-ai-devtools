@@ -25,17 +25,17 @@ interface LongTaskMetrics {
     longest: number;
 }
 interface NetworkTiming {
-    domContentLoaded: number;
+    dom_content_loaded: number;
     load: number;
-    firstContentfulPaint: number | null;
-    largestContentfulPaint: number | null;
-    interactionToNextPaint: number | null;
-    timeToFirstByte: number;
-    domInteractive: number;
+    first_contentful_paint: number | null;
+    largest_contentful_paint: number | null;
+    interaction_to_next_paint: number | null;
+    time_to_first_byte: number;
+    dom_interactive: number;
 }
 interface UserTimingEntry {
     name: string;
-    startTime: number;
+    start_time: number;
     duration?: number;
 }
 interface PerformanceSnapshotData {

@@ -97,7 +97,7 @@ Tests: cold start, tool calls, concurrent clients, stdout purity, persistence, g
 
 ## Code Standards
 
-**JSON API fields:** Use `snake_case` for MCP responses. Exception: browser API pass-through fields (PerformanceResourceTiming, etc.) keep camelCase.
+**JSON API fields:** ALL JSON fields use `snake_case`. No exceptions. External spec fields (MCP protocol, SARIF) are tagged with `// SPEC:<name>` comments.
 
 **TypeScript:**
 

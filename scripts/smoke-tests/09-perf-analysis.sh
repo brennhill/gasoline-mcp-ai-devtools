@@ -195,7 +195,7 @@ try:
     measures = ut.get('measures', [])
     print(f'    marks: {len(marks)}')
     for m in marks[:4]:
-        print(f'      {m.get(\"name\",\"?\")} @ {m.get(\"time\",m.get(\"startTime\",\"?\"))}')
+        print(f'      {m.get(\"name\",\"?\")} @ {m.get(\"time\",m.get(\"start_time\",\"?\"))}')
     print(f'    measures: {len(measures)}')
     for m in measures[:2]:
         print(f'      {m.get(\"name\",\"?\")} duration={m.get(\"duration\",\"?\")}ms')

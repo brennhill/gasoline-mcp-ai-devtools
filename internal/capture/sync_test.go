@@ -410,7 +410,7 @@ func TestHandleSync_WaterfallResultDelivery(t *testing.T) {
 		"entries": []map[string]any{
 			{"url": "https://api.example.com/users", "duration": 150.5},
 		},
-		"pageURL": "https://example.com",
+		"page_url": "https://example.com",
 	}
 	resultBytes, _ := json.Marshal(waterfallResult)
 

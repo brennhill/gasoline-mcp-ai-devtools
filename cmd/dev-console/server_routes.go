@@ -338,9 +338,13 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *captu
 		resp["available_version"] = availVer
 	}
 	if cap != nil {
+		extStatus := cap.GetExtensionStatus()
 		resp["capture"] = map[string]any{
-			"available":     true,
-			"pilot_enabled": cap.IsPilotEnabled(),
+			"available":            true,
+			"pilot_enabled":       cap.IsPilotEnabled(),
+			"extension_connected": cap.IsExtensionConnected(),
+			"extension_last_seen": extStatus["last_seen"],
+			"extension_client_id": extStatus["client_id"],
 		}
 	}
 	jsonResponse(w, http.StatusOK, resp)

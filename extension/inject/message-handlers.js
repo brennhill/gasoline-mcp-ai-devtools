@@ -456,7 +456,7 @@ function handleGetWaterfall(data) {
             type: 'GASOLINE_WATERFALL_RESPONSE',
             requestId,
             entries: snakeEntries,
-            pageURL: window.location.href
+            page_url: window.location.href
         }, window.location.origin);
     }
     catch (err) {

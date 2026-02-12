@@ -409,9 +409,9 @@ describe('Performance Snapshot Message Flow', () => {
     const snapshotMessage = calls.find((c) => c.arguments[0]?.type === 'GASOLINE_PERFORMANCE_SNAPSHOT')
     assert.ok(snapshotMessage, 'Should post GASOLINE_PERFORMANCE_SNAPSHOT message')
     assert.strictEqual(
-      snapshotMessage.arguments[0].payload.timing.interactionToNextPaint,
+      snapshotMessage.arguments[0].payload.timing.interaction_to_next_paint,
       175,
-      'Payload timing should include interactionToNextPaint'
+      'Payload timing should include interaction_to_next_paint'
     )
   })
 

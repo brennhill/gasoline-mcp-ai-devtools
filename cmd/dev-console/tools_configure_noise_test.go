@@ -63,9 +63,9 @@ func TestToolConfigureNoise_AddRule(t *testing.T) {
 	}
 
 	data := parseResponseJSON(t, result)
-	rulesAdded, _ := data["rulesAdded"].(float64)
+	rulesAdded, _ := data["rules_added"].(float64)
 	if rulesAdded != 1 {
-		t.Fatalf("rulesAdded = %v, want 1", rulesAdded)
+		t.Fatalf("rules_added = %v, want 1", rulesAdded)
 	}
 }
 

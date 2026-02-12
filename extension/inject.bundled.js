@@ -291,22 +291,22 @@ var ACTION_DATA_ENRICHERS = {
   input: (a, el, o) => {
     const typedEl = el;
     const inputType = typedEl && typedEl.getAttribute ? typedEl.getAttribute("type") : "text";
-    a.inputType = inputType || "text";
+    a.input_type = inputType || "text";
     a.value = inputType === "password" || el && isSensitiveInput(el) ? "[redacted]" : o.value || "";
   },
   keypress: (a, _el, o) => {
     a.key = o.key || "";
   },
   navigate: (a, _el, o) => {
-    a.fromUrl = o.fromUrl || "";
-    a.toUrl = o.toUrl || "";
+    a.from_url = o.from_url || "";
+    a.to_url = o.to_url || "";
   },
   select: (a, _el, o) => {
-    a.selectedValue = o.selectedValue || "";
-    a.selectedText = o.selectedText || "";
+    a.selected_value = o.selected_value || "";
+    a.selected_text = o.selected_text || "";
   },
   scroll: (a, _el, o) => {
-    a.scrollY = o.scrollY || 0;
+    a.scroll_y = o.scroll_y || 0;
   }
 };
 function recordEnhancedAction(type, element, opts = {}) {
@@ -354,9 +354,9 @@ var ACTION_STEP_GENERATORS = {
     return `  await page.${locator}.fill('${escapeString(value)}');`;
   },
   keypress: (action) => `  await page.keyboard.press('${escapeString(action.key || "")}');`,
-  navigate: (action, _locator, baseUrl) => `  await page.waitForURL('${escapeString(rebaseUrl(action.toUrl || "", baseUrl))}');`,
-  select: (action, locator) => locator ? `  await page.${locator}.selectOption('${escapeString(action.selectedValue || "")}');` : null,
-  scroll: (action) => `  // User scrolled to y=${action.scrollY || 0}`
+  navigate: (action, _locator, baseUrl) => `  await page.waitForURL('${escapeString(rebaseUrl(action.to_url || "", baseUrl))}');`,
+  select: (action, locator) => locator ? `  await page.${locator}.selectOption('${escapeString(action.selected_value || "")}');` : null,
+  scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`
 };
 function actionToPlaywrightStep(action, baseUrl) {
   const locator = getPlaywrightLocator(action.selectors || { cssPath: "" });
@@ -520,7 +520,7 @@ function handleScroll(event) {
     scrollY: Math.round(window.scrollY),
     target: target === document ? "document" : getElementSelector(target)
   });
-  recordEnhancedAction("scroll", null, { scrollY: Math.round(window.scrollY) });
+  recordEnhancedAction("scroll", null, { scroll_y: Math.round(window.scrollY) });
 }
 function handleKeydown(event) {
   if (!ACTIONABLE_KEYS.has(event.key))
@@ -535,7 +535,7 @@ function handleChange(event) {
   const selectedOption = target.options && target.options[target.selectedIndex];
   const selectedValue = target.value || "";
   const selectedText = selectedOption ? selectedOption.text || "" : "";
-  recordEnhancedAction("select", target, { selectedValue, selectedText });
+  recordEnhancedAction("select", target, { selected_value: selectedValue, selected_text: selectedText });
 }
 function installActionCapture() {
   if (typeof window === "undefined" || typeof document === "undefined")
@@ -591,7 +591,7 @@ function installNavigationCapture() {
   let lastUrl = window.location.href;
   navigationPopstateHandler = function() {
     const toUrl = window.location.href;
-    recordEnhancedAction("navigate", null, { fromUrl: lastUrl, toUrl });
+    recordEnhancedAction("navigate", null, { from_url: lastUrl, to_url: toUrl });
     lastUrl = toUrl;
   };
   window.addEventListener("popstate", navigationPopstateHandler);
@@ -601,7 +601,7 @@ function installNavigationCapture() {
       const fromUrl = lastUrl;
       originalPushState.call(this, state, title, url);
       const toUrl = url || window.location.href;
-      recordEnhancedAction("navigate", null, { fromUrl, toUrl: String(toUrl) });
+      recordEnhancedAction("navigate", null, { from_url: fromUrl, to_url: String(toUrl) });
       lastUrl = window.location.href;
     };
   }
@@ -611,7 +611,7 @@ function installNavigationCapture() {
       const fromUrl = lastUrl;
       originalReplaceState.call(this, state, title, url);
       const toUrl = url || window.location.href;
-      recordEnhancedAction("navigate", null, { fromUrl, toUrl: String(toUrl) });
+      recordEnhancedAction("navigate", null, { from_url: fromUrl, to_url: String(toUrl) });
       lastUrl = window.location.href;
     };
   }
@@ -940,21 +940,21 @@ function capturePerformanceSnapshot() {
   if (!nav)
     return null;
   const timing = {
-    domContentLoaded: nav.domContentLoadedEventEnd,
+    dom_content_loaded: nav.domContentLoadedEventEnd,
     load: nav.loadEventEnd,
-    firstContentfulPaint: getFCP(),
-    largestContentfulPaint: getLCP(),
-    interactionToNextPaint: getINP(),
-    timeToFirstByte: nav.responseStart - nav.requestStart,
-    domInteractive: nav.domInteractive
+    first_contentful_paint: getFCP(),
+    largest_contentful_paint: getLCP(),
+    interaction_to_next_paint: getINP(),
+    time_to_first_byte: nav.responseStart - nav.requestStart,
+    dom_interactive: nav.domInteractive
   };
   const network = aggregateResourceTiming();
   const longTasks = getLongTaskMetrics();
   const marks = performance.getEntriesByType("mark") || [];
   const measures = performance.getEntriesByType("measure") || [];
   const userTiming = marks.length > 0 || measures.length > 0 ? {
-    marks: marks.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime })),
-    measures: measures.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime, duration: m.duration }))
+    marks: marks.slice(-50).map((m) => ({ name: m.name, start_time: m.startTime })),
+    measures: measures.slice(-50).map((m) => ({ name: m.name, start_time: m.startTime, duration: m.duration }))
   } : void 0;
   return {
     url: window.location.pathname,
@@ -3387,7 +3387,7 @@ function handleGetWaterfall(data) {
       type: "GASOLINE_WATERFALL_RESPONSE",
       requestId,
       entries: snakeEntries,
-      pageURL: window.location.href
+      page_url: window.location.href
     }, window.location.origin);
   } catch (err) {
     console.error("[Gasoline] Failed to get network waterfall:", err);

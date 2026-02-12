@@ -2,6 +2,9 @@
 // POST /sync: Single bidirectional sync for extension ↔ server communication.
 // Replaces: /pending-queries (GET), /settings (POST), /extension-logs (POST),
 // /api/extension-status (POST).
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package capture
 
 import (

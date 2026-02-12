@@ -1,6 +1,9 @@
 // diff.go — Rich Action Results: performance diff computation.
 // Computes before/after metric diffs, resource diffs, and generates
 // human-readable summaries for AI consumption.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package performance
 
 import (
@@ -29,7 +32,7 @@ type MetricsTiming struct {
 	TTFB             float64  `json:"ttfb"`
 	FCP              *float64 `json:"fcp,omitempty"`
 	LCP              *float64 `json:"lcp,omitempty"`
-	DomContentLoaded float64  `json:"domContentLoaded"`
+	DomContentLoaded float64  `json:"dom_content_loaded"`
 	Load             float64  `json:"load"`
 }
 
@@ -168,7 +171,7 @@ func ComputePerfDiff(before, after PageLoadMetrics) PerfDiff {
 	if bv, av, ok := ptrPairValues(before.Timing.LCP, after.Timing.LCP); ok {
 		addMetricIfValid(diff.Metrics, "lcp", bv, av)
 	}
-	addMetricIfValid(diff.Metrics, "domContentLoaded", before.Timing.DomContentLoaded, after.Timing.DomContentLoaded)
+	addMetricIfValid(diff.Metrics, "dom_content_loaded", before.Timing.DomContentLoaded, after.Timing.DomContentLoaded)
 	addMetricIfValid(diff.Metrics, "load", before.Timing.Load, after.Timing.Load)
 	if bv, av, ok := ptrPairValues(before.CLS, after.CLS); ok {
 		addMetricIfValid(diff.Metrics, "cls", bv, av)
@@ -372,7 +375,7 @@ func lastPathSegment(url string) string {
 // unitForMetric returns the unit string for a given metric name.
 func unitForMetric(name string) string {
 	switch name {
-	case "ttfb", "fcp", "lcp", "domContentLoaded", "load":
+	case "ttfb", "fcp", "lcp", "dom_content_loaded", "load":
 		return "ms"
 	case "transfer_kb":
 		return "KB"

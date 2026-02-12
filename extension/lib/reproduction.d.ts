@@ -21,14 +21,14 @@ interface EnhancedActionRecord {
     timestamp: number;
     url: string;
     selectors?: SelectorStrategies;
-    inputType?: string;
+    input_type?: string;
     value?: string;
     key?: string;
-    fromUrl?: string;
-    toUrl?: string;
-    selectedValue?: string;
-    selectedText?: string;
-    scrollY?: number;
+    from_url?: string;
+    to_url?: string;
+    selected_value?: string;
+    selected_text?: string;
+    scroll_y?: number;
 }
 interface ScriptOptions {
     errorMessage?: string;
@@ -51,11 +51,11 @@ export declare function computeSelectors(element: Element | null): SelectorStrat
 interface RecordActionOptions {
     value?: string;
     key?: string;
-    fromUrl?: string;
-    toUrl?: string;
-    selectedValue?: string;
-    selectedText?: string;
-    scrollY?: number;
+    from_url?: string;
+    to_url?: string;
+    selected_value?: string;
+    selected_text?: string;
+    scroll_y?: number;
 }
 /**
  * Record an enhanced action with multi-strategy selectors

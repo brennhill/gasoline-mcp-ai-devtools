@@ -515,14 +515,14 @@ describe('Background Script: A11Y query dispatch', () => {
     await postQueryResult('http://localhost:7890', queryId, 'a11y', result)
 
     // Find the a11y-result fetch call (background.js startup may have made other calls)
-    const a11yCalls = mockFetch.mock.calls.filter((call) => {
+    const resultCalls = mockFetch.mock.calls.filter((call) => {
       const url = call.arguments[0]
-      return typeof url === 'string' && url.includes('/a11y-result')
+      return typeof url === 'string' && url.includes('/query-result')
     })
-    assert.strictEqual(a11yCalls.length, 1, `Expected 1 /a11y-result call, found ${a11yCalls.length}`)
+    assert.strictEqual(resultCalls.length, 1, `Expected 1 /query-result call, found ${resultCalls.length}`)
 
-    const [url, opts] = a11yCalls[0].arguments
-    assert.ok(url.includes('/a11y-result'), `Expected URL to include /a11y-result, got: ${url}`)
+    const [url, opts] = resultCalls[0].arguments
+    assert.ok(url.includes('/query-result'), `Expected URL to include /query-result, got: ${url}`)
     assert.strictEqual(opts.method, 'POST')
 
     const body = JSON.parse(opts.body)

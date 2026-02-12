@@ -31,7 +31,7 @@ post_annotation() {
     curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension-uat" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -w "\n%{http_code}" \
         -d "$payload" \
         "http://localhost:${PORT}/draw-mode/complete" 2>/dev/null
@@ -48,7 +48,7 @@ run_test_25_1() {
     result=$(curl -s --max-time 10 --connect-timeout 3 \
         -X POST \
         -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension-uat" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
         -w "\n%{http_code}" \
         -d "$payload" \
         "http://localhost:${PORT}/draw-mode/complete" 2>/dev/null)

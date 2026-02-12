@@ -1,4 +1,7 @@
 // tools_observe_analysis.go — Observe analysis handlers: waterfall, vitals, tabs, a11y, timeline, errors, history, async commands.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package main
 
 import (
@@ -61,7 +64,7 @@ func (h *ToolHandler) refreshWaterfallIfStale() []capture.NetworkWaterfallEntry 
 
 	var waterfallResult struct {
 		Entries []capture.NetworkWaterfallEntry `json:"entries"`
-		PageURL string                          `json:"pageURL"`
+		PageURL string                          `json:"page_url"`
 	}
 	if err := json.Unmarshal(result, &waterfallResult); err == nil && len(waterfallResult.Entries) > 0 {
 		h.capture.AddNetworkWaterfallEntries(waterfallResult.Entries, waterfallResult.PageURL)

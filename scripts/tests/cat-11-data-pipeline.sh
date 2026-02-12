@@ -220,13 +220,13 @@ run_test_11_6() {
 run_test_11_6
 
 # ── 11.7 — Extension logs roundtrip ─────────────────────
-begin_test "11.7" "Extension logs roundtrip (POST /extension-logs -> observe(extension_logs))" \
-    "POST extension internal logs, call observe(extension_logs), verify message appears" \
-    "Extension logs enable debugging the extension itself."
+begin_test "11.7" "Extension logs roundtrip (POST /sync with extension_logs -> observe(extension_logs))" \
+    "POST extension internal logs via /sync, call observe(extension_logs), verify message appears" \
+    "Extension logs enable debugging the extension itself. Logs are sent via the unified /sync endpoint."
 run_test_11_7() {
-    post_extension "/extension-logs" '{"logs":[{"level":"info","message":"UAT_PIPELINE_11_7: Extension initialized","source":"background","category":"CONNECTION"}]}'
+    post_extension "/sync" '{"session_id":"uat-11-7","extension_logs":[{"level":"info","message":"UAT_PIPELINE_11_7: Extension initialized","source":"background","category":"CONNECTION"}]}'
     if [ "$LAST_HTTP_STATUS" != "200" ]; then
-        fail "POST /extension-logs returned HTTP $LAST_HTTP_STATUS. Body: $(truncate "$LAST_HTTP_BODY")"
+        fail "POST /sync (extension_logs) returned HTTP $LAST_HTTP_STATUS. Body: $(truncate "$LAST_HTTP_BODY")"
         return
     fi
     sleep 0.2
@@ -241,7 +241,7 @@ run_test_11_7() {
         fail "observe(extension_logs) missing 'count' field. Content: $(truncate "$text")"
         return
     fi
-    pass "POST /extension-logs returned 200. observe(extension_logs) contains 'UAT_PIPELINE_11_7' and count. Pipeline verified."
+    pass "POST /sync (extension_logs) returned 200. observe(extension_logs) contains 'UAT_PIPELINE_11_7' and count. Pipeline verified."
 }
 run_test_11_7
 
@@ -782,14 +782,14 @@ run_test_11_28
 
 # ── 11.29 — Wrong HTTP method → 405 ─────────────────────
 begin_test "11.29" "Wrong HTTP method to GET-only endpoint" \
-    "POST to /pending-queries (GET-only), verify rejection" \
+    "POST to /health (GET-only), verify rejection with 405" \
     "Method enforcement must work. POST to GET-only must not silently succeed."
 run_test_11_29() {
-    post_raw "http://localhost:${PORT}/pending-queries" '{"test":true}' "X-Gasoline-Client: gasoline-extension/${VERSION}"
+    post_raw "http://localhost:${PORT}/health" '{"test":true}'
     if [ "$LAST_HTTP_STATUS" = "405" ]; then
-        pass "POST /pending-queries returned HTTP 405 (Method Not Allowed). Method enforcement working."
+        pass "POST /health returned HTTP 405 (Method Not Allowed). Method enforcement working."
     else
-        fail "POST /pending-queries returned HTTP $LAST_HTTP_STATUS, expected 405 (Method Not Allowed). Server should reject wrong HTTP method."
+        fail "POST /health returned HTTP $LAST_HTTP_STATUS, expected 405 (Method Not Allowed). Server should reject wrong HTTP method."
     fi
 }
 run_test_11_29
@@ -801,7 +801,7 @@ run_test_11_29
 # ── 11.30 — Performance snapshot field values roundtrip ───
 begin_test "11.30" "Performance snapshot field values preserved through observe(vitals)" \
     "POST snapshot with specific FCP/LCP/TTFB/CLS values, verify observe(vitals) returns exact values" \
-    "If JSON tags are wrong (camelCase vs snake_case), fields deserialize to zero. Must verify actual values."
+    "If JSON tags are wrong (snake_case vs camelCase), fields deserialize to zero. Must verify actual values."
 run_test_11_30() {
     post_extension "/performance-snapshots" '{"snapshots":[{"url":"/uat-fields-11-30","timestamp":"2026-02-06T12:05:00Z","timing":{"dom_content_loaded":777,"load":1234,"first_contentful_paint":888,"largest_contentful_paint":2222,"interaction_to_next_paint":155,"time_to_first_byte":99,"dom_interactive":555},"network":{"request_count":33,"transfer_size":123456,"decoded_size":234567},"long_tasks":{"count":2,"total_blocking_time":120,"longest":80},"cumulative_layout_shift":0.05}]}'
     if [ "$LAST_HTTP_STATUS" != "200" ]; then
@@ -825,7 +825,7 @@ run_test_11_30() {
         fail "CLS value 0.05 missing — cumulative_layout_shift JSON tag likely wrong. Content: $(truncate "$text" 500)"
         return
     fi
-    pass "Snapshot field values preserved: FCP=888, LCP=2222, CLS=0.05. snake_case JSON tags working."
+    pass "Snapshot field values preserved: FCP=888, LCP=2222, CLS=0.05. camelCase JSON tags working."
 }
 run_test_11_30
 
@@ -834,7 +834,7 @@ begin_test "11.31" "User timing in performance snapshot preserved through observ
     "POST snapshot with user_timing marks/measures, verify observe(vitals) returns user timing data" \
     "User timing is the newest snapshot field. If the Go type or JSON tag is wrong, marks disappear."
 run_test_11_31() {
-    post_extension "/performance-snapshots" '{"snapshots":[{"url":"/uat-usertiming-11-31","timestamp":"2026-02-06T12:05:05Z","timing":{"dom_content_loaded":500,"load":1000,"time_to_first_byte":80,"dom_interactive":400},"network":{"request_count":10,"transfer_size":50000,"decoded_size":100000},"long_tasks":{"count":0,"total_blocking_time":0,"longest":0},"cumulative_layout_shift":0.01,"user_timing":{"marks":[{"name":"UAT_MARK_11_31","startTime":150},{"name":"hydration-done","startTime":800}],"measures":[{"name":"UAT_MEASURE_11_31","startTime":150,"duration":650}]}}]}'
+    post_extension "/performance-snapshots" '{"snapshots":[{"url":"/uat-usertiming-11-31","timestamp":"2026-02-06T12:05:05Z","timing":{"dom_content_loaded":500,"load":1000,"time_to_first_byte":80,"dom_interactive":400},"network":{"request_count":10,"transfer_size":50000,"decoded_size":100000},"long_tasks":{"count":0,"total_blocking_time":0,"longest":0},"cumulative_layout_shift":0.01,"user_timing":{"marks":[{"name":"UAT_MARK_11_31","start_time":150},{"name":"hydration-done","start_time":800}],"measures":[{"name":"UAT_MEASURE_11_31","start_time":150,"duration":650}]}}]}'
     if [ "$LAST_HTTP_STATUS" != "200" ]; then
         fail "POST /performance-snapshots with user_timing returned HTTP $LAST_HTTP_STATUS."
         return

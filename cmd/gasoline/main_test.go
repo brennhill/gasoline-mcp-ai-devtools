@@ -1604,7 +1604,7 @@ func FuzzEnhancedActions(f *testing.F) {
 	f.Add([]byte(`{"actions":[]}`))
 	f.Add([]byte(`{}`))
 	f.Add([]byte(`not json`))
-	f.Add([]byte(`{"actions":[{"type":"input","inputType":"password","value":"secret"}]}`))
+	f.Add([]byte(`{"actions":[{"type":"input","input_type":"password","value":"secret"}]}`))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		capture := NewCapture()

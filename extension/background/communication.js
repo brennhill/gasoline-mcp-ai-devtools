@@ -88,9 +88,10 @@ export async function captureScreenshot(tabId, serverUrl, relatedErrorId, errorT
             method: 'POST',
             headers: getRequestHeaders(),
             body: JSON.stringify({
-                data_url: dataUrl,
+                dataUrl,
                 url: tab.url,
-                correlation_id: relatedErrorId || ''
+                errorId: relatedErrorId || '',
+                errorType: errorType || ''
             })
         });
         if (!response.ok) {

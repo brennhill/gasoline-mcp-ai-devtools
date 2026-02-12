@@ -1,6 +1,9 @@
 // types.go — Performance monitoring types
 // Handles performance snapshots, baselines, regression detection, and
 // causal diffing for identifying performance bottlenecks.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package performance
 
 // ============================================
@@ -28,19 +31,19 @@ type UserTimingData struct {
 // UserTimingEntry represents a single performance mark or measure.
 type UserTimingEntry struct {
 	Name      string  `json:"name"`
-	StartTime float64 `json:"startTime"`
+	StartTime float64 `json:"start_time"`
 	Duration  float64 `json:"duration,omitempty"`
 }
 
 // PerformanceTiming holds navigation timing metrics
 type PerformanceTiming struct {
-	DomContentLoaded       float64  `json:"domContentLoaded"`              // camelCase (from browser PerformanceTiming)
-	Load                   float64  `json:"load"`                          // camelCase (from browser PerformanceTiming)
-	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`          // camelCase (from browser PerformancePaintTiming)
-	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`        // camelCase (from browser LargestContentfulPaint)
-	InteractionToNextPaint *float64 `json:"interactionToNextPaint,omitempty"` // camelCase (from browser EventTiming)
-	TimeToFirstByte        float64  `json:"timeToFirstByte"`               // camelCase (from browser PerformanceTiming)
-	DomInteractive         float64  `json:"domInteractive"`                // camelCase (from browser PerformanceTiming)
+	DomContentLoaded       float64  `json:"dom_content_loaded"`
+	Load                   float64  `json:"load"`
+	FirstContentfulPaint   *float64 `json:"first_contentful_paint"`
+	LargestContentfulPaint *float64 `json:"largest_contentful_paint"`
+	InteractionToNextPaint *float64 `json:"interaction_to_next_paint,omitempty"`
+	TimeToFirstByte        float64  `json:"time_to_first_byte"`
+	DomInteractive         float64  `json:"dom_interactive"`
 }
 
 // NetworkSummary holds aggregated network resource metrics
@@ -86,12 +89,12 @@ type PerformanceBaseline struct {
 
 // BaselineTiming holds averaged timing metrics
 type BaselineTiming struct {
-	DomContentLoaded       float64  `json:"domContentLoaded"`              // camelCase (from browser PerformanceTiming)
-	Load                   float64  `json:"load"`                          // camelCase (from browser PerformanceTiming)
-	FirstContentfulPaint   *float64 `json:"firstContentfulPaint"`          // camelCase (from browser PerformancePaintTiming)
-	LargestContentfulPaint *float64 `json:"largestContentfulPaint"`        // camelCase (from browser LargestContentfulPaint)
-	TimeToFirstByte        float64  `json:"timeToFirstByte"`               // camelCase (from browser PerformanceTiming)
-	DomInteractive         float64  `json:"domInteractive"`                // camelCase (from browser PerformanceTiming)
+	DomContentLoaded       float64  `json:"dom_content_loaded"`
+	Load                   float64  `json:"load"`
+	FirstContentfulPaint   *float64 `json:"first_contentful_paint"`
+	LargestContentfulPaint *float64 `json:"largest_contentful_paint"`
+	TimeToFirstByte        float64  `json:"time_to_first_byte"`
+	DomInteractive         float64  `json:"dom_interactive"`
 }
 
 // BaselineNetwork holds averaged network metrics
@@ -119,7 +122,7 @@ type ResourceEntry struct {
 	Type           string  `json:"type"`
 	TransferSize   int64   `json:"transfer_size"`              // snake_case (from browser PerformanceResourceTiming)
 	Duration       float64 `json:"duration"`                  // snake_case (from browser PerformanceResourceTiming)
-	RenderBlocking bool    `json:"renderBlocking,omitempty"`  // snake_case (from browser PerformanceResourceTiming)
+	RenderBlocking bool    `json:"render_blocking,omitempty"`
 }
 
 // ResourceDiff holds the categorized differences between baseline and current resources
