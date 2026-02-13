@@ -256,7 +256,7 @@ except Exception as e:
     if echo "$validation" | grep -q "VERDICT:PASS"; then
         pass "generate(har) has valid HAR structure with entries. $validation"
     else
-        fail "generate(har) failed. $(echo "$validation" | grep 'VERDICT:' | head -1). Content: $(truncate "$content_text" 200)"
+        fail "generate(har) failed. $(echo "$validation" | grep 'VERDICT:' | head -1 || echo 'no verdict'). Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s58
@@ -361,7 +361,7 @@ except Exception as e:
     elif echo "$validation" | grep -q "VERDICT:SKIP"; then
         skip "generate(sri): no cross-origin scripts to hash on current page."
     else
-        fail "generate(sri) returned 0 resources. $(echo "$validation" | grep 'VERDICT:' | head -1). Content: $(truncate "$content_text" 200)"
+        fail "generate(sri) returned 0 resources. $(echo "$validation" | grep 'VERDICT:' | head -1 || echo 'no verdict'). Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s60

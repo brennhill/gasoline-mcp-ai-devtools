@@ -439,7 +439,7 @@ except Exception as e:
         count=$(echo "$validation" | grep -oP 'count=\K[0-9]+')
         pass "observe(extension_logs) returned $count entries with valid structure (level + message)."
     else
-        fail "observe(extension_logs) failed. $(echo "$validation" | grep 'VERDICT:' | head -1). Content: $(truncate "$content_text" 200)"
+        fail "observe(extension_logs) failed. $(echo "$validation" | grep 'VERDICT:' | head -1 || echo 'no verdict'). Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s34

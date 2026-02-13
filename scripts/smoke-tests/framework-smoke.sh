@@ -130,6 +130,8 @@ log_diagnostic() {
 # ── Interact helper ──────────────────────────────────────
 # Fires an interact command and waits for completion via polling.
 # Sets INTERACT_RESULT to the command result text (or empty on timeout).
+# Always returns 0 — callers inspect $INTERACT_RESULT for pass/fail.
+# (Returning non-zero under set -eo pipefail kills the entire script.)
 interact_and_wait() {
     local action="$1"
     local args="$2"
@@ -151,7 +153,7 @@ interact_and_wait() {
 
     if [ -z "$corr_id" ]; then
         INTERACT_RESULT="$content_text"
-        return 1
+        return 0
     fi
 
     for i in $(seq 1 "$max_polls"); do
@@ -175,7 +177,7 @@ interact_and_wait() {
                 echo "  Failed after poll $i"
                 echo "$poll_text" | head -30
             } >> "$DIAGNOSTICS_FILE"
-            return 1
+            return 0
         fi
     done
 
@@ -183,5 +185,5 @@ interact_and_wait() {
     {
         echo "  Timeout after $max_polls polls"
     } >> "$DIAGNOSTICS_FILE"
-    return 1
+    return 0
 }
