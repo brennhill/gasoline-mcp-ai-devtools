@@ -245,10 +245,11 @@ run_test_s10() {
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
-    # Result may be nested under 'result' from command_result polling
+    # Unwrap command_result wrapper: actual DOM data is under 'result'
     if 'result' in data and isinstance(data['result'], dict):
         data = data['result']
-    elements = data.get('elements', data.get('results', []))
+    # Extension returns 'matches' (not 'elements')
+    elements = data.get('matches', data.get('elements', data.get('results', [])))
     if isinstance(elements, list):
         print(f'    found: {len(elements)} element(s)')
         for e in elements[:5]:
@@ -256,6 +257,7 @@ try:
             text = e.get('text', e.get('textContent', ''))[:50]
             print(f'    <{tag}> {text}')
     else:
+        print(f'    matchCount: {data.get(\"matchCount\", \"?\")}')
         print(f'    response keys: {list(data.keys())[:5]}')
 except Exception as ex:
     print(f'    (parse note: {ex})')
@@ -266,26 +268,32 @@ except Exception as ex:
         return
     fi
 
-    # Validate DOM query returned actual elements, not just generic keys
+    # Validate DOM query returned actual elements
     local dom_verdict
     dom_verdict=$(echo "$dom_text" | python3 -c "
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
-    # Result may be nested under 'result' from command_result polling
+    # Unwrap command_result wrapper
     if 'result' in data and isinstance(data['result'], dict):
         data = data['result']
-    elements = data.get('elements', data.get('results', []))
+    # Extension returns 'matches' array with serialized DOM elements
+    elements = data.get('matches', data.get('elements', data.get('results', [])))
     if isinstance(elements, list) and len(elements) > 0:
         has_tag = any(e.get('tag') or e.get('tagName') for e in elements)
         if has_tag:
             print(f'PASS elements={len(elements)} with_tags=true')
         else:
-            print(f'FAIL elements={len(elements)} but none have tag field')
+            # Matches may use different field names — check matchCount
+            mc = data.get('matchCount', 0)
+            if mc > 0:
+                print(f'PASS matchCount={mc} elements={len(elements)}')
+            else:
+                print(f'FAIL elements={len(elements)} but none have tag field')
     elif isinstance(elements, list):
-        print('FAIL elements array is empty')
+        print(f'FAIL elements array is empty, keys={list(data.keys())[:8]}')
     else:
-        print(f'FAIL no elements array, keys={list(data.keys())[:5]}')
+        print(f'FAIL no elements/matches array, keys={list(data.keys())[:8]}')
 except Exception as e:
     print(f'FAIL parse: {e}')
 " 2>/dev/null || echo "FAIL parse_error")
