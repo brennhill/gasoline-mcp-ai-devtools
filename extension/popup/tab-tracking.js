@@ -93,18 +93,20 @@ export async function initTrackPageButton() {
         chrome.storage.local.get(['trackedTabId', 'trackedTabUrl'], async (result) => {
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                 const currentUrl = tabs?.[0]?.url;
-                if (isInternalUrl(currentUrl)) {
-                    showInternalPageState(btn);
-                    resolve();
-                    return;
-                }
                 if (result.trackedTabId) {
+                    // Already tracking — show tracking bar even on internal pages
                     showTrackingState(btn, result.trackedTabUrl, result.trackedTabId);
+                }
+                else if (isInternalUrl(currentUrl)) {
+                    showInternalPageState(btn);
                 }
                 else {
                     showIdleState(btn);
                 }
-                btn.addEventListener('click', handleTrackPageClick);
+                // Always register the click handler so it works after stop-tracking
+                if (!isInternalUrl(currentUrl) || result.trackedTabId) {
+                    btn.addEventListener('click', handleTrackPageClick);
+                }
                 resolve();
             });
         });

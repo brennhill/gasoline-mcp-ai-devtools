@@ -297,6 +297,8 @@ function tryMicPermissionThenStart(els, state, audioMode) {
 function handleStartClick(els, state) {
     const audioSelect = document.getElementById('record-audio-mode');
     const audioMode = audioSelect?.value ?? '';
+    // Save preference for next time
+    chrome.storage.local.set({ gasoline_record_audio_pref: audioMode });
     if (els.optionsEl)
         els.optionsEl.style.display = 'none';
     if (els.saveInfoEl)
@@ -367,6 +369,15 @@ function setupRecordingUI() {
         const audioSelect = document.getElementById('record-audio-mode');
         if (audioSelect)
             audioSelect.value = intent.audioMode;
+    });
+    // Restore saved audio mode preference
+    chrome.storage.local.get('gasoline_record_audio_pref', (result) => {
+        const saved = result.gasoline_record_audio_pref;
+        if (saved) {
+            const audioSelect = document.getElementById('record-audio-mode');
+            if (audioSelect)
+                audioSelect.value = saved;
+        }
     });
     row.addEventListener('click', () => {
         console.log('[Gasoline REC] Popup: record row clicked, isRecording:', state.isRecording);
