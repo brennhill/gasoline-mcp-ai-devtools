@@ -42,8 +42,8 @@
   "commands": {
     "toggle_draw_mode": {
       "suggested_key": {
-        "default": "Ctrl+Shift+D",
-        "mac": "Command+Shift+D"
+        "default": "Alt+Shift+D",
+        "mac": "Alt+Shift+D"
       },
       "description": "Toggle Draw Mode"
     }
