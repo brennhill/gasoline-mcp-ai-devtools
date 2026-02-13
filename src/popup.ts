@@ -364,6 +364,8 @@ function tryMicPermissionThenStart(
 function handleStartClick(els: RecordingElements, state: RecordingState): void {
   const audioSelect = document.getElementById('record-audio-mode') as HTMLSelectElement | null
   const audioMode = audioSelect?.value ?? ''
+  // Save preference for next time
+  chrome.storage.local.set({ gasoline_record_audio_pref: audioMode })
   if (els.optionsEl) els.optionsEl.style.display = 'none'
   if (els.saveInfoEl) els.saveInfoEl.style.display = 'none'
   els.label.textContent = 'Starting...'
@@ -446,6 +448,15 @@ function setupRecordingUI(): void {
       if (audioSelect) audioSelect.value = intent.audioMode
     }
   )
+
+  // Restore saved audio mode preference
+  chrome.storage.local.get('gasoline_record_audio_pref', (result: Record<string, string | undefined>) => {
+    const saved = result.gasoline_record_audio_pref
+    if (saved) {
+      const audioSelect = document.getElementById('record-audio-mode') as HTMLSelectElement | null
+      if (audioSelect) audioSelect.value = saved
+    }
+  })
 
   row.addEventListener('click', () => {
     console.log('[Gasoline REC] Popup: record row clicked, isRecording:', state.isRecording)
