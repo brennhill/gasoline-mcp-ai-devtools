@@ -34,7 +34,7 @@ _navigate_to_upload_form() {
 }
 
 # ── Shared helper: interact(upload) + poll for completion ─
-# Sets UPLOAD_FINAL_STATUS to "complete", "failed", or "pending".
+# Sets UPLOAD_FINAL_STATUS to "complete", "failed", "error", "pilot_disabled", or "pending".
 _upload_and_poll() {
     local test_id="$1"
     local test_file="$2"
@@ -64,6 +64,12 @@ _upload_and_poll() {
         local poll_text
         poll_text=$(extract_content_text "$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")")
         if echo "$poll_text" | grep -q '"status":"complete"'; then
+            # Check for pilot-disabled error masquerading as "complete"
+            if echo "$poll_text" | grep -q 'ai_web_pilot_disabled'; then
+                UPLOAD_FINAL_STATUS="pilot_disabled"
+                log_diagnostic "$test_id" "poll pilot_disabled" "$poll_text" ""
+                return
+            fi
             UPLOAD_FINAL_STATUS="complete"
             log_diagnostic "$test_id" "poll complete" "$poll_text" ""
             return
@@ -71,6 +77,11 @@ _upload_and_poll() {
         if echo "$poll_text" | grep -q '"status":"failed"'; then
             UPLOAD_FINAL_STATUS="failed"
             log_diagnostic "$test_id" "poll failed" "$poll_text" ""
+            return
+        fi
+        if echo "$poll_text" | grep -q '"status":"error"'; then
+            UPLOAD_FINAL_STATUS="error"
+            log_diagnostic "$test_id" "poll error" "$poll_text" ""
             return
         fi
     done
@@ -112,8 +123,10 @@ run_test_15_0() {
 
     log_diagnostic "15.0" "observe upload form" "$response" "$content_text"
 
-    if echo "$content_text" | grep -qi "Upload File\|file-input\|Filedata"; then
-        pass "Upload server on port $UPLOAD_PORT: landing page + upload form visible in browser."
+    # observe(page) returns {url, title, tracked, metadata} — not HTML content.
+    # Verify the browser navigated to the upload form by checking url or title.
+    if echo "$content_text" | grep -qi "/upload\|Upload"; then
+        pass "Upload server on port $UPLOAD_PORT: browser on upload page (url/title confirmed)."
     else
         fail "Upload form not visible in browser. Page: $(truncate "$content_text" 200)"
     fi
@@ -363,10 +376,13 @@ run_test_15_10() {
 
     case "$UPLOAD_FINAL_STATUS" in
         complete) ;;
-        pending)
-            skip "Upload timed out (extension upload handler not implemented yet)."
+        pilot_disabled)
+            fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
             return ;;
-        failed)
+        pending)
+            fail "Upload timed out — extension did not report a result within 10s. Check: extension reloaded? daemon restarted? pilot enabled?"
+            return ;;
+        failed|error)
             fail "Extension reported upload failure."
             return ;;
         *)
@@ -427,7 +443,10 @@ run_test_15_11() {
         complete)
             pass "E2E upload: extension processed upload to completion."
             ;;
-        failed)
+        pilot_disabled)
+            fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
+            ;;
+        failed|error)
             fail "E2E upload: extension reported failure."
             ;;
         pending)
@@ -465,10 +484,13 @@ run_test_15_12() {
 
     case "$UPLOAD_FINAL_STATUS" in
         complete) ;;
-        pending)
-            skip "Upload timed out (extension upload handler not implemented yet)."
+        pilot_disabled)
+            fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
             return ;;
-        failed)
+        pending)
+            fail "Upload timed out — extension did not report a result within 10s. Check: extension reloaded? daemon restarted? pilot enabled?"
+            return ;;
+        failed|error)
             fail "Extension reported upload failure."
             return ;;
         *)
@@ -669,6 +691,13 @@ _upload_and_poll_stage4() {
         local poll_text
         poll_text=$(extract_content_text "$poll_resp")
         if echo "$poll_text" | grep -q '"status":"complete"'; then
+            # Check for pilot-disabled error masquerading as "complete"
+            if echo "$poll_text" | grep -q 'ai_web_pilot_disabled'; then
+                UPLOAD_FINAL_STATUS="pilot_disabled"
+                UPLOAD_FINAL_TEXT="$poll_text"
+                log_diagnostic "$test_id" "poll pilot_disabled" "$poll_text" ""
+                return
+            fi
             UPLOAD_FINAL_STATUS="complete"
             UPLOAD_FINAL_TEXT="$poll_text"
             log_diagnostic "$test_id" "poll complete" "$poll_text" ""
@@ -735,10 +764,13 @@ run_test_15_16() {
                 pass "Upload completed but stage not identified in response."
             fi
             ;;
-        pending)
-            skip "Upload timed out — extension may not have escalation support yet."
+        pilot_disabled)
+            fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
             ;;
-        failed)
+        pending)
+            fail "Upload timed out — extension did not report a result within 30s. Check: extension reloaded? daemon restarted? pilot enabled? accessibility granted?"
+            ;;
+        failed|error)
             # Check for known skip conditions
             if echo "$UPLOAD_FINAL_TEXT" | grep -qi "accessibility\|Accessibility"; then
                 skip "Stage 4 needs macOS Accessibility permission. Fix: System Settings > Privacy & Security > Accessibility. Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
@@ -792,11 +824,17 @@ run_test_15_17() {
                 fail "Upload completed but escalation_reason not in result: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             fi
             ;;
+        pilot_disabled)
+            fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
+            ;;
         pending)
-            skip "Upload timed out — extension may not have escalation support yet."
+            fail "Upload timed out — extension did not report a result within 30s. Check: extension reloaded? daemon restarted? pilot enabled? accessibility granted?"
+            ;;
+        failed|error)
+            fail "Stage 4 failed: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             ;;
         *)
-            skip "Stage 4 unavailable: $UPLOAD_FINAL_STATUS"
+            fail "Upload failed: $UPLOAD_FINAL_STATUS"
             ;;
     esac
 }
