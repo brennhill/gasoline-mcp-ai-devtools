@@ -201,6 +201,70 @@ export function installStartupListener(logFn) {
     });
 }
 // =============================================================================
+// KEYBOARD SHORTCUT LISTENER
+// =============================================================================
+/**
+ * Install keyboard shortcut listener for draw mode toggle (Ctrl+Shift+D / Cmd+Shift+D).
+ * Sends GASOLINE_DRAW_MODE_START or GASOLINE_DRAW_MODE_STOP to the active tab's content script.
+ */
+export function installDrawModeCommandListener(logFn) {
+    if (typeof chrome === 'undefined' || !chrome.commands)
+        return;
+    chrome.commands.onCommand.addListener(async (command) => {
+        if (command !== 'toggle_draw_mode')
+            return;
+        try {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            const tab = tabs[0];
+            if (!tab?.id)
+                return;
+            try {
+                const result = (await chrome.tabs.sendMessage(tab.id, {
+                    type: 'GASOLINE_GET_ANNOTATIONS'
+                }));
+                if (result?.draw_mode_active) {
+                    await chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_DRAW_MODE_STOP' });
+                }
+                else {
+                    await chrome.tabs.sendMessage(tab.id, {
+                        type: 'GASOLINE_DRAW_MODE_START',
+                        started_by: 'user'
+                    });
+                }
+            }
+            catch {
+                // Content script not loaded — try activating anyway
+                try {
+                    await chrome.tabs.sendMessage(tab.id, {
+                        type: 'GASOLINE_DRAW_MODE_START',
+                        started_by: 'user'
+                    });
+                }
+                catch {
+                    if (logFn)
+                        logFn('Cannot reach content script for draw mode toggle');
+                    try {
+                        await chrome.tabs.sendMessage(tab.id, {
+                            type: 'GASOLINE_ACTION_TOAST',
+                            text: 'Draw mode unavailable',
+                            detail: 'Refresh the page and try again',
+                            state: 'error',
+                            duration_ms: 3000
+                        });
+                    }
+                    catch {
+                        // Tab truly unreachable
+                    }
+                }
+            }
+        }
+        catch (err) {
+            if (logFn)
+                logFn(`Draw mode keyboard shortcut error: ${err.message}`);
+        }
+    });
+}
+// =============================================================================
 // CONTENT SCRIPT HELPERS
 // =============================================================================
 /**

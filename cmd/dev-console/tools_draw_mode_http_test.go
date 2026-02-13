@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // createDrawModeTestServer creates an httptest server with just the draw-mode endpoint.
@@ -30,9 +32,10 @@ func createDrawModeTestServer(t *testing.T) *httptest.Server {
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
+	cap := capture.NewCapture()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/draw-mode/complete", func(w http.ResponseWriter, r *http.Request) {
-		server.handleDrawModeComplete(w, r)
+		server.handleDrawModeComplete(w, r, cap)
 	})
 	return httptest.NewServer(mux)
 }
