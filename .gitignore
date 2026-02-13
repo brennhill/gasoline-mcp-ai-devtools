@@ -1,6 +1,7 @@
 # Build artifacts
 dist/
 /dev-console
+/gasoline-mcp
 *.test
 *.zip
 
