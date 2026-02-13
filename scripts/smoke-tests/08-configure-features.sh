@@ -11,9 +11,9 @@ begin_test "S.61" "Noise rules: add, list, remove, verify" \
     "Tests: noise filtering configuration"
 
 run_test_s61() {
-    # Add a noise rule
+    # Add a noise rule (API expects rules array with match_spec)
     local add_response
-    add_response=$(call_tool "configure" '{"action":"noise_rule","noise_action":"add","pattern":"smoke-test-noise","category":"console","reason":"Smoke test noise rule"}')
+    add_response=$(call_tool "configure" '{"action":"noise_rule","noise_action":"add","rules":[{"category":"console","match_spec":{"message_regex":"smoke-test-noise"}}]}')
 
     if ! check_not_error "$add_response"; then
         fail "noise_rule add returned error. Content: $(truncate "$(extract_content_text "$add_response")" 200)"
@@ -189,7 +189,7 @@ run_test_s63() {
     action_text=$(extract_content_text "$action_response")
 
     local actions_exist=false
-    if echo "$action_text" | grep -qiE "click\|action\|entries"; then
+    if echo "$action_text" | grep -qiE "click|action|entries"; then
         actions_exist=true
     fi
 
@@ -242,13 +242,15 @@ run_test_s64() {
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
-    enabled = data.get('enabled', data.get('active', data.get('streaming', None)))
+    # Response nests config under 'config' key
+    config = data.get('config', data)
+    enabled = config.get('enabled', data.get('active', data.get('streaming', None)))
     if enabled is True or enabled == 'true':
         print('ENABLED')
-    elif 'events' in data and isinstance(data['events'], list) and len(data['events']) > 0:
+    elif 'events' in config and isinstance(config['events'], list) and len(config['events']) > 0:
         print('ENABLED')
     else:
-        print(f'NOT_ENABLED keys={list(data.keys())[:5]} enabled={enabled}')
+        print(f'NOT_ENABLED keys={list(data.keys())[:5]} config_keys={list(config.keys())[:5]} enabled={enabled}')
 except: print('PARSE_ERROR')
 " 2>/dev/null || echo "PARSE_ERROR")
     if echo "$enable_verdict" | grep -q "^ENABLED"; then

@@ -347,13 +347,11 @@ run_test_s60() {
         return
     fi
 
-    # Navigate to a page with external scripts so SRI has resources to hash
+    # SRI needs cross-origin <script>/<link> tags on the page.
+    # Inject a CDN script tag so SRI has a resource to hash.
     if [ "$PILOT_ENABLED" = "true" ]; then
-        interact_and_wait "navigate" '{"action":"navigate","url":"https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js","reason":"Load page with scripts for SRI test"}' 20
-        sleep 2
-        # Go back to a page that loaded those scripts
-        interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Return to test page"}' 20
-        sleep 1
+        interact_and_wait "execute_js" '{"action":"execute_js","reason":"Inject CDN script for SRI test","script":"var s = document.createElement(\"script\"); s.src = \"https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js\"; s.crossOrigin = \"anonymous\"; document.head.appendChild(s); \"injected\""}'
+        sleep 3
     fi
 
     local response
@@ -381,12 +379,9 @@ try:
             integrity = r.get('integrity', r.get('hash', '?'))[:40]
             print(f'    {url}')
             print(f'      integrity: {integrity}')
-    # SRI on example.com may have 0 cross-origin scripts — that's OK if response says so
     msg = data.get('message', data.get('status', ''))
     if count > 0:
         print(f'VERDICT:PASS resources={count}')
-    elif 'no' in str(msg).lower() and ('resource' in str(msg).lower() or 'script' in str(msg).lower()):
-        print(f'VERDICT:SKIP no resources to hash (expected on simple pages)')
     else:
         print(f'VERDICT:FAIL resources=0 message={str(msg)[:80]}')
 except Exception as e:
@@ -398,8 +393,6 @@ except Exception as e:
 
     if echo "$validation" | grep -q "VERDICT:PASS"; then
         pass "generate(sri) returned SRI hashes for resources. $validation"
-    elif echo "$validation" | grep -q "VERDICT:SKIP"; then
-        skip "generate(sri): no cross-origin scripts to hash on current page."
     else
         fail "generate(sri) returned 0 resources. $(echo "$validation" | grep 'VERDICT:' | head -1 || echo 'no verdict'). Content: $(truncate "$content_text" 200)"
     fi
