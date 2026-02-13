@@ -140,7 +140,7 @@ run_test_s8
 
 # ── Test S.9: Error clusters ─────────────────────────────
 begin_test "S.9" "Error clusters aggregate triggered errors" \
-    "After S.5 triggered multiple errors, verify observe(error_clusters) groups them" \
+    "After S.5 triggered multiple errors, verify analyze(error_clusters) groups them" \
     "Tests: error dedup and clustering — critical for noise reduction in real apps"
 
 run_test_s9() {
@@ -150,12 +150,12 @@ run_test_s9() {
     fi
 
     local response
-    response=$(call_tool "observe" '{"what":"error_clusters"}')
+    response=$(call_tool "analyze" '{"what":"error_clusters"}')
     local content_text
     content_text=$(extract_content_text "$response")
 
     if [ -z "$content_text" ]; then
-        fail "Empty response from observe(error_clusters)."
+        fail "Empty response from analyze(error_clusters)."
         return
     fi
 
@@ -196,14 +196,14 @@ except Exception as e:
     if echo "$cluster_verdict" | grep -q "^PASS"; then
         pass "Error clusters returned structured data. $cluster_verdict"
     else
-        fail "observe(error_clusters) invalid. $cluster_verdict. Content: $(truncate "$content_text" 200)"
+        fail "analyze(error_clusters) invalid. $cluster_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s9
 
 # ── Test S.10: DOM query ─────────────────────────────────
 begin_test "S.10" "DOM query parses page structure" \
-    "Use configure(query_dom) to query elements on the page, verify DOM data returned" \
+    "Use analyze(dom) to query elements on the page, verify DOM data returned" \
     "Tests: page structure analysis"
 
 run_test_s10() {
@@ -215,7 +215,7 @@ run_test_s10() {
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Count interactive elements","script":"document.querySelectorAll(\"h1, h2, a, button, input\").length"}'
 
     local dom_response
-    dom_response=$(call_tool "configure" '{"action":"query_dom","selector":"h1, a, button, input"}')
+    dom_response=$(call_tool "analyze" '{"what":"dom","selector":"h1, a, button, input"}')
     local dom_text
     dom_text=$(extract_content_text "$dom_response")
 

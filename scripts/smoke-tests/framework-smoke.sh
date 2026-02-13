@@ -16,6 +16,7 @@ EXTENSION_CONNECTED=false
 PILOT_ENABLED=false
 SMOKE_MARKER="GASOLINE_SMOKE_$(date +%s)"
 SKIPPED_COUNT=0
+CURRENT_TEST_ID=""
 
 # ── Diagnostic log file ──────────────────────────────────
 DIAGNOSTICS_FILE="/tmp/gasoline-smoke-diagnostics-$$.log"
@@ -26,6 +27,45 @@ init_smoke() {
     echo "Smoke Test Diagnostics — $(date)" > "$DIAGNOSTICS_FILE"
     echo "Port: $port" >> "$DIAGNOSTICS_FILE"
     echo "======================================" >> "$DIAGNOSTICS_FILE"
+
+    # Trap ERR so crashes under set -e are immediately visible.
+    # Logs the failing command, line, and function to both stderr and diagnostics.
+    trap '_smoke_on_error $LINENO "${FUNCNAME[0]:-main}" "${BASH_COMMAND}"' ERR
+}
+
+_smoke_on_error() {
+    local line="$1" func="$2" cmd="$3"
+    local test_ctx="${CURRENT_TEST_ID:-unknown}"
+    echo "" >&2
+    echo "  !!! CRASH [${test_ctx}] at line $line in $func(): $cmd" >&2
+    echo "  !!! Diagnostics: $DIAGNOSTICS_FILE" >&2
+    {
+        echo ""
+        echo "!!! CRASH [${test_ctx}] at $(date +%H:%M:%S)"
+        echo "    Test:     $test_ctx"
+        echo "    Line:     $line"
+        echo "    Function: $func"
+        echo "    Command:  $cmd"
+        echo "    Pass=$PASS_COUNT Fail=$FAIL_COUNT Skip=$SKIPPED_COUNT"
+    } >> "$DIAGNOSTICS_FILE" 2>/dev/null
+}
+
+# ── Override begin_test to track current test ID ──────────
+begin_test() {
+    CURRENT_TEST_ID="$1"
+    local name="$2"
+    local purpose="$3"
+    local trust="$4"
+    {
+        echo "============================================================"
+        echo "TEST ${CURRENT_TEST_ID}: ${name}"
+        echo "============================================================"
+        echo "Purpose: ${purpose}"
+        echo "Trust:   ${trust}"
+        echo ""
+    } | tee -a "$OUTPUT_FILE"
+    # Log test start to diagnostics immediately
+    echo "--- $(date +%H:%M:%S) START ${CURRENT_TEST_ID}: ${name}" >> "$DIAGNOSTICS_FILE"
 }
 
 # ── Override pass/fail/skip to pause for human ───────────
@@ -33,17 +73,20 @@ pass() {
     local description="$1"
     PASS_COUNT=$((PASS_COUNT + 1))
     {
-        echo "  PASS: ${description}"
+        echo "  PASS [${CURRENT_TEST_ID}]: ${description}"
         echo ""
     } | tee -a "$OUTPUT_FILE"
+    echo "  $(date +%H:%M:%S) PASS [${CURRENT_TEST_ID}]: ${description}" >> "$DIAGNOSTICS_FILE"
     pause_for_human
 }
 
 fail() {
     local description="$1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
+    # Log to diagnostics FIRST (before tee/pause) so it survives crashes
+    echo "  $(date +%H:%M:%S) FAIL [${CURRENT_TEST_ID}]: ${description}" >> "$DIAGNOSTICS_FILE"
     {
-        echo "  FAIL: ${description}"
+        echo "  FAIL [${CURRENT_TEST_ID}]: ${description}"
         echo ""
     } | tee -a "$OUTPUT_FILE"
     pause_for_human
@@ -52,8 +95,9 @@ fail() {
 skip() {
     local description="$1"
     SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+    echo "  $(date +%H:%M:%S) SKIP [${CURRENT_TEST_ID}]: ${description}" >> "$DIAGNOSTICS_FILE"
     {
-        echo "  SKIP: ${description}"
+        echo "  SKIP [${CURRENT_TEST_ID}]: ${description}"
         echo ""
     } | tee -a "$OUTPUT_FILE"
 }
