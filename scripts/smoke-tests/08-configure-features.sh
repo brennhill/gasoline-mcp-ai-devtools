@@ -76,7 +76,9 @@ begin_test "S.62" "Store: save, load, list, delete roundtrip" \
     "Tests: persistent data storage"
 
 run_test_s62() {
-    # Save data
+    # 1. Save data
+    echo "  [store: save]"
+    echo "    namespace=smoke key=smoke-key data={\"value\":\"smoke-data-123\"}"
     local save_response
     save_response=$(call_tool "configure" '{"action":"store","store_action":"save","key":"smoke-key","namespace":"smoke","data":{"value":"smoke-data-123"}}')
 
@@ -84,30 +86,39 @@ run_test_s62() {
         fail "store save returned error. Content: $(truncate "$(extract_content_text "$save_response")" 200)"
         return
     fi
+    echo "    save: OK"
 
-    # Load it back
+    # 2. Load it back and verify exact value
     local load_response
     load_response=$(call_tool "configure" '{"action":"store","store_action":"load","key":"smoke-key","namespace":"smoke"}')
     local load_text
     load_text=$(extract_content_text "$load_response")
 
+    echo "  [store: load]"
+    echo "    $(truncate "$load_text" 150)"
+
     if ! echo "$load_text" | grep -q "smoke-data-123"; then
-        fail "store load did not return saved data. Content: $(truncate "$load_text" 200)"
+        fail "store load did not return saved data 'smoke-data-123'. Content: $(truncate "$load_text" 200)"
         return
     fi
+    echo "    load: OK (contains smoke-data-123)"
 
-    # List keys
+    # 3. List keys and verify our key is present
     local list_response
     list_response=$(call_tool "configure" '{"action":"store","store_action":"list","namespace":"smoke"}')
     local list_text
     list_text=$(extract_content_text "$list_response")
 
+    echo "  [store: list]"
+    echo "    $(truncate "$list_text" 150)"
+
     if ! echo "$list_text" | grep -q "smoke-key"; then
         fail "store list does not contain 'smoke-key'. Content: $(truncate "$list_text" 200)"
         return
     fi
+    echo "    list: OK (contains smoke-key)"
 
-    # Delete
+    # 4. Delete the key
     local del_response
     del_response=$(call_tool "configure" '{"action":"store","store_action":"delete","key":"smoke-key","namespace":"smoke"}')
 
@@ -115,17 +126,22 @@ run_test_s62() {
         fail "store delete returned error. Content: $(truncate "$(extract_content_text "$del_response")" 200)"
         return
     fi
+    echo "  [store: delete]"
+    echo "    delete: OK"
 
-    # Verify deletion — load should return empty/error
+    # 5. Verify deletion — load should NOT return the data
     local load2_response
     load2_response=$(call_tool "configure" '{"action":"store","store_action":"load","key":"smoke-key","namespace":"smoke"}')
     local load2_text
     load2_text=$(extract_content_text "$load2_response")
 
+    echo "  [store: verify deletion]"
+    echo "    $(truncate "$load2_text" 150)"
+
     if echo "$load2_text" | grep -q "smoke-data-123"; then
-        fail "store load still returns data after delete. Content: $(truncate "$load2_text" 200)"
+        fail "store load still returns 'smoke-data-123' after delete. Data not actually deleted."
     else
-        pass "Store CRUD: save, load (found), list (found), delete, load (gone)."
+        pass "Store CRUD roundtrip: save(smoke-data-123) > load(found) > list(found) > delete > load(gone)."
     fi
 }
 run_test_s62
@@ -177,12 +193,15 @@ run_test_s63() {
         actions_exist=true
     fi
 
+    echo "    logs_cleared: $logs_cleared"
+    echo "    actions_exist: $actions_exist"
+
     if [ "$logs_cleared" = "true" ] && [ "$actions_exist" = "true" ]; then
         pass "Selective clear: logs cleared, actions preserved."
-    elif [ "$logs_cleared" = "true" ]; then
-        pass "Logs cleared. Actions check inconclusive (may have been empty). Partial pass."
+    elif [ "$logs_cleared" = "true" ] && [ "$actions_exist" = "false" ]; then
+        fail "Logs cleared but actions also empty. Seeded action (button click) should still be in actions buffer. Actions content: $(truncate "$action_text" 200)"
     else
-        fail "Logs NOT cleared after clear(logs). Log content: $(truncate "$log_text" 200)"
+        fail "Logs NOT cleared after clear(logs). 'CLEAR_TEST_LOG' still present. Log content: $(truncate "$log_text" 200)"
     fi
 }
 run_test_s63
@@ -193,23 +212,31 @@ begin_test "S.64" "Streaming: enable, status, disable, status" \
     "Tests: streaming configuration"
 
 run_test_s64() {
-    # Enable streaming
+    # Enable streaming with specific events
     local enable_response
-    enable_response=$(call_tool "configure" '{"action":"streaming","streaming_action":"enable","events":["errors"]}')
+    enable_response=$(call_tool "configure" '{"action":"streaming","streaming_action":"enable","events":["errors","network_errors"]}')
 
     if ! check_not_error "$enable_response"; then
         fail "streaming enable returned error. Content: $(truncate "$(extract_content_text "$enable_response")" 200)"
         return
     fi
 
-    # Check status
+    local enable_text
+    enable_text=$(extract_content_text "$enable_response")
+    echo "  [enable response]"
+    echo "    $(truncate "$enable_text" 150)"
+
+    # Check status — must show enabled state
     local status_response
     status_response=$(call_tool "configure" '{"action":"streaming","streaming_action":"status"}')
     local status_text
     status_text=$(extract_content_text "$status_response")
 
+    echo "  [status after enable]"
+    echo "    $(truncate "$status_text" 150)"
+
     local enabled_after_enable=false
-    if echo "$status_text" | grep -qiE "enabled.*true\|active.*true\|\"enabled\""; then
+    if echo "$status_text" | grep -qiE "enabled.*true\|active.*true\|\"enabled\"\|streaming.*on\|events"; then
         enabled_after_enable=true
     fi
 
@@ -222,17 +249,20 @@ run_test_s64() {
         return
     fi
 
-    # Check status again
+    # Check status after disable
     local status2_response
     status2_response=$(call_tool "configure" '{"action":"streaming","streaming_action":"status"}')
     local status2_text
     status2_text=$(extract_content_text "$status2_response")
 
+    echo "  [status after disable]"
+    echo "    $(truncate "$status2_text" 150)"
+
+    # Strict: must verify state transitions, not just "no errors"
     if [ "$enabled_after_enable" = "true" ]; then
-        pass "Streaming: enable > status(active) > disable > status. State transitions correct."
+        pass "Streaming: enable(errors,network_errors) > status(active) > disable > status. State transitions verified."
     else
-        # Streaming may not explicitly say "enabled:true" — just check no errors
-        pass "Streaming: enable/disable/status calls all succeeded without errors."
+        fail "Streaming: enable succeeded but status did not confirm active state. Status: $(truncate "$status_text" 200)"
     fi
 }
 run_test_s64
@@ -252,9 +282,14 @@ run_test_s65() {
         return
     fi
 
+    local start_text
+    start_text=$(extract_content_text "$start_response")
+    echo "  [boundary start response]"
+    echo "    $(truncate "$start_text" 150)"
+
     # Do some activity between boundaries
     if [ "$PILOT_ENABLED" = "true" ]; then
-        interact_and_wait "execute_js" '{"action":"execute_js","reason":"Activity between boundaries","script":"console.log(\"boundary-test-activity\")"}'
+        interact_and_wait "execute_js" '{"action":"execute_js","reason":"Activity between boundaries","script":"console.log(\"boundary-test-activity\"); \"logged\""}'
     fi
 
     sleep 0.5
@@ -268,6 +303,18 @@ run_test_s65() {
         return
     fi
 
-    pass "Test boundaries: start and end markers both completed for 'smoke-boundary'."
+    local end_text
+    end_text=$(extract_content_text "$end_response")
+    echo "  [boundary end response]"
+    echo "    $(truncate "$end_text" 150)"
+
+    # Verify the end response references the test_id and contains boundary data
+    if echo "$end_text" | grep -qi "smoke-boundary"; then
+        pass "Test boundaries: start/end completed for 'smoke-boundary'. End response references test_id."
+    elif ! check_not_error "$end_response"; then
+        fail "test_boundary_end returned error for 'smoke-boundary'. Content: $(truncate "$end_text" 200)"
+    else
+        pass "Test boundaries: start/end completed for 'smoke-boundary'."
+    fi
 }
 run_test_s65

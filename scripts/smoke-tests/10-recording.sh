@@ -110,7 +110,12 @@ run_test_s26() {
     interact_and_wait "record_stop" '{"action":"record_stop","reason":"Stop audio recording"}' 20
 
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
-        fail "record_stop returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
+        # Check specifically for 403 errors — indicates server auth issue
+        if echo "$INTERACT_RESULT" | grep -qi "403"; then
+            fail "record_stop returned 403 Forbidden. Server requires X-Gasoline-Client header for /recordings/save endpoint. Check extension upload headers. Result: $(truncate "$INTERACT_RESULT" 200)"
+        else
+            fail "record_stop returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
+        fi
         return
     fi
 

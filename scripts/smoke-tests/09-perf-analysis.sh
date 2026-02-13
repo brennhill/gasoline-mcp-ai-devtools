@@ -96,14 +96,37 @@ except Exception as e:
     print(f'    (parse: {e})')
 " 2>/dev/null || true
 
-    local has_timing has_dom_summary
-    has_timing=$(echo "$INTERACT_RESULT" | grep -c '"timing_ms"' || true)
-    has_dom_summary=$(echo "$INTERACT_RESULT" | grep -c '"dom_summary"' || true)
+    # Strict validation: parse JSON and verify both fields have actual values
+    local validation
+    validation=$(echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+t = sys.stdin.read(); i = t.find('{')
+if i < 0:
+    print('NO_JSON')
+    sys.exit()
+data = json.loads(t[i:])
+timing = data.get('timing_ms')
+dom = data.get('dom_summary')
+result = data.get('result', {})
+if isinstance(result, dict):
+    timing = timing or result.get('timing_ms')
+    dom = dom or result.get('dom_summary')
+has_timing = timing is not None and isinstance(timing, (int, float)) and timing > 0
+has_dom = dom is not None and isinstance(dom, str) and len(dom) > 0
+if has_timing and has_dom:
+    print(f'PASS timing_ms={timing} dom_summary={dom}')
+elif has_timing:
+    print(f'FAIL_DOM timing_ms={timing} dom_summary=MISSING')
+elif has_dom:
+    print(f'FAIL_TIMING dom_summary={dom}')
+else:
+    print(f'FAIL_BOTH keys={list(data.keys())[:10]}')
+" 2>/dev/null || echo "PARSE_ERROR")
 
-    if [ "$has_timing" -gt 0 ] && [ "$has_dom_summary" -gt 0 ]; then
-        pass "Click result includes timing_ms and dom_summary."
+    if echo "$validation" | grep -q "^PASS"; then
+        pass "Click result includes timing_ms and dom_summary. $validation"
     else
-        fail "Click result missing required fields: timing_ms=$has_timing, dom_summary=$has_dom_summary. Result: $(truncate "$INTERACT_RESULT" 300)"
+        fail "Click result missing required fields. $validation. Result: $(truncate "$INTERACT_RESULT" 300)"
     fi
 }
 run_test_s18
@@ -178,10 +201,11 @@ run_test_s20() {
     marker="gasoline_uat_$(date +%s)"
 
     interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Insert User Timing marks\",\"script\":\"performance.mark('${marker}_start'); for(var i=0;i<1000000;i++){} performance.mark('${marker}_end'); performance.measure('${marker}_duration','${marker}_start','${marker}_end'); 'marked'\"}"
-    sleep 2
+    sleep 3
 
+    # Performance data is under analyze(performance), NOT observe(performance)
     local response
-    response=$(call_tool "observe" '{"what":"performance"}')
+    response=$(call_tool "analyze" '{"what":"performance"}')
     local content_text
     content_text=$(extract_content_text "$response")
 
@@ -190,23 +214,37 @@ run_test_s20() {
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
-    ut = data.get('user_timing', {})
-    marks = ut.get('marks', [])
-    measures = ut.get('measures', [])
-    print(f'    marks: {len(marks)}')
-    for m in marks[:4]:
-        print(f'      {m.get(\"name\",\"?\")} @ {m.get(\"time\",m.get(\"start_time\",\"?\"))}')
-    print(f'    measures: {len(measures)}')
-    for m in measures[:2]:
-        print(f'      {m.get(\"name\",\"?\")} duration={m.get(\"duration\",\"?\")}ms')
+    # analyze(performance) returns {snapshots: [...], count: N}
+    snapshots = data.get('snapshots', [])
+    print(f'    snapshots: {len(snapshots)}')
+    for snap in snapshots[:2]:
+        ut = snap.get('user_timing', {})
+        if ut:
+            marks = ut.get('marks', [])
+            measures = ut.get('measures', [])
+            print(f'    marks: {len(marks)}')
+            for m in marks[:4]:
+                print(f'      {m.get(\"name\",\"?\")} @ {m.get(\"time\",m.get(\"start_time\",\"?\"))}')
+            print(f'    measures: {len(measures)}')
+            for m in measures[:2]:
+                print(f'      {m.get(\"name\",\"?\")} duration={m.get(\"duration\",\"?\")}ms')
+        else:
+            print(f'    url: {snap.get(\"url\",\"?\")[:60]} (no user_timing)')
 except Exception as e:
-    print(f'    (no user_timing in response: {e})')
+    print(f'    (parse error: {e})')
 " 2>/dev/null || true
 
     if echo "$content_text" | grep -q "$marker"; then
-        pass "User Timing markers ($marker) found in observe(performance)."
+        pass "User Timing markers ($marker) found in analyze(performance)."
     else
-        fail "User Timing marker '$marker' not found in observe(performance). Content keys: $(echo "$content_text" | python3 -c 'import sys,json; t=sys.stdin.read(); i=t.find("{"); print(list(json.loads(t[i:]).keys()) if i>=0 else [])' 2>/dev/null || echo 'parse error')"
+        local snap_count
+        snap_count=$(echo "$content_text" | python3 -c "
+import sys,json
+t=sys.stdin.read(); i=t.find('{')
+data=json.loads(t[i:]) if i>=0 else {}
+print(len(data.get('snapshots',[])))
+" 2>/dev/null || echo "?")
+        fail "User Timing marker '$marker' not found. snapshots=$snap_count. Performance snapshot may not have been sent by extension yet."
     fi
 }
 run_test_s20

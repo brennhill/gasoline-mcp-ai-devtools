@@ -38,6 +38,10 @@ export declare function toggleDeferral(): void;
  */
 export declare function toggleDebugMode(): void;
 /**
+ * Toggle theme between dark (default) and light
+ */
+export declare function toggleTheme(): void;
+/**
  * Test connection to server
  */
 export declare function testConnection(): Promise<void>;

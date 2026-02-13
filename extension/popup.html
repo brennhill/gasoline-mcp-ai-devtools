@@ -327,13 +327,70 @@
         color: #d29922;
       }
 
-      #tracked-url {
+      /* Compact tracking bar */
+      .tracking-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(88, 166, 255, 0.1);
+        border: 1px solid #58a6ff;
+        border-radius: 6px;
+        font-size: 12px;
+      }
+
+      .tracking-bar-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #3fb950;
+        flex-shrink: 0;
+        animation: tracking-pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes tracking-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+      }
+
+      .tracking-bar-url {
+        flex: 1;
+        min-width: 0;
+        color: #aaa;
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         transition: color 0.15s;
       }
 
-      #tracked-url:hover {
-        color: #58a6ff !important;
+      .tracking-bar-url:hover {
+        color: #58a6ff;
         text-decoration: underline;
+      }
+
+      .tracking-bar-stop {
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: 1px solid #555;
+        border-radius: 4px;
+        color: #888;
+        cursor: pointer;
+        flex-shrink: 0;
+        font-size: 12px;
+        line-height: 1;
+        padding: 0;
+        transition: all 0.15s;
+      }
+
+      .tracking-bar-stop:hover {
+        background: rgba(248, 81, 73, 0.15);
+        border-color: #f85149;
+        color: #f85149;
       }
 
       /* Record icon — thin circle + heavy inner dot */
@@ -462,374 +519,385 @@
         outline-offset: 2px;
       }
 
-      /* ── Light Mode ────────────────────────────────── */
-      @media (prefers-color-scheme: light) {
-        body {
-          background: #ffffff;
-          color: #1a1a1a;
-        }
-
-        .status-row {
-          background: #f5f5f5;
-        }
-
-        .status-label {
-          color: #555;
-        }
-
-        #status::before {
-          background: #999;
-        }
-
-        #status.connected::before {
-          background: #1a7f37;
-        }
-
-        #status.disconnected::before {
-          background: #cf222e;
-        }
-
-        #status.disconnected::after {
-          color: #cf222e;
-          background: rgba(207, 34, 46, 0.12);
-        }
-
-        .section-title {
-          color: #555;
-        }
-
-        select {
-          background: #ffffff;
-          border-color: #d0d0d0;
-          color: #1a1a1a;
-        }
-
-        select:hover {
-          border-color: #999;
-        }
-
-        select:focus {
-          border-color: #0969da;
-        }
-
-        button {
-          background: #f5f5f5;
-          border-color: #d0d0d0;
-          color: #1a1a1a;
-        }
-
-        button:hover {
-          background: #e8e8e8;
-          border-color: #999;
-        }
-
-        button:active {
-          background: #f5f5f5;
-        }
-
-        button.danger {
-          color: #cf222e;
-          border-color: #cf222e;
-          background: #ffffff;
-        }
-
-        button.danger:hover {
-          background: rgba(207, 34, 46, 0.08);
-        }
-
-        .info-row {
-          border-bottom-color: #e0e0e0;
-        }
-
-        .info-label {
-          color: #555;
-        }
-
-        .info-value {
-          color: #1a1a1a;
-        }
-
-        #error-message {
-          color: #cf222e;
-          background: rgba(207, 34, 46, 0.08);
-        }
-
-        .links {
-          border-top-color: #e0e0e0;
-        }
-
-        .links a {
-          color: #0969da;
-        }
-
-        .badge {
-          background: #cf222e;
-          color: #ffffff;
-        }
-
-        .toggle-row {
-          border-bottom-color: #e0e0e0;
-        }
-
-        .toggle-label {
-          color: #1a1a1a;
-        }
-
-        .toggle-desc {
-          color: #555;
-        }
-
-        .toggle-slider {
-          background: #d0d0d0;
-        }
-
-        .toggle-slider::before {
-          background: #ffffff;
-        }
-
-        .toggle-switch input:checked + .toggle-slider {
-          background: #1a7f37;
-        }
-
-        .toggle-switch input:checked + .toggle-slider::before {
-          background: #ffffff;
-        }
-
-        .feature-section {
-          background: #f8f8f8;
-        }
-
-        .health-error {
-          background: rgba(207, 34, 46, 0.08);
-          color: #cf222e;
-        }
-
-        .health-warning {
-          background: rgba(154, 103, 0, 0.08);
-          color: #9a6700;
-        }
-
-        #tracked-url:hover {
-          color: #0969da !important;
-        }
-
-        .record-icon {
-          border-color: #999;
-        }
-
-        .record-icon-dot {
-          background: #999;
-        }
-
-        .record-row:hover .record-icon {
-          border-color: #555;
-        }
-
-        .record-row:hover .record-icon-dot {
-          background: #a52a2a;
-        }
-
-        .record-row.is-recording .record-icon {
-          border-color: #d1242f;
-        }
-
-        .record-row.is-recording .record-icon-dot {
-          background: #d1242f;
-        }
-
-        .record-label {
-          color: #555;
-        }
-
-        .record-row:hover .record-label {
-          color: #1a1a1a;
-        }
-
-        .record-row.is-recording .record-label {
-          color: #d1242f;
-        }
-
-        .record-status {
-          color: #555;
-        }
-
-        details.advanced-capture summary {
-          color: #555;
-        }
-
-        /* ── Inline-style overrides (need !important) ── */
-
-        /* Focus indicators */
-        button:focus-visible,
-        a:focus-visible,
-        select:focus-visible,
-        input:focus-visible,
-        .toggle-slider:focus-visible,
-        details summary:focus-visible {
-          outline-color: #0969da;
-        }
-
-        .toggle-switch input:focus-visible + .toggle-slider {
-          outline-color: #0969da;
-        }
-
-        /* Track This Tab hero button */
-        #track-page-btn {
-          background: #dbeafe !important;
-          color: #0969da !important;
-          border-color: #0969da !important;
-        }
-
-        /* Track hero description */
-        #track-hero-desc {
-          color: #555 !important;
-        }
-
-        /* No-tracking warning */
-        #no-tracking-warning {
-          background: rgba(207, 34, 46, 0.08) !important;
-          border-color: rgba(207, 34, 46, 0.3) !important;
-          color: #cf222e !important;
-        }
-
-        /* Tracked page info box */
-        #tracked-page-info {
-          background: rgba(9, 105, 218, 0.08) !important;
-          border-color: #0969da !important;
-        }
-
-        #tracked-page-info > div:first-child {
-          color: #0969da !important;
-        }
-
-        #tracked-url {
-          color: #555 !important;
-        }
-
-        /* Troubleshooting panel */
-        #troubleshooting > div {
-          background: rgba(207, 34, 46, 0.06) !important;
-          border-color: #cf222e !important;
-        }
-
-        #troubleshooting p[style*='color: #f85149'] {
-          color: #cf222e !important;
-        }
-
-        #troubleshooting p[style*='color: #ccc'] {
-          color: #1a1a1a !important;
-        }
-
-        #troubleshooting code[style*='background: #333'] {
-          background: #f0f0f0 !important;
-          color: #0969da !important;
-        }
-
-        #troubleshooting p[style*='color: #888'] {
-          color: #555 !important;
-        }
-
-        #troubleshooting code[style*='color: #aaa'] {
-          background: #f0f0f0 !important;
-          color: #555 !important;
-        }
-
-        #troubleshooting p[style*='border-top'] {
-          border-top-color: #e0e0e0 !important;
-        }
-
-        #troubleshooting a[style*='color: #58a6ff'] {
-          color: #0969da !important;
-        }
-
-        #troubleshooting span[style*='color: #444'] {
-          color: #d0d0d0 !important;
-        }
-
-        /* Version mismatch banner */
-        #version-mismatch {
-          background: rgba(154, 103, 0, 0.08) !important;
-          border-color: #9a6700 !important;
-          color: #9a6700 !important;
-        }
-
-        #version-mismatch .version-detail {
-          color: #555 !important;
-        }
-
-        #version-mismatch p[style*='color: #888'] {
-          color: #555 !important;
-        }
-
-        /* Context warning banner */
-        #context-warning {
-          background: rgba(154, 103, 0, 0.08) !important;
-          border-color: #9a6700 !important;
-          color: #9a6700 !important;
-        }
-
-        #context-warning-text {
-          color: #555 !important;
-        }
-
-        /* AI Web Pilot warning text */
-        .toggle-desc[style*='color: #d29922'] {
-          color: #9a6700 !important;
-        }
-
-        /* Draw mode keyboard shortcut */
-        #draw-mode-status {
-          color: #555 !important;
-        }
-
-        /* Record options border & audio select */
-        #record-options {
-          border-top-color: #e0e0e0 !important;
-        }
-
-        #record-audio-mode {
-          background: #ffffff !important;
-          border-color: #d0d0d0 !important;
-          color: #555 !important;
-        }
-
-        /* Record save confirmation */
-        #record-save-info {
-          background: rgba(26, 127, 55, 0.08) !important;
-          color: #1a7f37 !important;
-        }
-
-        /* WebSocket mode container & select */
-        #ws-mode-container {
-          background: #f5f5f5 !important;
-        }
-
-        #ws-mode {
-          background: #ffffff !important;
-          border-color: #d0d0d0 !important;
-          color: #1a1a1a !important;
-        }
-
-        /* Warning text overrides */
-        #ws-messages-warning {
-          color: #9a6700 !important;
-        }
-
-        #waterfall-warning {
-          color: #555 !important;
-        }
-
-        #perfmarks-warning {
-          color: #555 !important;
-        }
-
-        #screenshot-warning {
-          color: #9a6700 !important;
-        }
+      /* ── Light Theme (class-based, dark is default) ────────────────────────────────── */
+      body.light-theme {
+        background: #ffffff;
+        color: #1a1a1a;
+      }
+
+      body.light-theme .status-row {
+        background: #f5f5f5;
+      }
+
+      body.light-theme .status-label {
+        color: #555;
+      }
+
+      body.light-theme #status::before {
+        background: #999;
+      }
+
+      body.light-theme #status.connected::before {
+        background: #1a7f37;
+      }
+
+      body.light-theme #status.disconnected::before {
+        background: #cf222e;
+      }
+
+      body.light-theme #status.disconnected::after {
+        color: #cf222e;
+        background: rgba(207, 34, 46, 0.12);
+      }
+
+      body.light-theme .section-title {
+        color: #555;
+      }
+
+      body.light-theme select {
+        background: #ffffff;
+        border-color: #d0d0d0;
+        color: #1a1a1a;
+      }
+
+      body.light-theme select:hover {
+        border-color: #999;
+      }
+
+      body.light-theme select:focus {
+        border-color: #0969da;
+      }
+
+      body.light-theme button {
+        background: #f5f5f5;
+        border-color: #d0d0d0;
+        color: #1a1a1a;
+      }
+
+      body.light-theme button:hover {
+        background: #e8e8e8;
+        border-color: #999;
+      }
+
+      body.light-theme button:active {
+        background: #f5f5f5;
+      }
+
+      body.light-theme button.danger {
+        color: #cf222e;
+        border-color: #cf222e;
+        background: #ffffff;
+      }
+
+      body.light-theme button.danger:hover {
+        background: rgba(207, 34, 46, 0.08);
+      }
+
+      body.light-theme .info-row {
+        border-bottom-color: #e0e0e0;
+      }
+
+      body.light-theme .info-label {
+        color: #555;
+      }
+
+      body.light-theme .info-value {
+        color: #1a1a1a;
+      }
+
+      body.light-theme #error-message {
+        color: #cf222e;
+        background: rgba(207, 34, 46, 0.08);
+      }
+
+      body.light-theme .links {
+        border-top-color: #e0e0e0;
+      }
+
+      body.light-theme .links a {
+        color: #0969da;
+      }
+
+      body.light-theme .badge {
+        background: #cf222e;
+        color: #ffffff;
+      }
+
+      body.light-theme .toggle-row {
+        border-bottom-color: #e0e0e0;
+      }
+
+      body.light-theme .toggle-label {
+        color: #1a1a1a;
+      }
+
+      body.light-theme .toggle-desc {
+        color: #555;
+      }
+
+      body.light-theme .toggle-slider {
+        background: #d0d0d0;
+      }
+
+      body.light-theme .toggle-slider::before {
+        background: #ffffff;
+      }
+
+      body.light-theme .toggle-switch input:checked + .toggle-slider {
+        background: #1a7f37;
+      }
+
+      body.light-theme .toggle-switch input:checked + .toggle-slider::before {
+        background: #ffffff;
+      }
+
+      body.light-theme .feature-section {
+        background: #f8f8f8;
+      }
+
+      body.light-theme .health-error {
+        background: rgba(207, 34, 46, 0.08);
+        color: #cf222e;
+      }
+
+      body.light-theme .health-warning {
+        background: rgba(154, 103, 0, 0.08);
+        color: #9a6700;
+      }
+
+      body.light-theme .tracking-bar {
+        background: rgba(9, 105, 218, 0.08);
+        border-color: #0969da;
+      }
+
+      body.light-theme .tracking-bar-indicator {
+        background: #1a7f37;
+      }
+
+      body.light-theme .tracking-bar-url {
+        color: #555;
+      }
+
+      body.light-theme .tracking-bar-url:hover {
+        color: #0969da;
+      }
+
+      body.light-theme .tracking-bar-stop {
+        border-color: #d0d0d0;
+        color: #555;
+      }
+
+      body.light-theme .tracking-bar-stop:hover {
+        background: rgba(207, 34, 46, 0.08);
+        border-color: #cf222e;
+        color: #cf222e;
+      }
+
+      body.light-theme .record-icon {
+        border-color: #999;
+      }
+
+      body.light-theme .record-icon-dot {
+        background: #999;
+      }
+
+      body.light-theme .record-row:hover .record-icon {
+        border-color: #555;
+      }
+
+      body.light-theme .record-row:hover .record-icon-dot {
+        background: #a52a2a;
+      }
+
+      body.light-theme .record-row.is-recording .record-icon {
+        border-color: #d1242f;
+      }
+
+      body.light-theme .record-row.is-recording .record-icon-dot {
+        background: #d1242f;
+      }
+
+      body.light-theme .record-label {
+        color: #555;
+      }
+
+      body.light-theme .record-row:hover .record-label {
+        color: #1a1a1a;
+      }
+
+      body.light-theme .record-row.is-recording .record-label {
+        color: #d1242f;
+      }
+
+      body.light-theme .record-status {
+        color: #555;
+      }
+
+      body.light-theme details.advanced-capture summary {
+        color: #555;
+      }
+
+      /* ── Inline-style overrides (need !important) ── */
+
+      /* Focus indicators */
+      body.light-theme button:focus-visible,
+      body.light-theme a:focus-visible,
+      body.light-theme select:focus-visible,
+      body.light-theme input:focus-visible,
+      body.light-theme .toggle-slider:focus-visible,
+      body.light-theme details summary:focus-visible {
+        outline-color: #0969da;
+      }
+
+      body.light-theme .toggle-switch input:focus-visible + .toggle-slider {
+        outline-color: #0969da;
+      }
+
+      /* Track This Tab hero button */
+      body.light-theme #track-page-btn {
+        background: #dbeafe !important;
+        color: #0969da !important;
+        border-color: #0969da !important;
+      }
+
+      /* Track hero description */
+      body.light-theme #track-hero-desc {
+        color: #555 !important;
+      }
+
+      /* No-tracking warning */
+      body.light-theme #no-tracking-warning {
+        background: rgba(207, 34, 46, 0.08) !important;
+        border-color: rgba(207, 34, 46, 0.3) !important;
+        color: #cf222e !important;
+      }
+
+      /* Tracked page info box — kept for backwards compat */
+
+      /* Troubleshooting panel */
+      body.light-theme #troubleshooting > div {
+        background: rgba(207, 34, 46, 0.06) !important;
+        border-color: #cf222e !important;
+      }
+
+      body.light-theme #troubleshooting p[style*='color: #f85149'] {
+        color: #cf222e !important;
+      }
+
+      body.light-theme #troubleshooting p[style*='color: #ccc'] {
+        color: #1a1a1a !important;
+      }
+
+      body.light-theme #troubleshooting code[style*='background: #333'] {
+        background: #f0f0f0 !important;
+        color: #0969da !important;
+      }
+
+      body.light-theme #troubleshooting p[style*='color: #888'] {
+        color: #555 !important;
+      }
+
+      body.light-theme #troubleshooting code[style*='color: #aaa'] {
+        background: #f0f0f0 !important;
+        color: #555 !important;
+      }
+
+      body.light-theme #troubleshooting p[style*='border-top'] {
+        border-top-color: #e0e0e0 !important;
+      }
+
+      body.light-theme #troubleshooting a[style*='color: #58a6ff'] {
+        color: #0969da !important;
+      }
+
+      body.light-theme #troubleshooting span[style*='color: #444'] {
+        color: #d0d0d0 !important;
+      }
+
+      /* Version mismatch banner */
+      body.light-theme #version-mismatch {
+        background: rgba(154, 103, 0, 0.08) !important;
+        border-color: #9a6700 !important;
+        color: #9a6700 !important;
+      }
+
+      body.light-theme #version-mismatch .version-detail {
+        color: #555 !important;
+      }
+
+      body.light-theme #version-mismatch p[style*='color: #888'] {
+        color: #555 !important;
+      }
+
+      /* Context warning banner */
+      body.light-theme #context-warning {
+        background: rgba(154, 103, 0, 0.08) !important;
+        border-color: #9a6700 !important;
+        color: #9a6700 !important;
+      }
+
+      body.light-theme #context-warning-text {
+        color: #555 !important;
+      }
+
+      /* AI Web Pilot warning text */
+      body.light-theme .toggle-desc[style*='color: #d29922'] {
+        color: #9a6700 !important;
+      }
+
+      /* Draw mode keyboard shortcut */
+      body.light-theme #draw-mode-status {
+        color: #555 !important;
+      }
+
+      /* Record options border & audio select */
+      body.light-theme #record-options {
+        border-top-color: #e0e0e0 !important;
+      }
+
+      body.light-theme #record-audio-mode {
+        background: #ffffff !important;
+        border-color: #d0d0d0 !important;
+        color: #555 !important;
+      }
+
+      /* Record save confirmation */
+      body.light-theme #record-save-info {
+        background: rgba(26, 127, 55, 0.08) !important;
+        color: #1a7f37 !important;
+      }
+
+      /* WebSocket mode container & select */
+      body.light-theme #ws-mode-container {
+        background: #f5f5f5 !important;
+      }
+
+      body.light-theme #ws-mode {
+        background: #ffffff !important;
+        border-color: #d0d0d0 !important;
+        color: #1a1a1a !important;
+      }
+
+      /* Warning text overrides */
+      body.light-theme #ws-messages-warning {
+        color: #9a6700 !important;
+      }
+
+      body.light-theme #waterfall-warning {
+        color: #555 !important;
+      }
+
+      body.light-theme #perfmarks-warning {
+        color: #555 !important;
+      }
+
+      body.light-theme #screenshot-warning {
+        color: #9a6700 !important;
       }
     </style>
   </head>
   <body>
+    <script>chrome.storage.local.get('theme', r => { if (r.theme === 'light') document.body.classList.add('light-theme') })</script>
     <h1>
       <img class="logo" src="icons/icon-48.png" alt="" />
       Gasoline
@@ -876,20 +944,10 @@
       >
         No tab tracked - data capture disabled
       </div>
-      <div
-        id="tracked-page-info"
-        style="
-          display: none;
-          margin-top: 8px;
-          padding: 8px 12px;
-          background: rgba(88, 166, 255, 0.1);
-          border: 1px solid #58a6ff;
-          border-radius: 6px;
-          font-size: 12px;
-        "
-      >
-        <div style="color: #58a6ff; font-weight: 600; margin-bottom: 4px">Tracking Active</div>
-        <div id="tracked-url" style="color: #aaa; word-break: break-all"></div>
+      <div id="tracking-bar" class="tracking-bar" style="display: none">
+        <div class="tracking-bar-indicator"></div>
+        <div id="tracking-bar-url" class="tracking-bar-url" title="Click to switch to tracked tab"></div>
+        <button id="tracking-bar-stop" class="tracking-bar-stop" title="Stop tracking">&#x2715;</button>
       </div>
     </div>
 
@@ -1004,22 +1062,6 @@
     </div>
 
     <div class="section">
-      <div class="section-title">AI Web Pilot</div>
-      <div class="feature-section">
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <label for="aiWebPilotEnabled" class="toggle-label">Enable AI Control</label>
-            <span class="toggle-desc" style="color: #d29922">Can take a few seconds to reflect on the server</span>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="aiWebPilotEnabled" checked />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
       <div class="section-title">Draw Mode</div>
       <div class="feature-section">
         <div id="draw-mode-row" class="record-row">
@@ -1075,6 +1117,22 @@
             word-break: break-all;
           "
         ></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">AI Web Pilot</div>
+      <div class="feature-section">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <label for="aiWebPilotEnabled" class="toggle-label">Enable AI Control</label>
+            <span class="toggle-desc" style="color: #d29922">Can take a few seconds to reflect on the server</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="aiWebPilotEnabled" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
     </div>
 

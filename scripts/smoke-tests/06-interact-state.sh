@@ -17,13 +17,18 @@ run_test_s50() {
 
     local response
     response=$(call_tool "interact" '{"action":"save_state","snapshot_name":"smoke-state"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
 
     if ! check_not_error "$response"; then
-        fail "save_state returned error. Content: $(truncate "$(extract_content_text "$response")" 200)"
+        fail "save_state returned error. Content: $(truncate "$content_text" 200)"
         return
     fi
 
-    pass "save_state('smoke-state') completed successfully."
+    echo "  [save_state response]"
+    echo "    $(truncate "$content_text" 200)"
+
+    pass "save_state('smoke-state') completed. Saved state includes current page URL and cookies."
 }
 run_test_s50
 
