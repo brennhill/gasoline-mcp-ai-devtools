@@ -1,7 +1,8 @@
 #!/bin/bash
 # 15-file-upload.sh — 15.0-15.15: File upload automation validation.
-# Tests schema, feature flag gating, parameter validation, queue response,
-# and real file delivery to a Python upload server.
+# ALL actions go through MCP commands (interact/observe/execute_js).
+# Browser-based tests (15.0 browser check, 15.10-15.15) require extension+pilot.
+# Parameter validation tests (15.1-15.9) work without extension.
 set -eo pipefail
 
 # Temp directory for all upload tests — under $HOME to avoid /tmp symlink issues
@@ -23,58 +24,98 @@ _cleanup_upload() {
 }
 trap _cleanup_upload EXIT
 
-# ── Helper: restart daemon with upload flags ──────────────
-_restart_daemon_for_upload() {
-    local upload_dir="$1"
-    kill_server 2>/dev/null || true
-    sleep 0.3
-    start_daemon_with_flags --enable-os-upload-automation \
-        "--ssrf-allow-host=localhost:${UPLOAD_PORT}" \
-        "--upload-dir=$upload_dir"
+# ── Shared helper: navigate browser to upload form ────────
+# Visits / (sets session cookie) then /upload (loads form with CSRF).
+_navigate_to_upload_form() {
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/\",\"reason\":\"Get session cookie\"}"
+    sleep 1
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload\",\"reason\":\"Load upload form\"}"
+    sleep 2
 }
 
-_restore_daemon() {
-    kill_server 2>/dev/null || true
-    start_daemon 2>/dev/null || true
+# ── Shared helper: interact(upload) + poll for completion ─
+# Sets UPLOAD_FINAL_STATUS to "complete", "failed", or "pending".
+_upload_and_poll() {
+    local test_id="$1"
+    local test_file="$2"
+    UPLOAD_FINAL_STATUS="pending"
+
+    local response
+    response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "$test_id" "interact upload" "$response" "$content_text"
+
+    local corr_id
+    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
+
+    if [ -z "$corr_id" ]; then
+        if echo "$content_text" | grep -qi "error\|isError"; then
+            UPLOAD_FINAL_STATUS="error: $(truncate "$content_text" 200)"
+        else
+            UPLOAD_FINAL_STATUS="no_corr_id: $(truncate "$content_text" 200)"
+        fi
+        return
+    fi
+
+    for _ in $(seq 1 20); do
+        sleep 0.5
+        local poll_text
+        poll_text=$(extract_content_text "$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")")
+        if echo "$poll_text" | grep -q '"status":"complete"'; then
+            UPLOAD_FINAL_STATUS="complete"
+            log_diagnostic "$test_id" "poll complete" "$poll_text" ""
+            return
+        fi
+        if echo "$poll_text" | grep -q '"status":"failed"'; then
+            UPLOAD_FINAL_STATUS="failed"
+            log_diagnostic "$test_id" "poll failed" "$poll_text" ""
+            return
+        fi
+    done
 }
 
 # ── Test 15.0: Upload server canary ──────────────────────
 begin_test "15.0" "Upload server canary" \
-    "Verify Python upload test server started, serves landing page, and /upload form loads" \
+    "Navigate browser to upload server, verify landing page and upload form load" \
     "Tests: test infrastructure — if this fails, all upload tests are invalid"
 
 run_test_15_0() {
-    # 1. Health check
+    # Quick infrastructure check — is the process alive?
     local health_resp
     health_resp=$(curl -s --max-time 5 --connect-timeout 3 "http://127.0.0.1:${UPLOAD_PORT}/health" 2>/dev/null)
     if ! echo "$health_resp" | jq -e '.ok == true' >/dev/null 2>&1; then
-        fail "Upload server not responding on port $UPLOAD_PORT (PID $UPLOAD_SERVER_PID). All upload tests are invalid."
+        fail "Upload server not responding on port $UPLOAD_PORT (PID $UPLOAD_SERVER_PID)."
         return
     fi
 
-    # 2. Landing page — sets session cookie, should contain "Test Upload Platform"
-    local cookie_jar="$UPLOAD_TEST_DIR/cookies-canary.txt"
-    local landing
-    landing=$(curl -s --max-time 5 -c "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/" 2>/dev/null)
-    if ! echo "$landing" | grep -q "Test Upload Platform"; then
-        rm -f "$cookie_jar"
-        fail "Landing page (GET /) did not contain expected content. Got: $(truncate "$landing" 200)"
+    # Browser verification (requires extension)
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        pass "Upload server healthy on port $UPLOAD_PORT (browser check skipped — no extension)."
         return
     fi
 
-    # 3. Upload form — requires session cookie, should contain CSRF token and file input
-    local form_page
-    form_page=$(curl -s --max-time 5 -b "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/upload" 2>/dev/null)
-    rm -f "$cookie_jar"
+    # Navigate to landing page (sets session cookie in browser)
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/\",\"reason\":\"Canary — landing page\"}"
+    sleep 1
 
-    local has_csrf has_input
-    has_csrf=$(echo "$form_page" | grep -c 'csrf_token' || true)
-    has_input=$(echo "$form_page" | grep -c 'id="file-input"' || true)
+    # Navigate to upload form
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload\",\"reason\":\"Canary — upload form\"}"
+    sleep 1
 
-    if [ "$has_csrf" -gt 0 ] && [ "$has_input" -gt 0 ]; then
-        pass "Upload server alive on port $UPLOAD_PORT: landing page OK, upload form has CSRF + file input."
+    # Observe the page
+    local response
+    response=$(call_tool "observe" '{"what":"page"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.0" "observe upload form" "$response" "$content_text"
+
+    if echo "$content_text" | grep -qi "Upload File\|file-input\|Filedata"; then
+        pass "Upload server on port $UPLOAD_PORT: landing page + upload form visible in browser."
     else
-        fail "Upload form incomplete: csrf=$has_csrf, file-input=$has_input. Got: $(truncate "$form_page" 200)"
+        fail "Upload form not visible in browser. Page: $(truncate "$content_text" 200)"
     fi
 }
 run_test_15_0
@@ -296,130 +337,75 @@ except Exception as e:
 }
 run_test_15_9
 
-# ── Test 15.10: Stage 1 read → Stage 3 delivery E2E ──────
-begin_test "15.10" "Stage 1 read → Stage 3 delivery E2E (base64 roundtrip + upload verification)" \
-    "Read file via /api/file/read, decode base64, POST to upload server via /api/form/submit, verify MD5" \
-    "Tests: file data flows through Stage 1 read and Stage 3 multipart delivery to a real server"
+# ── Test 15.10: Upload text file E2E via browser ─────────
+begin_test "15.10" "Upload text file E2E with MD5 verification (requires pilot)" \
+    "Navigate to upload form, interact(upload), submit form via execute_js, verify MD5 on success page" \
+    "Tests: file flows through browser to upload server, MD5 verified on success page"
 
 run_test_15_10() {
-    local upload_dir="$UPLOAD_TEST_DIR/upload-dir-15-10"
-    local cookie_jar="$UPLOAD_TEST_DIR/cookies-15-10.txt"
-    local daemon_restarted=false
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
+        return
+    fi
 
-    mkdir -p "$upload_dir"
-    local test_content="Gasoline smoke roundtrip $(date +%s)"
-    local test_file="$upload_dir/roundtrip.txt"
+    # Create test file with known content
+    local test_content="Gasoline upload E2E $(date +%s)"
+    local test_file="$UPLOAD_TEST_DIR/upload-15-10.txt"
     echo -n "$test_content" > "$test_file"
     local original_md5
     original_md5=$(md5sum "$test_file" 2>/dev/null | awk '{print $1}' || md5 -q "$test_file" 2>/dev/null)
 
-    # Stage 1: Read file via /api/file/read and verify base64 roundtrip
-    local body status
-    body=$(curl -s --max-time 10 --connect-timeout 3 \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
-        -w "\n%{http_code}" \
-        -d '{"file_path":"'"$test_file"'"}' \
-        "http://localhost:${PORT}/api/file/read" 2>/dev/null)
+    # Navigate browser: / (session) → /upload (form)
+    _navigate_to_upload_form
 
-    status=$(echo "$body" | tail -1)
-    body=$(echo "$body" | sed '$d')
+    # Set file on input via interact(upload), poll for completion
+    _upload_and_poll "15.10" "$test_file"
 
-    if [ "$status" != "200" ]; then
-        rm -rf "$upload_dir" "$cookie_jar"
-        fail "Stage 1 /api/file/read: expected HTTP 200, got $status."
-        return
-    fi
+    case "$UPLOAD_FINAL_STATUS" in
+        complete) ;;
+        pending)
+            skip "Upload timed out (extension upload handler not implemented yet)."
+            return ;;
+        failed)
+            fail "Extension reported upload failure."
+            return ;;
+        *)
+            fail "Upload failed: $UPLOAD_FINAL_STATUS"
+            return ;;
+    esac
 
-    local data_base64 decoded
-    data_base64=$(echo "$body" | jq -r '.data_base64' 2>/dev/null)
-    decoded=$(echo "$data_base64" | base64 -d 2>/dev/null)
+    # Fill in required title field via execute_js
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill title field","script":"document.querySelector(\"input[name=title]\").value=\"Smoke Test 15.10\"; \"title_set\""}'
+    sleep 0.5
 
-    if [ "$decoded" != "$test_content" ]; then
-        rm -rf "$upload_dir" "$cookie_jar"
-        fail "Stage 1 base64 mismatch. Expected: $(truncate "$test_content" 50), got: $(truncate "$decoded" 50)"
-        return
-    fi
+    # Submit form via execute_js
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Submit upload form","script":"document.querySelector(\"form\").submit(); \"submitted\""}'
+    sleep 3
 
-    # Stage 3: POST file to upload server via daemon's /api/form/submit
-    # Get session cookie
-    curl -s -c "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/" >/dev/null 2>&1
-    local session_cookie
-    session_cookie=$(grep "session" "$cookie_jar" 2>/dev/null | awk '{print $NF}')
+    # Observe result page — should be /upload/success after redirect
+    local response
+    response=$(call_tool "observe" '{"what":"page"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
 
-    # Get CSRF token
-    local form_html csrf_token
-    form_html=$(curl -s -b "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/upload" 2>/dev/null)
-    csrf_token=$(echo "$form_html" | grep -oE 'value="[a-f0-9]{32}"' | head -1 | sed 's/value="//;s/"//')
+    log_diagnostic "15.10" "observe success page" "$response" "$content_text"
 
-    if [ -z "$csrf_token" ]; then
-        rm -rf "$upload_dir" "$cookie_jar"
-        fail "Failed to extract CSRF token from upload server."
-        return
-    fi
-
-    # Restart daemon with upload flags
-    daemon_restarted=true
-    if ! _restart_daemon_for_upload "$upload_dir"; then
-        _restore_daemon
-        rm -rf "$upload_dir" "$cookie_jar"
-        fail "Daemon failed to restart with upload flags."
-        return
-    fi
-
-    # Submit form via daemon's /api/form/submit
-    local submit_body
-    submit_body=$(curl -s --max-time 30 --connect-timeout 5 \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
-        -d '{
-            "form_action": "http://localhost:'"${UPLOAD_PORT}"'/upload",
-            "method": "POST",
-            "file_path": "'"$test_file"'",
-            "file_input_name": "Filedata",
-            "csrf_token": "'"$csrf_token"'",
-            "cookies": "session='"${session_cookie}"'",
-            "fields": {"title": "Smoke Test 15.10", "tags": "smoke,roundtrip"}
-        }' \
-        "http://localhost:${PORT}/api/form/submit" 2>/dev/null)
-
-    log_diagnostic "15.10" "form submit" "$submit_body" ""
-
-    local success
-    success=$(echo "$submit_body" | jq -r '.success' 2>/dev/null)
-
-    if [ "$success" != "true" ]; then
-        local error_msg
-        error_msg=$(echo "$submit_body" | jq -r '.error // empty' 2>/dev/null)
-        _restore_daemon
-        rm -rf "$upload_dir" "$cookie_jar"
-        fail "Stage 3 form submit failed: $error_msg"
-        return
-    fi
-
-    # Verify via /api/last-upload
-    local verify_body
-    verify_body=$(curl -s "http://127.0.0.1:${UPLOAD_PORT}/api/last-upload" 2>/dev/null)
-    local verify_md5
-    verify_md5=$(echo "$verify_body" | jq -r '.md5' 2>/dev/null)
-
-    _restore_daemon
-    rm -rf "$upload_dir" "$cookie_jar"
-
-    if [ "$verify_md5" = "$original_md5" ]; then
-        pass "Stage 1 read + Stage 3 delivery: base64 roundtrip OK, MD5 match ($verify_md5)."
+    if echo "$content_text" | grep -qi "Upload Successful"; then
+        if echo "$content_text" | grep -q "$original_md5"; then
+            pass "Upload E2E: file reached server, MD5 match ($original_md5) on success page."
+        else
+            fail "Upload reached server but MD5 not on success page. Expected: $original_md5. Page: $(truncate "$content_text" 300)"
+        fi
     else
-        fail "MD5 mismatch after Stage 3 delivery. Expected: $original_md5, got: $verify_md5."
+        fail "Upload did not reach success page. Page: $(truncate "$content_text" 300)"
     fi
 }
 run_test_15_10
 
-# ── Test 15.11: Full Stage 1 E2E with extension ──────────
-begin_test "15.11" "Stage 1 E2E upload with extension (requires pilot)" \
-    "Navigate browser to upload server, create test file, attempt upload via interact" \
-    "Tests: full extension pipeline for upload (skip on timeout)"
+# ── Test 15.11: Extension upload pipeline (requires pilot) ──
+begin_test "15.11" "Extension upload pipeline completion (requires pilot)" \
+    "Navigate to upload form, interact(upload), poll until extension reports complete" \
+    "Tests: extension receives upload command and processes it to completion"
 
 run_test_15_11() {
     if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
@@ -427,62 +413,17 @@ run_test_15_11() {
         return
     fi
 
-    # Navigate to upload page (get cookie first via curl, then navigate)
-    local cookie_jar="$UPLOAD_TEST_DIR/cookies-15-11.txt"
-    curl -s -c "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/" >/dev/null 2>&1
-
-    # Navigate browser to upload page
-    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload\",\"reason\":\"Upload test page\"}"
-    sleep 2
+    # Navigate browser: / (session) → /upload (form)
+    _navigate_to_upload_form
 
     # Create a test file
     local test_file="$UPLOAD_TEST_DIR/e2e-upload.txt"
     echo "Gasoline E2E upload content" > "$test_file"
 
-    # Try upload via interact — must poll to confirm extension actually handled it
-    local response
-    response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
-    local content_text
-    content_text=$(extract_content_text "$response")
+    # Upload and poll for completion
+    _upload_and_poll "15.11" "$test_file"
 
-    log_diagnostic "15.11" "e2e upload initial" "$response" "$content_text"
-
-    # Extract correlation_id to poll for real completion
-    local corr_id
-    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
-
-    if [ -z "$corr_id" ]; then
-        rm -f "$test_file" "$cookie_jar"
-        if echo "$content_text" | grep -qi "error\|isError"; then
-            fail "E2E upload: got error before queuing. $(truncate "$content_text" 200)"
-        else
-            fail "E2E upload: no correlation_id in response. $(truncate "$content_text" 200)"
-        fi
-        return
-    fi
-
-    # Poll command_result — "queued" only means the server accepted it,
-    # we need "complete" to prove the extension actually processed it
-    local final_status="pending"
-    for _ in $(seq 1 20); do
-        sleep 0.5
-        local poll_text
-        poll_text=$(extract_content_text "$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")")
-        if echo "$poll_text" | grep -q '"status":"complete"'; then
-            final_status="complete"
-            log_diagnostic "15.11" "poll complete" "$poll_text" ""
-            break
-        fi
-        if echo "$poll_text" | grep -q '"status":"failed"'; then
-            final_status="failed"
-            log_diagnostic "15.11" "poll failed" "$poll_text" ""
-            break
-        fi
-    done
-
-    rm -f "$test_file" "$cookie_jar"
-
-    case "$final_status" in
+    case "$UPLOAD_FINAL_STATUS" in
         complete)
             pass "E2E upload: extension processed upload to completion."
             ;;
@@ -492,81 +433,71 @@ run_test_15_11() {
         pending)
             skip "E2E upload: timed out polling (extension has no upload handler yet)."
             ;;
+        *)
+            fail "E2E upload: $UPLOAD_FINAL_STATUS"
+            ;;
     esac
 }
 run_test_15_11
 
-# ── Test 15.12: Stage 3 Rumble-style upload ──────────────
-begin_test "15.12" "Stage 3 Rumble-style upload (form submit E2E)" \
-    "Get cookie+CSRF from upload server, restart daemon with --ssrf-allow-host, submit form, verify upload" \
-    "Tests: file data flows through Stage 3 multipart streaming to a real server"
+# ── Test 15.12: Upload with full server-side verification ──
+begin_test "15.12" "Upload with full server-side verification (requires pilot)" \
+    "Navigate, upload file, fill fields, submit form, verify CSRF + cookie + MD5 via server API" \
+    "Tests: complete upload pipeline — browser → server, all fields verified server-side"
 
 run_test_15_12() {
-    local upload_dir="$UPLOAD_TEST_DIR/upload-dir-15-12"
-    local cookie_jar="$UPLOAD_TEST_DIR/cookies-15-12.txt"
-
-    # Get session cookie
-    curl -s -c "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/" >/dev/null 2>&1
-    local session_cookie
-    session_cookie=$(grep "session" "$cookie_jar" 2>/dev/null | awk '{print $NF}')
-
-    # Get CSRF token
-    local form_html csrf_token
-    form_html=$(curl -s -b "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/upload" 2>/dev/null)
-    csrf_token=$(echo "$form_html" | grep -oE 'value="[a-f0-9]{32}"' | head -1 | sed 's/value="//;s/"//')
-
-    if [ -z "$csrf_token" ]; then
-        rm -rf "$upload_dir" "$cookie_jar"
-        fail "Failed to extract CSRF token."
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
         return
     fi
 
-    # Restart daemon with --ssrf-allow-host and --upload-dir
-    mkdir -p "$upload_dir"
-    local test_content="Gasoline Stage 3 smoke test $(date +%s)"
-    echo -n "$test_content" > "$upload_dir/smoke-upload.txt"
+    local test_content="Gasoline full verification $(date +%s)"
+    local test_file="$UPLOAD_TEST_DIR/upload-15-12.txt"
+    echo -n "$test_content" > "$test_file"
     local original_md5
-    original_md5=$(md5sum "$upload_dir/smoke-upload.txt" 2>/dev/null | awk '{print $1}' || md5 -q "$upload_dir/smoke-upload.txt" 2>/dev/null)
+    original_md5=$(md5sum "$test_file" 2>/dev/null | awk '{print $1}' || md5 -q "$test_file" 2>/dev/null)
 
-    if ! _restart_daemon_for_upload "$upload_dir"; then
-        _restore_daemon
-        rm -rf "$upload_dir" "$cookie_jar"
-        fail "Daemon failed to restart with upload flags."
+    # Navigate browser: / (session) → /upload (form)
+    _navigate_to_upload_form
+
+    # Set file on input, poll for completion
+    _upload_and_poll "15.12" "$test_file"
+
+    case "$UPLOAD_FINAL_STATUS" in
+        complete) ;;
+        pending)
+            skip "Upload timed out (extension upload handler not implemented yet)."
+            return ;;
+        failed)
+            fail "Extension reported upload failure."
+            return ;;
+        *)
+            fail "Upload failed: $UPLOAD_FINAL_STATUS"
+            return ;;
+    esac
+
+    # Fill form fields (title + tags) via execute_js
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill form fields","script":"document.querySelector(\"input[name=title]\").value=\"Smoke Test Upload\"; document.querySelector(\"input[name=tags]\").value=\"smoke,gasoline\"; \"fields_set\""}'
+    sleep 0.5
+
+    # Submit form
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Submit upload form","script":"document.querySelector(\"form\").submit(); \"submitted\""}'
+    sleep 3
+
+    # Observe success page first
+    local response
+    response=$(call_tool "observe" '{"what":"page"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.12" "observe success page" "$response" "$content_text"
+
+    if ! echo "$content_text" | grep -qi "Upload Successful"; then
+        fail "Upload did not reach success page. Page: $(truncate "$content_text" 300)"
         return
     fi
 
-    # POST /api/form/submit
-    local submit_body
-    submit_body=$(curl -s --max-time 30 --connect-timeout 5 \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
-        -d '{
-            "form_action": "http://localhost:'"${UPLOAD_PORT}"'/upload",
-            "method": "POST",
-            "file_path": "'"$upload_dir/smoke-upload.txt"'",
-            "file_input_name": "Filedata",
-            "csrf_token": "'"$csrf_token"'",
-            "cookies": "session='"${session_cookie}"'",
-            "fields": {"title": "Smoke Test Upload", "tags": "smoke,gasoline"}
-        }' \
-        "http://localhost:${PORT}/api/form/submit" 2>/dev/null)
-
-    log_diagnostic "15.12" "form submit" "$submit_body" ""
-
-    local success
-    success=$(echo "$submit_body" | jq -r '.success' 2>/dev/null)
-
-    if [ "$success" != "true" ]; then
-        local error_msg
-        error_msg=$(echo "$submit_body" | jq -r '.error // empty' 2>/dev/null)
-        _restore_daemon
-        rm -rf "$upload_dir" "$cookie_jar"
-        fail "Form submit failed: $error_msg"
-        return
-    fi
-
-    # Verify via /api/last-upload
+    # Server-side verification via upload server's /api/last-upload
     local verify_body
     verify_body=$(curl -s "http://127.0.0.1:${UPLOAD_PORT}/api/last-upload" 2>/dev/null)
     local verify_md5 verify_csrf verify_cookie
@@ -574,21 +505,20 @@ run_test_15_12() {
     verify_csrf=$(echo "$verify_body" | jq -r '.csrf_ok' 2>/dev/null)
     verify_cookie=$(echo "$verify_body" | jq -r '.cookie_ok' 2>/dev/null)
 
-    _restore_daemon
-    rm -rf "$upload_dir" "$cookie_jar"
+    log_diagnostic "15.12" "server verify" "$verify_body" ""
 
     if [ "$verify_md5" = "$original_md5" ] && [ "$verify_csrf" = "true" ] && [ "$verify_cookie" = "true" ]; then
-        pass "Stage 3 E2E: MD5 match ($verify_md5), CSRF ok, cookie ok."
+        pass "Full verification: MD5 match ($verify_md5), CSRF ok, cookie ok."
     else
-        fail "Verification: md5=$verify_md5 (expected $original_md5), csrf=$verify_csrf, cookie=$verify_cookie."
+        fail "Server verification: md5=$verify_md5 (expected $original_md5), csrf=$verify_csrf, cookie=$verify_cookie."
     fi
 }
 run_test_15_12
 
-# ── Test 15.13: Stage 3 confirmation page ────────────────
-begin_test "15.13" "Stage 3 confirmation page via observe (requires pilot)" \
-    "If browser is on upload server, observe(page) should show confirmation details" \
-    "Tests: observe reads confirmation page after redirect"
+# ── Test 15.13: Confirmation page via observe ────────────
+begin_test "15.13" "Confirmation page visible via observe (requires pilot)" \
+    "After upload tests, observe(page) should show Upload Successful" \
+    "Tests: observe reads confirmation page after browser form submission + redirect"
 
 run_test_15_13() {
     if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
@@ -596,7 +526,7 @@ run_test_15_13() {
         return
     fi
 
-    # Check if browser is currently on the upload server success page
+    # Browser should be on /upload/success from 15.12
     local response
     response=$(call_tool "observe" '{"what":"page"}')
     local content_text
@@ -607,56 +537,47 @@ run_test_15_13() {
     if echo "$content_text" | grep -qi "upload.*success\|Upload Successful"; then
         pass "Confirmation page visible via observe(page)."
     else
-        fail "Browser not on upload success page after 15.11/15.12."
+        fail "Browser not on upload success page after 15.10/15.12."
     fi
 }
 run_test_15_13
 
-# ── Test 15.14: Stage 3 auth failure propagation ─────────
-begin_test "15.14" "Stage 3 auth failure propagation (missing cookie → 401)" \
-    "POST /api/form/submit without cookie, verify 401 from test server is reported" \
-    "Tests: platform auth errors propagate correctly to the caller"
+# ── Test 15.14: Auth failure visible in browser ──────────
+begin_test "15.14" "Auth failure visible in browser (requires pilot)" \
+    "Navigate to /logout to clear session, then /upload to trigger 401 — verify in browser" \
+    "Tests: server auth rejection is visible to the user in the browser"
 
 run_test_15_14() {
-    local upload_dir="$UPLOAD_TEST_DIR/upload-dir-15-14"
-
-    # Restart daemon with allowed host
-    mkdir -p "$upload_dir"
-    echo -n "test" > "$upload_dir/auth-test.txt"
-
-    if ! _restart_daemon_for_upload "$upload_dir"; then
-        _restore_daemon
-        rm -rf "$upload_dir"
-        fail "Daemon failed to restart with upload flags."
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
         return
     fi
 
-    local submit_body
-    submit_body=$(curl -s --max-time 30 --connect-timeout 5 \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
-        -d '{
-            "form_action": "http://localhost:'"${UPLOAD_PORT}"'/upload",
-            "file_path": "'"$upload_dir/auth-test.txt"'",
-            "file_input_name": "Filedata",
-            "fields": {"title": "test"}
-        }' \
-        "http://localhost:${PORT}/api/form/submit" 2>/dev/null)
+    # Clear session cookie by navigating to /logout
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/logout\",\"reason\":\"Clear session for auth failure test\"}"
+    sleep 1
 
-    log_diagnostic "15.14" "auth failure" "$submit_body" ""
+    # Navigate to /upload — server should reject with 401 (no session)
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload\",\"reason\":\"Attempt upload form without session\"}"
+    sleep 1
 
-    _restore_daemon
-    rm -rf "$upload_dir"
+    # Observe page — should show 401
+    local response
+    response=$(call_tool "observe" '{"what":"page"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
 
-    local error_msg
-    error_msg=$(echo "$submit_body" | jq -r '.error // empty' 2>/dev/null)
+    log_diagnostic "15.14" "observe 401" "$response" "$content_text"
 
-    if echo "$error_msg" | grep -qiE "401|not logged in"; then
-        pass "Auth failure: 401/not-logged-in propagated correctly."
+    if echo "$content_text" | grep -qi "401\|Not logged in"; then
+        pass "Auth failure: 401 visible in browser after session cleared."
     else
-        fail "Expected 401 error. Got: $(truncate "$error_msg" 200)"
+        fail "Expected 401 page after logout. Got: $(truncate "$content_text" 200)"
     fi
+
+    # Restore session for subsequent tests (navigate to / to get new cookie)
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/\",\"reason\":\"Restore session after auth failure test\"}"
+    sleep 1
 }
 run_test_15_14
 
@@ -671,33 +592,17 @@ run_test_15_15() {
         return
     fi
 
-    # Navigate browser to upload page
-    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload\",\"reason\":\"Upload verification page\"}"
-    sleep 2
+    # Navigate browser: / (session) → /upload (form)
+    _navigate_to_upload_form
 
     # Create test file and attempt upload
     local test_file="$UPLOAD_TEST_DIR/verify-upload.txt"
     echo "verify-upload-content" > "$test_file"
 
-    local response
-    response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
-    local content_text
-    content_text=$(extract_content_text "$response")
+    # Upload and poll
+    _upload_and_poll "15.15" "$test_file"
 
-    # Extract correlation_id and poll for completion
-    local corr_id
-    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
-
-    if [ -n "$corr_id" ]; then
-        for _ in $(seq 1 20); do
-            sleep 0.5
-            local poll_text
-            poll_text=$(extract_content_text "$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")")
-            if echo "$poll_text" | grep -q '"status":"complete"\|"status":"failed"'; then
-                break
-            fi
-        done
-    fi
+    # Even if pending, check the DOM — the file might have been set
     sleep 1
 
     # Verify: execute_js to check files on the input

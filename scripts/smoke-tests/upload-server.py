@@ -162,6 +162,14 @@ class UploadHandler(http.server.BaseHTTPRequestHandler):
             self._send_html(200, html)
             return
 
+        if path == "/logout":
+            self.send_response(200)
+            self.send_header("Set-Cookie", "session=; Path=/; HttpOnly; Max-Age=0")
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"<h1>Logged out</h1><p>Session cleared.</p>")
+            return
+
         if path == "/upload/success":
             upload_id = query.get("id", ["unknown"])[0]
             info = last_upload if last_upload.get("id") == upload_id else {}
