@@ -115,17 +115,26 @@ export function installTabUpdatedListener(onTabUpdated) {
 }
 /**
  * Handle tracked tab URL change
- * Updates the stored URL when the tracked tab navigates
+ * Updates the stored URL and title when the tracked tab navigates
  */
 export function handleTrackedTabUrlChange(updatedTabId, newUrl, logFn) {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
     chrome.storage.local.get(['trackedTabId'], (result) => {
         if (result.trackedTabId === updatedTabId) {
-            chrome.storage.local.set({ trackedTabUrl: newUrl }, () => {
-                if (logFn) {
-                    logFn('[Gasoline] Tracked tab URL updated: ' + newUrl);
-                }
+            // Update URL immediately, then refresh title from the tab
+            chrome.tabs.get(updatedTabId).then((tab) => {
+                const updates = { trackedTabUrl: newUrl };
+                if (tab?.title)
+                    updates.trackedTabTitle = tab.title;
+                chrome.storage.local.set(updates, () => {
+                    if (logFn) {
+                        logFn('[Gasoline] Tracked tab updated: ' + newUrl);
+                    }
+                });
+            }).catch(() => {
+                // Tab may have been closed — update URL only
+                chrome.storage.local.set({ trackedTabUrl: newUrl });
             });
         }
     });

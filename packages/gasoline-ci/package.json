@@ -1,6 +1,6 @@
 {
   "name": "@anthropic/gasoline-ci",
-  "version": "6.1.1",
+  "version": "6.1.5",
   "description": "Gasoline CI - Standalone browser capture for CI/CD pipelines",
   "main": "gasoline-ci.js",
   "files": [

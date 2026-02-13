@@ -3,7 +3,7 @@
 // WARNING: DO NOT use t.Parallel() — tests share global state (skipSSRFCheck, uploadSecurityConfig).
 //
 // Tests verify:
-// 1. Security gating (--enable-upload-automation flag required)
+// 1. Upload queuing works without any flag
 // 2. Parameter validation for upload action
 // 3. Stage 1: File read (base64 for small files)
 // 4. Stage 2: File dialog injection
@@ -27,30 +27,10 @@ import (
 )
 
 // ============================================
-// Security: Upload automation must be explicitly enabled
+// Upload works without any flag (stages 1-3 are ungated)
 // ============================================
 
-func TestUpload_DisabledByDefault(t *testing.T) {
-	env := newInteractTestEnv(t)
-
-	result, ok := env.callInteract(t, `{"action":"upload","selector":"#Filedata","file_path":"/tmp/test.mp4"}`)
-	if !ok {
-		t.Fatal("upload should return result even when disabled")
-	}
-
-	if !result.IsError {
-		t.Error("upload MUST return isError when upload automation is disabled")
-	}
-
-	if len(result.Content) > 0 {
-		text := strings.ToLower(result.Content[0].Text)
-		if !strings.Contains(text, "upload") || !strings.Contains(text, "disabled") {
-			t.Errorf("error should mention upload automation is disabled\nGot: %s", result.Content[0].Text)
-		}
-	}
-}
-
-func TestUpload_EnabledWithFlag(t *testing.T) {
+func TestUpload_WorksWithoutFlag(t *testing.T) {
 	env := newUploadTestEnv(t)
 
 	// Create a small test file
@@ -58,16 +38,16 @@ func TestUpload_EnabledWithFlag(t *testing.T) {
 
 	result, ok := env.callInteract(t, `{"action":"upload","selector":"#Filedata","file_path":"`+testFile+`"}`)
 	if !ok {
-		t.Fatal("upload with enabled flag should return result")
+		t.Fatal("upload should return result")
 	}
 
 	if result.IsError {
-		t.Fatalf("upload with enabled flag should succeed, got error: %s", result.Content[0].Text)
+		t.Fatalf("upload should succeed without any flag, got error: %s", result.Content[0].Text)
 	}
 
 	// Verify response has required fields
 	data := parseResponseJSON(t, result)
-	assertObjectShape(t, "upload enabled", data, []fieldSpec{
+	assertObjectShape(t, "upload queued", data, []fieldSpec{
 		required("status", "string"),
 		required("correlation_id", "string"),
 		required("file_name", "string"),
@@ -675,8 +655,7 @@ func newUploadTestEnv(t *testing.T) *uploadTestEnv {
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 
-	// Enable upload automation for tests with permissive security config
-	handler.uploadAutomationEnabled = true
+	// Permissive upload security config for tests
 	handler.uploadSecurity = &UploadSecurity{uploadDir: "/"}
 
 	return &uploadTestEnv{

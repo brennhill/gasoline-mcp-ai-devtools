@@ -41,7 +41,7 @@ export declare function installTabRemovedListener(onTabRemoved: (tabId: number) 
 export declare function installTabUpdatedListener(onTabUpdated: (tabId: number, newUrl: string) => void): void;
 /**
  * Handle tracked tab URL change
- * Updates the stored URL when the tracked tab navigates
+ * Updates the stored URL and title when the tracked tab navigates
  */
 export declare function handleTrackedTabUrlChange(updatedTabId: number, newUrl: string, logFn?: (message: string) => void): void;
 /**

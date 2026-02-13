@@ -192,9 +192,8 @@ type ToolHandler struct {
 	// Draw mode annotation store (in-memory, TTL-based)
 	annotationStore *AnnotationStore
 
-	// Upload automation security flags (disabled by default)
-	uploadAutomationEnabled bool            // --enable-upload-automation
-	uploadSecurity          *UploadSecurity // folder-scoped permissions + denylist
+	// Upload security config (folder-scoped permissions + denylist)
+	uploadSecurity *UploadSecurity
 
 	// Cached interact dispatch map (initialized once via sync.Once)
 	interactOnce     sync.Once
@@ -260,8 +259,7 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	handler.securityScannerImpl = security.NewSecurityScanner()
 	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()
 
-	// Initialize upload automation flags from package-level vars set by CLI
-	handler.uploadAutomationEnabled = uploadAutomationFlag
+	// Initialize upload security config from package-level var set by CLI
 	handler.uploadSecurity = uploadSecurityConfig
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.

@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/dev-console/dev-console/internal/types"
@@ -42,11 +43,12 @@ type HARCreator struct {
 
 // HAREntry represents a single HTTP request/response pair.
 type HAREntry struct {
-	StartedDateTime string      `json:"startedDateTime"` // SPEC:HAR
-	Time            int         `json:"time"`            // SPEC:HAR — total elapsed time in ms
-	Request         HARRequest  `json:"request"`         // SPEC:HAR
-	Response        HARResponse `json:"response"`        // SPEC:HAR
-	Timings         HARTimings  `json:"timings"`         // SPEC:HAR
+	StartedDateTime string      `json:"startedDateTime"`       // SPEC:HAR
+	Time            int         `json:"time"`                  // SPEC:HAR — total elapsed time in ms
+	Request         HARRequest  `json:"request"`               // SPEC:HAR
+	Response        HARResponse `json:"response"`              // SPEC:HAR
+	Timings         HARTimings  `json:"timings"`               // SPEC:HAR
+	Comment         string      `json:"comment,omitempty"`     // SPEC:HAR
 }
 
 // HARRequest represents an HTTP request.
@@ -154,6 +156,79 @@ func ExportHARToFile(bodies []types.NetworkBody, filter types.NetworkBodyFilter,
 	}, nil
 }
 
+// ExportHARMerged merges NetworkBody entries with NetworkWaterfall entries into a single HAR log.
+// Bodies provide full request/response data. Waterfall entries that match a body URL enrich its
+// timings. Waterfall-only entries become lightweight HAR entries with timing and size but no body.
+func ExportHARMerged(bodies []types.NetworkBody, waterfall []types.NetworkWaterfallEntry, filter types.NetworkBodyFilter, creatorVersion string) HARLog {
+	// Build map of entries keyed by URL from bodies.
+	entryMap := make(map[string]*HAREntry, len(bodies))
+	var entries []HAREntry
+
+	for _, body := range bodies {
+		if !matchesHARFilter(body, filter) {
+			continue
+		}
+		entry := networkBodyToHAREntry(body)
+		entries = append(entries, entry)
+		entryMap[body.URL] = &entries[len(entries)-1]
+	}
+
+	// Merge waterfall entries.
+	for _, wf := range waterfall {
+		if !matchesWaterfallFilter(wf, filter) {
+			continue
+		}
+		if existing, ok := entryMap[wf.URL]; ok {
+			// Enrich timing on the existing body entry.
+			enrichTimingsFromWaterfall(existing, wf)
+		} else {
+			// New waterfall-only entry.
+			entry := waterfallToHAREntry(wf)
+			entries = append(entries, entry)
+		}
+	}
+
+	// Sort entries chronologically by StartedDateTime.
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].StartedDateTime < entries[j].StartedDateTime
+	})
+
+	if entries == nil {
+		entries = make([]HAREntry, 0)
+	}
+
+	return HARLog{
+		Log: HARLogInner{
+			Version: "1.2",
+			Creator: HARCreator{Name: "Gasoline", Version: creatorVersion},
+			Entries: entries,
+		},
+	}
+}
+
+// ExportHARMergedToFile exports merged HAR to a JSON file on disk.
+func ExportHARMergedToFile(bodies []types.NetworkBody, waterfall []types.NetworkWaterfallEntry, filter types.NetworkBodyFilter, creatorVersion string, path string) (HARExportResult, error) {
+	if !isPathSafe(path) {
+		return HARExportResult{}, fmt.Errorf("unsafe path: %s", path)
+	}
+
+	harLog := ExportHARMerged(bodies, waterfall, filter, creatorVersion)
+	data, err := json.MarshalIndent(harLog, "", "  ")
+	if err != nil {
+		return HARExportResult{}, fmt.Errorf("failed to marshal HAR: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return HARExportResult{}, fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return HARExportResult{
+		SavedTo:       path,
+		EntriesCount:  len(harLog.Log.Entries),
+		FileSizeBytes: int64(len(data)),
+	}, nil
+}
+
 // ============================================
 // Conversion
 // ============================================
@@ -201,11 +276,16 @@ func buildHARRequest(body types.NetworkBody) HARRequest {
 }
 
 func buildHARResponse(body types.NetworkBody) HARResponse {
+	headers := make([]HARNameValue, 0, len(body.ResponseHeaders))
+	for name, value := range body.ResponseHeaders {
+		headers = append(headers, HARNameValue{Name: name, Value: value})
+	}
+
 	resp := HARResponse{
 		Status:      body.Status,
 		StatusText:  httpStatusText(body.Status),
 		HTTPVersion: "HTTP/1.1",
-		Headers:     make([]HARNameValue, 0),
+		Headers:     headers,
 		Content: HARContent{
 			Size:     len(body.ResponseBody),
 			MimeType: body.ContentType,
@@ -220,6 +300,103 @@ func buildHARResponse(body types.NetworkBody) HARResponse {
 	}
 
 	return resp
+}
+
+// waterfallToHAREntry converts a waterfall entry to a lightweight HAR entry.
+func waterfallToHAREntry(wf types.NetworkWaterfallEntry) HAREntry {
+	durationMs := int(wf.Duration)
+	sendMs, waitMs, receiveMs := computeWaterfallTimings(wf)
+
+	return HAREntry{
+		StartedDateTime: wf.Timestamp.Format("2006-01-02T15:04:05.000Z07:00"),
+		Time:            durationMs,
+		Request: HARRequest{
+			Method:      "GET",
+			URL:         wf.URL,
+			HTTPVersion: "HTTP/1.1",
+			Headers:     make([]HARNameValue, 0),
+			QueryString: parseQueryString(wf.URL),
+			HeadersSize: -1,
+			BodySize:    0,
+		},
+		Response: HARResponse{
+			Status:      0,
+			StatusText:  "",
+			HTTPVersion: "HTTP/1.1",
+			Headers:     make([]HARNameValue, 0),
+			Content: HARContent{
+				Size:     wf.DecodedBodySize,
+				MimeType: "",
+			},
+			HeadersSize: -1,
+			BodySize:    wf.EncodedBodySize,
+		},
+		Timings: HARTimings{
+			Send:    sendMs,
+			Wait:    waitMs,
+			Receive: receiveMs,
+		},
+		Comment: "From resource timing (no body captured)",
+	}
+}
+
+// enrichTimingsFromWaterfall replaces -1 timing values with computed values from waterfall data.
+func enrichTimingsFromWaterfall(entry *HAREntry, wf types.NetworkWaterfallEntry) {
+	sendMs, waitMs, receiveMs := computeWaterfallTimings(wf)
+	if entry.Timings.Send == -1 {
+		entry.Timings.Send = sendMs
+	}
+	if entry.Timings.Receive == -1 {
+		entry.Timings.Receive = receiveMs
+	}
+	// Update wait only if it was the default (entire duration).
+	if entry.Timings.Wait == entry.Time && waitMs >= 0 {
+		entry.Timings.Wait = waitMs
+	}
+}
+
+// computeWaterfallTimings derives send/wait/receive from PerformanceResourceTiming fields.
+// All values are in milliseconds. Returns -1 for phases that can't be computed.
+func computeWaterfallTimings(wf types.NetworkWaterfallEntry) (send, wait, receive int) {
+	if wf.FetchStart <= 0 || wf.ResponseEnd <= 0 {
+		return -1, int(wf.Duration), -1
+	}
+
+	// send = fetchStart - startTime (DNS + connection setup)
+	sendF := wf.FetchStart - wf.StartTime
+	if sendF < 0 {
+		sendF = 0
+	}
+
+	// receive = responseEnd - fetchStart - (total - duration would be wait)
+	// Simplified: total = send + wait + receive, so wait = duration - send - receive
+	// We estimate receive as a fraction, but more accurately:
+	// send phase = fetchStart - startTime
+	// the rest (fetchStart to responseEnd) = wait + receive
+	// Without responseStart, we can't split wait/receive precisely.
+	// Use: wait = most of the remaining, receive = 0
+	remainF := wf.ResponseEnd - wf.FetchStart
+	if remainF < 0 {
+		remainF = 0
+	}
+
+	send = int(sendF)
+	wait = int(remainF)
+	receive = 0
+	return send, wait, receive
+}
+
+// matchesWaterfallFilter checks if a waterfall entry passes the filter criteria.
+// Status filters are skipped since waterfall entries have no status code.
+func matchesWaterfallFilter(wf types.NetworkWaterfallEntry, filter types.NetworkBodyFilter) bool {
+	if filter.URLFilter != "" && !strings.Contains(strings.ToLower(wf.URL), strings.ToLower(filter.URLFilter)) {
+		return false
+	}
+	if filter.Method != "" && !strings.EqualFold("GET", filter.Method) {
+		return false
+	}
+	// Status filters don't apply — waterfall has no status code.
+	return true
 }
 
 // ============================================

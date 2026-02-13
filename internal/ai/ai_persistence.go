@@ -7,7 +7,6 @@
 package ai
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/state"
 )
 
 // Constants
@@ -33,7 +34,7 @@ const (
 // Types
 
 // SessionStore provides persistent cross-session memory backed by disk.
-// Data is stored in .gasoline/ within the project directory.
+// Data is stored under ~/.gasoline/projects/{project-path}/.
 //
 // Lock ordering: mu before dirtyMu. Never hold dirtyMu while acquiring mu.
 type SessionStore struct {
@@ -100,7 +101,7 @@ type SessionStoreArgs struct {
 // Constructor
 
 // NewSessionStore creates a new SessionStore with default flush interval.
-// projectPath is the project root directory; data is stored in projectPath/.gasoline/
+// projectPath is the project root directory; data is stored under ~/.gasoline/projects/
 func NewSessionStore(projectPath string) (*SessionStore, error) {
 	return NewSessionStoreWithInterval(projectPath, defaultFlushInterval)
 }
@@ -119,7 +120,10 @@ func NewSessionStoreWithInterval(projectPath string, flushInterval time.Duration
 		return nil, fmt.Errorf("project path contains '..': %s", absPath)
 	}
 
-	projectDir := filepath.Join(absPath, ".gasoline")
+	projectDir, err := state.ProjectDir(absPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve project directory: %w", err)
+	}
 
 	s := &SessionStore{
 		projectPath:   absPath,
@@ -129,13 +133,10 @@ func NewSessionStoreWithInterval(projectPath string, flushInterval time.Duration
 		stopCh:        make(chan struct{}),
 	}
 
-	// Create .gasoline directory
+	// Create project persistence directory
 	if err := os.MkdirAll(projectDir, dirPermissions); err != nil {
-		return nil, fmt.Errorf("failed to create .gasoline directory: %w", err)
+		return nil, fmt.Errorf("failed to create project directory: %w", err)
 	}
-
-	// Ensure .gasoline is in .gitignore
-	s.ensureGitignore()
 
 	// Load or create meta
 	if err := s.loadOrCreateMeta(); err != nil {
@@ -146,35 +147,6 @@ func NewSessionStoreWithInterval(projectPath string, flushInterval time.Duration
 	go s.backgroundFlush()
 
 	return s, nil
-}
-
-// ensureGitignore adds .gasoline/ to .gitignore if not already present.
-func (s *SessionStore) ensureGitignore() {
-	gitignorePath := filepath.Join(s.projectPath, ".gitignore")
-
-	// Check if .gitignore exists and already contains .gasoline
-	// #nosec G304 -- path is constructed from internal projectPath field
-	if data, err := os.ReadFile(gitignorePath); err == nil { // nosemgrep: go_filesystem_rule-fileread -- local persistence store I/O
-		scanner := bufio.NewScanner(strings.NewReader(string(data)))
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if line == ".gasoline" || line == ".gasoline/" {
-				return // already present
-			}
-		}
-		// Append to existing file
-		f, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_WRONLY, filePermissions) // #nosec G304 -- path is constructed from internal projectPath field // nosemgrep: go_filesystem_rule-fileread -- local persistence store I/O
-		if err != nil {
-			return
-		}
-		// Add newline before if file doesn't end with one
-		if len(data) > 0 && data[len(data)-1] != '\n' {
-			_, _ = f.WriteString("\n")
-		}
-		_, _ = f.WriteString(".gasoline/\n")
-		_ = f.Close()
-	}
-	// If .gitignore doesn't exist, don't create one (might not be a git repo)
 }
 
 // Meta Operations

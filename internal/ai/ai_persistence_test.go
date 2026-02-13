@@ -3,15 +3,17 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/state"
 )
 
 func newTestSessionStore(t *testing.T) *SessionStore {
 	t.Helper()
+
+	stateDir := t.TempDir()
+	t.Setenv(state.StateDirEnv, stateDir)
 
 	store, err := NewSessionStoreWithInterval(t.TempDir(), time.Hour)
 	if err != nil {
@@ -62,40 +64,6 @@ func TestSessionStore_CRUDAndStats(t *testing.T) {
 	}
 	if _, err := store.Load("noise", "config"); err == nil {
 		t.Fatal("Load() after Delete() should fail")
-	}
-}
-
-func TestSessionStore_EnsureGitignoreAddsGasolineOnlyOnce(t *testing.T) {
-	t.Parallel()
-	projectDir := t.TempDir()
-	gitignorePath := filepath.Join(projectDir, ".gitignore")
-	if err := os.WriteFile(gitignorePath, []byte("node_modules"), 0o644); err != nil {
-		t.Fatalf("Write .gitignore error = %v", err)
-	}
-
-	store1, err := NewSessionStoreWithInterval(projectDir, time.Hour)
-	if err != nil {
-		t.Fatalf("first NewSessionStoreWithInterval() error = %v", err)
-	}
-	store1.Shutdown()
-
-	store2, err := NewSessionStoreWithInterval(projectDir, time.Hour)
-	if err != nil {
-		t.Fatalf("second NewSessionStoreWithInterval() error = %v", err)
-	}
-	store2.Shutdown()
-
-	data, err := os.ReadFile(gitignorePath) // nosemgrep: go_filesystem_rule-fileread -- test helper reads fixture/output file
-	if err != nil {
-		t.Fatalf("Read .gitignore error = %v", err)
-	}
-
-	content := string(data)
-	if !strings.Contains(content, ".gasoline/") {
-		t.Fatalf(".gitignore missing .gasoline/ entry: %q", content)
-	}
-	if strings.Count(content, ".gasoline/") != 1 {
-		t.Fatalf(".gitignore should contain .gasoline/ once, got %d entries", strings.Count(content, ".gasoline/"))
 	}
 }
 

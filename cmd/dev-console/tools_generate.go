@@ -380,6 +380,7 @@ func (h *ToolHandler) toolExportHAR(req JSONRPCRequest, args json.RawMessage) JS
 	}
 
 	bodies := h.capture.GetNetworkBodies()
+	waterfall := h.capture.GetNetworkWaterfallEntries()
 	filter := capture.NetworkBodyFilter{
 		URLFilter: params.URL,
 		Method:    params.Method,
@@ -388,7 +389,7 @@ func (h *ToolHandler) toolExportHAR(req JSONRPCRequest, args json.RawMessage) JS
 	}
 
 	if params.SaveTo != "" {
-		result, err := export.ExportHARToFile(bodies, filter, version, params.SaveTo)
+		result, err := export.ExportHARMergedToFile(bodies, waterfall, filter, version, params.SaveTo)
 		if err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 				"export_failed", "HAR file export failed: "+err.Error(), "Check the save_to path and try again",
@@ -399,7 +400,7 @@ func (h *ToolHandler) toolExportHAR(req JSONRPCRequest, args json.RawMessage) JS
 		)}
 	}
 
-	harLog := export.ExportHAR(bodies, filter, version)
+	harLog := export.ExportHARMerged(bodies, waterfall, filter, version)
 	summary := fmt.Sprintf("HAR export (%d entries)", len(harLog.Log.Entries))
 	// Convert to generic map for mcpJSONResponse
 	harJSON, _ := json.Marshal(harLog)

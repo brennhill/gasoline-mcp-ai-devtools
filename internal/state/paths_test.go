@@ -1,6 +1,7 @@
 package state
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -83,16 +84,21 @@ func TestRuntimePathsUnderRoot(t *testing.T) {
 	}
 }
 
-func TestLegacyPathsUseHomeDirectory(t *testing.T) {
+func TestLegacyPathsUseUserConfigDir(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatalf("os.UserConfigDir() error = %v", err)
+	}
 
 	legacyRoot, err := LegacyRootDir()
 	if err != nil {
 		t.Fatalf("LegacyRootDir() error = %v", err)
 	}
-	if want := filepath.Join(home, ".gasoline"); legacyRoot != want {
+	if want := filepath.Join(configDir, appName); legacyRoot != want {
 		t.Fatalf("LegacyRootDir() = %q, want %q", legacyRoot, want)
 	}
 

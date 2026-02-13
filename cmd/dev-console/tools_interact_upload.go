@@ -1,6 +1,6 @@
 // tools_interact_upload.go — MCP interact upload action handler.
 // Implements the "upload" action for the interact tool with 4-stage escalation.
-// Requires --enable-upload-automation flag to be set on the server.
+// Stage 4 (OS automation) requires --enable-os-upload-automation flag.
 //
 // JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
 // Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
@@ -26,15 +26,8 @@ type uploadParams struct {
 }
 
 // handleUpload dispatches the "upload" interact action.
-// Validates parameters, checks security flags, and queues the upload operation.
+// Validates parameters and queues the upload operation.
 func (h *ToolHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if !h.uploadAutomationEnabled {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrUploadDisabled, "Upload automation is disabled. Start server with --enable-upload-automation flag.",
-			"Restart the server with: gasoline-mcp --enable-upload-automation",
-			withHint("Upload automation requires explicit opt-in for security. See docs/features/file-upload/tech-spec.md"))}
-	}
-
 	var params uploadParams
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}

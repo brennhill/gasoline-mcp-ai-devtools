@@ -20,8 +20,8 @@ const (
 	// State errors — LLM must change state before retrying
 	ErrNotInitialized    = "not_initialized"
 	ErrNoData            = "no_data"
-	ErrCodePilotDisabled = "pilot_disabled" // Named ErrCodePilotDisabled to avoid collision with var ErrCodePilotDisabled in pilot.go
-	ErrUploadDisabled    = "upload_disabled"
+	ErrCodePilotDisabled    = "pilot_disabled" // Named ErrCodePilotDisabled to avoid collision with var ErrCodePilotDisabled in pilot.go
+	ErrOsAutomationDisabled = "os_automation_disabled"
 	ErrRateLimited       = "rate_limited"
 	ErrCursorExpired     = "cursor_expired" // Cursor pagination: buffer overflow evicted cursor position
 

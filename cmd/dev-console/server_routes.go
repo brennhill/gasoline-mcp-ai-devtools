@@ -231,8 +231,21 @@ func storeElementDetails(details map[string]json.RawMessage) {
 	for correlationID, rawDetail := range details {
 		var detail AnnotationDetail
 		if err := json.Unmarshal(rawDetail, &detail); err == nil {
+			if detail.Selector == "" && detail.Tag == "" {
+				rawStr := string(rawDetail)
+				if len(rawStr) > 200 {
+					rawStr = rawStr[:200] + "..."
+				}
+				fmt.Fprintf(os.Stderr, "[gasoline] draw detail %s: empty (raw=%s)\n", correlationID, rawStr)
+			}
 			detail.CorrelationID = correlationID
 			globalAnnotationStore.StoreDetail(correlationID, detail)
+		} else {
+			rawStr := string(rawDetail)
+			if len(rawStr) > 200 {
+				rawStr = rawStr[:200] + "..."
+			}
+			fmt.Fprintf(os.Stderr, "[gasoline] draw detail %s: unmarshal error: %v (raw=%s)\n", correlationID, err, rawStr)
 		}
 	}
 }
@@ -693,22 +706,23 @@ func handleClientByID(w http.ResponseWriter, r *http.Request, cap *capture.Captu
 // registerUploadRoutes adds upload automation endpoints to the mux.
 // NOT MCP — These are extension-to-daemon escalation stages for file upload automation.
 // AI agents use interact(action: "upload") via MCP instead.
+// Stages 1-3 are always available; Stage 4 requires --enable-os-upload-automation.
 func registerUploadRoutes(mux *http.ServeMux, server *Server) {
-	// NOT MCP — File read metadata (upload escalation stage 1)
+	// NOT MCP — File read metadata (upload escalation stage 1, always available)
 	mux.HandleFunc("/api/file/read", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
-		server.handleFileRead(w, r, uploadAutomationFlag)
+		server.handleFileRead(w, r)
 	})))
-	// NOT MCP — File dialog injection (upload escalation stage 2)
+	// NOT MCP — File dialog injection (upload escalation stage 2, always available)
 	mux.HandleFunc("/api/file/dialog/inject", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
-		server.handleFileDialogInject(w, r, uploadAutomationFlag)
+		server.handleFileDialogInject(w, r)
 	})))
-	// NOT MCP — Form submit helper (upload escalation stage 3)
+	// NOT MCP — Form submit helper (upload escalation stage 3, always available)
 	mux.HandleFunc("/api/form/submit", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
-		server.handleFormSubmit(w, r, uploadAutomationFlag)
+		server.handleFormSubmit(w, r)
 	})))
-	// NOT MCP — OS-level file dialog automation (upload escalation stage 4, requires native binaries)
+	// NOT MCP — OS-level file dialog automation (upload escalation stage 4, requires --enable-os-upload-automation)
 	mux.HandleFunc("/api/os-automation/inject", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
-		server.handleOSAutomation(w, r, uploadAutomationFlag)
+		server.handleOSAutomation(w, r, osUploadAutomationFlag)
 	})))
 }
 
