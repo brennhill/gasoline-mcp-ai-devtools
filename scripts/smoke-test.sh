@@ -1,11 +1,11 @@
 #!/bin/bash
-# smoke-test-runner.sh — Orchestrator for modular smoke tests.
-# Sources each module sequentially so shared mutable state
+# smoke-test.sh — Human smoke test for Gasoline MCP.
+# Sources modular test modules sequentially. Shared mutable state
 # (EXTENSION_CONNECTED, PILOT_ENABLED, SMOKE_MARKER) flows across modules.
 #
 # Usage:
-#   bash scripts/smoke-test-runner.sh          # default port 7890
-#   bash scripts/smoke-test-runner.sh 7890     # explicit port
+#   bash scripts/smoke-test.sh          # default port 7890
+#   bash scripts/smoke-test.sh 7890     # explicit port
 set -euo pipefail
 
 RUNNER_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -21,7 +21,7 @@ echo ""
 echo "============================================================"
 echo "  GASOLINE SMOKE TEST SUITE"
 echo "  Port: $PORT | $(date)"
-echo "  68 tests across 13 modules"
+echo "  80 tests across 14 modules"
 echo "============================================================"
 echo ""
 
@@ -39,6 +39,7 @@ MODULES=(
     "10-recording.sh"
     "11-subtitle-screenshot.sh"
     "12-cross-cutting.sh"
+    "14-draw-mode.sh"
     "13-stability-shutdown.sh"
 )
 

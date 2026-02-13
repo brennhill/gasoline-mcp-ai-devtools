@@ -96,7 +96,7 @@ run_test_s3() {
         echo "  >>> 1. Open Chrome with the Gasoline extension installed" | tee -a "$OUTPUT_FILE"
         echo "  >>> 2. Click the Gasoline icon > 'Track This Tab' on any page" | tee -a "$OUTPUT_FILE"
         echo "  >>> 3. Enable 'AI Web Pilot' toggle in the extension popup" | tee -a "$OUTPUT_FILE"
-        echo "  >>> 4. Re-run: bash scripts/smoke-test-runner.sh" | tee -a "$OUTPUT_FILE"
+        echo "  >>> 4. Re-run: bash scripts/smoke-test.sh" | tee -a "$OUTPUT_FILE"
         echo "" | tee -a "$OUTPUT_FILE"
     fi
 }

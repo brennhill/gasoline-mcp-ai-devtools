@@ -74,10 +74,12 @@ run_test_s6() {
     local content_text
     content_text=$(extract_content_text "$response")
 
-    if echo "$content_text" | grep -qi "click"; then
-        pass "Click action captured in observe(actions)."
+    if echo "$content_text" | grep -q "smoke-btn-${SMOKE_MARKER}\|click.*smoke-btn"; then
+        pass "Click action for 'smoke-btn-${SMOKE_MARKER}' captured in observe(actions)."
+    elif echo "$content_text" | grep -qi "click"; then
+        pass "Click action captured (button ID not in response, but click event present)."
     else
-        fail "No 'click' action found. Action capture may be broken. Actions: $(truncate "$content_text" 200)"
+        fail "No click action found. Action capture may be broken. Actions: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s6
@@ -103,10 +105,12 @@ run_test_s7() {
     local content_text
     content_text=$(extract_content_text "$response")
 
-    if echo "$content_text" | grep -qi "input\|change\|focus"; then
-        pass "Form input action captured in observe(actions)."
+    if echo "$content_text" | grep -q "smoke-input-${SMOKE_MARKER}"; then
+        pass "Input action for 'smoke-input-${SMOKE_MARKER}' captured in observe(actions)."
+    elif echo "$content_text" | grep -qi "input\|change"; then
+        pass "Input/change action captured (element ID not in response, but form event present)."
     else
-        fail "No input/change/focus action found. Form tracking may be broken. Actions: $(truncate "$content_text" 200)"
+        fail "No input/change action found. Form tracking may be broken. Actions: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s7
@@ -125,15 +129,11 @@ run_test_s8() {
     interact_and_wait "highlight" '{"action":"highlight","selector":"body","duration_ms":2000,"reason":"Highlight page body"}'
 
     if echo "$INTERACT_RESULT" | grep -qi "complete\|success\|highlighted"; then
-        pass "Highlight command completed successfully. Result: $(truncate "$INTERACT_RESULT" 200)"
+        pass "Highlight command completed successfully."
     elif echo "$INTERACT_RESULT" | grep -qi "timeout"; then
         fail "Highlight command timed out. Result: $(truncate "$INTERACT_RESULT" 200)"
     else
-        if echo "$INTERACT_RESULT" | grep -qi "correlation_id"; then
-            pass "Highlight command queued (got correlation_id). Result: $(truncate "$INTERACT_RESULT" 200)"
-        else
-            fail "Highlight command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
-        fi
+        fail "Highlight command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
     fi
 }
 run_test_s8
@@ -173,10 +173,30 @@ try:
 except: pass
 " 2>/dev/null || true
 
-    if echo "$content_text" | grep -qi "cluster\|count\|pattern\|message\|occurrence"; then
-        pass "Error clusters returned with aggregation data."
+    # Validate clusters have actual structure: array with count > 0
+    local cluster_verdict
+    cluster_verdict=$(echo "$content_text" | python3 -c "
+import sys, json
+try:
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    clusters = data.get('clusters', [])
+    if not isinstance(clusters, list) or len(clusters) == 0:
+        print('FAIL no clusters array or empty')
+    else:
+        # Verify at least one cluster has a message and count
+        valid = [c for c in clusters if c.get('message') or c.get('pattern')]
+        if len(valid) > 0:
+            print(f'PASS clusters={len(clusters)} with_message={len(valid)}')
+        else:
+            print(f'FAIL clusters={len(clusters)} but none have message/pattern fields')
+except Exception as e:
+    print(f'FAIL parse: {e}')
+" 2>/dev/null || echo "FAIL parse_error")
+
+    if echo "$cluster_verdict" | grep -q "^PASS"; then
+        pass "Error clusters returned structured data. $cluster_verdict"
     else
-        fail "observe(error_clusters) missing expected fields. Content: $(truncate "$content_text" 200)"
+        fail "observe(error_clusters) invalid. $cluster_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s9
@@ -222,10 +242,32 @@ except Exception as ex:
         return
     fi
 
-    if echo "$dom_text" | grep -qi "element\|tag\|text\|selector\|result\|timeout\|pending"; then
-        pass "DOM query returned page structure data. Content: $(truncate "$dom_text" 200)"
+    # Validate DOM query returned actual elements, not just generic keys
+    local dom_verdict
+    dom_verdict=$(echo "$dom_text" | python3 -c "
+import sys, json
+try:
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    elements = data.get('elements', data.get('results', []))
+    if isinstance(elements, list) and len(elements) > 0:
+        # Verify at least one element has a tag name
+        has_tag = any(e.get('tag') or e.get('tagName') for e in elements)
+        if has_tag:
+            print(f'PASS elements={len(elements)} with_tags=true')
+        else:
+            print(f'FAIL elements={len(elements)} but none have tag field')
+    elif isinstance(elements, list):
+        print('FAIL elements array is empty')
+    else:
+        print(f'FAIL no elements array, keys={list(data.keys())[:5]}')
+except Exception as e:
+    print(f'FAIL parse: {e}')
+" 2>/dev/null || echo "FAIL parse_error")
+
+    if echo "$dom_verdict" | grep -q "^PASS"; then
+        pass "DOM query returned page elements. $dom_verdict"
     else
-        fail "DOM query response missing expected fields. Content: $(truncate "$dom_text" 200)"
+        fail "DOM query invalid. $dom_verdict. Content: $(truncate "$dom_text" 200)"
     fi
 }
 run_test_s10

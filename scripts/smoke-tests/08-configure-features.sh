@@ -235,8 +235,23 @@ run_test_s64() {
     echo "  [status after enable]"
     echo "    $(truncate "$status_text" 150)"
 
+    # Parse status to verify enabled state (not just keyword presence)
     local enabled_after_enable=false
-    if echo "$status_text" | grep -qiE "enabled.*true\|active.*true\|\"enabled\"\|streaming.*on\|events"; then
+    local enable_verdict
+    enable_verdict=$(echo "$status_text" | python3 -c "
+import sys, json
+try:
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    enabled = data.get('enabled', data.get('active', data.get('streaming', None)))
+    if enabled is True or enabled == 'true':
+        print('ENABLED')
+    elif 'events' in data and isinstance(data['events'], list) and len(data['events']) > 0:
+        print('ENABLED')
+    else:
+        print(f'NOT_ENABLED keys={list(data.keys())[:5]} enabled={enabled}')
+except: print('PARSE_ERROR')
+" 2>/dev/null || echo "PARSE_ERROR")
+    if echo "$enable_verdict" | grep -q "^ENABLED"; then
         enabled_after_enable=true
     fi
 
@@ -308,13 +323,11 @@ run_test_s65() {
     echo "  [boundary end response]"
     echo "    $(truncate "$end_text" 150)"
 
-    # Verify the end response references the test_id and contains boundary data
+    # Verify the end response references the test_id
     if echo "$end_text" | grep -qi "smoke-boundary"; then
         pass "Test boundaries: start/end completed for 'smoke-boundary'. End response references test_id."
-    elif ! check_not_error "$end_response"; then
-        fail "test_boundary_end returned error for 'smoke-boundary'. Content: $(truncate "$end_text" 200)"
     else
-        pass "Test boundaries: start/end completed for 'smoke-boundary'."
+        fail "Test boundaries: end response did not reference 'smoke-boundary'. Content: $(truncate "$end_text" 200)"
     fi
 }
 run_test_s65

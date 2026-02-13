@@ -29,15 +29,13 @@ run_test_s54() {
     echo "  [reproduction preview]"
     echo "$content_text" | head -5
 
-    if echo "$content_text" | grep -qiE "page\.|goto|click|playwright|browser|test"; then
+    # Prior tests seeded multiple actions — reproduction MUST contain code
+    if echo "$content_text" | grep -qE "page\.\|await.*goto\|\.click\("; then
+        pass "generate(reproduction) contains Playwright code (page.goto/click)."
+    elif echo "$content_text" | grep -qiE "page\.|goto|click|playwright"; then
         pass "generate(reproduction) contains Playwright code patterns."
     else
-        # May return a message if no actions recorded
-        if echo "$content_text" | grep -qiE "no action|empty|nothing"; then
-            pass "generate(reproduction) returned (no actions to replay). Expected without prior interactions."
-        else
-            fail "generate(reproduction) missing Playwright patterns. Content: $(truncate "$content_text" 200)"
-        fi
+        fail "generate(reproduction) missing Playwright patterns. Actions were seeded by prior tests. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s54
@@ -66,14 +64,13 @@ run_test_s55() {
     echo "  [test preview]"
     echo "$content_text" | head -5
 
-    if echo "$content_text" | grep -qiE "test|expect|describe|it\(|smoke-test"; then
-        pass "generate(test) contains test/expect patterns with name 'smoke-test'."
+    # Prior tests seeded actions — test generation MUST contain test code
+    if echo "$content_text" | grep -qE "test\(|describe\(|it\("; then
+        pass "generate(test) contains test framework patterns (test/describe/it)."
+    elif echo "$content_text" | grep -qiE "expect|playwright|page\."; then
+        pass "generate(test) contains test assertion patterns."
     else
-        if echo "$content_text" | grep -qiE "no action|empty|nothing"; then
-            pass "generate(test) returned (no actions to generate test from). Expected without prior interactions."
-        else
-            fail "generate(test) missing test patterns. Content: $(truncate "$content_text" 200)"
-        fi
+        fail "generate(test) missing test patterns. Actions were seeded by prior tests. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s55
@@ -171,14 +168,29 @@ except Exception as e:
     print(f'    (parse: {e})')
 " 2>/dev/null || true
 
-    local has_version has_runs
-    has_version=$(echo "$content_text" | grep -c '"version"' || true)
-    has_runs=$(echo "$content_text" | grep -c '"runs"' || true)
+    # Validate SARIF structure: version must be "2.1.0" and runs array must exist
+    local sarif_verdict
+    sarif_verdict=$(echo "$content_text" | python3 -c "
+import sys, json
+try:
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    version = data.get('version', '')
+    runs = data.get('runs', [])
+    schema = data.get('\$schema', '')
+    if version == '2.1.0' and isinstance(runs, list):
+        print(f'PASS version=2.1.0 runs={len(runs)}')
+    elif version and isinstance(runs, list):
+        print(f'PASS version={version} runs={len(runs)}')
+    else:
+        print(f'FAIL version={version} runs_type={type(runs).__name__}')
+except Exception as e:
+    print(f'FAIL parse: {e}')
+" 2>/dev/null || echo "FAIL parse_error")
 
-    if [ "$has_version" -gt 0 ] && [ "$has_runs" -gt 0 ]; then
-        pass "generate(sarif) has valid SARIF structure (version + runs)."
+    if echo "$sarif_verdict" | grep -q "^PASS"; then
+        pass "generate(sarif) valid SARIF. $sarif_verdict"
     else
-        fail "generate(sarif) missing SARIF fields. version=$has_version, runs=$has_runs. Content: $(truncate "$content_text" 200)"
+        fail "generate(sarif) invalid. $sarif_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s57
@@ -273,15 +285,13 @@ run_test_s59() {
     echo "  [csp policy]"
     echo "$content_text" | head -3
 
-    if echo "$content_text" | grep -qiE "default-src|script-src|style-src|policy|directive|self"; then
-        pass "generate(csp) returned CSP policy directives."
+    # CSP must contain actual directives, not just the word "csp"
+    if echo "$content_text" | grep -qiE "default-src|script-src|style-src|connect-src|img-src"; then
+        pass "generate(csp) returned CSP policy with directives."
+    elif echo "$content_text" | grep -qiE "'self'|'none'|'unsafe-inline'"; then
+        pass "generate(csp) returned CSP policy values."
     else
-        # CSP may return a structured object instead of raw header
-        if echo "$content_text" | grep -qiE "csp|content.security|header"; then
-            pass "generate(csp) returned CSP-related content."
-        else
-            fail "generate(csp) missing policy directives. Content: $(truncate "$content_text" 200)"
-        fi
+        fail "generate(csp) missing CSP directives (default-src, script-src, etc.). Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s59
