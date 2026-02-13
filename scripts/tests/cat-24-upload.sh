@@ -34,7 +34,7 @@ run_test_24_1() {
     fi
     local text
     text=$(extract_content_text "$RESPONSE")
-    if check_contains "$text" "upload_disabled\|Upload automation is disabled\|enable-upload-automation"; then
+    if check_matches "$text" "upload_disabled|Upload automation is disabled|enable-upload-automation"; then
         pass "Upload correctly rejected with disabled message."
     else
         fail "Expected upload_disabled error. Content: $(truncate "$text")"
@@ -84,7 +84,7 @@ run_test_24_3() {
     fi
     local text
     text=$(extract_content_text "$RESPONSE")
-    if check_contains "$text" "file_path\|missing_param"; then
+    if check_matches "$text" "file_path|missing_param"; then
         pass "Missing file_path correctly returned error mentioning file_path."
     else
         fail "Expected file_path in error. Content: $(truncate "$text")"
@@ -104,7 +104,7 @@ run_test_24_4() {
     fi
     local text
     text=$(extract_content_text "$RESPONSE")
-    if check_contains "$text" "selector\|apiEndpoint\|missing_param"; then
+    if check_matches "$text" "selector|apiEndpoint|missing_param"; then
         pass "Missing selector/apiEndpoint correctly returned error."
     else
         fail "Expected selector mention in error. Content: $(truncate "$text")"
@@ -124,7 +124,7 @@ run_test_24_5() {
     fi
     local text
     text=$(extract_content_text "$RESPONSE")
-    if check_contains "$text" "path_not_allowed\|absolute path"; then
+    if check_matches "$text" "path_not_allowed|absolute path"; then
         pass "Relative path correctly rejected with path_not_allowed."
     else
         fail "Expected path_not_allowed in error. Content: $(truncate "$text")"
@@ -144,7 +144,7 @@ run_test_24_6() {
     fi
     local text
     text=$(extract_content_text "$RESPONSE")
-    if check_contains "$text" "invalid_param\|not found\|File not found"; then
+    if check_matches "$text" "invalid_param|not found|File not found"; then
         pass "Nonexistent file correctly returned error."
     else
         fail "Expected file not found error. Content: $(truncate "$text")"
@@ -164,7 +164,7 @@ run_test_24_7() {
     fi
     local text
     text=$(extract_content_text "$RESPONSE")
-    if check_contains "$text" "invalid_param\|directory\|not a file"; then
+    if check_matches "$text" "invalid_param|directory|not a file"; then
         pass "Directory path correctly rejected."
     else
         fail "Expected directory rejection error. Content: $(truncate "$text")"
@@ -197,7 +197,7 @@ run_test_24_8() {
         return
     fi
 
-    if check_contains "$text" '"status".*queued\|"status": "queued"'; then
+    if check_matches "$text" '"status".*queued|"status": "queued"'; then
         pass "Upload queued response has all expected fields (status=queued, correlation_id, file_name, file_size, mime_type, progress_tier)."
     else
         # Fields present but status might not be "queued" — still pass for field presence

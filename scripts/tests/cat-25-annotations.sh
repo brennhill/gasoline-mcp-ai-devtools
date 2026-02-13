@@ -99,10 +99,10 @@ run_test_25_2() {
 
     # Verify the posted annotation appears in results
     local found_fields=0
-    if check_contains "$text" "ann_25_2\|roundtrip-test-marker"; then
+    if check_matches "$text" "ann_25_2|roundtrip-test-marker"; then
         found_fields=$((found_fields + 1))
     fi
-    if check_contains "$text" "roundtrip\|example.com"; then
+    if check_matches "$text" "roundtrip|example\.com"; then
         found_fields=$((found_fields + 1))
     fi
 
@@ -138,7 +138,7 @@ run_test_25_3() {
     if check_is_error "$RESPONSE"; then
         # Detail might not be found if correlation_id doesn't match internal storage
         # This is acceptable — the test verifies the API responds properly
-        if check_contains "$text" "not found\|expired\|no detail"; then
+        if check_matches "$text" "not found|expired|no detail"; then
             pass "analyze(annotation_detail) returned proper not-found response for correlation_id."
         else
             fail "analyze(annotation_detail) returned unexpected error. Content: $(truncate "$text")"
@@ -147,7 +147,7 @@ run_test_25_3() {
     fi
 
     # Success path: verify detail contains element info
-    if check_contains "$text" "corr_25_3\|detail-test\|div.target\|selector"; then
+    if check_matches "$text" "corr_25_3|detail-test|div\.target|selector"; then
         pass "analyze(annotation_detail) returned element detail for corr_25_3."
     else
         pass "analyze(annotation_detail) returned response for corr_25_3. Content: $(truncate "$text" 200)"
@@ -188,7 +188,7 @@ run_test_25_4() {
         return
     fi
 
-    if check_contains "$text" "new-annotation-marker\|ann_25_4_new"; then
+    if check_matches "$text" "new-annotation-marker|ann_25_4_new"; then
         pass "Latest annotation (ann_25_4_new) found after overwrite to same tab."
     else
         # Even if old is still present (accumulation), as long as new is present it's valid
@@ -234,10 +234,10 @@ run_test_25_5() {
 
     # Check that both pages' annotations are present
     local found=0
-    if check_contains "$text" "page-one-note\|ann_25_5a\|page1"; then
+    if check_matches "$text" "page-one-note|ann_25_5a|page1"; then
         found=$((found + 1))
     fi
-    if check_contains "$text" "page-two-note\|ann_25_5b\|page2"; then
+    if check_matches "$text" "page-two-note|ann_25_5b|page2"; then
         found=$((found + 1))
     fi
 
@@ -277,7 +277,7 @@ run_test_25_6() {
     text=$(extract_content_text "$RESPONSE")
 
     if check_is_error "$RESPONSE"; then
-        if check_contains "$text" "not found\|expired"; then
+        if check_matches "$text" "not found|expired"; then
             pass "analyze(annotation_detail) responded properly (detail may not persist via HTTP path)."
         else
             fail "Unexpected error: $(truncate "$text")"
@@ -314,7 +314,7 @@ run_test_25_7() {
     fi
 
     # Should have a count field and sessions array
-    if check_contains "$text" "count\|sessions"; then
+    if check_matches "$text" "count|sessions"; then
         pass "analyze(draw_history) returns session listing with count field."
     else
         fail "Expected count/sessions in response. Content: $(truncate "$text" 300)"
@@ -331,7 +331,7 @@ run_test_25_8() {
     local text
     text=$(extract_content_text "$RESPONSE")
 
-    if check_contains "$text" "path traversal\|not allowed\|invalid"; then
+    if check_matches "$text" "path traversal|not allowed|invalid"; then
         pass "Path traversal attempt properly rejected."
     else
         fail "Expected path traversal rejection. Content: $(truncate "$text" 300)"
@@ -348,7 +348,7 @@ run_test_25_9() {
     local text
     text=$(extract_content_text "$RESPONSE")
 
-    if check_contains "$text" "not found\|no such file\|does not exist"; then
+    if check_matches "$text" "not found|no such file|does not exist"; then
         pass "Missing file handled gracefully with proper error message."
     else
         fail "Expected not-found error. Content: $(truncate "$text" 300)"

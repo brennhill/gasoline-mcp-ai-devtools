@@ -456,6 +456,23 @@ export function domPrimitive(
           }
         }
         const key = options.text || 'Enter'
+
+        // Tab/Shift+Tab: manually move focus (dispatchEvent can't trigger native tab traversal)
+        if (key === 'Tab' || key === 'Shift+Tab') {
+          const focusable = Array.from(
+            el.ownerDocument.querySelectorAll(
+              'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            )
+          ).filter((e) => (e as HTMLElement).offsetParent !== null) as HTMLElement[]
+          const idx = focusable.indexOf(el)
+          const next = key === 'Shift+Tab' ? focusable[idx - 1] : focusable[idx + 1]
+          if (next) {
+            next.focus()
+            return { success: true, action, selector, value: key }
+          }
+          return { success: true, action, selector, value: key, message: 'No next focusable element' }
+        }
+
         const keyMap: Record<string, { key: string; code: string; keyCode: number }> = {
           Enter: { key: 'Enter', code: 'Enter', keyCode: 13 },
           Tab: { key: 'Tab', code: 'Tab', keyCode: 9 },

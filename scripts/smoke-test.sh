@@ -4,8 +4,9 @@
 # (EXTENSION_CONNECTED, PILOT_ENABLED, SMOKE_MARKER) flows across modules.
 #
 # Usage:
-#   bash scripts/smoke-test.sh          # default port 7890
-#   bash scripts/smoke-test.sh 7890     # explicit port
+#   bash scripts/smoke-test.sh              # default port 7890
+#   bash scripts/smoke-test.sh 7890         # explicit port
+#   START_FROM=07 bash scripts/smoke-test.sh  # resume from module 07
 set -euo pipefail
 
 RUNNER_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -25,6 +26,12 @@ echo "  80 tests across 14 modules"
 echo "============================================================"
 echo ""
 
+# ── Resume point ─────────────────────────────────────────
+# START_FROM=07 bash scripts/smoke-test.sh  # skip to module 07
+# Bootstrap (01) always runs to initialize extension state.
+START_FROM="${START_FROM:-}"
+SKIP_UNTIL_FOUND="${START_FROM:+true}"
+
 # ── Run modules in order ─────────────────────────────────
 MODULES=(
     "01-bootstrap.sh"
@@ -39,11 +46,24 @@ MODULES=(
     "10-recording.sh"
     "11-subtitle-screenshot.sh"
     "12-cross-cutting.sh"
-    "14-draw-mode.sh"
-    "13-stability-shutdown.sh"
+    "13-draw-mode.sh"
+    "14-stability-shutdown.sh"
 )
 
 for module in "${MODULES[@]}"; do
+    # Skip modules until START_FROM match
+    if [ "$SKIP_UNTIL_FOUND" = "true" ]; then
+        if [[ "$module" == *"$START_FROM"* ]]; then
+            SKIP_UNTIL_FOUND=""
+        else
+            # Always run bootstrap (sets extension state)
+            if [[ "$module" != "01-bootstrap.sh" ]]; then
+                echo "  (skipping $module)"
+                continue
+            fi
+        fi
+    fi
+
     module_path="$SMOKE_DIR/$module"
     if [ ! -f "$module_path" ]; then
         echo "WARNING: Module $module not found, skipping."
@@ -61,11 +81,11 @@ done
     echo "============================================================"
     echo "  Passed:  $PASS_COUNT"
     echo "  Failed:  $FAIL_COUNT"
-    echo "  Skipped: $SKIPPED_COUNT"
+    echo "  Skipped: $SKIP_COUNT"
     echo ""
     if [ "$FAIL_COUNT" -eq 0 ]; then
-        if [ "$SKIPPED_COUNT" -gt 0 ]; then
-            echo "  Result: PASSED (with $SKIPPED_COUNT skipped)"
+        if [ "$SKIP_COUNT" -gt 0 ]; then
+            echo "  Result: PASSED (with $SKIP_COUNT skipped)"
         else
             echo "  Result: ALL PASSED"
         fi

@@ -19,6 +19,7 @@ package main
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -37,10 +38,12 @@ type configureTestEnv struct {
 
 func newConfigureTestEnv(t *testing.T) *configureTestEnv {
 	t.Helper()
-	server, err := NewServer("/tmp/test-configure-audit.jsonl", 100)
+	logFile := filepath.Join(t.TempDir(), "test-configure.jsonl")
+	server, err := NewServer(logFile, 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}
+	t.Cleanup(func() { server.Close() })
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)

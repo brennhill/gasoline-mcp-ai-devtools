@@ -1,15 +1,15 @@
 #!/bin/bash
-# 11-subtitle-screenshot.sh — S.21-S.22, S.24: Subtitle, composable subtitle, screenshot.
+# 11-subtitle-screenshot.sh — 11.1-11.3: Subtitle, composable subtitle, screenshot.
 set -eo pipefail
 
 begin_category "11" "Subtitle & Screenshot" "3"
 
-# ── Test S.21: Subtitle standalone ───────────────────────
-begin_test "S.21" "Subtitle: standalone set, verify visible, then clear" \
+# ── Test 11.1: Subtitle standalone ───────────────────────
+begin_test "11.1" "Subtitle: standalone set, verify visible, then clear" \
     "Use interact(subtitle) to display text at bottom of viewport, verify, then clear" \
     "Tests: subtitle pipeline: MCP > daemon > extension > content script overlay"
 
-run_test_s21() {
+run_test_11_1() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -69,14 +69,14 @@ run_test_s21() {
         pass "Subtitle: set and clear commands accepted. DOM check: $(truncate "$clear_check" 200)"
     fi
 }
-run_test_s21
+run_test_11_1
 
-# ── Test S.22: Subtitle as optional param on navigate ────
-begin_test "S.22" "Subtitle as optional param on interact(navigate)" \
+# ── Test 11.2: Subtitle as optional param on navigate ────
+begin_test "11.2" "Subtitle as optional param on interact(navigate)" \
     "Navigate with subtitle param in same call, verify both navigation and subtitle happen" \
     "Tests: composable subtitle — single tool call for action + narration"
 
-run_test_s22() {
+run_test_11_2() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -121,14 +121,14 @@ run_test_s22() {
 
     interact_and_wait "subtitle" '{"action":"subtitle","text":""}'
 }
-run_test_s22
+run_test_11_2
 
-# ── Test S.24: On-demand screenshot ──────────────────────
-begin_test "S.24" "Screenshot: on-demand capture via observe(screenshot)" \
+# ── Test 11.3: On-demand screenshot ──────────────────────
+begin_test "11.3" "Screenshot: on-demand capture via observe(screenshot)" \
     "Call observe(screenshot) and verify it captures the current viewport" \
     "Tests: on-demand screenshot pipeline: MCP > daemon > extension > captureVisibleTab > save"
 
-run_test_s24() {
+run_test_11_3() {
     if [ "$EXTENSION_CONNECTED" != "true" ]; then
         skip "Extension not connected."
         return
@@ -174,4 +174,4 @@ run_test_s24() {
         fail "Screenshot response missing filename or path. Content: $(truncate "$text" 200)"
     fi
 }
-run_test_s24
+run_test_11_3

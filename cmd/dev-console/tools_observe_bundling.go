@@ -101,8 +101,12 @@ func (h *ToolHandler) collectErrorsAndLogs(limit int, urlFilter string) ([]timed
 }
 
 // parseEntryTimestamp parses the timestamp from a log entry, trying RFC3339 then RFC3339Nano.
+// Checks both "timestamp" (daemon-generated entries) and "ts" (extension-generated entries).
 func parseEntryTimestamp(entry LogEntry) time.Time {
 	tsStr, _ := entry["timestamp"].(string)
+	if tsStr == "" {
+		tsStr, _ = entry["ts"].(string)
+	}
 	ts, err := time.Parse(time.RFC3339, tsStr)
 	if err != nil {
 		ts, err = time.Parse(time.RFC3339Nano, tsStr)

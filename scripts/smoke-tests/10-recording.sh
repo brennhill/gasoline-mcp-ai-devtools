@@ -1,15 +1,15 @@
 #!/bin/bash
-# 10-recording.sh — S.25-S.27: Video recording, audio, watermark.
+# 10-recording.sh — 10.1-10.3: Video recording, audio, watermark.
 set -eo pipefail
 
 begin_category "10" "Recording" "3"
 
-# ── Test S.25: Record tab video (no audio) ───────────────
-begin_test "S.25" "Record tab video for 5 seconds (no audio)" \
+# ── Test 10.1: Record tab video (no audio) ───────────────
+begin_test "10.1" "Record tab video for 5 seconds (no audio)" \
     "Start recording, wait 5s, stop, verify file saved with valid metadata" \
     "Tests: full recording pipeline: MCP > daemon > extension > tabCapture > blob > server > disk"
 
-run_test_s25() {
+run_test_10_1() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -79,14 +79,14 @@ print(recs[0].get('duration_seconds',0) if recs else 0)
         fail "No 'smoke-video-test' found in saved_videos. Content: $(truncate "$saved_text" 200)"
     fi
 }
-run_test_s25
+run_test_10_1
 
-# ── Test S.26: Record tab video WITH tab audio ───────────
-begin_test "S.26" "Record tab video with audio:tab for 5 seconds" \
+# ── Test 10.2: Record tab video WITH tab audio ───────────
+begin_test "10.2" "Record tab video with audio:tab for 5 seconds" \
     "Navigate to a page with sound, record with audio:'tab', verify audio metadata" \
     "Tests: tab audio capture via tabCapture"
 
-run_test_s26() {
+run_test_10_2() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -167,21 +167,21 @@ print(recs[0].get('audio_mode','') if recs else '')
 
     if [ "$has_audio" = "True" ] && [ "$audio_mode" = "tab" ]; then
         pass "Audio recording saved: has_audio=true, audio_mode=tab."
-    elif echo "$saved_text" | grep -q "smoke-audio-test"; then
+    else
         fail "Recording saved but audio metadata missing. has_audio=$has_audio, audio_mode=$audio_mode."
     fi
 
     echo ""
     echo "  >>> Open the .webm file in ~/.gasoline/recordings/ to verify audio is audible."
 }
-run_test_s26
+run_test_10_2
 
-# ── Test S.27: Recording watermark survives page refresh ─
-begin_test "S.27" "Recording watermark survives page refresh" \
+# ── Test 10.3: Recording watermark survives page refresh ─
+begin_test "10.3" "Recording watermark survives page refresh" \
     "Start recording, refresh the page, verify watermark reappears" \
     "Tests: tabs.onUpdated listener re-sends watermark after navigation"
 
-run_test_s27() {
+run_test_10_3() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -230,4 +230,4 @@ run_test_s27() {
         fail "Watermark not found even before refresh. Recording overlay may be broken."
     fi
 }
-run_test_s27
+run_test_10_3

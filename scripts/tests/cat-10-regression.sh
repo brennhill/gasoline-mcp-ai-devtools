@@ -44,11 +44,11 @@ run_test_10_1() {
 
     # Verify the 5 expected tools are present
     local has_observe has_generate has_configure has_interact has_analyze
-    has_observe=$(echo "$tool_names" | grep -c "^observe$")
-    has_generate=$(echo "$tool_names" | grep -c "^generate$")
-    has_configure=$(echo "$tool_names" | grep -c "^configure$")
-    has_interact=$(echo "$tool_names" | grep -c "^interact$")
-    has_analyze=$(echo "$tool_names" | grep -c "^analyze$")
+    has_observe=$(echo "$tool_names" | grep -c "^observe$" || true)
+    has_generate=$(echo "$tool_names" | grep -c "^generate$" || true)
+    has_configure=$(echo "$tool_names" | grep -c "^configure$" || true)
+    has_interact=$(echo "$tool_names" | grep -c "^interact$" || true)
+    has_analyze=$(echo "$tool_names" | grep -c "^analyze$" || true)
 
     if [ "$has_observe" != "1" ] || [ "$has_generate" != "1" ] || [ "$has_configure" != "1" ] || [ "$has_interact" != "1" ] || [ "$has_analyze" != "1" ]; then
         fail "Missing expected tools. Found: $tool_names. Expected: observe, generate, configure, interact, analyze."
@@ -165,7 +165,7 @@ run_test_10_3() {
     # Extract version number from output like "gasoline v5.7.6"
     # Strip everything except the version number
     local version_from_flag
-    version_from_flag=$(echo "$version_flag" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    version_from_flag=$(echo "$version_flag" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
     if [ -z "$version_from_flag" ]; then
         fail "Could not extract version from --version output: '$version_flag'"
         return

@@ -73,7 +73,11 @@ run_test_17_20() {
         call_tool "generate" "{\"format\":\"test\",\"actions\":$(echo "$actions" | jq -c .),\"name\":\"concurrent-$i\"}" >/dev/null 2>&1 &
     done
 
-    wait  # Wait for all to complete
+    # Wait for all to complete (with per-job error tolerance)
+    local _bg_pid
+    for _bg_pid in $(jobs -p); do
+        wait "$_bg_pid" 2>/dev/null || true
+    done
 
     sleep 0.2
 
@@ -222,4 +226,4 @@ run_test_17_23() {
 }
 run_test_17_23
 
-kill_server
+finish_category

@@ -228,4 +228,4 @@ run_test_18_25() {
 }
 run_test_18_25
 
-kill_server
+finish_category

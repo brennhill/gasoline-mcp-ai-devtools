@@ -1,16 +1,16 @@
 #!/bin/bash
-# 03-observe-modes.sh — S.28-S.34: Observe modes not covered by core telemetry.
+# 03-observe-modes.sh — 3.1-3.7: Observe modes not covered by core telemetry.
 # vitals, tabs, network_bodies, error_bundles, timeline, pilot, extension_logs
 set -eo pipefail
 
 begin_category "3" "Observe Modes" "7"
 
-# ── Test S.28: Web Vitals ────────────────────────────────
-begin_test "S.28" "Web Vitals via observe(vitals)" \
+# ── Test 3.1: Web Vitals ────────────────────────────────
+begin_test "3.1" "Web Vitals via observe(vitals)" \
     "observe(vitals) after page load + click returns metrics object" \
     "Tests: extension Web Vitals collection > daemon > MCP observe"
 
-run_test_s28() {
+run_test_3_1() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -79,14 +79,14 @@ except Exception as e:
         fail "observe(vitals) returned no numeric metric values. All vitals are n/a. Verify extension is collecting Web Vitals. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s28
+run_test_3_1
 
-# ── Test S.29: Tab info ──────────────────────────────────
-begin_test "S.29" "Tab info via observe(tabs)" \
+# ── Test 3.2: Tab info ──────────────────────────────────
+begin_test "3.2" "Tab info via observe(tabs)" \
     "observe(tabs) returns tabs array with URLs and tracking status" \
     "Tests: daemon tab tracking state"
 
-run_test_s29() {
+run_test_3_2() {
     if [ "$EXTENSION_CONNECTED" != "true" ]; then
         skip "Extension not connected."
         return
@@ -137,14 +137,14 @@ except Exception as e:
         fail "observe(tabs) invalid. $tabs_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s29
+run_test_3_2
 
-# ── Test S.30: Network bodies ────────────────────────────
-begin_test "S.30" "Network bodies via observe(network_bodies)" \
+# ── Test 3.3: Network bodies ────────────────────────────
+begin_test "3.3" "Network bodies via observe(network_bodies)" \
     "Execute a fetch() then observe(network_bodies) to see request/response data" \
     "Tests: fetch interception > extension > daemon body capture"
 
-run_test_s30() {
+run_test_3_3() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -202,20 +202,20 @@ except Exception as e:
         fail "observe(network_bodies) invalid. $bodies_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s30
+run_test_3_3
 
-# ── Test S.31: Error bundles ─────────────────────────────
-begin_test "S.31" "Error bundles via observe(error_bundles)" \
-    "observe(error_bundles) after S.5 seeded errors returns context bundles" \
+# ── Test 3.4: Error bundles ─────────────────────────────
+begin_test "3.4" "Error bundles via observe(error_bundles)" \
+    "observe(error_bundles) after 2.1 seeded errors returns context bundles" \
     "Tests: error bundling with surrounding network + actions context"
 
-run_test_s31() {
+run_test_3_4() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
     fi
 
-    # S.11 clears all buffers, so we must seed fresh errors for bundling.
+    # 2.7 clears all buffers, so we must seed fresh errors for bundling.
     interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Seed error for bundling\",\"script\":\"console.error('BUNDLE_TEST_ERROR_${SMOKE_MARKER}')\"}"
     interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Seed thrown error for bundling\",\"script\":\"try { throw new Error('BUNDLE_THROWN_${SMOKE_MARKER}') } catch(e) { console.error(e.message) }\"}"
     sleep 2
@@ -256,17 +256,17 @@ except Exception as e:
     if [ "$bundle_count" -gt 0 ] 2>/dev/null; then
         pass "observe(error_bundles) returned $bundle_count error context bundles."
     else
-        fail "observe(error_bundles) returned 0 bundles. S.5 should have seeded errors. Verify error seeding and bundling pipeline. Content: $(truncate "$content_text" 200)"
+        fail "observe(error_bundles) returned 0 bundles. 2.1 should have seeded errors. Verify error seeding and bundling pipeline. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s31
+run_test_3_4
 
-# ── Test S.32: Timeline ──────────────────────────────────
-begin_test "S.32" "Timeline via observe(timeline)" \
+# ── Test 3.5: Timeline ──────────────────────────────────
+begin_test "3.5" "Timeline via observe(timeline)" \
     "observe(timeline) returns time-ordered entries across categories" \
     "Tests: unified timeline merging multiple data sources"
 
-run_test_s32() {
+run_test_3_5() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -329,14 +329,14 @@ except Exception as e:
         fail "observe(timeline) invalid. $timeline_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s32
+run_test_3_5
 
-# ── Test S.33: Pilot state ───────────────────────────────
-begin_test "S.33" "Pilot state via observe(pilot)" \
+# ── Test 3.6: Pilot state ───────────────────────────────
+begin_test "3.6" "Pilot state via observe(pilot)" \
     "observe(pilot) returns pilot enabled/disabled status" \
     "Tests: pilot state query"
 
-run_test_s33() {
+run_test_3_6() {
     if [ "$EXTENSION_CONNECTED" != "true" ]; then
         skip "Extension not connected."
         return
@@ -386,14 +386,14 @@ except Exception as e:
         fail "observe(pilot) invalid. $pilot_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s33
+run_test_3_6
 
-# ── Test S.34: Extension logs ────────────────────────────
-begin_test "S.34" "Extension logs via observe(extension_logs)" \
+# ── Test 3.7: Extension logs ────────────────────────────
+begin_test "3.7" "Extension logs via observe(extension_logs)" \
     "observe(extension_logs) returns internal diagnostic log entries" \
     "Tests: extension internal logging pipeline"
 
-run_test_s34() {
+run_test_3_7() {
     if [ "$EXTENSION_CONNECTED" != "true" ]; then
         skip "Extension not connected."
         return
@@ -451,10 +451,10 @@ except Exception as e:
 
     if echo "$validation" | grep -q "VERDICT:PASS"; then
         local count
-        count=$(echo "$validation" | grep -oP 'count=\K[0-9]+')
+        count=$(echo "$validation" | sed -n 's/.*count=\([0-9]*\).*/\1/p' | head -1)
         pass "observe(extension_logs) returned $count entries with valid structure (level + message)."
     else
         fail "observe(extension_logs) failed. $(echo "$validation" | grep 'VERDICT:' | head -1 || echo 'no verdict'). Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s34
+run_test_3_7

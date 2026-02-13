@@ -53,11 +53,15 @@ run_test_4_2() {
     fi
     local obs_text
     obs_text=$(extract_content_text "$OBS_RESP")
-    # After clear, expect count:0 or empty logs
-    if check_contains "$obs_text" '"count":0' || check_contains "$obs_text" '"count": 0' || check_contains "$obs_text" '"entries":[]' || check_contains "$obs_text" '"entries": []'; then
+    # After clear, expect count:0 or empty logs — use jq for structural check
+    local count
+    count=$(echo "$obs_text" | jq -r '.count // (.logs | length) // (.entries | length) // -1' 2>/dev/null || echo "-1")
+    if [ "$count" = "0" ] || [ "$count" = "null" ]; then
+        pass "Clear succeeded. observe(logs) returned empty/zero count after clear. Content: $(truncate "$obs_text" 200)"
+    elif check_contains "$obs_text" '"count":0' || check_contains "$obs_text" '"entries":[]'; then
         pass "Clear succeeded. observe(logs) returned empty/zero count after clear. Content: $(truncate "$obs_text" 200)"
     else
-        fail "Clear did not empty logs buffer. Expected count:0 or entries:[], got: $(truncate "$obs_text" 200)"
+        fail "Clear did not empty logs buffer. Expected count:0, got count=$count. Content: $(truncate "$obs_text" 200)"
     fi
 }
 run_test_4_2
@@ -113,9 +117,11 @@ run_test_4_4
 
 # ── 4.5 — configure(store) list shows saved keys ──────────
 begin_test "4.5" "configure(store) list shows saved keys" \
-    "After saving in 4.4, list keys and verify roundtrip_test appears" \
+    "Save a key, list keys, verify it appears (self-contained)" \
     "List must reflect actual state, not cached/stale data."
 run_test_4_5() {
+    # Save our own key (self-contained, no dependency on test 4.4)
+    call_tool "configure" '{"action":"store","store_action":"save","namespace":"uat","key":"list_test_key","data":{"v":1}}' >/dev/null 2>&1
     local LIST_RESP
     LIST_RESP=$(call_tool "configure" '{"action":"store","store_action":"list","namespace":"uat"}')
     if ! check_not_error "$LIST_RESP"; then
@@ -124,27 +130,31 @@ run_test_4_5() {
     fi
     local list_text
     list_text=$(extract_content_text "$LIST_RESP")
-    if ! check_contains "$list_text" "roundtrip_test"; then
-        fail "Store list does not contain 'roundtrip_test'. Content: $(truncate "$list_text")"
+    if ! check_contains "$list_text" "list_test_key"; then
+        fail "Store list does not contain 'list_test_key'. Content: $(truncate "$list_text")"
         return
     fi
-    pass "Store list includes 'roundtrip_test' key. Content: $(truncate "$list_text" 200)"
+    pass "Store list includes 'list_test_key'. Content: $(truncate "$list_text" 200)"
 }
 run_test_4_5
 
-# ── 4.6 — configure(noise_rule) add and list roundtrip ────
-begin_test "4.6" "configure(noise_rule) add and list roundtrip" \
-    "Add a noise rule, list rules, verify our rule appears" \
-    "Noise rules affect all observe responses. If add silently fails, data is noisy."
+# ── 4.6 — configure(noise_rule) full CRUD lifecycle ───────
+begin_test "4.6" "configure(noise_rule) full CRUD lifecycle" \
+    "Add rule, list (verify present), extract ID, remove, list (verify gone)" \
+    "Full lifecycle: if remove or ID extraction breaks, smoke tests fail but UAT would miss it."
 run_test_4_6() {
-    # Add
+    # Step 0: Reset noise rules to clear any leftovers from prior runs (persisted to disk)
+    call_tool "configure" '{"action":"noise_rule","noise_action":"reset"}' >/dev/null 2>&1
+
+    # Step 1: Add a noise rule
     local ADD_RESP
     ADD_RESP=$(call_tool "configure" '{"action":"noise_rule","noise_action":"add","rules":[{"category":"network","match_spec":{"url_regex":"uat_noise_test_pattern"},"classification":"infrastructure"}]}')
     if ! check_not_error "$ADD_RESP"; then
         fail "Noise rule add returned error. Content: $(truncate "$(extract_content_text "$ADD_RESP")")"
         return
     fi
-    # List
+
+    # Step 2: List and verify rule is present
     local LIST_RESP
     LIST_RESP=$(call_tool "configure" '{"action":"noise_rule","noise_action":"list"}')
     if ! check_not_error "$LIST_RESP"; then
@@ -154,10 +164,44 @@ run_test_4_6() {
     local list_text
     list_text=$(extract_content_text "$LIST_RESP")
     if ! check_contains "$list_text" "uat_noise_test_pattern"; then
-        fail "Noise rule list does not contain 'uat_noise_test_pattern'. Content: $(truncate "$list_text")"
+        fail "Noise rule list does not contain 'uat_noise_test_pattern' after add. Content: $(truncate "$list_text" 200)"
         return
     fi
-    pass "Noise rule add/list roundtrip succeeded. List contains 'uat_noise_test_pattern'. Content: $(truncate "$list_text" 200)"
+
+    # Step 3: Extract rule_id from the list response (using jq)
+    # Response text is "summary\n{json}", strip everything before first {
+    local json_part rule_id
+    json_part=$(echo "$list_text" | sed -n '/{/,$ p' | tr '\n' ' ')
+    rule_id=$(echo "$json_part" | jq -r '.rules[] | select(.match_spec.url_regex == "uat_noise_test_pattern") | .id' 2>/dev/null | head -1)
+
+    if [ -z "$rule_id" ]; then
+        fail "Could not extract rule_id for 'uat_noise_test_pattern' from list response. Content: $(truncate "$list_text" 200)"
+        return
+    fi
+
+    # Step 4: Remove the rule by ID
+    local REMOVE_RESP
+    REMOVE_RESP=$(call_tool "configure" "{\"action\":\"noise_rule\",\"noise_action\":\"remove\",\"rule_id\":\"$rule_id\"}")
+    if ! check_not_error "$REMOVE_RESP"; then
+        fail "Noise rule remove returned error for rule_id=$rule_id. Content: $(truncate "$(extract_content_text "$REMOVE_RESP")")"
+        return
+    fi
+
+    # Step 5: List again and verify rule is gone
+    local LIST2_RESP
+    LIST2_RESP=$(call_tool "configure" '{"action":"noise_rule","noise_action":"list"}')
+    if ! check_not_error "$LIST2_RESP"; then
+        fail "Noise rule list (after remove) returned error. Content: $(truncate "$(extract_content_text "$LIST2_RESP")")"
+        return
+    fi
+    local list2_text
+    list2_text=$(extract_content_text "$LIST2_RESP")
+    if check_contains "$list2_text" "uat_noise_test_pattern"; then
+        fail "Noise rule 'uat_noise_test_pattern' still in list after remove (rule_id=$rule_id). Content: $(truncate "$list2_text" 200)"
+        return
+    fi
+
+    pass "Noise rule full CRUD: add > list(found, id=$rule_id) > remove > list(gone)."
 }
 run_test_4_6
 
@@ -173,12 +217,16 @@ run_test_4_7() {
     fi
     local text
     text=$(extract_content_text "$RESPONSE")
-    # Audit log should contain some entries from our prior tool calls
     if [ -z "$text" ]; then
         fail "Audit log response is empty."
         return
     fi
-    pass "Audit log returned data. Content: $(truncate "$text" 200)"
+    # Verify response has structural audit fields (entries array or status)
+    if ! check_contains "$text" "entries" && ! check_contains "$text" "status"; then
+        fail "Audit log missing 'entries' or 'status' field. Content: $(truncate "$text" 200)"
+        return
+    fi
+    pass "Audit log returned structured data with entries/status. Content: $(truncate "$text" 200)"
 }
 run_test_4_7
 
@@ -240,9 +288,16 @@ begin_test "4.10" "configure(query_dom) with selector" \
     "DOM queries are sent to extension via pending queries. Must not crash without extension."
 run_test_4_10() {
     RESPONSE=$(call_tool "configure" '{"action":"query_dom","selector":"body"}')
-    # We don't care if it's an error or success — just that we got a valid JSON-RPC response
+    # Must be valid JSON-RPC with either result or error (not both missing)
     if ! check_valid_jsonrpc "$RESPONSE"; then
         fail "query_dom did not return valid JSON-RPC. Raw response: $(truncate "$RESPONSE")"
+        return
+    fi
+    local has_result has_error
+    has_result=$(echo "$RESPONSE" | jq -e '.result' >/dev/null 2>&1 && echo "yes" || echo "no")
+    has_error=$(echo "$RESPONSE" | jq -e '.error' >/dev/null 2>&1 && echo "yes" || echo "no")
+    if [ "$has_result" = "no" ] && [ "$has_error" = "no" ]; then
+        fail "query_dom response has neither result nor error. Raw: $(truncate "$RESPONSE" 200)"
         return
     fi
     local text

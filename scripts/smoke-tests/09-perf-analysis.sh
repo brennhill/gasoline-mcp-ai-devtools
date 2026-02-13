@@ -1,16 +1,16 @@
 #!/bin/bash
-# 09-perf-analysis.sh — S.17-S.20, S.23: Performance analysis tests.
+# 09-perf-analysis.sh — 9.1-9.5: Performance analysis tests.
 # perf_diff on refresh, click timing, analyze:true, user timing, LLM fields
 set -eo pipefail
 
 begin_category "9" "Performance Analysis" "5"
 
-# ── Test S.17: Refresh returns perf_diff ─────────────────
-begin_test "S.17" "Refresh returns perf_diff after baseline" \
+# ── Test 9.1: Refresh returns perf_diff ─────────────────
+begin_test "9.1" "Refresh returns perf_diff after baseline" \
     "Navigate to a page (baseline), refresh (comparison), verify perf_diff in command result" \
     "Tests: extension perf tracking > auto-diff > enriched action result"
 
-run_test_s17() {
+run_test_9_1() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -63,14 +63,14 @@ except Exception as e:
         fail "perf_diff present but incomplete: metrics=$has_metrics, summary=$has_summary. Result: $(truncate "$INTERACT_RESULT" 300)"
     fi
 }
-run_test_s17
+run_test_9_1
 
-# ── Test S.18: Click returns compact feedback ────────────
-begin_test "S.18" "Click returns timing_ms and dom_summary" \
+# ── Test 9.2: Click returns compact feedback ────────────
+begin_test "9.2" "Click returns timing_ms and dom_summary" \
     "Click a button, verify the command result includes timing_ms and dom_summary" \
     "Tests: always-on compact DOM feedback (~30 tokens per action)"
 
-run_test_s18() {
+run_test_9_2() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -89,6 +89,8 @@ run_test_s18() {
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    if 'result' in data and isinstance(data['result'], dict):
+        data = data['result']
     print(f'    timing_ms: {data.get(\"timing_ms\", \"MISSING\")}')
     print(f'    dom_summary: {data.get(\"dom_summary\", \"MISSING\")}')
     print(f'    success: {data.get(\"success\", \"?\")}')
@@ -129,14 +131,14 @@ else:
         fail "Click result missing required fields. $validation. Result: $(truncate "$INTERACT_RESULT" 300)"
     fi
 }
-run_test_s18
+run_test_9_2
 
-# ── Test S.19: analyze:true returns full breakdown ───────
-begin_test "S.19" "Click with analyze:true returns full breakdown" \
+# ── Test 9.3: analyze:true returns full breakdown ───────
+begin_test "9.3" "Click with analyze:true returns full breakdown" \
     "Click with analyze:true, verify timing breakdown, dom_changes, and analysis string" \
     "Tests: opt-in detailed profiling for interaction debugging"
 
-run_test_s19() {
+run_test_9_3() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -184,14 +186,14 @@ except Exception as e:
         fail "analyze:true missing required fields: timing_breakdown=$has_timing_breakdown, dom_changes=$has_dom_changes, analysis=$has_analysis. Result: $(truncate "$INTERACT_RESULT" 300)"
     fi
 }
-run_test_s19
+run_test_9_3
 
-# ── Test S.20: User Timing in observe(performance) ──────
-begin_test "S.20" "User Timing entries in observe(performance)" \
+# ── Test 9.4: User Timing in observe(performance) ──────
+begin_test "9.4" "User Timing entries in observe(performance)" \
     "Insert performance.mark/measure via execute_js, verify they appear in observe(performance)" \
     "Tests: extension captures standard User Timing API entries"
 
-run_test_s20() {
+run_test_9_4() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -247,14 +249,14 @@ print(len(data.get('snapshots',[])))
         fail "User Timing marker '$marker' not found. snapshots=$snap_count. Performance snapshot may not have been sent by extension yet."
     fi
 }
-run_test_s20
+run_test_9_4
 
-# ── Test S.23: LLM-optimized perf_diff fields ───────────
-begin_test "S.23" "perf_diff has verdict, unit, rating, clean summary" \
-    "Refresh (baseline warm from S.17), verify perf_diff has LLM-optimized fields" \
+# ── Test 9.5: LLM-optimized perf_diff fields ───────────
+begin_test "9.5" "perf_diff has verdict, unit, rating, clean summary" \
+    "Refresh (baseline warm from 9.1), verify perf_diff has LLM-optimized fields" \
     "Tests: verdict, unit (ms/KB/count), rating (Web Vitals), clean summary"
 
-run_test_s23() {
+run_test_9_5() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -331,4 +333,4 @@ if idx >= 0:
         fail "perf_diff missing LLM fields: $checks_passed/$checks_total. Result: $(truncate "$INTERACT_RESULT" 300)"
     fi
 }
-run_test_s23
+run_test_9_5
