@@ -40,16 +40,41 @@ _restore_daemon() {
 
 # ── Test 15.0: Upload server canary ──────────────────────
 begin_test "15.0" "Upload server canary" \
-    "Verify Python upload test server started and responds to /health" \
+    "Verify Python upload test server started, serves landing page, and /upload form loads" \
     "Tests: test infrastructure — if this fails, all upload tests are invalid"
 
 run_test_15_0() {
+    # 1. Health check
     local health_resp
     health_resp=$(curl -s --max-time 5 --connect-timeout 3 "http://127.0.0.1:${UPLOAD_PORT}/health" 2>/dev/null)
-    if echo "$health_resp" | jq -e '.ok == true' >/dev/null 2>&1; then
-        pass "Upload server alive on port $UPLOAD_PORT."
+    if ! echo "$health_resp" | jq -e '.ok == true' >/dev/null 2>&1; then
+        fail "Upload server not responding on port $UPLOAD_PORT (PID $UPLOAD_SERVER_PID). All upload tests are invalid."
+        return
+    fi
+
+    # 2. Landing page — sets session cookie, should contain "Test Upload Platform"
+    local cookie_jar="$UPLOAD_TEST_DIR/cookies-canary.txt"
+    local landing
+    landing=$(curl -s --max-time 5 -c "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/" 2>/dev/null)
+    if ! echo "$landing" | grep -q "Test Upload Platform"; then
+        rm -f "$cookie_jar"
+        fail "Landing page (GET /) did not contain expected content. Got: $(truncate "$landing" 200)"
+        return
+    fi
+
+    # 3. Upload form — requires session cookie, should contain CSRF token and file input
+    local form_page
+    form_page=$(curl -s --max-time 5 -b "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/upload" 2>/dev/null)
+    rm -f "$cookie_jar"
+
+    local has_csrf has_input
+    has_csrf=$(echo "$form_page" | grep -c 'csrf_token' || true)
+    has_input=$(echo "$form_page" | grep -c 'id="file-input"' || true)
+
+    if [ "$has_csrf" -gt 0 ] && [ "$has_input" -gt 0 ]; then
+        pass "Upload server alive on port $UPLOAD_PORT: landing page OK, upload form has CSRF + file input."
     else
-        fail "Upload server not responding on port $UPLOAD_PORT. All upload tests are invalid."
+        fail "Upload form incomplete: csrf=$has_csrf, file-input=$has_input. Got: $(truncate "$form_page" 200)"
     fi
 }
 run_test_15_0
