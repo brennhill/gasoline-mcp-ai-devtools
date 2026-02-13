@@ -52,7 +52,10 @@ begin_test "S.2" "Health endpoint and version" \
 
 run_test_s2() {
     sleep 2
-    wait_for_health 50
+    if ! wait_for_health 50; then
+        fail "Daemon not healthy after 50 attempts. Cannot check version."
+        return
+    fi
 
     local body
     body=$(get_http_body "http://localhost:${PORT}/health")
