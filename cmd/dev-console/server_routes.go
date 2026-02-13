@@ -596,8 +596,10 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) *http.ServeMux {
 }
 
 // registerCaptureRoutes adds capture-dependent routes to the mux.
+// NOT MCP — These are extension-to-daemon HTTP endpoints for telemetry ingestion
+// and internal state management. AI agents use the 5 MCP tools instead.
 func registerCaptureRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture) {
-	// V4 routes
+	// NOT MCP — Extension telemetry ingestion (extension → daemon data pipeline)
 	mux.HandleFunc("/websocket-events", corsMiddleware(extensionOnly(cap.HandleWebSocketEvents)))
 	mux.HandleFunc("/websocket-status", corsMiddleware(extensionOnly(cap.HandleWebSocketStatus)))
 	mux.HandleFunc("/network-bodies", corsMiddleware(extensionOnly(cap.HandleNetworkBodies)))
@@ -606,10 +608,10 @@ func registerCaptureRoutes(mux *http.ServeMux, server *Server, cap *capture.Capt
 	mux.HandleFunc("/enhanced-actions", corsMiddleware(extensionOnly(cap.HandleEnhancedActions)))
 	mux.HandleFunc("/performance-snapshots", corsMiddleware(extensionOnly(cap.HandlePerformanceSnapshots)))
 
-	// Unified sync endpoint (replaces multiple polling loops)
+	// NOT MCP — Unified sync endpoint (extension polls this instead of individual routes above)
 	mux.HandleFunc("/sync", corsMiddleware(extensionOnly(cap.HandleSync)))
 
-	// Multi-client management endpoints
+	// NOT MCP — Multi-client registry (extension bookkeeping, not AI-facing)
 	mux.HandleFunc("/clients", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		handleClientsList(w, r, cap)
 	})))
@@ -617,21 +619,21 @@ func registerCaptureRoutes(mux *http.ServeMux, server *Server, cap *capture.Capt
 		handleClientByID(w, r, cap)
 	})))
 
-	// Video recording save endpoint
+	// NOT MCP — Video recording binary upload (extension → daemon file storage)
 	mux.HandleFunc("/recordings/save", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleVideoRecordingSave(w, r, cap)
 	})))
 
-	// Recording storage management endpoint
+	// NOT MCP — Recording storage management (extension UI)
 	mux.HandleFunc("/recordings/storage", corsMiddleware(extensionOnly(cap.HandleRecordingStorage)))
 
-	// Reveal recording in file manager (Finder/Explorer)
+	// NOT MCP — OS file manager integration (opens Finder/Explorer)
 	mux.HandleFunc("/recordings/reveal", corsMiddleware(extensionOnly(handleRevealRecording)))
 
-	// Unified telemetry read endpoint (replaces individual GET handlers)
+	// NOT MCP — Unified telemetry read (extension and legacy HTTP clients)
 	mux.HandleFunc("/telemetry", corsMiddleware(handleTelemetry(server, cap)))
 
-	// CI Infrastructure endpoints
+	// NOT MCP — CI infrastructure (test harness boundaries, not AI-facing)
 	mux.HandleFunc("/snapshot", corsMiddleware(extensionOnly(handleSnapshot(server, cap))))
 	mux.HandleFunc("/clear", corsMiddleware(extensionOnly(handleClear(server, cap))))
 	mux.HandleFunc("/test-boundary", corsMiddleware(extensionOnly(handleTestBoundary(cap))))
@@ -689,16 +691,22 @@ func handleClientByID(w http.ResponseWriter, r *http.Request, cap *capture.Captu
 }
 
 // registerUploadRoutes adds upload automation endpoints to the mux.
+// NOT MCP — These are extension-to-daemon escalation stages for file upload automation.
+// AI agents use interact(action: "upload") via MCP instead.
 func registerUploadRoutes(mux *http.ServeMux, server *Server) {
+	// NOT MCP — File read metadata (upload escalation stage 1)
 	mux.HandleFunc("/api/file/read", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleFileRead(w, r, uploadAutomationFlag)
 	})))
+	// NOT MCP — File dialog injection (upload escalation stage 2)
 	mux.HandleFunc("/api/file/dialog/inject", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleFileDialogInject(w, r, uploadAutomationFlag)
 	})))
+	// NOT MCP — Form submit helper (upload escalation stage 3)
 	mux.HandleFunc("/api/form/submit", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleFormSubmit(w, r, uploadAutomationFlag)
 	})))
+	// NOT MCP — OS-level file dialog automation (upload escalation stage 4, requires native binaries)
 	mux.HandleFunc("/api/os-automation/inject", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleOSAutomation(w, r, uploadAutomationFlag)
 	})))
@@ -706,35 +714,44 @@ func registerUploadRoutes(mux *http.ServeMux, server *Server) {
 
 // registerCoreRoutes adds non-capture-dependent routes to the mux.
 func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture) {
+	// NOT MCP — OpenAPI spec for HTTP API documentation
 	mux.HandleFunc("/openapi.json", corsMiddleware(handleOpenAPI))
 
+	// MCP — The single MCP JSON-RPC endpoint. All AI agent tool calls go through here.
 	mcp := NewToolHandler(server, cap)
 	mux.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
 
+	// NOT MCP — Health check for extension and monitoring (MCP uses configure(action: "health"))
 	mux.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleHealth(w, r, cap)
 	}))
 
+	// NOT MCP — Graceful shutdown (use CLI --stop flag, not MCP)
 	mux.HandleFunc("/shutdown", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleShutdown(w, r)
 	})))
 
+	// NOT MCP — Debug diagnostics for bug reports (MCP uses configure(action: "health"))
 	mux.HandleFunc("/diagnostics", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleDiagnostics(w, r, cap)
 	}))
 
+	// NOT MCP — Log ingestion from extension (MCP reads logs via observe(what: "logs"))
 	mux.HandleFunc("/logs", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleLogs(w, r)
 	})))
 
+	// NOT MCP — Screenshot binary upload from extension (MCP reads via observe(what: "screenshot"))
 	mux.HandleFunc("/screenshots", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleScreenshot(w, r, cap)
 	})))
 
+	// NOT MCP — Draw mode completion callback from extension (MCP uses analyze(what: "annotations"))
 	mux.HandleFunc("/draw-mode/complete", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleDrawModeComplete(w, r, cap)
 	})))
 
+	// NOT MCP — API discovery root (human/browser navigation)
 	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Not found"})

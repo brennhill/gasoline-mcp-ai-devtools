@@ -146,7 +146,7 @@ run_test_s38() {
 
     interact_and_wait "get_text" '{"action":"get_text","selector":"#sf-btn","reason":"Get button text"}'
 
-    if echo "$INTERACT_RESULT" | grep -qi "Submit"; then
+    if echo "$INTERACT_RESULT" | grep -q "Submit"; then
         pass "get_text returned 'Submit' from #sf-btn."
     else
         fail "get_text did not return 'Submit'. Result: $(truncate "$INTERACT_RESULT" 200)"
@@ -188,7 +188,9 @@ run_test_s40() {
 
     interact_and_wait "get_attribute" '{"action":"get_attribute","selector":"#sf-link","name":"href","reason":"Get link href"}'
 
-    if echo "$INTERACT_RESULT" | grep -qi "example.com"; then
+    if echo "$INTERACT_RESULT" | grep -q "example.com/test"; then
+        pass "get_attribute returned href 'example.com/test' from #sf-link."
+    elif echo "$INTERACT_RESULT" | grep -q "example.com"; then
         pass "get_attribute returned href containing 'example.com'."
     else
         fail "get_attribute did not return expected href. Result: $(truncate "$INTERACT_RESULT" 200)"
@@ -240,8 +242,17 @@ run_test_s42() {
 
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "scroll_to command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
+        return
+    fi
+
+    # Positive verification: check scrollY > 0 via DOM
+    sleep 0.5
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Verify scroll position","script":"window.scrollY > 100 ? \"SCROLLED_\" + Math.round(window.scrollY) : \"NOT_SCROLLED_\" + Math.round(window.scrollY)"}'
+
+    if echo "$INTERACT_RESULT" | grep -q "SCROLLED_"; then
+        pass "scroll_to moved page: $(echo "$INTERACT_RESULT" | grep -oE 'SCROLLED_[0-9]+' | head -1)px."
     else
-        pass "scroll_to completed for #sf-scroll-target."
+        fail "scroll_to completed but page did not scroll. scrollY: $(truncate "$INTERACT_RESULT" 100)"
     fi
 }
 run_test_s42
@@ -281,12 +292,26 @@ run_test_s44() {
         return
     fi
 
+    # First focus the name field, then Tab should move focus to the next field
+    interact_and_wait "focus" '{"action":"focus","selector":"#sf-name","reason":"Focus name before Tab"}'
+    sleep 0.3
     interact_and_wait "key_press" '{"action":"key_press","selector":"#sf-name","text":"Tab","reason":"Press Tab key"}'
 
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "key_press command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
+        return
+    fi
+
+    # Positive verification: activeElement should have moved away from #sf-name
+    sleep 0.3
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Verify focus moved after Tab","script":"document.activeElement ? document.activeElement.id || document.activeElement.tagName : \"NONE\""}'
+
+    if echo "$INTERACT_RESULT" | grep -qE "sf-email|sf-role|sf-agree|sf-btn|INPUT|SELECT"; then
+        pass "key_press(Tab) moved focus from #sf-name. Active: $(echo "$INTERACT_RESULT" | grep -oE 'sf-[a-z]+|INPUT|SELECT' | head -1)"
+    elif echo "$INTERACT_RESULT" | grep -q "sf-name"; then
+        fail "key_press(Tab) did not move focus — still on #sf-name."
     else
-        pass "key_press(Tab) completed on #sf-name."
+        pass "key_press(Tab) completed, focus moved to: $(truncate "$INTERACT_RESULT" 100)"
     fi
 }
 run_test_s44
@@ -355,8 +380,17 @@ run_test_s46() {
 
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "focus command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
+        return
+    fi
+
+    # Positive verification: document.activeElement should be #sf-email
+    sleep 0.3
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Verify focus target","script":"document.activeElement && document.activeElement.id === \"sf-email\" ? \"FOCUSED_SF_EMAIL\" : \"WRONG_FOCUS_\" + (document.activeElement ? document.activeElement.id || document.activeElement.tagName : \"NONE\")"}'
+
+    if echo "$INTERACT_RESULT" | grep -q "FOCUSED_SF_EMAIL"; then
+        pass "focus confirmed: document.activeElement is #sf-email."
     else
-        pass "focus completed on #sf-email."
+        fail "focus did not set activeElement to #sf-email. Result: $(truncate "$INTERACT_RESULT" 100)"
     fi
 }
 run_test_s46
@@ -444,13 +478,24 @@ run_test_s49() {
         return
     fi
 
+    # Count tabs before
+    local tabs_before
+    tabs_before=$(call_tool "observe" '{"what":"tabs"}')
+    local count_before
+    count_before=$(echo "$(extract_content_text "$tabs_before")" | python3 -c "
+import sys, json
+try:
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    print(len(data.get('tabs', [])))
+except: print(0)
+" 2>/dev/null || echo "0")
+
     interact_and_wait "new_tab" '{"action":"new_tab","url":"https://example.com","reason":"Open new tab"}'
 
-    # Strict: new_tab must succeed (no error/failed in result)
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "new_tab failed. Result: $(truncate "$INTERACT_RESULT" 200)"
     else
-        pass "new_tab opened https://example.com in a new tab."
+        pass "new_tab command completed (had $count_before tabs before)."
     fi
 
     # Navigate back to example.com in tracked tab for subsequent tests

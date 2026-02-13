@@ -107,10 +107,29 @@ except Exception as e:
     print(f'    (parse: {e})')
 " 2>/dev/null || true
 
-    if echo "$content_text" | grep -q "tabs"; then
-        pass "observe(tabs) returned tab data."
+    # Validate tabs array has at least one entry with a URL
+    local tabs_verdict
+    tabs_verdict=$(echo "$content_text" | python3 -c "
+import sys, json
+try:
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    tabs = data.get('tabs', [])
+    if not isinstance(tabs, list) or len(tabs) == 0:
+        print('FAIL no tabs array or empty')
+    else:
+        has_url = any(t.get('url') for t in tabs)
+        if has_url:
+            print(f'PASS tabs={len(tabs)} with_urls=true')
+        else:
+            print(f'FAIL tabs={len(tabs)} but none have url field')
+except Exception as e:
+    print(f'FAIL parse: {e}')
+" 2>/dev/null || echo "FAIL parse_error")
+
+    if echo "$tabs_verdict" | grep -q "^PASS"; then
+        pass "observe(tabs) returned tab data. $tabs_verdict"
     else
-        fail "observe(tabs) missing 'tabs' field. Content: $(truncate "$content_text" 200)"
+        fail "observe(tabs) invalid. $tabs_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s29
@@ -156,10 +175,26 @@ except Exception as e:
     print(f'    (parse: {e})')
 " 2>/dev/null || true
 
-    if echo "$content_text" | grep -qiE "entries|bodies|url|status|request|response"; then
-        pass "observe(network_bodies) returned captured request/response data."
+    # Validate response has entries array with at least one URL
+    local bodies_verdict
+    bodies_verdict=$(echo "$content_text" | python3 -c "
+import sys, json
+try:
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    entries = data.get('entries', data.get('bodies', []))
+    if not isinstance(entries, list) or len(entries) == 0:
+        print('FAIL no entries or empty')
+    else:
+        has_url = any(e.get('url') for e in entries)
+        print(f'PASS entries={len(entries)} has_url={has_url}')
+except Exception as e:
+    print(f'FAIL parse: {e}')
+" 2>/dev/null || echo "FAIL parse_error")
+
+    if echo "$bodies_verdict" | grep -q "^PASS"; then
+        pass "observe(network_bodies) returned entries. $bodies_verdict"
     else
-        fail "observe(network_bodies) missing expected fields. Content: $(truncate "$content_text" 200)"
+        fail "observe(network_bodies) invalid. $bodies_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s30
@@ -259,10 +294,29 @@ except Exception as e:
     print(f'    (parse: {e})')
 " 2>/dev/null || true
 
-    if echo "$content_text" | grep -qiE "entries|events|timestamp|time|category|type"; then
-        pass "observe(timeline) returned time-ordered entries."
+    # Validate timeline has entries with timestamps
+    local timeline_verdict
+    timeline_verdict=$(echo "$content_text" | python3 -c "
+import sys, json
+try:
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    entries = data.get('entries', data.get('events', []))
+    if not isinstance(entries, list) or len(entries) == 0:
+        print('FAIL no entries or empty')
+    else:
+        has_ts = any(e.get('timestamp') or e.get('time') for e in entries[:10])
+        if has_ts:
+            print(f'PASS entries={len(entries)} has_timestamps=true')
+        else:
+            print(f'FAIL entries={len(entries)} but none have timestamp field')
+except Exception as e:
+    print(f'FAIL parse: {e}')
+" 2>/dev/null || echo "FAIL parse_error")
+
+    if echo "$timeline_verdict" | grep -q "^PASS"; then
+        pass "observe(timeline) returned entries with timestamps. $timeline_verdict"
     else
-        fail "observe(timeline) missing expected fields. Content: $(truncate "$content_text" 200)"
+        fail "observe(timeline) invalid. $timeline_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s32
@@ -299,10 +353,27 @@ except Exception as e:
     print(f'    (parse: {e})')
 " 2>/dev/null || true
 
-    if echo "$content_text" | grep -qiE "enabled|pilot|status"; then
-        pass "observe(pilot) returned pilot state."
+    # Validate pilot state has an actual enabled boolean value
+    local pilot_verdict
+    pilot_verdict=$(echo "$content_text" | python3 -c "
+import sys, json
+try:
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    enabled = data.get('enabled')
+    if enabled is True or enabled is False:
+        print(f'PASS enabled={enabled}')
+    elif 'enabled' in data:
+        print(f'PASS enabled={data[\"enabled\"]}')
+    else:
+        print(f'FAIL no enabled field, keys={list(data.keys())[:8]}')
+except Exception as e:
+    print(f'FAIL parse: {e}')
+" 2>/dev/null || echo "FAIL parse_error")
+
+    if echo "$pilot_verdict" | grep -q "^PASS"; then
+        pass "observe(pilot) returned pilot state. $pilot_verdict"
     else
-        fail "observe(pilot) missing expected fields. Content: $(truncate "$content_text" 200)"
+        fail "observe(pilot) invalid. $pilot_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s33

@@ -52,8 +52,8 @@ except: pass
 " 2>/dev/null || true
 
     if [ -z "$cursor" ]; then
-        # No cursor means pagination may not be supported or not enough data
-        pass "Pagination: first page returned. No cursor (possibly not enough data for pagination)."
+        # We seeded 8 entries with limit 3 — there SHOULD be a cursor
+        fail "Pagination: no cursor returned after seeding 8 log entries with limit=3. Pagination may be broken. Content: $(truncate "$page1_text" 200)"
         return
     fi
 
@@ -177,14 +177,14 @@ except:
     local status_val
     status_val=$(echo "$body" | jq -r '.status // empty' 2>/dev/null)
 
-    if [ "$status_val" = "ok" ]; then
-        if [ "$count" -gt 0 ] 2>/dev/null; then
-            pass "Buffer overflow: injected 1000 logs, buffer has $count entries, daemon healthy."
-        else
-            pass "Buffer overflow: daemon healthy after flood (log count: $count)."
-        fi
-    else
+    if [ "$status_val" != "ok" ]; then
         fail "Daemon unhealthy after buffer flood. Health status: $status_val."
+    elif [ "$count" -gt 0 ] 2>/dev/null && [ "$count" -lt 1000 ] 2>/dev/null; then
+        pass "Buffer eviction working: injected 1000 logs, buffer capped at $count entries, daemon healthy."
+    elif [ "$count" -gt 0 ] 2>/dev/null; then
+        fail "Buffer NOT evicting: injected 1000 logs and buffer has $count entries (should be < 1000). Eviction policy may be broken."
+    else
+        fail "Buffer empty after flood: injected 1000 logs but count=$count. Log pipeline may be broken."
     fi
 }
 run_test_s68
