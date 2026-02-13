@@ -4,14 +4,30 @@
 # (EXTENSION_CONNECTED, PILOT_ENABLED, SMOKE_MARKER) flows across modules.
 #
 # Usage:
-#   bash scripts/smoke-test.sh              # default port 7890
-#   bash scripts/smoke-test.sh 7890         # explicit port
-#   START_FROM=07 bash scripts/smoke-test.sh  # resume from module 07
+#   bash scripts/smoke-test.sh                    # default port 7890
+#   bash scripts/smoke-test.sh 7890               # explicit port
+#   bash scripts/smoke-test.sh --start-from 12    # resume from module 12
+#   bash scripts/smoke-test.sh 7890 --start-from 07
 set -euo pipefail
 
 RUNNER_DIR="$(cd "$(dirname "$0")" && pwd)"
 SMOKE_DIR="$RUNNER_DIR/smoke-tests"
-PORT="${1:-7890}"
+PORT="7890"
+START_FROM=""
+
+# Parse args: positional port + optional --start-from
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --start-from)
+            START_FROM="${2:-}"
+            shift 2
+            ;;
+        *)
+            PORT="$1"
+            shift
+            ;;
+    esac
+done
 
 # ── Source framework (initializes globals) ────────────────
 # shellcheck source=/dev/null
@@ -27,10 +43,12 @@ echo "============================================================"
 echo ""
 
 # ── Resume point ─────────────────────────────────────────
-# START_FROM=07 bash scripts/smoke-test.sh  # skip to module 07
 # Bootstrap (01) always runs to initialize extension state.
-START_FROM="${START_FROM:-}"
 SKIP_UNTIL_FOUND="${START_FROM:+true}"
+if [ -n "$START_FROM" ]; then
+    echo "  Resuming from module matching: $START_FROM"
+    echo ""
+fi
 
 # ── Run modules in order ─────────────────────────────────
 MODULES=(

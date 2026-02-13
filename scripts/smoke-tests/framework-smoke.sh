@@ -55,8 +55,8 @@ _smoke_on_error() {
 begin_test() {
     CURRENT_TEST_ID="$1"
     local name="$2"
-    local purpose="$3"
-    local trust="$4"
+    local purpose="${3:-}"
+    local trust="${4:-}"
     {
         echo "============================================================"
         echo "TEST ${CURRENT_TEST_ID}: ${name}"
@@ -118,7 +118,7 @@ log_diagnostic() {
     local test_name="$1"
     local action="$2"
     local response="$3"
-    local result="$4"
+    local result="${4:-}"
     {
         echo ""
         echo "======= $test_name — $action ======="
