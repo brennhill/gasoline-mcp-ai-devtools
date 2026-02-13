@@ -236,7 +236,13 @@ export async function handlePendingQuery(query, syncClient) {
                 return;
             }
             const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params);
-            sendResult(syncClient, query.id, result);
+            if (query.correlation_id) {
+                const err = result && typeof result === 'object' && 'error' in result ? result.error : undefined;
+                sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, err);
+            }
+            else {
+                sendResult(syncClient, query.id, result);
+            }
             return;
         }
         if (query.type === 'page_info') {
@@ -305,13 +311,23 @@ export async function handlePendingQuery(query, syncClient) {
                     type: 'DOM_QUERY',
                     params: query.params
                 });
-                sendResult(syncClient, query.id, result);
+                if (query.correlation_id) {
+                    sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result);
+                }
+                else {
+                    sendResult(syncClient, query.id, result);
+                }
             }
             catch (err) {
-                sendResult(syncClient, query.id, {
-                    error: 'dom_query_failed',
-                    message: err.message || 'Failed to execute DOM query'
-                });
+                if (query.correlation_id) {
+                    sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, err.message || 'Failed to execute DOM query');
+                }
+                else {
+                    sendResult(syncClient, query.id, {
+                        error: 'dom_query_failed',
+                        message: err.message || 'Failed to execute DOM query'
+                    });
+                }
             }
             return;
         }
@@ -321,13 +337,23 @@ export async function handlePendingQuery(query, syncClient) {
                     type: 'A11Y_QUERY',
                     params: query.params
                 });
-                sendResult(syncClient, query.id, result);
+                if (query.correlation_id) {
+                    sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result);
+                }
+                else {
+                    sendResult(syncClient, query.id, result);
+                }
             }
             catch (err) {
-                sendResult(syncClient, query.id, {
-                    error: 'a11y_audit_failed',
-                    message: err.message || 'Failed to execute accessibility audit'
-                });
+                if (query.correlation_id) {
+                    sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, err.message || 'Failed to execute accessibility audit');
+                }
+                else {
+                    sendResult(syncClient, query.id, {
+                        error: 'a11y_audit_failed',
+                        message: err.message || 'Failed to execute accessibility audit'
+                    });
+                }
             }
             return;
         }

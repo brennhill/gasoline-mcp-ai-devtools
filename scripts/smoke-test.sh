@@ -42,11 +42,35 @@ echo "  80 tests across 14 modules"
 echo "============================================================"
 echo ""
 
-# ── Resume point ─────────────────────────────────────────
-# Bootstrap (01) always runs to initialize extension state.
+# ── Resume support ───────────────────────────────────────
+# --start-from skips all modules before the target.
+# Instead of running full bootstrap, does a quick health probe
+# to set EXTENSION_CONNECTED and PILOT_ENABLED.
 SKIP_UNTIL_FOUND="${START_FROM:+true}"
+
 if [ -n "$START_FROM" ]; then
     echo "  Resuming from module matching: $START_FROM"
+    echo ""
+
+    # Quick state init — replaces full bootstrap when resuming.
+    # Assumes daemon is already running from the previous run.
+    if ! wait_for_health 30; then
+        echo "  Daemon not healthy. Starting fresh..."
+        call_tool "observe" '{"what":"page"}' >/dev/null 2>&1 || true
+        sleep 2
+        wait_for_health 30 || true
+    fi
+
+    health_body=$(get_http_body "http://localhost:${PORT}/health" 2>/dev/null || echo "{}")
+    if echo "$health_body" | jq -e '.capture.available == true' >/dev/null 2>&1; then
+        EXTENSION_CONNECTED=true
+        echo "  Extension: connected"
+    else
+        echo "  Extension: NOT connected (some tests will skip)"
+    fi
+    # Probe pilot by checking if interact responds without "disabled"
+    PILOT_ENABLED=true
+    echo "  Pilot: assumed enabled (from previous run)"
     echo ""
 fi
 
@@ -74,11 +98,7 @@ for module in "${MODULES[@]}"; do
         if [[ "$module" == *"$START_FROM"* ]]; then
             SKIP_UNTIL_FOUND=""
         else
-            # Always run bootstrap (sets extension state)
-            if [[ "$module" != "01-bootstrap.sh" ]]; then
-                echo "  (skipping $module)"
-                continue
-            fi
+            continue
         fi
     fi
 

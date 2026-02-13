@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/pagination"
 )
 
 // ObserveHandler is the function signature for observe tool handlers.
@@ -205,37 +206,51 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 
 // #lizard forgives
 func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Parse optional parameters
+	// Parse optional parameters including cursor pagination
 	var params struct {
-		Limit    int    `json:"limit"`
-		Level    string `json:"level"`     // exact level match
-		MinLevel string `json:"min_level"` // minimum level threshold
-		Source   string `json:"source"`    // filter by source
-		URL      string `json:"url"`       // filter by URL substring
+		Limit             int    `json:"limit"`
+		Level             string `json:"level"`               // exact level match
+		MinLevel          string `json:"min_level"`           // minimum level threshold
+		Source            string `json:"source"`              // filter by source
+		URL               string `json:"url"`                 // filter by URL substring
+		AfterCursor       string `json:"after_cursor"`        // cursor-based forward pagination
+		BeforeCursor      string `json:"before_cursor"`       // cursor-based backward pagination
+		SinceCursor       string `json:"since_cursor"`        // cursor-based since (inclusive)
+		RestartOnEviction bool   `json:"restart_on_eviction"` // auto-restart on cursor expiration
 	}
 	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
 		params.Limit = 100 // default limit
 	}
 
-	// Copy slice reference under lock, iterate outside.
+	// Copy slice reference and totalAdded under lock.
 	// Safe because addEntries creates new slices on rotation.
 	h.server.mu.RLock()
-	allEntries := h.server.entries
+	rawEntries := h.server.entries
+	totalAdded := h.server.logTotalAdded
 	h.server.mu.RUnlock()
 
-	logs := make([]map[string]any, 0)
-	for i := len(allEntries) - 1; i >= 0 && len(logs) < params.Limit; i-- {
-		entry := allEntries[i]
+	// Convert []LogEntry (named type) to []map[string]any for pagination package.
+	// Only copies slice of map references, not map contents.
+	allEntries := make([]map[string]any, len(rawEntries))
+	for i, e := range rawEntries {
+		allEntries[i] = e
+	}
 
+	// Enrich entries with sequence numbers for cursor pagination
+	enriched := pagination.EnrichLogEntries(allEntries, totalAdded)
+
+	// Apply content filters on enriched entries
+	filtered := make([]pagination.LogEntryWithSequence, 0, len(enriched))
+	for _, e := range enriched {
 		// Skip non-console entries (e.g., lifecycle events)
-		entryType, _ := entry["type"].(string)
+		entryType, _ := e.Entry["type"].(string)
 		if entryType == "lifecycle" || entryType == "tracking" || entryType == "extension" {
 			continue
 		}
 
 		// Filter by exact level if specified
-		level, _ := entry["level"].(string)
+		level, _ := e.Entry["level"].(string)
 		if params.Level != "" && level != params.Level {
 			continue
 		}
@@ -247,7 +262,7 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 
 		// Filter by source if specified
 		if params.Source != "" {
-			source, _ := entry["source"].(string)
+			source, _ := e.Entry["source"].(string)
 			if source != params.Source {
 				continue
 			}
@@ -255,27 +270,47 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 
 		// Filter by URL if specified
 		if params.URL != "" {
-			entryURL, _ := entry["url"].(string)
+			entryURL, _ := e.Entry["url"].(string)
 			if !containsIgnoreCase(entryURL, params.URL) {
 				continue
 			}
 		}
 
-		logs = append(logs, map[string]any{
-			"level":     entry["level"],
-			"message":   entry["message"],
-			"source":    entry["source"],
-			"url":       entry["url"],
-			"line":      entry["line"],
-			"column":    entry["column"],
-			"timestamp": entry["timestamp"],
-			"tab_id":    entry["tabId"],
-		})
+		filtered = append(filtered, e)
 	}
 
+	// Apply cursor pagination
+	paginated, pMeta, err := pagination.ApplyLogCursorPagination(
+		filtered,
+		params.AfterCursor, params.BeforeCursor, params.SinceCursor,
+		params.Limit,
+		params.RestartOnEviction,
+	)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam, err.Error(), "Check cursor format or use restart_on_eviction:true")}
+	}
+
+	// Serialize entries
+	logs := make([]map[string]any, len(paginated))
+	for i, e := range paginated {
+		logs[i] = map[string]any{
+			"level":     e.Entry["level"],
+			"message":   e.Entry["message"],
+			"source":    e.Entry["source"],
+			"url":       e.Entry["url"],
+			"line":      e.Entry["line"],
+			"column":    e.Entry["column"],
+			"timestamp": e.Entry["timestamp"],
+			"tab_id":    e.Entry["tabId"],
+		}
+	}
+
+	// Use newest entry timestamp for data-age calculation
 	var newestTS time.Time
-	if len(logs) > 0 {
-		if ts, ok := logs[0]["timestamp"].(string); ok {
+	if len(paginated) > 0 {
+		last := paginated[len(paginated)-1]
+		if ts, ok := last.Entry["timestamp"].(string); ok {
 			newestTS, _ = time.Parse(time.RFC3339, ts)
 		}
 	}
@@ -283,7 +318,7 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Browser logs", map[string]any{
 		"logs":     logs,
 		"count":    len(logs),
-		"metadata": buildResponseMetadata(h.capture, newestTS),
+		"metadata": buildPaginatedResponseMetadata(h.capture, newestTS, pMeta),
 	})}
 }
 

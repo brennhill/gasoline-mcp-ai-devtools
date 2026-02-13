@@ -11,7 +11,7 @@ begin_test "13.1" "Schema: draw_mode_start in interact action enum" \
 
 run_test_13_1() {
     local tools_resp
-    tools_resp=$(send_mcp '{"jsonrpc":"2.0","id":__ID__,"method":"tools/list"}')
+    tools_resp=$(send_mcp "{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/list\"}")
     if echo "$tools_resp" | jq -e '.result.tools[] | select(.name=="interact") | .inputSchema.properties.action.enum[] | select(.=="draw_mode_start")' >/dev/null 2>&1; then
         pass "draw_mode_start in interact action enum."
     else
@@ -27,7 +27,7 @@ begin_test "13.2" "Schema: annotations and annotation_detail in analyze" \
 
 run_test_13_2() {
     local tools_resp
-    tools_resp=$(send_mcp '{"jsonrpc":"2.0","id":__ID__,"method":"tools/list"}')
+    tools_resp=$(send_mcp "{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/list\"}")
     local has_ann has_det
     has_ann=$(echo "$tools_resp" | jq -r '.result.tools[] | select(.name=="analyze") | .inputSchema.properties.what.enum[] | select(.=="annotations")' 2>/dev/null)
     has_det=$(echo "$tools_resp" | jq -r '.result.tools[] | select(.name=="analyze") | .inputSchema.properties.what.enum[] | select(.=="annotation_detail")' 2>/dev/null)
@@ -46,7 +46,7 @@ begin_test "13.3" "Schema: visual_test, annotation_report, annotation_issues in 
 
 run_test_13_3() {
     local tools_resp
-    tools_resp=$(send_mcp '{"jsonrpc":"2.0","id":__ID__,"method":"tools/list"}')
+    tools_resp=$(send_mcp "{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/list\"}")
     local has_vt has_ar has_ai
     has_vt=$(echo "$tools_resp" | jq -r '.result.tools[] | select(.name=="generate") | .inputSchema.properties.format.enum[] | select(.=="visual_test")' 2>/dev/null)
     has_ar=$(echo "$tools_resp" | jq -r '.result.tools[] | select(.name=="generate") | .inputSchema.properties.format.enum[] | select(.=="annotation_report")' 2>/dev/null)
@@ -236,8 +236,8 @@ run_test_13_7
 
 # ── Test 13.8: Double activation returns already_active ──────
 begin_test "13.8" "Double draw_mode_start returns already_active" \
-    "Activate draw mode twice, verify second call returns already_active status" \
-    "Tests: idempotent activation guard"
+    "Activate draw mode twice, poll extension result for already_active status" \
+    "Tests: idempotent activation guard (extension-side)"
 
 run_test_13_8() {
     if [ "$PILOT_ENABLED" != "true" ]; then
@@ -245,20 +245,73 @@ run_test_13_8() {
         return
     fi
 
-    # First activation
-    call_tool "interact" '{"action":"draw_mode_start"}' >/dev/null 2>&1
-    sleep 1
+    # First activation — wait for the extension to confirm it's active
+    local first_resp
+    first_resp=$(call_tool "interact" '{"action":"draw_mode_start"}')
+    local first_text
+    first_text=$(extract_content_text "$first_resp")
+    local first_corr
+    first_corr=$(echo "$first_text" | grep -oE '"correlation_id":"[^"]+"' | head -1 | sed 's/"correlation_id":"//' | sed 's/"//' || true)
 
-    # Second activation
-    local response
-    response=$(call_tool "interact" '{"action":"draw_mode_start"}')
-    local content_text
-    content_text=$(extract_content_text "$response")
-
-    if echo "$content_text" | grep -qi "already.active\|already_active"; then
-        pass "Second draw_mode_start returns already_active."
+    # Poll until the first activation is confirmed by the extension
+    if [ -n "$first_corr" ]; then
+        for i in $(seq 1 10); do
+            sleep 0.5
+            local poll
+            poll=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$first_corr\"}")
+            local poll_text
+            poll_text=$(extract_content_text "$poll")
+            if echo "$poll_text" | grep -q '"status":"complete"'; then
+                break
+            fi
+        done
     else
-        fail "Expected already_active. Response: $(truncate "$content_text" 200)"
+        sleep 1
+    fi
+
+    # Second activation — the server returns immediately (fire-and-forget),
+    # so extract the correlation_id and poll the extension's actual response.
+    local second_resp
+    second_resp=$(call_tool "interact" '{"action":"draw_mode_start"}')
+    local second_text
+    second_text=$(extract_content_text "$second_resp")
+    local second_corr
+    second_corr=$(echo "$second_text" | grep -oE '"correlation_id":"[^"]+"' | head -1 | sed 's/"correlation_id":"//' | sed 's/"//' || true)
+
+    if [ -z "$second_corr" ]; then
+        fail "No correlation_id in second draw_mode_start response."
+        return
+    fi
+
+    # Poll command_result for the extension's already_active response
+    local found="false"
+    for i in $(seq 1 10); do
+        sleep 0.5
+        local poll_resp
+        poll_resp=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$second_corr\"}")
+        local poll_text
+        poll_text=$(extract_content_text "$poll_resp")
+
+        if echo "$poll_text" | grep -qi "already.active\|already_active"; then
+            found="true"
+            pass "Extension returned already_active on second draw_mode_start (poll $i)."
+            break
+        fi
+        if echo "$poll_text" | grep -q '"status":"complete"'; then
+            # Got a result but not already_active — check the data payload
+            if echo "$poll_text" | grep -qi "already.active\|already_active"; then
+                found="true"
+                pass "Extension returned already_active on second draw_mode_start (poll $i)."
+            else
+                fail "Extension completed but without already_active. Response: $(truncate "$poll_text" 200)"
+                found="true"
+            fi
+            break
+        fi
+    done
+
+    if [ "$found" = "false" ]; then
+        fail "Timed out polling for second draw_mode_start result (correlation_id=$second_corr)."
     fi
 
     # Cleanup
