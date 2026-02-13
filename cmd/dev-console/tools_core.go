@@ -249,6 +249,13 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	// Use global annotation store for draw mode
 	handler.annotationStore = globalAnnotationStore
 
+	// Wire async annotation waiter → CommandTracker completion
+	if handler.capture != nil {
+		handler.annotationStore.SetCommandCompleter(func(correlationID string, result json.RawMessage) {
+			handler.capture.CompleteCommand(correlationID, result, "")
+		})
+	}
+
 	// Initialize security tools (concrete types - interface signatures differ)
 	handler.securityScannerImpl = security.NewSecurityScanner()
 	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()

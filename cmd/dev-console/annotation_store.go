@@ -89,6 +89,13 @@ type namedSessionEntry struct {
 	ExpiresAt time.Time
 }
 
+// annotationWaiter is a pending correlation_id waiting for annotations to arrive.
+// When annotations are stored, all matching waiters are completed via the callback.
+type annotationWaiter struct {
+	CorrelationID string // command tracker correlation_id
+	SessionName   string // "" for anonymous, non-empty for named session
+}
+
 // AnnotationStore manages annotation sessions and details in memory.
 type AnnotationStore struct {
 	mu       sync.RWMutex
@@ -104,6 +111,10 @@ type AnnotationStore struct {
 	// Blocking wait support
 	sessionNotify     chan struct{} // closed on StoreSession, then recreated
 	lastDrawStartedAt int64         // millis; set by MarkDrawStarted
+
+	// Async wait support — LLM polls via observe({what: "command_result"})
+	waiters         []annotationWaiter                                        // pending waiters
+	completeCommand func(correlationID string, result json.RawMessage) // callback to complete CommandTracker
 }
 
 // NewAnnotationStore creates a new store with the given detail TTL.
@@ -129,8 +140,47 @@ func (s *AnnotationStore) Close() {
 	})
 }
 
+// SetCommandCompleter sets the callback used to complete async annotation waiters.
+// Must be called before any waiters are registered (typically at server startup).
+func (s *AnnotationStore) SetCommandCompleter(fn func(correlationID string, result json.RawMessage)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.completeCommand = fn
+}
+
+// RegisterWaiter registers a correlation_id to be completed when annotations arrive.
+// sessionName is "" for anonymous sessions, or a name for named sessions.
+func (s *AnnotationStore) RegisterWaiter(correlationID string, sessionName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.waiters = append(s.waiters, annotationWaiter{
+		CorrelationID: correlationID,
+		SessionName:   sessionName,
+	})
+}
+
+// GetLatestSessionSinceDraw returns the latest session newer than MarkDrawStarted, or nil.
+func (s *AnnotationStore) GetLatestSessionSinceDraw() *AnnotationSession {
+	s.mu.RLock()
+	sinceTs := s.lastDrawStartedAt
+	s.mu.RUnlock()
+	return s.getSessionSince(sinceTs)
+}
+
+// GetNamedSessionSinceDraw returns the named session if updated after MarkDrawStarted, or nil.
+func (s *AnnotationStore) GetNamedSessionSinceDraw(name string) *NamedAnnotationSession {
+	s.mu.RLock()
+	sinceTs := s.lastDrawStartedAt
+	s.mu.RUnlock()
+	ns := s.GetNamedSession(name)
+	if ns != nil && ns.UpdatedAt > sinceTs {
+		return ns
+	}
+	return nil
+}
+
 // StoreSession saves an annotation session, overwriting any previous session for the tab.
-// Notifies any goroutines blocked in WaitForSession.
+// Notifies any goroutines blocked in WaitForSession and completes async waiters.
 func (s *AnnotationStore) StoreSession(tabID int, session *AnnotationSession) {
 	s.mu.Lock()
 	s.sessions[tabID] = &annotationSessionEntry{
@@ -141,11 +191,31 @@ func (s *AnnotationStore) StoreSession(tabID int, session *AnnotationSession) {
 	if len(s.sessions) > maxSessions {
 		s.evictOldestSessionLocked()
 	}
-	// Notify waiters: close current channel, create a fresh one
+	// Collect and clear anonymous waiters (sessionName == "")
+	var toComplete []annotationWaiter
+	remaining := s.waiters[:0]
+	for _, w := range s.waiters {
+		if w.SessionName == "" {
+			toComplete = append(toComplete, w)
+		} else {
+			remaining = append(remaining, w)
+		}
+	}
+	s.waiters = remaining
+	completeFn := s.completeCommand
+	// Notify blocking waiters: close current channel, create a fresh one
 	ch := s.sessionNotify
 	s.sessionNotify = make(chan struct{})
 	s.mu.Unlock()
 	close(ch)
+
+	// Complete async waiters outside the lock
+	if completeFn != nil {
+		result := buildAnnotationResult(session)
+		for _, w := range toComplete {
+			completeFn(w.CorrelationID, result)
+		}
+	}
 }
 
 // MarkDrawStarted records the current time so WaitForSession can skip stale sessions.
@@ -263,7 +333,7 @@ func (s *AnnotationStore) GetDetail(correlationID string) (*AnnotationDetail, bo
 }
 
 // AppendToNamedSession adds a page to a named multi-page session.
-// Creates the session if it doesn't exist. Also fires the session notify.
+// Creates the session if it doesn't exist. Also fires the session notify and completes async waiters.
 func (s *AnnotationStore) AppendToNamedSession(name string, session *AnnotationSession) {
 	s.mu.Lock()
 	entry, ok := s.named[name]
@@ -282,11 +352,35 @@ func (s *AnnotationStore) AppendToNamedSession(name string, session *AnnotationS
 	if len(s.named) > maxNamedSessions {
 		s.evictOldestNamedSessionLocked()
 	}
-	// Notify waiters
+	// Collect and clear matching named waiters
+	var toComplete []annotationWaiter
+	remaining := s.waiters[:0]
+	for _, w := range s.waiters {
+		if w.SessionName == name {
+			toComplete = append(toComplete, w)
+		} else {
+			remaining = append(remaining, w)
+		}
+	}
+	s.waiters = remaining
+	completeFn := s.completeCommand
+	// Snapshot the session for completing waiters
+	nsCopy := *entry.Session
+	nsCopy.Pages = make([]*AnnotationSession, len(entry.Session.Pages))
+	copy(nsCopy.Pages, entry.Session.Pages)
+	// Notify blocking waiters
 	ch := s.sessionNotify
 	s.sessionNotify = make(chan struct{})
 	s.mu.Unlock()
 	close(ch)
+
+	// Complete async waiters outside the lock
+	if completeFn != nil {
+		for _, w := range toComplete {
+			result := buildNamedAnnotationResult(&nsCopy)
+			completeFn(w.CorrelationID, result)
+		}
+	}
 }
 
 // GetNamedSession returns a snapshot of the named multi-page session if not expired.
@@ -451,6 +545,51 @@ func (s *AnnotationStore) cleanupLoop() {
 			s.evictExpiredEntries()
 		}
 	}
+}
+
+// buildAnnotationResult serializes an annotation session for the CommandTracker.
+func buildAnnotationResult(session *AnnotationSession) json.RawMessage {
+	result := map[string]any{
+		"status":      "complete",
+		"annotations": session.Annotations,
+		"count":       len(session.Annotations),
+		"page_url":    session.PageURL,
+	}
+	if session.ScreenshotPath != "" {
+		result["screenshot"] = session.ScreenshotPath
+	}
+	// Error impossible: map of primitive types
+	data, _ := json.Marshal(result)
+	return data
+}
+
+// buildNamedAnnotationResult serializes a named session for the CommandTracker.
+func buildNamedAnnotationResult(ns *NamedAnnotationSession) json.RawMessage {
+	totalCount := 0
+	pages := make([]map[string]any, 0, len(ns.Pages))
+	for _, page := range ns.Pages {
+		totalCount += len(page.Annotations)
+		p := map[string]any{
+			"page_url":    page.PageURL,
+			"annotations": page.Annotations,
+			"count":       len(page.Annotations),
+			"tab_id":      page.TabID,
+		}
+		if page.ScreenshotPath != "" {
+			p["screenshot"] = page.ScreenshotPath
+		}
+		pages = append(pages, p)
+	}
+	result := map[string]any{
+		"status":       "complete",
+		"session_name": ns.Name,
+		"pages":        pages,
+		"page_count":   len(ns.Pages),
+		"total_count":  totalCount,
+	}
+	// Error impossible: map of primitive types
+	data, _ := json.Marshal(result)
+	return data
 }
 
 // evictExpiredEntries removes all expired details, sessions, and named sessions.

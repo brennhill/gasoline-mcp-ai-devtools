@@ -454,18 +454,16 @@ func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string,
 }
 
 // CompleteCommand updates a command's status to "complete" with result.
-// Called when extension posts result back.
+// Called when extension posts result back. Signals any WaitForCommand waiters.
 func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.RawMessage, err string) {
 	if correlationID == "" {
 		return
 	}
 
 	qd.resultsMu.Lock()
-	defer qd.resultsMu.Unlock()
-
 	cmd, exists := qd.completedResults[correlationID]
 	if !exists {
-		// Command may have expired and been moved to failedCommands
+		qd.resultsMu.Unlock()
 		return
 	}
 
@@ -473,6 +471,12 @@ func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.Raw
 	cmd.Result = result
 	cmd.Error = err
 	cmd.CompletedAt = time.Now()
+
+	// Signal waiters: close current channel, create a fresh one
+	ch := qd.commandNotify
+	qd.commandNotify = make(chan struct{})
+	qd.resultsMu.Unlock()
+	close(ch)
 }
 
 // ExpireCommand marks a command as "expired" and moves it to failedCommands.
@@ -508,6 +512,41 @@ func (qd *QueryDispatcher) ExpireCommand(correlationID string) {
 
 	// Remove from active tracking
 	delete(qd.completedResults, correlationID)
+}
+
+// WaitForCommand blocks until the command completes or timeout expires.
+// Returns (CommandResult, found). If still pending after timeout, returns the pending result.
+func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Duration) (*queries.CommandResult, bool) {
+	// Check immediately
+	cmd, found := qd.GetCommandResult(correlationID)
+	if !found || cmd.Status != "pending" {
+		return cmd, found
+	}
+
+	deadline := time.Now().Add(timeout)
+	for {
+		qd.resultsMu.RLock()
+		ch := qd.commandNotify
+		qd.resultsMu.RUnlock()
+
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return qd.GetCommandResult(correlationID)
+		}
+
+		timer := time.NewTimer(remaining)
+		select {
+		case <-ch:
+			timer.Stop()
+			cmd, found = qd.GetCommandResult(correlationID)
+			if !found || cmd.Status != "pending" {
+				return cmd, found
+			}
+			continue
+		case <-timer.C:
+			return qd.GetCommandResult(correlationID)
+		}
+	}
 }
 
 // GetCommandResult retrieves command status by correlation ID.

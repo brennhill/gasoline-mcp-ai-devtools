@@ -43,6 +43,7 @@ type QueryDispatcher struct {
 	resultsMu        sync.RWMutex
 	completedResults map[string]*queries.CommandResult
 	failedCommands   []*queries.CommandResult
+	commandNotify    chan struct{} // closed on CompleteCommand, then recreated
 
 	stopCleanup func()
 }
@@ -55,6 +56,7 @@ func NewQueryDispatcher() *QueryDispatcher {
 		queryTimeout:     queries.DefaultQueryTimeout,
 		completedResults: make(map[string]*queries.CommandResult),
 		failedCommands:   make([]*queries.CommandResult, 0, 100),
+		commandNotify:    make(chan struct{}),
 	}
 	qd.queryCond = sync.NewCond(&qd.mu)
 	qd.stopCleanup = qd.startResultCleanup()
@@ -188,6 +190,11 @@ func (c *Capture) CompleteCommand(correlationID string, result json.RawMessage, 
 // ExpireCommand delegates to QueryDispatcher.
 func (c *Capture) ExpireCommand(correlationID string) {
 	c.qd.ExpireCommand(correlationID)
+}
+
+// WaitForCommand delegates to QueryDispatcher.
+func (c *Capture) WaitForCommand(correlationID string, timeout time.Duration) (*queries.CommandResult, bool) {
+	return c.qd.WaitForCommand(correlationID, timeout)
 }
 
 // GetCommandResult delegates to QueryDispatcher.

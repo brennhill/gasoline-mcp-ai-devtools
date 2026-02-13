@@ -1,10 +1,12 @@
 // tools_analyze_annotations.go — Analyze handlers for draw mode annotations.
 // Provides analyze({what: "annotations"}), analyze({what: "annotation_detail"}),
 // analyze({what: "draw_history"}), and analyze({what: "draw_session"}).
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
 package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,59 +14,55 @@ import (
 	"time"
 )
 
-const defaultAnnotationWaitTimeout = 5 * time.Minute
+// annotationWaitCommandTTL is how long the pending command stays in CommandTracker
+// before being expired. Generous so the user has time to draw.
+const annotationWaitCommandTTL = 10 * time.Minute
 
 // toolGetAnnotations returns the latest annotation session or a named multi-page session.
-// If wait=true, blocks until the user finishes drawing (up to timeout_ms, default 5 min).
+// If wait=true, returns immediately with a correlation_id. The LLM polls via
+// observe({what: "command_result", correlation_id: "..."}) until annotations arrive.
 // If session is specified, returns the named multi-page session.
-// On timeout returns {status: "waiting"} so the LLM can re-issue.
 func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Wait      bool   `json:"wait"`
-		TimeoutMs int    `json:"timeout_ms"`
-		Session   string `json:"session"`
+		Wait    bool   `json:"wait"`
+		Session string `json:"session"`
 	}
 	if len(args) > 0 {
 		lenientUnmarshal(args, &params)
 	}
 
-	timeout := defaultAnnotationWaitTimeout
-	if params.TimeoutMs > 0 {
-		timeout = time.Duration(params.TimeoutMs) * time.Millisecond
-	}
-	// Cap at 10 minutes to prevent runaway waits
-	const maxAnnotationWaitTimeout = 10 * time.Minute
-	if timeout > maxAnnotationWaitTimeout {
-		timeout = maxAnnotationWaitTimeout
-	}
-
 	// Named session path — returns multi-page aggregated results
 	if params.Session != "" {
-		return h.getNamedAnnotations(req, params.Session, params.Wait, timeout)
+		return h.getNamedAnnotations(req, params.Session, params.Wait)
 	}
 
 	// Anonymous session path — returns latest single-page result
-	return h.getAnonymousAnnotations(req, params.Wait, timeout)
+	return h.getAnonymousAnnotations(req, params.Wait)
 }
 
-func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool, timeout time.Duration) JSONRPCResponse {
-	var session *AnnotationSession
-
+func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool) JSONRPCResponse {
 	if wait {
-		var timedOut bool
-		session, timedOut = h.annotationStore.WaitForSession(timeout)
-		if timedOut {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
-				"status":      "waiting",
-				"annotations": []any{},
-				"count":       0,
-				"message":     "Timed out waiting for user to finish drawing. Re-issue this call to continue waiting.",
-			})}
+		// Check if annotations are already available (no need to wait)
+		if session := h.annotationStore.GetLatestSessionSinceDraw(); session != nil {
+			return h.formatAnnotationSession(req, session)
 		}
-	} else {
-		session = h.annotationStore.GetLatestSession()
+
+		// Register a pending command — the annotation store will complete it
+		// when annotations arrive via /draw-mode/complete
+		corrID := fmt.Sprintf("ann_%d_%d", time.Now().UnixNano(), randomInt63()%1000000)
+		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
+		h.annotationStore.RegisterWaiter(corrID, "")
+
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
+			"status":         "waiting_for_user",
+			"correlation_id": corrID,
+			"annotations":    []any{},
+			"count":          0,
+			"message":        "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
+		})}
 	}
 
+	session := h.annotationStore.GetLatestSession()
 	if session == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
 			"annotations": []any{},
@@ -73,40 +71,45 @@ func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool, tim
 		})}
 	}
 
+	return h.formatAnnotationSession(req, session)
+}
+
+func (h *ToolHandler) formatAnnotationSession(req JSONRPCRequest, session *AnnotationSession) JSONRPCResponse {
 	result := map[string]any{
 		"annotations": session.Annotations,
 		"count":       len(session.Annotations),
 		"page_url":    session.PageURL,
 	}
-
 	if session.ScreenshotPath != "" {
 		result["screenshot"] = session.ScreenshotPath
 	}
-
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", result)}
 }
 
 // #lizard forgives
-func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string, wait bool, timeout time.Duration) JSONRPCResponse {
-	var ns *NamedAnnotationSession
-
+func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string, wait bool) JSONRPCResponse {
 	if wait {
-		var timedOut bool
-		ns, timedOut = h.annotationStore.WaitForNamedSession(sessionName, timeout)
-		if timedOut {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
-				"status":       "waiting",
-				"session_name": sessionName,
-				"pages":        []any{},
-				"page_count":   0,
-				"total_count":  0,
-				"message":      "Timed out waiting for user to finish drawing. Re-issue this call to continue waiting.",
-			})}
+		// Check if named session already has data newer than draw start
+		if ns := h.annotationStore.GetNamedSessionSinceDraw(sessionName); ns != nil {
+			return h.formatNamedAnnotationSession(req, ns)
 		}
-	} else {
-		ns = h.annotationStore.GetNamedSession(sessionName)
+
+		corrID := fmt.Sprintf("ann_%d_%d", time.Now().UnixNano(), randomInt63()%1000000)
+		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
+		h.annotationStore.RegisterWaiter(corrID, sessionName)
+
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
+			"status":         "waiting_for_user",
+			"correlation_id": corrID,
+			"session_name":   sessionName,
+			"pages":          []any{},
+			"page_count":     0,
+			"total_count":    0,
+			"message":        "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
+		})}
 	}
 
+	ns := h.annotationStore.GetNamedSession(sessionName)
 	if ns == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
 			"session_name": sessionName,
@@ -117,7 +120,10 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 		})}
 	}
 
-	// Build pages array with annotation counts
+	return h.formatNamedAnnotationSession(req, ns)
+}
+
+func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *NamedAnnotationSession) JSONRPCResponse {
 	totalCount := 0
 	pages := make([]map[string]any, 0, len(ns.Pages))
 	for _, page := range ns.Pages {

@@ -189,7 +189,10 @@ export async function testConnection(): Promise<void> {
   }
 
   try {
-    const resp = await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) })
+    const resp = await fetch(`${serverUrl}/health`, {
+      signal: AbortSignal.timeout(3000),
+      headers: { 'X-Gasoline-Client': 'gasoline-extension' }
+    })
     if (!resp.ok) {
       throw new Error(`Failed to check server health at ${serverUrl}: HTTP ${resp.status} ${resp.statusText}`)
     }
