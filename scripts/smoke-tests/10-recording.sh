@@ -198,15 +198,16 @@ run_test_s27() {
         return
     fi
 
-    sleep 1
+    sleep 3
 
-    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark before refresh","script":"document.getElementById(\"gasoline-recording-watermark\") ? \"FOUND\" : \"NOT_FOUND\""}'
+    # YouTube is slow — give execute_js more poll time (30 polls = 15s)
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark before refresh","script":"document.getElementById(\"gasoline-recording-watermark\") ? \"WATERMARK_FOUND\" : \"WATERMARK_MISSING\""}' 30
     local before_refresh="$INTERACT_RESULT"
 
     interact_and_wait "refresh" '{"action":"refresh","reason":"Refresh during recording"}' 20
-    sleep 3
+    sleep 5
 
-    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark after refresh","script":"document.getElementById(\"gasoline-recording-watermark\") ? \"FOUND\" : \"NOT_FOUND\""}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark after refresh","script":"document.getElementById(\"gasoline-recording-watermark\") ? \"WATERMARK_FOUND\" : \"WATERMARK_MISSING\""}' 30
     local after_refresh="$INTERACT_RESULT"
 
     interact_and_wait "record_stop" '{"action":"record_stop","reason":"Stop watermark test recording"}' 20
@@ -214,10 +215,10 @@ run_test_s27() {
 
     local before_ok=false
     local after_ok=false
-    if echo "$before_refresh" | grep -q "FOUND"; then
+    if echo "$before_refresh" | grep -q "WATERMARK_FOUND"; then
         before_ok=true
     fi
-    if echo "$after_refresh" | grep -q "FOUND"; then
+    if echo "$after_refresh" | grep -q "WATERMARK_FOUND"; then
         after_ok=true
     fi
 

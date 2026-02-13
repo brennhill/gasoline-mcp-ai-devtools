@@ -18,15 +18,15 @@ run_test_s21() {
     interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Clean page for subtitle test"}' 20
     sleep 2
 
-    interact_and_wait "subtitle" '{"action":"subtitle","text":"Gasoline smoke test — this text should appear at the bottom of the viewport"}'
+    interact_and_wait "subtitle" '{"action":"subtitle","text":"Gasoline smoke test — this text should appear at the bottom of the viewport"}' 25
 
     if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
         fail "Subtitle set returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
 
-    sleep 1
-    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check subtitle visibility","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"NOT_FOUND\"; var style = window.getComputedStyle(el); var visible = style.display !== \"none\" && style.opacity !== \"0\"; return (visible ? \"VISIBLE\" : \"HIDDEN\") + \":\" + el.textContent; })()"}'
+    sleep 2
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check subtitle visibility","script":"(function() { var el = document.getElementById(\"gasoline-subtitle\"); if (!el) return \"NOT_FOUND\"; var style = window.getComputedStyle(el); var visible = style.display !== \"none\" && style.opacity !== \"0\"; return (visible ? \"VISIBLE\" : \"HIDDEN\") + \":\" + el.textContent; })()"}' 25
 
     local dom_check="$INTERACT_RESULT"
 
