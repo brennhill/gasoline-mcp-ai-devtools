@@ -64,25 +64,7 @@ run_test_7_2() {
     echo "  [test preview]"
     echo "$content_text" | head -5
 
-    # Check if this is a stub (returns empty script)
-    if echo "$content_text" | python3 -c "
-import sys, json
-t = sys.stdin.read(); i = t.find('{')
-if i >= 0:
-    data = json.loads(t[i:])
-    script = data.get('script', '')
-    if script == '':
-        print('STUB')
-    else:
-        print('OK')
-else:
-    print('OK')
-" 2>/dev/null | grep -q "STUB"; then
-        skip "generate(test) is a stub implementation (returns empty script). Not yet implemented."
-        return
-    fi
-
-    # If not a stub, verify it contains test code
+    # Verify it contains test code
     if echo "$content_text" | grep -qE "test\(|describe\(|it\("; then
         pass "generate(test) contains test framework patterns (test/describe/it)."
     elif echo "$content_text" | grep -qiE "expect|playwright|page\."; then
@@ -343,8 +325,10 @@ run_test_7_6
 
 # ── Test 7.7: SRI ───────────────────────────────────────
 begin_test "7.7" "Generate Subresource Integrity hashes" \
-    "generate(sri) returns valid SRI structure (resources depend on captured network data)" \
-    "Tests: SRI hash generation for loaded scripts/styles"
+    "generate(sri) returns SRI hashes for seeded third-party JS via fetch()" \
+    "Tests: SRI hash generation with verified network body capture"
+
+SRI_CDN_URL="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"
 
 run_test_7_7() {
     if [ "$EXTENSION_CONNECTED" != "true" ]; then
@@ -352,13 +336,34 @@ run_test_7_7() {
         return
     fi
 
-    # SRI needs cross-origin <script>/<link> tags on the page.
-    # Inject a CDN script tag so SRI has a resource to hash.
+    # ── Step 1: Seed a third-party JS fetch so SRI has a body to hash ──
+    # Use fetch() — reliably captured in network_bodies (unlike <script> tag injection).
+    local data_seeded="false"
     if [ "$PILOT_ENABLED" = "true" ]; then
-        interact_and_wait "execute_js" '{"action":"execute_js","reason":"Inject CDN script for SRI test","script":"var s = document.createElement(\"script\"); s.src = \"https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js\"; s.crossOrigin = \"anonymous\"; document.head.appendChild(s); \"injected\""}'
-        sleep 3
+        interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Fetch CDN JS for SRI test\",\"script\":\"fetch('${SRI_CDN_URL}').then(r=>r.text()).then(t=>'fetched:'+t.length).catch(e=>'error:'+e.message)\"}"
+
+        # ── Step 2: Poll network_bodies until the CDN URL appears ──
+        local max_polls=10
+        for i in $(seq 1 "$max_polls"); do
+            sleep 1
+            local bodies_response
+            bodies_response=$(call_tool "observe" '{"what":"network_bodies","url":"cdnjs.cloudflare.com"}')
+            local bodies_text
+            bodies_text=$(extract_content_text "$bodies_response")
+            if echo "$bodies_text" | grep -q "lodash"; then
+                data_seeded="true"
+                echo "  [data confirmed in network_bodies after ${i}s]"
+                break
+            fi
+        done
+
+        if [ "$data_seeded" != "true" ]; then
+            fail "SRI data seeding failed: CDN JS body not found in network_bodies after ${max_polls}s. Cannot validate SRI generation."
+            return
+        fi
     fi
 
+    # ── Step 3: Call generate(sri) ──
     local response
     response=$(call_tool "generate" '{"format":"sri"}')
     local content_text
@@ -375,29 +380,60 @@ run_test_7_7() {
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
-    resources = data.get('resources', data.get('entries', []))
-    count = len(resources) if isinstance(resources, list) else 0
-    print(f'    resources: {count}')
-    if isinstance(resources, list):
-        for r in resources[:3]:
-            url = r.get('url', '?')[:60]
-            integrity = r.get('integrity', r.get('hash', '?'))[:40]
-            print(f'    {url}')
-            print(f'      integrity: {integrity}')
-    status = data.get('status', '')
+    resources = data.get('resources', [])
     summary = data.get('summary', {})
-    msg = data.get('message', data.get('hint', ''))
-    if count > 0:
-        # Best case: actual SRI hashes generated
-        print(f'VERDICT:PASS_WITH_DATA resources={count}')
-    elif status == 'unavailable':
-        # No network bodies captured — expected when no page with third-party resources loaded
-        print(f'VERDICT:PASS_NO_DATA status=unavailable hint={str(msg)[:60]}')
-    elif isinstance(resources, list) and isinstance(summary, dict):
-        # Valid structure, 0 resources — network data exists but no third-party scripts/styles
-        print(f'VERDICT:PASS_EMPTY valid structure, 0 third-party resources to hash')
+    count = len(resources) if isinstance(resources, list) else 0
+    hashes_gen = summary.get('hashes_generated', 0) if isinstance(summary, dict) else 0
+    status = data.get('status', '')
+
+    print(f'    resources: {count}')
+    print(f'    hashes_generated: {hashes_gen}')
+
+    # ── No data path (pilot not available) ──
+    if status == 'unavailable':
+        print(f'VERDICT:NO_DATA status=unavailable')
+        sys.exit(0)
+    if count == 0:
+        print(f'VERDICT:EMPTY valid structure but 0 resources')
+        sys.exit(0)
+
+    # ── Validate each resource deeply ──
+    errors = []
+    for idx, r in enumerate(resources[:5]):
+        url = r.get('url', '')
+        hash_val = r.get('hash', '')
+        tag = r.get('tag_template', '')
+        crossorigin = r.get('crossorigin', '')
+        res_type = r.get('type', '')
+        size = r.get('size_bytes', 0)
+
+        print(f'    [{idx}] {url[:60]}')
+        print(f'        hash: {hash_val[:50]}')
+        print(f'        type: {res_type}  size: {size}  crossorigin: {crossorigin}')
+
+        if not hash_val.startswith('sha384-'):
+            errors.append(f'resource[{idx}]: hash missing sha384- prefix: {hash_val[:30]}')
+        if len(hash_val) < 15:
+            errors.append(f'resource[{idx}]: hash too short: {hash_val}')
+        if 'integrity=' not in tag:
+            errors.append(f'resource[{idx}]: tag_template missing integrity attribute')
+        if crossorigin != 'anonymous':
+            errors.append(f'resource[{idx}]: crossorigin should be anonymous, got: {crossorigin}')
+        if res_type not in ('script', 'style'):
+            errors.append(f'resource[{idx}]: type should be script or style, got: {res_type}')
+        if size <= 0:
+            errors.append(f'resource[{idx}]: size_bytes should be > 0, got: {size}')
+
+    # ── Validate summary ──
+    if hashes_gen != count:
+        errors.append(f'summary.hashes_generated ({hashes_gen}) != resource count ({count})')
+
+    if errors:
+        for e in errors:
+            print(f'    ERROR: {e}')
+        print(f'VERDICT:FAIL_VALIDATION {len(errors)} errors')
     else:
-        print(f'VERDICT:FAIL unexpected shape keys={list(data.keys())[:8]}')
+        print(f'VERDICT:PASS_WITH_DATA resources={count} hashes={hashes_gen}')
 except Exception as e:
     print(f'    (parse: {e})')
     print('VERDICT:FAIL_PARSE')
@@ -405,14 +441,23 @@ except Exception as e:
 
     echo "$validation" | grep -v "^VERDICT:" || true
 
-    if echo "$validation" | grep -q "VERDICT:PASS_WITH_DATA"; then
-        pass "generate(sri) returned SRI hashes for resources. $(echo "$validation" | grep 'VERDICT:' | head -1)"
-    elif echo "$validation" | grep -q "VERDICT:PASS_NO_DATA"; then
-        pass "generate(sri) returned valid response (no third-party network data captured). $(echo "$validation" | grep 'VERDICT:' | head -1)"
-    elif echo "$validation" | grep -q "VERDICT:PASS_EMPTY"; then
-        pass "generate(sri) returned valid structure (0 third-party scripts/styles in capture). $(echo "$validation" | grep 'VERDICT:' | head -1)"
+    # ── Step 4: Verdict — strict when data was seeded, lenient otherwise ──
+    if [ "$data_seeded" = "true" ]; then
+        # Pilot seeded data and we confirmed it landed — demand real results.
+        if echo "$validation" | grep -q "VERDICT:PASS_WITH_DATA"; then
+            pass "generate(sri) returned validated SRI hashes. $(echo "$validation" | grep 'VERDICT:' | head -1)"
+        else
+            fail "generate(sri) failed with seeded data. $(echo "$validation" | grep 'VERDICT:' | head -1 || echo 'no verdict'). Content: $(truncate "$content_text" 200)"
+        fi
     else
-        fail "generate(sri) returned invalid response. $(echo "$validation" | grep 'VERDICT:' | head -1 || echo 'no verdict'). Content: $(truncate "$content_text" 200)"
+        # No pilot — can't seed data, accept structural validity.
+        if echo "$validation" | grep -q "VERDICT:PASS_WITH_DATA"; then
+            pass "generate(sri) returned SRI hashes (no seeding needed). $(echo "$validation" | grep 'VERDICT:' | head -1)"
+        elif echo "$validation" | grep -q "VERDICT:NO_DATA\|VERDICT:EMPTY"; then
+            pass "generate(sri) valid structure (no pilot to seed data). $(echo "$validation" | grep 'VERDICT:' | head -1)"
+        else
+            fail "generate(sri) invalid response. $(echo "$validation" | grep 'VERDICT:' | head -1 || echo 'no verdict'). Content: $(truncate "$content_text" 200)"
+        fi
     fi
 }
 run_test_7_7

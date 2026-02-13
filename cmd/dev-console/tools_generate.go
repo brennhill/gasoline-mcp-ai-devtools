@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/export"
@@ -76,8 +77,170 @@ func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.Ra
 	return h.toolGetReproductionScriptImpl(req, args)
 }
 
+// TestGenParams are the parsed arguments for generate({format: "test"}).
+type TestGenParams struct {
+	Format             string `json:"format"`
+	TestName           string `json:"test_name"`
+	LastN              int    `json:"last_n"`
+	BaseURL            string `json:"base_url"`
+	AssertNetwork      bool   `json:"assert_network"`
+	AssertNoErrors     bool   `json:"assert_no_errors"`
+	AssertResponseShape bool  `json:"assert_response_shape"`
+}
+
 func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Test", map[string]any{"script": ""})}
+	var params TestGenParams
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &params)
+	}
+	if params.TestName == "" {
+		params.TestName = "generated test"
+	}
+
+	allActions := h.capture.GetAllEnhancedActions()
+	actions := filterLastN(allActions, params.LastN)
+
+	script := generateTestScript(actions, params)
+
+	result := map[string]any{
+		"script":       script,
+		"test_name":    params.TestName,
+		"action_count": len(actions),
+		"metadata": map[string]any{
+			"generated_at":      time.Now().Format(time.RFC3339),
+			"actions_available":  len(allActions),
+			"actions_included":   len(actions),
+			"assert_network":    params.AssertNetwork,
+			"assert_no_errors":  params.AssertNoErrors,
+		},
+	}
+
+	summary := fmt.Sprintf("Playwright test '%s' (%d actions)", params.TestName, len(actions))
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
+}
+
+// generateTestScript builds a complete Playwright test file from captured actions.
+func generateTestScript(actions []capture.EnhancedAction, params TestGenParams) string {
+	var b strings.Builder
+
+	b.WriteString("import { test, expect } from '@playwright/test';\n\n")
+	fmt.Fprintf(&b, "test.describe('%s', () => {\n", escapeJS(params.TestName))
+
+	if len(actions) == 0 {
+		b.WriteString("  test('should load page', async ({ page }) => {\n")
+		b.WriteString("    // No actions captured — add test steps here\n")
+		b.WriteString("    await page.goto('/');\n")
+		b.WriteString("    await expect(page).toHaveTitle(/.+/);\n")
+		b.WriteString("  });\n")
+	} else {
+		writeTestSteps(&b, actions, params)
+	}
+
+	b.WriteString("});\n")
+	return b.String()
+}
+
+// writeTestSteps groups actions into logical test blocks and writes them.
+func writeTestSteps(b *strings.Builder, actions []capture.EnhancedAction, params TestGenParams) {
+	// Group actions by navigation — each page gets its own test() block.
+	groups := groupActionsByNavigation(actions)
+
+	for i, group := range groups {
+		testLabel := testLabelForGroup(group, i)
+		fmt.Fprintf(b, "  test('%s', async ({ page }) => {\n", escapeJS(testLabel))
+
+		opts := ReproductionParams{BaseURL: params.BaseURL}
+		var prevTs int64
+		for _, action := range group {
+			writePauseComment(b, prevTs, action.Timestamp, "    // [%ds pause]\n")
+			prevTs = action.Timestamp
+			line := playwrightStep(action, opts)
+			if line != "" {
+				b.WriteString("    " + line + "\n")
+			}
+		}
+
+		// Add assertions at the end of each test block.
+		writeTestAssertions(b, group, params)
+
+		b.WriteString("  });\n\n")
+	}
+}
+
+// groupActionsByNavigation splits actions into groups at each navigate action.
+// Each group starts with a navigate (if present) and includes all subsequent
+// actions until the next navigate.
+func groupActionsByNavigation(actions []capture.EnhancedAction) [][]capture.EnhancedAction {
+	if len(actions) == 0 {
+		return nil
+	}
+	var groups [][]capture.EnhancedAction
+	var current []capture.EnhancedAction
+
+	for _, action := range actions {
+		if action.Type == "navigate" && len(current) > 0 {
+			groups = append(groups, current)
+			current = nil
+		}
+		current = append(current, action)
+	}
+	if len(current) > 0 {
+		groups = append(groups, current)
+	}
+	return groups
+}
+
+// testLabelForGroup generates a descriptive test label for a group of actions.
+func testLabelForGroup(group []capture.EnhancedAction, index int) string {
+	if len(group) == 0 {
+		return fmt.Sprintf("step %d", index+1)
+	}
+	first := group[0]
+	if first.Type == "navigate" && first.ToURL != "" {
+		// Extract path from URL for a readable name.
+		path := first.ToURL
+		if idx := strings.Index(path, "://"); idx >= 0 {
+			path = path[idx+3:]
+		}
+		if idx := strings.Index(path, "/"); idx >= 0 {
+			path = path[idx:]
+		}
+		if path == "/" || path == "" {
+			path = "homepage"
+		}
+		return fmt.Sprintf("should work on %s", chopString(path, 60))
+	}
+	return fmt.Sprintf("step %d", index+1)
+}
+
+// writeTestAssertions adds expect() assertions at the end of a test block.
+func writeTestAssertions(b *strings.Builder, group []capture.EnhancedAction, params TestGenParams) {
+	hasNavigate := false
+	for _, a := range group {
+		if a.Type == "navigate" {
+			hasNavigate = true
+			break
+		}
+	}
+
+	if hasNavigate {
+		b.WriteString("    // Verify page loaded successfully\n")
+		b.WriteString("    await expect(page).toHaveTitle(/.+/);\n")
+	}
+
+	if params.AssertNoErrors {
+		b.WriteString("    // Assert no console errors\n")
+		b.WriteString("    const errors = [];\n")
+		b.WriteString("    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });\n")
+		b.WriteString("    expect(errors).toHaveLength(0);\n")
+	}
+
+	if params.AssertNetwork {
+		b.WriteString("    // Assert no failed network requests\n")
+		b.WriteString("    const failedRequests = [];\n")
+		b.WriteString("    page.on('requestfailed', req => failedRequests.push(req.url()));\n")
+		b.WriteString("    expect(failedRequests).toHaveLength(0);\n")
+	}
 }
 
 func (h *ToolHandler) toolGeneratePRSummary(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -205,18 +368,44 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 }
 
 func (h *ToolHandler) toolExportHAR(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// HAR 1.2 spec: top-level requires log object with version, creator, entries[]
-	responseData := map[string]any{
-		"log": map[string]any{
-			"version": "1.2",
-			"creator": map[string]any{
-				"name":    "gasoline",
-				"version": version,
-			},
-			"entries": []any{},
-		},
+	var params struct {
+		URL       string `json:"url"`
+		Method    string `json:"method"`
+		StatusMin int    `json:"status_min"`
+		StatusMax int    `json:"status_max"`
+		SaveTo    string `json:"save_to"`
 	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("HAR export", responseData)}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &params)
+	}
+
+	bodies := h.capture.GetNetworkBodies()
+	filter := capture.NetworkBodyFilter{
+		URLFilter: params.URL,
+		Method:    params.Method,
+		StatusMin: params.StatusMin,
+		StatusMax: params.StatusMax,
+	}
+
+	if params.SaveTo != "" {
+		result, err := export.ExportHARToFile(bodies, filter, version, params.SaveTo)
+		if err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				"export_failed", "HAR file export failed: "+err.Error(), "Check the save_to path and try again",
+			)}
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(
+			fmt.Sprintf("HAR exported to %s (%d entries)", result.SavedTo, result.EntriesCount), result,
+		)}
+	}
+
+	harLog := export.ExportHAR(bodies, filter, version)
+	summary := fmt.Sprintf("HAR export (%d entries)", len(harLog.Log.Entries))
+	// Convert to generic map for mcpJSONResponse
+	harJSON, _ := json.Marshal(harLog)
+	var harMap map[string]any
+	_ = json.Unmarshal(harJSON, &harMap)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, harMap)}
 }
 
 func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
