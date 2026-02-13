@@ -813,12 +813,16 @@ describe('updateTrackingStatus via chrome.runtime.sendMessage', () => {
     assert.strictEqual(isTrackedTab, false, 'Should be false when tabId is undefined')
   })
 
-  test('should NOT use chrome.tabs.query (not available in content scripts)', () => {
+  test('should NOT use chrome.tabs.query (not available in content scripts)', async () => {
     // Verify the content.js code does NOT reference chrome.tabs.query
     // The fix replaces chrome.tabs.query with chrome.runtime.sendMessage
-    // This is a documentation-level test to verify the contract:
-    // content scripts get their tab ID via GET_TAB_ID message to background
-    assert.ok(true, 'chrome.tabs API is not available in content scripts - use GET_TAB_ID message instead')
+    const fs = await import('node:fs')
+    const contentSource = fs.readFileSync('extension/content.js', 'utf8')
+    assert.strictEqual(
+      contentSource.includes('chrome.tabs.query'),
+      false,
+      'content.js must not use chrome.tabs.query — use GET_TAB_ID message to background instead'
+    )
   })
 })
 

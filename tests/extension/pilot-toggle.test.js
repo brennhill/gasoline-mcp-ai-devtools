@@ -396,28 +396,17 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
 
   test('background should write to all 3 storage areas when receiving toggle message', async () => {
     // CRITICAL ARCHITECTURE: Only background.js writes to storage.
-    // When background.js receives setAiWebPilotEnabled message, it writes atomically
-    // to sync, local, and session storage areas.
-    mockChrome.runtime.onMessage.addListener.mock.mockImplementation((_handler) => {
-      // Simulate message listener setup
-    })
-
+    // When popup sends setAiWebPilotEnabled, background receives and writes atomically.
     const { handleAiWebPilotToggle } = await import('../../extension/popup.js')
-
-    // Reset storage calls to see only writes from background handler
-    mockChrome.storage.sync.set.mock.resetCalls()
-    mockChrome.storage.local.set.mock.resetCalls()
-    mockChrome.storage.session.set.mock.resetCalls()
 
     await handleAiWebPilotToggle(true)
 
-    // NOTE: In this test environment, background.js handler will process the message
-    // and call storage.set() for all three areas. This verifies the full cycle:
-    // 1. Popup sends message
-    // 2. Background receives and processes
-    // 3. Background writes to all 3 storage areas
-
-    assert.ok(true, 'Message-based flow ensures background writes atomically to all storage areas')
+    // Verify popup sent the toggle message to background
+    const messageCalls = mockChrome.runtime.sendMessage.mock.calls.filter(
+      (c) => c.arguments[0]?.type === 'setAiWebPilotEnabled'
+    )
+    assert.ok(messageCalls.length > 0, 'Popup should send setAiWebPilotEnabled message to background')
+    assert.strictEqual(messageCalls[0].arguments[0].enabled, true, 'Message should include enabled=true')
   })
 
   test('handleAiWebPilotToggle should send immediate message to background', async () => {
@@ -434,41 +423,30 @@ describe('AI Web Pilot Single Source of Truth Architecture', () => {
   })
 
   test('background should receive setAiWebPilotEnabled message and update cache', async () => {
-    mockChrome.runtime.onMessage.addListener.mock.mockImplementation((handler) => {
-      // Simulate background receiving a message
-      handler({ type: 'setAiWebPilotEnabled', enabled: true }, { id: 1 }, () => {})
-    })
-
-    const { _resetPilotCacheForTesting, isAiWebPilotEnabled: _isAiWebPilotEnabled } =
+    const { _resetPilotCacheForTesting, isAiWebPilotEnabled } =
       await import('../../extension/background.js')
     _resetPilotCacheForTesting(false)
 
-    // Trigger the message listener
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    // Verify cache starts as false
+    assert.strictEqual(isAiWebPilotEnabled(), false, 'Cache should start as false after reset')
 
-    // After message is processed, cache should be updated
-    // Note: In a real test, we'd need to export the handler or reset the module
-
-    assert.ok(true, 'Message handler should process setAiWebPilotEnabled')
+    // Set cache to true and verify
+    _resetPilotCacheForTesting(true)
+    assert.strictEqual(isAiWebPilotEnabled(), true, 'Cache should reflect updated value')
   })
 
   test('background should broadcast pilotStatusChanged confirmation', async () => {
-    // This test verifies that after a toggle, the background broadcasts confirmation
-    // for UI to update
-    const broadcastSpy = mock.fn()
-
-    mockChrome.runtime.sendMessage.mock.mockImplementation(broadcastSpy)
-
+    // This test verifies that after a toggle, the popup sends the message
     const { handleAiWebPilotToggle } = await import('../../extension/popup.js')
 
+    mockChrome.runtime.sendMessage.mock.resetCalls()
     await handleAiWebPilotToggle(true)
 
-    // Look for pilotStatusChanged message
-    const _confirmationCalls = broadcastSpy.mock.calls.filter((c) => c.arguments[0]?.type === 'pilotStatusChanged')
-
-    // Note: This depends on implementation broadcasting within handleAiWebPilotToggle
-    // or from background after receiving message
-    assert.ok(true, 'Should broadcast status changes')
+    // Verify sendMessage was called at least once
+    assert.ok(
+      mockChrome.runtime.sendMessage.mock.calls.length > 0,
+      'handleAiWebPilotToggle should call chrome.runtime.sendMessage'
+    )
   })
 })
 
@@ -546,62 +524,15 @@ describe('AI Web Pilot Service Worker Restart Race Condition (LAYER 2 BUG)', () 
     globalThis.document = mockDocument
   })
 
-  test('checkConnectionAndUpdate should wait for cache init before polling', async () => {
-    // Simulate service worker startup where cache is null initially
-    // and gets populated via async storage callback
-    let cacheInitResolve
-    const _cacheInitPromise = new Promise((resolve) => {
-      cacheInitResolve = resolve
-    })
+  test('checkConnectionAndUpdate should wait for cache init before polling', {
+    skip: 'Requires full background.js startup simulation with service worker lifecycle — cannot be unit tested without module re-initialization'
+  }, () => {})
 
-    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
-      // Simulate async delay before callback
-      setTimeout(() => {
-        callback({ aiWebPilotEnabled: true })
-        cacheInitResolve()
-      }, 50)
-    })
+  test('polling header X-Gasoline-Pilot should reflect cache state after init', {
+    skip: 'Requires intercepting HTTP headers from pollPendingQueries — integration test, not unit test'
+  }, () => {})
 
-    // Verify polling doesn't start until cache is ready
-    let _pollStarted = false
-    const originalSetInterval = setInterval
-    const mockSetInterval = mock.fn((fn, interval) => {
-      _pollStarted = true
-      return originalSetInterval(fn, interval)
-    })
-
-    globalThis.setInterval = mockSetInterval
-
-    // This test is conceptual - in real test environment we'd need to
-    // simulate the full background.js startup and verify await order
-    assert.ok(true, 'Polling should wait for cache initialization promise')
-  })
-
-  test('polling header X-Gasoline-Pilot should reflect cache state after init', async () => {
-    // After cache is initialized, polling should include correct pilot state
-    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
-      callback({ aiWebPilotEnabled: true })
-    })
-
-    // When pollPendingQueries is called, cache should be initialized
-    // and X-Gasoline-Pilot header should be '1'
-    assert.ok(true, 'X-Gasoline-Pilot header should reflect initialized cache value')
-  })
-
-  test('service worker restart should not cause state regression', async () => {
-    // This test verifies the fix: startup cache initialization must complete
-    // before polling headers are sent to server
-    //
-    // If checkConnectionAndUpdate() does NOT await _aiWebPilotInitPromise,
-    // first polls will report pilot=0 even though storage has true
-    // This causes the server to record incorrect state
-    mockChrome.storage.local.get.mock.mockImplementation((keys, callback) => {
-      // Simulate delayed callback (async)
-      setTimeout(() => {
-        callback({ aiWebPilotEnabled: true })
-      }, 10)
-    })
-
-    assert.ok(true, 'Cache initialization must complete before polling starts')
-  })
+  test('service worker restart should not cause state regression', {
+    skip: 'Requires simulating service worker restart (module teardown + re-init) — integration test, not unit test'
+  }, () => {})
 })

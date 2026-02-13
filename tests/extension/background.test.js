@@ -97,6 +97,68 @@ import {
   resetContextWarning
 } from '../../extension/background.js'
 
+// Import installMessageListener directly (not re-exported from barrel)
+import { installMessageListener } from '../../extension/background/message-handlers.js'
+
+// =============================================================================
+// Helper: Install the real message handler and extract the registered listener
+// =============================================================================
+/**
+ * Installs the real message handler via installMessageListener and returns
+ * the actual handler function that was registered on chrome.runtime.onMessage.
+ * Allows tests to invoke the real production handler directly.
+ */
+function getInstalledMessageHandler(depsOverrides = {}) {
+  // Reset the addListener mock to capture the new registration
+  mockChrome.runtime.onMessage.addListener.mock.resetCalls()
+
+  const baseDeps = {
+    getServerUrl: () => 'http://localhost:7890',
+    getConnectionStatus: () => ({ connected: true }),
+    getDebugMode: () => false,
+    getScreenshotOnError: () => false,
+    getSourceMapEnabled: () => false,
+    getCurrentLogLevel: () => 'all',
+    getContextWarning: () => null,
+    getCircuitBreakerState: () => 'closed',
+    getMemoryPressureState: () => ({ level: 'normal' }),
+    getAiWebPilotEnabled: () => false,
+    isNetworkBodyCaptureDisabled: () => false,
+    setServerUrl: mock.fn(),
+    setCurrentLogLevel: mock.fn(),
+    setScreenshotOnError: mock.fn(),
+    setSourceMapEnabled: mock.fn(),
+    setDebugMode: mock.fn(),
+    setAiWebPilotEnabled: mock.fn(),
+    addToLogBatcher: mock.fn(),
+    addToWsBatcher: mock.fn(),
+    addToEnhancedActionBatcher: mock.fn(),
+    addToNetworkBodyBatcher: mock.fn(),
+    addToPerfBatcher: mock.fn(),
+    handleLogMessage: mock.fn(),
+    handleClearLogs: mock.fn(),
+    captureScreenshot: mock.fn(),
+    checkConnectionAndUpdate: mock.fn(),
+    clearSourceMapCache: mock.fn(),
+    debugLog: mock.fn(),
+    exportDebugLog: mock.fn(),
+    clearDebugLog: mock.fn(),
+    saveSetting: mock.fn(),
+    forwardToAllContentScripts: mock.fn(),
+    ...depsOverrides
+  }
+
+  installMessageListener(baseDeps)
+
+  // The real handler was registered via chrome.runtime.onMessage.addListener
+  const calls = mockChrome.runtime.onMessage.addListener.mock.calls
+  assert.ok(calls.length > 0, 'installMessageListener should register a listener')
+  const handler = calls[calls.length - 1].arguments[0]
+  assert.strictEqual(typeof handler, 'function', 'Registered listener should be a function')
+
+  return { handler, deps: baseDeps }
+}
+
 describe('Log Batcher', () => {
   beforeEach(() => {
     mock.reset()
@@ -1001,19 +1063,23 @@ describe('Enhanced Actions Server Communication', () => {
     assert.strictEqual(flushFn.mock.calls[0].arguments[0][1].type, 'input')
   })
 
-  test('message handler should process enhanced_action messages via batcher', async () => {
-    // Simulate what the message handler does - adds to batcher
-    const flushFn = mock.fn()
-    const actionBatcher = createLogBatcher(flushFn, { debounceMs: 50, maxBatchSize: 50 })
+  test('message handler should process enhanced_action messages via batcher', () => {
+    // Install the real message handler with a spy on addToEnhancedActionBatcher
+    const addToEnhancedActionBatcher = mock.fn()
+    const { handler } = getInstalledMessageHandler({ addToEnhancedActionBatcher })
 
-    // Simulate receiving enhanced_action messages
+    const sendResponse = mock.fn()
+    const sender = { tab: { id: 1, url: 'http://localhost:3000' } }
     const payload = { type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: { testId: 'btn' } }
-    actionBatcher.add(payload)
+    const message = { type: 'enhanced_action', payload }
 
-    await new Promise((r) => setTimeout(r, 100))
+    // Invoke the real message handler with an enhanced_action message
+    handler(message, sender, sendResponse)
 
-    assert.strictEqual(flushFn.mock.calls.length, 1)
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].type, 'click')
+    // The real handler should have called addToEnhancedActionBatcher with the payload
+    assert.strictEqual(addToEnhancedActionBatcher.mock.calls.length, 1)
+    assert.deepStrictEqual(addToEnhancedActionBatcher.mock.calls[0].arguments[0], payload)
+    assert.strictEqual(addToEnhancedActionBatcher.mock.calls[0].arguments[0].type, 'click')
   })
 })
 
@@ -1023,43 +1089,50 @@ describe('Enhanced Actions Server Communication', () => {
 
 describe('GET_TAB_ID Message Handler', () => {
   test('should respond with sender.tab.id when content script requests tab ID', () => {
-    // The GET_TAB_ID handler allows content scripts to discover their own tab ID
-    // since chrome.tabs API is not available in content script context.
+    // Install the real message handler and get the registered listener
+    const { handler } = getInstalledMessageHandler()
+
     const sendResponse = mock.fn()
-    const sender = { tab: { id: 42 } }
+    // Sender must pass isValidMessageSender: needs tab.id and tab.url
+    const sender = { tab: { id: 42, url: 'http://localhost:3000' } }
     const message = { type: 'GET_TAB_ID' }
 
-    // Simulate the handler logic that should exist in background.js
-    if (message.type === 'GET_TAB_ID') {
-      sendResponse({ tabId: sender.tab?.id })
-    }
+    // Invoke the real handler registered by installMessageListener
+    handler(message, sender, sendResponse)
 
     assert.strictEqual(sendResponse.mock.calls.length, 1)
     assert.deepStrictEqual(sendResponse.mock.calls[0].arguments[0], { tabId: 42 })
   })
 
   test('should respond with undefined tabId when sender has no tab', () => {
+    // Install the real message handler and get the registered listener
+    const { handler } = getInstalledMessageHandler()
+
     const sendResponse = mock.fn()
-    const sender = {} // No tab (e.g., from popup or other extension page)
+    // Sender from popup/extension page: uses chrome.runtime.id for validation
+    mockChrome.runtime.id = 'test-extension-id'
+    const sender = { id: 'test-extension-id' } // No tab (e.g., from popup)
     const message = { type: 'GET_TAB_ID' }
 
-    if (message.type === 'GET_TAB_ID') {
-      sendResponse({ tabId: sender.tab?.id })
-    }
+    handler(message, sender, sendResponse)
 
     assert.strictEqual(sendResponse.mock.calls.length, 1)
     assert.deepStrictEqual(sendResponse.mock.calls[0].arguments[0], { tabId: undefined })
+
+    // Clean up
+    delete mockChrome.runtime.id
   })
 
   test('should return true for async response handling', () => {
-    // The handler must return true to indicate it will send a response
+    // Install the real message handler and get the registered listener
+    const { handler } = getInstalledMessageHandler()
+
+    const sendResponse = mock.fn()
+    const sender = { tab: { id: 99, url: 'http://localhost:3000' } }
     const message = { type: 'GET_TAB_ID' }
 
-    // Simulate the check in the message listener
-    let returnValue = false
-    if (message.type === 'GET_TAB_ID') {
-      returnValue = true
-    }
+    // The real handler returns true to keep the sendResponse channel open
+    const returnValue = handler(message, sender, sendResponse)
 
     assert.strictEqual(returnValue, true, 'Handler should return true for sendResponse')
   })

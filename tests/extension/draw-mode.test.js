@@ -290,9 +290,9 @@ describe('Draw Mode — Activation/Deactivation', () => {
 
   test('overlay is removed on deactivation', () => {
     dm.activateDrawMode('user')
+    assert.ok(documentBody.children.length > 0, 'overlay should exist before deactivation')
     dm.deactivateDrawMode()
-    // Overlay remove() is called, so children should be affected
-    assert.ok(true) // If we got here, deactivation didn't throw
+    assert.strictEqual(dm.isDrawModeActive(), false, 'draw mode should be inactive after deactivation')
   })
 })
 
@@ -442,9 +442,9 @@ describe('Draw Mode — Persistence', () => {
 
     dm.clearAnnotations()
 
-    // persistAnnotations is debounced 500ms, so set is called via setTimeout
-    // We can't easily test the debounce in unit tests, but we can verify the function ran
-    assert.ok(true)
+    // Verify annotations were actually cleared
+    const anns = dm.getAnnotations()
+    assert.deepStrictEqual(anns, [], 'annotations should be empty after clearAnnotations')
   })
 })
 
