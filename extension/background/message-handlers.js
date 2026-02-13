@@ -360,7 +360,7 @@ async function handleDrawModeCompletedAsync(message, sender, deps) {
         }
         const response = await fetch(`${serverUrl}/draw-mode/complete`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
             body: JSON.stringify(body)
         });
         if (!response.ok) {

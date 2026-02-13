@@ -181,7 +181,7 @@ export async function handlePendingQuery(query, syncClient) {
                 // POST to /screenshots with query_id — server saves file and resolves query directly
                 const response = await fetch(`${index.serverUrl}/screenshots`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
                     body: JSON.stringify({
                         data_url: dataUrl,
                         url: tab.url,

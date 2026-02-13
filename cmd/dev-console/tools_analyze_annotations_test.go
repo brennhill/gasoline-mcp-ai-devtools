@@ -337,41 +337,7 @@ func TestToolGetAnnotations_WaitTrue_ImmediateReturn(t *testing.T) {
 	}
 }
 
-func TestToolGetAnnotations_WaitTrue_BlocksAndReturns(t *testing.T) {
-	h := createTestToolHandler(t)
-	h.annotationStore = NewAnnotationStore(10 * time.Minute)
-	defer h.annotationStore.Close()
-
-	h.annotationStore.MarkDrawStarted()
-
-	// Store session after delay
-	go func() {
-		time.Sleep(50 * time.Millisecond)
-		h.annotationStore.StoreSession(1, &AnnotationSession{
-			TabID:       1,
-			Timestamp:   time.Now().UnixMilli(),
-			Annotations: []Annotation{{Text: "wait-blocked"}},
-			PageURL:     "https://example.com",
-		})
-	}()
-
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"what": "annotations", "wait": true, "timeout_ms": 5000}`)
-
-	start := time.Now()
-	resp := h.toolGetAnnotations(req, args)
-	elapsed := time.Since(start)
-
-	text := unmarshalMCPText(t, resp.Result)
-	if !strings.Contains(text, "wait-blocked") {
-		t.Errorf("expected annotation text, got %q", text)
-	}
-	if elapsed < 30*time.Millisecond {
-		t.Error("expected to have blocked")
-	}
-}
-
-func TestToolGetAnnotations_WaitTrue_Timeout(t *testing.T) {
+func TestToolGetAnnotations_WaitTrue_ReturnsCorrelationID(t *testing.T) {
 	h := createTestToolHandler(t)
 	h.annotationStore = NewAnnotationStore(10 * time.Minute)
 	defer h.annotationStore.Close()
@@ -379,12 +345,9 @@ func TestToolGetAnnotations_WaitTrue_Timeout(t *testing.T) {
 	h.annotationStore.MarkDrawStarted()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"what": "annotations", "wait": true, "timeout_ms": 50}`)
+	args := json.RawMessage(`{"what": "annotations", "wait": true}`)
 
-	start := time.Now()
 	resp := h.toolGetAnnotations(req, args)
-	elapsed := time.Since(start)
-
 	text := unmarshalMCPText(t, resp.Result)
 	jsonText := extractJSONFromMCPText(text)
 
@@ -393,11 +356,87 @@ func TestToolGetAnnotations_WaitTrue_Timeout(t *testing.T) {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
-	if data["status"] != "waiting" {
-		t.Errorf("expected status 'waiting', got %v", data["status"])
+	if data["status"] != "waiting_for_user" {
+		t.Errorf("expected status 'waiting_for_user', got %v", data["status"])
 	}
-	if elapsed < 40*time.Millisecond {
-		t.Error("expected to have waited")
+	corrID, ok := data["correlation_id"].(string)
+	if !ok || corrID == "" {
+		t.Error("expected non-empty correlation_id")
+	}
+	if !strings.HasPrefix(corrID, "ann_") {
+		t.Errorf("expected correlation_id prefix 'ann_', got %q", corrID)
+	}
+	if !strings.Contains(text, "observe") {
+		t.Error("expected polling instructions in message")
+	}
+}
+
+func TestToolGetAnnotations_WaitTrue_ImmediateIfDataReady(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	h.annotationStore.MarkDrawStarted()
+	time.Sleep(2 * time.Millisecond) // ensure session timestamp > draw start
+
+	// Store session BEFORE calling wait — should return immediately
+	h.annotationStore.StoreSession(1, &AnnotationSession{
+		TabID:       1,
+		Timestamp:   time.Now().UnixMilli(),
+		Annotations: []Annotation{{Text: "already-done"}},
+		PageURL:     "https://example.com",
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	args := json.RawMessage(`{"what": "annotations", "wait": true}`)
+
+	resp := h.toolGetAnnotations(req, args)
+	text := unmarshalMCPText(t, resp.Result)
+
+	if !strings.Contains(text, "already-done") {
+		t.Errorf("expected annotation text, got %q", text)
+	}
+}
+
+func TestToolGetAnnotations_WaitTrue_WaiterCompletedOnStore(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	// Track completed commands
+	var completedID string
+	var completedResult json.RawMessage
+	h.annotationStore.SetCommandCompleter(func(corrID string, result json.RawMessage) {
+		completedID = corrID
+		completedResult = result
+	})
+
+	h.annotationStore.MarkDrawStarted()
+
+	// Call wait=true — returns correlation_id immediately
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	args := json.RawMessage(`{"what": "annotations", "wait": true}`)
+	resp := h.toolGetAnnotations(req, args)
+
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromMCPText(text)
+	var data map[string]any
+	_ = json.Unmarshal([]byte(jsonText), &data)
+	corrID := data["correlation_id"].(string)
+
+	// Now store annotations — should trigger the waiter completion
+	h.annotationStore.StoreSession(1, &AnnotationSession{
+		TabID:       1,
+		Timestamp:   time.Now().UnixMilli(),
+		Annotations: []Annotation{{Text: "async-result"}},
+		PageURL:     "https://example.com",
+	})
+
+	if completedID != corrID {
+		t.Errorf("expected completed correlation_id %q, got %q", corrID, completedID)
+	}
+	if !strings.Contains(string(completedResult), "async-result") {
+		t.Errorf("expected result to contain annotation text, got %s", completedResult)
 	}
 }
 

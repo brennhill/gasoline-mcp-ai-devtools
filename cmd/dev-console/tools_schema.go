@@ -185,7 +185,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"wait": map[string]any{
 						"type":        "boolean",
-						"description": "Block until the user finishes drawing annotations (applies to annotations). Default 5 min timeout, override with timeout_ms.",
+						"description": "Wait for annotations (applies to annotations). Returns immediately with a correlation_id. Poll with observe({what: 'command_result', correlation_id: '...'}) to get results when the user finishes drawing.",
 					},
 					"session": map[string]any{
 						"type":        "string",
