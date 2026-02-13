@@ -3,21 +3,20 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/dev-console/dev-console/internal/state"
 )
 
 func newTestSessionStore(t *testing.T) *SessionStore {
 	t.Helper()
 
-	stateDir := t.TempDir()
-	t.Setenv(state.StateDirEnv, stateDir)
+	projectPath := t.TempDir()
+	projectDir := filepath.Join(t.TempDir(), "projects", "test")
 
-	store, err := NewSessionStoreWithInterval(t.TempDir(), time.Hour)
+	store, err := newSessionStoreInDir(projectPath, projectDir, time.Hour)
 	if err != nil {
-		t.Fatalf("NewSessionStoreWithInterval() error = %v", err)
+		t.Fatalf("newSessionStoreInDir() error = %v", err)
 	}
 	t.Cleanup(store.Shutdown)
 	return store
