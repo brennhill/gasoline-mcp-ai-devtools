@@ -212,18 +212,42 @@ run_test_s10() {
         return
     fi
 
-    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Count interactive elements","script":"document.querySelectorAll(\"h1, h2, a, button, input\").length"}'
-
+    # analyze(dom) is async — returns a correlation_id, must poll for result
     local dom_response
     dom_response=$(call_tool "analyze" '{"what":"dom","selector":"h1, a, button, input"}')
     local dom_text
     dom_text=$(extract_content_text "$dom_response")
+
+    # Extract correlation_id and poll for async result
+    local corr_id
+    corr_id=$(echo "$dom_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
+
+    if [ -n "$corr_id" ]; then
+        for i in $(seq 1 15); do
+            sleep 0.5
+            local poll_response
+            poll_response=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")
+            local poll_text
+            poll_text=$(extract_content_text "$poll_response")
+            if echo "$poll_text" | grep -q '"status":"complete"'; then
+                dom_text="$poll_text"
+                break
+            fi
+            if echo "$poll_text" | grep -q '"status":"failed"'; then
+                dom_text="$poll_text"
+                break
+            fi
+        done
+    fi
 
     echo "  [DOM query: h1, a, button, input]"
     echo "$dom_text" | python3 -c "
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    # Result may be nested under 'result' from command_result polling
+    if 'result' in data and isinstance(data['result'], dict):
+        data = data['result']
     elements = data.get('elements', data.get('results', []))
     if isinstance(elements, list):
         print(f'    found: {len(elements)} element(s)')
@@ -238,7 +262,7 @@ except Exception as ex:
 " 2>/dev/null || true
 
     if [ -z "$dom_text" ]; then
-        fail "Empty response from query_dom."
+        fail "Empty response from analyze(dom)."
         return
     fi
 
@@ -248,9 +272,11 @@ except Exception as ex:
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    # Result may be nested under 'result' from command_result polling
+    if 'result' in data and isinstance(data['result'], dict):
+        data = data['result']
     elements = data.get('elements', data.get('results', []))
     if isinstance(elements, list) and len(elements) > 0:
-        # Verify at least one element has a tag name
         has_tag = any(e.get('tag') or e.get('tagName') for e in elements)
         if has_tag:
             print(f'PASS elements={len(elements)} with_tags=true')
