@@ -135,7 +135,7 @@ log_diagnostic() {
 interact_and_wait() {
     local action="$1"
     local args="$2"
-    local max_polls="${3:-15}"
+    local max_polls="${3:-20}"
 
     local response
     response=$(call_tool "interact" "$args")

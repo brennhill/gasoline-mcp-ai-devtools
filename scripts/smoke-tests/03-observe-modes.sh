@@ -16,6 +16,11 @@ run_test_s28() {
         return
     fi
 
+    # Web Vitals (LCP, FCP, TTFB) only emit on fresh navigations.
+    # Force a fresh page load so the extension has vitals to report.
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Fresh load for Web Vitals"}' 20
+    sleep 3
+
     local response
     response=$(call_tool "observe" '{"what":"vitals"}')
     local content_text
@@ -210,6 +215,11 @@ run_test_s31() {
         return
     fi
 
+    # S.11 clears all buffers, so we must seed fresh errors for bundling.
+    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Seed error for bundling\",\"script\":\"console.error('BUNDLE_TEST_ERROR_${SMOKE_MARKER}')\"}"
+    interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Seed thrown error for bundling\",\"script\":\"try { throw new Error('BUNDLE_THROWN_${SMOKE_MARKER}') } catch(e) { console.error(e.message) }\"}"
+    sleep 2
+
     local response
     response=$(call_tool "observe" '{"what":"error_bundles"}')
     local content_text
@@ -395,7 +405,12 @@ run_test_s34() {
     content_text=$(extract_content_text "$response")
 
     if [ -z "$content_text" ]; then
-        fail "Empty response from observe(extension_logs)."
+        # Check if raw response has data (extract_content_text may have failed)
+        if [ -n "$response" ]; then
+            fail "observe(extension_logs) returned response but extract_content_text failed. Raw: $(truncate "$response" 200)"
+        else
+            fail "Empty response from observe(extension_logs). Daemon may not be responding."
+        fi
         return
     fi
 
