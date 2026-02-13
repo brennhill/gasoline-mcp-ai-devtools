@@ -590,6 +590,7 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		Name      string `json:"name,omitempty"`
 		TimeoutMs int    `json:"timeout_ms,omitempty"`
 		TabID     int    `json:"tab_id,omitempty"`
+		Analyze   bool   `json:"analyze,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -671,14 +672,18 @@ func (h *ToolHandler) handleSubtitle(req JSONRPCRequest, args json.RawMessage) J
 
 	if *params.Text == "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Subtitle cleared", map[string]any{
-			"status":  "queued",
-			"subtitle": "cleared",
+			"status":         "queued",
+			"correlation_id": correlationID,
+			"subtitle":       "cleared",
+			"message":        "Subtitle cleared. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to confirm.",
 		})}
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Subtitle set", map[string]any{
-		"status":  "queued",
-		"subtitle": *params.Text,
+		"status":         "queued",
+		"correlation_id": correlationID,
+		"subtitle":       *params.Text,
+		"message":        "Subtitle queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to confirm.",
 	})}
 }
 

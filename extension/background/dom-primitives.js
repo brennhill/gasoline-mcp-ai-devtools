@@ -207,30 +207,39 @@ export function domPrimitive(action, selector, options) {
             return Promise.resolve(result);
         }
         return new Promise((resolve) => {
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    observer.disconnect();
-                    const totalMs = Math.round(performance.now() - t0);
-                    const added = mutations.reduce((s, m) => s + m.addedNodes.length, 0);
-                    const removed = mutations.reduce((s, m) => s + m.removedNodes.length, 0);
-                    const modified = mutations.filter((m) => m.type === 'attributes').length;
-                    const parts = [];
-                    if (added > 0)
-                        parts.push(`${added} added`);
-                    if (removed > 0)
-                        parts.push(`${removed} removed`);
-                    if (modified > 0)
-                        parts.push(`${modified} modified`);
-                    const summary = parts.length > 0 ? parts.join(', ') : 'no DOM changes';
-                    const enriched = { ...result, dom_summary: summary };
-                    if (options.analyze) {
-                        enriched.timing = { total_ms: totalMs };
-                        enriched.dom_changes = { added, removed, modified, summary };
-                        enriched.analysis = `${result.action} completed in ${totalMs}ms. ${summary}.`;
-                    }
-                    resolve(enriched);
-                }, 50);
-            });
+            let resolved = false;
+            function finish() {
+                if (resolved)
+                    return;
+                resolved = true;
+                observer.disconnect();
+                const totalMs = Math.round(performance.now() - t0);
+                const added = mutations.reduce((s, m) => s + m.addedNodes.length, 0);
+                const removed = mutations.reduce((s, m) => s + m.removedNodes.length, 0);
+                const modified = mutations.filter((m) => m.type === 'attributes').length;
+                const parts = [];
+                if (added > 0)
+                    parts.push(`${added} added`);
+                if (removed > 0)
+                    parts.push(`${removed} removed`);
+                if (modified > 0)
+                    parts.push(`${modified} modified`);
+                const summary = parts.length > 0 ? parts.join(', ') : 'no DOM changes';
+                const enriched = { ...result, dom_summary: summary };
+                if (options.analyze) {
+                    enriched.timing = { total_ms: totalMs };
+                    enriched.dom_changes = { added, removed, modified, summary };
+                    enriched.analysis = `${result.action} completed in ${totalMs}ms. ${summary}.`;
+                }
+                resolve(enriched);
+            }
+            // setTimeout fallback — always fires, even in backgrounded/headless tabs
+            // where requestAnimationFrame is suppressed
+            setTimeout(finish, 80);
+            // Try rAF for better timing when tab is visible, but don't depend on it
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(() => setTimeout(finish, 50));
+            }
         });
     }
     // ---------------------------------------------------------------
