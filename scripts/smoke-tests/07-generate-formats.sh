@@ -102,11 +102,34 @@ run_test_s56() {
     echo "  [pr_summary preview]"
     echo "$content_text" | head -5
 
-    # PR summary should have some text content
-    if [ ${#content_text} -gt 10 ]; then
-        pass "generate(pr_summary) returned summary text (${#content_text} chars)."
+    # Strict: parse JSON and verify summary field has actual content, not just empty string
+    local validation
+    validation=$(echo "$content_text" | python3 -c "
+import sys, json
+t = sys.stdin.read(); i = t.find('{')
+if i < 0:
+    # Plain text summary (not JSON)
+    if len(t.strip()) > 20:
+        print(f'PASS text_len={len(t.strip())}')
+    else:
+        print(f'FAIL too_short text_len={len(t.strip())}')
+    sys.exit()
+data = json.loads(t[i:])
+summary = data.get('summary', data.get('text', data.get('description', '')))
+if isinstance(summary, str) and len(summary.strip()) > 10:
+    print(f'PASS summary_len={len(summary.strip())}')
+elif isinstance(summary, str) and len(summary.strip()) == 0:
+    print('FAIL summary is empty string')
+else:
+    # Check if there are other meaningful fields
+    keys = [k for k in data.keys() if k not in ('metadata',)]
+    print(f'FAIL summary={repr(summary)[:50]} keys={keys[:8]}')
+" 2>/dev/null || echo "FAIL parse_error")
+
+    if echo "$validation" | grep -q "^PASS"; then
+        pass "generate(pr_summary) returned meaningful summary. $validation"
     else
-        fail "generate(pr_summary) returned very short content. Content: $(truncate "$content_text" 200)"
+        fail "generate(pr_summary) returned empty or insufficient summary. $validation. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s56
@@ -171,6 +194,12 @@ run_test_s58() {
         return
     fi
 
+    # Seed network traffic so HAR has entries to export
+    if [ "$PILOT_ENABLED" = "true" ]; then
+        interact_and_wait "execute_js" '{"action":"execute_js","reason":"Seed fetch for HAR export","script":"fetch(\"https://jsonplaceholder.typicode.com/posts/1\").then(r=>r.json()).then(d=>\"fetched\").catch(e=>e.message)"}'
+        sleep 2
+    fi
+
     local response
     response=$(call_tool "generate" '{"format":"har"}')
     local content_text
@@ -182,26 +211,40 @@ run_test_s58() {
     fi
 
     echo "  [har structure]"
-    echo "$content_text" | python3 -c "
+    local validation
+    validation=$(echo "$content_text" | python3 -c "
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     log = data.get('log', data)
-    print(f'    version: {log.get(\"version\", \"?\")}')
+    version = log.get('version', '?')
     creator = log.get('creator', {})
-    print(f'    creator: {creator.get(\"name\", \"?\")} {creator.get(\"version\", \"?\")}')
     entries = log.get('entries', [])
-    print(f'    entries: {len(entries)}')
+    entry_count = len(entries) if isinstance(entries, list) else 0
+    print(f'    version: {version}')
+    print(f'    creator: {creator.get(\"name\", \"?\")} {creator.get(\"version\", \"?\")}')
+    print(f'    entries: {entry_count}')
     if entries:
         print(f'    first url: {entries[0].get(\"request\", {}).get(\"url\", \"?\")[:60]}')
+    has_version = version != '?'
+    has_creator = bool(creator.get('name'))
+    if has_version and has_creator and entry_count > 0:
+        print(f'VERDICT:PASS entries={entry_count}')
+    elif has_version and has_creator:
+        print(f'VERDICT:FAIL_EMPTY valid HAR structure but 0 entries')
+    else:
+        print(f'VERDICT:FAIL_STRUCTURE version={version} creator={creator}')
 except Exception as e:
     print(f'    (parse: {e})')
-" 2>/dev/null || true
+    print('VERDICT:FAIL_PARSE')
+" 2>/dev/null || echo "VERDICT:FAIL_PARSE")
 
-    if echo "$content_text" | grep -qiE "log|version|creator|entries"; then
-        pass "generate(har) has valid HAR structure."
+    echo "$validation" | grep -v "^VERDICT:" || true
+
+    if echo "$validation" | grep -q "VERDICT:PASS"; then
+        pass "generate(har) has valid HAR structure with entries. $validation"
     else
-        fail "generate(har) missing HAR fields. Content: $(truncate "$content_text" 200)"
+        fail "generate(har) failed. $(echo "$validation" | grep 'VERDICT:' | head -1). Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s58
@@ -254,6 +297,15 @@ run_test_s60() {
         return
     fi
 
+    # Navigate to a page with external scripts so SRI has resources to hash
+    if [ "$PILOT_ENABLED" = "true" ]; then
+        interact_and_wait "navigate" '{"action":"navigate","url":"https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js","reason":"Load page with scripts for SRI test"}' 20
+        sleep 2
+        # Go back to a page that loaded those scripts
+        interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Return to test page"}' 20
+        sleep 1
+    fi
+
     local response
     response=$(call_tool "generate" '{"format":"sri"}')
     local content_text
@@ -265,27 +317,41 @@ run_test_s60() {
     fi
 
     echo "  [sri data]"
-    echo "$content_text" | python3 -c "
+    local validation
+    validation=$(echo "$content_text" | python3 -c "
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     resources = data.get('resources', data.get('entries', []))
-    print(f'    resources: {len(resources) if isinstance(resources, list) else \"?\"}')
+    count = len(resources) if isinstance(resources, list) else 0
+    print(f'    resources: {count}')
     if isinstance(resources, list):
         for r in resources[:3]:
             url = r.get('url', '?')[:60]
             integrity = r.get('integrity', r.get('hash', '?'))[:40]
             print(f'    {url}')
             print(f'      integrity: {integrity}')
+    # SRI on example.com may have 0 cross-origin scripts — that's OK if response says so
+    msg = data.get('message', data.get('status', ''))
+    if count > 0:
+        print(f'VERDICT:PASS resources={count}')
+    elif 'no' in str(msg).lower() and ('resource' in str(msg).lower() or 'script' in str(msg).lower()):
+        print(f'VERDICT:SKIP no resources to hash (expected on simple pages)')
+    else:
+        print(f'VERDICT:FAIL resources=0 message={str(msg)[:80]}')
 except Exception as e:
     print(f'    (parse: {e})')
-" 2>/dev/null || true
+    print('VERDICT:FAIL_PARSE')
+" 2>/dev/null || echo "VERDICT:FAIL_PARSE")
 
-    # SRI may have resources or may report no cross-origin scripts found
-    if echo "$content_text" | grep -qiE "resource|integrity|hash|sha256|sha384|sri|script|no.*resource"; then
-        pass "generate(sri) returned SRI data or status."
+    echo "$validation" | grep -v "^VERDICT:" || true
+
+    if echo "$validation" | grep -q "VERDICT:PASS"; then
+        pass "generate(sri) returned SRI hashes for resources. $validation"
+    elif echo "$validation" | grep -q "VERDICT:SKIP"; then
+        skip "generate(sri): no cross-origin scripts to hash on current page."
     else
-        fail "generate(sri) missing expected fields. Content: $(truncate "$content_text" 200)"
+        fail "generate(sri) returned 0 resources. $(echo "$validation" | grep 'VERDICT:' | head -1). Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s60

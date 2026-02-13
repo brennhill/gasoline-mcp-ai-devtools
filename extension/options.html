@@ -253,143 +253,142 @@
         padding: 12px;
       }
 
-      /* ── Light Mode ────────────────────────────────── */
-      @media (prefers-color-scheme: light) {
-        body {
-          background: #ffffff;
-          color: #1a1a1a;
-        }
+      /* ── Light Theme (class-based, dark is default) ────────────────────────────────── */
+      body.light-theme {
+        background: #ffffff;
+        color: #1a1a1a;
+      }
 
-        .back-link {
-          color: #0969da;
-        }
+      body.light-theme .back-link {
+        color: #0969da;
+      }
 
-        .subtitle {
-          color: #555;
-        }
+      body.light-theme .subtitle {
+        color: #555;
+      }
 
-        .section-title {
-          color: #555;
-        }
+      body.light-theme .section-title {
+        color: #555;
+      }
 
-        .section-description {
-          color: #555;
-        }
+      body.light-theme .section-description {
+        color: #555;
+      }
 
-        textarea {
-          background: #ffffff;
-          border-color: #d0d0d0;
-          color: #1a1a1a;
-        }
+      body.light-theme textarea {
+        background: #ffffff;
+        border-color: #d0d0d0;
+        color: #1a1a1a;
+      }
 
-        textarea:focus {
-          border-color: #0969da;
-        }
+      body.light-theme textarea:focus {
+        border-color: #0969da;
+      }
 
-        input[type='text'] {
-          background: #ffffff;
-          border-color: #d0d0d0;
-          color: #1a1a1a;
-        }
+      body.light-theme input[type='text'] {
+        background: #ffffff;
+        border-color: #d0d0d0;
+        color: #1a1a1a;
+      }
 
-        input[type='text']:focus {
-          border-color: #0969da;
-        }
+      body.light-theme input[type='text']:focus {
+        border-color: #0969da;
+      }
 
-        .help-text {
-          color: #555;
-        }
+      body.light-theme .help-text {
+        color: #555;
+      }
 
-        .help-text code {
-          background: #f5f5f5;
-        }
+      body.light-theme .help-text code {
+        background: #f5f5f5;
+      }
 
-        button {
-          background: #1a7f37;
-          color: #ffffff;
-        }
+      body.light-theme button {
+        background: #1a7f37;
+        color: #ffffff;
+      }
 
-        button:hover {
-          background: #1a8c3e;
-        }
+      body.light-theme button:hover {
+        background: #1a8c3e;
+      }
 
-        button:active {
-          background: #1a7f37;
-        }
+      body.light-theme button:active {
+        background: #1a7f37;
+      }
 
-        .saved-message {
-          color: #1a7f37;
-        }
+      body.light-theme .saved-message {
+        color: #1a7f37;
+      }
 
-        .toggle-row {
-          border-bottom-color: #e0e0e0;
-        }
+      body.light-theme .toggle-row {
+        border-bottom-color: #e0e0e0;
+      }
 
-        .toggle-label {
-          color: #1a1a1a;
-        }
+      body.light-theme .toggle-label {
+        color: #1a1a1a;
+      }
 
-        .toggle-description {
-          color: #555;
-        }
+      body.light-theme .toggle-description {
+        color: #555;
+      }
 
-        .toggle {
-          background: #d0d0d0;
-        }
+      body.light-theme .toggle {
+        background: #d0d0d0;
+      }
 
-        .toggle.active {
-          background: #1a7f37;
-        }
+      body.light-theme .toggle.active {
+        background: #1a7f37;
+      }
 
-        .toggle::after {
-          background: #ffffff;
-        }
+      body.light-theme .toggle::after {
+        background: #ffffff;
+      }
 
-        .toggle.active::after {
-          background: #ffffff;
-        }
+      body.light-theme .toggle.active::after {
+        background: #ffffff;
+      }
 
-        .examples {
-          background: #f8f8f8;
-        }
+      body.light-theme .examples {
+        background: #f8f8f8;
+      }
 
-        .examples h4 {
-          color: #555;
-        }
+      body.light-theme .examples h4 {
+        color: #555;
+      }
 
-        .examples li span {
-          color: #555;
-        }
+      body.light-theme .examples li span {
+        color: #555;
+      }
 
-        .feature-section {
-          background: #f8f8f8;
-        }
+      body.light-theme .feature-section {
+        background: #f8f8f8;
+      }
 
-        /* ── Inline-style overrides (need !important) ── */
+      /* ── Inline-style overrides (need !important) ── */
 
-        /* Test connection button */
-        #test-connection-btn {
-          background: #f5f5f5 !important;
-          border-color: #d0d0d0 !important;
-          color: #1a1a1a !important;
-        }
+      /* Test connection button */
+      body.light-theme #test-connection-btn {
+        background: #f5f5f5 !important;
+        border-color: #d0d0d0 !important;
+        color: #1a1a1a !important;
+      }
 
-        /* Export and clear debug buttons */
-        #export-debug-btn {
-          background: #f5f5f5 !important;
-          border-color: #d0d0d0 !important;
-          color: #1a1a1a !important;
-        }
+      /* Export and clear debug buttons */
+      body.light-theme #export-debug-btn {
+        background: #f5f5f5 !important;
+        border-color: #d0d0d0 !important;
+        color: #1a1a1a !important;
+      }
 
-        #clear-debug-btn {
-          background: #f5f5f5 !important;
-          border-color: #d0d0d0 !important;
-          color: #1a1a1a !important;
-        }
+      body.light-theme #clear-debug-btn {
+        background: #f5f5f5 !important;
+        border-color: #d0d0d0 !important;
+        color: #1a1a1a !important;
       }
     </style>
   </head>
   <body>
+    <script>chrome.storage.local.get('theme', r => { if (r.theme === 'light') document.body.classList.add('light-theme') })</script>
     <a href="popup.html" class="back-link">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
         <path
@@ -443,6 +442,19 @@
       <div class="help-text">
         Default: <code>http://localhost:7890</code>. Use <code>--port</code> flag when starting the server to use a
         different port.
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Appearance</div>
+      <div class="feature-section">
+        <div class="toggle-row" style="border-bottom: none">
+          <div class="toggle-info">
+            <span class="toggle-label">Light Mode</span>
+            <span class="toggle-description">Switch to light color scheme</span>
+          </div>
+          <div id="theme-toggle" class="toggle"></div>
+        </div>
       </div>
     </div>
 

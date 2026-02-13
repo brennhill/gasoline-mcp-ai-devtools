@@ -16,6 +16,7 @@ interface StorageResult {
   sourceMapEnabled?: boolean
   deferralEnabled?: boolean
   debugMode?: boolean
+  theme?: string
 }
 
 interface ExportResult {
@@ -34,12 +35,19 @@ interface ClearLogResponse {
  */
 export function loadOptions(): void {
   chrome.storage.local.get(
-    ['serverUrl', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled', 'debugMode'],
+    ['serverUrl', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled', 'debugMode', 'theme'],
     (result: StorageResult) => {
       // Set server URL
       const serverUrlInput = document.getElementById('server-url-input') as HTMLInputElement | null
       if (serverUrlInput) {
         serverUrlInput.value = result.serverUrl || DEFAULT_SERVER_URL
+      }
+
+      // Set theme toggle state (default: dark, toggle active = light)
+      const themeToggle = document.getElementById('theme-toggle')
+      if (result.theme === 'light') {
+        themeToggle?.classList.add('active')
+        document.body.classList.add('light-theme')
       }
 
       // Set screenshot toggle state
@@ -96,7 +104,10 @@ export function saveOptions(): void {
   const debugToggle = document.getElementById('debug-mode-toggle')
   const debugMode = debugToggle?.classList.contains('active') || false
 
-  chrome.storage.local.set({ serverUrl, screenshotOnError, sourceMapEnabled, deferralEnabled, debugMode }, () => {
+  const themeToggle = document.getElementById('theme-toggle')
+  const theme = themeToggle?.classList.contains('active') ? 'light' : 'dark'
+
+  chrome.storage.local.set({ serverUrl, screenshotOnError, sourceMapEnabled, deferralEnabled, debugMode, theme }, () => {
     // Show saved message
     const message = document.getElementById('saved-message')
     message?.classList.add('show')
@@ -145,6 +156,15 @@ export function toggleDeferral(): void {
 export function toggleDebugMode(): void {
   const toggle = document.getElementById('debug-mode-toggle')
   toggle?.classList.toggle('active')
+}
+
+/**
+ * Toggle theme between dark (default) and light
+ */
+export function toggleTheme(): void {
+  const toggle = document.getElementById('theme-toggle')
+  toggle?.classList.toggle('active')
+  document.body.classList.toggle('light-theme')
 }
 
 /**
@@ -273,6 +293,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const debugToggle = document.getElementById('debug-mode-toggle')
   debugToggle?.addEventListener('click', toggleDebugMode)
+
+  const themeToggle = document.getElementById('theme-toggle')
+  themeToggle?.addEventListener('click', toggleTheme)
 
   const testBtn = document.getElementById('test-connection-btn')
   testBtn?.addEventListener('click', testConnection)

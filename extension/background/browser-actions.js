@@ -69,6 +69,13 @@ export async function handleBrowserAction(tabId, params, actionToast) {
             case 'forward':
                 await chrome.tabs.goForward(tabId);
                 return { success: true, action: 'forward' };
+            case 'new_tab':
+                if (!url)
+                    return { success: false, error: 'missing_url', message: 'URL required for new_tab action' };
+                actionToast(tabId, reason || 'new_tab', reason ? undefined : 'opening new tab', 'trying', 5000);
+                await chrome.tabs.create({ url, active: false });
+                actionToast(tabId, reason || 'new_tab', undefined, 'success');
+                return { success: true, action: 'new_tab', url };
             default:
                 return { success: false, error: 'unknown_action', message: `Unknown action: ${action}` };
         }

@@ -1,3 +1,3 @@
 """Gasoline MCP - Browser observability for AI coding agents."""
 
-__version__ = "6.0.3"
+__version__ = "6.1.0"

@@ -27,24 +27,51 @@ run_test_s28() {
     fi
 
     echo "  [web vitals]"
-    echo "$content_text" | python3 -c "
+    local validation
+    validation=$(echo "$content_text" | python3 -c "
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
-    for key in ['lcp', 'cls', 'fcp', 'inp', 'ttfb', 'fid']:
-        val = data.get(key, data.get(key.upper(), 'n/a'))
-        if isinstance(val, dict):
-            print(f'    {key}: {val.get(\"value\", val.get(\"rating\", \"?\"))}')
+    metrics = data.get('metrics', data)
+    numeric_count = 0
+    for key in ['lcp', 'cls', 'fcp', 'inp', 'ttfb', 'fid', 'domContentLoaded', 'dom_content_loaded', 'load']:
+        val = metrics.get(key, metrics.get(key.upper()))
+        if val is None:
+            print(f'    {key}: n/a')
+        elif isinstance(val, (int, float)):
+            print(f'    {key}: {val}')
+            numeric_count += 1
+        elif isinstance(val, dict):
+            v = val.get('value', val.get('rating'))
+            if isinstance(v, (int, float)):
+                numeric_count += 1
+            print(f'    {key}: {v}')
         else:
             print(f'    {key}: {val}')
+    has_data = metrics.get('has_data', False)
+    url = metrics.get('url', 'n/a')
+    print(f'    url: {url}')
+    print(f'    has_data: {has_data}')
+    print(f'    numeric_metrics: {numeric_count}')
+    if numeric_count > 0:
+        print('VERDICT:PASS')
+    elif has_data:
+        print('VERDICT:PASS_HASDATA')
+    else:
+        print('VERDICT:FAIL')
 except Exception as e:
     print(f'    (parse: {e})')
-" 2>/dev/null || true
+    print('VERDICT:FAIL')
+" 2>/dev/null || echo "VERDICT:FAIL")
 
-    if echo "$content_text" | grep -qiE "lcp|cls|fcp|inp|ttfb|fid|metric|vital"; then
-        pass "observe(vitals) returned Web Vitals metrics."
+    echo "$validation" | grep -v "^VERDICT:" || true
+
+    if echo "$validation" | grep -q "VERDICT:PASS"; then
+        pass "observe(vitals) returned metrics with numeric values."
+    elif echo "$validation" | grep -q "VERDICT:PASS_HASDATA"; then
+        pass "observe(vitals) returned metrics (has_data=true, some may be awaiting measurement)."
     else
-        fail "observe(vitals) missing expected metrics. Content: $(truncate "$content_text" 200)"
+        fail "observe(vitals) returned no numeric metric values. All vitals are n/a. Verify extension is collecting Web Vitals. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s28
@@ -159,28 +186,32 @@ run_test_s31() {
     fi
 
     echo "  [error bundles]"
-    echo "$content_text" | python3 -c "
+    local bundle_count
+    bundle_count=$(echo "$content_text" | python3 -c "
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     bundles = data.get('bundles', data.get('error_bundles', []))
-    print(f'    bundles: {len(bundles) if isinstance(bundles, list) else \"(not array)\"}')
+    count = len(bundles) if isinstance(bundles, list) else 0
+    print(count)
     if isinstance(bundles, list):
         for b in bundles[:3]:
             msg = b.get('error', b.get('message', '?'))
             if isinstance(msg, dict):
                 msg = msg.get('message', str(msg))
-            print(f'    error: {str(msg)[:80]}')
+            import sys as s2
+            s2.stderr.write(f'    error: {str(msg)[:80]}\n')
             ctx = b.get('context', {})
-            print(f'      network: {len(ctx.get(\"network\", []))} actions: {len(ctx.get(\"actions\", []))} logs: {len(ctx.get(\"logs\", []))}')
+            s2.stderr.write(f'      network: {len(ctx.get(\"network\", []))} actions: {len(ctx.get(\"actions\", []))} logs: {len(ctx.get(\"logs\", []))}\n')
 except Exception as e:
-    print(f'    (parse: {e})')
-" 2>/dev/null || true
+    print(0)
+" 2>/dev/null || echo "0")
+    echo "    bundles: $bundle_count"
 
-    if echo "$content_text" | grep -qiE "bundle|error|context|network|action"; then
-        pass "observe(error_bundles) returned error context bundles."
+    if [ "$bundle_count" -gt 0 ] 2>/dev/null; then
+        pass "observe(error_bundles) returned $bundle_count error context bundles."
     else
-        fail "observe(error_bundles) missing expected fields. Content: $(truncate "$content_text" 200)"
+        fail "observe(error_bundles) returned 0 bundles. S.5 should have seeded errors. Verify error seeding and bundling pipeline. Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s31
@@ -298,25 +329,46 @@ run_test_s34() {
     fi
 
     echo "  [extension logs]"
-    echo "$content_text" | python3 -c "
+    local validation
+    validation=$(echo "$content_text" | python3 -c "
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     logs = data.get('logs', data.get('entries', []))
-    print(f'    log entries: {len(logs) if isinstance(logs, list) else \"(not array)\"}')
+    count = len(logs) if isinstance(logs, list) else 0
+    print(f'    log entries: {count}')
+    has_structure = True
+    if isinstance(logs, list) and count > 0:
+        for l in logs[:5]:
+            msg = l.get('message', l.get('text', ''))
+            level = l.get('level', l.get('severity', ''))
+            print(f'    [{level}] {str(msg)[:80]}')
+            if not msg and not level:
+                has_structure = False
+    levels_seen = set()
     if isinstance(logs, list):
-        for l in logs[:3]:
-            msg = l.get('message', l.get('text', '?'))[:80]
-            level = l.get('level', l.get('severity', '?'))
-            print(f'    [{level}] {msg}')
+        for l in logs:
+            levels_seen.add(l.get('level', l.get('severity', '')))
+    print(f'    levels seen: {sorted(levels_seen)}')
+    if count > 0 and has_structure:
+        print(f'VERDICT:PASS count={count}')
+    elif count > 0:
+        print(f'VERDICT:FAIL_STRUCTURE count={count} (entries missing message/level)')
+    else:
+        print('VERDICT:FAIL_EMPTY')
 except Exception as e:
     print(f'    (parse: {e})')
-" 2>/dev/null || true
+    print('VERDICT:FAIL_PARSE')
+" 2>/dev/null || echo "VERDICT:FAIL_PARSE")
 
-    if echo "$content_text" | grep -qiE "logs|entries|message|count"; then
-        pass "observe(extension_logs) returned diagnostic log data."
+    echo "$validation" | grep -v "^VERDICT:" || true
+
+    if echo "$validation" | grep -q "VERDICT:PASS"; then
+        local count
+        count=$(echo "$validation" | grep -oP 'count=\K[0-9]+')
+        pass "observe(extension_logs) returned $count entries with valid structure (level + message)."
     else
-        fail "observe(extension_logs) missing expected fields. Content: $(truncate "$content_text" 200)"
+        fail "observe(extension_logs) failed. $(echo "$validation" | grep 'VERDICT:' | head -1). Content: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s34

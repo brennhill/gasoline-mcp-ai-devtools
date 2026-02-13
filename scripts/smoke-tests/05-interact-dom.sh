@@ -305,26 +305,37 @@ run_test_s45() {
     interact_and_wait "list_interactive" '{"action":"list_interactive","reason":"List all interactive elements"}'
 
     echo "  [interactive elements]"
-    echo "$INTERACT_RESULT" | python3 -c "
+    local elem_count
+    elem_count=$(echo "$INTERACT_RESULT" | python3 -c "
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
-    elems = data.get('elements', data.get('interactive', []))
-    print(f'    count: {len(elems) if isinstance(elems, list) else \"?\"}')
+    elems = data.get('elements', data.get('interactive', data.get('result', {}).get('elements', [])))
+    count = len(elems) if isinstance(elems, list) else 0
+    print(count)
     if isinstance(elems, list):
         for e in elems[:8]:
             tag = e.get('tag', e.get('tagName', '?'))
             sel = e.get('selector', e.get('id', ''))[:40]
             text = e.get('text', e.get('textContent', ''))[:30]
-            print(f'    <{tag}> {sel} \"{text}\"')
+            import sys as s2
+            s2.stderr.write(f'    <{tag}> {sel} \"{text}\"\n')
 except Exception as e:
-    print(f'    (parse: {e})')
-" 2>/dev/null || true
+    print(0)
+" 2>/dev/null || echo "0")
+    echo "    count: $elem_count"
 
-    if echo "$INTERACT_RESULT" | grep -qiE "element|interactive|sf-name|sf-btn|input|button"; then
-        pass "list_interactive returned elements including injected form fields."
+    # Strict: we injected a form with #sf-name, #sf-email, #sf-role, #sf-agree, #sf-btn, #sf-link
+    # There MUST be > 0 interactive elements
+    if [ "$elem_count" -gt 0 ] 2>/dev/null; then
+        # Verify our injected elements are present
+        if echo "$INTERACT_RESULT" | grep -qiE "sf-name|sf-btn|sf-email"; then
+            pass "list_interactive returned $elem_count elements including injected form fields."
+        else
+            pass "list_interactive returned $elem_count elements (injected IDs not visible in result, but elements found)."
+        fi
     else
-        fail "list_interactive missing expected elements. Result: $(truncate "$INTERACT_RESULT" 200)"
+        fail "list_interactive returned 0 elements. Injected form with 6 interactive elements should be visible. Result: $(truncate "$INTERACT_RESULT" 200)"
     fi
 }
 run_test_s45
@@ -361,27 +372,36 @@ run_test_s47() {
         return
     fi
 
-    # Navigate to page A
+    # Navigate to page A — use a distinctive URL
     interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Page A for back test"}' 20
-    sleep 2
+    sleep 3
+
+    # Verify we're on page A
+    local page_a_response
+    page_a_response=$(call_tool "observe" '{"what":"page"}')
+    local page_a_text
+    page_a_text=$(extract_content_text "$page_a_response")
+    echo "  [page A] $(echo "$page_a_text" | python3 -c "import sys,json; t=sys.stdin.read(); i=t.find('{'); d=json.loads(t[i:]) if i>=0 else {}; print(d.get('url',d.get('title','?'))[:80])" 2>/dev/null || echo '?')"
 
     # Navigate to page B
     interact_and_wait "navigate" '{"action":"navigate","url":"https://www.iana.org/domains/reserved","reason":"Page B for back test"}' 20
-    sleep 2
+    sleep 3
 
     # Go back
     interact_and_wait "back" '{"action":"back","reason":"Go back to page A"}'
-    sleep 2
+    sleep 3
 
     local response
     response=$(call_tool "observe" '{"what":"page"}')
     local content_text
     content_text=$(extract_content_text "$response")
 
+    echo "  [after back] $(echo "$content_text" | python3 -c "import sys,json; t=sys.stdin.read(); i=t.find('{'); d=json.loads(t[i:]) if i>=0 else {}; print(d.get('url',d.get('title','?'))[:80])" 2>/dev/null || echo '?')"
+
     if echo "$content_text" | grep -qi "example.com"; then
         pass "Back navigation: returned to example.com."
     else
-        fail "Back navigation: expected example.com. Got: $(truncate "$content_text" 200)"
+        fail "Back navigation: expected example.com in page URL/title. Got: $(truncate "$content_text" 200)"
     fi
 }
 run_test_s47
@@ -426,10 +446,11 @@ run_test_s49() {
 
     interact_and_wait "new_tab" '{"action":"new_tab","url":"https://example.com","reason":"Open new tab"}'
 
-    if echo "$INTERACT_RESULT" | grep -qi "error\|failed\|unsupported"; then
-        skip "new_tab not supported or failed. Result: $(truncate "$INTERACT_RESULT" 200)"
+    # Strict: new_tab must succeed (no error/failed in result)
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
+        fail "new_tab failed. Result: $(truncate "$INTERACT_RESULT" 200)"
     else
-        pass "new_tab command completed."
+        pass "new_tab opened https://example.com in a new tab."
     fi
 
     # Navigate back to example.com in tracked tab for subsequent tests

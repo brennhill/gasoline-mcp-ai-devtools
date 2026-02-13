@@ -12,11 +12,17 @@ const DEFAULT_SERVER_URL = 'http://localhost:7890';
  * Load saved options
  */
 export function loadOptions() {
-    chrome.storage.local.get(['serverUrl', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled', 'debugMode'], (result) => {
+    chrome.storage.local.get(['serverUrl', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled', 'debugMode', 'theme'], (result) => {
         // Set server URL
         const serverUrlInput = document.getElementById('server-url-input');
         if (serverUrlInput) {
             serverUrlInput.value = result.serverUrl || DEFAULT_SERVER_URL;
+        }
+        // Set theme toggle state (default: dark, toggle active = light)
+        const themeToggle = document.getElementById('theme-toggle');
+        if (result.theme === 'light') {
+            themeToggle?.classList.add('active');
+            document.body.classList.add('light-theme');
         }
         // Set screenshot toggle state
         const screenshotToggle = document.getElementById('screenshot-toggle');
@@ -62,7 +68,9 @@ export function saveOptions() {
     const deferralEnabled = deferralToggle?.classList.contains('active') || false;
     const debugToggle = document.getElementById('debug-mode-toggle');
     const debugMode = debugToggle?.classList.contains('active') || false;
-    chrome.storage.local.set({ serverUrl, screenshotOnError, sourceMapEnabled, deferralEnabled, debugMode }, () => {
+    const themeToggle = document.getElementById('theme-toggle');
+    const theme = themeToggle?.classList.contains('active') ? 'light' : 'dark';
+    chrome.storage.local.set({ serverUrl, screenshotOnError, sourceMapEnabled, deferralEnabled, debugMode, theme }, () => {
         // Show saved message
         const message = document.getElementById('saved-message');
         message?.classList.add('show');
@@ -105,6 +113,14 @@ export function toggleDeferral() {
 export function toggleDebugMode() {
     const toggle = document.getElementById('debug-mode-toggle');
     toggle?.classList.toggle('active');
+}
+/**
+ * Toggle theme between dark (default) and light
+ */
+export function toggleTheme() {
+    const toggle = document.getElementById('theme-toggle');
+    toggle?.classList.toggle('active');
+    document.body.classList.toggle('light-theme');
 }
 /**
  * Test connection to server
@@ -222,6 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
     deferralToggle?.addEventListener('click', toggleDeferral);
     const debugToggle = document.getElementById('debug-mode-toggle');
     debugToggle?.addEventListener('click', toggleDebugMode);
+    const themeToggle = document.getElementById('theme-toggle');
+    themeToggle?.addEventListener('click', toggleTheme);
     const testBtn = document.getElementById('test-connection-btn');
     testBtn?.addEventListener('click', testConnection);
     // Debug log buttons
