@@ -271,6 +271,7 @@ func (s *Server) handleFormSubmit(w http.ResponseWriter, r *http.Request) {
 // handleOSAutomation is the HTTP handler for POST /api/os-automation/inject
 func (s *Server) handleOSAutomation(w http.ResponseWriter, r *http.Request, osAutomationEnabled bool) {
 	if r.Method != "POST" {
+		w.Header().Set("Allow", "POST")
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
@@ -278,6 +279,7 @@ func (s *Server) handleOSAutomation(w http.ResponseWriter, r *http.Request, osAu
 	if !osAutomationEnabled {
 		jsonResponse(w, http.StatusForbidden, UploadStageResponse{
 			Success: false,
+			Stage:   4,
 			Error:   "OS-level upload automation is disabled. Start server with --enable-os-upload-automation flag.",
 		})
 		return
@@ -288,6 +290,7 @@ func (s *Server) handleOSAutomation(w http.ResponseWriter, r *http.Request, osAu
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		jsonResponse(w, http.StatusBadRequest, UploadStageResponse{
 			Success: false,
+			Stage:   4,
 			Error:   "Invalid JSON: " + err.Error(),
 		})
 		return
@@ -298,5 +301,30 @@ func (s *Server) handleOSAutomation(w http.ResponseWriter, r *http.Request, osAu
 		jsonResponse(w, http.StatusOK, resp)
 	} else {
 		jsonResponse(w, http.StatusBadRequest, resp)
+	}
+}
+
+// handleOSAutomationDismiss sends Escape to close a dangling native file dialog.
+func (s *Server) handleOSAutomationDismiss(w http.ResponseWriter, r *http.Request, osAutomationEnabled bool) {
+	if r.Method != "POST" {
+		w.Header().Set("Allow", "POST")
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	if !osAutomationEnabled {
+		jsonResponse(w, http.StatusForbidden, UploadStageResponse{
+			Success: false,
+			Stage:   4,
+			Error:   "OS automation is disabled.",
+		})
+		return
+	}
+
+	resp := dismissFileDialogInternal()
+	if resp.Success {
+		jsonResponse(w, http.StatusOK, resp)
+	} else {
+		jsonResponse(w, http.StatusInternalServerError, resp)
 	}
 }

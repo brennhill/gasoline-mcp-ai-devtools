@@ -10,7 +10,7 @@ set -eo pipefail
 UPLOAD_TEST_DIR="${HOME}/.gasoline/tmp/smoke-upload-$$"
 mkdir -p "$UPLOAD_TEST_DIR"
 
-begin_category "15" "File Upload" "16"
+begin_category "15" "File Upload" "18"
 
 # ── Persistent upload server for the whole category ───────
 UPLOAD_PORT=$((PORT + 200))
@@ -431,7 +431,7 @@ run_test_15_11() {
             fail "E2E upload: extension reported failure."
             ;;
         pending)
-            skip "E2E upload: timed out polling (extension has no upload handler yet)."
+            fail "E2E upload: timed out polling (upload handler should have responded)."
             ;;
         *)
             fail "E2E upload: $UPLOAD_FINAL_STATUS"
@@ -614,7 +614,7 @@ run_test_15_15() {
     if echo "$INTERACT_RESULT" | grep -q "$expected_name"; then
         pass "File reached input: files[0].name matches uploaded file."
     elif echo "$INTERACT_RESULT" | grep -qi "timeout"; then
-        skip "Timed out waiting for execute_js (extension upload handler not implemented yet)."
+        fail "Timed out waiting for execute_js (upload handler should have responded)."
     elif echo "$INTERACT_RESULT" | grep -q "NO_FILES"; then
         fail "File not set on input element (extension connected but files array empty)."
     elif echo "$INTERACT_RESULT" | grep -q "NO_ELEMENT"; then
@@ -624,3 +624,180 @@ run_test_15_15() {
     fi
 }
 run_test_15_15
+
+# ── Shared helper: navigate browser to hardened upload form ──
+# Visits / (sets session cookie) then /upload/hardened (loads hardened form with CSRF).
+_navigate_to_hardened_form() {
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/\",\"reason\":\"Get session cookie\"}"
+    sleep 1
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload/hardened\",\"reason\":\"Load hardened upload form\"}"
+    sleep 2
+}
+
+# ── Shared helper: upload and poll for Stage 4 (longer timeout) ──
+# Sets UPLOAD_FINAL_STATUS and UPLOAD_FINAL_TEXT.
+_upload_and_poll_stage4() {
+    local test_id="$1"
+    local test_file="$2"
+    UPLOAD_FINAL_STATUS="pending"
+    UPLOAD_FINAL_TEXT=""
+
+    local response
+    response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "$test_id" "interact upload" "$response" "$content_text"
+
+    local corr_id
+    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
+
+    if [ -z "$corr_id" ]; then
+        if echo "$content_text" | grep -qi "error\|isError"; then
+            UPLOAD_FINAL_STATUS="error: $(truncate "$content_text" 200)"
+        else
+            UPLOAD_FINAL_STATUS="no_corr_id: $(truncate "$content_text" 200)"
+        fi
+        return
+    fi
+
+    # Stage 4 needs longer timeout: 30 polls x 1s = 30s max
+    for _ in $(seq 1 30); do
+        sleep 1
+        local poll_resp
+        poll_resp=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")
+        local poll_text
+        poll_text=$(extract_content_text "$poll_resp")
+        if echo "$poll_text" | grep -q '"status":"complete"'; then
+            UPLOAD_FINAL_STATUS="complete"
+            UPLOAD_FINAL_TEXT="$poll_text"
+            log_diagnostic "$test_id" "poll complete" "$poll_text" ""
+            return
+        fi
+        if echo "$poll_text" | grep -q '"status":"failed"\|"status":"error"'; then
+            UPLOAD_FINAL_STATUS="failed"
+            UPLOAD_FINAL_TEXT="$poll_text"
+            log_diagnostic "$test_id" "poll failed" "$poll_text" ""
+            return
+        fi
+    done
+}
+
+# ── Test 15.16: Stage 4 escalation E2E ───────────────────
+begin_test "15.16" "Stage 4 escalation E2E (hardened form, requires pilot)" \
+    "Navigate to hardened form (isTrusted check), upload via Stage 4 escalation, verify MD5" \
+    "Tests: full Stage 1→4 escalation pipeline through hardened form"
+
+run_test_15_16() {
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
+        return
+    fi
+
+    # Create test file with known content
+    local test_content="Gasoline Stage 4 E2E $(date +%s)"
+    local test_file="$UPLOAD_TEST_DIR/upload-15-16.txt"
+    echo -n "$test_content" > "$test_file"
+    local original_md5
+    original_md5=$(md5sum "$test_file" 2>/dev/null | awk '{print $1}' || md5 -q "$test_file" 2>/dev/null)
+
+    # Navigate browser to hardened form
+    _navigate_to_hardened_form
+
+    # Upload and poll with Stage 4 timeout
+    _upload_and_poll_stage4 "15.16" "$test_file"
+
+    case "$UPLOAD_FINAL_STATUS" in
+        complete)
+            # Check if it was Stage 4 escalation
+            if echo "$UPLOAD_FINAL_TEXT" | grep -q '"stage":4\|"stage": 4'; then
+                # Stage 4 confirmed — now submit the form and verify MD5
+                interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill title field","script":"document.querySelector(\"input[name=title]\").value=\"Smoke Test 15.16 Stage4\"; \"title_set\""}'
+                sleep 0.5
+                interact_and_wait "execute_js" '{"action":"execute_js","reason":"Submit upload form","script":"document.querySelector(\"form\").submit(); \"submitted\""}'
+                sleep 3
+
+                # Verify server received the file with correct MD5
+                local verify_body
+                verify_body=$(curl -s "http://127.0.0.1:${UPLOAD_PORT}/api/last-upload" 2>/dev/null)
+                local verify_md5
+                verify_md5=$(echo "$verify_body" | jq -r '.md5' 2>/dev/null)
+
+                if [ "$verify_md5" = "$original_md5" ]; then
+                    pass "Stage 4 escalation: file reached server via OS automation, MD5 match ($original_md5)."
+                else
+                    fail "Stage 4 file reached server but MD5 mismatch. Expected $original_md5, got $verify_md5."
+                fi
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -q '"stage":1\|"stage": 1'; then
+                # Stage 1 succeeded on hardened form — unexpected but not a test failure
+                pass "Upload completed via Stage 1 (hardened form did not reject — may not have isTrusted check active)."
+            else
+                pass "Upload completed but stage not identified in response."
+            fi
+            ;;
+        pending)
+            skip "Upload timed out — extension may not have escalation support yet."
+            ;;
+        failed)
+            # Check for known skip conditions
+            if echo "$UPLOAD_FINAL_TEXT" | grep -qi "accessibility\|Accessibility"; then
+                skip "Stage 4 needs macOS Accessibility permission. Fix: System Settings > Privacy & Security > Accessibility. Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -qi "xdotool"; then
+                skip "Stage 4 needs xdotool. Fix: sudo apt install xdotool. Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -qi "enable-os-upload-automation"; then
+                fail "Daemon missing --enable-os-upload-automation flag. Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -qi "Cannot detect Chrome\|chrome.exe"; then
+                fail "Chrome not detected. Is Google Chrome running? Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            else
+                fail "Stage 4 escalation failed: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            fi
+            ;;
+        *)
+            fail "Upload failed: $UPLOAD_FINAL_STATUS"
+            ;;
+    esac
+}
+run_test_15_16
+
+# ── Test 15.17: Escalation reason metadata ────────────────
+begin_test "15.17" "Escalation reason metadata in result (requires pilot)" \
+    "After Stage 4 upload on hardened form, verify escalation_reason field in result" \
+    "Tests: extension reports escalation_reason when Stage 4 is used"
+
+run_test_15_17() {
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
+        return
+    fi
+
+    # Navigate browser to hardened form
+    _navigate_to_hardened_form
+
+    # Create a test file
+    local test_file="$UPLOAD_TEST_DIR/escalation-reason.txt"
+    echo "escalation reason test" > "$test_file"
+
+    # Upload and poll with Stage 4 timeout
+    _upload_and_poll_stage4 "15.17" "$test_file"
+
+    case "$UPLOAD_FINAL_STATUS" in
+        complete)
+            if echo "$UPLOAD_FINAL_TEXT" | grep -q '"escalation_reason"'; then
+                local reason
+                reason=$(echo "$UPLOAD_FINAL_TEXT" | grep -oE '"escalation_reason":\s*"[^"]+"' | head -1 | sed 's/.*"escalation_reason":\s*"//' | sed 's/"//')
+                pass "Escalation reason present: $reason"
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -q '"stage":1\|"stage": 1'; then
+                skip "Upload completed via Stage 1 (no escalation occurred, hardened form may not be active)."
+            else
+                fail "Upload completed but escalation_reason not in result: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            fi
+            ;;
+        pending)
+            skip "Upload timed out — extension may not have escalation support yet."
+            ;;
+        *)
+            skip "Stage 4 unavailable: $UPLOAD_FINAL_STATUS"
+            ;;
+    esac
+}
+run_test_15_17

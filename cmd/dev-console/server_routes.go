@@ -724,6 +724,10 @@ func registerUploadRoutes(mux *http.ServeMux, server *Server) {
 	mux.HandleFunc("/api/os-automation/inject", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleOSAutomation(w, r, osUploadAutomationFlag)
 	})))
+	// NOT MCP — Dismiss dangling file dialog via Escape key (cleanup after failed Stage 4)
+	mux.HandleFunc("/api/os-automation/dismiss", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		server.handleOSAutomationDismiss(w, r, osUploadAutomationFlag)
+	})))
 }
 
 // registerCoreRoutes adds non-capture-dependent routes to the mux.

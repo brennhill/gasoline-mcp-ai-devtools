@@ -27,6 +27,7 @@ export type QueryType =
   | 'record_stop'
   | 'link_health'
   | 'draw_mode'
+  | 'upload'
 
 /**
  * Pending query from server

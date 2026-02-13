@@ -27,11 +27,15 @@ func handleOSAutomationInternal(req OSAutomationInjectRequest, sec *UploadSecuri
 	}
 
 	if req.BrowserPID <= 0 {
-		return UploadStageResponse{
-			Success: false,
-			Stage:   4,
-			Error:   "Missing or invalid browser_pid. Provide the Chrome browser process ID.",
+		detectedPID, err := detectBrowserPID()
+		if err != nil {
+			return UploadStageResponse{
+				Success: false,
+				Stage:   4,
+				Error:   err.Error(),
+			}
 		}
+		req.BrowserPID = detectedPID
 	}
 
 	// Security: full validation chain (requires upload-dir for Stage 4)
@@ -96,6 +100,113 @@ func validatePathForOSAutomation(filePath string) error {
 		return fmt.Errorf("file path contains backtick characters")
 	}
 	return nil
+}
+
+// detectBrowserPID auto-detects the Chrome browser process ID using platform-specific methods.
+// Returns the PID or an error with OS-specific instructions.
+func detectBrowserPID() (int, error) {
+	switch runtime.GOOS {
+	case "darwin":
+		return detectBrowserPIDDarwin()
+	case "linux":
+		return detectBrowserPIDLinux()
+	case "windows":
+		return detectBrowserPIDWindows()
+	default:
+		return 0, fmt.Errorf("browser PID auto-detection not supported on %s", runtime.GOOS)
+	}
+}
+
+// detectBrowserPIDDarwin finds Chrome via pgrep on macOS.
+func detectBrowserPIDDarwin() (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "pgrep", "-x", "Google Chrome").Output()
+	if err != nil {
+		return 0, fmt.Errorf("Cannot detect Chrome: pgrep -x 'Google Chrome' found no process. Launch Google Chrome first")
+	}
+	lines := strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)
+	if len(lines) == 0 || lines[0] == "" {
+		return 0, fmt.Errorf("Cannot detect Chrome: pgrep -x 'Google Chrome' found no process. Launch Google Chrome first")
+	}
+	var pid int
+	if _, err := fmt.Sscanf(lines[0], "%d", &pid); err != nil {
+		return 0, fmt.Errorf("Cannot detect Chrome: pgrep -x 'Google Chrome' returned non-numeric PID %q", lines[0])
+	}
+	return pid, nil
+}
+
+// detectBrowserPIDLinux finds Chrome or Chromium via pgrep on Linux.
+func detectBrowserPIDLinux() (int, error) {
+	// Try common Chrome/Chromium process names
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	for _, name := range []string{"chrome", "chromium", "google-chrome", "chromium-browser"} {
+		out, err := exec.CommandContext(ctx, "pgrep", "-x", name).Output()
+		if err != nil {
+			continue
+		}
+		lines := strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)
+		if len(lines) > 0 && lines[0] != "" {
+			var pid int
+			if _, err := fmt.Sscanf(lines[0], "%d", &pid); err == nil {
+				return pid, nil
+			}
+		}
+	}
+	return 0, fmt.Errorf("Cannot detect Chrome: pgrep found none of 'chrome', 'chromium', 'google-chrome', 'chromium-browser'. Launch Chrome/Chromium first")
+}
+
+// detectBrowserPIDWindows finds Chrome via tasklist on Windows.
+func detectBrowserPIDWindows() (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "tasklist", "/FI", "IMAGENAME eq chrome.exe", "/FO", "CSV", "/NH").Output()
+	if err != nil {
+		return 0, fmt.Errorf("Cannot detect Chrome: tasklist found no chrome.exe. Launch Google Chrome first")
+	}
+	lines := strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)
+	if len(lines) == 0 || strings.Contains(lines[0], "No tasks") {
+		return 0, fmt.Errorf("Cannot detect Chrome: tasklist found no chrome.exe. Launch Google Chrome first")
+	}
+	// CSV format: "chrome.exe","1234","Console","1","123,456 K"
+	fields := strings.Split(lines[0], ",")
+	if len(fields) < 2 {
+		return 0, fmt.Errorf("Cannot detect Chrome: tasklist returned unexpected format")
+	}
+	pidStr := strings.Trim(fields[1], "\" ")
+	var pid int
+	if _, err := fmt.Sscanf(pidStr, "%d", &pid); err != nil {
+		return 0, fmt.Errorf("Cannot detect Chrome: tasklist returned non-numeric PID %q", pidStr)
+	}
+	return pid, nil
+}
+
+// dismissFileDialogInternal sends Escape to close a dangling native file dialog.
+func dismissFileDialogInternal() UploadStageResponse {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.CommandContext(ctx, "osascript", "-e", `tell application "System Events" to key code 53`)
+	case "linux":
+		if _, err := exec.LookPath("xdotool"); err != nil {
+			return UploadStageResponse{Success: false, Stage: 4, Error: "xdotool not found"}
+		}
+		cmd = exec.CommandContext(ctx, "xdotool", "key", "Escape")
+	case "windows":
+		cmd = exec.CommandContext(ctx, "powershell", "-NoProfile", "-Command",
+			`Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait("{ESCAPE}")`)
+	default:
+		return UploadStageResponse{Success: false, Stage: 4, Error: "unsupported OS"}
+	}
+
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return UploadStageResponse{Success: false, Stage: 4, Error: fmt.Sprintf("dismiss failed: %v. Output: %s", err, string(output))}
+	}
+	return UploadStageResponse{Success: true, Stage: 4, Status: "file dialog dismissed"}
 }
 
 // executeOSAutomation performs platform-specific OS automation.
@@ -293,20 +404,27 @@ func executeMacOSAutomation(req OSAutomationInjectRequest, start time.Time) Uplo
 end tell`, safePath)
 
 	// #nosec G204 -- script is built from sanitized file path (absolute path check + escaping above)
-	cmd := exec.Command("osascript", "-e", script) // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command -- input sanitized by sanitizeForAppleScript
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "osascript", "-e", script) // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command -- input sanitized by sanitizeForAppleScript
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		errMsg := fmt.Sprintf("AppleScript failed: %v", err)
 		if len(output) > 0 {
 			errMsg += " Output: " + string(output)
 		}
+		termApp := os.Getenv("TERM_PROGRAM")
+		if termApp == "" {
+			termApp = "your terminal"
+		}
+		errMsg += fmt.Sprintf(". Fix: System Settings > Privacy & Security > Accessibility > enable %s", termApp)
 		return UploadStageResponse{
 			Success:    false,
 			Stage:      4,
 			Error:      errMsg,
 			DurationMs: time.Since(start).Milliseconds(),
 			Suggestions: []string{
-				"Grant Accessibility permissions: System Settings > Privacy & Security > Accessibility",
+				fmt.Sprintf("Grant Accessibility permissions: System Settings > Privacy & Security > Accessibility > enable %s", termApp),
 				"Ensure a file dialog is open in Chrome",
 			},
 		}
@@ -358,7 +476,9 @@ Start-Sleep -Milliseconds 300
 [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
 `, psPath)
 
-	cmd := exec.Command("powershell", "-NoProfile", "-Command", script) // #nosec G204 -- path sanitized
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "powershell", "-NoProfile", "-Command", script) // #nosec G204 -- path sanitized
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return UploadStageResponse{
@@ -390,7 +510,7 @@ func executeLinuxAutomation(req OSAutomationInjectRequest, start time.Time) Uplo
 		return UploadStageResponse{
 			Success: false,
 			Stage:   4,
-			Error:   "xdotool not found. Install with: sudo apt install xdotool",
+			Error:   "xdotool not found. Install: sudo apt install xdotool (Debian/Ubuntu) or sudo dnf install xdotool (Fedora).",
 			Suggestions: []string{
 				"Install xdotool: sudo apt install xdotool (Debian/Ubuntu)",
 				"Install xdotool: sudo dnf install xdotool (Fedora)",
@@ -403,6 +523,9 @@ func executeLinuxAutomation(req OSAutomationInjectRequest, start time.Time) Uplo
 	// validatePathForOSAutomation (called before executeOSAutomation) already
 	// rejects null bytes, newlines, and backticks. Use '--' argument terminator
 	// to prevent paths from being misinterpreted as xdotool flags.
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
 	commands := []struct {
 		name string
 		args []string
@@ -414,7 +537,7 @@ func executeLinuxAutomation(req OSAutomationInjectRequest, start time.Time) Uplo
 	}
 
 	for _, c := range commands {
-		cmd := exec.Command(c.name, c.args...) // #nosec G204 -- xdotool path from LookPath // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- OS automation executes user-requested xdotool command
+		cmd := exec.CommandContext(ctx, c.name, c.args...) // #nosec G204 -- xdotool path from LookPath // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- OS automation executes user-requested xdotool command
 		if output, err := cmd.CombinedOutput(); err != nil {
 			return UploadStageResponse{
 				Success:    false,

@@ -23,6 +23,7 @@ import {
   deleteStateSnapshot
 } from './message-handlers'
 import { executeDOMAction } from './dom-primitives'
+import { executeUpload } from './upload-handler'
 import { canTakeScreenshot, recordScreenshot } from './state-manager'
 import { startRecording, stopRecording } from './recording'
 import { executeWithWorldRouting } from './query-execution'
@@ -107,7 +108,8 @@ const PRETTY_LABELS: Record<string, string> = {
   wait_for: 'Wait for',
   key_press: 'Key press',
   highlight: 'Highlight',
-  subtitle: 'Subtitle'
+  subtitle: 'Subtitle',
+  upload: 'Upload file'
 }
 
 /** Show a visual action toast on the tracked tab */
@@ -416,6 +418,15 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
         return
       }
       await executeDOMAction(query, tabId, syncClient, sendAsyncResult, actionToast)
+      return
+    }
+
+    if (query.type === 'upload') {
+      if (!index.__aiWebPilotEnabledCache) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', null, 'ai_web_pilot_disabled')
+        return
+      }
+      await executeUpload(query, tabId, syncClient, sendAsyncResult, actionToast)
       return
     }
 
