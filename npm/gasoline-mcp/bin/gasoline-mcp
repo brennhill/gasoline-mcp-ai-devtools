@@ -72,6 +72,7 @@ function getPlatformPackage() {
     'linux-arm64': '@brennhill/gasoline-linux-arm64',
     'linux-x64': '@brennhill/gasoline-linux-x64',
     'win32-x64': '@brennhill/gasoline-win32-x64',
+    'win32-arm64': '@brennhill/gasoline-win32-x64', // x64 binary runs via Windows emulation
   };
 
   const key = `${platform}-${arch}`;
@@ -145,6 +146,7 @@ function findBinary() {
     'linux-arm64': 'gasoline-linux-arm64',
     'linux-x64': 'gasoline-linux-x64',
     'win32-x64': 'gasoline-win32-x64.exe',
+    'win32-arm64': 'gasoline-win32-x64.exe', // x64 binary runs via Windows emulation
   };
 
   const devBinary = path.join(__dirname, '..', '..', '..', 'dist', distMap[platformKey]);

@@ -682,6 +682,18 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 	responseData["completed_at"] = cmd.CompletedAt.Format(time.RFC3339)
 	responseData["timing_ms"] = cmd.CompletedAt.Sub(cmd.CreatedAt).Milliseconds()
 
+	// Surface analyze enrichment fields from extension result to top level
+	if len(cmd.Result) > 0 {
+		var extResult map[string]any
+		if json.Unmarshal(cmd.Result, &extResult) == nil {
+			for _, key := range []string{"timing", "dom_changes", "analysis"} {
+				if v, ok := extResult[key]; ok {
+					responseData[key] = v
+				}
+			}
+		}
+	}
+
 	if beforeSnap, ok := h.capture.GetAndDeleteBeforeSnapshot(corrID); ok {
 		if afterSnap, ok := h.capture.GetPerformanceSnapshotByURL(beforeSnap.URL); ok {
 			before := performance.SnapshotToPageLoadMetrics(beforeSnap)
