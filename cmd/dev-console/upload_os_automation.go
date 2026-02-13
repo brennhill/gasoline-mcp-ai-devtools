@@ -126,6 +126,20 @@ func executeOSAutomation(req OSAutomationInjectRequest) UploadStageResponse {
 // Security Validators
 // ============================================
 
+// ssrfAllowedHostsList holds host or host:port values that bypass SSRF checks.
+// Set via --ssrf-allow-host flag (repeatable). Intended for test use only.
+var ssrfAllowedHostsList []string
+
+// isSSRFAllowedHost returns true if hostOrAddr matches an --ssrf-allow-host entry.
+func isSSRFAllowedHost(hostOrAddr string) bool {
+	for _, allowed := range ssrfAllowedHostsList {
+		if allowed == hostOrAddr {
+			return true
+		}
+	}
+	return false
+}
+
 // allowedHTTPMethods is the set of HTTP methods permitted for form submission.
 var allowedHTTPMethods = map[string]bool{
 	"POST":  true,
@@ -164,6 +178,15 @@ func validateFormActionURL(rawURL string) error {
 	hostname := u.Hostname()
 	if hostname == "" {
 		return fmt.Errorf("URL has no hostname")
+	}
+
+	// Check --ssrf-allow-host flag (test use: allows localhost test servers)
+	hostPort := hostname
+	if u.Port() != "" {
+		hostPort = hostname + ":" + u.Port()
+	}
+	if isSSRFAllowedHost(hostPort) || isSSRFAllowedHost(hostname) {
+		return nil
 	}
 
 	// Block well-known loopback/metadata hostnames

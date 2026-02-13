@@ -525,23 +525,50 @@ function parseDOMParams(query) {
 function isReadOnlyAction(action) {
     return action === 'list_interactive' || action.startsWith('get_');
 }
+/** Pick the best result from multi-frame executeScript. Prefers main frame, falls back to first success. */
+function pickFrameResult(results) {
+    const mainFrame = results.find(r => r.frameId === 0);
+    if (mainFrame?.result && mainFrame.result.success) {
+        return { result: mainFrame.result, frameId: 0 };
+    }
+    for (const r of results) {
+        if (r.result && r.result.success) {
+            return { result: r.result, frameId: r.frameId };
+        }
+    }
+    if (mainFrame?.result)
+        return { result: mainFrame.result, frameId: 0 };
+    return results[0] ? { result: results[0].result, frameId: results[0].frameId } : null;
+}
+/** Merge list_interactive results from all frames (up to 100 elements). */
+function mergeListInteractive(results) {
+    const elements = [];
+    for (const r of results) {
+        const res = r.result;
+        if (res?.elements)
+            elements.push(...res.elements);
+        if (elements.length >= 100)
+            break;
+    }
+    return { success: true, elements: elements.slice(0, 100) };
+}
 async function executeWaitFor(tabId, params) {
     const selector = params.selector || '';
     const quickCheck = await chrome.scripting.executeScript({
-        target: { tabId }, world: 'MAIN', func: domPrimitive,
+        target: { tabId, allFrames: true }, world: 'MAIN', func: domPrimitive,
         args: [params.action, selector, { timeout_ms: params.timeout_ms }]
     });
-    const quickResult = quickCheck?.[0]?.result;
+    const quickResult = pickFrameResult(quickCheck)?.result;
     if (quickResult?.success)
         return quickResult;
     return chrome.scripting.executeScript({
-        target: { tabId }, world: 'MAIN', func: domWaitFor,
+        target: { tabId, allFrames: true }, world: 'MAIN', func: domWaitFor,
         args: [selector, params.timeout_ms || 5000]
     });
 }
 async function executeStandardAction(tabId, params) {
     return chrome.scripting.executeScript({
-        target: { tabId }, world: 'MAIN', func: domPrimitive,
+        target: { tabId, allFrames: true }, world: 'MAIN', func: domPrimitive,
         args: [
             params.action, params.selector || '',
             { text: params.text, value: params.value, clear: params.clear, checked: params.checked, name: params.name, timeout_ms: params.timeout_ms, analyze: params.analyze }
@@ -596,7 +623,14 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         const elapsed = Date.now() - tryingShownAt;
         if (!readOnly && elapsed < MIN_TOAST_MS)
             await new Promise((r) => setTimeout(r, MIN_TOAST_MS - elapsed));
-        const firstResult = rawResult?.[0]?.result;
+        // list_interactive: merge elements from all frames
+        if (action === 'list_interactive') {
+            const merged = mergeListInteractive(rawResult);
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', merged);
+            return;
+        }
+        const picked = pickFrameResult(rawResult);
+        const firstResult = picked?.result;
         if (firstResult && typeof firstResult === 'object') {
             sendToastForResult(tabId, readOnly, firstResult, actionToast, toastLabel, toastDetail);
             sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', firstResult);

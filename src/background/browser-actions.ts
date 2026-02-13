@@ -100,10 +100,16 @@ export async function handleBrowserAction(
         if (!url) return { success: false, error: 'missing_url', message: 'URL required for navigate action' }
         return handleNavigateAction(tabId, url, actionToast, reason)
       case 'back':
+        actionToast(tabId, reason || 'back', reason ? undefined : 'going back', 'trying', 10000)
         await chrome.tabs.goBack(tabId)
+        await eventListeners.waitForTabLoad(tabId)
+        actionToast(tabId, reason || 'back', undefined, 'success')
         return { success: true, action: 'back' }
       case 'forward':
+        actionToast(tabId, reason || 'forward', reason ? undefined : 'going forward', 'trying', 10000)
         await chrome.tabs.goForward(tabId)
+        await eventListeners.waitForTabLoad(tabId)
+        actionToast(tabId, reason || 'forward', undefined, 'success')
         return { success: true, action: 'forward' }
       case 'new_tab':
         if (!url) return { success: false, error: 'missing_url', message: 'URL required for new_tab action' }
