@@ -170,6 +170,70 @@ class UploadHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(b"<h1>Logged out</h1><p>Session cleared.</p>")
             return
 
+        if path == "/upload/hardened":
+            session = self._get_session()
+            if not session:
+                self._send_html(401, "<h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p>")
+                return
+
+            # Generate CSRF token for this session (same as standard form)
+            token = hashlib.sha256(f"{session}-{time.time()}".encode()).hexdigest()[:32]
+            csrf_tokens[session] = token
+
+            html = f"""<!DOCTYPE html>
+<html><head><title>Upload (Hardened)</title></head>
+<body>
+<h1>Upload File (Hardened)</h1>
+<p id="trust-status">Waiting for file selection...</p>
+<form method="POST" action="/upload" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{token}">
+  <p><label>File: <input type="file" id="file-input" name="Filedata" accept="video/*,image/*,.txt,.pdf"
+    onchange="if(!event.isTrusted){{this.value='';document.getElementById('trust-status').textContent='REJECTED: event.isTrusted=false';}}else{{document.getElementById('trust-status').textContent='OK: trusted event';}}"></label></p>
+  <p><label>Title: <input type="text" name="title" required></label></p>
+  <p><label>Description: <textarea name="description"></textarea></label></p>
+  <p><label>Tags: <input type="text" name="tags"></label></p>
+  <button type="submit">Upload</button>
+</form>
+</body></html>"""
+            self._send_html(200, html)
+            return
+
+        if path == "/upload/hardened-addeventlistener":
+            session = self._get_session()
+            if not session:
+                self._send_html(401, "<h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p>")
+                return
+
+            token = hashlib.sha256(f"{session}-{time.time()}".encode()).hexdigest()[:32]
+            csrf_tokens[session] = token
+
+            html = f"""<!DOCTYPE html>
+<html><head><title>Upload (Hardened addEventListener)</title></head>
+<body>
+<h1>Upload File (Hardened addEventListener)</h1>
+<p id="trust-status">Waiting for file selection...</p>
+<form method="POST" action="/upload" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{token}">
+  <p><label>File: <input type="file" id="file-input" name="Filedata" accept="video/*,image/*,.txt,.pdf"></label></p>
+  <p><label>Title: <input type="text" name="title" required></label></p>
+  <p><label>Description: <textarea name="description"></textarea></label></p>
+  <p><label>Tags: <input type="text" name="tags"></label></p>
+  <button type="submit">Upload</button>
+</form>
+<script>
+document.getElementById('file-input').addEventListener('change', function(event) {{
+  if (!event.isTrusted) {{
+    this.value = '';
+    document.getElementById('trust-status').textContent = 'REJECTED: event.isTrusted=false (addEventListener)';
+  }} else {{
+    document.getElementById('trust-status').textContent = 'OK: trusted event (addEventListener)';
+  }}
+}});
+</script>
+</body></html>"""
+            self._send_html(200, html)
+            return
+
         if path == "/upload/success":
             upload_id = query.get("id", ["unknown"])[0]
             info = last_upload if last_upload.get("id") == upload_id else {}

@@ -45,7 +45,7 @@ echo ""
 echo "============================================================"
 echo "  GASOLINE SMOKE TEST SUITE"
 echo "  Port: $PORT | $(date)"
-echo "  94 tests across 15 modules"
+echo "  96 tests across 15 modules"
 echo "============================================================"
 echo ""
 

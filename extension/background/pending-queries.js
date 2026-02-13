@@ -15,6 +15,7 @@ import * as index from './index.js';
 import { DebugCategory } from './debug.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js';
 import { executeDOMAction } from './dom-primitives.js';
+import { executeUpload } from './upload-handler.js';
 import { canTakeScreenshot, recordScreenshot } from './state-manager.js';
 import { startRecording, stopRecording } from './recording.js';
 import { executeWithWorldRouting } from './query-execution.js';
@@ -60,7 +61,8 @@ const PRETTY_LABELS = {
     wait_for: 'Wait for',
     key_press: 'Key press',
     highlight: 'Highlight',
-    subtitle: 'Subtitle'
+    subtitle: 'Subtitle',
+    upload: 'Upload file'
 };
 /** Show a visual action toast on the tracked tab */
 function actionToast(tabId, action, detail, state = 'success', durationMs = 3000) {
@@ -363,6 +365,14 @@ export async function handlePendingQuery(query, syncClient) {
                 return;
             }
             await executeDOMAction(query, tabId, syncClient, sendAsyncResult, actionToast);
+            return;
+        }
+        if (query.type === 'upload') {
+            if (!index.__aiWebPilotEnabledCache) {
+                sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled');
+                return;
+            }
+            await executeUpload(query, tabId, syncClient, sendAsyncResult, actionToast);
             return;
         }
         if (query.type === 'record_start') {

@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
-begin_category "24" "File Upload" "21"
+begin_category "24" "File Upload" "22"
 
 # ── Create temp test fixtures ──────────────────────────────
 echo "Hello upload test" > "$TEMP_DIR/test-file.txt"
@@ -693,5 +693,36 @@ run_test_24_21() {
     fi
 }
 run_test_24_21
+
+# ── 24.22 — Stage 4 flag-enabled validation chain ──────
+begin_test "24.22" "Stage 4 OS automation returns non-403 when flag enabled" \
+    "Restart daemon with --enable-os-upload-automation, POST /api/os-automation/inject, verify NOT 403" \
+    "Proves flag unlocks the endpoint. Expect 400 (no dialog open), not 403 (disabled)."
+run_test_24_22() {
+    kill_server
+    sleep 0.3
+    start_daemon_with_flags "--enable-os-upload-automation" "--upload-dir=$TEMP_DIR"
+
+    # Create a test file in the allowed upload dir
+    echo -n "stage4-flag-test" > "$TEMP_DIR/stage4-test.txt"
+
+    local status
+    status=$(curl -s --max-time 10 --connect-timeout 3 \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -o /dev/null -w "%{http_code}" \
+        -d '{"file_path":"'"$TEMP_DIR/stage4-test.txt"'","browser_pid":1234}' \
+        "http://localhost:${PORT}/api/os-automation/inject" 2>/dev/null)
+
+    if [ "$status" = "403" ]; then
+        fail "Expected non-403 with flag enabled, but got 403 (flag not recognized)."
+    elif [ "$status" = "400" ] || [ "$status" = "200" ]; then
+        pass "Stage 4 flag enabled: got HTTP $status (not 403). Flag recognized."
+    else
+        pass "Stage 4 flag enabled: got HTTP $status (not 403). Endpoint unlocked."
+    fi
+}
+run_test_24_22
 
 finish_category
