@@ -1,17 +1,17 @@
 #!/bin/bash
-# 02-core-telemetry.sh — S.5-S.11: Console logs/errors, clicks, forms,
+# 02-core-telemetry.sh — 2.1-2.7: Console logs/errors, clicks, forms,
 # error clusters, DOM query, full form lifecycle.
-# Seeds error buffer used by later modules (S.31 error_bundles).
+# Seeds error buffer used by later modules (3.4 error_bundles).
 set -eo pipefail
 
 begin_category "2" "Core Telemetry" "7"
 
-# ── Test S.5: Trigger console log + error ────────────────
-begin_test "S.5" "Trigger console log and error via JS" \
+# ── Test 2.1: Trigger console log + error ────────────────
+begin_test "2.1" "Trigger console log and error via JS" \
     "Execute JS to console.log and console.error with markers, verify in observe" \
     "Tests: inject.js console monkey-patch > extension > daemon buffer > MCP observe"
 
-run_test_s5() {
+run_test_2_1() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -51,14 +51,14 @@ run_test_s5() {
         fail "Log marker '${SMOKE_MARKER}_LOG' NOT found in observe(logs). Console monkey-patch may be broken. Logs: $(truncate "$log_text" 200)"
     fi
 }
-run_test_s5
+run_test_2_1
 
-# ── Test S.6: Click a button ─────────────────────────────
-begin_test "S.6" "Click a button via JS" \
+# ── Test 2.2: Click a button ─────────────────────────────
+begin_test "2.2" "Click a button via JS" \
     "Inject a button into the page, click it, verify in observe(actions)" \
     "Tests: user action capture > extension > daemon > MCP observe"
 
-run_test_s6() {
+run_test_2_2() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -82,14 +82,14 @@ run_test_s6() {
         fail "No click action found. Action capture may be broken. Actions: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s6
+run_test_2_2
 
-# ── Test S.7: Fill a form input ──────────────────────────
-begin_test "S.7" "Fill a form input via JS" \
+# ── Test 2.3: Fill a form input ──────────────────────────
+begin_test "2.3" "Fill a form input via JS" \
     "Inject an input, set its value and dispatch input event, verify in observe(actions)" \
     "Tests: form input tracking > extension > daemon > MCP observe"
 
-run_test_s7() {
+run_test_2_3() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -113,14 +113,14 @@ run_test_s7() {
         fail "No input/change action found. Form tracking may be broken. Actions: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s7
+run_test_2_3
 
-# ── Test S.8: Highlight an element ───────────────────────
-begin_test "S.8" "Highlight an element via interact(highlight)" \
+# ── Test 2.4: Highlight an element ───────────────────────
+begin_test "2.4" "Highlight an element via interact(highlight)" \
     "Use interact(highlight) to highlight the body element, verify command completes" \
     "Tests: highlight pipeline: MCP > daemon > extension > inject overlay"
 
-run_test_s8() {
+run_test_2_4() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -136,14 +136,14 @@ run_test_s8() {
         fail "Highlight command failed. Result: $(truncate "$INTERACT_RESULT" 200)"
     fi
 }
-run_test_s8
+run_test_2_4
 
-# ── Test S.9: Error clusters ─────────────────────────────
-begin_test "S.9" "Error clusters aggregate triggered errors" \
-    "After S.5 triggered multiple errors, verify analyze(error_clusters) groups them" \
+# ── Test 2.5: Error clusters ─────────────────────────────
+begin_test "2.5" "Error clusters aggregate triggered errors" \
+    "After 2.1 triggered multiple errors, verify analyze(error_clusters) groups them" \
     "Tests: error dedup and clustering — critical for noise reduction in real apps"
 
-run_test_s9() {
+run_test_2_5() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -199,14 +199,14 @@ except Exception as e:
         fail "analyze(error_clusters) invalid. $cluster_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s9
+run_test_2_5
 
-# ── Test S.10: DOM query ─────────────────────────────────
-begin_test "S.10" "DOM query parses page structure" \
+# ── Test 2.6: DOM query ─────────────────────────────────
+begin_test "2.6" "DOM query parses page structure" \
     "Use analyze(dom) to query elements on the page, verify DOM data returned" \
     "Tests: page structure analysis"
 
-run_test_s10() {
+run_test_2_6() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -304,14 +304,14 @@ except Exception as e:
         fail "DOM query invalid. $dom_verdict. Content: $(truncate "$dom_text" 200)"
     fi
 }
-run_test_s10
+run_test_2_6
 
-# ── Test S.11: Full form lifecycle ───────────────────────
-begin_test "S.11" "Full form: create, fill multiple fields, submit" \
+# ── Test 2.7: Full form lifecycle ───────────────────────
+begin_test "2.7" "Full form: create, fill multiple fields, submit" \
     "Inject a complete form with multiple inputs, fill each, submit, verify all actions captured" \
     "Tests: full form lifecycle — creation, multi-field fill, and submit event capture"
 
-run_test_s11() {
+run_test_2_7() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -378,12 +378,12 @@ except: pass
 
     if [ "$submit_confirmed" != "true" ]; then
         fail "Form submission not confirmed. Form lifecycle test failed. Actions: $(truncate "$content_text" 200)"
-    elif [ "$has_input" -eq 0 ]; then
+    elif [ "${has_input:-0}" -eq 0 ]; then
         fail "Form submitted but no input/change/focus actions captured. Actions: $(truncate "$content_text" 200)"
-    elif [ "$has_click" -eq 0 ]; then
+    elif [ "${has_click:-0}" -eq 0 ]; then
         fail "Form submitted but no click/submit actions captured. Actions: $(truncate "$content_text" 200)"
     else
         pass "Full form lifecycle: submitted, $has_input input events + $has_click click/submit events captured."
     fi
 }
-run_test_s11
+run_test_2_7

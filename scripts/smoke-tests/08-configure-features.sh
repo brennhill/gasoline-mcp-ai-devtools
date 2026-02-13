@@ -1,16 +1,16 @@
 #!/bin/bash
-# 08-configure-features.sh — S.61-S.65: Configure tool features.
+# 08-configure-features.sh — 8.1-8.5: Configure tool features.
 # noise rules, store persistence, buffer clear, streaming, test boundaries
 set -eo pipefail
 
 begin_category "8" "Configure Features" "5"
 
-# ── Test S.61: Noise rules CRUD ──────────────────────────
-begin_test "S.61" "Noise rules: add, list, remove, verify" \
+# ── Test 8.1: Noise rules CRUD ──────────────────────────
+begin_test "8.1" "Noise rules: add, list, remove, verify" \
     "Full noise rule lifecycle: add a rule, list to verify, remove, list to confirm" \
     "Tests: noise filtering configuration"
 
-run_test_s61() {
+run_test_8_1() {
     # Add a noise rule (API expects rules array with match_spec)
     local add_response
     add_response=$(call_tool "configure" '{"action":"noise_rule","noise_action":"add","rules":[{"category":"console","match_spec":{"message_regex":"smoke-test-noise"}}]}')
@@ -31,29 +31,24 @@ run_test_s61() {
         return
     fi
 
-    # Extract rule_id for removal
-    local rule_id
-    rule_id=$(echo "$list_text" | python3 -c "
-import sys, json
-try:
-    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
-    rules = data.get('rules', [])
-    for r in rules:
-        if 'smoke-test-noise' in str(r):
-            print(r.get('id', r.get('rule_id', '')))
-            break
-except: pass
-" 2>/dev/null)
+    # Extract rule_id for removal (using jq)
+    # Response text is "summary\n{json}", strip everything before first {
+    local json_part rule_id
+    json_part=$(echo "$list_text" | sed -n '/{/,$ p' | tr '\n' ' ')
+    rule_id=$(echo "$json_part" | jq -r '.rules[] | select(.match_spec.message_regex == "smoke-test-noise") | .id' 2>/dev/null | head -1)
 
-    if [ -n "$rule_id" ]; then
-        # Remove the rule
-        local remove_response
-        remove_response=$(call_tool "configure" "{\"action\":\"noise_rule\",\"noise_action\":\"remove\",\"rule_id\":\"$rule_id\"}")
+    if [ -z "$rule_id" ]; then
+        fail "Could not extract rule_id for 'smoke-test-noise' from list response. Content: $(truncate "$list_text" 200)"
+        return
+    fi
 
-        if ! check_not_error "$remove_response"; then
-            fail "noise_rule remove returned error. Content: $(truncate "$(extract_content_text "$remove_response")" 200)"
-            return
-        fi
+    # Remove the rule
+    local remove_response
+    remove_response=$(call_tool "configure" "{\"action\":\"noise_rule\",\"noise_action\":\"remove\",\"rule_id\":\"$rule_id\"}")
+
+    if ! check_not_error "$remove_response"; then
+        fail "noise_rule remove returned error. Content: $(truncate "$(extract_content_text "$remove_response")" 200)"
+        return
     fi
 
     # Verify removal
@@ -68,14 +63,14 @@ except: pass
         pass "Noise rule CRUD: add, list (found), remove, list (gone)."
     fi
 }
-run_test_s61
+run_test_8_1
 
-# ── Test S.62: Store persistence ─────────────────────────
-begin_test "S.62" "Store: save, load, list, delete roundtrip" \
+# ── Test 8.2: Store persistence ─────────────────────────
+begin_test "8.2" "Store: save, load, list, delete roundtrip" \
     "Full key-value store lifecycle" \
     "Tests: persistent data storage"
 
-run_test_s62() {
+run_test_8_2() {
     # 1. Save data
     echo "  [store: save]"
     echo "    namespace=smoke key=smoke-key data={\"value\":\"smoke-data-123\"}"
@@ -144,14 +139,14 @@ run_test_s62() {
         pass "Store CRUD roundtrip: save(smoke-data-123) > load(found) > list(found) > delete > load(gone)."
     fi
 }
-run_test_s62
+run_test_8_2
 
-# ── Test S.63: Selective buffer clear ────────────────────
-begin_test "S.63" "Selective buffer clear (logs only, actions preserved)" \
+# ── Test 8.3: Selective buffer clear ────────────────────
+begin_test "8.3" "Selective buffer clear (logs only, actions preserved)" \
     "Seed data, clear logs only, verify actions still exist" \
     "Tests: targeted buffer clearing"
 
-run_test_s63() {
+run_test_8_3() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -204,14 +199,14 @@ run_test_s63() {
         fail "Logs NOT cleared after clear(logs). 'CLEAR_TEST_LOG' still present. Log content: $(truncate "$log_text" 200)"
     fi
 }
-run_test_s63
+run_test_8_3
 
-# ── Test S.64: Streaming toggle ──────────────────────────
-begin_test "S.64" "Streaming: enable, status, disable, status" \
+# ── Test 8.4: Streaming toggle ──────────────────────────
+begin_test "8.4" "Streaming: enable, status, disable, status" \
     "Toggle streaming events and verify state transitions" \
     "Tests: streaming configuration"
 
-run_test_s64() {
+run_test_8_4() {
     # Enable streaming with specific events
     local enable_response
     enable_response=$(call_tool "configure" '{"action":"streaming","streaming_action":"enable","events":["errors","network_errors"]}')
@@ -235,25 +230,12 @@ run_test_s64() {
     echo "  [status after enable]"
     echo "    $(truncate "$status_text" 150)"
 
-    # Parse status to verify enabled state (not just keyword presence)
+    # Parse status to verify enabled state (using jq)
     local enabled_after_enable=false
-    local enable_verdict
-    enable_verdict=$(echo "$status_text" | python3 -c "
-import sys, json
-try:
-    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
-    # Response nests config under 'config' key
-    config = data.get('config', data)
-    enabled = config.get('enabled', data.get('active', data.get('streaming', None)))
-    if enabled is True or enabled == 'true':
-        print('ENABLED')
-    elif 'events' in config and isinstance(config['events'], list) and len(config['events']) > 0:
-        print('ENABLED')
-    else:
-        print(f'NOT_ENABLED keys={list(data.keys())[:5]} config_keys={list(config.keys())[:5]} enabled={enabled}')
-except: print('PARSE_ERROR')
-" 2>/dev/null || echo "PARSE_ERROR")
-    if echo "$enable_verdict" | grep -q "^ENABLED"; then
+    local json_part enabled_val
+    json_part=$(echo "$status_text" | sed -n '/{/,$ p' | tr '\n' ' ')
+    enabled_val=$(echo "$json_part" | jq -r '.config.enabled // .enabled // .active // false' 2>/dev/null)
+    if [ "$enabled_val" = "true" ]; then
         enabled_after_enable=true
     fi
 
@@ -282,14 +264,14 @@ except: print('PARSE_ERROR')
         fail "Streaming: enable succeeded but status did not confirm active state. Status: $(truncate "$status_text" 200)"
     fi
 }
-run_test_s64
+run_test_8_4
 
-# ── Test S.65: Test boundaries ───────────────────────────
-begin_test "S.65" "Test boundaries: start and end markers" \
+# ── Test 8.5: Test boundaries ───────────────────────────
+begin_test "8.5" "Test boundaries: start and end markers" \
     "configure(test_boundary_start) then (test_boundary_end)" \
     "Tests: test boundary markers for isolating activity"
 
-run_test_s65() {
+run_test_8_5() {
     # Start boundary
     local start_response
     start_response=$(call_tool "configure" '{"action":"test_boundary_start","test_id":"smoke-boundary","label":"Smoke test boundary"}')
@@ -332,4 +314,4 @@ run_test_s65() {
         fail "Test boundaries: end response did not reference 'smoke-boundary'. Content: $(truncate "$end_text" 200)"
     fi
 }
-run_test_s65
+run_test_8_5

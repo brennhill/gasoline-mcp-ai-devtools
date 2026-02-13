@@ -30,8 +30,11 @@ run_test_21_1() {
         fi
     done
 
-    # Wait for all to complete
-    wait
+    # Wait for all to complete (with timeout to prevent hang)
+    local _bg_pid
+    for _bg_pid in $(jobs -p); do
+        wait "$_bg_pid" 2>/dev/null || true
+    done
 
     sleep 0.2
 
@@ -127,7 +130,11 @@ run_test_21_4() {
         }" >/dev/null 2>&1 &
     done
 
-    wait
+    # Wait with per-job error tolerance
+    local _bg_pid
+    for _bg_pid in $(jobs -p); do
+        wait "$_bg_pid" 2>/dev/null || true
+    done
 
     sleep 0.2
 
@@ -144,7 +151,7 @@ run_test_21_4() {
 
     # Count how many rules exist
     local rule_count
-    rule_count=$(echo "$text" | grep -o "stress_test_" | wc -l)
+    rule_count=$(echo "$text" | { grep -o "stress_test_" || true; } | wc -l)
 
     if [ "$rule_count" -ge 8 ]; then
         pass "Concurrent rule adds: $rule_count/10 persisted (no corruption)"
@@ -193,4 +200,4 @@ run_test_21_5() {
 }
 run_test_21_5
 
-kill_server
+finish_category

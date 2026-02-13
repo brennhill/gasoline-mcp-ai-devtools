@@ -1,15 +1,15 @@
 #!/bin/bash
-# 14-draw-mode.sh — S.69-S.80: Draw mode annotations, sessions, artifacts.
+# 13-draw-mode.sh — 13.1-13.12: Draw mode annotations, sessions, artifacts.
 set -eo pipefail
 
-begin_category "14" "Draw Mode" "12"
+begin_category "13" "Draw Mode" "12"
 
-# ── Test S.69: Schema — draw_mode_start in interact ────────
-begin_test "S.69" "Schema: draw_mode_start in interact action enum" \
+# ── Test 13.1: Schema — draw_mode_start in interact ────────
+begin_test "13.1" "Schema: draw_mode_start in interact action enum" \
     "Verify tools/list includes draw_mode_start as a valid interact action" \
     "Tests: schema registration for draw mode activation"
 
-run_test_s69() {
+run_test_13_1() {
     local tools_resp
     tools_resp=$(send_mcp '{"jsonrpc":"2.0","id":__ID__,"method":"tools/list"}')
     if echo "$tools_resp" | jq -e '.result.tools[] | select(.name=="interact") | .inputSchema.properties.action.enum[] | select(.=="draw_mode_start")' >/dev/null 2>&1; then
@@ -18,14 +18,14 @@ run_test_s69() {
         fail "draw_mode_start NOT in interact action enum."
     fi
 }
-run_test_s69
+run_test_13_1
 
-# ── Test S.70: Schema — annotations in analyze ─────────────
-begin_test "S.70" "Schema: annotations and annotation_detail in analyze" \
+# ── Test 13.2: Schema — annotations in analyze ─────────────
+begin_test "13.2" "Schema: annotations and annotation_detail in analyze" \
     "Verify tools/list includes annotations and annotation_detail in analyze what enum" \
     "Tests: schema registration for annotation retrieval"
 
-run_test_s70() {
+run_test_13_2() {
     local tools_resp
     tools_resp=$(send_mcp '{"jsonrpc":"2.0","id":__ID__,"method":"tools/list"}')
     local has_ann has_det
@@ -37,14 +37,14 @@ run_test_s70() {
         fail "Missing from analyze enum: annotations=$has_ann, annotation_detail=$has_det."
     fi
 }
-run_test_s70
+run_test_13_2
 
-# ── Test S.71: Schema — annotation generate formats ─────────
-begin_test "S.71" "Schema: visual_test, annotation_report, annotation_issues in generate" \
+# ── Test 13.3: Schema — annotation generate formats ─────────
+begin_test "13.3" "Schema: visual_test, annotation_report, annotation_issues in generate" \
     "Verify tools/list includes all 3 annotation generate formats" \
     "Tests: schema registration for annotation artifact generation"
 
-run_test_s71() {
+run_test_13_3() {
     local tools_resp
     tools_resp=$(send_mcp '{"jsonrpc":"2.0","id":__ID__,"method":"tools/list"}')
     local has_vt has_ar has_ai
@@ -57,14 +57,14 @@ run_test_s71() {
         fail "Missing generate formats: visual_test=$has_vt, annotation_report=$has_ar, annotation_issues=$has_ai."
     fi
 }
-run_test_s71
+run_test_13_3
 
-# ── Test S.72: Activate draw mode via MCP ──────────────────
-begin_test "S.72" "Activate draw mode via interact(draw_mode_start)" \
+# ── Test 13.4: Activate draw mode via MCP ──────────────────
+begin_test "13.4" "Activate draw mode via interact(draw_mode_start)" \
     "Call interact(draw_mode_start), verify response contains correlation_id" \
     "Tests: MCP > daemon > extension > content script draw mode overlay"
 
-run_test_s72() {
+run_test_13_4() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -87,14 +87,14 @@ run_test_s72() {
         fail "draw_mode_start: no correlation_id in response. Response: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s72
+run_test_13_4
 
-# ── Test S.73: Draw annotations and retrieve ────────────────
-begin_test "S.73" "Draw annotations, press ESC, retrieve via analyze" \
+# ── Test 13.5: Draw annotations and retrieve ────────────────
+begin_test "13.5" "Draw annotations, press ESC, retrieve via analyze" \
     "User draws 1-2 annotations on draw mode overlay, presses ESC, then verify data via analyze(annotations)" \
     "Tests: full annotation pipeline: draw > ESC > extension POST > daemon store > MCP retrieve"
 
-run_test_s73() {
+run_test_13_5() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -102,14 +102,14 @@ run_test_s73() {
 
     echo "  >>> Draw 1-2 rectangles on the page, type text for each, then press ESC <<<"
     echo "  -- Press Enter AFTER you have drawn and pressed ESC --"
-    read -r
+    if [ -t 0 ]; then read -r; fi
 
     local response
     response=$(call_tool "analyze" '{"what":"annotations"}')
     local content_text
     content_text=$(extract_content_text "$response")
 
-    log_diagnostic "S.73" "analyze(annotations)" "$response" "$content_text"
+    log_diagnostic "13.5" "analyze(annotations)" "$response" "$content_text"
 
     # Validate annotations have actual structure: count > 0, entries with text
     local ann_verdict
@@ -134,14 +134,14 @@ except Exception as e:
         fail "No annotations found. $ann_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s73
+run_test_13_5
 
-# ── Test S.74: Annotation detail drill-down ─────────────────
-begin_test "S.74" "Annotation detail has selector, tag, computed styles" \
+# ── Test 13.6: Annotation detail drill-down ─────────────────
+begin_test "13.6" "Annotation detail has selector, tag, computed styles" \
     "Retrieve annotation_detail for the first annotation's correlation_id" \
     "Tests: element detail enrichment pipeline"
 
-run_test_s74() {
+run_test_13_6() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -154,7 +154,7 @@ run_test_s74() {
     content_text=$(extract_content_text "$response")
 
     local corr_id
-    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":"ann_detail_[^"]+"' | head -1 | sed 's/"correlation_id":"//' | sed 's/"//')
+    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":"ann_detail_[^"]+"' | head -1 | sed 's/"correlation_id":"//' | sed 's/"//' || true)
 
     if [ -z "$corr_id" ]; then
         skip "No annotation correlation_id found for detail lookup."
@@ -166,7 +166,7 @@ run_test_s74() {
     local detail_text
     detail_text=$(extract_content_text "$detail_resp")
 
-    log_diagnostic "S.74" "annotation_detail" "$detail_resp" "$detail_text"
+    log_diagnostic "13.6" "annotation_detail" "$detail_resp" "$detail_text"
 
     # Require at least selector AND tag to be present (not just one generic word)
     local detail_verdict
@@ -193,14 +193,14 @@ except Exception as e:
         fail "Annotation detail missing fields. $detail_verdict. Content: $(truncate "$detail_text" 200)"
     fi
 }
-run_test_s74
+run_test_13_6
 
-# ── Test S.75: Async wait pattern (correlation_id) ──────────
-begin_test "S.75" "Async annotation wait: analyze(wait:true) returns correlation_id" \
+# ── Test 13.7: Async wait pattern (correlation_id) ──────────
+begin_test "13.7" "Async annotation wait: analyze(wait:true) returns correlation_id" \
     "Call analyze(annotations, wait:true), verify immediate return with correlation_id and status=waiting_for_user" \
     "Tests: non-blocking async pattern — LLM gets correlation_id immediately"
 
-run_test_s75() {
+run_test_13_7() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -215,11 +215,11 @@ run_test_s75() {
     local content_text
     content_text=$(extract_content_text "$response")
 
-    log_diagnostic "S.75" "analyze(wait:true)" "$response" "$content_text"
+    log_diagnostic "13.7" "analyze(wait:true)" "$response" "$content_text"
 
     if echo "$content_text" | grep -qi "waiting_for_user\|correlation_id"; then
         local ann_corr
-        ann_corr=$(echo "$content_text" | grep -oE '"correlation_id":"ann_[^"]+"' | head -1 | sed 's/"correlation_id":"//' | sed 's/"//')
+        ann_corr=$(echo "$content_text" | grep -oE '"correlation_id":"ann_[^"]+"' | head -1 | sed 's/"correlation_id":"//' | sed 's/"//' || true)
         pass "wait:true returned immediately with correlation_id=$ann_corr."
     elif echo "$content_text" | grep -qi "complete\|annotation"; then
         pass "wait:true returned existing annotations (data was already available)."
@@ -230,16 +230,16 @@ run_test_s75() {
     # Cleanup: exit draw mode
     echo "  >>> Press ESC to exit draw mode if still active <<<"
     echo "  -- Press Enter to continue --"
-    read -r
+    if [ -t 0 ]; then read -r; fi
 }
-run_test_s75
+run_test_13_7
 
-# ── Test S.76: Double activation returns already_active ──────
-begin_test "S.76" "Double draw_mode_start returns already_active" \
+# ── Test 13.8: Double activation returns already_active ──────
+begin_test "13.8" "Double draw_mode_start returns already_active" \
     "Activate draw mode twice, verify second call returns already_active status" \
     "Tests: idempotent activation guard"
 
-run_test_s76() {
+run_test_13_8() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -264,16 +264,16 @@ run_test_s76() {
     # Cleanup
     echo "  >>> Press ESC to exit draw mode <<<"
     echo "  -- Press Enter to continue --"
-    read -r
+    if [ -t 0 ]; then read -r; fi
 }
-run_test_s76
+run_test_13_8
 
-# ── Test S.77: Named session across pages ────────────────────
-begin_test "S.77" "Multi-page named session accumulates annotations" \
+# ── Test 13.9: Named session across pages ────────────────────
+begin_test "13.9" "Multi-page named session accumulates annotations" \
     "Draw on page 1 with session name, navigate, draw on page 2 with same session, verify both pages" \
     "Tests: named session aggregation across navigation"
 
-run_test_s77() {
+run_test_13_9() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -287,7 +287,7 @@ run_test_s77() {
     call_tool "interact" "{\"action\":\"draw_mode_start\",\"session\":\"$session_name\"}" >/dev/null 2>&1
     echo "  >>> Draw 1 annotation on this page, then press ESC <<<"
     echo "  -- Press Enter when done --"
-    read -r
+    if [ -t 0 ]; then read -r; fi
 
     # Page 2
     interact_and_wait "navigate" '{"action":"navigate","url":"https://www.iana.org/domains/reserved","reason":"Session page 2"}' 20
@@ -295,7 +295,7 @@ run_test_s77() {
     call_tool "interact" "{\"action\":\"draw_mode_start\",\"session\":\"$session_name\"}" >/dev/null 2>&1
     echo "  >>> Draw 1 annotation on this page, then press ESC <<<"
     echo "  -- Press Enter when done --"
-    read -r
+    if [ -t 0 ]; then read -r; fi
 
     # Retrieve named session
     local response
@@ -303,11 +303,11 @@ run_test_s77() {
     local content_text
     content_text=$(extract_content_text "$response")
 
-    log_diagnostic "S.77" "named session" "$response" "$content_text"
+    log_diagnostic "13.9" "named session" "$response" "$content_text"
 
     if echo "$content_text" | grep -q "page_count"; then
         local page_count
-        page_count=$(echo "$content_text" | grep -oE '"page_count":[0-9]+' | head -1 | grep -oE '[0-9]+')
+        page_count=$(echo "$content_text" | grep -oE '"page_count":[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
         if [ "$page_count" = "2" ]; then
             pass "Named session '$session_name' has 2 pages."
         else
@@ -317,14 +317,14 @@ run_test_s77() {
         fail "No page_count in named session response. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s77
+run_test_13_9
 
-# ── Test S.78: generate(visual_test) from annotations ────────
-begin_test "S.78" "Generate Playwright test from annotations" \
+# ── Test 13.10: generate(visual_test) from annotations ────────
+begin_test "13.10" "Generate Playwright test from annotations" \
     "Call generate(visual_test), verify output contains test() and page.goto()" \
     "Tests: annotation-to-test code generation"
 
-run_test_s78() {
+run_test_13_10() {
     local response
     response=$(call_tool "generate" '{"format":"visual_test"}')
     local content_text
@@ -338,14 +338,14 @@ run_test_s78() {
         fail "visual_test missing expected code. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s78
+run_test_13_10
 
-# ── Test S.79: generate(annotation_report) ───────────────────
-begin_test "S.79" "Generate annotation report (Markdown)" \
+# ── Test 13.11: generate(annotation_report) ───────────────────
+begin_test "13.11" "Generate annotation report (Markdown)" \
     "Call generate(annotation_report), verify Markdown output with header" \
     "Tests: annotation-to-report generation"
 
-run_test_s79() {
+run_test_13_11() {
     local response
     response=$(call_tool "generate" '{"format":"annotation_report"}')
     local content_text
@@ -366,14 +366,14 @@ run_test_s79() {
         fail "annotation_report missing '# Annotation Report' header. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s79
+run_test_13_11
 
-# ── Test S.80: generate(annotation_issues) ───────────────────
-begin_test "S.80" "Generate annotation issues (structured JSON)" \
+# ── Test 13.12: generate(annotation_issues) ───────────────────
+begin_test "13.12" "Generate annotation issues (structured JSON)" \
     "Call generate(annotation_issues), verify issues array and total_count" \
     "Tests: annotation-to-issues extraction"
 
-run_test_s80() {
+run_test_13_12() {
     local response
     response=$(call_tool "generate" '{"format":"annotation_issues"}')
     local content_text
@@ -410,4 +410,4 @@ except Exception as e:
         fail "annotation_issues invalid. $issues_verdict. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s80
+run_test_13_12

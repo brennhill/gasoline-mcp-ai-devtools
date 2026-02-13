@@ -15,7 +15,7 @@ source "$SMOKE_FRAMEWORK_DIR/../tests/framework.sh"
 EXTENSION_CONNECTED=false
 PILOT_ENABLED=false
 SMOKE_MARKER="GASOLINE_SMOKE_$(date +%s)"
-SKIPPED_COUNT=0
+SKIP_COUNT=0
 CURRENT_TEST_ID=""
 
 # ── Diagnostic log file ──────────────────────────────────
@@ -46,8 +46,9 @@ _smoke_on_error() {
         echo "    Line:     $line"
         echo "    Function: $func"
         echo "    Command:  $cmd"
-        echo "    Pass=$PASS_COUNT Fail=$FAIL_COUNT Skip=$SKIPPED_COUNT"
+        echo "    Pass=$PASS_COUNT Fail=$FAIL_COUNT Skip=$SKIP_COUNT"
     } >> "$DIAGNOSTICS_FILE" 2>/dev/null
+    exit 1
 }
 
 # ── Override begin_test to track current test ID ──────────
@@ -94,7 +95,7 @@ fail() {
 
 skip() {
     local description="$1"
-    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+    SKIP_COUNT=$((SKIP_COUNT + 1))
     echo "  $(date +%H:%M:%S) SKIP [${CURRENT_TEST_ID}]: ${description}" >> "$DIAGNOSTICS_FILE"
     {
         echo "  SKIP [${CURRENT_TEST_ID}]: ${description}"
@@ -103,6 +104,10 @@ skip() {
 }
 
 pause_for_human() {
+    # Skip interactive prompt in CI or non-TTY environments
+    if [ -n "${CI:-}" ] || [ ! -t 0 ]; then
+        return
+    fi
     echo "  -- Press Enter to continue, Ctrl-C to abort --"
     read -r
     echo ""
@@ -149,7 +154,7 @@ interact_and_wait() {
     } >> "$DIAGNOSTICS_FILE"
 
     local corr_id
-    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//')
+    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
 
     if [ -z "$corr_id" ]; then
         INTERACT_RESULT="$content_text"

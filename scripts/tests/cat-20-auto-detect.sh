@@ -37,7 +37,7 @@ run_test_20_9() {
     local text
     text=$(extract_content_text "$response")
 
-    if check_contains "$text" "proposal\|confidence\|applied"; then
+    if check_matches "$text" "proposal|confidence|applied"; then
         pass "Auto-detect with 0.9 threshold executed"
     else
         pass "Auto-detect query processed (output format TBD)"
@@ -66,7 +66,7 @@ run_test_20_10() {
     local text
     text=$(extract_content_text "$response")
 
-    if check_contains "$text" "suggest\|proposal"; then
+    if check_matches "$text" "suggest|proposal"; then
         pass "Auto-detect with 0.5 threshold suggests rules without auto-applying"
     else
         pass "Auto-detect query processed (threshold behavior TBD)"
@@ -95,7 +95,7 @@ run_test_20_11() {
     local text
     text=$(extract_content_text "$response")
 
-    if check_contains "$text" "React\|framework\|detected"; then
+    if check_matches "$text" "React|framework|detected"; then
         pass "Framework detection identifies React and activates rules"
     else
         pass "Framework detection query processed (detection TBD)"
@@ -124,7 +124,7 @@ run_test_20_12() {
     local text
     text=$(extract_content_text "$response")
 
-    if check_contains "$text" "Next\|framework"; then
+    if check_matches "$text" "Next|framework"; then
         pass "Framework detection identifies Next.js and activates rules"
     else
         pass "Framework detection query processed (output format TBD)"
@@ -153,7 +153,7 @@ run_test_20_13() {
     local text
     text=$(extract_content_text "$response")
 
-    if check_contains "$text" "Vite\|framework"; then
+    if check_matches "$text" "Vite|framework"; then
         pass "Framework detection identifies Vite and activates rules"
     else
         pass "Framework detection query processed (framework identification TBD)"
@@ -182,7 +182,7 @@ run_test_20_14() {
     local text
     text=$(extract_content_text "$response")
 
-    if check_contains "$text" "periodic\|infrastructure\|interval"; then
+    if check_matches "$text" "periodic|infrastructure|interval"; then
         pass "Periodicity detection identifies infrastructure patterns"
     else
         pass "Periodicity detection query processed (analysis TBD)"
@@ -212,7 +212,7 @@ run_test_20_15() {
     local text
     text=$(extract_content_text "$response")
 
-    if check_contains "$text" "entropy\|repetitive"; then
+    if check_matches "$text" "entropy|repetitive"; then
         pass "Entropy detection identifies low-entropy repetitive messages"
     else
         pass "Entropy detection query processed (entropy analysis TBD)"
@@ -242,7 +242,7 @@ run_test_20_16() {
     local text
     text=$(extract_content_text "$response")
 
-    if check_contains "$text" "combined\|heuristic\|confidence"; then
+    if check_matches "$text" "combined|heuristic|confidence"; then
         pass "Multi-factor auto-detect combines frequency + periodicity + entropy"
     else
         pass "Multi-factor auto-detect query processed (analysis TBD)"
@@ -250,4 +250,4 @@ run_test_20_16() {
 }
 run_test_20_16
 
-kill_server
+finish_category

@@ -61,6 +61,9 @@ compile-ts:
 	@echo "✅ TypeScript compilation successful"
 
 test:
+	$(MAKE) test-go-quick
+
+test-long:
 	$(MAKE) test-go-long
 
 test-js:

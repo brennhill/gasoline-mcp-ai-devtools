@@ -1,5 +1,5 @@
 #!/bin/bash
-# 05-interact-dom.sh — S.35-S.49: DOM primitive smoke tests.
+# 05-interact-dom.sh — 5.1-5.15: DOM primitive smoke tests.
 # type, select, check, get_text/value/attribute, set_attribute,
 # scroll_to, wait_for, key_press, list_interactive, focus, back/forward, new_tab
 set -eo pipefail
@@ -42,12 +42,12 @@ FORMEOF
 
 _inject_smoke_form
 
-# ── Test S.35: Type text ─────────────────────────────────
-begin_test "S.35" "Type text into input" \
+# ── Test 5.1: Type text ─────────────────────────────────
+begin_test "5.1" "Type text into input" \
     "interact(type) into #sf-name, then get_value to confirm" \
     "Tests: DOM type primitive > extension > content script"
 
-run_test_s35() {
+run_test_5_1() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -75,14 +75,14 @@ run_test_s35() {
         fi
     fi
 }
-run_test_s35
+run_test_5_1
 
-# ── Test S.36: Select dropdown ───────────────────────────
-begin_test "S.36" "Select dropdown option" \
+# ── Test 5.2: Select dropdown ───────────────────────────
+begin_test "5.2" "Select dropdown option" \
     "interact(select) on #sf-role value='admin', then get_value to confirm" \
     "Tests: DOM select primitive"
 
-run_test_s36() {
+run_test_5_2() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -104,14 +104,14 @@ run_test_s36() {
         fail "get_value did not return 'admin'. Result: $(truncate "$INTERACT_RESULT" 200)"
     fi
 }
-run_test_s36
+run_test_5_2
 
-# ── Test S.37: Checkbox toggle ───────────────────────────
-begin_test "S.37" "Checkbox check and uncheck" \
+# ── Test 5.3: Checkbox toggle ───────────────────────────
+begin_test "5.3" "Checkbox check and uncheck" \
     "interact(check) on #sf-agree checked:true then checked:false" \
     "Tests: DOM check primitive toggle"
 
-run_test_s37() {
+run_test_5_3() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -137,14 +137,14 @@ run_test_s37() {
         fail "Checkbox toggle failed. After check: $(truncate "$checked_result" 100), after uncheck: $(truncate "$unchecked_result" 100)"
     fi
 }
-run_test_s37
+run_test_5_3
 
-# ── Test S.38: Get text ──────────────────────────────────
-begin_test "S.38" "Get text from button" \
+# ── Test 5.4: Get text ──────────────────────────────────
+begin_test "5.4" "Get text from button" \
     "interact(get_text) on #sf-btn returns 'Submit'" \
     "Tests: DOM get_text primitive"
 
-run_test_s38() {
+run_test_5_4() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -158,14 +158,14 @@ run_test_s38() {
         fail "get_text did not return 'Submit'. Result: $(truncate "$INTERACT_RESULT" 200)"
     fi
 }
-run_test_s38
+run_test_5_4
 
-# ── Test S.39: Get value ─────────────────────────────────
-begin_test "S.39" "Get value from text input" \
-    "interact(get_value) on #sf-name returns value set in S.35" \
+# ── Test 5.5: Get value ─────────────────────────────────
+begin_test "5.5" "Get value from text input" \
+    "interact(get_value) on #sf-name returns value set in 5.1" \
     "Tests: DOM get_value primitive"
 
-run_test_s39() {
+run_test_5_5() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -179,14 +179,14 @@ run_test_s39() {
         fail "get_value did not return expected value. Result: $(truncate "$INTERACT_RESULT" 200)"
     fi
 }
-run_test_s39
+run_test_5_5
 
-# ── Test S.40: Get attribute ─────────────────────────────
-begin_test "S.40" "Get attribute from link" \
+# ── Test 5.6: Get attribute ─────────────────────────────
+begin_test "5.6" "Get attribute from link" \
     "interact(get_attribute) on #sf-link name='href' returns URL" \
     "Tests: DOM get_attribute primitive"
 
-run_test_s40() {
+run_test_5_6() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -202,14 +202,14 @@ run_test_s40() {
         fail "get_attribute did not return expected href. Result: $(truncate "$INTERACT_RESULT" 200)"
     fi
 }
-run_test_s40
+run_test_5_6
 
-# ── Test S.41: Set attribute ─────────────────────────────
-begin_test "S.41" "Set attribute on element" \
+# ── Test 5.7: Set attribute ─────────────────────────────
+begin_test "5.7" "Set attribute on element" \
     "interact(set_attribute) data-smoke='modified', then get_attribute to confirm" \
     "Tests: DOM set_attribute primitive"
 
-run_test_s41() {
+run_test_5_7() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -231,14 +231,14 @@ run_test_s41() {
         fail "get_attribute did not return 'modified'. Result: $(truncate "$INTERACT_RESULT" 200)"
     fi
 }
-run_test_s41
+run_test_5_7
 
-# ── Test S.42: Scroll to ────────────────────────────────
-begin_test "S.42" "Scroll to element" \
+# ── Test 5.8: Scroll to ────────────────────────────────
+begin_test "5.8" "Scroll to element" \
     "interact(scroll_to) on #sf-scroll-target" \
     "Tests: DOM scroll_to primitive"
 
-run_test_s42() {
+run_test_5_8() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -256,19 +256,19 @@ run_test_s42() {
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Verify scroll position","script":"window.scrollY > 100 ? \"SCROLLED_\" + Math.round(window.scrollY) : \"NOT_SCROLLED_\" + Math.round(window.scrollY)"}'
 
     if echo "$INTERACT_RESULT" | grep -q "SCROLLED_"; then
-        pass "scroll_to moved page: $(echo "$INTERACT_RESULT" | grep -oE 'SCROLLED_[0-9]+' | head -1)px."
+        pass "scroll_to moved page: $(echo "$INTERACT_RESULT" | grep -oE 'SCROLLED_[0-9]+' | head -1 || echo 'SCROLLED')px."
     else
         fail "scroll_to completed but page did not scroll. scrollY: $(truncate "$INTERACT_RESULT" 100)"
     fi
 }
-run_test_s42
+run_test_5_8
 
-# ── Test S.43: Wait for ─────────────────────────────────
-begin_test "S.43" "Wait for delayed element" \
+# ── Test 5.9: Wait for ─────────────────────────────────
+begin_test "5.9" "Wait for delayed element" \
     "Inject element after 1s delay, interact(wait_for) should find it" \
     "Tests: DOM wait_for primitive with polling"
 
-run_test_s43() {
+run_test_5_9() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -285,14 +285,14 @@ run_test_s43() {
         pass "wait_for found #delayed-el within timeout."
     fi
 }
-run_test_s43
+run_test_5_9
 
-# ── Test S.44: Key press ────────────────────────────────
-begin_test "S.44" "Key press on element" \
+# ── Test 5.10: Key press ────────────────────────────────
+begin_test "5.10" "Key press on element" \
     "interact(key_press) Tab on #sf-name" \
     "Tests: DOM key_press primitive"
 
-run_test_s44() {
+run_test_5_10() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -313,21 +313,21 @@ run_test_s44() {
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Verify focus moved after Tab","script":"document.activeElement ? document.activeElement.id || document.activeElement.tagName : \"NONE\""}'
 
     if echo "$INTERACT_RESULT" | grep -qE "sf-email|sf-role|sf-agree|sf-btn|INPUT|SELECT"; then
-        pass "key_press(Tab) moved focus from #sf-name. Active: $(echo "$INTERACT_RESULT" | grep -oE 'sf-[a-z]+|INPUT|SELECT' | head -1)"
+        pass "key_press(Tab) moved focus from #sf-name. Active: $(echo "$INTERACT_RESULT" | grep -oE 'sf-[a-z-]+|INPUT|SELECT' | head -1 || echo 'element')"
     elif echo "$INTERACT_RESULT" | grep -q "sf-name"; then
         fail "key_press(Tab) did not move focus — still on #sf-name."
     else
         pass "key_press(Tab) completed, focus moved to: $(truncate "$INTERACT_RESULT" 100)"
     fi
 }
-run_test_s44
+run_test_5_10
 
-# ── Test S.45: List interactive ──────────────────────────
-begin_test "S.45" "List interactive elements" \
+# ── Test 5.11: List interactive ──────────────────────────
+begin_test "5.11" "List interactive elements" \
     "interact(list_interactive) returns element list including injected form" \
     "Tests: DOM list_interactive primitive"
 
-run_test_s45() {
+run_test_5_11() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -369,14 +369,14 @@ except Exception as e:
         fail "list_interactive returned 0 elements. Injected form with 6 interactive elements should be visible. Result: $(truncate "$INTERACT_RESULT" 200)"
     fi
 }
-run_test_s45
+run_test_5_11
 
-# ── Test S.46: Focus ─────────────────────────────────────
-begin_test "S.46" "Focus an element" \
+# ── Test 5.12: Focus ─────────────────────────────────────
+begin_test "5.12" "Focus an element" \
     "interact(focus) on #sf-email" \
     "Tests: DOM focus primitive"
 
-run_test_s46() {
+run_test_5_12() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -399,14 +399,14 @@ run_test_s46() {
         fail "focus did not set activeElement to #sf-email. Result: $(truncate "$INTERACT_RESULT" 100)"
     fi
 }
-run_test_s46
+run_test_5_12
 
-# ── Test S.47: Back ──────────────────────────────────────
-begin_test "S.47" "Browser back navigation" \
+# ── Test 5.13: Back ──────────────────────────────────────
+begin_test "5.13" "Browser back navigation" \
     "Navigate to 2 pages, interact(back), verify observe(page) shows previous URL" \
     "Tests: DOM back primitive > browser history"
 
-run_test_s47() {
+run_test_5_13() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -444,14 +444,14 @@ run_test_s47() {
         fail "Back navigation: expected example.com in page URL/title. Got: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s47
+run_test_5_13
 
-# ── Test S.48: Forward ───────────────────────────────────
-begin_test "S.48" "Browser forward navigation" \
+# ── Test 5.14: Forward ───────────────────────────────────
+begin_test "5.14" "Browser forward navigation" \
     "After back, interact(forward) returns to page B" \
     "Tests: DOM forward primitive > browser history"
 
-run_test_s48() {
+run_test_5_14() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -471,14 +471,14 @@ run_test_s48() {
         fail "Forward navigation: expected iana.org. Got: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s48
+run_test_5_14
 
-# ── Test S.49: New tab ───────────────────────────────────
-begin_test "S.49" "Open new tab" \
+# ── Test 5.15: New tab ───────────────────────────────────
+begin_test "5.15" "Open new tab" \
     "interact(new_tab) opens a new tab with a URL" \
     "Tests: DOM new_tab primitive"
 
-run_test_s49() {
+run_test_5_15() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -509,4 +509,4 @@ except: print(0)
     interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Return to test page"}' 20
     sleep 2
 }
-run_test_s49
+run_test_5_15

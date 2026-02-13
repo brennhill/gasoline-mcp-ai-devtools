@@ -167,8 +167,8 @@ run_test_19_20() {
     fi
 
     local id1 id2
-    id1=$(echo "$response1" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'link_health_[a-z0-9]*' | head -1)
-    id2=$(echo "$response2" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'link_health_[a-z0-9]*' | head -1)
+    id1=$(echo "$response1" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'link_health_[a-z0-9]*' | head -1 || true)
+    id2=$(echo "$response2" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'link_health_[a-z0-9]*' | head -1 || true)
 
     if [ "$id1" != "$id2" ]; then
         pass "Two crawl operations have distinct correlation IDs (results tracked separately)"
@@ -208,4 +208,4 @@ run_test_19_21() {
 }
 run_test_19_21
 
-kill_server
+finish_category

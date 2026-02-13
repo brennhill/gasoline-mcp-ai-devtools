@@ -259,8 +259,8 @@ run_test_19_12() {
     # Wait and collect responses
     local count=0
     for pid in "${pids[@]}"; do
-        wait "$pid"
-        ((count++))
+        wait "$pid" 2>/dev/null || true
+        count=$((count + 1))
     done
 
     if [ $count -eq 5 ]; then

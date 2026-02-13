@@ -1,15 +1,15 @@
 #!/bin/bash
-# 12-cross-cutting.sh — S.66-S.68: Pagination, error recovery, buffer overflow.
+# 12-cross-cutting.sh — 12.1-12.3: Pagination, error recovery, buffer overflow.
 set -eo pipefail
 
 begin_category "12" "Cross-Cutting Concerns" "3"
 
-# ── Test S.66: Pagination via cursors ────────────────────
-begin_test "S.66" "Pagination: observe(logs) with limit and cursor" \
+# ── Test 12.1: Pagination via cursors ────────────────────
+begin_test "12.1" "Pagination: observe(logs) with limit and cursor" \
     "Fetch logs with limit:3, then use cursor to get next page, verify no overlap" \
     "Tests: cursor-based pagination across observe modes"
 
-run_test_s66() {
+run_test_12_1() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -80,33 +80,33 @@ except: pass
         fail "Pagination: pages appear identical or page 2 empty. Page 1: $(truncate "$page1_text" 150), Page 2: $(truncate "$page2_text" 150)"
     fi
 }
-run_test_s66
+run_test_12_1
 
-# ── Test S.67: Error recovery ────────────────────────────
-begin_test "S.67" "Error recovery: 4 invalid calls, daemon still healthy" \
+# ── Test 12.2: Error recovery ────────────────────────────
+begin_test "12.2" "Error recovery: 4 invalid calls, daemon still healthy" \
     "Send 4 different malformed/invalid tool calls, then verify daemon health" \
     "Tests: daemon resilience to bad input"
 
-run_test_s67() {
+run_test_12_2() {
     # Invalid tool name
     local r1
     r1=$(call_tool "nonexistent_tool" '{}')
-    log_diagnostic "S.67" "invalid tool" "$r1"
+    log_diagnostic "12.2" "invalid tool" "$r1"
 
     # Missing required param
     local r2
     r2=$(call_tool "observe" '{}')
-    log_diagnostic "S.67" "missing param" "$r2"
+    log_diagnostic "12.2" "missing param" "$r2"
 
     # Invalid enum value
     local r3
     r3=$(call_tool "observe" '{"what":"invalid_mode_xyz"}')
-    log_diagnostic "S.67" "invalid enum" "$r3"
+    log_diagnostic "12.2" "invalid enum" "$r3"
 
     # Malformed JSON in arguments (framework may catch this)
     local r4
     r4=$(call_tool "interact" '{"action":""}')
-    log_diagnostic "S.67" "empty action" "$r4"
+    log_diagnostic "12.2" "empty action" "$r4"
 
     # Verify daemon is still healthy
     local body
@@ -134,14 +134,14 @@ run_test_s67() {
         fail "Daemon unhealthy after invalid calls. Health status: $status_val."
     fi
 }
-run_test_s67
+run_test_12_2
 
-# ── Test S.68: Buffer overflow / eviction ────────────────
-begin_test "S.68" "Buffer overflow: inject 1000+ logs, verify eviction" \
+# ── Test 12.3: Buffer overflow / eviction ────────────────
+begin_test "12.3" "Buffer overflow: inject 1000+ logs, verify eviction" \
     "Inject 1000+ log entries via a single execute_js loop, verify buffer is capped" \
     "Tests: daemon buffer eviction under load"
 
-run_test_s68() {
+run_test_12_3() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -187,4 +187,4 @@ except:
         fail "Buffer empty after flood: injected 1000 logs but count=$count. Log pipeline may be broken."
     fi
 }
-run_test_s68
+run_test_12_3

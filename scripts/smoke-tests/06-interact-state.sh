@@ -1,15 +1,15 @@
 #!/bin/bash
-# 06-interact-state.sh — S.50-S.53: State management (save/load/list/delete).
+# 06-interact-state.sh — 6.1-6.4: State management (save/load/list/delete).
 set -eo pipefail
 
 begin_category "6" "State Management" "4"
 
-# ── Test S.50: Save state ────────────────────────────────
-begin_test "S.50" "Save browser state snapshot" \
+# ── Test 6.1: Save state ────────────────────────────────
+begin_test "6.1" "Save browser state snapshot" \
     "interact(save_state) with snapshot_name='smoke-state'" \
     "Tests: state persistence pipeline"
 
-run_test_s50() {
+run_test_6_1() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -35,14 +35,14 @@ run_test_s50() {
         pass "save_state('smoke-state') completed (no error, checking list next)."
     fi
 }
-run_test_s50
+run_test_6_1
 
-# ── Test S.51: List states ───────────────────────────────
-begin_test "S.51" "List saved states" \
+# ── Test 6.2: List states ───────────────────────────────
+begin_test "6.2" "List saved states" \
     "interact(list_states) should include 'smoke-state'" \
     "Tests: state listing after save"
 
-run_test_s51() {
+run_test_6_2() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -65,14 +65,14 @@ run_test_s51() {
         fail "list_states does not contain 'smoke-state'. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s51
+run_test_6_2
 
-# ── Test S.52: Load state ────────────────────────────────
-begin_test "S.52" "Load saved state" \
+# ── Test 6.3: Load state ────────────────────────────────
+begin_test "6.3" "Load saved state" \
     "interact(load_state) with snapshot_name='smoke-state'" \
     "Tests: state restoration"
 
-run_test_s52() {
+run_test_6_3() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -99,14 +99,14 @@ run_test_s52() {
         pass "load_state('smoke-state') completed (no error returned)."
     fi
 }
-run_test_s52
+run_test_6_3
 
-# ── Test S.53: Delete state ──────────────────────────────
-begin_test "S.53" "Delete saved state" \
+# ── Test 6.4: Delete state ──────────────────────────────
+begin_test "6.4" "Delete saved state" \
     "interact(delete_state) then verify no longer in list" \
     "Tests: state cleanup"
 
-run_test_s53() {
+run_test_6_4() {
     if [ "$PILOT_ENABLED" != "true" ]; then
         skip "Pilot not enabled."
         return
@@ -132,4 +132,4 @@ run_test_s53() {
         pass "delete_state('smoke-state') confirmed: no longer in list."
     fi
 }
-run_test_s53
+run_test_6_4

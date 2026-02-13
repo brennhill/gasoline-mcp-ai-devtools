@@ -8,8 +8,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -182,11 +184,19 @@ func isConnectionError(err error) bool {
 	if err == nil {
 		return false
 	}
+	// Prefer typed error checks over string matching
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		return true
+	}
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return true
+	}
+	// Fallback: string check for wrapped errors that lose type info
 	msg := err.Error()
 	return strings.Contains(msg, "connection refused") ||
-		strings.Contains(msg, "connect: connection refused") ||
-		strings.Contains(msg, "no such host") ||
-		strings.Contains(msg, "dial tcp")
+		strings.Contains(msg, "no such host")
 }
 
 // flushStdout syncs stdout and logs any errors (best-effort)
@@ -473,9 +483,9 @@ func handleDaemonNotReady(req JSONRPCRequest, status string, signal func()) {
 }
 
 // bridgeDoHTTP sends the raw JSON-RPC payload to the daemon and returns the HTTP response.
-func bridgeDoHTTP(client *http.Client, endpoint string, line []byte, timeout time.Duration) (*http.Response, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+// The caller must provide a context that outlives the response body read — creating the
+// context here with defer cancel() would cancel it before the caller reads resp.Body.
+func bridgeDoHTTP(ctx context.Context, client *http.Client, endpoint string, line []byte) (*http.Response, error) {
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(line)) // #nosec G704 -- endpoint is localhost-only serverURL/mcp from runBridgeMode // nosemgrep: go_injection_rule-ssrf -- localhost-only bridge forwarding to own server
 	if err != nil {
 		return nil, err
@@ -488,11 +498,17 @@ func bridgeDoHTTP(client *http.Client, endpoint string, line []byte, timeout tim
 // If state is non-nil and the daemon is unreachable, attempts a single respawn + retry.
 // #lizard forgives
 func bridgeForwardRequest(client *http.Client, endpoint string, req JSONRPCRequest, line []byte, timeout time.Duration, state *daemonState, signal func()) {
-	resp, err := bridgeDoHTTP(client, endpoint, line, timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	resp, err := bridgeDoHTTP(ctx, client, endpoint, line)
 	if err != nil && isConnectionError(err) && state != nil {
-		// Daemon died — attempt respawn and retry once.
+		// Daemon died — attempt respawn and retry with fresh context
+		// (original context may have little time left after respawn delay).
 		if state.respawnIfNeeded() {
-			resp, err = bridgeDoHTTP(client, endpoint, line, timeout)
+			cancel()
+			ctx, cancel = context.WithTimeout(context.Background(), timeout)
+			resp, err = bridgeDoHTTP(ctx, client, endpoint, line)
 		}
 	}
 	if err != nil {

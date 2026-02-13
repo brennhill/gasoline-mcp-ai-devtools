@@ -4,10 +4,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/export"
+	"github.com/dev-console/dev-console/internal/security"
 )
 
 // GenerateHandler is the function signature for generate format handlers.
@@ -78,7 +81,80 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 }
 
 func (h *ToolHandler) toolGeneratePRSummary(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("PR summary", map[string]any{"summary": ""})}
+	actions := h.capture.GetAllEnhancedActions()
+	completedCmds := h.capture.GetCompletedCommands()
+	failedCmds := h.capture.GetFailedCommands()
+	logs := h.capture.GetExtensionLogs()
+	networkBodies := h.capture.GetNetworkBodies()
+	_, _, tabURL := h.capture.GetTrackingStatus()
+
+	// Count actions by type
+	actionCounts := map[string]int{}
+	for _, a := range actions {
+		actionCounts[a.Type]++
+	}
+
+	// Count errors in logs
+	errorCount := 0
+	for _, l := range logs {
+		if l.Level == "error" {
+			errorCount++
+		}
+	}
+
+	// Count failed network requests
+	networkErrors := 0
+	for _, nb := range networkBodies {
+		if nb.Status >= 400 {
+			networkErrors++
+		}
+	}
+
+	totalActivity := len(actions) + len(completedCmds) + len(failedCmds) + len(networkBodies)
+
+	// Build markdown summary
+	var sb strings.Builder
+	sb.WriteString("## Session Summary\n\n")
+
+	if totalActivity == 0 {
+		sb.WriteString("No activity captured during this session.\n\n")
+		sb.WriteString("Navigate to a page or interact with the browser to generate activity.\n")
+	} else {
+		if tabURL != "" {
+			sb.WriteString(fmt.Sprintf("- **Page:** %s\n", tabURL))
+		}
+		sb.WriteString(fmt.Sprintf("- **Actions:** %d total", len(actions)))
+		if len(actionCounts) > 0 {
+			parts := make([]string, 0, len(actionCounts))
+			for t, c := range actionCounts {
+				parts = append(parts, fmt.Sprintf("%s: %d", t, c))
+			}
+			sort.Strings(parts)
+			sb.WriteString(fmt.Sprintf(" (%s)", strings.Join(parts, ", ")))
+		}
+		sb.WriteString("\n")
+		sb.WriteString(fmt.Sprintf("- **Commands:** %d completed, %d failed\n", len(completedCmds), len(failedCmds)))
+		if errorCount > 0 {
+			sb.WriteString(fmt.Sprintf("- **Console Errors:** %d\n", errorCount))
+		}
+		if networkErrors > 0 {
+			sb.WriteString(fmt.Sprintf("- **Network Errors:** %d (HTTP 4xx/5xx)\n", networkErrors))
+		}
+		sb.WriteString(fmt.Sprintf("- **Network Requests Captured:** %d\n", len(networkBodies)))
+	}
+
+	summary := sb.String()
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("PR summary generated", map[string]any{
+		"summary": summary,
+		"stats": map[string]any{
+			"actions":            len(actions),
+			"commands_completed": len(completedCmds),
+			"commands_failed":    len(failedCmds),
+			"console_errors":     errorCount,
+			"network_errors":     networkErrors,
+			"network_captured":   len(networkBodies),
+		},
+	})}
 }
 
 func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -93,23 +169,39 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 		}
 	}
 
-	// SARIF 2.1.0 spec: top-level requires version, $schema, runs[]
-	responseData := map[string]any{
-		"version": "2.1.0",
-		"$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
-		"runs": []map[string]any{{
-			"tool": map[string]any{
-				"driver": map[string]any{
-					"name":    "gasoline",
-					"version": version,
-					"rules":   []any{},
-				},
-			},
-			"results": []any{},
-		}},
+	// Run a11y audit to get violations — fall back to empty if no extension connected
+	var a11yResult json.RawMessage
+	if h.capture.IsExtensionConnected() {
+		var err error
+		a11yResult, err = h.executeA11yQuery(arguments.Scope, nil)
+		if err != nil {
+			a11yResult = json.RawMessage("{}")
+		}
+	} else {
+		a11yResult = json.RawMessage("{}")
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("SARIF export complete", responseData)}
+	// Convert to SARIF
+	sarifLog, err := export.ExportSARIF(a11yResult, export.SARIFExportOptions{
+		Scope:         arguments.Scope,
+		IncludePasses: arguments.IncludePasses,
+		SaveTo:        arguments.SaveTo,
+	})
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "SARIF export failed: "+err.Error(), "Check a11y audit results and try again.")}
+	}
+
+	// Marshal SARIFLog to a generic map for the MCP response
+	sarifJSON, err := json.Marshal(sarifLog)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "SARIF marshal failed: "+err.Error(), "Report this bug.")}
+	}
+	var sarifMap map[string]any
+	if err := json.Unmarshal(sarifJSON, &sarifMap); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "SARIF unmarshal failed: "+err.Error(), "Report this bug.")}
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("SARIF export complete", sarifMap)}
 }
 
 func (h *ToolHandler) toolExportHAR(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -251,20 +343,20 @@ func joinStrings(strs []string, sep string) string {
 
 // toolGenerateSRI generates Subresource Integrity hashes for third-party scripts/styles.
 func (h *ToolHandler) toolGenerateSRI(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		Origins       []string `json:"origins"`
-		ResourceTypes []string `json:"resource_types"`
-	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
+	networkBodies := h.capture.GetNetworkBodies()
+	if len(networkBodies) == 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("SRI unavailable", map[string]any{
+			"status": "unavailable",
+			"hint":   "Navigate pages to capture network traffic first.",
+		})}
 	}
 
-	responseData := map[string]any{
-		"status":    "ok",
-		"resources": []any{},
+	_, _, tabURL := h.capture.GetTrackingStatus()
+	pageURLs := []string{tabURL}
+	result, err := security.HandleGenerateSRI(args, networkBodies, pageURLs)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "SRI generation failed: "+err.Error(), "Fix parameters and call again")}
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("SRI hashes generated", responseData)}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("SRI hashes generated", result)}
 }

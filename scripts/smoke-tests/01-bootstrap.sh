@@ -1,16 +1,16 @@
 #!/bin/bash
-# 01-bootstrap.sh — S.1-S.4: Cold start, health, extension gate, navigate.
+# 01-bootstrap.sh — 1.1-1.4: Cold start, health, extension gate, navigate.
 # Sets: EXTENSION_CONNECTED, PILOT_ENABLED
 set -eo pipefail
 
 begin_category "1" "Bootstrap" "4"
 
-# ── Test S.1: Cold start auto-spawn ──────────────────────
-begin_test "S.1" "Cold start auto-spawn" \
+# ── Test 1.1: Cold start auto-spawn ──────────────────────
+begin_test "1.1" "Cold start auto-spawn" \
     "Kill any running daemon, send an MCP call, verify the daemon spawns automatically" \
     "This is the most critical path — if cold start fails, nothing works"
 
-run_test_s1() {
+run_test_1_1() {
     kill_server
     sleep 0.5
 
@@ -43,14 +43,14 @@ run_test_s1() {
         fail "Cold start: daemon spawned but returned tool-level error. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s1
+run_test_1_1
 
-# ── Test S.2: Health + version ───────────────────────────
-begin_test "S.2" "Health endpoint and version" \
+# ── Test 1.2: Health + version ───────────────────────────
+begin_test "1.2" "Health endpoint and version" \
     "Verify /health returns status=ok and version matches VERSION file" \
     "Version mismatch means the wrong binary is running"
 
-run_test_s2() {
+run_test_1_2() {
     sleep 2
     if ! wait_for_health 50; then
         fail "Daemon not healthy after 50 attempts. Cannot check version."
@@ -76,14 +76,14 @@ run_test_s2() {
 
     pass "Health OK: status='ok', version='$health_version' matches VERSION file."
 }
-run_test_s2
+run_test_1_2
 
-# ── Test S.3: Extension gate ─────────────────────────────
-begin_test "S.3" "Extension connected" \
+# ── Test 1.3: Extension gate ─────────────────────────────
+begin_test "1.3" "Extension connected" \
     "Check /health for capture.available=true" \
     "All browser tests require extension. Stops here if not connected."
 
-run_test_s3() {
+run_test_1_3() {
     local body
     body=$(get_http_body "http://localhost:${PORT}/health")
 
@@ -103,14 +103,14 @@ run_test_s3() {
         echo "" | tee -a "$OUTPUT_FILE"
     fi
 }
-run_test_s3
+run_test_1_3
 
-# ── Test S.4: Navigate to test page ──────────────────────
-begin_test "S.4" "Navigate to a page" \
+# ── Test 1.4: Navigate to test page ──────────────────────
+begin_test "1.4" "Navigate to a page" \
     "Use interact(navigate) to open example.com, verify observe(page) reflects it" \
     "Tests the full interact pipeline: MCP > daemon > extension > browser"
 
-run_test_s4() {
+run_test_1_4() {
     if [ "$EXTENSION_CONNECTED" != "true" ]; then
         skip "Extension not connected."
         return
@@ -139,4 +139,4 @@ run_test_s4() {
         fail "Navigate did not work. observe(page) still shows: $(truncate "$content_text" 200)"
     fi
 }
-run_test_s4
+run_test_1_4

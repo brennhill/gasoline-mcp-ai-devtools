@@ -154,7 +154,7 @@ run_test_17_2() {
 
     # Verify numbered steps
     local step_count
-    step_count=$(echo "$script" | grep -cE '^[0-9]+\.')
+    step_count=$(echo "$script" | grep -cE '^[0-9]+\.' || true)
     if [ "$step_count" -ne 5 ]; then
         fail "Expected 5 numbered steps, got $step_count. Script: $(truncate "$script" 500)"
         return
@@ -230,7 +230,7 @@ run_test_17_4() {
 
     # Verify gasoline step count
     local gas_steps
-    gas_steps=$(grep -cE '^[0-9]+\.' "$GASOLINE_FILE")
+    gas_steps=$(grep -cE '^[0-9]+\.' "$GASOLINE_FILE" || true)
     if [ "$gas_steps" -ne 5 ]; then
         fail "Expected 5 numbered steps in gasoline file, got $gas_steps"
         return
@@ -344,7 +344,7 @@ run_test_17_6() {
 
     # Count steps — should be 2 (last 2 of 5)
     local step_count
-    step_count=$(echo "$script" | grep -cE '^[0-9]+\.')
+    step_count=$(echo "$script" | grep -cE '^[0-9]+\.' || true)
     if [ "$step_count" -ne 2 ]; then
         fail "Expected 2 steps with last_n=2, got $step_count. Script: $(truncate "$script" 400)"
         return

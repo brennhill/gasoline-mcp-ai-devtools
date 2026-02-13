@@ -23,7 +23,7 @@ run_test_23_1() {
     local text
     text=$(extract_content_text "$RESPONSE")
 
-    if check_contains "$text" "no extension\|not connected\|no data"; then
+    if check_matches "$text" "no extension|not connected|no data"; then
         skip "Extension not connected — skipping draw mode tests."
         return
     fi
@@ -55,7 +55,7 @@ run_test_23_2() {
         return
     fi
 
-    if check_contains "$text" "count\|annotations"; then
+    if check_matches "$text" "count|annotations"; then
         pass "analyze(annotations) returns valid response with count field."
     else
         fail "Expected count/annotations in response. Content: $(truncate "$text" 300)"
@@ -72,7 +72,7 @@ run_test_23_3() {
     local text
     text=$(extract_content_text "$RESPONSE")
 
-    if check_contains "$text" "correlation_id\|missing\|required"; then
+    if check_matches "$text" "correlation_id|missing|required"; then
         pass "Proper error for missing correlation_id parameter."
     else
         fail "Expected missing param error. Content: $(truncate "$text" 300)"
@@ -89,7 +89,7 @@ run_test_23_4() {
     local text
     text=$(extract_content_text "$RESPONSE")
 
-    if check_contains "$text" "not found\|expired"; then
+    if check_matches "$text" "not found|expired"; then
         pass "Proper not-found error for nonexistent correlation_id."
     else
         fail "Expected not-found error. Content: $(truncate "$text" 300)"
@@ -111,7 +111,7 @@ run_test_23_5() {
         return
     fi
 
-    if check_contains "$text" "count\|sessions\|storage_dir"; then
+    if check_matches "$text" "count|sessions|storage_dir"; then
         pass "draw_history returns session listing with expected fields."
     else
         fail "Expected count/sessions/storage_dir. Content: $(truncate "$text" 300)"
@@ -128,7 +128,7 @@ run_test_23_6() {
     local text
     text=$(extract_content_text "$RESPONSE")
 
-    if check_contains "$text" "path traversal\|not allowed\|invalid"; then
+    if check_matches "$text" "path traversal|not allowed|invalid"; then
         pass "Path traversal properly rejected."
     else
         fail "Expected rejection. Content: $(truncate "$text" 300)"
@@ -145,7 +145,7 @@ run_test_23_7() {
     local text
     text=$(extract_content_text "$RESPONSE")
 
-    if check_contains "$text" "file\|missing\|required"; then
+    if check_matches "$text" "file|missing|required"; then
         pass "Proper error for missing file parameter."
     else
         fail "Expected missing param error. Content: $(truncate "$text" 300)"
@@ -162,7 +162,7 @@ run_test_23_8() {
     local text
     text=$(extract_content_text "$RESPONSE")
 
-    if check_contains "$text" "not found\|no such file\|does not exist"; then
+    if check_matches "$text" "not found|no such file|does not exist"; then
         pass "Missing file handled gracefully."
     else
         fail "Expected not-found error. Content: $(truncate "$text" 300)"

@@ -131,6 +131,102 @@ func TestToolConfigureNoise_InvalidJSON(t *testing.T) {
 	}
 }
 
+// TestToolConfigureNoise_FullLifecycle tests add -> list -> verify -> remove -> list -> verify gone.
+func TestToolConfigureNoise_FullLifecycle(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	// Step 1: Add a rule
+	addResult, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"add","rules":[{"category":"console","match_spec":{"message_regex":"smoke-test-noise"}}]}`)
+	if !ok {
+		t.Fatal("noise add should return result")
+	}
+	if addResult.IsError {
+		t.Fatalf("noise add should not error, got: %s", addResult.Content[0].Text)
+	}
+	t.Logf("ADD response text: %s", addResult.Content[0].Text)
+
+	addData := parseResponseJSON(t, addResult)
+	rulesAdded, _ := addData["rules_added"].(float64)
+	if rulesAdded != 1 {
+		t.Fatalf("rules_added = %v, want 1", rulesAdded)
+	}
+
+	// Step 2: List rules and verify the added rule is present
+	listResult, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"list"}`)
+	if !ok {
+		t.Fatal("noise list should return result")
+	}
+	if listResult.IsError {
+		t.Fatalf("noise list should not error, got: %s", listResult.Content[0].Text)
+	}
+	listText := listResult.Content[0].Text
+	t.Logf("LIST response text: %s", listText)
+
+	if !strings.Contains(listText, "smoke-test-noise") {
+		t.Fatalf("noise list should contain 'smoke-test-noise', got: %s", listText)
+	}
+
+	// Step 3: Extract rule_id from the list response
+	listData := parseResponseJSON(t, listResult)
+	rules, ok := listData["rules"].([]any)
+	if !ok || len(rules) == 0 {
+		t.Fatalf("expected rules array, got: %v", listData["rules"])
+	}
+
+	var ruleID string
+	for _, r := range rules {
+		rMap, ok := r.(map[string]any)
+		if !ok {
+			continue
+		}
+		matchSpec, _ := rMap["match_spec"].(map[string]any)
+		if matchSpec != nil {
+			if msgRegex, _ := matchSpec["message_regex"].(string); msgRegex == "smoke-test-noise" {
+				ruleID, _ = rMap["id"].(string)
+				break
+			}
+		}
+	}
+	if ruleID == "" {
+		t.Fatalf("could not find rule_id for 'smoke-test-noise' in rules: %v", rules)
+	}
+	t.Logf("Found rule_id: %s", ruleID)
+
+	// Step 4: Remove the rule
+	removeResult, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"remove","rule_id":"`+ruleID+`"}`)
+	if !ok {
+		t.Fatal("noise remove should return result")
+	}
+	if removeResult.IsError {
+		t.Fatalf("noise remove should not error, got: %s", removeResult.Content[0].Text)
+	}
+	t.Logf("REMOVE response text: %s", removeResult.Content[0].Text)
+
+	// Step 5: List again and verify the rule is gone
+	list2Result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"list"}`)
+	if !ok {
+		t.Fatal("noise list2 should return result")
+	}
+	if list2Result.IsError {
+		t.Fatalf("noise list2 should not error, got: %s", list2Result.Content[0].Text)
+	}
+	list2Text := list2Result.Content[0].Text
+	t.Logf("LIST2 response text: %s", list2Text)
+
+	if strings.Contains(list2Text, "smoke-test-noise") {
+		t.Fatalf("noise list should NOT contain 'smoke-test-noise' after removal, got: %s", list2Text)
+	}
+
+	// Step 6: Also test the wire-format JSON-RPC response (what the smoke test would see)
+	// This simulates what the HTTP endpoint returns
+	listArgs := json.RawMessage(`{"action":"noise_rule","noise_action":"list"}`)
+	listReq := JSONRPCRequest{JSONRPC: "2.0", ID: 42}
+	listResp := env.handler.toolConfigure(listReq, listArgs)
+	wireJSON, _ := json.Marshal(listResp)
+	t.Logf("Wire-format JSON-RPC response: %s", string(wireJSON))
+}
+
 // ============================================
 // toolValidateAPI — 0% → 100%
 // Routed via analyze({what: "api_validation"})

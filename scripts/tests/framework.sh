@@ -28,12 +28,14 @@ CATEGORY_ID=""
 RESULTS_FILE=""
 OUTPUT_FILE=""
 START_TIME=""
+DAEMON_PID=""
 
 # ── Init ───────────────────────────────────────────────────
 init_framework() {
     PORT="${1:-7890}"
     RESULTS_FILE="${2:-/dev/null}"
     TEMP_DIR="$(mktemp -d)"
+    trap 'rm -rf "$TEMP_DIR"' EXIT
     START_TIME="$(date +%s)"
 
     # Resolve binary: local build > PATH
@@ -135,7 +137,7 @@ send_mcp() {
     LAST_EXIT_CODE="$?"
 
     # Get last non-empty line (the JSON-RPC response)
-    LAST_RESPONSE="$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1)"
+    LAST_RESPONSE="$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1 || true)"
     # shellcheck disable=SC2034 # LAST_STDOUT_FILE used by sourcing scripts
     LAST_STDOUT_FILE="$stdout_file"
     # shellcheck disable=SC2034 # LAST_STDERR_FILE used by sourcing scripts
@@ -161,7 +163,7 @@ send_mcp_multi() {
     LAST_STDERR_FILE="$stderr_file"
 
     MCP_ID="$((MCP_ID + 1))"
-    grep -v '^$' "$stdout_file" 2>/dev/null
+    grep -v '^$' "$stdout_file" 2>/dev/null || true
 }
 
 # Builds a tools/call JSON-RPC request and sends it.
@@ -177,7 +179,7 @@ call_tool() {
 # Extracts result.content[0].text from a JSON-RPC tool response
 extract_content_text() {
     local response="$1"
-    echo "$response" | jq -r '.result.content[0].text // empty' 2>/dev/null
+    echo "$response" | jq -r '.result.content[0].text // empty' 2>/dev/null || true
 }
 
 # Truncates a string for display in pass/fail messages
@@ -233,7 +235,14 @@ check_json_has() {
 check_contains() {
     local haystack="$1"
     local needle="$2"
-    echo "$haystack" | grep -q "$needle"
+    echo "$haystack" | grep -qF "$needle"
+}
+
+# Like check_contains but uses extended regex (supports alternation with |)
+check_matches() {
+    local haystack="$1"
+    local pattern="$2"
+    echo "$haystack" | grep -qiE "$pattern"
 }
 
 check_protocol_error() {
@@ -282,14 +291,16 @@ get_http_body() {
 
 # ── Daemon Lifecycle ───────────────────────────────────────
 kill_server() {
+    # Prefer killing the tracked daemon PID over indiscriminate lsof
+    if [ -n "$DAEMON_PID" ]; then
+        kill -9 "$DAEMON_PID" 2>/dev/null || true
+        DAEMON_PID=""
+        sleep 0.3
+        return
+    fi
+    # Fallback: kill by port (e.g., if daemon was pre-existing)
     lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
     sleep 0.3
-    # Double-check
-    if lsof -ti :"$PORT" >/dev/null 2>&1; then
-        sleep 0.5
-        lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
-        sleep 0.3
-    fi
 }
 
 wait_for_health() {
@@ -313,11 +324,13 @@ wait_for_health() {
 
 start_daemon() {
     "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 &
+    DAEMON_PID=$!
     wait_for_health 50
 }
 
 start_daemon_with_flags() {
     "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 &
+    DAEMON_PID=$!
     wait_for_health 50
 }
 

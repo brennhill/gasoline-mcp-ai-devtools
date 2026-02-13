@@ -45,7 +45,7 @@ run_test_6_1() {
 
     # Check it's not a protocol-level error (tool errors with isError are acceptable)
     local has_result
-    has_result=$(echo "$response" | jq -e '.result' 2>/dev/null)
+    has_result=$(echo "$response" | jq -e '.result' 2>/dev/null || true)
 
     if echo "$response" | jq -e '.error' >/dev/null 2>&1 && [ -z "$has_result" ]; then
         local err_code
