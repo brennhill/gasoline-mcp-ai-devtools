@@ -121,7 +121,7 @@ Stubs waste LLM tokens. Remove from schema enum arrays. Keep handler code for fu
 ### P4-2: Fix hardcoded User-Agent version
 
 - **File:** `cmd/dev-console/tools_analyze.go:287`
-- **Fix:** Replace `"Gasoline/6.1.0"` with `fmt.Sprintf("Gasoline/%s", version)`
+- **Fix:** Replace `"Gasoline/6.1.1"` with `fmt.Sprintf("Gasoline/%s", version)`
 
 ### P4-3: Enrich `observe({what: "page"})` response
 
