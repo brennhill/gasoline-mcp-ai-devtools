@@ -40,35 +40,35 @@ func extractJSONFromText(text string) string {
 
 // Sample console error from browser
 var sampleConsoleError = LogEntry{
-	"type":      "console",
-	"level":     "error",
-	"message":   "Uncaught TypeError: Cannot read property 'foo' of undefined",
-	"source":    "https://example.com/app.js",
-	"url":       "https://example.com/app.js",
-	"line":      42,
-	"column":    15,
-	"stack":     "TypeError: Cannot read property 'foo' of undefined\n    at handleClick (app.js:42:15)",
-	"timestamp": time.Now().UTC().Format(time.RFC3339),
+	"type":    "console",
+	"level":   "error",
+	"message": "Uncaught TypeError: Cannot read property 'foo' of undefined",
+	"source":  "https://example.com/app.js",
+	"url":     "https://example.com/app.js",
+	"line":    42,
+	"column":  15,
+	"stack":   "TypeError: Cannot read property 'foo' of undefined\n    at handleClick (app.js:42:15)",
+	"ts":      time.Now().UTC().Format(time.RFC3339),
 }
 
 // Sample console warning
 var sampleConsoleWarning = LogEntry{
-	"type":      "console",
-	"level":     "warn",
-	"message":   "Deprecation warning: componentWillMount is deprecated",
-	"source":    "https://example.com/react.js",
-	"url":       "https://example.com/react.js",
-	"line":      100,
-	"timestamp": time.Now().UTC().Format(time.RFC3339),
+	"type":    "console",
+	"level":   "warn",
+	"message": "Deprecation warning: componentWillMount is deprecated",
+	"source":  "https://example.com/react.js",
+	"url":     "https://example.com/react.js",
+	"line":    100,
+	"ts":      time.Now().UTC().Format(time.RFC3339),
 }
 
 // Sample console log
 var sampleConsoleLog = LogEntry{
-	"type":      "console",
-	"level":     "log",
-	"message":   "User clicked button",
-	"source":    "https://example.com/app.js",
-	"timestamp": time.Now().UTC().Format(time.RFC3339),
+	"type":    "console",
+	"level":   "log",
+	"message": "User clicked button",
+	"source":  "https://example.com/app.js",
+	"ts":      time.Now().UTC().Format(time.RFC3339),
 }
 
 // Sample network waterfall entry
