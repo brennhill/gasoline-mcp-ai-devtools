@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/pagination"
 )
 
 // safeMarshal performs defensive JSON marshaling with a fallback value.
@@ -196,6 +197,35 @@ func buildResponseMetadata(cap *capture.Capture, newestEntry time.Time) Response
 		meta.DataAge = fmt.Sprintf("%.1fs", age.Seconds())
 	} else {
 		meta.DataAge = "no_data"
+	}
+	return meta
+}
+
+// buildPaginatedResponseMetadata merges freshness metadata with cursor pagination metadata.
+func buildPaginatedResponseMetadata(cap *capture.Capture, newestEntry time.Time, pMeta *pagination.CursorPaginationMetadata) map[string]any {
+	base := buildResponseMetadata(cap, newestEntry)
+	meta := map[string]any{
+		"retrieved_at": base.RetrievedAt,
+		"is_stale":     base.IsStale,
+		"data_age":     base.DataAge,
+		"total":        pMeta.Total,
+		"has_more":     pMeta.HasMore,
+	}
+	if pMeta.Cursor != "" {
+		meta["cursor"] = pMeta.Cursor
+	}
+	if pMeta.OldestTimestamp != "" {
+		meta["oldest_timestamp"] = pMeta.OldestTimestamp
+	}
+	if pMeta.NewestTimestamp != "" {
+		meta["newest_timestamp"] = pMeta.NewestTimestamp
+	}
+	if pMeta.CursorRestarted {
+		meta["cursor_restarted"] = true
+		meta["original_cursor"] = pMeta.OriginalCursor
+	}
+	if pMeta.Warning != "" {
+		meta["warning"] = pMeta.Warning
 	}
 	return meta
 }

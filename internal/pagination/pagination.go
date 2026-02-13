@@ -151,7 +151,7 @@ func buildMetadata[T Sequenced](entries []T, afterCursor string, countBeforeLimi
 	last := entries[len(entries)-1]
 	metadata.NewestTimestamp = last.GetTimestamp()
 	metadata.Cursor = BuildCursor(last.GetTimestamp(), last.GetSequence())
-	if afterCursor != "" && countBeforeLimit > len(entries) {
+	if countBeforeLimit > len(entries) {
 		metadata.HasMore = true
 	}
 }
@@ -165,8 +165,9 @@ func ApplyCursorPagination[T Sequenced](entries []T, p CursorParams) ([]T, *Curs
 
 	// No cursor specified - just apply limit
 	if cursorStr == "" {
+		countBeforeLimit := len(entries)
 		entries = applyLimit(entries, p.Limit, false)
-		buildMetadata(entries, p.AfterCursor, len(entries), metadata)
+		buildMetadata(entries, p.AfterCursor, countBeforeLimit, metadata)
 		return entries, metadata, nil
 	}
 
