@@ -108,42 +108,48 @@ func NewSessionStore(projectPath string) (*SessionStore, error) {
 
 // NewSessionStoreWithInterval creates a new SessionStore with a custom flush interval.
 func NewSessionStoreWithInterval(projectPath string, flushInterval time.Duration) (*SessionStore, error) {
-	// Validate and clean the path to prevent directory traversal
-	absPath, err := filepath.Abs(projectPath)
+	absPath, projectDir, err := resolveProjectDir(projectPath)
 	if err != nil {
-		return nil, fmt.Errorf("invalid project path: %w", err)
+		return nil, err
 	}
+	return newSessionStoreInDir(absPath, projectDir, flushInterval)
+}
 
-	// Ensure the resolved path doesn't contain suspicious patterns
-	// (This catches .. and symlink traversal)
+// resolveProjectDir validates a project path and resolves its persistence directory.
+func resolveProjectDir(projectPath string) (absPath, projectDir string, err error) {
+	absPath, err = filepath.Abs(projectPath)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid project path: %w", err)
+	}
 	if strings.Contains(absPath, "..") {
-		return nil, fmt.Errorf("project path contains '..': %s", absPath)
+		return "", "", fmt.Errorf("project path contains '..': %s", absPath)
 	}
-
-	projectDir, err := state.ProjectDir(absPath)
+	projectDir, err = state.ProjectDir(absPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve project directory: %w", err)
+		return "", "", fmt.Errorf("failed to resolve project directory: %w", err)
 	}
+	return absPath, projectDir, nil
+}
 
+// newSessionStoreInDir creates a SessionStore with an explicit project directory.
+// Used by tests to avoid env-var dependencies in parallel tests.
+func newSessionStoreInDir(projectPath, projectDir string, flushInterval time.Duration) (*SessionStore, error) {
 	s := &SessionStore{
-		projectPath:   absPath,
+		projectPath:   projectPath,
 		projectDir:    projectDir,
 		dirty:         make(map[string][]byte),
 		flushInterval: flushInterval,
 		stopCh:        make(chan struct{}),
 	}
 
-	// Create project persistence directory
 	if err := os.MkdirAll(projectDir, dirPermissions); err != nil {
 		return nil, fmt.Errorf("failed to create project directory: %w", err)
 	}
 
-	// Load or create meta
 	if err := s.loadOrCreateMeta(); err != nil {
 		return nil, fmt.Errorf("failed to load meta: %w", err)
 	}
 
-	// Start background flush goroutine
 	go s.backgroundFlush()
 
 	return s, nil

@@ -6,16 +6,15 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
-
-	"github.com/dev-console/dev-console/internal/state"
 )
 
 func TestSessionStoreNewAndGetMetaCopy(t *testing.T) {
 	t.Parallel()
 
-	t.Setenv(state.StateDirEnv, t.TempDir())
+	projectPath := t.TempDir()
+	projectDir := filepath.Join(t.TempDir(), "projects", "test")
 
-	store, err := NewSessionStore(t.TempDir())
+	store, err := newSessionStoreInDir(projectPath, projectDir, defaultFlushInterval)
 	if err != nil {
 		t.Fatalf("NewSessionStore() error = %v", err)
 	}
