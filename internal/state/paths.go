@@ -22,7 +22,7 @@ const (
 // Resolution order:
 //  1. GASOLINE_STATE_DIR (if set)
 //  2. XDG_STATE_HOME/gasoline (if XDG_STATE_HOME is set)
-//  3. os.UserConfigDir()/gasoline (cross-platform fallback)
+//  3. ~/.gasoline (cross-platform dotfolder)
 func RootDir() (string, error) {
 	if override := strings.TrimSpace(os.Getenv(StateDirEnv)); override != "" {
 		return normalizePath(override)
@@ -36,24 +36,37 @@ func RootDir() (string, error) {
 		return filepath.Join(root, appName), nil
 	}
 
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("cannot determine user config directory: %w", err)
-	}
-	root, err := normalizePath(configDir)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, appName), nil
-}
-
-// LegacyRootDir returns the historical runtime root used by earlier versions.
-func LegacyRootDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
 	return filepath.Join(homeDir, ".gasoline"), nil
+}
+
+// LegacyRootDir returns the historical runtime root used by earlier versions
+// (os.UserConfigDir()/gasoline, e.g. ~/Library/Application Support/gasoline).
+func LegacyRootDir() (string, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine user config directory: %w", err)
+	}
+	return filepath.Join(configDir, appName), nil
+}
+
+// ProjectDir returns the centralized project-scoped persistence directory
+// under ~/.gasoline/projects/{abs-path}. The leading path separator is stripped
+// so the absolute project path becomes a relative subpath.
+func ProjectDir(projectPath string) (string, error) {
+	root, err := RootDir()
+	if err != nil {
+		return "", err
+	}
+	absPath, err := filepath.Abs(projectPath)
+	if err != nil {
+		return "", fmt.Errorf("cannot resolve project path: %w", err)
+	}
+	rel := strings.TrimPrefix(filepath.Clean(absPath), string(os.PathSeparator))
+	return filepath.Join(root, "projects", rel), nil
 }
 
 // LogsDir returns the logs directory under RootDir.

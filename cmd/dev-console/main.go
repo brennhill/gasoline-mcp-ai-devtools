@@ -39,7 +39,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "6.1.1"
+var version = "6.1.5"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -68,8 +68,8 @@ var (
 	screenshotRateMu      sync.Mutex
 
 	// Upload automation security flags (set by CLI flags, consumed by ToolHandler)
-	uploadAutomationFlag bool            // --enable-upload-automation
-	uploadSecurityConfig *UploadSecurity // validated upload security config
+	osUploadAutomationFlag bool            // --enable-os-upload-automation (Stage 4 only)
+	uploadSecurityConfig   *UploadSecurity // validated upload security config
 )
 
 // findMCPConfig checks for MCP configuration files in common locations
@@ -254,7 +254,7 @@ type parsedFlags struct {
 	port, maxEntries                                         *int
 	logFile, apiKey, clientID, stateDir, uploadDir           *string
 	showVersion, showHelp, checkSetup, stopMode, connectMode *bool
-	bridgeMode, daemonMode, enableUploadAutomation           *bool
+	bridgeMode, daemonMode, enableOsUploadAutomation          *bool
 	forceCleanup                                             *bool
 	uploadDenyPatterns                                       multiFlag
 }
@@ -275,7 +275,7 @@ func registerFlags() *parsedFlags {
 	f.bridgeMode = flag.Bool("bridge", false, "Run as stdio-to-HTTP bridge (spawns daemon if needed)")
 	f.daemonMode = flag.Bool("daemon", false, "Run as background server daemon (internal use)")
 	f.stateDir = flag.String("state-dir", "", "Directory for runtime state (default: OS app state directory)")
-	f.enableUploadAutomation = flag.Bool("enable-upload-automation", false, "Enable file upload automation (all 4 escalation stages)")
+	f.enableOsUploadAutomation = flag.Bool("enable-os-upload-automation", false, "Enable OS-level file upload automation (Stage 4: AppleScript/xdotool)")
 	f.uploadDir = flag.String("upload-dir", "", "Directory from which file uploads are allowed (required for Stages 2-4)")
 	f.forceCleanup = flag.Bool("force", false, "Force kill all running gasoline daemons (used during install to ensure clean upgrade)")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
@@ -322,8 +322,8 @@ func handleEarlyExitModes(f *parsedFlags) {
 func parseAndValidateFlags() *serverConfig {
 	f := registerFlags()
 
-	uploadAutomationFlag = *f.enableUploadAutomation
-	initUploadSecurity(*f.enableUploadAutomation, *f.uploadDir, f.uploadDenyPatterns)
+	osUploadAutomationFlag = *f.enableOsUploadAutomation
+	initUploadSecurity(*f.enableOsUploadAutomation, *f.uploadDir, f.uploadDenyPatterns)
 	validatePort(*f.port)
 	normalizeStateDir(f.stateDir)
 	handleEarlyExitModes(f)

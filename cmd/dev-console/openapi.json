@@ -3,7 +3,7 @@
   "info": {
     "title": "Gasoline MCP Server",
     "description": "Browser observability for AI agents. Streams console logs, network errors, and user actions from Chrome to Claude Code, Cursor, and Copilot via MCP protocol.",
-    "version": "6.1.1",
+    "version": "6.1.5",
     "license": {
       "name": "MIT"
     }
@@ -29,7 +29,7 @@
     "management": "Multi-client and session management",
     "media": "Screenshot, video recording, and annotation capture",
     "ci": "CI/CD infrastructure: snapshots, buffer clear, test boundaries",
-    "automation": "OS-level file and form automation (gated by --upload-automation)"
+    "automation": "File and form automation (Stage 4 OS automation gated by --enable-os-upload-automation)"
   },
   "tags": [
     { "name": "Control", "description": "Server health, discovery, lifecycle, and protocol", "x-plane": "control" },
@@ -40,7 +40,7 @@
     { "name": "Management", "description": "Multi-client registration and session management", "x-plane": "management" },
     { "name": "Media", "description": "Screenshot, video recording, and annotation capture", "x-plane": "media" },
     { "name": "CI", "description": "CI infrastructure: snapshots, clear, test boundaries", "x-plane": "ci" },
-    { "name": "Automation", "description": "Upload automation endpoints (requires --upload-automation flag)", "x-plane": "automation" }
+    { "name": "Automation", "description": "Upload automation endpoints (Stage 4 requires --enable-os-upload-automation flag)", "x-plane": "automation" }
   ],
   "paths": {
     "/": {
@@ -58,7 +58,7 @@
                   "type": "object",
                   "properties": {
                     "name": { "type": "string", "example": "gasoline" },
-                    "version": { "type": "string", "example": "6.1.1" },
+                    "version": { "type": "string", "example": "6.1.5" },
                     "health": { "type": "string", "example": "/health" },
                     "logs": { "type": "string", "example": "/logs" }
                   }
@@ -1011,7 +1011,7 @@
       "post": {
         "tags": ["Automation"],
         "summary": "Read file for upload",
-        "description": "Read a local file for upload automation. Requires --upload-automation flag.",
+        "description": "Read a local file for upload automation (Stage 1, always available).",
         "operationId": "postFileRead",
         "security": [{ "extensionClient": [] }],
         "requestBody": {
@@ -1054,7 +1054,7 @@
       "post": {
         "tags": ["Automation"],
         "summary": "Inject file dialog",
-        "description": "Inject a file path into a native file dialog. Requires --upload-automation flag.",
+        "description": "Inject a file path into a native file dialog (Stage 2, always available).",
         "operationId": "postFileDialogInject",
         "security": [{ "extensionClient": [] }],
         "requestBody": {
@@ -1088,7 +1088,7 @@
       "post": {
         "tags": ["Automation"],
         "summary": "Submit form with file",
-        "description": "Submit an HTML form with file upload via multipart. Requires --upload-automation flag.",
+        "description": "Submit an HTML form with file upload via multipart (Stage 3, always available).",
         "operationId": "postFormSubmit",
         "security": [{ "extensionClient": [] }],
         "requestBody": {
@@ -1130,7 +1130,7 @@
       "post": {
         "tags": ["Automation"],
         "summary": "OS-level file dialog automation",
-        "description": "Use OS automation (AppleScript/xdotool) to inject file path into native dialog. Requires --upload-automation flag.",
+        "description": "Use OS automation (AppleScript/xdotool) to inject file path into native dialog. Requires --enable-os-upload-automation flag.",
         "operationId": "postOSAutomationInject",
         "security": [{ "extensionClient": [] }],
         "requestBody": {

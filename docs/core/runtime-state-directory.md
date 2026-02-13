@@ -11,40 +11,49 @@ This caused two issues:
 
 ## Decision
 
-Gasoline runtime artifacts now live under a dedicated **runtime state directory**:
+All Gasoline runtime artifacts now live under a single dotfolder: **`~/.gasoline`**.
 
-- Default: OS app-state/config location + `gasoline`
-  - Linux: `$XDG_STATE_HOME/gasoline` when `XDG_STATE_HOME` is set, otherwise `~/.config/gasoline`
-  - macOS: `~/Library/Application Support/gasoline`
-  - Windows: `%AppData%\gasoline`
-- Override:
-  - Env var: `GASOLINE_STATE_DIR`
-  - CLI flag: `--state-dir`
+Resolution order:
+
+1. `GASOLINE_STATE_DIR` env var (if set) — overrides everything
+2. `XDG_STATE_HOME/gasoline` (if `XDG_STATE_HOME` is set — Linux users who set this expect it)
+3. `~/.gasoline` — cross-platform default
+
+This works the same on macOS, Linux, and Windows, and is more discoverable than platform-specific paths like `~/Library/Application Support/gasoline`.
 
 ## Layout
 
-Within the runtime state directory:
+```
+~/.gasoline/
+  logs/
+    gasoline.jsonl          # server lifecycle and debug logs
+    crash.log               # panic crash output
+  run/
+    gasoline-<port>.pid     # per-port PID file
+  recordings/               # saved recording metadata and video sidecars
+  screenshots/              # captured screenshots
+  settings/
+    extension-settings.json # extension settings cache
+  security/
+    security.json           # security policy configuration
+  projects/
+    Users/brenn/dev/myapp/  # mirrored abs path (minus leading /)
+      meta.json
+      baselines/
+      noise/
+      errors/
+      ...
+```
 
-- `logs/gasoline.jsonl` — server lifecycle and debug logs
-- `logs/crash.log` — panic crash output
-- `run/gasoline-<port>.pid` — per-port PID file
-- `recordings/` — saved recording metadata and video sidecars
-- `settings/extension-settings.json` — extension settings cache
-- `security/security.json` — security policy configuration path
+## Project-Scoped Persistence
 
-## Repo Root Handling
-
-Gasoline should not assume it can discover a repository root:
-
-- It runs as a shared server process, often separate from project processes.
-- Clients may come and go across multiple workspaces.
-
-For this reason, runtime server state is **server-scoped**, not repo-scoped, and is anchored to the runtime state directory above. Project-local artifacts that are intentionally repo-scoped (for example `.gasoline/` inside a project) remain project-owned and separate from server runtime state.
+AI persistence data is stored centrally under `~/.gasoline/projects/{abs-path}/` (with the leading `/` stripped from the absolute project path). This keeps all Gasoline state in one place rather than scattering `.gasoline/` directories inside each project.
 
 ## Compatibility
 
-Gasoline keeps compatibility reads/fallbacks for historical paths where practical:
+Legacy paths from earlier versions are still checked as read-only fallbacks:
 
-- Legacy PID paths are still checked for stop/cleanup.
-- Legacy settings and recordings can still be read.
-- New writes go to the runtime state directory.
+- `~/Library/Application Support/gasoline` (macOS), `%AppData%\gasoline` (Windows), `~/.config/gasoline` (Linux) — the previous primary location
+- `~/gasoline-logs.jsonl`, `~/gasoline-crash.log`, `~/.gasoline-7890.pid`, `~/.gasoline-settings.json` — pre-dotfolder flat files
+
+New writes always go to `~/.gasoline`. No automatic migration is performed.

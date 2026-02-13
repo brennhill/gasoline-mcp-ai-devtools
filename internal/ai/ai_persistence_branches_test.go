@@ -6,10 +6,14 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/state"
 )
 
 func TestSessionStoreNewAndGetMetaCopy(t *testing.T) {
 	t.Parallel()
+
+	t.Setenv(state.StateDirEnv, t.TempDir())
 
 	store, err := NewSessionStore(t.TempDir())
 	if err != nil {

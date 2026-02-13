@@ -38,7 +38,7 @@ echo ""
 echo "============================================================"
 echo "  GASOLINE SMOKE TEST SUITE"
 echo "  Port: $PORT | $(date)"
-echo "  80 tests across 14 modules"
+echo "  89 tests across 15 modules"
 echo "============================================================"
 echo ""
 
@@ -89,6 +89,7 @@ MODULES=(
     "11-subtitle-screenshot.sh"
     "12-cross-cutting.sh"
     "13-draw-mode.sh"
+    "15-file-upload.sh"
     "14-stability-shutdown.sh"
 )
 

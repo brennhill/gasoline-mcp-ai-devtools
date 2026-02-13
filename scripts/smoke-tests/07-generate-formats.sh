@@ -230,13 +230,32 @@ run_test_7_5() {
     fi
 
     # Seed network traffic so HAR has entries to export.
-    # Navigate to a fresh page — this generates resource timing entries the extension captures.
+    local data_seeded="false"
     if [ "$PILOT_ENABLED" = "true" ]; then
+        # Navigate to generate resource timing (waterfall) entries.
         interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Seed network for HAR export"}' 20
         sleep 2
-        # Also trigger a fetch for body capture
+        # Trigger a fetch for body capture.
         interact_and_wait "execute_js" '{"action":"execute_js","reason":"Seed fetch for HAR export","script":"fetch(\"https://jsonplaceholder.typicode.com/posts/1\").then(r=>r.json()).then(d=>\"fetched\").catch(e=>e.message)"}'
-        sleep 2
+
+        # Poll network_bodies until the fetch URL appears.
+        local max_polls=10
+        for i in $(seq 1 "$max_polls"); do
+            sleep 1
+            local bodies_response
+            bodies_response=$(call_tool "observe" '{"what":"network_bodies","url":"jsonplaceholder"}')
+            local bodies_text
+            bodies_text=$(extract_content_text "$bodies_response")
+            if echo "$bodies_text" | grep -q "jsonplaceholder"; then
+                data_seeded="true"
+                echo "  [data confirmed in network_bodies after ${i}s]"
+                break
+            fi
+        done
+
+        if [ "$data_seeded" != "true" ]; then
+            echo "  [warning: fetch body not confirmed after ${max_polls}s, proceeding anyway]"
+        fi
     fi
 
     local response

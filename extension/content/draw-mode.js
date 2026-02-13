@@ -604,6 +604,43 @@ function captureElementsUnderRect(rect) {
       if (elements.length >= MAX_CAPTURED_ELEMENTS) break
     }
 
+    // Fallback: if grid sampling found nothing, try single-point probe at rect center
+    if (elements.length === 0) {
+      try {
+        const cx = rect.x + rect.width / 2
+        const cy = rect.y + rect.height / 2
+        const el = document.elementFromPoint(cx, cy)
+        if (el && el !== document.body && el !== document.documentElement && !seenElements.has(el)) {
+          seenElements.add(el)
+          elements.push(el)
+        }
+      } catch {
+        // elementFromPoint fallback failed
+      }
+    }
+
+    // Fallback: walk DOM for elements whose bounding rect overlaps the drawn rectangle
+    if (elements.length === 0) {
+      try {
+        const candidates = document.querySelectorAll('*')
+        for (const el of candidates) {
+          if (el === document.body || el === document.documentElement) continue
+          if (seenElements.has(el)) continue
+          const br = el.getBoundingClientRect()
+          if (br.width === 0 && br.height === 0) continue
+          const overlaps = br.left < rect.x + rect.width && br.right > rect.x &&
+                           br.top < rect.y + rect.height && br.bottom > rect.y
+          if (overlaps) {
+            seenElements.add(el)
+            elements.push(el)
+            if (elements.length >= MAX_CAPTURED_ELEMENTS) break
+          }
+        }
+      } catch {
+        // DOM walk fallback failed
+      }
+    }
+
     // Also probe inside same-origin iframes
     const iframeElements = captureIframeElements(rect, seenElements)
 

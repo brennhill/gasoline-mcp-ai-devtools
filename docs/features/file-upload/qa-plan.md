@@ -19,7 +19,7 @@ last-verified: 2026-02-10
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
-| DL-1 | File read exposes arbitrary files | Verify `/api/file/read` only works with `--enable-upload-automation` flag; disabled by default | critical |
+| DL-1 | File read exposes arbitrary files | Verify `/api/file/read` enforces denylist and upload-dir restrictions; Stage 4 requires `--enable-os-upload-automation` | critical |
 | DL-2 | Relative path traversal | Verify all 4 endpoints reject relative paths (`../../../etc/passwd`) | critical |
 | DL-3 | Base64 data leaked to logs | Verify `DataBase64` response field is NOT written to the server log file | critical |
 | DL-4 | Cookies forwarded to wrong host | Verify Stage 3 form submit only sends cookies to the `form_action` URL, not to arbitrary hosts | high |
@@ -29,7 +29,7 @@ last-verified: 2026-02-10
 | DL-8 | OS automation leaks file path to other apps | Verify AppleScript/PowerShell/xdotool only types in the focused file dialog, not in arbitrary windows | medium |
 
 ### Negative Tests (must NOT leak)
-- [x] File read disabled by default — returns 403 without `--enable-upload-automation`
+- [x] Stage 4 OS automation disabled by default — returns 403 without `--enable-os-upload-automation`
 - [x] Relative paths rejected at all 4 stages
 - [x] All upload routes behind `extensionOnly()` middleware — no `X-Gasoline-Client` header → 403
 - [ ] Base64 file data not written to server log file (manual verification needed)
@@ -56,7 +56,7 @@ last-verified: 2026-02-10
 
 ### Defense-in-Depth Layers
 
-1. **Feature gate:** `--enable-upload-automation` flag (disabled by default)
+1. **Feature gate:** `--enable-os-upload-automation` flag (disabled by default)
 2. **Route access:** `extensionOnly()` middleware on all 4 endpoints
 3. **Path validation:** Absolute path required + `validatePathForOSAutomation()` for Stage 4
 4. **Input sanitization:** Platform-specific sanitizers (AppleScript, SendKeys, Content-Disposition)
@@ -71,7 +71,7 @@ last-verified: 2026-02-10
 
 | # | Clarity Check | What to Verify | Status |
 |---|--------------|----------------|--------|
-| CL-1 | Upload disabled error is actionable | Error includes "Upload automation is disabled. Start server with --enable-upload-automation flag." | [x] |
+| CL-1 | OS automation disabled error is actionable | Error includes "OS-level upload automation is disabled. Start server with --enable-os-upload-automation flag." | [x] |
 | CL-2 | Missing parameters clearly identified | Error says "Missing required parameter: file_path" (not generic "Bad Request") | [x] |
 | CL-3 | File not found distinguishable from permission denied | Separate error messages and HTTP status codes (404 vs 403) | [x] |
 | CL-4 | Stage number in response | Every `UploadStageResponse` includes `stage` field (1-4) | [x] |
@@ -92,7 +92,7 @@ last-verified: 2026-02-10
 |----------|---------------|-------------------|
 | Upload a file | 1 step: `interact({action: "upload", selector: "...", file_path: "..."})` | No — already minimal |
 | Upload with form submit | 1 step: same as above with `submit: true` | No — already minimal |
-| Enable upload automation | 1 step: add `--enable-upload-automation` flag | No — intentional explicit opt-in |
+| Enable upload automation | 1 step: add `--enable-os-upload-automation` flag | No — intentional explicit opt-in |
 | Diagnose upload failure | 1 step: read `suggestions` array in error response | No — already minimal |
 
 ### Default Behavior Verification
@@ -117,7 +117,7 @@ go test ./cmd/dev-console/ -run "TestUpload" -v -count=1 -race
 
 | Category | Test Count | Status |
 |----------|-----------|--------|
-| Security gating (`--enable-upload-automation`) | 2 | PASS |
+| Security gating (`--enable-os-upload-automation`, Stage 4 only) | 2 | PASS |
 | Parameter validation (all stages) | 12 | PASS |
 | File read (base64, MIME, permissions, large files) | 14 | PASS |
 | Dialog injection (valid/invalid/missing PID) | 5 | PASS |
@@ -188,7 +188,7 @@ All tests run with `-race` flag enabled.
 | UAT-31 | Correlation IDs unique across 20 concurrent uploads | No duplicates | [x] automated |
 | UAT-32 | Pending query payload completeness | Contains action, selector, file metadata, submit, escalation_timeout_ms, progress_tier | [x] automated |
 | UAT-33 | All endpoints return 403 without extension header | extensionOnly middleware blocks non-extension callers | [x] automated |
-| UAT-34 | All endpoints return 403 when feature disabled | --enable-upload-automation not set | [x] automated |
+| UAT-34 | Stage 4 endpoint returns 403 when OS automation disabled | --enable-os-upload-automation not set | [x] automated |
 | UAT-35 | Oversized request body rejected | MaxBytesReader limits enforced | [x] automated |
 | UAT-36 | Relative path rejected at all stages | Returns "absolute path" error | [x] automated |
 | UAT-37 | Invalid JSON returns error | No panic, returns isError:true | [x] automated |

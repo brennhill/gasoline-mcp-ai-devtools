@@ -6,24 +6,19 @@ import (
 	"testing"
 )
 
-func TestRootDirFallsBackToUserConfigDir(t *testing.T) {
+func TestRootDirFallsBackToHomeDotGasoline(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
 	t.Setenv(StateDirEnv, "")
 	t.Setenv(xdgStateHomeEnv, "")
 
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		t.Fatalf("os.UserConfigDir() error = %v", err)
-	}
-
 	got, err := RootDir()
 	if err != nil {
 		t.Fatalf("RootDir() error = %v", err)
 	}
 
-	want := filepath.Join(configDir, appName)
+	want := filepath.Join(home, ".gasoline")
 	if got != want {
 		t.Fatalf("RootDir() = %q, want %q", got, want)
 	}
@@ -93,11 +88,16 @@ func TestPathHelpersAndLegacyPaths(t *testing.T) {
 		t.Fatalf("LegacySettingsFile() = %q, want %q", legacySettings, want)
 	}
 
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatalf("os.UserConfigDir() error = %v", err)
+	}
+
 	legacyRecordings, err := LegacyRecordingsDir()
 	if err != nil {
 		t.Fatalf("LegacyRecordingsDir() error = %v", err)
 	}
-	if want := filepath.Join(home, ".gasoline", "recordings"); legacyRecordings != want {
+	if want := filepath.Join(configDir, appName, "recordings"); legacyRecordings != want {
 		t.Fatalf("LegacyRecordingsDir() = %q, want %q", legacyRecordings, want)
 	}
 
@@ -105,8 +105,23 @@ func TestPathHelpersAndLegacyPaths(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LegacySecurityConfigFile() error = %v", err)
 	}
-	if want := filepath.Join(home, ".gasoline", "security.json"); legacySecurity != want {
+	if want := filepath.Join(configDir, appName, "security.json"); legacySecurity != want {
 		t.Fatalf("LegacySecurityConfigFile() = %q, want %q", legacySecurity, want)
+	}
+}
+
+func TestProjectDir(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := ProjectDir("/Users/brenn/dev/myproject")
+	if err != nil {
+		t.Fatalf("ProjectDir() error = %v", err)
+	}
+	want := filepath.Join(root, "projects", "Users", "brenn", "dev", "myproject")
+	if got != want {
+		t.Fatalf("ProjectDir() = %q, want %q", got, want)
 	}
 }
 

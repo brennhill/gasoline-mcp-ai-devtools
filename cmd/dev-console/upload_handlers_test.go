@@ -207,7 +207,8 @@ func TestUploadHandler_FormSubmit_WithTestServer(t *testing.T) {
 // ============================================
 
 // newUploadHTTPServer creates a test HTTP server with the 4 upload routes registered.
-func newUploadHTTPServer(t *testing.T, uploadEnabled bool) (*httptest.Server, *Server) {
+// osAutomationEnabled controls Stage 4 gating; Stages 1-3 are always available.
+func newUploadHTTPServer(t *testing.T, osAutomationEnabled bool) (*httptest.Server, *Server) {
 	t.Helper()
 	// Allow private IPs in tests (httptest.NewServer uses 127.0.0.1)
 	skipSSRFCheck = true
@@ -224,16 +225,16 @@ func newUploadHTTPServer(t *testing.T, uploadEnabled bool) (*httptest.Server, *S
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/file/read", func(w http.ResponseWriter, r *http.Request) {
-		server.handleFileRead(w, r, uploadEnabled)
+		server.handleFileRead(w, r)
 	})
 	mux.HandleFunc("/api/file/dialog/inject", func(w http.ResponseWriter, r *http.Request) {
-		server.handleFileDialogInject(w, r, uploadEnabled)
+		server.handleFileDialogInject(w, r)
 	})
 	mux.HandleFunc("/api/form/submit", func(w http.ResponseWriter, r *http.Request) {
-		server.handleFormSubmit(w, r, uploadEnabled)
+		server.handleFormSubmit(w, r)
 	})
 	mux.HandleFunc("/api/os-automation/inject", func(w http.ResponseWriter, r *http.Request) {
-		server.handleOSAutomation(w, r, uploadEnabled)
+		server.handleOSAutomation(w, r, osAutomationEnabled)
 	})
 
 	return httptest.NewServer(mux), server
@@ -253,24 +254,6 @@ func TestUploadHandler_HTTP_FileRead_MethodNotAllowed(t *testing.T) {
 
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("GET /api/file/read should be 405, got %d", resp.StatusCode)
-	}
-}
-
-func TestUploadHandler_HTTP_FileRead_Disabled(t *testing.T) {
-	ts, _ := newUploadHTTPServer(t, false)
-	defer ts.Close()
-
-	resp := postJSON(t, ts.URL+"/api/file/read", `{"file_path":"/tmp/test.txt"}`)
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusForbidden {
-		t.Errorf("POST /api/file/read when disabled should be 403, got %d", resp.StatusCode)
-	}
-
-	var body FileReadResponse
-	_ = json.NewDecoder(resp.Body).Decode(&body)
-	if !strings.Contains(strings.ToLower(body.Error), "disabled") {
-		t.Errorf("error should mention disabled, got: %s", body.Error)
 	}
 }
 
@@ -332,19 +315,6 @@ func TestUploadHandler_HTTP_FileRead_InvalidJSON(t *testing.T) {
 
 // --- /api/file/dialog/inject ---
 
-func TestUploadHandler_HTTP_DialogInject_Disabled(t *testing.T) {
-	ts, _ := newUploadHTTPServer(t, false)
-	defer ts.Close()
-
-	resp := postJSON(t, ts.URL+"/api/file/dialog/inject",
-		`{"file_path":"/tmp/test.mp4","browser_pid":1234}`)
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusForbidden {
-		t.Errorf("dialog inject when disabled should be 403, got %d", resp.StatusCode)
-	}
-}
-
 func TestUploadHandler_HTTP_DialogInject_Success(t *testing.T) {
 	ts, _ := newUploadHTTPServer(t, true)
 	defer ts.Close()
@@ -360,19 +330,6 @@ func TestUploadHandler_HTTP_DialogInject_Success(t *testing.T) {
 }
 
 // --- /api/form/submit ---
-
-func TestUploadHandler_HTTP_FormSubmit_Disabled(t *testing.T) {
-	ts, _ := newUploadHTTPServer(t, false)
-	defer ts.Close()
-
-	resp := postJSON(t, ts.URL+"/api/form/submit",
-		`{"form_action":"http://example.com","file_input_name":"f","file_path":"/tmp/x"}`)
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusForbidden {
-		t.Errorf("form submit when disabled should be 403, got %d", resp.StatusCode)
-	}
-}
 
 func TestUploadHandler_HTTP_FormSubmit_MissingRequired(t *testing.T) {
 	ts, _ := newUploadHTTPServer(t, true)
@@ -400,6 +357,12 @@ func TestUploadHandler_HTTP_OSAutomation_Disabled(t *testing.T) {
 
 	if resp.StatusCode != http.StatusForbidden {
 		t.Errorf("OS automation when disabled should be 403, got %d", resp.StatusCode)
+	}
+
+	var body UploadStageResponse
+	_ = json.NewDecoder(resp.Body).Decode(&body)
+	if !strings.Contains(body.Error, "enable-os-upload-automation") {
+		t.Errorf("error should mention --enable-os-upload-automation, got: %s", body.Error)
 	}
 }
 

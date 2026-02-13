@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/types"
 )
@@ -486,4 +487,249 @@ func TestParseQueryString(t *testing.T) {
 			t.Errorf("expected 0 entries for invalid URL, got %d", len(result))
 		}
 	})
+}
+
+// ============================================
+// TestExportHARMerged - Merged waterfall tests
+// ============================================
+
+func TestExportHARMerged_WaterfallOnly(t *testing.T) {
+	t.Parallel()
+	now := time.Now()
+	waterfall := []types.NetworkWaterfallEntry{
+		{
+			URL:             "https://example.com/style.css",
+			InitiatorType:   "link",
+			Duration:        50.5,
+			StartTime:       100.0,
+			FetchStart:      105.0,
+			ResponseEnd:     150.5,
+			TransferSize:    1024,
+			DecodedBodySize: 2048,
+			EncodedBodySize: 1024,
+			Timestamp:       now,
+		},
+		{
+			URL:             "https://example.com/app.js",
+			InitiatorType:   "script",
+			Duration:        80.0,
+			StartTime:       200.0,
+			FetchStart:      205.0,
+			ResponseEnd:     280.0,
+			TransferSize:    4096,
+			DecodedBodySize: 8192,
+			EncodedBodySize: 4096,
+			Timestamp:       now.Add(time.Second),
+		},
+	}
+
+	harLog := ExportHARMerged(nil, waterfall, types.NetworkBodyFilter{}, "test")
+
+	if len(harLog.Log.Entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(harLog.Log.Entries))
+	}
+
+	entry := harLog.Log.Entries[0]
+	if entry.Request.Method != "GET" {
+		t.Errorf("expected method GET, got %s", entry.Request.Method)
+	}
+	if entry.Request.URL != "https://example.com/style.css" {
+		t.Errorf("expected URL style.css, got %s", entry.Request.URL)
+	}
+	if entry.Response.Status != 0 {
+		t.Errorf("expected status 0, got %d", entry.Response.Status)
+	}
+	if entry.Response.Content.Size != 2048 {
+		t.Errorf("expected content size 2048, got %d", entry.Response.Content.Size)
+	}
+	if entry.Response.BodySize != 1024 {
+		t.Errorf("expected bodySize 1024, got %d", entry.Response.BodySize)
+	}
+	if entry.Time != 50 {
+		t.Errorf("expected time 50, got %d", entry.Time)
+	}
+	if entry.Comment != "From resource timing (no body captured)" {
+		t.Errorf("expected resource timing comment, got %q", entry.Comment)
+	}
+}
+
+func TestExportHARMerged_BodyAndWaterfall(t *testing.T) {
+	t.Parallel()
+	bodies := []types.NetworkBody{
+		{
+			Timestamp:    "2026-01-23T10:30:00.000Z",
+			Method:       "GET",
+			URL:          "https://api.example.com/data",
+			Status:       200,
+			Duration:     142,
+			ResponseBody: `{"ok":true}`,
+			ContentType:  "application/json",
+		},
+	}
+	waterfall := []types.NetworkWaterfallEntry{
+		{
+			URL:             "https://api.example.com/data",
+			Duration:        142.0,
+			StartTime:       100.0,
+			FetchStart:      105.0,
+			ResponseEnd:     242.0,
+			DecodedBodySize: 11,
+			EncodedBodySize: 11,
+			Timestamp:       time.Now(),
+		},
+	}
+
+	harLog := ExportHARMerged(bodies, waterfall, types.NetworkBodyFilter{}, "test")
+
+	if len(harLog.Log.Entries) != 1 {
+		t.Fatalf("expected 1 entry (deduped), got %d", len(harLog.Log.Entries))
+	}
+
+	entry := harLog.Log.Entries[0]
+	// Should retain body data from NetworkBody
+	if entry.Response.Content.Text != `{"ok":true}` {
+		t.Errorf("expected response body preserved, got %q", entry.Response.Content.Text)
+	}
+	if entry.Response.Status != 200 {
+		t.Errorf("expected status 200, got %d", entry.Response.Status)
+	}
+	// Timings should be enriched from waterfall
+	if entry.Timings.Send == -1 && entry.Timings.Receive == -1 {
+		t.Error("expected timings to be enriched from waterfall, but send and receive are still -1")
+	}
+}
+
+func TestExportHARMerged_Dedup(t *testing.T) {
+	t.Parallel()
+	bodies := []types.NetworkBody{
+		{
+			Timestamp: "2026-01-23T10:30:00.000Z",
+			Method:    "GET",
+			URL:       "https://example.com/api",
+			Status:    200,
+			Duration:  100,
+		},
+	}
+	waterfall := []types.NetworkWaterfallEntry{
+		{
+			URL:       "https://example.com/api",
+			Duration:  100.0,
+			Timestamp: time.Now(),
+		},
+	}
+
+	harLog := ExportHARMerged(bodies, waterfall, types.NetworkBodyFilter{}, "test")
+
+	if len(harLog.Log.Entries) != 1 {
+		t.Fatalf("expected 1 entry (same URL deduped), got %d", len(harLog.Log.Entries))
+	}
+}
+
+func TestExportHARMerged_Sorted(t *testing.T) {
+	t.Parallel()
+	earlyTime, _ := time.Parse(time.RFC3339, "2026-01-23T10:30:00.000Z")
+	lateTime, _ := time.Parse(time.RFC3339, "2026-01-23T10:30:05.000Z")
+	bodies := []types.NetworkBody{
+		{
+			Timestamp: "2026-01-23T10:30:05.000Z",
+			Method:    "GET",
+			URL:       "https://example.com/late",
+			Status:    200,
+		},
+	}
+	waterfall := []types.NetworkWaterfallEntry{
+		{
+			URL:       "https://example.com/early",
+			Duration:  50.0,
+			Timestamp: earlyTime,
+		},
+		{
+			URL:       "https://example.com/middle",
+			Duration:  30.0,
+			Timestamp: lateTime.Add(-2 * time.Second),
+		},
+	}
+
+	harLog := ExportHARMerged(bodies, waterfall, types.NetworkBodyFilter{}, "test")
+
+	if len(harLog.Log.Entries) != 3 {
+		t.Fatalf("expected 3 entries, got %d", len(harLog.Log.Entries))
+	}
+
+	// Should be sorted chronologically: early, middle, late
+	if harLog.Log.Entries[0].Request.URL != "https://example.com/early" {
+		t.Errorf("expected first entry to be /early, got %s", harLog.Log.Entries[0].Request.URL)
+	}
+	if harLog.Log.Entries[1].Request.URL != "https://example.com/middle" {
+		t.Errorf("expected second entry to be /middle, got %s", harLog.Log.Entries[1].Request.URL)
+	}
+	if harLog.Log.Entries[2].Request.URL != "https://example.com/late" {
+		t.Errorf("expected third entry to be /late, got %s", harLog.Log.Entries[2].Request.URL)
+	}
+}
+
+func TestExportHARMerged_FilterAppliesToBoth(t *testing.T) {
+	t.Parallel()
+	bodies := []types.NetworkBody{
+		{Method: "GET", URL: "https://example.com/api/users", Status: 200},
+	}
+	waterfall := []types.NetworkWaterfallEntry{
+		{URL: "https://example.com/api/posts", Duration: 50, Timestamp: time.Now()},
+		{URL: "https://cdn.example.com/logo.png", Duration: 30, Timestamp: time.Now()},
+	}
+
+	harLog := ExportHARMerged(bodies, waterfall, types.NetworkBodyFilter{URLFilter: "api"}, "test")
+
+	if len(harLog.Log.Entries) != 2 {
+		t.Fatalf("expected 2 entries (filtered to 'api'), got %d", len(harLog.Log.Entries))
+	}
+	for _, entry := range harLog.Log.Entries {
+		if !strings.Contains(entry.Request.URL, "api") {
+			t.Errorf("entry %s should not pass 'api' URL filter", entry.Request.URL)
+		}
+	}
+}
+
+func TestBuildHARResponse_WithHeaders(t *testing.T) {
+	t.Parallel()
+	body := types.NetworkBody{
+		Method:      "GET",
+		URL:         "https://example.com/api",
+		Status:      200,
+		ContentType: "application/json",
+		ResponseHeaders: map[string]string{
+			"Content-Type":  "application/json",
+			"Cache-Control": "max-age=3600",
+			"X-Request-Id":  "abc-123",
+		},
+	}
+
+	resp := buildHARResponse(body)
+
+	if len(resp.Headers) != 3 {
+		t.Fatalf("expected 3 response headers, got %d", len(resp.Headers))
+	}
+
+	headerMap := make(map[string]string)
+	for _, h := range resp.Headers {
+		headerMap[h.Name] = h.Value
+	}
+	if headerMap["Content-Type"] != "application/json" {
+		t.Errorf("expected Content-Type header, got %v", headerMap)
+	}
+	if headerMap["Cache-Control"] != "max-age=3600" {
+		t.Errorf("expected Cache-Control header, got %v", headerMap)
+	}
+}
+
+func TestExportHARMerged_EmptyBoth(t *testing.T) {
+	t.Parallel()
+	harLog := ExportHARMerged(nil, nil, types.NetworkBodyFilter{}, "test")
+
+	if len(harLog.Log.Entries) != 0 {
+		t.Errorf("expected 0 entries, got %d", len(harLog.Log.Entries))
+	}
+	if harLog.Log.Version != "1.2" {
+		t.Errorf("expected version 1.2, got %s", harLog.Log.Version)
+	}
 }

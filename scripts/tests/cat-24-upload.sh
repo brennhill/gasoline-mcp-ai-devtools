@@ -18,33 +18,32 @@ echo '{"key":"value"}' > "$TEMP_DIR/test-file.json"
 printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82' > "$TEMP_DIR/test-file.png"
 mkdir -p "$TEMP_DIR/test-dir"
 
-# ── 24.1 — Upload disabled without --enable-upload-automation ──
-begin_test "24.1" "Upload disabled without --enable-upload-automation flag" \
-    "interact(upload) without the feature flag should return isError with upload_disabled code" \
-    "Security: upload automation requires explicit opt-in."
+# ── 24.1 — Stage 4 OS automation disabled without --enable-os-upload-automation ──
+begin_test "24.1" "Stage 4 OS automation disabled without --enable-os-upload-automation flag" \
+    "HTTP POST /api/os-automation/inject without the flag should return 403" \
+    "Security: OS-level automation requires explicit opt-in."
 
-# Start daemon WITHOUT upload flag for this test
+# Start daemon WITHOUT os-upload-automation flag for this test
 start_daemon
 
 run_test_24_1() {
-    RESPONSE=$(call_tool "interact" '{"action":"upload","file_path":"/tmp/test.txt","selector":"#file"}')
-    if ! check_is_error "$RESPONSE"; then
-        fail "Expected isError:true when upload automation is disabled."
-        return
-    fi
-    local text
-    text=$(extract_content_text "$RESPONSE")
-    if check_matches "$text" "upload_disabled|Upload automation is disabled|enable-upload-automation"; then
-        pass "Upload correctly rejected with disabled message."
+    local status
+    status=$(curl -s --max-time 10 --connect-timeout 3 \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -o /dev/null -w "%{http_code}" \
+        -d '{"file_path":"/tmp/test.txt","browser_pid":1234}' \
+        "http://localhost:${PORT}/api/os-automation/inject" 2>/dev/null)
+    if [ "$status" = "403" ]; then
+        pass "Stage 4 OS automation correctly returns 403 without flag."
     else
-        fail "Expected upload_disabled error. Content: $(truncate "$text")"
+        fail "Expected HTTP 403 for OS automation without flag, got $status."
     fi
 }
 run_test_24_1
 
-# Kill daemon without flag, restart WITH --enable-upload-automation for remaining tests
-kill_server
-start_daemon_with_flags --enable-upload-automation
+# Upload stages 1-3 and MCP handler work without any flag — no restart needed
 
 # ── 24.2 — upload in interact schema enum ──────────────────
 begin_test "24.2" "upload in tools/list interact action enum" \

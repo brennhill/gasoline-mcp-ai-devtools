@@ -338,7 +338,7 @@ gasoline-cmd interact upload --selector "#File" --file video.mp4
 
 #### What happens:
 1. Check if `gasoline-mcp` is running on `$GASOLINE_PORT` (default 9223)
-2. If not running, auto-start: `gasoline-mcp --enable-upload-automation --trust-llm-context`
+2. If not running, auto-start: `gasoline-mcp --enable-os-upload-automation --trust-llm-context`
 3. Wait for server to be ready (5s timeout)
 4. Execute command
 5. Keep server running (don't shut down)
@@ -356,7 +356,7 @@ gasoline-cmd interact upload --selector "#File" --file video.mp4
 
 ```bash
 # Start server manually
-gasoline-mcp --enable-upload-automation --trust-llm-context &
+gasoline-mcp --enable-os-upload-automation --trust-llm-context &
 
 # Use it
 gasoline-cmd interact upload --selector "#File" --file video.mp4

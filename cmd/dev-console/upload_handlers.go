@@ -1,5 +1,5 @@
 // upload_handlers.go — HTTP handlers for file upload stages 1-4.
-// All endpoints require --enable-upload-automation flag.
+// Stage 4 requires --enable-os-upload-automation flag.
 package main
 
 import (
@@ -17,17 +17,9 @@ import (
 // ============================================
 
 // handleFileRead is the HTTP handler for POST /api/file/read
-func (s *Server) handleFileRead(w http.ResponseWriter, r *http.Request, uploadEnabled bool) {
+func (s *Server) handleFileRead(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
-	if !uploadEnabled {
-		jsonResponse(w, http.StatusForbidden, FileReadResponse{
-			Success: false,
-			Error:   "Upload automation is disabled. Start server with --enable-upload-automation flag.",
-		})
 		return
 	}
 
@@ -158,17 +150,9 @@ func (h *ToolHandler) handleFileReadInternal(req FileReadRequest) FileReadRespon
 // ============================================
 
 // handleFileDialogInject is the HTTP handler for POST /api/file/dialog/inject
-func (s *Server) handleFileDialogInject(w http.ResponseWriter, r *http.Request, uploadEnabled bool) {
+func (s *Server) handleFileDialogInject(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
-	if !uploadEnabled {
-		jsonResponse(w, http.StatusForbidden, UploadStageResponse{
-			Success: false,
-			Error:   "Upload automation is disabled. Start server with --enable-upload-automation flag.",
-		})
 		return
 	}
 
@@ -256,17 +240,9 @@ func (h *ToolHandler) handleDialogInjectInternal(req FileDialogInjectRequest) Up
 // ============================================
 
 // handleFormSubmit is the HTTP handler for POST /api/form/submit
-func (s *Server) handleFormSubmit(w http.ResponseWriter, r *http.Request, uploadEnabled bool) {
+func (s *Server) handleFormSubmit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
-	if !uploadEnabled {
-		jsonResponse(w, http.StatusForbidden, UploadStageResponse{
-			Success: false,
-			Error:   "Upload automation is disabled. Start server with --enable-upload-automation flag.",
-		})
 		return
 	}
 
@@ -293,16 +269,16 @@ func (s *Server) handleFormSubmit(w http.ResponseWriter, r *http.Request, upload
 // ============================================
 
 // handleOSAutomation is the HTTP handler for POST /api/os-automation/inject
-func (s *Server) handleOSAutomation(w http.ResponseWriter, r *http.Request, uploadEnabled bool) {
+func (s *Server) handleOSAutomation(w http.ResponseWriter, r *http.Request, osAutomationEnabled bool) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
 
-	if !uploadEnabled {
+	if !osAutomationEnabled {
 		jsonResponse(w, http.StatusForbidden, UploadStageResponse{
 			Success: false,
-			Error:   "Upload automation is disabled. Start server with --enable-upload-automation flag.",
+			Error:   "OS-level upload automation is disabled. Start server with --enable-os-upload-automation flag.",
 		})
 		return
 	}

@@ -28,24 +28,25 @@ However, Gasoline has a Go server running as a native process with full filesyst
 File upload automation requires **explicit server-side flags** to enable:
 
 ```bash
-gasoline-mcp --enable-upload-automation --upload-dir=/Users/brenn/Uploads
+gasoline-mcp --enable-os-upload-automation --upload-dir=/Users/brenn/Uploads
 ```
 
 ### Flags
 
 | Flag | Required | Description |
 |------|----------|-------------|
-| `--enable-upload-automation` | Yes | Enables all 4 escalation stages |
+| `--enable-os-upload-automation` | For Stage 4 | Enables OS-level automation (AppleScript/xdotool). Stages 1-3 are always available. |
 | `--upload-dir=<path>` | For Stages 2-4 | Single directory from which files may be uploaded. Recursive (subdirectories included). |
 | `--upload-deny-pattern=<glob>` | No | Additional sensitive path patterns to block (extends built-in denylist). Repeatable. |
 
 ### Behavior Matrix
 
-| Flags set | Stage 1 (file read) | Stages 2-4 (dialog/form/OS) |
-|-----------|---------------------|------------------------------|
-| Neither | 403 Forbidden | 403 Forbidden |
-| `--enable-upload-automation` only | Allowed (denylist enforced) | Error: `--upload-dir required`. Suggests restarting with `--upload-dir` and moving files there. |
-| Both flags | Allowed within `--upload-dir` + denylist | Allowed within `--upload-dir` + denylist |
+| Flags set | Stage 1 (file read) | Stages 2-3 (dialog/form) | Stage 4 (OS automation) |
+|-----------|---------------------|--------------------------|-------------------------|
+| Neither | Allowed (denylist enforced) | Allowed (denylist enforced) | 403 Forbidden |
+| `--upload-dir` only | Allowed within `--upload-dir` + denylist | Allowed within `--upload-dir` + denylist | 403 Forbidden |
+| `--enable-os-upload-automation` only | Allowed (denylist enforced) | Allowed (denylist enforced) | Error: `--upload-dir required` |
+| Both flags | Allowed within `--upload-dir` + denylist | Allowed within `--upload-dir` + denylist | Allowed within `--upload-dir` + denylist |
 
 ### Upload Directory Validation (at startup)
 
@@ -136,7 +137,7 @@ C:\Windows\System32\drivers\etc\*
 **User-extensible:** Additional patterns can be added via `--upload-deny-pattern`:
 
 ```bash
-gasoline-mcp --enable-upload-automation \
+gasoline-mcp --enable-os-upload-automation \
   --upload-dir=/Users/brenn/Uploads \
   --upload-deny-pattern="**/company-secrets/*" \
   --upload-deny-pattern="**/*.sqlite"
@@ -679,7 +680,7 @@ ERROR
 
 #### Startup flags:
 ```bash
-gasoline-mcp --enable-upload-automation --upload-dir=/path/to/uploads
+gasoline-mcp --enable-os-upload-automation --upload-dir=/path/to/uploads
 ```
 
 #### File size handling:
