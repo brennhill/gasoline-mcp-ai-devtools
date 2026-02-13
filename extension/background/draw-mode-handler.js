@@ -33,7 +33,8 @@ export async function handleDrawModeQuery(query, tabId, sendResult, sendAsyncRes
       const result = await chrome.tabs.sendMessage(tabId, {
         type: 'GASOLINE_DRAW_MODE_START',
         started_by: 'llm',
-        session_name: sessionName
+        session_name: sessionName,
+        correlation_id: query.correlation_id || query.id || ''
       })
       sendResult(syncClient, query.id, {
         status: result?.status || 'active',
@@ -166,8 +167,19 @@ export function installDrawModeCommandListener() {
             started_by: 'user'
           })
         } catch {
-          // Can't reach content script
+          // Can't reach content script — show toast so user knows why it failed
           debugLog('warn', 'Cannot reach content script for draw mode toggle')
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              type: 'GASOLINE_ACTION_TOAST',
+              text: 'Draw mode unavailable',
+              detail: 'Refresh the page and try again',
+              state: 'error',
+              duration_ms: 3000
+            })
+          } catch {
+            // Tab truly unreachable — nothing more we can do
+          }
         }
       }
     } catch (err) {
