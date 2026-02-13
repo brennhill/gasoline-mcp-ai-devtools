@@ -257,6 +257,7 @@ type parsedFlags struct {
 	bridgeMode, daemonMode, enableOsUploadAutomation          *bool
 	forceCleanup                                             *bool
 	uploadDenyPatterns                                       multiFlag
+	ssrfAllowedHosts                                         multiFlag
 }
 
 // registerFlags defines all CLI flags and returns the parsed values.
@@ -280,6 +281,7 @@ func registerFlags() *parsedFlags {
 	f.forceCleanup = flag.Bool("force", false, "Force kill all running gasoline daemons (used during install to ensure clean upgrade)")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 	flag.Var(&f.uploadDenyPatterns, "upload-deny-pattern", "Additional sensitive path patterns to block (repeatable)")
+	flag.Var(&f.ssrfAllowedHosts, "ssrf-allow-host", "Host:port to allow for form submit SSRF (repeatable, test use)")
 	flag.Parse()
 	return f
 }
@@ -323,6 +325,7 @@ func parseAndValidateFlags() *serverConfig {
 	f := registerFlags()
 
 	osUploadAutomationFlag = *f.enableOsUploadAutomation
+	ssrfAllowedHostsList = f.ssrfAllowedHosts
 	initUploadSecurity(*f.enableOsUploadAutomation, *f.uploadDir, f.uploadDenyPatterns)
 	validatePort(*f.port)
 	normalizeStateDir(f.stateDir)

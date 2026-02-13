@@ -58,6 +58,11 @@ func ssrfSafeDialContext(ctx context.Context, network, addr string, allowPrivate
 		return nil, fmt.Errorf("ssrf_blocked: invalid address %s", addr)
 	}
 
+	// Check --ssrf-allow-host flag (test use: allows localhost test servers)
+	if isSSRFAllowedHost(addr) || isSSRFAllowedHost(host) {
+		allowPrivate = true
+	}
+
 	// Test hook for httptest servers on loopback.
 	if allowPrivate {
 		var d net.Dialer

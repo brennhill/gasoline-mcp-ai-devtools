@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
-begin_category "24" "File Upload" "15"
+begin_category "24" "File Upload" "21"
 
 # ── Create temp test fixtures ──────────────────────────────
 echo "Hello upload test" > "$TEMP_DIR/test-file.txt"
@@ -374,5 +374,324 @@ run_test_24_15() {
     fi
 }
 run_test_24_15
+
+# ── 24.16 — Stage 1 base64 text roundtrip ──────────────────
+begin_test "24.16" "Stage 1 base64 text roundtrip" \
+    "POST /api/file/read with known text content, decode base64, verify match" \
+    "Proves file data flows end-to-end through Stage 1."
+run_test_24_16() {
+    local test_content="Gasoline upload roundtrip test $(date +%s)"
+    echo -n "$test_content" > "$TEMP_DIR/roundtrip.txt"
+
+    local body status
+    body=$(curl -s --max-time 10 --connect-timeout 3 \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -w "\n%{http_code}" \
+        -d '{"file_path":"'"$TEMP_DIR/roundtrip.txt"'"}' \
+        "http://localhost:${PORT}/api/file/read" 2>/dev/null)
+
+    status=$(echo "$body" | tail -1)
+    body=$(echo "$body" | sed '$d')
+
+    if [ "$status" != "200" ]; then
+        fail "Expected HTTP 200, got $status."
+        return
+    fi
+
+    local data_base64 decoded
+    data_base64=$(echo "$body" | jq -r '.data_base64' 2>/dev/null)
+    decoded=$(echo "$data_base64" | base64 -d 2>/dev/null)
+
+    if [ "$decoded" = "$test_content" ]; then
+        pass "Stage 1 base64 roundtrip: decoded content matches original."
+    else
+        fail "Decoded content mismatch. Expected: $(truncate "$test_content" 50), got: $(truncate "$decoded" 50)"
+    fi
+}
+run_test_24_16
+
+# ── 24.17 — Stage 1 base64 binary roundtrip ───────────────
+begin_test "24.17" "Stage 1 base64 binary roundtrip" \
+    "POST /api/file/read with PNG binary file, decode base64, verify MD5 match" \
+    "Proves binary data survives base64 encoding through Stage 1."
+run_test_24_17() {
+    local original_md5
+    original_md5=$(md5sum "$TEMP_DIR/test-file.png" 2>/dev/null | awk '{print $1}' || md5 -q "$TEMP_DIR/test-file.png" 2>/dev/null)
+
+    local body status
+    body=$(curl -s --max-time 10 --connect-timeout 3 \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -w "\n%{http_code}" \
+        -d '{"file_path":"'"$TEMP_DIR/test-file.png"'"}' \
+        "http://localhost:${PORT}/api/file/read" 2>/dev/null)
+
+    status=$(echo "$body" | tail -1)
+    body=$(echo "$body" | sed '$d')
+
+    if [ "$status" != "200" ]; then
+        fail "Expected HTTP 200, got $status."
+        return
+    fi
+
+    local data_base64 decoded_md5
+    data_base64=$(echo "$body" | jq -r '.data_base64' 2>/dev/null)
+    echo "$data_base64" | base64 -d > "$TEMP_DIR/decoded.png" 2>/dev/null
+    decoded_md5=$(md5sum "$TEMP_DIR/decoded.png" 2>/dev/null | awk '{print $1}' || md5 -q "$TEMP_DIR/decoded.png" 2>/dev/null)
+
+    if [ "$original_md5" = "$decoded_md5" ]; then
+        pass "Stage 1 binary roundtrip: MD5 $original_md5 matches."
+    else
+        fail "MD5 mismatch: original=$original_md5, decoded=$decoded_md5."
+    fi
+}
+run_test_24_17
+
+# ── 24.18 — Stage 1 file size accuracy ────────────────────
+begin_test "24.18" "Stage 1 file size accuracy" \
+    "Create exact 1024-byte file, POST /api/file/read, verify file_size == 1024" \
+    "Proves metadata extraction returns accurate file size."
+run_test_24_18() {
+    dd if=/dev/zero of="$TEMP_DIR/exact-1024.bin" bs=1024 count=1 2>/dev/null
+
+    local body status
+    body=$(curl -s --max-time 10 --connect-timeout 3 \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -w "\n%{http_code}" \
+        -d '{"file_path":"'"$TEMP_DIR/exact-1024.bin"'"}' \
+        "http://localhost:${PORT}/api/file/read" 2>/dev/null)
+
+    status=$(echo "$body" | tail -1)
+    body=$(echo "$body" | sed '$d')
+
+    if [ "$status" != "200" ]; then
+        fail "Expected HTTP 200, got $status."
+        return
+    fi
+
+    local file_size
+    file_size=$(echo "$body" | jq -r '.file_size' 2>/dev/null)
+
+    if [ "$file_size" = "1024" ]; then
+        pass "Stage 1 file size: exactly 1024 bytes reported."
+    else
+        fail "Expected file_size=1024, got $file_size."
+    fi
+}
+run_test_24_18
+
+# ── 24.19 — Stage 3 form submit — full Rumble-style upload ──
+begin_test "24.19" "Stage 3 form submit — full Rumble-style upload" \
+    "Start Python upload server, get cookie+CSRF, restart daemon with --ssrf-allow-host, POST /api/form/submit, verify end-to-end" \
+    "Proves file data flows through Stage 3 multipart streaming to a real server."
+run_test_24_19() {
+    # Find a free port for the upload server
+    local UPLOAD_PORT
+    UPLOAD_PORT=$((PORT + 100))
+
+    # Start Python upload server
+    python3 "$SCRIPT_DIR/../smoke-tests/upload-server.py" "$UPLOAD_PORT" &
+    local UPLOAD_SERVER_PID=$!
+    sleep 1
+
+    if ! curl -s "http://127.0.0.1:${UPLOAD_PORT}/health" >/dev/null 2>&1; then
+        kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+        fail "Upload test server failed to start on port $UPLOAD_PORT."
+        return
+    fi
+
+    # Get session cookie
+    local cookie_jar="$TEMP_DIR/cookies.txt"
+    curl -s -c "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/" >/dev/null 2>&1
+
+    # Get CSRF token from upload form
+    local session_cookie
+    session_cookie=$(grep "session" "$cookie_jar" 2>/dev/null | awk '{print $NF}')
+    local form_html csrf_token
+    form_html=$(curl -s -b "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/upload" 2>/dev/null)
+    csrf_token=$(echo "$form_html" | grep -oE 'value="[a-f0-9]{32}"' | head -1 | sed 's/value="//;s/"//')
+
+    if [ -z "$csrf_token" ]; then
+        kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+        fail "Failed to extract CSRF token from upload form."
+        return
+    fi
+
+    # Restart daemon with --ssrf-allow-host and --upload-dir
+    kill_server
+    sleep 0.3
+    start_daemon_with_flags "--ssrf-allow-host=localhost:${UPLOAD_PORT}" "--upload-dir=$TEMP_DIR"
+
+    # Create test file
+    local test_content="Gasoline E2E upload test $(date +%s)"
+    echo -n "$test_content" > "$TEMP_DIR/e2e-upload.txt"
+    local original_md5
+    original_md5=$(md5sum "$TEMP_DIR/e2e-upload.txt" 2>/dev/null | awk '{print $1}' || md5 -q "$TEMP_DIR/e2e-upload.txt" 2>/dev/null)
+
+    # POST /api/form/submit
+    local cookie_header="session=${session_cookie}"
+    local submit_body submit_status
+    submit_body=$(curl -s --max-time 30 --connect-timeout 5 \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -w "\n%{http_code}" \
+        -d '{
+            "form_action": "http://localhost:'"${UPLOAD_PORT}"'/upload",
+            "method": "POST",
+            "file_path": "'"$TEMP_DIR/e2e-upload.txt"'",
+            "file_input_name": "Filedata",
+            "csrf_token": "'"$csrf_token"'",
+            "cookies": "'"$cookie_header"'",
+            "fields": {"title": "E2E Test Upload", "tags": "gasoline,test"}
+        }' \
+        "http://localhost:${PORT}/api/form/submit" 2>/dev/null)
+
+    submit_status=$(echo "$submit_body" | tail -1)
+    submit_body=$(echo "$submit_body" | sed '$d')
+
+    local success
+    success=$(echo "$submit_body" | jq -r '.success' 2>/dev/null)
+
+    if [ "$success" != "true" ]; then
+        local error_msg
+        error_msg=$(echo "$submit_body" | jq -r '.error // empty' 2>/dev/null)
+        kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+        fail "Form submit failed. HTTP=$submit_status, success=$success, error=$error_msg"
+        return
+    fi
+
+    # Verify via /api/last-upload
+    local verify_body
+    verify_body=$(curl -s "http://127.0.0.1:${UPLOAD_PORT}/api/last-upload" 2>/dev/null)
+    local verify_md5 verify_csrf verify_cookie
+    verify_md5=$(echo "$verify_body" | jq -r '.md5' 2>/dev/null)
+    verify_csrf=$(echo "$verify_body" | jq -r '.csrf_ok' 2>/dev/null)
+    verify_cookie=$(echo "$verify_body" | jq -r '.cookie_ok' 2>/dev/null)
+
+    kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+
+    if [ "$verify_md5" = "$original_md5" ] && [ "$verify_csrf" = "true" ] && [ "$verify_cookie" = "true" ]; then
+        pass "Stage 3 E2E: MD5 match ($verify_md5), CSRF ok, cookie ok."
+    else
+        fail "Stage 3 E2E verification: md5=$verify_md5 (expected $original_md5), csrf=$verify_csrf, cookie=$verify_cookie."
+    fi
+}
+run_test_24_19
+
+# ── 24.20 — Stage 3 missing cookie returns 401 ────────────
+begin_test "24.20" "Stage 3 — missing cookie returns 401 error" \
+    "POST /api/form/submit without cookie to upload server, verify 401 propagated" \
+    "Proves auth failure from platform is reported correctly."
+run_test_24_20() {
+    # Start upload server
+    local UPLOAD_PORT
+    UPLOAD_PORT=$((PORT + 101))
+    python3 "$SCRIPT_DIR/../smoke-tests/upload-server.py" "$UPLOAD_PORT" &
+    local UPLOAD_SERVER_PID=$!
+    sleep 1
+
+    if ! curl -s "http://127.0.0.1:${UPLOAD_PORT}/health" >/dev/null 2>&1; then
+        kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+        fail "Upload test server failed to start."
+        return
+    fi
+
+    # Restart daemon with allowed host
+    kill_server
+    sleep 0.3
+    start_daemon_with_flags "--ssrf-allow-host=localhost:${UPLOAD_PORT}" "--upload-dir=$TEMP_DIR"
+
+    echo -n "test" > "$TEMP_DIR/no-cookie.txt"
+
+    local submit_body
+    submit_body=$(curl -s --max-time 30 --connect-timeout 5 \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -d '{
+            "form_action": "http://localhost:'"${UPLOAD_PORT}"'/upload",
+            "file_path": "'"$TEMP_DIR/no-cookie.txt"'",
+            "file_input_name": "Filedata",
+            "fields": {"title": "test"}
+        }' \
+        "http://localhost:${PORT}/api/form/submit" 2>/dev/null)
+
+    kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+
+    local error_msg
+    error_msg=$(echo "$submit_body" | jq -r '.error // empty' 2>/dev/null)
+
+    if echo "$error_msg" | grep -qiE "401|not logged in"; then
+        pass "Missing cookie: correctly reports 401/not logged in."
+    else
+        fail "Expected 401/not-logged-in error. Got: $(truncate "$error_msg" 200)"
+    fi
+}
+run_test_24_20
+
+# ── 24.21 — Stage 3 wrong CSRF returns 403 ────────────────
+begin_test "24.21" "Stage 3 — wrong CSRF returns 403 error" \
+    "POST /api/form/submit with valid cookie but wrong CSRF, verify 403 propagated" \
+    "Proves CSRF failure from platform is reported correctly."
+run_test_24_21() {
+    # Start upload server
+    local UPLOAD_PORT
+    UPLOAD_PORT=$((PORT + 102))
+    python3 "$SCRIPT_DIR/../smoke-tests/upload-server.py" "$UPLOAD_PORT" &
+    local UPLOAD_SERVER_PID=$!
+    sleep 1
+
+    if ! curl -s "http://127.0.0.1:${UPLOAD_PORT}/health" >/dev/null 2>&1; then
+        kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+        fail "Upload test server failed to start."
+        return
+    fi
+
+    # Get session cookie
+    local cookie_jar="$TEMP_DIR/cookies-csrf.txt"
+    curl -s -c "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/" >/dev/null 2>&1
+    local session_cookie
+    session_cookie=$(grep "session" "$cookie_jar" 2>/dev/null | awk '{print $NF}')
+
+    # Restart daemon with allowed host
+    kill_server
+    sleep 0.3
+    start_daemon_with_flags "--ssrf-allow-host=localhost:${UPLOAD_PORT}" "--upload-dir=$TEMP_DIR"
+
+    echo -n "test" > "$TEMP_DIR/bad-csrf.txt"
+
+    local submit_body
+    submit_body=$(curl -s --max-time 30 --connect-timeout 5 \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Gasoline-Client: gasoline-extension/${VERSION}" \
+        -d '{
+            "form_action": "http://localhost:'"${UPLOAD_PORT}"'/upload",
+            "file_path": "'"$TEMP_DIR/bad-csrf.txt"'",
+            "file_input_name": "Filedata",
+            "csrf_token": "wrong-csrf-token",
+            "cookies": "session='"${session_cookie}"'",
+            "fields": {"title": "test"}
+        }' \
+        "http://localhost:${PORT}/api/form/submit" 2>/dev/null)
+
+    kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+
+    local error_msg
+    error_msg=$(echo "$submit_body" | jq -r '.error // empty' 2>/dev/null)
+
+    if echo "$error_msg" | grep -qiE "403|CSRF|forbidden"; then
+        pass "Wrong CSRF: correctly reports 403/CSRF error."
+    else
+        fail "Expected 403/CSRF error. Got: $(truncate "$error_msg" 200)"
+    fi
+}
+run_test_24_21
 
 finish_category

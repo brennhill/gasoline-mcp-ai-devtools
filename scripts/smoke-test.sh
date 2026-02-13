@@ -34,11 +34,18 @@ done
 source "$SMOKE_DIR/framework-smoke.sh"
 init_smoke "$PORT"
 
+# ── Cleanup trap: kill orphaned servers on exit ───────────
+_smoke_cleanup() {
+    pkill -f "upload-server.py" 2>/dev/null || true
+    kill_server 2>/dev/null || true
+}
+trap _smoke_cleanup EXIT
+
 echo ""
 echo "============================================================"
 echo "  GASOLINE SMOKE TEST SUITE"
 echo "  Port: $PORT | $(date)"
-echo "  89 tests across 15 modules"
+echo "  94 tests across 15 modules"
 echo "============================================================"
 echo ""
 
@@ -109,6 +116,10 @@ for module in "${MODULES[@]}"; do
     # shellcheck source=/dev/null
     source "$module_path"
 done
+
+# ── Cleanup: kill any orphaned test servers ───────────────
+pkill -f "upload-server.py" 2>/dev/null || true
+kill_server 2>/dev/null || true
 
 # ── Summary ──────────────────────────────────────────────
 {
