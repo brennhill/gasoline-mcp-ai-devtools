@@ -45,6 +45,13 @@ run_test_1_1() {
 }
 run_test_1_1
 
+# ── Restart daemon with full flags for the rest of the suite ──
+# Cold start auto-spawn verified above; now restart with --enable-os-upload-automation
+# so all subsequent tests (including file upload) have full capabilities.
+kill_server
+sleep 0.5
+start_daemon_with_flags --enable-os-upload-automation
+
 # ── Test 1.2: Health + version ───────────────────────────
 begin_test "1.2" "Health endpoint and version" \
     "Verify /health returns status=ok and version matches VERSION file" \

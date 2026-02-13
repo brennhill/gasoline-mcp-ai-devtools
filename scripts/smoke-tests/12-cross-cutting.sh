@@ -27,28 +27,30 @@ run_test_12_1() {
     local page1_text
     page1_text=$(extract_content_text "$page1_response")
 
-    # Extract cursor from response
+    # Extract cursor from response (use buffer.read to handle Unicode safely)
     local cursor
     cursor=$(echo "$page1_text" | python3 -c "
 import sys, json
-try:
-    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
-    meta = data.get('metadata', data.get('_metadata', data.get('pagination', {})))
-    cursor = meta.get('after_cursor', meta.get('next_cursor', meta.get('cursor', '')))
-    if not cursor:
-        cursor = data.get('after_cursor', data.get('next_cursor', ''))
+t = sys.stdin.buffer.read().decode('utf-8', errors='replace')
+i = t.find('{')
+if i < 0:
+    sys.exit(0)
+data = json.loads(t[i:])
+meta = data.get('metadata', {})
+cursor = meta.get('cursor', meta.get('after_cursor', meta.get('next_cursor', '')))
+if cursor:
     print(cursor)
-except: pass
 " 2>/dev/null)
 
     echo "  [page 1]"
     echo "$page1_text" | python3 -c "
 import sys, json
-try:
-    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+t = sys.stdin.buffer.read().decode('utf-8', errors='replace')
+i = t.find('{')
+if i >= 0:
+    data = json.loads(t[i:])
     entries = data.get('entries', data.get('logs', []))
     print(f'    entries: {len(entries) if isinstance(entries, list) else \"?\"}')
-except: pass
 " 2>/dev/null || true
 
     if [ -z "$cursor" ]; then
@@ -66,11 +68,12 @@ except: pass
     echo "  [page 2]"
     echo "$page2_text" | python3 -c "
 import sys, json
-try:
-    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+t = sys.stdin.buffer.read().decode('utf-8', errors='replace')
+i = t.find('{')
+if i >= 0:
+    data = json.loads(t[i:])
     entries = data.get('entries', data.get('logs', []))
     print(f'    entries: {len(entries) if isinstance(entries, list) else \"?\"}')
-except: pass
 " 2>/dev/null || true
 
     # Verify pages are different (simple check: page2 text differs from page1)

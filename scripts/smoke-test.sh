@@ -55,10 +55,8 @@ if [ -n "$START_FROM" ]; then
     # Quick state init — replaces full bootstrap when resuming.
     # Assumes daemon is already running from the previous run.
     if ! wait_for_health 30; then
-        echo "  Daemon not healthy. Starting fresh..."
-        call_tool "observe" '{"what":"page"}' >/dev/null 2>&1 || true
-        sleep 2
-        wait_for_health 30 || true
+        echo "  Daemon not healthy. Starting fresh with --enable-os-upload-automation..."
+        start_daemon_with_flags --enable-os-upload-automation
     fi
 
     health_body=$(get_http_body "http://localhost:${PORT}/health" 2>/dev/null || echo "{}")

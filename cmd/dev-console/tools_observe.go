@@ -182,7 +182,7 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 			"line":      entry["line"],
 			"column":    entry["column"],
 			"stack":     entry["stack"],
-			"timestamp": entry["timestamp"],
+			"timestamp": entry["ts"],
 			"tab_id":    entry["tabId"],
 		})
 	}
@@ -301,7 +301,7 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 			"url":       e.Entry["url"],
 			"line":      e.Entry["line"],
 			"column":    e.Entry["column"],
-			"timestamp": e.Entry["timestamp"],
+			"timestamp": e.Entry["ts"],
 			"tab_id":    e.Entry["tabId"],
 		}
 	}
@@ -310,7 +310,7 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 	var newestTS time.Time
 	if len(paginated) > 0 {
 		last := paginated[len(paginated)-1]
-		if ts, ok := last.Entry["timestamp"].(string); ok {
+		if ts, ok := last.Entry["ts"].(string); ok {
 			newestTS, _ = time.Parse(time.RFC3339, ts)
 		}
 	}

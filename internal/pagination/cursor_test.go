@@ -235,14 +235,34 @@ func TestCursor_IsOlder(t *testing.T) {
 			want:           false,
 		},
 		{
-			name: "empty cursor timestamp returns true",
+			name: "sequence-only cursor, entry has higher sequence",
 			cursor: Cursor{
 				Timestamp: "",
-				Sequence:  0,
+				Sequence:  500,
 			},
 			entryTimestamp: "2026-01-30T10:15:23Z",
-			entrySequence:  1000,
-			want:           true,
+			entrySequence:  400,
+			want:           true, // 400 < 500
+		},
+		{
+			name: "sequence-only cursor, entry has lower sequence",
+			cursor: Cursor{
+				Timestamp: "",
+				Sequence:  500,
+			},
+			entryTimestamp: "2026-01-30T10:15:23Z",
+			entrySequence:  600,
+			want:           false, // 600 > 500
+		},
+		{
+			name: "sequence-only cursor, same sequence",
+			cursor: Cursor{
+				Timestamp: "",
+				Sequence:  500,
+			},
+			entryTimestamp: "2026-01-30T10:15:23Z",
+			entrySequence:  500,
+			want:           false, // equal, not strictly older
 		},
 	}
 
@@ -315,14 +335,34 @@ func TestCursor_IsNewer(t *testing.T) {
 			want:           false,
 		},
 		{
-			name: "empty cursor timestamp returns false",
+			name: "sequence-only cursor, entry has higher sequence",
 			cursor: Cursor{
 				Timestamp: "",
-				Sequence:  0,
+				Sequence:  500,
 			},
 			entryTimestamp: "2026-01-30T10:15:23Z",
-			entrySequence:  1000,
-			want:           false,
+			entrySequence:  600,
+			want:           true, // 600 > 500
+		},
+		{
+			name: "sequence-only cursor, entry has lower sequence",
+			cursor: Cursor{
+				Timestamp: "",
+				Sequence:  500,
+			},
+			entryTimestamp: "2026-01-30T10:15:23Z",
+			entrySequence:  400,
+			want:           false, // 400 < 500
+		},
+		{
+			name: "sequence-only cursor, same sequence",
+			cursor: Cursor{
+				Timestamp: "",
+				Sequence:  500,
+			},
+			entryTimestamp: "2026-01-30T10:15:23Z",
+			entrySequence:  500,
+			want:           false, // equal, not strictly newer
 		},
 	}
 
