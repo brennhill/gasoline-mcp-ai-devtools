@@ -241,6 +241,13 @@ function setupDrawModeButton() {
     const label = document.getElementById('draw-mode-label');
     if (!row || !label)
         return;
+    // Set platform-aware keyboard shortcut hint
+    const statusEl = document.getElementById('draw-mode-status');
+    if (statusEl) {
+        const isMac = navigator.platform?.toUpperCase().includes('MAC') ||
+            navigator.userAgentData?.platform === 'macOS';
+        statusEl.textContent = isMac ? '⌥⇧D' : 'Alt+Shift+D';
+    }
     row.addEventListener('click', () => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             const tab = tabs[0];
