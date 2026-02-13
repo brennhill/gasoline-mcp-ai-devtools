@@ -52,6 +52,7 @@
     {
       "resources": [
         "inject.bundled.js",
+        "content/draw-mode.js",
         "lib/axe.min.js",
         "icons/icon-glow.svg",
         "icons/icon-flicker-1-tiny.svg",

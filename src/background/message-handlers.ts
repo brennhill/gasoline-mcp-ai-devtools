@@ -498,7 +498,8 @@ async function handleDrawModeCompletedAsync(
       annotations: (message.annotations as unknown[]) || [],
       element_details: (message.elementDetails as Record<string, unknown>) || {},
       page_url: (message.page_url as string) || '',
-      tab_id: tabId
+      tab_id: tabId,
+      correlation_id: (message.correlation_id as string) || ''
     }
     if (message.session_name) {
       body.session_name = message.session_name
@@ -509,10 +510,13 @@ async function handleDrawModeCompletedAsync(
       body: JSON.stringify(body)
     })
     if (!response.ok) {
-      console.error('[Gasoline] Draw mode POST failed:', response.status)
+      const respBody = await response.text().catch(() => '')
+      deps.debugLog('error', `Draw mode POST failed: ${response.status} ${respBody}`)
+    } else {
+      deps.debugLog('draw', `Draw mode results delivered (${(message.annotations as unknown[])?.length || 0} annotations)`)
     }
   } catch (err) {
-    console.error('[Gasoline] Draw mode completion error:', (err as Error).message)
+    deps.debugLog('error', `Draw mode completion error: ${(err as Error).message}. Server may be unreachable.`)
   }
 }
 

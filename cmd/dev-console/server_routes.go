@@ -245,6 +245,39 @@ type drawModeRequest struct {
 	PageURL           string                     `json:"page_url"`
 	TabID             int                        `json:"tab_id"`
 	SessionName       string                     `json:"session_name"`
+	CorrelationID     string                     `json:"correlation_id"`
+}
+
+// persistDrawSession writes the full draw session (annotations + element details) to disk
+// as a JSON file alongside the screenshot. Files are retained until manually cleared.
+func persistDrawSession(body *drawModeRequest, screenshotPath string, annotations []Annotation) {
+	dir, err := screenshotsDir()
+	if err != nil {
+		return
+	}
+	ts := time.Now().UnixMilli()
+	filename := fmt.Sprintf("draw-session-%d-%d.json", body.TabID, ts)
+	path := filepath.Join(dir, filename)
+
+	session := map[string]any{
+		"annotations":     annotations,
+		"element_details": body.ElementDetails,
+		"page_url":        body.PageURL,
+		"tab_id":          body.TabID,
+		"screenshot":      screenshotPath,
+		"timestamp":       ts,
+		"correlation_id":  body.CorrelationID,
+	}
+	if body.SessionName != "" {
+		session["session_name"] = body.SessionName
+	}
+
+	data, err := json.MarshalIndent(session, "", "  ")
+	if err != nil {
+		return
+	}
+	// #nosec G306 -- path is validated to remain within screenshots dir
+	_ = os.WriteFile(path, data, 0o600)
 }
 
 // storeAnnotationSession creates and persists an annotation session, returning
@@ -265,7 +298,7 @@ func storeAnnotationSession(body *drawModeRequest, screenshotPath string, annota
 
 // handleDrawModeComplete receives annotation data and screenshot from the extension
 // when the user finishes a draw mode session.
-func (s *Server) handleDrawModeComplete(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleDrawModeComplete(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
@@ -296,6 +329,9 @@ func (s *Server) handleDrawModeComplete(w http.ResponseWriter, r *http.Request) 
 	storeAnnotationSession(&body, screenshotPath, parsedAnnotations)
 	storeElementDetails(body.ElementDetails)
 
+	// Persist full session to disk so the LLM can compare/contrast across restarts
+	persistDrawSession(&body, screenshotPath, parsedAnnotations)
+
 	result := map[string]any{
 		"status":           "stored",
 		"annotation_count": len(parsedAnnotations),
@@ -304,6 +340,13 @@ func (s *Server) handleDrawModeComplete(w http.ResponseWriter, r *http.Request) 
 	if len(parseWarnings) > 0 {
 		result["warnings"] = parseWarnings
 	}
+
+	// Complete the pending command so the LLM can retrieve results via correlation_id
+	if body.CorrelationID != "" && cap != nil {
+		resultJSON, _ := json.Marshal(result)
+		cap.CompleteCommand(body.CorrelationID, resultJSON, "")
+	}
+
 	jsonResponse(w, http.StatusOK, result)
 }
 
@@ -689,7 +732,7 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 	})))
 
 	mux.HandleFunc("/draw-mode/complete", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
-		server.handleDrawModeComplete(w, r)
+		server.handleDrawModeComplete(w, r, cap)
 	})))
 
 	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {

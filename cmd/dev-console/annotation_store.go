@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -37,12 +38,17 @@ type AnnotationDetail struct {
 	Selector       string            `json:"selector"`
 	Tag            string            `json:"tag"`
 	TextContent    string            `json:"text_content"`
+	OuterHTML      string            `json:"outer_html,omitempty"`
 	Classes        []string          `json:"classes"`
 	ID             string            `json:"id"`
 	ComputedStyles map[string]string `json:"computed_styles"`
 	ParentSelector string            `json:"parent_selector"`
 	BoundingRect   AnnotationRect    `json:"bounding_rect"`
 	A11yFlags      []string          `json:"a11y_flags,omitempty"`
+	ShadowDOM      json.RawMessage   `json:"shadow_dom,omitempty"`
+	AllElements    json.RawMessage   `json:"all_elements,omitempty"`
+	ElementCount   int               `json:"element_count,omitempty"`
+	IframeContent  json.RawMessage   `json:"iframe_content,omitempty"`
 }
 
 // AnnotationSession represents a completed draw mode session.
@@ -68,6 +74,7 @@ type annotationSessionEntry struct {
 
 const maxSessions = 100
 const maxNamedSessions = 50
+const maxDetails = 500
 
 // NamedAnnotationSession accumulates annotations across multiple pages.
 type NamedAnnotationSession struct {
@@ -228,12 +235,16 @@ func (s *AnnotationStore) GetLatestSession() *AnnotationSession {
 }
 
 // StoreDetail saves element detail with TTL expiration.
+// Evicts oldest entries if the detail map exceeds maxDetails.
 func (s *AnnotationStore) StoreDetail(correlationID string, detail AnnotationDetail) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.details[correlationID] = &annotationDetailEntry{
 		Detail:    detail,
 		ExpiresAt: time.Now().Add(s.detailTTL),
+	}
+	if len(s.details) > maxDetails {
+		s.evictOldestDetailLocked()
 	}
 }
 
@@ -393,6 +404,24 @@ func (s *AnnotationStore) waitForCondition(timeout time.Duration, checker func()
 			timer.Stop()
 			return nil, false
 		}
+	}
+}
+
+// evictOldestDetailLocked removes the detail entry closest to expiration.
+// Must be called with s.mu held.
+func (s *AnnotationStore) evictOldestDetailLocked() {
+	var oldestKey string
+	var oldestExpiry time.Time
+	first := true
+	for id, entry := range s.details {
+		if first || entry.ExpiresAt.Before(oldestExpiry) {
+			oldestExpiry = entry.ExpiresAt
+			oldestKey = id
+			first = false
+		}
+	}
+	if !first {
+		delete(s.details, oldestKey)
 	}
 }
 

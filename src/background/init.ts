@@ -293,6 +293,9 @@ async function initializeExtensionAsync(): Promise<void> {
       eventListeners.handleTrackedTabUrlChange(tabId, newUrl, (msg) => console.log(msg))
     })
 
+    // ============= STEP 9.6: Install draw mode keyboard shortcut listener =============
+    eventListeners.installDrawModeCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
+
     // ============= STEP 10: Initial connection check =============
     if (index.__aiWebPilotCacheInitialized) {
       index.checkConnectionAndUpdate()

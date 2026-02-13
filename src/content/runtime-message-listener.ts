@@ -406,6 +406,33 @@ export function initRuntimeMessageListener(): void {
   /** Delegated handlers — return boolean | undefined (some are async, returning true) */
   type DelegatedHandler = (msg: SyncMsg, sendResponse: (r?: unknown) => void) => boolean | undefined
   const delegatedHandlers: Record<string, DelegatedHandler> = {
+    GASOLINE_DRAW_MODE_START: (msg, sr) => {
+      const m = msg as { started_by?: string; session_name?: string; correlation_id?: string }
+      import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
+        .then((mod) => {
+          const result = mod.activateDrawMode(m.started_by || 'user', m.session_name || '', m.correlation_id || '')
+          sr(result)
+        })
+        .catch((e: Error) => sr({ error: 'draw_mode_load_failed', message: e.message }))
+      return true
+    },
+    GASOLINE_DRAW_MODE_STOP: (_msg, sr) => {
+      import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
+        .then((mod) => {
+          const result = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.()
+          sr(result || { status: 'stopped' })
+        })
+        .catch((e: Error) => sr({ error: 'draw_mode_load_failed', message: e.message }))
+      return true
+    },
+    GASOLINE_GET_ANNOTATIONS: (_msg, sr) => {
+      import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
+        .then((mod) => {
+          sr({ draw_mode_active: mod.isDrawModeActive?.() ?? false })
+        })
+        .catch(() => sr({ draw_mode_active: false }))
+      return true
+    },
     GASOLINE_HIGHLIGHT: (msg, sr) => {
       forwardHighlightMessage(msg as unknown as { params: { selector: string; duration_ms?: number } }).then((r) => sr(r)).catch((e: Error) => sr({ success: false, error: e.message }))
       return true

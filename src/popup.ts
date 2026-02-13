@@ -149,6 +149,9 @@ export async function initPopup(): Promise<void> {
   const clearBtn = document.getElementById('clear-btn')
   if (clearBtn) clearBtn.addEventListener('click', handleClearLogs)
 
+  // Initialize draw mode button
+  setupDrawModeButton()
+
   // Listen for status updates
   chrome.runtime.onMessage.addListener(
     (message: { type: string; status?: PopupConnectionStatus; enabled?: boolean }) => {
@@ -273,6 +276,53 @@ function showStartError(saveInfoEl: HTMLElement | null, errorText: string): void
     saveInfoEl.style.background = 'rgba(63, 185, 80, 0.1)'
     saveInfoEl.style.color = '#3fb950'
   }, 5000)
+}
+
+function showDrawModeError(label: HTMLElement, message: string): void {
+  label.textContent = message
+  label.style.color = '#f85149'
+  setTimeout(() => {
+    label.textContent = 'Draw'
+    label.style.color = ''
+  }, 3000)
+}
+
+function setupDrawModeButton(): void {
+  const row = document.getElementById('draw-mode-row')
+  const label = document.getElementById('draw-mode-label')
+  if (!row || !label) return
+
+  row.addEventListener('click', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tab = tabs[0]
+      if (!tab?.id) {
+        showDrawModeError(label, 'No active tab')
+        return
+      }
+      if (tab.url?.startsWith('chrome://') || tab.url?.startsWith('about:') || tab.url?.startsWith('chrome-extension://')) {
+        showDrawModeError(label, 'Cannot draw on internal pages')
+        return
+      }
+
+      label.textContent = 'Starting...'
+      chrome.tabs.sendMessage(
+        tab.id,
+        { type: 'GASOLINE_DRAW_MODE_START', started_by: 'user' },
+        (resp: { status?: string; error?: string; message?: string } | undefined) => {
+          if (chrome.runtime.lastError) {
+            showDrawModeError(label, 'Content script not loaded — try refreshing the page')
+            return
+          }
+          if (resp?.error) {
+            showDrawModeError(label, resp.message || 'Draw mode failed')
+            return
+          }
+          // Close popup so user can interact with the page
+          window.close()
+        }
+      )
+    })
+  })
 }
 
 function handleStopClick(els: RecordingElements, state: RecordingState): void {

@@ -1,9 +1,14 @@
 // tools_analyze_annotations.go — Analyze handlers for draw mode annotations.
-// Provides analyze({what: "annotations"}) and analyze({what: "annotation_detail"}).
+// Provides analyze({what: "annotations"}), analyze({what: "annotation_detail"}),
+// analyze({what: "draw_history"}), and analyze({what: "draw_session"}).
 package main
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -171,6 +176,115 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 	if len(detail.A11yFlags) > 0 {
 		result["a11y_flags"] = detail.A11yFlags
 	}
+	if detail.OuterHTML != "" {
+		result["outer_html"] = detail.OuterHTML
+	}
+	if len(detail.ShadowDOM) > 0 {
+		result["shadow_dom"] = detail.ShadowDOM
+	}
+	if len(detail.AllElements) > 0 {
+		result["all_elements"] = detail.AllElements
+		result["element_count"] = detail.ElementCount
+	}
+	if len(detail.IframeContent) > 0 {
+		result["iframe_content"] = detail.IframeContent
+	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotation detail", result)}
+}
+
+// toolListDrawHistory lists all persisted draw session files from disk.
+func (h *ToolHandler) toolListDrawHistory(req JSONRPCRequest, _ json.RawMessage) JSONRPCResponse {
+	dir, err := screenshotsDir()
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Cannot access screenshots directory: "+err.Error(), "Check file permissions")}
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Cannot read screenshots directory: "+err.Error(), "Check file permissions")}
+	}
+
+	type sessionSummary struct {
+		File      string `json:"file"`
+		Path      string `json:"path"`
+		SizeBytes int64  `json:"size_bytes"`
+		ModTime   int64  `json:"mod_time"`
+	}
+
+	sessions := make([]sessionSummary, 0)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), "draw-session-") || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		sessions = append(sessions, sessionSummary{
+			File:      entry.Name(),
+			Path:      filepath.Join(dir, entry.Name()),
+			SizeBytes: info.Size(),
+			ModTime:   info.ModTime().UnixMilli(),
+		})
+	}
+
+	// Sort newest first
+	sort.Slice(sessions, func(i, j int) bool {
+		return sessions[i].ModTime > sessions[j].ModTime
+	})
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Draw session history", map[string]any{
+		"sessions":   sessions,
+		"count":      len(sessions),
+		"storage_dir": dir,
+	})}
+}
+
+// toolGetDrawSession reads a specific draw session file from disk.
+func (h *ToolHandler) toolGetDrawSession(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		File string `json:"file"`
+	}
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &params); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
+
+	if params.File == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'file' is missing", "Provide the session filename from draw_history results", withParam("file"))}
+	}
+
+	// Validate filename to prevent path traversal
+	if strings.Contains(params.File, "/") || strings.Contains(params.File, "\\") || strings.Contains(params.File, "..") {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid filename: path traversal not allowed", "Use only the filename from draw_history results", withParam("file"))}
+	}
+
+	dir, err := screenshotsDir()
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Cannot access screenshots directory: "+err.Error(), "Check file permissions")}
+	}
+
+	path := filepath.Join(dir, params.File)
+	if !isWithinDir(path, dir) {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid filename: resolved path outside screenshots directory", "Use only the filename from draw_history results", withParam("file"))}
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- filename validated against path traversal above
+	if err != nil {
+		if os.IsNotExist(err) {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Draw session file not found: "+params.File, "Use analyze({what:'draw_history'}) to list available sessions")}
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Cannot read draw session file: "+err.Error(), "Check file permissions")}
+	}
+
+	var session map[string]any
+	if err := json.Unmarshal(data, &session); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Corrupted draw session file: "+err.Error(), "The file may be damaged. Try a different session.")}
+	}
+
+	session["_file"] = params.File
+	session["_path"] = path
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Draw session loaded", session)}
 }

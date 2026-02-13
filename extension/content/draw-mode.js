@@ -12,6 +12,7 @@
 let active = false
 let startedBy = 'user' // 'llm' | 'user'
 let sessionName = '' // Named session for multi-page review
+let sessionCorrelationId = '' // Correlation ID from MCP server for result retrieval
 let overlay = null
 let canvas = null
 let ctx = null
@@ -43,12 +44,13 @@ const ANNOTATION_STROKE_WIDTH = 2
  * @param {string} session - Optional named session for multi-page review
  * @returns {{ status: string, annotation_count?: number }}
  */
-export function activateDrawMode(source = 'user', session = '') {
+export function activateDrawMode(source = 'user', session = '', correlationId = '') {
   if (active) {
     return { status: 'already_active', annotation_count: annotations.length }
   }
   startedBy = source
   sessionName = session
+  sessionCorrelationId = correlationId
   active = true
   createOverlay()
   loadAnnotations()
@@ -73,6 +75,7 @@ export function deactivateDrawMode() {
   annotations = []
   elementDetails.clear()
   sessionName = ''
+  sessionCorrelationId = ''
   destroyOverlay()
   return result
 }
@@ -191,6 +194,33 @@ function createOverlay() {
   })
   badge.appendChild(hint)
   overlay.appendChild(badge)
+
+  // Center instruction toast — fades out after 2.5s
+  const instruction = document.createElement('div')
+  instruction.id = 'gasoline-draw-instruction'
+  Object.assign(instruction.style, {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    padding: '16px 28px',
+    background: 'rgba(0, 0, 0, 0.85)',
+    color: '#fff',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontSize: '16px',
+    fontWeight: '500',
+    borderRadius: '10px',
+    border: '1px solid rgba(239, 68, 68, 0.4)',
+    pointerEvents: 'none',
+    zIndex: String(OVERLAY_Z_INDEX + 1),
+    transition: 'opacity 0.5s ease-out',
+    textAlign: 'center',
+    lineHeight: '1.5'
+  })
+  instruction.innerHTML = 'Draw a box around what you want to change<br><span style="font-size:13px;color:#aaa">Then type your instruction. Press ESC when done.</span>'
+  overlay.appendChild(instruction)
+  setTimeout(() => { instruction.style.opacity = '0' }, 2500)
+  setTimeout(() => { instruction.remove() }, 3000)
 
   // Inject animation keyframes
   injectStyles()
@@ -410,7 +440,7 @@ function showTextInput(rect, elementData) {
 
   const input = document.createElement('input')
   input.type = 'text'
-  input.placeholder = 'Add annotation...'
+  input.placeholder = 'What should the AI change here?'
   input.dataset.rectJson = JSON.stringify(rect)
   input.dataset.elementJson = JSON.stringify(elementData)
 
@@ -530,7 +560,10 @@ function cancelTextInput() {
 /**
  * Capture DOM elements under the drawn rectangle.
  * Temporarily hides overlay to use document.elementsFromPoint().
+ * Captures all elements (capped at MAX_CAPTURED_ELEMENTS), shadow DOM, iframes, and HTML.
  */
+const MAX_CAPTURED_ELEMENTS = 15
+
 function captureElementsUnderRect(rect) {
   if (!overlay) return { summary: '', detail: {} }
 
@@ -539,13 +572,17 @@ function captureElementsUnderRect(rect) {
   overlay.style.visibility = 'hidden'
 
   try {
-    // Sample points: corners + center
+    // Sample points: corners + center + edge midpoints for better coverage
     const points = [
       { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }, // center
       { x: rect.x + 2, y: rect.y + 2 }, // top-left
       { x: rect.x + rect.width - 2, y: rect.y + 2 }, // top-right
       { x: rect.x + 2, y: rect.y + rect.height - 2 }, // bottom-left
-      { x: rect.x + rect.width - 2, y: rect.y + rect.height - 2 } // bottom-right
+      { x: rect.x + rect.width - 2, y: rect.y + rect.height - 2 }, // bottom-right
+      { x: rect.x + rect.width / 2, y: rect.y + 2 }, // top-center
+      { x: rect.x + rect.width / 2, y: rect.y + rect.height - 2 }, // bottom-center
+      { x: rect.x + 2, y: rect.y + rect.height / 2 }, // left-center
+      { x: rect.x + rect.width - 2, y: rect.y + rect.height / 2 } // right-center
     ]
 
     const seenElements = new Set()
@@ -559,21 +596,44 @@ function captureElementsUnderRect(rect) {
           if (el === document.body || el === document.documentElement) continue
           seenElements.add(el)
           elements.push(el)
+          if (elements.length >= MAX_CAPTURED_ELEMENTS) break
         }
       } catch {
         // elementsFromPoint may fail on some edge cases
       }
+      if (elements.length >= MAX_CAPTURED_ELEMENTS) break
     }
 
-    // Pick the most relevant element (first non-container element, or first)
+    // Also probe inside same-origin iframes
+    const iframeElements = captureIframeElements(rect, seenElements)
+
+    // Pick the most relevant element for the summary
     const target = pickBestElement(elements) || elements[0]
 
-    if (!target) {
+    if (!target && elements.length === 0 && iframeElements.length === 0) {
       return { summary: '', detail: {} }
     }
 
-    const summary = buildElementSummary(target)
-    const detail = buildElementDetail(target)
+    const summary = target ? buildElementSummary(target) : ''
+
+    // Build comprehensive detail: primary element + all elements + iframes
+    const primaryDetail = target ? buildElementDetail(target) : {}
+    const allElementDetails = elements.slice(0, MAX_CAPTURED_ELEMENTS).map(el => ({
+      tag: el.tagName.toLowerCase(),
+      selector: buildCSSSelector(el),
+      text: (el.textContent || '').trim().slice(0, 100),
+      classes: Array.from(el.classList).slice(0, 5)
+    }))
+
+    const detail = {
+      ...primaryDetail,
+      all_elements: allElementDetails,
+      element_count: elements.length
+    }
+
+    if (iframeElements.length > 0) {
+      detail.iframe_content = iframeElements
+    }
 
     return { summary, detail }
   } finally {
@@ -581,6 +641,77 @@ function captureElementsUnderRect(rect) {
     if (overlay) {
       overlay.style.pointerEvents = ''
       overlay.style.visibility = ''
+    }
+  }
+}
+
+/**
+ * Capture elements inside same-origin iframes that overlap the drawn rectangle.
+ * Cross-origin iframes are noted but their DOM is inaccessible.
+ */
+function captureIframeElements(rect, seenElements) {
+  const results = []
+  try {
+    const iframes = document.querySelectorAll('iframe')
+    for (const iframe of iframes) {
+      const iframeRect = iframe.getBoundingClientRect()
+      // Check if iframe overlaps with drawn rectangle
+      if (iframeRect.right < rect.x || iframeRect.left > rect.x + rect.width ||
+          iframeRect.bottom < rect.y || iframeRect.top > rect.y + rect.height) {
+        continue
+      }
+      try {
+        const iframeDoc = iframe.contentDocument
+        if (!iframeDoc) {
+          results.push({ src: iframe.src, access: 'cross_origin', note: 'Cannot access cross-origin iframe DOM' })
+          continue
+        }
+        // Adjust coordinates relative to iframe
+        const adjustedX = rect.x - iframeRect.left + (rect.width / 2)
+        const adjustedY = rect.y - iframeRect.top + (rect.height / 2)
+        const els = iframeDoc.elementsFromPoint(adjustedX, adjustedY)
+        const iframeEls = []
+        for (const el of els) {
+          if (seenElements.has(el)) continue
+          if (el === iframeDoc.body || el === iframeDoc.documentElement) continue
+          seenElements.add(el)
+          iframeEls.push({
+            tag: el.tagName.toLowerCase(),
+            selector: buildCSSSelector(el),
+            text: (el.textContent || '').trim().slice(0, 100),
+            outer_html: el.outerHTML.slice(0, 500)
+          })
+          if (iframeEls.length >= 5) break
+        }
+        if (iframeEls.length > 0) {
+          results.push({ src: iframe.src, access: 'same_origin', elements: iframeEls })
+        }
+      } catch {
+        results.push({ src: iframe.src, access: 'blocked', note: 'SecurityError accessing iframe' })
+      }
+    }
+  } catch {
+    // Ignore iframe enumeration errors
+  }
+  return results
+}
+
+/**
+ * Re-capture DOM element details for all existing annotations.
+ * Called right before screenshot to ensure DOM data matches the visual state.
+ */
+function refreshElementDetails() {
+  if (!overlay) return
+  for (const ann of annotations) {
+    if (!ann.rect || !ann.correlation_id) continue
+    try {
+      const freshData = captureElementsUnderRect(ann.rect)
+      if (freshData.detail && Object.keys(freshData.detail).length > 0) {
+        elementDetails.set(ann.correlation_id, freshData.detail)
+        ann.element_summary = freshData.summary || ann.element_summary
+      }
+    } catch {
+      // Keep existing data if re-capture fails
     }
   }
 }
@@ -621,17 +752,14 @@ function buildElementSummary(el) {
 function buildElementDetail(el) {
   const computed = window.getComputedStyle(el)
   const styleProps = [
-    'background-color',
-    'color',
-    'font-size',
-    'padding',
-    'border-radius',
-    'border',
-    'margin',
-    'display',
-    'width',
-    'height',
-    'opacity'
+    'background-color', 'color', 'font-size', 'font-weight', 'font-family',
+    'padding', 'margin', 'border', 'border-radius',
+    'display', 'position', 'z-index', 'width', 'height', 'opacity',
+    'flex-direction', 'flex-wrap', 'align-items', 'justify-content', 'gap',
+    'grid-template-columns', 'grid-template-rows',
+    'overflow', 'text-align', 'text-decoration', 'line-height', 'letter-spacing',
+    'box-shadow', 'transform', 'transition', 'cursor', 'visibility', 'white-space',
+    'max-width', 'min-width', 'max-height', 'min-height'
   ]
   const computedStyles = {}
   for (const prop of styleProps) {
@@ -662,10 +790,42 @@ function buildElementDetail(el) {
     // Ignore selector build errors
   }
 
-  return {
+  // Capture outer HTML (truncated for large elements)
+  let outerHtml = ''
+  try {
+    outerHtml = el.outerHTML.slice(0, 2000)
+  } catch {
+    // outerHTML may fail on some special elements
+  }
+
+  // Shadow DOM detection
+  let shadowInfo = null
+  try {
+    if (el.shadowRoot) {
+      // Open shadow DOM — capture inner HTML
+      shadowInfo = {
+        mode: 'open',
+        html: el.shadowRoot.innerHTML.slice(0, 2000),
+        child_count: el.shadowRoot.childElementCount
+      }
+    } else if (el.attachShadow) {
+      // Element supports shadow DOM but may have closed shadow root
+      // We can detect this heuristically: if the element has no children but renders content
+      const hasVisibleContent = el.getBoundingClientRect().height > 0
+      const hasLightDOMChildren = el.childElementCount > 0
+      if (hasVisibleContent && !hasLightDOMChildren && el.tagName.includes('-')) {
+        shadowInfo = { mode: 'closed', note: 'Element likely has closed shadow DOM (content not accessible)' }
+      }
+    }
+  } catch {
+    // Shadow DOM access may fail
+  }
+
+  const detail = {
     selector: buildCSSSelector(el),
     tag: el.tagName.toLowerCase(),
     text_content: (el.textContent || '').trim().slice(0, 200),
+    outer_html: outerHtml,
     classes: Array.from(el.classList).slice(0, 20),
     id: el.id || '',
     computed_styles: computedStyles,
@@ -678,6 +838,24 @@ function buildElementDetail(el) {
     },
     a11y_flags: runA11yChecks(el, computed)
   }
+
+  if (shadowInfo) {
+    detail.shadow_dom = shadowInfo
+  }
+
+  // CSS rule tracing — find source stylesheets and selectors
+  const matchedRules = traceMatchedCSSRules(el)
+  if (matchedRules.length > 0) {
+    detail.matched_css_rules = matchedRules
+  }
+
+  // Framework component detection
+  const componentInfo = detectComponentSource(el)
+  if (componentInfo) {
+    detail.component = componentInfo
+  }
+
+  return detail
 }
 
 /**
@@ -841,6 +1019,154 @@ function buildCSSSelector(el) {
   return tag
 }
 
+/**
+ * Trace CSS rules that match an element using document.styleSheets.
+ * Returns matched rules with selector, properties, and source stylesheet.
+ * Capped at MAX_MATCHED_RULES to avoid huge payloads.
+ */
+const MAX_MATCHED_RULES = 20
+const MAX_RULES_EXAMINED = 5000 // Safety cap to prevent excessive work on huge stylesheets
+
+function traceMatchedCSSRules(el) {
+  const rules = []
+  let totalExamined = 0
+  try {
+    for (const sheet of document.styleSheets) {
+      if (totalExamined >= MAX_RULES_EXAMINED) break
+      let cssRules
+      try {
+        cssRules = sheet.cssRules || sheet.rules
+      } catch {
+        // CORS blocks access to cross-origin stylesheets
+        rules.push({
+          stylesheet: sheet.href || '(inline)',
+          access: 'blocked',
+          note: 'Cross-origin stylesheet — rules not accessible'
+        })
+        continue
+      }
+      if (!cssRules) continue
+
+      const sheetHref = sheet.href || '(inline)'
+      for (let i = 0; i < cssRules.length; i++) {
+        if (rules.length >= MAX_MATCHED_RULES) break
+        if (++totalExamined > MAX_RULES_EXAMINED) break
+        const rule = cssRules[i]
+        if (rule.type !== CSSRule.STYLE_RULE) continue
+        try {
+          if (!el.matches(rule.selectorText)) continue
+        } catch {
+          continue // Invalid selector
+        }
+        // Extract only properties that differ from defaults (non-empty)
+        const properties = {}
+        for (let j = 0; j < rule.style.length; j++) {
+          const prop = rule.style[j]
+          properties[prop] = rule.style.getPropertyValue(prop)
+          const priority = rule.style.getPropertyPriority(prop)
+          if (priority) properties[prop] += ' !' + priority
+        }
+        rules.push({
+          selector: rule.selectorText,
+          properties,
+          stylesheet: sheetHref,
+          rule_index: i
+        })
+      }
+      if (rules.length >= MAX_MATCHED_RULES) break
+    }
+  } catch {
+    // Stylesheet enumeration may fail in rare cases
+  }
+  return rules
+}
+
+/**
+ * Detect framework component information for an element.
+ * Supports React, Vue, Angular, and common data attributes.
+ */
+function detectComponentSource(el) {
+  const info = {}
+
+  // React: __reactFiber$ or __reactInternalInstance$
+  try {
+    for (const key of Object.keys(el)) {
+      if (key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$')) {
+        const fiber = el[key]
+        if (fiber) {
+          info.framework = 'react'
+          // Walk up to find the named component
+          let node = fiber
+          for (let depth = 0; depth < 10 && node; depth++) {
+            if (typeof node.type === 'function' || typeof node.type === 'object') {
+              const name = node.type?.displayName || node.type?.name || node.type?.render?.name
+              if (name) {
+                info.component = name
+                // Try to get source file from _source (dev mode only)
+                if (node._debugSource) {
+                  info.source_file = node._debugSource.fileName
+                  info.source_line = node._debugSource.lineNumber
+                }
+                break
+              }
+            }
+            node = node.return
+          }
+        }
+        break
+      }
+    }
+  } catch {
+    // React internals may throw
+  }
+
+  // Vue 2: __vue__ / Vue 3: __vue_app__ or __vueParentComponent
+  if (!info.framework) {
+    try {
+      const vue = el.__vue__ || el.__vueParentComponent
+      if (vue) {
+        info.framework = 'vue'
+        info.component = vue.$options?.name || vue.type?.name || vue.type?.__name || ''
+        if (vue.$options?.__file) info.source_file = vue.$options.__file
+        if (vue.type?.__file) info.source_file = vue.type.__file
+      }
+    } catch {
+      // Vue internals may throw
+    }
+  }
+
+  // Angular: ng-* attributes
+  if (!info.framework) {
+    try {
+      for (const attr of el.attributes) {
+        if (attr.name.startsWith('_ngcontent') || attr.name.startsWith('_nghost')) {
+          info.framework = 'angular'
+          // Try to get component name from ng-reflect-* or constructor
+          const ngComponent = el.__ngContext__
+          if (ngComponent) {
+            info.component = el.constructor?.name || ''
+          }
+          break
+        }
+      }
+    } catch {
+      // Angular detection may fail
+    }
+  }
+
+  // Common data attributes
+  try {
+    const testId = el.getAttribute('data-testid') || el.getAttribute('data-test-id') || el.getAttribute('data-cy')
+    if (testId) info.test_id = testId
+    const component = el.getAttribute('data-component') || el.getAttribute('data-source')
+    if (component) info.data_component = component
+  } catch {
+    // Attribute access may fail
+  }
+
+  return Object.keys(info).length > 0 ? info : null
+}
+
 // ============================================================================
 // PERSISTENCE (chrome.storage.session)
 // ============================================================================
@@ -921,6 +1247,7 @@ export function deactivateAndSendResults() {
   isDeactivating = true
   const pageUrl = window.location.href
   const currentSessionName = sessionName // capture before deactivate clears it
+  const currentCorrelationId = sessionCorrelationId // capture before deactivate clears it
 
   /**
    * Complete the deactivation: tear down overlay, send results to background,
@@ -938,7 +1265,8 @@ export function deactivateAndSendResults() {
           annotations: result.annotations,
           elementDetails: result.elementDetails,
           page_url: pageUrl,
-          screenshot_data_url: screenshotDataUrl
+          screenshot_data_url: screenshotDataUrl,
+          correlation_id: currentCorrelationId
         }
         if (currentSessionName) {
           msg.session_name = currentSessionName
@@ -949,6 +1277,10 @@ export function deactivateAndSendResults() {
       // Extension context may be invalidated
     }
   }
+
+  // Re-capture DOM data for all annotations so element details match the screenshot moment.
+  // Annotations may have been drawn minutes ago; the DOM may have changed since then.
+  refreshElementDetails()
 
   // Request screenshot capture from background BEFORE deactivating,
   // so the overlay with annotation drawings is included in the screenshot.

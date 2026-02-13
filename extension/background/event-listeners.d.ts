@@ -62,6 +62,11 @@ export declare function installStorageChangeListener(handlers: {
  */
 export declare function installStartupListener(logFn?: (message: string) => void): void;
 /**
+ * Install keyboard shortcut listener for draw mode toggle (Ctrl+Shift+D / Cmd+Shift+D).
+ * Sends GASOLINE_DRAW_MODE_START or GASOLINE_DRAW_MODE_STOP to the active tab's content script.
+ */
+export declare function installDrawModeCommandListener(logFn?: (message: string) => void): void;
+/**
  * Ping content script to check if it's loaded
  */
 export declare function pingContentScript(tabId: number, timeoutMs?: number): Promise<boolean>;

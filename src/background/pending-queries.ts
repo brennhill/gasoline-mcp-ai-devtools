@@ -479,6 +479,51 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
       }
       return
     }
+
+    if (query.type === 'draw_mode') {
+      if (!index.__aiWebPilotEnabledCache) {
+        sendResult(syncClient, query.id, {
+          error: 'ai_web_pilot_disabled',
+          message: 'AI Web Pilot is not enabled in the extension popup'
+        })
+        return
+      }
+      let params: { action?: string; session?: string }
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        params = {}
+      }
+      if (params.action === 'start') {
+        try {
+          const result = await chrome.tabs.sendMessage(tabId, {
+            type: 'GASOLINE_DRAW_MODE_START',
+            started_by: 'llm',
+            session_name: params.session || '',
+            correlation_id: query.correlation_id || query.id || ''
+          })
+          sendResult(syncClient, query.id, {
+            status: result?.status || 'active',
+            message:
+              'Draw mode activated. User can now draw annotations on the page. Results will be delivered when user finishes (presses ESC).',
+            annotation_count: result?.annotation_count || 0
+          })
+        } catch (err) {
+          sendResult(syncClient, query.id, {
+            error: 'draw_mode_failed',
+            message:
+              (err as Error).message ||
+              'Failed to activate draw mode. Ensure content script is loaded (try refreshing the page).'
+          })
+        }
+      } else {
+        sendResult(syncClient, query.id, {
+          error: 'unknown_draw_mode_action',
+          message: `Unknown draw mode action: ${params.action}. Use 'start'.`
+        })
+      }
+      return
+    }
   } catch (err) {
     debugLog(DebugCategory.CONNECTION, 'Error handling pending query', {
       type: query.type,

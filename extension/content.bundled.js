@@ -851,6 +851,36 @@
       }
     };
     const delegatedHandlers = {
+      GASOLINE_DRAW_MODE_START: (msg, sr) => {
+        const m = msg;
+        import(
+          /* webpackIgnore: true */
+          chrome.runtime.getURL("content/draw-mode.js")
+        ).then((mod) => {
+          const result = mod.activateDrawMode(m.started_by || "user", m.session_name || "", m.correlation_id || "");
+          sr(result);
+        }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
+        return true;
+      },
+      GASOLINE_DRAW_MODE_STOP: (_msg, sr) => {
+        import(
+          /* webpackIgnore: true */
+          chrome.runtime.getURL("content/draw-mode.js")
+        ).then((mod) => {
+          const result = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.();
+          sr(result || { status: "stopped" });
+        }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
+        return true;
+      },
+      GASOLINE_GET_ANNOTATIONS: (_msg, sr) => {
+        import(
+          /* webpackIgnore: true */
+          chrome.runtime.getURL("content/draw-mode.js")
+        ).then((mod) => {
+          sr({ draw_mode_active: mod.isDrawModeActive?.() ?? false });
+        }).catch(() => sr({ draw_mode_active: false }));
+        return true;
+      },
       GASOLINE_HIGHLIGHT: (msg, sr) => {
         forwardHighlightMessage(msg).then((r) => sr(r)).catch((e) => sr({ success: false, error: e.message }));
         return true;

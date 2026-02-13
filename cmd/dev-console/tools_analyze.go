@@ -76,6 +76,12 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 	"annotation_detail": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolGetAnnotationDetail(req, args)
 	},
+	"draw_history": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolListDrawHistory(req, args)
+	},
+	"draw_session": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetDrawSession(req, args)
+	},
 }
 
 // getValidAnalyzeModes returns a sorted, comma-separated list of valid analyze modes.
