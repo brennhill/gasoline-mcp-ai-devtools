@@ -627,9 +627,9 @@
     Object.assign(toast.style, {
       position: "fixed",
       top: "16px",
-      right: "16px",
-      left: "auto",
-      transform: "none",
+      right: isAudioPrompt ? "80px" : "auto",
+      left: isAudioPrompt ? "auto" : "50%",
+      transform: isAudioPrompt ? "none" : "translateX(-50%)",
       padding: isAudioPrompt ? "12px 24px" : "8px 20px",
       background: theme.bg,
       color: "#fff",
