@@ -3,7 +3,7 @@
   "info": {
     "title": "Gasoline MCP Server",
     "description": "Browser observability for AI agents. Streams console logs, network errors, and user actions from Chrome to Claude Code, Cursor, and Copilot via MCP protocol.",
-    "version": "6.1.5",
+    "version": "6.1.7",
     "license": {
       "name": "MIT"
     }
@@ -58,7 +58,7 @@
                   "type": "object",
                   "properties": {
                     "name": { "type": "string", "example": "gasoline" },
-                    "version": { "type": "string", "example": "6.1.5" },
+                    "version": { "type": "string", "example": "6.1.7" },
                     "health": { "type": "string", "example": "/health" },
                     "logs": { "type": "string", "example": "/logs" }
                   }
@@ -1152,6 +1152,33 @@
         "responses": {
           "200": {
             "description": "Automation result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UploadStageResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/os-automation/dismiss": {
+      "post": {
+        "tags": ["Automation"],
+        "summary": "Dismiss dangling native file dialog",
+        "description": "Sends Escape key to close a dangling native file dialog after a failed upload automation (Stage 4 cleanup). Requires --enable-os-upload-automation flag.",
+        "operationId": "postOSAutomationDismiss",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "Dialog dismissed successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UploadStageResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "OS automation is disabled",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/UploadStageResponse" }

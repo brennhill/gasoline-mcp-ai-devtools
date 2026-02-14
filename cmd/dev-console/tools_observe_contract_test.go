@@ -358,34 +358,6 @@ func TestObserveContract_Recordings(t *testing.T) {
 	})
 }
 
-func TestObserveContract_API(t *testing.T) {
-	s := newScenario(t)
-
-	result, ok := s.callObserve(t, "api")
-	if !ok {
-		t.Fatal("observe api: no result")
-	}
-
-	assertResponseShape(t, "api", result, []fieldSpec{
-		required("status", "string"),
-		required("message", "string"),
-	})
-}
-
-func TestObserveContract_Changes(t *testing.T) {
-	s := newScenario(t)
-
-	result, ok := s.callObserve(t, "changes")
-	if !ok {
-		t.Fatal("observe changes: no result")
-	}
-
-	assertResponseShape(t, "changes", result, []fieldSpec{
-		required("status", "string"),
-		required("message", "string"),
-	})
-}
-
 // ============================================
 // Parameter-Required Modes (error path contracts)
 // ============================================
@@ -465,38 +437,6 @@ func TestObserveContract_MissingWhat_StructuredError(t *testing.T) {
 // ============================================
 // Stub Mode Contracts
 // ============================================
-
-func TestObserveContract_API_StubResponse(t *testing.T) {
-	s := newScenario(t)
-	result, ok := s.callObserve(t, "api")
-	if !ok {
-		t.Fatal("observe api: no result")
-	}
-	data := parseResponseJSON(t, result)
-	assertObjectShape(t, "api (stub)", data, []fieldSpec{
-		required("status", "string"),
-		required("message", "string"),
-	})
-	if status, _ := data["status"].(string); status != "not_implemented" {
-		t.Errorf("api: expected status 'not_implemented', got %q", status)
-	}
-}
-
-func TestObserveContract_Changes_StubResponse(t *testing.T) {
-	s := newScenario(t)
-	result, ok := s.callObserve(t, "changes")
-	if !ok {
-		t.Fatal("observe changes: no result")
-	}
-	data := parseResponseJSON(t, result)
-	assertObjectShape(t, "changes (stub)", data, []fieldSpec{
-		required("status", "string"),
-		required("message", "string"),
-	})
-	if status, _ := data["status"].(string); status != "not_implemented" {
-		t.Errorf("changes: expected status 'not_implemented', got %q", status)
-	}
-}
 
 // ============================================
 // Null-Safety: verify [] not null for empty data

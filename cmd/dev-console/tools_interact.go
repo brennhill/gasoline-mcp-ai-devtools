@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
@@ -40,6 +42,23 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 		}
 	})
 	return h.interactHandlers
+}
+
+// getValidInteractActions returns a sorted, comma-separated list of valid interact actions.
+func (h *ToolHandler) getValidInteractActions() string {
+	actions := make(map[string]bool)
+	for action := range h.interactDispatch() {
+		actions[action] = true
+	}
+	for action := range domPrimitiveActions {
+		actions[action] = true
+	}
+	sorted := make([]string, 0, len(actions))
+	for a := range actions {
+		sorted = append(sorted, a)
+	}
+	sort.Strings(sorted)
+	return strings.Join(sorted, ", ")
 }
 
 // domPrimitiveActions is the set of actions routed to handleDOMPrimitive.
@@ -78,7 +97,8 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 
 	if params.Action == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: highlight, subtitle, execute_js, navigate, refresh, back, forward, new_tab, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive, save_state, load_state, list_states, delete_state, record_start, record_stop, upload"))}
+		validActions := h.getValidInteractActions()
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: "+validActions))}
 	}
 
 	// Extract optional subtitle param (composable: works on any action)

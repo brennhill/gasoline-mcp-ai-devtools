@@ -29,11 +29,11 @@ func TestToolLoadSessionContext_WithStore(t *testing.T) {
 	}
 }
 
-func TestToolLoadSessionContext_Fallback(t *testing.T) {
+func TestToolLoadSessionContext_NilStore(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	// Force fallback path by setting sessionStoreImpl to nil
+	// Force error path by setting sessionStoreImpl to nil
 	env.handler.sessionStoreImpl = nil
 
 	args := json.RawMessage(`{"action":"load"}`)
@@ -41,16 +41,12 @@ func TestToolLoadSessionContext_Fallback(t *testing.T) {
 	resp := env.handler.toolLoadSessionContext(req, args)
 
 	result := parseToolResult(t, resp)
-	if result.IsError {
-		t.Fatalf("load fallback should not error, got: %s", result.Content[0].Text)
+	if !result.IsError {
+		t.Fatal("load with nil store should return isError:true")
 	}
-
-	data := parseResponseJSON(t, result)
-	if status, _ := data["status"].(string); status != "ok" {
-		t.Fatalf("status = %q, want ok", status)
-	}
-	if msg, _ := data["message"].(string); !strings.Contains(msg, "not initialized") {
-		t.Fatalf("message = %q, want mention of not initialized", msg)
+	text := result.Content[0].Text
+	if !strings.Contains(text, "not_initialized") && !strings.Contains(text, "not initialized") {
+		t.Fatalf("error should mention not_initialized, got: %s", text)
 	}
 }
 

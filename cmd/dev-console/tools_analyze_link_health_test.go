@@ -127,7 +127,6 @@ func TestAnalyze_Dispatcher_ValidModes(t *testing.T) {
 		"history",
 		"security_audit",
 		"third_party_audit",
-		"security_diff",
 		"link_health",
 	}
 
@@ -251,7 +250,6 @@ func TestAnalyze_AllModes_NoPanic(t *testing.T) {
 		"history",
 		"security_audit",
 		"third_party_audit",
-		"security_diff",
 		"link_health",
 	}
 

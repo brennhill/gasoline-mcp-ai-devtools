@@ -77,6 +77,20 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     assert.ok('responseBody' in payload, 'missing: responseBody')
     assert.ok('contentType' in payload, 'missing: contentType')
     assert.ok('duration' in payload, 'missing: duration')
+
+    // Validate types of each field
+    assert.strictEqual(typeof payload.method, 'string', 'method should be a string')
+    assert.strictEqual(typeof payload.url, 'string', 'url should be a string')
+    assert.strictEqual(typeof payload.status, 'number', 'status should be a number')
+    assert.strictEqual(typeof payload.contentType, 'string', 'contentType should be a string')
+    assert.strictEqual(typeof payload.duration, 'number', 'duration should be a number')
+
+    // Validate actual values
+    assert.strictEqual(payload.method, 'POST')
+    assert.strictEqual(payload.status, 201)
+    assert.strictEqual(payload.contentType, 'application/json')
+    assert.strictEqual(payload.responseBody, '{"id":1}')
+    assert.strictEqual(payload.requestBody, '{"name":"Alice"}')
   })
 
   test('should capture response body for JSON responses', async () => {
@@ -99,8 +113,13 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     })
 
     assert.ok(bodyEvent, 'Expected network body event')
-    assert.strictEqual(bodyEvent.arguments[0].payload.responseBody, responseBody)
-    assert.strictEqual(bodyEvent.arguments[0].payload.status, 200)
+    const payload = bodyEvent.arguments[0].payload
+    assert.strictEqual(payload.responseBody, responseBody)
+    assert.strictEqual(payload.status, 200)
+    assert.strictEqual(payload.method, 'GET')
+    assert.strictEqual(payload.contentType, 'application/json')
+    assert.ok(payload.url.includes('/api/users/1'), `url should contain '/api/users/1', got: ${payload.url}`)
+    assert.strictEqual(typeof payload.duration, 'number')
   })
 
   test('should capture request body for POST requests', async () => {
@@ -123,8 +142,12 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
 
     assert.ok(bodyEvent, 'Expected network body event')
-    assert.strictEqual(bodyEvent.arguments[0].payload.requestBody, requestBody)
-    assert.strictEqual(bodyEvent.arguments[0].payload.method, 'POST')
+    const payload = bodyEvent.arguments[0].payload
+    assert.strictEqual(payload.requestBody, requestBody)
+    assert.strictEqual(payload.method, 'POST')
+    assert.strictEqual(payload.status, 201)
+    assert.strictEqual(payload.responseBody, '{"id":1}')
+    assert.ok(payload.url.includes('/api/users'), `url should contain '/api/users', got: ${payload.url}`)
   })
 
   test('should return response immediately without blocking', async () => {
@@ -136,9 +159,11 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     const wrappedFetch = wrapFetchWithBodies(originalFetch)
     const response = await wrappedFetch('/api/test')
 
-    // Response should be returned immediately
+    // Response should be returned immediately with correct shape
     assert.strictEqual(response.status, 200)
     assert.strictEqual(response.ok, true)
+    assert.ok(response.headers instanceof Map, 'headers should be a Map')
+    assert.strictEqual(response.headers.get('content-type'), 'application/json')
   })
 
   test('should not block on slow body reads', async () => {
@@ -178,7 +203,10 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
 
+    assert.strictEqual(bodyEvent.arguments[0].type, 'GASOLINE_NETWORK_BODY')
     assert.strictEqual(bodyEvent.arguments[0].payload.contentType, 'text/html')
+    assert.strictEqual(typeof bodyEvent.arguments[0].payload.method, 'string')
+    assert.strictEqual(typeof bodyEvent.arguments[0].payload.url, 'string')
   })
 
   test('should capture request method', async () => {
@@ -315,6 +343,10 @@ describe('Header Sanitization', () => {
 
     assert.strictEqual(sanitized['Authorization'], undefined)
     assert.strictEqual(sanitized['Content-Type'], 'application/json')
+    assert.strictEqual(sanitized['Accept'], 'application/json')
+    // Verify sanitized result is a plain object
+    assert.strictEqual(typeof sanitized, 'object')
+    assert.ok(!Array.isArray(sanitized))
   })
 
   test('should strip Cookie header', async () => {
@@ -371,6 +403,10 @@ describe('Header Sanitization', () => {
     assert.strictEqual(sanitized['X-API-Secret'], undefined)
     assert.strictEqual(sanitized['X-Password'], undefined)
     assert.strictEqual(sanitized['X-Custom-Header'], 'safe-value')
+    // Verify only 1 key survives (the safe one)
+    const remainingKeys = Object.keys(sanitized)
+    assert.strictEqual(remainingKeys.length, 1)
+    assert.strictEqual(remainingKeys[0], 'X-Custom-Header')
   })
 
   test('should be case-insensitive for sensitive header patterns', async () => {
@@ -419,6 +455,9 @@ describe('Body Truncation', () => {
 
     assert.ok(result.body.length <= 8192)
     assert.strictEqual(result.truncated, true)
+    assert.strictEqual(typeof result.body, 'string')
+    // Verify the result object has exactly these two properties
+    assert.deepStrictEqual(Object.keys(result).sort(), ['body', 'truncated'])
   })
 
   test('should not truncate request body under 8KB', async () => {
@@ -439,6 +478,8 @@ describe('Body Truncation', () => {
 
     assert.ok(result.body.length <= 16384)
     assert.strictEqual(result.truncated, true)
+    assert.strictEqual(typeof result.body, 'string')
+    assert.deepStrictEqual(Object.keys(result).sort(), ['body', 'truncated'])
   })
 
   test('should not truncate response body under 16KB', async () => {
@@ -493,6 +534,7 @@ describe('Body Reading', () => {
     }
 
     const body = await readResponseBody(response)
+    assert.strictEqual(typeof body, 'string')
     assert.ok(body.includes('[Binary:'))
     assert.ok(body.includes('4096'))
     assert.ok(body.includes('image/png'))

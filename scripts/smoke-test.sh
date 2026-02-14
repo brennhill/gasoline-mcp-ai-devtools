@@ -135,6 +135,15 @@ if [ -n "$START_FROM" ]; then
     if ! wait_for_health 30; then
         echo "  Daemon not healthy. Starting fresh with --enable-os-upload-automation..."
         start_daemon_with_flags --enable-os-upload-automation || true
+        # Give daemon extra time to fully initialize (MCP readiness lags HTTP readiness)
+        sleep 2
+    fi
+
+    # Verify daemon is actually responding to MCP calls
+    probe_resp=$(call_tool "observe" '{"what":"page"}' 2>/dev/null)
+    if echo "$probe_resp" | grep -q "starting up" 2>/dev/null; then
+        echo "  Daemon still starting, waiting 3s..."
+        sleep 3
     fi
 
     health_body=$(get_http_body "http://localhost:${PORT}/health" 2>/dev/null || echo "{}")

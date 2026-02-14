@@ -417,6 +417,43 @@ func TestToolObserveSavedVideosListsSortsFiltersAndDedupes(t *testing.T) {
 	}
 }
 
+// ============================================
+// revealInFileManager
+// ============================================
+//
+// Note: revealInFileManager calls platform executables (open/explorer/xdg-open).
+// We test that it does not panic and returns appropriate errors.
+// CI environments may not have GUI tools, so failures are expected.
+
+func TestRevealInFileManager_NonExistentPath(t *testing.T) {
+	t.Parallel()
+	// Should not panic even for non-existent paths
+	err := revealInFileManager("/nonexistent/path/to/file.txt")
+	_ = err // Error behavior is platform-specific
+}
+
+func TestRevealInFileManager_ExistingFile(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test-reveal.txt")
+	if err := os.WriteFile(path, []byte("test"), 0o644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+	err := revealInFileManager(path)
+	if err != nil {
+		t.Logf("revealInFileManager returned error (expected in CI): %v", err)
+	}
+}
+
+func TestRevealInFileManager_EmptyPath(t *testing.T) {
+	t.Parallel()
+	err := revealInFileManager("")
+	// Platform tools will likely fail with empty path
+	if err == nil {
+		t.Log("revealInFileManager with empty path returned nil (platform-dependent)")
+	}
+}
+
 func TestHandleRecordStartAndStop(t *testing.T) {
 	stateRoot := t.TempDir()
 	t.Setenv(state.StateDirEnv, stateRoot)

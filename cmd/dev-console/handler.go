@@ -337,11 +337,11 @@ Browser observability for AI coding agents. 5 tools for real-time browser teleme
 
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
-| observe | Read passive browser buffers | what: errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, api, changes, timeline, error_bundles, screenshot, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, playback_results, log_diff_report, extension_logs |
-| analyze | Trigger active analysis (async) | what: dom, accessibility, performance, security_audit, third_party_audit, security_diff, link_health, error_clusters, history, api_validation, annotations, annotation_detail |
-| generate | Create artifacts from captured data | format: test, reproduction, pr_summary, sarif, har, csp, sri, visual_test, annotation_report, annotation_issues |
-| configure | Session settings and utilities | action: health, store, load, noise_rule, clear, diff_sessions, audit_log, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff |
-| interact | Browser automation (needs AI Web Pilot) | action: click, type, select, check, navigate, refresh, execute_js, highlight, subtitle, key_press, scroll_to, wait_for, get_text, get_value, get_attribute, set_attribute, focus, list_interactive, save_state, load_state, list_states, delete_state, record_start, record_stop, draw_mode_start, back, forward, new_tab |
+| observe | Read passive browser buffers | what: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, timeline, error_bundles, screenshot, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, log_diff_report |
+| analyze | Trigger active analysis (async) | what: dom, accessibility, performance, security_audit, third_party_audit, link_health, link_validation, error_clusters, history, api_validation, annotations, annotation_detail, draw_history, draw_session |
+| generate | Create artifacts from captured data | format: test, reproduction, pr_summary, sarif, har, csp, sri, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify |
+| configure | Session settings and utilities | action: health, store, load, noise_rule, clear, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff |
+| interact | Browser automation (needs AI Web Pilot) | action: click, type, select, check, navigate, refresh, execute_js, highlight, subtitle, key_press, scroll_to, wait_for, get_text, get_value, get_attribute, set_attribute, focus, list_interactive, save_state, load_state, list_states, delete_state, record_start, record_stop, upload, draw_mode_start, back, forward, new_tab |
 
 ## Key Patterns
 

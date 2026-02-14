@@ -1,6 +1,6 @@
 [project]
 name = "gasoline-mcp-darwin-x64"
-version = "6.1.5"
+version = "6.1.7"
 description = "Gasoline MCP binary for darwin-x64"
 requires-python = ">=3.8"
 license = {text = "AGPL-3.0-only"}

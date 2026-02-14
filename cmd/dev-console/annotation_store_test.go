@@ -45,8 +45,29 @@ func TestAnnotationStore_StoreAndGetSession(t *testing.T) {
 	if got.Annotations[0].Text != "make this darker" {
 		t.Errorf("expected text 'make this darker', got %q", got.Annotations[0].Text)
 	}
+	if got.Annotations[0].ID != "ann_1" {
+		t.Errorf("expected annotation ID 'ann_1', got %q", got.Annotations[0].ID)
+	}
+	if got.Annotations[0].CorrelationID != "detail_1" {
+		t.Errorf("expected correlation ID 'detail_1', got %q", got.Annotations[0].CorrelationID)
+	}
+	if got.Annotations[0].ElementSummary != "button.primary 'Submit'" {
+		t.Errorf("expected element summary, got %q", got.Annotations[0].ElementSummary)
+	}
+	if got.Annotations[0].PageURL != "https://example.com" {
+		t.Errorf("expected page URL 'https://example.com', got %q", got.Annotations[0].PageURL)
+	}
+	if got.Annotations[0].Rect.X != 100 || got.Annotations[0].Rect.Y != 200 || got.Annotations[0].Rect.Width != 150 || got.Annotations[0].Rect.Height != 50 {
+		t.Errorf("expected rect {100 200 150 50}, got %+v", got.Annotations[0].Rect)
+	}
 	if got.ScreenshotPath != "/tmp/draw_test.png" {
 		t.Errorf("expected screenshot path, got %q", got.ScreenshotPath)
+	}
+	if got.PageURL != "https://example.com" {
+		t.Errorf("expected session page URL 'https://example.com', got %q", got.PageURL)
+	}
+	if got.TabID != 42 {
+		t.Errorf("expected tab ID 42, got %d", got.TabID)
 	}
 }
 
@@ -87,6 +108,12 @@ func TestAnnotationStore_SessionOverwrite(t *testing.T) {
 	if got.Annotations[0].Text != "second" {
 		t.Errorf("expected text 'second', got %q", got.Annotations[0].Text)
 	}
+	if got.Annotations[1].Text != "third" {
+		t.Errorf("expected text 'third', got %q", got.Annotations[1].Text)
+	}
+	if got.Timestamp != 200 {
+		t.Errorf("expected timestamp 200 after overwrite, got %d", got.Timestamp)
+	}
 }
 
 func TestAnnotationStore_GetLatestSession(t *testing.T) {
@@ -103,6 +130,12 @@ func TestAnnotationStore_GetLatestSession(t *testing.T) {
 	}
 	if latest.TabID != 2 {
 		t.Errorf("expected latest tab 2, got %d", latest.TabID)
+	}
+	if latest.Timestamp != 300 {
+		t.Errorf("expected latest timestamp 300, got %d", latest.Timestamp)
+	}
+	if len(latest.Annotations) != 1 || latest.Annotations[0].Text != "tab2" {
+		t.Errorf("expected annotation text 'tab2', got %+v", latest.Annotations)
 	}
 }
 
@@ -137,11 +170,32 @@ func TestAnnotationStore_StoreAndGetDetail(t *testing.T) {
 	if !found {
 		t.Fatal("expected to find detail")
 	}
+	if got.CorrelationID != "detail_1" {
+		t.Errorf("expected correlation ID 'detail_1', got %q", got.CorrelationID)
+	}
 	if got.Selector != "button.primary" {
 		t.Errorf("expected selector 'button.primary', got %q", got.Selector)
 	}
+	if got.Tag != "button" {
+		t.Errorf("expected tag 'button', got %q", got.Tag)
+	}
+	if got.TextContent != "Submit" {
+		t.Errorf("expected text content 'Submit', got %q", got.TextContent)
+	}
+	if len(got.Classes) != 2 || got.Classes[0] != "primary" || got.Classes[1] != "rounded" {
+		t.Errorf("expected classes [primary rounded], got %v", got.Classes)
+	}
+	if got.ID != "submit-btn" {
+		t.Errorf("expected ID 'submit-btn', got %q", got.ID)
+	}
 	if got.ComputedStyles["background-color"] != "rgb(59, 130, 246)" {
-		t.Errorf("unexpected computed styles")
+		t.Errorf("expected background-color 'rgb(59, 130, 246)', got %q", got.ComputedStyles["background-color"])
+	}
+	if got.ParentSelector != "form.checkout > div.actions" {
+		t.Errorf("expected parent selector 'form.checkout > div.actions', got %q", got.ParentSelector)
+	}
+	if got.BoundingRect.X != 100 || got.BoundingRect.Y != 200 || got.BoundingRect.Width != 150 || got.BoundingRect.Height != 50 {
+		t.Errorf("expected bounding rect {100 200 150 50}, got %+v", got.BoundingRect)
 	}
 }
 
@@ -189,6 +243,12 @@ func TestAnnotationStore_ZeroAnnotations(t *testing.T) {
 	if len(got.Annotations) != 0 {
 		t.Errorf("expected 0 annotations, got %d", len(got.Annotations))
 	}
+	if got.ScreenshotPath != "/tmp/empty.png" {
+		t.Errorf("expected screenshot path '/tmp/empty.png', got %q", got.ScreenshotPath)
+	}
+	if got.TabID != 42 {
+		t.Errorf("expected tab ID 42, got %d", got.TabID)
+	}
 }
 
 func TestAnnotationStore_ConcurrentAccess(t *testing.T) {
@@ -230,15 +290,38 @@ func TestAnnotationStore_ConcurrentAccess(t *testing.T) {
 	}
 	wg.Wait()
 
-	// Verify at least some data was stored
+	// Verify all sessions were stored (writes all complete before reads in the WaitGroup)
 	found := 0
 	for i := 0; i < 50; i++ {
-		if store.GetSession(i) != nil {
+		s := store.GetSession(i)
+		if s != nil {
 			found++
+			if s.TabID != i {
+				t.Errorf("session %d: TabID = %d, want %d", i, s.TabID, i)
+			}
+			if len(s.Annotations) != 1 {
+				t.Errorf("session %d: annotation count = %d, want 1", i, len(s.Annotations))
+			}
 		}
 	}
-	if found == 0 {
-		t.Error("Expected at least some sessions to be stored after concurrent access")
+	if found != 50 {
+		t.Errorf("Expected all 50 sessions to be stored after concurrent access, got %d", found)
+	}
+
+	// Verify all details were stored
+	detailFound := 0
+	for i := 0; i < 50; i++ {
+		d, ok := store.GetDetail(fmt.Sprintf("detail_%d", i))
+		if ok {
+			detailFound++
+			expectedSelector := fmt.Sprintf("div.item-%d", i)
+			if d.Selector != expectedSelector {
+				t.Errorf("detail_%d: selector = %q, want %q", i, d.Selector, expectedSelector)
+			}
+		}
+	}
+	if detailFound != 50 {
+		t.Errorf("Expected all 50 details to be stored, got %d", detailFound)
 	}
 }
 
@@ -265,9 +348,19 @@ func TestAnnotationStore_SessionEvictionCap(t *testing.T) {
 	if count > 100 {
 		t.Errorf("Expected at most 100 sessions after eviction, got %d", count)
 	}
-	// The newest sessions should survive
-	if store.GetSession(110) == nil {
-		t.Error("Expected newest session (110) to survive eviction")
+	// The newest sessions should survive with correct data
+	newest := store.GetSession(110)
+	if newest == nil {
+		t.Fatal("Expected newest session (110) to survive eviction")
+	}
+	if newest.TabID != 110 {
+		t.Errorf("newest session TabID = %d, want 110", newest.TabID)
+	}
+	if newest.Timestamp != 110 {
+		t.Errorf("newest session Timestamp = %d, want 110", newest.Timestamp)
+	}
+	if len(newest.Annotations) != 1 || newest.Annotations[0].Text != "session_110" {
+		t.Errorf("newest session annotation = %+v, want text 'session_110'", newest.Annotations)
 	}
 }
 
@@ -308,6 +401,12 @@ func TestAnnotationStore_WaitForSession_ImmediateReturn(t *testing.T) {
 	if session == nil {
 		t.Fatal("expected session, got nil")
 	}
+	if session.TabID != 1 {
+		t.Errorf("expected TabID 1, got %d", session.TabID)
+	}
+	if len(session.Annotations) != 1 {
+		t.Fatalf("expected 1 annotation, got %d", len(session.Annotations))
+	}
 	if session.Annotations[0].Text != "immediate" {
 		t.Errorf("expected text 'immediate', got %q", session.Annotations[0].Text)
 	}
@@ -338,6 +437,12 @@ func TestAnnotationStore_WaitForSession_BlocksAndReturns(t *testing.T) {
 	}
 	if session == nil {
 		t.Fatal("expected session, got nil")
+	}
+	if session.TabID != 1 {
+		t.Errorf("expected TabID 1, got %d", session.TabID)
+	}
+	if len(session.Annotations) != 1 {
+		t.Fatalf("expected 1 annotation, got %d", len(session.Annotations))
 	}
 	if session.Annotations[0].Text != "delayed" {
 		t.Errorf("expected text 'delayed', got %q", session.Annotations[0].Text)
@@ -411,6 +516,12 @@ func TestAnnotationStore_WaitForSession_NoDrawStarted(t *testing.T) {
 	if session == nil {
 		t.Fatal("expected session, got nil")
 	}
+	if session.TabID != 1 {
+		t.Errorf("expected TabID 1, got %d", session.TabID)
+	}
+	if len(session.Annotations) != 1 || session.Annotations[0].Text != "any" {
+		t.Errorf("expected annotation text 'any', got %+v", session.Annotations)
+	}
 }
 
 func TestAnnotationStore_WaitForSession_CloseUnblocks(t *testing.T) {
@@ -468,8 +579,26 @@ func TestAnnotationStore_NamedSession_AppendAndGet(t *testing.T) {
 	if ns.Pages[0].PageURL != "https://example.com/login" {
 		t.Errorf("expected first page URL, got %q", ns.Pages[0].PageURL)
 	}
+	if ns.Pages[0].Timestamp != 100 {
+		t.Errorf("expected first page timestamp 100, got %d", ns.Pages[0].Timestamp)
+	}
+	if len(ns.Pages[0].Annotations) != 1 || ns.Pages[0].Annotations[0].Text != "fix button" {
+		t.Errorf("expected first page annotation 'fix button', got %+v", ns.Pages[0].Annotations)
+	}
+	if ns.Pages[1].PageURL != "https://example.com/dashboard" {
+		t.Errorf("expected second page URL, got %q", ns.Pages[1].PageURL)
+	}
+	if ns.Pages[1].Timestamp != 200 {
+		t.Errorf("expected second page timestamp 200, got %d", ns.Pages[1].Timestamp)
+	}
 	if len(ns.Pages[1].Annotations) != 2 {
 		t.Errorf("expected 2 annotations on page 2, got %d", len(ns.Pages[1].Annotations))
+	}
+	if ns.Pages[1].Annotations[0].Text != "wrong color" {
+		t.Errorf("expected annotation 'wrong color', got %q", ns.Pages[1].Annotations[0].Text)
+	}
+	if ns.Pages[1].Annotations[1].Text != "misaligned" {
+		t.Errorf("expected annotation 'misaligned', got %q", ns.Pages[1].Annotations[1].Text)
 	}
 }
 
@@ -534,8 +663,14 @@ func TestAnnotationStore_NamedSession_WaitBlocks(t *testing.T) {
 	if ns == nil {
 		t.Fatal("expected named session")
 	}
+	if ns.Name != "qa" {
+		t.Errorf("expected name 'qa', got %q", ns.Name)
+	}
 	if len(ns.Pages) != 1 {
 		t.Fatalf("expected 1 page, got %d", len(ns.Pages))
+	}
+	if len(ns.Pages[0].Annotations) != 1 || ns.Pages[0].Annotations[0].Text != "waited" {
+		t.Errorf("expected annotation 'waited', got %+v", ns.Pages[0].Annotations)
 	}
 	if elapsed < 30*time.Millisecond {
 		t.Error("expected to have blocked")
@@ -583,10 +718,21 @@ func TestAnnotationStore_NamedSession_EvictionCap(t *testing.T) {
 		t.Error("expected session_000 to be evicted, but it still exists")
 	}
 
-	// The most recent session should still exist
+	// The most recent session should still exist with correct data
 	latest := store.GetNamedSession("session_050")
 	if latest == nil {
-		t.Error("expected session_050 to exist after eviction")
+		t.Fatal("expected session_050 to exist after eviction")
+	}
+	if latest.Name != "session_050" {
+		t.Errorf("latest session name = %q, want 'session_050'", latest.Name)
+	}
+	if len(latest.Pages) != 1 {
+		t.Errorf("expected 1 page in latest session, got %d", len(latest.Pages))
+	}
+	if len(latest.Pages) > 0 && len(latest.Pages[0].Annotations) > 0 {
+		if latest.Pages[0].Annotations[0].Text != "annotation for session_050" {
+			t.Errorf("latest annotation text = %q, want 'annotation for session_050'", latest.Pages[0].Annotations[0].Text)
+		}
 	}
 }
 
@@ -796,6 +942,12 @@ func TestAnnotationStore_GetLatestSession_SkipsExpired(t *testing.T) {
 	if got.TabID != 1 {
 		t.Errorf("expected tab 1 (expired tab 2 should be skipped), got tab %d", got.TabID)
 	}
+	if got.PageURL != "https://example.com/valid" {
+		t.Errorf("expected page URL 'https://example.com/valid', got %q", got.PageURL)
+	}
+	if got.Timestamp != 1000 {
+		t.Errorf("expected timestamp 1000, got %d", got.Timestamp)
+	}
 }
 
 // --- Additional coverage: GetNamedSession returns nil for expired ---
@@ -835,6 +987,15 @@ func TestAnnotationStore_GetNamedSession_ReturnsCopy(t *testing.T) {
 	copy1 := store.GetNamedSession("copytest")
 	if copy1 == nil {
 		t.Fatal("expected named session")
+	}
+	if copy1.Name != "copytest" {
+		t.Errorf("expected name 'copytest', got %q", copy1.Name)
+	}
+	if len(copy1.Pages) != 1 {
+		t.Fatalf("expected 1 page, got %d", len(copy1.Pages))
+	}
+	if copy1.Pages[0].PageURL != "https://example.com/page1" {
+		t.Errorf("expected page URL 'https://example.com/page1', got %q", copy1.Pages[0].PageURL)
 	}
 
 	// Mutate the returned copy's Pages slice
@@ -995,15 +1156,32 @@ func TestAnnotationStore_EvictExpiredEntries(t *testing.T) {
 		t.Error("expected expired named session to be evicted")
 	}
 
-	// Verify valid entries remain
-	if store.GetSession(200) == nil {
-		t.Error("expected valid session to remain")
+	// Verify valid entries remain with correct data
+	validSession := store.GetSession(200)
+	if validSession == nil {
+		t.Fatal("expected valid session to remain")
 	}
-	if _, found := store.GetDetail("valid-detail"); !found {
-		t.Error("expected valid detail to remain")
+	if validSession.TabID != 200 {
+		t.Errorf("valid session TabID = %d, want 200", validSession.TabID)
 	}
-	if store.GetNamedSession("valid-named") == nil {
-		t.Error("expected valid named session to remain")
+	if validSession.Timestamp != 2 {
+		t.Errorf("valid session Timestamp = %d, want 2", validSession.Timestamp)
+	}
+
+	validDetail, found := store.GetDetail("valid-detail")
+	if !found {
+		t.Fatal("expected valid detail to remain")
+	}
+	if validDetail.CorrelationID != "valid-detail" {
+		t.Errorf("valid detail CorrelationID = %q, want 'valid-detail'", validDetail.CorrelationID)
+	}
+
+	validNamed := store.GetNamedSession("valid-named")
+	if validNamed == nil {
+		t.Fatal("expected valid named session to remain")
+	}
+	if validNamed.Name != "valid-named" {
+		t.Errorf("valid named session Name = %q, want 'valid-named'", validNamed.Name)
 	}
 }
 
@@ -1214,6 +1392,12 @@ func TestAnnotationStore_WaitForNamedSession_Returns(t *testing.T) {
 	}
 	if len(ns.Pages) != 1 {
 		t.Fatalf("expected 1 page, got %d", len(ns.Pages))
+	}
+	if ns.Pages[0].PageURL != "https://example.com/waited" {
+		t.Errorf("expected page URL 'https://example.com/waited', got %q", ns.Pages[0].PageURL)
+	}
+	if len(ns.Pages[0].Annotations) != 1 || ns.Pages[0].Annotations[0].Text != "waited" {
+		t.Errorf("expected annotation text 'waited', got %+v", ns.Pages[0].Annotations)
 	}
 }
 
@@ -1556,15 +1740,30 @@ func TestStoreAnnotationSession_WithSessionName(t *testing.T) {
 		t.Fatal("expected session in anonymous store")
 	}
 	if session.ScreenshotPath != "/tmp/ss.png" {
-		t.Errorf("expected screenshot path, got %q", session.ScreenshotPath)
+		t.Errorf("expected screenshot path '/tmp/ss.png', got %q", session.ScreenshotPath)
+	}
+	if session.PageURL != "https://example.com" {
+		t.Errorf("expected page URL 'https://example.com', got %q", session.PageURL)
+	}
+	if session.TabID != 50 {
+		t.Errorf("expected tab ID 50, got %d", session.TabID)
+	}
+	if len(session.Annotations) != 1 || session.Annotations[0].ID != "a1" || session.Annotations[0].Text != "test" {
+		t.Errorf("expected annotation {ID:a1, Text:test}, got %+v", session.Annotations)
 	}
 
 	ns := globalAnnotationStore.GetNamedSession("named-test")
 	if ns == nil {
 		t.Fatal("expected named session")
 	}
+	if ns.Name != "named-test" {
+		t.Errorf("expected named session name 'named-test', got %q", ns.Name)
+	}
 	if len(ns.Pages) != 1 {
 		t.Fatalf("expected 1 page in named session, got %d", len(ns.Pages))
+	}
+	if ns.Pages[0].PageURL != "https://example.com" {
+		t.Errorf("expected named session page URL 'https://example.com', got %q", ns.Pages[0].PageURL)
 	}
 }
 
@@ -1587,6 +1786,15 @@ func TestStoreAnnotationSession_WithoutSessionName(t *testing.T) {
 	session := globalAnnotationStore.GetSession(51)
 	if session == nil {
 		t.Fatal("expected session in anonymous store")
+	}
+	if session.TabID != 51 {
+		t.Errorf("expected tab ID 51, got %d", session.TabID)
+	}
+	if session.PageURL != "https://example.com" {
+		t.Errorf("expected page URL 'https://example.com', got %q", session.PageURL)
+	}
+	if len(session.Annotations) != 1 || session.Annotations[0].Text != "test" {
+		t.Errorf("expected annotation text 'test', got %+v", session.Annotations)
 	}
 
 	// With empty session name, no named session should be created

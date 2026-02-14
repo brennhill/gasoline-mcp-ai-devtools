@@ -154,14 +154,8 @@ func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMe
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Session context loaded", responseData)}
 	}
 
-	// Fallback if no session store
-	responseData := map[string]any{
-		"status":  "ok",
-		"context": map[string]any{},
-		"message": "Session store not initialized",
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Session context loaded", responseData)}
+	// Session store not initialized — return error, matching store behavior
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 }
 
 func (h *ToolHandler) toolConfigureNoiseRule(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
