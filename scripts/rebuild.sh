@@ -7,6 +7,8 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR/.."
 cd "$PROJECT_ROOT"
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_DIR="${CMD_PKG#./}"
 
 # Colors (if TTY)
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
@@ -68,7 +70,7 @@ fi
 
 # ── Step 3: Rebuild from source ──────────────────────────
 step "Building from source..."
-if ! go build -o gasoline-mcp ./cmd/dev-console; then
+if ! go build -o gasoline-mcp "$CMD_PKG"; then
     err "Build failed!"
     exit 1
 fi
@@ -99,7 +101,7 @@ else
 fi
 
 # Source vs binary timestamp check
-src_newest=$(find cmd/dev-console -name '*.go' -newer ./gasoline-mcp 2>/dev/null | head -1)
+src_newest=$(find "$CMD_DIR" -name '*.go' -newer ./gasoline-mcp 2>/dev/null | head -1)
 if [ -n "$src_newest" ]; then
     warn "Source file newer than binary: $src_newest (this should not happen after fresh build)"
 else

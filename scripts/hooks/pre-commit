@@ -5,6 +5,7 @@
 set -e
 
 echo "[gasoline] Running pre-commit checks..."
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
 
 # Check for staged Go files
 GO_STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)
@@ -25,7 +26,7 @@ fi
 # Go vet check on staged Go files
 if [ -n "$GO_STAGED" ]; then
     echo "[lint] Running go vet on Go files..."
-    go vet ./cmd/dev-console/ || {
+    go vet "${CMD_PKG}/" || {
         echo ""
         echo "go vet found issues. Fix them before committing."
         exit 1
@@ -35,7 +36,7 @@ if [ -n "$GO_STAGED" ]; then
     # Gosec check for security issues
     if command -v gosec >/dev/null 2>&1; then
         echo "[security] Running gosec on Go files..."
-        gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high -quiet ./cmd/dev-console/ || {
+        gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high -quiet "${CMD_PKG}/" || {
             echo ""
             echo "gosec found HIGH severity security issues. Fix them before committing."
             exit 1

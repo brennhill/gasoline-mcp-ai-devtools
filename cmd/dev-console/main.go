@@ -254,7 +254,7 @@ type parsedFlags struct {
 	port, maxEntries                                         *int
 	logFile, apiKey, clientID, stateDir, uploadDir           *string
 	showVersion, showHelp, checkSetup, stopMode, connectMode *bool
-	bridgeMode, daemonMode, enableOsUploadAutomation          *bool
+	bridgeMode, daemonMode, enableOsUploadAutomation         *bool
 	forceCleanup                                             *bool
 	uploadDenyPatterns                                       multiFlag
 	ssrfAllowedHosts                                         multiFlag
@@ -597,9 +597,7 @@ func sendStartupError(message string) {
 	// Error impossible: simple struct with no circular refs or unsupported types
 	respJSON, _ := json.Marshal(errResp)
 	fmt.Println(string(respJSON))
-	if err := os.Stdout.Sync(); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] warning: stdout.Sync failed: %v\n", err)
-	}
+	syncStdoutBestEffort()
 	time.Sleep(100 * time.Millisecond) // Allow OS to flush pipe to parent
 }
 

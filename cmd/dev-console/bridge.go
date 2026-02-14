@@ -29,9 +29,9 @@ import (
 // Annotation observe (observe command_result for ann_*) gets 65s for blocking poll.
 func toolCallTimeout(req JSONRPCRequest) time.Duration {
 	const (
-		fast          = 10 * time.Second
-		slow          = 35 * time.Second
-		blockingPoll  = 65 * time.Second // annotation observe: server blocks up to 55s
+		fast         = 10 * time.Second
+		slow         = 35 * time.Second
+		blockingPoll = 65 * time.Second // annotation observe: server blocks up to 55s
 	)
 
 	if req.Method == "resources/read" {
@@ -201,9 +201,7 @@ func isConnectionError(err error) bool {
 
 // flushStdout syncs stdout and logs any errors (best-effort)
 func flushStdout() {
-	if err := os.Stdout.Sync(); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] warning: stdout.Sync failed: %v\n", err)
-	}
+	syncStdoutBestEffort()
 }
 
 // sendJSONResponse marshals a response and sends it to stdout, handling errors gracefully

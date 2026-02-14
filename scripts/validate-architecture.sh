@@ -3,6 +3,9 @@
 # Run in CI to catch architecture violations before merge
 set -euo pipefail
 
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_DIR="${CMD_PKG#./}"
+
 echo "🏗️  Validating Gasoline architecture..."
 echo ""
 
@@ -19,10 +22,10 @@ CRITICAL_FILES=(
     "internal/capture/handlers.go"
     "internal/capture/types.go"
     "internal/queries/types.go"
-    "cmd/dev-console/tools_core.go"
-    "cmd/dev-console/tools_observe.go"
-    "cmd/dev-console/tools_interact.go"
-    "cmd/dev-console/bridge.go"
+    "$CMD_DIR/tools_core.go"
+    "$CMD_DIR/tools_observe.go"
+    "$CMD_DIR/tools_interact.go"
+    "$CMD_DIR/bridge.go"
 )
 
 for file in "${CRITICAL_FILES[@]}"; do
@@ -106,7 +109,7 @@ MCP_TOOL_HANDLERS=(
 )
 
 for handler in "${MCP_TOOL_HANDLERS[@]}"; do
-    if ! grep -rq "func.*$handler" cmd/dev-console/tools_*.go; then
+    if ! grep -rq "func.*$handler" "${CMD_DIR}"/tools_*.go; then
         echo "   ❌ MISSING TOOL HANDLER: $handler"
         ERRORS=$((ERRORS + 1))
     else
@@ -130,9 +133,9 @@ else
 fi
 
 # Check tools_observe.go for stub returns in command result observer
-if grep -rq 'func (h \*ToolHandler) toolObserveCommandResult.*{' cmd/dev-console/tools_*.go; then
+if grep -rq 'func (h \*ToolHandler) toolObserveCommandResult.*{' "${CMD_DIR}"/tools_*.go; then
     # Extract function body and check if it calls GetCommandResult
-    if grep -rA 20 'func (h \*ToolHandler) toolObserveCommandResult' cmd/dev-console/tools_*.go | grep -q 'GetCommandResult'; then
+    if grep -rA 20 'func (h \*ToolHandler) toolObserveCommandResult' "${CMD_DIR}"/tools_*.go | grep -q 'GetCommandResult'; then
         echo "   ✅ toolObserveCommandResult calls GetCommandResult"
     else
         echo "   ❌ STUB DETECTED: toolObserveCommandResult doesn't call GetCommandResult"

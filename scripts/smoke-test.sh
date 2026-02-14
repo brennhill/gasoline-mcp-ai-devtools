@@ -112,10 +112,13 @@ if lsof -ti :"$PORT" >/dev/null 2>&1; then
     sleep 0.5
 fi
 
+BINARY_VERSION=$("$WRAPPER" --version 2>/dev/null || echo "unknown")
 echo ""
 echo "============================================================"
 echo "  GASOLINE SMOKE TEST SUITE"
 echo "  Port: $PORT | $(date)"
+echo "  Binary: $BINARY_VERSION"
+echo "  Expected: $(cat "$RUNNER_DIR/../VERSION" 2>/dev/null || echo "?")"
 echo "  ${#MODULES[@]} modules"
 echo "============================================================"
 echo ""
@@ -147,6 +150,8 @@ if [ -n "$START_FROM" ]; then
     fi
 
     health_body=$(get_http_body "http://localhost:${PORT}/health" 2>/dev/null || echo "{}")
+    daemon_ver=$(echo "$health_body" | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")
+    echo "  Daemon version: v${daemon_ver}"
     if echo "$health_body" | jq -e '.capture.available == true' >/dev/null 2>&1; then
         EXTENSION_CONNECTED=true
         echo "  Extension: connected"

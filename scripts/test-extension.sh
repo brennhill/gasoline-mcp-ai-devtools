@@ -5,6 +5,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
 
 echo "=== Gasoline Extension Test ==="
 echo ""
@@ -12,7 +13,7 @@ echo ""
 # 1. Build server if needed
 if [ ! -f "./gasoline-mcp" ]; then
     echo "Building server..."
-    go build -o gasoline-mcp ./cmd/dev-console/
+    go build -o gasoline-mcp "${CMD_PKG}/"
 fi
 
 # 2. Compile TypeScript if needed

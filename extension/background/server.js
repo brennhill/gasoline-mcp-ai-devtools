@@ -180,24 +180,34 @@ export async function checkServerHealth(serverUrl) {
     }
 }
 /**
- * Update extension badge
+ * Update extension badge.
+ * Uses Promise.all to ensure both text and color are applied atomically
+ * before the MV3 service worker can be suspended.
  */
 export function updateBadge(status) {
     if (typeof chrome === 'undefined' || !chrome.action)
         return;
     if (status.connected) {
         const errorCount = status.errorCount || 0;
-        chrome.action.setBadgeText({
-            text: errorCount === 0 ? '' : errorCount > 99 ? '99+' : String(errorCount)
-        });
-        chrome.action.setBadgeBackgroundColor({
-            color: '#3fb950'
+        Promise.all([
+            chrome.action.setBadgeText({
+                text: errorCount === 0 ? '' : errorCount > 99 ? '99+' : String(errorCount)
+            }),
+            chrome.action.setBadgeBackgroundColor({
+                color: '#3fb950'
+            })
+        ]).catch(() => {
+            /* badge update failed — SW may be shutting down */
         });
     }
     else {
-        chrome.action.setBadgeText({ text: '!' });
-        chrome.action.setBadgeBackgroundColor({
-            color: '#f85149'
+        Promise.all([
+            chrome.action.setBadgeText({ text: '!' }),
+            chrome.action.setBadgeBackgroundColor({
+                color: '#f85149'
+            })
+        ]).catch(() => {
+            /* badge update failed — SW may be shutting down */
         });
     }
 }

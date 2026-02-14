@@ -23,10 +23,12 @@ export type AlarmName = (typeof ALARM_NAMES)[keyof typeof ALARM_NAMES];
  */
 export declare function setupChromeAlarms(): void;
 /**
- * Install Chrome alarm listener
+ * Install Chrome alarm listener.
+ * Handlers may be async — the listener awaits them to keep the SW alive
+ * until the work completes (prevents badge updates from being lost).
  */
 export declare function installAlarmListener(handlers: {
-    onReconnect: () => void;
+    onReconnect: () => void | Promise<void>;
     onErrorGroupFlush: () => void;
     onMemoryCheck: () => void;
     onErrorGroupCleanup: () => void;

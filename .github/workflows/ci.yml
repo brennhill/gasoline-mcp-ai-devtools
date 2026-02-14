@@ -31,6 +31,9 @@ jobs:
       - name: Go vet
         run: go vet ./cmd/dev-console/
 
+      - name: Validate Codex skill frontmatter
+        run: ./scripts/validate-codex-skills.sh
+
       - name: Go tests with race detection
         run: go test -race -v ./cmd/dev-console/...
 
@@ -128,4 +131,3 @@ jobs:
           fi
           # Install Codacy client if needed and run scan
           echo "Codacy scan configured (will run when token is set)"
-
