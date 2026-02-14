@@ -39,7 +39,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "6.1.7"
+var version = "6.1.9"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -345,8 +345,23 @@ func parseAndValidateFlags() *serverConfig {
 }
 
 // initUploadSecurity validates upload security configuration from CLI flags.
+// When --enable-os-upload-automation is set without --upload-dir, defaults to ~/gasoline-upload-dir.
 func initUploadSecurity(enabled bool, dir string, denyPatterns multiFlag) {
 	if enabled || dir != "" {
+		// Default upload dir when OS automation is enabled but no dir specified
+		if enabled && dir == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[gasoline] Cannot determine home directory for default upload dir: %v\n", err)
+				os.Exit(1)
+			}
+			dir = filepath.Join(home, "gasoline-upload-dir")
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				fmt.Fprintf(os.Stderr, "[gasoline] Cannot create default upload dir %s: %v\n", dir, err)
+				os.Exit(1)
+			}
+			fmt.Fprintf(os.Stderr, "[gasoline] Using default upload dir: %s\n", dir)
+		}
 		sec, err := ValidateUploadDir(dir, denyPatterns)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[gasoline] Upload security validation failed: %v\n", err)

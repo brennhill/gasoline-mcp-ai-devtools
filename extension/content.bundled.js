@@ -547,10 +547,6 @@
     audio: { bg: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)", shadow: "rgba(249, 115, 22, 0.5)" }
   };
   var TOAST_ANIMATION_CSS = [
-    "@keyframes gasolineArrowBounce {",
-    "  0%, 100% { transform: translateY(0) translateX(0); opacity: 1; }",
-    "  50% { transform: translateY(-4px) translateX(4px); opacity: 0.7; }",
-    "}",
     "@keyframes gasolineArrowBounceUp {",
     "  0%, 100% { transform: translateY(0); opacity: 1; }",
     "  50% { transform: translateY(-6px); opacity: 0.7; }",
@@ -561,10 +557,7 @@
     "}",
     ".gasoline-toast-arrow {",
     "  display: inline-block; margin-left: 8px;",
-    "  animation: gasolineArrowBounce 1.5s ease-in-out infinite;",
-    "}",
-    "@media (max-width: 767px) {",
-    "  .gasoline-toast-arrow { animation: gasolineArrowBounceUp 1.5s ease-in-out infinite; }",
+    "  animation: gasolineArrowBounceUp 1.5s ease-in-out infinite;",
     "}",
     ".gasoline-toast-pulse { animation: gasolineToastPulse 2s ease-in-out infinite; }"
   ].join("\n");
@@ -588,12 +581,22 @@
     injectToastAnimationStyles();
     const theme = TOAST_THEMES[state] ?? TOAST_THEMES.trying;
     const isAudioPrompt = state === "audio" || detail && detail.toLowerCase().includes("audio") && detail.toLowerCase().includes("click");
-    const isSmallScreen = typeof window !== "undefined" && window.innerWidth < 768;
-    const arrowChar = isSmallScreen ? "\u2191" : "\u2197";
+    const arrowChar = "\u2191";
     const toast = document.createElement("div");
     toast.id = "gasoline-action-toast";
     if (isAudioPrompt) {
       toast.className = "gasoline-toast-pulse";
+    }
+    if (isAudioPrompt) {
+      const icon = document.createElement("img");
+      icon.src = chrome.runtime.getURL("icons/icon-48.png");
+      Object.assign(icon.style, {
+        width: "20px",
+        height: "20px",
+        marginRight: "8px",
+        flexShrink: "0"
+      });
+      toast.appendChild(icon);
     }
     const label = document.createElement("span");
     label.textContent = truncateText(text, 30);
@@ -624,9 +627,9 @@
     Object.assign(toast.style, {
       position: "fixed",
       top: "16px",
-      right: isAudioPrompt && !isSmallScreen ? "16px" : "auto",
-      left: isAudioPrompt && isSmallScreen ? "50%" : isAudioPrompt ? "auto" : "50%",
-      transform: isAudioPrompt && isSmallScreen ? "translateX(-50%)" : isAudioPrompt ? "none" : "translateX(-50%)",
+      right: "16px",
+      left: "auto",
+      transform: "none",
       padding: isAudioPrompt ? "12px 24px" : "8px 20px",
       background: theme.bg,
       color: "#fff",

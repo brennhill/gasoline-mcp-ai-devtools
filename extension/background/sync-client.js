@@ -186,6 +186,11 @@ export class SyncClient {
                     }
                     catch (err) {
                         this.log('Command dispatch FAILED', { id: command.id, error: err.message });
+                        this.queueCommandResult({
+                            id: command.id,
+                            status: 'error',
+                            error: err.message || 'Command dispatch failed'
+                        });
                     }
                 }
             }

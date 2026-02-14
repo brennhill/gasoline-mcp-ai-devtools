@@ -188,18 +188,42 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
           }
           const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
           const firstActiveTab = activeTabs[0]
-          if (!firstActiveTab?.id) return
+          if (!firstActiveTab?.id) {
+            const errMsg = 'No active tab available (tracked tab was closed and no fallback tab found)'
+            if (query.correlation_id) {
+              sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
+            } else {
+              sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg })
+            }
+            return
+          }
           tabId = firstActiveTab.id
         }
       }
     } else {
       const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
       const firstActiveTab = activeTabs[0]
-      if (!firstActiveTab?.id) return
+      if (!firstActiveTab?.id) {
+        const errMsg = 'No active tab available'
+        if (query.correlation_id) {
+          sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
+        } else {
+          sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg })
+        }
+        return
+      }
       tabId = firstActiveTab.id
     }
 
-    if (!tabId) return
+    if (!tabId) {
+      const errMsg = 'No target tab resolved for query'
+      if (query.correlation_id) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
+      } else {
+        sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg })
+      }
+      return
+    }
 
     if (query.type === 'subtitle') {
       let params: { text?: string }
@@ -557,11 +581,17 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
       return
     }
   } catch (err) {
+    const errMsg = (err as Error).message || 'Unexpected error handling query'
     debugLog(DebugCategory.CONNECTION, 'Error handling pending query', {
       type: query.type,
       id: query.id,
-      error: (err as Error).message
+      error: errMsg
     })
+    if (query.correlation_id) {
+      sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
+    } else {
+      sendResult(syncClient, query.id, { error: 'query_handler_error', message: errMsg })
+    }
   }
 }
 
