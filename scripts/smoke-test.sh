@@ -170,12 +170,29 @@ for module in "${MODULES[@]}"; do
         continue
     fi
     echo "── Module $MODULE_NUM/${#MODULES[@]}: $module ──"
-    # Temporarily disable set -e so a crash in one module doesn't kill remaining modules.
-    # The ERR trap in framework-smoke.sh still logs the crash and increments FAIL_COUNT.
-    set +e
-    # shellcheck source=/dev/null
-    source "$module_path"
-    set -e
+    # Run the module in a subshell so its `set -eo pipefail` can't kill the runner.
+    # Shared state (EXTENSION_CONNECTED, PILOT_ENABLED, etc.) is exported via a
+    # temp file since subshell variables don't propagate to the parent.
+    _state_file="$TEMP_DIR/smoke_state_$$"
+    (
+        # shellcheck source=/dev/null
+        source "$module_path"
+        # Export mutable state back to parent
+        cat > "$_state_file" <<STATE_EOF
+EXTENSION_CONNECTED=$EXTENSION_CONNECTED
+PILOT_ENABLED=$PILOT_ENABLED
+PASS_COUNT=$PASS_COUNT
+FAIL_COUNT=$FAIL_COUNT
+SKIP_COUNT=$SKIP_COUNT
+DAEMON_PID=$DAEMON_PID
+STATE_EOF
+    ) || true
+    # Import state from subshell
+    if [ -f "$_state_file" ]; then
+        # shellcheck source=/dev/null
+        source "$_state_file"
+        rm -f "$_state_file"
+    fi
 
     # --only: stop after running the matched module
     if [ -n "$ONLY_MODULE" ] && [[ "$module" == *"$ONLY_MODULE"* ]]; then
@@ -184,6 +201,18 @@ for module in "${MODULES[@]}"; do
         break
     fi
 done
+
+# ── Detect --start-from / --only with no match ────────────
+if [ "$SKIP_UNTIL_FOUND" = "true" ]; then
+    echo "ERROR: No module matched '$START_FROM'." >&2
+    echo "  Available modules: ${MODULES[*]}" >&2
+    exit 1
+fi
+
+if [ "$MODULE_NUM" -eq 0 ] && [ -z "$START_FROM" ]; then
+    echo "ERROR: No modules were run." >&2
+    exit 1
+fi
 
 # ── Cleanup: kill any orphaned test servers ───────────────
 pkill -f "upload-server.py" 2>/dev/null || true

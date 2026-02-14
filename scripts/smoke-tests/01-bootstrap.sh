@@ -50,7 +50,9 @@ run_test_1_1
 # so all subsequent tests (including file upload) have full capabilities.
 kill_server
 sleep 0.5
-start_daemon_with_flags --enable-os-upload-automation
+if ! start_daemon_with_flags --enable-os-upload-automation; then
+    echo "  WARNING: Daemon not healthy after restart. Tests may fail." >&2
+fi
 
 # ── Test 1.2: Health + version ───────────────────────────
 begin_test "1.2" "Health endpoint and version" \
