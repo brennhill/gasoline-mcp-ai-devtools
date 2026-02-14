@@ -5,7 +5,7 @@ set -eo pipefail
 begin_category "11" "Subtitle & Screenshot" "3"
 
 # ── Test 11.1: Subtitle standalone ───────────────────────
-begin_test "11.1" "Subtitle: standalone set, verify visible, then clear" \
+begin_test "11.1" "[INTERACTIVE - BROWSER] Subtitle: standalone set, verify visible, then clear" \
     "Use interact(subtitle) to display text at bottom of viewport, verify, then clear" \
     "Tests: subtitle pipeline: MCP > daemon > extension > content script overlay"
 
@@ -72,7 +72,7 @@ run_test_11_1() {
 run_test_11_1
 
 # ── Test 11.2: Subtitle as optional param on navigate ────
-begin_test "11.2" "Subtitle as optional param on interact(navigate)" \
+begin_test "11.2" "[INTERACTIVE - BROWSER] Subtitle as optional param on interact(navigate)" \
     "Navigate with subtitle param in same call, verify both navigation and subtitle happen" \
     "Tests: composable subtitle — single tool call for action + narration"
 
@@ -124,7 +124,7 @@ run_test_11_2() {
 run_test_11_2
 
 # ── Test 11.3: On-demand screenshot ──────────────────────
-begin_test "11.3" "Screenshot: on-demand capture via observe(screenshot)" \
+begin_test "11.3" "[INTERACTIVE - BROWSER] Screenshot: on-demand capture via observe(screenshot)" \
     "Call observe(screenshot) and verify it captures the current viewport" \
     "Tests: on-demand screenshot pipeline: MCP > daemon > extension > captureVisibleTab > save"
 

@@ -6,7 +6,7 @@ set -eo pipefail
 begin_category "7" "Generate Formats" "7"
 
 # ── Test 7.1: Reproduction ──────────────────────────────
-begin_test "7.1" "Generate reproduction script" \
+begin_test "7.1" "[DAEMON ONLY] Generate reproduction script" \
     "generate(reproduction) produces Playwright code patterns" \
     "Tests: action replay code generation"
 
@@ -41,7 +41,7 @@ run_test_7_1() {
 run_test_7_1
 
 # ── Test 7.2: Test ──────────────────────────────────────
-begin_test "7.2" "Generate Playwright test" \
+begin_test "7.2" "[DAEMON ONLY] Generate Playwright test" \
     "generate(test, test_name='smoke-test') produces test/expect patterns" \
     "Tests: test scaffold generation"
 
@@ -76,7 +76,7 @@ run_test_7_2() {
 run_test_7_2
 
 # ── Test 7.3: PR Summary ───────────────────────────────
-begin_test "7.3" "Generate PR summary" \
+begin_test "7.3" "[BROWSER] Generate PR summary" \
     "generate(pr_summary) produces markdown summary with session stats" \
     "Tests: session summary for PR descriptions"
 
@@ -145,7 +145,7 @@ else:
 run_test_7_3
 
 # ── Test 7.4: SARIF ─────────────────────────────────────
-begin_test "7.4" "Generate SARIF report" \
+begin_test "7.4" "[DAEMON ONLY] Generate SARIF report" \
     "generate(sarif) produces valid SARIF structure with version, schema, runs" \
     "Tests: accessibility/security results in SARIF format"
 
@@ -219,7 +219,7 @@ except Exception as e:
 run_test_7_4
 
 # ── Test 7.5: HAR ───────────────────────────────────────
-begin_test "7.5" "Generate HAR archive" \
+begin_test "7.5" "[BROWSER] Generate HAR archive" \
     "generate(har) produces HAR structure with log, version, creator, entries" \
     "Tests: network traffic export in HAR format"
 
@@ -308,7 +308,7 @@ except Exception as e:
 run_test_7_5
 
 # ── Test 7.6: CSP ───────────────────────────────────────
-begin_test "7.6" "Generate Content Security Policy" \
+begin_test "7.6" "[DAEMON ONLY] Generate Content Security Policy" \
     "generate(csp, mode='moderate') produces policy directives" \
     "Tests: CSP generation from observed resources"
 
@@ -343,7 +343,7 @@ run_test_7_6() {
 run_test_7_6
 
 # ── Test 7.7: SRI ───────────────────────────────────────
-begin_test "7.7" "Generate Subresource Integrity hashes" \
+begin_test "7.7" "[BROWSER] Generate Subresource Integrity hashes" \
     "generate(sri) returns SRI hashes for seeded third-party JS via fetch()" \
     "Tests: SRI hash generation with verified network body capture"
 

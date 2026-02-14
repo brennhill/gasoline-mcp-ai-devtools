@@ -6,7 +6,7 @@ set -eo pipefail
 begin_category "8" "Configure Features" "5"
 
 # ── Test 8.1: Noise rules CRUD ──────────────────────────
-begin_test "8.1" "Noise rules: add, list, remove, verify" \
+begin_test "8.1" "[DAEMON ONLY] Noise rules: add, list, remove, verify" \
     "Full noise rule lifecycle: add a rule, list to verify, remove, list to confirm" \
     "Tests: noise filtering configuration"
 
@@ -66,7 +66,7 @@ run_test_8_1() {
 run_test_8_1
 
 # ── Test 8.2: Store persistence ─────────────────────────
-begin_test "8.2" "Store: save, load, list, delete roundtrip" \
+begin_test "8.2" "[DAEMON ONLY] Store: save, load, list, delete roundtrip" \
     "Full key-value store lifecycle" \
     "Tests: persistent data storage"
 
@@ -142,7 +142,7 @@ run_test_8_2() {
 run_test_8_2
 
 # ── Test 8.3: Selective buffer clear ────────────────────
-begin_test "8.3" "Selective buffer clear (logs only, actions preserved)" \
+begin_test "8.3" "[BROWSER] Selective buffer clear (logs only, actions preserved)" \
     "Seed data, clear logs only, verify actions still exist" \
     "Tests: targeted buffer clearing"
 
@@ -202,7 +202,7 @@ run_test_8_3() {
 run_test_8_3
 
 # ── Test 8.4: Streaming toggle ──────────────────────────
-begin_test "8.4" "Streaming: enable, status, disable, status" \
+begin_test "8.4" "[DAEMON ONLY] Streaming: enable, status, disable, status" \
     "Toggle streaming events and verify state transitions" \
     "Tests: streaming configuration"
 
@@ -267,7 +267,7 @@ run_test_8_4() {
 run_test_8_4
 
 # ── Test 8.5: Test boundaries ───────────────────────────
-begin_test "8.5" "Test boundaries: start and end markers" \
+begin_test "8.5" "[DAEMON ONLY] Test boundaries: start and end markers" \
     "configure(test_boundary_start) then (test_boundary_end)" \
     "Tests: test boundary markers for isolating activity"
 

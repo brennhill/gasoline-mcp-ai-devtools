@@ -6,7 +6,7 @@ set -eo pipefail
 begin_category "3" "Observe Modes" "7"
 
 # ── Test 3.1: Web Vitals ────────────────────────────────
-begin_test "3.1" "Web Vitals via observe(vitals)" \
+begin_test "3.1" "[BROWSER] Web Vitals via observe(vitals)" \
     "observe(vitals) after page load + click returns metrics object" \
     "Tests: extension Web Vitals collection > daemon > MCP observe"
 
@@ -82,7 +82,7 @@ except Exception as e:
 run_test_3_1
 
 # ── Test 3.2: Tab info ──────────────────────────────────
-begin_test "3.2" "Tab info via observe(tabs)" \
+begin_test "3.2" "[BROWSER] Tab info via observe(tabs)" \
     "observe(tabs) returns tabs array with URLs and tracking status" \
     "Tests: daemon tab tracking state"
 
@@ -140,7 +140,7 @@ except Exception as e:
 run_test_3_2
 
 # ── Test 3.3: Network bodies ────────────────────────────
-begin_test "3.3" "Network bodies via observe(network_bodies)" \
+begin_test "3.3" "[BROWSER] Network bodies via observe(network_bodies)" \
     "Execute a fetch() then observe(network_bodies) to see request/response data" \
     "Tests: fetch interception > extension > daemon body capture"
 
@@ -205,7 +205,7 @@ except Exception as e:
 run_test_3_3
 
 # ── Test 3.4: Error bundles ─────────────────────────────
-begin_test "3.4" "Error bundles via observe(error_bundles)" \
+begin_test "3.4" "[BROWSER] Error bundles via observe(error_bundles)" \
     "observe(error_bundles) after 2.1 seeded errors returns context bundles" \
     "Tests: error bundling with surrounding network + actions context"
 
@@ -262,7 +262,7 @@ except Exception as e:
 run_test_3_4
 
 # ── Test 3.5: Timeline ──────────────────────────────────
-begin_test "3.5" "Timeline via observe(timeline)" \
+begin_test "3.5" "[BROWSER] Timeline via observe(timeline)" \
     "observe(timeline) returns time-ordered entries across categories" \
     "Tests: unified timeline merging multiple data sources"
 
@@ -332,7 +332,7 @@ except Exception as e:
 run_test_3_5
 
 # ── Test 3.6: Pilot state ───────────────────────────────
-begin_test "3.6" "Pilot state via observe(pilot)" \
+begin_test "3.6" "[BROWSER] Pilot state via observe(pilot)" \
     "observe(pilot) returns pilot enabled/disabled status" \
     "Tests: pilot state query"
 
@@ -389,7 +389,7 @@ except Exception as e:
 run_test_3_6
 
 # ── Test 3.7: Extension logs ────────────────────────────
-begin_test "3.7" "Extension logs via observe(extension_logs)" \
+begin_test "3.7" "[BROWSER] Extension logs via observe(extension_logs)" \
     "observe(extension_logs) returns internal diagnostic log entries" \
     "Tests: extension internal logging pipeline"
 
