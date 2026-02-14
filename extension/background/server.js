@@ -62,10 +62,22 @@ export async function sendWSEventsToServer(serverUrl, events, debugLogFn) {
 export async function sendNetworkBodiesToServer(serverUrl, bodies, debugLogFn) {
     if (debugLogFn)
         debugLogFn('connection', `Sending ${bodies.length} network bodies to server`);
+    // Convert camelCase payload keys to snake_case for the Go server API
+    const snakeBodies = bodies.map((b) => ({
+        url: b.url,
+        method: b.method,
+        status: b.status,
+        content_type: b.contentType,
+        request_body: b.requestBody,
+        response_body: b.responseBody,
+        ...(b.responseTruncated ? { response_truncated: true } : {}),
+        duration: b.duration,
+        ...(b.tabId != null ? { tab_id: b.tabId } : {})
+    }));
     const response = await fetch(`${serverUrl}/network-bodies`, {
         method: 'POST',
         headers: getRequestHeaders(),
-        body: JSON.stringify({ bodies })
+        body: JSON.stringify({ bodies: snakeBodies })
     });
     if (!response.ok) {
         const error = `Server error (network bodies): ${response.status} ${response.statusText}`;

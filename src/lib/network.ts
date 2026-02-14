@@ -67,6 +67,7 @@ interface NetworkBodyPostMessage {
     contentType: string
     requestBody?: string
     responseBody?: string
+    responseTruncated?: boolean
     duration: number
   }
 }
@@ -453,7 +454,7 @@ async function readCapturedBody(url: string, cloned: Response | null, contentTyp
 function postNetworkBody(
   win: Window, url: string, method: string, response: Response,
   contentType: string, requestBody: BodyInit | null | undefined, duration: number,
-  truncResp: string, truncReq: string | null
+  truncResp: string, truncReq: string | null, responseTruncated: boolean
 ): void {
   const message: NetworkBodyPostMessage = {
     type: 'GASOLINE_NETWORK_BODY',
@@ -461,6 +462,7 @@ function postNetworkBody(
       url, method, status: response.status, contentType,
       requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
       responseBody: truncResp,
+      ...(responseTruncated ? { responseTruncated: true } : {}),
       duration
     }
   }
@@ -483,11 +485,11 @@ export function wrapFetchWithBodies(fetchFn: FetchLike): FetchLike {
       .then(async () => {
         try {
           const responseBody = await readCapturedBody(url, cloned, contentType)
-          const { body: truncResp } = truncateResponseBody(responseBody)
+          const { body: truncResp, truncated: respTruncated } = truncateResponseBody(responseBody)
           const rawReq = SENSITIVE_URL_PATTERNS.test(url) ? '[REDACTED: auth endpoint]' : (typeof requestBody === 'string' ? requestBody : null)
           const { body: truncReq } = truncateRequestBody(rawReq)
           if (win && networkBodyCaptureEnabled) {
-            postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp || responseBody, truncReq)
+            postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp || responseBody, truncReq, respTruncated)
           }
         } catch { /* Body capture failure should not affect user code */ }
       })
