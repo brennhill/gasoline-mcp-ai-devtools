@@ -69,14 +69,15 @@ run_test_17_20() {
     local actions='[{"action":"navigate","url":"https://example.com"}]'
 
     # Queue 5 generate requests in parallel
+    local pids=()
     for i in {1..5}; do
         call_tool "generate" "{\"format\":\"test\",\"actions\":$(echo "$actions" | jq -c .),\"name\":\"concurrent-$i\"}" >/dev/null 2>&1 &
+        pids+=($!)
     done
 
     # Wait for all to complete (with per-job error tolerance)
-    local _bg_pid
-    for _bg_pid in $(jobs -p); do
-        wait "$_bg_pid" 2>/dev/null || true
+    for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null || true
     done
 
     sleep 0.2

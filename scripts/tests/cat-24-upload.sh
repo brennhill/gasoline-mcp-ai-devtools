@@ -11,6 +11,15 @@ source "$SCRIPT_DIR/framework.sh"
 init_framework "$1" "$2"
 begin_category "24" "File Upload" "22"
 
+# ── Safety-net trap: kill orphaned upload servers on exit ──
+_cat24_cleanup() {
+    # Kill upload servers on any port we might have used
+    for _p in $((PORT + 100)) $((PORT + 101)) $((PORT + 102)); do
+        lsof -ti :"$_p" 2>/dev/null | xargs kill -9 2>/dev/null || true
+    done
+}
+trap '_cat24_cleanup; rm -rf "$TEMP_DIR"' EXIT
+
 # ── Create temp test fixtures ──────────────────────────────
 echo "Hello upload test" > "$TEMP_DIR/test-file.txt"
 echo '{"key":"value"}' > "$TEMP_DIR/test-file.json"

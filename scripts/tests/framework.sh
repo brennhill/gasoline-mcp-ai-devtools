@@ -323,12 +323,16 @@ wait_for_health() {
 }
 
 start_daemon() {
+    # Kill any existing daemon first to prevent PID leaks
+    kill_server
     "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 &
     DAEMON_PID=$!
     wait_for_health 50
 }
 
 start_daemon_with_flags() {
+    # Kill any existing daemon first to prevent PID leaks
+    kill_server
     "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 &
     DAEMON_PID=$!
     wait_for_health 50
@@ -342,8 +346,10 @@ ensure_daemon() {
 
 # ── Category Finish ────────────────────────────────────────
 finish_category() {
-    # Kill our daemon
+    # Kill our daemon (tracked PID + port fallback)
     kill_server
+    # Safety net: also kill by port in case DAEMON_PID was stale
+    lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
 
     # Clean up temp
     local elapsed="$(( "$(date +%s)" - START_TIME ))"

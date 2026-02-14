@@ -21,19 +21,20 @@ begin_test "21.1" "50 concurrent observe calls from different clients" \
 
 run_test_21_1() {
     local success_count=0
+    local pids=()
 
     # Launch 50 concurrent observe calls
     for i in {1..50}; do
         call_tool "observe" '{"what":"page"}' >/dev/null 2>&1 &
+        pids+=($!)
         if [ $((i % 10)) -eq 0 ]; then
             echo "Queued $i requests..." >&2
         fi
     done
 
-    # Wait for all to complete (with timeout to prevent hang)
-    local _bg_pid
-    for _bg_pid in $(jobs -p); do
-        wait "$_bg_pid" 2>/dev/null || true
+    # Wait for all to complete, then kill any stragglers
+    for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null || true
     done
 
     sleep 0.2
@@ -118,6 +119,7 @@ run_test_21_4() {
     rm -rf ".gasoline/noise" 2>/dev/null || true
 
     # 10 parallel rule adds
+    local pids=()
     for i in {1..10}; do
         call_tool "configure" "{
             \"action\":\"noise_rule\",
@@ -128,12 +130,12 @@ run_test_21_4() {
                 \"match_spec\":{\"message_regex\":\"pattern_$i\"}
             }]
         }" >/dev/null 2>&1 &
+        pids+=($!)
     done
 
     # Wait with per-job error tolerance
-    local _bg_pid
-    for _bg_pid in $(jobs -p); do
-        wait "$_bg_pid" 2>/dev/null || true
+    for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null || true
     done
 
     sleep 0.2

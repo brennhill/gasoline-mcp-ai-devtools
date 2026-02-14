@@ -143,8 +143,23 @@ PORT_GROUP18=7907 # cat-23-draw-mode
 PORT_GROUP19=7908 # cat-24-upload
 PORT_GROUP20=7909 # cat-25-annotations
 
+# All ports used by this runner
+ALL_UAT_PORTS="$PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15 $PORT_GROUP16 $PORT_GROUP18 $PORT_GROUP19 $PORT_GROUP20"
+
+# Safety-net trap: kill daemons on all ports if runner exits abnormally
+_uat_cleanup() {
+    for port in $ALL_UAT_PORTS; do
+        lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
+    done
+    # Also kill upload test servers that cat-24 may have spawned
+    for _p in $((PORT_GROUP19 + 100)) $((PORT_GROUP19 + 101)) $((PORT_GROUP19 + 102)); do
+        lsof -ti :"$_p" 2>/dev/null | xargs kill -9 2>/dev/null || true
+    done
+}
+trap _uat_cleanup EXIT
+
 # Kill anything on our ports before starting
-for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15 $PORT_GROUP16 $PORT_GROUP18 $PORT_GROUP19 $PORT_GROUP20; do
+for port in $ALL_UAT_PORTS; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 0.5
@@ -331,7 +346,7 @@ WATCHDOG_TIMEOUT=300
         kill "$pid" 2>/dev/null || true
     done
     # Also kill any daemons on our ports
-    for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15 $PORT_GROUP16 $PORT_GROUP18 $PORT_GROUP19 $PORT_GROUP20; do
+    for port in $ALL_UAT_PORTS; do
         lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
     done
 ) &
@@ -451,8 +466,8 @@ fi
 echo ""
 
 # ── Cleanup ───────────────────────────────────────────────
-# Kill any remaining daemons on our ports
-for port in $PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15 $PORT_GROUP16 $PORT_GROUP18 $PORT_GROUP19 $PORT_GROUP20; do
+# Kill any remaining daemons on our ports (trap also handles this on abnormal exit)
+for port in $ALL_UAT_PORTS; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 
