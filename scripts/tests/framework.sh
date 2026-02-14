@@ -129,20 +129,32 @@ skip() {
 send_mcp() {
     local request="$1"
     local prefix="${2:-mcp}"
-    local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
-    local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
+    local max_retries=2
 
-    # Use || true to prevent set -eo pipefail from killing the script on timeout (exit 124)
-    echo "$request" | "$TIMEOUT_CMD" 8 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file" || true
-    # shellcheck disable=SC2034 # LAST_EXIT_CODE used by sourcing scripts
-    LAST_EXIT_CODE="${PIPESTATUS[1]:-$?}"
+    for attempt in $(seq 0 "$max_retries"); do
+        local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
+        local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
 
-    # Get last non-empty line (the JSON-RPC response)
-    LAST_RESPONSE="$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1 || true)"
-    # shellcheck disable=SC2034 # LAST_STDOUT_FILE used by sourcing scripts
-    LAST_STDOUT_FILE="$stdout_file"
-    # shellcheck disable=SC2034 # LAST_STDERR_FILE used by sourcing scripts
-    LAST_STDERR_FILE="$stderr_file"
+        # Use || true to prevent set -eo pipefail from killing the script on timeout (exit 124)
+        echo "$request" | "$TIMEOUT_CMD" 8 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file" || true
+        # shellcheck disable=SC2034 # LAST_EXIT_CODE used by sourcing scripts
+        LAST_EXIT_CODE="${PIPESTATUS[1]:-$?}"
+
+        # Get last non-empty line (the JSON-RPC response)
+        LAST_RESPONSE="$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1 || true)"
+        # shellcheck disable=SC2034 # LAST_STDOUT_FILE used by sourcing scripts
+        LAST_STDOUT_FILE="$stdout_file"
+        # shellcheck disable=SC2034 # LAST_STDERR_FILE used by sourcing scripts
+        LAST_STDERR_FILE="$stderr_file"
+
+        # Retry on "starting up" — daemon needs more time to initialize
+        if echo "$LAST_RESPONSE" | grep -q "starting up" 2>/dev/null && [ "$attempt" -lt "$max_retries" ]; then
+            echo "  [retry] Daemon starting up, waiting 2s... (attempt $((attempt + 1))/$max_retries)" >&2
+            sleep 2
+            continue
+        fi
+        break
+    done
 
     MCP_ID="$((MCP_ID + 1))"
     echo "$LAST_RESPONSE"
@@ -300,12 +312,14 @@ kill_server() {
         kill -0 "$DAEMON_PID" 2>/dev/null && kill -9 "$DAEMON_PID" 2>/dev/null || true
         DAEMON_PID=""
         sleep 0.1
-        return
     fi
-    # Fallback: kill by port (e.g., if daemon was pre-existing)
+    # Kill by port (e.g., if daemon was pre-existing)
     lsof -ti :"$PORT" 2>/dev/null | xargs kill 2>/dev/null || true
     sleep 0.2
     lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+    # Also clean up via PID file — catches zombie daemons that are alive
+    # but no longer listening on the port
+    "$WRAPPER" --stop --port "$PORT" >/dev/null 2>&1 || true
     sleep 0.1
 }
 

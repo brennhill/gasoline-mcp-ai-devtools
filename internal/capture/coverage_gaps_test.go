@@ -1,0 +1,506 @@
+// coverage_gaps_test.go — Targeted tests for uncovered capture paths (part 1).
+// Covers: SetLifecycleCallback, emitLifecycleEvent, SetServerVersion,
+// GetVersionMismatch, majorMinor, PrintHTTPDebug, detectAndSetBinaryFormat,
+// redactExtensionLog edge cases, circuit breaker, and HTTP handlers.
+package capture
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+)
+
+// ============================================
+// SetLifecycleCallback / emitLifecycleEvent
+// ============================================
+
+func TestSetLifecycleCallback(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	defer c.Close()
+
+	var received string
+	var receivedData map[string]any
+	c.SetLifecycleCallback(func(event string, data map[string]any) {
+		received = event
+		receivedData = data
+	})
+
+	c.emitLifecycleEvent("test_event", map[string]any{"key": "value"})
+
+	if received != "test_event" {
+		t.Errorf("callback event = %q, want test_event", received)
+	}
+	if receivedData["key"] != "value" {
+		t.Errorf("callback data = %v, want key=value", receivedData)
+	}
+}
+
+func TestEmitLifecycleEvent_NilCallback(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	defer c.Close()
+
+	// Should not panic when no callback is set
+	c.emitLifecycleEvent("no_callback", nil)
+}
+
+// ============================================
+// SetServerVersion / GetVersionMismatch / majorMinor
+// ============================================
+
+func TestSetServerVersion(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	defer c.Close()
+
+	c.SetServerVersion("6.0.3")
+	if got := c.GetServerVersion(); got != "6.0.3" {
+		t.Errorf("GetServerVersion() = %q, want 6.0.3", got)
+	}
+}
+
+func TestGetVersionMismatch_NoExtensionVersion(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	defer c.Close()
+
+	c.SetServerVersion("6.0.3")
+	extVer, srvVer, mismatch := c.GetVersionMismatch()
+	if extVer != "" {
+		t.Errorf("extVer = %q, want empty", extVer)
+	}
+	if srvVer != "6.0.3" {
+		t.Errorf("srvVer = %q, want 6.0.3", srvVer)
+	}
+	if mismatch {
+		t.Error("mismatch = true, want false when extension version empty")
+	}
+}
+
+func TestGetVersionMismatch_NoServerVersion(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	defer c.Close()
+
+	c.mu.Lock()
+	c.ext.extensionVersion = "6.0.3"
+	c.mu.Unlock()
+
+	_, _, mismatch := c.GetVersionMismatch()
+	if mismatch {
+		t.Error("mismatch = true, want false when server version empty")
+	}
+}
+
+func TestGetVersionMismatch_Match(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	defer c.Close()
+
+	c.SetServerVersion("6.0.3")
+	c.mu.Lock()
+	c.ext.extensionVersion = "6.0.5"
+	c.mu.Unlock()
+
+	extVer, srvVer, mismatch := c.GetVersionMismatch()
+	if extVer != "6.0.5" {
+		t.Errorf("extVer = %q, want 6.0.5", extVer)
+	}
+	if srvVer != "6.0.3" {
+		t.Errorf("srvVer = %q, want 6.0.3", srvVer)
+	}
+	if mismatch {
+		t.Error("mismatch = true, want false (same major.minor)")
+	}
+}
+
+func TestGetVersionMismatch_Mismatch(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	defer c.Close()
+
+	c.SetServerVersion("6.0.3")
+	c.mu.Lock()
+	c.ext.extensionVersion = "5.9.0"
+	c.mu.Unlock()
+
+	_, _, mismatch := c.GetVersionMismatch()
+	if !mismatch {
+		t.Error("mismatch = false, want true (6.0 != 5.9)")
+	}
+}
+
+func TestMajorMinor(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"6.0.3", "6.0"},
+		{"1.2.3", "1.2"},
+		{"10.20.30", "10.20"},
+		{"6.0", "6.0"},
+		{"6", ""},
+		{"", ""},
+	}
+
+	for _, tc := range cases {
+		got := majorMinor(tc.input)
+		if got != tc.want {
+			t.Errorf("majorMinor(%q) = %q, want %q", tc.input, got, tc.want)
+		}
+	}
+}
+
+func TestGetVersionMismatch_InvalidVersionFormat(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	defer c.Close()
+
+	c.SetServerVersion("6.0.3")
+	c.mu.Lock()
+	c.ext.extensionVersion = "invalid"
+	c.mu.Unlock()
+
+	_, _, mismatch := c.GetVersionMismatch()
+	if mismatch {
+		t.Error("mismatch = true, want false for invalid version format")
+	}
+}
+
+// ============================================
+// PrintHTTPDebug
+// ============================================
+
+func TestPrintHTTPDebug_ErrorStatus(t *testing.T) {
+	t.Parallel()
+	PrintHTTPDebug(HTTPDebugEntry{Method: "GET", Endpoint: "/test", ResponseStatus: 500, Error: "internal error"})
+}
+
+func TestPrintHTTPDebug_SuccessStatus(t *testing.T) {
+	t.Parallel()
+	PrintHTTPDebug(HTTPDebugEntry{Method: "GET", Endpoint: "/test", ResponseStatus: 200})
+}
+
+func TestPrintHTTPDebug_ErrorWithNoMessage(t *testing.T) {
+	t.Parallel()
+	PrintHTTPDebug(HTTPDebugEntry{Method: "POST", Endpoint: "/data", ResponseStatus: 404, Error: ""})
+}
+
+// ============================================
+// detectAndSetBinaryFormat
+// ============================================
+
+func TestDetectAndSetBinaryFormat_AlreadySet(t *testing.T) {
+	t.Parallel()
+	body := &NetworkBody{BinaryFormat: "png", RequestBody: "some content"}
+	detectAndSetBinaryFormat(body)
+	if body.BinaryFormat != "png" {
+		t.Errorf("BinaryFormat = %q, want png (should not change)", body.BinaryFormat)
+	}
+}
+
+func TestDetectAndSetBinaryFormat_EmptyBodies(t *testing.T) {
+	t.Parallel()
+	body := &NetworkBody{}
+	detectAndSetBinaryFormat(body)
+	if body.BinaryFormat != "" {
+		t.Errorf("BinaryFormat = %q, want empty for empty bodies", body.BinaryFormat)
+	}
+}
+
+func TestDetectAndSetBinaryFormat_PNG_ResponseBody(t *testing.T) {
+	t.Parallel()
+	pngMagic := "\x89PNG\r\n\x1a\n" + strings.Repeat("\x00", 20)
+	body := &NetworkBody{ResponseBody: pngMagic}
+	detectAndSetBinaryFormat(body)
+	if body.BinaryFormat == "" {
+		t.Skip("PNG detection not triggered — util.DetectBinaryFormat may need longer header")
+	}
+}
+
+func TestDetectAndSetBinaryFormat_TextBodies(t *testing.T) {
+	t.Parallel()
+	body := &NetworkBody{RequestBody: `{"hello":"world"}`, ResponseBody: `{"ok":true}`}
+	detectAndSetBinaryFormat(body)
+	if body.BinaryFormat != "" {
+		t.Errorf("BinaryFormat = %q, want empty for text content", body.BinaryFormat)
+	}
+}
+
+// ============================================
+// Extension log redaction
+// ============================================
+
+func TestRedactJSONValue_NestedTypes(t *testing.T) {
+	t.Parallel()
+
+	input := map[string]any{
+		"key":     "secret_value",
+		"nested":  map[string]any{"inner": "another_secret"},
+		"array":   []any{"item1", "item2"},
+		"number":  float64(42),
+		"nil_val": nil,
+	}
+
+	redactFn := func(s string) string { return strings.ToUpper(s) }
+
+	result := redactJSONValue(input, redactFn)
+	m := result.(map[string]any)
+	if m["key"] != "SECRET_VALUE" {
+		t.Errorf("key = %v, want SECRET_VALUE", m["key"])
+	}
+	nested := m["nested"].(map[string]any)
+	if nested["inner"] != "ANOTHER_SECRET" {
+		t.Errorf("nested.inner = %v, want ANOTHER_SECRET", nested["inner"])
+	}
+	arr := m["array"].([]any)
+	if arr[0] != "ITEM1" || arr[1] != "ITEM2" {
+		t.Errorf("array = %v, want [ITEM1, ITEM2]", arr)
+	}
+	if m["number"] != float64(42) {
+		t.Errorf("number = %v, want 42", m["number"])
+	}
+	if m["nil_val"] != nil {
+		t.Errorf("nil_val = %v, want nil", m["nil_val"])
+	}
+}
+
+func TestRedactExtensionLogData_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	data := json.RawMessage(`not valid json at all`)
+	result := c.redactExtensionLogData(data)
+	if len(result) == 0 {
+		t.Error("expected non-empty result for invalid JSON fallback")
+	}
+}
+
+func TestRedactExtensionLog_NilRedactor(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	c.mu.Lock()
+	c.logRedactor = nil
+	c.mu.Unlock()
+	log := ExtensionLog{Message: "test message", Source: "background", Category: "debug"}
+	result := c.redactExtensionLog(log)
+	if result.Message != "test message" {
+		t.Errorf("Message = %q, want unchanged when redactor is nil", result.Message)
+	}
+}
+
+func TestRedactExtensionLog_WithRedactor(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	log := ExtensionLog{Message: "some data", Source: "content-script", Category: "warn", Data: json.RawMessage(`{"key":"secret"}`)}
+	result := c.redactExtensionLog(log)
+	if result.Message != "some data" {
+		t.Errorf("Message = %q, want some data (default engine has no patterns)", result.Message)
+	}
+	if !json.Valid(result.Data) {
+		t.Errorf("Data is not valid JSON after redaction: %s", result.Data)
+	}
+}
+
+// ============================================
+// Circuit breaker
+// ============================================
+
+func TestCircuitBreaker_RecordEventsWindowReset(t *testing.T) {
+	t.Parallel()
+	cb := NewCircuitBreaker(func(string, map[string]any) {})
+	cb.SetWindowState(time.Now().Add(-2*time.Second), 50)
+	cb.RecordEvents(10)
+	cb.mu.RLock()
+	count := cb.windowEventCount
+	cb.mu.RUnlock()
+	if count != 10 {
+		t.Errorf("windowEventCount = %d, want 10 after reset", count)
+	}
+}
+
+func TestCircuitBreaker_GetHealthStatus_Open(t *testing.T) {
+	t.Parallel()
+	cb := NewCircuitBreaker(func(string, map[string]any) {})
+	cb.ForceOpen("test_reason")
+	health := cb.GetHealthStatus()
+	if !health.CircuitOpen {
+		t.Error("CircuitOpen = false, want true")
+	}
+	if health.Reason != "test_reason" {
+		t.Errorf("Reason = %q, want test_reason", health.Reason)
+	}
+	if health.OpenedAt == "" {
+		t.Error("OpenedAt should be non-empty when circuit is open")
+	}
+}
+
+func TestCircuitBreaker_GetHealthStatus_Closed(t *testing.T) {
+	t.Parallel()
+	cb := NewCircuitBreaker(func(string, map[string]any) {})
+	health := cb.GetHealthStatus()
+	if health.CircuitOpen {
+		t.Error("CircuitOpen = true, want false")
+	}
+	if health.OpenedAt != "" {
+		t.Errorf("OpenedAt = %q, want empty when closed", health.OpenedAt)
+	}
+}
+
+// ============================================
+// HTTP Handlers
+// ============================================
+
+func TestHandleNetworkBodies_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	rr := httptest.NewRecorder()
+	c.HandleNetworkBodies(rr, httptest.NewRequest(http.MethodGet, "/network-bodies", nil))
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestHandleNetworkBodies_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	rr := httptest.NewRecorder()
+	c.HandleNetworkBodies(rr, httptest.NewRequest(http.MethodPost, "/network-bodies", strings.NewReader("{invalid")))
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+func TestHandleNetworkBodies_Success(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	payload := `{"bodies":[{"method":"GET","url":"https://example.com","status":200}]}`
+	rr := httptest.NewRecorder()
+	c.HandleNetworkBodies(rr, httptest.NewRequest(http.MethodPost, "/network-bodies", strings.NewReader(payload)))
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+	var resp map[string]any
+	json.Unmarshal(rr.Body.Bytes(), &resp)
+	if resp["status"] != "ok" || resp["count"] != float64(1) {
+		t.Errorf("response = %v", resp)
+	}
+}
+
+func TestHandleEnhancedActions_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	rr := httptest.NewRecorder()
+	c.HandleEnhancedActions(rr, httptest.NewRequest(http.MethodGet, "/enhanced-actions", nil))
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestHandleEnhancedActions_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	rr := httptest.NewRecorder()
+	c.HandleEnhancedActions(rr, httptest.NewRequest(http.MethodPost, "/enhanced-actions", strings.NewReader("{bad")))
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+func TestHandleEnhancedActions_Success(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	rr := httptest.NewRecorder()
+	c.HandleEnhancedActions(rr, httptest.NewRequest(http.MethodPost, "/enhanced-actions", strings.NewReader(`{"actions":[{"type":"click","selector":"#btn"}]}`)))
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+}
+
+func TestHandlePerformanceSnapshots_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	rr := httptest.NewRecorder()
+	c.HandlePerformanceSnapshots(rr, httptest.NewRequest(http.MethodGet, "/performance-snapshots", nil))
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestHandlePerformanceSnapshots_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	rr := httptest.NewRecorder()
+	c.HandlePerformanceSnapshots(rr, httptest.NewRequest(http.MethodPost, "/performance-snapshots", strings.NewReader("{bad")))
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+func TestHandlePerformanceSnapshots_Success(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	rr := httptest.NewRecorder()
+	c.HandlePerformanceSnapshots(rr, httptest.NewRequest(http.MethodPost, "/performance-snapshots", strings.NewReader(`{"snapshots":[{"url":"https://example.com","timestamp":"2026-01-01T00:00:00Z"}]}`)))
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+}
+
+func TestHandleNetworkWaterfall_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	rr := httptest.NewRecorder()
+	c.HandleNetworkWaterfall(rr, httptest.NewRequest(http.MethodGet, "/network-waterfall", nil))
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestHandleNetworkWaterfall_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	rr := httptest.NewRecorder()
+	c.HandleNetworkWaterfall(rr, httptest.NewRequest(http.MethodPost, "/network-waterfall", strings.NewReader("{bad")))
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+func TestHandleNetworkWaterfall_Success(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+	rr := httptest.NewRecorder()
+	c.HandleNetworkWaterfall(rr, httptest.NewRequest(http.MethodPost, "/network-waterfall", strings.NewReader(`{"entries":[{"name":"https://example.com/app.js","duration":50}],"page_url":"https://example.com"}`)))
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d; body = %s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+}

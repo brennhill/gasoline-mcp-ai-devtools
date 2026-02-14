@@ -41,7 +41,7 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 		return err
 	}
 
-	srv, err := startHTTPServer(server, port, apiKey, mux)
+	srv, httpDone, err := startHTTPServer(server, port, apiKey, mux)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 	})
 	server.logLifecycle("mcp_transport_ready", port, nil)
 
-	awaitShutdownSignal(server, srv, port)
+	awaitShutdownSignal(server, srv, port, httpDone)
 	return nil
 }
 
@@ -163,9 +163,11 @@ func preflightPortCheck(server *Server, port int) error {
 }
 
 // startHTTPServer launches the HTTP server in a background goroutine and waits
-// for it to bind successfully. Returns the server instance for later shutdown.
-func startHTTPServer(server *Server, port int, apiKey string, mux *http.ServeMux) (*http.Server, error) {
+// for it to bind successfully. Returns the server instance and a channel that
+// closes if the listener exits unexpectedly (crash, network error, etc.).
+func startHTTPServer(server *Server, port int, apiKey string, mux *http.ServeMux) (*http.Server, <-chan struct{}, error) {
 	httpReady := make(chan error, 1)
+	httpDone := make(chan struct{})
 	srv := &http.Server{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -173,6 +175,7 @@ func startHTTPServer(server *Server, port int, apiKey string, mux *http.ServeMux
 		Handler:      AuthMiddleware(apiKey)(mux),
 	}
 	util.SafeGo(func() {
+		defer close(httpDone)
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
 		ln, err := net.Listen("tcp", addr)
 		if err != nil {
@@ -188,24 +191,36 @@ func startHTTPServer(server *Server, port int, apiKey string, mux *http.ServeMux
 
 	if err := <-httpReady; err != nil {
 		server.logLifecycle("http_bind_failed", port, map[string]any{"error": err.Error()})
-		return nil, fmt.Errorf("cannot bind port %d: %w", port, err)
+		return nil, nil, fmt.Errorf("cannot bind port %d: %w", port, err)
 	}
 
 	server.logLifecycle("http_bind_success", port, nil)
-	return srv, nil
+	return srv, httpDone, nil
 }
 
-// awaitShutdownSignal blocks until a termination signal is received, then
-// performs a graceful shutdown of the HTTP server and cleanup.
-func awaitShutdownSignal(server *Server, srv *http.Server, port int) {
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
-	s := <-sig
+// awaitShutdownSignal blocks until a termination signal is received or the
+// HTTP listener dies unexpectedly, then performs graceful cleanup.
+// The httpDone channel closes if srv.Serve() exits for any reason other than
+// a clean Shutdown — this prevents zombie daemons that are alive but deaf.
+func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-chan struct{}) {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
-	shutdownSource := mapSignalSource(s)
+	var s os.Signal
+	var shutdownSource string
+
+	select {
+	case s = <-sigCh:
+		shutdownSource = mapSignalSource(s)
+	case <-httpDone:
+		// HTTP listener died unexpectedly — exit instead of hanging forever
+		shutdownSource = "http_listener_died"
+		s = syscall.SIGTERM // synthetic, for logging
+		fmt.Fprintf(os.Stderr, "[gasoline] HTTP listener exited unexpectedly, shutting down to avoid zombie process\n")
+	}
+
 	server.logLifecycle("shutdown", port, map[string]any{
 		"signal":          s.String(),
-		"signal_num":      int(s.(syscall.Signal)),
 		"shutdown_source": shutdownSource,
 		"uptime_seconds":  time.Since(startTime).Seconds(),
 	})

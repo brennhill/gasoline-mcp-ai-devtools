@@ -111,6 +111,46 @@ _upload_and_poll() {
     done
 }
 
+# ── Shared helper: fetch /api/last-upload via browser (dogfood) ──
+# Uses execute_js + fetch() from the browser page to check the upload server API.
+# Sets LAST_UPLOAD_MD5, LAST_UPLOAD_NAME, LAST_UPLOAD_CSRF_OK, LAST_UPLOAD_COOKIE_OK, LAST_UPLOAD_RAW.
+_fetch_last_upload_via_browser() {
+    LAST_UPLOAD_MD5=""
+    LAST_UPLOAD_NAME=""
+    LAST_UPLOAD_CSRF_OK=""
+    LAST_UPLOAD_COOKIE_OK=""
+    LAST_UPLOAD_RAW=""
+
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fetch last upload from server API","script":"fetch(\"/api/last-upload\").then(r=>r.json()).then(d=>JSON.stringify(d))"}'
+    LAST_UPLOAD_RAW="$INTERACT_RESULT"
+
+    # Extract fields from nested command result JSON:
+    # INTERACT_RESULT = "Command ...: complete\n{...result:{result:\"<inner JSON string>\"...}...}"
+    local parsed
+    parsed=$(echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+text = sys.stdin.read()
+idx = text.find('{')
+if idx < 0:
+    print('{}')
+    sys.exit(0)
+data = json.loads(text[idx:])
+r = data.get('result', {})
+inner = r.get('result', '') if isinstance(r, dict) else ''
+if isinstance(inner, str) and inner.startswith('{'):
+    print(inner)
+elif isinstance(inner, dict):
+    print(json.dumps(inner))
+else:
+    print('{}')
+" 2>/dev/null || echo "{}")
+
+    LAST_UPLOAD_MD5=$(echo "$parsed" | jq -r '.md5 // empty' 2>/dev/null)
+    LAST_UPLOAD_NAME=$(echo "$parsed" | jq -r '.name // empty' 2>/dev/null)
+    LAST_UPLOAD_CSRF_OK=$(echo "$parsed" | jq -r '.csrf_ok // empty' 2>/dev/null)
+    LAST_UPLOAD_COOKIE_OK=$(echo "$parsed" | jq -r '.cookie_ok // empty' 2>/dev/null)
+}
+
 # ── Test 15.0: Upload server canary ──────────────────────
 begin_test "15.0" "[BROWSER] Upload server canary" \
     "Navigate browser to upload server, verify landing page and upload form load" \
@@ -430,14 +470,19 @@ run_test_15_10() {
 
     log_diagnostic "15.10" "observe success page" "$response" "$content_text"
 
-    if echo "$content_text" | grep -qi "Upload Successful"; then
-        if echo "$content_text" | grep -q "$original_md5"; then
-            pass "Upload E2E: file reached server, MD5 match ($original_md5) on success page."
-        else
-            fail "Upload reached server but MD5 not on success page. Expected: $original_md5. Page: $(truncate "$content_text" 300)"
-        fi
+    if ! echo "$content_text" | grep -q '/upload/success'; then
+        fail "Upload did not reach success page. Page metadata: $(truncate "$content_text" 300)"
+        return
+    fi
+
+    # Verify MD5 via server API (dogfood: fetch from browser)
+    _fetch_last_upload_via_browser
+    log_diagnostic "15.10" "last-upload API" "$LAST_UPLOAD_RAW" ""
+
+    if [ "$LAST_UPLOAD_MD5" = "$original_md5" ]; then
+        pass "Upload E2E: file reached server, MD5 match ($original_md5)."
     else
-        fail "Upload did not reach success page. Page: $(truncate "$content_text" 300)"
+        fail "Upload reached server but MD5 mismatch. Expected: $original_md5, got: $LAST_UPLOAD_MD5. Server file='$LAST_UPLOAD_NAME'."
     fi
 }
 run_test_15_10
@@ -538,25 +583,19 @@ run_test_15_12() {
 
     log_diagnostic "15.12" "observe success page" "$response" "$content_text"
 
-    if ! echo "$content_text" | grep -qi "Upload Successful"; then
-        fail "Upload did not reach success page. Page: $(truncate "$content_text" 300)"
+    if ! echo "$content_text" | grep -q '/upload/success'; then
+        fail "Upload did not reach success page. Page metadata: $(truncate "$content_text" 300)"
         return
     fi
 
-    # Server-side verification via upload server's /api/last-upload
-    local verify_body
-    verify_body=$(curl -s "http://127.0.0.1:${UPLOAD_PORT}/api/last-upload" 2>/dev/null)
-    local verify_md5 verify_csrf verify_cookie
-    verify_md5=$(echo "$verify_body" | jq -r '.md5' 2>/dev/null)
-    verify_csrf=$(echo "$verify_body" | jq -r '.csrf_ok' 2>/dev/null)
-    verify_cookie=$(echo "$verify_body" | jq -r '.cookie_ok' 2>/dev/null)
+    # Server-side verification via browser fetch (dogfood)
+    _fetch_last_upload_via_browser
+    log_diagnostic "15.12" "server verify" "$LAST_UPLOAD_RAW" ""
 
-    log_diagnostic "15.12" "server verify" "$verify_body" ""
-
-    if [ "$verify_md5" = "$original_md5" ] && [ "$verify_csrf" = "true" ] && [ "$verify_cookie" = "true" ]; then
-        pass "Full verification: MD5 match ($verify_md5), CSRF ok, cookie ok."
+    if [ "$LAST_UPLOAD_MD5" = "$original_md5" ] && [ "$LAST_UPLOAD_CSRF_OK" = "true" ] && [ "$LAST_UPLOAD_COOKIE_OK" = "true" ]; then
+        pass "Full verification: MD5 match ($LAST_UPLOAD_MD5), CSRF ok, cookie ok."
     else
-        fail "Server verification: md5=$verify_md5 (expected $original_md5), csrf=$verify_csrf, cookie=$verify_cookie."
+        fail "Server verification: md5=$LAST_UPLOAD_MD5 (expected $original_md5), csrf=$LAST_UPLOAD_CSRF_OK, cookie=$LAST_UPLOAD_COOKIE_OK."
     fi
 }
 run_test_15_12
@@ -580,10 +619,10 @@ run_test_15_13() {
 
     log_diagnostic "15.13" "observe page" "$response" "$content_text"
 
-    if echo "$content_text" | grep -qi "upload.*success\|Upload Successful"; then
-        pass "Confirmation page visible via observe(page)."
+    if echo "$content_text" | grep -q '/upload/success'; then
+        pass "Confirmation page visible via observe(page) — URL contains /upload/success."
     else
-        fail "Browser not on upload success page after 15.10/15.12."
+        fail "Browser not on upload success page after 15.10/15.12. Page metadata: $(truncate "$content_text" 300)"
     fi
 }
 run_test_15_13
@@ -607,18 +646,15 @@ run_test_15_14() {
     interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload\",\"reason\":\"Attempt upload form without session\"}"
     sleep 1
 
-    # Observe page — should show 401
-    local response
-    response=$(call_tool "observe" '{"what":"page"}')
-    local content_text
-    content_text=$(extract_content_text "$response")
+    # Verify 401 is visible in the browser via execute_js (dogfood — use Gasoline, not curl)
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check 401 page content","script":"document.body.innerText"}'
 
-    log_diagnostic "15.14" "observe 401" "$response" "$content_text"
+    log_diagnostic "15.14" "401 page content" "$INTERACT_RESULT" ""
 
-    if echo "$content_text" | grep -qi "401\|Not logged in"; then
-        pass "Auth failure: 401 visible in browser after session cleared."
+    if echo "$INTERACT_RESULT" | grep -qi "401\|Not logged in"; then
+        pass "Auth failure: '401 Not logged in' visible in browser after session cleared."
     else
-        fail "Expected 401 page after logout. Got: $(truncate "$content_text" 200)"
+        fail "Expected 401 page after logout. Browser content: $(truncate "$INTERACT_RESULT" 200)"
     fi
 
     # Restore session for subsequent tests (navigate to / to get new cookie)
@@ -648,7 +684,11 @@ run_test_15_15() {
     # Upload and poll
     _upload_and_poll "15.15" "$test_file"
 
-    # Even if pending, check the DOM — the file might have been set
+    if [ "$UPLOAD_FINAL_STATUS" != "complete" ]; then
+        fail "Upload did not complete (status: $UPLOAD_FINAL_STATUS). Cannot verify file on input."
+        return
+    fi
+
     sleep 1
 
     # Verify: execute_js to check files on the input
@@ -656,17 +696,41 @@ run_test_15_15() {
 
     log_diagnostic "15.15" "file verification" "$INTERACT_RESULT" ""
 
+    # Extract the JS return value from the nested command result JSON
+    local js_result
+    js_result=$(echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+text = sys.stdin.read()
+idx = text.find('{')
+if idx < 0:
+    print(text.strip())
+else:
+    try:
+        data = json.loads(text[idx:])
+        r = data.get('result', {})
+        if isinstance(r, dict):
+            print(r.get('result', r.get('error', r.get('message', 'UNKNOWN'))))
+        else:
+            print(r)
+    except:
+        print(text.strip())
+" 2>/dev/null || echo "$INTERACT_RESULT")
+
+    echo "  [js_result: $js_result]"
+
     local expected_name="verify-upload.txt"
-    if echo "$INTERACT_RESULT" | grep -q "$expected_name"; then
-        pass "File reached input: files[0].name matches uploaded file."
-    elif echo "$INTERACT_RESULT" | grep -qi "timeout"; then
-        fail "Timed out waiting for execute_js (upload handler should have responded)."
-    elif echo "$INTERACT_RESULT" | grep -q "NO_FILES"; then
+    if [ "$js_result" = "$expected_name" ]; then
+        pass "File reached input: files[0].name = '$expected_name'."
+    elif echo "$js_result" | grep -q "$expected_name"; then
+        pass "File reached input: result contains '$expected_name'."
+    elif [ "$js_result" = "NO_FILES" ]; then
         fail "File not set on input element (extension connected but files array empty)."
-    elif echo "$INTERACT_RESULT" | grep -q "NO_ELEMENT"; then
+    elif [ "$js_result" = "NO_ELEMENT" ]; then
         fail "Input element #file-input not found on page."
+    elif echo "$js_result" | grep -qi "error\|failed\|csp"; then
+        fail "execute_js error: $js_result"
     else
-        fail "File verification failed: $(truncate "$INTERACT_RESULT" 200)"
+        fail "Unexpected result from file check: '$js_result'. Full: $(truncate "$INTERACT_RESULT" 300)"
     fi
 }
 run_test_15_15
@@ -770,16 +834,30 @@ run_test_15_16() {
                 interact_and_wait "execute_js" '{"action":"execute_js","reason":"Submit upload form","script":"document.querySelector(\"form\").submit(); \"submitted\""}'
                 sleep 3
 
-                # Verify server received the file with correct MD5
-                local verify_body
-                verify_body=$(curl -s "http://127.0.0.1:${UPLOAD_PORT}/api/last-upload" 2>/dev/null)
-                local verify_md5
-                verify_md5=$(echo "$verify_body" | jq -r '.md5' 2>/dev/null)
+                # Verify browser reached success page
+                local page_resp
+                page_resp=$(call_tool "observe" '{"what":"page"}')
+                local page_text
+                page_text=$(extract_content_text "$page_resp")
+                log_diagnostic "15.16" "post-submit page" "$page_resp" "$page_text"
 
-                if [ "$verify_md5" = "$original_md5" ]; then
+                if ! echo "$page_text" | grep -q '/upload/success'; then
+                    fail "Stage 4 upload: form submission did not reach success page. Page: $(truncate "$page_text" 300). Possible CSRF or session mismatch."
+                    return
+                fi
+
+                # Verify MD5 via server API (dogfood: fetch from browser)
+                _fetch_last_upload_via_browser
+                log_diagnostic "15.16" "last-upload API" "$LAST_UPLOAD_RAW" ""
+
+                echo "  [server] file='$LAST_UPLOAD_NAME' md5='$LAST_UPLOAD_MD5' expected='$original_md5'"
+
+                if [ "$LAST_UPLOAD_MD5" = "$original_md5" ]; then
                     pass "Stage 4 escalation: file reached server via OS automation, MD5 match ($original_md5)."
+                elif [ -z "$LAST_UPLOAD_MD5" ]; then
+                    fail "Stage 4: could not extract MD5 from server API. Raw: $(truncate "$LAST_UPLOAD_RAW" 300)"
                 else
-                    fail "Stage 4 file reached server but MD5 mismatch. Expected $original_md5, got $verify_md5."
+                    fail "Stage 4 file reached server but MD5 mismatch. Expected $original_md5, got $LAST_UPLOAD_MD5. Server file='$LAST_UPLOAD_NAME'. The OS dialog may have selected the wrong file."
                 fi
             elif echo "$UPLOAD_FINAL_TEXT" | grep -q '"stage":1\|"stage": 1'; then
                 # Stage 1 succeeded on hardened form — unexpected but not a test failure

@@ -38,8 +38,19 @@
           "description": "Return last N items only",
           "type": "number"
         },
+        "level": {
+          "description": "Exact log level filter (logs)",
+          "enum": [
+            "debug",
+            "log",
+            "info",
+            "warn",
+            "error"
+          ],
+          "type": "string"
+        },
         "limit": {
-          "description": "Max entries to return",
+          "description": "Max entries to return (default 100, max 1000)",
           "type": "number"
         },
         "method": {
@@ -63,6 +74,10 @@
         },
         "since_cursor": {
           "description": "Return all entries newer than cursor (no limit)",
+          "type": "string"
+        },
+        "source": {
+          "description": "Exact source filter (logs)",
           "type": "string"
         },
         "status_max": {
@@ -120,15 +135,6 @@
     "description": "Trigger active analysis. Creates async queries the extension executes.\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.",
     "inputSchema": {
       "properties": {
-        "action": {
-          "description": "security_diff sub-action",
-          "enum": [
-            "snapshot",
-            "compare",
-            "list"
-          ],
-          "type": "string"
-        },
         "checks": {
           "description": "Checks to run (security_audit)",
           "items": {
@@ -143,14 +149,6 @@
             "type": "string"
           },
           "type": "array"
-        },
-        "compare_from": {
-          "description": "Baseline snapshot (security_diff)",
-          "type": "string"
-        },
-        "compare_to": {
-          "description": "Target snapshot (security_diff)",
-          "type": "string"
         },
         "correlation_id": {
           "description": "Correlation ID for fetching annotation detail (applies to annotation_detail)",
@@ -189,10 +187,6 @@
         "max_workers": {
           "description": "Max concurrent workers (link_health)",
           "type": "number"
-        },
-        "name": {
-          "description": "Snapshot name (security_diff)",
-          "type": "string"
         },
         "operation": {
           "description": "API validation operation",
@@ -253,7 +247,10 @@
             "link_health",
             "link_validation",
             "annotations",
-            "annotation_detail"
+            "annotation_detail",
+            "api_validation",
+            "draw_history",
+            "draw_session"
           ],
           "type": "string"
         }
@@ -299,7 +296,11 @@
         "format": {
           "enum": [
             "reproduction",
+            "test",
+            "pr_summary",
+            "har",
             "csp",
+            "sri",
             "sarif",
             "visual_test",
             "annotation_report",
@@ -474,7 +475,7 @@
           "type": "string"
         },
         "limit": {
-          "description": "Max entries to return",
+          "description": "Max entries to return (default 100, max 1000)",
           "type": "number"
         },
         "name": {
@@ -501,6 +502,10 @@
         },
         "reason": {
           "description": "Why this is noise",
+          "type": "string"
+        },
+        "recording_id": {
+          "description": "Recording ID (recording_stop, playback)",
           "type": "string"
         },
         "rule_id": {

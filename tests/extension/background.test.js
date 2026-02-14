@@ -179,7 +179,12 @@ describe('Log Batcher', () => {
 
     // Should have flushed once with both entries
     assert.strictEqual(flushFn.mock.calls.length, 1)
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 2)
+    const flushedBatch = flushFn.mock.calls[0].arguments[0]
+    assert.strictEqual(flushedBatch.length, 2)
+    assert.strictEqual(flushedBatch[0].level, 'error')
+    assert.strictEqual(flushedBatch[0].msg, 'test1')
+    assert.strictEqual(flushedBatch[1].level, 'error')
+    assert.strictEqual(flushedBatch[1].msg, 'test2')
   })
 
   test('should flush immediately when batch size reached', () => {
@@ -192,7 +197,11 @@ describe('Log Batcher', () => {
 
     batcher.add({ msg: '3' })
     assert.strictEqual(flushFn.mock.calls.length, 1)
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 3)
+    const flushedBatch = flushFn.mock.calls[0].arguments[0]
+    assert.strictEqual(flushedBatch.length, 3)
+    assert.strictEqual(flushedBatch[0].msg, '1')
+    assert.strictEqual(flushedBatch[1].msg, '2')
+    assert.strictEqual(flushedBatch[2].msg, '3')
   })
 
   test('should clear pending logs on flush', async () => {
@@ -209,7 +218,9 @@ describe('Log Batcher', () => {
     // Each batch should be separate
     assert.strictEqual(flushFn.mock.calls.length, 2)
     assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 1)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].msg, 'test')
     assert.strictEqual(flushFn.mock.calls[1].arguments[0].length, 1)
+    assert.strictEqual(flushFn.mock.calls[1].arguments[0][0].msg, 'test2')
   })
 
   test('should handle manual flush', () => {
@@ -220,6 +231,8 @@ describe('Log Batcher', () => {
     batcher.flush()
 
     assert.strictEqual(flushFn.mock.calls.length, 1)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 1)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].msg, 'test')
   })
 
   test('should not flush if empty', () => {
@@ -260,6 +273,10 @@ describe('sendLogsToServer', () => {
 
     const body = JSON.parse(options.body)
     assert.strictEqual(body.entries.length, 2)
+    assert.strictEqual(body.entries[0].level, 'error')
+    assert.strictEqual(body.entries[0].msg, 'test1')
+    assert.strictEqual(body.entries[1].level, 'warn')
+    assert.strictEqual(body.entries[1].msg, 'test2')
     assert.strictEqual(result.entries, 2)
   })
 
@@ -347,11 +364,13 @@ describe('updateBadge', () => {
     assert.strictEqual(mockChrome.action.setBadgeText.mock.calls.length, 1)
     assert.strictEqual(mockChrome.action.setBadgeBackgroundColor.mock.calls.length, 1)
 
-    const [textCall] = mockChrome.action.setBadgeText.mock.calls
-    assert.strictEqual(textCall.arguments[0].text, '')
+    const textArg = mockChrome.action.setBadgeText.mock.calls[0].arguments[0]
+    assert.strictEqual(textArg.text, '')
+    assert.strictEqual(typeof textArg, 'object', 'setBadgeText argument should be an object')
 
-    const [colorCall] = mockChrome.action.setBadgeBackgroundColor.mock.calls
-    assert.strictEqual(colorCall.arguments[0].color, '#3fb950') // green
+    const colorArg = mockChrome.action.setBadgeBackgroundColor.mock.calls[0].arguments[0]
+    assert.strictEqual(colorArg.color, '#3fb950') // green
+    assert.strictEqual(typeof colorArg, 'object', 'setBadgeBackgroundColor argument should be an object')
   })
 
   test('should show error count when connected with errors', () => {
@@ -388,6 +407,8 @@ describe('formatLogEntry', () => {
 
     assert.ok(entry.ts)
     assert.ok(entry.ts.match(/^\d{4}-\d{2}-\d{2}T/)) // ISO format
+    assert.strictEqual(entry.level, 'error')
+    assert.strictEqual(entry.msg, 'test')
   })
 
   test('should preserve existing timestamp', () => {
@@ -580,6 +601,9 @@ describe('processErrorGroup', () => {
 
     assert.strictEqual(result.shouldSend, true)
     assert.deepStrictEqual(result.entry, entry)
+    assert.strictEqual(result.entry.type, 'exception')
+    assert.strictEqual(result.entry.level, 'error')
+    assert.strictEqual(result.entry.message, 'Test error')
   })
 
   test('should not send duplicate error within dedup window', () => {
@@ -671,6 +695,11 @@ describe('flushErrorGroups', () => {
     assert.strictEqual(flushed[0]._aggregatedCount, 3)
     assert.ok(flushed[0]._firstSeen)
     assert.ok(flushed[0]._lastSeen)
+    assert.strictEqual(flushed[0].type, 'exception')
+    assert.strictEqual(flushed[0].level, 'error')
+    assert.strictEqual(flushed[0].message, 'Repeated error for flush')
+    assert.strictEqual(typeof flushed[0]._firstSeen, 'string')
+    assert.strictEqual(typeof flushed[0]._lastSeen, 'string')
   })
 })
 
@@ -816,8 +845,16 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
+    assert.strictEqual(typeof parsed.exportedAt, 'string')
     assert.strictEqual(parsed.version, MANIFEST_VERSION)
     assert.ok(Array.isArray(parsed.entries))
+    assert.ok(parsed.entries.length > 0, 'Expected at least one entry in exported log')
+    // Verify entry shape
+    const captureEntry = parsed.entries.find((e) => e.message === 'Capture test')
+    assert.ok(captureEntry, 'Expected to find the "Capture test" entry')
+    assert.strictEqual(captureEntry.category, 'capture')
+    assert.ok(captureEntry.ts, 'Expected ts field on entry')
+    assert.strictEqual(typeof captureEntry.ts, 'string')
   })
 
   // NOTE: setDebugMode test moved to co-located test file: extension/background/index.test.js
@@ -1024,7 +1061,12 @@ describe('Enhanced Actions Server Communication', () => {
     assert.ok(Array.isArray(body.actions))
     assert.strictEqual(body.actions.length, 2)
     assert.strictEqual(body.actions[0].type, 'click')
+    assert.strictEqual(body.actions[0].timestamp, 1705312200000)
+    assert.strictEqual(body.actions[0].url, 'http://localhost:3000')
+    assert.deepStrictEqual(body.actions[0].selectors, { testId: 'btn' })
     assert.strictEqual(body.actions[1].type, 'input')
+    assert.strictEqual(body.actions[1].value, 'test@test.com')
+    assert.strictEqual(body.actions[1].input_type, 'email')
   })
 
   test('sendEnhancedActionsToServer should throw on non-ok response', async () => {
@@ -1058,9 +1100,15 @@ describe('Enhanced Actions Server Communication', () => {
     await new Promise((r) => setTimeout(r, 100))
 
     assert.strictEqual(flushFn.mock.calls.length, 1)
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 2)
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].type, 'click')
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0][1].type, 'input')
+    const flushedActions = flushFn.mock.calls[0].arguments[0]
+    assert.strictEqual(flushedActions.length, 2)
+    assert.strictEqual(flushedActions[0].type, 'click')
+    assert.strictEqual(flushedActions[0].timestamp, 1000)
+    assert.strictEqual(flushedActions[0].url, 'http://localhost:3000')
+    assert.deepStrictEqual(flushedActions[0].selectors, { id: 'btn' })
+    assert.strictEqual(flushedActions[1].type, 'input')
+    assert.strictEqual(flushedActions[1].timestamp, 1001)
+    assert.strictEqual(flushedActions[1].value, 'hi')
   })
 
   test('message handler should process enhanced_action messages via batcher', () => {

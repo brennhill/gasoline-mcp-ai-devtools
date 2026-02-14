@@ -12,6 +12,9 @@ import (
 	"github.com/dev-console/dev-console/internal/pagination"
 )
 
+// maxObserveLimit caps the limit parameter to prevent oversized responses.
+const maxObserveLimit = 1000
+
 // ObserveHandler is the function signature for observe tool handlers.
 type ObserveHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
 
@@ -29,8 +32,6 @@ var observeHandlers = map[string]ObserveHandler{
 	"page":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetPageInfo(req, args) },
 	"tabs":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetTabs(req, args) },
 	"pilot":             func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObservePilot(req, args) },
-	"api":               func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetAPISchema(req, args) },
-	"changes":           func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetChangesSince(req, args) },
 	"timeline":          func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetSessionTimeline(req, args) },
 	"error_bundles":     func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetErrorBundles(req, args) },
 	"screenshot":        func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetScreenshot(req, args) },
@@ -150,7 +151,10 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 	}
 	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
-		params.Limit = 100 // default limit
+		params.Limit = 100
+	}
+	if params.Limit > maxObserveLimit {
+		params.Limit = maxObserveLimit
 	}
 
 	// Copy slice reference under lock, iterate outside.
@@ -220,7 +224,10 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 	}
 	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
-		params.Limit = 100 // default limit
+		params.Limit = 100
+	}
+	if params.Limit > maxObserveLimit {
+		params.Limit = maxObserveLimit
 	}
 
 	// Copy slice reference and totalAdded under lock.
@@ -330,7 +337,10 @@ func (h *ToolHandler) toolGetExtensionLogs(req JSONRPCRequest, args json.RawMess
 	}
 	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
-		params.Limit = 100 // default limit
+		params.Limit = 100
+	}
+	if params.Limit > maxObserveLimit {
+		params.Limit = maxObserveLimit
 	}
 
 	// Read extension logs from capture buffer
@@ -385,6 +395,9 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 	if params.Limit <= 0 {
 		params.Limit = 100
 	}
+	if params.Limit > maxObserveLimit {
+		params.Limit = maxObserveLimit
+	}
 
 	allBodies := h.capture.GetNetworkBodies()
 	filtered := make([]capture.NetworkBody, 0)
@@ -427,6 +440,9 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 	if params.Limit <= 0 {
 		params.Limit = 100
 	}
+	if params.Limit > maxObserveLimit {
+		params.Limit = maxObserveLimit
+	}
 
 	allEvents := h.capture.GetAllWebSocketEvents()
 	filtered := make([]capture.WebSocketEvent, 0)
@@ -463,6 +479,9 @@ func (h *ToolHandler) toolGetEnhancedActions(req JSONRPCRequest, args json.RawMe
 	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
 		params.Limit = 100
+	}
+	if params.Limit > maxObserveLimit {
+		params.Limit = maxObserveLimit
 	}
 
 	allActions := h.capture.GetAllEnhancedActions()
@@ -502,16 +521,3 @@ func (h *ToolHandler) toolCheckPerformance(req JSONRPCRequest, args json.RawMess
 	})}
 }
 
-func (h *ToolHandler) toolGetAPISchema(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API schema", map[string]any{
-		"status":  "not_implemented",
-		"message": "API schema inference not implemented. Not yet implemented.",
-	})}
-}
-
-func (h *ToolHandler) toolGetChangesSince(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Changes since checkpoint", map[string]any{
-		"status":  "not_implemented",
-		"message": "Change tracking not implemented. Not yet implemented.",
-	})}
-}

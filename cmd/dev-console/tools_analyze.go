@@ -57,10 +57,6 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 	"third_party_audit": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolAuditThirdParties(req, args)
 	},
-	"security_diff": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolDiffSecurity(req, args)
-	},
-
 	// New
 	"link_health": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolAnalyzeLinkHealth(req, args)
@@ -293,7 +289,7 @@ func (h *ToolHandler) toolValidateLinks(req JSONRPCRequest, args json.RawMessage
 
 	validURLs := filterHTTPURLs(params.URLs)
 	if len(validURLs) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "No valid HTTP/HTTPS URLs provided", "URLs must start with http:// or https://")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "No valid HTTP/HTTPS URLs provided", "URLs must start with http:// or https://", withParam("urls"))}
 	}
 	if len(validURLs) > maxLinkValidationURLs {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(

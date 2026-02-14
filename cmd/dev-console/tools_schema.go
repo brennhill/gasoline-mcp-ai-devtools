@@ -19,7 +19,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"limit": map[string]any{
 						"type":        "number",
-						"description": "Max entries to return",
+						"description": "Max entries to return (default 100, max 1000)",
 					},
 					"after_cursor": map[string]any{
 						"type":        "string",
@@ -41,6 +41,15 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "string",
 						"description": "Min log level (logs)",
 						"enum":        []string{"debug", "log", "info", "warn", "error"},
+					},
+					"level": map[string]any{
+						"type":        "string",
+						"description": "Exact log level filter (logs)",
+						"enum":        []string{"debug", "log", "info", "warn", "error"},
+					},
+					"source": map[string]any{
+						"type":        "string",
+						"description": "Exact source filter (logs)",
 					},
 					"url": map[string]any{
 						"type":        "string",
@@ -95,7 +104,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 				"properties": map[string]any{
 					"what": map[string]any{
 						"type": "string",
-						"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "annotations", "annotation_detail"},
+						"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session"},
 					},
 					"selector": map[string]any{
 						"type":        "string",
@@ -162,23 +171,6 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "object",
 						"description": "Custom domain allow/block lists (third_party_audit)",
 					},
-					"action": map[string]any{
-						"type":        "string",
-						"description": "security_diff sub-action",
-						"enum":        []string{"snapshot", "compare", "list"},
-					},
-					"name": map[string]any{
-						"type":        "string",
-						"description": "Snapshot name (security_diff)",
-					},
-					"compare_from": map[string]any{
-						"type":        "string",
-						"description": "Baseline snapshot (security_diff)",
-					},
-					"compare_to": map[string]any{
-						"type":        "string",
-						"description": "Target snapshot (security_diff)",
-					},
 					"correlation_id": map[string]any{
 						"type":        "string",
 						"description": "Correlation ID for fetching annotation detail (applies to annotation_detail)",
@@ -203,7 +195,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 				"properties": map[string]any{
 					"format": map[string]any{
 						"type": "string",
-						"enum": []string{"reproduction", "csp", "sarif", "visual_test", "annotation_report", "annotation_issues", "test_from_context", "test_heal", "test_classify"},
+						"enum": []string{"reproduction", "test", "pr_summary", "har", "csp", "sri", "sarif", "visual_test", "annotation_report", "annotation_issues", "test_from_context", "test_heal", "test_classify"},
 					},
 					"error_message": map[string]any{
 						"type":        "string",
@@ -379,6 +371,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "string",
 						"description": "Second snapshot to compare",
 					},
+					"recording_id": map[string]any{
+						"type":        "string",
+						"description": "Recording ID (recording_stop, playback)",
+					},
 					"session_id": map[string]any{
 						"type":        "string",
 						"description": "Filter by session ID",
@@ -393,7 +389,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"limit": map[string]any{
 						"type":        "number",
-						"description": "Max entries to return",
+						"description": "Max entries to return (default 100, max 1000)",
 					},
 					"streaming_action": map[string]any{
 						"type": "string",

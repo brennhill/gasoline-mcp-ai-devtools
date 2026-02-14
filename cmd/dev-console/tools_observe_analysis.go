@@ -25,6 +25,9 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 	if params.Limit <= 0 {
 		params.Limit = 100
 	}
+	if params.Limit > maxObserveLimit {
+		params.Limit = maxObserveLimit
+	}
 
 	allEntries := h.refreshWaterfallIfStale()
 
@@ -363,6 +366,9 @@ func (h *ToolHandler) toolGetSessionTimeline(req JSONRPCRequest, args json.RawMe
 	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
 		params.Limit = 50
+	}
+	if params.Limit > maxObserveLimit {
+		params.Limit = maxObserveLimit
 	}
 
 	inc := parseTimelineIncludes(params.Include)

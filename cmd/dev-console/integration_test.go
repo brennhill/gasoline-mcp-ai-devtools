@@ -148,15 +148,16 @@ func TestIntegration_AllMCPToolsReturnValidResponses(t *testing.T) {
 		{"observe page", `{"jsonrpc":"2.0","id":19,"method":"tools/call","params":{"name":"observe","arguments":{"what":"page"}}}`},
 		{"observe tabs", `{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"observe","arguments":{"what":"tabs"}}}`},
 		{"observe pilot", `{"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":"observe","arguments":{"what":"pilot"}}}`},
-		{"observe performance", `{"jsonrpc":"2.0","id":22,"method":"tools/call","params":{"name":"observe","arguments":{"what":"performance"}}}`},
-		{"observe accessibility", `{"jsonrpc":"2.0","id":23,"method":"tools/call","params":{"name":"observe","arguments":{"what":"accessibility"}}}`},
 		{"observe timeline", `{"jsonrpc":"2.0","id":24,"method":"tools/call","params":{"name":"observe","arguments":{"what":"timeline"}}}`},
-		{"observe error_clusters", `{"jsonrpc":"2.0","id":27,"method":"tools/call","params":{"name":"observe","arguments":{"what":"error_clusters"}}}`},
-		{"observe history", `{"jsonrpc":"2.0","id":28,"method":"tools/call","params":{"name":"observe","arguments":{"what":"history"}}}`},
-		{"observe security_audit", `{"jsonrpc":"2.0","id":29,"method":"tools/call","params":{"name":"observe","arguments":{"what":"security_audit"}}}`},
-		{"observe third_party_audit", `{"jsonrpc":"2.0","id":30,"method":"tools/call","params":{"name":"observe","arguments":{"what":"third_party_audit"}}}`},
-		{"observe security_diff", `{"jsonrpc":"2.0","id":31,"method":"tools/call","params":{"name":"observe","arguments":{"what":"security_diff","action":"list"}}}`},
 		{"observe command_result", `{"jsonrpc":"2.0","id":32,"method":"tools/call","params":{"name":"observe","arguments":{"what":"command_result"}}}`},
+
+		// analyze tool - modes that were moved from observe
+		{"analyze performance", `{"jsonrpc":"2.0","id":22,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"performance"}}}`},
+		{"analyze accessibility", `{"jsonrpc":"2.0","id":23,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"accessibility"}}}`},
+		{"analyze error_clusters", `{"jsonrpc":"2.0","id":27,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"error_clusters"}}}`},
+		{"analyze history", `{"jsonrpc":"2.0","id":28,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"history"}}}`},
+		{"analyze security_audit", `{"jsonrpc":"2.0","id":29,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"security_audit"}}}`},
+		{"analyze third_party_audit", `{"jsonrpc":"2.0","id":30,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"third_party_audit"}}}`},
 		{"observe pending_commands", `{"jsonrpc":"2.0","id":33,"method":"tools/call","params":{"name":"observe","arguments":{"what":"pending_commands"}}}`},
 		{"observe failed_commands", `{"jsonrpc":"2.0","id":34,"method":"tools/call","params":{"name":"observe","arguments":{"what":"failed_commands"}}}`},
 
@@ -174,9 +175,7 @@ func TestIntegration_AllMCPToolsReturnValidResponses(t *testing.T) {
 		{"configure store list", `{"jsonrpc":"2.0","id":51,"method":"tools/call","params":{"name":"configure","arguments":{"action":"store","store_action":"list"}}}`},
 		{"configure store stats", `{"jsonrpc":"2.0","id":52,"method":"tools/call","params":{"name":"configure","arguments":{"action":"store","store_action":"stats"}}}`},
 		{"configure noise_rule list", `{"jsonrpc":"2.0","id":53,"method":"tools/call","params":{"name":"configure","arguments":{"action":"noise_rule","noise_action":"list"}}}`},
-		{"configure diff_sessions list", `{"jsonrpc":"2.0","id":54,"method":"tools/call","params":{"name":"configure","arguments":{"action":"diff_sessions","session_action":"list"}}}`},
 		{"analyze api_validation report", `{"jsonrpc":"2.0","id":55,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"api_validation","operation":"report"}}}`},
-		{"configure audit_log", `{"jsonrpc":"2.0","id":56,"method":"tools/call","params":{"name":"configure","arguments":{"action":"audit_log"}}}`},
 		{"configure streaming status", `{"jsonrpc":"2.0","id":57,"method":"tools/call","params":{"name":"configure","arguments":{"action":"streaming","streaming_action":"status"}}}`},
 
 		// interact tool - list_states action (doesn't require browser)

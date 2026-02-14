@@ -392,7 +392,7 @@ func (h *ToolHandler) toolExportHAR(req JSONRPCRequest, args json.RawMessage) JS
 		result, err := export.ExportHARMergedToFile(bodies, waterfall, filter, version, params.SaveTo)
 		if err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-				"export_failed", "HAR file export failed: "+err.Error(), "Check the save_to path and try again",
+				ErrExportFailed, "HAR file export failed: "+err.Error(), "Check the save_to path and try again",
 			)}
 		}
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(
@@ -422,6 +422,15 @@ func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) 
 	mode := arguments.Mode
 	if mode == "" {
 		mode = "moderate"
+	}
+	switch mode {
+	case "strict", "moderate", "report_only":
+		// valid
+	default:
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam, "Invalid mode: "+mode, "Use strict, moderate, or report_only",
+			withParam("mode"),
+		)}
 	}
 
 	networkBodies := h.capture.GetNetworkBodies()
@@ -545,7 +554,7 @@ func (h *ToolHandler) toolGenerateSRI(req JSONRPCRequest, args json.RawMessage) 
 	pageURLs := []string{tabURL}
 	result, err := security.HandleGenerateSRI(args, networkBodies, pageURLs)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "SRI generation failed: "+err.Error(), "Fix parameters and call again")}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "SRI generation failed: "+err.Error(), "Fix parameters and call again")}
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("SRI hashes generated", result)}

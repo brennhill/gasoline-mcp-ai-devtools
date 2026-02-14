@@ -1,0 +1,717 @@
+// tools_interact_handler_test.go — Comprehensive unit tests for interact tool dispatch and response fields.
+// Validates all response fields, snake_case JSON convention, parameter validation, and error handling.
+package main
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+
+	"github.com/dev-console/dev-console/internal/capture"
+)
+
+// ============================================
+// Test Helpers
+// ============================================
+
+func makeInteractToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
+	t.Helper()
+	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	t.Cleanup(func() { server.Close() })
+	cap := capture.NewCapture()
+	mcpHandler := NewToolHandler(server, cap)
+	handler := mcpHandler.toolHandler.(*ToolHandler)
+	return handler, server, cap
+}
+
+func callInteractRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	return h.toolInteract(req, json.RawMessage(argsJSON))
+}
+
+// ============================================
+// Dispatch Tests
+// ============================================
+
+func TestToolsInteractDispatch_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{bad json`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("invalid JSON should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "invalid_json") {
+		t.Errorf("error code should be 'invalid_json', got: %s", result.Content[0].Text)
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractDispatch_MissingAction(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("missing 'action' should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "missing_param") {
+		t.Errorf("error code should be 'missing_param', got: %s", result.Content[0].Text)
+	}
+	// Verify hint lists valid actions
+	text := result.Content[0].Text
+	for _, action := range []string{"highlight", "navigate", "execute_js", "click"} {
+		if !strings.Contains(text, action) {
+			t.Errorf("hint should list valid action %q", action)
+		}
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractDispatch_UnknownAction(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"nonexistent_action"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("unknown action should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "unknown_mode") {
+		t.Errorf("error code should be 'unknown_mode', got: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(result.Content[0].Text, "nonexistent_action") {
+		t.Error("error should mention the invalid action name")
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractDispatch_EmptyArgs(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolInteract(req, nil)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("nil args (no 'action') should return isError:true")
+	}
+}
+
+// ============================================
+// interact(action:"highlight") — Response Fields & Validation
+// ============================================
+
+func TestToolsInteractHighlight_MissingSelector(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"highlight"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("highlight without selector should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "missing_param") {
+		t.Errorf("error code should be 'missing_param', got: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(result.Content[0].Text, "selector") {
+		t.Error("error should mention 'selector' parameter")
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractHighlight_PilotDisabled(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"highlight","selector":"#main"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("highlight with pilot disabled should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "pilot_disabled") {
+		t.Errorf("error code should be 'pilot_disabled', got: %s", result.Content[0].Text)
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractHighlight_Success(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeInteractToolHandler(t)
+	cap.SetPilotEnabled(true)
+
+	resp := callInteractRaw(h, `{"action":"highlight","selector":".btn"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("highlight should succeed with pilot enabled, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	// Verify response fields
+	for _, field := range []string{"status", "correlation_id", "message"} {
+		if _, ok := data[field]; !ok {
+			t.Errorf("highlight response missing field %q", field)
+		}
+	}
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+	corr, _ := data["correlation_id"].(string)
+	if corr == "" {
+		t.Error("correlation_id should be non-empty")
+	}
+	if !strings.HasPrefix(corr, "highlight_") {
+		t.Errorf("correlation_id should start with 'highlight_', got: %s", corr)
+	}
+
+	// Verify pending query created
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("highlight should create a pending query")
+	}
+	if pq.Type != "highlight" {
+		t.Errorf("pending query type = %q, want 'highlight'", pq.Type)
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+// ============================================
+// interact(action:"execute_js") — Response Fields & Validation
+// ============================================
+
+func TestToolsInteractExecuteJS_MissingScript(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"execute_js"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("execute_js without script should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "script") {
+		t.Error("error should mention missing 'script' parameter")
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractExecuteJS_InvalidWorld(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"execute_js","script":"1+1","world":"invalid_world"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("invalid world should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "invalid_param") {
+		t.Errorf("error code should be 'invalid_param', got: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(result.Content[0].Text, "world") {
+		t.Error("error should mention 'world' parameter")
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractExecuteJS_ValidWorlds(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	// All valid worlds should pass world validation (fail at pilot check, not world check)
+	for _, world := range []string{"auto", "main", "isolated"} {
+		t.Run(world, func(t *testing.T) {
+			resp := callInteractRaw(h, `{"action":"execute_js","script":"1+1","world":"`+world+`"}`)
+			result := parseToolResult(t, resp)
+			// Should fail at pilot check, NOT world validation
+			if !result.IsError {
+				t.Fatal("should return error (pilot disabled)")
+			}
+			if strings.Contains(result.Content[0].Text, "world") {
+				t.Errorf("world=%q should pass validation, but got world error: %s", world, result.Content[0].Text)
+			}
+		})
+	}
+}
+
+func TestToolsInteractExecuteJS_DefaultWorld(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	// Omitting world should default to "auto" and pass validation
+	resp := callInteractRaw(h, `{"action":"execute_js","script":"1+1"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("should return error (pilot disabled)")
+	}
+	// Should NOT contain world error
+	if strings.Contains(result.Content[0].Text, "world") {
+		t.Errorf("default world should pass validation, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolsInteractExecuteJS_Success(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeInteractToolHandler(t)
+	cap.SetPilotEnabled(true)
+
+	resp := callInteractRaw(h, `{"action":"execute_js","script":"document.title"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("execute_js should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	for _, field := range []string{"status", "correlation_id", "message"} {
+		if _, ok := data[field]; !ok {
+			t.Errorf("execute_js response missing field %q", field)
+		}
+	}
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+	corr, _ := data["correlation_id"].(string)
+	if !strings.HasPrefix(corr, "exec_") {
+		t.Errorf("correlation_id should start with 'exec_', got: %s", corr)
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+// ============================================
+// interact(action:"navigate") — Response Fields & Validation
+// ============================================
+
+func TestToolsInteractNavigate_MissingURL(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"navigate"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("navigate without url should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "url") {
+		t.Error("error should mention 'url' parameter")
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractNavigate_Success(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeInteractToolHandler(t)
+	cap.SetPilotEnabled(true)
+
+	resp := callInteractRaw(h, `{"action":"navigate","url":"https://example.com"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("navigate should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+	corr, _ := data["correlation_id"].(string)
+	if !strings.HasPrefix(corr, "nav_") {
+		t.Errorf("correlation_id should start with 'nav_', got: %s", corr)
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+// ============================================
+// interact(action:"refresh/back/forward") — Pilot Check
+// ============================================
+
+func TestToolsInteractBrowserActions_PilotRequired(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	actions := []struct {
+		name string
+		args string
+	}{
+		{"refresh", `{"action":"refresh"}`},
+		{"back", `{"action":"back"}`},
+		{"forward", `{"action":"forward"}`},
+		{"new_tab", `{"action":"new_tab","url":"https://example.com"}`},
+	}
+
+	for _, tc := range actions {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := callInteractRaw(h, tc.args)
+			result := parseToolResult(t, resp)
+			if !result.IsError {
+				t.Fatalf("%s with pilot disabled should return isError:true", tc.name)
+			}
+			if !strings.Contains(result.Content[0].Text, "pilot_disabled") {
+				t.Errorf("%s error code should be 'pilot_disabled', got: %s", tc.name, result.Content[0].Text)
+			}
+		})
+	}
+}
+
+func TestToolsInteractBrowserActions_SuccessWithPilot(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeInteractToolHandler(t)
+	cap.SetPilotEnabled(true)
+
+	actions := []struct {
+		name   string
+		args   string
+		prefix string
+	}{
+		{"refresh", `{"action":"refresh"}`, "refresh_"},
+		{"back", `{"action":"back"}`, "back_"},
+		{"forward", `{"action":"forward"}`, "forward_"},
+		{"new_tab", `{"action":"new_tab","url":"https://example.com"}`, "newtab_"},
+	}
+
+	for _, tc := range actions {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := callInteractRaw(h, tc.args)
+			result := parseToolResult(t, resp)
+			if result.IsError {
+				t.Fatalf("%s should succeed, got: %s", tc.name, result.Content[0].Text)
+			}
+
+			data := extractResultJSON(t, result)
+			if data["status"] != "queued" {
+				t.Errorf("status = %v, want 'queued'", data["status"])
+			}
+			corr, _ := data["correlation_id"].(string)
+			if !strings.HasPrefix(corr, tc.prefix) {
+				t.Errorf("correlation_id should start with %q, got: %s", tc.prefix, corr)
+			}
+			assertSnakeCaseFields(t, string(resp.Result))
+		})
+	}
+}
+
+// ============================================
+// interact(action:"subtitle") — Response Fields
+// ============================================
+
+func TestToolsInteractSubtitle_MissingText(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"subtitle"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("subtitle without text should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "text") {
+		t.Error("error should mention 'text' parameter")
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractSubtitle_SetText(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"subtitle","text":"Hello world"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("subtitle set should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+	if data["subtitle"] != "Hello world" {
+		t.Errorf("subtitle = %v, want 'Hello world'", data["subtitle"])
+	}
+	corr, _ := data["correlation_id"].(string)
+	if !strings.HasPrefix(corr, "subtitle_") {
+		t.Errorf("correlation_id should start with 'subtitle_', got: %s", corr)
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractSubtitle_ClearText(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"subtitle","text":""}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("subtitle clear should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["subtitle"] != "cleared" {
+		t.Errorf("subtitle = %v, want 'cleared'", data["subtitle"])
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+// ============================================
+// interact DOM primitives — Parameter Validation
+// ============================================
+
+func TestToolsInteractDOMPrimitives_MissingSelector(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	actions := []string{"click", "type", "select", "check", "get_text", "get_value",
+		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for", "key_press"}
+
+	for _, action := range actions {
+		t.Run(action, func(t *testing.T) {
+			resp := callInteractRaw(h, `{"action":"`+action+`"}`)
+			result := parseToolResult(t, resp)
+			if !result.IsError {
+				t.Fatalf("%s without selector should return isError:true", action)
+			}
+			if !strings.Contains(result.Content[0].Text, "selector") {
+				t.Errorf("%s error should mention 'selector', got: %s", action, result.Content[0].Text)
+			}
+		})
+	}
+}
+
+func TestToolsInteractDOMPrimitives_ActionSpecificParams(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	// Actions that require specific params beyond selector
+	cases := []struct {
+		action    string
+		args      string
+		missing   string
+	}{
+		{"type", `{"action":"type","selector":"input"}`, "text"},
+		{"select", `{"action":"select","selector":"select"}`, "value"},
+		{"get_attribute", `{"action":"get_attribute","selector":"div"}`, "name"},
+		{"set_attribute", `{"action":"set_attribute","selector":"div"}`, "name"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.action+"_missing_"+tc.missing, func(t *testing.T) {
+			resp := callInteractRaw(h, tc.args)
+			result := parseToolResult(t, resp)
+			if !result.IsError {
+				t.Fatalf("%s without %s should return isError:true", tc.action, tc.missing)
+			}
+			if !strings.Contains(result.Content[0].Text, tc.missing) {
+				t.Errorf("error should mention missing %q param, got: %s", tc.missing, result.Content[0].Text)
+			}
+		})
+	}
+}
+
+func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeInteractToolHandler(t)
+	cap.SetPilotEnabled(true)
+
+	cases := []struct {
+		action string
+		args   string
+	}{
+		{"click", `{"action":"click","selector":"#btn"}`},
+		{"type", `{"action":"type","selector":"input","text":"hello"}`},
+		{"select", `{"action":"select","selector":"select","value":"opt1"}`},
+		{"check", `{"action":"check","selector":"input[type=checkbox]"}`},
+		{"get_text", `{"action":"get_text","selector":"div"}`},
+		{"get_value", `{"action":"get_value","selector":"input"}`},
+		{"get_attribute", `{"action":"get_attribute","selector":"a","name":"href"}`},
+		{"set_attribute", `{"action":"set_attribute","selector":"div","name":"data-test","value":"1"}`},
+		{"focus", `{"action":"focus","selector":"input"}`},
+		{"scroll_to", `{"action":"scroll_to","selector":"#footer"}`},
+		{"wait_for", `{"action":"wait_for","selector":"#spinner"}`},
+		{"key_press", `{"action":"key_press","selector":"input","text":"Enter"}`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.action, func(t *testing.T) {
+			resp := callInteractRaw(h, tc.args)
+			result := parseToolResult(t, resp)
+			if result.IsError {
+				t.Fatalf("%s should succeed with pilot enabled, got: %s", tc.action, result.Content[0].Text)
+			}
+
+			data := extractResultJSON(t, result)
+			if data["status"] != "queued" {
+				t.Errorf("status = %v, want 'queued'", data["status"])
+			}
+			corr, _ := data["correlation_id"].(string)
+			if !strings.HasPrefix(corr, "dom_") {
+				t.Errorf("correlation_id should start with 'dom_', got: %s", corr)
+			}
+			assertSnakeCaseFields(t, string(resp.Result))
+		})
+	}
+}
+
+// ============================================
+// interact(action:"save_state") — Response Fields
+// ============================================
+
+func TestToolsInteractSaveState_MissingSnapshotName(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"save_state"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("save_state without snapshot_name should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "snapshot_name") {
+		t.Error("error should mention 'snapshot_name' parameter")
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractSaveState_Success(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"save_state","snapshot_name":"test_save"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("save_state should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	for _, field := range []string{"status", "snapshot_name", "state"} {
+		if _, ok := data[field]; !ok {
+			t.Errorf("save_state response missing field %q", field)
+		}
+	}
+	if data["status"] != "saved" {
+		t.Errorf("status = %v, want 'saved'", data["status"])
+	}
+	if data["snapshot_name"] != "test_save" {
+		t.Errorf("snapshot_name = %v, want 'test_save'", data["snapshot_name"])
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+// ============================================
+// interact(action:"list_states") — Response Fields
+// ============================================
+
+func TestToolsInteractListStates_ResponseFields(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"list_states"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("list_states should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	for _, field := range []string{"states", "count"} {
+		if _, ok := data[field]; !ok {
+			t.Errorf("list_states response missing field %q", field)
+		}
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+// ============================================
+// interact(action:"list_interactive") — Response Fields
+// ============================================
+
+func TestToolsInteractListInteractive_ResponseFields(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeInteractToolHandler(t)
+	cap.SetPilotEnabled(true)
+
+	resp := callInteractRaw(h, `{"action":"list_interactive"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("list_interactive should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+	corr, _ := data["correlation_id"].(string)
+	if !strings.HasPrefix(corr, "dom_list_") {
+		t.Errorf("correlation_id should start with 'dom_list_', got: %s", corr)
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+// ============================================
+// validateDOMActionParams Tests
+// ============================================
+
+func TestToolsValidateDOMActionParams(t *testing.T) {
+	t.Parallel()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+
+	// Actions without special required params should pass
+	for _, action := range []string{"click", "check", "focus", "scroll_to", "wait_for", "key_press"} {
+		_, failed := validateDOMActionParams(req, action, "", "", "")
+		if failed {
+			t.Errorf("validateDOMActionParams(%q) should not fail for actions without required params", action)
+		}
+	}
+
+	// "type" requires "text"
+	_, failed := validateDOMActionParams(req, "type", "", "", "")
+	if !failed {
+		t.Error("type without text should fail validation")
+	}
+	_, failed = validateDOMActionParams(req, "type", "hello", "", "")
+	if failed {
+		t.Error("type with text should pass validation")
+	}
+
+	// "select" requires "value"
+	_, failed = validateDOMActionParams(req, "select", "", "", "")
+	if !failed {
+		t.Error("select without value should fail validation")
+	}
+	_, failed = validateDOMActionParams(req, "select", "", "opt1", "")
+	if failed {
+		t.Error("select with value should pass validation")
+	}
+
+	// "get_attribute" requires "name"
+	_, failed = validateDOMActionParams(req, "get_attribute", "", "", "")
+	if !failed {
+		t.Error("get_attribute without name should fail validation")
+	}
+	_, failed = validateDOMActionParams(req, "get_attribute", "", "", "href")
+	if failed {
+		t.Error("get_attribute with name should pass validation")
+	}
+}
+
+// ============================================
+// truncateToLen Tests
+// ============================================
+
+func TestToolsTruncateToLen(t *testing.T) {
+	t.Parallel()
+
+	if got := truncateToLen("short", 10); got != "short" {
+		t.Errorf("truncateToLen('short', 10) = %q, want 'short'", got)
+	}
+	if got := truncateToLen("longstring", 4); got != "long..." {
+		t.Errorf("truncateToLen('longstring', 4) = %q, want 'long...'", got)
+	}
+	if got := truncateToLen("", 10); got != "" {
+		t.Errorf("truncateToLen('', 10) = %q, want ''", got)
+	}
+}

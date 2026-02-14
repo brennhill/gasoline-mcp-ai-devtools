@@ -1,0 +1,95 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "VERSION",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Gasoline",
+          "version": "VERSION",
+          "informationUri": "https://github.com/anthropics/gasoline",
+          "rules": [
+            {
+              "id": "color-contrast",
+              "shortDescription": {
+                "text": "Elements must have sufficient color contrast"
+              },
+              "fullDescription": {
+                "text": "Elements must have sufficient color contrast"
+              },
+              "helpUri": "https://dequeuniversity.com/rules/axe/4.7/color-contrast",
+              "properties": {
+                "tags": [
+                  "wcag2aa",
+                  "wcag143"
+                ]
+              }
+            },
+            {
+              "id": "image-alt",
+              "shortDescription": {
+                "text": "Images must have alternate text"
+              },
+              "fullDescription": {
+                "text": "Images must have alternate text"
+              },
+              "helpUri": "https://dequeuniversity.com/rules/axe/4.7/image-alt",
+              "properties": {
+                "tags": [
+                  "wcag2a",
+                  "wcag111"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "color-contrast",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "Elements must have sufficient color contrast"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "span.low-contrast"
+                },
+                "region": {
+                  "snippet": {
+                    "text": "\u003cspan class=\"low-contrast\"\u003eHello\u003c/span\u003e"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "image-alt",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Images must have alternate text"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "img"
+                },
+                "region": {
+                  "snippet": {
+                    "text": "\u003cimg src=\"photo.jpg\"\u003e"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
