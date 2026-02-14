@@ -14,19 +14,81 @@ source "$SMOKE_FRAMEWORK_DIR/../tests/framework.sh"
 # ── Shared mutable state (set by modules, read by later modules) ──
 EXTENSION_CONNECTED=false
 PILOT_ENABLED=false
-SMOKE_MARKER="GASOLINE_SMOKE_$(date +%s)"
+SMOKE_MARKER="GASOLINE_SMOKE_$(date +%s)_$$"
 SKIP_COUNT=0
 CURRENT_TEST_ID=""
 
-# ── Diagnostic log file ──────────────────────────────────
-DIAGNOSTICS_FILE="/tmp/gasoline-smoke-diagnostics-$$.log"
+# ── Color support ─────────────────────────────────────────
+# Use ANSI colors only when stdout is a TTY
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+    _CLR_PASS='\033[0;32m'   # green
+    _CLR_FAIL='\033[0;31m'   # red
+    _CLR_SKIP='\033[0;33m'   # yellow
+    _CLR_RESET='\033[0m'
+    _INTERACTIVE=true
+else
+    _CLR_PASS=''
+    _CLR_FAIL=''
+    _CLR_SKIP=''
+    _CLR_RESET=''
+    _INTERACTIVE=false
+fi
+
+# ── Composable cleanup system ─────────────────────────────
+# Modules register cleanup functions instead of overwriting the EXIT trap.
+# _smoke_cleanup_handlers is a space-separated list of function names.
+_smoke_cleanup_handlers=""
+
+# Register a cleanup function. Called by modules instead of `trap ... EXIT`.
+register_cleanup() {
+    _smoke_cleanup_handlers="$_smoke_cleanup_handlers $1"
+}
+
+# Master cleanup: runs all registered handlers, then base cleanup.
+_smoke_master_cleanup() {
+    for handler in $_smoke_cleanup_handlers; do
+        "$handler" 2>/dev/null || true
+    done
+    # Base cleanup: kill daemon, remove temp dir
+    kill_server 2>/dev/null || true
+    pkill -f "upload-server.py" 2>/dev/null || true
+    [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR" 2>/dev/null || true
+}
+
+# ── Persistent output files ──────────────────────────────
+# Output and diagnostics go to well-known persistent locations so they
+# survive crashes and are easy to find. Printed at start of every run.
+SMOKE_OUTPUT_DIR="${HOME}/.gasoline/smoke-results"
+mkdir -p "$SMOKE_OUTPUT_DIR"
+DIAGNOSTICS_FILE="$SMOKE_OUTPUT_DIR/diagnostics.log"
+SMOKE_OUTPUT_FILE="$SMOKE_OUTPUT_DIR/output.log"
 
 init_smoke() {
     local port="${1:-7890}"
     init_framework "$port" "/dev/null"
+
+    # Override OUTPUT_FILE to use persistent location instead of TEMP_DIR
+    OUTPUT_FILE="$SMOKE_OUTPUT_FILE"
+
+    # Initialize output files
+    echo "Smoke Test Output — $(date)" > "$OUTPUT_FILE"
     echo "Smoke Test Diagnostics — $(date)" > "$DIAGNOSTICS_FILE"
     echo "Port: $port" >> "$DIAGNOSTICS_FILE"
     echo "======================================" >> "$DIAGNOSTICS_FILE"
+
+    # Print file locations and mode upfront so they're always visible
+    echo ""
+    echo "  Output:      $OUTPUT_FILE"
+    echo "  Diagnostics: $DIAGNOSTICS_FILE"
+    if [ "$_INTERACTIVE" = "true" ]; then
+        echo "  Mode:        interactive (pauses between tests)"
+    else
+        echo "  Mode:        non-interactive (CI/piped — no pauses)"
+    fi
+    echo ""
+
+    # Set the master EXIT trap (never overwritten by modules)
+    trap _smoke_master_cleanup EXIT
 
     # Trap ERR so crashes under set -e are immediately visible.
     # Logs the failing command, line, and function to both stderr and diagnostics.
@@ -36,8 +98,7 @@ init_smoke() {
 _smoke_on_error() {
     local line="$1" func="$2" cmd="$3"
     local test_ctx="${CURRENT_TEST_ID:-unknown}"
-    echo "" >&2
-    echo "  !!! CRASH [${test_ctx}] at line $line in $func(): $cmd" >&2
+    printf "\n  ${_CLR_FAIL}!!! CRASH${_CLR_RESET} [${test_ctx}] at line $line in $func(): $cmd\n" >&2
     echo "  !!! Diagnostics: $DIAGNOSTICS_FILE" >&2
     {
         echo ""
@@ -48,7 +109,8 @@ _smoke_on_error() {
         echo "    Command:  $cmd"
         echo "    Pass=$PASS_COUNT Fail=$FAIL_COUNT Skip=$SKIP_COUNT"
     } >> "$DIAGNOSTICS_FILE" 2>/dev/null
-    exit 1
+    # Count crash as a failure but don't exit — let the runner continue
+    FAIL_COUNT=$((FAIL_COUNT + 1))
 }
 
 # ── Override begin_test to track current test ID ──────────
@@ -69,14 +131,13 @@ begin_test() {
     echo "--- $(date +%H:%M:%S) START ${CURRENT_TEST_ID}: ${name}" >> "$DIAGNOSTICS_FILE"
 }
 
-# ── Override pass/fail/skip to pause for human ───────────
+# ── Override pass/fail/skip to pause for human + color ────
 pass() {
     local description="$1"
     PASS_COUNT=$((PASS_COUNT + 1))
-    {
-        echo "  PASS [${CURRENT_TEST_ID}]: ${description}"
-        echo ""
-    } | tee -a "$OUTPUT_FILE"
+    # Colorized to terminal, plain to output file
+    printf "  ${_CLR_PASS}PASS${_CLR_RESET} [${CURRENT_TEST_ID}]: %s\n\n" "$description"
+    echo "  PASS [${CURRENT_TEST_ID}]: ${description}" >> "$OUTPUT_FILE"
     echo "  $(date +%H:%M:%S) PASS [${CURRENT_TEST_ID}]: ${description}" >> "$DIAGNOSTICS_FILE"
     pause_for_human
 }
@@ -84,12 +145,10 @@ pass() {
 fail() {
     local description="$1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
-    # Log to diagnostics FIRST (before tee/pause) so it survives crashes
+    # Log to diagnostics FIRST (before display) so it survives crashes
     echo "  $(date +%H:%M:%S) FAIL [${CURRENT_TEST_ID}]: ${description}" >> "$DIAGNOSTICS_FILE"
-    {
-        echo "  FAIL [${CURRENT_TEST_ID}]: ${description}"
-        echo ""
-    } | tee -a "$OUTPUT_FILE"
+    printf "  ${_CLR_FAIL}FAIL${_CLR_RESET} [${CURRENT_TEST_ID}]: %s\n\n" "$description"
+    echo "  FAIL [${CURRENT_TEST_ID}]: ${description}" >> "$OUTPUT_FILE"
     pause_for_human
 }
 
@@ -97,10 +156,8 @@ skip() {
     local description="$1"
     SKIP_COUNT=$((SKIP_COUNT + 1))
     echo "  $(date +%H:%M:%S) SKIP [${CURRENT_TEST_ID}]: ${description}" >> "$DIAGNOSTICS_FILE"
-    {
-        echo "  SKIP [${CURRENT_TEST_ID}]: ${description}"
-        echo ""
-    } | tee -a "$OUTPUT_FILE"
+    printf "  ${_CLR_SKIP}SKIP${_CLR_RESET} [${CURRENT_TEST_ID}]: %s\n\n" "$description"
+    echo "  SKIP [${CURRENT_TEST_ID}]: ${description}" >> "$OUTPUT_FILE"
 }
 
 pause_for_human() {

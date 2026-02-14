@@ -8,7 +8,7 @@
 check_deps() {
     local missing=""
 
-    for cmd in jq curl lsof; do
+    for cmd in jq curl lsof python3; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing="$missing $cmd"
         fi
