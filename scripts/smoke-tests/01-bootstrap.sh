@@ -6,7 +6,7 @@ set -eo pipefail
 begin_category "1" "Bootstrap" "4"
 
 # ── Test 1.1: Cold start auto-spawn ──────────────────────
-begin_test "1.1" "Cold start auto-spawn" \
+begin_test "1.1" "[DAEMON ONLY] Cold start auto-spawn" \
     "Kill any running daemon, send an MCP call, verify the daemon spawns automatically" \
     "This is the most critical path — if cold start fails, nothing works"
 
@@ -55,7 +55,7 @@ if ! start_daemon_with_flags --enable-os-upload-automation; then
 fi
 
 # ── Test 1.2: Health + version ───────────────────────────
-begin_test "1.2" "Health endpoint and version" \
+begin_test "1.2" "[DAEMON ONLY] Health endpoint and version" \
     "Verify /health returns status=ok and version matches VERSION file" \
     "Version mismatch means the wrong binary is running"
 
@@ -88,7 +88,7 @@ run_test_1_2() {
 run_test_1_2
 
 # ── Test 1.3: Extension gate ─────────────────────────────
-begin_test "1.3" "Extension connected" \
+begin_test "1.3" "[DAEMON ONLY] Extension connected" \
     "Check /health for capture.available=true" \
     "All browser tests require extension. Stops here if not connected."
 
@@ -115,7 +115,7 @@ run_test_1_3() {
 run_test_1_3
 
 # ── Test 1.4: Navigate to test page ──────────────────────
-begin_test "1.4" "Navigate to a page" \
+begin_test "1.4" "[BROWSER] Navigate to a page" \
     "Use interact(navigate) to open example.com, verify observe(page) reflects it" \
     "Tests the full interact pipeline: MCP > daemon > extension > browser"
 

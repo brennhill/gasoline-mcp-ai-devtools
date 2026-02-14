@@ -7,7 +7,7 @@ set -eo pipefail
 begin_category "2" "Core Telemetry" "7"
 
 # ── Test 2.1: Trigger console log + error ────────────────
-begin_test "2.1" "Trigger console log and error via JS" \
+begin_test "2.1" "[BROWSER] Trigger console log and error via JS" \
     "Execute JS to console.log and console.error with markers, verify in observe" \
     "Tests: inject.js console monkey-patch > extension > daemon buffer > MCP observe"
 
@@ -54,7 +54,7 @@ run_test_2_1() {
 run_test_2_1
 
 # ── Test 2.2: Click a button ─────────────────────────────
-begin_test "2.2" "Click a button via JS" \
+begin_test "2.2" "[BROWSER] Click a button via JS" \
     "Inject a button into the page, click it, verify in observe(actions)" \
     "Tests: user action capture > extension > daemon > MCP observe"
 
@@ -85,7 +85,7 @@ run_test_2_2() {
 run_test_2_2
 
 # ── Test 2.3: Fill a form input ──────────────────────────
-begin_test "2.3" "Fill a form input via JS" \
+begin_test "2.3" "[BROWSER] Fill a form input via JS" \
     "Inject an input, set its value and dispatch input event, verify in observe(actions)" \
     "Tests: form input tracking > extension > daemon > MCP observe"
 
@@ -116,7 +116,7 @@ run_test_2_3() {
 run_test_2_3
 
 # ── Test 2.4: Highlight an element ───────────────────────
-begin_test "2.4" "Highlight an element via interact(highlight)" \
+begin_test "2.4" "[BROWSER] Highlight an element via interact(highlight)" \
     "Use interact(highlight) to highlight the body element, verify command completes" \
     "Tests: highlight pipeline: MCP > daemon > extension > inject overlay"
 
@@ -139,7 +139,7 @@ run_test_2_4() {
 run_test_2_4
 
 # ── Test 2.5: Error clusters ─────────────────────────────
-begin_test "2.5" "Error clusters aggregate triggered errors" \
+begin_test "2.5" "[BROWSER] Error clusters aggregate triggered errors" \
     "After 2.1 triggered multiple errors, verify analyze(error_clusters) groups them" \
     "Tests: error dedup and clustering — critical for noise reduction in real apps"
 
@@ -202,7 +202,7 @@ except Exception as e:
 run_test_2_5
 
 # ── Test 2.6: DOM query ─────────────────────────────────
-begin_test "2.6" "DOM query parses page structure" \
+begin_test "2.6" "[BROWSER] DOM query parses page structure" \
     "Use analyze(dom) to query elements on the page, verify DOM data returned" \
     "Tests: page structure analysis"
 
@@ -307,7 +307,7 @@ except Exception as e:
 run_test_2_6
 
 # ── Test 2.7: Full form lifecycle ───────────────────────
-begin_test "2.7" "Full form: create, fill multiple fields, submit" \
+begin_test "2.7" "[BROWSER] Full form: create, fill multiple fields, submit" \
     "Inject a complete form with multiple inputs, fill each, submit, verify all actions captured" \
     "Tests: full form lifecycle — creation, multi-field fill, and submit event capture"
 

@@ -6,7 +6,7 @@ set -eo pipefail
 begin_category "14" "Stability & Shutdown" "3"
 
 # ── Test 14.1: observe(page) still works after all actions ─
-begin_test "14.1" "Page state survives action barrage" \
+begin_test "14.1" "[BROWSER] Page state survives action barrage" \
     "After navigate + JS execution + clicks + forms + WS, observe(page) still returns valid data" \
     "Verifies no corruption from heavy interaction"
 
@@ -30,7 +30,7 @@ run_test_14_1() {
 run_test_14_1
 
 # ── Test 14.2: Health still OK after everything ──────────
-begin_test "14.2" "Health still OK after everything" \
+begin_test "14.2" "[DAEMON ONLY] Health still OK after everything" \
     "Verify daemon is healthy after all the interaction and observation" \
     "Detects memory leaks, crashes, or degraded state"
 
@@ -50,7 +50,7 @@ run_test_14_2() {
 run_test_14_2
 
 # ── Test 14.3: Graceful shutdown ─────────────────────────
-begin_test "14.3" "Graceful shutdown via --stop" \
+begin_test "14.3" "[DAEMON ONLY] Graceful shutdown via --stop" \
     "Run --stop, verify port is freed and PID file is cleaned up" \
     "Ungraceful shutdown leaves orphan processes and stale PID files"
 

@@ -5,7 +5,7 @@ set -eo pipefail
 begin_category "6" "State Management" "4"
 
 # ── Test 6.1: Save state ────────────────────────────────
-begin_test "6.1" "Save browser state snapshot" \
+begin_test "6.1" "[BROWSER] Save browser state snapshot" \
     "interact(save_state) with snapshot_name='smoke-state'" \
     "Tests: state persistence pipeline"
 
@@ -38,7 +38,7 @@ run_test_6_1() {
 run_test_6_1
 
 # ── Test 6.2: List states ───────────────────────────────
-begin_test "6.2" "List saved states" \
+begin_test "6.2" "[BROWSER] List saved states" \
     "interact(list_states) should include 'smoke-state'" \
     "Tests: state listing after save"
 
@@ -68,7 +68,7 @@ run_test_6_2() {
 run_test_6_2
 
 # ── Test 6.3: Load state ────────────────────────────────
-begin_test "6.3" "Load saved state" \
+begin_test "6.3" "[BROWSER] Load saved state" \
     "interact(load_state) with snapshot_name='smoke-state'" \
     "Tests: state restoration"
 
@@ -102,7 +102,7 @@ run_test_6_3() {
 run_test_6_3
 
 # ── Test 6.4: Delete state ──────────────────────────────
-begin_test "6.4" "Delete saved state" \
+begin_test "6.4" "[BROWSER] Delete saved state" \
     "interact(delete_state) then verify no longer in list" \
     "Tests: state cleanup"
 

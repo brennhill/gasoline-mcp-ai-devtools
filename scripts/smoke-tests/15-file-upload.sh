@@ -112,7 +112,7 @@ _upload_and_poll() {
 }
 
 # ── Test 15.0: Upload server canary ──────────────────────
-begin_test "15.0" "Upload server canary" \
+begin_test "15.0" "[BROWSER] Upload server canary" \
     "Navigate browser to upload server, verify landing page and upload form load" \
     "Tests: test infrastructure — if this fails, all upload tests are invalid"
 
@@ -158,7 +158,7 @@ run_test_15_0() {
 run_test_15_0
 
 # ── Test 15.1: Schema — upload in interact action enum ───
-begin_test "15.1" "Schema: upload in interact action enum" \
+begin_test "15.1" "[DAEMON ONLY] Schema: upload in interact action enum" \
     "Verify tools/list includes upload as a valid interact action" \
     "Tests: schema registration for file upload"
 
@@ -174,7 +174,7 @@ run_test_15_1() {
 run_test_15_1
 
 # ── Test 15.2: Upload works without any flag ─────────────
-begin_test "15.2" "Upload works without any flag (queues successfully)" \
+begin_test "15.2" "[DAEMON ONLY] Upload works without any flag (queues successfully)" \
     "Call upload with nonexistent file, verify we get a file error (not disabled error)" \
     "Tests: basic upload always works without --enable-os-upload-automation"
 
@@ -197,7 +197,7 @@ run_test_15_2() {
 run_test_15_2
 
 # ── Test 15.3: Missing file_path ─────────────────────────
-begin_test "15.3" "Missing file_path returns clear error" \
+begin_test "15.3" "[DAEMON ONLY] Missing file_path returns clear error" \
     "Call upload without file_path, verify parameter error" \
     "Tests: required parameter validation"
 
@@ -218,7 +218,7 @@ run_test_15_3() {
 run_test_15_3
 
 # ── Test 15.4: Missing selector and api_endpoint ────────
-begin_test "15.4" "Missing selector returns clear error" \
+begin_test "15.4" "[DAEMON ONLY] Missing selector returns clear error" \
     "Call upload with file_path but no selector or api_endpoint" \
     "Tests: required selector/api_endpoint parameter validation"
 
@@ -239,7 +239,7 @@ run_test_15_4() {
 run_test_15_4
 
 # ── Test 15.5: Relative path rejected ───────────────────
-begin_test "15.5" "Relative path rejected with security error" \
+begin_test "15.5" "[DAEMON ONLY] Relative path rejected with security error" \
     "Call upload with relative file_path, verify rejection" \
     "Tests: absolute path requirement for security"
 
@@ -260,7 +260,7 @@ run_test_15_5() {
 run_test_15_5
 
 # ── Test 15.6: Nonexistent file rejected ────────────────
-begin_test "15.6" "Nonexistent file rejected with clear error" \
+begin_test "15.6" "[DAEMON ONLY] Nonexistent file rejected with clear error" \
     "Call upload with nonexistent absolute file_path" \
     "Tests: file existence validation before queuing"
 
@@ -281,7 +281,7 @@ run_test_15_6() {
 run_test_15_6
 
 # ── Test 15.7: Directory path rejected ──────────────────
-begin_test "15.7" "Directory path rejected (not a file)" \
+begin_test "15.7" "[DAEMON ONLY] Directory path rejected (not a file)" \
     "Call upload with path to a directory, verify rejection" \
     "Tests: file-vs-directory validation"
 
@@ -302,7 +302,7 @@ run_test_15_7() {
 run_test_15_7
 
 # ── Test 15.8: Local queue acceptance (no server delivery) ──
-begin_test "15.8" "Local queue acceptance (no server delivery)" \
+begin_test "15.8" "[DAEMON ONLY] Local queue acceptance (no server delivery)" \
     "Create temp file, call upload with valid params, verify queued response" \
     "Tests: local queue returns status=queued with correlation_id (queue is never drained without extension)"
 
@@ -331,7 +331,7 @@ run_test_15_8() {
 run_test_15_8
 
 # ── Test 15.9: Queue response metadata (local only) ──────
-begin_test "15.9" "Queue response includes file metadata (local only)" \
+begin_test "15.9" "[DAEMON ONLY] Queue response includes file metadata" \
     "Create temp files with known extensions, verify metadata in queue response" \
     "Tests: file metadata extraction (name, size, mime_type, progress_tier) — local queue only"
 
@@ -375,7 +375,7 @@ except Exception as e:
 run_test_15_9
 
 # ── Test 15.10: Upload text file E2E via browser ─────────
-begin_test "15.10" "Upload text file E2E with MD5 verification (requires pilot)" \
+begin_test "15.10" "[BROWSER] Upload text file E2E with MD5 verification (requires pilot)" \
     "Navigate to upload form, interact(upload), submit form via execute_js, verify MD5 on success page" \
     "Tests: file flows through browser to upload server, MD5 verified on success page"
 
@@ -443,7 +443,7 @@ run_test_15_10() {
 run_test_15_10
 
 # ── Test 15.11: Extension upload pipeline (requires pilot) ──
-begin_test "15.11" "Extension upload pipeline completion (requires pilot)" \
+begin_test "15.11" "[BROWSER] Extension upload pipeline completion (requires pilot)" \
     "Navigate to upload form, interact(upload), poll until extension reports complete" \
     "Tests: extension receives upload command and processes it to completion"
 
@@ -484,7 +484,7 @@ run_test_15_11() {
 run_test_15_11
 
 # ── Test 15.12: Upload with full server-side verification ──
-begin_test "15.12" "Upload with full server-side verification (requires pilot)" \
+begin_test "15.12" "[BROWSER] Upload with full server-side verification (requires pilot)" \
     "Navigate, upload file, fill fields, submit form, verify CSRF + cookie + MD5 via server API" \
     "Tests: complete upload pipeline — browser → server, all fields verified server-side"
 
@@ -562,7 +562,7 @@ run_test_15_12() {
 run_test_15_12
 
 # ── Test 15.13: Confirmation page via observe ────────────
-begin_test "15.13" "Confirmation page visible via observe (requires pilot)" \
+begin_test "15.13" "[BROWSER] Confirmation page visible via observe (requires pilot)" \
     "After upload tests, observe(page) should show Upload Successful" \
     "Tests: observe reads confirmation page after browser form submission + redirect"
 
@@ -589,7 +589,7 @@ run_test_15_13() {
 run_test_15_13
 
 # ── Test 15.14: Auth failure visible in browser ──────────
-begin_test "15.14" "Auth failure visible in browser (requires pilot)" \
+begin_test "15.14" "[BROWSER] Auth failure visible in browser (requires pilot)" \
     "Navigate to /logout to clear session, then /upload to trigger 401 — verify in browser" \
     "Tests: server auth rejection is visible to the user in the browser"
 
@@ -628,7 +628,7 @@ run_test_15_14() {
 run_test_15_14
 
 # ── Test 15.15: Verify file reached input element ─────
-begin_test "15.15" "Verify upload file reached input element (requires pilot)" \
+begin_test "15.15" "[BROWSER] Verify upload file reached input element (requires pilot)" \
     "After interact(upload), execute_js to check files[0]?.name on the input" \
     "Tests: file actually set on DOM input element (fail if extension connected but file missing)"
 
@@ -737,7 +737,7 @@ _upload_and_poll_stage4() {
 }
 
 # ── Test 15.16: Stage 4 escalation E2E ───────────────────
-begin_test "15.16" "Stage 4 escalation E2E (hardened form, requires pilot)" \
+begin_test "15.16" "[BROWSER] Stage 4 escalation E2E (hardened form, requires pilot)" \
     "Navigate to hardened form (isTrusted check), upload via Stage 4 escalation, verify MD5" \
     "Tests: full Stage 1→4 escalation pipeline through hardened form"
 
@@ -816,7 +816,7 @@ run_test_15_16() {
 run_test_15_16
 
 # ── Test 15.17: Escalation reason metadata ────────────────
-begin_test "15.17" "Escalation reason metadata in result (requires pilot)" \
+begin_test "15.17" "[BROWSER] Escalation reason metadata in result (requires pilot)" \
     "After Stage 4 upload on hardened form, verify escalation_reason field in result" \
     "Tests: extension reports escalation_reason when Stage 4 is used"
 

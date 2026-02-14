@@ -5,7 +5,7 @@ set -eo pipefail
 begin_category "13" "Draw Mode" "12"
 
 # ── Test 13.1: Schema — draw_mode_start in interact ────────
-begin_test "13.1" "Schema: draw_mode_start in interact action enum" \
+begin_test "13.1" "[DAEMON ONLY] Schema: draw_mode_start in interact action enum" \
     "Verify tools/list includes draw_mode_start as a valid interact action" \
     "Tests: schema registration for draw mode activation"
 
@@ -21,7 +21,7 @@ run_test_13_1() {
 run_test_13_1
 
 # ── Test 13.2: Schema — annotations in analyze ─────────────
-begin_test "13.2" "Schema: annotations and annotation_detail in analyze" \
+begin_test "13.2" "[DAEMON ONLY] Schema: annotations and annotation_detail in analyze" \
     "Verify tools/list includes annotations and annotation_detail in analyze what enum" \
     "Tests: schema registration for annotation retrieval"
 
@@ -40,7 +40,7 @@ run_test_13_2() {
 run_test_13_2
 
 # ── Test 13.3: Schema — annotation generate formats ─────────
-begin_test "13.3" "Schema: visual_test, annotation_report, annotation_issues in generate" \
+begin_test "13.3" "[DAEMON ONLY] Schema: visual_test, annotation_report, annotation_issues in generate" \
     "Verify tools/list includes all 3 annotation generate formats" \
     "Tests: schema registration for annotation artifact generation"
 
@@ -60,7 +60,7 @@ run_test_13_3() {
 run_test_13_3
 
 # ── Test 13.4: Activate draw mode via MCP ──────────────────
-begin_test "13.4" "Activate draw mode via interact(draw_mode_start)" \
+begin_test "13.4" "[INTERACTIVE - BROWSER] Activate draw mode via interact(draw_mode_start)" \
     "Call interact(draw_mode_start), verify response contains correlation_id" \
     "Tests: MCP > daemon > extension > content script draw mode overlay"
 
@@ -90,7 +90,7 @@ run_test_13_4() {
 run_test_13_4
 
 # ── Test 13.5: Draw annotations and retrieve ────────────────
-begin_test "13.5" "Draw annotations, press ESC, retrieve via analyze" \
+begin_test "13.5" "[INTERACTIVE - BROWSER] Draw annotations, press ESC, retrieve via analyze" \
     "User draws 1-2 annotations on draw mode overlay, presses ESC, then verify data via analyze(annotations)" \
     "Tests: full annotation pipeline: draw > ESC > extension POST > daemon store > MCP retrieve"
 
@@ -137,7 +137,7 @@ except Exception as e:
 run_test_13_5
 
 # ── Test 13.6: Annotation detail drill-down ─────────────────
-begin_test "13.6" "Annotation detail has selector, tag, computed styles" \
+begin_test "13.6" "[INTERACTIVE - BROWSER] Annotation detail has selector, tag, computed styles" \
     "Retrieve annotation_detail for the first annotation's correlation_id" \
     "Tests: element detail enrichment pipeline"
 
@@ -196,7 +196,7 @@ except Exception as e:
 run_test_13_6
 
 # ── Test 13.7: Async wait pattern (correlation_id) ──────────
-begin_test "13.7" "Async annotation wait: analyze(wait:true) returns correlation_id" \
+begin_test "13.7" "[INTERACTIVE - BROWSER] Async annotation wait: analyze(wait:true) returns correlation_id" \
     "Call analyze(annotations, wait:true), verify immediate return with correlation_id and status=waiting_for_user" \
     "Tests: non-blocking async pattern — LLM gets correlation_id immediately"
 
@@ -235,7 +235,7 @@ run_test_13_7() {
 run_test_13_7
 
 # ── Test 13.8: Double activation returns already_active ──────
-begin_test "13.8" "Double draw_mode_start returns already_active" \
+begin_test "13.8" "[INTERACTIVE - BROWSER] Double draw_mode_start returns already_active" \
     "Activate draw mode twice, poll extension result for already_active status" \
     "Tests: idempotent activation guard (extension-side)"
 
@@ -322,7 +322,7 @@ run_test_13_8() {
 run_test_13_8
 
 # ── Test 13.9: Named session across pages ────────────────────
-begin_test "13.9" "Multi-page named session accumulates annotations" \
+begin_test "13.9" "[INTERACTIVE - BROWSER] Multi-page named session accumulates annotations" \
     "Draw on page 1 with session name, navigate, draw on page 2 with same session, verify both pages" \
     "Tests: named session aggregation across navigation"
 
@@ -373,7 +373,7 @@ run_test_13_9() {
 run_test_13_9
 
 # ── Test 13.10: generate(visual_test) from annotations ────────
-begin_test "13.10" "Generate Playwright test from annotations" \
+begin_test "13.10" "[DAEMON ONLY] Generate Playwright test from annotations" \
     "Call generate(visual_test), verify output contains test() and page.goto()" \
     "Tests: annotation-to-test code generation"
 
@@ -394,7 +394,7 @@ run_test_13_10() {
 run_test_13_10
 
 # ── Test 13.11: generate(annotation_report) ───────────────────
-begin_test "13.11" "Generate annotation report (Markdown)" \
+begin_test "13.11" "[DAEMON ONLY] Generate annotation report (Markdown)" \
     "Call generate(annotation_report), verify Markdown output with header" \
     "Tests: annotation-to-report generation"
 
@@ -422,7 +422,7 @@ run_test_13_11() {
 run_test_13_11
 
 # ── Test 13.12: generate(annotation_issues) ───────────────────
-begin_test "13.12" "Generate annotation issues (structured JSON)" \
+begin_test "13.12" "[DAEMON ONLY] Generate annotation issues (structured JSON)" \
     "Call generate(annotation_issues), verify issues array and total_count" \
     "Tests: annotation-to-issues extraction"
 

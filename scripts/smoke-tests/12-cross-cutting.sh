@@ -5,7 +5,7 @@ set -eo pipefail
 begin_category "12" "Cross-Cutting Concerns" "3"
 
 # ── Test 12.1: Pagination via cursors ────────────────────
-begin_test "12.1" "Pagination: observe(logs) with limit and cursor" \
+begin_test "12.1" "[BROWSER] Pagination: observe(logs) with limit and cursor" \
     "Fetch logs with limit:3, then use cursor to get next page, verify no overlap" \
     "Tests: cursor-based pagination across observe modes"
 
@@ -86,7 +86,7 @@ if i >= 0:
 run_test_12_1
 
 # ── Test 12.2: Error recovery ────────────────────────────
-begin_test "12.2" "Error recovery: 4 invalid calls, daemon still healthy" \
+begin_test "12.2" "[DAEMON ONLY] Error recovery: 4 invalid calls, daemon still healthy" \
     "Send 4 different malformed/invalid tool calls, then verify daemon health" \
     "Tests: daemon resilience to bad input"
 
@@ -140,7 +140,7 @@ run_test_12_2() {
 run_test_12_2
 
 # ── Test 12.3: Buffer overflow / eviction ────────────────
-begin_test "12.3" "Buffer overflow: inject 1000+ logs, verify eviction" \
+begin_test "12.3" "[BROWSER] Buffer overflow: inject 1000+ logs, verify eviction" \
     "Inject 1000+ log entries via a single execute_js loop, verify buffer is capped" \
     "Tests: daemon buffer eviction under load"
 

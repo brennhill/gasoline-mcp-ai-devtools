@@ -6,7 +6,7 @@ set -eo pipefail
 begin_category "9" "Performance Analysis" "5"
 
 # ── Test 9.1: Refresh returns perf_diff ─────────────────
-begin_test "9.1" "Refresh returns perf_diff after baseline" \
+begin_test "9.1" "[BROWSER] Refresh returns perf_diff after baseline" \
     "Navigate to a page (baseline), refresh (comparison), verify perf_diff in command result" \
     "Tests: extension perf tracking > auto-diff > enriched action result"
 
@@ -66,7 +66,7 @@ except Exception as e:
 run_test_9_1
 
 # ── Test 9.2: Click returns compact feedback ────────────
-begin_test "9.2" "Click returns timing_ms and dom_summary" \
+begin_test "9.2" "[BROWSER] Click returns timing_ms and dom_summary" \
     "Click a button, verify the command result includes timing_ms and dom_summary" \
     "Tests: always-on compact DOM feedback (~30 tokens per action)"
 
@@ -134,7 +134,7 @@ else:
 run_test_9_2
 
 # ── Test 9.3: analyze:true returns full breakdown ───────
-begin_test "9.3" "Click with analyze:true returns full breakdown" \
+begin_test "9.3" "[BROWSER] Click with analyze:true returns full breakdown" \
     "Click with analyze:true, verify timing breakdown, dom_changes, and analysis string" \
     "Tests: opt-in detailed profiling for interaction debugging"
 
@@ -189,7 +189,7 @@ except Exception as e:
 run_test_9_3
 
 # ── Test 9.4: User Timing in observe(performance) ──────
-begin_test "9.4" "User Timing entries in observe(performance)" \
+begin_test "9.4" "[BROWSER] User Timing entries in observe(performance)" \
     "Insert performance.mark/measure via execute_js, verify they appear in observe(performance)" \
     "Tests: extension captures standard User Timing API entries"
 
@@ -252,7 +252,7 @@ print(len(data.get('snapshots',[])))
 run_test_9_4
 
 # ── Test 9.5: LLM-optimized perf_diff fields ───────────
-begin_test "9.5" "perf_diff has verdict, unit, rating, clean summary" \
+begin_test "9.5" "[BROWSER] perf_diff has verdict, unit, rating, clean summary" \
     "Refresh (baseline warm from 9.1), verify perf_diff has LLM-optimized fields" \
     "Tests: verdict, unit (ms/KB/count), rating (Web Vitals), clean summary"
 

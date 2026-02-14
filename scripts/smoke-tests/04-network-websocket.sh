@@ -5,7 +5,7 @@ set -eo pipefail
 begin_category "4" "Network & WebSocket" "2"
 
 # ── Test 4.1: Real WebSocket traffic ─────────────────────
-begin_test "4.1" "WebSocket capture on a real WS-heavy page" \
+begin_test "4.1" "[BROWSER] WebSocket capture on a real WS-heavy page" \
     "Navigate to a live trading page (Binance BTC/USDT), verify WS connections in observe" \
     "Tests: real WebSocket interception > extension > daemon > MCP observe"
 
@@ -49,7 +49,7 @@ run_test_4_1() {
 run_test_4_1
 
 # ── Test 4.2: Network waterfall has real data ───────────
-begin_test "4.2" "Network waterfall has real resource timing" \
+begin_test "4.2" "[BROWSER] Network waterfall has real resource timing" \
     "observe(network_waterfall) should return entries with real URLs and timing" \
     "Tests on-demand extension query: MCP > daemon > extension > performance API"
 

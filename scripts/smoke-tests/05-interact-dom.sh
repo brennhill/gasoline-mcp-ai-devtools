@@ -43,7 +43,7 @@ FORMEOF
 _inject_smoke_form
 
 # ── Test 5.1: Type text ─────────────────────────────────
-begin_test "5.1" "Type text into input" \
+begin_test "5.1" "[BROWSER] Type text into input" \
     "interact(type) into #sf-name, then get_value to confirm" \
     "Tests: DOM type primitive > extension > content script"
 
@@ -78,7 +78,7 @@ run_test_5_1() {
 run_test_5_1
 
 # ── Test 5.2: Select dropdown ───────────────────────────
-begin_test "5.2" "Select dropdown option" \
+begin_test "5.2" "[BROWSER] Select dropdown option" \
     "interact(select) on #sf-role value='admin', then get_value to confirm" \
     "Tests: DOM select primitive"
 
@@ -111,7 +111,7 @@ run_test_5_2() {
 run_test_5_2
 
 # ── Test 5.3: Checkbox toggle ───────────────────────────
-begin_test "5.3" "Checkbox check and uncheck" \
+begin_test "5.3" "[BROWSER] Checkbox check and uncheck" \
     "interact(check) on #sf-agree checked:true then checked:false" \
     "Tests: DOM check primitive toggle"
 
@@ -144,7 +144,7 @@ run_test_5_3() {
 run_test_5_3
 
 # ── Test 5.4: Get text ──────────────────────────────────
-begin_test "5.4" "Get text from button" \
+begin_test "5.4" "[BROWSER] Get text from button" \
     "interact(get_text) on #sf-btn returns 'Submit'" \
     "Tests: DOM get_text primitive"
 
@@ -165,7 +165,7 @@ run_test_5_4() {
 run_test_5_4
 
 # ── Test 5.5: Get value ─────────────────────────────────
-begin_test "5.5" "Get value from text input" \
+begin_test "5.5" "[BROWSER] Get value from text input" \
     "interact(get_value) on #sf-name returns value set in 5.1" \
     "Tests: DOM get_value primitive"
 
@@ -186,7 +186,7 @@ run_test_5_5() {
 run_test_5_5
 
 # ── Test 5.6: Get attribute ─────────────────────────────
-begin_test "5.6" "Get attribute from link" \
+begin_test "5.6" "[BROWSER] Get attribute from link" \
     "interact(get_attribute) on #sf-link name='href' returns URL" \
     "Tests: DOM get_attribute primitive"
 
@@ -209,7 +209,7 @@ run_test_5_6() {
 run_test_5_6
 
 # ── Test 5.7: Set attribute ─────────────────────────────
-begin_test "5.7" "Set attribute on element" \
+begin_test "5.7" "[BROWSER] Set attribute on element" \
     "interact(set_attribute) data-smoke='modified', then get_attribute to confirm" \
     "Tests: DOM set_attribute primitive"
 
@@ -238,7 +238,7 @@ run_test_5_7() {
 run_test_5_7
 
 # ── Test 5.8: Scroll to ────────────────────────────────
-begin_test "5.8" "Scroll to element" \
+begin_test "5.8" "[BROWSER] Scroll to element" \
     "interact(scroll_to) on #sf-scroll-target" \
     "Tests: DOM scroll_to primitive"
 
@@ -268,7 +268,7 @@ run_test_5_8() {
 run_test_5_8
 
 # ── Test 5.9: Wait for ─────────────────────────────────
-begin_test "5.9" "Wait for delayed element" \
+begin_test "5.9" "[BROWSER] Wait for delayed element" \
     "Inject element after 1s delay, interact(wait_for) should find it" \
     "Tests: DOM wait_for primitive with polling"
 
@@ -292,7 +292,7 @@ run_test_5_9() {
 run_test_5_9
 
 # ── Test 5.10: Key press ────────────────────────────────
-begin_test "5.10" "Key press on element" \
+begin_test "5.10" "[BROWSER] Key press on element" \
     "interact(key_press) Tab on #sf-name" \
     "Tests: DOM key_press primitive"
 
@@ -327,7 +327,7 @@ run_test_5_10() {
 run_test_5_10
 
 # ── Test 5.11: List interactive ──────────────────────────
-begin_test "5.11" "List interactive elements" \
+begin_test "5.11" "[BROWSER] List interactive elements" \
     "interact(list_interactive) returns element list including injected form" \
     "Tests: DOM list_interactive primitive"
 
@@ -376,7 +376,7 @@ except Exception as e:
 run_test_5_11
 
 # ── Test 5.12: Focus ─────────────────────────────────────
-begin_test "5.12" "Focus an element" \
+begin_test "5.12" "[BROWSER] Focus an element" \
     "interact(focus) on #sf-email" \
     "Tests: DOM focus primitive"
 
@@ -406,7 +406,7 @@ run_test_5_12() {
 run_test_5_12
 
 # ── Test 5.13: Back ──────────────────────────────────────
-begin_test "5.13" "Browser back navigation" \
+begin_test "5.13" "[BROWSER] Browser back navigation" \
     "Navigate to 2 pages, interact(back), verify observe(page) shows previous URL" \
     "Tests: DOM back primitive > browser history"
 
@@ -453,7 +453,7 @@ run_test_5_13() {
 run_test_5_13
 
 # ── Test 5.14: Forward ───────────────────────────────────
-begin_test "5.14" "Browser forward navigation" \
+begin_test "5.14" "[BROWSER] Browser forward navigation" \
     "After back, interact(forward) returns to page B" \
     "Tests: DOM forward primitive > browser history"
 
@@ -485,7 +485,7 @@ run_test_5_14() {
 run_test_5_14
 
 # ── Test 5.15: New tab ───────────────────────────────────
-begin_test "5.15" "Open new tab" \
+begin_test "5.15" "[BROWSER] Open new tab" \
     "interact(new_tab) opens a tab, extension returns success with URL" \
     "Tests: new_tab action via chrome.tabs.create"
 

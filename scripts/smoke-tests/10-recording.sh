@@ -5,7 +5,7 @@ set -eo pipefail
 begin_category "10" "Recording" "3"
 
 # ── Test 10.1: Record tab video (no audio) ───────────────
-begin_test "10.1" "Record tab video for 5 seconds (no audio)" \
+begin_test "10.1" "[INTERACTIVE - BROWSER] Record tab video for 5 seconds (no audio)" \
     "Start recording, wait 5s, stop, verify file saved with valid metadata" \
     "Tests: full recording pipeline: MCP > daemon > extension > tabCapture > blob > server > disk"
 
@@ -82,7 +82,7 @@ print(recs[0].get('duration_seconds',0) if recs else 0)
 run_test_10_1
 
 # ── Test 10.2: Record tab video WITH tab audio ───────────
-begin_test "10.2" "Record tab video with audio:tab for 5 seconds" \
+begin_test "10.2" "[INTERACTIVE - BROWSER] Record tab video with audio:tab for 5 seconds" \
     "Navigate to a page with sound, record with audio:'tab', verify audio metadata" \
     "Tests: tab audio capture via tabCapture"
 
@@ -177,7 +177,7 @@ print(recs[0].get('audio_mode','') if recs else '')
 run_test_10_2
 
 # ── Test 10.3: Recording watermark survives page refresh ─
-begin_test "10.3" "Recording watermark survives page refresh" \
+begin_test "10.3" "[INTERACTIVE - BROWSER] Recording watermark survives page refresh" \
     "Start recording, refresh the page, verify watermark reappears" \
     "Tests: tabs.onUpdated listener re-sends watermark after navigation"
 
