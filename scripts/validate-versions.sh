@@ -3,6 +3,8 @@
 set -euo pipefail
 
 VERSION=$(grep "^VERSION :=" Makefile | awk '{print $3}')
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_DIR="${CMD_PKG#./}"
 
 echo "Checking all version references match: $VERSION"
 
@@ -25,7 +27,7 @@ check_version() {
 
 # Check all locations
 check_version "Makefile" "^VERSION :="
-check_version "cmd/dev-console/main.go" 'var version = "'
+check_version "$CMD_DIR/main.go" 'var version = "'
 check_version "extension/manifest.json" '"version":'
 check_version "extension/package.json" '"version":'
 check_version "server/package.json" '"version":'
@@ -36,7 +38,7 @@ check_version "npm/linux-arm64/package.json" '"version":'
 check_version "npm/linux-x64/package.json" '"version":'
 check_version "npm/win32-x64/package.json" '"version":'
 check_version "README.md" 'version-.*-green'
-check_version "cmd/dev-console/testdata/mcp-initialize.golden.json" '"version":'
+check_version "$CMD_DIR/testdata/mcp-initialize.golden.json" '"version":'
 check_version "npm/gasoline-mcp/package.json" '"version":'
 check_version "packages/gasoline-ci/package.json" '"version":'
 check_version "packages/gasoline-playwright/package.json" '"version":'

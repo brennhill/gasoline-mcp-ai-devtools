@@ -3,6 +3,9 @@
 # Tests: Go binary + Browser extension + MCP bridge + End-to-end flow
 set -euo pipefail
 
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_DIR="${CMD_PKG#./}"
+
 echo "🔬 Gasoline Regression Testing Suite"
 echo "======================================"
 echo ""
@@ -16,7 +19,7 @@ WARNINGS=0
 
 echo "1️⃣  Testing Go binary compilation..."
 
-if go build -o /tmp/gasoline-test ./cmd/dev-console; then
+if go build -o /tmp/gasoline-test "$CMD_PKG"; then
     echo "   ✅ Binary compiles successfully"
     BINARY_PATH="/tmp/gasoline-test"
 else
@@ -157,7 +160,7 @@ echo ""
 echo "7️⃣  Testing MCP bridge..."
 
 # Check bridge functionality exists
-if grep -q "bridgeStdioToHTTP" cmd/dev-console/bridge.go; then
+if grep -q "bridgeStdioToHTTP" "$CMD_DIR/bridge.go"; then
     echo "   ✅ Bridge code present"
 else
     echo "   ❌ Bridge code MISSING"

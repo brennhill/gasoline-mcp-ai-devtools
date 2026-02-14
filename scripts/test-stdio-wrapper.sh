@@ -5,6 +5,7 @@ set -euo pipefail
 
 PORT="${1:-7890}"
 NUM_CLIENTS=10
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
 
 echo "════════════════════════════════════════════════════════════"
 echo "  MCP Wrapper Stdio Test - Connection Lifecycle Validation"
@@ -16,10 +17,10 @@ echo "   Concurrent clients: $NUM_CLIENTS"
 echo ""
 
 # Find binary
-BINARY="./dev-console"
+BINARY="${GASOLINE_STDIO_TEST_BINARY:-./gasoline-mcp}"
 if [ ! -f "$BINARY" ]; then
     echo "Building binary..."
-    go build -o dev-console ./cmd/dev-console
+    go build -o "$BINARY" "$CMD_PKG"
 fi
 
 # Helper: Send MCP request via stdio and capture result

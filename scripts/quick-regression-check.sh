@@ -3,6 +3,9 @@
 # Run this before every commit or deployment
 set -euo pipefail
 
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_DIR="${CMD_PKG#./}"
+
 echo "⚡ Quick Regression Check"
 echo "========================"
 echo ""
@@ -12,7 +15,7 @@ ERRORS=0
 
 # 1. Binary compilation
 echo "1️⃣  Compiling binary..."
-if go build -o /tmp/gasoline-quick-test ./cmd/dev-console 2>/dev/null; then
+if go build -o /tmp/gasoline-quick-test "$CMD_PKG" 2>/dev/null; then
     echo "   ✅ Binary compiles"
     rm /tmp/gasoline-quick-test
 else
@@ -43,8 +46,8 @@ echo "4️⃣  Checking critical files..."
 CRITICAL_FILES=(
     "internal/capture/queries.go"
     "internal/capture/handlers.go"
-    "cmd/dev-console/tools_observe.go"
-    "cmd/dev-console/tools_core.go"
+    "$CMD_DIR/tools_observe.go"
+    "$CMD_DIR/tools_core.go"
 )
 
 for file in "${CRITICAL_FILES[@]}"; do
@@ -63,7 +66,7 @@ echo "5️⃣  Checking for stubs..."
 if grep -q 'queries.*\[\]interface{}{}' internal/capture/handlers.go 2>/dev/null; then
     echo "   ❌ STUB in handlers.go"
     ERRORS="$((ERRORS + 1))"
-elif ! grep -A 20 'func (h \*ToolHandler) toolObserveCommandResult' cmd/dev-console/tools_observe_analysis.go 2>/dev/null | grep -q 'GetCommandResult'; then
+elif ! grep -A 20 'func (h \*ToolHandler) toolObserveCommandResult' "$CMD_DIR/tools_observe_analysis.go" 2>/dev/null | grep -q 'GetCommandResult'; then
     echo "   ❌ STUB in toolObserveCommandResult"
     ERRORS="$((ERRORS + 1))"
 else

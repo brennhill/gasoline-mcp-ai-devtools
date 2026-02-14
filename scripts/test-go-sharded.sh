@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # test-go-sharded.sh - Run a single Go package's tests split across N shards.
 #
-# Why: cmd/dev-console has a very large test surface. Splitting tests across
+# Why: the main Go command package has a very large test surface. Splitting tests across
 # multiple go test processes can reduce wall-clock time on multi-core machines.
 
 set -euo pipefail
 
-PKG="./cmd/dev-console"
+PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
 SHARDS="${GO_TEST_SHARDS:-4}"
 COUNT="${GO_TEST_COUNT:-1}"
 SHORT_MODE=0
@@ -16,7 +16,7 @@ usage() {
 Usage: scripts/test-go-sharded.sh [options] [-- <extra go test args>]
 
 Options:
-  --package <pkg>   Go package to shard (default: ./cmd/dev-console)
+  --package <pkg>   Go package to shard (default: $GASOLINE_CMD_PKG or ./cmd/dev-console)
   --shards <n>      Number of shards/processes (default: 4)
   --count <n>       go test -count value (default: 1)
   --short           Enable go test -short
@@ -144,4 +144,3 @@ if [[ "$FAILURES" -ne 0 ]]; then
 fi
 
 echo "Sharded test run passed"
-

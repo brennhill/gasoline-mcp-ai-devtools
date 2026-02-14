@@ -56,7 +56,9 @@ export declare function sendPerformanceSnapshotsToServer(serverUrl: string, snap
  */
 export declare function checkServerHealth(serverUrl: string): Promise<ServerHealthResponse>;
 /**
- * Update extension badge
+ * Update extension badge.
+ * Uses Promise.all to ensure both text and color are applied atomically
+ * before the MV3 service worker can be suspended.
  */
 export declare function updateBadge(status: ConnectionStatus): void;
 /**

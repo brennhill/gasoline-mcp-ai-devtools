@@ -238,9 +238,16 @@ async function initializeExtensionAsync() {
         });
         // ============= STEP 9.6: Install draw mode keyboard shortcut listener =============
         eventListeners.installDrawModeCommandListener((msg) => console.log(`[Gasoline] ${msg}`));
-        // ============= STEP 10: Initial connection check =============
+        // ============= STEP 10: Set disconnected badge immediately =============
+        // Badge must reflect disconnected state BEFORE the async health check.
+        // Without this, a stale "connected" badge persists from a previous SW session
+        // until the health check completes (could be seconds if server is slow to refuse).
+        communication.updateBadge(index.connectionStatus);
+        // ============= STEP 11: Initial connection check =============
+        // Await the connection check to keep the SW alive until the badge is updated.
+        // Without await, Chrome may suspend the SW before the fetch completes.
         if (index.__aiWebPilotCacheInitialized) {
-            index.checkConnectionAndUpdate();
+            await index.checkConnectionAndUpdate();
         }
         else {
             setPilotInitCallback(index.checkConnectionAndUpdate);

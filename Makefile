@@ -4,6 +4,8 @@ VERSION := $(shell cat VERSION)
 BINARY_NAME := gasoline
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/dev-console/dev-console/internal/export.version=$(VERSION)
+CMD_PKG ?= ./cmd/dev-console
+CMD_DIR ?= $(patsubst ./%,%,$(CMD_PKG))
 
 # Build targets
 PLATFORMS := \
@@ -70,7 +72,7 @@ test-js:
 	./scripts/test-js-sharded.sh
 
 test-fast:
-	go vet ./cmd/dev-console/
+	go vet $(CMD_PKG)/
 	$(MAKE) test-go-quick
 	./scripts/test-js-sharded.sh
 
@@ -78,14 +80,14 @@ test-all: test test-js
 
 test-go-quick:
 	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -short -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...
-	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) ./scripts/test-go-sharded.sh --package ./cmd/dev-console --short -- -parallel $(GO_TEST_PARALLEL)
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) --short -- -parallel $(GO_TEST_PARALLEL)
 
 test-go-long:
 	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...
-	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) ./scripts/test-go-sharded.sh --package ./cmd/dev-console -- -parallel $(GO_TEST_PARALLEL)
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) -- -parallel $(GO_TEST_PARALLEL)
 
 test-go-sharded:
-	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) ./scripts/test-go-sharded.sh --package ./cmd/dev-console -- -parallel $(GO_TEST_PARALLEL)
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) -- -parallel $(GO_TEST_PARALLEL)
 
 test-race:
 	go test -race -v ./...
@@ -97,23 +99,23 @@ test-cover:
 
 test-cover-integration:
 	@mkdir -p coverage/integration
-	GOCOVERDIR=coverage/integration go test -cover -timeout 120s ./cmd/dev-console/ -count=1
+	GOCOVERDIR=coverage/integration go test -cover -timeout 120s $(CMD_PKG)/ -count=1
 	@go tool covdata percent -i=coverage/integration
 
 test-cover-all:
 	@mkdir -p coverage/unit coverage/integration coverage/merged
 	GOCOVERDIR=coverage/unit go test -cover ./internal/...
-	GOCOVERDIR=coverage/integration go test -cover -timeout 120s ./cmd/dev-console/ -count=1
+	GOCOVERDIR=coverage/integration go test -cover -timeout 120s $(CMD_PKG)/ -count=1
 	go tool covdata merge -i=coverage/unit,coverage/integration -o=coverage/merged
 	go tool covdata textfmt -i=coverage/merged -o=coverage/coverage.txt
 	@go tool cover -func=coverage/coverage.txt | grep total
 	@echo "HTML report: go tool cover -html=coverage/coverage.txt"
 
 test-bench:
-	go test -bench=. -benchmem -count=3 ./cmd/dev-console/...
+	go test -bench=. -benchmem -count=3 $(CMD_PKG)/...
 
 test-fuzz:
-	go test -fuzz=. -fuzztime=10s ./cmd/dev-console/...
+	go test -fuzz=. -fuzztime=10s $(CMD_PKG)/...
 
 verify-zero-deps:
 	@if grep -q '^require' go.mod; then echo "FAIL: go.mod contains external dependencies"; exit 1; fi
@@ -121,7 +123,7 @@ verify-zero-deps:
 	@echo "OK: Zero external dependencies verified"
 
 verify-imports:
-	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' ./cmd/dev-console/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/dev-console/dev-console'); \
+	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' $(CMD_PKG)/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/dev-console/dev-console'); \
 	if [ -n "$$VIOLATIONS" ]; then echo "FAIL: Non-stdlib imports found:"; echo "$$VIOLATIONS"; exit 1; fi
 	@echo "OK: All imports are stdlib or internal"
 
@@ -148,23 +150,23 @@ build: $(PLATFORMS)
 
 darwin-amd64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 ./cmd/dev-console
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 $(CMD_PKG)
 
 darwin-arm64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./cmd/dev-console
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(CMD_PKG)
 
 linux-amd64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 ./cmd/dev-console
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 $(CMD_PKG)
 
 linux-arm64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 ./cmd/dev-console
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 $(CMD_PKG)
 
 windows-amd64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe ./cmd/dev-console
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe $(CMD_PKG)
 
 # Build and copy binaries to NPM package directories (for releases)
 npm-binaries: build
@@ -185,11 +187,11 @@ npm-binaries: build
 
 # Build for current platform only (for development)
 dev:
-	CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/dev-console
+	CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_PKG)
 
 # Run the server locally
 run:
-	CGO_ENABLED=0 go run ./cmd/dev-console
+	CGO_ENABLED=0 go run $(CMD_PKG)
 
 # Create checksums
 checksums:
@@ -200,8 +202,8 @@ checksums:
 lint: lint-go lint-js
 
 lint-go:
-	go vet ./cmd/dev-console/
-	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run ./cmd/dev-console/... ./internal/... || echo "golangci-lint not installed (optional)"
+	go vet $(CMD_PKG)/
+	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run $(CMD_PKG)/... ./internal/... || echo "golangci-lint not installed (optional)"
 
 lint-hardening:
 	@./scripts/lint-hardening.sh
@@ -211,11 +213,11 @@ lint-js:
 
 format:
 	@echo "Checking Go formatting..."
-	@test -z "$$(gofmt -l ./cmd/dev-console/)" || (gofmt -l ./cmd/dev-console/ && exit 1)
+	@test -z "$$(gofmt -l $(CMD_DIR)/)" || (gofmt -l $(CMD_DIR)/ && exit 1)
 	npx prettier --check .
 
 format-fix:
-	gofmt -w ./cmd/dev-console/
+	gofmt -w $(CMD_DIR)/
 	npx prettier --write .
 
 typecheck:
@@ -225,6 +227,7 @@ check: lint format typecheck check-invariants
 
 check-invariants:
 	@./scripts/check-sync-invariants.sh
+	@./scripts/validate-codex-skills.sh
 
 ci: check test test-js validate-deps-versions
 
@@ -255,7 +258,7 @@ release-check: ci-local ci-e2e
 	@echo "All release checks passed (CI + E2E)"
 
 ci-go:
-	go vet ./cmd/dev-console/
+	go vet $(CMD_PKG)/
 	make test-race
 	make test-cover
 	make build
@@ -268,26 +271,26 @@ ci-js:
 	JS_TEST_TIMEOUT=20000 ./scripts/test-js-sharded.sh
 
 ci-security:
-	@command -v gosec >/dev/null 2>&1 && gosec -exclude=G104,G114,G204,G301,G304,G306 ./cmd/dev-console/ || echo "gosec not installed (optional - GitHub Actions will verify)"
+	@command -v gosec >/dev/null 2>&1 && gosec -exclude=G104,G114,G204,G301,G304,G306 $(CMD_PKG)/ || echo "gosec not installed (optional - GitHub Actions will verify)"
 
 ci-bench:
 	@command -v benchstat >/dev/null 2>&1 || { echo "benchstat not found. Install: go install golang.org/x/perf/cmd/benchstat@latest"; exit 1; }
 	@test -f docs/benchmarks/baseline.txt || { echo "FAIL: No baseline. Run 'make bench-baseline' first."; exit 1; }
-	go test -bench=. -benchmem -count=6 -run=^$$ ./cmd/dev-console/ > /tmp/gasoline-bench-current.txt
+	go test -bench=. -benchmem -count=6 -run=^$$ $(CMD_PKG)/ > /tmp/gasoline-bench-current.txt
 	benchstat docs/benchmarks/baseline.txt /tmp/gasoline-bench-current.txt
 
 ci-fuzz:
-	go test -fuzz=FuzzPostLogs -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzMCPRequest -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzNetworkBodies -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzWebSocketEvents -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzEnhancedActions -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzValidateLogEntry -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzScreenshotEndpoint -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzPostLogs -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzMCPRequest -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzNetworkBodies -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzWebSocketEvents -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzEnhancedActions -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzValidateLogEntry -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzScreenshotEndpoint -fuzztime=30s $(CMD_PKG)/
 
 bench-baseline:
 	@mkdir -p benchmarks
-	go test -bench=. -benchmem -count=6 -run=^$$ ./cmd/dev-console/ > docs/benchmarks/baseline.txt
+	go test -bench=. -benchmem -count=6 -run=^$$ $(CMD_PKG)/ > docs/benchmarks/baseline.txt
 	@echo "Baseline saved to docs/benchmarks/baseline.txt"
 
 install-hooks:
@@ -302,7 +305,7 @@ install-hooks:
 security-check:
 	@echo "Running security checks..."
 	@command -v gosec >/dev/null 2>&1 || { echo "gosec not found. Install: go install github.com/securego/gosec/v2/cmd/gosec@latest"; exit 1; }
-	gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high ./cmd/dev-console/
+	gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high $(CMD_PKG)/
 	npx eslint extension/ tests/extension/
 	@echo "All security checks passed"
 
@@ -334,11 +337,11 @@ sync-version:
 	@echo "Syncing version to $(VERSION)..."
 	@# JSON "version" fields
 	@perl -pi -e 's/"version": "[0-9]+\.[0-9]+\.[0-9]+"/"version": "$(VERSION)"/g' \
-		extension/manifest.json extension/package.json server/package.json \
-		npm/gasoline-mcp/package.json npm/darwin-x64/package.json \
-		npm/darwin-arm64/package.json npm/linux-x64/package.json \
-		npm/linux-arm64/package.json npm/win32-x64/package.json \
-		cmd/dev-console/testdata/mcp-initialize.golden.json
+			extension/manifest.json extension/package.json server/package.json \
+			npm/gasoline-mcp/package.json npm/darwin-x64/package.json \
+			npm/darwin-arm64/package.json npm/linux-x64/package.json \
+			npm/linux-arm64/package.json npm/win32-x64/package.json \
+			$(CMD_DIR)/testdata/mcp-initialize.golden.json
 	@# NPM optionalDependencies versions
 	@perl -pi -e 's/("@brennhill\/gasoline-[^"]+": ")[0-9]+\.[0-9]+\.[0-9]+(")/$${1}$(VERSION)$$2/g' \
 		npm/gasoline-mcp/package.json
@@ -370,7 +373,7 @@ sync-version:
 		server/scripts/install.js
 	@# Go version fallback
 	@perl -pi -e 's/var version = "[0-9]+\.[0-9]+\.[0-9]+"/var version = "$(VERSION)"/' \
-		cmd/dev-console/main.go
+		$(CMD_DIR)/main.go
 	@# README badge and benchmark
 	@perl -pi -e 's/version-[0-9]+\.[0-9]+\.[0-9]+-green/version-$(VERSION)-green/' README.md
 	@perl -pi -e 's/\(v[0-9]+\.[0-9]+\.[0-9]+\)/(v$(VERSION))/' README.md

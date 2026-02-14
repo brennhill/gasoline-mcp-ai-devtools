@@ -126,7 +126,8 @@ run_test_2_4() {
         return
     fi
 
-    interact_and_wait "highlight" '{"action":"highlight","selector":"body","duration_ms":2000,"reason":"Highlight page body"}'
+    # Use 40 polls (20s) — extension sync can take a few seconds after daemon startup
+    interact_and_wait "highlight" '{"action":"highlight","selector":"body","duration_ms":2000,"reason":"Highlight page body"}' 40
 
     if echo "$INTERACT_RESULT" | grep -qi "complete\|success\|highlighted"; then
         pass "Highlight command completed successfully."

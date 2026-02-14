@@ -351,6 +351,10 @@ start_daemon() {
         echo "WARNING: daemon on port $PORT not healthy after startup (PID $DAEMON_PID)" >&2
         return 1
     fi
+    # Print daemon version to catch stale binary issues
+    local daemon_ver
+    daemon_ver="$(curl -s --connect-timeout 3 "http://localhost:${PORT}/health" 2>/dev/null | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")"
+    echo "  Daemon started: v${daemon_ver} (PID $DAEMON_PID, port $PORT)"
 }
 
 start_daemon_with_flags() {
@@ -362,6 +366,10 @@ start_daemon_with_flags() {
         echo "WARNING: daemon on port $PORT not healthy after startup (PID $DAEMON_PID)" >&2
         return 1
     fi
+    # Print daemon version to catch stale binary issues
+    local daemon_ver
+    daemon_ver="$(curl -s --connect-timeout 3 "http://localhost:${PORT}/health" 2>/dev/null | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")"
+    echo "  Daemon started: v${daemon_ver} (PID $DAEMON_PID, port $PORT)"
 }
 
 ensure_daemon() {

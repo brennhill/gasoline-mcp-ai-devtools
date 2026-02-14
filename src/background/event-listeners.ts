@@ -79,20 +79,22 @@ export function setupChromeAlarms(): void {
 }
 
 /**
- * Install Chrome alarm listener
+ * Install Chrome alarm listener.
+ * Handlers may be async — the listener awaits them to keep the SW alive
+ * until the work completes (prevents badge updates from being lost).
  */
 export function installAlarmListener(handlers: {
-  onReconnect: () => void
+  onReconnect: () => void | Promise<void>
   onErrorGroupFlush: () => void
   onMemoryCheck: () => void
   onErrorGroupCleanup: () => void
 }): void {
   if (typeof chrome === 'undefined' || !chrome.alarms) return
 
-  chrome.alarms.onAlarm.addListener((alarm) => {
+  chrome.alarms.onAlarm.addListener(async (alarm) => {
     switch (alarm.name) {
       case ALARM_NAMES.RECONNECT:
-        handlers.onReconnect()
+        await handlers.onReconnect()
         break
       case ALARM_NAMES.ERROR_GROUP_FLUSH:
         handlers.onErrorGroupFlush()

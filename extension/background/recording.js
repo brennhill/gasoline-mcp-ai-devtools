@@ -97,8 +97,8 @@ async function requestRecordingGesture(tab, name, fps, audio, mediaType) {
     chrome.tabs.update(tab.id, { active: true });
     chrome.tabs.sendMessage(tab.id, {
         type: 'GASOLINE_ACTION_TOAST',
-        text: `${mediaType} Recording - Click Gasoline Icon`,
-        detail: `Click the Gasoline icon (\u2197 upper right) to grant ${mediaType.toLowerCase()} recording permission`,
+        text: `\u2191 Click Gasoline Icon`,
+        detail: `Grant ${mediaType.toLowerCase()} recording permission`,
         state: 'audio', duration_ms: 30000
     }).catch(() => { });
     await chrome.storage.local.set({ gasoline_pending_recording: { name, fps, audio, tabId: tab.id, url: tab.url } });
@@ -108,13 +108,13 @@ async function requestRecordingGesture(tab, name, fps, audio, mediaType) {
         console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s');
         chrome.tabs.sendMessage(tab.id, {
             type: 'GASOLINE_ACTION_TOAST',
-            text: `${mediaType} Permission Required`,
-            detail: `Click the Gasoline icon (\u2197 upper right) to grant ${mediaType.toLowerCase()} recording permission`,
+            text: `\u2191 Click Gasoline Icon`,
+            detail: `Grant ${mediaType.toLowerCase()} recording permission`,
             state: 'audio', duration_ms: 8000
         }).catch(() => { });
         return {
             status: 'error', name: '',
-            error: `RECORD_START: ${mediaType} recording requires permission. Click the Gasoline icon (\u2197 upper right) to grant ${mediaType.toLowerCase()} recording permission, then try again.`
+            error: `RECORD_START: ${mediaType} recording requires permission. Click the Gasoline extension icon to grant ${mediaType.toLowerCase()} recording permission, then try again.`
         };
     }
     chrome.tabs.sendMessage(tab.id, {

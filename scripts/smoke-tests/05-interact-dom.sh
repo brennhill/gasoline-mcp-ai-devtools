@@ -416,26 +416,31 @@ run_test_5_13() {
         return
     fi
 
-    # Navigate to page A — use a distinctive URL
-    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Page A for back test"}' 20
-    sleep 3
+    # Use localhost pages — external domains (example.com, iana.org) can redirect unpredictably.
+    # The daemon serves /health and /openapi.json which are stable, distinctive URLs.
+    local page_a="http://localhost:${PORT}/health"
+    local page_b="http://localhost:${PORT}/openapi.json"
 
-    # Verify we're on page A via direct DOM query (avoids cached observe(page) staleness)
+    # Navigate to page A
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"$page_a\",\"reason\":\"Page A for back test\"}" 20
+    sleep 2
+
+    # Verify we're on page A via direct DOM query
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Verify page A URL","script":"window.location.href"}'
     echo "  [page A] $(echo "$INTERACT_RESULT" | grep -oE 'https?://[^ \"]+' | head -1 || echo '?')"
 
     # Navigate to page B
-    interact_and_wait "navigate" '{"action":"navigate","url":"https://www.iana.org/domains/reserved","reason":"Page B for back test"}' 20
-    sleep 3
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"$page_b\",\"reason\":\"Page B for back test\"}" 20
+    sleep 2
 
     # Go back
     interact_and_wait "back" '{"action":"back","reason":"Go back to page A"}'
-    sleep 3
+    sleep 2
 
-    # Primary check: command result URL (extension now returns url after goBack)
-    if echo "$INTERACT_RESULT" | grep -qi "example.com"; then
-        echo "  [after back] example.com (from command result)"
-        pass "Back navigation: returned to example.com (confirmed via command result)."
+    # Primary check: command result URL (extension returns url after goBack)
+    if echo "$INTERACT_RESULT" | grep -qi "/health"; then
+        echo "  [after back] /health (from command result)"
+        pass "Back navigation: returned to /health (confirmed via command result)."
         return
     fi
 
@@ -444,10 +449,10 @@ run_test_5_13() {
     local current_url="$INTERACT_RESULT"
     echo "  [after back] $(echo "$current_url" | grep -oE 'https?://[^ \"]+' | head -1 || echo '?')"
 
-    if echo "$current_url" | grep -qi "example.com"; then
-        pass "Back navigation: returned to example.com (confirmed via DOM)."
+    if echo "$current_url" | grep -qi "/health"; then
+        pass "Back navigation: returned to /health (confirmed via DOM)."
     else
-        fail "Back navigation: expected example.com. Got: $(truncate "$current_url" 200)"
+        fail "Back navigation: expected /health. Got: $(truncate "$current_url" 200)"
     fi
 }
 run_test_5_13
@@ -466,9 +471,9 @@ run_test_5_14() {
     interact_and_wait "forward" '{"action":"forward","reason":"Go forward to page B"}'
     sleep 2
 
-    # Primary check: command result URL (extension now returns url after goForward)
-    if echo "$INTERACT_RESULT" | grep -qi "iana.org\|reserved"; then
-        pass "Forward navigation: returned to iana.org/reserved (confirmed via command result)."
+    # Primary check: command result URL (extension returns url after goForward)
+    if echo "$INTERACT_RESULT" | grep -qi "openapi"; then
+        pass "Forward navigation: returned to /openapi.json (confirmed via command result)."
         return
     fi
 
@@ -476,10 +481,10 @@ run_test_5_14() {
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Verify URL after forward","script":"window.location.href"}'
     local current_url="$INTERACT_RESULT"
 
-    if echo "$current_url" | grep -qi "iana.org\|reserved"; then
-        pass "Forward navigation: returned to iana.org/reserved (confirmed via DOM)."
+    if echo "$current_url" | grep -qi "openapi"; then
+        pass "Forward navigation: returned to /openapi.json (confirmed via DOM)."
     else
-        fail "Forward navigation: expected iana.org. Got: $(truncate "$current_url" 200)"
+        fail "Forward navigation: expected /openapi.json. Got: $(truncate "$current_url" 200)"
     fi
 }
 run_test_5_14

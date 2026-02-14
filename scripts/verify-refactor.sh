@@ -4,6 +4,9 @@
 
 set -euo pipefail
 
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_DIR="${CMD_PKG#./}"
+
 echo "════════════════════════════════════════════════════════════════"
 echo "🔍 COMPREHENSIVE REFACTORING VERIFICATION"
 echo "════════════════════════════════════════════════════════════════"
@@ -143,11 +146,11 @@ echo "→ Checking critical architecture files exist..."
 CRITICAL_FILES=(
     "internal/capture/queries.go"
     "internal/capture/handlers.go"
-    "cmd/dev-console/tools_core.go"
-    "cmd/dev-console/tools_interact.go"
-    "cmd/dev-console/tools_observe.go"
-    "cmd/dev-console/tools_configure.go"
-    "cmd/dev-console/tools_generate.go"
+    "$CMD_DIR/tools_core.go"
+    "$CMD_DIR/tools_interact.go"
+    "$CMD_DIR/tools_observe.go"
+    "$CMD_DIR/tools_configure.go"
+    "$CMD_DIR/tools_generate.go"
 )
 
 ALL_EXIST=1
@@ -192,7 +195,7 @@ TOOL_HANDLERS=(
 )
 
 for handler in "${TOOL_HANDLERS[@]}"; do
-    if grep -rq "func.*$handler" cmd/dev-console/tools_*.go; then
+    if grep -rq "func.*$handler" "${CMD_DIR}"/tools_*.go; then
         echo "  ✓ $handler exists"
     else
         echo "  ❌ $handler missing"
@@ -225,8 +228,8 @@ echo ""
 echo "━━━ LEVEL 7: Smoke Test ━━━"
 echo ""
 
-echo "→ Building dev-console binary..."
-if go build -o /tmp/gasoline-test ./cmd/dev-console > /dev/null 2>&1; then
+echo "→ Building command binary..."
+if go build -o /tmp/gasoline-test "$CMD_PKG" > /dev/null 2>&1; then
     echo "✅ Binary builds successfully"
 
     echo ""
