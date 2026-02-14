@@ -10,19 +10,43 @@ set -eo pipefail
 UPLOAD_TEST_DIR="${HOME}/.gasoline/tmp/smoke-upload-$$"
 mkdir -p "$UPLOAD_TEST_DIR"
 
+# ── MD5 helper: works on both macOS (md5) and Linux (md5sum) ──
+_compute_md5() {
+    local file="$1"
+    local hash
+    hash=$(md5sum "$file" 2>/dev/null | awk '{print $1}' || md5 -q "$file" 2>/dev/null || true)
+    if [ -z "$hash" ]; then
+        echo "FATAL: neither md5sum nor md5 available" >&2
+        return 1
+    fi
+    echo "$hash"
+}
+
 begin_category "15" "File Upload" "18"
 
 # ── Persistent upload server for the whole category ───────
 UPLOAD_PORT=$((PORT + 200))
+
+# Kill anything already on the upload port
+lsof -ti :"$UPLOAD_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+sleep 0.3
+
 python3 "$(dirname "${BASH_SOURCE[0]}")/upload-server.py" "$UPLOAD_PORT" &
 UPLOAD_SERVER_PID=$!
 sleep 1
 
+# Verify upload server is alive (P0-09: detect silent death)
+if ! kill -0 "$UPLOAD_SERVER_PID" 2>/dev/null; then
+    echo "FATAL: Upload test server (PID $UPLOAD_SERVER_PID) died on startup. Port $UPLOAD_PORT may be in use." >&2
+    UPLOAD_SERVER_PID=""
+fi
+
 _cleanup_upload() {
     [ -n "$UPLOAD_SERVER_PID" ] && kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+    lsof -ti :"$UPLOAD_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
     rm -rf "$UPLOAD_TEST_DIR"
 }
-trap _cleanup_upload EXIT
+register_cleanup _cleanup_upload
 
 # ── Shared helper: navigate browser to upload form ────────
 # Visits / (sets session cookie) then /upload (loads form with CSRF).
@@ -366,7 +390,7 @@ run_test_15_10() {
     local test_file="$UPLOAD_TEST_DIR/upload-15-10.txt"
     echo -n "$test_content" > "$test_file"
     local original_md5
-    original_md5=$(md5sum "$test_file" 2>/dev/null | awk '{print $1}' || md5 -q "$test_file" 2>/dev/null)
+    original_md5=$(_compute_md5 "$test_file")
 
     # Navigate browser: / (session) → /upload (form)
     _navigate_to_upload_form
@@ -474,7 +498,7 @@ run_test_15_12() {
     local test_file="$UPLOAD_TEST_DIR/upload-15-12.txt"
     echo -n "$test_content" > "$test_file"
     local original_md5
-    original_md5=$(md5sum "$test_file" 2>/dev/null | awk '{print $1}' || md5 -q "$test_file" 2>/dev/null)
+    original_md5=$(_compute_md5 "$test_file")
 
     # Navigate browser: / (session) → /upload (form)
     _navigate_to_upload_form
@@ -728,7 +752,7 @@ run_test_15_16() {
     local test_file="$UPLOAD_TEST_DIR/upload-15-16.txt"
     echo -n "$test_content" > "$test_file"
     local original_md5
-    original_md5=$(md5sum "$test_file" 2>/dev/null | awk '{print $1}' || md5 -q "$test_file" 2>/dev/null)
+    original_md5=$(_compute_md5 "$test_file")
 
     # Navigate browser to hardened form
     _navigate_to_hardened_form

@@ -132,9 +132,10 @@ send_mcp() {
     local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
     local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
 
-    echo "$request" | "$TIMEOUT_CMD" 8 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file"
+    # Use || true to prevent set -eo pipefail from killing the script on timeout (exit 124)
+    echo "$request" | "$TIMEOUT_CMD" 8 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file" || true
     # shellcheck disable=SC2034 # LAST_EXIT_CODE used by sourcing scripts
-    LAST_EXIT_CODE="$?"
+    LAST_EXIT_CODE="${PIPESTATUS[1]:-$?}"
 
     # Get last non-empty line (the JSON-RPC response)
     LAST_RESPONSE="$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1 || true)"
@@ -154,9 +155,9 @@ send_mcp_multi() {
     local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
     local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
 
-    echo "$requests" | "$TIMEOUT_CMD" 12 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file"
+    echo "$requests" | "$TIMEOUT_CMD" 12 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file" || true
     # shellcheck disable=SC2034 # LAST_EXIT_CODE used by sourcing scripts
-    LAST_EXIT_CODE="$?"
+    LAST_EXIT_CODE="${PIPESTATUS[1]:-$?}"
     # shellcheck disable=SC2034 # LAST_STDOUT_FILE used by sourcing scripts
     LAST_STDOUT_FILE="$stdout_file"
     # shellcheck disable=SC2034 # LAST_STDERR_FILE used by sourcing scripts
@@ -293,14 +294,19 @@ get_http_body() {
 kill_server() {
     # Prefer killing the tracked daemon PID over indiscriminate lsof
     if [ -n "$DAEMON_PID" ]; then
-        kill -9 "$DAEMON_PID" 2>/dev/null || true
+        # SIGTERM first for clean shutdown, then SIGKILL if still alive
+        kill "$DAEMON_PID" 2>/dev/null || true
+        sleep 0.2
+        kill -0 "$DAEMON_PID" 2>/dev/null && kill -9 "$DAEMON_PID" 2>/dev/null || true
         DAEMON_PID=""
-        sleep 0.3
+        sleep 0.1
         return
     fi
     # Fallback: kill by port (e.g., if daemon was pre-existing)
+    lsof -ti :"$PORT" 2>/dev/null | xargs kill 2>/dev/null || true
+    sleep 0.2
     lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
-    sleep 0.3
+    sleep 0.1
 }
 
 wait_for_health() {
@@ -327,7 +333,10 @@ start_daemon() {
     kill_server
     "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 &
     DAEMON_PID=$!
-    wait_for_health 50
+    if ! wait_for_health 50; then
+        echo "WARNING: daemon on port $PORT not healthy after startup (PID $DAEMON_PID)" >&2
+        return 1
+    fi
 }
 
 start_daemon_with_flags() {
@@ -335,7 +344,10 @@ start_daemon_with_flags() {
     kill_server
     "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 &
     DAEMON_PID=$!
-    wait_for_health 50
+    if ! wait_for_health 50; then
+        echo "WARNING: daemon on port $PORT not healthy after startup (PID $DAEMON_PID)" >&2
+        return 1
+    fi
 }
 
 ensure_daemon() {
